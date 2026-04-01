@@ -1,12 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Play, Lock, Clock, BookOpen } from "lucide-react";
-
-const TIER_BADGE = {
-  free: { label: "Free Preview", color: "bg-muted/60 text-muted-foreground border-border/40" },
-  supporter: { label: "Supporter", color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
-  premium: { label: "Premium", color: "bg-primary/10 text-primary border-primary/20" },
-};
+import { getAccessBadge, getEffectiveAccess } from "@/lib/tierAccess";
 
 const CATEGORY_LABEL = {
   transform: "Reprogram & Manifest",
@@ -19,8 +14,12 @@ const CATEGORY_LABEL = {
 };
 
 export default function LessonCard({ lesson, featured = false }) {
-  const badge = TIER_BADGE[lesson.tier] || TIER_BADGE.free;
-  const locked = lesson.tier !== "free";
+  // Support both new tier_access array and legacy tier string
+  const itemWithAccess = lesson.tier_access
+    ? lesson
+    : { tier_access: lesson.tier === "free" ? ["free"] : lesson.tier === "supporter" ? ["supporter", "premium"] : ["premium"] };
+  const badge = getAccessBadge(itemWithAccess);
+  const locked = !getEffectiveAccess(itemWithAccess).includes("free");
   const catLabel = CATEGORY_LABEL[lesson.category] || lesson.category;
 
   return (

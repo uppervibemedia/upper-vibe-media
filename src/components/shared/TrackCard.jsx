@@ -2,18 +2,18 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Play, Lock, Crown } from "lucide-react";
 import { usePlayer } from "../../context/PlayerContext";
-
-const tierBadge = {
-  supporter: { label: "Supporter", color: "text-purple-400 bg-purple-400/10 border-purple-400/20" },
-  premium: { label: "Premium", color: "text-primary bg-primary/10 border-primary/20" },
-};
+import { getAccessBadge, getEffectiveAccess } from "@/lib/tierAccess";
 
 export default function TrackCard({ track, locked = false }) {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const isCurrentTrack = currentTrack?.id === track.id;
+  const effectiveAccess = getEffectiveAccess(track);
+  const isFree = effectiveAccess.includes("free");
+  // Use prop-based locked override, or derive from access
+  const isLocked = locked !== undefined ? locked : !isFree;
 
   const handlePlay = () => {
-    if (locked) return;
+    if (isLocked) return;
     if (isCurrentTrack) {
       togglePlay();
     } else {
@@ -21,7 +21,7 @@ export default function TrackCard({ track, locked = false }) {
     }
   };
 
-  const badge = track.min_tier && track.min_tier !== "free" ? tierBadge[track.min_tier] : null;
+  const badge = !isFree ? getAccessBadge(track) : null;
 
   return (
     <motion.div
@@ -41,7 +41,7 @@ export default function TrackCard({ track, locked = false }) {
 
         {/* Play button overlay */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          {locked ? (
+          {isLocked ? (
             <div className="w-12 h-12 rounded-full bg-muted/80 backdrop-blur-md flex items-center justify-center">
               <Lock className="w-5 h-5 text-muted-foreground" />
             </div>
@@ -58,6 +58,7 @@ export default function TrackCard({ track, locked = false }) {
             {badge.label}
           </div>
         )}
+
 
         {/* Now playing indicator */}
         {isCurrentTrack && isPlaying && (

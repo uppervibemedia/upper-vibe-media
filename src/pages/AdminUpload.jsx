@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Upload, Music, Image, Check, Loader2, X } from "lucide-react";
+import { Upload, Music, Image, Check, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import TierAccessPicker from "../components/admin/TierAccessPicker";
 
 const EMPTY_FORM = {
   title: "",
@@ -13,8 +14,7 @@ const EMPTY_FORM = {
   album: "",
   category: "",
   duration: "",
-  min_tier: "free",
-  is_premium: false,
+  tier_access: ["free"],
   is_featured: false,
   audio_url: "",
   cover_url: "",
@@ -58,7 +58,8 @@ export default function AdminUpload() {
     setSaving(true);
     await base44.entities.Track.create({
       ...form,
-      is_premium: form.min_tier !== "free",
+      is_premium: !form.tier_access.includes("free"),
+      min_tier: form.tier_access.includes("free") ? "free" : form.tier_access.includes("supporter") ? "supporter" : "premium",
     });
     toast.success(`"${form.title}" added to the catalog!`);
     setForm(EMPTY_FORM);
@@ -165,18 +166,11 @@ export default function AdminUpload() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Access Tier</label>
-              <Select value={form.min_tier} onValueChange={(v) => setForm({ ...form, min_tier: v })}>
-                <SelectTrigger className="bg-card/40 border-border/30">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">Free</SelectItem>
-                  <SelectItem value="supporter">Supporter</SelectItem>
-                  <SelectItem value="premium">Premium</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="col-span-2">
+              <TierAccessPicker
+                value={form.tier_access}
+                onChange={(v) => setForm({ ...form, tier_access: v })}
+              />
             </div>
             <div className="col-span-2 flex gap-6">
               <label className="flex items-center gap-2 cursor-pointer">
