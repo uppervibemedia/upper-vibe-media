@@ -6,7 +6,6 @@ import { usePlayer } from "../../context/PlayerContext";
 const tierBadge = {
   supporter: { label: "Supporter", color: "text-purple-400 bg-purple-400/10 border-purple-400/20" },
   premium: { label: "Premium", color: "text-primary bg-primary/10 border-primary/20" },
-  vip: { label: "VIP", color: "text-secondary bg-secondary/10 border-secondary/20" },
 };
 
 export default function TrackCard({ track, locked = false }) {

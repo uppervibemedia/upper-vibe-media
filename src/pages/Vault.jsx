@@ -29,17 +29,17 @@ const VAULT_SECTIONS = [
   },
   {
     title: "Unreleased Drops",
-    subtitle: "VIP Exclusive",
-    tier: "vip",
+    subtitle: "Premium Exclusive",
+    tier: "premium",
     tracks: [
-      { id: "v7", title: "Unreleased: Signal", artist: "Upper Vibe", duration: "3:55", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png", min_tier: "vip" },
-      { id: "v8", title: "Unreleased: Epoch", artist: "Upper Vibe", duration: "4:42", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png", min_tier: "vip" },
-      { id: "v9", title: "Unreleased: Zenith", artist: "Upper Vibe", duration: "5:18", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png", min_tier: "vip" },
+      { id: "v7", title: "Unreleased: Signal", artist: "Upper Vibe", duration: "3:55", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png", min_tier: "premium" },
+      { id: "v8", title: "Unreleased: Epoch", artist: "Upper Vibe", duration: "4:42", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png", min_tier: "premium" },
+      { id: "v9", title: "Unreleased: Zenith", artist: "Upper Vibe", duration: "5:18", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png", min_tier: "premium" },
     ],
   },
   {
     title: "Frequency Playlists",
-    subtitle: "Mood & Intention",
+    subtitle: "Supporter & Above",
     tier: "supporter",
     tracks: [
       { id: "v10", title: "Morning Ascension", artist: "Upper Vibe", duration: "45:00", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png", min_tier: "supporter" },
@@ -114,7 +114,7 @@ export default function Vault() {
             <SectionHeader
               title={section.title}
               subtitle={section.subtitle}
-              glowColor={section.tier === "vip" ? "gold" : "blue"}
+              glowColor={section.tier === "premium" ? "blue" : "blue"}
             />
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
               {section.tracks.map((track) => (

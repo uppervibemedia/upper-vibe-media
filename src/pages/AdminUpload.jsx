@@ -175,7 +175,6 @@ export default function AdminUpload() {
                   <SelectItem value="free">Free</SelectItem>
                   <SelectItem value="supporter">Supporter</SelectItem>
                   <SelectItem value="premium">Premium</SelectItem>
-                  <SelectItem value="vip">VIP</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -48,11 +48,10 @@
       "enum": [
         "free",
         "supporter",
-        "premium",
-        "vip"
+        "premium"
       ],
       "default": "free",
-      "description": "Minimum subscription tier required"
+      "description": "Minimum subscription tier required. free = everyone, supporter = Supporter+, premium = Premium only"
     },
     "plays": {
       "type": "number",

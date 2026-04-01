@@ -52,8 +52,8 @@ export default function Dashboard() {
             <Crown className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-medium text-foreground">Current Plan: <span className="text-primary">Free Preview</span></p>
-            <p className="text-xs text-muted-foreground mt-0.5">Upgrade to unlock full streaming access</p>
+            <p className="text-sm font-medium text-foreground">Current Plan: <span className="text-primary">Free</span></p>
+            <p className="text-xs text-muted-foreground mt-0.5">Upgrade to Supporter ($4.99) or Premium ($9.99) to unlock the full experience</p>
           </div>
         </div>
         <GlowButton to="/pricing" variant="secondary" size="sm">

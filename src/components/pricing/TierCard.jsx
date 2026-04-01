@@ -4,6 +4,13 @@ import { Check } from "lucide-react";
 import GlowButton from "../shared/GlowButton";
 
 const tierStyles = {
+  free: {
+    border: "border-border/30 hover:border-border/60",
+    glow: "",
+    badge: "bg-muted/40 text-muted-foreground border-border/30",
+    button: "ghost",
+    accent: "text-muted-foreground",
+  },
   supporter: {
     border: "border-purple-500/30 hover:border-purple-500/60",
     glow: "glow-purple",
@@ -18,17 +25,11 @@ const tierStyles = {
     button: "primary",
     accent: "text-primary",
   },
-  vip: {
-    border: "border-secondary/30 hover:border-secondary/60",
-    glow: "glow-gold",
-    badge: "bg-secondary/10 text-secondary border-secondary/20",
-    button: "secondary",
-    accent: "text-secondary",
-  },
 };
 
-export default function TierCard({ tier, name, price, features, popular = false, delay = 0 }) {
-  const style = tierStyles[tier];
+export default function TierCard({ tier, name, price, tagline, features, popular = false, delay = 0 }) {
+  const style = tierStyles[tier] || tierStyles.free;
+  const isFree = tier === "free";
 
   return (
     <motion.div
@@ -45,13 +46,23 @@ export default function TierCard({ tier, name, price, features, popular = false,
         </div>
       )}
 
-      <div className={`inline-flex px-3 py-1 rounded-full border text-[10px] font-bold tracking-widest uppercase mb-6 ${style.badge}`}>
+      <div className={`inline-flex px-3 py-1 rounded-full border text-[10px] font-bold tracking-widest uppercase mb-4 ${style.badge}`}>
         {name}
       </div>
 
+      {tagline && (
+        <p className={`text-xs font-semibold tracking-wider uppercase mb-4 ${style.accent}`}>{tagline}</p>
+      )}
+
       <div className="mb-6">
-        <span className="font-heading font-extrabold text-4xl md:text-5xl text-foreground">${price}</span>
-        <span className="text-sm text-muted-foreground ml-1">/month</span>
+        {isFree ? (
+          <span className="font-heading font-extrabold text-4xl md:text-5xl text-foreground">Free</span>
+        ) : (
+          <>
+            <span className="font-heading font-extrabold text-4xl md:text-5xl text-foreground">${price}</span>
+            <span className="text-sm text-muted-foreground ml-1">/month</span>
+          </>
+        )}
       </div>
 
       <ul className="space-y-3 mb-8">
@@ -63,8 +74,8 @@ export default function TierCard({ tier, name, price, features, popular = false,
         ))}
       </ul>
 
-      <GlowButton variant={style.button} className="w-full" to="/pricing">
-        Commence Subscription
+      <GlowButton variant={isFree ? "ghost" : style.button} className="w-full" to={isFree ? "/discover" : "/pricing"}>
+        {isFree ? "Start Listening" : "Get Started"}
       </GlowButton>
     </motion.div>
   );
