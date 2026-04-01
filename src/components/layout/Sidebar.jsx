@@ -11,6 +11,7 @@ import {
   Mail,
   Menu,
   X,
+  Upload,
   ChevronRight
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ const navItems = [
   { path: "/vault", icon: Lock, label: "Vault" },
   { path: "/about", icon: Info, label: "About" },
   { path: "/contact", icon: Mail, label: "Contact" },
+  { path: "/admin/upload", icon: Upload, label: "Upload" },
 ];
 
 export default function Sidebar() {
