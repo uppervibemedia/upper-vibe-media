@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   Upload,
-  ChevronRight
+  ChevronRight,
+  Brain
 } from "lucide-react";
 
 const navItems = [
@@ -21,6 +22,7 @@ const navItems = [
   { path: "/pricing", icon: Crown, label: "Pricing" },
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/vault", icon: Lock, label: "Vault" },
+  { path: "/academy", icon: Brain, label: "Academy" },
   { path: "/about", icon: Info, label: "About" },
   { path: "/contact", icon: Mail, label: "Contact" },
   { path: "/admin/upload", icon: Upload, label: "Upload" },
