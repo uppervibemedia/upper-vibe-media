@@ -8,7 +8,7 @@ export default function HeroSection() {
       {/* Background image */}
       <div className="absolute inset-0">
         <img
-          src="/__generating__/img_c46abe5fbf64.png"
+          src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/379cb9227_generated_3a016793.png"
           alt="Abstract gold sound wave"
           className="w-full h-full object-cover opacity-40"
         />

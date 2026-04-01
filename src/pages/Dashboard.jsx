@@ -7,22 +7,22 @@ import GlowButton from "../components/shared/GlowButton";
 import { usePlayer } from "../context/PlayerContext";
 
 const CONTINUE_LISTENING = [
-  { id: "cl1", title: "Elevated State", artist: "Upper Vibe", duration: "4:12", cover_url: "/__generating__/img_49da7976ba56.png", min_tier: "free" },
-  { id: "cl2", title: "Neural Bloom 432Hz", artist: "Upper Vibe", duration: "5:33", cover_url: "/__generating__/img_1129385afda1.png", min_tier: "free" },
-  { id: "cl3", title: "Crown Frequency", artist: "Upper Vibe", duration: "3:47", cover_url: "/__generating__/img_843e56616ced.png", min_tier: "free" },
+  { id: "cl1", title: "Elevated State", artist: "Upper Vibe", duration: "4:12", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png", min_tier: "free" },
+  { id: "cl2", title: "Neural Bloom 432Hz", artist: "Upper Vibe", duration: "5:33", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/11801d304_generated_aecb4feb.png", min_tier: "free" },
+  { id: "cl3", title: "Crown Frequency", artist: "Upper Vibe", duration: "3:47", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png", min_tier: "free" },
 ];
 
 const RECENTLY_ADDED = [
-  { id: "ra1", title: "Vault Session 01", artist: "Upper Vibe", duration: "4:55", cover_url: "/__generating__/img_9bebd0b2b4ab.png", min_tier: "premium" },
-  { id: "ra2", title: "Deep Focus Alpha", artist: "Upper Vibe", duration: "8:20", cover_url: "/__generating__/img_8e190c0379db.png", min_tier: "free" },
-  { id: "ra3", title: "Intention Protocol", artist: "Upper Vibe", duration: "6:01", cover_url: "/__generating__/img_0c929f814029.png", min_tier: "vip" },
-  { id: "ra4", title: "Reprogramming II", artist: "Upper Vibe", duration: "5:44", cover_url: "/__generating__/img_49da7976ba56.png", min_tier: "free" },
+  { id: "ra1", title: "Vault Session 01", artist: "Upper Vibe", duration: "4:55", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/e6873b16a_generated_f48c8f96.png", min_tier: "premium" },
+  { id: "ra2", title: "Deep Focus Alpha", artist: "Upper Vibe", duration: "8:20", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png", min_tier: "free" },
+  { id: "ra3", title: "Intention Protocol", artist: "Upper Vibe", duration: "6:01", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png", min_tier: "vip" },
+  { id: "ra4", title: "Reprogramming II", artist: "Upper Vibe", duration: "5:44", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png", min_tier: "free" },
 ];
 
 const PLAYLISTS = [
-  { name: "Morning Elevation", tracks: 12, cover: "/__generating__/img_49da7976ba56.png" },
-  { name: "Focus Protocol", tracks: 8, cover: "/__generating__/img_8e190c0379db.png" },
-  { name: "432Hz Journey", tracks: 15, cover: "/__generating__/img_1129385afda1.png" },
+  { name: "Morning Elevation", tracks: 12, cover: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png" },
+  { name: "Focus Protocol", tracks: 8, cover: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png" },
+  { name: "432Hz Journey", tracks: 15, cover: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/11801d304_generated_aecb4feb.png" },
 ];
 
 export default function Dashboard() {

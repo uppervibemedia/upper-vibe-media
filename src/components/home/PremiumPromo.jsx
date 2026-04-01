@@ -8,7 +8,7 @@ export default function PremiumPromo() {
     <section className="relative overflow-hidden py-24">
       <div className="absolute inset-0">
         <img
-          src="/__generating__/img_e54cd0c1d9a4.png"
+          src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/70e23e35f_generated_b5746c08.png"
           alt="Premium vault"
           className="w-full h-full object-cover opacity-20"
         />

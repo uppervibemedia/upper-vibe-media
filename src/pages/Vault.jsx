@@ -12,9 +12,9 @@ const VAULT_SECTIONS = [
     subtitle: "Vault Only",
     tier: "premium",
     tracks: [
-      { id: "v1", title: "The Awakening LP", artist: "Upper Vibe", duration: "42:00", cover_url: "/__generating__/img_49da7976ba56.png", min_tier: "premium" },
-      { id: "v2", title: "Frequency Atlas", artist: "Upper Vibe", duration: "38:15", cover_url: "/__generating__/img_0c929f814029.png", min_tier: "premium" },
-      { id: "v3", title: "Inner Circuit", artist: "Upper Vibe", duration: "35:50", cover_url: "/__generating__/img_843e56616ced.png", min_tier: "premium" },
+      { id: "v1", title: "The Awakening LP", artist: "Upper Vibe", duration: "42:00", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png", min_tier: "premium" },
+      { id: "v2", title: "Frequency Atlas", artist: "Upper Vibe", duration: "38:15", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png", min_tier: "premium" },
+      { id: "v3", title: "Inner Circuit", artist: "Upper Vibe", duration: "35:50", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png", min_tier: "premium" },
     ],
   },
   {
@@ -22,9 +22,9 @@ const VAULT_SECTIONS = [
     subtitle: "Elevated Classics",
     tier: "premium",
     tracks: [
-      { id: "v4", title: "Origin (Remastered)", artist: "Upper Vibe", duration: "4:12", cover_url: "/__generating__/img_1129385afda1.png", min_tier: "premium" },
-      { id: "v5", title: "Foundation (432Hz)", artist: "Upper Vibe", duration: "5:01", cover_url: "/__generating__/img_9bebd0b2b4ab.png", min_tier: "premium" },
-      { id: "v6", title: "Ascension (Lossless)", artist: "Upper Vibe", duration: "6:33", cover_url: "/__generating__/img_8e190c0379db.png", min_tier: "premium" },
+      { id: "v4", title: "Origin (Remastered)", artist: "Upper Vibe", duration: "4:12", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/11801d304_generated_aecb4feb.png", min_tier: "premium" },
+      { id: "v5", title: "Foundation (432Hz)", artist: "Upper Vibe", duration: "5:01", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/e6873b16a_generated_f48c8f96.png", min_tier: "premium" },
+      { id: "v6", title: "Ascension (Lossless)", artist: "Upper Vibe", duration: "6:33", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png", min_tier: "premium" },
     ],
   },
   {
@@ -32,9 +32,9 @@ const VAULT_SECTIONS = [
     subtitle: "VIP Exclusive",
     tier: "vip",
     tracks: [
-      { id: "v7", title: "Unreleased: Signal", artist: "Upper Vibe", duration: "3:55", cover_url: "/__generating__/img_0c929f814029.png", min_tier: "vip" },
-      { id: "v8", title: "Unreleased: Epoch", artist: "Upper Vibe", duration: "4:42", cover_url: "/__generating__/img_49da7976ba56.png", min_tier: "vip" },
-      { id: "v9", title: "Unreleased: Zenith", artist: "Upper Vibe", duration: "5:18", cover_url: "/__generating__/img_843e56616ced.png", min_tier: "vip" },
+      { id: "v7", title: "Unreleased: Signal", artist: "Upper Vibe", duration: "3:55", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png", min_tier: "vip" },
+      { id: "v8", title: "Unreleased: Epoch", artist: "Upper Vibe", duration: "4:42", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png", min_tier: "vip" },
+      { id: "v9", title: "Unreleased: Zenith", artist: "Upper Vibe", duration: "5:18", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png", min_tier: "vip" },
     ],
   },
   {
@@ -42,9 +42,9 @@ const VAULT_SECTIONS = [
     subtitle: "Mood & Intention",
     tier: "supporter",
     tracks: [
-      { id: "v10", title: "Morning Ascension", artist: "Upper Vibe", duration: "45:00", cover_url: "/__generating__/img_8e190c0379db.png", min_tier: "supporter" },
-      { id: "v11", title: "Deep Focus 432Hz", artist: "Upper Vibe", duration: "60:00", cover_url: "/__generating__/img_1129385afda1.png", min_tier: "supporter" },
-      { id: "v12", title: "Night Protocol", artist: "Upper Vibe", duration: "55:00", cover_url: "/__generating__/img_9bebd0b2b4ab.png", min_tier: "supporter" },
+      { id: "v10", title: "Morning Ascension", artist: "Upper Vibe", duration: "45:00", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png", min_tier: "supporter" },
+      { id: "v11", title: "Deep Focus 432Hz", artist: "Upper Vibe", duration: "60:00", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/11801d304_generated_aecb4feb.png", min_tier: "supporter" },
+      { id: "v12", title: "Night Protocol", artist: "Upper Vibe", duration: "55:00", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/e6873b16a_generated_f48c8f96.png", min_tier: "supporter" },
     ],
   },
 ];
@@ -55,7 +55,7 @@ export default function Vault() {
       {/* Hero */}
       <div className="relative h-64 md:h-80 overflow-hidden">
         <img
-          src="/__generating__/img_e54cd0c1d9a4.png"
+          src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/70e23e35f_generated_b5746c08.png"
           alt="Premium Vault"
           className="w-full h-full object-cover opacity-30"
         />

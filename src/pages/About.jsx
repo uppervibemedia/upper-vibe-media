@@ -50,7 +50,7 @@ export default function About() {
           >
             <div className="aspect-[3/4] rounded-2xl overflow-hidden glow-blue">
               <img
-                src="/__generating__/img_241bc52decdf.png"
+                src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/ebf0a13c4_generated_ca1c1780.png"
                 alt="Upper Vibe Music concept"
                 className="w-full h-full object-cover"
               />
