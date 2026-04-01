@@ -1,6 +1,5 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Headphones } from "lucide-react";
 
 const footerLinks = [
   {
@@ -35,7 +34,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <Headphones className="w-6 h-6 text-primary" />
+              <img src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png" alt="Upper Vibe Media" className="w-8 h-8 object-contain" />
               <span className="font-heading font-bold tracking-[0.15em] text-sm">UPPER VIBE</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">

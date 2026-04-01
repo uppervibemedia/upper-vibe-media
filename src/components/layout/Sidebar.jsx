@@ -11,7 +11,6 @@ import {
   Mail,
   Menu,
   X,
-  Headphones,
   ChevronRight
 } from "lucide-react";
 
@@ -35,7 +34,7 @@ export default function Sidebar() {
       {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 glass px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <Headphones className="w-6 h-6 text-primary" />
+          <img src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png" alt="Upper Vibe Media" className="h-8 w-8 object-contain" />
           <span className="font-heading font-bold text-sm tracking-wider text-foreground">UPPER VIBE</span>
         </Link>
         <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground p-1">
@@ -88,7 +87,7 @@ export default function Sidebar() {
       >
         <div className="flex items-center justify-center h-16 border-b border-border/30">
           <Link to="/" className="flex items-center gap-2 overflow-hidden">
-            <Headphones className="w-6 h-6 text-primary flex-shrink-0" />
+            <img src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png" alt="Upper Vibe Media" className="w-8 h-8 object-contain flex-shrink-0" />
             <AnimatePresence>
               {expanded && (
                 <motion.span
