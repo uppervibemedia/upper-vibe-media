@@ -1,14 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, Maximize2 } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { usePlayer } from "../../context/PlayerContext";
 
 export default function AudioPlayer() {
-  const { currentTrack, isPlaying, togglePlay } = usePlayer();
-  const [progress, setProgress] = useState(35);
+  const { currentTrack, isPlaying, togglePlay, audioRef } = usePlayer();
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(75);
   const [muted, setMuted] = useState(false);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const onTimeUpdate = () => setProgress((audio.currentTime / audio.duration) * 100 || 0);
+    const onLoadedMetadata = () => setDuration(audio.duration);
+
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    return () => {
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+    };
+  }, [audioRef]);
+
+  useEffect(() => {
+    audioRef.current.volume = muted ? 0 : volume / 100;
+  }, [volume, muted, audioRef]);
+
+  const handleSeek = (val) => {
+    const audio = audioRef.current;
+    audio.currentTime = (val[0] / 100) * audio.duration;
+    setProgress(val[0]);
+  };
+
+  const formatTime = (secs) => {
+    if (!secs || isNaN(secs)) return "0:00";
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
 
   if (!currentTrack) return null;
 
@@ -62,17 +94,17 @@ export default function AudioPlayer() {
 
           {/* Time & volume */}
           <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
-            <span className="text-xs text-muted-foreground">1:23</span>
+            <span className="text-xs text-muted-foreground">{formatTime(audioRef.current.currentTime)}</span>
             <div className="w-24">
               <Slider
                 value={[progress]}
-                onValueChange={(v) => setProgress(v[0])}
+                onValueChange={handleSeek}
                 max={100}
-                step={1}
+                step={0.1}
                 className="cursor-pointer"
               />
             </div>
-            <span className="text-xs text-muted-foreground">{currentTrack.duration || "3:45"}</span>
+            <span className="text-xs text-muted-foreground">{formatTime(duration)}</span>
             <button onClick={() => setMuted(!muted)} className="text-muted-foreground hover:text-foreground ml-2">
               {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>

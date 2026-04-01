@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 
 const PlayerContext = createContext(null);
 
@@ -6,17 +6,37 @@ export function PlayerProvider({ children }) {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [queue, setQueue] = useState([]);
+  const audioRef = useRef(new Audio());
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (currentTrack?.audio_url) {
+      audio.src = currentTrack.audio_url;
+      audio.play();
+      setIsPlaying(true);
+    }
+  }, [currentTrack]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (isPlaying) {
+      audio.play();
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying]);
 
   const playTrack = (track) => {
     setCurrentTrack(track);
-    setIsPlaying(true);
   };
 
   const togglePlay = () => {
-    setIsPlaying(!isPlaying);
+    setIsPlaying((prev) => !prev);
   };
 
   const stopPlaying = () => {
+    audioRef.current.pause();
+    audioRef.current.src = "";
     setIsPlaying(false);
     setCurrentTrack(null);
   };
@@ -29,7 +49,8 @@ export function PlayerProvider({ children }) {
       playTrack,
       togglePlay,
       stopPlaying,
-      setQueue
+      setQueue,
+      audioRef
     }}>
       {children}
     </PlayerContext.Provider>
