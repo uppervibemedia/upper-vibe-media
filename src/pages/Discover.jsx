@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
 import TrackCard from "../components/shared/TrackCard";
 import SectionHeader from "../components/shared/SectionHeader";
 import Footer from "../components/shared/Footer";
+import { base44 } from "@/api/base44Client";
 
 const CATEGORIES = [
   { id: "all", label: "All" },
@@ -15,26 +16,18 @@ const CATEGORIES = [
   { id: "meditation_focus", label: "Meditation / Focus" },
 ];
 
-const SAMPLE_TRACKS = [
-  { id: "d1", title: "Elevated State", artist: "Upper Vibe", duration: "4:12", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png", category: "high_vibe_hiphop", min_tier: "free" },
-  { id: "d2", title: "Neural Bloom 432Hz", artist: "Upper Vibe", duration: "5:33", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/11801d304_generated_aecb4feb.png", category: "432_collection", min_tier: "premium" },
-  { id: "d3", title: "Crown Frequency", artist: "Upper Vibe", duration: "3:47", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png", category: "high_vibe_hiphop", min_tier: "free" },
-  { id: "d4", title: "Intention Protocol", artist: "Upper Vibe", duration: "6:01", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png", category: "reprogramming_sessions", min_tier: "vip" },
-  { id: "d5", title: "Vault Session 01", artist: "Upper Vibe", duration: "4:55", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/e6873b16a_generated_f48c8f96.png", category: "exclusive_drops", min_tier: "premium" },
-  { id: "d6", title: "Deep Focus Alpha", artist: "Upper Vibe", duration: "8:20", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png", category: "meditation_focus", min_tier: "supporter" },
-  { id: "d7", title: "Remastered: Origin", artist: "Upper Vibe", duration: "3:58", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png", category: "remastered", min_tier: "premium" },
-  { id: "d8", title: "High Vibe Cypher", artist: "Upper Vibe", duration: "4:30", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png", category: "high_vibe_hiphop", min_tier: "free" },
-  { id: "d9", title: "Frequency Reset", artist: "Upper Vibe", duration: "7:15", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/11801d304_generated_aecb4feb.png", category: "432_collection", min_tier: "supporter" },
-  { id: "d10", title: "Reprogramming II", artist: "Upper Vibe", duration: "5:44", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png", category: "reprogramming_sessions", min_tier: "free" },
-  { id: "d11", title: "Exclusive Drop #7", artist: "Upper Vibe", duration: "3:12", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/e6873b16a_generated_f48c8f96.png", category: "exclusive_drops", min_tier: "vip" },
-  { id: "d12", title: "Theta Waves", artist: "Upper Vibe", duration: "10:00", cover_url: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png", category: "meditation_focus", min_tier: "free" },
-];
+
 
 export default function Discover() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [search, setSearch] = useState("");
+  const [tracks, setTracks] = useState([]);
 
-  const filtered = SAMPLE_TRACKS.filter((t) => {
+  useEffect(() => {
+    base44.entities.Track.list("-created_date", 100).then(setTracks);
+  }, []);
+
+  const filtered = tracks.filter((t) => {
     const matchesCategory = activeCategory === "all" || t.category === activeCategory;
     const matchesSearch = !search || t.title.toLowerCase().includes(search.toLowerCase()) || t.artist.toLowerCase().includes(search.toLowerCase());
     return matchesCategory && matchesSearch;
