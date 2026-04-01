@@ -9,8 +9,7 @@ const TIER_BADGE = {
 };
 
 const CATEGORY_LABEL = {
-  mindset: "Mindset",
-  manifestation: "Manifestation",
+  transform: "Reprogram & Manifest",
   identity: "Identity",
   habits: "Habits",
   focus: "Focus",

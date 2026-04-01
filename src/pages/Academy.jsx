@@ -10,8 +10,7 @@ import Footer from "../components/shared/Footer";
 
 const CATEGORIES = [
   { id: "all", label: "All Lessons", icon: BookOpen },
-  { id: "mindset", label: "Mindset & Reprogramming", icon: Brain },
-  { id: "manifestation", label: "Manifestation", icon: Sparkles },
+  { id: "transform", label: "Reprogram & Manifest", icon: Brain },
   { id: "identity", label: "Self-Concept & Identity", icon: Eye },
   { id: "habits", label: "Success Habits", icon: TrendingUp },
   { id: "focus", label: "Focus & Discipline", icon: Target },
@@ -36,7 +35,7 @@ const FEATURED_LESSONS = [
     id: "l2",
     title: "Reprogram Your Subconscious in 21 Days",
     description: "A step-by-step framework to dissolve limiting beliefs and install a new operating system for your mind.",
-    category: "mindset",
+    category: "transform",
     duration: "24:15",
     tier: "supporter",
     thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png",
@@ -47,7 +46,7 @@ const FEATURED_LESSONS = [
     id: "l3",
     title: "Manifest Mode: How to Align Thought, Emotion & Action",
     description: "The complete manifestation system used by high performers. Learn to collapse time and attract your vision.",
-    category: "manifestation",
+    category: "transform",
     duration: "31:08",
     tier: "premium",
     thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png",
@@ -61,7 +60,7 @@ const ALL_LESSONS = [
     id: "l4",
     title: "Survival Mode Off — Exit the Scarcity Loop",
     description: "Break out of survival programming and step into an abundance frequency.",
-    category: "mindset",
+    category: "transform",
     duration: "22:30",
     tier: "supporter",
     thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png",
@@ -111,7 +110,7 @@ const ALL_LESSONS = [
     id: "l9",
     title: "The Inner Game of Manifestation",
     description: "Dive into the psychological foundations of attraction and why most people get it wrong.",
-    category: "manifestation",
+    category: "transform",
     duration: "29:22",
     tier: "premium",
     thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png",
@@ -157,7 +156,7 @@ const SERIES = [
     lessons: 6,
     tier: "supporter",
     thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png",
-    category: "mindset",
+    category: "transform",
   },
   {
     id: "s2",
@@ -166,7 +165,7 @@ const SERIES = [
     lessons: 8,
     tier: "premium",
     thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png",
-    category: "manifestation",
+    category: "transform",
   },
   {
     id: "s3",
@@ -175,7 +174,7 @@ const SERIES = [
     lessons: 5,
     tier: "supporter",
     thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png",
-    category: "mindset",
+    category: "transform",
   },
   {
     id: "s4",
@@ -269,7 +268,7 @@ export default function Academy() {
             {[
               { label: "Transformation Lessons", value: "50+" },
               { label: "Lesson Series", value: "8" },
-              { label: "Categories", value: "8" },
+              { label: "Categories", value: "7" },
               { label: "Hours of Content", value: "20+" },
             ].map((s) => (
               <div key={s.label}>
