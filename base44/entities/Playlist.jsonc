@@ -1,0 +1,54 @@
+{
+  "name": "Playlist",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Playlist name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Playlist description"
+    },
+    "cover_url": {
+      "type": "string",
+      "description": "Cover art URL"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "high_vibe_hiphop",
+        "reprogramming_sessions",
+        "432_collection",
+        "remastered",
+        "exclusive_drops",
+        "meditation_focus"
+      ],
+      "description": "Playlist category"
+    },
+    "track_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of track IDs"
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": false
+    },
+    "min_tier": {
+      "type": "string",
+      "enum": [
+        "free",
+        "supporter",
+        "premium",
+        "vip"
+      ],
+      "default": "free"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

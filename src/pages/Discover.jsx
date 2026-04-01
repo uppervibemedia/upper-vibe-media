@@ -1,0 +1,98 @@
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import TrackCard from "../components/shared/TrackCard";
+import SectionHeader from "../components/shared/SectionHeader";
+import Footer from "../components/shared/Footer";
+
+const CATEGORIES = [
+  { id: "all", label: "All" },
+  { id: "high_vibe_hiphop", label: "High Vibe Hip-Hop" },
+  { id: "reprogramming_sessions", label: "Reprogramming Sessions" },
+  { id: "432_collection", label: "432 Collection" },
+  { id: "remastered", label: "Remastered" },
+  { id: "exclusive_drops", label: "Exclusive Drops" },
+  { id: "meditation_focus", label: "Meditation / Focus" },
+];
+
+const SAMPLE_TRACKS = [
+  { id: "d1", title: "Elevated State", artist: "Upper Vibe", duration: "4:12", cover_url: "/__generating__/img_49da7976ba56.png", category: "high_vibe_hiphop", min_tier: "free" },
+  { id: "d2", title: "Neural Bloom 432Hz", artist: "Upper Vibe", duration: "5:33", cover_url: "/__generating__/img_1129385afda1.png", category: "432_collection", min_tier: "premium" },
+  { id: "d3", title: "Crown Frequency", artist: "Upper Vibe", duration: "3:47", cover_url: "/__generating__/img_843e56616ced.png", category: "high_vibe_hiphop", min_tier: "free" },
+  { id: "d4", title: "Intention Protocol", artist: "Upper Vibe", duration: "6:01", cover_url: "/__generating__/img_0c929f814029.png", category: "reprogramming_sessions", min_tier: "vip" },
+  { id: "d5", title: "Vault Session 01", artist: "Upper Vibe", duration: "4:55", cover_url: "/__generating__/img_9bebd0b2b4ab.png", category: "exclusive_drops", min_tier: "premium" },
+  { id: "d6", title: "Deep Focus Alpha", artist: "Upper Vibe", duration: "8:20", cover_url: "/__generating__/img_8e190c0379db.png", category: "meditation_focus", min_tier: "supporter" },
+  { id: "d7", title: "Remastered: Origin", artist: "Upper Vibe", duration: "3:58", cover_url: "/__generating__/img_49da7976ba56.png", category: "remastered", min_tier: "premium" },
+  { id: "d8", title: "High Vibe Cypher", artist: "Upper Vibe", duration: "4:30", cover_url: "/__generating__/img_843e56616ced.png", category: "high_vibe_hiphop", min_tier: "free" },
+  { id: "d9", title: "Frequency Reset", artist: "Upper Vibe", duration: "7:15", cover_url: "/__generating__/img_1129385afda1.png", category: "432_collection", min_tier: "supporter" },
+  { id: "d10", title: "Reprogramming II", artist: "Upper Vibe", duration: "5:44", cover_url: "/__generating__/img_0c929f814029.png", category: "reprogramming_sessions", min_tier: "free" },
+  { id: "d11", title: "Exclusive Drop #7", artist: "Upper Vibe", duration: "3:12", cover_url: "/__generating__/img_9bebd0b2b4ab.png", category: "exclusive_drops", min_tier: "vip" },
+  { id: "d12", title: "Theta Waves", artist: "Upper Vibe", duration: "10:00", cover_url: "/__generating__/img_8e190c0379db.png", category: "meditation_focus", min_tier: "free" },
+];
+
+export default function Discover() {
+  const [activeCategory, setActiveCategory] = useState("all");
+
+  const filtered = activeCategory === "all"
+    ? SAMPLE_TRACKS
+    : SAMPLE_TRACKS.filter((t) => t.category === activeCategory);
+
+  return (
+    <div>
+      {/* Hero banner */}
+      <div className="relative h-48 md:h-64 overflow-hidden">
+        <img
+          src="/__generating__/img_ff11638cc0f2.png"
+          alt="Discover music"
+          className="w-full h-full object-cover opacity-30"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-6">
+          <div className="max-w-7xl mx-auto">
+            <SectionHeader title="Discover" subtitle="Explore the Frequency" />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Category tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-hide">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold tracking-wider uppercase transition-all border ${
+                activeCategory === cat.id
+                  ? "bg-primary/10 border-primary/40 text-primary"
+                  : "border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Track grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5">
+          <AnimatePresence mode="wait">
+            {filtered.map((track, i) => (
+              <motion.div
+                key={track.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ delay: i * 0.04 }}
+              >
+                <TrackCard
+                  track={track}
+                  locked={track.min_tier !== "free"}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  );
+}

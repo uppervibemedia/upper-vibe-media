@@ -1,0 +1,72 @@
+{
+  "name": "Track",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Track title"
+    },
+    "artist": {
+      "type": "string",
+      "description": "Artist name"
+    },
+    "album": {
+      "type": "string",
+      "description": "Album name"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "high_vibe_hiphop",
+        "reprogramming_sessions",
+        "432_collection",
+        "remastered",
+        "exclusive_drops",
+        "meditation_focus"
+      ],
+      "description": "Music category"
+    },
+    "cover_url": {
+      "type": "string",
+      "description": "Cover art image URL"
+    },
+    "audio_url": {
+      "type": "string",
+      "description": "Audio file URL"
+    },
+    "duration": {
+      "type": "string",
+      "description": "Track duration (e.g. 3:45)"
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether track requires premium access"
+    },
+    "min_tier": {
+      "type": "string",
+      "enum": [
+        "free",
+        "supporter",
+        "premium",
+        "vip"
+      ],
+      "default": "free",
+      "description": "Minimum subscription tier required"
+    },
+    "plays": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of plays"
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether track is featured"
+    }
+  },
+  "required": [
+    "title",
+    "artist"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "ContactMessage",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Sender name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Sender email"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message content"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "contact",
+        "newsletter"
+      ],
+      "default": "contact"
+    }
+  },
+  "required": [
+    "name",
+    "email"
+  ]
+}
