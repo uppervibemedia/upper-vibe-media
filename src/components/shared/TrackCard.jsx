@@ -4,8 +4,9 @@ import { Play, Lock } from "lucide-react";
 import { usePlayer } from "../../context/PlayerContext";
 import { getAccessBadge, getEffectiveAccess } from "@/lib/tierAccess";
 import DownloadButton from "./DownloadButton";
+import TrackVersionSelector from "./TrackVersionSelector";
 
-export default function TrackCard({ track, locked, onLockedClick, userTier = "free", userEmail, onUpgrade }) {
+export default function TrackCard({ track, locked, onLockedClick, userTier = "free", userEmail, onUpgrade, showVersions = false }) {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const isCurrentTrack = currentTrack?.id === track.id;
   const effectiveAccess = getEffectiveAccess(track);
@@ -102,6 +103,14 @@ export default function TrackCard({ track, locked, onLockedClick, userTier = "fr
             </div>
           )}
         </div>
+        {showVersions && (
+          <TrackVersionSelector
+            track={track}
+            userTier={userTier}
+            userEmail={userEmail}
+            onUpgrade={(t, v) => onLockedClick?.(t)}
+          />
+        )}
       </div>
     </motion.div>
   );

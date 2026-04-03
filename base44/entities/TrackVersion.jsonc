@@ -1,0 +1,63 @@
+{
+  "name": "TrackVersion",
+  "type": "object",
+  "properties": {
+    "track_id": {
+      "type": "string",
+      "description": "ID of the parent track record"
+    },
+    "version_name": {
+      "type": "string",
+      "description": "Display label e.g. Standard Version, 432 Hz Version, Remastered"
+    },
+    "frequency_type": {
+      "type": "string",
+      "enum": [
+        "standard",
+        "432hz",
+        "528hz",
+        "binaural",
+        "remastered",
+        "other"
+      ],
+      "default": "standard"
+    },
+    "audio_url": {
+      "type": "string",
+      "description": "URL of this version's audio file"
+    },
+    "tier_access": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "free",
+          "supporter",
+          "premium"
+        ]
+      },
+      "default": [
+        "free"
+      ],
+      "description": "Which tiers can access this version"
+    },
+    "is_downloadable": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this version can be downloaded (Premium only)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "display_order": {
+      "type": "number",
+      "default": 0,
+      "description": "Order versions are shown (0 = first)"
+    }
+  },
+  "required": [
+    "track_id",
+    "version_name"
+  ]
+}

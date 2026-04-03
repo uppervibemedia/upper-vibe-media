@@ -209,7 +209,7 @@ export default function Discover() {
                     exit={{ opacity: 0 }}
                     transition={{ delay: i * 0.03 }}
                   >
-                    <TrackCard track={track} onLockedClick={handleLockedClick} />
+                    <TrackCard track={track} onLockedClick={handleLockedClick} showVersions={true} userTier={USER_TIER} />
                   </motion.div>
                 ))}
               </AnimatePresence>

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import TierAccessPicker from "./TierAccessPicker";
 import MultiSelectPicker from "./MultiSelectPicker";
 import AIClassifierPanel from "./AIClassifierPanel";
+import TrackVersionManager from "./TrackVersionManager";
 
 const EMPTY = {
   title: "",
@@ -301,6 +302,12 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
             ))}
           </div>
         </div>
+
+        {isEdit && (
+          <div className="col-span-2">
+            <TrackVersionManager trackId={track.id} />
+          </div>
+        )}
 
         <div className="flex gap-3">
           <Button type="submit" disabled={saving} className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 font-heading font-semibold tracking-wider uppercase py-6 text-base">
