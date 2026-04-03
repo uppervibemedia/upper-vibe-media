@@ -6,25 +6,32 @@
       "type": "string",
       "description": "Track title"
     },
-    "artist": {
+    "artist_display": {
       "type": "string",
-      "description": "Artist name"
+      "description": "Display artist name (e.g. Jmack So Lavish feat. Aura Rae)"
+    },
+    "primary_artist_id": {
+      "type": "string",
+      "description": "ID of primary artist record"
+    },
+    "featured_artist_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of featured artists"
     },
     "album": {
       "type": "string",
-      "description": "Album name"
+      "description": "Album or project name"
     },
-    "category": {
+    "description": {
       "type": "string",
-      "enum": [
-        "high_vibe_hiphop",
-        "reprogramming_sessions",
-        "432_collection",
-        "remastered",
-        "exclusive_drops",
-        "meditation_focus"
-      ],
-      "description": "Music category"
+      "description": "Track description"
+    },
+    "lyrics": {
+      "type": "string",
+      "description": "Full lyrics"
     },
     "cover_url": {
       "type": "string",
@@ -36,22 +43,38 @@
     },
     "duration": {
       "type": "string",
-      "description": "Track duration (e.g. 3:45)"
+      "description": "Duration e.g. 3:45"
     },
-    "is_premium": {
-      "type": "boolean",
-      "default": false,
-      "description": "Whether track requires premium access (legacy, kept for compatibility)"
+    "bpm": {
+      "type": "number",
+      "description": "Beats per minute"
     },
-    "min_tier": {
+    "key": {
+      "type": "string",
+      "description": "Musical key"
+    },
+    "frequency_hz": {
+      "type": "number",
+      "description": "Tuning frequency e.g. 432"
+    },
+    "frequency_type": {
       "type": "string",
       "enum": [
-        "free",
-        "supporter",
-        "premium"
+        "432hz",
+        "528hz",
+        "standard",
+        "binaural",
+        "other"
       ],
-      "default": "free",
-      "description": "Legacy min tier \u2014 use tier_access instead"
+      "default": "standard"
+    },
+    "category_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "IDs of assigned categories (many-to-many)"
     },
     "tier_access": {
       "type": "array",
@@ -66,21 +89,54 @@
       "default": [
         "free"
       ],
-      "description": "Which membership tiers can access this track. Premium always inherits supporter access."
+      "description": "Which membership tiers can access this track"
     },
-    "plays": {
-      "type": "number",
-      "default": 0,
-      "description": "Number of plays"
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published",
+        "archived"
+      ],
+      "default": "published"
     },
     "is_featured": {
       "type": "boolean",
+      "default": false
+    },
+    "is_new_release": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_downloadable": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_premium": {
+      "type": "boolean",
       "default": false,
-      "description": "Whether track is featured"
+      "description": "Legacy compat"
+    },
+    "min_tier": {
+      "type": "string",
+      "enum": [
+        "free",
+        "supporter",
+        "premium"
+      ],
+      "default": "free",
+      "description": "Legacy compat"
+    },
+    "plays": {
+      "type": "number",
+      "default": 0
+    },
+    "release_date": {
+      "type": "string",
+      "format": "date"
     }
   },
   "required": [
-    "title",
-    "artist"
+    "title"
   ]
 }

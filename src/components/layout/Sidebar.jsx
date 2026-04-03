@@ -11,21 +11,23 @@ import {
   Mail,
   Menu,
   X,
-  Upload,
   ChevronRight,
-  Brain
+  Brain,
+  Users,
+  Settings
 } from "lucide-react";
 
 const navItems = [
   { path: "/", icon: Home, label: "Home" },
   { path: "/discover", icon: Disc3, label: "Discover" },
+  { path: "/artists", icon: Users, label: "Artists" },
   { path: "/pricing", icon: Crown, label: "Pricing" },
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/vault", icon: Lock, label: "Vault" },
   { path: "/academy", icon: Brain, label: "Academy" },
   { path: "/about", icon: Info, label: "About" },
   { path: "/contact", icon: Mail, label: "Contact" },
-  { path: "/admin/upload", icon: Upload, label: "Upload" },
+  { path: "/admin", icon: Settings, label: "Admin" },
 ];
 
 export default function Sidebar() {

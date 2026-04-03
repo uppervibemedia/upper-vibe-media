@@ -4,7 +4,7 @@ import { Play, Lock, Crown } from "lucide-react";
 import { usePlayer } from "../../context/PlayerContext";
 import { getAccessBadge, getEffectiveAccess } from "@/lib/tierAccess";
 
-export default function TrackCard({ track, locked = false }) {
+export default function TrackCard({ track, locked, onLockedClick }) {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const isCurrentTrack = currentTrack?.id === track.id;
   const effectiveAccess = getEffectiveAccess(track);
@@ -13,7 +13,10 @@ export default function TrackCard({ track, locked = false }) {
   const isLocked = locked !== undefined ? locked : !isFree;
 
   const handlePlay = () => {
-    if (isLocked) return;
+    if (isLocked) {
+      onLockedClick?.(track);
+      return;
+    }
     if (isCurrentTrack) {
       togglePlay();
     } else {

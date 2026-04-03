@@ -1,0 +1,50 @@
+{
+  "name": "Category",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Display name"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL slug e.g. high-vibe-hiphop"
+    },
+    "description": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "genre",
+        "frequency",
+        "artist_lane",
+        "access_lane",
+        "editorial",
+        "learning",
+        "mood"
+      ],
+      "default": "genre"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Lucide icon name"
+    },
+    "color": {
+      "type": "string",
+      "description": "Accent color hex or tailwind class"
+    },
+    "display_order": {
+      "type": "number",
+      "default": 0
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "slug"
+  ]
+}

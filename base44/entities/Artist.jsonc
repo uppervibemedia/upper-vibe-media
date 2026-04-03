@@ -1,0 +1,48 @@
+{
+  "name": "Artist",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Artist display name"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-friendly slug e.g. jmack-so-lavish"
+    },
+    "bio": {
+      "type": "string",
+      "description": "Artist biography"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Artist profile image URL"
+    },
+    "banner_url": {
+      "type": "string",
+      "description": "Artist banner/hero image URL"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "solo",
+        "group",
+        "brand",
+        "alias"
+      ],
+      "default": "solo",
+      "description": "Artist type"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "social_links": {
+      "type": "object",
+      "description": "Social media links object"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
