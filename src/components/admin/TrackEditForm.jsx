@@ -69,6 +69,7 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
     setSaving(true);
     const payload = {
       ...form,
+      frequency_hz: form.frequency_hz !== "" && form.frequency_hz != null ? parseFloat(form.frequency_hz) : undefined,
       is_premium: !form.tier_access.includes("free"),
       min_tier: form.tier_access.includes("free") ? "free" : form.tier_access.includes("supporter") ? "supporter" : "premium",
     };
