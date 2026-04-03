@@ -8,6 +8,7 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import TierAccessPicker from "./TierAccessPicker";
 import MultiSelectPicker from "./MultiSelectPicker";
+import AIClassifierPanel from "./AIClassifierPanel";
 
 const EMPTY = {
   title: "",
@@ -29,7 +30,7 @@ const EMPTY = {
   cover_url: "",
 };
 
-export default function TrackEditForm({ track, artists, categories, onSaved, onCancel }) {
+export default function TrackEditForm({ track, artists, categories, onSaved, onCancel, showAI = true }) {
   const [form, setForm] = useState(track ? { ...EMPTY, ...track } : EMPTY);
   const [audioFile, setAudioFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(track?.cover_url || null);
@@ -98,6 +99,17 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
           </button>
         )}
       </div>
+
+      {showAI && (
+        <div className="mb-6">
+          <AIClassifierPanel
+            track={form}
+            artists={artists}
+            categories={categories}
+            onApply={(suggestions) => setForm((f) => ({ ...f, ...suggestions }))}
+          />
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Media uploads */}

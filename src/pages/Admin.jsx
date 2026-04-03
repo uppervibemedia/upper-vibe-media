@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, BarChart3, Upload } from "lucide-react";
+import { Plus, Music, Users, Grid3X3, Brain } from "lucide-react";
+import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import TrackEditForm from "../components/admin/TrackEditForm";
 import TrackTable from "../components/admin/TrackTable";
+import AIClassifierPanel from "../components/admin/AIClassifierPanel";
 
 const TABS = [
   { id: "tracks", label: "Tracks", icon: Music },
   { id: "artists", label: "Artists", icon: Users },
   { id: "categories", label: "Categories", icon: Grid3X3 },
+  { id: "ai_organizer", label: "AI Organizer", icon: Brain },
 ];
 
 export default function Admin() {
@@ -130,6 +133,11 @@ export default function Admin() {
         {tab === "categories" && (
           <CategoriesView categories={categories} tracks={tracks} />
         )}
+
+        {/* AI Organizer tab */}
+        {tab === "ai_organizer" && (
+          <AIOrganizerTab tracks={tracks} artists={artists} categories={categories} onRefresh={loadAll} />
+        )}
       </motion.div>
     </div>
   );
@@ -217,6 +225,97 @@ function ArtistManager({ artists, onRefresh }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function AIOrganizerTab({ tracks, artists, categories, onRefresh }) {
+  const [selectedTrack, setSelectedTrack] = React.useState(null);
+  const [search, setSearch] = React.useState("");
+
+  const filtered = tracks.filter((t) =>
+    !search || t.title?.toLowerCase().includes(search.toLowerCase()) || t.artist_display?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleApply = async (suggestions) => {
+    if (!selectedTrack) return;
+    await base44.entities.Track.update(selectedTrack.id, suggestions);
+    toast.success(`Classifications saved to "${selectedTrack.title}"`);
+    onRefresh();
+  };
+
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      {/* Track selector */}
+      <div>
+        <div className="flex items-center gap-3 mb-4">
+          <Brain className="w-4 h-4 text-primary" />
+          <h2 className="font-heading font-bold text-lg">Select a Track to Classify</h2>
+        </div>
+        <input
+          type="text"
+          placeholder="Search tracks..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full px-3 py-2 mb-3 rounded-lg bg-card/40 border border-border/30 text-sm text-foreground focus:outline-none focus:border-primary/50"
+        />
+        <div className="space-y-1.5 max-h-[600px] overflow-y-auto pr-1">
+          {filtered.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setSelectedTrack(t)}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all border ${
+                selectedTrack?.id === t.id
+                  ? "bg-primary/10 border-primary/30"
+                  : "bg-card/30 border-border/20 hover:border-border/50 hover:bg-card/50"
+              }`}
+            >
+              {t.cover_url ? (
+                <img src={t.cover_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-muted/40 flex-shrink-0" />
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{t.title}</p>
+                <p className="text-xs text-muted-foreground truncate">{t.artist_display || "No artist"}</p>
+              </div>
+              {selectedTrack?.id === t.id && (
+                <div className="flex-shrink-0 ml-auto">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                </div>
+              )}
+            </button>
+          ))}
+          {filtered.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">No tracks found.</p>
+          )}
+        </div>
+      </div>
+
+      {/* AI Panel */}
+      <div>
+        {selectedTrack ? (
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <div>
+                <h2 className="font-heading font-bold text-lg truncate">"{selectedTrack.title}"</h2>
+                <p className="text-xs text-muted-foreground">{selectedTrack.artist_display || "No artist assigned"}</p>
+              </div>
+            </div>
+            <AIClassifierPanel
+              track={selectedTrack}
+              artists={artists}
+              categories={categories}
+              onApply={handleApply}
+            />
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-64 rounded-2xl border border-border/20 bg-card/20 text-center gap-3">
+            <Brain className="w-10 h-10 text-primary/20" />
+            <p className="text-sm text-muted-foreground">Select a track on the left to run AI classification.</p>
+          </div>
+        )}
       </div>
     </div>
   );
