@@ -1,0 +1,53 @@
+{
+  "name": "Download",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who downloaded"
+    },
+    "content_type": {
+      "type": "string",
+      "enum": [
+        "track",
+        "video",
+        "playlist"
+      ],
+      "description": "Type of downloaded content"
+    },
+    "content_id": {
+      "type": "string",
+      "description": "ID of the downloaded content record"
+    },
+    "content_title": {
+      "type": "string",
+      "description": "Cached title for display"
+    },
+    "content_cover_url": {
+      "type": "string",
+      "description": "Cached cover/thumbnail URL"
+    },
+    "content_artist": {
+      "type": "string",
+      "description": "Cached artist name"
+    },
+    "content_duration": {
+      "type": "string",
+      "description": "Cached duration"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL of the downloadable file"
+    },
+    "file_size_mb": {
+      "type": "number",
+      "description": "File size in MB"
+    }
+  },
+  "required": [
+    "user_email",
+    "content_type",
+    "content_id",
+    "content_title"
+  ]
+}

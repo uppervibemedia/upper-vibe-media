@@ -1,10 +1,11 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Play, Lock, Crown } from "lucide-react";
+import { Play, Lock } from "lucide-react";
 import { usePlayer } from "../../context/PlayerContext";
 import { getAccessBadge, getEffectiveAccess } from "@/lib/tierAccess";
+import DownloadButton from "./DownloadButton";
 
-export default function TrackCard({ track, locked, onLockedClick }) {
+export default function TrackCard({ track, locked, onLockedClick, userTier = "free", userEmail, onUpgrade }) {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const isCurrentTrack = currentTrack?.id === track.id;
   const effectiveAccess = getEffectiveAccess(track);
@@ -80,11 +81,27 @@ export default function TrackCard({ track, locked, onLockedClick }) {
 
       {/* Info */}
       <div className="p-3">
-        <p className="text-sm font-medium text-foreground truncate">{track.title}</p>
-        <p className="text-xs text-muted-foreground truncate mt-0.5">{track.artist}</p>
-        {track.duration && (
-          <p className="text-[10px] text-muted-foreground/60 mt-1">{track.duration}</p>
-        )}
+        <div className="flex items-start justify-between gap-1">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{track.title}</p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{track.artist_display || track.artist}</p>
+            {track.duration && (
+              <p className="text-[10px] text-muted-foreground/60 mt-1">{track.duration}</p>
+            )}
+          </div>
+          {track.is_downloadable && (
+            <div className="flex-shrink-0 mt-0.5">
+              <DownloadButton
+                item={track}
+                contentType="track"
+                userTier={userTier}
+                userEmail={userEmail}
+                onUpgrade={() => onUpgrade?.(track)}
+                size="sm"
+              />
+            </div>
+          )}
+        </div>
       </div>
     </motion.div>
   );

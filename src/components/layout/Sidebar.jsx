@@ -14,7 +14,8 @@ import {
   ChevronRight,
   Brain,
   Users,
-  Settings
+  Settings,
+  Download
 } from "lucide-react";
 
 const navItems = [
@@ -25,6 +26,7 @@ const navItems = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/vault", icon: Lock, label: "Vault" },
   { path: "/academy", icon: Brain, label: "Academy" },
+  { path: "/downloads", icon: Download, label: "Downloads" },
   { path: "/about", icon: Info, label: "About" },
   { path: "/contact", icon: Mail, label: "Contact" },
   { path: "/admin", icon: Settings, label: "Admin" },

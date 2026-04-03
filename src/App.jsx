@@ -17,6 +17,7 @@ import Contact from './pages/Contact';
 import Academy from './pages/Academy';
 import Admin from './pages/Admin';
 import Artists from './pages/Artists';
+import Downloads from './pages/Downloads';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -54,6 +55,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin" element={<Admin />} />
         <Route path="/academy" element={<Academy />} />
         <Route path="/artists" element={<Artists />} />
+        <Route path="/downloads" element={<Downloads />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

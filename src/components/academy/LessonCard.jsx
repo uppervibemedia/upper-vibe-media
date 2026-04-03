@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Play, Lock, Clock, BookOpen } from "lucide-react";
 import { getAccessBadge, getEffectiveAccess } from "@/lib/tierAccess";
+import DownloadButton from "../shared/DownloadButton";
 
 const CATEGORY_LABEL = {
   transform: "Reprogram & Manifest",
@@ -13,7 +14,7 @@ const CATEGORY_LABEL = {
   spiritual: "Spiritual",
 };
 
-export default function LessonCard({ lesson, featured = false }) {
+export default function LessonCard({ lesson, featured = false, userTier = "free", userEmail, onUpgrade }) {
   // Support both new tier_access array and legacy tier string
   const itemWithAccess = lesson.tier_access
     ? lesson
@@ -78,6 +79,18 @@ export default function LessonCard({ lesson, featured = false }) {
         )}
         {lesson.series && (
           <p className="text-[10px] text-primary/60 tracking-wider">{lesson.series}</p>
+        )}
+        {lesson.is_downloadable && (
+          <div className="mt-2">
+            <DownloadButton
+              item={{ ...lesson, title: lesson.title, audio_url: lesson.video_url || lesson.file_url }}
+              contentType="video"
+              userTier={userTier}
+              userEmail={userEmail}
+              onUpgrade={() => onUpgrade?.(lesson)}
+              size="sm"
+            />
+          </div>
         )}
       </div>
 

@@ -249,11 +249,33 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
             />
           </div>
 
+          <div className="col-span-2">
+            <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
+              <p className="text-xs font-bold tracking-wider uppercase text-muted-foreground mb-3">Download Settings</p>
+              <div className="flex flex-wrap gap-6">
+                {[
+                  { key: "is_downloadable", label: "Downloadable (Premium only)" },
+                  { key: "offline_enabled", label: "Offline enabled" },
+                ].map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!form[key]}
+                      onChange={(e) => setForm({ ...form, [key]: e.target.checked })}
+                      className="accent-primary w-4 h-4"
+                    />
+                    <span className="text-sm text-foreground">{label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">Downloads are always restricted to Premium members.</p>
+            </div>
+          </div>
+
           <div className="col-span-2 flex flex-wrap gap-6">
             {[
               { key: "is_featured", label: "Featured track" },
               { key: "is_new_release", label: "New release" },
-              { key: "is_downloadable", label: "Downloadable" },
             ].map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer">
                 <input
