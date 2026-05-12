@@ -3,138 +3,159 @@ import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
-  Disc3,
-  Crown,
-  LayoutDashboard,
-  Lock,
-  Info,
-  Mail,
-  Menu,
-  X,
-  ChevronRight,
-  Brain,
+  Waves,
+  GraduationCap,
   Users,
+  Crown,
+  Library,
+  Info,
   Settings,
-  Download
+  LogOut,
+  Music4,
+  User,
+  Zap,
 } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
 
-const navItems = [
+const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
-  { path: "/discover", icon: Disc3, label: "Discover" },
+  { path: "/discover", icon: Music4, label: "Music Vault" },
+  { path: "/sessions", icon: Waves, label: "432 Hz Sessions" },
+  { path: "/academy", icon: GraduationCap, label: "UVM Academy" },
   { path: "/artists", icon: Users, label: "Artists" },
-  { path: "/pricing", icon: Crown, label: "Pricing" },
-  { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/vault", icon: Lock, label: "Vault" },
-  { path: "/academy", icon: Brain, label: "Academy" },
-  { path: "/downloads", icon: Download, label: "Downloads" },
-  { path: "/about", icon: Info, label: "About" },
-  { path: "/contact", icon: Mail, label: "Contact" },
-  { path: "/admin", icon: Settings, label: "Admin" },
+  { path: "/pricing", icon: Crown, label: "Membership" },
+  { path: "/downloads", icon: Library, label: "My Library" },
+  { path: "/about", icon: Info, label: "About UVM" },
+];
+
+const bottomNavMobile = [
+  { path: "/", icon: Home, label: "Home" },
+  { path: "/discover", icon: Music4, label: "Vault" },
+  { path: "/academy", icon: GraduationCap, label: "Academy" },
+  { path: "/downloads", icon: Library, label: "Library" },
+  { path: "/dashboard", icon: User, label: "Profile" },
 ];
 
 export default function Sidebar() {
   const location = useLocation();
   const [expanded, setExpanded] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
+  const isAdmin = user?.role === "admin";
+
+  const allNavItems = isAdmin
+    ? [...mainNavItems, { path: "/admin", icon: Settings, label: "Admin" }]
+    : mainNavItems;
 
   return (
     <>
-      {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 glass px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <img src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png" alt="Upper Vibe Media" className="h-8 w-8 object-contain" />
-          <span className="font-heading font-bold text-sm tracking-wider text-foreground">UPPER VIBE</span>
+      {/* ── Mobile top bar ── */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-3 border-b border-white/5"
+        style={{ background: "rgba(4,4,8,0.92)", backdropFilter: "blur(24px)" }}>
+        <Link to="/" className="flex items-center gap-2.5">
+          <img
+            src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png"
+            alt="UVM"
+            className="w-7 h-7 object-contain"
+          />
+          <span className="font-heading font-black text-sm tracking-[0.22em] text-white">UPPER VIBE</span>
         </Link>
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground p-1">
-          {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <Link to="/pricing" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase"
+          style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#050505" }}>
+          <Zap className="w-3 h-3" /> Upgrade
+        </Link>
       </div>
 
-      {/* Mobile menu overlay */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: -300 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -300 }}
-            transition={{ type: "spring", damping: 25 }}
-            className="lg:hidden fixed inset-0 z-40 bg-background/95 backdrop-blur-xl pt-16"
-          >
-            <nav className="flex flex-col p-6 gap-2">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-4 px-4 py-3 rounded-lg transition-all ${
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-body text-base font-medium">{item.label}</span>
-                    {isActive && <ChevronRight className="w-4 h-4 ml-auto text-primary" />}
-                  </Link>
-                );
-              })}
-            </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Desktop sidebar */}
-      <motion.aside
-        onMouseEnter={() => setExpanded(true)}
-        onMouseLeave={() => setExpanded(false)}
-        animate={{ width: expanded ? 200 : 72 }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="hidden lg:flex fixed left-0 top-0 bottom-0 z-50 flex-col bg-background/80 backdrop-blur-xl border-r border-border/50"
-      >
-        <div className="flex items-center justify-center h-16 border-b border-border/30">
-          <Link to="/" className="flex items-center gap-2 overflow-hidden">
-            <img src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png" alt="Upper Vibe Media" className="w-8 h-8 object-contain flex-shrink-0" />
-            <AnimatePresence>
-              {expanded && (
-                <motion.span
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                  className="font-heading font-bold text-xs tracking-[0.2em] text-foreground whitespace-nowrap"
-                >
-                  UPPER VIBE
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Link>
-        </div>
-
-        <nav className="flex-1 flex flex-col gap-1 p-3 mt-2">
-          {navItems.map((item) => {
+      {/* ── Mobile bottom navigation ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 pb-safe"
+        style={{ background: "rgba(4,4,8,0.95)", backdropFilter: "blur(24px)" }}>
+        <div className="flex items-center justify-around px-2 pt-2 pb-3">
+          {bottomNavMobile.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
-                }`}
+                className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-all"
               >
+                <div className={`p-1.5 rounded-lg transition-all ${isActive ? "bg-cyan-400/15" : ""}`}>
+                  <item.icon className={`w-5 h-5 transition-colors ${isActive ? "text-cyan-400" : "text-white/40"}`} />
+                </div>
+                <span className={`text-[9px] font-semibold tracking-wider uppercase ${isActive ? "text-cyan-400" : "text-white/30"}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Desktop sidebar ── */}
+      <motion.aside
+        onMouseEnter={() => setExpanded(true)}
+        onMouseLeave={() => setExpanded(false)}
+        animate={{ width: expanded ? 220 : 72 }}
+        transition={{ type: "spring", damping: 28, stiffness: 220 }}
+        className="hidden lg:flex fixed left-0 top-0 bottom-0 z-50 flex-col border-r border-white/[0.06]"
+        style={{ background: "linear-gradient(180deg,#060610 0%,#080818 60%,#040408 100%)" }}
+      >
+        {/* Logo */}
+        <div className="flex items-center gap-3 h-[70px] px-5 border-b border-white/[0.06] flex-shrink-0 overflow-hidden">
+          <img
+            src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png"
+            alt="Upper Vibe Media"
+            className="w-9 h-9 object-contain flex-shrink-0"
+          />
+          <AnimatePresence>
+            {expanded && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <p className="font-heading font-black text-xs tracking-[0.22em] text-white whitespace-nowrap">UPPER VIBE</p>
+                <p className="text-[9px] tracking-[0.15em] uppercase text-yellow-400/60 whitespace-nowrap">Media</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Nav items */}
+        <nav className="flex-1 flex flex-col gap-0.5 px-3 py-4 overflow-hidden">
+          {allNavItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                title={!expanded ? item.label : undefined}
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group overflow-hidden ${
+                  isActive ? "" : "hover:bg-white/[0.04]"
+                }`}
+                style={isActive ? {
+                  background: "linear-gradient(135deg,rgba(0,229,255,0.12),rgba(0,229,255,0.04))",
+                  boxShadow: "inset 0 0 0 1px rgba(0,229,255,0.15), 0 0 16px rgba(0,229,255,0.08)"
+                } : {}}
+              >
+                {/* Active indicator */}
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-full" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full"
+                    style={{ background: "linear-gradient(180deg,#00E5FF,#00B8D4)" }} />
                 )}
-                <item.icon className="w-5 h-5 flex-shrink-0" />
+                <item.icon className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
+                  isActive ? "text-cyan-400" : "text-white/35 group-hover:text-white/65"
+                }`} />
                 <AnimatePresence>
                   {expanded && (
                     <motion.span
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="text-sm font-medium whitespace-nowrap"
+                      transition={{ duration: 0.15 }}
+                      className={`text-[13px] font-medium whitespace-nowrap ${
+                        isActive ? "text-cyan-300" : "text-white/50 group-hover:text-white/80"
+                      }`}
                     >
                       {item.label}
                     </motion.span>
@@ -144,6 +165,67 @@ export default function Sidebar() {
             );
           })}
         </nav>
+
+        {/* Upgrade CTA */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="mx-3 mb-3 p-3 rounded-xl overflow-hidden"
+              style={{
+                background: "linear-gradient(135deg,rgba(212,168,67,0.15),rgba(212,168,67,0.05))",
+                border: "1px solid rgba(212,168,67,0.2)"
+              }}
+            >
+              <p className="text-[10px] font-black tracking-[0.2em] uppercase text-yellow-400/90 mb-0.5">Go Premium</p>
+              <p className="text-[10px] text-white/40 leading-tight mb-2">432 Hz sessions + downloads</p>
+              <Link to="/pricing"
+                className="block text-center text-[10px] font-bold tracking-widest uppercase py-1.5 rounded-lg transition-all hover:brightness-110"
+                style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#050505" }}>
+                Upgrade
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* User area */}
+        <div className="border-t border-white/[0.06] px-3 py-3 flex-shrink-0">
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-heading font-bold text-xs"
+                style={{ background: "linear-gradient(135deg,#00E5FF22,#00E5FF08)", border: "1px solid rgba(0,229,255,0.25)", color: "#00E5FF" }}>
+                {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
+              </div>
+              <AnimatePresence>
+                {expanded && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex-1 min-w-0"
+                  >
+                    <p className="text-xs font-semibold text-white/80 truncate">{user.full_name || "Member"}</p>
+                    <p className="text-[9px] text-white/30 truncate">{user.email}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {expanded && (
+                <button onClick={() => logout()} className="text-white/25 hover:text-white/60 transition-colors flex-shrink-0">
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <Link to="/pricing"
+              className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl transition-all hover:bg-white/5"
+            >
+              <User className="w-4 h-4 text-white/30 flex-shrink-0" />
+              {expanded && <span className="text-xs text-white/30 whitespace-nowrap">Sign In</span>}
+            </Link>
+          )}
+        </div>
       </motion.aside>
     </>
   );

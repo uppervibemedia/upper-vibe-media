@@ -1,58 +1,72 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Waves } from "lucide-react";
 
 const footerLinks = [
   {
     title: "Platform",
     links: [
-      { label: "Discover", to: "/discover" },
-      { label: "Pricing", to: "/pricing" },
-      { label: "Premium Vault", to: "/vault" },
+      { label: "Music Vault", to: "/discover" },
+      { label: "432 Hz Sessions", to: "/sessions" },
+      { label: "UVM Academy", to: "/academy" },
+      { label: "Artists", to: "/artists" },
+    ],
+  },
+  {
+    title: "Membership",
+    links: [
+      { label: "Plans & Pricing", to: "/pricing" },
+      { label: "My Library", to: "/downloads" },
+      { label: "Dashboard", to: "/dashboard" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About", to: "/about" },
+      { label: "About UVM", to: "/about" },
       { label: "Contact", to: "/contact" },
-    ],
-  },
-  {
-    title: "Account",
-    links: [
-      { label: "Dashboard", to: "/dashboard" },
-      { label: "Subscribe", to: "/pricing" },
     ],
   },
 ];
 
 export default function Footer() {
   return (
-    <footer className="border-t border-border/30 bg-background/80 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+    <footer className="border-t mt-10" style={{ borderColor: "rgba(255,255,255,0.05)", background: "rgba(4,4,14,0.8)" }}>
+      <div className="max-w-7xl mx-auto px-6 py-14">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <img src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png" alt="Upper Vibe Media" className="w-8 h-8 object-contain" />
-              <span className="font-heading font-bold tracking-[0.15em] text-sm">UPPER VIBE</span>
+            <div className="flex items-center gap-2.5 mb-4">
+              <img
+                src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png"
+                alt="Upper Vibe Media"
+                className="w-8 h-8 object-contain"
+              />
+              <div>
+                <p className="font-heading font-black text-xs tracking-[0.2em] text-white">UPPER VIBE</p>
+                <p className="text-[9px] tracking-wider text-yellow-400/50 uppercase">Media</p>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              More than music — a frequency. Elevate your listening experience.
+            <p className="text-xs text-white/30 leading-relaxed max-w-[200px]">
+              A private high-vibration music vault and learning hub for conscious listeners.
             </p>
+            <div className="flex items-center gap-1.5 mt-4 text-[10px] font-bold tracking-widest uppercase"
+              style={{ color: "#00E5FF" }}>
+              <Waves className="w-3 h-3" /> Stream The Frequency
+            </div>
           </div>
 
           {footerLinks.map((group) => (
             <div key={group.title}>
-              <h4 className="font-heading font-semibold text-xs tracking-[0.15em] uppercase text-foreground mb-4">
+              <h4 className="text-[10px] font-black tracking-[0.2em] uppercase text-white/30 mb-4">
                 {group.title}
               </h4>
-              <ul className="space-y-2">
+              <ul className="space-y-2.5">
                 {group.links.map((link) => (
                   <li key={link.label}>
                     <Link
                       to={link.to}
-                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                      className="text-xs text-white/40 hover:text-white/80 transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -63,12 +77,13 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="mt-12 pt-8 border-t border-border/20 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground/60">
+        <div className="mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-3"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+          <p className="text-[10px] text-white/20">
             © 2026 Upper Vibe Media. All rights reserved.
           </p>
-          <p className="text-xs text-muted-foreground/40 tracking-wider">
-            STREAM THE FREQUENCY
+          <p className="text-[10px] tracking-[0.25em] uppercase text-white/15">
+            Frequency is Everything
           </p>
         </div>
       </div>
