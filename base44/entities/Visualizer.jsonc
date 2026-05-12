@@ -1,0 +1,69 @@
+{
+  "name": "Visualizer",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Visualizer title"
+    },
+    "linked_song_id": {
+      "type": "string",
+      "description": "ID of linked Track record"
+    },
+    "linked_song_title": {
+      "type": "string",
+      "description": "Cached song title"
+    },
+    "artist": {
+      "type": "string",
+      "description": "Artist display name"
+    },
+    "category": {
+      "type": "string",
+      "description": "e.g. hiphop, rnb, electronic, meditation, car"
+    },
+    "duration": {
+      "type": "string",
+      "description": "e.g. 3:45"
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "description": "Thumbnail image URL"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "Direct video URL or YouTube/Vimeo link"
+    },
+    "embed_url": {
+      "type": "string",
+      "description": "Embeddable iframe URL"
+    },
+    "description": {
+      "type": "string"
+    },
+    "release_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "display_order": {
+      "type": "number",
+      "default": 0
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "published",
+        "draft",
+        "archived"
+      ],
+      "default": "published"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

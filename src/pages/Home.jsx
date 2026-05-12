@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Download, Headphones, Waves, Music4, Grid3X3, ArrowRight } from "lucide-react";
+import { Play, Download, Headphones, Waves, Music4, Grid3X3, ArrowRight, Tv2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -8,10 +8,12 @@ import { usePlayer } from "../context/PlayerContext";
 
 export default function Home() {
   const [tracks, setTracks] = useState([]);
+  const [visualizers, setVisualizers] = useState([]);
   const { playTrack } = usePlayer();
 
   useEffect(() => {
     base44.entities.Track.filter({ status: "published" }, "-created_date", 6).then(setTracks);
+    base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 6).then(setVisualizers);
   }, []);
 
   const CATEGORIES = [
@@ -171,6 +173,61 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* Latest Visualizers */}
+      {visualizers.length > 0 && (
+        <section className="max-w-7xl mx-auto px-6 py-14">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: "#9B7EFF" }}>Watch</p>
+              <h2 className="font-heading font-black text-2xl text-white">Latest Music Visualizers</h2>
+            </div>
+            <Link to="/visualizers" className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-white/70 transition-colors">
+              All Visualizers <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {visualizers.map((viz, i) => (
+              <motion.div key={viz.id}
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+                className="group rounded-2xl overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="aspect-video relative overflow-hidden">
+                  {viz.thumbnail_url ? (
+                    <img src={viz.thumbnail_url} alt={viz.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"
+                      style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.1),rgba(0,229,255,0.05))" }}>
+                      <Tv2 className="w-8 h-8 text-white/10" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <p className="text-sm font-bold text-white truncate">{viz.title}</p>
+                  <p className="text-xs text-white/35 truncate mb-3">{viz.artist || "Upper Vibe Media"}</p>
+                  <div className="flex items-center gap-2">
+                    <Link to="/visualizers"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+                      style={{ background: "rgba(155,126,255,0.15)", border: "1px solid rgba(155,126,255,0.3)", color: "#9B7EFF" }}>
+                      <Play className="w-3 h-3" /> Watch
+                    </Link>
+                    {viz.linked_song_id && (
+                      <button
+                        onClick={() => {
+                          base44.entities.Track.filter({ id: viz.linked_song_id }, "", 1).then(([t]) => t && playTrack(t));
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+                        style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF" }}>
+                        <Music4 className="w-3 h-3" /> Listen
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* CTA */}
       <section className="max-w-7xl mx-auto px-6 pb-16">

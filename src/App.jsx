@@ -13,6 +13,7 @@ import Categories from './pages/Categories';
 import Downloads from './pages/Downloads';
 import About from './pages/About';
 import Admin from './pages/Admin';
+import Visualizers from './pages/Visualizers';
 // Hidden pages (still routable but not in nav)
 import Discover from './pages/Discover';
 import Pricing from './pages/Pricing';
@@ -55,6 +56,7 @@ const AuthenticatedApp = () => {
         <Route path="/categories" element={<Categories />} />
         <Route path="/downloads" element={<Downloads />} />
         <Route path="/about" element={<About />} />
+        <Route path="/visualizers" element={<Visualizers />} />
         <Route path="/admin" element={<Admin />} />
         {/* Legacy / hidden routes still accessible */}
         <Route path="/discover" element={<Discover />} />

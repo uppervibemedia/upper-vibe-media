@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
-  Library,
   Info,
   Settings,
   LogOut,
@@ -11,12 +10,14 @@ import {
   User,
   Grid3X3,
   Download,
+  Tv2,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
   { path: "/music", icon: Music4, label: "Music" },
+  { path: "/visualizers", icon: Tv2, label: "Visualizers" },
   { path: "/categories", icon: Grid3X3, label: "Categories" },
   { path: "/downloads", icon: Download, label: "Downloads" },
   { path: "/about", icon: Info, label: "About" },
@@ -25,7 +26,7 @@ const mainNavItems = [
 const bottomNavMobile = [
   { path: "/", icon: Home, label: "Home" },
   { path: "/music", icon: Music4, label: "Music" },
-  { path: "/categories", icon: Grid3X3, label: "Categories" },
+  { path: "/visualizers", icon: Tv2, label: "Visual" },
   { path: "/downloads", icon: Download, label: "Downloads" },
   { path: "/about", icon: Info, label: "About" },
 ];

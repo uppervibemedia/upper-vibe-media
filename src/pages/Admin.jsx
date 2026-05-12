@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, Brain, ListFilter } from "lucide-react";
+import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2 } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import TrackEditForm from "../components/admin/TrackEditForm";
 import MusicManager from "../components/admin/MusicManager";
 import AIClassifierPanel from "../components/admin/AIClassifierPanel";
+import VisualizerManager from "../components/admin/VisualizerManager";
 import { useAuth } from "@/lib/AuthContext";
 
 const TABS = [
   { id: "manager", label: "Music Manager", icon: ListFilter },
   { id: "upload", label: "Upload Track", icon: Music },
+  { id: "visualizers", label: "Visualizers", icon: Tv2 },
   { id: "artists", label: "Artists", icon: Users },
   { id: "categories", label: "Categories", icon: Grid3X3 },
   { id: "ai_organizer", label: "AI Organizer", icon: Brain },
@@ -135,6 +137,11 @@ export default function Admin() {
               onCancel={() => { setTab("manager"); setEditingTrack(null); }}
             />
           </div>
+        )}
+
+        {/* Visualizers tab */}
+        {tab === "visualizers" && (
+          <VisualizerManager tracks={tracks} onRefresh={loadAll} />
         )}
 
         {/* Artists tab */}
