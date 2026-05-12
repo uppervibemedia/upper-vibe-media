@@ -1,408 +1,179 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { Brain, Zap, Sparkles, Play, Lock, Crown, ArrowRight, BookOpen, Target, Flame, Eye, TrendingUp, Star } from "lucide-react";
-import { Link } from "react-router-dom";
-import LessonCard from "../components/academy/LessonCard";
-import SeriesCard from "../components/academy/SeriesCard";
-import AcademyUpgradeBanner from "../components/academy/AcademyUpgradeBanner";
-import GlowButton from "../components/shared/GlowButton";
+import { motion, AnimatePresence } from "framer-motion";
+import { GraduationCap } from "lucide-react";
+import FeaturedCourse from "../components/academy/FeaturedCourse";
+import AcademyLessonCard from "../components/academy/AcademyLessonCard";
 import Footer from "../components/shared/Footer";
 
 const CATEGORIES = [
-  { id: "all", label: "All Lessons", icon: BookOpen },
-  { id: "transform", label: "Reprogram & Manifest", icon: Brain },
-  { id: "identity", label: "Self-Concept & Identity", icon: Eye },
-  { id: "habits", label: "Success Habits", icon: TrendingUp },
-  { id: "focus", label: "Focus & Discipline", icon: Target },
-  { id: "energy", label: "Energy & Frequency", icon: Zap },
-  { id: "wealth", label: "Wealth Mindset", icon: Star },
-  { id: "spiritual", label: "Spiritual Growth", icon: Flame },
+  "All",
+  "Start Here",
+  "432 Hz Music Education",
+  "Subconscious Reprogramming",
+  "Manifestation Through Music",
+  "Nervous System Reset",
+  "Daily Listening Routines",
+  "Artist & Song Breakdowns",
 ];
 
-const FEATURED_LESSONS = [
+const LESSONS = [
   {
     id: "l1",
-    title: "The Identity Shift — Become Who You're Meant to Be",
-    description: "Discover how your self-concept controls everything. This session rewires how you see yourself at the deepest level.",
-    category: "identity",
-    duration: "18:42",
-    tier: "free",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png",
-    series: "Identity Shift Series",
-    featured: true,
+    title: "How 432 Hz Music Works",
+    category: "432 Hz Music Education",
+    duration: "8 min",
+    difficulty: "Beginner",
+    description: "Learn why Upper Vibe Media uses 432 Hz versions and how to listen with intention.",
+    thumbnail: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=600&q=80",
   },
   {
     id: "l2",
-    title: "Reprogram Your Subconscious in 21 Days",
-    description: "A step-by-step framework to dissolve limiting beliefs and install a new operating system for your mind.",
-    category: "transform",
-    duration: "24:15",
-    tier: "supporter",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png",
-    series: "Reprogram Your Mind",
-    featured: true,
+    title: "How To Reprogram Your Mind With Repetition",
+    category: "Subconscious Reprogramming",
+    duration: "12 min",
+    difficulty: "Beginner",
+    description: "Learn how repeated music, words, and emotional states influence your identity.",
+    thumbnail: "https://images.unsplash.com/photo-1559752107-1f1b2b2e7b4e?w=600&q=80",
   },
   {
     id: "l3",
-    title: "Manifest Mode: How to Align Thought, Emotion & Action",
-    description: "The complete manifestation system used by high performers. Learn to collapse time and attract your vision.",
-    category: "transform",
-    duration: "31:08",
-    tier: "premium",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png",
-    series: "Manifest Mode",
-    featured: true,
+    title: "The 30-Day Nervous System Reset",
+    category: "Nervous System Reset",
+    duration: "20 min",
+    difficulty: "Beginner",
+    description: "A daily routine for helping your body feel safe with peace, success, and stability.",
+    thumbnail: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80",
   },
-];
-
-const ALL_LESSONS = [
   {
     id: "l4",
-    title: "Survival Mode Off — Exit the Scarcity Loop",
-    description: "Break out of survival programming and step into an abundance frequency.",
-    category: "transform",
-    duration: "22:30",
-    tier: "supporter",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png",
-    series: "Survival Mode Off",
+    title: "How To Use Music While Visualizing",
+    category: "Manifestation Through Music",
+    duration: "10 min",
+    difficulty: "Beginner",
+    description: "Learn how to pair music with mental imagery to strengthen your future-self identity.",
+    thumbnail: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&q=80",
   },
   {
     id: "l5",
-    title: "The Wealth Frequency — Rewire Money Beliefs",
-    description: "Identify and dissolve the subconscious blocks keeping you from financial alignment.",
-    category: "wealth",
-    duration: "27:14",
-    tier: "premium",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/11801d304_generated_aecb4feb.png",
-    series: "Wealth Frequency",
+    title: "Morning High-Vibe Listening Routine",
+    category: "Daily Listening Routines",
+    duration: "7 min",
+    difficulty: "Beginner",
+    description: "A simple morning routine using music before social media, stress, or outside opinions.",
+    thumbnail: "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=600&q=80",
   },
   {
     id: "l6",
-    title: "Focus Reset: Train Your Brain for Undistracted Output",
-    description: "Build elite-level mental discipline and reclaim your attention from distraction.",
-    category: "focus",
-    duration: "19:55",
-    tier: "supporter",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/e6873b16a_generated_f48c8f96.png",
-    series: "Focus and Discipline Reset",
-  },
-  {
-    id: "l7",
-    title: "Raise Your Standard — The Success Identity Protocol",
-    description: "Stop tolerating mediocrity. This session installs a new personal standard that demands excellence.",
-    category: "habits",
-    duration: "16:40",
-    tier: "free",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png",
-    series: "Identity Shift Series",
-  },
-  {
-    id: "l8",
-    title: "Subconscious Upgrade: Sleep, Sound & Reprogramming",
-    description: "Use theta-state audio and intentional sleep routines to accelerate your reprogramming.",
-    category: "energy",
-    duration: "35:00",
-    tier: "premium",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png",
-    series: "Subconscious Upgrade Series",
-  },
-  {
-    id: "l9",
-    title: "The Inner Game of Manifestation",
-    description: "Dive into the psychological foundations of attraction and why most people get it wrong.",
-    category: "transform",
-    duration: "29:22",
-    tier: "premium",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png",
-    series: "Manifest Mode",
-  },
-  {
-    id: "l10",
-    title: "Spiritual Elevation: Frequency, Purpose & Alignment",
-    description: "Connect with a deeper sense of purpose and begin living from your highest frequency.",
-    category: "spiritual",
-    duration: "41:10",
-    tier: "premium",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png",
-    series: "Subconscious Upgrade Series",
-  },
-  {
-    id: "l11",
-    title: "Morning Architecture — Build a High-Performance Day",
-    description: "Design a morning ritual that primes your neurology for focus, energy, and intentional action.",
-    category: "habits",
-    duration: "14:50",
-    tier: "free",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/11801d304_generated_aecb4feb.png",
-    series: "Survival Mode Off",
-  },
-  {
-    id: "l12",
-    title: "Emotional Mastery: Control the Energy You Carry",
-    description: "Learn to regulate emotional states, shift out of reactivity, and operate from a place of power.",
-    category: "focus",
-    duration: "23:18",
-    tier: "supporter",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/e6873b16a_generated_f48c8f96.png",
-    series: "Focus and Discipline Reset",
-  },
-];
-
-const SERIES = [
-  {
-    id: "s1",
-    name: "Reprogram Your Mind",
-    description: "A deep-dive series to dissolve limiting beliefs and install a high-performance mindset.",
-    lessons: 6,
-    tier: "supporter",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8c8572f77_generated_eba73262.png",
-    category: "transform",
-  },
-  {
-    id: "s2",
-    name: "Manifest Mode",
-    description: "The complete manifestation operating system — thoughts, emotions, identity, and aligned action.",
-    lessons: 8,
-    tier: "premium",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/04c14ab4a_generated_3bb88730.png",
-    category: "transform",
-  },
-  {
-    id: "s3",
-    name: "Survival Mode Off",
-    description: "Exit the fear-based scarcity loop and step into an abundance identity for good.",
-    lessons: 5,
-    tier: "supporter",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/b5544df7f_generated_ee779889.png",
-    category: "transform",
-  },
-  {
-    id: "s4",
-    name: "Identity Shift Series",
-    description: "Reconstruct your self-concept from the ground up. Become the version of you that changes everything.",
-    lessons: 7,
-    tier: "free",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/213cbf8ff_generated_d250d71f.png",
-    category: "identity",
-  },
-  {
-    id: "s5",
-    name: "Wealth Frequency",
-    description: "Rewire your relationship with money, success, and abundance at the subconscious level.",
-    lessons: 6,
-    tier: "premium",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/11801d304_generated_aecb4feb.png",
-    category: "wealth",
-  },
-  {
-    id: "s6",
-    name: "Subconscious Upgrade Series",
-    description: "Advanced reprogramming techniques using sound, sleep, and intentional practice.",
-    lessons: 9,
-    tier: "premium",
-    thumbnail: "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/e6873b16a_generated_f48c8f96.png",
-    category: "energy",
+    title: "Why Lyrics Matter To Your Subconscious Mind",
+    category: "Subconscious Reprogramming",
+    duration: "9 min",
+    difficulty: "Intermediate",
+    description: "Learn why repeated lyrics can become identity programming.",
+    thumbnail: "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=600&q=80",
   },
 ];
 
 export default function Academy() {
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [saved, setSaved] = useState({});
 
-  const filteredLessons = activeCategory === "all"
-    ? ALL_LESSONS
-    : ALL_LESSONS.filter((l) => l.category === activeCategory);
+  const filtered = activeCategory === "All"
+    ? LESSONS
+    : LESSONS.filter((l) => l.category === activeCategory);
+
+  const toggleSave = (id) => setSaved((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
-    <div>
+    <div className="min-h-screen">
       {/* Hero */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/70e23e35f_generated_b5746c08.png"
-            alt="Academy"
-            className="w-full h-full object-cover opacity-20"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
-          {/* Glow orbs */}
-          <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl -translate-y-1/2" />
-          <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2" />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-6 py-20 md:py-28">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-3xl"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/5 mb-6">
-              <Brain className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs font-bold tracking-widest uppercase text-primary">Upper Vibe Academy</span>
+      <div className="relative overflow-hidden pt-20 pb-10 px-6"
+        style={{ background: "linear-gradient(180deg,rgba(212,168,67,0.06) 0%,transparent 100%)" }}>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full opacity-[0.05] blur-[100px] pointer-events-none"
+          style={{ background: "radial-gradient(circle,#D4A843,transparent)" }} />
+        <div className="max-w-7xl mx-auto relative z-10">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5 text-[10px] font-black tracking-[0.25em] uppercase"
+              style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
+              <GraduationCap className="w-3.5 h-3.5" /> UVM Academy
             </div>
-            <h1 className="font-heading font-extrabold text-4xl md:text-6xl tracking-tight mb-6 leading-[1.05]">
-              Unlock the Next
-              <br />
-              <span className="text-primary text-glow-blue">Version of Yourself</span>
+            <h1 className="font-heading font-black text-5xl md:text-6xl text-white mb-4 leading-tight">
+              Upper Vibe Academy
             </h1>
-            <p className="text-muted-foreground text-base md:text-lg leading-relaxed mb-8 max-w-xl">
-              This is the inner game. Reprogram your mind, shift your identity, and train your consciousness for manifestation. Upper Vibe Academy is where transformation becomes your daily practice.
+            <p className="text-base text-white/40 max-w-2xl leading-relaxed">
+              Learn how to use music, repetition, and frequency to train your mind, regulate your nervous system, and become aligned with the reality you are creating.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <GlowButton variant="primary" size="lg">
-                <Play className="w-4 h-4 mr-2" />
-                Start Your First Lesson
-              </GlowButton>
-              <GlowButton variant="outline" to="/pricing" size="lg">
-                <Crown className="w-4 h-4 mr-2" />
-                Unlock Full Academy
-              </GlowButton>
-            </div>
-          </motion.div>
-
-          {/* Stats row */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-wrap gap-8 mt-14"
-          >
-            {[
-              { label: "Transformation Lessons", value: "50+" },
-              { label: "Lesson Series", value: "8" },
-              { label: "Categories", value: "7" },
-              { label: "Hours of Content", value: "20+" },
-            ].map((s) => (
-              <div key={s.label}>
-                <p className="font-heading font-extrabold text-2xl text-primary text-glow-blue">{s.value}</p>
-                <p className="text-xs text-muted-foreground tracking-wider uppercase mt-0.5">{s.label}</p>
-              </div>
-            ))}
           </motion.div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-10">
-        {/* Upgrade banner */}
-        <AcademyUpgradeBanner />
+      <div className="max-w-7xl mx-auto px-6 pb-10">
+        {/* Featured Course */}
+        <FeaturedCourse />
 
-        {/* Featured Lessons */}
-        <section className="mb-16 mt-12">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <p className="text-xs font-semibold tracking-[0.2em] uppercase text-primary text-glow-blue mb-1">Start Here</p>
-              <h2 className="font-heading font-extrabold text-2xl md:text-3xl">Featured Lessons</h2>
-            </div>
-          </div>
+        {/* Category filters */}
+        <div className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-hide">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className="whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold tracking-wider transition-all border flex-shrink-0"
+              style={activeCategory === cat ? {
+                background: "rgba(212,168,67,0.12)",
+                borderColor: "rgba(212,168,67,0.35)",
+                color: "#D4A843"
+              } : {
+                background: "rgba(255,255,255,0.03)",
+                borderColor: "rgba(255,255,255,0.07)",
+                color: "rgba(255,255,255,0.35)"
+              }}>
+              {cat}
+            </button>
+          ))}
+        </div>
 
-          <div className="grid md:grid-cols-3 gap-5">
-            {FEATURED_LESSONS.map((lesson, i) => (
+        {/* Lessons grid */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeCategory}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16"
+          >
+            {filtered.map((lesson, i) => (
               <motion.div
                 key={lesson.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <LessonCard lesson={lesson} featured />
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* Series */}
-        <section className="mb-16">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <p className="text-xs font-semibold tracking-[0.2em] uppercase text-secondary text-glow-gold mb-1">Structured Learning</p>
-              <h2 className="font-heading font-extrabold text-2xl md:text-3xl">Transformation Series</h2>
-            </div>
-          </div>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
-            {SERIES.map((series, i) => (
-              <motion.div
-                key={series.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-              >
-                <SeriesCard series={series} />
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* Category filter + lessons */}
-        <section className="mb-16">
-          <div className="mb-6">
-            <p className="text-xs font-semibold tracking-[0.2em] uppercase text-muted-foreground mb-1">Browse by Topic</p>
-            <h2 className="font-heading font-extrabold text-2xl md:text-3xl mb-5">Lesson Library</h2>
-            <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`whitespace-nowrap flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold tracking-wider uppercase transition-all border ${
-                    activeCategory === cat.id
-                      ? "bg-primary/10 border-primary/40 text-primary"
-                      : "border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
-                  }`}
-                >
-                  <cat.icon className="w-3 h-3" />
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredLessons.map((lesson, i) => (
-              <motion.div
-                key={lesson.id}
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
+                transition={{ delay: i * 0.07 }}
               >
-                <LessonCard lesson={lesson} />
+                <AcademyLessonCard
+                  lesson={lesson}
+                  saved={!!saved[lesson.id]}
+                  onSave={() => toggleSave(lesson.id)}
+                />
               </motion.div>
             ))}
-          </div>
-        </section>
+          </motion.div>
+        </AnimatePresence>
 
         {/* Bottom CTA */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="rounded-2xl overflow-hidden relative mb-12"
-        >
-          <div className="absolute inset-0">
-            <img
-              src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/ebf0a13c4_generated_ca1c1780.png"
-              alt="Upgrade"
-              className="w-full h-full object-cover opacity-15"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/90 to-accent/40" />
-          </div>
-          <div className="relative px-8 py-14 md:px-14 text-center md:text-left max-w-2xl">
-            <p className="text-xs font-bold tracking-widest uppercase text-secondary text-glow-gold mb-3">Enter the Transformation Vault</p>
-            <h3 className="font-heading font-extrabold text-3xl md:text-4xl mb-4 leading-tight">
-              The Full Academy Is Waiting.
-              <br />
-              <span className="text-primary text-glow-blue">Are You Ready?</span>
-            </h3>
-            <p className="text-muted-foreground mb-8 leading-relaxed">
-              Reprogram your mind. Shift your identity. Unlock every lesson, every series, and every tool inside the Upper Vibe Academy. Premium starts at $9.99/month.
-            </p>
-            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-              <GlowButton to="/pricing" variant="primary" size="lg">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Unlock Full Academy — $9.99/mo
-              </GlowButton>
-              <GlowButton to="/pricing" variant="outline" size="lg">
-                View All Plans
-              </GlowButton>
-            </div>
-          </div>
+          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          className="rounded-3xl p-10 text-center mb-10"
+          style={{
+            background: "linear-gradient(135deg,rgba(212,168,67,0.08),rgba(0,229,255,0.05))",
+            border: "1px solid rgba(212,168,67,0.15)"
+          }}>
+          <h3 className="font-heading font-black text-2xl md:text-3xl text-white mb-3">
+            Ready to Go Deeper?
+          </h3>
+          <p className="text-sm text-white/35 max-w-md mx-auto mb-6 leading-relaxed">
+            Unlock the full Academy library — advanced reprogramming, artist breakdowns, and live session guides.
+          </p>
+          <a href="/pricing"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.02]"
+            style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000", boxShadow: "0 0 24px rgba(212,168,67,0.3)" }}>
+            <GraduationCap className="w-4 h-4" /> Unlock Full Academy
+          </a>
         </motion.div>
       </div>
 
