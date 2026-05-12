@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Play, Pause, Download, Bookmark, Waves, Music4 } from "lucide-react";
+import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Crown } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
+import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 
 const FILTERS = [
   { id: "all", label: "All" },
-  { id: "high-vibe", label: "High Vibe Music" },
-  { id: "432hz", label: "432 Hz Music" },
   { id: "hiphop", label: "Hip Hop / Rap" },
   { id: "rnb", label: "R&B" },
   { id: "electronic", label: "Electronic Music" },
@@ -20,15 +19,13 @@ const FILTERS = [
 ];
 
 const FILTER_MATCHERS = {
-  "high-vibe": (t) => t.category_ids?.length > 0 || (t.artist_display || "").length > 0,
-  "432hz": (t) => t.frequency_type === "432hz" || t.frequency_hz === 432 || (t.title || "").toLowerCase().includes("432"),
-  "hiphop": (t) => matchCategory(t, ["hip", "rap", "hiphop"]),
-  "rnb": (t) => matchCategory(t, ["r&b", "rnb", "soul"]),
-  "electronic": (t) => matchCategory(t, ["electronic", "edm", "techno", "house"]),
-  "instrumentals": (t) => matchCategory(t, ["instrumental"]),
-  "meditation": (t) => matchCategory(t, ["meditation", "focus", "calm", "healing"]),
-  "car": (t) => matchCategory(t, ["car", "driving", "road"]),
-  "new": (t) => t.is_new_release,
+  hiphop: (t) => matchCategory(t, ["hip", "rap", "hiphop"]),
+  rnb: (t) => matchCategory(t, ["r&b", "rnb", "soul"]),
+  electronic: (t) => matchCategory(t, ["electronic", "edm", "techno", "house"]),
+  instrumentals: (t) => matchCategory(t, ["instrumental"]),
+  meditation: (t) => matchCategory(t, ["meditation", "focus", "calm", "healing"]),
+  car: (t) => matchCategory(t, ["car", "driving", "road"]),
+  new: (t) => t.is_new_release,
 };
 
 function matchCategory(track, keywords) {
@@ -39,23 +36,17 @@ function matchCategory(track, keywords) {
 
 export default function Music() {
   const [tracks, setTracks] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [saved, setSaved] = useState({});
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [upgradeModal, setUpgradeModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
+  const isPremium = user?.role === "premium" || user?.role === "admin";
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
-      base44.entities.Category.list("display_order", 50),
-    ]).then(([t, c]) => {
-      setTracks(t);
-      setCategories(c);
-      setLoading(false);
-    });
+    base44.entities.Track.filter({ status: "published" }, "-created_date", 500)
+      .then((t) => { setTracks(t); setLoading(false); });
   }, []);
 
   const filtered = useMemo(() => {
@@ -64,8 +55,7 @@ export default function Music() {
       const q = search.toLowerCase();
       result = result.filter((t) =>
         (t.title || "").toLowerCase().includes(q) ||
-        (t.artist_display || "").toLowerCase().includes(q) ||
-        (t.album || "").toLowerCase().includes(q)
+        (t.artist_display || "").toLowerCase().includes(q)
       );
     } else if (activeFilter !== "all" && FILTER_MATCHERS[activeFilter]) {
       result = result.filter(FILTER_MATCHERS[activeFilter]);
@@ -73,13 +63,15 @@ export default function Music() {
     return result;
   }, [tracks, search, activeFilter]);
 
-  const toggleSave = (id) => setSaved((prev) => ({ ...prev, [id]: !prev[id] }));
-
   const handlePlay = (track) => {
-    if (currentTrack?.id === track.id) {
-      togglePlay();
-    } else {
-      playTrack(track);
+    if (currentTrack?.id === track.id) togglePlay();
+    else playTrack(track);
+  };
+
+  const handleDownload = (e, track) => {
+    if (!isPremium) {
+      e.preventDefault();
+      setUpgradeModal(true);
     }
   };
 
@@ -93,7 +85,7 @@ export default function Music() {
             <Music4 className="w-3 h-3" /> Music Library
           </div>
           <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-2">All Music</h1>
-          <p className="text-white/35 text-sm">{tracks.length} songs available</p>
+          <p className="text-white/35 text-sm">{tracks.length} songs · All tuned to 432 Hz · Free to stream</p>
         </motion.div>
       </div>
 
@@ -103,7 +95,7 @@ export default function Music() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search songs, artists, or categories"
+            placeholder="Search songs or artists..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setActiveFilter("all"); }}
             className="w-full pl-11 pr-10 py-3.5 rounded-2xl text-sm text-white placeholder:text-white/25 focus:outline-none transition-all"
@@ -135,7 +127,6 @@ export default function Music() {
           ))}
         </div>
 
-        {/* Results */}
         {search && (
           <p className="text-sm text-white/30 mb-4">
             {filtered.length} result{filtered.length !== 1 ? "s" : ""} for <span className="text-white/60">"{search}"</span>
@@ -156,7 +147,6 @@ export default function Music() {
             <motion.div key={activeFilter + search} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
               {filtered.map((track, i) => {
                 const isCurrentTrack = currentTrack?.id === track.id;
-                const isSaved = !!saved[track.id];
                 return (
                   <motion.div
                     key={track.id}
@@ -190,14 +180,13 @@ export default function Music() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-white truncate">{track.title}</p>
-                      <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                      <p className="text-xs text-white/40 truncate">{track.artist_display || "Upper Vibe Media"}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        {track.frequency_type && track.frequency_type !== "standard" && (
-                          <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                            style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
-                            <Waves className="w-2.5 h-2.5" /> {track.frequency_type.toUpperCase()}
-                          </span>
-                        )}
+                        {/* Always show 432 Hz badge */}
+                        <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+                          <Waves className="w-2.5 h-2.5" /> 432 Hz
+                        </span>
                         {track.is_new_release && (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                             style={{ background: "rgba(212,168,67,0.12)", color: "#D4A843" }}>NEW</span>
@@ -212,6 +201,7 @@ export default function Music() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Play — always available */}
                       <button
                         onClick={() => handlePlay(track)}
                         className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
@@ -223,29 +213,24 @@ export default function Music() {
                         {isCurrentTrack && isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
                       </button>
 
-                      {track.is_downloadable && (
+                      {/* Download — locked for non-premium */}
+                      {isPremium ? (
                         <a
                           href={track.audio_url}
-                          download
+                          download={`${track.title}.mp3`}
                           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                          style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}
-                          title="Download"
-                          onClick={(e) => e.stopPropagation()}>
+                          style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Download">
                           <Download className="w-3.5 h-3.5" />
                         </a>
-                      )}
-
-                      {user && (
+                      ) : (
                         <button
-                          onClick={() => toggleSave(track.id)}
+                          onClick={(e) => handleDownload(e, track)}
                           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                          style={{
-                            background: isSaved ? "rgba(0,229,255,0.12)" : "rgba(255,255,255,0.04)",
-                            border: `1px solid ${isSaved ? "rgba(0,229,255,0.3)" : "rgba(255,255,255,0.08)"}`,
-                            color: isSaved ? "#00E5FF" : "rgba(255,255,255,0.25)",
-                          }}
-                          title="Save">
-                          <Bookmark className={`w-3.5 h-3.5 ${isSaved ? "fill-current" : ""}`} />
+                          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
+                          title="Premium download">
+                          <Lock className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
@@ -258,6 +243,8 @@ export default function Music() {
       </div>
 
       <Footer />
+
+      <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
     </div>
   );
 }

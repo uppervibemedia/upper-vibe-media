@@ -19,14 +19,17 @@ const EMPTY = {
   album: "",
   description: "",
   category_ids: [],
+  mood_tags: [],
   tier_access: ["free"],
-  frequency_type: "standard",
-  frequency_hz: "",
+  frequency_type: "432hz",
+  frequency_hz: 432,
   duration: "",
+  release_date: "",
+  display_order: 0,
   status: "published",
   is_featured: false,
   is_new_release: false,
-  is_downloadable: false,
+  is_downloadable: true,
   audio_url: "",
   cover_url: "",
 };
@@ -207,19 +210,8 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
           </div>
 
           <div>
-            <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Frequency Type</label>
-            <Select value={form.frequency_type || "standard"} onValueChange={(v) => setForm({ ...form, frequency_type: v })}>
-              <SelectTrigger className="bg-card/40 border-border/30">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="standard">Standard</SelectItem>
-                <SelectItem value="432hz">432 Hz</SelectItem>
-                <SelectItem value="528hz">528 Hz</SelectItem>
-                <SelectItem value="binaural">Binaural</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
+            <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Release Date</label>
+            <Input type="date" value={form.release_date || ""} onChange={(e) => setForm({ ...form, release_date: e.target.value })} className="bg-card/40 border-border/30" />
           </div>
 
           <div>
@@ -264,25 +256,15 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
           </div>
 
           <div className="col-span-2">
-            <div className="rounded-xl border border-border/30 bg-muted/10 p-4">
-              <p className="text-xs font-bold tracking-wider uppercase text-muted-foreground mb-3">Download Settings</p>
-              <div className="flex flex-wrap gap-6">
-                {[
-                  { key: "is_downloadable", label: "Downloadable (Premium only)" },
-                  { key: "offline_enabled", label: "Offline enabled" },
-                ].map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={!!form[key]}
-                      onChange={(e) => setForm({ ...form, [key]: e.target.checked })}
-                      className="accent-primary w-4 h-4"
-                    />
-                    <span className="text-sm text-foreground">{label}</span>
-                  </label>
-                ))}
+            <div className="rounded-xl border border-border/30 bg-muted/10 p-4 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}>
+                <span className="text-[10px] font-black text-cyan-400">432</span>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-2">Downloads are always restricted to Premium members.</p>
+              <div>
+                <p className="text-sm font-semibold text-foreground">432 Hz · Premium Download</p>
+                <p className="text-[10px] text-muted-foreground">All songs are auto-set to 432 Hz and downloadable by Premium members.</p>
+              </div>
             </div>
           </div>
 
