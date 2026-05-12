@@ -8,16 +8,19 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import AppLayout from './components/layout/AppLayout';
 import Home from './pages/Home';
+import Music from './pages/Music';
+import Categories from './pages/Categories';
+import Downloads from './pages/Downloads';
+import About from './pages/About';
+import Admin from './pages/Admin';
+// Hidden pages (still routable but not in nav)
 import Discover from './pages/Discover';
 import Pricing from './pages/Pricing';
 import Dashboard from './pages/Dashboard';
 import Vault from './pages/Vault';
-import About from './pages/About';
 import Contact from './pages/Contact';
 import Academy from './pages/Academy';
-import Admin from './pages/Admin';
 import Artists from './pages/Artists';
-import Downloads from './pages/Downloads';
 import Sessions from './pages/Sessions';
 
 const AuthenticatedApp = () => {
@@ -46,17 +49,21 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route element={<AppLayout />}>
+        {/* Main navigation */}
         <Route path="/" element={<Home />} />
+        <Route path="/music" element={<Music />} />
+        <Route path="/categories" element={<Categories />} />
+        <Route path="/downloads" element={<Downloads />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/admin" element={<Admin />} />
+        {/* Legacy / hidden routes still accessible */}
         <Route path="/discover" element={<Discover />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/vault" element={<Vault />} />
-        <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/admin" element={<Admin />} />
         <Route path="/academy" element={<Academy />} />
         <Route path="/artists" element={<Artists />} />
-        <Route path="/downloads" element={<Downloads />} />
         <Route path="/sessions" element={<Sessions />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

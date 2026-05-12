@@ -1,21 +1,202 @@
-import React from "react";
-import HeroSection from "../components/home/HeroSection";
-import StartHereSection from "../components/home/StartHereSection";
-import FeaturedSessionsSection from "../components/home/FeaturedSessionsSection";
-import EducationalVideosSection from "../components/home/EducationalVideosSection";
-import WhyListenHereSection from "../components/home/WhyListenHereSection";
-import VaultCTASection from "../components/home/VaultCTASection";
+import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { Play, Download, Headphones, Waves, Music4, Grid3X3, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
+import { usePlayer } from "../context/PlayerContext";
 
 export default function Home() {
+  const [tracks, setTracks] = useState([]);
+  const { playTrack } = usePlayer();
+
+  useEffect(() => {
+    base44.entities.Track.filter({ status: "published" }, "-created_date", 6).then(setTracks);
+  }, []);
+
+  const CATEGORIES = [
+    { label: "High Vibe Music", icon: "✨", color: "#00E5FF" },
+    { label: "432 Hz Music", icon: "〰️", color: "#D4A843" },
+    { label: "Hip Hop / Rap", icon: "🎤", color: "#9B7EFF" },
+    { label: "R&B", icon: "🎵", color: "#D4A843" },
+    { label: "Electronic Music", icon: "⚡", color: "#00E5FF" },
+    { label: "Instrumentals", icon: "🎸", color: "#9B7EFF" },
+    { label: "Meditation / Focus", icon: "🧘", color: "#00E5FF" },
+    { label: "Car Music", icon: "🚗", color: "#D4A843" },
+  ];
+
   return (
-    <div>
-      <HeroSection />
-      <StartHereSection />
-      <FeaturedSessionsSection />
-      <EducationalVideosSection />
-      <WhyListenHereSection />
-      <VaultCTASection />
+    <div className="min-h-screen">
+      {/* Hero */}
+      <section className="relative min-h-[85vh] flex items-center overflow-hidden">
+        {/* Background glows */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-[120px] opacity-[0.08]"
+            style={{ background: "radial-gradient(circle,#00E5FF,transparent)" }} />
+          <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full blur-[100px] opacity-[0.06]"
+            style={{ background: "radial-gradient(circle,#D4A843,transparent)" }} />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 w-full pt-20 pb-16 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="max-w-3xl"
+          >
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-8 text-[10px] font-black tracking-[0.3em] uppercase"
+              style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF" }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              High-Vibration Music
+            </div>
+
+            <h1 className="font-heading font-black text-6xl md:text-7xl lg:text-8xl text-white leading-[0.95] mb-6">
+              Upper Vibe
+              <br />
+              <span style={{ color: "#D4A843" }}>Media</span>
+            </h1>
+
+            <p className="text-lg text-white/45 leading-relaxed mb-10 max-w-xl">
+              High-vibration music, 432 Hz sounds, electronic music, hip hop, R&B, instrumentals, and focus sessions — all in one place.
+            </p>
+
+            <div className="flex flex-wrap gap-4">
+              <Link to="/music"
+                className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.02]"
+                style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 32px rgba(0,229,255,0.3)" }}>
+                <Headphones className="w-5 h-5" /> Listen Now
+              </Link>
+              <Link to="/categories"
+                className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-black text-sm tracking-wider transition-all hover:bg-white/10"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.8)" }}>
+                <Grid3X3 className="w-5 h-5" /> Browse Categories
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="flex flex-wrap gap-8 mt-16"
+          >
+            {[
+              { label: "Songs", value: "50+" },
+              { label: "Frequencies", value: "432 Hz" },
+              { label: "Genres", value: "8+" },
+              { label: "Downloads", value: "Free" },
+            ].map((s) => (
+              <div key={s.label}>
+                <p className="font-heading font-black text-2xl text-white">{s.value}</p>
+                <p className="text-[11px] text-white/30 tracking-widest uppercase mt-0.5">{s.label}</p>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Recent Tracks */}
+      {tracks.length > 0 && (
+        <section className="max-w-7xl mx-auto px-6 py-14">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: "#00E5FF" }}>Now Playing</p>
+              <h2 className="font-heading font-black text-2xl text-white">Latest Music</h2>
+            </div>
+            <Link to="/music" className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-white/70 transition-colors">
+              View All <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {tracks.map((track, i) => (
+              <motion.div
+                key={track.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07 }}
+                className="flex items-center gap-4 p-4 rounded-2xl group cursor-pointer transition-all hover:border-white/15"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+                onClick={() => track.audio_url && playTrack(track)}
+              >
+                <div className="relative flex-shrink-0">
+                  {track.cover_url ? (
+                    <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                      style={{ background: "rgba(0,229,255,0.08)" }}>
+                      <Music4 className="w-5 h-5 text-cyan-400/40" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: "rgba(0,229,255,0.85)" }}>
+                    <Play className="w-4 h-4 text-black" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                  <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                </div>
+                {track.duration && <p className="text-[10px] text-white/25 flex-shrink-0">{track.duration}</p>}
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Categories preview */}
+      <section className="max-w-7xl mx-auto px-6 py-14">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: "#D4A843" }}>Explore</p>
+            <h2 className="font-heading font-black text-2xl text-white">Browse by Category</h2>
+          </div>
+          <Link to="/categories" className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-white/70 transition-colors">
+            All Categories <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {CATEGORIES.map((cat) => (
+            <Link
+              key={cat.label}
+              to={`/categories?cat=${encodeURIComponent(cat.label)}`}
+              className="flex items-center gap-3 p-4 rounded-2xl transition-all hover:scale-[1.02]"
+              style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <span className="text-xl">{cat.icon}</span>
+              <span className="text-sm font-bold text-white/70">{cat.label}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="max-w-7xl mx-auto px-6 pb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          className="rounded-3xl p-10 md:p-14 flex flex-col md:flex-row items-center gap-8 text-center md:text-left"
+          style={{
+            background: "linear-gradient(135deg,rgba(0,229,255,0.07),rgba(212,168,67,0.05))",
+            border: "1px solid rgba(0,229,255,0.12)"
+          }}>
+          <div className="flex-1">
+            <h2 className="font-heading font-black text-3xl md:text-4xl text-white mb-3">
+              Download Your Favorites
+            </h2>
+            <p className="text-white/40 text-sm leading-relaxed max-w-md">
+              Select songs that are available for download and take them with you anywhere.
+            </p>
+          </div>
+          <Link to="/downloads"
+            className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-black text-sm tracking-wider flex-shrink-0 transition-all hover:brightness-110"
+            style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000" }}>
+            <Download className="w-5 h-5" /> Go to Downloads
+          </Link>
+        </motion.div>
+      </section>
+
       <Footer />
     </div>
   );

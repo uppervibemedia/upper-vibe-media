@@ -3,37 +3,31 @@ import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
-  Waves,
-  GraduationCap,
-  Users,
-  Crown,
   Library,
   Info,
   Settings,
   LogOut,
   Music4,
   User,
-  Zap,
+  Grid3X3,
+  Download,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
-  { path: "/discover", icon: Music4, label: "Music Vault" },
-  { path: "/sessions", icon: Waves, label: "432 Hz Sessions" },
-  { path: "/academy", icon: GraduationCap, label: "UVM Academy" },
-  { path: "/artists", icon: Users, label: "Artists" },
-  { path: "/pricing", icon: Crown, label: "Membership" },
-  { path: "/downloads", icon: Library, label: "My Library" },
-  { path: "/about", icon: Info, label: "About UVM" },
+  { path: "/music", icon: Music4, label: "Music" },
+  { path: "/categories", icon: Grid3X3, label: "Categories" },
+  { path: "/downloads", icon: Download, label: "Downloads" },
+  { path: "/about", icon: Info, label: "About" },
 ];
 
 const bottomNavMobile = [
   { path: "/", icon: Home, label: "Home" },
-  { path: "/discover", icon: Music4, label: "Vault" },
-  { path: "/academy", icon: GraduationCap, label: "Academy" },
-  { path: "/downloads", icon: Library, label: "Library" },
-  { path: "/dashboard", icon: User, label: "Profile" },
+  { path: "/music", icon: Music4, label: "Music" },
+  { path: "/categories", icon: Grid3X3, label: "Categories" },
+  { path: "/downloads", icon: Download, label: "Downloads" },
+  { path: "/about", icon: Info, label: "About" },
 ];
 
 export default function Sidebar() {
@@ -43,7 +37,7 @@ export default function Sidebar() {
   const isAdmin = user?.role === "admin";
 
   const allNavItems = isAdmin
-    ? [...mainNavItems, { path: "/admin", icon: Settings, label: "Admin" }]
+    ? [...mainNavItems, { path: "/admin", icon: Settings, label: "Music Manager" }]
     : mainNavItems;
 
   return (
@@ -59,10 +53,7 @@ export default function Sidebar() {
           />
           <span className="font-heading font-black text-sm tracking-[0.22em] text-white">UPPER VIBE</span>
         </Link>
-        <Link to="/pricing" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase"
-          style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#050505" }}>
-          <Zap className="w-3 h-3" /> Upgrade
-        </Link>
+        <div />
       </div>
 
       {/* ── Mobile bottom navigation ── */}
@@ -166,29 +157,7 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Upgrade CTA */}
-        <AnimatePresence>
-          {expanded && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="mx-3 mb-3 p-3 rounded-xl overflow-hidden"
-              style={{
-                background: "linear-gradient(135deg,rgba(212,168,67,0.15),rgba(212,168,67,0.05))",
-                border: "1px solid rgba(212,168,67,0.2)"
-              }}
-            >
-              <p className="text-[10px] font-black tracking-[0.2em] uppercase text-yellow-400/90 mb-0.5">Go Premium</p>
-              <p className="text-[10px] text-white/40 leading-tight mb-2">432 Hz sessions + downloads</p>
-              <Link to="/pricing"
-                className="block text-center text-[10px] font-bold tracking-widest uppercase py-1.5 rounded-lg transition-all hover:brightness-110"
-                style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#050505" }}>
-                Upgrade
-              </Link>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* spacer */}
 
         {/* User area */}
         <div className="border-t border-white/[0.06] px-3 py-3 flex-shrink-0">
@@ -218,12 +187,10 @@ export default function Sidebar() {
               )}
             </div>
           ) : (
-            <Link to="/pricing"
-              className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl transition-all hover:bg-white/5"
-            >
+            <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl">
               <User className="w-4 h-4 text-white/30 flex-shrink-0" />
-              {expanded && <span className="text-xs text-white/30 whitespace-nowrap">Sign In</span>}
-            </Link>
+              {expanded && <span className="text-xs text-white/30 whitespace-nowrap">Not signed in</span>}
+            </div>
           )}
         </div>
       </motion.aside>

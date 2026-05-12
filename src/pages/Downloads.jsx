@@ -1,209 +1,123 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Music, Video, ListMusic, Trash2, Crown, Lock, ArrowUpRight, Play } from "lucide-react";
+import { Download, Music4, Play, Pause, Waves } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { getUserDownloads, removeDownload } from "@/lib/downloadService";
-import GlowButton from "../components/shared/GlowButton";
-import Footer from "../components/shared/Footer";
 import { usePlayer } from "../context/PlayerContext";
-import { toast } from "sonner";
-
-const TABS = [
-  { id: "track", label: "Songs", icon: Music },
-  { id: "video", label: "Videos", icon: Video },
-  { id: "playlist", label: "Playlists", icon: ListMusic },
-];
-
-// For demo — in production this comes from auth context
-const USER_TIER = "free";
-const USER_EMAIL = "";
+import Footer from "../components/shared/Footer";
 
 export default function Downloads() {
-  const [activeTab, setActiveTab] = useState("track");
-  const [downloads, setDownloads] = useState([]);
+  const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { playTrack } = usePlayer();
-
-  const isPremium = USER_TIER === "premium";
+  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
 
   useEffect(() => {
-    if (!isPremium || !USER_EMAIL) {
-      setLoading(false);
-      return;
-    }
-    getUserDownloads(USER_EMAIL).then((d) => {
-      setDownloads(d);
-      setLoading(false);
-    });
+    base44.entities.Track.filter({ status: "published", is_downloadable: true }, "-created_date", 200)
+      .then((t) => { setTracks(t); setLoading(false); });
   }, []);
 
-  const handleRemove = async (dl) => {
-    await removeDownload(USER_EMAIL, dl.content_type, dl.content_id);
-    setDownloads((prev) => prev.filter((d) => d.id !== dl.id));
-    toast.success("Removed from downloads");
+  const handlePlay = (track) => {
+    if (currentTrack?.id === track.id) togglePlay();
+    else playTrack(track);
   };
-
-  const handlePlay = (dl) => {
-    if (dl.file_url) {
-      playTrack({
-        id: dl.content_id,
-        title: dl.content_title,
-        artist: dl.content_artist,
-        cover_url: dl.content_cover_url,
-        audio_url: dl.file_url,
-        duration: dl.content_duration,
-        tier_access: ["premium"],
-      });
-    }
-  };
-
-  const tabDownloads = downloads.filter((d) => d.content_type === activeTab);
-
-  // Non-premium users see upgrade gate
-  if (!isPremium) {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center px-6">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full text-center"
-        >
-          <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-6">
-            <Lock className="w-9 h-9 text-primary" />
-          </div>
-          <p className="text-xs font-bold tracking-widest uppercase text-primary text-glow-blue mb-3">Premium Feature</p>
-          <h1 className="font-heading font-extrabold text-3xl mb-4">Downloads are Premium Only</h1>
-          <p className="text-muted-foreground leading-relaxed mb-8">
-            Upgrade to <strong className="text-primary">Premium</strong> to download music, academy videos, and playlists for offline access. Your personal library lives here.
-          </p>
-          <div className="rounded-xl bg-primary/5 border border-primary/20 p-5 mb-8 text-left space-y-2.5">
-            {[
-              "Download individual songs & exclusive drops",
-              "Download 432 Hz & premium tracks",
-              "Save academy lessons for offline access",
-              "Download full playlists in one tap",
-              "Access everything from your Downloads library",
-            ].map((perk) => (
-              <div key={perk} className="flex items-start gap-2.5">
-                <Crown className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-foreground/80">{perk}</span>
-              </div>
-            ))}
-          </div>
-          <GlowButton to="/pricing" variant="primary" size="lg" className="w-full justify-center">
-            <ArrowUpRight className="w-4 h-4 mr-2" />
-            Upgrade to Premium — $9.99/mo
-          </GlowButton>
-        </motion.div>
-      </div>
-    );
-  }
 
   return (
-    <div>
-      <div className="max-w-7xl mx-auto px-6 py-10">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center gap-3 mb-2">
-            <Download className="w-5 h-5 text-primary" />
-            <p className="text-xs font-bold tracking-[0.2em] uppercase text-primary text-glow-blue">My Library</p>
+    <div className="min-h-screen">
+      <div className="max-w-7xl mx-auto px-6 pt-20 pb-16">
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4 text-[10px] font-black tracking-[0.3em] uppercase"
+            style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
+            <Download className="w-3 h-3" /> Available Downloads
           </div>
-          <h1 className="font-heading font-extrabold text-3xl md:text-4xl mb-8">Downloads</h1>
+          <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-2">Downloads</h1>
+          <p className="text-white/35 text-sm">Songs available to download — free to keep.</p>
+        </motion.div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 border-b border-border/30 mb-8">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-all border-b-2 -mb-px ${
-                  activeTab === t.id
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <t.icon className="w-4 h-4" />
-                {t.label}
-                {downloads.filter((d) => d.content_type === t.id).length > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                    {downloads.filter((d) => d.content_type === t.id).length}
-                  </span>
-                )}
-              </button>
-            ))}
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-6 h-6 border-2 border-yellow-400/20 border-t-yellow-400 rounded-full animate-spin" />
           </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-            </div>
-          ) : tabDownloads.length === 0 ? (
-            <div className="py-20 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-muted/30 flex items-center justify-center mx-auto mb-4">
-                {activeTab === "track" ? <Music className="w-6 h-6 text-muted-foreground" /> : activeTab === "video" ? <Video className="w-6 h-6 text-muted-foreground" /> : <ListMusic className="w-6 h-6 text-muted-foreground" />}
-              </div>
-              <p className="text-muted-foreground text-sm">No downloaded {activeTab === "track" ? "songs" : activeTab === "video" ? "videos" : "playlists"} yet.</p>
-              <p className="text-muted-foreground/60 text-xs mt-1">
-                {activeTab === "track" ? "Download tracks from Discover or Vault." : activeTab === "video" ? "Download lessons from the Academy." : "Download playlists from your library."}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <AnimatePresence>
-                {tabDownloads.map((dl, i) => (
+        ) : tracks.length === 0 ? (
+          <div className="text-center py-24">
+            <Download className="w-12 h-12 text-white/10 mx-auto mb-4" />
+            <p className="text-white/25 font-medium">No downloadable songs yet.</p>
+            <p className="text-white/15 text-sm mt-1">Check back soon as we add more content.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-white/25 mb-4">{tracks.length} song{tracks.length !== 1 ? "s" : ""} available</p>
+            <AnimatePresence>
+              {tracks.map((track, i) => {
+                const isCurrentTrack = currentTrack?.id === track.id;
+                return (
                   <motion.div
-                    key={dl.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    transition={{ delay: i * 0.04 }}
-                    className="flex items-center gap-4 p-4 rounded-xl bg-card/40 border border-border/20 hover:border-primary/20 transition-all group"
+                    key={track.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    className="flex items-center gap-4 p-4 rounded-2xl group transition-all"
+                    style={{
+                      background: isCurrentTrack ? "rgba(212,168,67,0.06)" : "rgba(255,255,255,0.025)",
+                      border: `1px solid ${isCurrentTrack ? "rgba(212,168,67,0.2)" : "rgba(255,255,255,0.06)"}`,
+                    }}
                   >
+                    {/* Cover */}
                     <div className="relative flex-shrink-0">
-                      {dl.content_cover_url ? (
-                        <img src={dl.content_cover_url} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                      {track.cover_url ? (
+                        <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
                       ) : (
-                        <div className="w-12 h-12 rounded-lg bg-muted/40 flex items-center justify-center">
-                          <Music className="w-5 h-5 text-muted-foreground" />
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                          style={{ background: "rgba(212,168,67,0.08)" }}>
+                          <Music4 className="w-5 h-5 text-yellow-400/30" />
                         </div>
                       )}
                     </div>
+
+                    {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{dl.content_title}</p>
-                      {dl.content_artist && (
-                        <p className="text-xs text-muted-foreground truncate">{dl.content_artist}</p>
-                      )}
-                      {dl.content_duration && (
-                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">{dl.content_duration}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {activeTab === "track" && dl.file_url && (
-                        <button
-                          onClick={() => handlePlay(dl)}
-                          className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 transition-all"
-                        >
-                          <Play className="w-3.5 h-3.5 ml-0.5" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleRemove(dl)}
-                        className="w-8 h-8 rounded-lg bg-muted/30 border border-border/30 flex items-center justify-center text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <div className="flex-shrink-0">
-                      <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/10 border border-green-500/20">
-                        <Download className="w-3 h-3 text-green-400" />
-                        <span className="text-[10px] text-green-400 font-semibold">Saved</span>
+                      <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                      <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {track.frequency_type && track.frequency_type !== "standard" && (
+                          <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+                            <Waves className="w-2.5 h-2.5" /> {track.frequency_type.toUpperCase()}
+                          </span>
+                        )}
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ background: "rgba(212,168,67,0.1)", color: "#D4A843" }}>
+                          Free Download
+                        </span>
                       </div>
                     </div>
+
+                    {track.duration && <p className="text-xs text-white/25 hidden sm:block">{track.duration}</p>}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePlay(track)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                        style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF" }}>
+                        {isCurrentTrack && isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+                      </button>
+                      {track.audio_url && (
+                        <a
+                          href={track.audio_url}
+                          download={`${track.title}.mp3`}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs tracking-wider transition-all hover:brightness-110"
+                          style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.2),rgba(212,168,67,0.1))", border: "1px solid rgba(212,168,67,0.3)", color: "#D4A843" }}
+                          onClick={(e) => e.stopPropagation()}>
+                          <Download className="w-3.5 h-3.5" /> Download
+                        </a>
+                      )}
+                    </div>
                   </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
-        </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
       <Footer />
     </div>

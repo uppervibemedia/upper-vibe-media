@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, Brain } from "lucide-react";
+import { Plus, Music, Users, Grid3X3, Brain, ListFilter } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import TrackEditForm from "../components/admin/TrackEditForm";
-import TrackTable from "../components/admin/TrackTable";
+import MusicManager from "../components/admin/MusicManager";
 import AIClassifierPanel from "../components/admin/AIClassifierPanel";
+import { useAuth } from "@/lib/AuthContext";
 
 const TABS = [
-  { id: "tracks", label: "Tracks", icon: Music },
+  { id: "manager", label: "Music Manager", icon: ListFilter },
+  { id: "upload", label: "Upload Track", icon: Music },
   { id: "artists", label: "Artists", icon: Users },
   { id: "categories", label: "Categories", icon: Grid3X3 },
   { id: "ai_organizer", label: "AI Organizer", icon: Brain },
 ];
 
 export default function Admin() {
-  const [tab, setTab] = useState("tracks");
+  const { user } = useAuth();
+  const [tab, setTab] = useState("manager");
   const [tracks, setTracks] = useState([]);
   const [artists, setArtists] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -38,21 +41,29 @@ export default function Admin() {
 
   useEffect(() => { loadAll(); }, []);
 
+  if (user?.role !== "admin") {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">
+        Access restricted to admins.
+      </div>
+    );
+  }
+
   const handleEdit = (track) => {
     setEditingTrack(track);
-    setShowForm(true);
+    setTab("upload");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSaved = () => {
-    setShowForm(false);
     setEditingTrack(null);
+    setTab("manager");
     loadAll();
   };
 
   const handleCancel = () => {
-    setShowForm(false);
     setEditingTrack(null);
+    setTab("manager");
   };
 
   return (
@@ -77,12 +88,12 @@ export default function Admin() {
         </div>
 
         {/* Tab nav */}
-        <div className="flex gap-1 mb-8 border-b border-border/30">
+        <div className="flex gap-1 mb-8 border-b border-border/30 overflow-x-auto">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => { setTab(t.id); setShowForm(false); setEditingTrack(null); }}
-              className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-all border-b-2 -mb-px ${
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-all border-b-2 -mb-px whitespace-nowrap ${
                 tab === t.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -94,26 +105,15 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* Track tab */}
-        {tab === "tracks" && (
+        {/* Music Manager tab */}
+        {tab === "manager" && (
           <div>
-            {showForm && (
-              <div className="mb-8">
-                <TrackEditForm
-                  track={editingTrack}
-                  artists={artists}
-                  categories={categories}
-                  onSaved={handleSaved}
-                  onCancel={handleCancel}
-                />
-              </div>
-            )}
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
               </div>
             ) : (
-              <TrackTable
+              <MusicManager
                 tracks={tracks}
                 categories={categories}
                 artists={artists}
@@ -121,6 +121,19 @@ export default function Admin() {
                 onRefresh={loadAll}
               />
             )}
+          </div>
+        )}
+
+        {/* Upload tab */}
+        {tab === "upload" && (
+          <div>
+            <TrackEditForm
+              track={editingTrack}
+              artists={artists}
+              categories={categories}
+              onSaved={handleSaved}
+              onCancel={() => { setTab("manager"); setEditingTrack(null); }}
+            />
           </div>
         )}
 

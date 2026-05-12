@@ -4,27 +4,17 @@ import { Waves } from "lucide-react";
 
 const footerLinks = [
   {
-    title: "Platform",
+    title: "Music",
     links: [
-      { label: "Music Vault", to: "/discover" },
-      { label: "432 Hz Sessions", to: "/sessions" },
-      { label: "UVM Academy", to: "/academy" },
-      { label: "Artists", to: "/artists" },
-    ],
-  },
-  {
-    title: "Membership",
-    links: [
-      { label: "Plans & Pricing", to: "/pricing" },
-      { label: "My Library", to: "/downloads" },
-      { label: "Dashboard", to: "/dashboard" },
+      { label: "All Music", to: "/music" },
+      { label: "Categories", to: "/categories" },
+      { label: "Downloads", to: "/downloads" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About UVM", to: "/about" },
-      { label: "Contact", to: "/contact" },
+      { label: "About", to: "/about" },
     ],
   },
 ];
