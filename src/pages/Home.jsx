@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Play, Waves, Music4, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Sparkles, Heart, Users } from "lucide-react";
+import { Play, Waves, Music4, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Sparkles, Heart, Users, GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -154,9 +154,12 @@ export default function Home() {
             </h1>
 
             {/* Subheadline */}
+            <p className="text-[10px] font-black tracking-[0.35em] uppercase mb-4" style={{ color: "rgba(255,255,255,0.2)" }}>
+              LISTEN &nbsp;·&nbsp; WATCH &nbsp;·&nbsp; LEARN
+            </p>
             <p className="text-white/45 leading-relaxed mb-12 max-w-2xl"
               style={{ fontSize: "clamp(1rem,2vw,1.2rem)" }}>
-              High-vibration music, 432 Hz sound, visualizers, and premium music experiences in one place.
+              432 Hz music, visualizers, and high-vibe learning — all in one place.
             </p>
 
             {/* CTA buttons */}
@@ -170,6 +173,11 @@ export default function Home() {
                 className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full font-black tracking-wider transition-all hover:brightness-110 text-sm"
                 style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}>
                 <Tv2 className="w-4 h-4" /> Watch Visualizers
+              </Link>
+              <Link to="/academy"
+                className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full font-black tracking-wider transition-all hover:brightness-110 text-sm"
+                style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.25)", color: "#9B7EFF" }}>
+                <GraduationCap className="w-4 h-4" /> Upper Vibe Academy
               </Link>
             </div>
           </motion.div>
