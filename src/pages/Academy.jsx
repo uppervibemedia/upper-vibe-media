@@ -100,7 +100,7 @@ export default function Academy() {
               Upper Vibe Academy
             </h1>
             <p className="text-base text-white/40 max-w-2xl leading-relaxed">
-              Learn how to use music, repetition, and frequency to train your mind, regulate your nervous system, and become aligned with the reality you are creating.
+              Go deeper into 432 Hz music, high-vibe sound, manifestation, creativity, and the energy behind Upper Vibe Media.
             </p>
           </motion.div>
         </div>
@@ -164,15 +164,15 @@ export default function Academy() {
             border: "1px solid rgba(212,168,67,0.15)"
           }}>
           <h3 className="font-heading font-black text-2xl md:text-3xl text-white mb-3">
-            Ready to Go Deeper?
+            Keep Watching With Premium
           </h3>
           <p className="text-sm text-white/35 max-w-md mx-auto mb-6 leading-relaxed">
-            Unlock the full Academy library — advanced reprogramming, artist breakdowns, and live session guides.
+            Unlock the full Upper Vibe Academy, music downloads, exclusive 432 Hz packs, and premium Upper Vibe Media content for $4.99/month.
           </p>
           <a href="/pricing"
             className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.02]"
             style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000", boxShadow: "0 0 24px rgba(212,168,67,0.3)" }}>
-            <GraduationCap className="w-4 h-4" /> Unlock Full Academy
+            <GraduationCap className="w-4 h-4" /> Upgrade To Premium
           </a>
         </motion.div>
       </div>

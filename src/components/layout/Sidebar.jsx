@@ -13,6 +13,7 @@ import {
   Tv2,
   Users,
   Mail,
+  GraduationCap,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -22,6 +23,7 @@ const mainNavItems = [
   { path: "/visualizers", icon: Tv2, label: "Visualizers" },
   { path: "/downloads", icon: Download, label: "Downloads" },
   { path: "/artists", icon: Users, label: "Artists" },
+  { path: "/academy", icon: GraduationCap, label: "Upper Vibe Academy" },
   { path: "/email-list", icon: Mail, label: "Join Email List" },
 ];
 
