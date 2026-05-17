@@ -41,11 +41,12 @@ export default function VisualizerManager({ tracks, onRefresh }) {
 
   const trackMap = useMemo(() => Object.fromEntries(tracks.map((t) => [t.id, t])), [tracks]);
 
-  // Auto-convert any YouTube watch URL to embed URL
+  // Auto-convert any YouTube watch / short / shorts URL to embed URL
   const toEmbedUrl = (url) => {
     if (!url) return "";
-    const watchMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-    if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`;
+    const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (match) return `https://www.youtube.com/embed/${match[1]}`;
+    if (url.includes("youtube.com/embed/")) return url; // already embed
     return url;
   };
 
