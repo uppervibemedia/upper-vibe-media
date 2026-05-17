@@ -1,17 +1,72 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Play, Download, Headphones, Waves, Music4, ArrowRight, Tv2, Mail, Crown, CheckCircle2, Compass, Pause } from "lucide-react";
+import { Play, Download, Headphones, Waves, Music4, ArrowRight, Tv2, Mail, Crown, CheckCircle2, Compass, Pause, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
 import { usePlayer } from "../context/PlayerContext";
-import DiscoverTab, { recordPlay } from "../components/home/DiscoverTab";
+import { useAuth } from "@/lib/AuthContext";
+import { useFavorites } from "../hooks/useFavorite";
+import DiscoverTab, { recordPlay, getHistory } from "../components/home/DiscoverTab";
+
+function buildHomeRecs(allTracks, allViz, favorites, history) {
+  const favTrackIds = new Set(favorites.filter((f) => f.type === "track").map((f) => f.track_id));
+  const favVizIds = new Set(favorites.filter((f) => f.type === "visualizer").map((f) => f.visualizer_id));
+  const historyIds = new Set(history.map((h) => h.id));
+
+  const signalTracks = [
+    ...allTracks.filter((t) => favTrackIds.has(t.id)),
+    ...allTracks.filter((t) => historyIds.has(t.id)).slice(0, 10),
+  ];
+  const moodFreq = {};
+  const catFreq = {};
+  signalTracks.flatMap((t) => t.mood_tags || []).forEach((m) => { moodFreq[m] = (moodFreq[m] || 0) + 1; });
+  signalTracks.flatMap((t) => t.category_ids || []).forEach((c) => { catFreq[c] = (catFreq[c] || 0) + 1; });
+
+  const scoredTracks = allTracks
+    .filter((t) => !favTrackIds.has(t.id) && !historyIds.has(t.id))
+    .map((t) => {
+      let score = 0;
+      (t.mood_tags || []).forEach((m) => { score += (moodFreq[m] || 0) * 2; });
+      (t.category_ids || []).forEach((c) => { score += (catFreq[c] || 0) * 1.5; });
+      if (t.is_featured) score += 3;
+      if (t.is_new_release) score += 2;
+      return { ...t, _score: score };
+    })
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 6);
+
+  // Fallback: if no signals, show featured/new tracks
+  const recommendedTracks = scoredTracks.length > 0
+    ? scoredTracks
+    : allTracks.filter((t) => t.is_featured || t.is_new_release).slice(0, 6);
+
+  const scoredViz = allViz
+    .filter((v) => !favVizIds.has(v.id))
+    .map((v) => {
+      let score = 0;
+      if (v.is_featured) score += 3;
+      if (v.linked_song_id && (favTrackIds.has(v.linked_song_id) || historyIds.has(v.linked_song_id))) score += 5;
+      return { ...v, _score: score };
+    })
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 4);
+
+  // Fallback: newest visualizers
+  const recommendedViz = scoredViz.length > 0 ? scoredViz : allViz.slice(0, 4);
+
+  return { recommendedTracks, recommendedViz };
+}
 
 export default function Home() {
-  const [tracks, setTracks] = useState([]);
-  const [visualizers, setVisualizers] = useState([]);
+  const [latestTracks, setLatestTracks] = useState([]);
+  const [allTracks, setAllTracks] = useState([]);
+  const [allViz, setAllViz] = useState([]);
   const [activeTab, setActiveTab] = useState("home");
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
+  const { user } = useAuth();
+  const { favorites } = useFavorites(user?.email);
+  const history = useMemo(() => getHistory(), []);
 
   const handlePlayTrack = (track) => {
     if (currentTrack?.id === track.id) { togglePlay(); return; }
@@ -20,22 +75,21 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // Fetch 4 latest tracks sorted by release_date desc, fallback to created_date
-    base44.entities.Track.filter({ status: "published" }, "-release_date", 4).then((t) => {
-      if (t.length === 0) {
-        base44.entities.Track.filter({ status: "published" }, "-created_date", 4).then(setTracks);
-      } else {
-        setTracks(t);
-      }
-    });
-    base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 4).then((v) => {
-      if (v.length === 0) {
-        base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 4).then(setVisualizers);
-      } else {
-        setVisualizers(v);
-      }
+    Promise.all([
+      base44.entities.Track.filter({ status: "published" }, "-release_date", 4),
+      base44.entities.Track.filter({ status: "published" }, "-created_date", 200),
+      base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 200),
+    ]).then(([latest, all, viz]) => {
+      setLatestTracks(latest.length > 0 ? latest : all.slice(0, 4));
+      setAllTracks(all);
+      setAllViz(viz);
     });
   }, []);
+
+  const { recommendedTracks, recommendedViz } = useMemo(
+    () => buildHomeRecs(allTracks, allViz, favorites, history),
+    [allTracks, allViz, favorites, history]
+  );
 
   return (
     <div className="min-h-screen pb-24 md:pb-0">
@@ -134,7 +188,7 @@ export default function Home() {
       {activeTab === "home" && (
         <>
           {/* Latest Music */}
-          {tracks.length > 0 && (
+          {latestTracks.length > 0 && (
             <section className="max-w-7xl mx-auto px-6 pt-12 pb-8">
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -147,9 +201,8 @@ export default function Home() {
                   See More <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {tracks.map((track, i) => {
+                {latestTracks.map((track, i) => {
                   const isCurrent = currentTrack?.id === track.id;
                   return (
                     <motion.div
@@ -173,9 +226,7 @@ export default function Home() {
                         )}
                         <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                           style={{ background: "rgba(0,229,255,0.85)" }}>
-                          {isCurrent && isPlaying
-                            ? <Pause className="w-4 h-4 text-black" />
-                            : <Play className="w-4 h-4 text-black" />}
+                          {isCurrent && isPlaying ? <Pause className="w-4 h-4 text-black" /> : <Play className="w-4 h-4 text-black" />}
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -190,24 +241,80 @@ export default function Home() {
             </section>
           )}
 
-          {/* Latest Visualizers */}
-          {visualizers.length > 0 && (
+          {/* Recommended Songs */}
+          {recommendedTracks.length > 0 && (
             <section className="max-w-7xl mx-auto px-6 py-8">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: "#9B7EFF" }}>Watch</p>
-                  <h2 className="font-heading font-black text-2xl text-white">Latest Music Visualizers</h2>
+                  <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1 flex items-center gap-1" style={{ color: "#D4A843" }}>
+                    <Sparkles className="w-3 h-3" /> Picked For You
+                  </p>
+                  <h2 className="font-heading font-black text-2xl text-white">Recommended Songs</h2>
+                </div>
+                <Link to="/music"
+                  className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-white/70 transition-colors">
+                  All Music <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {recommendedTracks.map((track, i) => {
+                  const isCurrent = currentTrack?.id === track.id;
+                  return (
+                    <motion.div
+                      key={track.id}
+                      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                      className="flex items-center gap-3 p-3 rounded-2xl group cursor-pointer transition-all hover:border-white/15 active:scale-[0.98]"
+                      style={{
+                        background: isCurrent ? "rgba(212,168,67,0.06)" : "rgba(255,255,255,0.025)",
+                        border: `1px solid ${isCurrent ? "rgba(212,168,67,0.2)" : "rgba(255,255,255,0.06)"}`,
+                      }}
+                      onClick={() => track.audio_url && handlePlayTrack(track)}
+                    >
+                      <div className="relative flex-shrink-0">
+                        {track.cover_url ? (
+                          <img src={track.cover_url} alt={track.title} className="w-11 h-11 rounded-xl object-cover" />
+                        ) : (
+                          <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "rgba(212,168,67,0.08)" }}>
+                            <Music4 className="w-4 h-4 text-yellow-400/40" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ background: "rgba(0,0,0,0.6)" }}>
+                          {isCurrent && isPlaying ? <Pause className="w-3.5 h-3.5 text-yellow-400" /> : <Play className="w-3.5 h-3.5 text-white ml-0.5" />}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                        <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                      </div>
+                      <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                        style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+                        <Waves className="w-2 h-2" /> 432
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Visualizers You Might Like */}
+          {recommendedViz.length > 0 && (
+            <section className="max-w-7xl mx-auto px-6 py-8">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: "#9B7EFF" }}>Visual Frequency</p>
+                  <h2 className="font-heading font-black text-2xl text-white">Visualizers You Might Like</h2>
                 </div>
                 <Link to="/visualizers"
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black tracking-wider transition-all hover:brightness-110"
-                  style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.25)", color: "#9B7EFF" }}>
-                  See More <ArrowRight className="w-3.5 h-3.5" />
+                  className="flex items-center gap-1.5 text-xs font-bold text-white/40 hover:text-white/70 transition-colors">
+                  All Visualizers <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {visualizers.map((viz, i) => (
+                {recommendedViz.map((viz, i) => (
                   <motion.div key={viz.id}
-                    initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
                     className="group rounded-2xl overflow-hidden"
                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
                     <div className="aspect-video relative overflow-hidden">
