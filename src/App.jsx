@@ -10,10 +10,10 @@ import AppLayout from './components/layout/AppLayout';
 import Home from './pages/Home';
 import Music from './pages/Music';
 import Categories from './pages/Categories';
-import Downloads from './pages/Downloads';
+import Downloads from './pages/Downloads.jsx';
 import About from './pages/About';
 import Admin from './pages/Admin';
-import Visualizers from './pages/Visualizers';
+import Visualizers from './pages/Visualizers.jsx';
 import SongPage from './pages/SongPage';
 // Hidden pages (still routable but not in nav)
 import Discover from './pages/Discover';
