@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Waves } from "lucide-react";
+import { Waves, Mail, CheckCircle2 } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 
 const footerLinks = [
   {
@@ -15,9 +16,60 @@ const footerLinks = [
     title: "Company",
     links: [
       { label: "About", to: "/about" },
+      { label: "Join Email List", to: "/email-list" },
     ],
   },
 ];
+
+function FooterEmailSignup() {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email) return;
+    setSaving(true);
+    await base44.entities.ContactMessage.create({
+      name: "Fan",
+      email,
+      type: "newsletter",
+      message: "Email list signup from footer",
+    });
+    setSaving(false);
+    setSubmitted(true);
+  };
+
+  if (submitted) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-cyan-400">
+        <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+        You're on the list!
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <input
+        type="email"
+        placeholder="Your email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs text-white placeholder:text-white/25 focus:outline-none"
+        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+      />
+      <button
+        type="submit"
+        disabled={saving}
+        className="px-4 py-2 rounded-lg font-black text-[10px] tracking-wider transition-all hover:brightness-110 flex-shrink-0 disabled:opacity-60"
+        style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}>
+        {saving ? "..." : "Notify Me"}
+      </button>
+    </form>
+  );
+}
 
 export default function Footer() {
   return (
@@ -65,6 +117,17 @@ export default function Footer() {
               </ul>
             </div>
           ))}
+
+          {/* Email signup column */}
+          <div className="col-span-2 md:col-span-1">
+            <h4 className="text-[10px] font-black tracking-[0.2em] uppercase text-white/30 mb-4 flex items-center gap-1.5">
+              <Mail className="w-3 h-3" /> Stay Updated
+            </h4>
+            <p className="text-xs text-white/30 mb-3 leading-relaxed">
+              New 432 Hz drops, visualizers & exclusive releases — straight to your inbox.
+            </p>
+            <FooterEmailSignup />
+          </div>
         </div>
 
         <div className="mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-3"
