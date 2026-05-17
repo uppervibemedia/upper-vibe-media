@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Play, Waves, Music4, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Sparkles, Heart, Users, GraduationCap, Download, ExternalLink } from "lucide-react";
+// Note: Music4, ExternalLink still used in recommended/viz sections
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -11,6 +12,8 @@ import { recordPlay, getHistory } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
+import LatestMusicSection from "../components/home/LatestMusicSection";
+import SectionHeader from "../components/shared/SectionHeader";
 
 function buildHomeRecs(allTracks, allViz, favorites, history) {
   const favTrackIds = new Set(favorites.filter((f) => f.type === "track").map((f) => f.track_id));
@@ -230,62 +233,15 @@ export default function Home() {
       </section>
 
       {/* ── LATEST MUSIC ── */}
-      {latestTracks.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
-          <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor="#00E5FF" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {latestTracks.map((track, i) => {
-              const isCurrent = currentTrack?.id === track.id;
-              return (
-                <motion.div key={track.id}
-                  initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                  className="flex items-center gap-3 p-5 rounded-2xl group cursor-pointer transition-all hover:border-white/15 active:scale-[0.98]"
-                  style={{
-                    background: isCurrent ? "rgba(0,229,255,0.06)" : "rgba(255,255,255,0.025)",
-                    border: `1px solid ${isCurrent ? "rgba(0,229,255,0.2)" : "rgba(255,255,255,0.06)"}`,
-                  }}
-                  onClick={() => track.audio_url && handlePlayTrack(track)}>
-                  <div className="relative flex-shrink-0">
-                    {track.cover_url ? (
-                      <img src={track.cover_url} alt={track.title} className="w-16 h-16 rounded-xl object-cover" />
-                    ) : (
-                      <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{ background: "rgba(0,229,255,0.08)" }}>
-                        <Music4 className="w-6 h-6 text-cyan-400/40" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: "rgba(0,229,255,0.85)" }}>
-                      {isCurrent && isPlaying ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black" />}
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()}
-                      className="text-sm font-bold text-white truncate block hover:text-cyan-300 transition-colors">
-                      {track.title}
-                    </Link>
-                    <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                        style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
-                        <Waves className="w-2 h-2" /> 432 Hz
-                      </span>
-                      {track.duration && <span className="text-[9px] text-white/20">{track.duration}</span>}
-                      <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-0.5 text-[9px] text-white/25 hover:text-white/60 transition-colors">
-                        <ExternalLink className="w-2.5 h-2.5" /> View
-                      </Link>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-0.5 flex-shrink-0">
-                    {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
-                    {downloadButton(track)}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      <LatestMusicSection
+        tracks={latestTracks}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        handlePlayTrack={handlePlayTrack}
+        heartButton={heartButton}
+        downloadButton={downloadButton}
+        user={user}
+      />
 
       {/* ── RECOMMENDED SONGS ── */}
       {recommendedTracks.length > 0 && (
@@ -507,25 +463,6 @@ export default function Home() {
   );
 }
 
-function SectionHeader({ label, title, link, linkLabel, labelColor, labelIcon }) {
-  return (
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1 flex items-center gap-1" style={{ color: labelColor }}>
-          {labelIcon} {label}
-        </p>
-        <h2 className="font-heading font-black text-2xl text-white">{title}</h2>
-      </div>
-      {link && (
-        <Link to={link}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black tracking-wider transition-all hover:brightness-110"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}>
-          {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-      )}
-    </div>
-  );
-}
 
 function EmailSignupSection() {
   const [form, setForm] = useState({ name: "", email: "" });

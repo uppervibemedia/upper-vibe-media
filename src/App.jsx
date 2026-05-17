@@ -27,6 +27,7 @@ import MyVibes from './pages/MyVibes';
 import NewestMusic from './pages/NewestMusic';
 import RadioPage from './pages/Radio.jsx';
 import Favorites from './pages/Favorites';
+import Account from './pages/Account';
 import Sessions from './pages/Sessions';
 import EmailList from './pages/EmailList';
 
@@ -79,6 +80,7 @@ const AuthenticatedApp = () => {
         <Route path="/favorites" element={<MyVibes />} />
         <Route path="/artists" element={<Artists />} />
         <Route path="/sessions" element={<Sessions />} />
+        <Route path="/account" element={<Account />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

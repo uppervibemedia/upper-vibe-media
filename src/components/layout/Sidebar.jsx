@@ -24,12 +24,13 @@ const bottomNavMobile = [
   { path: "/radio", icon: Radio, label: "Radio" },
   { path: "/artists", icon: Users, label: "Artists" },
   { path: "/my-vibes", icon: Heart, label: "Library" },
+  { path: "/account", icon: User, label: "Account" },
 ];
 
 export default function Sidebar() {
   const location = useLocation();
   const [expanded, setExpanded] = useState(false);
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
   const isAdmin = user?.role === "admin";
 
   const allNavItems = isAdmin
@@ -158,35 +159,46 @@ export default function Sidebar() {
         {/* User area */}
         <div className="border-t border-white/[0.06] px-3 py-3 flex-shrink-0">
           {isAuthenticated && user ? (
-            <div className="flex items-center gap-3 overflow-hidden">
+            <Link to="/account" className="flex items-center gap-3 overflow-hidden rounded-xl px-2 py-1.5 hover:bg-white/[0.04] transition-colors">
               <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-heading font-bold text-xs"
                 style={{ background: "linear-gradient(135deg,#00E5FF22,#00E5FF08)", border: "1px solid rgba(0,229,255,0.25)", color: "#00E5FF" }}>
                 {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
               </div>
               <AnimatePresence>
                 {expanded && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex-1 min-w-0"
-                  >
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-white/80 truncate">{user.full_name || "Member"}</p>
-                    <p className="text-[9px] text-white/30 truncate">{user.email}</p>
+                    <p className="text-[9px] text-white/30 truncate">
+                      {user.role === "admin" ? "Admin" : user.role === "premium" || user.tier === "premium" ? "Premium" : "Free"}
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>
               {expanded && (
-                <button onClick={() => logout()} className="text-white/25 hover:text-white/60 transition-colors flex-shrink-0">
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); logout(); }}
+                  className="text-white/25 hover:text-white/60 transition-colors flex-shrink-0 p-1">
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               )}
-            </div>
+            </Link>
           ) : (
-            <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl">
-              <User className="w-4 h-4 text-white/30 flex-shrink-0" />
-              {expanded && <span className="text-xs text-white/30 whitespace-nowrap">Not signed in</span>}
-            </div>
+            <button
+              onClick={navigateToLogin}
+              className="w-full flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-white/[0.04] transition-colors overflow-hidden">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <User className="w-4 h-4 text-white/30" />
+              </div>
+              <AnimatePresence>
+                {expanded && (
+                  <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="text-xs text-white/40 whitespace-nowrap font-semibold">
+                    Sign In
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
           )}
         </div>
       </motion.aside>
