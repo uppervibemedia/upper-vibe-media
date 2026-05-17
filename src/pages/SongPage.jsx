@@ -86,124 +86,136 @@ export default function SongPage() {
   }
 
   const freq = track.frequency_type === "432hz" ? "432 Hz" : track.frequency_type === "528hz" ? "528 Hz" : track.frequency_type || "";
+  const releaseYear = track.release_date ? new Date(track.release_date).getFullYear() : null;
 
   return (
     <div className="min-h-screen">
-      {/* Back nav */}
-      <div className="max-w-4xl mx-auto px-6 pt-8">
-        <Link to="/music" className="inline-flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors mb-6">
-          <ChevronLeft className="w-3.5 h-3.5" /> Back to Music
-        </Link>
+      {/* Hero — full-width blurred cover backdrop */}
+      <div className="relative overflow-hidden" style={{ minHeight: 420 }}>
+        {/* Blurred background */}
+        {track.cover_url && (
+          <div className="absolute inset-0 scale-110"
+            style={{ backgroundImage: `url(${track.cover_url})`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(60px) brightness(0.18)" }} />
+        )}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,rgba(4,4,14,0.3) 0%,rgba(4,4,14,0.95) 100%)" }} />
+
+        <div className="relative z-10 max-w-4xl mx-auto px-6 pt-10 pb-10">
+          <Link to="/music" className="inline-flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors mb-8">
+            <ChevronLeft className="w-3.5 h-3.5" /> Back to Music
+          </Link>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col sm:flex-row gap-8 items-start sm:items-end">
+
+            {/* Album Cover */}
+            <div className="flex-shrink-0 mx-auto sm:mx-0">
+              {track.cover_url ? (
+                <img src={track.cover_url} alt={track.title}
+                  className="w-52 h-52 sm:w-64 sm:h-64 rounded-2xl object-cover"
+                  style={{ boxShadow: "0 8px 60px rgba(0,0,0,0.7), 0 0 40px rgba(0,229,255,0.12)" }} />
+              ) : (
+                <div className="w-52 h-52 sm:w-64 sm:h-64 rounded-2xl mx-auto sm:mx-0 flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.1),rgba(212,168,67,0.06))", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <Music4 className="w-20 h-20 text-white/10" />
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 text-center sm:text-left pb-2">
+              {/* Badges */}
+              <div className="flex flex-wrap gap-2 justify-center sm:justify-start mb-4">
+                {freq && (
+                  <span className="flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full"
+                    style={{ background: "rgba(0,229,255,0.12)", border: "1px solid rgba(0,229,255,0.3)", color: "#00E5FF" }}>
+                    <Waves className="w-2.5 h-2.5" /> {freq}
+                  </span>
+                )}
+                {track.album && (
+                  <span className="flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-full"
+                    style={{ background: "rgba(212,168,67,0.12)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}>
+                    <Tag className="w-2.5 h-2.5" /> {track.album}
+                  </span>
+                )}
+                {releaseYear && (
+                  <span className="text-[9px] font-bold px-2.5 py-1 rounded-full"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }}>
+                    {releaseYear}
+                  </span>
+                )}
+                {track.is_featured && (
+                  <span className="text-[9px] font-black px-2.5 py-1 rounded-full"
+                    style={{ background: "rgba(212,168,67,0.2)", color: "#D4A843" }}>Featured</span>
+                )}
+              </div>
+
+              <h1 className="font-heading font-black text-4xl sm:text-5xl text-white mb-2 leading-tight">{track.title}</h1>
+              <p className="text-white/50 text-sm mb-5 flex items-center gap-1.5 justify-center sm:justify-start">
+                <User className="w-3.5 h-3.5" /> {track.artist_display || "Upper Vibe Media"}
+              </p>
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
+                {/* Play */}
+                <button onClick={handlePlay}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02]"
+                  style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 24px rgba(0,229,255,0.3)" }}>
+                  {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                  {isCurrentTrack && isPlaying ? "Pause" : "Play Song"}
+                </button>
+
+                {/* Download — premium gated */}
+                {isPremium ? (
+                  track.audio_url ? (
+                    <a href={track.audio_url} download={`${track.title}.mp3`}
+                      className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02]"
+                      style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000", boxShadow: "0 0 24px rgba(212,168,67,0.3)" }}>
+                      <Download className="w-4 h-4" /> Download MP3
+                    </a>
+                  ) : (
+                    <span className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm opacity-40 cursor-not-allowed"
+                      style={{ border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
+                      <Download className="w-4 h-4" /> Coming Soon
+                    </span>
+                  )
+                ) : (
+                  <button onClick={() => setUpgradeModal(true)}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110"
+                    style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.15),rgba(212,168,67,0.08))", border: "1px solid rgba(212,168,67,0.35)", color: "#D4A843" }}>
+                    <Lock className="w-4 h-4" /> Download MP3
+                    <Crown className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
+                {/* Watch Visualizer */}
+                {visualizer && embedUrl && (
+                  <button onClick={() => setVizPlaying(true)}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}>
+                    <Tv2 className="w-4 h-4" /> Watch Visualizer
+                  </button>
+                )}
+              </div>
+
+              {/* Paywall message for free users */}
+              {!isPremium && (
+                <div className="mt-4 flex items-start gap-2 max-w-sm mx-auto sm:mx-0 p-3 rounded-xl"
+                  style={{ background: "rgba(212,168,67,0.06)", border: "1px solid rgba(212,168,67,0.15)" }}>
+                  <Crown className="w-3.5 h-3.5 text-yellow-400/60 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-white/35 leading-relaxed">
+                    Premium members can download Upper Vibe Media songs, 432 Hz music packs, and exclusive files.{" "}
+                    <button onClick={() => setUpgradeModal(true)} className="text-yellow-400/70 hover:text-yellow-400 transition-colors underline underline-offset-2">
+                      Upgrade to Premium
+                    </button>{" "}to unlock downloads.
+                  </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 pb-20">
-        {/* Hero section */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row gap-8 mb-10">
-          {/* Cover art */}
-          <div className="flex-shrink-0">
-            {track.cover_url ? (
-              <img src={track.cover_url} alt={track.title}
-                className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl object-cover mx-auto sm:mx-0"
-                style={{ boxShadow: "0 0 40px rgba(0,229,255,0.15)" }} />
-            ) : (
-              <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl mx-auto sm:mx-0 flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.08),rgba(212,168,67,0.05))", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <Music4 className="w-16 h-16 text-white/10" />
-              </div>
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="flex-1 flex flex-col justify-center text-center sm:text-left">
-            <div className="flex flex-wrap gap-2 justify-center sm:justify-start mb-3">
-              {freq && (
-                <span className="flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.25)", color: "#00E5FF" }}>
-                  <Waves className="w-2.5 h-2.5" /> {freq}
-                </span>
-              )}
-              {track.category_ids?.length > 0 && (
-                <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
-                  <Tag className="w-2.5 h-2.5" /> {track.album || "Upper Vibe"}
-                </span>
-              )}
-              {track.is_featured && (
-                <span className="text-[9px] font-black px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(212,168,67,0.2)", color: "#D4A843" }}>Featured</span>
-              )}
-            </div>
-
-            <h1 className="font-heading font-black text-3xl sm:text-4xl text-white mb-2 leading-tight">{track.title}</h1>
-            <p className="text-white/50 text-sm mb-1 flex items-center gap-1.5 justify-center sm:justify-start">
-              <User className="w-3.5 h-3.5" /> {track.artist_display || "Upper Vibe Media"}
-            </p>
-            {track.album && <p className="text-white/25 text-xs mb-4">{track.album}</p>}
-
-            {/* Action buttons */}
-            <div className="flex flex-wrap gap-3 justify-center sm:justify-start mt-2">
-              {/* Play */}
-              <button onClick={handlePlay}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:brightness-110"
-                style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}>
-                {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-                {isCurrentTrack && isPlaying ? "Pause" : "Play Song"}
-              </button>
-
-              {/* Download — premium gated */}
-              {isPremium ? (
-                track.audio_url ? (
-                  <a href={track.audio_url} download={`${track.title}.mp3`}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:brightness-110"
-                    style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.25),rgba(212,168,67,0.15))", border: "1px solid rgba(212,168,67,0.4)", color: "#D4A843" }}>
-                    <Download className="w-4 h-4" /> Download Song
-                  </a>
-                ) : (
-                  <span className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm opacity-40 cursor-not-allowed"
-                    style={{ border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
-                    <Download className="w-4 h-4" /> Coming Soon
-                  </span>
-                )
-              ) : (
-                <button onClick={() => setUpgradeModal(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:brightness-110"
-                  style={{ background: "rgba(212,168,67,0.07)", border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
-                  <Lock className="w-4 h-4" /> Download Song
-                  <Crown className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Paywall message for free users */}
-            {!isPremium && (
-              <p className="text-[11px] text-white/25 mt-3 max-w-sm mx-auto sm:mx-0 leading-relaxed">
-                Premium members can download Upper Vibe Media songs, mixes, and exclusive music packs.{" "}
-                <button onClick={() => setUpgradeModal(true)} className="text-yellow-400/60 hover:text-yellow-400 transition-colors underline underline-offset-2">
-                  Upgrade to unlock
-                </button>.
-              </p>
-            )}
-
-            {/* Streaming links */}
-            <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
-              {track.audio_url && (
-                <a href={toWatchUrl(track.audio_url) || "#"} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:brightness-110"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}>
-                  <ExternalLink className="w-3 h-3" /> Stream
-                </a>
-              )}
-              {watchUrl && (
-                <a href={watchUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:brightness-110"
-                  style={{ background: "rgba(255,0,0,0.07)", border: "1px solid rgba(255,0,0,0.2)", color: "#FF6B6B" }}>
-                  <ExternalLink className="w-3 h-3" /> YouTube
-                </a>
-              )}
-            </div>
-          </div>
-        </motion.div>
+      <div className="max-w-4xl mx-auto px-6 pb-20 pt-6">
 
         {/* Description */}
         {track.description && (
@@ -221,7 +233,6 @@ export default function SongPage() {
               <Tv2 className="w-4 h-4 text-primary" /> Music Visualizer
             </h2>
             <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-              {/* 16:9 ratio */}
               <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
                 <div className="absolute inset-0">
                   {vizPlaying && embedUrl ? (
@@ -255,19 +266,9 @@ export default function SongPage() {
                   )}
                 </div>
               </div>
-              <div className="px-5 py-4 flex items-center justify-between gap-4"
-                style={{ background: "rgba(0,0,0,0.4)" }}>
-                <div>
-                  <p className="text-sm font-bold text-white">{visualizer.title}</p>
-                  <p className="text-xs text-white/35">{visualizer.artist || "Upper Vibe Media"}</p>
-                </div>
-                {watchUrl && (
-                  <a href={watchUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold flex-shrink-0 transition-all hover:brightness-110"
-                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
-                    <ExternalLink className="w-3 h-3" /> Watch on YouTube
-                  </a>
-                )}
+              <div className="px-5 py-4" style={{ background: "rgba(0,0,0,0.4)" }}>
+                <p className="text-sm font-bold text-white">{visualizer.title}</p>
+                <p className="text-xs text-white/35">{visualizer.artist || "Upper Vibe Media"}</p>
               </div>
             </div>
           </motion.div>

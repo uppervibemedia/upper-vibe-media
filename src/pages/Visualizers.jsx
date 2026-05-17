@@ -188,14 +188,6 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay }) {
             </span>
           )}
 
-          {watchUrl && (
-            <a href={watchUrl} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)" }}>
-              <ExternalLink className="w-3 h-3" /> YouTube
-            </a>
-          )}
-
           {linkedTrack && (
             <button onClick={() => onPlay(linkedTrack)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
