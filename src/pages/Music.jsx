@@ -9,6 +9,7 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import { useFavorites } from "../hooks/useFavorite";
+import { Link } from "react-router-dom";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -35,6 +36,134 @@ function matchCategory(track, keywords) {
   const haystack = [track.title, track.artist_display, track.album, track.description]
     .join(" ").toLowerCase();
   return keywords.some((k) => haystack.includes(k));
+}
+
+function MusicCard({ track, index, onPlay, isCurrent, isPlaying, isFaved, onFav, isPremium, onUpgrade, onLoginRequired }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.02 }}
+      className="group flex flex-col rounded-2xl overflow-hidden"
+      style={{
+        background: isCurrent ? "rgba(0,229,255,0.06)" : "rgba(255,255,255,0.025)",
+        border: `1px solid ${isCurrent ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.07)"}`,
+      }}
+    >
+      {/* Cover Art — square, full width */}
+      <div
+        className="relative w-full aspect-square cursor-pointer flex-shrink-0 overflow-hidden"
+        onClick={() => onPlay(track)}
+      >
+        {track.cover_url ? (
+          <img
+            src={track.cover_url}
+            alt={track.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.08),rgba(212,168,67,0.04))" }}
+          >
+            <Music4 className="w-12 h-12 text-white/10" />
+          </div>
+        )}
+
+        {/* Play overlay */}
+        <div
+          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ background: "rgba(0,0,0,0.55)" }}
+        >
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center"
+            style={{ background: "rgba(0,229,255,0.9)" }}
+          >
+            {isCurrent && isPlaying
+              ? <Pause className="w-6 h-6 text-black" />
+              : <Play className="w-6 h-6 text-black ml-0.5" />}
+          </div>
+        </div>
+
+        {/* Top badges */}
+        <div className="absolute top-2 left-2 flex gap-1.5 pointer-events-none">
+          <span
+            className="flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full"
+            style={{ background: "rgba(0,0,0,0.7)", color: "#00E5FF" }}
+          >
+            <Waves className="w-2 h-2" /> 432 Hz
+          </span>
+          {track.is_new_release && (
+            <span
+              className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
+              style={{ background: "rgba(212,168,67,0.9)", color: "#000" }}
+            >
+              NEW
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Details */}
+      <div className="p-3.5 flex flex-col gap-2.5 flex-1">
+        <Link to={`/song/${track.id}`} className="min-w-0 hover:opacity-80 transition-opacity">
+          <p className="text-sm font-bold text-white leading-tight line-clamp-2">{track.title}</p>
+          <p className="text-xs text-white/40 mt-0.5 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+        </Link>
+
+        {/* Action row */}
+        <div className="flex items-center gap-1.5 mt-auto">
+          {/* Heart */}
+          <button
+            onClick={() => {
+              if (!onLoginRequired()) return;
+              onFav("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
+            }}
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 flex-shrink-0"
+            style={isFaved("track", track.id) ? {
+              background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.35)", color: "#ec4899"
+            } : {
+              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.3)"
+            }}>
+            <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
+          </button>
+
+          {/* Play */}
+          <button
+            onClick={() => onPlay(track)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110"
+            style={{
+              background: isCurrent ? "rgba(0,229,255,0.18)" : "rgba(0,229,255,0.08)",
+              border: "1px solid rgba(0,229,255,0.2)",
+              color: "#00E5FF",
+            }}>
+            {isCurrent && isPlaying ? <><Pause className="w-3.5 h-3.5" /> Pause</> : <><Play className="w-3.5 h-3.5 ml-0.5" /> Play</>}
+          </button>
+
+          {/* Download */}
+          {isPremium ? (
+            <a
+              href={track.audio_url}
+              download={`${track.title}.mp3`}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 flex-shrink-0"
+              style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
+              onClick={(e) => e.stopPropagation()}
+              title="Download">
+              <Download className="w-3.5 h-3.5" />
+            </a>
+          ) : (
+            <button
+              onClick={onUpgrade}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 flex-shrink-0"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.2)" }}
+              title="Premium download">
+              <Lock className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
 }
 
 export default function Music() {
@@ -73,11 +202,9 @@ export default function Music() {
     else { playTrack(track); recordPlay(track); }
   };
 
-  const handleDownload = (e, track) => {
-    if (!isPremium) {
-      e.preventDefault();
-      setUpgradeModal(true);
-    }
+  const requireLogin = () => {
+    if (!user) { setLoginModal(true); return false; }
+    return true;
   };
 
   return (
@@ -116,7 +243,7 @@ export default function Music() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-4 mb-6" style={{ scrollbarWidth: "none" }}>
           {FILTERS.map((f) => (
             <button
               key={f.id}
@@ -133,7 +260,7 @@ export default function Music() {
         </div>
 
         {search && (
-          <p className="text-sm text-white/30 mb-4">
+          <p className="text-sm text-white/30 mb-5">
             {filtered.length} result{filtered.length !== 1 ? "s" : ""} for <span className="text-white/60">"{search}"</span>
           </p>
         )}
@@ -149,114 +276,27 @@ export default function Music() {
           </div>
         ) : (
           <AnimatePresence mode="wait">
-            <motion.div key={activeFilter + search} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-              {filtered.map((track, i) => {
-                const isCurrentTrack = currentTrack?.id === track.id;
-                return (
-                  <motion.div
-                    key={track.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.02 }}
-                    className="flex items-center gap-4 p-4 rounded-2xl group transition-all"
-                    style={{
-                      background: isCurrentTrack ? "rgba(0,229,255,0.06)" : "rgba(255,255,255,0.025)",
-                      border: `1px solid ${isCurrentTrack ? "rgba(0,229,255,0.2)" : "rgba(255,255,255,0.06)"}`,
-                    }}
-                  >
-                    {/* Cover */}
-                    <div className="relative flex-shrink-0 cursor-pointer" onClick={() => handlePlay(track)}>
-                      {track.cover_url ? (
-                        <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                          style={{ background: "rgba(0,229,255,0.08)" }}>
-                          <Music4 className="w-5 h-5 text-cyan-400/30" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ background: "rgba(0,0,0,0.6)" }}>
-                        {isCurrentTrack && isPlaying
-                          ? <Pause className="w-4 h-4 text-cyan-400" />
-                          : <Play className="w-4 h-4 text-white ml-0.5" />}
-                      </div>
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{track.title}</p>
-                      <p className="text-xs text-white/40 truncate">{track.artist_display || "Upper Vibe Media"}</p>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        {/* Always show 432 Hz badge */}
-                        <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                          style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
-                          <Waves className="w-2.5 h-2.5" /> 432 Hz
-                        </span>
-                        {track.is_new_release && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                            style={{ background: "rgba(212,168,67,0.12)", color: "#D4A843" }}>NEW</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Duration */}
-                    {track.duration && (
-                      <p className="text-xs text-white/25 flex-shrink-0 hidden sm:block">{track.duration}</p>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {/* Heart / Favorite */}
-                      <button
-                        onClick={() => {
-                          if (!user) { setLoginModal(true); return; }
-                          toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-                        }}
-                        title={isFaved("track", track.id) ? "Saved to Favorites" : "Save to Favorites"}
-                        className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                        style={isFaved("track", track.id) ? {
-                          background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.35)", color: "#ec4899"
-                        } : {
-                          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.3)"
-                        }}>
-                        <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-                      </button>
-                      {/* Play — always available */}
-                      <button
-                        onClick={() => handlePlay(track)}
-                        className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                        style={{
-                          background: isCurrentTrack ? "rgba(0,229,255,0.15)" : "rgba(0,229,255,0.08)",
-                          border: "1px solid rgba(0,229,255,0.2)",
-                          color: "#00E5FF"
-                        }}>
-                        {isCurrentTrack && isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
-                      </button>
-
-                      {/* Download — locked for non-premium */}
-                      {isPremium ? (
-                        <a
-                          href={track.audio_url}
-                          download={`${track.title}.mp3`}
-                          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                          style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
-                          onClick={(e) => e.stopPropagation()}
-                          title="Download">
-                          <Download className="w-3.5 h-3.5" />
-                        </a>
-                      ) : (
-                        <button
-                          onClick={(e) => handleDownload(e, track)}
-                          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
-                          title="Premium download">
-                          <Lock className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
+            <motion.div
+              key={activeFilter + search}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5"
+            >
+              {filtered.map((track, i) => (
+                <MusicCard
+                  key={track.id}
+                  track={track}
+                  index={i}
+                  onPlay={handlePlay}
+                  isCurrent={currentTrack?.id === track.id}
+                  isPlaying={isPlaying}
+                  isFaved={isFaved}
+                  onFav={toggle}
+                  isPremium={isPremium}
+                  onUpgrade={() => setUpgradeModal(true)}
+                  onLoginRequired={requireLogin}
+                />
+              ))}
             </motion.div>
           </AnimatePresence>
         )}

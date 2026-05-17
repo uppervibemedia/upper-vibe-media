@@ -194,43 +194,45 @@ export default function Home() {
       {latestTracks.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
           <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor="#00E5FF" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {latestTracks.map((track, i) => {
               const isCurrent = currentTrack?.id === track.id;
               return (
                 <motion.div key={track.id}
                   initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                  className="flex items-center gap-3 p-4 rounded-2xl group cursor-pointer transition-all hover:border-white/15 active:scale-[0.98]"
+                  className="group flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all"
                   style={{
                     background: isCurrent ? "rgba(0,229,255,0.06)" : "rgba(255,255,255,0.025)",
-                    border: `1px solid ${isCurrent ? "rgba(0,229,255,0.2)" : "rgba(255,255,255,0.06)"}`,
-                  }}
-                  onClick={() => track.audio_url && handlePlayTrack(track)}>
-                  <div className="relative flex-shrink-0">
+                    border: `1px solid ${isCurrent ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.07)"}`,
+                  }}>
+                  {/* Cover — square full width */}
+                  <div className="relative w-full aspect-square overflow-hidden" onClick={() => track.audio_url && handlePlayTrack(track)}>
                     {track.cover_url ? (
-                      <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
+                      <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
                     ) : (
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(0,229,255,0.08)" }}>
-                        <Music4 className="w-5 h-5 text-cyan-400/40" />
+                      <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.08),rgba(212,168,67,0.04))" }}>
+                        <Music4 className="w-10 h-10 text-white/10" />
                       </div>
                     )}
-                    <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: "rgba(0,229,255,0.85)" }}>
-                      {isCurrent && isPlaying ? <Pause className="w-4 h-4 text-black" /> : <Play className="w-4 h-4 text-black" />}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ background: "rgba(0,0,0,0.5)" }}>
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(0,229,255,0.9)" }}>
+                        {isCurrent && isPlaying ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black ml-0.5" />}
+                      </div>
+                    </div>
+                    <div className="absolute top-2 left-2 flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full pointer-events-none"
+                      style={{ background: "rgba(0,0,0,0.65)", color: "#00E5FF" }}>
+                      <Waves className="w-2 h-2" /> 432 Hz
                     </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{track.title}</p>
-                    <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                        style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
-                        <Waves className="w-2 h-2" /> 432 Hz
-                      </span>
-                      {track.duration && <span className="text-[9px] text-white/20">{track.duration}</span>}
+                  {/* Info */}
+                  <div className="p-3 flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-white truncate leading-tight">{track.title}</p>
+                      <p className="text-xs text-white/35 truncate mt-0.5">{track.artist_display || "Upper Vibe Media"}</p>
                     </div>
+                    {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                   </div>
-                  {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                 </motion.div>
               );
             })}
@@ -241,41 +243,46 @@ export default function Home() {
       {/* ── RECOMMENDED SONGS ── */}
       {recommendedTracks.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="Picked For You" title="Recommended Songs" link="/music" linkLabel="All Music" labelColor="#D4A843" labelIcon={<Sparkles className="w-3 h-3" />} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <SectionHeader label="Picked For You" title="Recommended Songs" link="/music" linkLabel="See More" labelColor="#D4A843" labelIcon={<Sparkles className="w-3 h-3" />} />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
             {recommendedTracks.map((track, i) => {
               const isCurrent = currentTrack?.id === track.id;
               return (
                 <motion.div key={track.id}
                   initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  className="flex items-center gap-3 p-3.5 rounded-2xl group cursor-pointer transition-all hover:border-white/15 active:scale-[0.98]"
+                  className="group flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all"
                   style={{
                     background: isCurrent ? "rgba(212,168,67,0.06)" : "rgba(255,255,255,0.025)",
-                    border: `1px solid ${isCurrent ? "rgba(212,168,67,0.2)" : "rgba(255,255,255,0.06)"}`,
-                  }}
-                  onClick={() => track.audio_url && handlePlayTrack(track)}>
-                  <div className="relative flex-shrink-0">
+                    border: `1px solid ${isCurrent ? "rgba(212,168,67,0.25)" : "rgba(255,255,255,0.07)"}`,
+                  }}>
+                  {/* Cover — square full width */}
+                  <div className="relative w-full aspect-square overflow-hidden" onClick={() => track.audio_url && handlePlayTrack(track)}>
                     {track.cover_url ? (
-                      <img src={track.cover_url} alt={track.title} className="w-11 h-11 rounded-xl object-cover" />
+                      <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
                     ) : (
-                      <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "rgba(212,168,67,0.08)" }}>
-                        <Music4 className="w-4 h-4 text-yellow-400/40" />
+                      <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.08),rgba(0,229,255,0.04))" }}>
+                        <Music4 className="w-10 h-10 text-white/10" />
                       </div>
                     )}
-                    <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: "rgba(0,0,0,0.65)" }}>
-                      {isCurrent && isPlaying ? <Pause className="w-3.5 h-3.5 text-yellow-400" /> : <Play className="w-3.5 h-3.5 text-white ml-0.5" />}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ background: "rgba(0,0,0,0.5)" }}>
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(212,168,67,0.9)" }}>
+                        {isCurrent && isPlaying ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black ml-0.5" />}
+                      </div>
+                    </div>
+                    <div className="absolute top-2 left-2 flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full pointer-events-none"
+                      style={{ background: "rgba(0,0,0,0.65)", color: "#00E5FF" }}>
+                      <Waves className="w-2 h-2" /> 432 Hz
                     </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{track.title}</p>
-                    <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                  {/* Info */}
+                  <div className="p-3 flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-white truncate leading-tight">{track.title}</p>
+                      <p className="text-xs text-white/35 truncate mt-0.5">{track.artist_display || "Upper Vibe Media"}</p>
+                    </div>
+                    {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                   </div>
-                  <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                    style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
-                    <Waves className="w-2 h-2" /> 432
-                  </span>
-                  {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                 </motion.div>
               );
             })}
