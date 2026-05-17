@@ -183,7 +183,7 @@ export default function Home() {
       {/* ── LATEST MUSIC ── */}
       {latestTracks.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
-          <SectionHeader label="New Releases" title="Latest Music" link="/music" linkLabel="See More" labelColor="#00E5FF" />
+          <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor="#00E5FF" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {latestTracks.map((track, i) => {
               const isCurrent = currentTrack?.id === track.id;
