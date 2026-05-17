@@ -63,6 +63,7 @@ export default function Home() {
   const [allViz, setAllViz] = useState([]);
   const [artists, setArtists] = useState([]);
   const [trackCounts, setTrackCounts] = useState({});
+  const [academyLessons, setAcademyLessons] = useState([]);
   const [loginModal, setLoginModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
@@ -82,12 +83,13 @@ export default function Home() {
       base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 200),
       base44.entities.Artist.filter({ is_active: true, is_featured: true }, "-created_date", 8),
       base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
-    ]).then(([latest, all, viz, featuredArtists, allTracksForCount]) => {
+      base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3),
+    ]).then(([latest, all, viz, featuredArtists, allTracksForCount, lessons]) => {
       setLatestTracks(latest.length > 0 ? latest : all.slice(0, 4));
       setAllTracks(all);
       setAllViz(viz);
       setArtists(featuredArtists);
-      // Build track counts per artist
+      setAcademyLessons(lessons);
       const counts = {};
       allTracksForCount.forEach((t) => {
         if (t.primary_artist_id) counts[t.primary_artist_id] = (counts[t.primary_artist_id] || 0) + 1;
@@ -319,6 +321,69 @@ export default function Home() {
                     </span>
                   </div>
                   {heartButton("visualizer", viz.id, { title: viz.title, artist: viz.artist, cover_url: viz.thumbnail_url })}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── UPPER VIBE ACADEMY ── */}
+      {academyLessons.length > 0 && (
+        <section className="max-w-7xl mx-auto px-6 py-10">
+          <SectionHeader label="Learn" title="Upper Vibe Academy" link="/academy" linkLabel="See More" labelColor="#9B7EFF" labelIcon={<GraduationCap className="w-3 h-3" />} />
+          <p className="text-white/30 text-sm mb-6 -mt-2">Go deeper into 432 Hz, manifesting, creativity, and expanding consciousness.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {academyLessons.map((lesson, i) => (
+              <motion.div key={lesson.id}
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+                className="group rounded-2xl overflow-hidden flex flex-col"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                {/* Thumbnail */}
+                <div className="aspect-video relative overflow-hidden flex-shrink-0">
+                  {lesson.thumbnail_url ? (
+                    <img src={lesson.thumbnail_url} alt={lesson.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"
+                      style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.12),rgba(0,229,255,0.05))" }}>
+                      <GraduationCap className="w-10 h-10 text-white/10" />
+                    </div>
+                  )}
+                  {/* Badges */}
+                  <div className="absolute top-2 left-2 flex gap-1.5">
+                    {lesson.is_premium && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider"
+                        style={{ background: "rgba(212,168,67,0.9)", color: "#000" }}>PREMIUM</span>
+                    )}
+                    {lesson.is_premium && lesson.free_preview_seconds > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold"
+                        style={{ background: "rgba(0,0,0,0.7)", color: "rgba(255,255,255,0.7)" }}>
+                        {lesson.free_preview_seconds}s preview
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {/* Info */}
+                <div className="p-4 flex flex-col gap-2 flex-1">
+                  <p className="text-sm font-bold text-white leading-snug line-clamp-2">{lesson.title}</p>
+                  {lesson.description && (
+                    <p className="text-xs text-white/35 leading-relaxed line-clamp-2">{lesson.description}</p>
+                  )}
+                  {lesson.labels?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {lesson.labels.slice(0, 3).map((lbl) => (
+                        <span key={lbl} className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                          style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.2)", color: "#9B7EFF" }}>
+                          {lbl}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <Link to="/academy"
+                    className="mt-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110 self-start"
+                    style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.25)", color: "#9B7EFF" }}>
+                    <Play className="w-3 h-3" /> Watch
+                  </Link>
                 </div>
               </motion.div>
             ))}
