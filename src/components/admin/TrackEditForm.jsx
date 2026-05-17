@@ -191,8 +191,9 @@ export default function TrackEditForm({ track, artists, categories, onSaved, onC
               <SelectTrigger className="bg-card/40 border-border/30">
                 <SelectValue placeholder="Select artist" />
               </SelectTrigger>
-              <SelectContent>
-                {artists.map((a) => (
+              <SelectContent className="max-h-60 overflow-y-auto">
+                <SelectItem value="none">— No artist —</SelectItem>
+                {[...artists].sort((a, b) => a.name.localeCompare(b.name)).map((a) => (
                   <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                 ))}
               </SelectContent>

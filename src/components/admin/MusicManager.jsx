@@ -292,7 +292,7 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
                   <select value={bulkValue} onChange={(e) => setBulkValue(e.target.value)}
                     className="flex-1 px-3 py-2 rounded-lg bg-card/40 border border-border/30 text-sm text-foreground focus:outline-none">
                     <option value="">Select artist...</option>
-                    {artists.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    {[...artists].sort((a, b) => a.name.localeCompare(b.name)).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>
                 )}
                 {bulkPanel === "mood" && (
