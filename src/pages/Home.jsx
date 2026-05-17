@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Play, Download, Headphones, Waves, Music4, ArrowRight, Tv2, Mail, Crown, CheckCircle2, Compass, Pause, Sparkles } from "lucide-react";
+import { Play, Download, Headphones, Waves, Music4, ArrowRight, Tv2, Mail, Crown, CheckCircle2, Compass, Pause, Sparkles, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -8,6 +8,7 @@ import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
 import DiscoverTab, { recordPlay, getHistory } from "../components/home/DiscoverTab";
+import FavLoginModal from "../components/shared/FavLoginModal";
 
 function buildHomeRecs(allTracks, allViz, favorites, history) {
   const favTrackIds = new Set(favorites.filter((f) => f.type === "track").map((f) => f.track_id));
@@ -63,9 +64,10 @@ export default function Home() {
   const [allTracks, setAllTracks] = useState([]);
   const [allViz, setAllViz] = useState([]);
   const [activeTab, setActiveTab] = useState("home");
+  const [loginModal, setLoginModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
-  const { favorites } = useFavorites(user?.email);
+  const { favorites, isFaved, toggle } = useFavorites(user?.email);
   const history = useMemo(() => getHistory(), []);
 
   const handlePlayTrack = (track) => {
@@ -234,6 +236,12 @@ export default function Home() {
                         <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
                         {track.duration && <p className="text-[10px] text-white/20 mt-0.5">{track.duration}</p>}
                       </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (!user) { setLoginModal(true); return; } toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url }); }}
+                        className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+                        style={isFaved("track", track.id) ? { color: "#ec4899" } : { color: "rgba(255,255,255,0.2)" }}>
+                        <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
+                      </button>
                     </motion.div>
                   );
                 })}
@@ -291,6 +299,12 @@ export default function Home() {
                         style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
                         <Waves className="w-2 h-2" /> 432
                       </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (!user) { setLoginModal(true); return; } toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url }); }}
+                        className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+                        style={isFaved("track", track.id) ? { color: "#ec4899" } : { color: "rgba(255,255,255,0.2)" }}>
+                        <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
+                      </button>
                     </motion.div>
                   );
                 })}
@@ -395,6 +409,8 @@ export default function Home() {
           <Footer />
         </>
       )}
+
+      <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
     </div>
   );
 }

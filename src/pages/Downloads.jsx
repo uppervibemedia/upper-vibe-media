@@ -1,25 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Music4, Play, Pause, Waves, Lock, Crown } from "lucide-react";
+import { Download, Music4, Play, Pause, Waves, Lock, Crown, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
-import HeartButton from "../components/shared/HeartButton";
-import VibeUpgradeModal from "../components/shared/VibeUpgradeModal";
-import { useVibe } from "../hooks/useVibe";
+import FavLoginModal from "../components/shared/FavLoginModal";
+import { useFavorites } from "../hooks/useFavorite";
 
 export default function Downloads() {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
-  const [vibeUpgradeModal, setVibeUpgradeModal] = useState(false);
+  const [loginModal, setLoginModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
   const isPremium = user?.role === "premium" || user?.role === "admin";
-  const { isSaved, toggleSave } = useVibe(isPremium ? user?.email : null);
+  const { isFaved, toggle } = useFavorites(user?.email);
 
   useEffect(() => {
     base44.entities.Track.filter({ status: "published" }, "-created_date", 500)
@@ -119,12 +118,20 @@ export default function Downloads() {
                     {track.duration && <p className="text-xs text-white/25 hidden sm:block flex-shrink-0">{track.duration}</p>}
 
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <HeartButton
-                        isSaved={isSaved(track.id)}
-                        isPremium={isPremium}
-                        onToggle={() => toggleSave(track)}
-                        onUpgrade={() => setVibeUpgradeModal(true)}
-                      />
+                      <button
+                        onClick={() => {
+                          if (!user) { setLoginModal(true); return; }
+                          toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
+                        }}
+                        title={isFaved("track", track.id) ? "Saved to Favorites" : "Save to Favorites"}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                        style={isFaved("track", track.id) ? {
+                          background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.35)", color: "#ec4899"
+                        } : {
+                          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)"
+                        }}>
+                        <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
+                      </button>
                       <button onClick={() => handlePlay(track)}
                         className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
                         style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF" }}>
@@ -150,7 +157,7 @@ export default function Downloads() {
       </div>
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
-      <VibeUpgradeModal open={vibeUpgradeModal} onClose={() => setVibeUpgradeModal(false)} />
+      <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
     </div>
   );
 }

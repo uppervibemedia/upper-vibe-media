@@ -358,8 +358,13 @@ export default function SongPage() {
               style={{ background: "linear-gradient(135deg,#be185d,#ec4899)", color: "#fff" }}>
               Create Free Account
             </button>
+            <button onClick={() => base44.auth.redirectToLogin()}
+              className="mt-2 w-full py-2.5 rounded-xl font-bold text-sm transition-all hover:bg-white/10"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)" }}>
+              Log In
+            </button>
             <button onClick={() => setLoginPrompt(false)}
-              className="mt-3 w-full py-2 text-sm text-white/30 hover:text-white/60 transition-colors">
+              className="mt-2 w-full py-2 text-sm text-white/30 hover:text-white/60 transition-colors">
               Not now
             </button>
           </motion.div>

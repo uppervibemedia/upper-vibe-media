@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Music4, Tv2, Play, Pause, Waves, Trash2, ArrowRight } from "lucide-react";
+import { Heart, Music4, Tv2, Play, Pause, Waves, Trash2, ArrowRight, Download, Lock, Crown, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
@@ -16,6 +16,7 @@ export default function Favorites() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("songs");
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
+  const isPremium = user?.role === "premium" || user?.role === "admin";
 
   useEffect(() => {
     if (!user?.email) { setLoading(false); return; }
@@ -46,11 +47,18 @@ export default function Favorites() {
           <p className="text-white/40 text-sm max-w-md leading-relaxed mb-8">
             Create a free account to save your favorite Upper Vibe Media songs and visualizers — and build your collection.
           </p>
-          <button onClick={() => base44.auth.redirectToLogin()}
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110"
-            style={{ background: "linear-gradient(135deg,#be185d,#ec4899)", color: "#fff", boxShadow: "0 0 24px rgba(236,72,153,0.3)" }}>
-            Create Free Account
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button onClick={() => base44.auth.redirectToLogin()}
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110"
+              style={{ background: "linear-gradient(135deg,#be185d,#ec4899)", color: "#fff", boxShadow: "0 0 24px rgba(236,72,153,0.3)" }}>
+              Create Free Account
+            </button>
+            <button onClick={() => base44.auth.redirectToLogin()}
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:bg-white/10"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.8)" }}>
+              Log In
+            </button>
+          </div>
           <a href="/music" className="mt-5 flex items-center gap-1 text-sm text-white/30 hover:text-white/60 transition-colors">
             Browse music <ArrowRight className="w-4 h-4" />
           </a>
@@ -85,8 +93,8 @@ export default function Favorites() {
         {/* Tabs */}
         <div className="flex gap-1 border-b mb-8" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
           {[
-            { id: "songs", label: "Songs", icon: Music4, count: savedTracks.length },
-            { id: "visualizers", label: "Visualizers", icon: Tv2, count: savedVizualizers.length },
+            { id: "songs", label: "Favorite Songs", icon: Music4, count: savedTracks.length },
+            { id: "visualizers", label: "Liked Visualizers", icon: Tv2, count: savedVizualizers.length },
           ].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 -mb-px transition-all ${
@@ -157,11 +165,29 @@ export default function Favorites() {
                               style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF" }}>
                               {isCurrentTrack && isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
                             </button>
+                            {isPremium ? (
+                              <a
+                                href={track.audio_url}
+                                download={`${track.title}.mp3`}
+                                className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                                style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
+                                title="Download MP3"
+                                onClick={(e) => e.stopPropagation()}>
+                                <Download className="w-3.5 h-3.5" />
+                              </a>
+                            ) : (
+                              <Link to={`/song/${track.id}`}
+                                className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
+                                title="Premium download">
+                                <Lock className="w-3.5 h-3.5" />
+                              </Link>
+                            )}
                             <button onClick={() => toggle("track", track.id)}
                               className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
                               style={{ background: "rgba(236,72,153,0.12)", border: "1px solid rgba(236,72,153,0.3)", color: "#ec4899" }}
-                              title="Remove from favorites">
-                              <Trash2 className="w-3.5 h-3.5" />
+                              title="Remove from Favorites">
+                              <Heart className="w-3.5 h-3.5 fill-current" />
                             </button>
                           </div>
                         </motion.div>
@@ -196,17 +222,37 @@ export default function Favorites() {
                             </div>
                           )}
                         </div>
-                        <div className="p-4 flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-white truncate">{viz.title}</p>
-                            <p className="text-xs text-white/40">{viz.artist || "Upper Vibe Media"}</p>
+                        <div className="p-3 flex flex-col gap-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-white truncate">{viz.title}</p>
+                              <p className="text-xs text-white/40">{viz.artist || "Upper Vibe Media"}</p>
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1"
+                                style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+                                <Waves className="w-2 h-2" /> 432 Hz
+                              </span>
+                            </div>
+                            <button onClick={() => toggle("visualizer", viz.id)}
+                              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-110"
+                              style={{ background: "rgba(236,72,153,0.12)", border: "1px solid rgba(236,72,153,0.3)", color: "#ec4899" }}
+                              title="Remove from Liked Visualizers">
+                              <Heart className="w-3.5 h-3.5 fill-current" />
+                            </button>
                           </div>
-                          <button onClick={() => toggle("visualizer", viz.id)}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-110"
-                            style={{ background: "rgba(236,72,153,0.12)", border: "1px solid rgba(236,72,153,0.3)", color: "#ec4899" }}
-                            title="Remove from favorites">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex gap-2">
+                            <Link to="/visualizers"
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:brightness-110"
+                              style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.25)", color: "#9B7EFF" }}>
+                              <Play className="w-3 h-3" /> Watch
+                            </Link>
+                            {viz.linked_song_id && (
+                              <Link to={`/song/${viz.linked_song_id}`}
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:brightness-110"
+                                style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
+                                <Download className="w-3 h-3" /> Download Song
+                              </Link>
+                            )}
+                          </div>
                         </div>
                       </motion.div>
                     ))}
