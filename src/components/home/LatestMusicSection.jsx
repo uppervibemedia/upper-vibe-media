@@ -12,7 +12,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
   return (
     <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
       <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor="#00E5FF" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {tracks.map((track, i) => {
           const isCurrent = currentTrack?.id === track.id;
           return (
@@ -47,11 +47,11 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                 {/* Play overlay */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
                   style={{ background: "rgba(0,0,0,0.45)" }}>
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center transition-transform hover:scale-110"
-                    style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", boxShadow: "0 0 24px rgba(0,200,220,0.4)" }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110"
+                    style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", boxShadow: "0 0 16px rgba(0,200,220,0.4)" }}>
                     {isCurrent && isPlaying
-                      ? <Pause className="w-7 h-7 text-black fill-current" />
-                      : <Play className="w-7 h-7 text-black fill-current ml-0.5" />}
+                      ? <Pause className="w-4 h-4 text-black fill-current" />
+                      : <Play className="w-4 h-4 text-black fill-current ml-0.5" />}
                   </div>
                 </div>
 
@@ -75,43 +75,28 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
               </div>
 
               {/* Info below cover */}
-              <div className="p-4">
-                {/* Title & artist */}
+              <div className="p-2.5">
                 <Link
                   to={`/song/${track.id}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="font-heading font-black text-base text-white truncate block hover:text-cyan-300 transition-colors leading-tight mb-0.5">
+                  className="font-heading font-black text-xs text-white truncate block hover:text-cyan-300 transition-colors leading-tight mb-0.5">
                   {track.title}
                 </Link>
-                <p className="text-sm text-white/40 truncate mb-3">
+                <p className="text-[10px] text-white/40 truncate mb-2">
                   {track.artist_display || "Upper Vibe Media"}
                 </p>
-
-                {/* Bottom row: badge + actions */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-full"
-                      style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.2)", color: "#00C9E0" }}>
-                      <Waves className="w-2.5 h-2.5" /> 432 Hz
-                    </span>
-                    {track.duration && (
-                      <span className="text-[10px] text-white/25">{track.duration}</span>
-                    )}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <span className="inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full"
+                    style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.2)", color: "#00C9E0" }}>
+                    <Waves className="w-2 h-2" /> 432
+                  </span>
+                  <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                     {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
-                    {/* Download: show locked icon if not premium */}
                     {!isPremium ? (
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ color: "rgba(212,168,67,0.4)" }}
-                        title="Premium download">
-                        <Lock className="w-3.5 h-3.5" />
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ color: "rgba(212,168,67,0.4)" }}>
+                        <Lock className="w-3 h-3" />
                       </div>
-                    ) : (
-                      downloadButton(track)
-                    )}
+                    ) : downloadButton(track)}
                   </div>
                 </div>
               </div>
