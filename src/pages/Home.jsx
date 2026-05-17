@@ -200,7 +200,7 @@ export default function Home() {
               return (
                 <motion.div key={track.id}
                   initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                  className="flex items-center gap-3 p-4 rounded-2xl group cursor-pointer transition-all hover:border-white/15 active:scale-[0.98]"
+                  className="flex items-center gap-3 p-5 rounded-2xl group cursor-pointer transition-all hover:border-white/15 active:scale-[0.98]"
                   style={{
                     background: isCurrent ? "rgba(0,229,255,0.06)" : "rgba(255,255,255,0.025)",
                     border: `1px solid ${isCurrent ? "rgba(0,229,255,0.2)" : "rgba(255,255,255,0.06)"}`,
@@ -208,15 +208,15 @@ export default function Home() {
                   onClick={() => track.audio_url && handlePlayTrack(track)}>
                   <div className="relative flex-shrink-0">
                     {track.cover_url ? (
-                      <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
+                      <img src={track.cover_url} alt={track.title} className="w-16 h-16 rounded-xl object-cover" />
                     ) : (
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(0,229,255,0.08)" }}>
-                        <Music4 className="w-5 h-5 text-cyan-400/40" />
+                      <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{ background: "rgba(0,229,255,0.08)" }}>
+                        <Music4 className="w-6 h-6 text-cyan-400/40" />
                       </div>
                     )}
                     <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       style={{ background: "rgba(0,229,255,0.85)" }}>
-                      {isCurrent && isPlaying ? <Pause className="w-4 h-4 text-black" /> : <Play className="w-4 h-4 text-black" />}
+                      {isCurrent && isPlaying ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black" />}
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
