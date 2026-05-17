@@ -167,14 +167,6 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay }) {
         )}
 
         <div className="flex items-center gap-2 flex-wrap mt-auto pt-1">
-          {embedUrl && (
-            <button onClick={handleWatch}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-              style={{ background: "linear-gradient(135deg,rgba(0,184,212,0.2),rgba(0,229,255,0.12))", border: "1px solid rgba(0,229,255,0.3)", color: "#00E5FF" }}>
-              <Play className="w-3 h-3" /> Watch Now
-            </button>
-          )}
-
           {linkedTrack ? (
             <Link to={`/song/${linkedTrack.id}`}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"

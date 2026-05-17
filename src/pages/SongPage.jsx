@@ -63,6 +63,32 @@ export default function SongPage() {
     else playTrack(track);
   };
 
+  const handleDownload = async () => {
+    if (!track?.audio_url) return;
+    try {
+      const response = await fetch(track.audio_url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      const safeName = `${track.title || "song"}${track.artist_display ? " - " + track.artist_display : ""}.mp3`.replace(/[/\\?%*:|"<>]/g, "");
+      a.download = safeName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Fallback: force download via anchor with download attr
+      const a = document.createElement("a");
+      a.href = track.audio_url;
+      a.download = `${track.title || "song"}.mp3`;
+      a.target = "_self";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
   const isCurrentTrack = currentTrack?.id === track?.id;
   const embedUrl = visualizer ? toEmbedUrl(visualizer.embed_url || visualizer.video_url) : null;
   const watchUrl = visualizer ? toWatchUrl(visualizer.video_url || visualizer.embed_url) : null;
@@ -167,11 +193,11 @@ export default function SongPage() {
                 {/* Download — premium gated */}
                 {isPremium ? (
                   track.audio_url ? (
-                    <a href={track.audio_url} download={`${track.title}.mp3`}
+                    <button onClick={handleDownload}
                       className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02]"
                       style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000", boxShadow: "0 0 24px rgba(212,168,67,0.3)" }}>
                       <Download className="w-4 h-4" /> Download MP3
-                    </a>
+                    </button>
                   ) : (
                     <span className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm opacity-40 cursor-not-allowed"
                       style={{ border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
