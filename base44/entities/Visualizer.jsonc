@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Visualizer title"
     },
+    "youtube_video_id": {
+      "type": "string",
+      "description": "YouTube video ID for deduplication"
+    },
     "linked_song_id": {
       "type": "string",
       "description": "ID of linked Track record"
@@ -17,6 +21,18 @@
     "artist": {
       "type": "string",
       "description": "Artist display name"
+    },
+    "detected_artist": {
+      "type": "string",
+      "description": "Auto-detected artist from title"
+    },
+    "detected_category": {
+      "type": "string",
+      "description": "Auto-detected category from title/artist"
+    },
+    "detected_song_title": {
+      "type": "string",
+      "description": "Auto-detected song title from YouTube title"
     },
     "category": {
       "type": "string",
@@ -44,6 +60,10 @@
     "release_date": {
       "type": "string",
       "format": "date"
+    },
+    "playlist_added_date": {
+      "type": "string",
+      "description": "Date added to playlist"
     },
     "display_order": {
       "type": "number",
