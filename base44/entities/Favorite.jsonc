@@ -2,17 +2,42 @@
   "name": "Favorite",
   "type": "object",
   "properties": {
-    "track_id": {
-      "type": "string",
-      "description": "ID of the favorited track"
-    },
     "user_email": {
       "type": "string",
       "description": "Email of the user"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "track",
+        "visualizer"
+      ],
+      "default": "track",
+      "description": "Type of favorited content"
+    },
+    "track_id": {
+      "type": "string",
+      "description": "ID of the favorited track (when type=track)"
+    },
+    "visualizer_id": {
+      "type": "string",
+      "description": "ID of the favorited visualizer (when type=visualizer)"
+    },
+    "cached_title": {
+      "type": "string",
+      "description": "Cached title for display"
+    },
+    "cached_artist": {
+      "type": "string",
+      "description": "Cached artist for display"
+    },
+    "cached_cover_url": {
+      "type": "string",
+      "description": "Cached cover/thumbnail for display"
     }
   },
   "required": [
-    "track_id",
-    "user_email"
+    "user_email",
+    "type"
   ]
 }

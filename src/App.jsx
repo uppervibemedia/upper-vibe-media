@@ -24,6 +24,7 @@ import Contact from './pages/Contact';
 import Academy from './pages/Academy';
 import Artists from './pages/Artists';
 import MyVibes from './pages/MyVibes';
+import Favorites from './pages/Favorites';
 import Sessions from './pages/Sessions';
 import EmailList from './pages/EmailList';
 
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
         <Route path="/contact" element={<Contact />} />
         <Route path="/academy" element={<Academy />} />
         <Route path="/my-vibes" element={<MyVibes />} />
+        <Route path="/favorites" element={<Favorites />} />
         <Route path="/artists" element={<Artists />} />
         <Route path="/sessions" element={<Sessions />} />
       </Route>

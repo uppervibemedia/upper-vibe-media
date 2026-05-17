@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, X, Play, Music4, ExternalLink, Tv2, Calendar, Tag, Waves, Edit2, AlertCircle, Download } from "lucide-react";
+import { Search, X, Play, Music4, ExternalLink, Tv2, Calendar, Tag, Waves, Edit2, AlertCircle, Download, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import VisualizerEditModal from "../components/visualizers/VisualizerEditModal";
+import { useFavorites } from "../hooks/useFavorite";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -46,7 +47,7 @@ function toWatchUrl(url) {
   return id ? `https://www.youtube.com/watch?v=${id}` : (url || null);
 }
 
-function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay }) {
+function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, onToggleFav }) {
   const [expanded, setExpanded] = useState(false);
   const [embedError, setEmbedError] = useState(false);
 
@@ -187,6 +188,19 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay }) {
               <Music4 className="w-3 h-3" /> Listen
             </button>
           )}
+
+          {/* Heart / Favorite */}
+          <button
+            onClick={() => onToggleFav(viz)}
+            title={isFaved ? "Saved to Favorites" : "Save to Favorites"}
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 ml-auto flex-shrink-0"
+            style={isFaved ? {
+              background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.4)", color: "#ec4899"
+            } : {
+              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.3)"
+            }}>
+            <Heart className={`w-3.5 h-3.5 ${isFaved ? "fill-current" : ""}`} />
+          </button>
         </div>
       </div>
     </motion.div>
@@ -200,9 +214,16 @@ export default function Visualizers() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [editingViz, setEditingViz] = useState(null);
+  const [loginPrompt, setLoginPrompt] = useState(false);
   const { playTrack } = usePlayer();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const { isFaved, toggle } = useFavorites(user?.email);
+
+  const handleToggleFav = (viz) => {
+    if (!user) { setLoginPrompt(true); return; }
+    toggle("visualizer", viz.id, { title: viz.title, artist: viz.artist, cover_url: viz.thumbnail_url });
+  };
 
   const load = () =>
     Promise.all([
@@ -297,12 +318,39 @@ export default function Visualizers() {
                   isAdmin={isAdmin}
                   onEdit={(v) => setEditingViz(v)}
                   onPlay={playTrack}
+                  isFaved={isFaved("visualizer", viz.id)}
+                  onToggleFav={handleToggleFav}
                 />
               </motion.div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Login prompt */}
+      {loginPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setLoginPrompt(false)} />
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="relative w-full max-w-sm rounded-2xl p-7 text-center"
+            style={{ background: "#0a0a1e", border: "1px solid rgba(236,72,153,0.25)" }}>
+            <Heart className="w-8 h-8 text-pink-400 fill-current mx-auto mb-3" />
+            <h3 className="font-heading font-black text-lg text-white mb-2">Save Your Favorites</h3>
+            <p className="text-sm text-white/45 leading-relaxed mb-5">
+              Create a free account to save your favorite Upper Vibe Media songs and visualizers.
+            </p>
+            <button onClick={() => base44.auth.redirectToLogin()}
+              className="w-full py-3 rounded-xl font-black text-sm tracking-wider transition-all hover:brightness-110"
+              style={{ background: "linear-gradient(135deg,#be185d,#ec4899)", color: "#fff" }}>
+              Create Free Account
+            </button>
+            <button onClick={() => setLoginPrompt(false)}
+              className="mt-3 w-full py-2 text-sm text-white/30 hover:text-white/60 transition-colors">
+              Not now
+            </button>
+          </motion.div>
+        </div>
+      )}
 
       {editingViz && (
         <VisualizerEditModal

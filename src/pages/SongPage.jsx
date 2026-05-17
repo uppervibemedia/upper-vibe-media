@@ -2,14 +2,15 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useParams, Link } from "react-router-dom";
 import {
-  Download, Play, Pause, Waves, Lock, Crown, Music4, ExternalLink,
-  Tv2, ChevronLeft, Tag, User
+  Download, Play, Pause, Waves, Lock, Crown, Music4,
+  Tv2, ChevronLeft, Tag, User, Heart
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
+import { useFavorites } from "../hooks/useFavorite";
 
 function toEmbedUrl(url) {
   if (!url) return null;
@@ -41,6 +42,8 @@ export default function SongPage() {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
   const isPremium = user?.role === "premium" || user?.role === "admin";
+  const [loginPrompt, setLoginPrompt] = useState(false);
+  const { isFaved, toggle } = useFavorites(user?.email);
 
   useEffect(() => {
     if (!id) return;
@@ -213,14 +216,22 @@ export default function SongPage() {
                   </button>
                 )}
 
-                {/* Watch Visualizer */}
-                {visualizer && embedUrl && (
-                  <button onClick={() => setVizPlaying(true)}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}>
-                    <Tv2 className="w-4 h-4" /> Watch Visualizer
-                  </button>
-                )}
+                {/* Heart / Favorite */}
+                <button
+                  onClick={() => {
+                    if (!user) { setLoginPrompt(true); return; }
+                    toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
+                  }}
+                  title={isFaved("track", track.id) ? "Saved to Favorites" : "Save to Favorites"}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
+                  style={isFaved("track", track.id) ? {
+                    background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.4)", color: "#ec4899"
+                  } : {
+                    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.55)"
+                  }}>
+                  <Heart className={`w-4 h-4 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
+                  {isFaved("track", track.id) ? "Saved" : "Save"}
+                </button>
               </div>
 
               {/* Paywall message for free users */}
@@ -328,6 +339,31 @@ export default function SongPage() {
 
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
+
+      {/* Login prompt modal */}
+      {loginPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setLoginPrompt(false)} />
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="relative w-full max-w-sm rounded-2xl p-7 text-center"
+            style={{ background: "#0a0a1e", border: "1px solid rgba(236,72,153,0.25)" }}>
+            <Heart className="w-8 h-8 text-pink-400 fill-current mx-auto mb-3" />
+            <h3 className="font-heading font-black text-lg text-white mb-2">Save Your Favorites</h3>
+            <p className="text-sm text-white/45 leading-relaxed mb-5">
+              Create a free account to save your favorite Upper Vibe Media songs and visualizers.
+            </p>
+            <button onClick={() => base44.auth.redirectToLogin()}
+              className="w-full py-3 rounded-xl font-black text-sm tracking-wider transition-all hover:brightness-110"
+              style={{ background: "linear-gradient(135deg,#be185d,#ec4899)", color: "#fff" }}>
+              Create Free Account
+            </button>
+            <button onClick={() => setLoginPrompt(false)}
+              className="mt-3 w-full py-2 text-sm text-white/30 hover:text-white/60 transition-colors">
+              Not now
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
