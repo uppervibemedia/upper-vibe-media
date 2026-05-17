@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Play, ArrowRight, Tv2, Mail, CheckCircle2, Sparkles, Users, GraduationCap } from "lucide-react";
+import { Play, Waves, Music4, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Sparkles, Heart, Users, GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -9,10 +9,6 @@ import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay, getHistory } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
-import MusicCard from "../components/cards/MusicCard";
-import CompactSongCard from "../components/cards/CompactSongCard";
-import VisualizerCard from "../components/cards/VisualizerCard";
-import AcademyCard from "../components/cards/AcademyCard";
 
 function buildHomeRecs(allTracks, allViz, favorites, history) {
   const favTrackIds = new Set(favorites.filter((f) => f.type === "track").map((f) => f.track_id));
@@ -39,11 +35,11 @@ function buildHomeRecs(allTracks, allViz, favorites, history) {
       return { ...t, _score: score };
     })
     .sort((a, b) => b._score - a._score)
-    .slice(0, 8);
+    .slice(0, 6);
 
   const recommendedTracks = scoredTracks.length > 0
     ? scoredTracks
-    : allTracks.filter((t) => t.is_featured || t.is_new_release).slice(0, 8);
+    : allTracks.filter((t) => t.is_featured || t.is_new_release).slice(0, 6);
 
   const scoredViz = allViz
     .filter((v) => !favVizIds.has(v.id))
@@ -107,13 +103,18 @@ export default function Home() {
     [allTracks, allViz, favorites, history]
   );
 
-  const makeHeartHandler = (type) => (item) => {
-    if (!user) { setLoginModal(true); return; }
-    const meta = type === "track"
-      ? { title: item.title, artist: item.artist_display, cover_url: item.cover_url }
-      : { title: item.title, artist: item.artist, cover_url: item.thumbnail_url };
-    toggle(type, item.id, meta);
-  };
+  const heartButton = (type, id, meta) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!user) { setLoginModal(true); return; }
+        toggle(type, id, meta);
+      }}
+      className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+      style={isFaved(type, id) ? { color: "#ec4899" } : { color: "rgba(255,255,255,0.2)" }}>
+      <Heart className={`w-3.5 h-3.5 ${isFaved(type, id) ? "fill-current" : ""}`} />
+    </button>
+  );
 
   return (
     <div className="min-h-screen pb-28 lg:pb-0">
@@ -191,59 +192,137 @@ export default function Home() {
 
       {/* ── LATEST MUSIC ── */}
       {latestTracks.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 pt-4 pb-8">
+        <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
           <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor="#00E5FF" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {latestTracks.map((track, i) => (
-              <MusicCard
-                key={track.id}
-                track={track}
-                index={i}
-                isCurrent={currentTrack?.id === track.id}
-                isPlaying={isPlaying}
-                onPlay={handlePlayTrack}
-                onHeart={makeHeartHandler("track")}
-                isFaved={isFaved("track", track.id)}
-              />
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {latestTracks.map((track, i) => {
+              const isCurrent = currentTrack?.id === track.id;
+              return (
+                <motion.div key={track.id}
+                  initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+                  className="flex items-center gap-3 p-4 rounded-2xl group cursor-pointer transition-all hover:border-white/15 active:scale-[0.98]"
+                  style={{
+                    background: isCurrent ? "rgba(0,229,255,0.06)" : "rgba(255,255,255,0.025)",
+                    border: `1px solid ${isCurrent ? "rgba(0,229,255,0.2)" : "rgba(255,255,255,0.06)"}`,
+                  }}
+                  onClick={() => track.audio_url && handlePlayTrack(track)}>
+                  <div className="relative flex-shrink-0">
+                    {track.cover_url ? (
+                      <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(0,229,255,0.08)" }}>
+                        <Music4 className="w-5 h-5 text-cyan-400/40" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ background: "rgba(0,229,255,0.85)" }}>
+                      {isCurrent && isPlaying ? <Pause className="w-4 h-4 text-black" /> : <Play className="w-4 h-4 text-black" />}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                    <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+                        <Waves className="w-2 h-2" /> 432 Hz
+                      </span>
+                      {track.duration && <span className="text-[9px] text-white/20">{track.duration}</span>}
+                    </div>
+                  </div>
+                  {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
+                </motion.div>
+              );
+            })}
           </div>
         </section>
       )}
 
       {/* ── RECOMMENDED SONGS ── */}
       {recommendedTracks.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 py-8">
-          <SectionHeader label="Picked For You" title="Recommended Songs" link="/music" linkLabel="See More" labelColor="#D4A843" labelIcon={<Sparkles className="w-3 h-3" />} />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {recommendedTracks.slice(0, 8).map((track, i) => (
-              <CompactSongCard
-                key={track.id}
-                track={track}
-                index={i}
-                isCurrent={currentTrack?.id === track.id}
-                isPlaying={isPlaying}
-                onPlay={handlePlayTrack}
-                onHeart={makeHeartHandler("track")}
-                isFaved={isFaved("track", track.id)}
-              />
-            ))}
+        <section className="max-w-7xl mx-auto px-6 py-10">
+          <SectionHeader label="Picked For You" title="Recommended Songs" link="/music" linkLabel="All Music" labelColor="#D4A843" labelIcon={<Sparkles className="w-3 h-3" />} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {recommendedTracks.map((track, i) => {
+              const isCurrent = currentTrack?.id === track.id;
+              return (
+                <motion.div key={track.id}
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                  className="flex items-center gap-3 p-3.5 rounded-2xl group cursor-pointer transition-all hover:border-white/15 active:scale-[0.98]"
+                  style={{
+                    background: isCurrent ? "rgba(212,168,67,0.06)" : "rgba(255,255,255,0.025)",
+                    border: `1px solid ${isCurrent ? "rgba(212,168,67,0.2)" : "rgba(255,255,255,0.06)"}`,
+                  }}
+                  onClick={() => track.audio_url && handlePlayTrack(track)}>
+                  <div className="relative flex-shrink-0">
+                    {track.cover_url ? (
+                      <img src={track.cover_url} alt={track.title} className="w-11 h-11 rounded-xl object-cover" />
+                    ) : (
+                      <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "rgba(212,168,67,0.08)" }}>
+                        <Music4 className="w-4 h-4 text-yellow-400/40" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ background: "rgba(0,0,0,0.65)" }}>
+                      {isCurrent && isPlaying ? <Pause className="w-3.5 h-3.5 text-yellow-400" /> : <Play className="w-3.5 h-3.5 text-white ml-0.5" />}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                    <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                  </div>
+                  <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                    style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+                    <Waves className="w-2 h-2" /> 432
+                  </span>
+                  {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
+                </motion.div>
+              );
+            })}
           </div>
         </section>
       )}
 
       {/* ── VISUALIZERS YOU MIGHT LIKE ── */}
       {recommendedViz.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 py-8">
+        <section className="max-w-7xl mx-auto px-6 py-10">
           <SectionHeader label="Visual Frequency" title="Visualizers You Might Like" link="/visualizers" linkLabel="All Visualizers" labelColor="#9B7EFF" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {recommendedViz.map((viz, i) => (
-              <VisualizerCard
-                key={viz.id}
-                viz={viz}
-                index={i}
-                isFaved={isFaved("visualizer", viz.id)}
-                onHeart={makeHeartHandler("visualizer")}
-              />
+              <motion.div key={viz.id}
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+                className="group rounded-2xl overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="aspect-video relative overflow-hidden">
+                  {viz.thumbnail_url ? (
+                    <img src={viz.thumbnail_url} alt={viz.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"
+                      style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.1),rgba(0,229,255,0.05))" }}>
+                      <Tv2 className="w-8 h-8 text-white/10" />
+                    </div>
+                  )}
+                  <Link to="/visualizers"
+                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: "rgba(0,0,0,0.5)" }}>
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center"
+                      style={{ background: "rgba(155,126,255,0.9)" }}>
+                      <Play className="w-5 h-5 text-white ml-0.5" />
+                    </div>
+                  </Link>
+                </div>
+                <div className="p-4 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{viz.title}</p>
+                    <p className="text-xs text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
+                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-2"
+                      style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+                      <Waves className="w-2 h-2" /> 432 Hz
+                    </span>
+                  </div>
+                  {heartButton("visualizer", viz.id, { title: viz.title, artist: viz.artist, cover_url: viz.thumbnail_url })}
+                </div>
+              </motion.div>
             ))}
           </div>
         </section>
@@ -251,12 +330,62 @@ export default function Home() {
 
       {/* ── UPPER VIBE ACADEMY ── */}
       {academyLessons.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 py-8">
+        <section className="max-w-7xl mx-auto px-6 py-10">
           <SectionHeader label="Learn" title="Upper Vibe Academy" link="/academy" linkLabel="See More" labelColor="#9B7EFF" labelIcon={<GraduationCap className="w-3 h-3" />} />
-          <p className="text-white/30 text-sm mb-5 -mt-3">Go deeper into 432 Hz, manifesting, creativity, and expanding consciousness.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <p className="text-white/30 text-sm mb-6 -mt-2">Go deeper into 432 Hz, manifesting, creativity, and expanding consciousness.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {academyLessons.map((lesson, i) => (
-              <AcademyCard key={lesson.id} lesson={lesson} index={i} />
+              <motion.div key={lesson.id}
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+                className="group rounded-2xl overflow-hidden flex flex-col"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                {/* Thumbnail */}
+                <div className="aspect-video relative overflow-hidden flex-shrink-0">
+                  {lesson.thumbnail_url ? (
+                    <img src={lesson.thumbnail_url} alt={lesson.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"
+                      style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.12),rgba(0,229,255,0.05))" }}>
+                      <GraduationCap className="w-10 h-10 text-white/10" />
+                    </div>
+                  )}
+                  {/* Badges */}
+                  <div className="absolute top-2 left-2 flex gap-1.5">
+                    {lesson.is_premium && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider"
+                        style={{ background: "rgba(212,168,67,0.9)", color: "#000" }}>PREMIUM</span>
+                    )}
+                    {lesson.is_premium && lesson.free_preview_seconds > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold"
+                        style={{ background: "rgba(0,0,0,0.7)", color: "rgba(255,255,255,0.7)" }}>
+                        {lesson.free_preview_seconds}s preview
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {/* Info */}
+                <div className="p-4 flex flex-col gap-2 flex-1">
+                  <p className="text-sm font-bold text-white leading-snug line-clamp-2">{lesson.title}</p>
+                  {lesson.description && (
+                    <p className="text-xs text-white/35 leading-relaxed line-clamp-2">{lesson.description}</p>
+                  )}
+                  {lesson.labels?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {lesson.labels.slice(0, 3).map((lbl) => (
+                        <span key={lbl} className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                          style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.2)", color: "#9B7EFF" }}>
+                          {lbl}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <Link to="/academy"
+                    className="mt-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110 self-start"
+                    style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.25)", color: "#9B7EFF" }}>
+                    <Play className="w-3 h-3" /> Watch
+                  </Link>
+                </div>
+              </motion.div>
             ))}
           </div>
         </section>
