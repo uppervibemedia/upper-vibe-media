@@ -8,11 +8,11 @@
     },
     "artist_display": {
       "type": "string",
-      "description": "Display artist name"
+      "description": "Display artist name \u2014 always matches primary artist name"
     },
     "primary_artist_id": {
       "type": "string",
-      "description": "ID of primary artist record"
+      "description": "ID of primary artist record \u2014 source of truth for artist name"
     },
     "featured_artist_ids": {
       "type": "array",
@@ -108,6 +108,11 @@
       "type": "boolean",
       "default": true,
       "description": "All tracks are downloadable \u2014 download action is gated by premium membership"
+    },
+    "metadata_locked": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, AI Organize will not overwrite this track's metadata"
     },
     "display_order": {
       "type": "number",
