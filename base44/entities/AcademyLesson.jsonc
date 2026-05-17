@@ -1,0 +1,82 @@
+{
+  "name": "AcademyLesson",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Video title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Video description"
+    },
+    "youtube_video_id": {
+      "type": "string",
+      "description": "YouTube video ID for deduplication"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "YouTube watch URL"
+    },
+    "embed_url": {
+      "type": "string",
+      "description": "YouTube embed URL"
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "description": "Thumbnail image URL"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "432hz_music",
+        "high_vibe_music",
+        "manifestation_music",
+        "music_for_focus",
+        "behind_the_song",
+        "upper_vibe_media",
+        "music_business",
+        "artist_development"
+      ],
+      "description": "Academy video category"
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": true,
+      "description": "Premium only video"
+    },
+    "free_preview_seconds": {
+      "type": "number",
+      "default": 60,
+      "description": "Free user preview length in seconds"
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "published",
+        "draft",
+        "archived"
+      ],
+      "default": "published"
+    },
+    "release_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "playlist_added_date": {
+      "type": "string",
+      "description": "Date added to playlist"
+    },
+    "display_order": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

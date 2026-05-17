@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube } from "lucide-react";
+import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import TrackEditForm from "../components/admin/TrackEditForm";
@@ -8,6 +8,8 @@ import MusicManager from "../components/admin/MusicManager";
 import AIClassifierPanel from "../components/admin/AIClassifierPanel";
 import VisualizerManager from "../components/admin/VisualizerManager";
 import YouTubeImporter from "../components/admin/YouTubeImporter";
+import AcademyImporter from "../components/admin/AcademyImporter";
+import AcademyVideoManager from "../components/admin/AcademyVideoManager";
 import { useAuth } from "@/lib/AuthContext";
 
 const TABS = [
@@ -15,6 +17,7 @@ const TABS = [
   { id: "upload", label: "Upload Track", icon: Music },
   { id: "visualizers", label: "Visualizers", icon: Tv2 },
   { id: "yt_import", label: "YouTube Import", icon: Youtube },
+  { id: "academy_import", label: "Academy Import", icon: GraduationCap },
   { id: "artists", label: "Artists", icon: Users },
   { id: "categories", label: "Categories", icon: Grid3X3 },
   { id: "ai_organizer", label: "AI Organizer", icon: Brain },
@@ -155,6 +158,19 @@ export default function Admin() {
               <p className="text-sm text-muted-foreground mt-1">Import visualizers directly from a YouTube playlist, channel, or single video.</p>
             </div>
             <YouTubeImporter onImported={loadAll} />
+          </div>
+        )}
+
+        {/* Academy Import tab */}
+        {tab === "academy_import" && (
+          <div className="max-w-2xl">
+            <div className="mb-6">
+              <p className="text-xs tracking-[0.3em] uppercase text-secondary text-glow-gold mb-1">Academy</p>
+              <h2 className="font-heading font-bold text-2xl">Upper Vibe Academy Import</h2>
+              <p className="text-sm text-muted-foreground mt-1">Import education videos into the Upper Vibe Academy page. Separate from Visualizers.</p>
+            </div>
+            <AcademyImporter onImported={loadAll} />
+            <AcademyVideoManager onRefresh={loadAll} />
           </div>
         )}
 
