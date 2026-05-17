@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Crown } from "lucide-react";
+import { Search, X, Play, Pause, Download, Waves, Music4, Lock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
+import HeartButton from "../components/shared/HeartButton";
+import VibeUpgradeModal from "../components/shared/VibeUpgradeModal";
+import { useVibe } from "../hooks/useVibe";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -40,9 +43,11 @@ export default function Music() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
+  const [vibeUpgradeModal, setVibeUpgradeModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
   const isPremium = user?.role === "premium" || user?.role === "admin";
+  const { isSaved, toggleSave } = useVibe(isPremium ? user?.email : null);
 
   useEffect(() => {
     base44.entities.Track.filter({ status: "published" }, "-created_date", 500)
@@ -201,6 +206,13 @@ export default function Music() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Heart / save */}
+                      <HeartButton
+                        isSaved={isSaved(track.id)}
+                        isPremium={isPremium}
+                        onToggle={() => toggleSave(track)}
+                        onUpgrade={() => setVibeUpgradeModal(true)}
+                      />
                       {/* Play — always available */}
                       <button
                         onClick={() => handlePlay(track)}
@@ -245,6 +257,7 @@ export default function Music() {
       <Footer />
 
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
+      <VibeUpgradeModal open={vibeUpgradeModal} onClose={() => setVibeUpgradeModal(false)} />
     </div>
   );
 }

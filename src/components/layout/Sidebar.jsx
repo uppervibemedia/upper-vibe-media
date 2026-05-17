@@ -14,6 +14,7 @@ import {
   Users,
   Mail,
   GraduationCap,
+  Heart,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -24,6 +25,7 @@ const mainNavItems = [
   { path: "/downloads", icon: Download, label: "Downloads" },
   { path: "/artists", icon: Users, label: "Artists" },
   { path: "/academy", icon: GraduationCap, label: "Upper Vibe Academy" },
+  { path: "/my-vibes", icon: Heart, label: "My Vibe Library" },
   { path: "/email-list", icon: Mail, label: "Join Email List" },
 ];
 
@@ -33,6 +35,7 @@ const bottomNavMobile = [
   { path: "/visualizers", icon: Tv2, label: "Visual" },
   { path: "/downloads", icon: Download, label: "Downloads" },
   { path: "/artists", icon: Users, label: "Artists" },
+  { path: "/my-vibes", icon: Heart, label: "Vibes" },
 ];
 
 export default function Sidebar() {

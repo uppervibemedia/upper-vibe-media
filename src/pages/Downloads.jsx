@@ -7,14 +7,19 @@ import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
+import HeartButton from "../components/shared/HeartButton";
+import VibeUpgradeModal from "../components/shared/VibeUpgradeModal";
+import { useVibe } from "../hooks/useVibe";
 
 export default function Downloads() {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
+  const [vibeUpgradeModal, setVibeUpgradeModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
   const isPremium = user?.role === "premium" || user?.role === "admin";
+  const { isSaved, toggleSave } = useVibe(isPremium ? user?.email : null);
 
   useEffect(() => {
     base44.entities.Track.filter({ status: "published" }, "-created_date", 500)
@@ -114,6 +119,12 @@ export default function Downloads() {
                     {track.duration && <p className="text-xs text-white/25 hidden sm:block flex-shrink-0">{track.duration}</p>}
 
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      <HeartButton
+                        isSaved={isSaved(track.id)}
+                        isPremium={isPremium}
+                        onToggle={() => toggleSave(track)}
+                        onUpgrade={() => setVibeUpgradeModal(true)}
+                      />
                       <button onClick={() => handlePlay(track)}
                         className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
                         style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF" }}>
@@ -139,6 +150,7 @@ export default function Downloads() {
       </div>
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
+      <VibeUpgradeModal open={vibeUpgradeModal} onClose={() => setVibeUpgradeModal(false)} />
     </div>
   );
 }
