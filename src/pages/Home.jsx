@@ -10,6 +10,7 @@ import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay, getHistory } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
+import RecentlyAddedSection from "../components/home/RecentlyAddedSection";
 
 function buildHomeRecs(allTracks, allViz, favorites, history) {
   const favTrackIds = new Set(favorites.filter((f) => f.type === "track").map((f) => f.track_id));
@@ -285,6 +286,16 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* ── RECENTLY ADDED ── */}
+      <RecentlyAddedSection
+        tracks={allTracks.slice(0, 6)}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        handlePlayTrack={handlePlayTrack}
+        heartButton={heartButton}
+        downloadButton={downloadButton}
+      />
 
       {/* ── RECOMMENDED SONGS ── */}
       {recommendedTracks.length > 0 && (

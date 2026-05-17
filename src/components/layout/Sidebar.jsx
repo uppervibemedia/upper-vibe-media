@@ -5,33 +5,25 @@ import {
   Home,
   Settings,
   LogOut,
-  Music4,
+  Radio,
   User,
-  Tv2,
   Users,
-  Mail,
-  GraduationCap,
   Heart,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
-  { path: "/music", icon: Music4, label: "All Music" },
-  { path: "/visualizers", icon: Tv2, label: "Visualizers" },
+  { path: "/radio", icon: Radio, label: "Radio" },
   { path: "/artists", icon: Users, label: "Artists" },
-  { path: "/academy", icon: GraduationCap, label: "Upper Vibe Academy" },
   { path: "/my-vibes", icon: Heart, label: "My Vibe Library" },
-  { path: "/email-list", icon: Mail, label: "Join Email List" },
 ];
 
 const bottomNavMobile = [
   { path: "/", icon: Home, label: "Home" },
-  { path: "/music", icon: Music4, label: "Music" },
-  { path: "/visualizers", icon: Tv2, label: "Visual" },
-  { path: "/academy", icon: GraduationCap, label: "Academy" },
+  { path: "/radio", icon: Radio, label: "Radio" },
   { path: "/artists", icon: Users, label: "Artists" },
-  { path: "/my-vibes", icon: Heart, label: "Vibes" },
+  { path: "/my-vibes", icon: Heart, label: "Library" },
 ];
 
 export default function Sidebar() {
