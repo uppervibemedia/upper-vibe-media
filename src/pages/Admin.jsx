@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2 } from "lucide-react";
+import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube } from "lucide-react";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import TrackEditForm from "../components/admin/TrackEditForm";
 import MusicManager from "../components/admin/MusicManager";
 import AIClassifierPanel from "../components/admin/AIClassifierPanel";
 import VisualizerManager from "../components/admin/VisualizerManager";
+import YouTubeImporter from "../components/admin/YouTubeImporter";
 import { useAuth } from "@/lib/AuthContext";
 
 const TABS = [
   { id: "manager", label: "Music Manager", icon: ListFilter },
   { id: "upload", label: "Upload Track", icon: Music },
   { id: "visualizers", label: "Visualizers", icon: Tv2 },
+  { id: "yt_import", label: "YouTube Import", icon: Youtube },
   { id: "artists", label: "Artists", icon: Users },
   { id: "categories", label: "Categories", icon: Grid3X3 },
   { id: "ai_organizer", label: "AI Organizer", icon: Brain },
@@ -142,6 +144,18 @@ export default function Admin() {
         {/* Visualizers tab */}
         {tab === "visualizers" && (
           <VisualizerManager tracks={tracks} onRefresh={loadAll} />
+        )}
+
+        {/* YouTube Import tab */}
+        {tab === "yt_import" && (
+          <div className="max-w-2xl">
+            <div className="mb-6">
+              <p className="text-xs tracking-[0.3em] uppercase text-secondary text-glow-gold mb-1">Import</p>
+              <h2 className="font-heading font-bold text-2xl">YouTube Import</h2>
+              <p className="text-sm text-muted-foreground mt-1">Import visualizers directly from a YouTube playlist, channel, or single video.</p>
+            </div>
+            <YouTubeImporter onImported={loadAll} />
+          </div>
         )}
 
         {/* Artists tab */}
