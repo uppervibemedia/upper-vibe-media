@@ -10,6 +10,7 @@ import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay, getHistory } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import MusicCard from "../components/cards/MusicCard";
+import MusicCardSmall from "../components/cards/MusicCardSmall";
 import VisualizerCard from "../components/cards/VisualizerCard";
 import AcademyCard from "../components/cards/AcademyCard";
 
@@ -38,11 +39,11 @@ function buildHomeRecs(allTracks, allViz, favorites, history) {
       return { ...t, _score: score };
     })
     .sort((a, b) => b._score - a._score)
-    .slice(0, 6);
+    .slice(0, 8);
 
   const recommendedTracks = scoredTracks.length > 0
     ? scoredTracks
-    : allTracks.filter((t) => t.is_featured || t.is_new_release).slice(0, 6);
+    : allTracks.filter((t) => t.is_featured || t.is_new_release).slice(0, 8);
 
   const scoredViz = allViz
     .filter((v) => !favVizIds.has(v.id))
@@ -213,9 +214,9 @@ export default function Home() {
       {recommendedTracks.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-8">
           <SectionHeader label="Picked For You" title="Recommended Songs" link="/music" linkLabel="See More" labelColor="#D4A843" labelIcon={<Sparkles className="w-3 h-3" />} />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {recommendedTracks.map((track, i) => (
-              <MusicCard
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {recommendedTracks.slice(0, 8).map((track, i) => (
+              <MusicCardSmall
                 key={track.id}
                 track={track}
                 index={i}
