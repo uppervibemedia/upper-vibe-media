@@ -41,6 +41,19 @@ export default function VisualizerManager({ tracks, onRefresh }) {
 
   const trackMap = useMemo(() => Object.fromEntries(tracks.map((t) => [t.id, t])), [tracks]);
 
+  // Auto-convert any YouTube watch URL to embed URL
+  const toEmbedUrl = (url) => {
+    if (!url) return "";
+    const watchMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`;
+    return url;
+  };
+
+  const handleVideoUrlChange = (url) => {
+    const embed = toEmbedUrl(url);
+    setForm((f) => ({ ...f, video_url: url, embed_url: embed }));
+  };
+
   const handleSongSelect = (songId) => {
     const track = trackMap[songId];
     if (!track) { setForm((f) => ({ ...f, linked_song_id: "" })); return; }
@@ -172,12 +185,17 @@ export default function VisualizerManager({ tracks, onRefresh }) {
                   placeholder="3:45" />
               </div>
 
-              {/* Video URL */}
+              {/* Video URL — auto-converts to embed */}
               <div className="col-span-2">
-                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Video URL (YouTube, Vimeo, or direct)</label>
-                <input value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })}
+                <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">
+                  YouTube Video URL <span className="text-primary/60 normal-case font-normal">(paste normal YouTube link — auto-converts)</span>
+                </label>
+                <input value={form.video_url} onChange={(e) => handleVideoUrlChange(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-card/40 border border-border/30 text-sm text-foreground focus:outline-none focus:border-primary/50"
-                  placeholder="https://youtube.com/watch?v=..." />
+                  placeholder="https://www.youtube.com/watch?v=VIDEO_ID" />
+                {form.embed_url && (
+                  <p className="text-[10px] text-primary/50 mt-1">✓ Embed URL: {form.embed_url}</p>
+                )}
               </div>
 
               {/* Thumbnail */}
