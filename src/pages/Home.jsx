@@ -1,15 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Download, Headphones, Waves, Music4, Grid3X3, ArrowRight, Tv2, Mail, Crown, CheckCircle2 } from "lucide-react";
+import { Play, Download, Headphones, Waves, Music4, ArrowRight, Tv2, Mail, Crown, CheckCircle2, Compass } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
 import { usePlayer } from "../context/PlayerContext";
+import DiscoverTab, { recordPlay } from "../components/home/DiscoverTab";
 
 export default function Home() {
   const [tracks, setTracks] = useState([]);
   const [visualizers, setVisualizers] = useState([]);
+  const [activeTab, setActiveTab] = useState("home");
   const { playTrack } = usePlayer();
+
+  const handlePlayTrack = (track) => {
+    playTrack(track);
+    recordPlay(track);
+  };
 
   useEffect(() => {
     base44.entities.Track.filter({ status: "published" }, "-created_date", 6).then(setTracks);
@@ -104,6 +111,38 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Tab bar */}
+      <div className="sticky top-0 z-30 border-b" style={{ background: "rgba(4,4,14,0.92)", backdropFilter: "blur(20px)", borderColor: "rgba(255,255,255,0.07)" }}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex gap-1">
+            {[
+              { id: "home", label: "Home" },
+              { id: "discover", label: "Discover", icon: Compass },
+            ].map((tab) => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-5 py-3.5 text-sm font-black tracking-wider border-b-2 -mb-px transition-all ${
+                  activeTab === tab.id
+                    ? "border-cyan-400 text-cyan-400"
+                    : "border-transparent text-white/30 hover:text-white/60"
+                }`}>
+                {tab.icon && <tab.icon className="w-3.5 h-3.5" />}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Discover Tab */}
+      {activeTab === "discover" && (
+        <div className="max-w-5xl mx-auto px-6 py-12">
+          <DiscoverTab />
+        </div>
+      )}
+
+      {/* Home Tab content */}
+      {activeTab === "home" && <>
+
       {/* Email Signup Banner */}
       <EmailSignupBanner />
 
@@ -129,7 +168,7 @@ export default function Home() {
                 transition={{ delay: i * 0.07 }}
                 className="flex items-center gap-4 p-4 rounded-2xl group cursor-pointer transition-all hover:border-white/15"
                 style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
-                onClick={() => track.audio_url && playTrack(track)}
+                onClick={() => track.audio_url && handlePlayTrack(track)}
               >
                 <div className="relative flex-shrink-0">
                   {track.cover_url ? (
@@ -263,6 +302,9 @@ export default function Home() {
       </section>
 
       <Footer />
+      </> /* end home tab */}
+
+      {activeTab === "discover" && <Footer />}
     </div>
   );
 }

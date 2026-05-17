@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import { useFavorites } from "../hooks/useFavorite";
+import { recordPlay } from "../components/home/DiscoverTab";
 
 function toEmbedUrl(url) {
   if (!url) return null;
@@ -63,7 +64,7 @@ export default function SongPage() {
   const handlePlay = () => {
     if (!track) return;
     if (currentTrack?.id === track.id) togglePlay();
-    else playTrack(track);
+    else { playTrack(track); recordPlay(track); }
   };
 
   const handleDownload = async () => {

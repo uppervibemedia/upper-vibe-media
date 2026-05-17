@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Play, Pause, Download, Waves, Music4, Lock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
+import { recordPlay } from "../components/home/DiscoverTab";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
@@ -70,7 +71,7 @@ export default function Music() {
 
   const handlePlay = (track) => {
     if (currentTrack?.id === track.id) togglePlay();
-    else playTrack(track);
+    else { playTrack(track); recordPlay(track); }
   };
 
   const handleDownload = (e, track) => {
