@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Download, Headphones, Waves, Music4, Grid3X3, ArrowRight, Tv2 } from "lucide-react";
+import { Play, Download, Headphones, Waves, Music4, Grid3X3, ArrowRight, Tv2, Mail, Crown, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -63,16 +63,21 @@ export default function Home() {
               High-vibration music, 432 Hz sounds, electronic music, hip hop, R&B, instrumentals, and focus sessions — all in one place.
             </p>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-3">
               <Link to="/music"
-                className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.02]"
+                className="inline-flex items-center gap-3 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.02]"
                 style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 32px rgba(0,229,255,0.3)" }}>
-                <Headphones className="w-5 h-5" /> Listen Now
+                <Headphones className="w-4 h-4" /> Listen Now
               </Link>
-              <Link to="/categories"
-                className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-black text-sm tracking-wider transition-all hover:bg-white/10"
+              <Link to="/email-list"
+                className="inline-flex items-center gap-3 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:bg-white/10"
                 style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.8)" }}>
-                <Grid3X3 className="w-5 h-5" /> Browse Categories
+                <Mail className="w-4 h-4" /> Join Email List
+              </Link>
+              <Link to="/downloads"
+                className="inline-flex items-center gap-3 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110"
+                style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.3)", color: "#D4A843" }}>
+                <Crown className="w-4 h-4" /> Premium Downloads
               </Link>
             </div>
           </motion.div>
@@ -98,6 +103,9 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
+
+      {/* Email Signup Banner */}
+      <EmailSignupBanner />
 
       {/* Recent Tracks */}
       {tracks.length > 0 && (
@@ -256,5 +264,78 @@ export default function Home() {
 
       <Footer />
     </div>
+  );
+}
+
+function EmailSignupBanner() {
+  const [form, setForm] = useState({ name: "", email: "" });
+  const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.email) return;
+    setSaving(true);
+    await base44.entities.ContactMessage.create({
+      name: form.name || "Fan",
+      email: form.email,
+      type: "newsletter",
+      message: "Email list signup from homepage",
+    });
+    setSaving(false);
+    setSubmitted(true);
+  };
+
+  return (
+    <section className="max-w-7xl mx-auto px-6 pb-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+        className="rounded-3xl p-8 md:p-10"
+        style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.06),rgba(212,168,67,0.04))", border: "1px solid rgba(0,229,255,0.12)" }}
+      >
+        {!submitted ? (
+          <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
+            <div className="flex-shrink-0">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3"
+                style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.2)" }}>
+                <Mail className="w-5 h-5 text-cyan-400" />
+              </div>
+              <h3 className="font-heading font-black text-xl text-white mb-1">Get Notified When New Music Drops</h3>
+              <p className="text-white/35 text-xs leading-relaxed max-w-xs">
+                Join the Upper Vibe Media list for new 432 Hz songs, visualizers, exclusive drops, and high-vibe updates.
+              </p>
+            </div>
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col sm:flex-row gap-2 w-full md:max-w-sm">
+              <input
+                type="email"
+                placeholder="Your email *"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                required
+                className="flex-1 px-4 py-3 rounded-xl text-sm text-white placeholder:text-white/25 focus:outline-none transition-all"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                onFocus={(e) => e.target.style.borderColor = "rgba(0,229,255,0.4)"}
+                onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+              />
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-5 py-3 rounded-xl font-black text-xs tracking-wider transition-all hover:brightness-110 flex-shrink-0 disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}>
+                {saving ? "..." : "Notify Me"}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4">
+            <CheckCircle2 className="w-8 h-8 text-cyan-400 flex-shrink-0" />
+            <div>
+              <p className="font-heading font-bold text-white">You're locked in.</p>
+              <p className="text-white/40 text-sm">New Upper Vibe drops will hit your inbox first.</p>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </section>
   );
 }

@@ -11,16 +11,18 @@ import {
   Grid3X3,
   Download,
   Tv2,
+  Users,
+  Mail,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
-  { path: "/music", icon: Music4, label: "Music" },
+  { path: "/music", icon: Music4, label: "All Music" },
   { path: "/visualizers", icon: Tv2, label: "Visualizers" },
-  { path: "/categories", icon: Grid3X3, label: "Categories" },
   { path: "/downloads", icon: Download, label: "Downloads" },
-  { path: "/about", icon: Info, label: "About" },
+  { path: "/artists", icon: Users, label: "Artists" },
+  { path: "/email-list", icon: Mail, label: "Join Email List" },
 ];
 
 const bottomNavMobile = [
@@ -28,7 +30,7 @@ const bottomNavMobile = [
   { path: "/music", icon: Music4, label: "Music" },
   { path: "/visualizers", icon: Tv2, label: "Visual" },
   { path: "/downloads", icon: Download, label: "Downloads" },
-  { path: "/about", icon: Info, label: "About" },
+  { path: "/artists", icon: Users, label: "Artists" },
 ];
 
 export default function Sidebar() {

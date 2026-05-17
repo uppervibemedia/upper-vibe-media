@@ -23,6 +23,7 @@ import Contact from './pages/Contact';
 import Academy from './pages/Academy';
 import Artists from './pages/Artists';
 import Sessions from './pages/Sessions';
+import EmailList from './pages/EmailList';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -58,6 +59,7 @@ const AuthenticatedApp = () => {
         <Route path="/about" element={<About />} />
         <Route path="/visualizers" element={<Visualizers />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/email-list" element={<EmailList />} />
         {/* Legacy / hidden routes still accessible */}
         <Route path="/discover" element={<Discover />} />
         <Route path="/pricing" element={<Pricing />} />
