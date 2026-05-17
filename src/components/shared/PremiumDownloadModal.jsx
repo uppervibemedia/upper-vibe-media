@@ -1,6 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Crown, X, Waves, Download, Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const BENEFITS = [
   "Download every song",
@@ -11,6 +12,7 @@ const BENEFITS = [
 ];
 
 export default function PremiumDownloadModal({ open, onClose }) {
+  const navigate = useNavigate();
   return (
     <AnimatePresence>
       {open && (
@@ -83,6 +85,7 @@ export default function PremiumDownloadModal({ open, onClose }) {
               {/* Buttons */}
               <div className="flex flex-col gap-3">
                 <button
+                  onClick={() => { onClose(); navigate("/upgrade"); }}
                   className="w-full py-3.5 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
                   style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000" }}>
                   Upgrade To Premium

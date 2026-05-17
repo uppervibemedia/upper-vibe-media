@@ -50,7 +50,22 @@ export default function Sidebar() {
           />
           <span className="font-heading font-black text-sm tracking-[0.22em] text-white">UPPER VIBE</span>
         </Link>
-        <div />
+        {isAuthenticated && user ? (
+          <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black"
+              style={{ background: "rgba(0,229,255,0.15)", color: "#00E5FF" }}>
+              {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
+            </div>
+            <span className="text-[11px] font-semibold text-white/60">Account</span>
+          </Link>
+        ) : (
+          <button onClick={navigateToLogin}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-black text-[11px] tracking-wide"
+            style={{ background: "linear-gradient(135deg,#009CB8,#00C8E0)", color: "#000" }}>
+            Log In
+          </button>
+        )}
       </div>
 
       {/* ── Mobile bottom navigation ── */}
@@ -168,8 +183,10 @@ export default function Sidebar() {
                 {expanded && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-white/80 truncate">{user.full_name || "Member"}</p>
-                    <p className="text-[9px] text-white/30 truncate">
-                      {user.role === "admin" ? "Admin" : user.role === "premium" || user.tier === "premium" ? "Premium" : "Free"}
+                    <p className="text-[9px] truncate" style={{
+                      color: user.role === "admin" ? "#D4A843" : (user.role === "premium" || user.tier === "premium") ? "#D4A843" : "#00C9E0"
+                    }}>
+                      {user.role === "admin" ? "👑 Admin" : (user.role === "premium" || user.tier === "premium") ? "⭐ Premium" : "Free Listener"}
                     </p>
                   </motion.div>
                 )}
@@ -185,16 +202,17 @@ export default function Sidebar() {
           ) : (
             <button
               onClick={navigateToLogin}
-              className="w-full flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-white/[0.04] transition-colors overflow-hidden">
+              className="w-full flex items-center gap-3 px-2 py-1.5 rounded-xl transition-colors overflow-hidden"
+              style={{ background: "rgba(0,180,210,0.08)", border: "1px solid rgba(0,180,210,0.2)" }}>
               <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <User className="w-4 h-4 text-white/30" />
+                style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.2)" }}>
+                <User className="w-4 h-4 text-cyan-400/70" />
               </div>
               <AnimatePresence>
                 {expanded && (
                   <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="text-xs text-white/40 whitespace-nowrap font-semibold">
-                    Sign In
+                    className="text-xs text-cyan-400 whitespace-nowrap font-black tracking-wide">
+                    Log In
                   </motion.span>
                 )}
               </AnimatePresence>

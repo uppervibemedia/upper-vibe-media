@@ -116,7 +116,7 @@ export default function Account() {
             )}
 
             {!isPremium && (
-              <Link to="/pricing"
+              <Link to="/upgrade"
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
                 style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000" }}>
                 <Crown className="w-4 h-4" /> Upgrade to Premium — $4.99/mo

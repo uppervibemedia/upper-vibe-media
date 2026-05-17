@@ -30,6 +30,7 @@ import Favorites from './pages/Favorites';
 import Account from './pages/Account';
 import Sessions from './pages/Sessions';
 import EmailList from './pages/EmailList';
+import Upgrade from './pages/Upgrade';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -81,6 +82,8 @@ const AuthenticatedApp = () => {
         <Route path="/artists" element={<Artists />} />
         <Route path="/sessions" element={<Sessions />} />
         <Route path="/account" element={<Account />} />
+        <Route path="/upgrade" element={<Upgrade />} />
+        <Route path="/membership" element={<Upgrade />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

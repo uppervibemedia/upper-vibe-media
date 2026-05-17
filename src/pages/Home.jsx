@@ -142,94 +142,85 @@ export default function Home() {
     <div className="min-h-screen pb-28 lg:pb-0">
 
       {/* ── HERO ── */}
-      <section className="relative min-h-[68vh] flex items-center overflow-hidden">
-        {/* Background layers */}
+      <section className="relative flex items-center overflow-hidden" style={{ minHeight: "62vh" }}>
+        {/* Background */}
         <div className="absolute inset-0 pointer-events-none">
-          {/* Base gradient */}
           <div className="absolute inset-0"
-            style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,180,210,0.05) 0%, transparent 70%)" }} />
-          {/* Single soft teal orb — top left */}
-          <div className="absolute -top-20 -left-20 w-[480px] h-[480px] rounded-full blur-[160px] opacity-[0.06]"
+            style={{ background: "radial-gradient(ellipse 70% 50% at 40% 30%, rgba(0,170,200,0.04) 0%, transparent 65%)" }} />
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] rounded-full blur-[180px] opacity-[0.05]"
             style={{ background: "#00C9E0" }} />
-          {/* Faint gold warmth — bottom right */}
-          <div className="absolute bottom-0 right-0 w-[360px] h-[360px] rounded-full blur-[140px] opacity-[0.04]"
+          <div className="absolute bottom-10 right-0 w-[300px] h-[300px] rounded-full blur-[130px] opacity-[0.035]"
             style={{ background: "#D4A843" }} />
-          {/* Ultra-fine dot texture */}
-          <div className="absolute inset-0 opacity-[0.018]"
-            style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
-          {/* Horizontal separator line at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 h-px"
-            style={{ background: "linear-gradient(90deg, transparent, rgba(0,229,255,0.12), transparent)" }} />
+          {/* Subtle horizontal lines texture */}
+          <div className="absolute inset-0 opacity-[0.012]"
+            style={{ backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,0.5) 0px, rgba(255,255,255,0.5) 1px, transparent 1px, transparent 40px)" }} />
+          <div className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none"
+            style={{ background: "linear-gradient(transparent, hsl(240 50% 2%))" }} />
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 w-full pt-28 pb-14 relative z-10">
+        <div className="max-w-7xl mx-auto px-6 w-full pt-24 pb-16 relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 28 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-3xl">
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="max-w-2xl">
 
-            {/* Eyebrow label */}
+            {/* Eyebrow */}
             <motion.div
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-8"
-              style={{ background: "rgba(0,200,220,0.06)", border: "1px solid rgba(0,200,220,0.16)" }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#00C9E0", boxShadow: "0 0 6px rgba(0,200,220,0.6)" }} />
-              <span className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: "#00C9E0" }}>
+              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.45 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-7"
+              style={{ background: "rgba(0,200,220,0.05)", border: "1px solid rgba(0,200,220,0.14)" }}>
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#00C9E0" }} />
+              <span className="text-[9px] font-black tracking-[0.42em] uppercase" style={{ color: "#00C9E0" }}>
                 High-Vibration Music
               </span>
             </motion.div>
 
-            {/* Main headline */}
+            {/* Main headline — clean, premium, two-line */}
             <motion.h1
-              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-              className="font-heading font-black mb-5 leading-[0.92] tracking-tight"
-              style={{ fontSize: "clamp(2.8rem,6.5vw,5rem)" }}>
-              <span className="text-white">Upper Vibe </span>
-              <span style={{
-                background: "linear-gradient(120deg, #C9943A 0%, #EDB84A 45%, #C9943A 100%)",
+              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="font-heading font-black mb-5 leading-[1.0] tracking-[-0.02em]"
+              style={{ fontSize: "clamp(2.4rem,5.5vw,4.2rem)", letterSpacing: "-0.015em" }}>
+              <span className="block" style={{ color: "rgba(255,255,255,0.95)" }}>Upper Vibe</span>
+              <span className="block" style={{
+                background: "linear-gradient(110deg, #B8832E 0%, #E4A83C 40%, #C99030 100%)",
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text"
               }}>Media</span>
             </motion.h1>
 
-            {/* Supporting text */}
+            {/* Subtitle */}
             <motion.p
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.55 }}
-              className="mb-10 leading-relaxed font-body"
-              style={{ fontSize: "clamp(0.95rem,1.6vw,1.1rem)", color: "rgba(255,255,255,0.42)", maxWidth: "32rem", letterSpacing: "0.01em" }}>
-              432 Hz music, visualizers, and high-vibe learning —<br className="hidden sm:block" /> all in one premium experience.
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26, duration: 0.5 }}
+              className="mb-9 font-body leading-[1.65]"
+              style={{ fontSize: "clamp(0.9rem,1.5vw,1.05rem)", color: "rgba(255,255,255,0.38)", maxWidth: "29rem" }}>
+              432 Hz music, visualizers, and high-vibe learning —<br className="hidden sm:block" />
+              all in one premium experience.
             </motion.p>
 
             {/* CTA buttons */}
             <motion.div
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38, duration: 0.5 }}
-              className="flex flex-wrap gap-3">
-              {/* Primary */}
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34, duration: 0.45 }}
+              className="flex flex-wrap gap-2.5">
               <Link to="/music"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-black text-[13px] tracking-wide transition-all duration-200 hover:brightness-105 hover:-translate-y-px active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", color: "#000", boxShadow: "0 1px 20px rgba(0,200,220,0.15), inset 0 1px 0 rgba(255,255,255,0.15)" }}>
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-black text-[12px] tracking-wider transition-all duration-200 hover:brightness-105 hover:-translate-y-0.5 active:scale-[0.98]"
+                style={{ background: "linear-gradient(135deg,#009CB8,#00C8E0)", color: "#000" }}>
                 <Play className="w-3.5 h-3.5 fill-current" /> Explore Music
               </Link>
-              {/* Gold glass */}
               <Link to="/visualizers"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-black text-[13px] tracking-wide transition-all duration-200 hover:-translate-y-px active:scale-[0.98]"
-                style={{ background: "rgba(200,148,50,0.07)", border: "1px solid rgba(200,148,50,0.28)", color: "#C89432", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}>
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-black text-[12px] tracking-wider transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                style={{ background: "transparent", border: "1px solid rgba(185,135,45,0.35)", color: "#B8872D" }}>
                 <Tv2 className="w-3.5 h-3.5" /> Watch Visualizers
               </Link>
-              {/* Subtle secondary */}
               <Link to="/academy"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-black text-[13px] tracking-wide transition-all duration-200 hover:-translate-y-px active:scale-[0.98]"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.5)" }}>
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-black text-[12px] tracking-wider transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)" }}>
                 <GraduationCap className="w-3.5 h-3.5" /> Upper Vibe Academy
               </Link>
             </motion.div>
 
           </motion.div>
         </div>
-
-        {/* Bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
-          style={{ background: "linear-gradient(transparent, hsl(240 50% 2%))" }} />
       </section>
 
       {/* ── LATEST MUSIC ── */}
