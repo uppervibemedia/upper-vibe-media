@@ -72,7 +72,7 @@ const AuthenticatedApp = () => {
         <Route path="/contact" element={<Contact />} />
         <Route path="/academy" element={<Academy />} />
         <Route path="/my-vibes" element={<MyVibes />} />
-        <Route path="/favorites" element={<Favorites />} />
+        <Route path="/favorites" element={<MyVibes />} />
         <Route path="/artists" element={<Artists />} />
         <Route path="/sessions" element={<Sessions />} />
       </Route>
