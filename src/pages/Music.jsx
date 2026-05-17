@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Search, X, Music4 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { recordPlay } from "../components/home/DiscoverTab";
@@ -9,7 +9,7 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import { useFavorites } from "../hooks/useFavorite";
-import { Link } from "react-router-dom";
+import MusicCard from "../components/cards/MusicCard";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -38,133 +38,7 @@ function matchCategory(track, keywords) {
   return keywords.some((k) => haystack.includes(k));
 }
 
-function MusicCard({ track, index, onPlay, isCurrent, isPlaying, isFaved, onFav, isPremium, onUpgrade, onLoginRequired }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.02 }}
-      className="group flex flex-col rounded-2xl overflow-hidden"
-      style={{
-        background: isCurrent ? "rgba(0,229,255,0.06)" : "rgba(255,255,255,0.025)",
-        border: `1px solid ${isCurrent ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.07)"}`,
-      }}
-    >
-      {/* Cover Art — square, full width */}
-      <div
-        className="relative w-full aspect-square cursor-pointer flex-shrink-0 overflow-hidden"
-        onClick={() => onPlay(track)}
-      >
-        {track.cover_url ? (
-          <img
-            src={track.cover_url}
-            alt={track.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-          />
-        ) : (
-          <div
-            className="w-full h-full flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.08),rgba(212,168,67,0.04))" }}
-          >
-            <Music4 className="w-12 h-12 text-white/10" />
-          </div>
-        )}
 
-        {/* Play overlay */}
-        <div
-          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ background: "rgba(0,0,0,0.55)" }}
-        >
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center"
-            style={{ background: "rgba(0,229,255,0.9)" }}
-          >
-            {isCurrent && isPlaying
-              ? <Pause className="w-6 h-6 text-black" />
-              : <Play className="w-6 h-6 text-black ml-0.5" />}
-          </div>
-        </div>
-
-        {/* Top badges */}
-        <div className="absolute top-2 left-2 flex gap-1.5 pointer-events-none">
-          <span
-            className="flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full"
-            style={{ background: "rgba(0,0,0,0.7)", color: "#00E5FF" }}
-          >
-            <Waves className="w-2 h-2" /> 432 Hz
-          </span>
-          {track.is_new_release && (
-            <span
-              className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
-              style={{ background: "rgba(212,168,67,0.9)", color: "#000" }}
-            >
-              NEW
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Details */}
-      <div className="p-3.5 flex flex-col gap-2.5 flex-1">
-        <Link to={`/song/${track.id}`} className="min-w-0 hover:opacity-80 transition-opacity">
-          <p className="text-sm font-bold text-white leading-tight line-clamp-2">{track.title}</p>
-          <p className="text-xs text-white/40 mt-0.5 truncate">{track.artist_display || "Upper Vibe Media"}</p>
-        </Link>
-
-        {/* Action row */}
-        <div className="flex items-center gap-1.5 mt-auto">
-          {/* Heart */}
-          <button
-            onClick={() => {
-              if (!onLoginRequired()) return;
-              onFav("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-            }}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 flex-shrink-0"
-            style={isFaved("track", track.id) ? {
-              background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.35)", color: "#ec4899"
-            } : {
-              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.3)"
-            }}>
-            <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-          </button>
-
-          {/* Play */}
-          <button
-            onClick={() => onPlay(track)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110"
-            style={{
-              background: isCurrent ? "rgba(0,229,255,0.18)" : "rgba(0,229,255,0.08)",
-              border: "1px solid rgba(0,229,255,0.2)",
-              color: "#00E5FF",
-            }}>
-            {isCurrent && isPlaying ? <><Pause className="w-3.5 h-3.5" /> Pause</> : <><Play className="w-3.5 h-3.5 ml-0.5" /> Play</>}
-          </button>
-
-          {/* Download */}
-          {isPremium ? (
-            <a
-              href={track.audio_url}
-              download={`${track.title}.mp3`}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 flex-shrink-0"
-              style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
-              onClick={(e) => e.stopPropagation()}
-              title="Download">
-              <Download className="w-3.5 h-3.5" />
-            </a>
-          ) : (
-            <button
-              onClick={onUpgrade}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 flex-shrink-0"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.2)" }}
-              title="Premium download">
-              <Lock className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 export default function Music() {
   const [tracks, setTracks] = useState([]);
@@ -202,9 +76,9 @@ export default function Music() {
     else { playTrack(track); recordPlay(track); }
   };
 
-  const requireLogin = () => {
-    if (!user) { setLoginModal(true); return false; }
-    return true;
+  const handleHeart = (track) => {
+    if (!user) { setLoginModal(true); return; }
+    toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
   };
 
   return (
@@ -280,7 +154,7 @@ export default function Music() {
               key={activeFilter + search}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5"
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
             >
               {filtered.map((track, i) => (
                 <MusicCard
@@ -290,11 +164,11 @@ export default function Music() {
                   onPlay={handlePlay}
                   isCurrent={currentTrack?.id === track.id}
                   isPlaying={isPlaying}
-                  isFaved={isFaved}
-                  onFav={toggle}
+                  isFaved={isFaved("track", track.id)}
+                  onHeart={handleHeart}
                   isPremium={isPremium}
                   onUpgrade={() => setUpgradeModal(true)}
-                  onLoginRequired={requireLogin}
+                  showDownload={true}
                 />
               ))}
             </motion.div>
