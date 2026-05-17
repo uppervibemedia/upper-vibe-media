@@ -1,24 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Edit2, Trash2, Star, X, GraduationCap, Crown, Eye } from "lucide-react";
+import { Edit2, Trash2, Star, X, GraduationCap, Crown, Eye, Upload, Plus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
-const CATEGORIES = [
-  { value: "432hz_music", label: "432 Hz Music" },
-  { value: "high_vibe_music", label: "High Vibe Music" },
-  { value: "manifestation_music", label: "Manifestation Music" },
-  { value: "music_for_focus", label: "Music For Focus" },
-  { value: "behind_the_song", label: "Behind The Song" },
-  { value: "upper_vibe_media", label: "Upper Vibe Media" },
-  { value: "music_business", label: "Music Business" },
-  { value: "artist_development", label: "Artist Development" },
+const SUGGESTED_LABELS = [
+  "432 Hz", "High Vibe", "Manifestation", "Mindset", "Music Business",
+  "Behind The Song", "Artist Development", "Frequency Education",
+  "Creative Energy", "Spiritual Growth",
 ];
 
 const EMPTY_FORM = {
-  title: "", description: "", category: "high_vibe_music", video_url: "", embed_url: "",
-  thumbnail_url: "", is_premium: true, free_preview_seconds: 60,
-  is_featured: false, status: "published", release_date: "", display_order: 0,
+  title: "", description: "", video_url: "", embed_url: "",
+  thumbnail_url: "", labels: [], is_premium: true, free_preview_seconds: 60,
+  is_featured: false, status: "published", display_order: 0,
 };
 
 function toEmbedUrl(url) {
@@ -27,12 +22,71 @@ function toEmbedUrl(url) {
   return m ? `https://www.youtube.com/embed/${m[1]}` : (url.includes("/embed/") ? url : "");
 }
 
+function LabelPicker({ labels = [], onChange }) {
+  const [custom, setCustom] = useState("");
+
+  const toggle = (label) => {
+    if (labels.includes(label)) onChange(labels.filter((l) => l !== label));
+    else onChange([...labels, label]);
+  };
+
+  const addCustom = () => {
+    const val = custom.trim();
+    if (val && !labels.includes(val)) {
+      onChange([...labels, val]);
+    }
+    setCustom("");
+  };
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {SUGGESTED_LABELS.map((l) => (
+          <button key={l} type="button" onClick={() => toggle(l)}
+            className="px-2.5 py-1 rounded-full text-[10px] font-bold transition-all"
+            style={labels.includes(l)
+              ? { background: "rgba(212,168,67,0.2)", border: "1px solid rgba(212,168,67,0.5)", color: "#D4A843" }
+              : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }
+            }>
+            {l}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2 mt-1">
+        <input value={custom} onChange={(e) => setCustom(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+          placeholder="Custom label..."
+          className="flex-1 px-3 py-1.5 rounded-lg text-xs text-white focus:outline-none"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }} />
+        <button type="button" onClick={addCustom}
+          className="px-3 py-1.5 rounded-lg text-xs font-bold text-white/50 hover:text-white border border-white/10">
+          <Plus className="w-3 h-3" />
+        </button>
+      </div>
+      {labels.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {labels.map((l) => (
+            <span key={l} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+              style={{ background: "rgba(212,168,67,0.15)", border: "1px solid rgba(212,168,67,0.3)", color: "#D4A843" }}>
+              {l}
+              <button type="button" onClick={() => onChange(labels.filter((x) => x !== l))} className="hover:text-red-400">
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AcademyVideoManager({ onRefresh }) {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingLesson, setEditingLesson] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [uploadingThumb, setUploadingThumb] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -45,12 +99,21 @@ export default function AcademyVideoManager({ onRefresh }) {
 
   const openEdit = (lesson) => {
     setEditingLesson(lesson);
-    setForm({ ...EMPTY_FORM, ...lesson });
+    setForm({ ...EMPTY_FORM, ...lesson, labels: lesson.labels || [] });
   };
 
   const handleVideoUrlChange = (url) => {
     const embed = toEmbedUrl(url);
     setForm((f) => ({ ...f, video_url: url, embed_url: embed }));
+  };
+
+  const handleThumbUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingThumb(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setForm((f) => ({ ...f, thumbnail_url: file_url }));
+    setUploadingThumb(false);
   };
 
   const handleSave = async (e) => {
@@ -77,8 +140,6 @@ export default function AcademyVideoManager({ onRefresh }) {
     await base44.entities.AcademyLesson.update(lesson.id, { is_featured: !lesson.is_featured });
     load();
   };
-
-  const catLabel = (val) => CATEGORIES.find((c) => c.value === val)?.label || val || "—";
 
   return (
     <div className="mt-8">
@@ -118,15 +179,6 @@ export default function AcademyVideoManager({ onRefresh }) {
               </div>
 
               <div>
-                <label className="text-xs font-semibold tracking-wider uppercase text-white/40 mb-1.5 block">Category</label>
-                <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg text-sm text-white focus:outline-none"
-                  style={{ background: "rgba(20,20,40,1)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-              </div>
-
-              <div>
                 <label className="text-xs font-semibold tracking-wider uppercase text-white/40 mb-1.5 block">Status</label>
                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg text-sm text-white focus:outline-none"
@@ -137,6 +189,17 @@ export default function AcademyVideoManager({ onRefresh }) {
                 </select>
               </div>
 
+              <div className="flex flex-col gap-2.5 justify-center">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={!!form.is_premium} onChange={(e) => setForm({ ...form, is_premium: e.target.checked })} className="accent-yellow-400 w-4 h-4" />
+                  <span className="text-sm text-white/70">Premium only</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={!!form.is_featured} onChange={(e) => setForm({ ...form, is_featured: e.target.checked })} className="accent-yellow-400 w-4 h-4" />
+                  <span className="text-sm text-white/70">Featured</span>
+                </label>
+              </div>
+
               <div className="col-span-2">
                 <label className="text-xs font-semibold tracking-wider uppercase text-white/40 mb-1.5 block">
                   YouTube URL <span className="normal-case font-normal text-white/25">(auto-converts to embed)</span>
@@ -145,14 +208,25 @@ export default function AcademyVideoManager({ onRefresh }) {
                   className="w-full px-3 py-2 rounded-lg text-sm text-white focus:outline-none"
                   style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
                   placeholder="https://www.youtube.com/watch?v=..." />
-                {form.embed_url && <p className="text-[10px] text-yellow-400/40 mt-1">✓ Embed: {form.embed_url}</p>}
+                {form.embed_url && <p className="text-[10px] text-yellow-400/50 mt-1">✓ Embed: {form.embed_url}</p>}
               </div>
 
               <div className="col-span-2">
-                <label className="text-xs font-semibold tracking-wider uppercase text-white/40 mb-1.5 block">Thumbnail URL</label>
-                <input value={form.thumbnail_url || ""} onChange={(e) => setForm({ ...form, thumbnail_url: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg text-sm text-white focus:outline-none"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }} />
+                <label className="text-xs font-semibold tracking-wider uppercase text-white/40 mb-1.5 block">Thumbnail</label>
+                <div className="flex gap-2 items-center">
+                  {form.thumbnail_url && (
+                    <img src={form.thumbnail_url} alt="" className="w-14 h-10 object-cover rounded-lg flex-shrink-0" />
+                  )}
+                  <label className="cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
+                    <Upload className="w-3 h-3" /> {uploadingThumb ? "Uploading..." : "Upload"}
+                    <input type="file" accept="image/*" className="hidden" onChange={handleThumbUpload} disabled={uploadingThumb} />
+                  </label>
+                  <input value={form.thumbnail_url || ""} onChange={(e) => setForm({ ...form, thumbnail_url: e.target.value })}
+                    placeholder="Or paste thumbnail URL"
+                    className="flex-1 px-3 py-2 rounded-lg text-xs text-white focus:outline-none"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }} />
+                </div>
               </div>
 
               <div>
@@ -163,15 +237,9 @@ export default function AcademyVideoManager({ onRefresh }) {
                   style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }} />
               </div>
 
-              <div className="flex flex-col gap-3 justify-center">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={!!form.is_premium} onChange={(e) => setForm({ ...form, is_premium: e.target.checked })} className="accent-yellow-400 w-4 h-4" />
-                  <span className="text-sm text-white/70">Premium only</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={!!form.is_featured} onChange={(e) => setForm({ ...form, is_featured: e.target.checked })} className="accent-yellow-400 w-4 h-4" />
-                  <span className="text-sm text-white/70">Featured</span>
-                </label>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold tracking-wider uppercase text-white/40 mb-1.5 block">Labels / Tags</label>
+                <LabelPicker labels={form.labels || []} onChange={(labels) => setForm({ ...form, labels })} />
               </div>
 
               <div className="col-span-2 flex gap-3">
@@ -195,9 +263,7 @@ export default function AcademyVideoManager({ onRefresh }) {
           <div className="w-5 h-5 border-2 border-yellow-400/20 border-t-yellow-400 rounded-full animate-spin" />
         </div>
       ) : lessons.length === 0 ? (
-        <div className="text-center py-12 text-white/25 text-sm">
-          No Academy videos yet. Import some above.
-        </div>
+        <div className="text-center py-12 text-white/25 text-sm">No Academy videos yet. Import some above.</div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {lessons.map((lesson) => (
@@ -225,9 +291,16 @@ export default function AcademyVideoManager({ onRefresh }) {
               </div>
               <div className="p-3">
                 <p className="text-sm font-bold text-white truncate">{lesson.title}</p>
-                <p className="text-[10px] text-yellow-400/60 mt-0.5">{catLabel(lesson.category)}</p>
+                {lesson.labels?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {lesson.labels.slice(0, 3).map((l) => (
+                      <span key={l} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: "rgba(212,168,67,0.12)", color: "#D4A843" }}>{l}</span>
+                    ))}
+                  </div>
+                )}
                 {lesson.is_premium && (
-                  <p className="text-[9px] text-white/30 flex items-center gap-1 mt-0.5">
+                  <p className="text-[9px] text-white/30 flex items-center gap-1 mt-1">
                     <Eye className="w-2.5 h-2.5" /> {lesson.free_preview_seconds}s free preview
                   </p>
                 )}

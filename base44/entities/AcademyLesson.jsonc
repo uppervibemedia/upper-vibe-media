@@ -26,6 +26,14 @@
       "type": "string",
       "description": "Thumbnail image URL"
     },
+    "labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Custom labels/tags for this video e.g. 432 Hz, Manifestation, Mindset"
+    },
     "category": {
       "type": "string",
       "enum": [
@@ -38,17 +46,15 @@
         "music_business",
         "artist_development"
       ],
-      "description": "Academy video category"
+      "description": "Internal category (used for import detection)"
     },
     "is_premium": {
       "type": "boolean",
-      "default": true,
-      "description": "Premium only video"
+      "default": true
     },
     "free_preview_seconds": {
       "type": "number",
-      "default": 60,
-      "description": "Free user preview length in seconds"
+      "default": 60
     },
     "is_featured": {
       "type": "boolean",
@@ -68,8 +74,7 @@
       "format": "date"
     },
     "playlist_added_date": {
-      "type": "string",
-      "description": "Date added to playlist"
+      "type": "string"
     },
     "display_order": {
       "type": "number",

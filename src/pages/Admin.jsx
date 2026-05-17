@@ -10,6 +10,7 @@ import VisualizerManager from "../components/admin/VisualizerManager";
 import YouTubeImporter from "../components/admin/YouTubeImporter";
 import AcademyImporter from "../components/admin/AcademyImporter";
 import AcademyVideoManager from "../components/admin/AcademyVideoManager";
+import ArtistManager from "../components/admin/ArtistManager";
 import { useAuth } from "@/lib/AuthContext";
 
 const TABS = [
@@ -179,6 +180,7 @@ export default function Admin() {
           <ArtistManager artists={artists} onRefresh={loadAll} />
         )}
 
+
         {/* Categories tab */}
         {tab === "categories" && (
           <CategoriesView categories={categories} tracks={tracks} />
@@ -193,92 +195,7 @@ export default function Admin() {
   );
 }
 
-function ArtistManager({ artists, onRefresh }) {
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", slug: "", bio: "", type: "solo", is_active: true });
-  const [saving, setSaving] = useState(false);
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    await base44.entities.Artist.create(form);
-    setForm({ name: "", slug: "", bio: "", type: "solo", is_active: true });
-    setShowForm(false);
-    setSaving(false);
-    onRefresh();
-  };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-heading font-bold text-xl">Artists ({artists.length})</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/30 text-primary text-sm font-semibold hover:bg-primary/20 transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add Artist
-        </button>
-      </div>
-      {showForm && (
-        <form onSubmit={handleSave} className="p-6 rounded-xl bg-card/40 border border-border/30 mb-6 grid grid-cols-2 gap-4">
-          <div className="col-span-2 md:col-span-1">
-            <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Name *</label>
-            <input
-              className="w-full px-3 py-2 rounded-lg bg-card/40 border border-border/30 text-sm text-foreground focus:outline-none focus:border-primary/50"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") })}
-              placeholder="Artist name"
-              required
-            />
-          </div>
-          <div className="col-span-2 md:col-span-1">
-            <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Type</label>
-            <select
-              className="w-full px-3 py-2 rounded-lg bg-card/40 border border-border/30 text-sm text-foreground focus:outline-none focus:border-primary/50"
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value })}
-            >
-              <option value="solo">Solo</option>
-              <option value="group">Group</option>
-              <option value="brand">Brand</option>
-              <option value="alias">Alias</option>
-            </select>
-          </div>
-          <div className="col-span-2">
-            <label className="text-xs font-semibold tracking-wider uppercase text-muted-foreground mb-1.5 block">Bio</label>
-            <textarea
-              className="w-full px-3 py-2 rounded-lg bg-card/40 border border-border/30 text-sm text-foreground focus:outline-none focus:border-primary/50 h-20 resize-none"
-              value={form.bio}
-              onChange={(e) => setForm({ ...form, bio: e.target.value })}
-              placeholder="Artist bio..."
-            />
-          </div>
-          <div className="col-span-2 flex gap-3">
-            <button type="submit" disabled={saving} className="px-6 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all">
-              {saving ? "Saving..." : "Save Artist"}
-            </button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg border border-border/30 text-sm text-muted-foreground hover:text-foreground transition-all">Cancel</button>
-          </div>
-        </form>
-      )}
-      <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {artists.map((a) => (
-          <div key={a.id} className="p-4 rounded-xl bg-card/40 border border-border/20 flex items-center gap-3">
-            {a.image_url ? (
-              <img src={a.image_url} alt={a.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-muted/50 flex-shrink-0" />
-            )}
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{a.name}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{a.type}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function AIOrganizerTab({ tracks, artists, categories, onRefresh }) {
   const [selectedTrack, setSelectedTrack] = React.useState(null);

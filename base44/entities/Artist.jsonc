@@ -30,16 +30,40 @@
         "brand",
         "alias"
       ],
-      "default": "solo",
-      "description": "Artist type"
+      "default": "solo"
+    },
+    "genre": {
+      "type": "string",
+      "description": "Primary genre e.g. Hip Hop, R&B, Electronic"
     },
     "is_active": {
       "type": "boolean",
       "default": true
     },
+    "is_featured": {
+      "type": "boolean",
+      "default": false
+    },
     "social_links": {
       "type": "object",
-      "description": "Social media links object"
+      "description": "Social media links",
+      "properties": {
+        "spotify": {
+          "type": "string"
+        },
+        "youtube": {
+          "type": "string"
+        },
+        "apple_music": {
+          "type": "string"
+        },
+        "instagram": {
+          "type": "string"
+        },
+        "tiktok": {
+          "type": "string"
+        }
+      }
     }
   },
   "required": [

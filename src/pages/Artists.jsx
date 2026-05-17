@@ -1,28 +1,30 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Music, Play, ArrowLeft } from "lucide-react";
+import { Music, Play, ArrowLeft, Edit2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import TrackCard from "../components/shared/TrackCard";
 import UpgradeModal from "../components/shared/UpgradeModal";
 import Footer from "../components/shared/Footer";
+import ArtistManager from "../components/admin/ArtistManager";
 import { filterByArtist } from "@/lib/trackService";
 import { getEffectiveAccess } from "@/lib/tierAccess";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Artists() {
   const [artists, setArtists] = useState([]);
   const [tracks, setTracks] = useState([]);
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [upgradeModal, setUpgradeModal] = useState({ open: false, track: null });
+  const [showAdminManager, setShowAdminManager] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
-  useEffect(() => {
-    Promise.all([
-      base44.entities.Artist.filter({ is_active: true }, "name", 50),
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 300),
-    ]).then(([a, t]) => {
-      setArtists(a);
-      setTracks(t);
-    });
-  }, []);
+  const loadData = () => Promise.all([
+    base44.entities.Artist.filter({ is_active: true }, "name", 50),
+    base44.entities.Track.filter({ status: "published" }, "-created_date", 300),
+  ]).then(([a, t]) => { setArtists(a); setTracks(t); });
+
+  useEffect(() => { loadData(); }, []);
 
   const handleLockedClick = (track) => {
     const access = getEffectiveAccess(track);
@@ -68,6 +70,11 @@ export default function Artists() {
         </div>
 
         <div className="max-w-7xl mx-auto px-6 py-10">
+          {showAdminManager && isAdmin && (
+            <div className="mb-8">
+              <ArtistManager artists={artists} onRefresh={loadData} />
+            </div>
+          )}
           {selectedArtist.bio && (
             <div className="mb-10 max-w-2xl">
               <p className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3">About</p>
@@ -114,8 +121,24 @@ export default function Artists() {
     <div>
       <div className="max-w-7xl mx-auto px-6 py-12">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <p className="text-xs font-bold tracking-[0.2em] uppercase text-primary text-glow-blue mb-2">Upper Vibe Roster</p>
-          <h1 className="font-heading font-extrabold text-3xl md:text-4xl mb-10">Artists</h1>
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <p className="text-xs font-bold tracking-[0.2em] uppercase text-primary text-glow-blue mb-2">Upper Vibe Roster</p>
+              <h1 className="font-heading font-extrabold text-3xl md:text-4xl">Artists</h1>
+            </div>
+            {isAdmin && (
+              <button onClick={() => setShowAdminManager(!showAdminManager)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
+                style={{ background: showAdminManager ? "rgba(0,229,255,0.12)" : "rgba(255,255,255,0.04)", border: "1px solid rgba(0,229,255,0.25)", color: "#00E5FF" }}>
+                <Edit2 className="w-3.5 h-3.5" /> {showAdminManager ? "Hide Editor" : "Edit Artists"}
+              </button>
+            )}
+          </div>
+          {showAdminManager && isAdmin && (
+            <div className="mb-10">
+              <ArtistManager artists={artists} onRefresh={loadData} />
+            </div>
+          )}
 
           <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {artists.map((artist, i) => {
