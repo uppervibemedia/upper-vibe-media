@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Play, Waves, Music4, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Sparkles, Heart, Users, GraduationCap } from "lucide-react";
+import { Play, Waves, Music4, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Sparkles, Heart, Users, GraduationCap, Download, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay, getHistory } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
+import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 
 function buildHomeRecs(allTracks, allViz, favorites, history) {
   const favTrackIds = new Set(favorites.filter((f) => f.type === "track").map((f) => f.track_id));
@@ -65,6 +66,7 @@ export default function Home() {
   const [trackCounts, setTrackCounts] = useState({});
   const [academyLessons, setAcademyLessons] = useState([]);
   const [loginModal, setLoginModal] = useState(false);
+  const [premiumModal, setPremiumModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
   const { favorites, isFaved, toggle } = useFavorites(user?.email);
@@ -113,6 +115,22 @@ export default function Home() {
       className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
       style={isFaved(type, id) ? { color: "#ec4899" } : { color: "rgba(255,255,255,0.2)" }}>
       <Heart className={`w-3.5 h-3.5 ${isFaved(type, id) ? "fill-current" : ""}`} />
+    </button>
+  );
+
+  const downloadButton = (track) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!user) { setLoginModal(true); return; }
+        const isPremium = user?.role === "premium" || user?.tier === "premium";
+        if (!isPremium) { setPremiumModal(true); return; }
+        if (track.audio_url) window.open(track.audio_url, "_blank");
+      }}
+      className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+      style={{ color: "rgba(255,255,255,0.2)" }}
+      title="Download">
+      <Download className="w-3.5 h-3.5" />
     </button>
   );
 
@@ -220,7 +238,10 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                    <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()}
+                      className="text-sm font-bold text-white truncate block hover:text-cyan-300 transition-colors">
+                      {track.title}
+                    </Link>
                     <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
@@ -228,9 +249,16 @@ export default function Home() {
                         <Waves className="w-2 h-2" /> 432 Hz
                       </span>
                       {track.duration && <span className="text-[9px] text-white/20">{track.duration}</span>}
+                      <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-0.5 text-[9px] text-white/25 hover:text-white/60 transition-colors">
+                        <ExternalLink className="w-2.5 h-2.5" /> View
+                      </Link>
                     </div>
                   </div>
-                  {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
+                    {downloadButton(track)}
+                  </div>
                 </motion.div>
               );
             })}
@@ -268,14 +296,24 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                    <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()}
+                      className="text-sm font-bold text-white truncate block hover:text-yellow-300 transition-colors">
+                      {track.title}
+                    </Link>
                     <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                    <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-0.5 text-[9px] text-white/25 hover:text-white/60 transition-colors mt-0.5">
+                      <ExternalLink className="w-2.5 h-2.5" /> View Song
+                    </Link>
                   </div>
-                  <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                    style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
-                    <Waves className="w-2 h-2" /> 432
-                  </span>
-                  {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+                      <Waves className="w-2 h-2" /> 432
+                    </span>
+                    {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
+                    {downloadButton(track)}
+                  </div>
                 </motion.div>
               );
             })}
@@ -433,6 +471,7 @@ export default function Home() {
       <Footer />
 
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
+      <PremiumDownloadModal open={premiumModal} onClose={() => setPremiumModal(false)} />
     </div>
   );
 }
