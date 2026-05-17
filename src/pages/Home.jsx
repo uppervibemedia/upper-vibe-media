@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Play, Waves, Music4, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Sparkles, Heart, Users, GraduationCap } from "lucide-react";
+// Note: Play/Pause/Waves/Music4/Heart also used by HomeSongCard internally
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -8,6 +9,7 @@ import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay, getHistory } from "../components/home/DiscoverTab";
+import HomeSongCard from "../components/home/HomeSongCard";
 import FavLoginModal from "../components/shared/FavLoginModal";
 
 function buildHomeRecs(allTracks, allViz, favorites, history) {
@@ -195,47 +197,21 @@ export default function Home() {
         <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
           <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor="#00E5FF" />
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {latestTracks.map((track, i) => {
-              const isCurrent = currentTrack?.id === track.id;
-              return (
-                <motion.div key={track.id}
-                  initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                  className="group flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all"
-                  style={{
-                    background: isCurrent ? "rgba(0,229,255,0.06)" : "rgba(255,255,255,0.025)",
-                    border: `1px solid ${isCurrent ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.07)"}`,
-                  }}>
-                  {/* Cover — square full width */}
-                  <div className="relative w-full aspect-square overflow-hidden" onClick={() => track.audio_url && handlePlayTrack(track)}>
-                    {track.cover_url ? (
-                      <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.08),rgba(212,168,67,0.04))" }}>
-                        <Music4 className="w-10 h-10 text-white/10" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: "rgba(0,0,0,0.5)" }}>
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(0,229,255,0.9)" }}>
-                        {isCurrent && isPlaying ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black ml-0.5" />}
-                      </div>
-                    </div>
-                    <div className="absolute top-2 left-2 flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full pointer-events-none"
-                      style={{ background: "rgba(0,0,0,0.65)", color: "#00E5FF" }}>
-                      <Waves className="w-2 h-2" /> 432 Hz
-                    </div>
-                  </div>
-                  {/* Info */}
-                  <div className="p-3 flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-white truncate leading-tight">{track.title}</p>
-                      <p className="text-xs text-white/35 truncate mt-0.5">{track.artist_display || "Upper Vibe Media"}</p>
-                    </div>
-                    {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
-                  </div>
-                </motion.div>
-              );
-            })}
+            {latestTracks.map((track, i) => (
+              <HomeSongCard
+                key={track.id}
+                track={track}
+                index={i}
+                isCurrent={currentTrack?.id === track.id}
+                isPlaying={isPlaying}
+                onPlay={handlePlayTrack}
+                onHeart={(t) => {
+                  if (!user) { setLoginModal(true); return; }
+                  toggle("track", t.id, { title: t.title, artist: t.artist_display, cover_url: t.cover_url });
+                }}
+                isFaved={isFaved("track", track.id)}
+              />
+            ))}
           </div>
         </section>
       )}
@@ -244,48 +220,22 @@ export default function Home() {
       {recommendedTracks.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-10">
           <SectionHeader label="Picked For You" title="Recommended Songs" link="/music" linkLabel="See More" labelColor="#D4A843" labelIcon={<Sparkles className="w-3 h-3" />} />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
-            {recommendedTracks.map((track, i) => {
-              const isCurrent = currentTrack?.id === track.id;
-              return (
-                <motion.div key={track.id}
-                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  className="group flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all"
-                  style={{
-                    background: isCurrent ? "rgba(212,168,67,0.06)" : "rgba(255,255,255,0.025)",
-                    border: `1px solid ${isCurrent ? "rgba(212,168,67,0.25)" : "rgba(255,255,255,0.07)"}`,
-                  }}>
-                  {/* Cover — square full width */}
-                  <div className="relative w-full aspect-square overflow-hidden" onClick={() => track.audio_url && handlePlayTrack(track)}>
-                    {track.cover_url ? (
-                      <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.08),rgba(0,229,255,0.04))" }}>
-                        <Music4 className="w-10 h-10 text-white/10" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: "rgba(0,0,0,0.5)" }}>
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(212,168,67,0.9)" }}>
-                        {isCurrent && isPlaying ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black ml-0.5" />}
-                      </div>
-                    </div>
-                    <div className="absolute top-2 left-2 flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full pointer-events-none"
-                      style={{ background: "rgba(0,0,0,0.65)", color: "#00E5FF" }}>
-                      <Waves className="w-2 h-2" /> 432 Hz
-                    </div>
-                  </div>
-                  {/* Info */}
-                  <div className="p-3 flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-white truncate leading-tight">{track.title}</p>
-                      <p className="text-xs text-white/35 truncate mt-0.5">{track.artist_display || "Upper Vibe Media"}</p>
-                    </div>
-                    {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
-                  </div>
-                </motion.div>
-              );
-            })}
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {recommendedTracks.map((track, i) => (
+              <HomeSongCard
+                key={track.id}
+                track={track}
+                index={i}
+                isCurrent={currentTrack?.id === track.id}
+                isPlaying={isPlaying}
+                onPlay={handlePlayTrack}
+                onHeart={(t) => {
+                  if (!user) { setLoginModal(true); return; }
+                  toggle("track", t.id, { title: t.title, artist: t.artist_display, cover_url: t.cover_url });
+                }}
+                isFaved={isFaved("track", track.id)}
+              />
+            ))}
           </div>
         </section>
       )}
