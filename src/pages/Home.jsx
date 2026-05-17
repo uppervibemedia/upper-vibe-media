@@ -10,7 +10,7 @@ import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay, getHistory } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import MusicCard from "../components/cards/MusicCard";
-import MusicCardSmall from "../components/cards/MusicCardSmall";
+import CompactSongCard from "../components/cards/CompactSongCard";
 import VisualizerCard from "../components/cards/VisualizerCard";
 import AcademyCard from "../components/cards/AcademyCard";
 
@@ -216,7 +216,7 @@ export default function Home() {
           <SectionHeader label="Picked For You" title="Recommended Songs" link="/music" linkLabel="See More" labelColor="#D4A843" labelIcon={<Sparkles className="w-3 h-3" />} />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {recommendedTracks.slice(0, 8).map((track, i) => (
-              <MusicCardSmall
+              <CompactSongCard
                 key={track.id}
                 track={track}
                 index={i}
