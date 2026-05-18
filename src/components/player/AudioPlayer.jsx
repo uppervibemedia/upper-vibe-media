@@ -5,7 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { usePlayer } from "../../context/PlayerContext";
 
 export default function AudioPlayer() {
-  const { currentTrack, isPlaying, togglePlay, stopPlaying, audioRef } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay, stopPlaying, audioRef, handleNext, handlePrev } = usePlayer();
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(80);
@@ -117,7 +117,7 @@ export default function AudioPlayer() {
 
             {/* Controls */}
             <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-              <button className="text-white/25 hover:text-white/60 transition-colors hidden md:flex">
+              <button onClick={handlePrev} className="text-white/25 hover:text-white/60 transition-colors hidden md:flex">
                 <SkipBack className="w-4 h-4" />
               </button>
               <button
@@ -133,7 +133,7 @@ export default function AudioPlayer() {
                   : <Play className="w-4 h-4 text-black ml-0.5" />
                 }
               </button>
-              <button className="text-white/25 hover:text-white/60 transition-colors hidden md:flex">
+              <button onClick={handleNext} className="text-white/25 hover:text-white/60 transition-colors hidden md:flex">
                 <SkipForward className="w-4 h-4" />
               </button>
             </div>

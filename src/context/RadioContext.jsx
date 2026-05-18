@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import { usePlayer } from "./PlayerContext";
 
 const RadioContext = createContext(null);
 
@@ -37,6 +38,7 @@ function buildQueue(allTracks, currentSongId) {
 }
 
 export function RadioProvider({ children }) {
+  const { registerNextHandler, registerPrevHandler } = usePlayer();
   const [allTracks, setAllTracks] = useState([]);
   const [tracksLoaded, setTracksLoaded] = useState(false);
   const [currentRadioSong, setCurrentRadioSong] = useState(null);
@@ -213,6 +215,25 @@ export function RadioProvider({ children }) {
   const pauseRadioMode = useCallback(() => {
     setIsRadioMode(false);
   }, []);
+
+  // Keep a stable playTrack ref for use in Media Session callbacks
+  const { playTrack } = usePlayer();
+  const playTrackRef = useRef(playTrack);
+  useEffect(() => { playTrackRef.current = playTrack; }, [playTrack]);
+
+  // Register next/prev handlers for lock screen buttons when in radio mode
+  const nextRadioSongRef = useRef(null);
+  const prevRadioSongRef = useRef(null);
+  useEffect(() => {
+    nextRadioSongRef.current = (song) => nextRadioSong((s) => playTrackRef.current(s, "radio"));
+    prevRadioSongRef.current = (song) => prevRadioSong((s) => playTrackRef.current(s, "radio"));
+  }, [nextRadioSong, prevRadioSong]);
+
+  useEffect(() => {
+    if (!isRadioMode) return;
+    registerNextHandler(() => nextRadioSongRef.current?.());
+    registerPrevHandler(() => prevRadioSongRef.current?.());
+  }, [isRadioMode, registerNextHandler, registerPrevHandler]);
 
   const hasPrev = historyIndex > 0;
   const upNext = radioQueue.slice(0, 3);
