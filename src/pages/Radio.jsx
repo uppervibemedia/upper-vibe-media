@@ -18,13 +18,11 @@ function toEmbedUrl(url) {
 export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
-  const [vizActive, setVizActive] = useState(false);
 
   const { playTrack, currentTrack, isPlaying, togglePlay, sourceType, audioRef } = usePlayer();
   const {
     tracksLoaded,
     currentRadioSong,
-    isRadioMode,
     hasPrev,
     upNext,
     initRadio,
@@ -44,9 +42,13 @@ export default function RadioPage() {
     if (tracksLoaded) initRadio();
   }, [tracksLoaded, initRadio]);
 
-  const radioIsPaused = currentRadioSong && !isRadioMode && sourceType !== "radio";
-  const isCurrentlyPlayingRadio = isRadioMode && sourceType === "radio" && currentTrack?.id === currentRadioSong?.id;
+  // Radio is active when the player sourceType is "radio"
+  const isRadioActive = sourceType === "radio";
+  // Currently showing the radio song in the player
+  const isCurrentlyPlayingRadio = isRadioActive && currentTrack?.id === currentRadioSong?.id;
   const playingThisRadioSong = isCurrentlyPlayingRadio && isPlaying;
+  // Radio song exists but user navigated to another song
+  const radioIsPaused = currentRadioSong && !isRadioActive && currentTrack !== null;
 
   const handlePlay = () => {
     if (isCurrentlyPlayingRadio) {
@@ -67,7 +69,6 @@ export default function RadioPage() {
     if (currentRadioSong?.audio_url) window.open(currentRadioSong.audio_url, "_blank");
   };
 
-  // Determine visualizer mode for current song
   const customVizUrl = currentRadioSong?.visualizerUrl || null;
   const embedUrl = customVizUrl ? toEmbedUrl(customVizUrl) : null;
   const showCustomViz = !!embedUrl;
@@ -82,7 +83,6 @@ export default function RadioPage() {
 
   return (
     <div className="min-h-screen pb-32 lg:pb-8">
-      {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full blur-[200px] opacity-[0.035]"
           style={{ background: "radial-gradient(circle,#00D4EE 0%,#7B2FFF 60%,transparent 100%)" }} />
@@ -113,7 +113,7 @@ export default function RadioPage() {
           </div>
         ) : (
           <>
-            {/* ── Visualizer Stage ── */}
+            {/* Visualizer Stage */}
             <motion.div
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05, duration: 0.5 }}
               className="relative w-full rounded-3xl overflow-hidden mb-6"
@@ -125,45 +125,32 @@ export default function RadioPage() {
 
               <AnimatePresence mode="wait">
                 {showCustomViz ? (
-                  /* Custom YouTube visualizer */
                   <motion.div key="custom-viz"
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="absolute inset-0">
+                    transition={{ duration: 0.6 }} className="absolute inset-0">
                     <iframe
                       src={`${embedUrl}?autoplay=${playingThisRadioSong ? 1 : 0}&rel=0&controls=0&modestbranding=1`}
-                      title="Visualizer"
-                      frameBorder="0"
+                      title="Visualizer" frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full"
-                    />
+                      allowFullScreen className="w-full h-full" />
                   </motion.div>
                 ) : (
-                  /* Fallback reactive canvas visualizer */
                   <motion.div key={`canvas-viz-${currentRadioSong.id}`}
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    transition={{ duration: 0.6 }}
-                    className="absolute inset-0">
+                    transition={{ duration: 0.6 }} className="absolute inset-0">
 
-                    {/* Cover art blurred background */}
                     {currentRadioSong.cover_url && (
-                      <div className="absolute inset-0"
-                        style={{
-                          backgroundImage: `url(${currentRadioSong.cover_url})`,
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                          filter: "blur(60px) brightness(0.15) saturate(1.5)",
-                          transform: "scale(1.1)",
-                        }} />
+                      <div className="absolute inset-0" style={{
+                        backgroundImage: `url(${currentRadioSong.cover_url})`,
+                        backgroundSize: "cover", backgroundPosition: "center",
+                        filter: "blur(60px) brightness(0.15) saturate(1.5)", transform: "scale(1.1)",
+                      }} />
                     )}
 
-                    {/* Canvas visualizer */}
                     <div className="absolute inset-0">
                       <AudioVisualizer audioRef={audioRef} isPlaying={playingThisRadioSong} />
                     </div>
 
-                    {/* Center album art */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="relative">
                         {currentRadioSong.cover_url ? (
@@ -175,27 +162,18 @@ export default function RadioPage() {
                             animate={{ opacity: 1, scale: playingThisRadioSong ? [1, 1.025, 1] : 1 }}
                             transition={playingThisRadioSong
                               ? { scale: { duration: 2.5, repeat: Infinity, ease: "easeInOut" }, opacity: { duration: 0.4 } }
-                              : { opacity: { duration: 0.4 } }
-                            }
+                              : { opacity: { duration: 0.4 } }}
                             className="rounded-2xl object-cover"
                             style={{
-                              width: "clamp(80px,14vw,130px)",
-                              height: "clamp(80px,14vw,130px)",
+                              width: "clamp(80px,14vw,130px)", height: "clamp(80px,14vw,130px)",
                               boxShadow: "0 0 50px rgba(0,212,238,0.25), 0 0 100px rgba(123,47,255,0.1)",
-                            }}
-                          />
+                            }} />
                         ) : (
                           <div className="rounded-2xl flex items-center justify-center"
-                            style={{
-                              width: "clamp(80px,14vw,130px)",
-                              height: "clamp(80px,14vw,130px)",
-                              background: "rgba(0,200,220,0.08)",
-                              border: "1px solid rgba(0,200,220,0.2)",
-                            }}>
+                            style={{ width: "clamp(80px,14vw,130px)", height: "clamp(80px,14vw,130px)", background: "rgba(0,200,220,0.08)", border: "1px solid rgba(0,200,220,0.2)" }}>
                             <Music4 className="text-cyan-400/25" style={{ width: "40%", height: "40%" }} />
                           </div>
                         )}
-                        {/* Playing indicator dot */}
                         {playingThisRadioSong && (
                           <motion.div
                             animate={{ scale: [1, 1.4, 1], opacity: [0.7, 1, 0.7] }}
@@ -208,7 +186,6 @@ export default function RadioPage() {
                       </div>
                     </div>
 
-                    {/* Bottom track label */}
                     <div className="absolute bottom-0 left-0 right-0 p-4"
                       style={{ background: "linear-gradient(0deg,rgba(4,4,18,0.9) 0%,transparent 100%)" }}>
                       <div className="flex items-end justify-between">
@@ -229,16 +206,14 @@ export default function RadioPage() {
               </AnimatePresence>
             </motion.div>
 
-            {/* ── Controls + Up Next Row ── */}
+            {/* Controls + Up Next */}
             <div className="flex flex-col lg:flex-row gap-5 items-start">
 
-              {/* Controls card */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.4 }}
                 className="w-full lg:w-[320px] flex-shrink-0 rounded-3xl p-6"
                 style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
-                {/* Paused banner */}
                 {radioIsPaused && (
                   <div className="mb-4 px-4 py-2.5 rounded-xl text-xs text-white/45 flex items-center justify-center gap-2"
                     style={{ background: "rgba(0,200,220,0.05)", border: "1px solid rgba(0,200,220,0.1)" }}>
@@ -247,7 +222,6 @@ export default function RadioPage() {
                   </div>
                 )}
 
-                {/* Playback controls */}
                 <div className="flex items-center justify-center gap-4 mb-5">
                   <button onClick={handlePrev} disabled={!hasPrev}
                     className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/8 disabled:opacity-25"
@@ -279,7 +253,6 @@ export default function RadioPage() {
                   </button>
                 </div>
 
-                {/* Download */}
                 <div className="flex justify-center">
                   <button onClick={handleDownload}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110"
@@ -295,7 +268,6 @@ export default function RadioPage() {
                 </p>
               </motion.div>
 
-              {/* Up Next */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22, duration: 0.4 }}
                 className="w-full lg:flex-1">
