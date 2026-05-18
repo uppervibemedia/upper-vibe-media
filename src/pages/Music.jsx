@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart, Zap } from "lucide-react";
+import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { recordPlay } from "../components/home/DiscoverTab";
@@ -8,7 +8,6 @@ import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
-import SupportModal from "../components/shared/SupportModal";
 import { useFavorites } from "../hooks/useFavorite";
 
 const FILTERS = [
@@ -45,7 +44,6 @@ export default function Music() {
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
-  const [supportTrack, setSupportTrack] = useState(null);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
   const isPremium = user?.role === "premium" || user?.role === "admin";
@@ -208,14 +206,6 @@ export default function Music() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {/* Support */}
-                      <button
-                        onClick={() => setSupportTrack(track)}
-                        title="Support this song"
-                        className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110 hidden sm:flex"
-                        style={{ background: "rgba(212,168,67,0.06)", border: "1px solid rgba(212,168,67,0.18)", color: "rgba(212,168,67,0.55)" }}>
-                        <Zap className="w-3.5 h-3.5" />
-                      </button>
                       {/* Heart / Favorite */}
                       <button
                         onClick={() => {
@@ -276,7 +266,6 @@ export default function Music() {
 
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
-      <SupportModal open={!!supportTrack} onClose={() => setSupportTrack(null)} track={supportTrack} />
     </div>
   );
 }

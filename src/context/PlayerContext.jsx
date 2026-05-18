@@ -1,88 +1,59 @@
-import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
-import { resumeAudioContext } from "../lib/audioContext";
+import React, { createContext, useContext, useState, useRef, useEffect } from "react";
 
 const PlayerContext = createContext(null);
-
-// Single shared Audio element — survives re-renders and page navigation
-const AUDIO = new Audio();
 
 export function PlayerProvider({ children }) {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [sourceType, setSourceType] = useState("song"); // "song" | "radio"
   const [queue, setQueue] = useState([]);
-  const audioRef = useRef(AUDIO);
+  const [sourceType, setSourceType] = useState("song"); // "radio" | "song" | "library" | "recommended" | "latest"
+  const audioRef = useRef(new Audio());
 
-  // Load + play whenever currentTrack changes
   useEffect(() => {
     const audio = audioRef.current;
-    if (!currentTrack?.audio_url) {
-      audio.pause();
-      audio.src = "";
-      setIsPlaying(false);
-      return;
+    if (currentTrack?.audio_url) {
+      audio.src = currentTrack.audio_url;
+      audio.play();
+      setIsPlaying(true);
     }
-
-    audio.pause();
-    audio.src = currentTrack.audio_url;
-    audio.load();
-
-    const onCanPlay = () => {
-      resumeAudioContext();
-      audio.play()
-        .then(() => setIsPlaying(true))
-        .catch(() => setIsPlaying(false));
-    };
-
-    audio.addEventListener("canplay", onCanPlay, { once: true });
-    return () => audio.removeEventListener("canplay", onCanPlay);
   }, [currentTrack]);
 
-  // Sync play/pause for togglePlay
-  const isPlayingRef = useRef(isPlaying);
-  isPlayingRef.current = isPlaying;
-
   useEffect(() => {
     const audio = audioRef.current;
-    if (!currentTrack) return;
     if (isPlaying) {
-      resumeAudioContext();
-      audio.play().catch(() => {});
+      audio.play();
     } else {
       audio.pause();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying]);
 
-  const playTrack = useCallback((track, source = "song") => {
+  const playTrack = (track, source = "song") => {
     setSourceType(source);
     setCurrentTrack(track);
-  }, []);
+  };
 
-  const togglePlay = useCallback(() => {
+  const togglePlay = () => {
     setIsPlaying((prev) => !prev);
-  }, []);
+  };
 
-  const stopPlaying = useCallback(() => {
-    const audio = audioRef.current;
-    audio.pause();
-    audio.src = "";
+  const stopPlaying = () => {
+    audioRef.current.pause();
+    audioRef.current.src = "";
     setIsPlaying(false);
     setCurrentTrack(null);
-    setSourceType("song");
-  }, []);
+  };
 
   return (
     <PlayerContext.Provider value={{
       currentTrack,
       isPlaying,
-      sourceType,
       queue,
+      sourceType,
       playTrack,
       togglePlay,
       stopPlaying,
       setQueue,
-      audioRef,
+      audioRef
     }}>
       {children}
     </PlayerContext.Provider>
