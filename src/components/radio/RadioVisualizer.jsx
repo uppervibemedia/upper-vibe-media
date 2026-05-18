@@ -17,7 +17,9 @@ function getAnalyser(audioElement) {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
-  if (audioCtx.state === "suspended") audioCtx.resume();
+  if (audioCtx.state === "suspended" || audioCtx.state === "interrupted") {
+    audioCtx.resume();
+  }
 
   // Disconnect previous source
   if (sourceNode) {

@@ -7,7 +7,11 @@ export function PlayerProvider({ children }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [queue, setQueue] = useState([]);
   const [sourceType, setSourceType] = useState("song"); // "radio" | "song" | "library" | "recommended" | "latest"
-  const audioRef = useRef(new Audio());
+  const audioRef = useRef((() => {
+    const a = new Audio();
+    a.crossOrigin = "anonymous";
+    return a;
+  })());
 
   useEffect(() => {
     const audio = audioRef.current;
