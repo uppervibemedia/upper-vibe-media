@@ -30,21 +30,19 @@ function shuffleArray(arr) {
   return a;
 }
 
-function pickNextSong(allTracks, recentIds = []) {
-  if (!allTracks.length) return null;
-  // Avoid repeating recent songs when possible
-  const recentSet = new Set(recentIds.slice(-Math.min(recentIds.length, Math.floor(allTracks.length / 2))));
-  const pool = allTracks.filter((t) => !recentSet.has(t.id));
-  const candidates = pool.length > 0 ? pool : allTracks;
-  return candidates[Math.floor(Math.random() * candidates.length)];
+// Build a fresh shuffle queue (excludes current song from front)
+function buildQueue(allTracks, currentSongId) {
+  const shuffled = shuffleArray(allTracks.filter((t) => t.id !== currentSongId));
+  return shuffled;
 }
 
 export function RadioProvider({ children }) {
   const [allTracks, setAllTracks] = useState([]);
   const [tracksLoaded, setTracksLoaded] = useState(false);
   const [currentRadioSong, setCurrentRadioSong] = useState(null);
-  const [radioHistory, setRadioHistory] = useState([]); // array of track objects
-  const [historyIndex, setHistoryIndex] = useState(-1); // index into radioHistory for prev/next
+  const [radioQueue, setRadioQueue] = useState([]); // upcoming songs
+  const [radioHistory, setRadioHistory] = useState([]); // played songs
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const [isRadioMode, setIsRadioMode] = useState(false);
 
   // Load tracks once
@@ -70,13 +68,22 @@ export function RadioProvider({ children }) {
         setCurrentRadioSong(song);
         setIsRadioMode(!!saved.isRadioMode);
 
-        // Restore history
         if (saved.radioHistoryIds?.length) {
           const hist = saved.radioHistoryIds
             .map((id) => allTracks.find((t) => t.id === id))
             .filter(Boolean);
           setRadioHistory(hist);
           setHistoryIndex(hist.length - 1);
+        }
+
+        if (saved.radioQueueIds?.length) {
+          const queue = saved.radioQueueIds
+            .map((id) => allTracks.find((t) => t.id === id))
+            .filter(Boolean);
+          setRadioQueue(queue);
+        } else {
+          // Rebuild queue if not persisted
+          setRadioQueue(buildQueue(allTracks, song.id));
         }
       }
     }
@@ -88,91 +95,144 @@ export function RadioProvider({ children }) {
     persistState({
       currentRadioSongId: currentRadioSong?.id || null,
       radioHistoryIds: radioHistory.map((t) => t.id),
+      radioQueueIds: radioQueue.map((t) => t.id),
       isRadioMode,
       lastUpdatedAt: Date.now(),
     });
-  }, [currentRadioSong, radioHistory, isRadioMode, tracksLoaded]);
+  }, [currentRadioSong, radioHistory, radioQueue, isRadioMode, tracksLoaded]);
 
-  // Initialize radio with a random song if nothing is loaded yet
+  // Initialize radio with a random song if nothing is loaded yet (no autoplay)
   const initRadio = useCallback(() => {
     if (!allTracks.length) return null;
-    if (currentRadioSong) return currentRadioSong; // already has one
+    if (currentRadioSong) return currentRadioSong;
 
-    const song = pickNextSong(allTracks, []);
+    const shuffled = shuffleArray(allTracks);
+    const song = shuffled[0];
+    const queue = shuffled.slice(1);
     if (!song) return null;
     setCurrentRadioSong(song);
     setRadioHistory([song]);
     setHistoryIndex(0);
+    setRadioQueue(queue);
     return song;
   }, [allTracks, currentRadioSong]);
 
-  // Start radio (called when user presses Play Radio)
+  // Start radio — play current (or pick one) and set radio mode
   const startRadio = useCallback((onPlay) => {
     let song = currentRadioSong;
+    let queue = radioQueue;
+
     if (!song) {
-      song = pickNextSong(allTracks, []);
+      const shuffled = shuffleArray(allTracks);
+      song = shuffled[0];
+      queue = shuffled.slice(1);
       if (!song) return;
       setCurrentRadioSong(song);
       setRadioHistory([song]);
       setHistoryIndex(0);
+      setRadioQueue(queue);
     }
     setIsRadioMode(true);
     if (onPlay) onPlay(song);
-  }, [allTracks, currentRadioSong]);
+  }, [allTracks, currentRadioSong, radioQueue]);
 
-  // Resume radio (user returns after playing normal song)
+  // Resume radio after playing a normal song
   const resumeRadio = useCallback((onPlay) => {
     if (!currentRadioSong) return startRadio(onPlay);
     setIsRadioMode(true);
     if (onPlay) onPlay(currentRadioSong);
   }, [currentRadioSong, startRadio]);
 
-  // Next song
+  // Advance to next song in queue
   const nextRadioSong = useCallback((onPlay) => {
     if (!allTracks.length) return;
-    const recentIds = radioHistory.map((t) => t.id);
-    const song = pickNextSong(allTracks, recentIds);
+
+    let nextSong;
+    let newQueue = [...radioQueue];
+
+    if (newQueue.length > 0) {
+      nextSong = newQueue.shift();
+    } else {
+      // Rebuild queue when exhausted
+      const rebuilt = buildQueue(allTracks, currentRadioSong?.id);
+      nextSong = rebuilt[0];
+      newQueue = rebuilt.slice(1);
+    }
+
+    if (!nextSong) return;
+
+    // Refill queue if running low (keep at least 10)
+    if (newQueue.length < 10) {
+      const extra = buildQueue(allTracks, nextSong.id).filter(
+        (t) => t.id !== nextSong.id && !newQueue.find((q) => q.id === t.id)
+      );
+      newQueue = [...newQueue, ...extra].slice(0, 50);
+    }
+
+    const newHistory = [...radioHistory.slice(0, historyIndex + 1), nextSong];
+    setRadioHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+    setCurrentRadioSong(nextSong);
+    setRadioQueue(newQueue);
+    setIsRadioMode(true);
+    if (onPlay) onPlay(nextSong);
+  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong]);
+
+  // Go back to previous song
+  const prevRadioSong = useCallback((onPlay) => {
+    if (historyIndex <= 0) return;
+    const newIndex = historyIndex - 1;
+    const song = radioHistory[newIndex];
+    // Push current back to front of queue
+    setRadioQueue((q) => [currentRadioSong, ...q].filter(Boolean));
+    setHistoryIndex(newIndex);
+    setCurrentRadioSong(song);
+    setIsRadioMode(true);
+    if (onPlay) onPlay(song);
+  }, [radioHistory, historyIndex, currentRadioSong]);
+
+  // Jump to a specific Up Next song
+  const jumpToSong = useCallback((song, onPlay) => {
     if (!song) return;
+    // Remove it from the queue and add current to history
+    const newQueue = radioQueue.filter((t) => t.id !== song.id);
+    // Refill if needed
+    const finalQueue = newQueue.length < 10
+      ? [...newQueue, ...buildQueue(allTracks, song.id).filter((t) => !newQueue.find((q) => q.id === t.id))].slice(0, 50)
+      : newQueue;
 
     const newHistory = [...radioHistory.slice(0, historyIndex + 1), song];
     setRadioHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
     setCurrentRadioSong(song);
+    setRadioQueue(finalQueue);
     setIsRadioMode(true);
     if (onPlay) onPlay(song);
-  }, [allTracks, radioHistory, historyIndex]);
+  }, [allTracks, radioQueue, radioHistory, historyIndex]);
 
-  // Previous song
-  const prevRadioSong = useCallback((onPlay) => {
-    if (historyIndex <= 0) return;
-    const newIndex = historyIndex - 1;
-    const song = radioHistory[newIndex];
-    setHistoryIndex(newIndex);
-    setCurrentRadioSong(song);
-    setIsRadioMode(true);
-    if (onPlay) onPlay(song);
-  }, [radioHistory, historyIndex]);
-
-  // Pause radio mode (user plays a normal song)
   const pauseRadioMode = useCallback(() => {
     setIsRadioMode(false);
   }, []);
 
   const hasPrev = historyIndex > 0;
+  const upNext = radioQueue.slice(0, 3);
 
   return (
     <RadioContext.Provider value={{
       allTracks,
       tracksLoaded,
       currentRadioSong,
+      radioQueue,
       radioHistory,
       isRadioMode,
       hasPrev,
+      upNext,
       initRadio,
       startRadio,
       resumeRadio,
       nextRadioSong,
       prevRadioSong,
+      jumpToSong,
       pauseRadioMode,
     }}>
       {children}
