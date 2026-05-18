@@ -11,7 +11,7 @@ import { useAcademyProgress } from "../hooks/useAcademyProgress";
 import Footer from "../components/shared/Footer";
 
 function toEmbedUrl(url) {
-  if (!url) return null;
+  if (!url || typeof url !== "string") return null;
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
   return m ? `https://www.youtube.com/embed/${m[1]}` : (url.includes("/embed/") ? url : null);
 }
