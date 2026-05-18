@@ -16,10 +16,7 @@ function toEmbedUrl(url) {
   return m ? `https://www.youtube.com/embed/${m[1]}` : (url.includes("/embed/") ? url : null);
 }
 
-const FILTERS = [
-  { key: "all", label: "All Lessons" },
-  { key: "free", label: "Free" },
-  { key: "plus", label: "Plus Only" },
+const PROGRESS_FILTERS = [
   { key: "started", label: "In Progress" },
   { key: "completed", label: "Completed" },
 ];
@@ -272,10 +269,10 @@ export default function Academy() {
             />
           </div>
 
-          {/* Filter tabs */}
+          {/* Progress filter tabs — In Progress / Completed only */}
           <div className="flex items-center gap-1 flex-wrap">
-            {FILTERS.map((f) => (
-              <button key={f.key} onClick={() => setFilter(f.key)}
+            {PROGRESS_FILTERS.map((f) => (
+              <button key={f.key} onClick={() => setFilter(filter === f.key ? "all" : f.key)}
                 className="px-3.5 py-2 rounded-xl text-xs font-black tracking-wide transition-all"
                 style={filter === f.key
                   ? { background: "rgba(212,168,67,0.15)", border: "1px solid rgba(212,168,67,0.35)", color: "#EDB84A" }

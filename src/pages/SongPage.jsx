@@ -19,30 +19,89 @@ function toEmbedUrl(url) {
   return m ? `https://www.youtube.com/embed/${m[1]}` : null;
 }
 
-function toWatchUrl(url) {
-  if (!url) return null;
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-  return m ? `https://www.youtube.com/watch?v=${m[1]}` : url;
-}
+function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
+  const { isFaved } = useFavorites(null);
 
-const CATEGORY_LABELS = {
-  hiphop: "Hip Hop / Rap",
-  rnb: "R&B",
-  electronic: "Electronic",
-  meditation: "Meditation / 432 Hz",
-  car: "Car Music",
-};
+  const related = useMemo(() => {
+    if (!allTracks.length || !currentTrack) return [];
+    const others = allTracks.filter((t) => t.id !== currentTrackId && t.status === "published");
+
+    // Score: same artist or overlapping category_ids
+    const scored = others.map((t) => {
+      let score = 0;
+      if (t.primary_artist_id && t.primary_artist_id === currentTrack.primary_artist_id) score += 5;
+      if (t.artist_display && t.artist_display === currentTrack.artist_display) score += 3;
+      const curCats = new Set(currentTrack.category_ids || []);
+      (t.category_ids || []).forEach((c) => { if (curCats.has(c)) score += 2; });
+      if (t.is_featured) score += 1;
+      return { ...t, _score: score };
+    });
+
+    scored.sort((a, b) => b._score - a._score || new Date(b.release_date || 0) - new Date(a.release_date || 0));
+    return scored.slice(0, 5);
+  }, [allTracks, currentTrackId, currentTrack]);
+
+  if (!related.length) return null;
+
+  return (
+    <div className="rounded-3xl p-4"
+      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <h3 className="font-heading font-black text-white text-sm tracking-wide uppercase mb-4 flex items-center gap-2">
+        <Music4 className="w-4 h-4 text-cyan-400" /> More Songs
+      </h3>
+      <div className="space-y-2">
+        {related.map((song) => (
+          <div key={song.id}
+            className="flex items-center gap-3 p-2.5 rounded-2xl group cursor-pointer transition-all hover:border-white/15"
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+            onClick={() => onPlay(song)}>
+            {/* Thumbnail */}
+            <div className="relative flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-black">
+              {song.cover_url ? (
+                <img src={song.cover_url} alt={song.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center"
+                  style={{ background: "rgba(0,229,255,0.06)" }}>
+                  <Music4 className="w-5 h-5 text-white/20" />
+                </div>
+              )}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ background: "rgba(0,0,0,0.55)" }}>
+                <Play className="w-4 h-4 text-white ml-0.5" />
+              </div>
+            </div>
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <Link to={`/song/${song.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs font-bold text-white leading-snug line-clamp-2 block group-hover:text-cyan-300 transition-colors">
+                {song.title}
+              </Link>
+              <p className="text-[10px] text-white/35 truncate mt-0.5">{song.artist_display || "Upper Vibe Media"}</p>
+              <span className="inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full mt-1"
+                style={{ background: "rgba(0,229,255,0.08)", color: "#00C9E0" }}>
+                <Waves className="w-2 h-2" /> 432 Hz
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function SongPage() {
   const { id } = useParams();
   const [track, setTrack] = useState(null);
+  const [allTracks, setAllTracks] = useState([]);
   const [visualizer, setVisualizer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [vizPlaying, setVizPlaying] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
-  const isPremium = user?.role === "premium" || user?.role === "admin";
+  const isPlus = user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" || user?.tier === "premium" || user?.isPremium === true || user?.role === "premium";
   const [loginPrompt, setLoginPrompt] = useState(false);
   const { isFaved, toggle } = useFavorites(user?.email);
 
@@ -50,10 +109,11 @@ export default function SongPage() {
     if (!id) return;
     Promise.all([
       base44.entities.Track.filter({ id }, "-created_date", 1).then((r) => r[0] || null),
-    ]).then(([t]) => {
+      base44.entities.Track.filter({ status: "published" }, "-release_date", 50),
+    ]).then(([t, tracks]) => {
       setTrack(t);
+      setAllTracks(tracks);
       if (t) {
-        // Find linked visualizer
         base44.entities.Visualizer.filter({ linked_song_id: t.id, status: "published" }, "display_order", 1)
           .then((v) => { if (v[0]) setVisualizer(v[0]); });
       }
@@ -61,10 +121,10 @@ export default function SongPage() {
     });
   }, [id]);
 
-  const handlePlay = () => {
-    if (!track) return;
-    if (currentTrack?.id === track.id) togglePlay();
-    else { playTrack(track); recordPlay(track); }
+  const handlePlay = (t) => {
+    if (!t) return;
+    if (currentTrack?.id === t.id) togglePlay();
+    else { playTrack(t); recordPlay(t); }
   };
 
   const handleDownload = async () => {
@@ -82,7 +142,6 @@ export default function SongPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
     } catch {
-      // Fallback: force download via anchor with download attr
       const a = document.createElement("a");
       a.href = track.audio_url;
       a.download = `${track.title || "song"}.mp3`;
@@ -95,7 +154,6 @@ export default function SongPage() {
 
   const isCurrentTrack = currentTrack?.id === track?.id;
   const embedUrl = visualizer ? toEmbedUrl(visualizer.embed_url || visualizer.video_url) : null;
-  const watchUrl = visualizer ? toWatchUrl(visualizer.video_url || visualizer.embed_url) : null;
 
   if (loading) {
     return (
@@ -120,16 +178,15 @@ export default function SongPage() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero — full-width blurred cover backdrop */}
+      {/* Hero */}
       <div className="relative overflow-hidden" style={{ minHeight: 420 }}>
-        {/* Blurred background */}
         {track.cover_url && (
           <div className="absolute inset-0 scale-110"
             style={{ backgroundImage: `url(${track.cover_url})`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(60px) brightness(0.18)" }} />
         )}
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,rgba(4,4,14,0.3) 0%,rgba(4,4,14,0.95) 100%)" }} />
 
-        <div className="relative z-10 max-w-4xl mx-auto px-6 pt-10 pb-10">
+        <div className="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-10">
           <Link to="/music" className="inline-flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors mb-8">
             <ChevronLeft className="w-3.5 h-3.5" /> Back to Music
           </Link>
@@ -153,7 +210,6 @@ export default function SongPage() {
 
             {/* Info */}
             <div className="flex-1 text-center sm:text-left pb-2">
-              {/* Badges */}
               <div className="flex flex-wrap gap-2 justify-center sm:justify-start mb-4">
                 {freq && (
                   <span className="flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full"
@@ -186,16 +242,14 @@ export default function SongPage() {
 
               {/* Action buttons */}
               <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
-                {/* Play */}
-                <button onClick={handlePlay}
+                <button onClick={() => handlePlay(track)}
                   className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02]"
                   style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 24px rgba(0,229,255,0.3)" }}>
                   {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
                   {isCurrentTrack && isPlaying ? "Pause" : "Play Song"}
                 </button>
 
-                {/* Download — premium gated */}
-                {isPremium ? (
+                {isPlus ? (
                   track.audio_url ? (
                     <button onClick={handleDownload}
                       className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02]"
@@ -217,7 +271,6 @@ export default function SongPage() {
                   </button>
                 )}
 
-                {/* Heart / Favorite */}
                 <button
                   onClick={() => {
                     if (!user) { setLoginPrompt(true); return; }
@@ -235,15 +288,14 @@ export default function SongPage() {
                 </button>
               </div>
 
-              {/* Paywall message for free users */}
-              {!isPremium && (
+              {!isPlus && (
                 <div className="mt-4 flex items-start gap-2 max-w-sm mx-auto sm:mx-0 p-3 rounded-xl"
                   style={{ background: "rgba(212,168,67,0.06)", border: "1px solid rgba(212,168,67,0.15)" }}>
                   <Crown className="w-3.5 h-3.5 text-yellow-400/60 flex-shrink-0 mt-0.5" />
                   <p className="text-[11px] text-white/35 leading-relaxed">
-                    Premium members can download Upper Vibe Media songs, 432 Hz music packs, and exclusive files.{" "}
+                    Plus members can download every song.{" "}
                     <button onClick={() => setUpgradeModal(true)} className="text-yellow-400/70 hover:text-yellow-400 transition-colors underline underline-offset-2">
-                      Upgrade to Premium
+                      Upgrade to Plus
                     </button>{" "}to unlock downloads.
                   </p>
                 </div>
@@ -253,95 +305,109 @@ export default function SongPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 pb-20 pt-6">
+      {/* Main content + sidebar */}
+      <div className="max-w-6xl mx-auto px-6 pb-20 pt-6">
+        <div className="grid lg:grid-cols-[1fr_320px] gap-8">
 
-        {/* Description */}
-        {track.description && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-            className="mb-8 p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-sm text-white/50 leading-relaxed">{track.description}</p>
-          </motion.div>
-        )}
+          {/* ── Left: main content ── */}
+          <div>
+            {track.description && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+                className="mb-8 p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-sm text-white/50 leading-relaxed">{track.description}</p>
+              </motion.div>
+            )}
 
-        {/* Linked Visualizer */}
-        {visualizer && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="mb-8">
-            <h2 className="font-heading font-bold text-lg text-white mb-4 flex items-center gap-2">
-              <Tv2 className="w-4 h-4 text-primary" /> Music Visualizer
-            </h2>
-            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
-                <div className="absolute inset-0">
-                  {vizPlaying && embedUrl ? (
-                    <iframe
-                      src={`${embedUrl}?autoplay=1&rel=0`}
-                      title={visualizer.title}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      referrerPolicy="strict-origin-when-cross-origin"
-                      className="w-full h-full"
-                    />
-                  ) : (
-                    <div className="w-full h-full cursor-pointer group relative" onClick={() => setVizPlaying(true)}>
-                      {visualizer.thumbnail_url ? (
-                        <img src={visualizer.thumbnail_url} alt={visualizer.title} className="w-full h-full object-cover" />
+            {/* Linked Visualizer */}
+            {visualizer && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                className="mb-8">
+                <h2 className="font-heading font-bold text-lg text-white mb-4 flex items-center gap-2">
+                  <Tv2 className="w-4 h-4 text-primary" /> Music Visualizer
+                </h2>
+                <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
+                    <div className="absolute inset-0">
+                      {vizPlaying && embedUrl ? (
+                        <iframe
+                          src={`${embedUrl}?autoplay=1&rel=0`}
+                          title={visualizer.title}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          referrerPolicy="strict-origin-when-cross-origin"
+                          className="w-full h-full"
+                        />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center"
-                          style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.07),rgba(0,0,0,0.5))" }}>
-                          <Tv2 className="w-12 h-12 text-white/10" />
+                        <div className="w-full h-full cursor-pointer group relative" onClick={() => setVizPlaying(true)}>
+                          {visualizer.thumbnail_url ? (
+                            <img src={visualizer.thumbnail_url} alt={visualizer.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center"
+                              style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.07),rgba(0,0,0,0.5))" }}>
+                              <Tv2 className="w-12 h-12 text-white/10" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center"
+                            style={{ background: "rgba(0,0,0,0.4)" }}>
+                            <div className="w-16 h-16 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform"
+                              style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", boxShadow: "0 0 32px rgba(0,229,255,0.4)" }}>
+                              <Play className="w-7 h-7 text-black ml-1" />
+                            </div>
+                          </div>
                         </div>
                       )}
-                      <div className="absolute inset-0 flex items-center justify-center"
-                        style={{ background: "rgba(0,0,0,0.4)" }}>
-                        <div className="w-16 h-16 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform"
-                          style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", boxShadow: "0 0 32px rgba(0,229,255,0.4)" }}>
-                          <Play className="w-7 h-7 text-black ml-1" />
-                        </div>
-                      </div>
                     </div>
-                  )}
+                  </div>
+                  <div className="px-5 py-4" style={{ background: "rgba(0,0,0,0.4)" }}>
+                    <p className="text-sm font-bold text-white">{visualizer.title}</p>
+                    <p className="text-xs text-white/35">{visualizer.artist || "Upper Vibe Media"}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="px-5 py-4" style={{ background: "rgba(0,0,0,0.4)" }}>
-                <p className="text-sm font-bold text-white">{visualizer.title}</p>
-                <p className="text-xs text-white/35">{visualizer.artist || "Upper Vibe Media"}</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
+              </motion.div>
+            )}
 
-        {/* Lyrics */}
-        {track.lyrics && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="mb-8">
-            <h2 className="font-heading font-bold text-lg text-white mb-4">Lyrics</h2>
-            <div className="p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <pre className="text-sm text-white/50 leading-relaxed whitespace-pre-wrap font-body">{track.lyrics}</pre>
-            </div>
-          </motion.div>
-        )}
+            {/* Lyrics */}
+            {track.lyrics && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                className="mb-8">
+                <h2 className="font-heading font-bold text-lg text-white mb-4">Lyrics</h2>
+                <div className="p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <pre className="text-sm text-white/50 leading-relaxed whitespace-pre-wrap font-body">{track.lyrics}</pre>
+                </div>
+              </motion.div>
+            )}
 
-        {/* Back to visualizers */}
-        <div className="flex gap-3 flex-wrap">
-          <Link to="/visualizers"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-            style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF" }}>
-            <Tv2 className="w-3.5 h-3.5" /> All Visualizers
-          </Link>
-          <Link to="/music"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}>
-            <Music4 className="w-3.5 h-3.5" /> All Music
-          </Link>
+            <div className="flex gap-3 flex-wrap">
+              <Link to="/visualizers"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+                style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF" }}>
+                <Tv2 className="w-3.5 h-3.5" /> All Visualizers
+              </Link>
+              <Link to="/music"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}>
+                <Music4 className="w-3.5 h-3.5" /> All Music
+              </Link>
+            </div>
+          </div>
+
+          {/* ── Right: More Songs sidebar ── */}
+          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
+            <MoreSongsPanel
+              currentTrackId={id}
+              currentTrack={track}
+              allTracks={allTracks}
+              onPlay={handlePlay}
+            />
+          </motion.div>
+
         </div>
       </div>
 
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
 
-      {/* Login prompt modal */}
       {loginPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setLoginPrompt(false)} />

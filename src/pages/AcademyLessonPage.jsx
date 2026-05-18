@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Crown, Lock, Play, CheckCircle2,
-  ExternalLink, GraduationCap, Star, Tag
+  GraduationCap, Star, Tag
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -13,11 +13,6 @@ function toEmbedUrl(url) {
   if (!url) return null;
   const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
   return m ? `https://www.youtube.com/embed/${m[1]}` : (url.includes("/embed/") ? url : null);
-}
-function toWatchUrl(url) {
-  if (!url) return null;
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-  return m ? `https://www.youtube.com/watch?v=${m[1]}` : url;
 }
 
 export default function AcademyLessonPage() {
@@ -32,6 +27,7 @@ export default function AcademyLessonPage() {
   const timerRef = useRef(null);
 
   const isPlus = user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" || user?.tier === "premium" || user?.isPremium === true || user?.role === "premium";
+  const canWatchFull = isPlus; // only Plus and Admin watch full
   const { getStatus, markStarted, markCompleted } = useAcademyProgress(user?.email);
 
   useEffect(() => {
@@ -52,7 +48,8 @@ export default function AcademyLessonPage() {
     setPlaying(true);
     markStarted(lesson.id);
 
-    if (!isPlus && lesson.is_premium) {
+    // Free/logged-out users only get preview seconds, even on free lessons (for premium), always gate premium if not Plus
+    if (!canWatchFull && lesson.is_premium) {
       const secs = lesson.free_preview_seconds || 60;
       clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
@@ -89,8 +86,6 @@ export default function AcademyLessonPage() {
   }
 
   const embedUrl = toEmbedUrl(lesson.embed_url || lesson.video_url);
-  const watchUrl = toWatchUrl(lesson.video_url || lesson.embed_url);
-  const canWatch = isPlus || !lesson.is_premium;
   const status = getStatus(lesson.id);
   const previewSecs = lesson.free_preview_seconds || 60;
 
@@ -143,9 +138,9 @@ export default function AcademyLessonPage() {
                           style={{ background: "rgba(212,168,67,0.15)", border: "1px solid rgba(212,168,67,0.35)" }}>
                           <Crown className="w-7 h-7 text-yellow-400" />
                         </div>
-                        <h3 className="font-heading font-black text-2xl text-white mb-2">Unlock Full Lesson</h3>
+                        <h3 className="font-heading font-black text-2xl text-white mb-2">Unlock The Full Lesson</h3>
                         <p className="text-white/45 text-sm leading-relaxed mb-6 max-w-xs mx-auto">
-                          Upgrade to Upper Vibe Plus to watch this lesson in full, download music, and access the complete Academy.
+                          You've watched the free 60-second preview. Upgrade to Upper Vibe Plus to watch full Academy lessons and download every available song.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-3 justify-center">
                           <Link to="/membership"
@@ -156,7 +151,7 @@ export default function AcademyLessonPage() {
                           <button onClick={() => setGated(false)}
                             className="px-5 py-3 rounded-2xl text-sm font-semibold text-white/40 hover:text-white/70 transition-colors"
                             style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
-                            Browse Free Lessons
+                            Keep Browsing
                           </button>
                         </div>
                       </div>
@@ -165,7 +160,7 @@ export default function AcademyLessonPage() {
 
                   {/* Thumbnail / play state */}
                   {!playing && !gated && (
-                    <div className="w-full h-full cursor-pointer group relative" onClick={canWatch || !lesson.is_premium ? handlePlay : undefined}>
+                    <div className="w-full h-full cursor-pointer group relative" onClick={canWatchFull || !lesson.is_premium ? handlePlay : undefined}>
                       {lesson.thumbnail_url ? (
                         <img src={lesson.thumbnail_url} alt={lesson.title}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -177,7 +172,7 @@ export default function AcademyLessonPage() {
                       )}
 
                       {/* Plus gate over thumbnail */}
-                      {lesson.is_premium && !isPlus ? (
+                      {lesson.is_premium && !canWatchFull ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center"
                           style={{ background: "rgba(0,0,0,0.65)" }}>
                           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
@@ -221,7 +216,7 @@ export default function AcademyLessonPage() {
                           style={{ background: "rgba(0,0,0,0.8)", border: "1px solid rgba(212,168,67,0.45)", color: "#D4A843" }}>
                           <Crown className="w-2.5 h-2.5" /> Plus
                         </div>
-                      ) : (
+                      ) : canWatchFull ? null : (
                         <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[9px] font-black"
                           style={{ background: "rgba(0,200,220,0.15)", border: "1px solid rgba(0,200,220,0.35)", color: "#00C9E0" }}>
                           Free
@@ -255,7 +250,7 @@ export default function AcademyLessonPage() {
                   </h1>
                 </div>
                 {/* Progress action */}
-                {user && (isPlus || !lesson.is_premium) && (
+                {user && (canWatchFull || !lesson.is_premium) && (
                   <button onClick={handleMarkComplete}
                     className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
                     style={status === "completed"
@@ -288,16 +283,10 @@ export default function AcademyLessonPage() {
                 <p className="text-white/45 text-sm leading-relaxed mb-6 max-w-2xl">{lesson.description}</p>
               )}
 
-              {/* Watch on YouTube fallback */}
-              {watchUrl && (
-                <a href={watchUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-xs font-bold text-white/30 hover:text-white/60 transition-colors mb-6">
-                  <ExternalLink className="w-3.5 h-3.5" /> Watch on YouTube
-                </a>
-              )}
+
 
               {/* Plus upsell if not subscribed and lesson is premium */}
-              {lesson.is_premium && !isPlus && !user && (
+              {lesson.is_premium && !canWatchFull && (
                 <div className="p-5 rounded-2xl mb-6"
                   style={{ background: "rgba(212,168,67,0.05)", border: "1px solid rgba(212,168,67,0.2)" }}>
                   <div className="flex items-center gap-3 mb-3">
@@ -339,7 +328,7 @@ export default function AcademyLessonPage() {
                           <GraduationCap className="w-5 h-5 text-white/15" />
                         </div>
                       )}
-                      {rel.is_premium && !isPlus && (
+                      {rel.is_premium && !canWatchFull && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                           <Lock className="w-3.5 h-3.5 text-yellow-400/80" />
                         </div>
