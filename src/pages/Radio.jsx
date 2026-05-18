@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
+import RadioVisualizer from "../components/radio/RadioVisualizer";
 
 export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
@@ -94,6 +95,22 @@ export default function RadioPage() {
             Upper Vibe Radio
           </h1>
           <p className="text-white/35 text-sm">Shuffle through all 432 Hz Upper Vibe Media songs</p>
+        </motion.div>
+
+        {/* Audio Visualizer */}
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15, duration: 0.8 }}
+          className="relative mx-auto mb-6 rounded-3xl overflow-hidden"
+          style={{
+            maxWidth: 480,
+            background: "rgba(0,0,0,0.35)",
+            border: "1px solid rgba(0,200,220,0.1)",
+          }}>
+          <RadioVisualizer isPlaying={playingThisRadioSong} />
+          <div className="absolute inset-0 pointer-events-none"
+            style={{
+              background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.6) 100%)"
+            }} />
         </motion.div>
 
         {!currentRadioSong ? (
