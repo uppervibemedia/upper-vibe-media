@@ -31,6 +31,9 @@ import Account from './pages/Account';
 import Sessions from './pages/Sessions';
 import EmailList from './pages/EmailList';
 import Upgrade from './pages/Upgrade';
+import Membership from './pages/Membership';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentCancelled from './pages/PaymentCancelled';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -82,8 +85,10 @@ const AuthenticatedApp = () => {
         <Route path="/artists" element={<Artists />} />
         <Route path="/sessions" element={<Sessions />} />
         <Route path="/account" element={<Account />} />
-        <Route path="/upgrade" element={<Upgrade />} />
-        <Route path="/membership" element={<Upgrade />} />
+        <Route path="/upgrade" element={<Membership />} />
+        <Route path="/membership" element={<Membership />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-cancelled" element={<PaymentCancelled />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

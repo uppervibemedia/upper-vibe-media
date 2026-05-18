@@ -1,26 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight } from "lucide-react";
+import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-
-const PREMIUM_BENEFITS = [
-  "Download every song",
-  "Save 432 Hz music offline",
-  "Stream all songs free",
-  "Use Upper Vibe Radio",
-  "Save favorites to My Vibe Library",
-  "Support Upper Vibe Media",
-];
+import { base44 } from "@/api/base44Client";
 
 export default function Account() {
   const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
+  const [portalLoading, setPortalLoading] = useState(false);
 
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center px-6 pb-28 lg:pb-0">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="text-center max-w-sm">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-sm">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
             style={{ background: "rgba(0,200,220,0.08)", border: "1px solid rgba(0,200,220,0.2)" }}>
             <User className="w-8 h-8 text-cyan-400/60" />
@@ -29,8 +21,7 @@ export default function Account() {
           <p className="text-white/40 text-sm mb-8 leading-relaxed">
             Create a free account to save songs, access your library, and unlock premium features.
           </p>
-          <button
-            onClick={navigateToLogin}
+          <button onClick={navigateToLogin}
             className="w-full py-3.5 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
             style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", color: "#000" }}>
             Sign In / Create Account
@@ -41,18 +32,38 @@ export default function Account() {
   }
 
   const isAdmin = user?.role === "admin";
-  const isPremium = isAdmin || user?.role === "premium" || user?.tier === "premium";
-  const tierLabel = isAdmin ? "Admin" : isPremium ? "Premium Downloads" : "Free Listener";
-  const tierColor = isAdmin ? "#D4A843" : isPremium ? "#D4A843" : "#00C9E0";
+  const isPlus = isAdmin || user?.isPlus === true || user?.tier === "plus";
+  const isPremium = isAdmin || isPlus || user?.isPremium === true || user?.role === "premium" || user?.tier === "premium";
+  const isPaid = !isAdmin && (isPremium || isPlus);
+
+  const tierLabel = isAdmin ? "Admin" : isPlus ? "Upper Vibe Plus" : isPremium ? "Premium Downloads" : "Free Listener";
+  const tierColor = isAdmin ? "#D4A843" : isPlus ? "#9B7EFF" : isPremium ? "#D4A843" : "#00C9E0";
+  const tierBadge = isAdmin ? "👑 Admin" : isPlus ? "⚡ Plus" : isPremium ? "⭐ Premium" : "Free";
+
+  const handlePortal = async () => {
+    if (window.self !== window.top) {
+      alert("The billing portal is only available from the published app.");
+      return;
+    }
+    setPortalLoading(true);
+    try {
+      const res = await base44.functions.invoke("stripePortal", {
+        returnUrl: `${window.location.origin}/account`,
+      });
+      if (res.data?.url) window.location.href = res.data.url;
+    } catch {
+      alert("Could not open billing portal. Please try again.");
+    }
+    setPortalLoading(false);
+  };
 
   return (
     <div className="min-h-screen pb-28 lg:pb-8 pt-20 lg:pt-8">
       <div className="max-w-lg mx-auto px-6">
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-4">
 
           {/* Profile card */}
-          <div className="rounded-3xl p-6 mb-5"
+          <div className="rounded-3xl p-6"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-heading font-black text-xl flex-shrink-0"
@@ -63,77 +74,76 @@ export default function Account() {
                 <p className="font-heading font-black text-white text-lg truncate">{user.full_name || "Member"}</p>
                 <p className="text-white/40 text-sm truncate">{user.email}</p>
               </div>
-              {/* Tier badge */}
               <span className="flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-black tracking-wider"
                 style={{ background: `${tierColor}18`, border: `1px solid ${tierColor}40`, color: tierColor }}>
-                {isAdmin ? "👑 Admin" : isPremium ? "⭐ Premium" : "Free"}
+                {tierBadge}
               </span>
             </div>
           </div>
 
           {/* Membership card */}
-          <div className="rounded-3xl p-6 mb-5"
+          <div className="rounded-3xl p-6"
             style={{
-              background: isPremium
-                ? "linear-gradient(135deg,rgba(212,168,67,0.07),rgba(212,168,67,0.03))"
-                : "rgba(255,255,255,0.03)",
-              border: `1px solid ${isPremium ? "rgba(212,168,67,0.2)" : "rgba(255,255,255,0.07)"}`,
+              background: isPaid ? `linear-gradient(135deg,${tierColor}0a,${tierColor}04)` : "rgba(255,255,255,0.03)",
+              border: `1px solid ${isPaid ? `${tierColor}30` : "rgba(255,255,255,0.07)"}`,
             }}>
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: tierColor }}>
-                  Membership
-                </p>
+                <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: tierColor }}>Membership</p>
                 <h2 className="font-heading font-black text-white text-xl">{tierLabel}</h2>
+                {user.subscriptionStatus === "active" && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                    <span className="text-xs text-green-400/70 font-semibold">Active</span>
+                  </div>
+                )}
               </div>
-              <Crown className={`w-6 h-6 flex-shrink-0 ${isPremium ? "text-yellow-400" : "text-white/15"}`} />
+              {isPlus ? <Zap className="w-6 h-6 text-purple-400 flex-shrink-0" />
+                : isPremium ? <Crown className="w-6 h-6 text-yellow-400 flex-shrink-0" />
+                : <Crown className="w-6 h-6 text-white/15 flex-shrink-0" />}
             </div>
 
-            {isPremium ? (
-              <div className="space-y-2 mb-5">
-                {PREMIUM_BENEFITS.map((b) => (
-                  <div key={b} className="flex items-center gap-2 text-sm text-white/60">
-                    <Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
-                    {b}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-2 mb-5">
-                <div className="flex items-center gap-2 text-sm text-white/50">
-                  <Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Stream all songs free
-                </div>
-                <div className="flex items-center gap-2 text-sm text-white/50">
-                  <Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Listen to Upper Vibe Radio
-                </div>
-                <div className="flex items-center gap-2 text-sm text-white/50">
-                  <Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Save to My Vibe Library
-                </div>
-                <div className="flex items-center gap-2 text-sm text-white/25">
-                  <Lock className="w-3.5 h-3.5 flex-shrink-0" /> Download songs (Premium only)
-                </div>
-              </div>
-            )}
+            {/* Feature summary */}
+            <div className="space-y-2 mb-5">
+              {isPaid || isAdmin ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Download every song</div>
+                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Save 432 Hz music offline</div>
+                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Stream all songs free</div>
+                  {isPlus && <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" /> Exclusive packs & early access</div>}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Stream all songs free</div>
+                  <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Upper Vibe Radio</div>
+                  <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Save to My Vibe Library</div>
+                  <div className="flex items-center gap-2 text-sm text-white/25"><Lock className="w-3.5 h-3.5 flex-shrink-0" /> Download songs (Premium only)</div>
+                </>
+              )}
+            </div>
 
-            {!isPremium && (
-              <Link to="/upgrade"
+            {/* Action buttons */}
+            {!isPremium && !isAdmin && (
+              <Link to="/membership"
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
                 style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000" }}>
                 <Crown className="w-4 h-4" /> Upgrade to Premium — $4.99/mo
               </Link>
             )}
-
-            {isPremium && !isAdmin && (
-              <p className="text-xs text-white/25 text-center">
-                To manage your subscription, contact support.
-              </p>
+            {isPaid && (
+              <button onClick={handlePortal} disabled={portalLoading}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all hover:brightness-110 disabled:opacity-60"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
+                <CreditCard className="w-4 h-4" />
+                {portalLoading ? "Opening..." : "Manage Subscription"}
+              </button>
             )}
           </div>
 
           {/* Admin shortcut */}
           {isAdmin && (
             <Link to="/admin"
-              className="flex items-center gap-3 px-5 py-4 rounded-2xl mb-5 transition-all hover:border-yellow-400/20"
+              className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-yellow-400/20"
               style={{ background: "rgba(212,168,67,0.05)", border: "1px solid rgba(212,168,67,0.15)" }}>
               <Settings className="w-5 h-5 text-yellow-400/70" />
               <div className="flex-1">
@@ -144,9 +154,9 @@ export default function Account() {
             </Link>
           )}
 
-          {/* My Library shortcut */}
+          {/* My Library */}
           <Link to="/my-vibes"
-            className="flex items-center gap-3 px-5 py-4 rounded-2xl mb-5 transition-all hover:border-white/12"
+            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-white/12"
             style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
             <Music4 className="w-5 h-5 text-cyan-400/60" />
             <div className="flex-1">
@@ -156,9 +166,20 @@ export default function Account() {
             <ChevronRight className="w-4 h-4 text-white/20" />
           </Link>
 
+          {/* Downloads shortcut */}
+          <Link to="/downloads"
+            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-white/12"
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <Download className="w-5 h-5 text-yellow-400/50" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-white">Downloads</p>
+              <p className="text-xs text-white/35">Your downloaded tracks</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/20" />
+          </Link>
+
           {/* Log out */}
-          <button
-            onClick={() => logout()}
+          <button onClick={() => logout()}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-sm text-white/40 hover:text-white/70 transition-colors"
             style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
             <LogOut className="w-4 h-4" /> Log Out

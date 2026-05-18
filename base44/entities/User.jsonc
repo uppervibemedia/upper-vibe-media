@@ -1,0 +1,57 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "user",
+        "admin"
+      ],
+      "default": "user"
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "free",
+        "premium",
+        "plus"
+      ],
+      "default": "free",
+      "description": "Subscription tier: free, premium, or plus"
+    },
+    "isPremium": {
+      "type": "boolean",
+      "default": false,
+      "description": "True for Premium Downloads and Upper Vibe Plus members"
+    },
+    "isPlus": {
+      "type": "boolean",
+      "default": false,
+      "description": "True only for Upper Vibe Plus members"
+    },
+    "subscriptionStatus": {
+      "type": "string",
+      "enum": [
+        "inactive",
+        "active",
+        "cancelled",
+        "past_due"
+      ],
+      "default": "inactive",
+      "description": "Stripe subscription status"
+    },
+    "stripeCustomerId": {
+      "type": "string",
+      "description": "Stripe customer ID"
+    },
+    "stripeSubscriptionId": {
+      "type": "string",
+      "description": "Stripe subscription ID"
+    },
+    "currentPeriodEnd": {
+      "type": "string",
+      "description": "Subscription current period end date"
+    }
+  }
+}
