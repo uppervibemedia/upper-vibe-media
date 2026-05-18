@@ -14,21 +14,27 @@
       "type": "string",
       "enum": [
         "free",
-        "premium",
         "plus"
       ],
       "default": "free",
-      "description": "Subscription tier: free, premium, or plus"
+      "description": "Subscription tier: free or plus"
     },
-    "isPremium": {
-      "type": "boolean",
-      "default": false,
-      "description": "True for Premium Downloads and Upper Vibe Plus members"
+    "planName": {
+      "type": "string",
+      "description": "Display name of active plan e.g. Upper Vibe Plus"
+    },
+    "billingCycle": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "yearly"
+      ],
+      "description": "Billing cycle for paid plan"
     },
     "isPlus": {
       "type": "boolean",
       "default": false,
-      "description": "True only for Upper Vibe Plus members"
+      "description": "True for Upper Vibe Plus members"
     },
     "subscriptionStatus": {
       "type": "string",
@@ -49,9 +55,13 @@
       "type": "string",
       "description": "Stripe subscription ID"
     },
-    "currentPeriodEnd": {
+    "plusStartedAt": {
       "type": "string",
-      "description": "Subscription current period end date"
+      "description": "Date when Plus membership started"
+    },
+    "plusRenewsAt": {
+      "type": "string",
+      "description": "Date when Plus membership renews or expires"
     }
   }
 }

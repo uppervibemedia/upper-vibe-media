@@ -3,16 +3,7 @@ import Stripe from 'npm:stripe@14.21.0';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
 
-const PREMIUM_PRICE_ID = 'price_1TYSX3CgPUpySA0hfmSN0VwG';
-const PLUS_PRICE_ID = 'price_1TYSX3CgPUpySA0hCNH6yBNH';
-
-function getPlanFromPriceId(priceId) {
-  if (priceId === PREMIUM_PRICE_ID) return 'premium';
-  if (priceId === PLUS_PRICE_ID) return 'plus';
-  return null;
-}
-
-async function updateUserSubscription(base44, userEmail, plan, status) {
+async function updateUserSubscription(base44, userEmail, plan, billingCycle, status) {
   const users = await base44.asServiceRole.entities.User.filter({ email: userEmail });
   if (!users || users.length === 0) {
     console.error('User not found:', userEmail);
@@ -22,19 +13,29 @@ async function updateUserSubscription(base44, userEmail, plan, status) {
   const userId = users[0].id;
   let updateData = { subscriptionStatus: status };
 
-  if (status === 'active') {
-    if (plan === 'premium') {
-      updateData = { ...updateData, tier: 'premium', isPremium: true, isPlus: false };
-    } else if (plan === 'plus') {
-      updateData = { ...updateData, tier: 'plus', isPremium: true, isPlus: true };
-    }
-  } else {
-    // cancelled / expired
-    updateData = { ...updateData, tier: 'free', isPremium: false, isPlus: false };
+  if (status === 'active' && plan === 'plus') {
+    updateData = {
+      ...updateData,
+      tier: 'plus',
+      isPlus: true,
+      isPremium: true, // backwards compat
+      planName: 'Upper Vibe Plus',
+      billingCycle: billingCycle || 'monthly',
+      plusStartedAt: new Date().toISOString(),
+    };
+  } else if (status !== 'active') {
+    updateData = {
+      ...updateData,
+      tier: 'free',
+      isPlus: false,
+      isPremium: false,
+      planName: null,
+      billingCycle: null,
+    };
   }
 
   await base44.asServiceRole.entities.User.update(userId, updateData);
-  console.log(`Updated user ${userEmail} to plan=${plan} status=${status}`);
+  console.log(`Updated user ${userEmail} → plan=${plan} billing=${billingCycle} status=${status}`);
 }
 
 Deno.serve(async (req) => {
@@ -62,9 +63,10 @@ Deno.serve(async (req) => {
       case 'checkout.session.completed': {
         const session = event.data.object;
         const userEmail = session.metadata?.user_email;
-        const plan = session.metadata?.plan;
-        if (userEmail && plan) {
-          await updateUserSubscription(base44, userEmail, plan, 'active');
+        const plan = session.metadata?.plan || 'plus';
+        const billingCycle = session.metadata?.billing_cycle || 'monthly';
+        if (userEmail) {
+          await updateUserSubscription(base44, userEmail, plan, billingCycle, 'active');
         }
         break;
       }
@@ -72,11 +74,11 @@ Deno.serve(async (req) => {
       case 'customer.subscription.updated': {
         const sub = event.data.object;
         const userEmail = sub.metadata?.user_email;
-        const priceId = sub.items?.data?.[0]?.price?.id;
-        const plan = getPlanFromPriceId(priceId);
+        const plan = sub.metadata?.plan || 'plus';
+        const billingCycle = sub.metadata?.billing_cycle || 'monthly';
         const status = sub.status === 'active' ? 'active' : 'inactive';
-        if (userEmail && plan) {
-          await updateUserSubscription(base44, userEmail, plan, status);
+        if (userEmail) {
+          await updateUserSubscription(base44, userEmail, plan, billingCycle, status);
         }
         break;
       }
@@ -86,7 +88,7 @@ Deno.serve(async (req) => {
         const obj = event.data.object;
         const userEmail = obj.metadata?.user_email;
         if (userEmail) {
-          await updateUserSubscription(base44, userEmail, null, 'cancelled');
+          await updateUserSubscription(base44, userEmail, null, null, 'cancelled');
         }
         break;
       }

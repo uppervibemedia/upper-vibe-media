@@ -3,9 +3,10 @@ import Stripe from 'npm:stripe@14.21.0';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
 
+// Upper Vibe Plus price IDs
 const PRICE_IDS = {
-  premium: 'price_1TYSX3CgPUpySA0hfmSN0VwG',
-  plus: 'price_1TYSX3CgPUpySA0hCNH6yBNH',
+  plus_monthly: 'price_1TYT9CCgPUpySA0h1aS6Y6ws',
+  plus_yearly:  'price_1TYT9CCgPUpySA0hig7gFR5b',
 };
 
 Deno.serve(async (req) => {
@@ -17,10 +18,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { plan, successUrl, cancelUrl } = await req.json();
+    const { plan, billingCycle, successUrl, cancelUrl } = await req.json();
 
-    const priceId = PRICE_IDS[plan];
+    // Resolve price ID — plan should be "plus", billingCycle "monthly" or "yearly"
+    const priceKey = `${plan}_${billingCycle || 'monthly'}`;
+    const priceId = PRICE_IDS[priceKey];
+
     if (!priceId) {
+      console.error('Invalid plan/billingCycle:', plan, billingCycle);
       return Response.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
@@ -33,7 +38,6 @@ Deno.serve(async (req) => {
         metadata: { base44_user_email: user.email },
       });
       customerId = customer.id;
-      // Save customer ID to user record
       await base44.auth.updateMe({ stripeCustomerId: customerId });
     }
 
@@ -48,11 +52,13 @@ Deno.serve(async (req) => {
         base44_app_id: Deno.env.get('BASE44_APP_ID'),
         user_email: user.email,
         plan,
+        billing_cycle: billingCycle || 'monthly',
       },
       subscription_data: {
         metadata: {
           user_email: user.email,
           plan,
+          billing_cycle: billingCycle || 'monthly',
         },
       },
     });

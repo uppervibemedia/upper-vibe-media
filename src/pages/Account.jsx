@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard, Zap } from "lucide-react";
+import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -19,7 +19,7 @@ export default function Account() {
           </div>
           <h1 className="font-heading font-black text-2xl text-white mb-3">Sign In to Your Account</h1>
           <p className="text-white/40 text-sm mb-8 leading-relaxed">
-            Create a free account to save songs, access your library, and unlock premium features.
+            Create a free account to save songs, access your library, and unlock Upper Vibe Plus features.
           </p>
           <button onClick={navigateToLogin}
             className="w-full py-3.5 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
@@ -32,13 +32,12 @@ export default function Account() {
   }
 
   const isAdmin = user?.role === "admin";
-  const isPlus = isAdmin || user?.isPlus === true || user?.tier === "plus";
-  const isPremium = isAdmin || isPlus || user?.isPremium === true || user?.role === "premium" || user?.tier === "premium";
-  const isPaid = !isAdmin && (isPremium || isPlus);
+  const isPlus = isAdmin || user?.isPlus === true || user?.tier === "plus" || user?.tier === "premium" || user?.isPremium === true || user?.role === "premium";
+  const isPaid = !isAdmin && isPlus;
 
-  const tierLabel = isAdmin ? "Admin" : isPlus ? "Upper Vibe Plus" : isPremium ? "Premium Downloads" : "Free Listener";
-  const tierColor = isAdmin ? "#D4A843" : isPlus ? "#9B7EFF" : isPremium ? "#D4A843" : "#00C9E0";
-  const tierBadge = isAdmin ? "👑 Admin" : isPlus ? "⚡ Plus" : isPremium ? "⭐ Premium" : "Free";
+  const tierLabel = isAdmin ? "Admin" : isPlus ? "Upper Vibe Plus" : "Free Listener";
+  const tierColor = isAdmin ? "#D4A843" : isPlus ? "#D4A843" : "#00C9E0";
+  const tierBadge = isAdmin ? "👑 Admin" : isPlus ? "⭐ Plus" : "Free";
 
   const handlePortal = async () => {
     if (window.self !== window.top) {
@@ -84,13 +83,16 @@ export default function Account() {
           {/* Membership card */}
           <div className="rounded-3xl p-6"
             style={{
-              background: isPaid ? `linear-gradient(135deg,${tierColor}0a,${tierColor}04)` : "rgba(255,255,255,0.03)",
-              border: `1px solid ${isPaid ? `${tierColor}30` : "rgba(255,255,255,0.07)"}`,
+              background: isPlus ? "linear-gradient(135deg,rgba(212,168,67,0.07),rgba(212,168,67,0.02))" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${isPlus ? "rgba(212,168,67,0.28)" : "rgba(255,255,255,0.07)"}`,
             }}>
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: tierColor }}>Membership</p>
                 <h2 className="font-heading font-black text-white text-xl">{tierLabel}</h2>
+                {user.billingCycle && isPlus && (
+                  <p className="text-xs text-white/35 mt-0.5 capitalize">{user.billingCycle} billing</p>
+                )}
                 {user.subscriptionStatus === "active" && (
                   <div className="flex items-center gap-1.5 mt-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
@@ -98,36 +100,31 @@ export default function Account() {
                   </div>
                 )}
               </div>
-              {isPlus ? <Zap className="w-6 h-6 text-purple-400 flex-shrink-0" />
-                : isPremium ? <Crown className="w-6 h-6 text-yellow-400 flex-shrink-0" />
-                : <Crown className="w-6 h-6 text-white/15 flex-shrink-0" />}
+              <Crown className={`w-6 h-6 flex-shrink-0 ${isPlus ? "text-yellow-400" : "text-white/15"}`} />
             </div>
 
-            {/* Feature summary */}
             <div className="space-y-2 mb-5">
-              {isPaid || isAdmin ? (
+              {isPlus || isAdmin ? (
                 <>
-                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Download every song</div>
+                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Download every available song</div>
+                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Access premium Academy lessons</div>
                   <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Save 432 Hz music offline</div>
-                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Stream all songs free</div>
-                  {isPlus && <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" /> Exclusive packs & early access</div>}
                 </>
               ) : (
                 <>
                   <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Stream all songs free</div>
                   <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Upper Vibe Radio</div>
                   <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Save to My Vibe Library</div>
-                  <div className="flex items-center gap-2 text-sm text-white/25"><Lock className="w-3.5 h-3.5 flex-shrink-0" /> Download songs (Premium only)</div>
+                  <div className="flex items-center gap-2 text-sm text-white/25"><Lock className="w-3.5 h-3.5 flex-shrink-0" /> Downloads (Plus only)</div>
                 </>
               )}
             </div>
 
-            {/* Action buttons */}
-            {!isPremium && !isAdmin && (
+            {!isPlus && !isAdmin && (
               <Link to="/membership"
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
-                style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000" }}>
-                <Crown className="w-4 h-4" /> Upgrade to Premium — $4.99/mo
+                style={{ background: "linear-gradient(135deg,#C8892A,#EDB84A)", color: "#000" }}>
+                <Crown className="w-4 h-4" /> Upgrade to Plus — from $4.99/mo
               </Link>
             )}
             {isPaid && (
@@ -154,7 +151,6 @@ export default function Account() {
             </Link>
           )}
 
-          {/* My Library */}
           <Link to="/my-vibes"
             className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-white/12"
             style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -166,7 +162,6 @@ export default function Account() {
             <ChevronRight className="w-4 h-4 text-white/20" />
           </Link>
 
-          {/* Downloads shortcut */}
           <Link to="/downloads"
             className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-white/12"
             style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -178,7 +173,6 @@ export default function Account() {
             <ChevronRight className="w-4 h-4 text-white/20" />
           </Link>
 
-          {/* Log out */}
           <button onClick={() => logout()}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-sm text-white/40 hover:text-white/70 transition-colors"
             style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
