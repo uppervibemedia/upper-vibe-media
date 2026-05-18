@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
+import { resumeAudioContext } from "../lib/audioContext";
 
 const PlayerContext = createContext(null);
 
@@ -27,6 +28,7 @@ export function PlayerProvider({ children }) {
     audio.load();
 
     const onCanPlay = () => {
+      resumeAudioContext();
       audio.play()
         .then(() => setIsPlaying(true))
         .catch(() => setIsPlaying(false));
@@ -44,6 +46,7 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     if (!currentTrack) return;
     if (isPlaying) {
+      resumeAudioContext();
       audio.play().catch(() => {});
     } else {
       audio.pause();
