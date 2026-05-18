@@ -1,0 +1,36 @@
+{
+  "name": "AcademyProgress",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user"
+    },
+    "lesson_id": {
+      "type": "string",
+      "description": "ID of the AcademyLesson record"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "started",
+        "completed"
+      ],
+      "default": "started",
+      "description": "Progress status"
+    },
+    "watched_seconds": {
+      "type": "number",
+      "default": 0,
+      "description": "Seconds watched (for future use)"
+    },
+    "completed_at": {
+      "type": "string",
+      "description": "ISO datetime when marked complete"
+    }
+  },
+  "required": [
+    "user_email",
+    "lesson_id"
+  ]
+}

@@ -22,6 +22,7 @@ import Dashboard from './pages/Dashboard';
 import Vault from './pages/Vault';
 import Contact from './pages/Contact';
 import Academy from './pages/Academy';
+import AcademyLessonPage from './pages/AcademyLessonPage';
 import Artists from './pages/Artists';
 import MyVibes from './pages/MyVibes';
 import NewestMusic from './pages/NewestMusic';
@@ -78,6 +79,7 @@ const AuthenticatedApp = () => {
         <Route path="/vault" element={<Vault />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/academy" element={<Academy />} />
+        <Route path="/academy/lesson/:id" element={<AcademyLessonPage />} />
         <Route path="/newest-music" element={<NewestMusic />} />
         <Route path="/radio" element={<RadioPage />} />
         <Route path="/my-vibes" element={<MyVibes />} />
