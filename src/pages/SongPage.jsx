@@ -3,13 +3,14 @@ import { motion } from "framer-motion";
 import { useParams, Link } from "react-router-dom";
 import {
   Download, Play, Pause, Waves, Lock, Crown, Music4,
-  Tv2, ChevronLeft, Tag, User, Heart
+  Tv2, ChevronLeft, Tag, User, Heart, Zap
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
+import SupportModal from "../components/shared/SupportModal";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
 
@@ -98,6 +99,7 @@ export default function SongPage() {
   const [visualizer, setVisualizer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
+  const [supportModal, setSupportModal] = useState(false);
   const [vizPlaying, setVizPlaying] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
@@ -280,6 +282,13 @@ export default function SongPage() {
                 )}
 
                 <button
+                  onClick={() => setSupportModal(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110"
+                  style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.25)", color: "#C89432" }}>
+                  <Zap className="w-4 h-4" /> Support
+                </button>
+
+                <button
                   onClick={() => {
                     if (!user) { setLoginPrompt(true); return; }
                     toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
@@ -415,6 +424,7 @@ export default function SongPage() {
 
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
+      <SupportModal open={supportModal} onClose={() => setSupportModal(false)} track={track} />
 
       {loginPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

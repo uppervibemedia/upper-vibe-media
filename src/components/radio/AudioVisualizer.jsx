@@ -65,32 +65,41 @@ export default function AudioVisualizer({ audioRef, isPlaying }) {
 
   const MAX_PARTICLES = 60;
 
-  // Setup Web Audio API analyser once
+  // Setup Web Audio API analyser once — uses a module-level cache to survive re-renders
   const setupAnalyser = useCallback(() => {
     const audio = audioRef?.current;
-    if (!audio || analyserRef.current) return;
+    if (!audio) return;
+
+    // If we already have an analyser wired up, just resume if suspended
+    if (analyserRef.current) {
+      if (audioCtxRef.current?.state === "suspended") audioCtxRef.current.resume();
+      return;
+    }
 
     try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === "suspended") ctx.resume();
-
-      // Avoid double-connecting
-      if (!sourceRef.current) {
-        sourceRef.current = ctx.createMediaElementSource(audio);
+      // Reuse a shared AudioContext stored on the audio element itself to avoid
+      // "HTMLMediaElement already connected" errors across re-mounts
+      if (!audio._uvmAudioCtx) {
+        audio._uvmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audio._uvmSource = audio._uvmAudioCtx.createMediaElementSource(audio);
+        // Connect source → destination so playback is not silenced
+        audio._uvmSource.connect(audio._uvmAudioCtx.destination);
       }
 
-      const analyser = ctx.createAnalyser();
+      audioCtxRef.current = audio._uvmAudioCtx;
+      sourceRef.current = audio._uvmSource;
+
+      if (audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
+
+      const analyser = audioCtxRef.current.createAnalyser();
       analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0.8;
 
       sourceRef.current.connect(analyser);
-      analyser.connect(ctx.destination);
+      // Do NOT connect analyser → destination again (source already connects there)
       analyserRef.current = analyser;
     } catch (e) {
-      // CORS or already connected — visualizer won't be frequency-reactive
+      // CORS or policy error — visualizer falls back to idle animation
       analyserRef.current = null;
     }
   }, [audioRef]);
