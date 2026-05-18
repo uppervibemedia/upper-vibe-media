@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import AudioPlayer from "../player/AudioPlayer";
 import { PlayerProvider } from "../../context/PlayerContext";
 import { usePlayer } from "../../context/PlayerContext";
+import { RadioProvider } from "../../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
 import { User } from "lucide-react";
 
@@ -55,7 +56,9 @@ function LayoutContent() {
 export default function AppLayout() {
   return (
     <PlayerProvider>
-      <LayoutContent />
+      <RadioProvider>
+        <LayoutContent />
+      </RadioProvider>
     </PlayerProvider>
   );
 }

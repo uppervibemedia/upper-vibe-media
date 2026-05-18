@@ -6,6 +6,7 @@ export function PlayerProvider({ children }) {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [queue, setQueue] = useState([]);
+  const [sourceType, setSourceType] = useState("song"); // "radio" | "song" | "library" | "recommended" | "latest"
   const audioRef = useRef(new Audio());
 
   useEffect(() => {
@@ -26,7 +27,8 @@ export function PlayerProvider({ children }) {
     }
   }, [isPlaying]);
 
-  const playTrack = (track) => {
+  const playTrack = (track, source = "song") => {
+    setSourceType(source);
     setCurrentTrack(track);
   };
 
@@ -46,6 +48,7 @@ export function PlayerProvider({ children }) {
       currentTrack,
       isPlaying,
       queue,
+      sourceType,
       playTrack,
       togglePlay,
       stopPlaying,
