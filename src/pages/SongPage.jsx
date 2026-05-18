@@ -107,6 +107,8 @@ export default function SongPage() {
 
   useEffect(() => {
     if (!id) return;
+    setVisualizer(null);
+    setVizPlaying(false);
     Promise.all([
       base44.entities.Track.filter({ id }, "-created_date", 1).then((r) => r[0] || null),
       base44.entities.Track.filter({ status: "published" }, "-release_date", 50),
@@ -115,7 +117,11 @@ export default function SongPage() {
       setAllTracks(tracks);
       if (t) {
         base44.entities.Visualizer.filter({ linked_song_id: t.id, status: "published" }, "display_order", 1)
-          .then((v) => { if (v[0]) setVisualizer(v[0]); });
+          .then((v) => {
+            // Only set if the visualizer is explicitly linked to this exact song
+            const match = v.find((viz) => viz.linked_song_id === t.id);
+            if (match) setVisualizer(match);
+          });
       }
       setLoading(false);
     });
@@ -153,7 +159,9 @@ export default function SongPage() {
   };
 
   const isCurrentTrack = currentTrack?.id === track?.id;
-  const embedUrl = visualizer ? toEmbedUrl(visualizer.embed_url || visualizer.video_url) : null;
+  // Only use visualizer if it's explicitly linked to this exact song
+  const linkedVisualizer = visualizer?.linked_song_id === track?.id ? visualizer : null;
+  const embedUrl = linkedVisualizer ? toEmbedUrl(linkedVisualizer.embed_url || linkedVisualizer.video_url) : null;
 
   if (loading) {
     return (
@@ -318,8 +326,8 @@ export default function SongPage() {
               </motion.div>
             )}
 
-            {/* Linked Visualizer */}
-            {visualizer && (
+            {/* Linked Visualizer — only shown if explicitly linked to this song */}
+            {linkedVisualizer && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
                 className="mb-8">
                 <h2 className="font-heading font-bold text-lg text-white mb-4 flex items-center gap-2">
@@ -331,7 +339,7 @@ export default function SongPage() {
                       {vizPlaying && embedUrl ? (
                         <iframe
                           src={`${embedUrl}?autoplay=1&rel=0`}
-                          title={visualizer.title}
+                          title={linkedVisualizer.title}
                           frameBorder="0"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                           allowFullScreen
@@ -340,8 +348,8 @@ export default function SongPage() {
                         />
                       ) : (
                         <div className="w-full h-full cursor-pointer group relative" onClick={() => setVizPlaying(true)}>
-                          {visualizer.thumbnail_url ? (
-                            <img src={visualizer.thumbnail_url} alt={visualizer.title} className="w-full h-full object-cover" />
+                          {linkedVisualizer.thumbnail_url ? (
+                            <img src={linkedVisualizer.thumbnail_url} alt={linkedVisualizer.title} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center"
                               style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.07),rgba(0,0,0,0.5))" }}>
@@ -360,8 +368,8 @@ export default function SongPage() {
                     </div>
                   </div>
                   <div className="px-5 py-4" style={{ background: "rgba(0,0,0,0.4)" }}>
-                    <p className="text-sm font-bold text-white">{visualizer.title}</p>
-                    <p className="text-xs text-white/35">{visualizer.artist || "Upper Vibe Media"}</p>
+                    <p className="text-sm font-bold text-white">{linkedVisualizer.title}</p>
+                    <p className="text-xs text-white/35">{linkedVisualizer.artist || "Upper Vibe Media"}</p>
                   </div>
                 </div>
               </motion.div>
