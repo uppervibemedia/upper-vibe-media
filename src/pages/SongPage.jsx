@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useParams, Link } from "react-router-dom";
 import {
   Download, Play, Pause, Waves, Lock, Crown, Music4,
-  Tv2, ChevronLeft, Tag, User, Heart
+  Tv2, ChevronLeft, Tag, User, Heart, Zap
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
+import SupportModal from "../components/shared/SupportModal";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
 
@@ -103,6 +104,20 @@ export default function SongPage() {
   const { user } = useAuth();
   const isPlus = user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" || user?.tier === "premium" || user?.isPremium === true || user?.role === "premium";
   const [loginPrompt, setLoginPrompt] = useState(false);
+  const [supportModal, setSupportModal] = useState(false);
+  const [showSupportedBanner, setShowSupportedBanner] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("supported") === "1") {
+      setShowSupportedBanner(true);
+      // Remove param from URL without reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete("supported");
+      window.history.replaceState({}, "", url.toString());
+      setTimeout(() => setShowSupportedBanner(false), 6000);
+    }
+  }, []);
   const { isFaved, toggle } = useFavorites(user?.email);
 
   useEffect(() => {
@@ -294,6 +309,14 @@ export default function SongPage() {
                   <Heart className={`w-4 h-4 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
                   {isFaved("track", track.id) ? "Saved" : "Save"}
                 </button>
+
+                <button
+                  onClick={() => setSupportModal(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
+                  style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.28)", color: "#D4A843" }}>
+                  <Zap className="w-4 h-4" />
+                  Support
+                </button>
               </div>
 
               {!isPlus && (
@@ -415,6 +438,25 @@ export default function SongPage() {
 
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
+      <SupportModal open={supportModal} onClose={() => setSupportModal(false)} track={track} />
+
+      {/* Support success banner */}
+      <AnimatePresence>
+        {showSupportedBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl"
+            style={{ background: "linear-gradient(135deg,rgba(0,180,210,0.95),rgba(0,229,255,0.9))", color: "#000", backdropFilter: "blur(12px)" }}>
+            <Zap className="w-5 h-5 fill-current" />
+            <div>
+              <p className="font-black text-sm">Thank you for the boost! 🙏</p>
+              <p className="text-xs opacity-70">You're helping keep the vibe alive.</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {loginPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
