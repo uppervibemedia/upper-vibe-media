@@ -18,6 +18,12 @@ let _audioCtx    = null;
 let _analyser    = null;
 let _sourceNode  = null;
 
+function resumeAudioContext() {
+  if (_audioCtx && _audioCtx.state !== "running") {
+    _audioCtx.resume().catch(() => {});
+  }
+}
+
 function getOrCreateAudioContext(audioElement) {
   if (!audioElement) return null;
 
@@ -26,9 +32,8 @@ function getOrCreateAudioContext(audioElement) {
     window._uvAudioCtx = _audioCtx;
     console.log("[PlayerContext] ✅ Single global AudioContext created");
   }
-  if (_audioCtx.state === "suspended" || _audioCtx.state === "interrupted") {
-    _audioCtx.resume().catch(() => {});
-  }
+
+  resumeAudioContext();
 
   if (!_sourceNode) {
     try {
@@ -47,6 +52,11 @@ function getOrCreateAudioContext(audioElement) {
   }
 
   return _analyser;
+}
+
+// Expose for direct resume calls (e.g. on user gestures, visibility restore)
+export function resumeGlobalAudioContext() {
+  resumeAudioContext();
 }
 
 // Expose for visualizer components
@@ -127,8 +137,14 @@ export function PlayerProvider({ children }) {
 
     // Always re-register handlers so they have fresh closure state via refs
     navigator.mediaSession.setActionHandler("play", () => {
+      // iOS: AudioContext is suspended when triggered from lock screen
+      resumeAudioContext();
       const audio = audioRef.current;
-      audio.play().catch(() => {});
+      // Small delay ensures AudioContext is running before play()
+      setTimeout(() => {
+        resumeAudioContext();
+        audio.play().catch(() => {});
+      }, 50);
       setIsPlaying(true);
     });
     navigator.mediaSession.setActionHandler("pause", () => {
@@ -166,17 +182,22 @@ export function PlayerProvider({ children }) {
 
       console.log("[PlayerContext] 👁 Page became visible");
 
-      // Resume suspended AudioContext (iOS Safari suspends it on page hide)
-      if (_audioCtx?.state === "suspended") {
-        _audioCtx.resume().catch(() => {});
-        console.log("[PlayerContext] 🔊 AudioContext resumed");
-      }
-
       const audio = audioRef.current;
-      // Only re-play if we were playing AND audio actually paused (e.g. iOS killed it)
+
+      // Step 1: Always resume AudioContext first — iOS suspends it on lock
+      resumeAudioContext();
+      console.log("[PlayerContext] 🔊 AudioContext resume requested on visibility restore");
+
+      // Step 2: If we were playing and audio is paused (iOS killed it), restart
       if (isPlayingRef.current && audio.src && audio.paused) {
-        audio.play().catch(() => {});
-        console.log("[PlayerContext] ▶️ Resumed after visibility restore");
+        // Small delay to let AudioContext fully resume before calling play()
+        setTimeout(() => {
+          resumeAudioContext();
+          if (isPlayingRef.current && audio.paused) {
+            audio.play().catch(() => {});
+            console.log("[PlayerContext] ▶️ Resumed after visibility restore");
+          }
+        }, 100);
       }
     };
 
@@ -189,11 +210,17 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     const audio = audioRef.current;
 
-    const onPlay  = () => { setIsPlaying(true);  };
+    const onPlay  = () => {
+      // iOS Safari: AudioContext gets suspended on lock — resume it every time
+      // audio starts playing (including after lock-screen play button)
+      resumeAudioContext();
+      setIsPlaying(true);
+    };
     const onPause = () => {
-      // Don't set paused if the pause was caused by a src load (interim pause)
-      // We check: if src is still set and readyState > 0 we trust the OS pause
-      if (audio.src && audio.readyState > 0) {
+      // Trust all pause events from the OS/browser EXCEPT the brief interim pause
+      // that fires synchronously during audio.load() before src is ready.
+      // readyState === 0 (HAVE_NOTHING) means we're mid-load — ignore that pause.
+      if (audio.readyState > 0) {
         setIsPlaying(false);
       }
     };
@@ -211,6 +238,8 @@ export function PlayerProvider({ children }) {
 
   // ── Public API ────────────────────────────────────────────────────────────
   const playTrack = useCallback((track, source = "song") => {
+    // Resume AudioContext on every user-initiated play (iOS requires gesture-triggered resume)
+    resumeAudioContext();
     setSourceType(source);
     setCurrentTrack(track);
     console.log("[PlayerContext] 🎵 playTrack called:", track?.title, "| source:", source);
@@ -218,6 +247,10 @@ export function PlayerProvider({ children }) {
 
   const togglePlay = useCallback(() => {
     setIsPlaying((prev) => {
+      if (!prev) {
+        // About to play — resume AudioContext first (iOS Safari requirement)
+        resumeAudioContext();
+      }
       console.log("[PlayerContext] 🔀 togglePlay:", prev ? "→ pause" : "→ play");
       return !prev;
     });
