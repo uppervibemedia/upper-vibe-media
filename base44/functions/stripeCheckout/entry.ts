@@ -5,8 +5,8 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
 
 // Upper Vibe Plus price IDs
 const PRICE_IDS = {
-  plus_monthly: 'price_1TYT9CCgPUpySA0h1aS6Y6ws',
-  plus_yearly:  'price_1TYT9CCgPUpySA0hig7gFR5b',
+  plus_monthly: 'price_1TYfoEGq7v58DE94kN4kzcT0',
+  plus_yearly:  'price_1TYfoEGq7v58DE94kL7frMGV',
 };
 
 Deno.serve(async (req) => {
