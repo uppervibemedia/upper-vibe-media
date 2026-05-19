@@ -122,12 +122,18 @@ export function PlayerProvider({ children }) {
   const playPromiseRef  = useRef(null);            // in-flight play() promise
   const lastToggleMs    = useRef(0);               // debounce timestamp
   const stateRef        = useRef(S.IDLE);          // mirror of playerState for callbacks
+  const playPauseLocked = useRef(false);           // 500ms lock prevents double-fire from lock screen
+  const setStateRef     = useRef(null);            // stable ref to _setState for MediaSession handlers
 
   // Keep stateRef in sync
   const _setState = useCallback((s) => {
     stateRef.current = s;
     setPlayerState(s);
   }, []);
+
+  // Keep a stable ref to _setState so MediaSession handlers (registered once)
+  // can call it without being re-registered on every render.
+  useEffect(() => { setStateRef.current = _setState; }, [_setState]);
 
   // ── Core play/pause helpers ───────────────────────────────────────────
 
@@ -253,8 +259,11 @@ export function PlayerProvider({ children }) {
     };
   }, [_setState]); // _setState is stable
 
-  // ── 2. Media Session handlers — registered ONCE, forever ──────────────
-  // Handlers always read state through refs — never stale.
+  // ── 2. Media Session handlers — registered ONCE, NEVER re-registered ────
+  // All state is read through refs so these handlers are never stale.
+  // CRITICAL: Do NOT call togglePlay() or _doPlay()/_doPause() here.
+  // Call audio.play() / audio.pause() DIRECTLY with a 500ms action lock
+  // to prevent the double-fire that causes the repeating-buffer glitch.
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
 
@@ -262,18 +271,57 @@ export function PlayerProvider({ children }) {
       try { navigator.mediaSession.setActionHandler(action, fn); } catch (_) {}
     };
 
-    setHandler("play", () => {
+    const acquireLock = () => {
+      if (playPauseLocked.current) return false;
+      playPauseLocked.current = true;
+      setTimeout(() => { playPauseLocked.current = false; }, 500);
+      return true;
+    };
+
+    setHandler("play", async () => {
       _log("MediaSession: play");
+      if (!acquireLock()) { _log("MediaSession: play locked — skipped"); return; }
       const audio = audioRef.current;
       if (!audio?.src) return;
+      if (!audio.paused) { _log("MediaSession: play — already playing"); return; }
       userPausedRef.current = false;
-      _resumeCtx(); // sync — iOS user-gesture requirement
-      if (audio.paused && !playPromiseRef.current) _doPlay();
+      _resumeCtx();
+      try {
+        const p = audio.play();
+        if (p) {
+          playPromiseRef.current = p;
+          await p;
+          playPromiseRef.current = null;
+        }
+        setStateRef.current?.(S.PLAYING);
+        if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
+      } catch (err) {
+        playPromiseRef.current = null;
+        if (err?.name !== "AbortError") {
+          _log("MediaSession play() error:", err?.name, err?.message);
+          setStateRef.current?.(S.PAUSED);
+        }
+      }
     });
 
-    setHandler("pause", () => {
+    setHandler("pause", async () => {
       _log("MediaSession: pause");
-      _doPause();
+      if (!acquireLock()) { _log("MediaSession: pause locked — skipped"); return; }
+      const audio = audioRef.current;
+      if (audio?.paused) { _log("MediaSession: pause — already paused"); return; }
+      userPausedRef.current = true;
+      // Wait for any pending play() before pausing to avoid the buffer-repeat glitch
+      if (playPromiseRef.current) {
+        _log("MediaSession: pause — waiting for play() promise");
+        try { await playPromiseRef.current; } catch (_) {}
+        playPromiseRef.current = null;
+      }
+      if (!audio.paused) {
+        audio.pause();
+        _log("MediaSession: pause() called →", _audioSnapshot());
+      }
+      setStateRef.current?.(S.PAUSED);
+      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
     });
 
     setHandler("nexttrack", () => {
@@ -286,8 +334,9 @@ export function PlayerProvider({ children }) {
       onPrevRef.current?.();
     });
 
-    // Keep handlers alive — no cleanup
-  }, [_doPlay, _doPause]); // both are stable useCallbacks
+    // Intentionally no cleanup — handlers must stay registered for the full session
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // empty deps — registered ONCE, reads all state via refs
 
   // ── 3. Media Session metadata ─────────────────────────────────────────
   useEffect(() => {
@@ -341,41 +390,22 @@ export function PlayerProvider({ children }) {
     return () => clearTimeout(clearLoading);
   }, [currentTrack, _doPlay, _setState]);
 
-  // ── 5. Visibility change — recover from lock screen ───────────────────
-  // iOS fires "pause" when screen locks. We restart ONLY if:
-  //   • page is visible again
-  //   • user did NOT explicitly pause (userPausedRef = false)
-  //   • audio is still paused
-  //   • no play() promise is already in flight
-  //   • not mid-load
-  // A 300 ms guard prevents false restarts on notification-shade flickers.
+  // ── 5. Visibility change — AudioContext only, NO auto-play ───────────────
+  // We deliberately do NOT restart audio here.
+  // If the user pressed Pause on the lock screen, userPausedRef=true and we
+  // must respect that. If they pressed Play on the lock screen, the MediaSession
+  // "play" handler already fired — no need to double-trigger from visibilitychange.
+  // The ONLY safe thing to do here is resume the AudioContext (for the visualiser).
   useEffect(() => {
-    let timer = null;
     const handle = () => {
-      clearTimeout(timer);
-      if (document.visibilityState !== "visible") return;
-      _resumeCtx();
-      const audio = audioRef.current;
-      if (userPausedRef.current) return;           // user pressed pause
-      if (!audio?.src)           return;           // nothing loaded
-      if (!audio.paused)         return;           // already playing
-      if (loadingRef.current)    return;           // mid-load
-      if (playPromiseRef.current) return;          // play already pending
-      _log("visibilitychange → visible, scheduling restart");
-      timer = setTimeout(() => {
-        const a = audioRef.current;
-        if (!userPausedRef.current && a?.src && a.paused && !loadingRef.current && !playPromiseRef.current) {
-          _log("Restarting after lock screen");
-          _doPlay();
-        }
-      }, 300);
+      if (document.visibilityState === "visible") {
+        _resumeCtx();
+        _log("visibilitychange → visible (AudioContext resumed, no auto-play)");
+      }
     };
     document.addEventListener("visibilitychange", handle);
-    return () => {
-      document.removeEventListener("visibilitychange", handle);
-      clearTimeout(timer);
-    };
-  }, [_doPlay]);
+    return () => document.removeEventListener("visibilitychange", handle);
+  }, []);
 
   // ── Public API ────────────────────────────────────────────────────────
 
@@ -392,19 +422,16 @@ export function PlayerProvider({ children }) {
   }, []);
 
   /**
-   * Toggle play ↔ pause.
-   * Hard-debounced: ignores calls within 500 ms of the last one.
+   * Toggle play ↔ pause (in-app button).
+   * Shares the same playPauseLocked ref as MediaSession handlers so that
+   * a lock-screen press and an in-app press can never stack within 500ms.
    */
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio?.src) return;
-
-    const now = Date.now();
-    if (now - lastToggleMs.current < 500) {
-      _log("togglePlay debounced");
-      return;
-    }
-    lastToggleMs.current = now;
+    if (playPauseLocked.current) { _log("togglePlay locked — skipped"); return; }
+    playPauseLocked.current = true;
+    setTimeout(() => { playPauseLocked.current = false; }, 500);
 
     if (audio.paused) {
       if (!playPromiseRef.current) {
