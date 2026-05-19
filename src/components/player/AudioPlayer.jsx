@@ -16,9 +16,17 @@ export default function AudioPlayer() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onTime     = () => { setCurrentTime(audio.currentTime); setProgress(audio.duration ? (audio.currentTime / audio.duration) * 100 : 0); };
-    const onMeta     = () => { setDuration(audio.duration || 0); };
-    const onEmptied  = () => { setProgress(0); setCurrentTime(0); setDuration(0); };
+    const onTime = () => {
+      // Only advance progress if audio is genuinely playing and has data buffered
+      if (audio.paused || audio.readyState < 3) return;
+      setCurrentTime(audio.currentTime);
+      setProgress(audio.duration ? (audio.currentTime / audio.duration) * 100 : 0);
+    };
+    const onMeta    = () => { setDuration(audio.duration || 0); };
+    const onEmptied = () => { setProgress(0); setCurrentTime(0); setDuration(0); };
+    // Reset progress display when audio actually pauses
+    const onPause   = () => { /* isPlaying state already handled in context */ };
+    const onPlay    = () => { /* no-op — context drives isPlaying */ };
     audio.addEventListener("timeupdate",     onTime);
     audio.addEventListener("loadedmetadata", onMeta);
     audio.addEventListener("emptied",        onEmptied);

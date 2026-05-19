@@ -10,19 +10,19 @@ const _audio = typeof window !== "undefined" ? (() => {
 })() : null;
 
 // AudioContext for visualiser — wired lazily on first play
-let _actx = null;
+let _actx    = null;
 let _analyser = null;
-let _srcNode = null;
+let _srcNode  = null;
 let _ctxWired = false;
 
 function _wireCtx() {
   if (_ctxWired || !_audio) return;
   try {
-    _actx = new (window.AudioContext || window.webkitAudioContext)();
+    _actx     = new (window.AudioContext || window.webkitAudioContext)();
     _analyser = _actx.createAnalyser();
     _analyser.fftSize = 256;
     _analyser.smoothingTimeConstant = 0.82;
-    _srcNode = _actx.createMediaElementSource(_audio);
+    _srcNode  = _actx.createMediaElementSource(_audio);
     _srcNode.connect(_analyser);
     _analyser.connect(_actx.destination);
     _ctxWired = true;
@@ -35,83 +35,59 @@ function _resumeCtx() {
   if (_actx && _actx.state !== "running") _actx.resume().catch(() => {});
 }
 
-export function getGlobalAnalyser() {
-  return _analyser;
-}
-export function resumeGlobalAudioContext() {
-  _resumeCtx();
-}
+export function getGlobalAnalyser()        { return _analyser; }
+export function resumeGlobalAudioContext() { _resumeCtx(); }
 
 const PlayerContext = createContext(null);
 
 export function PlayerProvider({ children }) {
   const [currentTrack, setCurrentTrack] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [sourceType, setSourceType] = useState("song");
-  const [queue, setQueue] = useState([]);
+  const [isPlaying,    setIsPlaying]    = useState(false);
+  const [sourceType,   setSourceType]   = useState("song");
+  const [queue,        setQueue]        = useState([]);
 
-  const audioRef        = useRef(_audio);
-  const onNextRef       = useRef(null);
-  const onPrevRef       = useRef(null);
-  const playPromiseRef  = useRef(null);
+  const audioRef       = useRef(_audio);
+  const onNextRef      = useRef(null);
+  const onPrevRef      = useRef(null);
+  const playPromiseRef = useRef(null);
 
-  // Debounce timers for play/pause — prevents double-fire from lock screen
-  const playDebounceRef  = useRef(null);
-  const pauseDebounceRef = useRef(null);
-
-  // ── Safe play — debounced 500 ms, guards promise races ───────────────────
-  const safePlay = useCallback(() => {
-    if (playDebounceRef.current) clearTimeout(playDebounceRef.current);
-    playDebounceRef.current = setTimeout(() => {
-      const audio = audioRef.current;
-      if (!audio?.src) return;
-      if (!audio.paused) return;           // already playing
-      if (playPromiseRef.current) return;  // play() in flight
-
-      _resumeCtx();
-      const p = audio.play();
-      if (p) {
-        playPromiseRef.current = p;
-        p.then(() => { playPromiseRef.current = null; })
-         .catch((err) => {
-           playPromiseRef.current = null;
-           if (err?.name !== "AbortError") console.warn("[Player] play() error:", err?.name, err?.message);
-         });
-      }
-    }, 500);
+  // ── Core play/pause helpers ───────────────────────────────────────────────
+  const _doPlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio?.src || playPromiseRef.current) return;
+    if (!audio.paused) return; // already playing
+    _resumeCtx();
+    const p = audio.play();
+    if (p) {
+      playPromiseRef.current = p;
+      p.then(() => { playPromiseRef.current = null; })
+       .catch((err) => {
+         playPromiseRef.current = null;
+         if (err?.name !== "AbortError") console.warn("[Player] play() error:", err?.name, err?.message);
+       });
+    }
   }, []);
 
-  // ── Safe pause — debounced 500 ms, waits for any pending play() ──────────
-  const safePause = useCallback(() => {
-    if (pauseDebounceRef.current) clearTimeout(pauseDebounceRef.current);
-    pauseDebounceRef.current = setTimeout(() => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      if (audio.paused) return;            // already paused
-
-      if (playPromiseRef.current) {
-        playPromiseRef.current
-          .then(() => { audio.pause(); playPromiseRef.current = null; })
-          .catch(() => { playPromiseRef.current = null; });
-      } else {
-        audio.pause();
-      }
-    }, 500);
+  const _doPause = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) return; // already paused
+    if (playPromiseRef.current) {
+      playPromiseRef.current
+        .then(() => { audio.pause(); playPromiseRef.current = null; })
+        .catch(() => { playPromiseRef.current = null; });
+    } else {
+      audio.pause();
+    }
   }, []);
 
-  // ── Audio events — driven purely by real element events ──────────────────
+  // ── Audio element events ──────────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onPlay  = () => {
-      setIsPlaying(true);
-      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
-    };
-    const onPause = () => {
-      setIsPlaying(false);
-      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
-    };
+    const onPlay  = () => { setIsPlaying(true);  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; };
+    const onPause = () => { setIsPlaying(false); if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"; };
     const onEnded = () => { onNextRef.current ? onNextRef.current() : setIsPlaying(false); };
     const onError = () => { setIsPlaying(false); console.warn("[Player] audio error", audio.error?.message); };
 
@@ -128,21 +104,20 @@ export function PlayerProvider({ children }) {
     };
   }, []);
 
-  // ── Visibility change — auto-pause on screen lock / tab hide ─────────────
+  // ── Visibility: auto-pause on screen lock / tab hide ─────────────────────
+  // Pauses immediately — src, currentTime, queue untouched.
+  // User resumes via lock-screen Play or in-app Play button.
   useEffect(() => {
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
-        // Phone locked or page hidden: pause cleanly, preserve src + currentTime
-        safePause();
+        _doPause();
       }
-      // On visible: do nothing — user controls resumption via lock screen or UI
     };
-
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [safePause]);
+  }, [_doPause]);
 
-  // ── Media Session handlers — registered once, use safePlay/safePause ─────
+  // ── Media Session — registered once ──────────────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
 
@@ -150,12 +125,12 @@ export function PlayerProvider({ children }) {
       try { navigator.mediaSession.setActionHandler(action, fn); } catch (_) {}
     };
 
-    // Use safePlay/safePause — never togglePlay, no duplicate promises
-    set("play",          () => { safePlay(); });
-    set("pause",         () => { safePause(); });
+    // Direct calls — no debounce, no togglePlay
+    set("play",  () => { _doPlay(); });
+    set("pause", () => { _doPause(); });
     set("nexttrack",     () => { onNextRef.current?.(); });
     set("previoustrack", () => { onPrevRef.current?.(); });
-  }, [safePlay, safePause]); // safePlay/safePause are stable useCallback refs
+  }, []); // registered once; _doPlay/_doPause are stable refs captured at mount
 
   // ── Media Session metadata ────────────────────────────────────────────────
   useEffect(() => {
@@ -183,25 +158,20 @@ export function PlayerProvider({ children }) {
     if (!_ctxWired) _wireCtx();
 
     if (audio.src !== track.audio_url) {
-      // New track: swap src, clear any in-flight promise, then play
       playPromiseRef.current = null;
       audio.src = track.audio_url;
       audio.load();
     }
 
-    // Small delay to let load() settle — avoids AbortError on fast clicks
-    setTimeout(() => { safePlay(); }, 50);
-  }, [safePlay]);
+    // Small delay lets load() settle — avoids AbortError on fast clicks
+    setTimeout(() => { _doPlay(); }, 50);
+  }, [_doPlay]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio?.src) return;
-    if (audio.paused) {
-      safePlay();
-    } else {
-      safePause();
-    }
-  }, [safePlay, safePause]);
+    if (audio.paused) { _doPlay(); } else { _doPause(); }
+  }, [_doPlay, _doPause]);
 
   const stopPlaying = useCallback(() => {
     const audio = audioRef.current;
@@ -215,8 +185,8 @@ export function PlayerProvider({ children }) {
 
   const registerNextHandler = useCallback((fn) => { onNextRef.current = fn; }, []);
   const registerPrevHandler = useCallback((fn) => { onPrevRef.current = fn; }, []);
-  const handleNext = useCallback(() => { onNextRef.current?.(); }, []);
-  const handlePrev = useCallback(() => { onPrevRef.current?.(); }, []);
+  const handleNext          = useCallback(() => { onNextRef.current?.(); }, []);
+  const handlePrev          = useCallback(() => { onPrevRef.current?.(); }, []);
 
   return (
     <PlayerContext.Provider value={{
