@@ -88,9 +88,14 @@ export function PlayerProvider({ children }) {
     if (!currentTrack?.audio_url) return;
     const audio = audioRef.current;
 
-    // Only reload if URL actually changed
-    if (audio.src === currentTrack.audio_url || loadedSrcRef.current === currentTrack.audio_url) {
-      // Same track — just ensure we're playing
+    // Only reload if URL actually changed.
+    // audio.src returns absolute URL; currentTrack.audio_url may be relative — compare both.
+    const isSameTrack = loadedSrcRef.current === currentTrack.audio_url
+      || audio.src === currentTrack.audio_url
+      || (audio.src && currentTrack.audio_url && audio.src.endsWith(currentTrack.audio_url));
+
+    if (isSameTrack) {
+      // Same track — just ensure we're playing from where we left off (no reload, no seek)
       if (audio.paused) audio.play().catch(() => {});
       setIsPlaying(true);
       return;
@@ -151,9 +156,26 @@ export function PlayerProvider({ children }) {
       // iOS: AudioContext is suspended when triggered from lock screen
       resumeAudioContext();
       const audio = audioRef.current;
+
+      // Guard: if src is missing or doesn't match currentTrack, do NOT reload.
+      // This prevents AirPlay route-switch from restarting the song.
+      if (!audio.src || audio.src === "" || audio.src === window.location.href) {
+        console.log("[MediaSession] play: no src loaded, ignoring");
+        return;
+      }
+
+      // Save currentTime before play() — some Safari versions reset it to 0
+      // when resuming after an AirPlay route switch.
+      const savedTime = audio.currentTime;
+
       // Small delay ensures AudioContext is running before play()
       setTimeout(() => {
         resumeAudioContext();
+        // Restore time if Safari zeroed it (AirPlay resume bug)
+        if (savedTime > 1 && audio.currentTime < 1) {
+          audio.currentTime = savedTime;
+          console.log("[MediaSession] ⏱ Restored currentTime:", savedTime);
+        }
         audio.play().catch(() => {});
       }, 50);
       setIsPlaying(true);

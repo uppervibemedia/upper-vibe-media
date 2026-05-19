@@ -128,7 +128,7 @@ function recordCanvasToBlob(canvas, coverImg, track, W, H, durationMs = 3000, fp
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function MobileMediaControls({ coverUrl, className = "" }) {
-  const { currentTrack, audioRef } = usePlayer();
+  const { currentTrack, audioRef, isPlaying, togglePlay } = usePlayer();
 
   // All hooks must be declared unconditionally
   const [isMobile, setIsMobile]     = useState(false);
@@ -149,6 +149,7 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
   const rafRef          = useRef(null);
   const tickRef         = useRef(0);
   const prepAbortRef    = useRef(false); // cancel prep if track changes mid-record
+  const [videoReady, setVideoReady] = useState(false); // triggers bridge effect after ensureVideo
 
   // ── Device detection ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -221,6 +222,7 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     video.style.cssText = "position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-1;";
     document.body.appendChild(video);
     pipVideoRef.current = video;
+    setVideoReady(true); // signal that the bridge effect can now attach listeners
     return video;
   }, []);
 
@@ -306,6 +308,59 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     prep();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, isIOS, currentTrack?.id, ensureVideo]);
+
+  // ── Bridge PiP video play/pause → global audio ───────────────────────────
+  // When PiP is open the user can tap play/pause IN the floating PiP window.
+  // Those events fire on the hidden <video>, not the global <audio>.
+  // We intercept them here and forward to the global audio element so that
+  // PiP controls and the in-app player stay perfectly in sync.
+  // We also prevent the video from ever loading/changing the song (it's visual-only).
+  useEffect(() => {
+    const video = pipVideoRef.current;
+    if (!video) return;
+    const audio = audioRef?.current;
+    if (!audio) return;
+
+    const onVideoPause = (e) => {
+      // Only act when PiP is actually active — ignore background pauses
+      if (!document.pictureInPictureElement) return;
+      // Don't pause audio if audio is already paused
+      if (!audio.paused) {
+        audio.pause();
+        console.log("[PiP] ⏸ PiP pause → global audio paused");
+      }
+    };
+
+    const onVideoPlay = (e) => {
+      if (!document.pictureInPictureElement) return;
+      if (audio.paused) {
+        audio.play().catch(() => {});
+        console.log("[PiP] ▶️ PiP play → global audio resumed");
+      }
+    };
+
+    video.addEventListener("pause", onVideoPause);
+    video.addEventListener("play",  onVideoPlay);
+    return () => {
+      video.removeEventListener("pause", onVideoPause);
+      video.removeEventListener("play",  onVideoPlay);
+    };
+  // Re-run when the video element is (re-)created or audioRef changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoReady, audioRef]);
+
+  // ── Keep PiP video play/pause state mirrored from global audio ───────────
+  // When the user pauses/resumes from lock screen or in-app controls WHILE PiP
+  // is open, sync the video's visual state so PiP shows the correct icon.
+  useEffect(() => {
+    const video = pipVideoRef.current;
+    if (!video || !document.pictureInPictureElement) return;
+    if (isPlaying) {
+      if (video.paused) video.play().catch(() => {});
+    } else {
+      if (!video.paused) video.pause();
+    }
+  }, [isPlaying, videoReady]);
 
   // ── PiP lifecycle listeners ───────────────────────────────────────────────
   useEffect(() => {
