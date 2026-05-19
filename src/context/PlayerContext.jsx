@@ -8,8 +8,14 @@ const persistentAudio = (() => {
   const a = new Audio();
   a.crossOrigin = "anonymous";
   a.preload   = "auto";
+  // iOS AirPlay: tell Safari this element can be routed via AirPlay
+  a.setAttribute("x-webkit-airplay", "allow");
+  a.setAttribute("webkit-airplay",   "allow");
+  // iOS: required for audio to play inline (not hijack the native player)
+  a.setAttribute("playsinline", "");
+  a.setAttribute("webkit-playsinline", "");
   // Debug: confirm only one instance exists
-  console.log("[PlayerContext] ✅ Single global Audio element created");
+  console.log("[PlayerContext] ✅ Single global Audio element created (with AirPlay attrs)");
   return a;
 })();
 
