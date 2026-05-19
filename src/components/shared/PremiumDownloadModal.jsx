@@ -63,7 +63,7 @@ export default function PremiumDownloadModal({ open, onClose }) {
                 Unlock Upper Vibe Plus
               </h2>
               <p className="text-white/40 text-sm text-center leading-relaxed mb-6">
-                Stream every song free. Upgrade to download 432 Hz tracks, save music offline, and access premium Academy lessons.
+                Stream every 432 Hz song free. Upgrade for Plus downloads, My Vibe Library, and premium Academy access.
               </p>
 
               {/* Billing toggle */}
@@ -87,22 +87,32 @@ export default function PremiumDownloadModal({ open, onClose }) {
                 </button>
               </div>
 
-              {/* Price */}
-              <div className="text-center mb-5">
-                <span className="font-heading font-black text-white text-3xl">
-                  {billing === "monthly" ? "$4.99" : "$49.99"}
-                </span>
-                <span className="text-white/35 text-sm ml-1">
-                  {billing === "monthly" ? "/month" : "/year"}
-                </span>
+              {/* Plan name + price */}
+              <div className="text-center mb-2">
+                <p className="text-[10px] font-black tracking-[0.3em] uppercase text-yellow-500/80 mb-2">Upper Vibe Plus</p>
+                <div className="flex items-end justify-center gap-1.5 mb-1">
+                  <span className="font-heading font-black text-white text-3xl">
+                    {billing === "monthly" ? "$4.99" : "$49.99"}
+                  </span>
+                  <span className="text-white/35 text-sm mb-1">
+                    {billing === "monthly" ? "/month" : "/year"}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold mb-4" style={{ color: "rgba(237,184,74,0.85)" }}>Downloads + Academy access</p>
                 {billing === "yearly" && (
-                  <p className="text-xs mt-1" style={{ color: "rgba(0,200,220,0.7)" }}>Save with yearly access</p>
+                  <p className="text-xs -mt-3 mb-4" style={{ color: "rgba(0,200,220,0.7)" }}>Save with yearly access</p>
                 )}
               </div>
 
               {/* Benefits */}
               <ul className="space-y-2 mb-6">
-                {["Download every available song", "Access premium Academy lessons", "Save 432 Hz music offline", "Access new downloadable releases"].map((b) => (
+                {[
+                  "Everything in Free Listener",
+                  "Build your My Vibe Library",
+                  "Download available songs for offline listening",
+                  "Watch full Upper Vibe Academy videos",
+                  "Support Upper Vibe Media",
+                ].map((b) => (
                   <li key={b} className="flex items-center gap-2.5 text-xs text-white/60">
                     <Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> {b}
                   </li>
