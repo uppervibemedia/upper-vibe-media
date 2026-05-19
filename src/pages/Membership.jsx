@@ -10,9 +10,9 @@ const FREE_FEATURES = [
   { ok: true,  text: "Upper Vibe Radio" },
   { ok: true,  text: "Watch free visualizers" },
   { ok: true,  text: "Browse artists" },
-  { ok: false, text: "My Vibe Library locked" },
-  { ok: false, text: "Downloads locked" },
-  { ok: false, text: "Premium Academy lessons locked" },
+  { ok: false, text: "My Vibe Library" },
+  { ok: false, text: "Premium downloads" },
+  { ok: false, text: "Full Academy videos" },
 ];
 
 const PLUS_FEATURES = [

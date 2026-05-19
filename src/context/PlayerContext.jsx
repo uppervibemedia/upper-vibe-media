@@ -238,8 +238,10 @@ export function PlayerProvider({ children }) {
 
   // ── Public API ────────────────────────────────────────────────────────────
   const playTrack = useCallback((track, source = "song") => {
-    // Resume AudioContext on every user-initiated play (iOS requires gesture-triggered resume)
-    resumeAudioContext();
+    // Wire audio graph + resume AudioContext on every user-initiated play (iOS requirement)
+    // This must happen here so radio playback benefits from the same lifecycle management
+    // as regular song playback, even when the visualizer is not mounted.
+    getOrCreateAudioContext(audioRef.current);
     setSourceType(source);
     setCurrentTrack(track);
     console.log("[PlayerContext] 🎵 playTrack called:", track?.title, "| source:", source);
@@ -248,8 +250,8 @@ export function PlayerProvider({ children }) {
   const togglePlay = useCallback(() => {
     setIsPlaying((prev) => {
       if (!prev) {
-        // About to play — resume AudioContext first (iOS Safari requirement)
-        resumeAudioContext();
+        // Wire graph + resume AudioContext (iOS Safari requirement)
+        getOrCreateAudioContext(audioRef.current);
       }
       console.log("[PlayerContext] 🔀 togglePlay:", prev ? "→ pause" : "→ play");
       return !prev;
