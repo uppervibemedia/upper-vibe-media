@@ -143,7 +143,7 @@ export default function RadioVisualizer({ isPlaying }) {
 
     if (isPlaying && audioRef?.current) {
       // Reuse the global analyser — never create a second AudioContext
-      const an = getGlobalAnalyser();
+      const an = getGlobalAnalyser(audioRef.current);
       if (an) {
         analyserRef.current = an;
         console.log("[RadioVisualizer] ▶️ Starting active animation loop");
