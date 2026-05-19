@@ -116,9 +116,8 @@ export default function Home() {
       base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
       base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3),
     ]).then(([recentPool, all, recentVizPool, allVizFull, featuredArtists, allTracksForCount, lessons]) => {
-      // Rotate latest songs: shuffle the newest 30 and show 4
-      const rotatedLatest = seededShuffle(recentPool, sessionSeed).slice(0, 4);
-      setLatestTracks(rotatedLatest.length > 0 ? rotatedLatest : all.slice(0, 4));
+      // Latest songs: newest first, no shuffle
+      setLatestTracks(recentPool.slice(0, 4));
       setAllTracks(all);
       // Rotate visualizers: shuffle the newest 30 and show 6 in the viz section
       const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
