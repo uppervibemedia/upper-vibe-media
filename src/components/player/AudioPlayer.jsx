@@ -11,17 +11,27 @@ export default function AudioPlayer() {
   const [volume, setVolume] = useState(80);
   const [muted, setMuted] = useState(false);
 
+  const [currentTime, setCurrentTime] = useState(0);
+
   useEffect(() => {
     const audio = audioRef.current;
-    const onTimeUpdate = () => setProgress((audio.currentTime / audio.duration) * 100 || 0);
-    const onLoadedMetadata = () => setDuration(audio.duration);
-    audio.addEventListener("timeupdate", onTimeUpdate);
-    audio.addEventListener("loadedmetadata", onLoadedMetadata);
-    return () => {
-      audio.removeEventListener("timeupdate", onTimeUpdate);
-      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+    if (!audio) return;
+    const onTimeUpdate = () => {
+      const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+      setProgress(pct);
+      setCurrentTime(audio.currentTime);
     };
-  }, [audioRef]);
+    const onLoadedMetadata = () => setDuration(audio.duration || 0);
+    const onSrcChange = () => { setProgress(0); setCurrentTime(0); setDuration(0); };
+    audio.addEventListener("timeupdate",     onTimeUpdate);
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("emptied",        onSrcChange);
+    return () => {
+      audio.removeEventListener("timeupdate",     onTimeUpdate);
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("emptied",        onSrcChange);
+    };
+  }, []); // audioRef.current never changes — run once
 
   useEffect(() => {
     audioRef.current.volume = muted ? 0 : volume / 100;
@@ -140,7 +150,7 @@ export default function AudioPlayer() {
 
             {/* Time + Volume + Close */}
             <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
-              <span className="text-[11px] text-white/30 tabular-nums">{formatTime(audioRef.current.currentTime)}</span>
+              <span className="text-[11px] text-white/30 tabular-nums">{formatTime(currentTime)}</span>
               <span className="text-[11px] text-white/20">/</span>
               <span className="text-[11px] text-white/30 tabular-nums">{formatTime(duration)}</span>
 
