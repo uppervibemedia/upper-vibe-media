@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack, Radio as RadioIcon, Waves, Download, Music4, Crown } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Radio as RadioIcon, Waves, Download, Music4, Crown, Heart } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
+import { useFavorites } from "../hooks/useFavorite";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
 import RadioVisualizer from "../components/radio/RadioVisualizer";
-import MobileMediaControls from "../components/player/MobileMediaControls";
 
 export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
@@ -21,6 +21,7 @@ export default function RadioPage() {
     isRadioMode,
     hasPrev,
     upNext,
+    setRadioLikedIds,
     initRadio,
     startRadio,
     resumeRadio,
@@ -29,6 +30,13 @@ export default function RadioPage() {
     jumpToSong,
   } = useRadio();
   const { user } = useAuth();
+  const { isFaved, toggle: toggleFav, trackFavs } = useFavorites(user?.email);
+
+  // Keep RadioContext in sync with liked track IDs for weighted shuffle
+  useEffect(() => {
+    const ids = trackFavs.map((f) => f.track_id).filter(Boolean);
+    setRadioLikedIds(ids);
+  }, [trackFavs, setRadioLikedIds]);
 
   const isPlus =
     user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" ||
@@ -69,6 +77,16 @@ export default function RadioPage() {
   const handlePrev = () => prevRadioSong();
 
   const handleJump = (song) => jumpToSong(song);
+
+  const handleLike = async () => {
+    if (!user) { setLoginModal(true); return; }
+    if (!currentRadioSong) return;
+    await toggleFav("track", currentRadioSong.id, {
+      title: currentRadioSong.title,
+      artist: currentRadioSong.artist_display || "Upper Vibe Media",
+      cover_url: currentRadioSong.cover_url || "",
+    });
+  };
 
   const handleDownload = () => {
     if (!user) { setLoginModal(true); return; }
@@ -131,8 +149,7 @@ export default function RadioPage() {
               background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.6) 100%)",
             }}
           />
-          {/* Mobile PiP / AirPlay overlay — tap to reveal */}
-          <MobileMediaControls coverUrl={currentRadioSong?.cover_url} />
+
         </motion.div>
 
         {!currentRadioSong ? (
@@ -223,8 +240,26 @@ export default function RadioPage() {
                   </button>
                 </div>
 
-                {/* Download */}
+                {/* Like + Download */}
                 <div className="flex items-center justify-center gap-3">
+                  <button onClick={handleLike}
+                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                    style={{
+                      background: currentRadioSong && isFaved("track", currentRadioSong.id)
+                        ? "rgba(236,72,153,0.18)"
+                        : "rgba(255,255,255,0.05)",
+                      border: currentRadioSong && isFaved("track", currentRadioSong.id)
+                        ? "1px solid rgba(236,72,153,0.4)"
+                        : "1px solid rgba(255,255,255,0.1)",
+                    }}>
+                    <Heart
+                      className="w-4 h-4 transition-colors"
+                      style={{
+                        color: currentRadioSong && isFaved("track", currentRadioSong.id) ? "#EC4899" : "rgba(255,255,255,0.35)",
+                        fill: currentRadioSong && isFaved("track", currentRadioSong.id) ? "#EC4899" : "none",
+                      }}
+                    />
+                  </button>
                   <button onClick={handleDownload}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110"
                     style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", color: "#C89432" }}>

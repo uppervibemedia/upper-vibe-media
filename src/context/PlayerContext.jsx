@@ -115,9 +115,12 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     if (!("mediaSession" in navigator) || !currentTrack) return;
 
-    const artwork = currentTrack.cover_url
-      ? [{ src: currentTrack.cover_url, sizes: "512x512", type: "image/jpeg" }]
-      : [];
+    // Use cover art if available, fallback to Upper Vibe Media logo
+    const artSrc = currentTrack.cover_url ||
+      "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
+    const artwork = [
+      { src: artSrc, sizes: "512x512", type: "image/jpeg" },
+    ];
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title:  currentTrack.title || "Unknown",
