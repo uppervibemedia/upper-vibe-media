@@ -50,20 +50,70 @@ export function PlayerProvider({ children }) {
   const [sourceType, setSourceType] = useState("song");
   const [queue, setQueue] = useState([]);
 
-  const audioRef = useRef(_audio);
-  const onNextRef = useRef(null);
-  const onPrevRef = useRef(null);
-  const playPromiseRef = useRef(null);
+  const audioRef        = useRef(_audio);
+  const onNextRef       = useRef(null);
+  const onPrevRef       = useRef(null);
+  const playPromiseRef  = useRef(null);
 
-  // ── Audio events ──────────────────────────────────────────────────────────
+  // Debounce timers for play/pause — prevents double-fire from lock screen
+  const playDebounceRef  = useRef(null);
+  const pauseDebounceRef = useRef(null);
+
+  // ── Safe play — debounced 500 ms, guards promise races ───────────────────
+  const safePlay = useCallback(() => {
+    if (playDebounceRef.current) clearTimeout(playDebounceRef.current);
+    playDebounceRef.current = setTimeout(() => {
+      const audio = audioRef.current;
+      if (!audio?.src) return;
+      if (!audio.paused) return;           // already playing
+      if (playPromiseRef.current) return;  // play() in flight
+
+      _resumeCtx();
+      const p = audio.play();
+      if (p) {
+        playPromiseRef.current = p;
+        p.then(() => { playPromiseRef.current = null; })
+         .catch((err) => {
+           playPromiseRef.current = null;
+           if (err?.name !== "AbortError") console.warn("[Player] play() error:", err?.name, err?.message);
+         });
+      }
+    }, 500);
+  }, []);
+
+  // ── Safe pause — debounced 500 ms, waits for any pending play() ──────────
+  const safePause = useCallback(() => {
+    if (pauseDebounceRef.current) clearTimeout(pauseDebounceRef.current);
+    pauseDebounceRef.current = setTimeout(() => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      if (audio.paused) return;            // already paused
+
+      if (playPromiseRef.current) {
+        playPromiseRef.current
+          .then(() => { audio.pause(); playPromiseRef.current = null; })
+          .catch(() => { playPromiseRef.current = null; });
+      } else {
+        audio.pause();
+      }
+    }, 500);
+  }, []);
+
+  // ── Audio events — driven purely by real element events ──────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onPlay    = () => { setIsPlaying(true);  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; };
-    const onPause   = () => { setIsPlaying(false); if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"; };
-    const onEnded   = () => { onNextRef.current ? onNextRef.current() : setIsPlaying(false); };
-    const onError   = () => { setIsPlaying(false); console.warn("[Player] audio error", audio.error?.message); };
+    const onPlay  = () => {
+      setIsPlaying(true);
+      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
+    };
+    const onPause = () => {
+      setIsPlaying(false);
+      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
+    };
+    const onEnded = () => { onNextRef.current ? onNextRef.current() : setIsPlaying(false); };
+    const onError = () => { setIsPlaying(false); console.warn("[Player] audio error", audio.error?.message); };
 
     audio.addEventListener("play",   onPlay);
     audio.addEventListener("pause",  onPause);
@@ -78,7 +128,21 @@ export function PlayerProvider({ children }) {
     };
   }, []);
 
-  // ── Media Session — registered once ───────────────────────────────────────
+  // ── Visibility change — auto-pause on screen lock / tab hide ─────────────
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        // Phone locked or page hidden: pause cleanly, preserve src + currentTime
+        safePause();
+      }
+      // On visible: do nothing — user controls resumption via lock screen or UI
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [safePause]);
+
+  // ── Media Session handlers — registered once, use safePlay/safePause ─────
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
 
@@ -86,67 +150,28 @@ export function PlayerProvider({ children }) {
       try { navigator.mediaSession.setActionHandler(action, fn); } catch (_) {}
     };
 
-    set("play", () => {
-      const audio = audioRef.current;
-      if (!audio?.src || !audio.paused) return;
-      _resumeCtx();
-      const p = audio.play();
-      if (p) { playPromiseRef.current = p; p.then(() => { playPromiseRef.current = null; }).catch(() => { playPromiseRef.current = null; }); }
-    });
-
-    set("pause", () => {
-      const audio = audioRef.current;
-      if (!audio || audio.paused) return;
-      if (playPromiseRef.current) {
-        playPromiseRef.current.then(() => { audio.pause(); playPromiseRef.current = null; }).catch(() => { playPromiseRef.current = null; });
-      } else {
-        audio.pause();
-      }
-    });
-
+    // Use safePlay/safePause — never togglePlay, no duplicate promises
+    set("play",          () => { safePlay(); });
+    set("pause",         () => { safePause(); });
     set("nexttrack",     () => { onNextRef.current?.(); });
     set("previoustrack", () => { onPrevRef.current?.(); });
-  }, []); // never re-register
+  }, [safePlay, safePause]); // safePlay/safePause are stable useCallback refs
 
-  // ── Media Session metadata ─────────────────────────────────────────────────
+  // ── Media Session metadata ────────────────────────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator) || !currentTrack) return;
-    const artwork = currentTrack.cover_url ? [{ src: currentTrack.cover_url, sizes: "512x512", type: "image/jpeg" }] : [];
+    const artwork = currentTrack.cover_url
+      ? [{ src: currentTrack.cover_url, sizes: "512x512", type: "image/jpeg" }]
+      : [];
     navigator.mediaSession.metadata = new MediaMetadata({
-      title:   currentTrack.title          || "Unknown",
-      artist:  currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media",
-      album:   "Upper Vibe Media",
+      title:  currentTrack.title          || "Unknown",
+      artist: currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media",
+      album:  "Upper Vibe Media",
       artwork,
     });
   }, [currentTrack]);
 
-  // ── Core helpers ──────────────────────────────────────────────────────────
-  const _doPlay = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio?.src || playPromiseRef.current) return;
-    _resumeCtx();
-    const p = audio.play();
-    if (p) {
-      playPromiseRef.current = p;
-      p.then(() => { playPromiseRef.current = null; })
-       .catch((err) => {
-         playPromiseRef.current = null;
-         if (err?.name !== "AbortError") console.warn("[Player] play() error:", err?.name, err?.message);
-       });
-    }
-  }, []);
-
-  const _doPause = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playPromiseRef.current) {
-      playPromiseRef.current.then(() => { audio.pause(); playPromiseRef.current = null; }).catch(() => { playPromiseRef.current = null; });
-    } else if (!audio.paused) {
-      audio.pause();
-    }
-  }, []);
-
-  // ── Public API ─────────────────────────────────────────────────────────────
+  // ── Public API ────────────────────────────────────────────────────────────
   const playTrack = useCallback((track, source = "song") => {
     if (!track) return;
     const audio = audioRef.current;
@@ -155,31 +180,28 @@ export function PlayerProvider({ children }) {
     setSourceType(source);
     setCurrentTrack(track);
 
-    // Wire AudioContext on first play (must be inside user-gesture chain)
     if (!_ctxWired) _wireCtx();
 
     if (audio.src !== track.audio_url) {
-      // New track: swap src then play
+      // New track: swap src, clear any in-flight promise, then play
       playPromiseRef.current = null;
       audio.src = track.audio_url;
       audio.load();
     }
 
-    // Small delay to let load() settle before playing, avoids AbortError on fast clicks
-    setTimeout(() => {
-      _doPlay();
-    }, 50);
-  }, [_doPlay]);
+    // Small delay to let load() settle — avoids AbortError on fast clicks
+    setTimeout(() => { safePlay(); }, 50);
+  }, [safePlay]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio?.src) return;
     if (audio.paused) {
-      _doPlay();
+      safePlay();
     } else {
-      _doPause();
+      safePause();
     }
-  }, [_doPlay, _doPause]);
+  }, [safePlay, safePause]);
 
   const stopPlaying = useCallback(() => {
     const audio = audioRef.current;
