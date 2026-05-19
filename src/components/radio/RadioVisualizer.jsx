@@ -139,9 +139,12 @@ export default function RadioVisualizer({ isPlaying }) {
 
   // ── Register this canvas as the PiP visual source ───────────────────────
   useEffect(() => {
+    // Register for both CastPiPButton (desktop) and MobileMediaControls (mobile)
     if (window._uvSetPiPVisual) window._uvSetPiPVisual(canvasRef.current);
+    window._uvPiPCanvas = canvasRef.current;
     return () => {
       if (window._uvSetPiPVisual) window._uvSetPiPVisual(null);
+      window._uvPiPCanvas = null;
     };
   }, []);
 

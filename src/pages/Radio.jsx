@@ -9,6 +9,7 @@ import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
 import RadioVisualizer from "../components/radio/RadioVisualizer";
 import CastPiPButton from "../components/player/CastPiPButton";
+import MobileMediaControls from "../components/player/MobileMediaControls";
 
 export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
@@ -131,6 +132,8 @@ export default function RadioPage() {
               background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.6) 100%)",
             }}
           />
+          {/* Mobile PiP / AirPlay overlay — tap to reveal */}
+          <MobileMediaControls coverUrl={currentRadioSong?.cover_url} />
         </motion.div>
 
         {!currentRadioSong ? (

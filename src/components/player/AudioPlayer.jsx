@@ -4,6 +4,7 @@ import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X } from "lucide-
 import { Slider } from "@/components/ui/slider";
 import { usePlayer } from "../../context/PlayerContext";
 import CastPiPButton from "./CastPiPButton";
+import MobileMediaControls from "./MobileMediaControls";
 
 export default function AudioPlayer() {
   const { currentTrack, isPlaying, togglePlay, stopPlaying, audioRef, handleNext, handlePrev } = usePlayer();
@@ -49,7 +50,7 @@ export default function AudioPlayer() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 200 }}
-          className="fixed bottom-0 left-0 right-0 lg:left-[72px] z-40 border-t border-white/[0.06]"
+          className="fixed bottom-0 left-0 right-0 lg:left-[72px] z-40 border-t border-white/[0.06] relative"
           style={{
             background: "linear-gradient(180deg,rgba(6,6,18,0.97),rgba(4,4,12,0.99))",
             backdropFilter: "blur(40px)",
@@ -77,6 +78,9 @@ export default function AudioPlayer() {
               style={{ left: `calc(${progress}% - 5px)` }}
             />
           </div>
+
+          {/* Mobile PiP/AirPlay overlay — tap anywhere on the player bar to reveal */}
+          <MobileMediaControls coverUrl={currentTrack?.cover_url} />
 
           <div className="flex items-center gap-3 md:gap-5 px-4 py-3 md:px-6">
             {/* Track info */}
