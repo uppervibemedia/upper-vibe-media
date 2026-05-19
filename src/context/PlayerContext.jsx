@@ -77,6 +77,9 @@ export function PlayerProvider({ children }) {
   // Track whether the current track was already loaded to avoid re-loading
   const loadedSrcRef = useRef("");
 
+  // Flag to suppress spurious pause events during audio.load() track transitions
+  const isLoadingRef = useRef(false);
+
   // ── Load & play a new track ───────────────────────────────────────────────
   useEffect(() => {
     if (!currentTrack?.audio_url) return;
@@ -90,9 +93,14 @@ export function PlayerProvider({ children }) {
       return;
     }
 
+    // Mark that we are mid-load so the pause event listener ignores the
+    // spurious pause fired synchronously by audio.load()
+    isLoadingRef.current = true;
     loadedSrcRef.current = currentTrack.audio_url;
     audio.src = currentTrack.audio_url;
     audio.load();
+    // Delay clearing the loading flag until after the synchronous pause fires
+    setTimeout(() => { isLoadingRef.current = false; }, 300);
     audio.play().catch(() => {});
     setIsPlaying(true);
 
@@ -188,16 +196,18 @@ export function PlayerProvider({ children }) {
       resumeAudioContext();
       console.log("[PlayerContext] 🔊 AudioContext resume requested on visibility restore");
 
-      // Step 2: If we were playing and audio is paused (iOS killed it), restart
+      // Step 2: If we were playing and audio is paused (iOS killed it), restart.
+      // Also covers the case where a track transition happened during lock screen.
       if (isPlayingRef.current && audio.src && audio.paused) {
-        // Small delay to let AudioContext fully resume before calling play()
+        // Delay to let AudioContext fully resume before calling play()
         setTimeout(() => {
           resumeAudioContext();
-          if (isPlayingRef.current && audio.paused) {
+          // Double-check: still meant to be playing and still paused
+          if (isPlayingRef.current && audio.src && audio.paused && !isLoadingRef.current) {
             audio.play().catch(() => {});
             console.log("[PlayerContext] ▶️ Resumed after visibility restore");
           }
-        }, 100);
+        }, 150);
       }
     };
 
@@ -217,14 +227,24 @@ export function PlayerProvider({ children }) {
       setIsPlaying(true);
     };
     const onPause = () => {
-      // Trust all pause events from the OS/browser EXCEPT the brief interim pause
-      // that fires synchronously during audio.load() before src is ready.
-      // readyState === 0 (HAVE_NOTHING) means we're mid-load — ignore that pause.
+      // Ignore spurious pause events fired during audio.load() track transitions.
+      // These happen synchronously when src is changed and should not set isPlaying=false.
+      if (isLoadingRef.current) return;
+      // Also guard readyState=0 (HAVE_NOTHING) as a secondary safety net
       if (audio.readyState > 0) {
         setIsPlaying(false);
       }
     };
-    const onEnded = () => { setIsPlaying(false); onNextRef.current?.(); };
+    const onEnded = () => {
+      // If there's a next handler (e.g. Radio auto-advance), don't set isPlaying=false
+      // first — it causes the isPlaying sync effect to call audio.pause() right as we
+      // load the next track. The next handler will call playTrack() which keeps it playing.
+      if (onNextRef.current) {
+        onNextRef.current();
+      } else {
+        setIsPlaying(false);
+      }
+    };
 
     audio.addEventListener("play",   onPlay);
     audio.addEventListener("pause",  onPause);
