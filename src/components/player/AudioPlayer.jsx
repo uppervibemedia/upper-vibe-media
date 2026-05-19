@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, Download, X } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { usePlayer } from "../../context/PlayerContext";
+import CastPiPButton from "./CastPiPButton";
 
 export default function AudioPlayer() {
   const { currentTrack, isPlaying, togglePlay, stopPlaying, audioRef, handleNext, handlePrev } = usePlayer();
@@ -159,6 +160,8 @@ export default function AudioPlayer() {
                 />
               </div>
 
+              <div className="w-px h-4 bg-white/10 mx-1" />
+              <CastPiPButton />
               <div className="w-px h-4 bg-white/10 mx-1" />
               <button
                 onClick={stopPlaying}

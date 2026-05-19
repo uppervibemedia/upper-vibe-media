@@ -8,6 +8,7 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
 import RadioVisualizer from "../components/radio/RadioVisualizer";
+import CastPiPButton from "../components/player/CastPiPButton";
 
 export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
@@ -220,14 +221,17 @@ export default function RadioPage() {
                   </button>
                 </div>
 
-                {/* Download */}
-                <button onClick={handleDownload}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110"
-                  style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", color: "#C89432" }}>
-                  <Download className="w-3.5 h-3.5" />
-                  Download Song
-                  {!isPlus && <Crown className="w-3 h-3 text-yellow-400/60" />}
-                </button>
+                {/* Download + Cast/PiP */}
+                <div className="flex items-center justify-center gap-3">
+                  <button onClick={handleDownload}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110"
+                    style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", color: "#C89432" }}>
+                    <Download className="w-3.5 h-3.5" />
+                    Download Song
+                    {!isPlus && <Crown className="w-3 h-3 text-yellow-400/60" />}
+                  </button>
+                  <CastPiPButton size="lg" />
+                </div>
               </div>
             </motion.div>
 
