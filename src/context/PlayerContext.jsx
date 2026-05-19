@@ -176,36 +176,20 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
 
-  // ── Page visibility: PAUSE on lock, let user resume manually ─────────────
-  // Pausing on screen-lock prevents iOS desync, glitching, and catch-up issues.
-  // currentTime is preserved automatically by the audio element — no extra save needed.
-  const isPlayingRef = useRef(isPlaying);
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-
+  // ── Page visibility: resume AudioContext only, never pause ──────────────
+  // iOS keeps the audio element alive in the background as long as we never
+  // pause it programmatically. The only thing we do on foreground is ensure
+  // the AudioContext is running (browsers suspend it silently).
   useEffect(() => {
     const handleVisibilityChange = () => {
-      const audio = audioRef.current;
-
-      if (document.visibilityState === "hidden") {
-        // Screen locked / tab backgrounded — pause immediately to prevent desync
-        if (!audio.paused) {
-          audio.pause();
-          setIsPlaying(false);
-          console.log("[PlayerContext] 📵 Screen locked — paused for stability");
-        }
-        return;
+      if (document.visibilityState === "visible") {
+        resumeAudioContext();
       }
-
-      // Screen unlocked / tab foregrounded
-      console.log("[PlayerContext] 👁 Screen unlocked — waiting for manual resume");
-      // Always resume AudioContext so it's ready when user taps Play
-      resumeAudioContext();
-      // Do NOT auto-resume — user must press Play manually for clean experience
+      // Do NOT pause on hidden — that kills background audio on iOS
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Sync isPlaying from native audio element events ───────────────────────
