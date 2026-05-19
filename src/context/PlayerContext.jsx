@@ -51,37 +51,7 @@ export function PlayerProvider({ children }) {
   const onPrevRef      = useRef(null);
   const playPromiseRef = useRef(null);
 
-  // ── Core play/pause helpers ───────────────────────────────────────────────
-  const _doPlay = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio?.src || playPromiseRef.current) return;
-    if (!audio.paused) return; // already playing
-    _resumeCtx();
-    const p = audio.play();
-    if (p) {
-      playPromiseRef.current = p;
-      p.then(() => { playPromiseRef.current = null; })
-       .catch((err) => {
-         playPromiseRef.current = null;
-         if (err?.name !== "AbortError") console.warn("[Player] play() error:", err?.name, err?.message);
-       });
-    }
-  }, []);
-
-  const _doPause = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (audio.paused) return; // already paused
-    if (playPromiseRef.current) {
-      playPromiseRef.current
-        .then(() => { audio.pause(); playPromiseRef.current = null; })
-        .catch(() => { playPromiseRef.current = null; });
-    } else {
-      audio.pause();
-    }
-  }, []);
-
-  // ── Audio element events ──────────────────────────────────────────────────
+  // ── Audio events ──────────────────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -104,20 +74,7 @@ export function PlayerProvider({ children }) {
     };
   }, []);
 
-  // ── Visibility: auto-pause on screen lock / tab hide ─────────────────────
-  // Pauses immediately — src, currentTime, queue untouched.
-  // User resumes via lock-screen Play or in-app Play button.
-  useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") {
-        _doPause();
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [_doPause]);
-
-  // ── Media Session — registered once ──────────────────────────────────────
+  // ── Media Session — registered once ───────────────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
 
@@ -125,28 +82,67 @@ export function PlayerProvider({ children }) {
       try { navigator.mediaSession.setActionHandler(action, fn); } catch (_) {}
     };
 
-    // Direct calls — no debounce, no togglePlay
-    set("play",  () => { _doPlay(); });
-    set("pause", () => { _doPause(); });
+    set("play", () => {
+      const audio = audioRef.current;
+      if (!audio?.src || !audio.paused) return;
+      _resumeCtx();
+      const p = audio.play();
+      if (p) { playPromiseRef.current = p; p.then(() => { playPromiseRef.current = null; }).catch(() => { playPromiseRef.current = null; }); }
+    });
+
+    set("pause", () => {
+      const audio = audioRef.current;
+      if (!audio || audio.paused) return;
+      if (playPromiseRef.current) {
+        playPromiseRef.current.then(() => { audio.pause(); playPromiseRef.current = null; }).catch(() => { playPromiseRef.current = null; });
+      } else {
+        audio.pause();
+      }
+    });
+
     set("nexttrack",     () => { onNextRef.current?.(); });
     set("previoustrack", () => { onPrevRef.current?.(); });
-  }, []); // registered once; _doPlay/_doPause are stable refs captured at mount
+  }, []); // never re-register
 
-  // ── Media Session metadata ────────────────────────────────────────────────
+  // ── Media Session metadata ─────────────────────────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator) || !currentTrack) return;
-    const artwork = currentTrack.cover_url
-      ? [{ src: currentTrack.cover_url, sizes: "512x512", type: "image/jpeg" }]
-      : [];
+    const artwork = currentTrack.cover_url ? [{ src: currentTrack.cover_url, sizes: "512x512", type: "image/jpeg" }] : [];
     navigator.mediaSession.metadata = new MediaMetadata({
-      title:  currentTrack.title          || "Unknown",
-      artist: currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media",
-      album:  "Upper Vibe Media",
+      title:   currentTrack.title          || "Unknown",
+      artist:  currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media",
+      album:   "Upper Vibe Media",
       artwork,
     });
   }, [currentTrack]);
 
-  // ── Public API ────────────────────────────────────────────────────────────
+  // ── Core helpers ──────────────────────────────────────────────────────────
+  const _doPlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio?.src || playPromiseRef.current) return;
+    _resumeCtx();
+    const p = audio.play();
+    if (p) {
+      playPromiseRef.current = p;
+      p.then(() => { playPromiseRef.current = null; })
+       .catch((err) => {
+         playPromiseRef.current = null;
+         if (err?.name !== "AbortError") console.warn("[Player] play() error:", err?.name, err?.message);
+       });
+    }
+  }, []);
+
+  const _doPause = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playPromiseRef.current) {
+      playPromiseRef.current.then(() => { audio.pause(); playPromiseRef.current = null; }).catch(() => { playPromiseRef.current = null; });
+    } else if (!audio.paused) {
+      audio.pause();
+    }
+  }, []);
+
+  // ── Public API ─────────────────────────────────────────────────────────────
   const playTrack = useCallback((track, source = "song") => {
     if (!track) return;
     const audio = audioRef.current;
@@ -163,14 +159,20 @@ export function PlayerProvider({ children }) {
       audio.load();
     }
 
-    // Small delay lets load() settle — avoids AbortError on fast clicks
-    setTimeout(() => { _doPlay(); }, 50);
+    // Small delay to let load() settle before playing, avoids AbortError on fast clicks
+    setTimeout(() => {
+      _doPlay();
+    }, 50);
   }, [_doPlay]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio?.src) return;
-    if (audio.paused) { _doPlay(); } else { _doPause(); }
+    if (audio.paused) {
+      _doPlay();
+    } else {
+      _doPause();
+    }
   }, [_doPlay, _doPause]);
 
   const stopPlaying = useCallback(() => {
