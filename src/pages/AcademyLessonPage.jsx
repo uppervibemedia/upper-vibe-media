@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
@@ -9,12 +9,6 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useAcademyProgress } from "../hooks/useAcademyProgress";
 
-function toEmbedUrl(url) {
-  if (!url || typeof url !== "string") return null;
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-  return m ? `https://www.youtube.com/embed/${m[1]}` : (url.includes("/embed/") ? url : null);
-}
-
 export default function AcademyLessonPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -24,10 +18,13 @@ export default function AcademyLessonPage() {
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
   const [gated, setGated] = useState(false);
-  const timerRef = useRef(null);
+  const playerRef = useRef(null);       // YouTube IFrame Player instance
+  const pollRef = useRef(null);         // setInterval for time polling
+  const iframeContainerRef = useRef(null);
+  const previewEndedRef = useRef(false);
 
   const isPlus = user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" || user?.tier === "premium" || user?.isPremium === true || user?.role === "premium";
-  const canWatchFull = isPlus; // only Plus and Admin watch full
+  const canWatchFull = isPlus;
   const { getStatus, markStarted, markCompleted } = useAcademyProgress(user?.email);
 
   useEffect(() => {
@@ -42,28 +39,130 @@ export default function AcademyLessonPage() {
     });
   }, [id]);
 
-  const handlePlay = () => {
+  // ── Extract YouTube video ID from embed/watch URL ──────────────────────
+  function extractVideoId(url) {
+    if (!url) return null;
+    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  // ── Stop polling ───────────────────────────────────────────────────────
+  const stopPoll = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  // ── Gate the video at the preview limit ───────────────────────────────
+  const triggerGate = useCallback(() => {
+    if (previewEndedRef.current) return;
+    previewEndedRef.current = true;
+    stopPoll();
+    // Pause & seek back to limit via YT player if available
+    try {
+      if (playerRef.current) {
+        playerRef.current.pauseVideo();
+        playerRef.current.seekTo(60, true);
+      }
+    } catch {}
+    setPlaying(false);
+    setGated(true);
+  }, [stopPoll]);
+
+  // ── Start polling after YT player is ready ────────────────────────────
+  const startPreviewPoll = useCallback((previewSecs) => {
+    stopPoll();
+    pollRef.current = setInterval(() => {
+      try {
+        const player = playerRef.current;
+        if (!player) return;
+        const t = player.getCurrentTime();
+        if (t >= previewSecs) {
+          triggerGate();
+        }
+      } catch {}
+    }, 500);
+  }, [stopPoll, triggerGate]);
+
+  // ── Load YouTube IFrame API once ──────────────────────────────────────
+  const initYTPlayer = useCallback((videoId, previewSecs) => {
+    const setup = () => {
+      if (!iframeContainerRef.current) return;
+      // Destroy old player if any
+      try { playerRef.current?.destroy(); } catch {}
+      playerRef.current = null;
+
+      playerRef.current = new window.YT.Player(iframeContainerRef.current, {
+        videoId,
+        playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
+        events: {
+          onReady: (e) => {
+            e.target.playVideo();
+            if (!canWatchFull) startPreviewPoll(previewSecs);
+          },
+          onStateChange: (e) => {
+            // YT.PlayerState.PLAYING = 1
+            if (e.data === 1 && !canWatchFull) {
+              // Check if already past limit on resume/seek
+              try {
+                const t = e.target.getCurrentTime();
+                if (t >= previewSecs) { triggerGate(); return; }
+              } catch {}
+              startPreviewPoll(previewSecs);
+            }
+            if (e.data !== 1) stopPoll();
+          },
+        },
+      });
+    };
+
+    if (window.YT && window.YT.Player) {
+      setup();
+    } else {
+      // Inject the IFrame API script once
+      if (!document.getElementById("yt-iframe-api")) {
+        const tag = document.createElement("script");
+        tag.id = "yt-iframe-api";
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+      }
+      window.onYouTubeIframeAPIReady = setup;
+    }
+  }, [canWatchFull, startPreviewPoll, triggerGate, stopPoll]);
+
+  // ── Handle play button ─────────────────────────────────────────────────
+  const handlePlay = useCallback(() => {
     if (!lesson) return;
+    previewEndedRef.current = false;
     setGated(false);
     setPlaying(true);
     markStarted(lesson.id);
+  }, [lesson, markStarted]);
 
-    // Free/logged-out users only get preview seconds, even on free lessons (for premium), always gate premium if not Plus
-    if (!canWatchFull && lesson.is_premium) {
-      const secs = lesson.free_preview_seconds || 60;
-      clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setPlaying(false);
-        setGated(true);
-      }, secs * 1000);
-    }
-  };
+  // ── Init YT player once `playing` flips true ──────────────────────────
+  useEffect(() => {
+    if (!playing || !lesson) return;
+    const videoId = extractVideoId(lesson.embed_url || lesson.video_url);
+    if (!videoId) return;
+    const previewSecs = lesson.free_preview_seconds || 60;
+    // For free users on premium lessons — init with enforcement
+    // For plus users — init without enforcement (no poll)
+    initYTPlayer(videoId, previewSecs);
+  }, [playing, lesson, initYTPlayer]);
+
+  // ── Cleanup on unmount / lesson change ────────────────────────────────
+  useEffect(() => {
+    return () => {
+      stopPoll();
+      try { playerRef.current?.destroy(); } catch {}
+      playerRef.current = null;
+    };
+  }, [id, stopPoll]);
 
   const handleMarkComplete = () => {
     if (lesson) markCompleted(lesson.id);
   };
-
-  useEffect(() => () => clearTimeout(timerRef.current), []);
 
   if (loading) {
     return (
@@ -85,7 +184,6 @@ export default function AcademyLessonPage() {
     );
   }
 
-  const embedUrl = toEmbedUrl(lesson.embed_url || lesson.video_url);
   const status = getStatus(lesson.id);
   const previewSecs = lesson.free_preview_seconds || 60;
 
@@ -113,17 +211,9 @@ export default function AcademyLessonPage() {
               <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
                 <div className="absolute inset-0">
 
-                  {/* Playing */}
-                  {playing && embedUrl && !gated && (
-                    <iframe
-                      src={`${embedUrl}?autoplay=1&rel=0`}
-                      title={lesson.title}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      referrerPolicy="strict-origin-when-cross-origin"
-                      className="w-full h-full"
-                    />
+                  {/* Playing — YT IFrame Player API renders into this div */}
+                  {playing && !gated && (
+                    <div ref={iframeContainerRef} className="w-full h-full" />
                   )}
 
                   {/* Gated overlay */}
