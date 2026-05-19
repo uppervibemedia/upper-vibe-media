@@ -19,10 +19,10 @@ const FREE_FEATURES = [
 
 const PLUS_FEATURES = [
   { ok: true, text: "Everything in Free Listener" },
-  { ok: true, text: "Download every available song" },
-  { ok: true, text: "Access premium Upper Vibe Academy lessons" },
-  { ok: true, text: "Access new downloadable releases" },
-  { ok: true, text: "Save downloads to your device" },
+  { ok: true, text: "Build your My Vibe Library" },
+  { ok: true, text: "Download available songs for offline listening" },
+  { ok: true, text: "Watch full Upper Vibe Academy videos" },
+  { ok: true, text: "Exclusive long-form learning content" },
   { ok: true, text: "Support Upper Vibe Media" },
 ];
 
