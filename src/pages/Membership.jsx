@@ -27,24 +27,28 @@ export default function Membership() {
   const { user, isAuthenticated, navigateToLogin } = useAuth();
   const [billing, setBilling] = useState("monthly"); // "monthly" | "yearly"
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const isAdmin = user?.role === "admin";
   const isPlus = isAdmin || user?.isPlus === true || user?.tier === "plus" || user?.tier === "premium" || user?.isPremium === true || user?.role === "premium";
   const currentPlan = isPlus ? "plus" : "free";
 
   const handlePortal = async () => {
-    if (window.self !== window.top) { alert("The billing portal is only available from the published app."); return; }
+    if (window.self !== window.top) { setError("The billing portal is only available from the published app."); return; }
+    setError("");
     setLoading(true);
     try {
       const res = await base44.functions.invoke("stripePortal", { returnUrl: `${window.location.origin}/account` });
       if (res.data?.url) window.location.href = res.data.url;
-    } catch { alert("Could not open billing portal. Please try again."); }
+      else setError("Could not open billing portal. Please try again.");
+    } catch { setError("Could not open billing portal. Please try again."); }
     setLoading(false);
   };
 
   const handleCheckout = async () => {
     if (!isAuthenticated) { navigateToLogin(); return; }
-    if (window.self !== window.top) { alert("Checkout is only available from the published app."); return; }
+    if (window.self !== window.top) { setError("Checkout is only available from the published app."); return; }
+    setError("");
     setLoading(true);
     try {
       const res = await base44.functions.invoke("stripeCheckout", {
@@ -54,7 +58,8 @@ export default function Membership() {
         cancelUrl: `${window.location.origin}/payment-cancelled`,
       });
       if (res.data?.url) window.location.href = res.data.url;
-    } catch { alert("Something went wrong. Please try again."); }
+      else setError("Something went wrong. Please try again.");
+    } catch (e) { setError(e?.response?.data?.error || "Something went wrong. Please try again."); }
     setLoading(false);
   };
 
@@ -266,6 +271,14 @@ export default function Membership() {
             </div>
           </motion.div>
         </div>
+
+        {/* Error message */}
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-2xl text-sm text-red-400 text-center"
+            style={{ background: "rgba(220,50,50,0.08)", border: "1px solid rgba(220,50,50,0.2)" }}>
+            {error}
+          </div>
+        )}
 
         {/* Bottom note */}
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.32 }}

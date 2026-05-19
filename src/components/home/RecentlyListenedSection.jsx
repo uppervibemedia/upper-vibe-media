@@ -8,23 +8,34 @@ export default function RecentlyListenedSection({ allTracks, currentTrack, isPla
   const history = useMemo(() => getHistory(), []);
 
   const recentTracks = useMemo(() => {
+    const seen = new Set();
     return history
-      .slice(0, 6)
+      .filter((h) => {
+        if (seen.has(h.id)) return false;
+        seen.add(h.id);
+        return true;
+      })
+      .slice(0, 3)
       .map((h) => allTracks.find((t) => t.id === h.id))
       .filter(Boolean);
   }, [history, allTracks]);
-
-  if (recentTracks.length === 0) return null;
 
   return (
     <section className="max-w-7xl mx-auto px-6 py-8">
       <div className="mb-5">
         <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1 flex items-center gap-1.5" style={{ color: "#9B7EFF" }}>
-          <History className="w-3 h-3" /> Recently Listened
+          <History className="w-3 h-3" /> Recently Played
         </p>
-        <h2 className="font-heading font-black text-xl text-white">Pick Up Where You Left Off</h2>
+        <h2 className="font-heading font-black text-xl text-white">Recently Played</h2>
       </div>
 
+      {recentTracks.length === 0 ? (
+        <div className="flex items-center gap-3 px-5 py-6 rounded-2xl"
+          style={{ background: "rgba(155,126,255,0.04)", border: "1px solid rgba(155,126,255,0.1)" }}>
+          <History className="w-5 h-5 text-purple-400/30 flex-shrink-0" />
+          <p className="text-sm text-white/30">Start listening and your recent songs will appear here.</p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {recentTracks.map((track, i) => {
           const isCurrent = currentTrack?.id === track.id;
@@ -79,6 +90,7 @@ export default function RecentlyListenedSection({ allTracks, currentTrack, isPla
           );
         })}
       </div>
+      )}
     </section>
   );
 }

@@ -6,12 +6,14 @@ import { base44 } from "@/api/base44Client";
 export default function PremiumDownloadModal({ open, onClose }) {
   const [billing, setBilling] = useState("monthly");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleCheckout = async () => {
     if (window.self !== window.top) {
-      alert("Checkout is only available from the published app.");
+      setError("Checkout is only available from the published app.");
       return;
     }
+    setError("");
     setLoading(true);
     try {
       const res = await base44.functions.invoke("stripeCheckout", {
@@ -21,8 +23,9 @@ export default function PremiumDownloadModal({ open, onClose }) {
         cancelUrl: `${window.location.origin}/payment-cancelled`,
       });
       if (res.data?.url) window.location.href = res.data.url;
-    } catch {
-      alert("Something went wrong. Please try again.");
+      else setError("Something went wrong. Please try again.");
+    } catch (e) {
+      setError(e?.response?.data?.error || "Something went wrong. Please try again.");
     }
     setLoading(false);
   };
@@ -105,6 +108,13 @@ export default function PremiumDownloadModal({ open, onClose }) {
                   </li>
                 ))}
               </ul>
+
+              {error && (
+                <div className="mb-3 px-3 py-2.5 rounded-xl text-xs text-red-400 text-center"
+                  style={{ background: "rgba(220,50,50,0.08)", border: "1px solid rgba(220,50,50,0.2)" }}>
+                  {error}
+                </div>
+              )}
 
               <button onClick={handleCheckout} disabled={loading}
                 className="w-full py-3.5 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60 mb-3"

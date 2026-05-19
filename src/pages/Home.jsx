@@ -443,16 +443,6 @@ export default function Home() {
         </section>
       )}
 
-      {/* ── RECENTLY LISTENED ── */}
-      <RecentlyListenedSection
-        allTracks={allTracks}
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        handlePlayTrack={handlePlayTrack}
-        heartButton={heartButton}
-        downloadButton={downloadButton}
-      />
-
       {/* ── FEATURED ARTISTS ── */}
       {artists.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-10">
@@ -488,6 +478,16 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* ── RECENTLY PLAYED ── */}
+      <RecentlyListenedSection
+        allTracks={allTracks}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        handlePlayTrack={handlePlayTrack}
+        heartButton={heartButton}
+        downloadButton={downloadButton}
+      />
 
       {/* ── EMAIL SIGNUP ── */}
       <EmailSignupSection />
