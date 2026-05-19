@@ -11,15 +11,11 @@ function loadPersistedState() {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
     return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 function persistState(state) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-  } catch {}
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
 }
 
 function shuffleArray(arr) {
@@ -31,23 +27,21 @@ function shuffleArray(arr) {
   return a;
 }
 
-// Build a fresh shuffle queue (excludes current song from front)
 function buildQueue(allTracks, currentSongId) {
-  const shuffled = shuffleArray(allTracks.filter((t) => t.id !== currentSongId));
-  return shuffled;
+  return shuffleArray(allTracks.filter((t) => t.id !== currentSongId));
 }
 
 export function RadioProvider({ children }) {
-  const { registerNextHandler, registerPrevHandler } = usePlayer();
-  const [allTracks, setAllTracks] = useState([]);
-  const [tracksLoaded, setTracksLoaded] = useState(false);
-  const [currentRadioSong, setCurrentRadioSong] = useState(null);
-  const [radioQueue, setRadioQueue] = useState([]); // upcoming songs
-  const [radioHistory, setRadioHistory] = useState([]); // played songs
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [isRadioMode, setIsRadioMode] = useState(false);
+  const { registerNextHandler, registerPrevHandler, playTrack, sourceType, currentTrack } = usePlayer();
 
-  // Load tracks once
+  const [allTracks,       setAllTracks]       = useState([]);
+  const [tracksLoaded,    setTracksLoaded]    = useState(false);
+  const [currentRadioSong, setCurrentRadioSong] = useState(null);
+  const [radioQueue,      setRadioQueue]      = useState([]);
+  const [radioHistory,    setRadioHistory]    = useState([]);
+  const [historyIndex,    setHistoryIndex]    = useState(-1);
+
+  // ── Load tracks once ──────────────────────────────────────────────────────
   useEffect(() => {
     base44.entities.Track.filter({ status: "published" }, "-created_date", 500).then((res) => {
       setAllTracks(res);
@@ -55,7 +49,7 @@ export function RadioProvider({ children }) {
     });
   }, []);
 
-  // Restore persisted state once tracks are loaded
+  // ── Restore persisted state ───────────────────────────────────────────────
   const restoredRef = useRef(false);
   useEffect(() => {
     if (!tracksLoaded || restoredRef.current) return;
@@ -68,48 +62,120 @@ export function RadioProvider({ children }) {
       const song = allTracks.find((t) => t.id === saved.currentRadioSongId);
       if (song) {
         setCurrentRadioSong(song);
-        setIsRadioMode(!!saved.isRadioMode);
-
         if (saved.radioHistoryIds?.length) {
-          const hist = saved.radioHistoryIds
-            .map((id) => allTracks.find((t) => t.id === id))
-            .filter(Boolean);
+          const hist = saved.radioHistoryIds.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean);
           setRadioHistory(hist);
           setHistoryIndex(hist.length - 1);
         }
-
         if (saved.radioQueueIds?.length) {
-          const queue = saved.radioQueueIds
-            .map((id) => allTracks.find((t) => t.id === id))
-            .filter(Boolean);
+          const queue = saved.radioQueueIds.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean);
           setRadioQueue(queue);
         } else {
-          // Rebuild queue if not persisted
           setRadioQueue(buildQueue(allTracks, song.id));
         }
       }
     }
   }, [tracksLoaded, allTracks]);
 
-  // Persist whenever relevant state changes
+  // ── Persist state changes ─────────────────────────────────────────────────
   useEffect(() => {
     if (!tracksLoaded) return;
     persistState({
       currentRadioSongId: currentRadioSong?.id || null,
-      radioHistoryIds: radioHistory.map((t) => t.id),
-      radioQueueIds: radioQueue.map((t) => t.id),
-      isRadioMode,
-      lastUpdatedAt: Date.now(),
+      radioHistoryIds:    radioHistory.map((t) => t.id),
+      radioQueueIds:      radioQueue.map((t) => t.id),
+      lastUpdatedAt:      Date.now(),
     });
-  }, [currentRadioSong, radioHistory, radioQueue, isRadioMode, tracksLoaded]);
+  }, [currentRadioSong, radioHistory, radioQueue, tracksLoaded]);
 
-  // Initialize radio with a random song if nothing is loaded yet (no autoplay)
+  // ── Keep stable refs for next/prev so Media Session callbacks never go stale ──
+  // These refs always point to the latest function versions
+  const nextFnRef = useRef(null);
+  const prevFnRef = useRef(null);
+
+  // ── Internal: advance to next song and play it via global player ──────────
+  const _playNext = useCallback((allT, queue, history, hIndex, currentSong) => {
+    let nextSong;
+    let newQueue = [...queue];
+
+    if (newQueue.length > 0) {
+      nextSong = newQueue.shift();
+    } else {
+      const rebuilt = buildQueue(allT, currentSong?.id);
+      nextSong = rebuilt[0];
+      newQueue  = rebuilt.slice(1);
+    }
+
+    if (!nextSong) return;
+
+    // Refill queue if running low
+    if (newQueue.length < 10) {
+      const extra = buildQueue(allT, nextSong.id)
+        .filter((t) => t.id !== nextSong.id && !newQueue.find((q) => q.id === t.id));
+      newQueue = [...newQueue, ...extra].slice(0, 50);
+    }
+
+    const newHistory = [...history.slice(0, hIndex + 1), nextSong];
+    setRadioHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+    setCurrentRadioSong(nextSong);
+    setRadioQueue(newQueue);
+
+    // Use the global player — same audio element as regular songs
+    playTrack(nextSong, "radio");
+    console.log("[RadioContext] ⏭ Next radio song:", nextSong.title);
+  }, [playTrack]);
+
+  const _playPrev = useCallback((history, hIndex, currentSong, queue) => {
+    if (hIndex <= 0) return;
+    const newIndex = hIndex - 1;
+    const song = history[newIndex];
+    setRadioQueue((q) => [currentSong, ...q].filter(Boolean));
+    setHistoryIndex(newIndex);
+    setCurrentRadioSong(song);
+    playTrack(song, "radio");
+    console.log("[RadioContext] ⏮ Prev radio song:", song.title);
+  }, [playTrack]);
+
+  // ── Stable ref wrappers — always current, no stale closure in Media Session ─
+  // We need refs to the latest state values for use inside callbacks registered once
+  const stateRef = useRef({});
+  useEffect(() => {
+    stateRef.current = { allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong };
+  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong]);
+
+  // Register next/prev handlers ONCE — they read latest state via stateRef
+  useEffect(() => {
+    const handleNext = () => {
+      const { allTracks: aT, radioQueue: q, radioHistory: h, historyIndex: hi, currentRadioSong: cs } = stateRef.current;
+      _playNext(aT, q, h, hi, cs);
+    };
+    const handlePrev = () => {
+      const { radioHistory: h, historyIndex: hi, currentRadioSong: cs, radioQueue: q } = stateRef.current;
+      _playPrev(h, hi, cs, q);
+    };
+
+    nextFnRef.current = handleNext;
+    prevFnRef.current = handlePrev;
+
+    // Register with PlayerContext — these control the lock-screen buttons too
+    registerNextHandler(handleNext);
+    registerPrevHandler(handlePrev);
+
+    console.log("[RadioContext] ✅ next/prev handlers registered with global PlayerContext");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [_playNext, _playPrev, registerNextHandler, registerPrevHandler]);
+  // Note: intentionally not listing stateRef — it's a ref, always fresh
+
+  // ── Public API ────────────────────────────────────────────────────────────
+
+  // Initialize radio display (no autoplay)
   const initRadio = useCallback(() => {
     if (!allTracks.length) return null;
     if (currentRadioSong) return currentRadioSong;
 
     const shuffled = shuffleArray(allTracks);
-    const song = shuffled[0];
+    const song  = shuffled[0];
     const queue = shuffled.slice(1);
     if (!song) return null;
     setCurrentRadioSong(song);
@@ -119,14 +185,14 @@ export function RadioProvider({ children }) {
     return song;
   }, [allTracks, currentRadioSong]);
 
-  // Start radio — play current (or pick one) and set radio mode
+  // Start radio — loads song into the global player
   const startRadio = useCallback((onPlay) => {
-    let song = currentRadioSong;
+    let song  = currentRadioSong;
     let queue = radioQueue;
 
     if (!song) {
       const shuffled = shuffleArray(allTracks);
-      song = shuffled[0];
+      song  = shuffled[0];
       queue = shuffled.slice(1);
       if (!song) return;
       setCurrentRadioSong(song);
@@ -134,71 +200,35 @@ export function RadioProvider({ children }) {
       setHistoryIndex(0);
       setRadioQueue(queue);
     }
-    setIsRadioMode(true);
-    if (onPlay) onPlay(song);
-  }, [allTracks, currentRadioSong, radioQueue]);
 
-  // Resume radio after playing a normal song
+    // Use the same global audio element via playTrack
+    playTrack(song, "radio");
+    if (onPlay) onPlay(song);
+    console.log("[RadioContext] 📻 Radio started:", song.title);
+  }, [allTracks, currentRadioSong, radioQueue, playTrack]);
+
+  // Resume radio (called when user interrupted radio by playing another song)
   const resumeRadio = useCallback((onPlay) => {
     if (!currentRadioSong) return startRadio(onPlay);
-    setIsRadioMode(true);
+    playTrack(currentRadioSong, "radio");
     if (onPlay) onPlay(currentRadioSong);
-  }, [currentRadioSong, startRadio]);
+    console.log("[RadioContext] 📻 Radio resumed:", currentRadioSong.title);
+  }, [currentRadioSong, startRadio, playTrack]);
 
-  // Advance to next song in queue
-  const nextRadioSong = useCallback((onPlay) => {
-    if (!allTracks.length) return;
+  // Next — delegates to the same handler registered with PlayerContext
+  const nextRadioSong = useCallback(() => {
+    nextFnRef.current?.();
+  }, []);
 
-    let nextSong;
-    let newQueue = [...radioQueue];
+  // Prev
+  const prevRadioSong = useCallback(() => {
+    prevFnRef.current?.();
+  }, []);
 
-    if (newQueue.length > 0) {
-      nextSong = newQueue.shift();
-    } else {
-      // Rebuild queue when exhausted
-      const rebuilt = buildQueue(allTracks, currentRadioSong?.id);
-      nextSong = rebuilt[0];
-      newQueue = rebuilt.slice(1);
-    }
-
-    if (!nextSong) return;
-
-    // Refill queue if running low (keep at least 10)
-    if (newQueue.length < 10) {
-      const extra = buildQueue(allTracks, nextSong.id).filter(
-        (t) => t.id !== nextSong.id && !newQueue.find((q) => q.id === t.id)
-      );
-      newQueue = [...newQueue, ...extra].slice(0, 50);
-    }
-
-    const newHistory = [...radioHistory.slice(0, historyIndex + 1), nextSong];
-    setRadioHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-    setCurrentRadioSong(nextSong);
-    setRadioQueue(newQueue);
-    setIsRadioMode(true);
-    if (onPlay) onPlay(nextSong);
-  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong]);
-
-  // Go back to previous song
-  const prevRadioSong = useCallback((onPlay) => {
-    if (historyIndex <= 0) return;
-    const newIndex = historyIndex - 1;
-    const song = radioHistory[newIndex];
-    // Push current back to front of queue
-    setRadioQueue((q) => [currentRadioSong, ...q].filter(Boolean));
-    setHistoryIndex(newIndex);
-    setCurrentRadioSong(song);
-    setIsRadioMode(true);
-    if (onPlay) onPlay(song);
-  }, [radioHistory, historyIndex, currentRadioSong]);
-
-  // Jump to a specific Up Next song
+  // Jump to a specific queued song
   const jumpToSong = useCallback((song, onPlay) => {
     if (!song) return;
-    // Remove it from the queue and add current to history
     const newQueue = radioQueue.filter((t) => t.id !== song.id);
-    // Refill if needed
     const finalQueue = newQueue.length < 10
       ? [...newQueue, ...buildQueue(allTracks, song.id).filter((t) => !newQueue.find((q) => q.id === t.id))].slice(0, 50)
       : newQueue;
@@ -208,35 +238,28 @@ export function RadioProvider({ children }) {
     setHistoryIndex(newHistory.length - 1);
     setCurrentRadioSong(song);
     setRadioQueue(finalQueue);
-    setIsRadioMode(true);
+
+    playTrack(song, "radio");
     if (onPlay) onPlay(song);
-  }, [allTracks, radioQueue, radioHistory, historyIndex]);
+    console.log("[RadioContext] 🎯 Jumped to:", song.title);
+  }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack]);
 
-  const pauseRadioMode = useCallback(() => {
-    setIsRadioMode(false);
-  }, []);
+  // ── Derived state for UI ──────────────────────────────────────────────────
+  // "Radio is active" = the global player is currently playing a radio-sourced track
+  const isRadioMode    = sourceType === "radio";
+  const hasPrev        = historyIndex > 0;
+  const upNext         = radioQueue.slice(0, 3);
 
-  // Keep a stable playTrack ref for use in Media Session callbacks
-  const { playTrack } = usePlayer();
-  const playTrackRef = useRef(playTrack);
-  useEffect(() => { playTrackRef.current = playTrack; }, [playTrack]);
-
-  // Register next/prev handlers for lock screen buttons when in radio mode
-  const nextRadioSongRef = useRef(null);
-  const prevRadioSongRef = useRef(null);
+  // Debug
   useEffect(() => {
-    nextRadioSongRef.current = (song) => nextRadioSong((s) => playTrackRef.current(s, "radio"));
-    prevRadioSongRef.current = (song) => prevRadioSong((s) => playTrackRef.current(s, "radio"));
-  }, [nextRadioSong, prevRadioSong]);
-
-  useEffect(() => {
-    if (!isRadioMode) return;
-    registerNextHandler(() => nextRadioSongRef.current?.());
-    registerPrevHandler(() => prevRadioSongRef.current?.());
-  }, [isRadioMode, registerNextHandler, registerPrevHandler]);
-
-  const hasPrev = historyIndex > 0;
-  const upNext = radioQueue.slice(0, 3);
+    if (currentTrack) {
+      console.log("[RadioContext] 🔍 sourceType:", sourceType,
+        "| currentTrack:", currentTrack?.id,
+        "| isRadioMode:", isRadioMode,
+        "| currentRadioSong:", currentRadioSong?.id,
+        "| same instance:", currentTrack === currentRadioSong || currentTrack?.id === currentRadioSong?.id);
+    }
+  }, [sourceType, currentTrack, isRadioMode, currentRadioSong]);
 
   return (
     <RadioContext.Provider value={{
@@ -254,7 +277,6 @@ export function RadioProvider({ children }) {
       nextRadioSong,
       prevRadioSong,
       jumpToSong,
-      pauseRadioMode,
     }}>
       {children}
     </RadioContext.Provider>

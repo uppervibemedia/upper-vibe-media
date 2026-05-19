@@ -13,7 +13,7 @@ export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
 
-  const { playTrack, currentTrack, isPlaying, togglePlay, sourceType } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay, sourceType, playTrack } = usePlayer();
   const {
     tracksLoaded,
     currentRadioSong,
@@ -37,25 +37,37 @@ export default function RadioPage() {
     if (tracksLoaded) initRadio();
   }, [tracksLoaded, initRadio]);
 
-  const radioIsPaused = currentRadioSong && !isRadioMode && sourceType !== "radio";
-  const isCurrentlyPlayingRadio = isRadioMode && sourceType === "radio" && currentTrack?.id === currentRadioSong?.id;
+  // Debug: confirm radio uses the same global audio instance
+  useEffect(() => {
+    if (!currentTrack) return;
+    console.log("[RadioPage] 🔍 sourceType:", sourceType,
+      "| isPlaying:", isPlaying,
+      "| currentTrack:", currentTrack?.id,
+      "| currentRadioSong:", currentRadioSong?.id,
+      "| sameTrack:", currentTrack?.id === currentRadioSong?.id);
+  }, [sourceType, isPlaying, currentTrack, currentRadioSong]);
+
+  // "Radio is active" = sourceType is "radio" in the global player
+  // "Radio interrupted" = we have a radio song queued but user played a non-radio track
+  const isCurrentlyPlayingRadio = sourceType === "radio" && currentTrack?.id === currentRadioSong?.id;
+  const radioIsPaused = currentRadioSong && sourceType !== "radio" && !!currentTrack;
   const playingThisRadioSong = isCurrentlyPlayingRadio && isPlaying;
 
   const handlePlay = () => {
     if (isCurrentlyPlayingRadio) {
       togglePlay();
     } else {
-      startRadio((song) => playTrack(song, "radio"));
+      startRadio();
     }
   };
 
-  const handleResume = () => resumeRadio((song) => playTrack(song, "radio"));
+  const handleResume = () => resumeRadio();
 
-  const handleNext = () => nextRadioSong((song) => playTrack(song, "radio"));
+  const handleNext = () => nextRadioSong();
 
-  const handlePrev = () => prevRadioSong((song) => playTrack(song, "radio"));
+  const handlePrev = () => prevRadioSong();
 
-  const handleJump = (song) => jumpToSong(song, (s) => playTrack(s, "radio"));
+  const handleJump = (song) => jumpToSong(song);
 
   const handleDownload = () => {
     if (!user) { setLoginModal(true); return; }
