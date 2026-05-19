@@ -210,26 +210,7 @@ export default function Academy() {
                 </p>
               </div>
 
-              {/* Stats strip */}
-              <div className="flex items-center gap-4 flex-shrink-0">
-                <div className="text-center px-4 py-3 rounded-2xl"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <p className="font-heading font-black text-white text-xl">{totalFree}</p>
-                  <p className="text-[9px] font-black tracking-wider uppercase text-cyan-400/70">Free</p>
-                </div>
-                <div className="text-center px-4 py-3 rounded-2xl"
-                  style={{ background: "rgba(212,168,67,0.05)", border: "1px solid rgba(212,168,67,0.18)" }}>
-                  <p className="font-heading font-black text-white text-xl">{totalPlus}</p>
-                  <p className="text-[9px] font-black tracking-wider uppercase text-yellow-400/70">Plus</p>
-                </div>
-                {user && stats.total > 0 && (
-                  <div className="text-center px-4 py-3 rounded-2xl"
-                    style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.18)" }}>
-                    <p className="font-heading font-black text-white text-xl">{stats.completed}/{stats.total}</p>
-                    <p className="text-[9px] font-black tracking-wider uppercase text-green-400/70">Done</p>
-                  </div>
-                )}
-              </div>
+
             </div>
 
             {/* Plus upsell banner */}

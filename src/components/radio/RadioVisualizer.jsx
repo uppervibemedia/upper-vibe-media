@@ -16,6 +16,7 @@ function getAnalyser(audioElement) {
   // Create or resume context
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    window._uvAudioCtx = audioCtx;
   }
   if (audioCtx.state === "suspended" || audioCtx.state === "interrupted") {
     audioCtx.resume();
@@ -207,10 +208,12 @@ export default function RadioVisualizer({ isPlaying }) {
     if (!canvas) return;
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * (window.devicePixelRatio || 1);
-      canvas.height = rect.height * (window.devicePixelRatio || 1);
+      if (rect.width === 0 || rect.height === 0) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
       const ctx = canvas.getContext("2d");
-      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+      ctx.scale(dpr, dpr);
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -219,10 +222,17 @@ export default function RadioVisualizer({ isPlaying }) {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="w-full"
-      style={{ height: 220, display: "block" }}
-    />
+    <div className="w-full" style={{ position: "relative", paddingTop: "min(56%, 260px)" }}>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "absolute",
+          top: 0, left: 0,
+          width: "100%",
+          height: "100%",
+          display: "block",
+        }}
+      />
+    </div>
   );
 }

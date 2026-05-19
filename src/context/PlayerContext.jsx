@@ -84,6 +84,25 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
 
+  // Resume AudioContext and re-sync playback when tab becomes visible again (phone unlock)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const audio = audioRef.current;
+        // Resume any suspended Web Audio context (used by visualizer)
+        if (window._uvAudioCtx?.state === "suspended") {
+          window._uvAudioCtx.resume().catch(() => {});
+        }
+        // If we think we're playing but audio is paused, re-trigger play
+        if (isPlaying && audio.paused && audio.src) {
+          audio.play().catch(() => {});
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [isPlaying, audioRef]);
+
   const playTrack = useCallback((track, source = "song") => {
     setSourceType(source);
     setCurrentTrack(track);
