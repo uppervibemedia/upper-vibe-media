@@ -137,6 +137,14 @@ export default function RadioVisualizer({ isPlaying }) {
     }
   }, []);
 
+  // ── Register this canvas as the PiP visual source ───────────────────────
+  useEffect(() => {
+    if (window._uvSetPiPVisual) window._uvSetPiPVisual(canvasRef.current);
+    return () => {
+      if (window._uvSetPiPVisual) window._uvSetPiPVisual(null);
+    };
+  }, []);
+
   // ── Start / switch animation loop when isPlaying changes ────────────────
   useEffect(() => {
     stopLoop();
