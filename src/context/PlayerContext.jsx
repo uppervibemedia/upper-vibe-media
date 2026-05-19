@@ -1,509 +1,212 @@
-/**
- * PlayerContext — Single Global Audio Controller
- *
- * ONE HTMLAudioElement, ONE AudioContext, ONE MediaSession, ONE state machine.
- * Radio and Streaming both go through this. Nothing else touches audio.
- *
- * State machine:
- *   idle → loading → playing ↔ paused
- *                  → stalled
- *                  → error
- *   playing → ended → (onNext fires, or back to idle)
- */
-import React, {
-  createContext, useContext,
-  useState, useRef, useEffect, useCallback,
-} from "react";
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
 
-// ─── ONE persistent <audio> element ───────────────────────────────────────
-// IMPORTANT: Created at module scope so it survives React re-renders.
-// iOS will grant background-playback permission to this element once the
-// first audio.play() is called inside a user-gesture event handler.
-// We must NEVER replace this element — doing so loses the permission.
+// Single persistent audio element — created once, never replaced
 const _audio = typeof window !== "undefined" ? (() => {
   const a = document.createElement("audio");
-  a.crossOrigin = "anonymous";
-  a.preload     = "metadata";   // "auto" can cause duplicate loads on iOS
-  a.setAttribute("playsinline", "");   // required for iOS inline playback
+  a.setAttribute("playsinline", "");
   a.setAttribute("webkit-playsinline", "");
+  a.preload = "auto";
   return a;
 })() : null;
 
-// ─── ONE AudioContext for the visualiser ──────────────────────────────────
-// Deliberately NOT created at module scope — iOS requires AudioContext to be
-// created inside a user gesture. We wire it lazily on first play().
-let _actx       = null;
-let _analyser   = null;
-let _srcNode    = null;
-let _ctxWired   = false;
+// AudioContext for visualiser — wired lazily on first play
+let _actx = null;
+let _analyser = null;
+let _srcNode = null;
+let _ctxWired = false;
+
+function _wireCtx() {
+  if (_ctxWired || !_audio) return;
+  try {
+    _actx = new (window.AudioContext || window.webkitAudioContext)();
+    _analyser = _actx.createAnalyser();
+    _analyser.fftSize = 256;
+    _analyser.smoothingTimeConstant = 0.82;
+    _srcNode = _actx.createMediaElementSource(_audio);
+    _srcNode.connect(_analyser);
+    _analyser.connect(_actx.destination);
+    _ctxWired = true;
+  } catch (e) {
+    console.warn("[Player] AudioContext wire failed:", e.message);
+  }
+}
 
 function _resumeCtx() {
   if (_actx && _actx.state !== "running") _actx.resume().catch(() => {});
 }
 
-// Wire audio → analyser → destination. Safe to call multiple times.
-function _wireCtx() {
-  if (_ctxWired || !_audio) return;
-  try {
-    _actx     = new (window.AudioContext || window.webkitAudioContext)();
-    _analyser = _actx.createAnalyser();
-    _analyser.fftSize = 256;
-    _analyser.smoothingTimeConstant = 0.82;
-    _srcNode  = _actx.createMediaElementSource(_audio);
-    _srcNode.connect(_analyser);
-    _analyser.connect(_actx.destination);
-    _ctxWired = true;
-    window._uvAudioCtx  = _actx;
-    window._uvAnalyser  = _analyser;
-    _log("AudioContext wired");
-  } catch (e) {
-    _log("AudioContext wire failed:", e.message);
-  }
-}
-
-// ─── Exports for visualiser components ────────────────────────────────────
-export function resumeGlobalAudioContext() { _resumeCtx(); }
 export function getGlobalAnalyser() {
-  if (!_ctxWired) _wireCtx();
   return _analyser;
 }
-
-// ─── Fallback artwork ─────────────────────────────────────────────────────
-// Must be HTTPS and publicly accessible. Replace with actual hosted logo.
-const FALLBACK_ART = "https://uppervibemedia.com/logo512.png";
-
-function _buildArtwork(url) {
-  const src = url && url.startsWith("https://") ? url : FALLBACK_ART;
-  return [
-    { src, sizes: "512x512",   type: "image/jpeg" },
-    { src, sizes: "1024x1024", type: "image/jpeg" },
-  ];
+export function resumeGlobalAudioContext() {
+  _resumeCtx();
 }
 
-// ─── Debug logger ─────────────────────────────────────────────────────────
-function _log(...args) {
-  console.log("[🎵 Player]", ...args);
-}
-
-function _audioSnapshot() {
-  if (!_audio) return "no audio element";
-  return {
-    src:          _audio.src ? _audio.src.slice(-40) : "—",
-    paused:       _audio.paused,
-    currentTime:  _audio.currentTime.toFixed(2),
-    readyState:   _audio.readyState,
-    networkState: _audio.networkState,
-    error:        _audio.error?.message || null,
-  };
-}
-
-// ─── State machine states ──────────────────────────────────────────────────
-const S = { IDLE: "idle", LOADING: "loading", PLAYING: "playing", PAUSED: "paused", STALLED: "stalled", ERROR: "error" };
-
-// ──────────────────────────────────────────────────────────────────────────
 const PlayerContext = createContext(null);
 
 export function PlayerProvider({ children }) {
-  const [playerState, setPlayerState] = useState(S.IDLE);  // state machine
   const [currentTrack, setCurrentTrack] = useState(null);
-  const [sourceType,   setSourceType]   = useState("song");
-  const [queue,        setQueue]        = useState([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [sourceType, setSourceType] = useState("song");
+  const [queue, setQueue] = useState([]);
 
-  // Convenience bool for consumers
-  const isPlaying = playerState === S.PLAYING;
+  const audioRef = useRef(_audio);
+  const onNextRef = useRef(null);
+  const onPrevRef = useRef(null);
+  const playPromiseRef = useRef(null);
 
-  // ── Refs (never cause re-renders) ─────────────────────────────────────
-  const audioRef        = useRef(_audio);          // the ONE audio element
-  const onNextRef       = useRef(null);            // Radio next handler
-  const onPrevRef       = useRef(null);            // Radio prev handler
-  const loadedSrcRef    = useRef("");              // last successfully loaded URL
-  const loadingRef      = useRef(false);           // true while src is being loaded
-  const userPausedRef   = useRef(false);           // true = user explicitly paused
-  const playPromiseRef  = useRef(null);            // in-flight play() promise
-  const lastToggleMs    = useRef(0);               // debounce timestamp
-  const stateRef        = useRef(S.IDLE);          // mirror of playerState for callbacks
-  const playPauseLocked = useRef(false);           // 500ms lock prevents double-fire from lock screen
-  const setStateRef     = useRef(null);            // stable ref to _setState for MediaSession handlers
-
-  // Keep stateRef in sync
-  const _setState = useCallback((s) => {
-    stateRef.current = s;
-    setPlayerState(s);
-  }, []);
-
-  // Keep a stable ref to _setState so MediaSession handlers (registered once)
-  // can call it without being re-registered on every render.
-  useEffect(() => { setStateRef.current = _setState; }, [_setState]);
-
-  // ── Core play/pause helpers ───────────────────────────────────────────
-
-  // Call audio.play(). Does NOT debounce — callers do that.
-  // Returns immediately; promise tracked in playPromiseRef.
-  const _doPlay = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio?.src) return;
-    // If a play promise is already pending, don't stack another one.
-    if (playPromiseRef.current) {
-      _log("play() skipped — promise already pending");
-      return;
-    }
-    userPausedRef.current = false;
-    _resumeCtx();
-    _setState(S.LOADING);
-    _log("play() called →", _audioSnapshot());
-    const p = audio.play();
-    if (p && typeof p.then === "function") {
-      playPromiseRef.current = p;
-      p.then(() => {
-        if (playPromiseRef.current === p) playPromiseRef.current = null;
-        _log("play() resolved");
-      }).catch((err) => {
-        if (playPromiseRef.current === p) playPromiseRef.current = null;
-        if (err?.name === "AbortError") {
-          // Interrupted by a subsequent load — normal during track change
-          _log("play() aborted (new load started)");
-        } else if (err?.name === "NotAllowedError") {
-          _log("play() blocked — no user gesture");
-          _setState(S.PAUSED);
-        } else {
-          _log("play() error:", err?.name, err?.message);
-          _setState(S.ERROR);
-        }
-      });
-    }
-  }, [_setState]);
-
-  // Call audio.pause(). Waits for any pending play() first.
-  const _doPause = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    userPausedRef.current = true;
-    const exec = () => {
-      if (!audio.paused) {
-        audio.pause();
-        _log("pause() called →", _audioSnapshot());
-      }
-    };
-    if (playPromiseRef.current) {
-      _log("pause() waiting for pending play() promise...");
-      playPromiseRef.current.then(exec).catch(exec);
-    } else {
-      exec();
-    }
-  }, []);
-
-  // ── 1. Audio element events — registered ONCE, forever ────────────────
+  // ── Audio events ──────────────────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onPlay = () => {
-      _resumeCtx();
-      _setState(S.PLAYING);
-      _log("event:play →", _audioSnapshot());
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.playbackState = "playing";
-      }
-    };
+    const onPlay    = () => { setIsPlaying(true);  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; };
+    const onPause   = () => { setIsPlaying(false); if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"; };
+    const onEnded   = () => { onNextRef.current ? onNextRef.current() : setIsPlaying(false); };
+    const onError   = () => { setIsPlaying(false); console.warn("[Player] audio error", audio.error?.message); };
 
-    const onPause = () => {
-      // Suppress the spurious pause that fires when audio.src changes
-      if (loadingRef.current) return;
-      // Determine if this was user-initiated or OS-forced
-      const wasUser = userPausedRef.current;
-      _setState(wasUser ? S.PAUSED : S.PAUSED);
-      _log(`event:pause (userInitiated=${wasUser}) →`, _audioSnapshot());
-      if ("mediaSession" in navigator) {
-        navigator.mediaSession.playbackState = "paused";
-      }
-    };
-
-    const onEnded = () => {
-      _log("event:ended");
-      if (onNextRef.current) {
-        onNextRef.current();
-      } else {
-        _setState(S.IDLE);
-      }
-    };
-
-    const onWaiting = () => {
-      if (stateRef.current === S.PLAYING) _setState(S.STALLED);
-      _log("event:waiting (stalled)");
-    };
-
-    const onPlaying = () => {
-      // Fires when playback actually starts after buffering
-      _setState(S.PLAYING);
-    };
-
-    const onError = () => {
-      _log("event:error →", audio.error?.message);
-      _setState(S.ERROR);
-    };
-
-    audio.addEventListener("play",    onPlay);
-    audio.addEventListener("pause",   onPause);
-    audio.addEventListener("ended",   onEnded);
-    audio.addEventListener("waiting", onWaiting);
-    audio.addEventListener("playing", onPlaying);
-    audio.addEventListener("error",   onError);
+    audio.addEventListener("play",   onPlay);
+    audio.addEventListener("pause",  onPause);
+    audio.addEventListener("ended",  onEnded);
+    audio.addEventListener("error",  onError);
 
     return () => {
-      audio.removeEventListener("play",    onPlay);
-      audio.removeEventListener("pause",   onPause);
-      audio.removeEventListener("ended",   onEnded);
-      audio.removeEventListener("waiting", onWaiting);
-      audio.removeEventListener("playing", onPlaying);
-      audio.removeEventListener("error",   onError);
+      audio.removeEventListener("play",   onPlay);
+      audio.removeEventListener("pause",  onPause);
+      audio.removeEventListener("ended",  onEnded);
+      audio.removeEventListener("error",  onError);
     };
-  }, [_setState]); // _setState is stable
+  }, []);
 
-  // ── 2. Media Session handlers — registered ONCE, NEVER re-registered ────
-  // All state is read through refs so these handlers are never stale.
-  // CRITICAL: Do NOT call togglePlay() or _doPlay()/_doPause() here.
-  // Call audio.play() / audio.pause() DIRECTLY with a 500ms action lock
-  // to prevent the double-fire that causes the repeating-buffer glitch.
+  // ── Media Session — registered once ───────────────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
 
-    const setHandler = (action, fn) => {
+    const set = (action, fn) => {
       try { navigator.mediaSession.setActionHandler(action, fn); } catch (_) {}
     };
 
-    const acquireLock = () => {
-      if (playPauseLocked.current) return false;
-      playPauseLocked.current = true;
-      setTimeout(() => { playPauseLocked.current = false; }, 500);
-      return true;
-    };
-
-    setHandler("play", async () => {
-      _log("MediaSession: play");
-      if (!acquireLock()) { _log("MediaSession: play locked — skipped"); return; }
+    set("play", () => {
       const audio = audioRef.current;
-      if (!audio?.src) return;
-      if (!audio.paused) { _log("MediaSession: play — already playing"); return; }
-      userPausedRef.current = false;
+      if (!audio?.src || !audio.paused) return;
       _resumeCtx();
-      try {
-        const p = audio.play();
-        if (p) {
-          playPromiseRef.current = p;
-          await p;
-          playPromiseRef.current = null;
-        }
-        setStateRef.current?.(S.PLAYING);
-        if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing";
-      } catch (err) {
-        playPromiseRef.current = null;
-        if (err?.name !== "AbortError") {
-          _log("MediaSession play() error:", err?.name, err?.message);
-          setStateRef.current?.(S.PAUSED);
-        }
-      }
+      const p = audio.play();
+      if (p) { playPromiseRef.current = p; p.then(() => { playPromiseRef.current = null; }).catch(() => { playPromiseRef.current = null; }); }
     });
 
-    setHandler("pause", async () => {
-      _log("MediaSession: pause");
-      if (!acquireLock()) { _log("MediaSession: pause locked — skipped"); return; }
+    set("pause", () => {
       const audio = audioRef.current;
-      if (audio?.paused) { _log("MediaSession: pause — already paused"); return; }
-      userPausedRef.current = true;
-      // Wait for any pending play() before pausing to avoid the buffer-repeat glitch
+      if (!audio || audio.paused) return;
       if (playPromiseRef.current) {
-        _log("MediaSession: pause — waiting for play() promise");
-        try { await playPromiseRef.current; } catch (_) {}
-        playPromiseRef.current = null;
-      }
-      if (!audio.paused) {
+        playPromiseRef.current.then(() => { audio.pause(); playPromiseRef.current = null; }).catch(() => { playPromiseRef.current = null; });
+      } else {
         audio.pause();
-        _log("MediaSession: pause() called →", _audioSnapshot());
       }
-      setStateRef.current?.(S.PAUSED);
-      if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused";
     });
 
-    setHandler("nexttrack", () => {
-      _log("MediaSession: next");
-      onNextRef.current?.();
-    });
+    set("nexttrack",     () => { onNextRef.current?.(); });
+    set("previoustrack", () => { onPrevRef.current?.(); });
+  }, []); // never re-register
 
-    setHandler("previoustrack", () => {
-      _log("MediaSession: prev");
-      onPrevRef.current?.();
-    });
-
-    // Intentionally no cleanup — handlers must stay registered for the full session
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // empty deps — registered ONCE, reads all state via refs
-
-  // ── 3. Media Session metadata ─────────────────────────────────────────
+  // ── Media Session metadata ─────────────────────────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator) || !currentTrack) return;
-    const meta = new MediaMetadata({
+    const artwork = currentTrack.cover_url ? [{ src: currentTrack.cover_url, sizes: "512x512", type: "image/jpeg" }] : [];
+    navigator.mediaSession.metadata = new MediaMetadata({
       title:   currentTrack.title          || "Unknown",
       artist:  currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media",
       album:   "Upper Vibe Media",
-      artwork: _buildArtwork(currentTrack.cover_url),
+      artwork,
     });
-    navigator.mediaSession.metadata = meta;
-    _log("MediaSession metadata updated:", meta.title, meta.artist);
   }, [currentTrack]);
 
-  // ── 4. Load + play when currentTrack changes ──────────────────────────
-  useEffect(() => {
-    if (!currentTrack?.audio_url) return;
+  // ── Core helpers ──────────────────────────────────────────────────────────
+  const _doPlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio?.src || playPromiseRef.current) return;
+    _resumeCtx();
+    const p = audio.play();
+    if (p) {
+      playPromiseRef.current = p;
+      p.then(() => { playPromiseRef.current = null; })
+       .catch((err) => {
+         playPromiseRef.current = null;
+         if (err?.name !== "AbortError") console.warn("[Player] play() error:", err?.name, err?.message);
+       });
+    }
+  }, []);
+
+  const _doPause = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playPromiseRef.current) {
+      playPromiseRef.current.then(() => { audio.pause(); playPromiseRef.current = null; }).catch(() => { playPromiseRef.current = null; });
+    } else if (!audio.paused) {
+      audio.pause();
+    }
+  }, []);
+
+  // ── Public API ─────────────────────────────────────────────────────────────
+  const playTrack = useCallback((track, source = "song") => {
+    if (!track) return;
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (loadedSrcRef.current === currentTrack.audio_url) {
-      // Same URL already loaded — just resume
-      _log("Same src — resuming");
-      if (audio.paused && !playPromiseRef.current) _doPlay();
-      return;
-    }
-
-    // New track — change src and play
-    _log("Loading new track:", currentTrack.title);
-    loadingRef.current    = true;
-    loadedSrcRef.current  = currentTrack.audio_url;
-    userPausedRef.current = false;
-    playPromiseRef.current = null; // cancel any stale promise reference
-
-    audio.src = currentTrack.audio_url;
-    // Do NOT call audio.load() explicitly — setting src triggers it.
-    // audio.load() would fire a second "emptied" event and confuse the state.
-
-    _setState(S.LOADING);
-
-    // Suppress the spurious pause event that fires when src changes.
-    // It always fires synchronously or within one microtask.
-    const clearLoading = setTimeout(() => { loadingRef.current = false; }, 500);
-
-    // Wire AudioContext lazily (inside this user-gesture chain)
-    if (!_ctxWired) _wireCtx();
-    _resumeCtx();
-
-    _doPlay();
-
-    return () => clearTimeout(clearLoading);
-  }, [currentTrack, _doPlay, _setState]);
-
-  // ── 5. Visibility change — AudioContext only, NO auto-play ───────────────
-  // We deliberately do NOT restart audio here.
-  // If the user pressed Pause on the lock screen, userPausedRef=true and we
-  // must respect that. If they pressed Play on the lock screen, the MediaSession
-  // "play" handler already fired — no need to double-trigger from visibilitychange.
-  // The ONLY safe thing to do here is resume the AudioContext (for the visualiser).
-  useEffect(() => {
-    const handle = () => {
-      if (document.visibilityState === "visible") {
-        _resumeCtx();
-        _log("visibilitychange → visible (AudioContext resumed, no auto-play)");
-      }
-    };
-    document.addEventListener("visibilitychange", handle);
-    return () => document.removeEventListener("visibilitychange", handle);
-  }, []);
-
-  // ── Public API ────────────────────────────────────────────────────────
-
-  /**
-   * Start playing a new track. source = "song" | "radio"
-   * This is the ONLY entry point for changing what's playing.
-   */
-  const playTrack = useCallback((track, source = "song") => {
-    if (!track) return;
-    _log("playTrack:", track.title, `[${source}]`);
     setSourceType(source);
     setCurrentTrack(track);
-    // Actual load+play happens in effect #4 above
-  }, []);
 
-  /**
-   * Toggle play ↔ pause (in-app button).
-   * Shares the same playPauseLocked ref as MediaSession handlers so that
-   * a lock-screen press and an in-app press can never stack within 500ms.
-   */
+    // Wire AudioContext on first play (must be inside user-gesture chain)
+    if (!_ctxWired) _wireCtx();
+
+    if (audio.src !== track.audio_url) {
+      // New track: swap src then play
+      playPromiseRef.current = null;
+      audio.src = track.audio_url;
+      audio.load();
+    }
+
+    // Small delay to let load() settle before playing, avoids AbortError on fast clicks
+    setTimeout(() => {
+      _doPlay();
+    }, 50);
+  }, [_doPlay]);
+
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio?.src) return;
-    if (playPauseLocked.current) { _log("togglePlay locked — skipped"); return; }
-    playPauseLocked.current = true;
-    setTimeout(() => { playPauseLocked.current = false; }, 500);
-
     if (audio.paused) {
-      if (!playPromiseRef.current) {
-        _log("togglePlay → play");
-        _doPlay();
-      }
+      _doPlay();
     } else {
-      _log("togglePlay → pause");
       _doPause();
     }
   }, [_doPlay, _doPause]);
 
-  /**
-   * Stop playback and clear the player.
-   */
   const stopPlaying = useCallback(() => {
-    _log("stopPlaying");
     const audio = audioRef.current;
     if (!audio) return;
-    userPausedRef.current  = true;
-    playPromiseRef.current = null;
     if (!audio.paused) audio.pause();
-    audio.src            = "";
-    loadedSrcRef.current = "";
-    _setState(S.IDLE);
+    audio.src = "";
+    playPromiseRef.current = null;
     setCurrentTrack(null);
-  }, [_setState]);
-
-  const registerNextHandler = useCallback((fn) => {
-    _log("registerNextHandler");
-    onNextRef.current = fn;
+    setIsPlaying(false);
   }, []);
 
-  const registerPrevHandler = useCallback((fn) => {
-    _log("registerPrevHandler");
-    onPrevRef.current = fn;
-  }, []);
-
+  const registerNextHandler = useCallback((fn) => { onNextRef.current = fn; }, []);
+  const registerPrevHandler = useCallback((fn) => { onPrevRef.current = fn; }, []);
   const handleNext = useCallback(() => { onNextRef.current?.(); }, []);
   const handlePrev = useCallback(() => { onPrevRef.current?.(); }, []);
 
-  // Debug snapshot — callable from console as window._uvDebug()
-  useEffect(() => {
-    window._uvDebug = () => ({
-      playerState:       stateRef.current,
-      audioSnapshot:     _audioSnapshot(),
-      userPaused:        userPausedRef.current,
-      loading:           loadingRef.current,
-      playPromisePending: !!playPromiseRef.current,
-      ctxWired:          _ctxWired,
-      ctxState:          _actx?.state,
-      currentTrack:      currentTrack?.title,
-      sourceType,
-    });
-  }, [currentTrack, sourceType]);
-
   return (
     <PlayerContext.Provider value={{
-      // State
       currentTrack,
       isPlaying,
-      playerState,
-      queue,
       sourceType,
-      // Actions
+      queue,
+      audioRef,
       playTrack,
       togglePlay,
       stopPlaying,
       setQueue,
-      // Audio ref (for AudioPlayer progress bar, visualiser)
-      audioRef,
-      // Radio handler registration
       registerNextHandler,
       registerPrevHandler,
       handleNext,
