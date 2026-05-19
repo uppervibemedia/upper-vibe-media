@@ -112,9 +112,15 @@ export default function Membership() {
               border: `1px solid ${currentPlan === "free" ? "rgba(0,200,220,0.35)" : "rgba(255,255,255,0.08)"}`,
             }}>
 
-            {currentPlan === "free" && (
-              <span className="text-[9px] font-black tracking-[0.3em] uppercase text-cyan-400 mb-3">Current Plan</span>
-            )}
+            {/* Badge row — same height as Plus card */}
+            <div className="relative flex items-center justify-center mb-4">
+              {currentPlan === "free" && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black tracking-[0.28em] uppercase"
+                  style={{ background: "rgba(0,200,220,0.08)", border: "1px solid rgba(0,200,220,0.25)", color: "#00C9E0" }}>
+                  Current Plan
+                </span>
+              )}
+            </div>
 
             <div className="mb-6">
               <p className="text-[10px] font-black tracking-[0.3em] uppercase text-white/35 mb-3">Free Listener</p>
@@ -165,18 +171,15 @@ export default function Membership() {
             <div className="absolute bottom-0 left-0 w-36 h-36 rounded-full blur-[65px] opacity-8 pointer-events-none"
               style={{ background: "radial-gradient(circle,#B07828,transparent)" }} />
 
-            {/* Badge row */}
-            <div className="relative flex items-center justify-between mb-5">
+            {/* Badge row — centered */}
+            <div className="relative flex items-center justify-center mb-4">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black tracking-[0.28em] uppercase"
                 style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.22),rgba(212,168,67,0.1))", border: "1px solid rgba(212,168,67,0.38)", color: "#EDB84A" }}>
                 <Crown className="w-2.5 h-2.5" /> Most Popular
               </span>
-              {currentPlan === "plus" && (
-                <span className="text-[9px] font-black tracking-[0.3em] uppercase text-yellow-400/60">Active</span>
-              )}
             </div>
 
-            {/* Plan name + price */}
+            {/* Plan name + price — mirrors Free card structure */}
             <div className="relative mb-5">
               <p className="text-[10px] font-black tracking-[0.3em] uppercase text-yellow-500/80 mb-3">Upper Vibe Plus</p>
 
