@@ -2,134 +2,133 @@ import React, { createContext, useContext, useState, useRef, useEffect, useCallb
 
 const PlayerContext = createContext(null);
 
-// ─── ONE global audio element, created once, never recreated ───────────────
+// ─── Exactly ONE global audio element ─────────────────────────────────────
 const persistentAudio = (() => {
   if (typeof window === "undefined") return null;
   const a = new Audio();
   a.crossOrigin = "anonymous";
   a.preload     = "auto";
-  console.log("[PlayerContext] ✅ Single global Audio element created");
   return a;
 })();
 
-// ─── ONE global AudioContext — shared with the visualizer ──────────────────
+// ─── Exactly ONE AudioContext + analyser ──────────────────────────────────
 let _audioCtx   = null;
 let _analyser   = null;
 let _sourceNode = null;
 
-function resumeAudioContext() {
+function _resumeCtx() {
   if (_audioCtx && _audioCtx.state !== "running") {
     _audioCtx.resume().catch(() => {});
   }
 }
 
-function getOrCreateAudioContext(audioElement) {
-  if (!audioElement) return null;
+function _wireAudio(audioEl) {
+  if (!audioEl) return null;
   if (!_audioCtx) {
     _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     window._uvAudioCtx = _audioCtx;
-    console.log("[PlayerContext] ✅ Single global AudioContext created");
   }
-  resumeAudioContext();
+  _resumeCtx();
   if (!_sourceNode) {
     try {
-      _sourceNode = _audioCtx.createMediaElementSource(audioElement);
+      _sourceNode = _audioCtx.createMediaElementSource(audioEl);
       _analyser   = _audioCtx.createAnalyser();
       _analyser.fftSize = 256;
       _analyser.smoothingTimeConstant = 0.82;
       _sourceNode.connect(_analyser);
       _analyser.connect(_audioCtx.destination);
       window._uvAnalyser = _analyser;
-      console.log("[PlayerContext] ✅ AudioContext source node wired");
-    } catch (e) {
-      console.log("[PlayerContext] ℹ️ Source node already created, reusing");
+    } catch (_) {
+      // already wired — safe to ignore
     }
   }
   return _analyser;
 }
 
-export function resumeGlobalAudioContext() { resumeAudioContext(); }
-export function getGlobalAnalyser(audioElement) { return getOrCreateAudioContext(audioElement); }
+// Public exports for visualizer components
+export function resumeGlobalAudioContext() { _resumeCtx(); }
+export function getGlobalAnalyser(audioEl) { return _wireAudio(audioEl); }
 
+// ──────────────────────────────────────────────────────────────────────────
 export function PlayerProvider({ children }) {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying,    setIsPlaying]    = useState(false);
   const [queue,        setQueue]        = useState([]);
   const [sourceType,   setSourceType]   = useState("song");
 
-  const audioRef       = useRef(persistentAudio);
-  const onNextRef      = useRef(null);
-  const onPrevRef      = useRef(null);
-  const loadedSrcRef   = useRef("");
-  // True while audio.load() is in flight — suppresses spurious pause events
-  const isLoadingRef   = useRef(false);
-  // Ref mirror of isPlaying for callbacks registered with empty deps
-  const isPlayingRef   = useRef(false);
-  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  // Stable ref to the one audio element — never recreated
+  const audioRef     = useRef(persistentAudio);
+  // Refs for next/prev handlers (Radio registers these)
+  const onNextRef    = useRef(null);
+  const onPrevRef    = useRef(null);
+  // Tracks the last URL we loaded so we don't reload the same src
+  const loadedSrcRef = useRef("");
+  // TRUE during the brief window between audio.load() and canplay —
+  // suppresses the spurious "pause" event the browser fires on src change
+  const loadingRef   = useRef(false);
+  // Mirror of isPlaying for callbacks that were registered with [] deps
+  const playingRef   = useRef(false);
 
-  // ── Load & play a new track ───────────────────────────────────────────────
+  // Keep playingRef in sync
+  useEffect(() => { playingRef.current = isPlaying; }, [isPlaying]);
+
+  // ── 1. Register all audio-element event listeners ONCE ─────────────────
   useEffect(() => {
-    if (!currentTrack?.audio_url) return;
     const audio = audioRef.current;
+    if (!audio) return;
 
-    if (loadedSrcRef.current === currentTrack.audio_url) {
-      // Same URL — just play if paused
-      if (audio.paused) {
-        resumeAudioContext();
-        audio.play().catch(() => {});
-      }
+    const onPlay = () => {
+      _resumeCtx();
       setIsPlaying(true);
-      return;
-    }
+      playingRef.current = true;
+    };
+    const onPause = () => {
+      // Ignore the browser's own "pause" that fires when we change audio.src
+      if (loadingRef.current) return;
+      setIsPlaying(false);
+      playingRef.current = false;
+    };
+    const onEnded = () => {
+      // If Radio (or anything else) registered a next handler, let it advance.
+      // Do NOT set isPlaying=false here — the next handler will call playTrack()
+      // which keeps playback alive. Setting false would trigger pause() first.
+      if (onNextRef.current) {
+        onNextRef.current();
+      } else {
+        setIsPlaying(false);
+        playingRef.current = false;
+      }
+    };
 
-    // New URL — load and play
-    isLoadingRef.current = true;
-    loadedSrcRef.current = currentTrack.audio_url;
-    audio.src = currentTrack.audio_url;
-    audio.load();
-    // Clear loading flag after the synchronous pause event has fired (~100ms is enough,
-    // 300ms gives extra margin for slow devices)
-    setTimeout(() => { isLoadingRef.current = false; }, 300);
+    audio.addEventListener("play",  onPlay);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("ended", onEnded);
+    return () => {
+      audio.removeEventListener("play",  onPlay);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, []); // ← exactly once, forever
 
-    resumeAudioContext();
-    audio.play().catch(() => {});
-    setIsPlaying(true);
-
-    console.log("[PlayerContext] ▶️ Loading new track:", currentTrack.title);
-  }, [currentTrack]);
-
-  // ── Media Session metadata + action handlers ──────────────────────────────
-  // Re-runs when currentTrack changes so metadata is always fresh.
-  // Handlers read state via refs so they are always current without re-registering.
+  // ── 2. Register Media Session handlers ONCE ────────────────────────────
+  // Handlers always read current state through refs — no re-registration needed.
   useEffect(() => {
-    if (!("mediaSession" in navigator) || !currentTrack) return;
-
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title:   currentTrack.title       || "Unknown",
-      artist:  currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media",
-      album:   "Upper Vibe Media",
-      artwork: currentTrack.cover_url
-        ? [{ src: currentTrack.cover_url, sizes: "512x512", type: "image/jpeg" }]
-        : [],
-    });
+    if (!("mediaSession" in navigator)) return;
 
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
-      resumeAudioContext();
-      // Small delay — iOS AudioContext needs a moment to un-suspend after lock
-      setTimeout(() => {
-        resumeAudioContext();
-        if (audio.paused) audio.play().catch(() => {});
-      }, 80);
-      setIsPlaying(true);
-      isPlayingRef.current = true;
+      // Must call resume() synchronously inside the user-gesture callback (iOS rule)
+      _resumeCtx();
+      if (audio.src && audio.paused) {
+        audio.play().catch(() => {});
+      }
+      // setIsPlaying(true) fires via the "play" event above — no duplicate needed
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
       const audio = audioRef.current;
       audio.pause();
-      setIsPlaying(false);
-      isPlayingRef.current = false;
+      // setIsPlaying(false) fires via the "pause" event above
     });
 
     navigator.mediaSession.setActionHandler("nexttrack", () => {
@@ -140,117 +139,114 @@ export function PlayerProvider({ children }) {
       onPrevRef.current?.();
     });
 
-    // No cleanup — intentionally keep handlers alive across track changes
-    // (nulling them would remove lock-screen controls between track loads)
+    // No cleanup — keep handlers active for the app lifetime
+  }, []); // ← exactly once, forever
+
+  // ── 3. Update Media Session metadata when track changes ────────────────
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || !currentTrack) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title:   currentTrack.title            || "Unknown",
+      artist:  currentTrack.artist_display   || currentTrack.artist || "Upper Vibe Media",
+      album:   "Upper Vibe Media",
+      artwork: currentTrack.cover_url
+        ? [{ src: currentTrack.cover_url, sizes: "512x512", type: "image/jpeg" }]
+        : [],
+    });
   }, [currentTrack]);
 
-  // ── Keep Media Session playback state in sync ─────────────────────────────
+  // ── 4. Sync Media Session playback state ───────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
 
-  // ── Audio element event listeners — registered ONCE ───────────────────────
-  // These sync React state with what the audio element actually does.
-  // Do NOT add isPlaying→audio.play/pause logic here — it would double-fire.
+  // ── 5. Load + play when currentTrack changes ───────────────────────────
   useEffect(() => {
+    if (!currentTrack?.audio_url) return;
     const audio = audioRef.current;
+    if (!audio) return;
 
-    const onPlay = () => {
-      resumeAudioContext();
-      setIsPlaying(true);
-      isPlayingRef.current = true;
-    };
+    if (loadedSrcRef.current === currentTrack.audio_url) {
+      // Same URL already loaded — just resume
+      _resumeCtx();
+      if (audio.paused) audio.play().catch(() => {});
+      // isPlaying updated by "play" event
+      return;
+    }
 
-    const onPause = () => {
-      // Ignore the spurious pause fired synchronously by audio.load() during track changes
-      if (isLoadingRef.current) return;
-      setIsPlaying(false);
-      isPlayingRef.current = false;
-    };
+    // New URL — change source and play
+    loadingRef.current   = true;
+    loadedSrcRef.current = currentTrack.audio_url;
+    audio.src            = currentTrack.audio_url;
+    audio.load();
+    // Clear loading flag after the spurious "pause" event has fired.
+    // 300 ms is generous — the event fires synchronously or within a few ms.
+    const t = setTimeout(() => { loadingRef.current = false; }, 300);
 
-    const onEnded = () => {
-      if (onNextRef.current) {
-        // Let the next handler call playTrack() — it will set isPlaying(true) again
-        onNextRef.current();
-      } else {
-        setIsPlaying(false);
-        isPlayingRef.current = false;
-      }
-    };
+    _wireAudio(audio); // ensure AudioContext is wired before play()
+    _resumeCtx();
+    audio.play().catch(() => {});
+    // isPlaying(true) set by the "play" event fired by audio.play()
 
-    audio.addEventListener("play",   onPlay);
-    audio.addEventListener("pause",  onPause);
-    audio.addEventListener("ended",  onEnded);
-    return () => {
-      audio.removeEventListener("play",   onPlay);
-      audio.removeEventListener("pause",  onPause);
-      audio.removeEventListener("ended",  onEnded);
-    };
-  }, []); // ← exactly once
+    return () => clearTimeout(t);
+  }, [currentTrack]);
 
-  // ── Page visibility — handle phone unlock ────────────────────────────────
-  // Registered once. Reads latest state via isPlayingRef + isLoadingRef (both refs).
+  // ── 6. Visibility change — recover from iOS lock screen ────────────────
+  // Single listener, reads state via refs only (no stale closures).
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    const handle = () => {
       if (document.visibilityState !== "visible") return;
-      console.log("[PlayerContext] 👁 Page visible");
-
       const audio = audioRef.current;
-      resumeAudioContext();
-
-      // If we intended to be playing but audio was paused by the OS, restart it.
-      // Guard: skip if a new track is still loading (it will call play() itself).
-      if (isPlayingRef.current && audio.src && audio.paused && !isLoadingRef.current) {
-        setTimeout(() => {
-          resumeAudioContext();
-          if (isPlayingRef.current && audio.src && audio.paused && !isLoadingRef.current) {
-            audio.play().catch(() => {});
-            console.log("[PlayerContext] ▶️ Resumed after unlock");
-          }
-        }, 150);
+      _resumeCtx();
+      // If we should be playing but audio was killed by the OS, restart it.
+      // Guard: skip if we're mid-load (audio.play() already pending).
+      if (playingRef.current && audio?.src && audio.paused && !loadingRef.current) {
+        _resumeCtx();
+        audio.play().catch(() => {});
       }
     };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handle);
+    return () => document.removeEventListener("visibilitychange", handle);
   }, []); // ← exactly once
 
-  // ── Public API ────────────────────────────────────────────────────────────
+  // ── Public API ─────────────────────────────────────────────────────────
 
+  /**
+   * Start playing a track. source = "song" | "radio"
+   * Calling this is the ONLY way to change what's playing.
+   */
   const playTrack = useCallback((track, source = "song") => {
-    getOrCreateAudioContext(audioRef.current);
+    _wireAudio(audioRef.current); // must happen in a user-gesture context when possible
     setSourceType(source);
     setCurrentTrack(track);
-    console.log("[PlayerContext] 🎵 playTrack:", track?.title, "| source:", source);
   }, []);
 
-  // togglePlay drives the audio element directly — no isPlaying→audio sync effect needed
+  /**
+   * Toggle play/pause on the current track.
+   * Drives the audio element directly — state updates come back via events.
+   */
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio.src) return;
-
+    if (!audio?.src) return;
     if (audio.paused) {
-      getOrCreateAudioContext(audio);
-      resumeAudioContext();
+      _wireAudio(audio);
+      _resumeCtx();
       audio.play().catch(() => {});
-      // setIsPlaying(true) will fire via the "play" event listener above
     } else {
       audio.pause();
-      // setIsPlaying(false) will fire via the "pause" event listener above
     }
-    console.log("[PlayerContext] 🔀 togglePlay");
   }, []);
 
   const stopPlaying = useCallback(() => {
     const audio = audioRef.current;
+    if (!audio) return;
     audio.pause();
     audio.src        = "";
     loadedSrcRef.current = "";
     setIsPlaying(false);
-    isPlayingRef.current = false;
+    playingRef.current = false;
     setCurrentTrack(null);
-    console.log("[PlayerContext] ⏹ stopped");
   }, []);
 
   const registerNextHandler = useCallback((fn) => { onNextRef.current = fn; }, []);
