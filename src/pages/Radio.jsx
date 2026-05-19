@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack, Radio as RadioIcon, Waves, Download, Music4, Crown } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Radio as RadioIcon, Waves, Download, Music4, Crown, Heart } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
+import { useFavorites } from "../hooks/useFavorite";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
@@ -14,6 +15,8 @@ export default function RadioPage() {
   const [loginModal, setLoginModal] = useState(false);
 
   const { currentTrack, isPlaying, togglePlay, sourceType, playTrack } = usePlayer();
+  const { user } = useAuth();
+  const { isFaved, toggle: toggleFav } = useFavorites(user?.email);
   const {
     tracksLoaded,
     currentRadioSong,
@@ -27,7 +30,6 @@ export default function RadioPage() {
     prevRadioSong,
     jumpToSong,
   } = useRadio();
-  const { user } = useAuth();
 
   const isPlus =
     user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" ||
@@ -37,37 +39,26 @@ export default function RadioPage() {
     if (tracksLoaded) initRadio();
   }, [tracksLoaded, initRadio]);
 
-  // Debug: confirm radio uses the same global audio instance
-  useEffect(() => {
-    if (!currentTrack) return;
-    console.log("[RadioPage] 🔍 sourceType:", sourceType,
-      "| isPlaying:", isPlaying,
-      "| currentTrack:", currentTrack?.id,
-      "| currentRadioSong:", currentRadioSong?.id,
-      "| sameTrack:", currentTrack?.id === currentRadioSong?.id);
-  }, [sourceType, isPlaying, currentTrack, currentRadioSong]);
-
-  // "Radio is active" = sourceType is "radio" in the global player
-  // "Radio interrupted" = we have a radio song queued but user played a non-radio track
   const isCurrentlyPlayingRadio = sourceType === "radio" && currentTrack?.id === currentRadioSong?.id;
   const radioIsPaused = currentRadioSong && sourceType !== "radio" && !!currentTrack;
   const playingThisRadioSong = isCurrentlyPlayingRadio && isPlaying;
 
+  const isLiked = currentRadioSong ? isFaved("track", currentRadioSong.id) : false;
+
   const handlePlay = () => {
-    if (isCurrentlyPlayingRadio) {
-      togglePlay();
-    } else {
-      startRadio();
-    }
+    if (isCurrentlyPlayingRadio) togglePlay();
+    else startRadio();
   };
 
-  const handleResume = () => resumeRadio();
-
-  const handleNext = () => nextRadioSong();
-
-  const handlePrev = () => prevRadioSong();
-
-  const handleJump = (song) => jumpToSong(song);
+  const handleLike = () => {
+    if (!user) { setLoginModal(true); return; }
+    if (!currentRadioSong) return;
+    toggleFav("track", currentRadioSong.id, {
+      title: currentRadioSong.title,
+      artist: currentRadioSong.artist_display || "Upper Vibe Media",
+      cover_url: currentRadioSong.cover_url,
+    });
+  };
 
   const handleDownload = () => {
     if (!user) { setLoginModal(true); return; }
@@ -85,7 +76,6 @@ export default function RadioPage() {
 
   return (
     <div className="min-h-screen pb-32 lg:pb-8">
-      {/* Background ambience */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full blur-[180px] opacity-[0.04]"
           style={{ background: "#00C9E0" }} />
@@ -109,27 +99,13 @@ export default function RadioPage() {
           <p className="text-white/35 text-sm">Shuffle through all 432 Hz Upper Vibe Media songs</p>
         </motion.div>
 
-        {/* Audio Visualizer */}
+        {/* Visualizer */}
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15, duration: 0.8 }}
           className="relative mx-auto mb-6 rounded-3xl"
-          style={{
-            maxWidth:     480,
-            width:        "100%",
-            background:   "rgba(0,0,0,0.35)",
-            border:       "1px solid rgba(0,200,220,0.1)",
-            overflow:     "hidden",
-            borderRadius: "1.5rem",
-          }}>
+          style={{ maxWidth: 480, width: "100%", background: "rgba(0,0,0,0.35)", border: "1px solid rgba(0,200,220,0.1)", overflow: "hidden", borderRadius: "1.5rem" }}>
           <RadioVisualizer isPlaying={playingThisRadioSong} />
-          <div
-            className="pointer-events-none"
-            style={{
-              position:   "absolute",
-              inset:      0,
-              background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.6) 100%)",
-            }}
-          />
+          <div className="pointer-events-none" style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.6) 100%)" }} />
         </motion.div>
 
         {!currentRadioSong ? (
@@ -140,7 +116,7 @@ export default function RadioPage() {
         ) : (
           <div className="flex flex-col lg:flex-row gap-6 items-start justify-center">
 
-            {/* ── Main Radio Player ── */}
+            {/* Main Radio Player */}
             <motion.div
               initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
               className="w-full lg:w-[360px] flex-shrink-0">
@@ -165,6 +141,19 @@ export default function RadioPage() {
                       <Waves className="w-3.5 h-3.5 text-black animate-pulse" />
                     </div>
                   )}
+                  {/* Heart button — top right of cover */}
+                  <button
+                    onClick={handleLike}
+                    className="absolute -top-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                    style={{
+                      background: isLiked ? "rgba(236,72,153,0.25)" : "rgba(0,0,0,0.6)",
+                      border: `1px solid ${isLiked ? "rgba(236,72,153,0.6)" : "rgba(255,255,255,0.15)"}`,
+                      color: isLiked ? "#ec4899" : "rgba(255,255,255,0.5)",
+                    }}
+                    title={isLiked ? "Remove from Favorites" : "Add to Favorites"}
+                  >
+                    <Heart className={`w-4 h-4 transition-all ${isLiked ? "fill-current" : ""}`} />
+                  </button>
                 </div>
 
                 {/* Track info */}
@@ -190,14 +179,14 @@ export default function RadioPage() {
 
                 {/* Controls */}
                 <div className="flex items-center justify-center gap-4 mb-6">
-                  <button onClick={handlePrev} disabled={!hasPrev}
+                  <button onClick={() => prevRadioSong()} disabled={!hasPrev}
                     className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/8 disabled:opacity-30"
                     style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <SkipBack className="w-4.5 h-4.5 text-white/60" />
+                    <SkipBack className="w-4 h-4 text-white/60" />
                   </button>
 
                   {radioIsPaused ? (
-                    <button onClick={handleResume}
+                    <button onClick={() => resumeRadio()}
                       className="px-5 h-12 rounded-full flex items-center gap-2 font-black text-xs tracking-wider transition-all hover:brightness-110 hover:scale-105 active:scale-95"
                       style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", color: "#000", boxShadow: "0 0 20px rgba(0,200,220,0.2)" }}>
                       <RadioIcon className="w-3.5 h-3.5" />
@@ -213,29 +202,42 @@ export default function RadioPage() {
                     </button>
                   )}
 
-                  <button onClick={handleNext}
+                  <button onClick={() => nextRadioSong()}
                     className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/8"
                     style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <SkipForward className="w-4.5 h-4.5 text-white/60" />
+                    <SkipForward className="w-4 h-4 text-white/60" />
                   </button>
                 </div>
 
-                {/* Download */}
-                <button onClick={handleDownload}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110"
-                  style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", color: "#C89432" }}>
-                  <Download className="w-3.5 h-3.5" />
-                  Download Song
-                  {!isPlus && <Crown className="w-3 h-3 text-yellow-400/60" />}
-                </button>
+                {/* Bottom actions: Like + Download */}
+                <div className="flex items-center justify-center gap-3">
+                  <button onClick={handleLike}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110"
+                    style={{
+                      background: isLiked ? "rgba(236,72,153,0.15)" : "rgba(255,255,255,0.05)",
+                      border: `1px solid ${isLiked ? "rgba(236,72,153,0.4)" : "rgba(255,255,255,0.1)"}`,
+                      color: isLiked ? "#ec4899" : "rgba(255,255,255,0.4)",
+                    }}>
+                    <Heart className={`w-3.5 h-3.5 ${isLiked ? "fill-current" : ""}`} />
+                    {isLiked ? "Liked" : "Like"}
+                  </button>
+
+                  <button onClick={handleDownload}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110"
+                    style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", color: "#C89432" }}>
+                    <Download className="w-3.5 h-3.5" />
+                    Download
+                    {!isPlus && <Crown className="w-3 h-3 text-yellow-400/60" />}
+                  </button>
+                </div>
               </div>
             </motion.div>
 
-            {/* ── Up Next Panel ── */}
+            {/* Up Next Panel */}
             <motion.div
               initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
               className="w-full lg:flex-1">
-              <UpNextPanel upNext={upNext} onJump={handleJump} />
+              <UpNextPanel upNext={upNext} onJump={(song) => jumpToSong(song)} />
             </motion.div>
 
           </div>
