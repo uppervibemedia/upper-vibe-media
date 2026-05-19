@@ -15,6 +15,28 @@ import RecentlyListenedSection from "../components/home/RecentlyListenedSection"
 import LatestMusicSection from "../components/home/LatestMusicSection";
 import SectionHeader from "../components/shared/SectionHeader";
 
+// ── Session-stable shuffle ──────────────────────────────────────────────────
+// Same order within a session, different on every new tab/refresh
+function getSessionSeed() {
+  let seed = sessionStorage.getItem("uv_home_seed");
+  if (!seed) {
+    seed = Math.random().toString(36).slice(2);
+    sessionStorage.setItem("uv_home_seed", seed);
+  }
+  return seed;
+}
+
+function seededShuffle(arr, seed) {
+  const a = [...arr];
+  let s = seed.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    const j = Math.abs(s) % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function buildHomeRecs(allTracks, allViz, favorites, history) {
   const favTrackIds = new Set(favorites.filter((f) => f.type === "track").map((f) => f.track_id));
   const favVizIds = new Set(favorites.filter((f) => f.type === "visualizer").map((f) => f.visualizer_id));
@@ -66,9 +88,11 @@ export default function Home() {
   const [latestTracks, setLatestTracks] = useState([]);
   const [allTracks, setAllTracks] = useState([]);
   const [allViz, setAllViz] = useState([]);
+  const [recentViz, setRecentViz] = useState([]);
   const [artists, setArtists] = useState([]);
   const [trackCounts, setTrackCounts] = useState({});
   const [academyLessons, setAcademyLessons] = useState([]);
+  const sessionSeed = useMemo(() => getSessionSeed(), []);
   const [loginModal, setLoginModal] = useState(false);
   const [premiumModal, setPremiumModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
@@ -84,16 +108,22 @@ export default function Home() {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.Track.filter({ status: "published" }, "-release_date", 4),
+      base44.entities.Track.filter({ status: "published" }, "-release_date", 30),
       base44.entities.Track.filter({ status: "published" }, "-created_date", 200),
+      base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
       base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 200),
       base44.entities.Artist.filter({ is_active: true, is_featured: true }, "-created_date", 8),
       base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
       base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3),
-    ]).then(([latest, all, viz, featuredArtists, allTracksForCount, lessons]) => {
-      setLatestTracks(latest.length > 0 ? latest : all.slice(0, 4));
+    ]).then(([recentPool, all, recentVizPool, allVizFull, featuredArtists, allTracksForCount, lessons]) => {
+      // Rotate latest songs: shuffle the newest 30 and show 4
+      const rotatedLatest = seededShuffle(recentPool, sessionSeed).slice(0, 4);
+      setLatestTracks(rotatedLatest.length > 0 ? rotatedLatest : all.slice(0, 4));
       setAllTracks(all);
-      setAllViz(viz);
+      // Rotate visualizers: shuffle the newest 30 and show 6 in the viz section
+      const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
+      setRecentViz(rotatedViz);
+      setAllViz(allVizFull);
       setArtists(featuredArtists);
       setAcademyLessons(lessons);
       const counts = {};
@@ -102,7 +132,7 @@ export default function Home() {
       });
       setTrackCounts(counts);
     });
-  }, []);
+  }, [sessionSeed]);
 
   const { recommendedTracks, recommendedViz } = useMemo(
     () => buildHomeRecs(allTracks, allViz, favorites, history),
@@ -335,12 +365,12 @@ export default function Home() {
         </section>
       )}
 
-      {/* ── VISUALIZERS YOU MIGHT LIKE ── */}
-      {recommendedViz.length > 0 && (
+      {/* ── VISUALIZERS ── */}
+      {(recentViz.length > 0 || recommendedViz.length > 0) && (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="Visual Frequency" title="Visualizers You Might Like" link="/visualizers" linkLabel="All Visualizers" labelColor="#9B7EFF" />
+          <SectionHeader label="Visual Frequency" title="Latest Visualizers" link="/visualizers" linkLabel="See More" labelColor="#9B7EFF" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {recommendedViz.map((viz, i) => (
+            {(recentViz.length > 0 ? recentViz : recommendedViz).map((viz, i) => (
               <motion.div key={viz.id}
                 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
                 className="group rounded-2xl overflow-hidden"
