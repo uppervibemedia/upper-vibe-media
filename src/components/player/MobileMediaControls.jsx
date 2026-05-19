@@ -2,23 +2,27 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { usePlayer } from "../../context/PlayerContext";
 
 /**
- * MobileMediaControls — Real native PiP + AirPlay for mobile
+ * MobileMediaControls — Native PiP + AirPlay for mobile
  *
- * HOW IPHONE PiP WORKS (the only reliable method):
+ * KEY FIX for "not triggered by user activation":
  * ─────────────────────────────────────────────────
- * iPhone Safari supports PiP only via a real <video> element with a real src.
- * canvas.captureStream() → srcObject is NOT supported on iOS Safari.
+ * requestPictureInPicture() MUST be called in the SAME synchronous call stack
+ * as the user gesture (tap). Any await before it breaks this.
  *
- * Our approach:
- * 1. Use MediaRecorder to record a short canvas animation into a WebM/MP4 blob
- * 2. Set video.src = URL.createObjectURL(blob)
- * 3. video.loop = true + requestPictureInPicture()
+ * Strategy: Pre-bake the video whenever the track changes (background work),
+ * so by the time the user taps PiP the video is already loaded at readyState >= 2.
+ * The tap handler then calls requestPictureInPicture() IMMEDIATELY — no async gap.
  *
- * MediaRecorder + WebM is supported in iOS 17.2+ Safari.
- * For older iOS, we show the toast fallback.
+ * iOS Safari PiP path (iOS 17.2+ with MediaRecorder/WebM support):
+ *   1. On track change → record 3s canvas animation blob in background
+ *   2. Load blob into looping hidden <video>
+ *   3. User taps → video.requestPictureInPicture() called synchronously
  *
- * Audio stays on the existing global audio element — no duplication.
- * PiP video is muted — audio comes from the separate audio element.
+ * Desktop/Android:
+ *   1. On track change → canvas.captureStream() → video.srcObject → video.play()
+ *   2. User taps → requestPictureInPicture() called synchronously
+ *
+ * Audio stays on the global audio element — NEVER touched here.
  */
 
 const PIP_W = 480;
@@ -39,26 +43,24 @@ const AirPlayIcon = () => (
   </svg>
 );
 
-// Draw a single cover-art frame onto canvas
+// Draw one cover-art frame with subtle pulse
 function drawCoverFrame(ctx, coverImg, track, W, H, tick) {
-  // Subtle slow pulse scale (0.98 → 1.0) for the "motion" requirement
-  const scale = 0.98 + 0.02 * Math.abs(Math.sin(tick * 0.03));
-
+  const scale = 0.97 + 0.03 * Math.abs(Math.sin((tick || 0) * 0.025));
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = "#06060e";
   ctx.fillRect(0, 0, W, H);
 
   if (coverImg?.complete && coverImg.naturalWidth > 0) {
-    const size = Math.min(W, H) * 0.65 * scale;
+    const size = Math.min(W, H) * 0.62 * scale;
     const x = (W - size) / 2;
     const y = (H - size) / 2 - H * 0.04;
     ctx.save();
-    ctx.shadowColor = "rgba(0,180,200,0.35)";
-    ctx.shadowBlur = 24 * scale;
+    ctx.shadowColor = "rgba(0,180,200,0.3)";
+    ctx.shadowBlur = 20;
     ctx.drawImage(coverImg, x, y, size, size);
     ctx.restore();
   } else {
-    ctx.fillStyle = "rgba(0,200,220,0.15)";
+    ctx.fillStyle = "rgba(0,200,220,0.12)";
     ctx.font = `${H * 0.3}px sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -66,26 +68,25 @@ function drawCoverFrame(ctx, coverImg, track, W, H, tick) {
     ctx.textBaseline = "alphabetic";
   }
 
-  // Bottom bar
   if (track) {
     const barH = H * 0.26, barY = H - barH;
     const grd = ctx.createLinearGradient(0, barY, 0, H);
     grd.addColorStop(0, "rgba(0,0,0,0)");
-    grd.addColorStop(0.3, "rgba(0,0,0,0.8)");
-    grd.addColorStop(1, "rgba(0,0,0,0.92)");
+    grd.addColorStop(0.3, "rgba(0,0,0,0.82)");
+    grd.addColorStop(1, "rgba(0,0,0,0.94)");
     ctx.fillStyle = grd;
     ctx.fillRect(0, barY, W, barH);
 
     const pad = W * 0.04, maxW = W - pad * 2;
     ctx.fillStyle = "rgba(255,255,255,0.95)";
-    ctx.font = `bold ${Math.round(H * 0.08)}px sans-serif`;
+    ctx.font = `bold ${Math.round(H * 0.079)}px sans-serif`;
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
     let title = track.title || "Upper Vibe Media";
     while (ctx.measureText(title).width > maxW && title.length > 4) title = title.slice(0, -2) + "…";
     ctx.fillText(title, pad, H - barH * 0.38);
 
-    ctx.fillStyle = "rgba(0,200,220,0.8)";
+    ctx.fillStyle = "rgba(0,200,220,0.85)";
     ctx.font = `${Math.round(H * 0.06)}px sans-serif`;
     let artist = track.artist_display || track.artist || "Upper Vibe Media";
     while (ctx.measureText(artist).width > maxW && artist.length > 4) artist = artist.slice(0, -2) + "…";
@@ -93,22 +94,33 @@ function drawCoverFrame(ctx, coverImg, track, W, H, tick) {
   }
 }
 
-// Record N frames from canvas into a video blob via MediaRecorder
-function recordCanvasToBlob(canvas, durationMs = 3000, fps = 24) {
+// Record N frames from an animated canvas into a blob (iOS MediaRecorder path)
+function recordCanvasToBlob(canvas, coverImg, track, W, H, durationMs = 3000, fps = 20) {
   return new Promise((resolve, reject) => {
     if (!canvas.captureStream) { reject(new Error("captureStream not supported")); return; }
 
+    const mimeTypes = ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm", "video/mp4"];
+    const mime = mimeTypes.find((m) => {
+      try { return MediaRecorder.isTypeSupported(m); } catch { return false; }
+    });
+    if (!mime) { reject(new Error("No supported MIME")); return; }
+
+    const ctx = canvas.getContext("2d");
+    let tick = 0;
+    const interval = setInterval(() => {
+      tick++;
+      drawCoverFrame(ctx, coverImg, track, W, H, tick);
+    }, 1000 / fps);
+
     const stream = canvas.captureStream(fps);
-    const mimeTypes = ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
-    const mime = mimeTypes.find((m) => MediaRecorder.isTypeSupported(m)) || "";
-
-    if (!mime) { reject(new Error("No supported video MIME type")); return; }
-
-    const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 800000 });
+    const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 600000 });
     const chunks = [];
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-    recorder.onstop = () => resolve(new Blob(chunks, { type: mime }));
-    recorder.onerror = (e) => reject(e.error || new Error("MediaRecorder error"));
+    recorder.onstop = () => {
+      clearInterval(interval);
+      resolve(new Blob(chunks, { type: mime }));
+    };
+    recorder.onerror = (e) => { clearInterval(interval); reject(e.error || new Error("Recorder error")); };
     recorder.start();
     setTimeout(() => { try { recorder.stop(); } catch {} }, durationMs);
   });
@@ -118,23 +130,25 @@ function recordCanvasToBlob(canvas, durationMs = 3000, fps = 24) {
 export default function MobileMediaControls({ coverUrl, className = "" }) {
   const { currentTrack, audioRef } = usePlayer();
 
-  // ALL hooks before any conditional return
-  const [isMobile, setIsMobile]         = useState(false);
-  const [isIOS, setIsIOS]               = useState(false);
-  const [supportsAP, setSupportsAP]     = useState(false);
-  const [visible, setVisible]           = useState(false);
-  const [pipActive, setPipActive]       = useState(false);
-  const [pipLoading, setPipLoading]     = useState(false);
-  const [toast, setToast]               = useState("");
+  // All hooks must be declared unconditionally
+  const [isMobile, setIsMobile]     = useState(false);
+  const [isIOS, setIsIOS]           = useState(false);
+  const [supportsAP, setSupportsAP] = useState(false);
+  const [visible, setVisible]       = useState(false);
+  const [pipActive, setPipActive]   = useState(false);
+  const [pipReady, setPipReady]     = useState(false);   // video is preloaded and ready
+  const [pipPrepping, setPipPrepping] = useState(false); // background prep in progress
+  const [toast, setToast]           = useState("");
 
-  const hideTimerRef  = useRef(null);
-  const toastTimerRef = useRef(null);
-  const canvasRef     = useRef(null);
-  const pipVideoRef   = useRef(null);
-  const blobUrlRef    = useRef(null); // current objectURL — revoke when done
-  const coverImgRef   = useRef(null);
-  const rafRef        = useRef(null);
-  const tickRef       = useRef(0);
+  const hideTimerRef    = useRef(null);
+  const toastTimerRef   = useRef(null);
+  const canvasRef       = useRef(null);
+  const pipVideoRef     = useRef(null);
+  const blobUrlRef      = useRef(null);
+  const coverImgRef     = useRef(null);
+  const rafRef          = useRef(null);
+  const tickRef         = useRef(0);
+  const prepAbortRef    = useRef(false); // cancel prep if track changes mid-record
 
   // ── Device detection ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -145,7 +159,6 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     setIsMobile(mobile);
     setIsIOS(ios);
     setSupportsAP(ap);
-    console.log("[PiP] 🔍", { isMobile: mobile, isIOS: ios, supportsAirPlay: ap, ua: ua.slice(0, 80) });
   }, []);
 
   // ── Cover image preload ───────────────────────────────────────────────────
@@ -177,7 +190,7 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     toastTimerRef.current = setTimeout(() => setToast(""), 3500);
   }, []);
 
-  // ── Canvas animation loop (feeds the hidden video while recording) ─────────
+  // ── Canvas RAF loop (for captureStream path while PiP is open) ────────────
   const stopLoop = useCallback(() => {
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
   }, []);
@@ -195,19 +208,116 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     rafRef.current = requestAnimationFrame(loop);
   }, [currentTrack, stopLoop]);
 
-  // ── PiP lifecycle: exit + cleanup on unmount ──────────────────────────────
+  // ── Ensure PiP video element exists ──────────────────────────────────────
+  const ensureVideo = useCallback(() => {
+    if (pipVideoRef.current) return pipVideoRef.current;
+    const video = document.createElement("video");
+    video.loop        = true;
+    video.muted       = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    // Must be in the DOM and tiny-but-visible for some browsers to allow PiP
+    video.style.cssText = "position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-1;";
+    document.body.appendChild(video);
+    pipVideoRef.current = video;
+    return video;
+  }, []);
+
+  // ── PRE-BAKE: prepare video in background whenever track or device changes ─
   useEffect(() => {
-    const onLeave = () => {
-      setPipActive(false);
-      stopLoop();
-      console.log("[PiP] 📴 Exited");
+    if (!isMobile || !currentTrack) return;
+
+    // Cancel any in-progress prep
+    prepAbortRef.current = true;
+    setPipReady(false);
+    setPipPrepping(true);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.width  = PIP_W;
+    canvas.height = PIP_H;
+
+    const abortToken = {}; // unique per prep run
+    prepAbortRef.current = abortToken;
+
+    const prep = async () => {
+      // Wait a tick for cover image to load
+      await new Promise((r) => setTimeout(r, 300));
+      if (prepAbortRef.current !== abortToken) return; // aborted
+
+      const video = ensureVideo();
+
+      // ── Desktop/Android: captureStream (synchronous, no recording needed) ──
+      if (!isIOS && canvas.captureStream) {
+        try {
+          // Draw first frame
+          drawCoverFrame(canvas.getContext("2d"), coverImgRef.current, currentTrack, PIP_W, PIP_H, 0);
+          video.srcObject = canvas.captureStream(24);
+          video.src = ""; // clear any previous blob src
+          await video.play();
+          if (prepAbortRef.current !== abortToken) return;
+          setPipReady(true);
+          setPipPrepping(false);
+          console.log("[PiP] ✅ Desktop: captureStream ready");
+          return;
+        } catch (e) {
+          console.warn("[PiP] captureStream prep failed:", e.message);
+        }
+      }
+
+      // ── iOS / fallback: MediaRecorder → blob ──────────────────────────────
+      if (typeof MediaRecorder === "undefined") {
+        setPipPrepping(false);
+        console.log("[PiP] MediaRecorder not available");
+        return;
+      }
+
+      try {
+        console.log("[PiP] ⏳ Recording blob for iOS...");
+        const blob = await recordCanvasToBlob(
+          canvas, coverImgRef.current, currentTrack, PIP_W, PIP_H, 3000, 20
+        );
+        if (prepAbortRef.current !== abortToken) return; // aborted mid-record
+
+        // Revoke old blob
+        if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
+        blobUrlRef.current = URL.createObjectURL(blob);
+
+        video.srcObject = null;
+        video.src       = blobUrlRef.current;
+        video.loop      = true;
+        await video.load();
+        // play() so readyState >= 2 — required for requestPictureInPicture
+        await video.play();
+        video.pause(); // pause immediately (don't need it playing in bg)
+
+        if (prepAbortRef.current !== abortToken) return;
+        setPipReady(true);
+        setPipPrepping(false);
+        console.log("[PiP] ✅ iOS: blob ready, size:", blob.size, "readyState:", video.readyState);
+      } catch (e) {
+        if (prepAbortRef.current !== abortToken) return;
+        setPipPrepping(false);
+        console.warn("[PiP] Blob prep failed:", e.message);
+      }
     };
+
+    prep();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, isIOS, currentTrack?.id, ensureVideo]);
+
+  // ── PiP lifecycle listeners ───────────────────────────────────────────────
+  useEffect(() => {
+    const onLeave = () => { setPipActive(false); stopLoop(); };
     document.addEventListener("leavepictureinpicture", onLeave);
     return () => document.removeEventListener("leavepictureinpicture", onLeave);
   }, [stopLoop]);
 
+  // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => () => {
     stopLoop();
+    prepAbortRef.current = {}; // abort any ongoing prep
     if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
     if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
     if (pipVideoRef.current) { pipVideoRef.current.remove(); pipVideoRef.current = null; }
@@ -223,155 +333,84 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     const audio = audioRef?.current;
     if (audio?.webkitShowPlaybackTargetPicker) {
       audio.webkitShowPlaybackTargetPicker();
-      console.log("[PiP] ✅ AirPlay picker opened");
     } else {
       showToast("AirPlay not available in this browser");
     }
   };
 
-  // ── PiP handler ───────────────────────────────────────────────────────────
-  const handlePiP = async (e) => {
+  // ── PiP handler — called DIRECTLY from user tap ───────────────────────────
+  // requestPictureInPicture() is called IMMEDIATELY, synchronously within this handler.
+  // No awaits before the PiP call — this preserves the user activation.
+  const handlePiP = (e) => {
     e.stopPropagation();
     showControls();
 
-    // Exit if already in PiP
+    // Exit if already active
     if (document.pictureInPictureElement) {
-      await document.exitPictureInPicture().catch(() => {});
+      document.exitPictureInPicture().catch(() => {});
       setPipActive(false);
       stopLoop();
       return;
     }
 
-    setPipLoading(true);
-    console.log("[PiP] 📱 Starting PiP, isIOS:", isIOS);
+    const video = pipVideoRef.current;
 
-    try {
-      // ── Step 1: Prepare canvas ──────────────────────────────────────────
-      const canvas = canvasRef.current;
-      canvas.width  = PIP_W;
-      canvas.height = PIP_H;
-
-      // Draw first static frame
-      const ctx = canvas.getContext("2d");
-      drawCoverFrame(ctx, coverImgRef.current, currentTrack, PIP_W, PIP_H, 0);
-
-      // ── Step 2: Create / reuse the PiP video element ────────────────────
-      let video = pipVideoRef.current;
-      if (!video) {
-        video = document.createElement("video");
-        video.loop        = true;
-        video.muted       = true; // audio stays on global audio element
-        video.playsInline = true;
-        video.setAttribute("playsinline", "");
-        video.setAttribute("webkit-playsinline", "");
-        video.setAttribute("x-webkit-airplay", "deny"); // prevent AirPlay hijack on this muted video
-        // Position: tiny but IN the viewport (some browsers need it in viewport for PiP)
-        video.style.cssText = [
-          "position:fixed",
-          "bottom:0",
-          "right:0",
-          "width:2px",
-          "height:2px",
-          "opacity:0.001",
-          "pointer-events:none",
-          "z-index:-1",
-        ].join(";");
-        document.body.appendChild(video);
-        pipVideoRef.current = video;
-        console.log("[PiP] ✅ Video element created");
-      }
-
-      // ── Step 3: Feed canvas to video ────────────────────────────────────
-      // iOS Safari 17.2+ supports MediaRecorder → WebM → video.src
-      // Older iOS / other browsers use canvas.captureStream() → srcObject
-      let videoReady = false;
-
-      // Method A: captureStream (Chrome/Android/desktop, iOS 18+)
-      if (canvas.captureStream && !isIOS) {
-        const stream = canvas.captureStream(24);
-        video.srcObject = stream;
-        startLoop(); // animate while in PiP
-        await video.play();
-        videoReady = true;
-        console.log("[PiP] ✅ Method A: captureStream");
-      }
-
-      // Method B: MediaRecorder → blob → video.src (iOS 17.2+ Safari)
-      if (!videoReady && canvas.captureStream && typeof MediaRecorder !== "undefined") {
-        console.log("[PiP] ⏳ Method B: recording blob...");
-        startLoop(); // animate during recording
-        try {
-          const blob = await recordCanvasToBlob(canvas, 2500, 24);
-          stopLoop();
-          if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-          blobUrlRef.current = URL.createObjectURL(blob);
-          video.srcObject = null;
-          video.src       = blobUrlRef.current;
-          video.loop      = true;
-          await video.load();
-          await video.play();
-          videoReady = true;
-          console.log("[PiP] ✅ Method B: blob recorded, size:", blob.size);
-        } catch (recErr) {
-          stopLoop();
-          console.log("[PiP] ⚠️ Method B failed:", recErr.message);
-        }
-      }
-
-      // Method C: static image as video via canvas → single frame blob
-      if (!videoReady) {
-        console.log("[PiP] ⏳ Method C: static canvas blob...");
-        try {
-          // Draw a fresh frame
-          drawCoverFrame(ctx, coverImgRef.current, currentTrack, PIP_W, PIP_H, 0);
-          const blob = await new Promise((res, rej) =>
-            canvas.toBlob((b) => b ? res(b) : rej(new Error("toBlob failed")), "image/png")
-          );
-          // We can't make a video from just an image without MediaRecorder
-          // So this method just signals we tried everything
-          void blob;
-          throw new Error("Cannot create video from image alone");
-        } catch (imgErr) {
-          console.log("[PiP] ⚠️ Method C failed:", imgErr.message);
-        }
-      }
-
-      if (!videoReady) {
-        throw new Error(
-          isIOS
-            ? "PiP requires iOS 17.2+ Safari. Update your iPhone and try again."
-            : "Video setup failed — PiP not available on this browser."
-        );
-      }
-
-      // ── Step 4: Request PiP ─────────────────────────────────────────────
-      if (!("requestPictureInPicture" in video)) {
-        throw new Error("requestPictureInPicture not available");
-      }
-
-      await video.requestPictureInPicture();
-      setPipActive(true);
-      console.log("[PiP] ✅ PiP window opened!");
-
-      video.addEventListener("leavepictureinpicture", () => {
-        setPipActive(false);
-        stopLoop();
-        console.log("[PiP] 📴 User closed PiP window");
-      }, { once: true });
-
-    } catch (err) {
-      console.warn("[PiP] ⚠️ Failed:", err.name, "-", err.message);
-      stopLoop();
-      showToast(err.message.length < 80 ? err.message : "Picture-in-Picture not available on this device");
-    } finally {
-      setPipLoading(false);
+    if (!video) {
+      showToast("Player not ready yet. Start a song first.");
+      return;
     }
+
+    if (!("requestPictureInPicture" in video)) {
+      showToast("Picture-in-Picture not supported on this device.");
+      return;
+    }
+
+    if (!pipReady) {
+      if (pipPrepping) {
+        showToast("Preparing PiP... try again in a moment.");
+      } else {
+        showToast("PiP not available. Try updating your browser.");
+      }
+      return;
+    }
+
+    // ── SYNCHRONOUS: call PiP immediately — user activation is still valid ──
+    // For captureStream path (desktop/Android): video is already playing
+    // For blob path (iOS): video was played then paused — we resume it first
+    const launch = () => {
+      // Resume if paused (blob path)
+      if (video.paused) {
+        video.play().catch(() => {});
+      }
+
+      // For captureStream path, restart the animation loop
+      if (!isIOS) {
+        startLoop();
+      }
+
+      video.requestPictureInPicture()
+        .then(() => {
+          setPipActive(true);
+          console.log("[PiP] ✅ PiP opened!");
+          video.addEventListener("leavepictureinpicture", () => {
+            setPipActive(false);
+            stopLoop();
+          }, { once: true });
+        })
+        .catch((err) => {
+          console.warn("[PiP] ⚠️ requestPictureInPicture failed:", err.name, "-", err.message);
+          stopLoop();
+          showToast("Picture-in-Picture failed. Try playing the song first.");
+        });
+    };
+
+    launch();
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Off-screen canvas — source for PiP video */}
+      {/* Off-screen canvas — used during background prep and live animation */}
       <canvas
         ref={canvasRef}
         width={PIP_W}
@@ -406,24 +445,38 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
           <button
             onTouchStart={(e) => e.stopPropagation()}
             onClick={handlePiP}
-            disabled={pipLoading}
             title={pipActive ? "Exit Picture-in-Picture" : "Picture-in-Picture"}
             style={{
               width: 44, height: 44, borderRadius: 12,
               display: "flex", alignItems: "center", justifyContent: "center",
-              background: pipActive ? "rgba(0,201,224,0.3)" : "rgba(0,0,0,0.6)",
-              border: `1.5px solid ${pipActive ? "rgba(0,201,224,0.8)" : "rgba(255,255,255,0.3)"}`,
-              opacity: pipLoading ? 0.5 : 1,
-              cursor: pipLoading ? "default" : "pointer",
+              background: pipActive ? "rgba(0,201,224,0.28)" : "rgba(0,0,0,0.62)",
+              border: `1.5px solid ${pipActive ? "rgba(0,201,224,0.8)" : "rgba(255,255,255,0.28)"}`,
+              opacity: pipPrepping ? 0.55 : 1,
+              cursor: "pointer",
               WebkitTapHighlightColor: "transparent",
               flexShrink: 0,
               transition: "opacity 0.2s",
+              position: "relative",
             }}
           >
-            {pipLoading
-              ? <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-              : <PiPIcon active={pipActive} />
-            }
+            <PiPIcon active={pipActive} />
+            {/* Small ready indicator dot */}
+            {pipReady && !pipActive && (
+              <div style={{
+                position: "absolute", bottom: 4, right: 4,
+                width: 6, height: 6, borderRadius: "50%",
+                background: "#00C9E0",
+                boxShadow: "0 0 4px #00C9E0",
+              }} />
+            )}
+            {pipPrepping && (
+              <div style={{
+                position: "absolute", bottom: 4, right: 4,
+                width: 6, height: 6, borderRadius: "50%",
+                background: "rgba(255,255,255,0.4)",
+                animation: "uvPipPulse 1s ease-in-out infinite",
+              }} />
+            )}
           </button>
 
           {/* AirPlay button */}
@@ -434,9 +487,9 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
             style={{
               width: 44, height: 44, borderRadius: 12,
               display: "flex", alignItems: "center", justifyContent: "center",
-              background: "rgba(0,0,0,0.6)",
-              border: "1.5px solid rgba(255,255,255,0.3)",
-              opacity: supportsAP ? 1 : 0.4,
+              background: "rgba(0,0,0,0.62)",
+              border: "1.5px solid rgba(255,255,255,0.28)",
+              opacity: supportsAP ? 1 : 0.38,
               cursor: "pointer",
               WebkitTapHighlightColor: "transparent",
               flexShrink: 0,
@@ -445,8 +498,8 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
             <AirPlayIcon />
           </button>
 
-          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", letterSpacing: "0.06em", userSelect: "none" }}>
-            {pipActive ? "PiP active" : "PiP · AirPlay"}
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.06em", userSelect: "none" }}>
+            {pipActive ? "PiP active" : pipPrepping ? "Preparing PiP..." : "PiP · AirPlay"}
           </span>
         </div>
 
@@ -455,9 +508,9 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
           <div style={{ position: "absolute", top: 62, left: 12, right: 12, display: "flex", justifyContent: "center", pointerEvents: "none", zIndex: 30 }}>
             <div style={{
               padding: "8px 16px", borderRadius: 12, fontSize: 12,
-              color: "rgba(255,255,255,0.88)",
-              background: "rgba(0,0,0,0.82)",
-              border: "1px solid rgba(255,255,255,0.14)",
+              color: "rgba(255,255,255,0.9)",
+              background: "rgba(0,0,0,0.84)",
+              border: "1px solid rgba(255,255,255,0.12)",
               backdropFilter: "blur(10px)",
               WebkitBackdropFilter: "blur(10px)",
               textAlign: "center", maxWidth: 290, whiteSpace: "pre-line", lineHeight: 1.5,
@@ -468,8 +521,13 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
         )}
       </div>
 
-      {/* Spinner keyframe */}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {/* Animations */}
+      <style>{`
+        @keyframes uvPipPulse {
+          0%, 100% { opacity: 0.3; transform: scale(0.8); }
+          50%       { opacity: 1;   transform: scale(1.1); }
+        }
+      `}</style>
     </>
   );
 }
