@@ -93,7 +93,10 @@ export function PlayerProvider({ children }) {
     loadedSrcRef.current = currentTrack.audio_url;
     audio.src = currentTrack.audio_url;
     audio.load();
-    audio.play().catch(() => {});
+    audio.play().catch((err) => {
+      // AbortError is expected when a new track is loaded before the previous play() resolves
+      if (err.name !== "AbortError") console.warn("[PlayerContext] play() error:", err);
+    });
     setIsPlaying(true);
 
     console.log("[PlayerContext] ▶️ Playing:", currentTrack.title);
@@ -109,7 +112,9 @@ export function PlayerProvider({ children }) {
 
     if (isPlaying) {
       if (audio.paused) {
-        audio.play().catch(() => {});
+        audio.play().catch((err) => {
+          if (err.name !== "AbortError") console.warn("[PlayerContext] play() sync error:", err);
+        });
         console.log("[PlayerContext] ▶️ play() called from isPlaying sync");
       }
     } else {
@@ -194,7 +199,9 @@ export function PlayerProvider({ children }) {
         setTimeout(() => {
           resumeAudioContext();
           if (isPlayingRef.current && audio.paused) {
-            audio.play().catch(() => {});
+            audio.play().catch((err) => {
+              if (err.name !== "AbortError") console.warn("[PlayerContext] visibility restore play() error:", err);
+            });
             console.log("[PlayerContext] ▶️ Resumed after visibility restore");
           }
         }, 100);
