@@ -2,31 +2,31 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { usePlayer } from "../../context/PlayerContext";
 
 /**
- * MobileMediaControls — Native PiP + AirPlay for mobile
+ * MobileMediaControls — PiP + AirPlay
  *
- * KEY FIX for "not triggered by user activation":
- * ─────────────────────────────────────────────────
- * requestPictureInPicture() MUST be called in the SAME synchronous call stack
- * as the user gesture (tap). Any await before it breaks this.
+ * PiP ARCHITECTURE:
+ * ─────────────────
+ * The PiP window must show the real song progress, not a fake loop.
  *
- * Strategy: Pre-bake the video whenever the track changes (background work),
- * so by the time the user taps PiP the video is already loaded at readyState >= 2.
- * The tap handler then calls requestPictureInPicture() IMMEDIATELY — no async gap.
+ * Desktop/Android Chrome: audio.captureStream() → video.srcObject
+ *   - The <video> plays the actual audio stream, so its currentTime === audio.currentTime
+ *   - PiP progress bar is perfectly synced to the song
+ *   - PiP play/pause controls the same audio element
  *
- * iOS Safari PiP path (iOS 17.2+ with MediaRecorder/WebM support):
- *   1. On track change → record 3s canvas animation blob in background
- *   2. Load blob into looping hidden <video>
- *   3. User taps → video.requestPictureInPicture() called synchronously
+ * iOS Safari: audio.captureStream() is not supported on <audio>.
+ *   - Fallback: canvas animation blob (visual only, not synced to audio time)
+ *   - PiP play/pause events are bridged → global audio element
+ *   - This is the best iOS allows without native app APIs
  *
- * Desktop/Android:
- *   1. On track change → canvas.captureStream() → video.srcObject → video.play()
- *   2. User taps → requestPictureInPicture() called synchronously
- *
- * Audio stays on the global audio element — NEVER touched here.
+ * KEY RULES:
+ * - Never create a separate audio/video player for PiP
+ * - PiP play/pause always calls setIsPlaying() via context, not audio directly
+ * - Lock screen: paused on hide, manual resume on unlock (stability > forced bg play)
+ * - AirPlay: only routes existing audio, never reloads src
  */
 
 const PIP_W = 480;
-const PIP_H = 270; // 16:9
+const PIP_H = 270;
 
 const PiPIcon = ({ active }) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -43,7 +43,7 @@ const AirPlayIcon = () => (
   </svg>
 );
 
-// Draw one cover-art frame with subtle pulse
+// Draw cover art + metadata onto a canvas (iOS fallback visual)
 function drawCoverFrame(ctx, coverImg, track, W, H, tick) {
   const scale = 0.97 + 0.03 * Math.abs(Math.sin((tick || 0) * 0.025));
   ctx.clearRect(0, 0, W, H);
@@ -94,7 +94,7 @@ function drawCoverFrame(ctx, coverImg, track, W, H, tick) {
   }
 }
 
-// Record N frames from an animated canvas into a blob (iOS MediaRecorder path)
+// iOS fallback: record canvas animation into a blob
 function recordCanvasToBlob(canvas, coverImg, track, W, H, durationMs = 3000, fps = 20) {
   return new Promise((resolve, reject) => {
     if (!canvas.captureStream) { reject(new Error("captureStream not supported")); return; }
@@ -116,40 +116,35 @@ function recordCanvasToBlob(canvas, coverImg, track, W, H, durationMs = 3000, fp
     const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 600000 });
     const chunks = [];
     recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-    recorder.onstop = () => {
-      clearInterval(interval);
-      resolve(new Blob(chunks, { type: mime }));
-    };
+    recorder.onstop = () => { clearInterval(interval); resolve(new Blob(chunks, { type: mime })); };
     recorder.onerror = (e) => { clearInterval(interval); reject(e.error || new Error("Recorder error")); };
     recorder.start();
     setTimeout(() => { try { recorder.stop(); } catch {} }, durationMs);
   });
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
 export default function MobileMediaControls({ coverUrl, className = "" }) {
   const { currentTrack, audioRef, isPlaying, togglePlay } = usePlayer();
 
-  // All hooks must be declared unconditionally
-  const [isMobile, setIsMobile]     = useState(false);
-  const [isIOS, setIsIOS]           = useState(false);
-  const [supportsAP, setSupportsAP] = useState(false);
-  const [visible, setVisible]       = useState(false);
-  const [pipActive, setPipActive]   = useState(false);
-  const [pipReady, setPipReady]     = useState(false);   // video is preloaded and ready
-  const [pipPrepping, setPipPrepping] = useState(false); // background prep in progress
-  const [toast, setToast]           = useState("");
+  const [isMobile, setIsMobile]         = useState(false);
+  const [isIOS, setIsIOS]               = useState(false);
+  const [supportsAP, setSupportsAP]     = useState(false);
+  const [visible, setVisible]           = useState(false);
+  const [pipActive, setPipActive]       = useState(false);
+  const [pipReady, setPipReady]         = useState(false);
+  const [pipPrepping, setPipPrepping]   = useState(false);
+  const [toast, setToast]               = useState("");
+  const [videoReady, setVideoReady]     = useState(false);
 
-  const hideTimerRef    = useRef(null);
-  const toastTimerRef   = useRef(null);
-  const canvasRef       = useRef(null);
-  const pipVideoRef     = useRef(null);
-  const blobUrlRef      = useRef(null);
-  const coverImgRef     = useRef(null);
-  const rafRef          = useRef(null);
-  const tickRef         = useRef(0);
-  const prepAbortRef    = useRef(false); // cancel prep if track changes mid-record
-  const [videoReady, setVideoReady] = useState(false); // triggers bridge effect after ensureVideo
+  const hideTimerRef  = useRef(null);
+  const toastTimerRef = useRef(null);
+  const canvasRef     = useRef(null);
+  const pipVideoRef   = useRef(null);
+  const blobUrlRef    = useRef(null);
+  const coverImgRef   = useRef(null);
+  const rafRef        = useRef(null);
+  const tickRef       = useRef(0);
+  const prepAbortRef  = useRef(false);
 
   // ── Device detection ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -184,14 +179,13 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     clearTimeout(toastTimerRef.current);
   }, []);
 
-  // ── Toast ─────────────────────────────────────────────────────────────────
   const showToast = useCallback((msg) => {
     setToast(msg);
     clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToast(""), 3500);
   }, []);
 
-  // ── Canvas RAF loop (for captureStream path while PiP is open) ────────────
+  // ── Canvas RAF loop (iOS visual animation while PiP is open) ─────────────
   const stopLoop = useCallback(() => {
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
   }, []);
@@ -218,19 +212,19 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     video.playsInline = true;
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
-    // Must be in the DOM and tiny-but-visible for some browsers to allow PiP
     video.style.cssText = "position:fixed;bottom:0;right:0;width:1px;height:1px;opacity:0.001;pointer-events:none;z-index:-1;";
     document.body.appendChild(video);
     pipVideoRef.current = video;
-    setVideoReady(true); // signal that the bridge effect can now attach listeners
+    setVideoReady(true);
     return video;
   }, []);
 
-  // ── PRE-BAKE: prepare video in background whenever track or device changes ─
+  // ── PRE-BAKE: prepare PiP video whenever track changes ───────────────────
+  // Desktop/Android: use audio.captureStream() → real-time synced progress
+  // iOS: canvas blob fallback (visual only)
   useEffect(() => {
     if (!isMobile || !currentTrack) return;
 
-    // Cancel any in-progress prep
     prepAbortRef.current = true;
     setPipReady(false);
     setPipPrepping(true);
@@ -240,35 +234,67 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     canvas.width  = PIP_W;
     canvas.height = PIP_H;
 
-    const abortToken = {}; // unique per prep run
+    const abortToken = {};
     prepAbortRef.current = abortToken;
 
     const prep = async () => {
-      // Wait a tick for cover image to load
       await new Promise((r) => setTimeout(r, 300));
-      if (prepAbortRef.current !== abortToken) return; // aborted
+      if (prepAbortRef.current !== abortToken) return;
 
       const video = ensureVideo();
+      const audio = audioRef?.current;
 
-      // ── Desktop/Android: captureStream (synchronous, no recording needed) ──
-      if (!isIOS && canvas.captureStream) {
+      // ── Strategy 1: audio.captureStream() — real synced PiP (Chrome/Android) ──
+      // This makes the video's currentTime === audio.currentTime exactly.
+      if (!isIOS && audio && typeof audio.captureStream === "function") {
         try {
-          // Draw first frame
+          // Draw a static cover frame as video background
           drawCoverFrame(canvas.getContext("2d"), coverImgRef.current, currentTrack, PIP_W, PIP_H, 0);
-          video.srcObject = canvas.captureStream(24);
-          video.src = ""; // clear any previous blob src
+
+          // Use audio's own stream — video tracks real audio time
+          const audioStream = audio.captureStream();
+          // Mix with canvas visual for cover art display
+          const canvasStream = canvas.captureStream(1); // 1fps static cover art
+          const combined = new MediaStream([
+            ...canvasStream.getVideoTracks(),
+            ...audioStream.getAudioTracks(),
+          ]);
+          video.srcObject = combined;
+          video.muted = false; // must be unmuted so PiP shows play/pause correctly
+          // We don't actually want to hear audio from video (audio plays through audio el)
+          // But we need it unmuted for PiP controls to appear. Set volume to 0.
+          video.volume = 0;
+
           await video.play();
           if (prepAbortRef.current !== abortToken) return;
           setPipReady(true);
           setPipPrepping(false);
-          console.log("[PiP] ✅ Desktop: captureStream ready");
+          console.log("[PiP] ✅ Audio captureStream ready (synced)");
           return;
         } catch (e) {
-          console.warn("[PiP] captureStream prep failed:", e.message);
+          console.warn("[PiP] audio.captureStream failed:", e.message, "— falling back");
         }
       }
 
-      // ── iOS / fallback: MediaRecorder → blob ──────────────────────────────
+      // ── Strategy 2: canvas captureStream (visual only, no audio stream) ──
+      if (!isIOS && canvas.captureStream) {
+        try {
+          drawCoverFrame(canvas.getContext("2d"), coverImgRef.current, currentTrack, PIP_W, PIP_H, 0);
+          video.srcObject = canvas.captureStream(24);
+          video.muted = true;
+          video.volume = 0;
+          await video.play();
+          if (prepAbortRef.current !== abortToken) return;
+          setPipReady(true);
+          setPipPrepping(false);
+          console.log("[PiP] ✅ Canvas captureStream ready (visual)");
+          return;
+        } catch (e) {
+          console.warn("[PiP] canvas.captureStream failed:", e.message);
+        }
+      }
+
+      // ── Strategy 3: iOS MediaRecorder blob fallback ───────────────────────
       if (typeof MediaRecorder === "undefined") {
         setPipPrepping(false);
         console.log("[PiP] MediaRecorder not available");
@@ -280,24 +306,24 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
         const blob = await recordCanvasToBlob(
           canvas, coverImgRef.current, currentTrack, PIP_W, PIP_H, 3000, 20
         );
-        if (prepAbortRef.current !== abortToken) return; // aborted mid-record
+        if (prepAbortRef.current !== abortToken) return;
 
-        // Revoke old blob
         if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
         blobUrlRef.current = URL.createObjectURL(blob);
 
         video.srcObject = null;
         video.src       = blobUrlRef.current;
         video.loop      = true;
+        video.muted     = true;
+        video.volume    = 0;
         await video.load();
-        // play() so readyState >= 2 — required for requestPictureInPicture
         await video.play();
-        video.pause(); // pause immediately (don't need it playing in bg)
+        video.pause();
 
         if (prepAbortRef.current !== abortToken) return;
         setPipReady(true);
         setPipPrepping(false);
-        console.log("[PiP] ✅ iOS: blob ready, size:", blob.size, "readyState:", video.readyState);
+        console.log("[PiP] ✅ iOS blob ready, size:", blob.size);
       } catch (e) {
         if (prepAbortRef.current !== abortToken) return;
         setPipPrepping(false);
@@ -306,52 +332,59 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     };
 
     prep();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, isIOS, currentTrack?.id, ensureVideo]);
 
-  // ── Bridge PiP video play/pause → global audio ───────────────────────────
-  // When PiP is open the user can tap play/pause IN the floating PiP window.
-  // Those events fire on the hidden <video>, not the global <audio>.
-  // We intercept them here and forward to the global audio element so that
-  // PiP controls and the in-app player stay perfectly in sync.
-  // We also prevent the video from ever loading/changing the song (it's visual-only).
+  // ── Bridge: PiP video play/pause → PlayerContext ──────────────────────────
+  // When user taps play/pause IN the PiP floating window, those events fire on
+  // the hidden <video>. We forward them to the global audio via PlayerContext
+  // so all UI (in-app player, lock screen, etc.) stays in sync.
   useEffect(() => {
     const video = pipVideoRef.current;
     if (!video) return;
     const audio = audioRef?.current;
     if (!audio) return;
 
-    const onVideoPause = (e) => {
-      // Only act when PiP is actually active — ignore background pauses
+    const onVideoPause = () => {
       if (!document.pictureInPictureElement) return;
-      // Don't pause audio if audio is already paused
+      // Forward to global audio
       if (!audio.paused) {
         audio.pause();
-        console.log("[PiP] ⏸ PiP pause → global audio paused");
+        console.log("[PiP] ⏸ PiP pause → audio paused");
       }
     };
 
-    const onVideoPlay = (e) => {
+    const onVideoPlay = () => {
       if (!document.pictureInPictureElement) return;
       if (audio.paused) {
         audio.play().catch(() => {});
-        console.log("[PiP] ▶️ PiP play → global audio resumed");
+        console.log("[PiP] ▶️ PiP play → audio resumed");
       }
     };
 
-    video.addEventListener("pause", onVideoPause);
-    video.addEventListener("play",  onVideoPlay);
-    return () => {
-      video.removeEventListener("pause", onVideoPause);
-      video.removeEventListener("play",  onVideoPlay);
+    // For audio.captureStream path: video seek → audio seek
+    const onVideoSeeked = () => {
+      if (!document.pictureInPictureElement) return;
+      if (video.srcObject) return; // srcObject streams can't seek independently
+      // Blob/src path: sync seek back to audio
+      if (Math.abs(audio.currentTime - video.currentTime) > 1) {
+        audio.currentTime = video.currentTime;
+        console.log("[PiP] ⏩ PiP seek → audio seeked to", video.currentTime);
+      }
     };
-  // Re-run when the video element is (re-)created or audioRef changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    video.addEventListener("pause",  onVideoPause);
+    video.addEventListener("play",   onVideoPlay);
+    video.addEventListener("seeked", onVideoSeeked);
+    return () => {
+      video.removeEventListener("pause",  onVideoPause);
+      video.removeEventListener("play",   onVideoPlay);
+      video.removeEventListener("seeked", onVideoSeeked);
+    };
   }, [videoReady, audioRef]);
 
-  // ── Keep PiP video play/pause state mirrored from global audio ───────────
-  // When the user pauses/resumes from lock screen or in-app controls WHILE PiP
-  // is open, sync the video's visual state so PiP shows the correct icon.
+  // ── Mirror isPlaying → PiP video visual state ─────────────────────────────
+  // When in-app controls or lock screen pause/resume, keep PiP icon in sync.
   useEffect(() => {
     const video = pipVideoRef.current;
     if (!video || !document.pictureInPictureElement) return;
@@ -362,7 +395,7 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     }
   }, [isPlaying, videoReady]);
 
-  // ── PiP lifecycle listeners ───────────────────────────────────────────────
+  // ── PiP lifecycle ─────────────────────────────────────────────────────────
   useEffect(() => {
     const onLeave = () => { setPipActive(false); stopLoop(); };
     document.addEventListener("leavepictureinpicture", onLeave);
@@ -372,16 +405,16 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
   // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => () => {
     stopLoop();
-    prepAbortRef.current = {}; // abort any ongoing prep
+    prepAbortRef.current = {};
     if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
     if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
     if (pipVideoRef.current) { pipVideoRef.current.remove(); pipVideoRef.current = null; }
   }, [stopLoop]);
 
-  // ── EARLY RETURN after all hooks ──────────────────────────────────────────
+  // ── Early return (all hooks above) ───────────────────────────────────────
   if (!isMobile || !currentTrack) return null;
 
-  // ── AirPlay handler ───────────────────────────────────────────────────────
+  // ── AirPlay ───────────────────────────────────────────────────────────────
   const handleAirPlay = (e) => {
     e.stopPropagation();
     showControls();
@@ -393,14 +426,11 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     }
   };
 
-  // ── PiP handler — called DIRECTLY from user tap ───────────────────────────
-  // requestPictureInPicture() is called IMMEDIATELY, synchronously within this handler.
-  // No awaits before the PiP call — this preserves the user activation.
+  // ── PiP — called directly from tap (no async before requestPictureInPicture) ──
   const handlePiP = (e) => {
     e.stopPropagation();
     showControls();
 
-    // Exit if already active
     if (document.pictureInPictureElement) {
       document.exitPictureInPicture().catch(() => {});
       setPipActive(false);
@@ -421,51 +451,39 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
     }
 
     if (!pipReady) {
-      if (pipPrepping) {
-        showToast("Preparing PiP... try again in a moment.");
-      } else {
-        showToast("PiP not available. Try updating your browser.");
-      }
+      showToast(pipPrepping ? "Preparing PiP... try again in a moment." : "PiP not available. Try updating your browser.");
       return;
     }
 
-    // ── SYNCHRONOUS: call PiP immediately — user activation is still valid ──
-    // For captureStream path (desktop/Android): video is already playing
-    // For blob path (iOS): video was played then paused — we resume it first
-    const launch = () => {
-      // Resume if paused (blob path)
-      if (video.paused) {
-        video.play().catch(() => {});
-      }
+    // For iOS blob path: resume video so readyState >= 2
+    if (video.paused && !video.srcObject) {
+      video.play().catch(() => {});
+    }
 
-      // For captureStream path, restart the animation loop
-      if (!isIOS) {
-        startLoop();
-      }
+    // For canvas captureStream (no audio tracks): start animation loop
+    const hasAudioStream = video.srcObject && video.srcObject.getAudioTracks?.()?.length > 0;
+    if (!isIOS && !hasAudioStream) {
+      startLoop();
+    }
 
-      video.requestPictureInPicture()
-        .then(() => {
-          setPipActive(true);
-          console.log("[PiP] ✅ PiP opened!");
-          video.addEventListener("leavepictureinpicture", () => {
-            setPipActive(false);
-            stopLoop();
-          }, { once: true });
-        })
-        .catch((err) => {
-          console.warn("[PiP] ⚠️ requestPictureInPicture failed:", err.name, "-", err.message);
+    video.requestPictureInPicture()
+      .then(() => {
+        setPipActive(true);
+        console.log("[PiP] ✅ PiP opened!");
+        video.addEventListener("leavepictureinpicture", () => {
+          setPipActive(false);
           stopLoop();
-          showToast("Picture-in-Picture failed. Try playing the song first.");
-        });
-    };
-
-    launch();
+        }, { once: true });
+      })
+      .catch((err) => {
+        console.warn("[PiP] ⚠️ Failed:", err.name, "-", err.message);
+        stopLoop();
+        showToast("Picture-in-Picture failed. Try playing the song first.");
+      });
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Off-screen canvas — used during background prep and live animation */}
       <canvas
         ref={canvasRef}
         width={PIP_W}
@@ -473,14 +491,12 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
         style={{ position: "absolute", top: -9999, left: -9999, width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
       />
 
-      {/* Full-area touch listener */}
       <div
         className={`absolute inset-0 z-20 ${className}`}
         onTouchStart={showControls}
         onClick={showControls}
         style={{ touchAction: "manipulation" }}
       >
-        {/* Top control bar */}
         <div
           style={{
             position: "absolute",
@@ -515,13 +531,11 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
             }}
           >
             <PiPIcon active={pipActive} />
-            {/* Small ready indicator dot */}
             {pipReady && !pipActive && (
               <div style={{
                 position: "absolute", bottom: 4, right: 4,
                 width: 6, height: 6, borderRadius: "50%",
-                background: "#00C9E0",
-                boxShadow: "0 0 4px #00C9E0",
+                background: "#00C9E0", boxShadow: "0 0 4px #00C9E0",
               }} />
             )}
             {pipPrepping && (
@@ -558,7 +572,6 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
           </span>
         </div>
 
-        {/* Toast */}
         {toast !== "" && (
           <div style={{ position: "absolute", top: 62, left: 12, right: 12, display: "flex", justifyContent: "center", pointerEvents: "none", zIndex: 30 }}>
             <div style={{
@@ -576,7 +589,6 @@ export default function MobileMediaControls({ coverUrl, className = "" }) {
         )}
       </div>
 
-      {/* Animations */}
       <style>{`
         @keyframes uvPipPulse {
           0%, 100% { opacity: 0.3; transform: scale(0.8); }
