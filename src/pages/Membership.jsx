@@ -176,12 +176,32 @@ export default function Membership() {
               )}
             </div>
 
-            {/* Plan name + billing toggle */}
+            {/* Plan name + price */}
             <div className="relative mb-5">
-              <p className="text-[10px] font-black tracking-[0.3em] uppercase text-yellow-500/80 mb-4">Upper Vibe Plus</p>
+              <p className="text-[10px] font-black tracking-[0.3em] uppercase text-yellow-500/80 mb-3">Upper Vibe Plus</p>
+
+              {/* Price display */}
+              {billing === "monthly" ? (
+                <div className="flex items-end gap-1.5 mb-2">
+                  <span className="font-heading font-black text-white" style={{ fontSize: "2.6rem", lineHeight: 1 }}>$4.99</span>
+                  <span className="text-white/35 text-sm mb-1.5">/month</span>
+                </div>
+              ) : (
+                <div className="mb-2">
+                  <div className="flex items-end gap-1.5">
+                    <span className="font-heading font-black text-white" style={{ fontSize: "2.6rem", lineHeight: 1 }}>$49.99</span>
+                    <span className="text-white/35 text-sm mb-1.5">/year</span>
+                  </div>
+                  <p className="text-xs font-semibold mt-1" style={{ color: "rgba(0,200,220,0.7)" }}>
+                    Save with yearly access
+                  </p>
+                </div>
+              )}
+
+              <p className="text-sm font-semibold mb-4" style={{ color: "rgba(237,184,74,0.85)" }}>Downloads + Academy access</p>
 
               {/* Billing toggle */}
-              <div className="flex items-center gap-1 p-1 rounded-xl mb-4 self-start inline-flex"
+              <div className="flex items-center gap-1 p-1 rounded-xl self-start inline-flex"
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
                 <button
                   onClick={() => setBilling("monthly")}
@@ -204,26 +224,6 @@ export default function Membership() {
                   </span>
                 </button>
               </div>
-
-              {/* Price display */}
-              {billing === "monthly" ? (
-                <div className="flex items-end gap-1.5 mb-2">
-                  <span className="font-heading font-black text-white" style={{ fontSize: "2.6rem", lineHeight: 1 }}>$4.99</span>
-                  <span className="text-white/35 text-sm mb-1.5">/month</span>
-                </div>
-              ) : (
-                <div className="mb-2">
-                  <div className="flex items-end gap-1.5">
-                    <span className="font-heading font-black text-white" style={{ fontSize: "2.6rem", lineHeight: 1 }}>$49.99</span>
-                    <span className="text-white/35 text-sm mb-1.5">/year</span>
-                  </div>
-                  <p className="text-xs font-semibold mt-1" style={{ color: "rgba(0,200,220,0.7)" }}>
-                    Save with yearly access
-                  </p>
-                </div>
-              )}
-
-              <p className="text-sm font-semibold" style={{ color: "rgba(237,184,74,0.85)" }}>Downloads + Academy access</p>
             </div>
 
             <ul className="relative space-y-3 mb-8 flex-1">
