@@ -35,6 +35,12 @@ import Upgrade from './pages/Upgrade';
 import Membership from './pages/Membership';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancelled from './pages/PaymentCancelled';
+import TermsAndConditions from './pages/TermsAndConditions';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import DMCAPolicy from './pages/DMCAPolicy';
+import RefundPolicy from './pages/RefundPolicy';
+import Support from './pages/Support';
+import ForgotPassword from './pages/ForgotPassword';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -91,7 +97,13 @@ const AuthenticatedApp = () => {
         <Route path="/membership" element={<Membership />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
+        <Route path="/terms" element={<TermsAndConditions />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/dmca" element={<DMCAPolicy />} />
+        <Route path="/refunds" element={<RefundPolicy />} />
+        <Route path="/support" element={<Support />} />
       </Route>
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

@@ -17,6 +17,16 @@ const footerLinks = [
     links: [
       { label: "About", to: "/about" },
       { label: "Join Email List", to: "/email-list" },
+      { label: "Contact / Support", to: "/support" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Terms & Conditions", to: "/terms" },
+      { label: "Privacy Policy", to: "/privacy" },
+      { label: "DMCA / Copyright", to: "/dmca" },
+      { label: "Refund Policy", to: "/refunds" },
     ],
   },
 ];
@@ -75,9 +85,9 @@ export default function Footer() {
   return (
     <footer className="border-t mt-10" style={{ borderColor: "rgba(255,255,255,0.05)", background: "rgba(4,4,14,0.8)" }}>
       <div className="max-w-7xl mx-auto px-6 py-14">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-10">
           {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
+          <div className="col-span-2 md:col-span-2">
             <div className="flex items-center gap-2.5 mb-4">
               <img
                 src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png"
@@ -119,7 +129,7 @@ export default function Footer() {
           ))}
 
           {/* Email signup column */}
-          <div className="col-span-2 md:col-span-1">
+          <div className="col-span-2 md:col-span-1 hidden md:block">
             <h4 className="text-[10px] font-black tracking-[0.2em] uppercase text-white/30 mb-4 flex items-center gap-1.5">
               <Mail className="w-3 h-3" /> Stay Updated
             </h4>
@@ -130,14 +140,19 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-3"
+        <div className="mt-12 pt-6 flex flex-col md:flex-row items-center justify-between gap-4"
           style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
           <p className="text-[10px] text-white/20">
             © 2026 Upper Vibe Media. All rights reserved.
           </p>
-          <p className="text-[10px] tracking-[0.25em] uppercase text-white/15">
-            Frequency is Everything
-          </p>
+          <div className="flex items-center gap-4 flex-wrap justify-center">
+            <Link to="/terms" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">Terms</Link>
+            <Link to="/privacy" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">Privacy</Link>
+            <Link to="/dmca" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">DMCA</Link>
+            <Link to="/refunds" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">Refunds</Link>
+            <Link to="/support" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">Support</Link>
+            <Link to="/forgot-password" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">Reset Password</Link>
+          </div>
         </div>
       </div>
     </footer>
