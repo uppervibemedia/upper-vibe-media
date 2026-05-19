@@ -109,7 +109,7 @@ export default function PremiumDownloadModal({ open, onClose }) {
                 {[
                   "Everything in Free Listener",
                   "Build your My Vibe Library",
-                  "Download available songs for offline listening",
+                  "Download tracks & listen offline",
                   "Watch full Upper Vibe Academy videos",
                   "Support Upper Vibe Media",
                 ].map((b) => (
