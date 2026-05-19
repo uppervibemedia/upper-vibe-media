@@ -100,17 +100,24 @@ export default function RadioPage() {
         {/* Audio Visualizer */}
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15, duration: 0.8 }}
-          className="relative mx-auto mb-6 rounded-3xl overflow-hidden"
+          className="relative mx-auto mb-6 rounded-3xl"
           style={{
-            maxWidth: 480,
-            background: "rgba(0,0,0,0.35)",
-            border: "1px solid rgba(0,200,220,0.1)",
+            maxWidth:     480,
+            width:        "100%",
+            background:   "rgba(0,0,0,0.35)",
+            border:       "1px solid rgba(0,200,220,0.1)",
+            overflow:     "hidden",
+            borderRadius: "1.5rem",
           }}>
           <RadioVisualizer isPlaying={playingThisRadioSong} />
-          <div className="absolute inset-0 pointer-events-none"
+          <div
+            className="pointer-events-none"
             style={{
-              background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.6) 100%)"
-            }} />
+              position:   "absolute",
+              inset:      0,
+              background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.6) 100%)",
+            }}
+          />
         </motion.div>
 
         {!currentRadioSong ? (
