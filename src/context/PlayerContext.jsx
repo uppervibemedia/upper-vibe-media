@@ -237,7 +237,24 @@ export function PlayerProvider({ children }) {
         setIsPlaying(false);
       }
     };
-    const onEnded = () => { setIsPlaying(false); onNextRef.current?.(); };
+    const onEnded = () => {
+      // Guard against spurious "ended" events fired by AirPlay/Cast output switching.
+      // A real end: currentTime should be at or very near duration.
+      // AirPlay route-change "ended": currentTime is near 0 or duration is 0/NaN.
+      const dur = audio.duration;
+      const ct  = audio.currentTime;
+      const isRealEnd = isFinite(dur) && dur > 0 && ct >= dur - 1.5;
+
+      if (!isRealEnd) {
+        console.log("[PlayerContext] ⚠️ Ignoring spurious ended event (AirPlay/Cast switch?)",
+          { currentTime: ct, duration: dur });
+        return;
+      }
+
+      console.log("[PlayerContext] ✅ Real track end — advancing to next");
+      setIsPlaying(false);
+      onNextRef.current?.();
+    };
 
     audio.addEventListener("play",   onPlay);
     audio.addEventListener("pause",  onPause);

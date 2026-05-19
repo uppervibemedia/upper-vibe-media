@@ -141,17 +141,27 @@ export function RadioProvider({ children }) {
   // We need refs to the latest state values for use inside callbacks registered once
   const stateRef = useRef({});
   useEffect(() => {
-    stateRef.current = { allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong };
-  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong]);
+    stateRef.current = { allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType };
+  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType]);
+
+  // Keep sourceType in stateRef so handlers can check it without stale closures
+  // (sourceType is already in stateRef via the effect above, but we name it explicitly)
 
   // Register next/prev handlers ONCE — they read latest state via stateRef
   useEffect(() => {
     const handleNext = () => {
       const { allTracks: aT, radioQueue: q, radioHistory: h, historyIndex: hi, currentRadioSong: cs } = stateRef.current;
+      // Only advance the radio queue when we are actually in radio mode.
+      // This prevents AirPlay "ended" ghosts or non-radio song endings from cycling the radio list.
+      if (stateRef.current.sourceType !== "radio") {
+        console.log("[RadioContext] ⚠️ handleNext skipped — not in radio mode (sourceType:", stateRef.current.sourceType, ")");
+        return;
+      }
       _playNext(aT, q, h, hi, cs);
     };
     const handlePrev = () => {
       const { radioHistory: h, historyIndex: hi, currentRadioSong: cs, radioQueue: q } = stateRef.current;
+      if (stateRef.current.sourceType !== "radio") return;
       _playPrev(h, hi, cs, q);
     };
 
