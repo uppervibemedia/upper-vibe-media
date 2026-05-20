@@ -50,6 +50,31 @@ function getOrCreateAudioContext(audioElement) {
 export function resumeGlobalAudioContext() { resumeAudioContext(); }
 export function getGlobalAnalyser(audioElement) { return getOrCreateAudioContext(audioElement); }
 
+// ─── safePlay: handles low readyState, stacked play requests ──────────────
+let _playPending = false;
+function safePlay(audio) {
+  if (_playPending) return;
+  resumeAudioContext();
+
+  if (audio.readyState >= 3) {
+    // HAVE_FUTURE_DATA or better — can play immediately
+    _playPending = true;
+    audio.play().catch(() => {}).finally(() => { _playPending = false; });
+  } else {
+    // Not enough data yet — wait for canplay then play
+    _playPending = true;
+    const onCanPlay = () => {
+      audio.removeEventListener("canplay", onCanPlay);
+      audio.play().catch(() => {}).finally(() => { _playPending = false; });
+    };
+    audio.addEventListener("canplay", onCanPlay);
+    // If src is set but not loading, kick off load
+    if (audio.networkState === audio.NETWORK_IDLE || audio.networkState === audio.NETWORK_EMPTY) {
+      audio.load();
+    }
+  }
+}
+
 export function PlayerProvider({ children }) {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying,    setIsPlaying]    = useState(false);
@@ -72,8 +97,7 @@ export function PlayerProvider({ children }) {
       (audio.src && audio.src.endsWith(currentTrack.audio_url));
 
     if (isSameTrack) {
-      resumeAudioContext();
-      if (audio.paused) audio.play().catch(() => {});
+      if (audio.paused) safePlay(audio);
       setIsPlaying(true);
       return;
     }
@@ -151,14 +175,15 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
       if (!audio.src || audio.src === window.location.href) return;
-      resumeAudioContext();
-      audio.play().catch(() => {});
+      // Do not reset currentTime or reload src — resume from wherever iOS left off
+      safePlay(audio);
       // State will sync via the native "play" event listener above
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
       const audio = audioRef.current;
       if (!audio.paused) audio.pause();
+      // Do not reset src or currentTime
       // State will sync via the native "pause" event listener above
     });
 
@@ -186,8 +211,7 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     if (!audio.src) return;
     if (audio.paused) {
-      resumeAudioContext();
-      audio.play().catch(() => {});
+      safePlay(audio);
     } else {
       audio.pause();
     }
