@@ -85,6 +85,10 @@ export function PlayerProvider({ children }) {
   // 1. 500ms lock — prevents stacked play() promises
   // 2. Awaits AudioContext resume — prevents catch-up burst on Safari
   // 3. Forces playbackRate = 1 — guards OS catch-up rate adjustment
+  // NOTE: We intentionally do NOT snap/re-seek currentTime here.
+  //       Re-seeking causes Safari to re-buffer for 1-3 sec, producing the
+  //       "sped-up / glitch" artifact. Position seeking is only done by the
+  //       caller (togglePlay / MediaSession play handler) BEFORE calling safePlay.
   const safePlay = useCallback(async (audio) => {
     if (playLockRef.current) {
       console.log("[Player] safePlay skipped — lock active");
@@ -100,13 +104,6 @@ export function PlayerProvider({ children }) {
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
       if (!audio.paused) { unlock(); return; } // already playing — no-op
-
-      // Snap currentTime to flush any stale AudioContext buffer accumulated during suspension.
-      // This is the primary killer of the "speed burst" on Radio / Safari return-from-lock.
-      const snapTime = audio.currentTime;
-      if (isFinite(snapTime) && snapTime > 0) {
-        try { audio.currentTime = snapTime; } catch {}
-      }
 
       // Final rate assertion right before play()
       audio.playbackRate        = 1;
@@ -254,31 +251,15 @@ export function PlayerProvider({ children }) {
         return;
       }
 
-      // Kill any iOS catch-up burst:
-      // If audio is still running (iOS kept it alive through lock screen),
-      // pause immediately, snap currentTime to flush the stale buffer,
-      // then save position. User must press Play to resume.
-      if (!audio.paused) {
-        const ct = audio.currentTime;
-        audio.pause();
-        // Snap currentTime to drain the AudioContext's stale buffered data
-        try { audio.currentTime = ct; } catch {}
-        audio.playbackRate        = 1;
-        audio.defaultPlaybackRate = 1;
-        savePosition(ct);
-        console.log("[Player] onShow — killed catch-up, snapped to", ct.toFixed(2));
-      }
+      // Reset rate in case iOS drifted it during suspension
+      audio.playbackRate        = 1;
+      audio.defaultPlaybackRate = 1;
 
-      // Also reset AudioContext rate in case it drifted
-      if (_audioCtx && _audioCtx.state === "running") {
-        // No direct playbackRate on AudioContext, but assert on element
-        audio.playbackRate        = 1;
-        audio.defaultPlaybackRate = 1;
-      }
-
-      // UI sync only — never auto-play
-      setIsPlaying(false);
-      console.log("[Player] onShow — synced paused. savedTime:", savedTimeRef.current.toFixed(2));
+      // doHide already paused + saved position — do NOT re-pause or re-seek here.
+      // Re-seeking in doShow causes Safari to re-buffer for 1-3 sec (the "glitch").
+      // Just sync UI state; user must press Play to resume.
+      setIsPlaying(audio.paused ? false : true);
+      console.log("[Player] onShow — rate reset. paused:", audio.paused, "savedTime:", savedTimeRef.current.toFixed(2));
     };
 
     const onHide = () => {
@@ -303,13 +284,13 @@ export function PlayerProvider({ children }) {
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onHide);
     window.addEventListener("pageshow", onShow);
-    window.addEventListener("focus",    onShow);
+    // NOTE: "focus" intentionally NOT wired to onShow — it double-fires with
+    // visibilitychange and corrupts savedTime, causing the 3-sec glitch on resume.
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("pageshow", onShow);
-      window.removeEventListener("focus",    onShow);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savePosition]);
