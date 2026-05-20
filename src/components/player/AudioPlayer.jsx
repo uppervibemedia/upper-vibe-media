@@ -1,47 +1,109 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { usePlayer, sharedHiddenRef } from "../../context/PlayerContext";
 
 export default function AudioPlayer() {
-  const { currentTrack, isPlaying, togglePlay, stopPlaying, audioRef, handleNext, handlePrev } = usePlayer();
+  const {
+    currentTrack,
+    isPlaying,
+    togglePlay,
+    stopPlaying,
+    audioRef,
+    handleNext,
+    handlePrev,
+    lastTimeRef,
+  } = usePlayer();
+
   const [progress,   setProgress]   = useState(0);
   const [duration,   setDuration]   = useState(0);
   const [currentSec, setCurrentSec] = useState(0);
   const [volume,     setVolume]     = useState(80);
   const [muted,      setMuted]      = useState(false);
 
+  // Local ref mirrors lastTimeRef — lets us detect real forward movement
+  const localLastTimeRef = useRef(0);
+
   useEffect(() => {
     const audio = audioRef.current;
 
     const onTimeUpdate = () => {
-      // Freeze progress bar when page is hidden (sharedHiddenRef set by PlayerContext)
-      if (sharedHiddenRef.current || audio.paused) return;
-      const pct = (audio.currentTime / audio.duration) * 100 || 0;
+      // ── Strict progress guard ─────────────────────────────────────────
+      // Only advance the bar if the audio is truly playing forward.
+      // Conditions that must ALL be true:
+      //   1. Page is visible (sharedHiddenRef.current === false)
+      //   2. Audio is not paused
+      //   3. Audio has enough data (readyState >= 2 = HAVE_CURRENT_DATA)
+      //   4. currentTime is actually moving forward (not stuck, not replaying)
+      if (sharedHiddenRef.current) return;
+      if (audio.paused)            return;
+      if (audio.readyState < 2)    return;
+
+      const ct = audio.currentTime;
+      // If time hasn't moved forward — freeze (handles iOS buffering stalls)
+      if (ct <= localLastTimeRef.current && localLastTimeRef.current > 0) return;
+
+      localLastTimeRef.current = ct;
+      if (lastTimeRef) lastTimeRef.current = ct; // keep PlayerContext in sync
+
+      const pct = (ct / audio.duration) * 100 || 0;
       setProgress(pct);
-      setCurrentSec(audio.currentTime);
+      setCurrentSec(ct);
     };
 
-    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
 
-    // Snap progress when play resumes (so bar reflects real position after restore)
+    // On every play event, snap the bar to the real current position immediately.
+    // This handles resume-after-hide: shows correct position before timeupdate fires.
     const onPlay = () => {
-      const pct = (audio.currentTime / audio.duration) * 100 || 0;
+      const ct  = audio.currentTime;
+      const pct = (ct / audio.duration) * 100 || 0;
+      localLastTimeRef.current = ct;
       setProgress(pct);
-      setCurrentSec(audio.currentTime);
+      setCurrentSec(ct);
+    };
+
+    // On pause — freeze bar at current real position, do not reset to 0
+    const onPause = () => {
+      const ct  = audio.currentTime;
+      const pct = (ct / audio.duration) * 100 || 0;
+      setProgress(pct);
+      setCurrentSec(ct);
+    };
+
+    // On new src load — reset local tracking
+    const onEmptied = () => {
+      localLastTimeRef.current = 0;
+      setProgress(0);
+      setCurrentSec(0);
+      setDuration(0);
     };
 
     audio.addEventListener("timeupdate",     onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("play",           onPlay);
+    audio.addEventListener("pause",          onPause);
+    audio.addEventListener("emptied",        onEmptied);
 
     return () => {
       audio.removeEventListener("timeupdate",     onTimeUpdate);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("play",           onPlay);
+      audio.removeEventListener("pause",          onPause);
+      audio.removeEventListener("emptied",        onEmptied);
     };
-  }, [audioRef]);
+  }, [audioRef, lastTimeRef]);
+
+  // Reset local tracking when track changes
+  useEffect(() => {
+    localLastTimeRef.current = 0;
+    setProgress(0);
+    setCurrentSec(0);
+    setDuration(0);
+  }, [currentTrack?.audio_url]);
 
   useEffect(() => {
     audioRef.current.volume = muted ? 0 : volume / 100;
@@ -50,9 +112,11 @@ export default function AudioPlayer() {
   const handleSeek = (val) => {
     const audio = audioRef.current;
     if (!audio.duration) return;
-    audio.currentTime = (val[0] / 100) * audio.duration;
+    const newTime = (val[0] / 100) * audio.duration;
+    audio.currentTime        = newTime;
+    localLastTimeRef.current = newTime;
     setProgress(val[0]);
-    setCurrentSec(audio.currentTime);
+    setCurrentSec(newTime);
   };
 
   const formatTime = (secs) => {
