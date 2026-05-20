@@ -157,75 +157,32 @@ export function PlayerProvider({ children }) {
 
   // ── Background/lock-screen handling ──────────────────────────────────────
   //
-  // Safari (in-browser): Media Session keeps audio alive through lock screen.
-  //   → Do NOT pause on hide. Just sync UI on return.
-  //
-  // Standalone/PWA (Home Screen icon): iOS suspends the page process on lock,
-  //   killing the audio pipeline. Attempting to keep playing causes glitches.
-  //   → Pause cleanly on hide, save position, restore on return, wait for Play.
+  // Both Safari and PWA/standalone mode:
+  //   → Do NOT auto-pause on visibilitychange or pagehide.
+  //   → Media Session handlers own play/pause for lock screen / Control Center.
+  //   → On return, only sync React UI state from actual audio element.
+  //   → Never reload src, never reset currentTime.
   //
   const savedTimeRef = useRef(0);
 
   useEffect(() => {
-    const isIOS        = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const isStandalone = window.navigator.standalone === true ||
-                         window.matchMedia("(display-mode: standalone)").matches;
-
     const audio = audioRef.current;
 
-    if (isIOS && isStandalone) {
-      // ── Standalone/PWA mode: pause-on-hide workaround ──────────────────
-      const onHide = () => {
-        if (!audio.paused) {
-          savedTimeRef.current = audio.currentTime;
-          audio.pause();
-          // isPlaying syncs via native "pause" event listener
-        }
-      };
+    const syncUI = () => {
+      if (!audio.src) return;
+      setIsPlaying(!audio.paused);
+    };
 
-      const onShow = () => {
-        // Restore position — do NOT auto-play, wait for user
-        if (
-          savedTimeRef.current > 0 &&
-          isFinite(audio.duration) &&
-          audio.duration > 0 &&
-          Math.abs(audio.currentTime - savedTimeRef.current) > 0.5
-        ) {
-          audio.currentTime = savedTimeRef.current;
-        }
-        if (audio.src) setIsPlaying(!audio.paused);
-      };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") syncUI();
+    };
 
-      const onVisibility = () => {
-        if (document.visibilityState === "hidden") onHide();
-        else if (document.visibilityState === "visible") onShow();
-      };
-
-      document.addEventListener("visibilitychange", onVisibility);
-      window.addEventListener("pagehide", onHide);
-      window.addEventListener("pageshow", onShow);
-      return () => {
-        document.removeEventListener("visibilitychange", onVisibility);
-        window.removeEventListener("pagehide", onHide);
-        window.removeEventListener("pageshow", onShow);
-      };
-
-    } else {
-      // ── Safari / desktop: only sync UI on return, never pause ──────────
-      const syncUI = () => {
-        if (!audio.src) return;
-        setIsPlaying(!audio.paused);
-      };
-      const onVisibility = () => {
-        if (document.visibilityState === "visible") syncUI();
-      };
-      document.addEventListener("visibilitychange", onVisibility);
-      window.addEventListener("pageshow", syncUI);
-      return () => {
-        document.removeEventListener("visibilitychange", onVisibility);
-        window.removeEventListener("pageshow", syncUI);
-      };
-    }
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", syncUI);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", syncUI);
+    };
   }, []);
 
   // ── Media Session — lock screen / Control Center ──────────────────────────
@@ -249,16 +206,6 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
       if (!audio.src || audio.src === window.location.href) return;
-      // Restore saved position if we paused due to backgrounding
-      if (
-        savedTimeRef.current > 0 &&
-        isFinite(audio.duration) &&
-        audio.duration > 0 &&
-        Math.abs(audio.currentTime - savedTimeRef.current) > 0.5
-      ) {
-        audio.currentTime = savedTimeRef.current;
-      }
-      savedTimeRef.current = 0;
       safePlay(audio);
     });
 
@@ -289,16 +236,6 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     if (!audio.src) return;
     if (audio.paused) {
-      // On mobile: restore saved position before playing (no catch-up)
-      if (
-        savedTimeRef.current > 0 &&
-        isFinite(audio.duration) &&
-        audio.duration > 0 &&
-        Math.abs(audio.currentTime - savedTimeRef.current) > 0.5
-      ) {
-        audio.currentTime = savedTimeRef.current;
-      }
-      savedTimeRef.current = 0;
       safePlay(audio);
     } else {
       safePause(audio);
