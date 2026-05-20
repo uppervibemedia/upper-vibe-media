@@ -7,6 +7,7 @@ import { usePlayer } from "../../context/PlayerContext";
 import { RadioProvider } from "../../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
 import { User } from "lucide-react";
+import IOSInstallBanner from "../shared/IOSInstallBanner";
 
 function TopRightAuth() {
   const { user, isAuthenticated, navigateToLogin } = useAuth();
@@ -51,6 +52,7 @@ function LayoutContent() {
         <Outlet />
       </main>
       {!isRadioPage && <AudioPlayer />}
+      <IOSInstallBanner />
     </div>
   );
 }
