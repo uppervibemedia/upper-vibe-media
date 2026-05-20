@@ -41,6 +41,8 @@ import DMCAPolicy from './pages/DMCAPolicy';
 import RefundPolicy from './pages/RefundPolicy';
 import Support from './pages/Support';
 import ForgotPassword from './pages/ForgotPassword';
+import SettingsPage from './pages/SettingsPage';
+import FAQ from './pages/FAQ';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -102,6 +104,8 @@ const AuthenticatedApp = () => {
         <Route path="/dmca" element={<DMCAPolicy />} />
         <Route path="/refunds" element={<RefundPolicy />} />
         <Route path="/support" element={<Support />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/faq" element={<FAQ />} />
       </Route>
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="*" element={<PageNotFound />} />

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard } from "lucide-react";
+import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard, HelpCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -169,6 +169,28 @@ export default function Account() {
             <div className="flex-1">
               <p className="text-sm font-bold text-white">Downloads</p>
               <p className="text-xs text-white/35">Your downloaded tracks</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/20" />
+          </Link>
+
+          <Link to="/settings"
+            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-white/12"
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <Settings className="w-5 h-5 text-white/40" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-white">Settings</p>
+              <p className="text-xs text-white/35">Playback, appearance, notifications</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/20" />
+          </Link>
+
+          <Link to="/faq"
+            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-white/12"
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <HelpCircle className="w-5 h-5 text-cyan-400/50" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-white">FAQ & Help</p>
+              <p className="text-xs text-white/35">Common questions and answers</p>
             </div>
             <ChevronRight className="w-4 h-4 text-white/20" />
           </Link>
