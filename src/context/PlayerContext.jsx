@@ -156,14 +156,7 @@ export function PlayerProvider({ children }) {
       (audio.src && audio.src.endsWith(currentTrack.audio_url));
 
     if (isSameTrack) {
-      if (audio.paused) {
-        // If we have a saved position (e.g. from PWA background pause), seek to it first
-        if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
-          try { audio.currentTime = savedTimeRef.current; } catch {}
-          clearPosition();
-        }
-        safePlay(audio);
-      }
+      if (audio.paused) safePlay(audio);
       return;
     }
 

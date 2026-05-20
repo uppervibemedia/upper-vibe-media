@@ -38,7 +38,7 @@ function buildQueue(allTracks, currentSongId, likedIds = []) {
 }
 
 export function RadioProvider({ children }) {
-  const { registerNextHandler, registerPrevHandler, playTrack, sourceType, currentTrack, isPlaying, audioRef, safePlay, togglePlay, clearPlayLocks, forcePauseForBackground } = usePlayer();
+  const { registerNextHandler, registerPrevHandler, playTrack, sourceType, currentTrack, isPlaying, audioRef, safePlay, togglePlay, clearPlayLocks } = usePlayer();
 
   const [allTracks,        setAllTracks]        = useState([]);
   const [tracksLoaded,     setTracksLoaded]     = useState(false);
@@ -47,8 +47,7 @@ export function RadioProvider({ children }) {
   const [radioHistory,     setRadioHistory]     = useState([]);
   const [historyIndex,     setHistoryIndex]     = useState(-1);
   const [likedTrackIds,    setLikedTrackIds]    = useState([]);
-  // PWA-only: true when the app was hidden/locked while Radio was playing
-  const [pwaRadioPaused,   setPwaRadioPaused]   = useState(false);
+  const [pwaRadioPaused,   setPwaRadioPaused]   = useState(false); // kept for API compat
 
   // ── Load tracks once ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -283,97 +282,41 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 🎯 Jumped to:", song.title);
   }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack]);
 
-  // ── PWA-only: Auto-pause on background, show Resume banner on return ────────
-  // PlayerContext's generic visibility handler is a no-op for PWA Radio.
-  // This effect is the sole owner of that lifecycle.
-  //
-  // ON HIDE: force-pause the audio (same net result as the manual Pause button),
-  //          clear all play/pause locks so the lock-screen Play button can fire cleanly.
-  // ON SHOW: clear locks again, show Resume banner if we auto-paused.
-  //
-  // LOCK PROBLEM: safePause has a 500ms lock — visibilitychange + blur fire together
-  // and the second call gets skipped. We bypass the lock by calling audio.pause()
-  // directly (after clearing locks), which is exactly what safePause does internally,
-  // then we call clearPlayLocks() so the Media Session play handler is unblocked.
-  const wasPlayingBeforeHideRef = useRef(false);
-  const hideFiredRef = useRef(false); // debounce — visibilitychange + blur fire together
-
+  // ── PWA-only: On return from background, clear any stuck locks ───────────
+  // iOS PWA keeps audio playing in the background — we do NOT pause on hide.
+  // That's what makes lock-screen controls work natively.
+  // We only need to clear play/pause locks on show, in case a stale lock
+  // survived from a previous interaction.
   useEffect(() => {
     const isPwa =
       window.navigator.standalone === true ||
       window.matchMedia("(display-mode: standalone)").matches;
     if (!isPwa) return;
 
-    const onHide = () => {
-      if (hideFiredRef.current) return; // already handled this hide cycle
-      hideFiredRef.current = true;
-
-      const { sourceType: st } = stateRef.current;
-      if (st !== "radio") return;
-
-      const audio = audioRef.current;
-      if (!audio || !audio.src) return;
-
-      const wasPlaying = !audio.paused;
-      console.log("[PWA Radio] onHide —", { wasPlaying, currentTime: audio.currentTime?.toFixed(2), readyState: audio.readyState });
-
-      if (wasPlaying) {
-        // forcePauseForBackground: bypasses all locks, saves currentTime to savedTimeRef,
-        // calls setIsPlaying(false) — identical net result to safePause(audio, true)
-        // but always goes through even when locks are active from rapid events.
-        forcePauseForBackground();
-        wasPlayingBeforeHideRef.current = true;
-        console.log("[PWA Radio] onHide — forcePauseForBackground called");
-      } else {
-        wasPlayingBeforeHideRef.current = false;
-      }
-    };
-
     const onShow = () => {
-      hideFiredRef.current = false; // reset debounce for next hide cycle
-
       const { sourceType: st } = stateRef.current;
       if (st !== "radio") return;
-
-      // Always clear locks on return — prevents lock-screen Play from being blocked
       clearPlayLocks();
-
-      console.log("[PWA Radio] onShow —", {
-        wasPlayingBeforeHide: wasPlayingBeforeHideRef.current,
-        audioElement: {
-          paused:     audioRef.current?.paused,
-          time:       audioRef.current?.currentTime,
-          readyState: audioRef.current?.readyState,
-        },
+      console.log("[PWA Radio] onShow — cleared locks, audio:", {
+        paused:     audioRef.current?.paused,
+        time:       audioRef.current?.currentTime?.toFixed(2),
+        readyState: audioRef.current?.readyState,
       });
-
-      if (wasPlayingBeforeHideRef.current) {
-        wasPlayingBeforeHideRef.current = false;
-        setPwaRadioPaused(true);
-        console.log("[PWA Radio] onShow — showing Resume banner");
-      }
     };
 
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") onHide();
-      else onShow();
+      if (document.visibilityState === "visible") onShow();
     };
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", onHide);
-    window.addEventListener("blur",     onHide);
-    window.addEventListener("focus",    onShow);
     window.addEventListener("pageshow", onShow);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", onHide);
-      window.removeEventListener("blur",     onHide);
-      window.removeEventListener("focus",    onShow);
       window.removeEventListener("pageshow", onShow);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clearPlayLocks, forcePauseForBackground]);
+  }, [clearPlayLocks]);
 
   const clearPwaRadioPaused = useCallback(() => setPwaRadioPaused(false), []);
 
