@@ -213,32 +213,44 @@ export function PlayerProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearPosition, currentTrack]);
 
-  // ── Visibility / background handler ──────────────────────────────────────
+  // ── Strict safe-pause on ALL hide events ─────────────────────────────────
   //
-  // iOS REALITY: When the screen locks, iOS does NOT fire visibilitychange.
-  // Audio keeps playing natively through the lock screen. The Media Session
-  // "pause" action fires if the user taps pause on the lock screen.
+  // RULE: Stable playback > background playback.
+  // Pause immediately whenever the page hides, the phone locks, the user
+  // switches apps, or audio focus changes. Never auto-resume.
   //
-  // We only use visibilitychange to:
-  //   - ON HIDE: freeze the progress bar (sharedHiddenRef) — do NOT pause audio
-  //   - ON SHOW: unfreeze the progress bar, sync UI state from real audio state
+  // ON HIDE (visibilitychange→hidden, pagehide, blur, audioFocus loss):
+  //   • pause audio immediately
+  //   • save currentTime
+  //   • set isPlaying = false
+  //   • freeze progress bar (sharedHiddenRef)
+  //   • force-release lock so user's next Play tap is never blocked
+  //
+  // ON SHOW (visibilitychange→visible, pageshow, focus):
+  //   • unfreeze progress bar
+  //   • sync isPlaying from real audio state (keep paused — never auto-play)
+  //   • force-release lock
   //
   useEffect(() => {
     const audio = audioRef.current;
 
     const onHide = () => {
-      // Freeze the progress bar so it doesn't tick while page is hidden
       sharedHiddenRef.current = true;
-      console.log("[Player] onHide — page hidden, audio.paused:", audio.paused);
+      if (!audio.paused) {
+        savePosition(audio.currentTime);
+        try { audio.pause(); } catch {}
+        setIsPlaying(false);
+        console.log("[Player] onHide → paused at", audio.currentTime);
+      }
+      forceReleaseLock();
     };
 
     const onShow = () => {
       sharedHiddenRef.current = false;
-      // Sync UI to real audio state — covers both "still playing" and "user paused from lock screen"
-      const actuallyPlaying = !audio.paused && !audio.ended && audio.readyState >= 2;
-      setIsPlaying(actuallyPlaying);
+      // Sync to real audio state — stay paused, never auto-play
+      setIsPlaying(!audio.paused && !audio.ended && audio.readyState >= 2);
       forceReleaseLock();
-      console.log("[Player] onShow — audio.paused:", audio.paused, "→ isPlaying:", actuallyPlaying);
+      console.log("[Player] onShow — audio.paused:", audio.paused);
     };
 
     const onVisibility = () => {
@@ -247,15 +259,19 @@ export function PlayerProvider({ children }) {
     };
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", onHide);
-    window.addEventListener("pageshow", onShow);
+    window.addEventListener("pagehide",  onHide);
+    window.addEventListener("pageshow",  onShow);
+    window.addEventListener("blur",      onHide);
+    window.addEventListener("focus",     onShow);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", onHide);
-      window.removeEventListener("pageshow", onShow);
+      window.removeEventListener("pagehide",  onHide);
+      window.removeEventListener("pageshow",  onShow);
+      window.removeEventListener("blur",      onHide);
+      window.removeEventListener("focus",     onShow);
     };
-  }, [forceReleaseLock]);
+  }, [savePosition, forceReleaseLock]);
 
   // ── Media Session (lock screen controls) ─────────────────────────────────
   const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
@@ -288,18 +304,18 @@ export function PlayerProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack]);
 
-  // ── Media Session action handlers ─────────────────────────────────────────
-  // IMPORTANT: These handlers are called by iOS with a real user gesture
-  // context. We call audio.play() / audio.pause() directly here — no lock
-  // guards — because the OS serialises these calls itself and any lock we hold
-  // from a previous in-app action would silently block resumption.
+  // ── Media Session action handlers (lock screen controls) ─────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
 
     navigator.mediaSession.setActionHandler("play", async () => {
       const audio = audioRef.current;
       if (!audio.src) return;
-      forceReleaseLock(); // clear any stale lock
+      forceReleaseLock();
+      // Restore saved position before resuming
+      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = savedTimeRef.current;
+      }
       try {
         await resumeAudioContext();
         audio.playbackRate = 1;
@@ -314,7 +330,9 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.setActionHandler("pause", () => {
       const audio = audioRef.current;
       if (!audio.paused) {
+        savePosition(audio.currentTime);
         audio.pause();
+        setIsPlaying(false);
         console.log("[MediaSession] pause → paused at", audio.currentTime);
       }
     });
@@ -327,7 +345,7 @@ export function PlayerProvider({ children }) {
         try { navigator.mediaSession.setActionHandler(a, null); } catch {}
       });
     };
-  }, [forceReleaseLock]);
+  }, [savePosition, forceReleaseLock]);
 
   // Keep Media Session badge in sync
   useEffect(() => {
