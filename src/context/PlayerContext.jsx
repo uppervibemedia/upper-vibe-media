@@ -128,61 +128,11 @@ export function PlayerProvider({ children }) {
     });
   }, [currentTrack]);
 
-  // ── Sync React state FROM native audio events (single mount) ─────────────
-  // isPlaying is DERIVED from the real audio element, not the other way around.
-  useEffect(() => {
-    const audio = audioRef.current;
-
-    const onPlay  = () => {
-      resumeAudioContext();
-      lastTimeRef.current = audio.currentTime;
-      setIsPlaying(true);
-      startStallDetector();
-    };
-    const onPause = () => {
-      if (audio.readyState >= 2) {
-        setIsPlaying(false);
-        stopStallDetector();
-      }
-    };
-    const onEnded = () => {
-      const dur = audio.duration;
-      const ct  = audio.currentTime;
-      if (!isFinite(dur) || dur <= 0 || ct < dur - 1.5) return; // spurious
-      setIsPlaying(false);
-      stopStallDetector();
-      onNextRef.current?.();
-    };
-
-    audio.addEventListener("play",  onPlay);
-    audio.addEventListener("pause", onPause);
-    audio.addEventListener("ended", onEnded);
-    return () => {
-      audio.removeEventListener("play",  onPlay);
-      audio.removeEventListener("pause", onPause);
-      audio.removeEventListener("ended", onEnded);
-    };
-  }, [startStallDetector, stopStallDetector]);
-
-  // ── Background/lock-screen + fake-playback handling ─────────────────────
-  //
-  // Both Safari and PWA/standalone:
-  //   → Do NOT auto-pause on visibilitychange or pagehide.
-  //   → Media Session handlers own play/pause for lock screen / Control Center.
-  //   → On return, sync React UI state from actual audio element.
-  //   → Never reload src, never reset currentTime.
-  //
-  // PWA-only stall detector:
-  //   iOS PWA suspends audio on lock but never fires "pause". currentTime
-  //   freezes while isPlaying stays true → fake progress bar.
-  //   Fix: poll every 2s. If currentTime hasn't moved and audio isn't
-  //   genuinely paused/ended, treat it as stalled → set isPlaying = false.
-  //
+  // ── PWA stall-detector refs and callbacks (declared before any useEffect) ──
   const savedTimeRef   = useRef(0);
   const lastTimeRef    = useRef(0);
   const stallTimerRef  = useRef(null);
 
-  // Start/stop the stall-detector based on isPlaying state
   const startStallDetector = useCallback(() => {
     const isStandalone =
       window.navigator.standalone === true ||
@@ -222,6 +172,43 @@ export function PlayerProvider({ children }) {
     }
   }, []);
 
+  // ── Sync React state FROM native audio events (single mount) ─────────────
+  // isPlaying is DERIVED from the real audio element, not the other way around.
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const onPlay  = () => {
+      resumeAudioContext();
+      lastTimeRef.current = audio.currentTime;
+      setIsPlaying(true);
+      startStallDetector();
+    };
+    const onPause = () => {
+      if (audio.readyState >= 2) {
+        setIsPlaying(false);
+        stopStallDetector();
+      }
+    };
+    const onEnded = () => {
+      const dur = audio.duration;
+      const ct  = audio.currentTime;
+      if (!isFinite(dur) || dur <= 0 || ct < dur - 1.5) return; // spurious
+      setIsPlaying(false);
+      stopStallDetector();
+      onNextRef.current?.();
+    };
+
+    audio.addEventListener("play",  onPlay);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("ended", onEnded);
+    return () => {
+      audio.removeEventListener("play",  onPlay);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, [startStallDetector, stopStallDetector]);
+
+  // ── Background/lock-screen + fake-playback handling ─────────────────────
   useEffect(() => {
     const audio = audioRef.current;
 
