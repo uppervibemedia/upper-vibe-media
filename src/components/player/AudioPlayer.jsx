@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { usePlayer } from "../../context/PlayerContext";
+import { usePlayer, sharedHiddenRef } from "../../context/PlayerContext";
 
 export default function AudioPlayer() {
   const { currentTrack, isPlaying, togglePlay, stopPlaying, audioRef, handleNext, handlePrev } = usePlayer();
@@ -12,22 +12,12 @@ export default function AudioPlayer() {
   const [volume,     setVolume]     = useState(80);
   const [muted,      setMuted]      = useState(false);
 
-  // Track whether we are hidden — freeze progress when paused
-  const hiddenRef = useRef(false);
-
-  useEffect(() => {
-    const onVisibility = () => { hiddenRef.current = document.visibilityState === "hidden"; };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
-
   useEffect(() => {
     const audio = audioRef.current;
 
     const onTimeUpdate = () => {
-      // Do not move the progress bar while the page is hidden or audio is paused
-      // This prevents fake forward movement while the OS is silently letting audio drift
-      if (hiddenRef.current || audio.paused) return;
+      // Freeze progress bar when page is hidden (sharedHiddenRef set by PlayerContext)
+      if (sharedHiddenRef.current || audio.paused) return;
       const pct = (audio.currentTime / audio.duration) * 100 || 0;
       setProgress(pct);
       setCurrentSec(audio.currentTime);

@@ -1,9 +1,6 @@
 import React, { useRef, useEffect, useCallback } from "react";
 import { usePlayer, getGlobalAnalyser } from "../../context/PlayerContext";
 
-// ─── Single RAF loop ID — prevents stacking animation loops ───────────────
-let _globalRafId = null;
-
 export default function RadioVisualizer({ isPlaying }) {
   const canvasRef     = useRef(null);
   const rafRef        = useRef(null);
@@ -135,17 +132,6 @@ export default function RadioVisualizer({ isPlaying }) {
       rafRef.current = null;
       console.log("[RadioVisualizer] ⏹ Animation loop stopped");
     }
-  }, []);
-
-  // ── Register this canvas as the PiP visual source ───────────────────────
-  useEffect(() => {
-    // Register for both CastPiPButton (desktop) and MobileMediaControls (mobile)
-    if (window._uvSetPiPVisual) window._uvSetPiPVisual(canvasRef.current);
-    window._uvPiPCanvas = canvasRef.current;
-    return () => {
-      if (window._uvSetPiPVisual) window._uvSetPiPVisual(null);
-      window._uvPiPCanvas = null;
-    };
   }, []);
 
   // ── Start / switch animation loop when isPlaying changes ────────────────

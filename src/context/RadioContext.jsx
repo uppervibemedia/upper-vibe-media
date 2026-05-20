@@ -160,18 +160,22 @@ export function RadioProvider({ children }) {
   // Register next/prev handlers ONCE — they read latest state via stateRef
   useEffect(() => {
     const handleNext = () => {
-      const { allTracks: aT, radioQueue: q, radioHistory: h, historyIndex: hi, currentRadioSong: cs, likedTrackIds: liked } = stateRef.current;
-      // Only advance the radio queue when we are actually in radio mode.
-      // This prevents AirPlay "ended" ghosts or non-radio song endings from cycling the radio list.
-      if (stateRef.current.sourceType !== "radio") {
-        console.log("[RadioContext] ⚠️ handleNext skipped — not in radio mode (sourceType:", stateRef.current.sourceType, ")");
+      // SAFETY: only advance the radio queue when sourceType is "radio".
+      // If a non-radio song ends (Music page, SongPage, etc.) this handler fires
+      // but must not hijack the radio queue — return immediately.
+      const { sourceType } = stateRef.current;
+      if (sourceType !== "radio") {
+        console.log("[RadioContext] ⚠️ handleNext skipped — sourceType is", sourceType);
         return;
       }
+      const { allTracks: aT, radioQueue: q, radioHistory: h, historyIndex: hi, currentRadioSong: cs, likedTrackIds: liked } = stateRef.current;
       _playNext(aT, q, h, hi, cs, liked);
     };
     const handlePrev = () => {
+      // SAFETY: same guard — only navigate radio history when in radio mode
+      const { sourceType } = stateRef.current;
+      if (sourceType !== "radio") return;
       const { radioHistory: h, historyIndex: hi, currentRadioSong: cs, radioQueue: q } = stateRef.current;
-      if (stateRef.current.sourceType !== "radio") return;
       _playPrev(h, hi, cs, q);
     };
 

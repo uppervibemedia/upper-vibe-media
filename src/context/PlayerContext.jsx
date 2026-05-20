@@ -13,6 +13,10 @@ const persistentAudio = (() => {
   return a;
 })();
 
+// Shared hidden ref — AudioPlayer reads this to freeze progress bar
+// without needing its own visibilitychange listener
+export const sharedHiddenRef = { current: false };
+
 // ONE global AudioContext — shared with visualizer
 let _audioCtx   = null;
 let _analyser   = null;
@@ -124,12 +128,17 @@ export function PlayerProvider({ children }) {
     audio.src = currentTrack.audio_url;
     audio.load();
     safePlay(audio);
-  }, [currentTrack, clearPosition]);
+  }, [currentTrack, clearPosition, safePlay]);
 
-  // ── Sync isPlaying from native audio events ───────────────────────────────
+  // ── Sync isPlaying + Media Session metadata from native audio events ─────
+  // Merged: single play listener handles both isPlaying state AND metadata refresh
   useEffect(() => {
     const audio = audioRef.current;
-    const onPlay  = () => { setIsPlaying(true); };
+    const onPlay  = () => {
+      setIsPlaying(true);
+      // Re-set metadata here — Safari needs this AFTER playback begins
+      if (currentTrack) setMediaSessionMetadata(currentTrack);
+    };
     const onPause = () => setIsPlaying(false);
     const onEnded = () => {
       setIsPlaying(false);
@@ -145,31 +154,32 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
     };
-  }, [clearPosition]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearPosition, currentTrack]);
 
-  // ── Safe pause on hide — unified for Safari & PWA ────────────────────────
-  // When the page is hidden (lock screen, switch app, background):
-  //   1. Pause the real audio element immediately
-  //   2. Save currentTime so Resume can restore it
-  //   3. Set isPlaying = false → stops progress bar, stops animations
-  // When the page comes back:
-  //   - Audio stays paused, UI shows Play button
-  //   - User must tap Play to resume
-  //   - No auto-resume, no catch-up, no glitch
+  // ── Unified visibility/background handler ────────────────────────────────
+  // Single visibilitychange + pagehide/pageshow listener owns all hide/show logic.
+  // AudioPlayer reads a shared hiddenRef (exported below) to freeze its progress bar —
+  // no second visibilitychange listener needed in the UI layer.
+  //
+  // On hide: pause immediately, save time, set isPlaying=false (stops animations)
+  // On show: sync isPlaying from real audio state only — never auto-play
   useEffect(() => {
     const audio = audioRef.current;
 
     const onHide = () => {
       if (!audio.src || audio.paused) return;
-      // Capture time BEFORE pause so we can restore to exact position
       const ct = audio.currentTime;
       audio.pause();
       savePosition(ct);
       setIsPlaying(false);
+      // Signal AudioPlayer to freeze its progress bar
+      sharedHiddenRef.current = true;
     };
 
     const onShow = () => {
-      // Just sync UI — never auto-play on return
+      sharedHiddenRef.current = false;
+      // Sync UI to real audio state — never call play()
       setIsPlaying(!audio.paused && !audio.ended);
     };
 
@@ -233,20 +243,10 @@ export function PlayerProvider({ children }) {
   }
 
   // Set metadata whenever track changes (covers PWA / already-playing case)
+  // The play event also re-sets metadata (merged into the play listener above)
   useEffect(() => {
     if (!currentTrack) return;
     setMediaSessionMetadata(currentTrack);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTrack]);
-
-  // Re-set metadata on play event — Safari needs this AFTER playback begins
-  useEffect(() => {
-    const audio = audioRef.current;
-    const onPlay = () => {
-      if (currentTrack) setMediaSessionMetadata(currentTrack);
-    };
-    audio.addEventListener("play", onPlay);
-    return () => audio.removeEventListener("play", onPlay);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack]);
 
