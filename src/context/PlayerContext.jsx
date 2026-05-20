@@ -61,17 +61,19 @@ export function PlayerProvider({ children }) {
   const [queue,        setQueue]        = useState([]);
   const [sourceType,   setSourceType]   = useState("song");
 
-  const audioRef   = useRef(persistentAudio);
-  const onNextRef  = useRef(null);
-  const onPrevRef  = useRef(null);
-  const loadedSrcRef = useRef("");
+  const audioRef      = useRef(persistentAudio);
+  const onNextRef     = useRef(null);
+  const onPrevRef     = useRef(null);
+  const loadedSrcRef  = useRef("");
+  // Guard: prevents the "isPlaying → audio.play/pause" effect from re-triggering
+  // when the native audio element itself fires play/pause and we call setIsPlaying.
+  const nativeEventRef = useRef(false);
 
   // ── Load & play a new track ───────────────────────────────────────────────
   useEffect(() => {
     if (!currentTrack?.audio_url) return;
     const audio = audioRef.current;
 
-    // Guard: only reload if the URL actually changed
     const isSameTrack =
       loadedSrcRef.current === currentTrack.audio_url ||
       audio.src === currentTrack.audio_url ||
@@ -93,14 +95,20 @@ export function PlayerProvider({ children }) {
     console.log("[PlayerContext] ▶️ Playing:", currentTrack.title);
   }, [currentTrack]);
 
-  // ── Sync play/pause state to the audio element ───────────────────────────
+  // ── React state → audio element (one-way, guarded) ───────────────────────
+  // Only runs when isPlaying changes due to user action (togglePlay, etc.).
+  // The nativeEventRef guard prevents a feedback loop when the native audio
+  // element fires play/pause and we call setIsPlaying in response.
   const mountedRef = useRef(false);
   useEffect(() => {
     if (!mountedRef.current) { mountedRef.current = true; return; }
+    // If this state change came from the native audio element, skip driving it again.
+    if (nativeEventRef.current) { nativeEventRef.current = false; return; }
     const audio = audioRef.current;
     if (!audio.src) return;
 
     if (isPlaying) {
+      resumeAudioContext();
       if (audio.paused) {
         audio.play().catch((err) => {
           if (err.name !== "AbortError") console.warn("[PlayerContext] play() sync error:", err);
@@ -111,47 +119,25 @@ export function PlayerProvider({ children }) {
     }
   }, [isPlaying]);
 
-  // ── Media Session — lock screen + AirPlay controls ───────────────────────
+  // ── Media Session — lock screen controls ─────────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator) || !currentTrack) return;
 
-    // Use cover art if available, fallback to Upper Vibe Media logo
     const artSrc = currentTrack.cover_url ||
       "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
-    const artwork = [
-      { src: artSrc, sizes: "512x512", type: "image/jpeg" },
-    ];
 
     navigator.mediaSession.metadata = new MediaMetadata({
       title:  currentTrack.title || "Unknown",
       artist: currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media",
       album:  "Upper Vibe Media",
-      artwork,
+      artwork: [{ src: artSrc, sizes: "512x512", type: "image/jpeg" }],
     });
 
     navigator.mediaSession.setActionHandler("play", () => {
-      resumeAudioContext();
       const audio = audioRef.current;
-
-      // Guard: no src loaded — do nothing (prevents AirPlay from reloading)
-      if (!audio.src || audio.src === "" || audio.src === window.location.href) {
-        console.log("[MediaSession] play: no src, ignoring");
-        return;
-      }
-
-      // Save time BEFORE play() — Safari/AirPlay can zero currentTime on route switch
-      const savedTime = audio.currentTime;
-
-      setTimeout(() => {
-        resumeAudioContext();
-        // Restore if Safari zeroed it during AirPlay route switch
-        if (savedTime > 1 && audio.currentTime < 1) {
-          audio.currentTime = savedTime;
-          console.log("[MediaSession] ⏱ Restored currentTime:", savedTime);
-        }
-        audio.play().catch(() => {});
-      }, 50);
-
+      if (!audio.src || audio.src === window.location.href) return;
+      resumeAudioContext();
+      audio.play().catch(() => {});
       setIsPlaying(true);
     });
 
@@ -176,46 +162,49 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
 
-  // ── Page visibility: resume AudioContext when foregrounded, never pause ──
-  // iOS keeps the global audio element alive in the background after the first
-  // user-gesture play. We must NOT pause here — doing so kills background audio.
-  // We only resume the AudioContext (which may have been suspended) when the
-  // tab comes back to the foreground.
+  // ── Page visibility: only resume AudioContext on foreground ───────────────
+  // Do NOT pause or play the audio element here — iOS handles background
+  // audio natively. Touching the element on visibility change causes glitches.
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         resumeAudioContext();
-        console.log("[PlayerContext] 👁 Foregrounded — AudioContext resumed if needed");
       }
-      // hidden: do nothing — let the audio element keep playing in the background
     };
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  // ── Sync isPlaying from native audio element events ───────────────────────
+  // ── Sync React state FROM native audio element events ────────────────────
+  // These are the ONLY place setIsPlaying is called from native events.
+  // We set nativeEventRef = true so the isPlaying effect above skips driving
+  // the audio element again (prevents the feedback loop / catch-up glitch).
   useEffect(() => {
     const audio = audioRef.current;
 
-    const onPlay  = () => {
+    const onPlay = () => {
       resumeAudioContext();
+      nativeEventRef.current = true;
       setIsPlaying(true);
     };
+
     const onPause = () => {
-      // Ignore interim pause during audio.load() (readyState === 0)
-      if (audio.readyState > 0) setIsPlaying(false);
+      // Skip interim pause fired during audio.load() (readyState 0 or 1)
+      if (audio.readyState < 2) return;
+      nativeEventRef.current = true;
+      setIsPlaying(false);
     };
+
     const onEnded = () => {
-      // Guard spurious "ended" from AirPlay/Cast route switch
       const dur = audio.duration;
       const ct  = audio.currentTime;
       const isRealEnd = isFinite(dur) && dur > 0 && ct >= dur - 1.5;
       if (!isRealEnd) {
-        console.log("[PlayerContext] ⚠️ Spurious ended (AirPlay switch?)", { ct, dur });
+        console.log("[PlayerContext] ⚠️ Spurious ended ignored", { ct, dur });
         return;
       }
-      console.log("[PlayerContext] ✅ Real track end — next");
+      console.log("[PlayerContext] ✅ Track ended — next");
+      nativeEventRef.current = true;
       setIsPlaying(false);
       onNextRef.current?.();
     };
