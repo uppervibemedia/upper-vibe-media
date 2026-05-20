@@ -73,23 +73,25 @@ function safePlay(audio) {
   if (audio.readyState >= 3) {
     audio.play().catch(() => {});
   } else {
-    // Not enough data — reload from current position, then play on canplay
+    // Not enough data — wait for canplay WITHOUT calling load().
+    // Calling load() resets currentTime to 0 which causes the catch-up glitch.
+    // iOS Safari will re-buffer from the current position on its own.
     const savedTime = audio.currentTime;
     const onCanPlay = () => {
       audio.removeEventListener("canplay", onCanPlay);
-      // Restore position in case load() reset it
-      if (savedTime > 0 && Math.abs(audio.currentTime - savedTime) > 0.5) {
+      // Restore position only if iOS reset it during buffering
+      if (savedTime > 0 && Math.abs(audio.currentTime - savedTime) > 1.0) {
         audio.currentTime = savedTime;
       }
       audio.play().catch(() => {});
     };
     audio.addEventListener("canplay", onCanPlay);
-    if (
-      audio.networkState === HTMLMediaElement.NETWORK_IDLE ||
-      audio.networkState === HTMLMediaElement.NETWORK_EMPTY
-    ) {
+    // Only call load() if the network is truly idle with no src buffered at all
+    if (audio.networkState === HTMLMediaElement.NETWORK_EMPTY) {
       audio.load();
     }
+    // If NETWORK_IDLE, iOS will resume fetching once play() is signalled —
+    // just wait for canplay without resetting the element.
   }
 }
 
@@ -169,17 +171,18 @@ export function PlayerProvider({ children }) {
 
     // iOS media player dismissed / audio unexpectedly interrupted:
     // abort + emptied fire when iOS kills or dismisses the native media player
-    // without a clean "pause" event. Save position and sync UI immediately.
+    // without a clean "pause" event. Sync UI immediately.
+    // Only save position in PWA mode — Safari handles its own buffering state.
     const onHardStop = () => {
-      savePWAPosition(audio.currentTime);
+      if (IS_PWA) savePWAPosition(audio.currentTime);
       setIsPlaying(false);
     };
 
-    // stalled fires when iOS can't fetch more data (e.g. player was dismissed).
-    // Only treat it as a stop if the audio element is already paused — otherwise
-    // it's a normal buffering stall mid-playback and we leave playback state alone.
+    // stalled fires when iOS can't fetch more data.
+    // In Safari, stalled during background play is normal — iOS will recover.
+    // Only treat as a stop in PWA mode when the element is already paused.
     const onStalled = () => {
-      if (audio.paused) {
+      if (IS_PWA && audio.paused) {
         savePWAPosition(audio.currentTime);
         setIsPlaying(false);
       }
@@ -225,8 +228,9 @@ export function PlayerProvider({ children }) {
 
     const onShow = () => {
       if (!audio.src) return;
-      // Sync UI from the real audio element — the single source of truth.
-      // Never auto-play. If paused (PWA locked, iOS dismissed player), show paused.
+      // Sync UI from the real audio element — single source of truth.
+      // In Safari: audio may still be playing in background, just reflect reality.
+      // In PWA: will be paused because we paused it on hide.
       setIsPlaying(!audio.paused && !audio.ended);
     };
 
@@ -268,7 +272,8 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
       if (!audio.src || audio.src === window.location.href) return;
-      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
+      // Only restore saved position in PWA mode — in Safari, currentTime is already correct
+      if (IS_PWA && savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = savedTimeRef.current;
         clearPWAPosition();
       }
@@ -302,8 +307,9 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     if (!audio.src) return;
     if (audio.paused) {
-      // Restore position saved by PWA pause-on-hide before resuming
-      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
+      // In PWA mode: restore the position we saved before the proactive pause.
+      // In Safari mode: audio.currentTime is already correct — never override it.
+      if (IS_PWA && savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = savedTimeRef.current;
         clearPWAPosition();
       }
