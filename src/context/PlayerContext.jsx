@@ -248,13 +248,17 @@ export function PlayerProvider({ children }) {
 
     const onHide = () => {
       sharedHiddenRef.current = true;
-      if (!audio.paused) {
+      // Always save position on hide — iOS may pause the audio before
+      // our visibilitychange fires, so we snapshot even if already paused
+      if (audio.src && audio.currentTime > 0) {
         savePosition(audio.currentTime);
+      }
+      if (!audio.paused) {
         try { audio.pause(); } catch {}
         setIsPlaying(false);
-        console.log("[Player] onHide → paused at", audio.currentTime);
       }
       forceReleaseLock();
+      console.log("[Player] onHide → saved position", audio.currentTime);
     };
 
     const onShow = () => {
@@ -320,16 +324,18 @@ export function PlayerProvider({ children }) {
       const audio = audioRef.current;
       if (!audio.src) return;
       forceReleaseLock();
-      // Restore saved position before resuming
-      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
-        audio.currentTime = savedTimeRef.current;
+      // Restore saved position if we have one; otherwise keep currentTime as-is
+      // (iOS may have rewound to 0 after lock — savedTimeRef captures the real position)
+      const restoreTime = savedTimeRef.current > 0 ? savedTimeRef.current : null;
+      if (restoreTime !== null && isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = restoreTime;
       }
       try {
         await resumeAudioContext();
         audio.playbackRate = 1;
         audio.defaultPlaybackRate = 1;
         await audio.play();
-        console.log("[MediaSession] play → resumed at", audio.currentTime);
+        console.log("[MediaSession] play → resumed at", audio.currentTime, "(savedTime was", savedTimeRef.current, ")");
       } catch (err) {
         if (err.name !== "AbortError") console.warn("[MediaSession] play error:", err);
       }
