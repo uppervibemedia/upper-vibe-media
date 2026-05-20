@@ -48,6 +48,8 @@ function getOrCreateAudioContext(audioElement) {
   return _analyser;
 }
 
+
+
 export function resumeGlobalAudioContext() { resumeAudioContext().catch(() => {}); }
 export function getGlobalAnalyser(audioElement) { return getOrCreateAudioContext(audioElement); }
 
@@ -238,9 +240,10 @@ export function PlayerProvider({ children }) {
     const doHide = () => {
       hideScheduled = false;
 
-      // PWA Radio: RadioContext calls safePause directly — do not interfere at all
-      if (isPwa && sourceTypeRef.current === "radio") {
-        console.log("[Player] onHide — PWA Radio, RadioContext owns this");
+      // Radio (PWA or browser): never pause on hide — let iOS keep playing in background
+      // so lock-screen controls stay connected. The AudioContext will be resumed on show.
+      if (sourceTypeRef.current === "radio") {
+        console.log("[Player] onHide — Radio mode, skipping pause to preserve lock-screen audio");
         return;
       }
 
@@ -265,9 +268,12 @@ export function PlayerProvider({ children }) {
       showScheduled = false;
       sharedHiddenRef.current = false;
 
-      // PWA Radio: RadioContext owns show logic — do not interfere at all
-      if (isPwa && sourceTypeRef.current === "radio") {
-        console.log("[Player] onShow — PWA Radio, RadioContext owns this");
+      // Radio mode (PWA or browser): audio plays natively in background on iOS.
+      // Just resume the AudioContext if it got suspended — this is what caused silence
+      // + moving progress bar (audio plays but AudioContext is suspended so no sound).
+      if (sourceTypeRef.current === "radio") {
+        console.log("[Player] onShow — Radio mode, resuming AudioContext if suspended");
+        resumeAudioContext().catch(() => {});
         return;
       }
 
@@ -477,7 +483,12 @@ export function PlayerProvider({ children }) {
   }, [clearPosition, safePlay, safePause]);
 
   const playTrack = useCallback((track, source = "song") => {
-    getOrCreateAudioContext(audioRef.current);
+    // Don't create/bind AudioContext for radio — it gets suspended by iOS on lock screen
+    // causing silence while the progress bar still moves. Only init for song playback
+    // where the visualizer is actively used.
+    if (source !== "radio") {
+      getOrCreateAudioContext(audioRef.current);
+    }
     sourceTypeRef.current = source;
     setSourceType(source);
     setCurrentTrack(track);
