@@ -41,7 +41,6 @@ export function RadioProvider({ children }) {
   const {
     registerNextHandler, registerPrevHandler,
     playTrack, sourceType, currentTrack,
-    audioRef, savedTimeRef, clearPosition, safePlay, setIsPlaying,
   } = usePlayer();
 
   const [allTracks,        setAllTracks]        = useState([]);
