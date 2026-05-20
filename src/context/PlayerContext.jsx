@@ -12,7 +12,6 @@ const persistentAudio = (() => {
   a.setAttribute("webkit-airplay",   "allow");
   a.setAttribute("playsinline", "");
   a.setAttribute("webkit-playsinline", "");
-  console.log("[PlayerContext] ✅ Single global Audio element created");
   return a;
 })();
 
@@ -32,7 +31,6 @@ function getOrCreateAudioContext(audioElement) {
   if (!_audioCtx) {
     _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     window._uvAudioCtx = _audioCtx;
-    console.log("[PlayerContext] ✅ Single global AudioContext created");
   }
   resumeAudioContext();
   if (!_sourceNode) {
@@ -44,10 +42,7 @@ function getOrCreateAudioContext(audioElement) {
       _sourceNode.connect(_analyser);
       _analyser.connect(_audioCtx.destination);
       window._uvAnalyser = _analyser;
-      console.log("[PlayerContext] ✅ AudioContext source node wired");
-    } catch (e) {
-      console.log("[PlayerContext] ℹ️ Source node already created, reusing");
-    }
+    } catch (e) {}
   }
   return _analyser;
 }
@@ -61,13 +56,15 @@ export function PlayerProvider({ children }) {
   const [queue,        setQueue]        = useState([]);
   const [sourceType,   setSourceType]   = useState("song");
 
-  const audioRef      = useRef(persistentAudio);
-  const onNextRef     = useRef(null);
-  const onPrevRef     = useRef(null);
-  const loadedSrcRef  = useRef("");
-  // Guard: prevents the "isPlaying → audio.play/pause" effect from re-triggering
-  // when the native audio element itself fires play/pause and we call setIsPlaying.
-  const nativeEventRef = useRef(false);
+  const audioRef         = useRef(persistentAudio);
+  const onNextRef        = useRef(null);
+  const onPrevRef        = useRef(null);
+  const loadedSrcRef     = useRef("");
+  // When we hard-pause on background, we save currentTime here.
+  const savedTimeRef     = useRef(0);
+  // Prevents the isPlaying-effect from driving audio when the state change
+  // came from a native audio event (not a user action).
+  const skipEffectRef    = useRef(false);
 
   // ── Load & play a new track ───────────────────────────────────────────────
   useEffect(() => {
@@ -85,41 +82,125 @@ export function PlayerProvider({ children }) {
       return;
     }
 
-    loadedSrcRef.current = currentTrack.audio_url;
+    loadedSrcRef.current  = currentTrack.audio_url;
+    savedTimeRef.current  = 0;
     audio.src = currentTrack.audio_url;
     audio.load();
     audio.play().catch((err) => {
       if (err.name !== "AbortError") console.warn("[PlayerContext] play() error:", err);
     });
     setIsPlaying(true);
-    console.log("[PlayerContext] ▶️ Playing:", currentTrack.title);
   }, [currentTrack]);
 
-  // ── React state → audio element (one-way, guarded) ───────────────────────
-  // Only runs when isPlaying changes due to user action (togglePlay, etc.).
-  // The nativeEventRef guard prevents a feedback loop when the native audio
-  // element fires play/pause and we call setIsPlaying in response.
+  // ── isPlaying state → audio element ──────────────────────────────────────
+  // Only drives the audio element when the state change came from user code
+  // (togglePlay, MediaSession handler, etc.), not from native events.
   const mountedRef = useRef(false);
   useEffect(() => {
     if (!mountedRef.current) { mountedRef.current = true; return; }
-    // If this state change came from the native audio element, skip driving it again.
-    if (nativeEventRef.current) { nativeEventRef.current = false; return; }
+    if (skipEffectRef.current) { skipEffectRef.current = false; return; }
+
     const audio = audioRef.current;
     if (!audio.src) return;
 
     if (isPlaying) {
       resumeAudioContext();
-      if (audio.paused) {
-        audio.play().catch((err) => {
-          if (err.name !== "AbortError") console.warn("[PlayerContext] play() sync error:", err);
-        });
+      // Restore saved position — do not let the element play from wherever
+      // iOS left the decode buffer (which causes catch-up on first play back).
+      if (savedTimeRef.current > 0 && Math.abs(audio.currentTime - savedTimeRef.current) > 0.5) {
+        audio.currentTime = savedTimeRef.current;
       }
+      if (audio.paused) audio.play().catch(() => {});
     } else {
-      if (!audio.paused) audio.pause();
+      if (!audio.paused) {
+        savedTimeRef.current = audio.currentTime;
+        audio.pause();
+      }
     }
   }, [isPlaying]);
 
-  // ── Media Session — lock screen controls ─────────────────────────────────
+  // ── Background: hard-pause immediately ───────────────────────────────────
+  // We treat any backgrounding (tab hidden, pagehide, blur) as a hard pause.
+  // This prevents iOS from silently buffering audio that then "catches up"
+  // when the user returns and presses Pause.
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const hardPause = () => {
+      if (!audio.paused) {
+        savedTimeRef.current = audio.currentTime;
+        audio.pause();
+        skipEffectRef.current = true; // native pause incoming — skip effect
+        setIsPlaying(false);
+        console.log("[PlayerContext] 📵 Background — hard paused at", savedTimeRef.current);
+      }
+    };
+
+    const onVisible = () => {
+      // Do NOT call play() or resumeAudioContext() here.
+      // Restore saved position silently so user resumes from the right spot.
+      if (savedTimeRef.current > 0 && Math.abs(audio.currentTime - savedTimeRef.current) > 0.5) {
+        audio.currentTime = savedTimeRef.current;
+        console.log("[PlayerContext] 👁 Restored position to", savedTimeRef.current);
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") hardPause();
+      else onVisible();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", hardPause);
+    window.addEventListener("blur",     hardPause);
+    window.addEventListener("pageshow", onVisible);
+    window.addEventListener("focus",    onVisible);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", hardPause);
+      window.removeEventListener("blur",     hardPause);
+      window.removeEventListener("pageshow", onVisible);
+      window.removeEventListener("focus",    onVisible);
+    };
+  }, []);
+
+  // ── Native audio events → React state ────────────────────────────────────
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const onPlay = () => {
+      resumeAudioContext();
+      skipEffectRef.current = true;
+      setIsPlaying(true);
+    };
+
+    const onPause = () => {
+      if (audio.readyState < 2) return; // ignore load-time pause
+      skipEffectRef.current = true;
+      setIsPlaying(false);
+    };
+
+    const onEnded = () => {
+      const dur = audio.duration;
+      const ct  = audio.currentTime;
+      if (!isFinite(dur) || dur <= 0 || ct < dur - 1.5) return; // spurious
+      skipEffectRef.current = true;
+      setIsPlaying(false);
+      onNextRef.current?.();
+    };
+
+    audio.addEventListener("play",  onPlay);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("ended", onEnded);
+    return () => {
+      audio.removeEventListener("play",  onPlay);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, []);
+
+  // ── Media Session ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator) || !currentTrack) return;
 
@@ -137,94 +218,42 @@ export function PlayerProvider({ children }) {
       const audio = audioRef.current;
       if (!audio.src || audio.src === window.location.href) return;
       resumeAudioContext();
+      if (savedTimeRef.current > 0 && Math.abs(audio.currentTime - savedTimeRef.current) > 0.5) {
+        audio.currentTime = savedTimeRef.current;
+      }
       audio.play().catch(() => {});
       setIsPlaying(true);
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
-      audioRef.current.pause();
+      const audio = audioRef.current;
+      if (!audio.paused) {
+        savedTimeRef.current = audio.currentTime;
+        audio.pause();
+      }
       setIsPlaying(false);
     });
 
-    navigator.mediaSession.setActionHandler("nexttrack", () => onNextRef.current?.());
+    navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
     navigator.mediaSession.setActionHandler("previoustrack", () => onPrevRef.current?.());
 
     return () => {
-      ["play", "pause", "nexttrack", "previoustrack"].forEach((a) => {
+      ["play","pause","nexttrack","previoustrack"].forEach((a) => {
         try { navigator.mediaSession.setActionHandler(a, null); } catch {}
       });
     };
   }, [currentTrack]);
 
-  // ── Keep Media Session playback state in sync ─────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
-
-  // ── Page visibility: only resume AudioContext on foreground ───────────────
-  // Do NOT pause or play the audio element here — iOS handles background
-  // audio natively. Touching the element on visibility change causes glitches.
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        resumeAudioContext();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
-
-  // ── Sync React state FROM native audio element events ────────────────────
-  // These are the ONLY place setIsPlaying is called from native events.
-  // We set nativeEventRef = true so the isPlaying effect above skips driving
-  // the audio element again (prevents the feedback loop / catch-up glitch).
-  useEffect(() => {
-    const audio = audioRef.current;
-
-    const onPlay = () => {
-      resumeAudioContext();
-      nativeEventRef.current = true;
-      setIsPlaying(true);
-    };
-
-    const onPause = () => {
-      // Skip interim pause fired during audio.load() (readyState 0 or 1)
-      if (audio.readyState < 2) return;
-      nativeEventRef.current = true;
-      setIsPlaying(false);
-    };
-
-    const onEnded = () => {
-      const dur = audio.duration;
-      const ct  = audio.currentTime;
-      const isRealEnd = isFinite(dur) && dur > 0 && ct >= dur - 1.5;
-      if (!isRealEnd) {
-        console.log("[PlayerContext] ⚠️ Spurious ended ignored", { ct, dur });
-        return;
-      }
-      console.log("[PlayerContext] ✅ Track ended — next");
-      nativeEventRef.current = true;
-      setIsPlaying(false);
-      onNextRef.current?.();
-    };
-
-    audio.addEventListener("play",  onPlay);
-    audio.addEventListener("pause", onPause);
-    audio.addEventListener("ended", onEnded);
-    return () => {
-      audio.removeEventListener("play",  onPlay);
-      audio.removeEventListener("pause", onPause);
-      audio.removeEventListener("ended", onEnded);
-    };
-  }, []);
 
   // ── Public API ────────────────────────────────────────────────────────────
   const playTrack = useCallback((track, source = "song") => {
     getOrCreateAudioContext(audioRef.current);
     setSourceType(source);
     setCurrentTrack(track);
-    console.log("[PlayerContext] 🎵 playTrack:", track?.title, "| source:", source);
   }, []);
 
   const togglePlay = useCallback(() => {
@@ -238,10 +267,10 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     audio.pause();
     audio.src = "";
-    loadedSrcRef.current = "";
+    loadedSrcRef.current  = "";
+    savedTimeRef.current  = 0;
     setIsPlaying(false);
     setCurrentTrack(null);
-    console.log("[PlayerContext] ⏹ stopped");
   }, []);
 
   const registerNextHandler = useCallback((fn) => { onNextRef.current = fn; }, []);
