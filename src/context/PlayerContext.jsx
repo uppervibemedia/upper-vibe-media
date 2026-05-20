@@ -334,10 +334,7 @@ export function PlayerProvider({ children }) {
       console.log("[Player] MediaSession play — savedTime:", savedTimeRef.current, "duration:", audio.duration, "readyState:", audio.readyState);
 
       const resumeFromSaved = () => {
-        if (savedTimeRef.current > 0) {
-          audio.currentTime = savedTimeRef.current;
-          clearPosition();
-        }
+        clearPosition();
         audio.playbackRate        = 1;
         audio.defaultPlaybackRate = 1;
         safePlay(audio);
@@ -392,10 +389,7 @@ export function PlayerProvider({ children }) {
 
     if (audio.paused || audio.ended) {
       const resume = () => {
-        if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
-          audio.currentTime = savedTimeRef.current;
-          clearPosition();
-        }
+        clearPosition();
         audio.playbackRate        = 1;
         audio.defaultPlaybackRate = 1;
         safePlay(audio);
