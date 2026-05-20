@@ -165,26 +165,73 @@ export function PlayerProvider({ children }) {
   }, [savePosition]);
 
   // ── Media Session (lock screen controls) ─────────────────────────────────
-  useEffect(() => {
-    if (!("mediaSession" in navigator) || !currentTrack) return;
+  // Helper: validate artwork URL is absolute HTTPS (Safari requirement)
+  const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
 
-    const artSrc = currentTrack.cover_url ||
-      "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
+  function resolveArtworkUrl(url) {
+    if (!url) return FALLBACK_ART;
+    // Must be absolute HTTPS — no blobs, no relative, no http
+    if (url.startsWith("https://")) return url;
+    return FALLBACK_ART;
+  }
+
+  function setMediaSessionMetadata(track) {
+    if (!("mediaSession" in navigator) || !track) return;
+
+    const rawUrl  = track.cover_url;
+    const artSrc  = resolveArtworkUrl(rawUrl);
+    const title   = track.title   || "Unknown";
+    const artist  = track.artist_display || track.artist || "Upper Vibe Media";
+
+    console.log("[MediaSession] Setting metadata:", {
+      title,
+      artist,
+      cover_url: rawUrl,
+      artworkUsed: artSrc,
+    });
+
+    // Probe the image so we can warn if Safari will reject it
+    const img = new Image();
+    img.onload  = () => console.log("[MediaSession] Artwork loaded OK:", artSrc);
+    img.onerror = () => console.warn("[MediaSession] Artwork FAILED to load:", artSrc);
+    img.src = artSrc;
 
     navigator.mediaSession.metadata = new MediaMetadata({
-      title:  currentTrack.title || "Unknown",
-      artist: currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media",
-      album:  "Upper Vibe Media",
+      title,
+      artist,
+      album: "Upper Vibe Media",
       artwork: [
-        { src: artSrc, sizes: "512x512", type: "image/jpeg" },
+        { src: artSrc, sizes: "512x512",   type: "image/jpeg" },
         { src: artSrc, sizes: "1024x1024", type: "image/jpeg" },
       ],
     });
+  }
+
+  // Set metadata whenever track changes (covers PWA / already-playing case)
+  useEffect(() => {
+    if (!currentTrack) return;
+    setMediaSessionMetadata(currentTrack);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrack]);
+
+  // Re-set metadata on play event — Safari needs this AFTER playback begins
+  useEffect(() => {
+    const audio = audioRef.current;
+    const onPlay = () => {
+      if (currentTrack) setMediaSessionMetadata(currentTrack);
+    };
+    audio.addEventListener("play", onPlay);
+    return () => audio.removeEventListener("play", onPlay);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrack]);
+
+  // Register Media Session action handlers (separate from metadata)
+  useEffect(() => {
+    if (!("mediaSession" in navigator)) return;
 
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
       if (!audio.src) return;
-      // Restore saved position if we paused mid-song on hide
       if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = savedTimeRef.current;
         clearPosition();
@@ -209,7 +256,7 @@ export function PlayerProvider({ children }) {
         try { navigator.mediaSession.setActionHandler(a, null); } catch {}
       });
     };
-  }, [currentTrack, clearPosition, savePosition]);
+  }, [clearPosition, savePosition]);
 
   // Keep Media Session badge in sync
   useEffect(() => {
