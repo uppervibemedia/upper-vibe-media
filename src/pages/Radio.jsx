@@ -63,7 +63,9 @@ export default function RadioPage() {
   const playingThisRadioSong = isCurrentlyPlayingRadio && isPlaying;
 
   const handlePlay = () => {
-    if (isCurrentlyPlayingRadio) {
+    // If there's a radio song loaded and it's the current track (even if paused
+    // after a screen lock), just toggle — never re-start/reload the same song.
+    if (currentRadioSong && currentTrack?.id === currentRadioSong.id) {
       togglePlay();
     } else {
       startRadio();

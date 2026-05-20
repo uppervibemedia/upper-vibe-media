@@ -252,6 +252,8 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
 
     const onHide = () => {
+      // Dedupe: blur + visibilitychange can both fire on iOS lock — only run once
+      if (sharedHiddenRef.current) return;
       sharedHiddenRef.current = true;
 
       // ── Snapshot position BEFORE pausing (and before iOS resets it) ──
@@ -261,7 +263,7 @@ export function PlayerProvider({ children }) {
       if (snapTime > 0) savePosition(snapTime);
 
       // PWA: also snapshot the src so we can reload if iOS clears the buffer
-      if (isPWA && audio.src) {
+      if (isPWA && audio.src && audio.src !== window.location.href) {
         pwaSavedSrcRef.current = audio.src;
       }
 
@@ -274,10 +276,11 @@ export function PlayerProvider({ children }) {
       // never blocked by a stale 500ms lock from this pause call.
       forceReleaseLock();
 
-      console.log("[Player] onHide →", { isPWA, snapTime, src: audio.src?.slice(-40) });
+      console.log("[Player] onHide →", { isPWA, snapTime, src: pwaSavedSrcRef.current?.slice(-40) });
     };
 
     const onShow = () => {
+      if (!sharedHiddenRef.current) return; // already visible, skip duplicate
       sharedHiddenRef.current = false;
       // Sync UI to real audio state — stay paused, never auto-play
       setIsPlaying(!audio.paused && !audio.ended && audio.readyState >= 2);

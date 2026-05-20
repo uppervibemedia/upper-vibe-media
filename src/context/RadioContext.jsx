@@ -38,7 +38,7 @@ function buildQueue(allTracks, currentSongId, likedIds = []) {
 }
 
 export function RadioProvider({ children }) {
-  const { registerNextHandler, registerPrevHandler, playTrack, sourceType, currentTrack } = usePlayer();
+  const { registerNextHandler, registerPrevHandler, playTrack, togglePlay, sourceType, currentTrack } = usePlayer();
 
   const [allTracks,        setAllTracks]        = useState([]);
   const [tracksLoaded,     setTracksLoaded]     = useState(false);
@@ -234,10 +234,16 @@ export function RadioProvider({ children }) {
   // Resume radio (called when user interrupted radio by playing another song)
   const resumeRadio = useCallback((onPlay) => {
     if (!currentRadioSong) return startRadio(onPlay);
-    playTrack(currentRadioSong, "radio");
+    // If the same song is already loaded in the global player, just toggle —
+    // avoids triggering a full reload which can corrupt PWA audio state.
+    if (currentTrack?.id === currentRadioSong.id) {
+      togglePlay();
+    } else {
+      playTrack(currentRadioSong, "radio");
+    }
     if (onPlay) onPlay(currentRadioSong);
     console.log("[RadioContext] 📻 Radio resumed:", currentRadioSong.title);
-  }, [currentRadioSong, startRadio, playTrack, likedTrackIds]);
+  }, [currentRadioSong, currentTrack, startRadio, playTrack, togglePlay, likedTrackIds]);
 
   // Next — delegates to the same handler registered with PlayerContext
   const nextRadioSong = useCallback(() => {
