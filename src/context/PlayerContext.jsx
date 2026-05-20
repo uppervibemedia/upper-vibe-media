@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
 
+// Detect PWA (Add-to-Home-Screen standalone mode) — evaluated once at module load
+const isPWA = (() => {
+  if (typeof window === "undefined") return false;
+  return (
+    window.navigator.standalone === true ||
+    window.matchMedia("(display-mode: standalone)").matches
+  );
+})();
+
 const PlayerContext = createContext(null);
 
 // ONE global audio element — never recreated
@@ -225,48 +234,55 @@ export function PlayerProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearPosition, currentTrack]);
 
-  // ── Strict safe-pause on ALL hide events ─────────────────────────────────
+  // ── PWA background-state snapshot ref ────────────────────────────────────
+  // In PWA mode we save the src string separately so the Media Session "play"
+  // handler can reload the audio element if iOS cleared it while backgrounded.
+  const pwaSavedSrcRef = useRef("");
+
+  // ── Hide / Show event handlers ────────────────────────────────────────────
   //
-  // RULE: Stable playback > background playback.
-  // Pause immediately whenever the page hides, the phone locks, the user
-  // switches apps, or audio focus changes. Never auto-resume.
+  // SHARED RULE: Pause immediately on hide. Never auto-resume on show.
   //
-  // ON HIDE (visibilitychange→hidden, pagehide, blur, audioFocus loss):
-  //   • pause audio immediately
-  //   • save currentTime
-  //   • set isPlaying = false
-  //   • freeze progress bar (sharedHiddenRef)
-  //   • force-release lock so user's next Play tap is never blocked
-  //
-  // ON SHOW (visibilitychange→visible, pageshow, focus):
-  //   • unfreeze progress bar
-  //   • sync isPlaying from real audio state (keep paused — never auto-play)
-  //   • force-release lock
+  // PWA EXTRA: iOS may reset audio.currentTime → 0 and drop the buffer while
+  // the app is backgrounded. We snapshot currentTime BEFORE pausing and BEFORE
+  // iOS can mutate it, store the src, and reload it inside the Media Session
+  // "play" handler if readyState has dropped.
   //
   useEffect(() => {
     const audio = audioRef.current;
 
     const onHide = () => {
       sharedHiddenRef.current = true;
-      // Always save position on hide — iOS may pause the audio before
-      // our visibilitychange fires, so we snapshot even if already paused
-      if (audio.src && audio.currentTime > 0) {
-        savePosition(audio.currentTime);
+
+      // ── Snapshot position BEFORE pausing (and before iOS resets it) ──
+      // Capture even if audio is already paused — iOS fires visibilitychange
+      // after it has already suspended the element on some versions.
+      const snapTime = audio.currentTime > 0 ? audio.currentTime : savedTimeRef.current;
+      if (snapTime > 0) savePosition(snapTime);
+
+      // PWA: also snapshot the src so we can reload if iOS clears the buffer
+      if (isPWA && audio.src) {
+        pwaSavedSrcRef.current = audio.src;
       }
+
       if (!audio.paused) {
         try { audio.pause(); } catch {}
         setIsPlaying(false);
       }
+
+      // Force-release AFTER pause so the Media Session "play" handler is
+      // never blocked by a stale 500ms lock from this pause call.
       forceReleaseLock();
-      console.log("[Player] onHide → saved position", audio.currentTime);
+
+      console.log("[Player] onHide →", { isPWA, snapTime, src: audio.src?.slice(-40) });
     };
 
     const onShow = () => {
       sharedHiddenRef.current = false;
-      // Sync to real audio state — stay paused, never auto-play
+      // Sync UI to real audio state — stay paused, never auto-play
       setIsPlaying(!audio.paused && !audio.ended && audio.readyState >= 2);
       forceReleaseLock();
-      console.log("[Player] onShow — audio.paused:", audio.paused);
+      console.log("[Player] onShow — paused:", audio.paused, "readyState:", audio.readyState);
     };
 
     const onVisibility = () => {
@@ -278,10 +294,21 @@ export function PlayerProvider({ children }) {
     window.addEventListener("pagehide", onHide);
     window.addEventListener("pageshow", onShow);
 
+    // PWA only: also listen to window blur (fires when phone locks without
+    // going through visibilitychange on some iOS versions)
+    if (isPWA) {
+      window.addEventListener("blur", onHide);
+      window.addEventListener("focus", onShow);
+    }
+
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("pageshow", onShow);
+      if (isPWA) {
+        window.removeEventListener("blur", onHide);
+        window.removeEventListener("focus", onShow);
+      }
     };
   }, [savePosition, forceReleaseLock]);
 
@@ -322,14 +349,53 @@ export function PlayerProvider({ children }) {
 
     navigator.mediaSession.setActionHandler("play", async () => {
       const audio = audioRef.current;
-      if (!audio.src) return;
       forceReleaseLock();
-      // Restore saved position if we have one; otherwise keep currentTime as-is
-      // (iOS may have rewound to 0 after lock — savedTimeRef captures the real position)
+
+      // ── PWA buffer recovery ───────────────────────────────────────────────
+      // iOS may have cleared audio.src or dropped the buffer (readyState < 1)
+      // while the PWA was backgrounded. Reload the src before playing so the
+      // lock-screen Play responds immediately instead of silently failing.
+      if (isPWA) {
+        const needsSrc = !audio.src || audio.src === "" || audio.src === window.location.href;
+        const needsReload = needsSrc || audio.readyState < 1; // HAVE_NOTHING
+
+        if (needsReload) {
+          const srcToRestore = needsSrc
+            ? (pwaSavedSrcRef.current || loadedSrcRef.current)
+            : audio.src;
+
+          if (!srcToRestore) {
+            console.warn("[MediaSession/PWA] play — no src to restore, aborting");
+            return;
+          }
+
+          console.log("[MediaSession/PWA] reloading src before play, readyState was", audio.readyState);
+          audio.src = srcToRestore;
+          loadedSrcRef.current = srcToRestore;
+          audio.load();
+
+          // Wait for enough data to be able to seek and play
+          await new Promise((resolve) => {
+            const onReady = () => { audio.removeEventListener("canplay", onReady); resolve(); };
+            audio.addEventListener("canplay", onReady);
+            // Safety timeout — don't block forever
+            setTimeout(resolve, 4000);
+          });
+        }
+      }
+
+      if (!audio.src || audio.src === window.location.href) {
+        console.warn("[MediaSession] play — no audio src, aborting");
+        return;
+      }
+
+      // Restore saved position (iOS may have rewound to 0 after lock)
       const restoreTime = savedTimeRef.current > 0 ? savedTimeRef.current : null;
       if (restoreTime !== null && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = restoreTime;
+        console.log("[MediaSession] seeking to saved time", restoreTime);
       }
+
       try {
         await resumeAudioContext();
         audio.playbackRate = 1;
@@ -379,7 +445,31 @@ export function PlayerProvider({ children }) {
   // togglePlay: used by in-app buttons — routes through safePlay/safePause
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio.src) return;
+
+    // PWA: iOS may have cleared audio.src while backgrounded.
+    // Restore it from our saved ref so the in-app Play button still works
+    // without requiring a page refresh.
+    if (isPWA && (!audio.src || audio.src === window.location.href)) {
+      const fallbackSrc = pwaSavedSrcRef.current || loadedSrcRef.current;
+      if (fallbackSrc) {
+        console.log("[Player/PWA] togglePlay — restoring cleared src");
+        audio.src = fallbackSrc;
+        loadedSrcRef.current = fallbackSrc;
+        audio.load();
+        // Seek + play once canplay fires
+        audio.addEventListener("canplay", function onCanPlay() {
+          audio.removeEventListener("canplay", onCanPlay);
+          if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
+            audio.currentTime = savedTimeRef.current;
+          }
+          safePlay(audio);
+        }, { once: true });
+        return;
+      }
+    }
+
+    if (!audio.src || audio.src === window.location.href) return;
+
     if (audio.paused) {
       // Restore saved position before resuming
       if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
