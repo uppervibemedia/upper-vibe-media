@@ -59,10 +59,11 @@ export function PlayerProvider({ children }) {
   // savedTime > 0: we deliberately paused mid-song (hide/lock). User must tap Play to resume.
   const [savedTime,    setSavedTime]    = useState(0);
 
-  const audioRef     = useRef(persistentAudio);
-  const onNextRef    = useRef(null);
-  const onPrevRef    = useRef(null);
-  const loadedSrcRef = useRef("");
+  const audioRef       = useRef(persistentAudio);
+  const onNextRef      = useRef(null);
+  const onPrevRef      = useRef(null);
+  const loadedSrcRef   = useRef("");
+  const sourceTypeRef  = useRef("song"); // mirrors sourceType — readable synchronously in event handlers
 
   // Synchronous refs — never stale inside async functions
   const savedTimeRef   = useRef(0);  // mirror of savedTime state
@@ -219,8 +220,16 @@ export function PlayerProvider({ children }) {
   // ── Unified visibility / background handler ───────────────────────────────
   // ON HIDE  — force clean pause, save position, freeze UI
   // ON SHOW  — kill any catch-up burst, sync UI, never auto-play
+  //
+  // PWA RADIO EXCEPTION: When running as a PWA and sourceType === "radio",
+  // this handler does NOTHING on hide or show. RadioContext owns that lifecycle
+  // so iOS lock-screen controls remain connected to the audio element.
   useEffect(() => {
     const audio = audioRef.current;
+
+    const isPwa =
+      window.navigator.standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches;
 
     // Debounce flags — prevent double-firing from visibilitychange + focus/blur
     let hideScheduled = false;
@@ -228,6 +237,14 @@ export function PlayerProvider({ children }) {
 
     const doHide = () => {
       hideScheduled = false;
+
+      // PWA Radio: let RadioContext handle this — do not interfere
+      if (isPwa && sourceTypeRef.current === "radio") {
+        console.log("[Player] onHide — PWA Radio, skipping PlayerContext hide logic");
+        sharedHiddenRef.current = true;
+        return;
+      }
+
       sharedHiddenRef.current = true;
       if (!audio.src || audio.ended) return;
 
@@ -248,6 +265,15 @@ export function PlayerProvider({ children }) {
     const doShow = () => {
       showScheduled = false;
       sharedHiddenRef.current = false;
+
+      // PWA Radio: let RadioContext handle this — do not interfere
+      if (isPwa && sourceTypeRef.current === "radio") {
+        console.log("[Player] onShow — PWA Radio, skipping PlayerContext show logic");
+        // Still reset locks so safePlay can run when user taps Resume
+        playLockRef.current  = false;
+        pauseLockRef.current = false;
+        return;
+      }
 
       if (!audio.src || audio.ended) {
         setIsPlaying(false);
@@ -271,7 +297,6 @@ export function PlayerProvider({ children }) {
 
       // Also reset AudioContext rate in case it drifted
       if (_audioCtx && _audioCtx.state === "running") {
-        // No direct playbackRate on AudioContext, but assert on element
         audio.playbackRate        = 1;
         audio.defaultPlaybackRate = 1;
       }
@@ -349,12 +374,37 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
 
     navigator.mediaSession.setActionHandler("play", () => {
-      if (!audio.src) return;
-      console.log("[Player] MediaSession play — savedTime:", savedTimeRef.current, "duration:", audio.duration, "readyState:", audio.readyState);
+      const isPwa =
+        window.navigator.standalone === true ||
+        window.matchMedia("(display-mode: standalone)").matches;
+
+      console.log("[Player] MediaSession PLAY fired —", {
+        isPwa,
+        sourceType:    sourceTypeRef.current,
+        savedTime:     savedTimeRef.current,
+        audioSrc:      !!audio.src,
+        audioPaused:   audio.paused,
+        audioTime:     audio.currentTime,
+        readyState:    audio.readyState,
+        audioError:    audio.error?.code,
+        playLock:      playLockRef.current,
+        pauseLock:     pauseLockRef.current,
+        audioCtxState: _audioCtx?.state,
+      });
+
+      if (!audio.src) {
+        console.warn("[Player] MediaSession play — no audio.src, ignoring");
+        return;
+      }
+
+      // Always clear locks before lock-screen play — a previous promise may have left them stuck
+      playLockRef.current  = false;
+      pauseLockRef.current = false;
 
       const resumeFromSaved = () => {
         if (savedTimeRef.current > 0) {
-          audio.currentTime = savedTimeRef.current;
+          console.log("[Player] MediaSession play — seeking to savedTime", savedTimeRef.current);
+          try { audio.currentTime = savedTimeRef.current; } catch {}
           clearPosition();
         }
         audio.playbackRate        = 1;
@@ -364,7 +414,7 @@ export function PlayerProvider({ children }) {
 
       // If duration is not yet known (audio unloaded during background), wait for canplay
       if (!isFinite(audio.duration) || audio.duration === 0) {
-        console.log("[Player] MediaSession play — duration not ready, waiting for canplay");
+        console.log("[Player] MediaSession play — duration not ready (readyState=" + audio.readyState + "), waiting for canplay");
         const onCanPlay = () => {
           audio.removeEventListener("canplay", onCanPlay);
           resumeFromSaved();
@@ -434,6 +484,7 @@ export function PlayerProvider({ children }) {
 
   const playTrack = useCallback((track, source = "song") => {
     getOrCreateAudioContext(audioRef.current);
+    sourceTypeRef.current = source;
     setSourceType(source);
     setCurrentTrack(track);
   }, []);
@@ -454,6 +505,13 @@ export function PlayerProvider({ children }) {
   const handleNext          = useCallback(() => { onNextRef.current?.(); }, []);
   const handlePrev          = useCallback(() => { onPrevRef.current?.(); }, []);
 
+  // Expose lock-clearing so RadioContext (and Resume button) can unblock safePlay
+  const clearPlayLocks = useCallback(() => {
+    playLockRef.current  = false;
+    pauseLockRef.current = false;
+    console.log("[Player] clearPlayLocks called");
+  }, []);
+
   return (
     <PlayerContext.Provider value={{
       currentTrack,
@@ -469,6 +527,7 @@ export function PlayerProvider({ children }) {
       audioRef,
       safePlay,
       safePause,
+      clearPlayLocks,
       registerNextHandler,
       registerPrevHandler,
       handleNext,

@@ -38,7 +38,7 @@ function buildQueue(allTracks, currentSongId, likedIds = []) {
 }
 
 export function RadioProvider({ children }) {
-  const { registerNextHandler, registerPrevHandler, playTrack, sourceType, currentTrack, audioRef, safePause, togglePlay } = usePlayer();
+  const { registerNextHandler, registerPrevHandler, playTrack, sourceType, currentTrack, audioRef, safePause, togglePlay, clearPlayLocks } = usePlayer();
 
   const [allTracks,        setAllTracks]        = useState([]);
   const [tracksLoaded,     setTracksLoaded]     = useState(false);
@@ -233,13 +233,22 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 📻 Radio started:", song.title);
   }, [allTracks, currentRadioSong, radioQueue, playTrack, likedTrackIds]);
 
-  // Resume radio (called when user interrupted radio by playing another song)
+  // Resume radio (called after PWA background pause or non-radio interruption)
   const resumeRadio = useCallback((onPlay) => {
     if (!currentRadioSong) return startRadio(onPlay);
+    const audio = audioRef.current;
+    // Clear any stuck play/pause locks before re-triggering playback
+    clearPlayLocks();
+    console.log("[RadioContext] 📻 Radio resumeRadio —", {
+      song: currentRadioSong.title,
+      audioPaused: audio?.paused,
+      audioTime:   audio?.currentTime,
+      readyState:  audio?.readyState,
+    });
     playTrack(currentRadioSong, "radio");
     if (onPlay) onPlay(currentRadioSong);
     console.log("[RadioContext] 📻 Radio resumed:", currentRadioSong.title);
-  }, [currentRadioSong, startRadio, playTrack, likedTrackIds]);
+  }, [currentRadioSong, startRadio, playTrack, audioRef, clearPlayLocks]);
 
   // Next — delegates to the same handler registered with PlayerContext
   const nextRadioSong = useCallback(() => {
@@ -270,8 +279,15 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 🎯 Jumped to:", song.title);
   }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack]);
 
-  // ── PWA-only: pause Radio cleanly on hide, show Resume banner on return ──
-  // Does NOT affect Safari or normal browser — only Add-to-Home-Screen PWA.
+  // ── PWA-only: manage Radio lock-screen lifecycle ─────────────────────────
+  // PlayerContext's generic hide/show handler is bypassed for PWA Radio.
+  // This effect is the sole owner of hide/show logic in that scenario.
+  //
+  // Strategy:
+  //   ON HIDE  — do NOT pause; let iOS keep audio alive for lock-screen controls.
+  //              Just note that we went to background (for UI only).
+  //   ON SHOW  — reset locks so safePlay can run; user taps Resume or lock-screen Play.
+  //              Show the Resume banner only if audio actually stopped.
   useEffect(() => {
     const isPwa =
       window.navigator.standalone === true ||
@@ -283,19 +299,29 @@ export function RadioProvider({ children }) {
     const onHide = () => {
       const { sourceType: st } = stateRef.current;
       if (st !== "radio") return;
-      if (!audio || audio.paused) return;
-      // Force-pause immediately — bypass the 500ms lock
-      audio.pause();
-      console.log("[PWA Radio] hidden — force-paused Radio");
-      setPwaRadioPaused(true);
+      console.log("[PWA Radio] onHide — keeping audio alive for lock-screen controls");
+      // DO NOT pause — iOS lock-screen controls must stay connected.
+      // PlayerContext has already been instructed to skip hide logic for PWA Radio.
     };
 
     const onShow = () => {
-      // Just set the flag; user must tap Resume to play again
       const { sourceType: st } = stateRef.current;
-      if (st === "radio" && audio && audio.paused && audio.src) {
+      if (st !== "radio") return;
+
+      console.log("[PWA Radio] onShow —", {
+        audioPaused:  audio?.paused,
+        audioSrc:     !!audio?.src,
+        audioTime:    audio?.currentTime,
+        readyState:   audio?.readyState,
+      });
+
+      // iOS may have paused audio while in background (e.g. phone call, notification)
+      // Show the Resume banner so the user can explicitly restart.
+      if (audio && audio.paused && audio.src) {
         setPwaRadioPaused(true);
+        console.log("[PWA Radio] onShow — audio paused, showing Resume banner");
       }
+      // If audio is still playing (lock-screen kept it alive), no banner needed.
     };
 
     const onVisibility = () => {
@@ -312,13 +338,6 @@ export function RadioProvider({ children }) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Clear the PWA paused banner once radio is actually playing again
-  useEffect(() => {
-    if (pwaRadioPaused && sourceType === "radio" && currentTrack) {
-      // Will be cleared by the Resume button tap, not auto
-    }
-  }, [pwaRadioPaused, sourceType, currentTrack]);
 
   const clearPwaRadioPaused = useCallback(() => setPwaRadioPaused(false), []);
 
