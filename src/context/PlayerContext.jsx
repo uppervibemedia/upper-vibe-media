@@ -473,11 +473,6 @@ export function PlayerProvider({ children }) {
       registerPrevHandler,
       handleNext,
       handlePrev,
-      // Exposed for PWA Radio lock-screen hook only
-      savedTimeRef,
-      playLockRef,
-      clearPosition,
-      setIsPlaying,
     }}>
       {children}
     </PlayerContext.Provider>

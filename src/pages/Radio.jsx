@@ -28,6 +28,8 @@ export default function RadioPage() {
     nextRadioSong,
     prevRadioSong,
     jumpToSong,
+    pwaRadioPaused,
+    clearPwaRadioPaused,
   } = useRadio();
   const { user } = useAuth();
   const { isFaved, toggle: toggleFav, trackFavs } = useFavorites(user?.email);
@@ -63,6 +65,7 @@ export default function RadioPage() {
   const playingThisRadioSong = isCurrentlyPlayingRadio && isPlaying;
 
   const handlePlay = () => {
+    clearPwaRadioPaused();
     if (isCurrentlyPlayingRadio) {
       togglePlay();
     } else {
@@ -70,7 +73,10 @@ export default function RadioPage() {
     }
   };
 
-  const handleResume = () => resumeRadio();
+  const handleResume = () => {
+    clearPwaRadioPaused();
+    resumeRadio();
+  };
 
   const handleNext = () => nextRadioSong();
 
@@ -199,8 +205,22 @@ export default function RadioPage() {
                   <Waves className="w-2.5 h-2.5" /> 432 Hz
                 </span>
 
+                {/* PWA background-paused banner */}
+                {pwaRadioPaused && (
+                  <div className="mb-5 px-4 py-3 rounded-xl flex flex-col items-center gap-2.5"
+                    style={{ background: "rgba(0,200,220,0.07)", border: "1px solid rgba(0,200,220,0.2)" }}>
+                    <p className="text-xs text-white/50 text-center">Radio paused while you were away</p>
+                    <button onClick={handleResume}
+                      className="px-5 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95 flex items-center gap-1.5"
+                      style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", color: "#000" }}>
+                      <Play className="w-3 h-3 fill-current" />
+                      Resume Radio
+                    </button>
+                  </div>
+                )}
+
                 {/* Paused banner */}
-                {radioIsPaused && (
+                {radioIsPaused && !pwaRadioPaused && (
                   <div className="mb-5 px-4 py-2.5 rounded-xl text-xs text-white/45 flex items-center justify-center gap-2"
                     style={{ background: "rgba(0,200,220,0.05)", border: "1px solid rgba(0,200,220,0.1)" }}>
                     <RadioIcon className="w-3 h-3 text-cyan-400/40" />

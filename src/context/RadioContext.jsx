@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "./PlayerContext";
-import { usePwaRadioLockscreen } from "@/hooks/usePwaRadioLockscreen";
 
 const RadioContext = createContext(null);
 
@@ -39,11 +38,7 @@ function buildQueue(allTracks, currentSongId, likedIds = []) {
 }
 
 export function RadioProvider({ children }) {
-  const {
-    registerNextHandler, registerPrevHandler,
-    playTrack, sourceType, currentTrack,
-    audioRef, savedTimeRef, playLockRef, clearPosition, safePlay, setIsPlaying,
-  } = usePlayer();
+  const { registerNextHandler, registerPrevHandler, playTrack, sourceType, currentTrack, audioRef, safePause, togglePlay } = usePlayer();
 
   const [allTracks,        setAllTracks]        = useState([]);
   const [tracksLoaded,     setTracksLoaded]     = useState(false);
@@ -52,6 +47,8 @@ export function RadioProvider({ children }) {
   const [radioHistory,     setRadioHistory]     = useState([]);
   const [historyIndex,     setHistoryIndex]     = useState(-1);
   const [likedTrackIds,    setLikedTrackIds]    = useState([]);
+  // PWA-only: true when the app was hidden/locked while Radio was playing
+  const [pwaRadioPaused,   setPwaRadioPaused]   = useState(false);
 
   // ── Load tracks once ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -273,20 +270,57 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 🎯 Jumped to:", song.title);
   }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack]);
 
-  // ── PWA Radio lock-screen handler ────────────────────────────────────────
-  // Only active in PWA (Add-to-Home-Screen) mode. Does not affect Safari.
-  usePwaRadioLockscreen({
-    audioRef,
-    sourceType,
-    currentTrack,
-    allTracks,
-    savedTimeRef,
-    playLockRef,
-    clearPosition,
-    safePlay,
-    playTrack,
-    setIsPlaying,
-  });
+  // ── PWA-only: pause Radio cleanly on hide, show Resume banner on return ──
+  // Does NOT affect Safari or normal browser — only Add-to-Home-Screen PWA.
+  useEffect(() => {
+    const isPwa =
+      window.navigator.standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches;
+    if (!isPwa) return;
+
+    const audio = audioRef.current;
+
+    const onHide = () => {
+      const { sourceType: st } = stateRef.current;
+      if (st !== "radio") return;
+      if (!audio || audio.paused) return;
+      // Force-pause immediately — bypass the 500ms lock
+      audio.pause();
+      console.log("[PWA Radio] hidden — force-paused Radio");
+      setPwaRadioPaused(true);
+    };
+
+    const onShow = () => {
+      // Just set the flag; user must tap Resume to play again
+      const { sourceType: st } = stateRef.current;
+      if (st === "radio" && audio && audio.paused && audio.src) {
+        setPwaRadioPaused(true);
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") onHide();
+      else onShow();
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onHide);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onHide);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Clear the PWA paused banner once radio is actually playing again
+  useEffect(() => {
+    if (pwaRadioPaused && sourceType === "radio" && currentTrack) {
+      // Will be cleared by the Resume button tap, not auto
+    }
+  }, [pwaRadioPaused, sourceType, currentTrack]);
+
+  const clearPwaRadioPaused = useCallback(() => setPwaRadioPaused(false), []);
 
   // ── Derived state for UI ──────────────────────────────────────────────────
   // "Radio is active" = the global player is currently playing a radio-sourced track
@@ -323,6 +357,8 @@ export function RadioProvider({ children }) {
       nextRadioSong,
       prevRadioSong,
       jumpToSong,
+      pwaRadioPaused,
+      clearPwaRadioPaused,
     }}>
       {children}
     </RadioContext.Provider>
