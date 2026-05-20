@@ -9,14 +9,11 @@ import {
   User,
   Users,
   Heart,
-  BookOpen,
-  Music2,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
-  { path: "/music", icon: Music2, label: "Music" },
   { path: "/radio", icon: Radio, label: "Radio" },
   { path: "/artists", icon: Users, label: "Artists" },
   { path: "/my-vibes", icon: Heart, label: "My Vibe Library" },
@@ -24,11 +21,10 @@ const mainNavItems = [
 
 const bottomNavMobile = [
   { path: "/", icon: Home, label: "Home" },
-  { path: "/music", icon: Music2, label: "Music" },
   { path: "/radio", icon: Radio, label: "Radio" },
-  { path: "/academy", icon: BookOpen, label: "Academy" },
   { path: "/artists", icon: Users, label: "Artists" },
-  { path: "/account", icon: User, label: "Profile" },
+  { path: "/my-vibes", icon: Heart, label: "Library" },
+  { path: "/account", icon: User, label: "Account" },
 ];
 
 export default function Sidebar() {

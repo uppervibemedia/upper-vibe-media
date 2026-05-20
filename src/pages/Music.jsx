@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart, ChevronRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { recordPlay } from "../components/home/DiscoverTab";
@@ -165,7 +164,7 @@ export default function Music() {
                       border: `1px solid ${isCurrentTrack ? "rgba(0,229,255,0.2)" : "rgba(255,255,255,0.06)"}`,
                     }}
                   >
-                    {/* Cover — play on click */}
+                    {/* Cover */}
                     <div className="relative flex-shrink-0 cursor-pointer" onClick={() => handlePlay(track)}>
                       {track.cover_url ? (
                         <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
@@ -183,11 +182,12 @@ export default function Music() {
                       </div>
                     </div>
 
-                    {/* Info — tapping navigates to song page */}
-                    <Link to={`/song/${track.id}`} className="flex-1 min-w-0 block">
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-white truncate">{track.title}</p>
                       <p className="text-xs text-white/40 truncate">{track.artist_display || "Upper Vibe Media"}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {/* Always show 432 Hz badge */}
                         <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                           style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
                           <Waves className="w-2.5 h-2.5" /> 432 Hz
@@ -197,9 +197,9 @@ export default function Music() {
                             style={{ background: "rgba(212,168,67,0.12)", color: "#D4A843" }}>NEW</span>
                         )}
                       </div>
-                    </Link>
+                    </div>
 
-                    {/* Duration — desktop only */}
+                    {/* Duration */}
                     {track.duration && (
                       <p className="text-xs text-white/25 flex-shrink-0 hidden sm:block">{track.duration}</p>
                     )}
@@ -221,8 +221,7 @@ export default function Music() {
                         }}>
                         <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
                       </button>
-
-                      {/* Play */}
+                      {/* Play — always available */}
                       <button
                         onClick={() => handlePlay(track)}
                         className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
@@ -234,29 +233,21 @@ export default function Music() {
                         {isCurrentTrack && isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
                       </button>
 
-                      {/* Song page arrow — mobile-friendly tap target */}
-                      <Link
-                        to={`/song/${track.id}`}
-                        className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110 lg:hidden"
-                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)" }}
-                        title="View song page">
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </Link>
-
-                      {/* Download — locked for non-premium, desktop only to keep mobile clean */}
+                      {/* Download — locked for non-premium */}
                       {isPremium ? (
                         <a
                           href={track.audio_url}
                           download={`${track.title}.mp3`}
-                          className="w-9 h-9 rounded-xl items-center justify-center transition-all hover:scale-110 hidden lg:flex"
+                          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
                           style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
+                          onClick={(e) => e.stopPropagation()}
                           title="Download">
                           <Download className="w-3.5 h-3.5" />
                         </a>
                       ) : (
                         <button
                           onClick={(e) => handleDownload(e, track)}
-                          className="w-9 h-9 rounded-xl items-center justify-center transition-all hover:scale-110 hidden lg:flex"
+                          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
                           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
                           title="Premium download">
                           <Lock className="w-3.5 h-3.5" />
