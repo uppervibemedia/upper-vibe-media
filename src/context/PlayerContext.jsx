@@ -128,73 +128,21 @@ export function PlayerProvider({ children }) {
     });
   }, [currentTrack]);
 
-  // ── PWA stall-detector refs and callbacks (declared before any useEffect) ──
-  const savedTimeRef   = useRef(0);
-  const lastTimeRef    = useRef(0);
-  const stallTimerRef  = useRef(null);
-
-  const startStallDetector = useCallback(() => {
-    const isStandalone =
-      window.navigator.standalone === true ||
-      window.matchMedia("(display-mode: standalone)").matches;
-    if (!isStandalone) return;
-
-    if (stallTimerRef.current) return; // already running
-    const audio = audioRef.current;
-    lastTimeRef.current = audio.currentTime;
-
-    stallTimerRef.current = setInterval(() => {
-      const a = audioRef.current;
-      if (!a.src) return;
-
-      // If audio element is already paused/ended/errored → just sync UI
-      if (a.paused || a.ended || a.error) {
-        setIsPlaying(false);
-        return;
-      }
-
-      // Check if currentTime advanced since last poll
-      const now = a.currentTime;
-      if (Math.abs(now - lastTimeRef.current) < 0.1) {
-        // Time hasn't moved — audio is silently stalled (iOS lock-screen kill)
-        savedTimeRef.current = now; // save position for resume
-        setIsPlaying(false);
-      } else {
-        lastTimeRef.current = now;
-      }
-    }, 2000);
-  }, []);
-
-  const stopStallDetector = useCallback(() => {
-    if (stallTimerRef.current) {
-      clearInterval(stallTimerRef.current);
-      stallTimerRef.current = null;
-    }
-  }, []);
+  // ── Saved position ref (used by PWA pause-on-hide and resume) ────────────
+  const savedTimeRef = useRef(0);
 
   // ── Sync React state FROM native audio events (single mount) ─────────────
   // isPlaying is DERIVED from the real audio element, not the other way around.
   useEffect(() => {
     const audio = audioRef.current;
 
-    const onPlay  = () => {
-      resumeAudioContext();
-      lastTimeRef.current = audio.currentTime;
-      setIsPlaying(true);
-      startStallDetector();
-    };
-    const onPause = () => {
-      if (audio.readyState >= 2) {
-        setIsPlaying(false);
-        stopStallDetector();
-      }
-    };
+    const onPlay  = () => { resumeAudioContext(); setIsPlaying(true); };
+    const onPause = () => { if (audio.readyState >= 2) setIsPlaying(false); };
     const onEnded = () => {
       const dur = audio.duration;
       const ct  = audio.currentTime;
       if (!isFinite(dur) || dur <= 0 || ct < dur - 1.5) return; // spurious
       setIsPlaying(false);
-      stopStallDetector();
       onNextRef.current?.();
     };
 
@@ -206,36 +154,56 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
     };
-  }, [startStallDetector, stopStallDetector]);
+  }, []);
 
-  // ── Background/lock-screen + fake-playback handling ─────────────────────
+  // ── Background / lock-screen handling ────────────────────────────────────
+  //
+  // PWA (standalone) mode:
+  //   iOS cannot reliably keep PWA audio alive through lock. So we proactively
+  //   pause BEFORE the app is suspended (on hide), save currentTime, and do
+  //   nothing on show — user must press Play to resume.
+  //   This prevents the glitch/repeat/catch-up corruption entirely.
+  //
+  // Non-PWA (Safari/browser) mode:
+  //   Let iOS handle background audio natively. On return, only sync UI state
+  //   from the real audio element — never auto-play or auto-pause.
+  //
   useEffect(() => {
     const audio = audioRef.current;
 
-    const syncUI = () => {
+    const isPWA = () =>
+      window.navigator.standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches;
+
+    const onHide = () => {
+      if (!isPWA()) return;
+      if (!audio.src || audio.paused) return;
+      // Proactively pause before iOS can suspend and corrupt the stream
+      savedTimeRef.current = audio.currentTime;
+      audio.pause();
+      setIsPlaying(false);
+    };
+
+    const onShow = () => {
       if (!audio.src) return;
-      const playing = !audio.paused && !audio.ended && !audio.error;
-      setIsPlaying(playing);
-      if (playing) {
-        lastTimeRef.current = audio.currentTime;
-        startStallDetector();
-      } else {
-        stopStallDetector();
-      }
+      // Only sync UI — never auto-play, never seek
+      setIsPlaying(!audio.paused);
     };
 
     const onVisibility = () => {
-      if (document.visibilityState === "visible") syncUI();
+      if (document.visibilityState === "hidden") onHide();
+      else onShow();
     };
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pageshow", syncUI);
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pageshow", onShow);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pageshow", syncUI);
-      stopStallDetector();
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pageshow", onShow);
     };
-  }, [startStallDetector, stopStallDetector]);
+  }, []);
 
   // ── Media Session — lock screen / Control Center ──────────────────────────
   // Re-registered every time currentTrack changes.
@@ -258,16 +226,11 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
       if (!audio.src || audio.src === window.location.href) return;
-      // Restore position saved by stall detector (PWA lock-screen suspend)
-      if (
-        savedTimeRef.current > 0 &&
-        isFinite(audio.duration) &&
-        audio.duration > 0 &&
-        Math.abs(audio.currentTime - savedTimeRef.current) > 0.5
-      ) {
+      // Restore position saved by PWA pause-on-hide
+      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = savedTimeRef.current;
+        savedTimeRef.current = 0;
       }
-      savedTimeRef.current = 0;
       safePlay(audio);
     });
 
@@ -298,13 +261,8 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     if (!audio.src) return;
     if (audio.paused) {
-      // Restore position saved by stall detector (PWA lock-screen suspend)
-      if (
-        savedTimeRef.current > 0 &&
-        isFinite(audio.duration) &&
-        audio.duration > 0 &&
-        Math.abs(audio.currentTime - savedTimeRef.current) > 0.5
-      ) {
+      // If PWA pause-on-hide saved a position, restore it before resuming
+      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = savedTimeRef.current;
         savedTimeRef.current = 0;
       }
