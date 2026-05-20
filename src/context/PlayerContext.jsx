@@ -1,28 +1,19 @@
-// v2
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
 
 const PlayerContext = createContext(null);
 
-// ─── Detect PWA (standalone) mode once at module level ───────────────────
-const IS_PWA = typeof window !== "undefined" && (
-  window.navigator.standalone === true ||
-  window.matchMedia("(display-mode: standalone)").matches
-);
-
-// ─── ONE global audio element — never recreated ────────────────────────────
+// ONE global audio element — never recreated
 const persistentAudio = (() => {
   if (typeof window === "undefined") return null;
   const a = new Audio();
   a.crossOrigin = "anonymous";
   a.preload = "auto";
   a.setAttribute("x-webkit-airplay", "allow");
-  a.setAttribute("webkit-airplay", "allow");
   a.setAttribute("playsinline", "");
-  a.setAttribute("webkit-playsinline", "");
   return a;
 })();
 
-// ─── ONE global AudioContext — shared with visualizer ─────────────────────
+// ONE global AudioContext — shared with visualizer
 let _audioCtx   = null;
 let _analyser   = null;
 let _sourceNode = null;
@@ -57,63 +48,18 @@ function getOrCreateAudioContext(audioElement) {
 export function resumeGlobalAudioContext() { resumeAudioContext(); }
 export function getGlobalAnalyser(audioElement) { return getOrCreateAudioContext(audioElement); }
 
-// ─── safePlay — single guard, handles low readyState ─────────────────────
-// _actionLock prevents stacked play/pause calls within 500ms
-let _actionLock = false;
-function lockAction(ms = 500) {
-  _actionLock = true;
-  setTimeout(() => { _actionLock = false; }, ms);
-}
-
-function safePlay(audio) {
-  if (_actionLock) return;
-  lockAction();
-  resumeAudioContext();
-
-  if (audio.readyState >= 3) {
-    audio.play().catch(() => {});
-  } else {
-    // Not enough data — wait for canplay WITHOUT calling load().
-    // Calling load() resets currentTime to 0 which causes the catch-up glitch.
-    // iOS Safari will re-buffer from the current position on its own.
-    const savedTime = audio.currentTime;
-    const onCanPlay = () => {
-      audio.removeEventListener("canplay", onCanPlay);
-      // Restore position only if iOS reset it during buffering
-      if (savedTime > 0 && Math.abs(audio.currentTime - savedTime) > 1.0) {
-        audio.currentTime = savedTime;
-      }
-      audio.play().catch(() => {});
-    };
-    audio.addEventListener("canplay", onCanPlay);
-    // Only call load() if the network is truly idle with no src buffered at all
-    if (audio.networkState === HTMLMediaElement.NETWORK_EMPTY) {
-      audio.load();
-    }
-    // If NETWORK_IDLE, iOS will resume fetching once play() is signalled —
-    // just wait for canplay without resetting the element.
-  }
-}
-
-function safePause(audio) {
-  if (_actionLock) return;
-  lockAction();
-  if (!audio.paused) audio.pause();
-}
-
 export function PlayerProvider({ children }) {
-  const [currentTrack,   setCurrentTrack]   = useState(null);
-  const [isPlaying,      setIsPlaying]      = useState(false);
-  const [queue,          setQueue]          = useState([]);
-  const [sourceType,     setSourceType]     = useState("song");
-  const [pwaPausedAt,    setPwaPausedAt]    = useState(0); // >0 means PWA paused mid-song
+  const [currentTrack, setCurrentTrack] = useState(null);
+  const [isPlaying,    setIsPlaying]    = useState(false);
+  const [queue,        setQueue]        = useState([]);
+  const [sourceType,   setSourceType]   = useState("song");
 
   const audioRef     = useRef(persistentAudio);
   const onNextRef    = useRef(null);
   const onPrevRef    = useRef(null);
   const loadedSrcRef = useRef("");
 
-  // ── Load & play a new track ───────────────────────────────────────────────
+  // Load & play when track changes
   useEffect(() => {
     if (!currentTrack?.audio_url) return;
     const audio = audioRef.current;
@@ -124,138 +70,41 @@ export function PlayerProvider({ children }) {
       (audio.src && audio.src.endsWith(currentTrack.audio_url));
 
     if (isSameTrack) {
-      // Same song already loaded — just resume, don't reload or reset time
-      if (audio.paused) safePlay(audio);
+      if (audio.paused) audio.play().catch(() => {});
       return;
     }
 
-    // New track — load and play
     loadedSrcRef.current = currentTrack.audio_url;
     audio.src = currentTrack.audio_url;
     audio.load();
     audio.play().catch((err) => {
-      if (err.name !== "AbortError") console.warn("[PlayerContext] play() error:", err);
+      if (err.name !== "AbortError") console.warn("[Player] play() error:", err);
     });
   }, [currentTrack]);
 
-  // ── Saved position ref (used by PWA pause-on-hide and resume) ────────────
-  // savedTimeRef is the ref used synchronously in handlers.
-  // pwaPausedAt is the React state mirror — drives UI (Resume button, frozen progress).
-  const savedTimeRef = useRef(0);
-
-  const savePWAPosition = useCallback((time) => {
-    savedTimeRef.current = time;
-    if (IS_PWA) setPwaPausedAt(time);
-  }, []);
-
-  const clearPWAPosition = useCallback(() => {
-    savedTimeRef.current = 0;
-    setPwaPausedAt(0);
-  }, []);
-
-  // ── Sync React state FROM native audio events (single mount) ─────────────
-  // isPlaying is the ONLY source of truth — derived exclusively from the real
-  // audio element. Every player UI reads this value; nothing else drives state.
+  // Sync isPlaying state from native audio events
   useEffect(() => {
     const audio = audioRef.current;
-
     const onPlay  = () => { resumeAudioContext(); setIsPlaying(true); };
-    const onPause = () => { if (audio.readyState >= 2) setIsPlaying(false); };
+    const onPause = () => setIsPlaying(false);
     const onEnded = () => {
-      const dur = audio.duration;
-      const ct  = audio.currentTime;
-      if (!isFinite(dur) || dur <= 0 || ct < dur - 1.5) return; // spurious
       setIsPlaying(false);
       onNextRef.current?.();
     };
 
-    // iOS media player dismissed / audio unexpectedly interrupted:
-    // abort + emptied fire when iOS kills or dismisses the native media player
-    // without a clean "pause" event. Sync UI immediately.
-    // Only save position in PWA mode — Safari handles its own buffering state.
-    const onHardStop = () => {
-      if (IS_PWA) savePWAPosition(audio.currentTime);
-      setIsPlaying(false);
-    };
-
-    // stalled fires when iOS can't fetch more data.
-    // In Safari, stalled during background play is normal — iOS will recover.
-    // Only treat as a stop in PWA mode when the element is already paused.
-    const onStalled = () => {
-      if (IS_PWA && audio.paused) {
-        savePWAPosition(audio.currentTime);
-        setIsPlaying(false);
-      }
-    };
-
-    audio.addEventListener("play",    onPlay);
-    audio.addEventListener("pause",   onPause);
-    audio.addEventListener("ended",   onEnded);
-    audio.addEventListener("abort",   onHardStop);
-    audio.addEventListener("emptied", onHardStop);
-    audio.addEventListener("stalled", onStalled);
-
+    audio.addEventListener("play",  onPlay);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("ended", onEnded);
     return () => {
-      audio.removeEventListener("play",    onPlay);
-      audio.removeEventListener("pause",   onPause);
-      audio.removeEventListener("ended",   onEnded);
-      audio.removeEventListener("abort",   onHardStop);
-      audio.removeEventListener("emptied", onHardStop);
-      audio.removeEventListener("stalled", onStalled);
+      audio.removeEventListener("play",  onPlay);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("ended", onEnded);
     };
-  }, [savePWAPosition]);
+  }, []);
 
-  // ── Background / lock-screen handling ────────────────────────────────────
-  //
-  // PWA mode: proactively pause on hide — iOS can't reliably keep PWA audio
-  //   alive through lock screen. Clean pause prevents corruption entirely.
-  //   On return: only sync UI, never auto-play. User must press Play.
-  //
-  // Safari mode: let iOS handle background audio natively. On return,
-  //   only sync UI state — never auto-play or auto-pause.
-  //
-  useEffect(() => {
-    const audio = audioRef.current;
-
-    const onHide = () => {
-      if (!IS_PWA) return;
-      if (!audio.src || audio.paused) return;
-      // Proactively pause before iOS can suspend and corrupt the stream
-      savePWAPosition(audio.currentTime);
-      audio.pause();
-      setIsPlaying(false);
-    };
-
-    const onShow = () => {
-      if (!audio.src) return;
-      // Sync UI from the real audio element — single source of truth.
-      // In Safari: audio may still be playing in background, just reflect reality.
-      // In PWA: will be paused because we paused it on hide.
-      setIsPlaying(!audio.paused && !audio.ended);
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") onHide();
-      else onShow();
-    };
-
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", onHide);
-    window.addEventListener("pageshow", onShow);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", onHide);
-      window.removeEventListener("pageshow", onShow);
-    };
-  }, [savePWAPosition]);
-
-  // ── Media Session — lock screen / Control Center ──────────────────────────
-  // Safari mode: full media session with lock-screen controls.
-  // PWA mode: skip entirely — we proactively pause on hide, no lock-screen
-  //   controls needed and registering them can cause iOS to fight our pause.
+  // Media Session (lock screen controls)
   useEffect(() => {
     if (!("mediaSession" in navigator) || !currentTrack) return;
-    if (IS_PWA) return; // PWA: no lock-screen controls — clean pause is the strategy
 
     const artSrc = currentTrack.cover_url ||
       "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
@@ -267,23 +116,8 @@ export function PlayerProvider({ children }) {
       artwork: [{ src: artSrc, sizes: "512x512", type: "image/jpeg" }],
     });
 
-    // These handlers are the authoritative source of truth for native controls.
-    // They do NOT call togglePlay / playTrack — that would reload the src.
-    navigator.mediaSession.setActionHandler("play", () => {
-      const audio = audioRef.current;
-      if (!audio.src || audio.src === window.location.href) return;
-      // Only restore saved position in PWA mode — in Safari, currentTime is already correct
-      if (IS_PWA && savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
-        audio.currentTime = savedTimeRef.current;
-        clearPWAPosition();
-      }
-      safePlay(audio);
-    });
-
-    navigator.mediaSession.setActionHandler("pause", () => {
-      safePause(audioRef.current);
-    });
-
+    navigator.mediaSession.setActionHandler("play",  () => { const a = audioRef.current; if (a.src) a.play().catch(() => {}); });
+    navigator.mediaSession.setActionHandler("pause", () => audioRef.current.pause());
     navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
     navigator.mediaSession.setActionHandler("previoustrack", () => onPrevRef.current?.());
 
@@ -294,31 +128,23 @@ export function PlayerProvider({ children }) {
     };
   }, [currentTrack]);
 
-  // ── Keep Media Session playback badge in sync ─────────────────────────────
+  // Keep Media Session badge in sync
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
 
-  // ── Public API ────────────────────────────────────────────────────────────
-
-  // togglePlay — used by website UI buttons only, never by Media Session
+  // Public API
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio.src) return;
     if (audio.paused) {
-      // In PWA mode: restore the position we saved before the proactive pause.
-      // In Safari mode: audio.currentTime is already correct — never override it.
-      if (IS_PWA && savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
-        audio.currentTime = savedTimeRef.current;
-        clearPWAPosition();
-      }
-      safePlay(audio);
+      resumeAudioContext();
+      audio.play().catch(() => {});
     } else {
-      safePause(audio);
+      audio.pause();
     }
-    // isPlaying updates via native play/pause event listeners — not set here
-  }, [clearPWAPosition]);
+  }, []);
 
   const playTrack = useCallback((track, source = "song") => {
     getOrCreateAudioContext(audioRef.current);
@@ -346,8 +172,8 @@ export function PlayerProvider({ children }) {
       isPlaying,
       queue,
       sourceType,
-      isPWA: IS_PWA,
-      pwaPausedAt,
+      isPWA: false,
+      pwaPausedAt: 0,
       playTrack,
       togglePlay,
       stopPlaying,

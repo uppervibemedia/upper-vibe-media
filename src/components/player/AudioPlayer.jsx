@@ -4,9 +4,8 @@ import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X } from "lucide-
 import { Slider } from "@/components/ui/slider";
 import { usePlayer } from "../../context/PlayerContext";
 
-
 export default function AudioPlayer() {
-  const { currentTrack, isPlaying, isPWA, pwaPausedAt, togglePlay, stopPlaying, audioRef, handleNext, handlePrev } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay, stopPlaying, audioRef, handleNext, handlePrev } = usePlayer();
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(80);
@@ -14,19 +13,15 @@ export default function AudioPlayer() {
 
   useEffect(() => {
     const audio = audioRef.current;
-    const onTimeUpdate = () => {
-      // In PWA mode, freeze progress bar when paused mid-song (no fake movement)
-      if (isPWA && !isPlaying) return;
-      setProgress((audio.currentTime / audio.duration) * 100 || 0);
-    };
+    const onTimeUpdate    = () => setProgress((audio.currentTime / audio.duration) * 100 || 0);
     const onLoadedMetadata = () => setDuration(audio.duration);
-    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("timeupdate",     onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     return () => {
-      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("timeupdate",     onTimeUpdate);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
     };
-  }, [audioRef, isPWA, isPlaying]);
+  }, [audioRef]);
 
   useEffect(() => {
     audioRef.current.volume = muted ? 0 : volume / 100;
@@ -45,11 +40,6 @@ export default function AudioPlayer() {
     return `${m}:${s}`;
   };
 
-  // In PWA, compute frozen progress from savedTimeRef when paused mid-song
-  const frozenProgress = isPWA && pwaPausedAt > 0 && duration > 0
-    ? (pwaPausedAt / duration) * 100
-    : progress;
-
   return (
     <AnimatePresence>
       {currentTrack && (
@@ -58,45 +48,34 @@ export default function AudioPlayer() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 200 }}
-          className="fixed bottom-0 left-0 right-0 lg:left-[72px] z-40 border-t border-white/[0.06] relative"
+          className="fixed bottom-0 left-0 right-0 lg:left-[72px] z-40 border-t border-white/[0.06]"
           style={{
             background: "linear-gradient(180deg,rgba(6,6,18,0.97),rgba(4,4,12,0.99))",
             backdropFilter: "blur(40px)",
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
           }}
         >
-          {/* PWA Safari tip — shown only in standalone mode */}
-          {isPWA && (
-            <div className="w-full px-4 py-1 flex items-center justify-center gap-1.5"
-              style={{ background: "rgba(0,229,255,0.06)", borderBottom: "1px solid rgba(0,229,255,0.08)" }}>
-              <span className="text-[10px] text-white/30 text-center leading-tight">
-                🔒 Tip: For lock-screen background playback, open in <strong className="text-cyan-400/60">Safari</strong> instead of the home screen app.
-              </span>
-            </div>
-          )}
-
           {/* Seek bar — full width stripe */}
-          <div className="relative h-[3px] w-full bg-white/5 cursor-pointer group"
+          <div
+            className="relative h-[3px] w-full bg-white/5 cursor-pointer group"
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               const pct = ((e.clientX - rect.left) / rect.width) * 100;
               handleSeek([pct]);
-            }}>
+            }}
+          >
             <div
               className="h-full transition-all"
               style={{
-                width: `${frozenProgress}%`,
+                width: `${progress}%`,
                 background: "linear-gradient(90deg,#00B8D4,#00E5FF,#D4A843)"
               }}
             />
-            {/* Thumb dot */}
             <div
               className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50 opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ left: `calc(${frozenProgress}% - 5px)` }}
+              style={{ left: `calc(${progress}% - 5px)` }}
             />
           </div>
-
-
 
           <div className="flex items-center gap-3 md:gap-5 px-4 py-3 md:px-6">
             {/* Track info */}
@@ -111,11 +90,11 @@ export default function AudioPlayer() {
                   />
                   {isPlaying && (
                     <div className="absolute inset-0 rounded-lg flex items-end justify-center pb-1 gap-0.5 bg-black/20">
-                      {[1,2,3].map(i => (
+                      {[1, 2, 3].map(i => (
                         <motion.div
                           key={i}
-                          animate={{ height: ["2px","8px","2px"] }}
-                          transition={{ duration: 0.5, repeat: Infinity, delay: i*0.12 }}
+                          animate={{ height: ["2px", "8px", "2px"] }}
+                          transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.12 }}
                           className="w-0.5 bg-cyan-400 rounded-full"
                         />
                       ))}
@@ -123,8 +102,10 @@ export default function AudioPlayer() {
                   )}
                 </div>
               ) : (
-                <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
-                  style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}>
+                <div
+                  className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
+                  style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}
+                >
                   <span className="text-cyan-400/60 text-xs">♪</span>
                 </div>
               )}
@@ -159,7 +140,7 @@ export default function AudioPlayer() {
               </button>
             </div>
 
-            {/* Time + Volume + Close */}
+            {/* Time + Volume + Close (desktop) */}
             <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
               <span className="text-[11px] text-white/30 tabular-nums">{formatTime(audioRef.current.currentTime)}</span>
               <span className="text-[11px] text-white/20">/</span>
