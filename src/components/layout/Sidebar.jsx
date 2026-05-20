@@ -26,7 +26,6 @@ const bottomNavMobile = [
   { path: "/music", icon: Music, label: "Music" },
   { path: "/radio", icon: Radio, label: "Radio" },
   { path: "/academy", icon: GraduationCap, label: "Academy" },
-  { path: "/artists", icon: Users, label: "Artists" },
   { path: "/account", icon: User, label: "Account" },
 ];
 
