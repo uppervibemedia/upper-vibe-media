@@ -68,8 +68,9 @@ export function PlayerProvider({ children }) {
   const savedTimeRef    = useRef(0); // synchronous mirror of savedTime state
 
   // ── 500ms play/pause lock ─────────────────────────────────────────────────
-  // Prevents stacked play() / pause() calls from iOS controls + app controls
-  // firing simultaneously (the source of the "sped-up first second" glitch).
+  // Prevents stacked duplicate play() / pause() calls from firing simultaneously.
+  // NOTE: Media Session "play" (lock screen) always bypasses this lock because
+  // it is a trusted user gesture and must never be dropped.
   const opLockRef      = useRef(false);
   const opLockTimeout  = useRef(null);
 
@@ -77,12 +78,18 @@ export function PlayerProvider({ children }) {
     if (opLockRef.current) return false;
     opLockRef.current = true;
     clearTimeout(opLockTimeout.current);
-    // Auto-release after 500ms as a safety net
     opLockTimeout.current = setTimeout(() => { opLockRef.current = false; }, 500);
     return true;
   }, []);
 
   const releaseLock = useCallback(() => {
+    opLockRef.current = false;
+    clearTimeout(opLockTimeout.current);
+  }, []);
+
+  // Force-release the lock — used before any trusted-gesture play call
+  // so that a previous onHide pause lock never blocks resumption.
+  const forceReleaseLock = useCallback(() => {
     opLockRef.current = false;
     clearTimeout(opLockTimeout.current);
   }, []);
@@ -100,18 +107,22 @@ export function PlayerProvider({ children }) {
 
   // ── safePlay ─────────────────────────────────────────────────────────────
   // Single entry point for ALL play() calls.
-  // 1. Acquires 500ms lock (drops duplicate calls)
-  // 2. Awaits AudioContext resume (prevents catch-up burst)
-  // 3. Forces playbackRate = 1 (guards against OS rate adjustments)
-  // 4. Calls audio.play() once
-  const safePlay = useCallback(async (audio) => {
+  // Pass force=true for trusted user gestures (lock screen, Media Session)
+  // so a stale lock from a previous pause never silently drops the call.
+  const safePlay = useCallback(async (audio, force = false) => {
+    if (force) {
+      // Trusted gesture (lock screen / Media Session "play") — always clear
+      // any existing lock before proceeding so it is never silently dropped.
+      forceReleaseLock();
+    }
     if (!acquireLock()) {
       console.log("[Player] safePlay skipped — lock active");
       return;
     }
     try {
-      // Wait for AudioContext to be truly RUNNING before audio starts.
-      // Without this, buffered audio plays back in a burst on iOS.
+      // Await AudioContext resume — prevents buffered-audio burst on iOS.
+      // On PWA after lock screen, the lock-screen tap IS a user gesture so
+      // AudioContext.resume() will succeed here.
       await resumeAudioContext();
       // Force rate to 1 — iOS sometimes adjusts this after backgrounding
       audio.playbackRate = 1;
@@ -119,7 +130,9 @@ export function PlayerProvider({ children }) {
       console.log("[Player] safePlay →", {
         currentTime: audio.currentTime,
         readyState: audio.readyState,
+        paused: audio.paused,
         audioCtxState: _audioCtx?.state,
+        force,
       });
       await audio.play();
     } catch (err) {
@@ -127,7 +140,7 @@ export function PlayerProvider({ children }) {
     } finally {
       releaseLock();
     }
-  }, [acquireLock, releaseLock]);
+  }, [acquireLock, releaseLock, forceReleaseLock]); // safePlay
 
   // ── safePause ────────────────────────────────────────────────────────────
   // Single entry point for ALL pause() calls.
@@ -221,13 +234,16 @@ export function PlayerProvider({ children }) {
       // Signal AudioPlayer to freeze its progress bar immediately
       sharedHiddenRef.current = true;
       if (!audio.src || audio.paused) return;
-      // Save position BEFORE pausing (safePause also saves, but be explicit)
       const ct = audio.currentTime;
       savePosition(ct);
-      // Pause without lock since we're in a visibility handler (may need to fire fast)
       try { audio.pause(); } catch {}
       setIsPlaying(false);
-      console.log("[Player] onHide — paused at", ct);
+      // CRITICAL: force-release the lock after pausing.
+      // iOS fires the Media Session "play" handler almost immediately after
+      // the lock screen appears. If the lock is still held from this pause,
+      // that "play" call gets silently dropped — the player never resumes.
+      forceReleaseLock();
+      console.log("[Player] onHide — paused at", ct, "lock released");
     };
 
     const onShow = () => {
@@ -253,7 +269,7 @@ export function PlayerProvider({ children }) {
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("pageshow", onShow);
     };
-  }, [savePosition]);
+  }, [savePosition, forceReleaseLock]);
 
   // ── Media Session (lock screen controls) ─────────────────────────────────
   const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
@@ -295,12 +311,13 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
       if (!audio.src) return;
-      // Restore saved position first — then play exactly from where we paused
+      // Restore saved position so we resume exactly where we paused
       if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = savedTimeRef.current;
         clearPosition();
       }
-      safePlay(audio);
+      // force=true: this is a trusted iOS gesture — never drop it due to lock state
+      safePlay(audio, true);
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
