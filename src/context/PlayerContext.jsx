@@ -53,13 +53,27 @@ export function PlayerProvider({ children }) {
   const [isPlaying,    setIsPlaying]    = useState(false);
   const [queue,        setQueue]        = useState([]);
   const [sourceType,   setSourceType]   = useState("song");
+  // savedTime > 0 means we paused mid-song on hide — UI shows Resume
+  const [savedTime,    setSavedTime]    = useState(0);
 
-  const audioRef     = useRef(persistentAudio);
-  const onNextRef    = useRef(null);
-  const onPrevRef    = useRef(null);
-  const loadedSrcRef = useRef("");
+  const audioRef        = useRef(persistentAudio);
+  const onNextRef       = useRef(null);
+  const onPrevRef       = useRef(null);
+  const loadedSrcRef    = useRef("");
+  const savedTimeRef    = useRef(0); // synchronous mirror of savedTime state
 
-  // Load & play when track changes
+  // ── Save / clear position helpers ────────────────────────────────────────
+  const savePosition = useCallback((time) => {
+    savedTimeRef.current = time;
+    setSavedTime(time);
+  }, []);
+
+  const clearPosition = useCallback(() => {
+    savedTimeRef.current = 0;
+    setSavedTime(0);
+  }, []);
+
+  // ── Load & play a new track ───────────────────────────────────────────────
   useEffect(() => {
     if (!currentTrack?.audio_url) return;
     const audio = audioRef.current;
@@ -70,25 +84,31 @@ export function PlayerProvider({ children }) {
       (audio.src && audio.src.endsWith(currentTrack.audio_url));
 
     if (isSameTrack) {
-      if (audio.paused) audio.play().catch(() => {});
+      if (audio.paused) {
+        resumeAudioContext();
+        audio.play().catch(() => {});
+      }
       return;
     }
 
+    // New track — clear any saved position from previous track
+    clearPosition();
     loadedSrcRef.current = currentTrack.audio_url;
     audio.src = currentTrack.audio_url;
     audio.load();
     audio.play().catch((err) => {
       if (err.name !== "AbortError") console.warn("[Player] play() error:", err);
     });
-  }, [currentTrack]);
+  }, [currentTrack, clearPosition]);
 
-  // Sync isPlaying state from native audio events
+  // ── Sync isPlaying from native audio events ───────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     const onPlay  = () => { resumeAudioContext(); setIsPlaying(true); };
     const onPause = () => setIsPlaying(false);
     const onEnded = () => {
       setIsPlaying(false);
+      clearPosition();
       onNextRef.current?.();
     };
 
@@ -100,9 +120,51 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("pause", onPause);
       audio.removeEventListener("ended", onEnded);
     };
-  }, []);
+  }, [clearPosition]);
 
-  // Media Session (lock screen controls)
+  // ── Safe pause on hide — unified for Safari & PWA ────────────────────────
+  // When the page is hidden (lock screen, switch app, background):
+  //   1. Pause the real audio element immediately
+  //   2. Save currentTime so Resume can restore it
+  //   3. Set isPlaying = false → stops progress bar, stops animations
+  // When the page comes back:
+  //   - Audio stays paused, UI shows Play button
+  //   - User must tap Play to resume
+  //   - No auto-resume, no catch-up, no glitch
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const onHide = () => {
+      if (!audio.src || audio.paused) return;
+      // Capture time BEFORE pause so we can restore to exact position
+      const ct = audio.currentTime;
+      audio.pause();
+      savePosition(ct);
+      setIsPlaying(false);
+    };
+
+    const onShow = () => {
+      // Just sync UI — never auto-play on return
+      setIsPlaying(!audio.paused && !audio.ended);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") onHide();
+      else onShow();
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pageshow", onShow);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pageshow", onShow);
+    };
+  }, [savePosition]);
+
+  // ── Media Session (lock screen controls) ─────────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator) || !currentTrack) return;
 
@@ -116,8 +178,26 @@ export function PlayerProvider({ children }) {
       artwork: [{ src: artSrc, sizes: "512x512", type: "image/jpeg" }],
     });
 
-    navigator.mediaSession.setActionHandler("play",  () => { const a = audioRef.current; if (a.src) a.play().catch(() => {}); });
-    navigator.mediaSession.setActionHandler("pause", () => audioRef.current.pause());
+    navigator.mediaSession.setActionHandler("play", () => {
+      const audio = audioRef.current;
+      if (!audio.src) return;
+      // Restore saved position if we paused mid-song on hide
+      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = savedTimeRef.current;
+        clearPosition();
+      }
+      resumeAudioContext();
+      audio.play().catch(() => {});
+    });
+
+    navigator.mediaSession.setActionHandler("pause", () => {
+      const audio = audioRef.current;
+      if (!audio.paused) {
+        savePosition(audio.currentTime);
+        audio.pause();
+      }
+    });
+
     navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
     navigator.mediaSession.setActionHandler("previoustrack", () => onPrevRef.current?.());
 
@@ -126,7 +206,7 @@ export function PlayerProvider({ children }) {
         try { navigator.mediaSession.setActionHandler(a, null); } catch {}
       });
     };
-  }, [currentTrack]);
+  }, [currentTrack, clearPosition, savePosition]);
 
   // Keep Media Session badge in sync
   useEffect(() => {
@@ -134,17 +214,23 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
 
-  // Public API
+  // ── Public API ────────────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio.src) return;
     if (audio.paused) {
+      // Restore saved position if we paused on hide
+      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = savedTimeRef.current;
+        clearPosition();
+      }
       resumeAudioContext();
       audio.play().catch(() => {});
     } else {
+      savePosition(audio.currentTime);
       audio.pause();
     }
-  }, []);
+  }, [clearPosition, savePosition]);
 
   const playTrack = useCallback((track, source = "song") => {
     getOrCreateAudioContext(audioRef.current);
@@ -157,9 +243,10 @@ export function PlayerProvider({ children }) {
     audio.pause();
     audio.src = "";
     loadedSrcRef.current = "";
+    clearPosition();
     setIsPlaying(false);
     setCurrentTrack(null);
-  }, []);
+  }, [clearPosition]);
 
   const registerNextHandler = useCallback((fn) => { onNextRef.current = fn; }, []);
   const registerPrevHandler = useCallback((fn) => { onPrevRef.current = fn; }, []);
@@ -172,8 +259,9 @@ export function PlayerProvider({ children }) {
       isPlaying,
       queue,
       sourceType,
+      savedTime,   // > 0 when paused at a saved mid-song position
       isPWA: false,
-      pwaPausedAt: 0,
+      pwaPausedAt: savedTime,
       playTrack,
       togglePlay,
       stopPlaying,

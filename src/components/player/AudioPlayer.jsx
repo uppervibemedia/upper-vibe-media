@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -6,20 +6,50 @@ import { usePlayer } from "../../context/PlayerContext";
 
 export default function AudioPlayer() {
   const { currentTrack, isPlaying, togglePlay, stopPlaying, audioRef, handleNext, handlePrev } = usePlayer();
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(80);
-  const [muted, setMuted] = useState(false);
+  const [progress,   setProgress]   = useState(0);
+  const [duration,   setDuration]   = useState(0);
+  const [currentSec, setCurrentSec] = useState(0);
+  const [volume,     setVolume]     = useState(80);
+  const [muted,      setMuted]      = useState(false);
+
+  // Track whether we are hidden — freeze progress when paused
+  const hiddenRef = useRef(false);
+
+  useEffect(() => {
+    const onVisibility = () => { hiddenRef.current = document.visibilityState === "hidden"; };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
-    const onTimeUpdate    = () => setProgress((audio.currentTime / audio.duration) * 100 || 0);
+
+    const onTimeUpdate = () => {
+      // Do not move the progress bar while the page is hidden or audio is paused
+      // This prevents fake forward movement while the OS is silently letting audio drift
+      if (hiddenRef.current || audio.paused) return;
+      const pct = (audio.currentTime / audio.duration) * 100 || 0;
+      setProgress(pct);
+      setCurrentSec(audio.currentTime);
+    };
+
     const onLoadedMetadata = () => setDuration(audio.duration);
+
+    // Snap progress when play resumes (so bar reflects real position after restore)
+    const onPlay = () => {
+      const pct = (audio.currentTime / audio.duration) * 100 || 0;
+      setProgress(pct);
+      setCurrentSec(audio.currentTime);
+    };
+
     audio.addEventListener("timeupdate",     onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("play",           onPlay);
+
     return () => {
       audio.removeEventListener("timeupdate",     onTimeUpdate);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("play",           onPlay);
     };
   }, [audioRef]);
 
@@ -29,8 +59,10 @@ export default function AudioPlayer() {
 
   const handleSeek = (val) => {
     const audio = audioRef.current;
+    if (!audio.duration) return;
     audio.currentTime = (val[0] / 100) * audio.duration;
     setProgress(val[0]);
+    setCurrentSec(audio.currentTime);
   };
 
   const formatTime = (secs) => {
@@ -55,7 +87,7 @@ export default function AudioPlayer() {
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
           }}
         >
-          {/* Seek bar — full width stripe */}
+          {/* Seek bar */}
           <div
             className="relative h-[3px] w-full bg-white/5 cursor-pointer group"
             onClick={(e) => {
@@ -65,7 +97,7 @@ export default function AudioPlayer() {
             }}
           >
             <div
-              className="h-full transition-all"
+              className="h-full"
               style={{
                 width: `${progress}%`,
                 background: "linear-gradient(90deg,#00B8D4,#00E5FF,#D4A843)"
@@ -132,7 +164,7 @@ export default function AudioPlayer() {
               >
                 {isPlaying
                   ? <Pause className="w-4 h-4 text-black" />
-                  : <Play className="w-4 h-4 text-black ml-0.5" />
+                  : <Play  className="w-4 h-4 text-black ml-0.5" />
                 }
               </button>
               <button onClick={handleNext} className="text-white/25 hover:text-white/60 transition-colors hidden md:flex">
@@ -142,7 +174,7 @@ export default function AudioPlayer() {
 
             {/* Time + Volume + Close (desktop) */}
             <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
-              <span className="text-[11px] text-white/30 tabular-nums">{formatTime(audioRef.current.currentTime)}</span>
+              <span className="text-[11px] text-white/30 tabular-nums">{formatTime(currentSec)}</span>
               <span className="text-[11px] text-white/20">/</span>
               <span className="text-[11px] text-white/30 tabular-nums">{formatTime(duration)}</span>
 
