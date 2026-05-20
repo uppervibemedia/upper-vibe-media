@@ -155,13 +155,72 @@ export function PlayerProvider({ children }) {
     };
   }, []);
 
-  // ── Sync UI when returning from background / screen-lock ─────────────────
-  // Read actual audio element state — never call play() or pause() here.
+  // ── Mobile background workaround ─────────────────────────────────────────
+  // On iPhone, background/lock-screen playback is unreliable via web.
+  // Safest approach: pause cleanly before backgrounding, save position,
+  // restore position when returning, wait for user to press Play.
+  const savedTimeRef = useRef(0);
+
   useEffect(() => {
+    // Only apply this workaround on mobile (touch devices)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (!isMobile) return;
+
+    const audio = audioRef.current;
+
+    const onHide = () => {
+      // Page going to background / screen locking
+      if (!audio.paused) {
+        savedTimeRef.current = audio.currentTime;
+        audio.pause();
+        // isPlaying will update via the native "pause" event listener
+      }
+    };
+
+    const onShow = () => {
+      // Page returning from background
+      // Restore saved position so next Play starts from correct time.
+      // Do NOT call play() — wait for user interaction.
+      if (
+        savedTimeRef.current > 0 &&
+        isFinite(audio.duration) &&
+        audio.duration > 0 &&
+        Math.abs(audio.currentTime - savedTimeRef.current) > 0.5
+      ) {
+        audio.currentTime = savedTimeRef.current;
+      }
+      // Mirror actual paused state into React (should be paused at this point)
+      if (audio.src) setIsPlaying(!audio.paused);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        onHide();
+      } else if (document.visibilityState === "visible") {
+        onShow();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pageshow", onShow);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pageshow", onShow);
+    };
+  }, []);
+
+  // ── Desktop: sync UI when returning from background ───────────────────────
+  // On desktop only — just read audio state, never play/pause automatically.
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) return;
+
     const syncUI = () => {
       const audio = audioRef.current;
       if (!audio.src) return;
-      // Just mirror what the audio element is actually doing
       setIsPlaying(!audio.paused);
     };
 
@@ -171,13 +230,10 @@ export function PlayerProvider({ children }) {
 
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pageshow", syncUI);
-    // focus fires on return from Control Center / lock screen on iOS
-    window.addEventListener("focus", syncUI);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pageshow", syncUI);
-      window.removeEventListener("focus", syncUI);
     };
   }, []);
 
@@ -202,6 +258,16 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
       if (!audio.src || audio.src === window.location.href) return;
+      // Restore saved position if we paused due to backgrounding
+      if (
+        savedTimeRef.current > 0 &&
+        isFinite(audio.duration) &&
+        audio.duration > 0 &&
+        Math.abs(audio.currentTime - savedTimeRef.current) > 0.5
+      ) {
+        audio.currentTime = savedTimeRef.current;
+      }
+      savedTimeRef.current = 0;
       safePlay(audio);
     });
 
@@ -232,6 +298,16 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     if (!audio.src) return;
     if (audio.paused) {
+      // On mobile: restore saved position before playing (no catch-up)
+      if (
+        savedTimeRef.current > 0 &&
+        isFinite(audio.duration) &&
+        audio.duration > 0 &&
+        Math.abs(audio.currentTime - savedTimeRef.current) > 0.5
+      ) {
+        audio.currentTime = savedTimeRef.current;
+      }
+      savedTimeRef.current = 0;
       safePlay(audio);
     } else {
       safePause(audio);
