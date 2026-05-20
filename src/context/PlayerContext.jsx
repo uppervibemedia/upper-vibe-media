@@ -239,15 +239,8 @@ export function PlayerProvider({ children }) {
 
     const doHide = () => {
       hideScheduled = false;
-
-      // Radio (PWA or browser): never pause on hide — let iOS keep playing in background
-      // so lock-screen controls stay connected. The AudioContext will be resumed on show.
-      if (sourceTypeRef.current === "radio") {
-        console.log("[Player] onHide — Radio mode, skipping pause to preserve lock-screen audio");
-        return;
-      }
-
       sharedHiddenRef.current = true;
+
       if (!audio.src || audio.ended) return;
 
       // Save position unconditionally — even if iOS already paused us
@@ -256,11 +249,14 @@ export function PlayerProvider({ children }) {
       setIsPlaying(false);
 
       // Force pause — bypass 500ms lock, background always wins
+      // This applies to ALL sources including radio.
+      // For radio in PWA, iOS lock-screen Play button fires our MediaSession handler
+      // which resumes cleanly from savedTime — pausing first prevents the glitch burst.
       pauseLockRef.current = false;
       playLockRef.current  = false;
       if (!audio.paused) {
         audio.pause();
-        console.log("[Player] onHide — force-paused at", ct.toFixed(2));
+        console.log("[Player] onHide — force-paused at", ct.toFixed(2), "sourceType:", sourceTypeRef.current);
       }
     };
 
@@ -268,12 +264,13 @@ export function PlayerProvider({ children }) {
       showScheduled = false;
       sharedHiddenRef.current = false;
 
-      // Radio mode (PWA or browser): audio plays natively in background on iOS.
-      // Just resume the AudioContext if it got suspended — this is what caused silence
-      // + moving progress bar (audio plays but AudioContext is suspended so no sound).
+      // Radio mode: audio was paused on hide, AudioContext may be suspended.
+      // Resume context so it's ready when user presses Play. Do not auto-play.
       if (sourceTypeRef.current === "radio") {
-        console.log("[Player] onShow — Radio mode, resuming AudioContext if suspended");
         resumeAudioContext().catch(() => {});
+        setIsPlaying(false);
+        sharedHiddenRef.current = false;
+        console.log("[Player] onShow — Radio mode, resumed AudioContext, awaiting user Play");
         return;
       }
 
@@ -412,18 +409,19 @@ export function PlayerProvider({ children }) {
         safePlay(audio);
       };
 
-      // If duration is not yet known (audio unloaded during background), wait for canplay
-      if (!isFinite(audio.duration) || audio.duration === 0) {
-        console.log("[Player] MediaSession play — duration not ready (readyState=" + audio.readyState + "), waiting for canplay");
+      // Radio tracks have a known duration — just resume directly.
+      // For songs, if duration is not yet known (audio unloaded during background), wait for canplay.
+      if (audio.readyState >= 2) {
+        // Enough data to play — go directly
+        resumeFromSaved();
+      } else {
+        console.log("[Player] MediaSession play — not ready (readyState=" + audio.readyState + "), waiting for canplay");
         const onCanPlay = () => {
           audio.removeEventListener("canplay", onCanPlay);
           resumeFromSaved();
         };
         audio.addEventListener("canplay", onCanPlay);
-        // Kick off loading if needed
         if (audio.readyState < 1) audio.load();
-      } else {
-        resumeFromSaved();
       }
     });
 

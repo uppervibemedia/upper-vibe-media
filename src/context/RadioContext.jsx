@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { usePlayer, resumeGlobalAudioContext } from "./PlayerContext";
+import { usePlayer } from "./PlayerContext";
 
 const RadioContext = createContext(null);
 
@@ -282,48 +282,8 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 🎯 Jumped to:", song.title);
   }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack]);
 
-  // ── PWA-only: On return from background, clear any stuck locks ───────────
-  // iOS PWA keeps audio playing in the background — we do NOT pause on hide.
-  // That's what makes lock-screen controls work natively.
-  // We only need to clear play/pause locks on show, in case a stale lock
-  // survived from a previous interaction.
-  useEffect(() => {
-    const isPwa =
-      window.navigator.standalone === true ||
-      window.matchMedia("(display-mode: standalone)").matches;
-    if (!isPwa) return;
-
-    const onShow = () => {
-      const { sourceType: st } = stateRef.current;
-      if (st !== "radio") return;
-      // Resume AudioContext immediately — if it got suspended by iOS on lock screen,
-      // this is what restores sound (audio element plays but AudioContext is silent when suspended)
-      resumeGlobalAudioContext();
-      clearPlayLocks();
-      console.log("[PWA Radio] onShow — resumed AudioContext, cleared locks, audio:", {
-        paused:     audioRef.current?.paused,
-        time:       audioRef.current?.currentTime?.toFixed(2),
-        readyState: audioRef.current?.readyState,
-      });
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") onShow();
-    };
-
-    // Fire on both visibilitychange (tab switch) and pageshow (back navigation / resume)
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pageshow", onShow);
-    // Also on focus — iOS sometimes fires focus without visibilitychange when unlocking
-    window.addEventListener("focus", onShow);
-
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pageshow", onShow);
-      window.removeEventListener("focus", onShow);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clearPlayLocks]);
+  // PlayerContext now handles pause-on-hide and AudioContext resume-on-show
+  // for ALL sourceTypes including radio, so no duplicate handler needed here.
 
   const clearPwaRadioPaused = useCallback(() => setPwaRadioPaused(false), []);
 
