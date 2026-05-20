@@ -368,8 +368,6 @@ export function PlayerProvider({ children }) {
       queue,
       sourceType,
       savedTime,
-      isPWA: false,
-      pwaPausedAt: savedTime,
       playTrack,
       togglePlay,
       safePlay,
