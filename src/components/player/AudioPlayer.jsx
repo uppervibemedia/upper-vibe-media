@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -12,63 +12,34 @@ export default function AudioPlayer() {
   const [volume,     setVolume]     = useState(80);
   const [muted,      setMuted]      = useState(false);
 
-  // Track last known currentTime so we can detect non-increasing updates
-  // and freeze the bar instead of jumping backward or fake-progressing
-  const lastTimeRef = useRef(0);
-
   useEffect(() => {
     const audio = audioRef.current;
 
     const onTimeUpdate = () => {
-      // Rule: only advance progress bar when:
-      //   1. Page is visible (sharedHiddenRef.current === false)
-      //   2. Audio is NOT paused
-      //   3. Audio has enough data (readyState >= 2 = HAVE_CURRENT_DATA)
-      //   4. currentTime is actually moving forward
-      if (sharedHiddenRef.current) return;
-      if (audio.paused) return;
-      if (audio.readyState < 2) return;
-      const ct = audio.currentTime;
-      // Only advance if time is genuinely increasing (not a desync/reset)
-      if (ct <= lastTimeRef.current && lastTimeRef.current > 0) return;
-      lastTimeRef.current = ct;
-      const pct = (ct / audio.duration) * 100 || 0;
+      // Freeze progress bar when page is hidden (sharedHiddenRef set by PlayerContext)
+      if (sharedHiddenRef.current || audio.paused) return;
+      const pct = (audio.currentTime / audio.duration) * 100 || 0;
       setProgress(pct);
-      setCurrentSec(ct);
+      setCurrentSec(audio.currentTime);
     };
 
-    const onLoadedMetadata = () => {
-      setDuration(audio.duration);
-      // Reset last time when a new track loads
-      lastTimeRef.current = 0;
-    };
+    const onLoadedMetadata = () => setDuration(audio.duration);
 
-    // Snap progress bar to real position the moment play resumes.
-    // This prevents the bar from sitting at 0 for a second after restore.
+    // Snap progress when play resumes (so bar reflects real position after restore)
     const onPlay = () => {
-      lastTimeRef.current = audio.currentTime;
       const pct = (audio.currentTime / audio.duration) * 100 || 0;
       setProgress(pct);
       setCurrentSec(audio.currentTime);
-    };
-
-    // When paused, freeze the bar at the exact paused position
-    const onPause = () => {
-      setCurrentSec(audio.currentTime);
-      const pct = (audio.currentTime / audio.duration) * 100 || 0;
-      setProgress(pct);
     };
 
     audio.addEventListener("timeupdate",     onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("play",           onPlay);
-    audio.addEventListener("pause",          onPause);
 
     return () => {
       audio.removeEventListener("timeupdate",     onTimeUpdate);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("play",           onPlay);
-      audio.removeEventListener("pause",          onPause);
     };
   }, [audioRef]);
 
@@ -79,11 +50,9 @@ export default function AudioPlayer() {
   const handleSeek = (val) => {
     const audio = audioRef.current;
     if (!audio.duration) return;
-    const newTime = (val[0] / 100) * audio.duration;
-    audio.currentTime = newTime;
-    lastTimeRef.current = newTime;
+    audio.currentTime = (val[0] / 100) * audio.duration;
     setProgress(val[0]);
-    setCurrentSec(newTime);
+    setCurrentSec(audio.currentTime);
   };
 
   const formatTime = (secs) => {
