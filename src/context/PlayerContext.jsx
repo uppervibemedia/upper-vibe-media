@@ -132,7 +132,8 @@ export function PlayerProvider({ children }) {
   const savedTimeRef = useRef(0);
 
   // ── Sync React state FROM native audio events (single mount) ─────────────
-  // isPlaying is DERIVED from the real audio element, not the other way around.
+  // isPlaying is the ONLY source of truth — derived exclusively from the real
+  // audio element. Every player UI reads this value; nothing else drives state.
   useEffect(() => {
     const audio = audioRef.current;
 
@@ -146,13 +147,38 @@ export function PlayerProvider({ children }) {
       onNextRef.current?.();
     };
 
-    audio.addEventListener("play",  onPlay);
-    audio.addEventListener("pause", onPause);
-    audio.addEventListener("ended", onEnded);
+    // iOS media player dismissed / audio unexpectedly interrupted:
+    // abort + emptied fire when iOS kills or dismisses the native media player
+    // without a clean "pause" event. Save position and sync UI immediately.
+    const onHardStop = () => {
+      savedTimeRef.current = audio.currentTime;
+      setIsPlaying(false);
+    };
+
+    // stalled fires when iOS can't fetch more data (e.g. player was dismissed).
+    // Only treat it as a stop if the audio element is already paused — otherwise
+    // it's a normal buffering stall mid-playback and we leave playback state alone.
+    const onStalled = () => {
+      if (audio.paused) {
+        savedTimeRef.current = audio.currentTime;
+        setIsPlaying(false);
+      }
+    };
+
+    audio.addEventListener("play",    onPlay);
+    audio.addEventListener("pause",   onPause);
+    audio.addEventListener("ended",   onEnded);
+    audio.addEventListener("abort",   onHardStop);
+    audio.addEventListener("emptied", onHardStop);
+    audio.addEventListener("stalled", onStalled);
+
     return () => {
-      audio.removeEventListener("play",  onPlay);
-      audio.removeEventListener("pause", onPause);
-      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("play",    onPlay);
+      audio.removeEventListener("pause",   onPause);
+      audio.removeEventListener("ended",   onEnded);
+      audio.removeEventListener("abort",   onHardStop);
+      audio.removeEventListener("emptied", onHardStop);
+      audio.removeEventListener("stalled", onStalled);
     };
   }, []);
 
@@ -186,8 +212,10 @@ export function PlayerProvider({ children }) {
 
     const onShow = () => {
       if (!audio.src) return;
-      // Only sync UI — never auto-play, never seek
-      setIsPlaying(!audio.paused);
+      // Sync UI from the real audio element — the single source of truth.
+      // If audio is paused (including after iOS dismissed the native player),
+      // ensure isPlaying is false. Never auto-play.
+      setIsPlaying(!audio.paused && !audio.ended);
     };
 
     const onVisibility = () => {
