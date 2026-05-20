@@ -2,6 +2,12 @@ import React, { createContext, useContext, useState, useRef, useEffect, useCallb
 
 const PlayerContext = createContext(null);
 
+// ─── Detect PWA (standalone) mode once at module level ───────────────────
+const IS_PWA = typeof window !== "undefined" && (
+  window.navigator.standalone === true ||
+  window.matchMedia("(display-mode: standalone)").matches
+);
+
 // ─── ONE global audio element — never recreated ────────────────────────────
 const persistentAudio = (() => {
   if (typeof window === "undefined") return null;
@@ -93,10 +99,11 @@ function safePause(audio) {
 }
 
 export function PlayerProvider({ children }) {
-  const [currentTrack, setCurrentTrack] = useState(null);
-  const [isPlaying,    setIsPlaying]    = useState(false);
-  const [queue,        setQueue]        = useState([]);
-  const [sourceType,   setSourceType]   = useState("song");
+  const [currentTrack,   setCurrentTrack]   = useState(null);
+  const [isPlaying,      setIsPlaying]      = useState(false);
+  const [queue,          setQueue]          = useState([]);
+  const [sourceType,     setSourceType]     = useState("song");
+  const [pwaPausedAt,    setPwaPausedAt]    = useState(0); // >0 means PWA paused mid-song
 
   const audioRef     = useRef(persistentAudio);
   const onNextRef    = useRef(null);
@@ -129,7 +136,19 @@ export function PlayerProvider({ children }) {
   }, [currentTrack]);
 
   // ── Saved position ref (used by PWA pause-on-hide and resume) ────────────
+  // savedTimeRef is the ref used synchronously in handlers.
+  // pwaPausedAt is the React state mirror — drives UI (Resume button, frozen progress).
   const savedTimeRef = useRef(0);
+
+  const savePWAPosition = useCallback((time) => {
+    savedTimeRef.current = time;
+    if (IS_PWA) setPwaPausedAt(time);
+  }, []);
+
+  const clearPWAPosition = useCallback(() => {
+    savedTimeRef.current = 0;
+    setPwaPausedAt(0);
+  }, []);
 
   // ── Sync React state FROM native audio events (single mount) ─────────────
   // isPlaying is the ONLY source of truth — derived exclusively from the real
@@ -151,7 +170,7 @@ export function PlayerProvider({ children }) {
     // abort + emptied fire when iOS kills or dismisses the native media player
     // without a clean "pause" event. Save position and sync UI immediately.
     const onHardStop = () => {
-      savedTimeRef.current = audio.currentTime;
+      savePWAPosition(audio.currentTime);
       setIsPlaying(false);
     };
 
@@ -160,7 +179,7 @@ export function PlayerProvider({ children }) {
     // it's a normal buffering stall mid-playback and we leave playback state alone.
     const onStalled = () => {
       if (audio.paused) {
-        savedTimeRef.current = audio.currentTime;
+        savePWAPosition(audio.currentTime);
         setIsPlaying(false);
       }
     };
@@ -180,32 +199,25 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("emptied", onHardStop);
       audio.removeEventListener("stalled", onStalled);
     };
-  }, []);
+  }, [savePWAPosition]);
 
   // ── Background / lock-screen handling ────────────────────────────────────
   //
-  // PWA (standalone) mode:
-  //   iOS cannot reliably keep PWA audio alive through lock. So we proactively
-  //   pause BEFORE the app is suspended (on hide), save currentTime, and do
-  //   nothing on show — user must press Play to resume.
-  //   This prevents the glitch/repeat/catch-up corruption entirely.
+  // PWA mode: proactively pause on hide — iOS can't reliably keep PWA audio
+  //   alive through lock screen. Clean pause prevents corruption entirely.
+  //   On return: only sync UI, never auto-play. User must press Play.
   //
-  // Non-PWA (Safari/browser) mode:
-  //   Let iOS handle background audio natively. On return, only sync UI state
-  //   from the real audio element — never auto-play or auto-pause.
+  // Safari mode: let iOS handle background audio natively. On return,
+  //   only sync UI state — never auto-play or auto-pause.
   //
   useEffect(() => {
     const audio = audioRef.current;
 
-    const isPWA = () =>
-      window.navigator.standalone === true ||
-      window.matchMedia("(display-mode: standalone)").matches;
-
     const onHide = () => {
-      if (!isPWA()) return;
+      if (!IS_PWA) return;
       if (!audio.src || audio.paused) return;
       // Proactively pause before iOS can suspend and corrupt the stream
-      savedTimeRef.current = audio.currentTime;
+      savePWAPosition(audio.currentTime);
       audio.pause();
       setIsPlaying(false);
     };
@@ -213,8 +225,7 @@ export function PlayerProvider({ children }) {
     const onShow = () => {
       if (!audio.src) return;
       // Sync UI from the real audio element — the single source of truth.
-      // If audio is paused (including after iOS dismissed the native player),
-      // ensure isPlaying is false. Never auto-play.
+      // Never auto-play. If paused (PWA locked, iOS dismissed player), show paused.
       setIsPlaying(!audio.paused && !audio.ended);
     };
 
@@ -231,13 +242,15 @@ export function PlayerProvider({ children }) {
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("pageshow", onShow);
     };
-  }, []);
+  }, [savePWAPosition]);
 
   // ── Media Session — lock screen / Control Center ──────────────────────────
-  // Re-registered every time currentTrack changes.
-  // Handlers call safePlay/safePause directly — never togglePlay, never playTrack.
+  // Safari mode: full media session with lock-screen controls.
+  // PWA mode: skip entirely — we proactively pause on hide, no lock-screen
+  //   controls needed and registering them can cause iOS to fight our pause.
   useEffect(() => {
     if (!("mediaSession" in navigator) || !currentTrack) return;
+    if (IS_PWA) return; // PWA: no lock-screen controls — clean pause is the strategy
 
     const artSrc = currentTrack.cover_url ||
       "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
@@ -254,10 +267,9 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
       if (!audio.src || audio.src === window.location.href) return;
-      // Restore position saved by PWA pause-on-hide
       if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = savedTimeRef.current;
-        savedTimeRef.current = 0;
+        clearPWAPosition();
       }
       safePlay(audio);
     });
@@ -289,17 +301,17 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     if (!audio.src) return;
     if (audio.paused) {
-      // If PWA pause-on-hide saved a position, restore it before resuming
+      // Restore position saved by PWA pause-on-hide before resuming
       if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = savedTimeRef.current;
-        savedTimeRef.current = 0;
+        clearPWAPosition();
       }
       safePlay(audio);
     } else {
       safePause(audio);
     }
     // isPlaying updates via native play/pause event listeners — not set here
-  }, []);
+  }, [clearPWAPosition]);
 
   const playTrack = useCallback((track, source = "song") => {
     getOrCreateAudioContext(audioRef.current);
@@ -327,6 +339,8 @@ export function PlayerProvider({ children }) {
       isPlaying,
       queue,
       sourceType,
+      isPWA: IS_PWA,
+      pwaPausedAt,
       playTrack,
       togglePlay,
       stopPlaying,
