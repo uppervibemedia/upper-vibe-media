@@ -100,8 +100,17 @@ export function PlayerProvider({ children }) {
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
       if (!audio.paused) { unlock(); return; } // already playing — no-op
-      // One final rate assertion right before play() — belt-and-suspenders for Safari
-      audio.playbackRate = 1;
+
+      // Snap currentTime to flush any stale AudioContext buffer accumulated during suspension.
+      // This is the primary killer of the "speed burst" on Radio / Safari return-from-lock.
+      const snapTime = audio.currentTime;
+      if (isFinite(snapTime) && snapTime > 0) {
+        try { audio.currentTime = snapTime; } catch {}
+      }
+
+      // Final rate assertion right before play()
+      audio.playbackRate        = 1;
+      audio.defaultPlaybackRate = 1;
       console.log("[Player] safePlay →", {
         currentTime:   audio.currentTime,
         readyState:    audio.readyState,
@@ -208,40 +217,82 @@ export function PlayerProvider({ children }) {
   }, [clearPosition, currentTrack]);
 
   // ── Unified visibility / background handler ───────────────────────────────
-  // ON HIDE  — force clean pause immediately, save position, freeze UI
-  // ON SHOW  — sync UI only, never auto-play
+  // ON HIDE  — force clean pause, save position, freeze UI
+  // ON SHOW  — kill any catch-up burst, sync UI, never auto-play
   useEffect(() => {
     const audio = audioRef.current;
 
-    const onHide = () => {
+    // Debounce flags — prevent double-firing from visibilitychange + focus/blur
+    let hideScheduled = false;
+    let showScheduled = false;
+
+    const doHide = () => {
+      hideScheduled = false;
       sharedHiddenRef.current = true;
       if (!audio.src || audio.ended) return;
 
-      // Always save position regardless of paused state
+      // Save position unconditionally — even if iOS already paused us
       const ct = audio.currentTime;
       savePosition(ct);
       setIsPlaying(false);
 
-      // Force pause — bypass lock so background always wins
+      // Force pause — bypass 500ms lock, background always wins
       pauseLockRef.current = false;
+      playLockRef.current  = false;
       if (!audio.paused) {
         audio.pause();
         console.log("[Player] onHide — force-paused at", ct.toFixed(2));
       }
     };
 
-    const onShow = () => {
+    const doShow = () => {
+      showScheduled = false;
       sharedHiddenRef.current = false;
-      // If somehow still playing (iOS kept audio alive), pause and save position
-      if (audio.src && !audio.ended && !audio.paused) {
+
+      if (!audio.src || audio.ended) {
+        setIsPlaying(false);
+        return;
+      }
+
+      // Kill any iOS catch-up burst:
+      // If audio is still running (iOS kept it alive through lock screen),
+      // pause immediately, snap currentTime to flush the stale buffer,
+      // then save position. User must press Play to resume.
+      if (!audio.paused) {
         const ct = audio.currentTime;
         audio.pause();
+        // Snap currentTime to drain the AudioContext's stale buffered data
+        try { audio.currentTime = ct; } catch {}
+        audio.playbackRate        = 1;
+        audio.defaultPlaybackRate = 1;
         savePosition(ct);
-        console.log("[Player] onShow — found still-playing, paused at", ct.toFixed(2));
+        console.log("[Player] onShow — killed catch-up, snapped to", ct.toFixed(2));
       }
-      // Sync UI from real state — never auto-play
-      setIsPlaying(!audio.paused && !audio.ended);
-      console.log("[Player] onShow — synced. paused:", audio.paused, "savedTime:", savedTimeRef.current.toFixed(2));
+
+      // Also reset AudioContext rate in case it drifted
+      if (_audioCtx && _audioCtx.state === "running") {
+        // No direct playbackRate on AudioContext, but assert on element
+        audio.playbackRate        = 1;
+        audio.defaultPlaybackRate = 1;
+      }
+
+      // UI sync only — never auto-play
+      setIsPlaying(false);
+      console.log("[Player] onShow — synced paused. savedTime:", savedTimeRef.current.toFixed(2));
+    };
+
+    const onHide = () => {
+      if (hideScheduled) return;
+      hideScheduled = true;
+      // Use microtask so we run after any native audio events from the same tick
+      queueMicrotask(doHide);
+    };
+
+    const onShow = () => {
+      if (showScheduled) return;
+      showScheduled = true;
+      // Small delay: let iOS finish any in-progress AudioContext resume before we force-pause
+      setTimeout(doShow, 80);
     };
 
     const onVisibility = () => {
