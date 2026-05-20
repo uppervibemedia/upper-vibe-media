@@ -98,7 +98,7 @@ export function PlayerProvider({ children }) {
   const savePosition = useCallback((time) => {
     savedTimeRef.current = time;
     setSavedTime(time);
-  }, []);
+  }, []); // used only by safePause and togglePlay
 
   const clearPosition = useCallback(() => {
     savedTimeRef.current = 0;
@@ -213,46 +213,32 @@ export function PlayerProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearPosition, currentTrack]);
 
-  // ── Unified visibility / background / lock-screen handler ────────────────
+  // ── Visibility / background handler ──────────────────────────────────────
   //
-  // ON HIDE (lock, switch app, browser tab hidden):
-  //   • Save currentTime to savedTimeRef
-  //   • Call audio.pause() once via safePause (which saves position too)
-  //   • Set isPlaying=false to stop UI animations
-  //   • Set sharedHiddenRef so AudioPlayer freezes its progress bar
-  //   • Do NOT reset src, do NOT reload, do NOT trigger next song
+  // iOS REALITY: When the screen locks, iOS does NOT fire visibilitychange.
+  // Audio keeps playing natively through the lock screen. The Media Session
+  // "pause" action fires if the user taps pause on the lock screen.
   //
-  // ON SHOW (return to app):
-  //   • Clear sharedHiddenRef
-  //   • Sync isPlaying from real audio.paused — NEVER auto-play
-  //   • UI will show Play/Resume button for user to press manually
+  // We only use visibilitychange to:
+  //   - ON HIDE: freeze the progress bar (sharedHiddenRef) — do NOT pause audio
+  //   - ON SHOW: unfreeze the progress bar, sync UI state from real audio state
   //
   useEffect(() => {
     const audio = audioRef.current;
 
     const onHide = () => {
-      // Signal AudioPlayer to freeze its progress bar immediately
+      // Freeze the progress bar so it doesn't tick while page is hidden
       sharedHiddenRef.current = true;
-      if (!audio.src || audio.paused) return;
-      const ct = audio.currentTime;
-      savePosition(ct);
-      try { audio.pause(); } catch {}
-      setIsPlaying(false);
-      // CRITICAL: force-release the lock after pausing.
-      // iOS fires the Media Session "play" handler almost immediately after
-      // the lock screen appears. If the lock is still held from this pause,
-      // that "play" call gets silently dropped — the player never resumes.
-      forceReleaseLock();
-      console.log("[Player] onHide — paused at", ct, "lock released");
+      console.log("[Player] onHide — page hidden, audio.paused:", audio.paused);
     };
 
     const onShow = () => {
       sharedHiddenRef.current = false;
-      // Read real audio state — NEVER call play() here.
-      // User must press Play manually after returning.
+      // Sync UI to real audio state — covers both "still playing" and "user paused from lock screen"
       const actuallyPlaying = !audio.paused && !audio.ended && audio.readyState >= 2;
       setIsPlaying(actuallyPlaying);
-      console.log("[Player] onShow — audio.paused:", audio.paused, "isPlaying set to:", actuallyPlaying);
+      forceReleaseLock();
+      console.log("[Player] onShow — audio.paused:", audio.paused, "→ isPlaying:", actuallyPlaying);
     };
 
     const onVisibility = () => {
@@ -269,7 +255,7 @@ export function PlayerProvider({ children }) {
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("pageshow", onShow);
     };
-  }, [savePosition, forceReleaseLock]);
+  }, [forceReleaseLock]);
 
   // ── Media Session (lock screen controls) ─────────────────────────────────
   const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
@@ -303,25 +289,34 @@ export function PlayerProvider({ children }) {
   }, [currentTrack]);
 
   // ── Media Session action handlers ─────────────────────────────────────────
-  // Route through safePlay / safePause so lock-screen controls
-  // and in-app controls share the same 500ms guard.
+  // IMPORTANT: These handlers are called by iOS with a real user gesture
+  // context. We call audio.play() / audio.pause() directly here — no lock
+  // guards — because the OS serialises these calls itself and any lock we hold
+  // from a previous in-app action would silently block resumption.
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
 
-    navigator.mediaSession.setActionHandler("play", () => {
+    navigator.mediaSession.setActionHandler("play", async () => {
       const audio = audioRef.current;
       if (!audio.src) return;
-      // Restore saved position so we resume exactly where we paused
-      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
-        audio.currentTime = savedTimeRef.current;
-        clearPosition();
+      forceReleaseLock(); // clear any stale lock
+      try {
+        await resumeAudioContext();
+        audio.playbackRate = 1;
+        audio.defaultPlaybackRate = 1;
+        await audio.play();
+        console.log("[MediaSession] play → resumed at", audio.currentTime);
+      } catch (err) {
+        if (err.name !== "AbortError") console.warn("[MediaSession] play error:", err);
       }
-      // force=true: this is a trusted iOS gesture — never drop it due to lock state
-      safePlay(audio, true);
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
-      safePause(audioRef.current);
+      const audio = audioRef.current;
+      if (!audio.paused) {
+        audio.pause();
+        console.log("[MediaSession] pause → paused at", audio.currentTime);
+      }
     });
 
     navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
@@ -332,7 +327,7 @@ export function PlayerProvider({ children }) {
         try { navigator.mediaSession.setActionHandler(a, null); } catch {}
       });
     };
-  }, [clearPosition, safePlay, safePause]);
+  }, [forceReleaseLock]);
 
   // Keep Media Session badge in sync
   useEffect(() => {
