@@ -175,7 +175,10 @@ export function PlayerProvider({ children }) {
       title:  currentTrack.title || "Unknown",
       artist: currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media",
       album:  "Upper Vibe Media",
-      artwork: [{ src: artSrc, sizes: "512x512", type: "image/jpeg" }],
+      artwork: [
+        { src: artSrc, sizes: "512x512", type: "image/jpeg" },
+        { src: artSrc, sizes: "1024x1024", type: "image/jpeg" },
+      ],
     });
 
     navigator.mediaSession.setActionHandler("play", () => {
