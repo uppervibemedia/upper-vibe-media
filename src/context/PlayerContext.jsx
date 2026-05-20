@@ -96,15 +96,20 @@ export function PlayerProvider({ children }) {
     };
     try {
       await resumeAudioContext();
+      // Re-assert rate AFTER context resumes — iOS can drift it during suspension
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
       if (!audio.paused) { unlock(); return; } // already playing — no-op
+      // One final rate assertion right before play() — belt-and-suspenders for Safari
+      audio.playbackRate = 1;
       console.log("[Player] safePlay →", {
         currentTime:   audio.currentTime,
         readyState:    audio.readyState,
         audioCtxState: _audioCtx?.state,
       });
       await audio.play();
+      // Post-play rate guard — Safari occasionally resets rate after play() resolves
+      audio.playbackRate = 1;
     } catch (err) {
       if (err.name !== "AbortError") console.warn("[Player] safePlay error:", err.name, err.message);
     } finally {
@@ -176,18 +181,28 @@ export function PlayerProvider({ children }) {
       if (audio.paused) setIsPlaying(false);
     };
 
-    audio.addEventListener("play",             onPlay);
-    audio.addEventListener("pause",            onPause);
-    audio.addEventListener("ended",            onEnded);
-    audio.addEventListener("stalled",          onStall);
-    audio.addEventListener("waiting",          onStall);
+    // Correct any OS-driven playback rate change immediately (Safari catch-up guard)
+    const onRateChange = () => {
+      if (audio.playbackRate !== 1) {
+        console.warn("[Player] ratechange detected:", audio.playbackRate, "→ forcing back to 1");
+        audio.playbackRate = 1;
+      }
+    };
+
+    audio.addEventListener("play",       onPlay);
+    audio.addEventListener("pause",      onPause);
+    audio.addEventListener("ended",      onEnded);
+    audio.addEventListener("stalled",    onStall);
+    audio.addEventListener("waiting",    onStall);
+    audio.addEventListener("ratechange", onRateChange);
 
     return () => {
-      audio.removeEventListener("play",    onPlay);
-      audio.removeEventListener("pause",   onPause);
-      audio.removeEventListener("ended",   onEnded);
-      audio.removeEventListener("stalled", onStall);
-      audio.removeEventListener("waiting", onStall);
+      audio.removeEventListener("play",       onPlay);
+      audio.removeEventListener("pause",      onPause);
+      audio.removeEventListener("ended",      onEnded);
+      audio.removeEventListener("stalled",    onStall);
+      audio.removeEventListener("waiting",    onStall);
+      audio.removeEventListener("ratechange", onRateChange);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearPosition, currentTrack]);
@@ -213,12 +228,35 @@ export function PlayerProvider({ children }) {
       }
     };
 
-    const onShow = () => {
+    const onShow = async () => {
       sharedHiddenRef.current = false;
-      // Sync UI truthfully — never call play(), never auto-resume
-      const reallyPlaying = !audio.paused && !audio.ended && audio.readyState >= 2;
-      setIsPlaying(reallyPlaying);
-      console.log("[Player] onShow — audio.paused:", audio.paused, "readyState:", audio.readyState);
+      console.log("[Player] onShow — audio.paused:", audio.paused, "readyState:", audio.readyState, "audioCtx:", _audioCtx?.state);
+
+      if (!audio.src || audio.ended) {
+        setIsPlaying(false);
+        return;
+      }
+
+      if (!audio.paused) {
+        // Audio kept playing natively through the lock screen player (user never pressed pause).
+        // The AudioContext was suspended while the screen was locked. On resume it will
+        // "catch up" through its backlogged buffer — causing the 3-second speed burst.
+        // Fix: pause → let AudioContext fully resume → snap currentTime → force rate=1 → play.
+        const snapTime = audio.currentTime;
+        audio.pause();
+        try { await resumeAudioContext(); } catch {}
+        // Drain any buffered audio by snapping currentTime to where we actually are
+        audio.currentTime  = snapTime;
+        audio.playbackRate        = 1;
+        audio.defaultPlaybackRate = 1;
+        console.log("[Player] onShow resync — snapped to", snapTime.toFixed(2), "audioCtx:", _audioCtx?.state);
+        // Small delay so the seek settles before we call play()
+        setTimeout(() => { safePlay(audio); }, 80);
+      } else {
+        // Audio was already paused (user had pressed pause before locking)
+        // Just sync UI — do not auto-play
+        setIsPlaying(false);
+      }
     };
 
     const onVisibility = () => {
