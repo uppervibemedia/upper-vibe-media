@@ -208,55 +208,40 @@ export function PlayerProvider({ children }) {
   }, [clearPosition, currentTrack]);
 
   // ── Unified visibility / background handler ───────────────────────────────
-  // ON HIDE  — pause immediately, save time, stop all UI updates
-  // ON SHOW  — sync UI from real audio state, NEVER auto-play
-  //            User must tap Play manually after returning.
+  // ON HIDE  — force clean pause immediately, save position, freeze UI
+  // ON SHOW  — sync UI only, never auto-play
   useEffect(() => {
     const audio = audioRef.current;
 
     const onHide = () => {
-      // Signal progress bar to freeze
       sharedHiddenRef.current = true;
       if (!audio.src || audio.ended) return;
-      // Pause only if actually playing — do NOT reset src, do NOT reload
+
+      // Always save position regardless of paused state
+      const ct = audio.currentTime;
+      savePosition(ct);
+      setIsPlaying(false);
+
+      // Force pause — bypass lock so background always wins
+      pauseLockRef.current = false;
       if (!audio.paused) {
-        const ct = audio.currentTime;
         audio.pause();
-        savePosition(ct);
-        setIsPlaying(false);
-        console.log("[Player] onHide — paused at", ct.toFixed(2));
+        console.log("[Player] onHide — force-paused at", ct.toFixed(2));
       }
     };
 
-    const onShow = async () => {
+    const onShow = () => {
       sharedHiddenRef.current = false;
-      console.log("[Player] onShow — audio.paused:", audio.paused, "readyState:", audio.readyState, "audioCtx:", _audioCtx?.state);
-
-      if (!audio.src || audio.ended) {
-        setIsPlaying(false);
-        return;
-      }
-
-      if (!audio.paused) {
-        // Audio kept playing natively through the lock screen player (user never pressed pause).
-        // The AudioContext was suspended while the screen was locked. On resume it will
-        // "catch up" through its backlogged buffer — causing the 3-second speed burst.
-        // Fix: pause → let AudioContext fully resume → snap currentTime → force rate=1 → play.
-        const snapTime = audio.currentTime;
+      // If somehow still playing (iOS kept audio alive), pause and save position
+      if (audio.src && !audio.ended && !audio.paused) {
+        const ct = audio.currentTime;
         audio.pause();
-        try { await resumeAudioContext(); } catch {}
-        // Drain any buffered audio by snapping currentTime to where we actually are
-        audio.currentTime  = snapTime;
-        audio.playbackRate        = 1;
-        audio.defaultPlaybackRate = 1;
-        console.log("[Player] onShow resync — snapped to", snapTime.toFixed(2), "audioCtx:", _audioCtx?.state);
-        // Small delay so the seek settles before we call play()
-        setTimeout(() => { safePlay(audio); }, 80);
-      } else {
-        // Audio was already paused (user had pressed pause before locking)
-        // Just sync UI — do not auto-play
-        setIsPlaying(false);
+        savePosition(ct);
+        console.log("[Player] onShow — found still-playing, paused at", ct.toFixed(2));
       }
+      // Sync UI from real state — never auto-play
+      setIsPlaying(!audio.paused && !audio.ended);
+      console.log("[Player] onShow — synced. paused:", audio.paused, "savedTime:", savedTimeRef.current.toFixed(2));
     };
 
     const onVisibility = () => {
@@ -265,10 +250,9 @@ export function PlayerProvider({ children }) {
     };
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide",  onHide);
-    window.addEventListener("pageshow",  onShow);
-    // iOS PWA: fires when returning to tab
-    window.addEventListener("focus",     onShow);
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pageshow", onShow);
+    window.addEventListener("focus",    onShow);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
@@ -276,6 +260,7 @@ export function PlayerProvider({ children }) {
       window.removeEventListener("pageshow", onShow);
       window.removeEventListener("focus",    onShow);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savePosition]);
 
   // ── Media Session (lock screen controls) ─────────────────────────────────
@@ -307,23 +292,46 @@ export function PlayerProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack]);
 
-  // Media Session action handlers — must use safePlay/safePause, not togglePlay
+  // Media Session action handlers — lock-screen play/pause/next/prev
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     const audio = audioRef.current;
 
     navigator.mediaSession.setActionHandler("play", () => {
       if (!audio.src) return;
-      // Restore saved position before resuming
-      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
-        audio.currentTime = savedTimeRef.current;
-        clearPosition();
+      console.log("[Player] MediaSession play — savedTime:", savedTimeRef.current, "duration:", audio.duration, "readyState:", audio.readyState);
+
+      const resumeFromSaved = () => {
+        if (savedTimeRef.current > 0) {
+          audio.currentTime = savedTimeRef.current;
+          clearPosition();
+        }
+        audio.playbackRate        = 1;
+        audio.defaultPlaybackRate = 1;
+        safePlay(audio);
+      };
+
+      // If duration is not yet known (audio unloaded during background), wait for canplay
+      if (!isFinite(audio.duration) || audio.duration === 0) {
+        console.log("[Player] MediaSession play — duration not ready, waiting for canplay");
+        const onCanPlay = () => {
+          audio.removeEventListener("canplay", onCanPlay);
+          resumeFromSaved();
+        };
+        audio.addEventListener("canplay", onCanPlay);
+        // Kick off loading if needed
+        if (audio.readyState < 1) audio.load();
+      } else {
+        resumeFromSaved();
       }
-      safePlay(audio);
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
-      safePause(audio, true);
+      const ct = audio.currentTime;
+      savePosition(ct);
+      pauseLockRef.current = false; // ensure pause goes through
+      if (!audio.paused) audio.pause();
+      setIsPlaying(false);
     });
 
     navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
@@ -334,7 +342,7 @@ export function PlayerProvider({ children }) {
         try { navigator.mediaSession.setActionHandler(a, null); } catch {}
       });
     };
-  }, [clearPosition, safePlay, safePause]);
+  }, [clearPosition, savePosition, safePlay, safePause]);
 
   // Keep Media Session badge in sync with real audio state
   useEffect(() => {
@@ -351,12 +359,23 @@ export function PlayerProvider({ children }) {
     if (!audio.src) return;
 
     if (audio.paused || audio.ended) {
-      // Restore saved position if we paused on hide/lock
-      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
-        audio.currentTime = savedTimeRef.current;
-        clearPosition();
+      const resume = () => {
+        if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
+          audio.currentTime = savedTimeRef.current;
+          clearPosition();
+        }
+        audio.playbackRate        = 1;
+        audio.defaultPlaybackRate = 1;
+        safePlay(audio);
+      };
+      // If duration isn't ready yet (audio unloaded in background), wait for canplay
+      if (!isFinite(audio.duration) || audio.duration === 0) {
+        const onCanPlay = () => { audio.removeEventListener("canplay", onCanPlay); resume(); };
+        audio.addEventListener("canplay", onCanPlay);
+        if (audio.readyState < 1) audio.load();
+      } else {
+        resume();
       }
-      safePlay(audio);
     } else {
       safePause(audio, true);
     }
