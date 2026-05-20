@@ -3,12 +3,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
+  Music,
   Settings,
   LogOut,
   Radio,
   User,
   Users,
   Heart,
+  GraduationCap,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -21,9 +23,10 @@ const mainNavItems = [
 
 const bottomNavMobile = [
   { path: "/", icon: Home, label: "Home" },
+  { path: "/music", icon: Music, label: "Music" },
   { path: "/radio", icon: Radio, label: "Radio" },
+  { path: "/academy", icon: GraduationCap, label: "Academy" },
   { path: "/artists", icon: Users, label: "Artists" },
-  { path: "/my-vibes", icon: Heart, label: "Library" },
   { path: "/account", icon: User, label: "Account" },
 ];
 
@@ -80,7 +83,7 @@ export default function Sidebar() {
       {/* ── Mobile bottom navigation ── */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 pb-safe"
         style={{ background: "rgba(4,4,8,0.95)", backdropFilter: "blur(24px)" }}>
-        <div className="flex items-center justify-around px-2 pt-2 pb-3">
+        <div className="flex items-center justify-around px-1 pt-1.5 pb-2">
           {bottomNavMobile.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -88,12 +91,12 @@ export default function Sidebar() {
                 key={item.path}
                 to={item.path}
                 onClick={(e) => handleMobileNavTap(e, item.path)}
-                className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-all"
+                className="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl transition-all"
               >
                 <div className={`p-1.5 rounded-lg transition-all ${isActive ? "bg-cyan-400/15" : ""}`}>
-                  <item.icon className={`w-5 h-5 transition-colors ${isActive ? "text-cyan-400" : "text-white/40"}`} />
+                  <item.icon className={`w-[18px] h-[18px] transition-colors ${isActive ? "text-cyan-400" : "text-white/40"}`} />
                 </div>
-                <span className={`text-[9px] font-semibold tracking-wider uppercase ${isActive ? "text-cyan-400" : "text-white/30"}`}>
+                <span className={`text-[8px] font-semibold tracking-wide uppercase ${isActive ? "text-cyan-400" : "text-white/30"}`}>
                   {item.label}
                 </span>
               </Link>
