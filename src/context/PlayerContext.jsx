@@ -506,6 +506,21 @@ export function PlayerProvider({ children }) {
     console.log("[Player] clearPlayLocks called");
   }, []);
 
+  // forcePauseForBackground — used by RadioContext PWA hide handler.
+  // Bypasses all locks, saves position, updates isPlaying state.
+  // Identical net result to safePause(audio, true) but always goes through.
+  const forcePauseForBackground = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio || !audio.src || audio.paused) return;
+    playLockRef.current  = false;
+    pauseLockRef.current = false;
+    const ct = audio.currentTime;
+    audio.pause();
+    savePosition(ct);
+    setIsPlaying(false);
+    console.log("[Player] forcePauseForBackground — paused at", ct.toFixed(2));
+  }, [savePosition]);
+
   return (
     <PlayerContext.Provider value={{
       currentTrack,
@@ -522,6 +537,7 @@ export function PlayerProvider({ children }) {
       safePlay,
       safePause,
       clearPlayLocks,
+      forcePauseForBackground,
       registerNextHandler,
       registerPrevHandler,
       handleNext,
