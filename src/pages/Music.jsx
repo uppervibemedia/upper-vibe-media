@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart } from "lucide-react";
+import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { recordPlay } from "../components/home/DiscoverTab";
@@ -173,8 +174,8 @@ export default function Music() {
                       border: `1px solid ${isCurrentTrack ? "rgba(0,229,255,0.2)" : "rgba(255,255,255,0.06)"}`,
                     }}
                   >
-                    {/* Cover */}
-                    <div className="relative flex-shrink-0 cursor-pointer" onClick={() => handlePlay(track)}>
+                    {/* Cover — tapping navigates to song page */}
+                    <Link to={`/song/${track.id}`} className="relative flex-shrink-0 block" onClick={(e) => e.stopPropagation()}>
                       {track.cover_url ? (
                         <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
                       ) : (
@@ -183,20 +184,13 @@ export default function Music() {
                           <Music4 className="w-5 h-5 text-cyan-400/30" />
                         </div>
                       )}
-                      <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ background: "rgba(0,0,0,0.6)" }}>
-                        {isCurrentTrack && isPlaying
-                          ? <Pause className="w-4 h-4 text-cyan-400" />
-                          : <Play className="w-4 h-4 text-white ml-0.5" />}
-                      </div>
-                    </div>
+                    </Link>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                    {/* Info — tapping navigates to song page */}
+                    <Link to={`/song/${track.id}`} className="flex-1 min-w-0 block" onClick={(e) => e.stopPropagation()}>
+                      <p className="text-sm font-bold text-white truncate group-hover:text-cyan-300 transition-colors">{track.title}</p>
                       <p className="text-xs text-white/40 truncate">{track.artist_display || "Upper Vibe Media"}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        {/* Always show 432 Hz badge */}
                         <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                           style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
                           <Waves className="w-2.5 h-2.5" /> 432 Hz
@@ -206,7 +200,7 @@ export default function Music() {
                             style={{ background: "rgba(212,168,67,0.12)", color: "#D4A843" }}>NEW</span>
                         )}
                       </div>
-                    </div>
+                    </Link>
 
                     {/* Duration */}
                     {track.duration && (
