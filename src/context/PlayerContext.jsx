@@ -22,8 +22,6 @@ let _audioCtx   = null;
 let _analyser   = null;
 let _sourceNode = null;
 
-// Returns a promise that resolves once AudioContext is truly running
-// Awaiting this before play() prevents the "catch-up burst" glitch
 async function resumeAudioContext() {
   if (!_audioCtx) return;
   if (_audioCtx.state !== "running") {
@@ -60,7 +58,7 @@ export function PlayerProvider({ children }) {
   const [isPlaying,    setIsPlaying]    = useState(false);
   const [queue,        setQueue]        = useState([]);
   const [sourceType,   setSourceType]   = useState("song");
-  // savedTime > 0 means we paused mid-song on hide — UI shows Resume
+  // savedTime > 0 means we paused mid-song on hide — UI shows Resume at that position
   const [savedTime,    setSavedTime]    = useState(0);
 
   const audioRef        = useRef(persistentAudio);
@@ -68,32 +66,25 @@ export function PlayerProvider({ children }) {
   const onPrevRef       = useRef(null);
   const loadedSrcRef    = useRef("");
   const savedTimeRef    = useRef(0); // synchronous mirror of savedTime state
-  const playLockRef     = useRef(false); // prevents stacked play() calls
 
-  // Safe play: awaits AudioContext, forces playbackRate=1, guards against stacking
-  const safePlay = useCallback(async (audio) => {
-    if (playLockRef.current) {
-      console.log("[Player] play() skipped — lock active");
-      return;
-    }
-    playLockRef.current = true;
-    try {
-      // Must await so AudioContext is RUNNING before audio starts — prevents catch-up burst
-      await resumeAudioContext();
-      // Force rate to 1 — guards against any OS/browser catch-up rate adjustment
-      audio.playbackRate = 1;
-      audio.defaultPlaybackRate = 1;
-      console.log("[Player] play() →", {
-        currentTime: audio.currentTime,
-        playbackRate: audio.playbackRate,
-        audioCtxState: _audioCtx?.state,
-      });
-      await audio.play();
-    } catch (err) {
-      if (err.name !== "AbortError") console.warn("[Player] play() error:", err);
-    } finally {
-      playLockRef.current = false;
-    }
+  // ── 500ms play/pause lock ─────────────────────────────────────────────────
+  // Prevents stacked play() / pause() calls from iOS controls + app controls
+  // firing simultaneously (the source of the "sped-up first second" glitch).
+  const opLockRef      = useRef(false);
+  const opLockTimeout  = useRef(null);
+
+  const acquireLock = useCallback(() => {
+    if (opLockRef.current) return false;
+    opLockRef.current = true;
+    clearTimeout(opLockTimeout.current);
+    // Auto-release after 500ms as a safety net
+    opLockTimeout.current = setTimeout(() => { opLockRef.current = false; }, 500);
+    return true;
+  }, []);
+
+  const releaseLock = useCallback(() => {
+    opLockRef.current = false;
+    clearTimeout(opLockTimeout.current);
   }, []);
 
   // ── Save / clear position helpers ────────────────────────────────────────
@@ -107,7 +98,59 @@ export function PlayerProvider({ children }) {
     setSavedTime(0);
   }, []);
 
+  // ── safePlay ─────────────────────────────────────────────────────────────
+  // Single entry point for ALL play() calls.
+  // 1. Acquires 500ms lock (drops duplicate calls)
+  // 2. Awaits AudioContext resume (prevents catch-up burst)
+  // 3. Forces playbackRate = 1 (guards against OS rate adjustments)
+  // 4. Calls audio.play() once
+  const safePlay = useCallback(async (audio) => {
+    if (!acquireLock()) {
+      console.log("[Player] safePlay skipped — lock active");
+      return;
+    }
+    try {
+      // Wait for AudioContext to be truly RUNNING before audio starts.
+      // Without this, buffered audio plays back in a burst on iOS.
+      await resumeAudioContext();
+      // Force rate to 1 — iOS sometimes adjusts this after backgrounding
+      audio.playbackRate = 1;
+      audio.defaultPlaybackRate = 1;
+      console.log("[Player] safePlay →", {
+        currentTime: audio.currentTime,
+        readyState: audio.readyState,
+        audioCtxState: _audioCtx?.state,
+      });
+      await audio.play();
+    } catch (err) {
+      if (err.name !== "AbortError") console.warn("[Player] safePlay error:", err);
+    } finally {
+      releaseLock();
+    }
+  }, [acquireLock, releaseLock]);
+
+  // ── safePause ────────────────────────────────────────────────────────────
+  // Single entry point for ALL pause() calls.
+  // Saves position and acquires lock to prevent duplicate pause/play races.
+  const safePause = useCallback((audio) => {
+    if (!acquireLock()) {
+      console.log("[Player] safePause skipped — lock active");
+      return;
+    }
+    try {
+      if (!audio.paused) {
+        savePosition(audio.currentTime);
+        audio.pause();
+        console.log("[Player] safePause → paused at", audio.currentTime);
+      }
+    } finally {
+      releaseLock();
+    }
+  }, [acquireLock, releaseLock, savePosition]);
+
   // ── Load & play a new track ───────────────────────────────────────────────
+  // Only sets src + loads + plays when the track URL actually changes.
+  // If same track is already loaded but paused, just resumes — no reload.
   useEffect(() => {
     if (!currentTrack?.audio_url) return;
     const audio = audioRef.current;
@@ -122,7 +165,7 @@ export function PlayerProvider({ children }) {
       return;
     }
 
-    // New track — clear any saved position from previous track
+    // New track — clear any saved position from the previous track
     clearPosition();
     loadedSrcRef.current = currentTrack.audio_url;
     audio.src = currentTrack.audio_url;
@@ -131,12 +174,12 @@ export function PlayerProvider({ children }) {
   }, [currentTrack, clearPosition, safePlay]);
 
   // ── Sync isPlaying + Media Session metadata from native audio events ─────
-  // Merged: single play listener handles both isPlaying state AND metadata refresh
   useEffect(() => {
     const audio = audioRef.current;
+
     const onPlay  = () => {
       setIsPlaying(true);
-      // Re-set metadata here — Safari needs this AFTER playback begins
+      // Re-set metadata after play starts — Safari requires this
       if (currentTrack) setMediaSessionMetadata(currentTrack);
     };
     const onPause = () => setIsPlaying(false);
@@ -157,30 +200,43 @@ export function PlayerProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearPosition, currentTrack]);
 
-  // ── Unified visibility/background handler ────────────────────────────────
-  // Single visibilitychange + pagehide/pageshow listener owns all hide/show logic.
-  // AudioPlayer reads a shared hiddenRef (exported below) to freeze its progress bar —
-  // no second visibilitychange listener needed in the UI layer.
+  // ── Unified visibility / background / lock-screen handler ────────────────
   //
-  // On hide: pause immediately, save time, set isPlaying=false (stops animations)
-  // On show: sync isPlaying from real audio state only — never auto-play
+  // ON HIDE (lock, switch app, browser tab hidden):
+  //   • Save currentTime to savedTimeRef
+  //   • Call audio.pause() once via safePause (which saves position too)
+  //   • Set isPlaying=false to stop UI animations
+  //   • Set sharedHiddenRef so AudioPlayer freezes its progress bar
+  //   • Do NOT reset src, do NOT reload, do NOT trigger next song
+  //
+  // ON SHOW (return to app):
+  //   • Clear sharedHiddenRef
+  //   • Sync isPlaying from real audio.paused — NEVER auto-play
+  //   • UI will show Play/Resume button for user to press manually
+  //
   useEffect(() => {
     const audio = audioRef.current;
 
     const onHide = () => {
-      if (!audio.src || audio.paused) return;
-      const ct = audio.currentTime;
-      audio.pause();
-      savePosition(ct);
-      setIsPlaying(false);
-      // Signal AudioPlayer to freeze its progress bar
+      // Signal AudioPlayer to freeze its progress bar immediately
       sharedHiddenRef.current = true;
+      if (!audio.src || audio.paused) return;
+      // Save position BEFORE pausing (safePause also saves, but be explicit)
+      const ct = audio.currentTime;
+      savePosition(ct);
+      // Pause without lock since we're in a visibility handler (may need to fire fast)
+      try { audio.pause(); } catch {}
+      setIsPlaying(false);
+      console.log("[Player] onHide — paused at", ct);
     };
 
     const onShow = () => {
       sharedHiddenRef.current = false;
-      // Sync UI to real audio state — never call play()
-      setIsPlaying(!audio.paused && !audio.ended);
+      // Read real audio state — NEVER call play() here.
+      // User must press Play manually after returning.
+      const actuallyPlaying = !audio.paused && !audio.ended && audio.readyState >= 2;
+      setIsPlaying(actuallyPlaying);
+      console.log("[Player] onShow — audio.paused:", audio.paused, "isPlaying set to:", actuallyPlaying);
     };
 
     const onVisibility = () => {
@@ -200,37 +256,19 @@ export function PlayerProvider({ children }) {
   }, [savePosition]);
 
   // ── Media Session (lock screen controls) ─────────────────────────────────
-  // Helper: validate artwork URL is absolute HTTPS (Safari requirement)
   const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
 
   function resolveArtworkUrl(url) {
     if (!url) return FALLBACK_ART;
-    // Must be absolute HTTPS — no blobs, no relative, no http
     if (url.startsWith("https://")) return url;
     return FALLBACK_ART;
   }
 
   function setMediaSessionMetadata(track) {
     if (!("mediaSession" in navigator) || !track) return;
-
-    const rawUrl  = track.cover_url;
-    const artSrc  = resolveArtworkUrl(rawUrl);
-    const title   = track.title   || "Unknown";
-    const artist  = track.artist_display || track.artist || "Upper Vibe Media";
-
-    console.log("[MediaSession] Setting metadata:", {
-      title,
-      artist,
-      cover_url: rawUrl,
-      artworkUsed: artSrc,
-    });
-
-    // Probe the image so we can warn if Safari will reject it
-    const img = new Image();
-    img.onload  = () => console.log("[MediaSession] Artwork loaded OK:", artSrc);
-    img.onerror = () => console.warn("[MediaSession] Artwork FAILED to load:", artSrc);
-    img.src = artSrc;
-
+    const artSrc = resolveArtworkUrl(track.cover_url);
+    const title  = track.title || "Unknown";
+    const artist = track.artist_display || track.artist || "Upper Vibe Media";
     navigator.mediaSession.metadata = new MediaMetadata({
       title,
       artist,
@@ -242,21 +280,22 @@ export function PlayerProvider({ children }) {
     });
   }
 
-  // Set metadata whenever track changes (covers PWA / already-playing case)
-  // The play event also re-sets metadata (merged into the play listener above)
   useEffect(() => {
     if (!currentTrack) return;
     setMediaSessionMetadata(currentTrack);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack]);
 
-  // Register Media Session action handlers (separate from metadata)
+  // ── Media Session action handlers ─────────────────────────────────────────
+  // Route through safePlay / safePause so lock-screen controls
+  // and in-app controls share the same 500ms guard.
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
 
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
       if (!audio.src) return;
+      // Restore saved position first — then play exactly from where we paused
       if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = savedTimeRef.current;
         clearPosition();
@@ -265,11 +304,7 @@ export function PlayerProvider({ children }) {
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
-      const audio = audioRef.current;
-      if (!audio.paused) {
-        savePosition(audio.currentTime);
-        audio.pause();
-      }
+      safePause(audioRef.current);
     });
 
     navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
@@ -280,7 +315,7 @@ export function PlayerProvider({ children }) {
         try { navigator.mediaSession.setActionHandler(a, null); } catch {}
       });
     };
-  }, [clearPosition, savePosition]);
+  }, [clearPosition, safePlay, safePause]);
 
   // Keep Media Session badge in sync
   useEffect(() => {
@@ -289,24 +324,23 @@ export function PlayerProvider({ children }) {
   }, [isPlaying]);
 
   // ── Public API ────────────────────────────────────────────────────────────
+  // togglePlay: used by in-app buttons — routes through safePlay/safePause
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio.src) return;
     if (audio.paused) {
-      // Restore saved position if we paused on hide
+      // Restore saved position before resuming
       if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
         audio.currentTime = savedTimeRef.current;
         clearPosition();
       }
       safePlay(audio);
     } else {
-      savePosition(audio.currentTime);
-      audio.pause();
+      safePause(audio);
     }
-  }, [clearPosition, savePosition, safePlay]);
+  }, [clearPosition, safePlay, safePause]);
 
   const playTrack = useCallback((track, source = "song") => {
-    // Ensure AudioContext graph is wired (idempotent) — playback happens in the load effect
     getOrCreateAudioContext(audioRef.current);
     setSourceType(source);
     setCurrentTrack(track);
@@ -314,7 +348,7 @@ export function PlayerProvider({ children }) {
 
   const stopPlaying = useCallback(() => {
     const audio = audioRef.current;
-    audio.pause();
+    try { audio.pause(); } catch {}
     audio.src = "";
     loadedSrcRef.current = "";
     clearPosition();
@@ -333,11 +367,13 @@ export function PlayerProvider({ children }) {
       isPlaying,
       queue,
       sourceType,
-      savedTime,   // > 0 when paused at a saved mid-song position
+      savedTime,
       isPWA: false,
       pwaPausedAt: savedTime,
       playTrack,
       togglePlay,
+      safePlay,
+      safePause,
       stopPlaying,
       setQueue,
       audioRef,
