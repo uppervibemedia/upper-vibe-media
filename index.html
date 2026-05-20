@@ -1,9 +1,19 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      (function() {
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark !== false) document.documentElement.classList.add('dark');
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+          if (e.matches) document.documentElement.classList.add('dark');
+          else document.documentElement.classList.remove('dark');
+        });
+      })();
+    </script>
     <title>Upper Vibe Music — Stream the Frequency</title>
     <meta name="description" content="Upper Vibe Music is a premium streaming platform for exclusive, high-vibration remastered tracks and unreleased soundscapes. Tap into premium sound." />
     <meta property="og:title" content="Upper Vibe Music — Stream the Frequency" />

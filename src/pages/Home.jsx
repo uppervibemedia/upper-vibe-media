@@ -14,6 +14,7 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
 import LatestMusicSection from "../components/home/LatestMusicSection";
 import SectionHeader from "../components/shared/SectionHeader";
+import PullToRefresh from "../components/shared/PullToRefresh";
 
 // ── Session-stable shuffle ──────────────────────────────────────────────────
 // Same order within a session, different on every new tab/refresh
@@ -92,6 +93,7 @@ export default function Home() {
   const [artists, setArtists] = useState([]);
   const [trackCounts, setTrackCounts] = useState({});
   const [academyLessons, setAcademyLessons] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
   const sessionSeed = useMemo(() => getSessionSeed(), []);
   const [loginModal, setLoginModal] = useState(false);
   const [premiumModal, setPremiumModal] = useState(false);
@@ -106,8 +108,7 @@ export default function Home() {
     recordPlay(track);
   };
 
-  useEffect(() => {
-    Promise.all([
+  const loadData = () => Promise.all([
       base44.entities.Track.filter({ status: "published" }, "-release_date", 30),
       base44.entities.Track.filter({ status: "published" }, "-created_date", 200),
       base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
@@ -115,23 +116,27 @@ export default function Home() {
       base44.entities.Artist.filter({ is_active: true, is_featured: true }, "-created_date", 8),
       base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
       base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3),
-    ]).then(([recentPool, all, recentVizPool, allVizFull, featuredArtists, allTracksForCount, lessons]) => {
-      // Latest songs: newest first, no shuffle
-      setLatestTracks(recentPool.slice(0, 4));
-      setAllTracks(all);
-      // Rotate visualizers: shuffle the newest 30 and show 6 in the viz section
-      const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
-      setRecentViz(rotatedViz);
-      setAllViz(allVizFull);
-      setArtists(featuredArtists);
-      setAcademyLessons(lessons);
-      const counts = {};
-      allTracksForCount.forEach((t) => {
-        if (t.primary_artist_id) counts[t.primary_artist_id] = (counts[t.primary_artist_id] || 0) + 1;
-      });
-      setTrackCounts(counts);
+  ]).then(([recentPool, all, recentVizPool, allVizFull, featuredArtists, allTracksForCount, lessons]) => {
+    setLatestTracks(recentPool.slice(0, 4));
+    setAllTracks(all);
+    const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
+    setRecentViz(rotatedViz);
+    setAllViz(allVizFull);
+    setArtists(featuredArtists);
+    setAcademyLessons(lessons);
+    const counts = {};
+    allTracksForCount.forEach((t) => {
+      if (t.primary_artist_id) counts[t.primary_artist_id] = (counts[t.primary_artist_id] || 0) + 1;
     });
-  }, [sessionSeed]);
+    setTrackCounts(counts);
+  });
+
+  useEffect(() => { loadData(); }, [sessionSeed, refreshKey]);
+
+  const handleRefresh = async () => {
+    sessionStorage.removeItem("uv_home_seed");
+    setRefreshKey((k) => k + 1);
+  };
 
   const { recommendedTracks, recommendedViz } = useMemo(
     () => buildHomeRecs(allTracks, allViz, favorites, history),
@@ -168,6 +173,7 @@ export default function Home() {
   );
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen pb-28 lg:pb-0">
 
       {/* ── HERO ── */}
@@ -526,6 +532,7 @@ export default function Home() {
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
       <PremiumDownloadModal open={premiumModal} onClose={() => setPremiumModal(false)} />
     </div>
+    </PullToRefresh>
   );
 }
 

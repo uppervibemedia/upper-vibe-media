@@ -9,6 +9,7 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import { useFavorites } from "../hooks/useFavorite";
+import PullToRefresh from "../components/shared/PullToRefresh";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -49,10 +50,17 @@ export default function Music() {
   const isPremium = user?.role === "premium" || user?.role === "admin";
   const { isFaved, toggle } = useFavorites(user?.email);
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
+    setLoading(true);
     base44.entities.Track.filter({ status: "published" }, "-created_date", 500)
       .then((t) => { setTracks(t); setLoading(false); });
-  }, []);
+  }, [refreshKey]);
+
+  const handleRefresh = async () => {
+    setRefreshKey((k) => k + 1);
+  };
 
   const filtered = useMemo(() => {
     let result = tracks;
@@ -81,6 +89,7 @@ export default function Music() {
   };
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen">
       {/* Header */}
       <div className="max-w-7xl mx-auto px-6 pt-20 pb-6">
@@ -267,5 +276,6 @@ export default function Music() {
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
     </div>
+    </PullToRefresh>
   );
 }

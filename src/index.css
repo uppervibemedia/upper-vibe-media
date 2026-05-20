@@ -87,6 +87,14 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
+    overscroll-behavior: none;
+  }
+  button,
+  a[role="tab"],
+  nav a,
+  [data-player-bar] {
+    user-select: none;
+    -webkit-user-select: none;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);

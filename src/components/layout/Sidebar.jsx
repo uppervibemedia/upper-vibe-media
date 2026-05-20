@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
@@ -29,8 +29,17 @@ const bottomNavMobile = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
+
+  const handleMobileNavTap = (e, path) => {
+    if (location.pathname === path) {
+      e.preventDefault();
+      navigate(path, { replace: true });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
   const isAdmin = user?.role === "admin";
 
   const allNavItems = isAdmin
@@ -78,6 +87,7 @@ export default function Sidebar() {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={(e) => handleMobileNavTap(e, item.path)}
                 className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-all"
               >
                 <div className={`p-1.5 rounded-lg transition-all ${isActive ? "bg-cyan-400/15" : ""}`}>

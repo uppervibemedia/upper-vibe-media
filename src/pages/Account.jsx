@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard, Trash2, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -8,6 +8,7 @@ import { base44 } from "@/api/base44Client";
 export default function Account() {
   const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
   const [portalLoading, setPortalLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!isAuthenticated || !user) {
     return (
@@ -178,6 +179,60 @@ export default function Account() {
             style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
             <LogOut className="w-4 h-4" /> Log Out
           </button>
+
+          <button onClick={() => setShowDeleteConfirm(true)}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-sm text-red-400/60 hover:text-red-400 transition-colors"
+            style={{ border: "1px solid rgba(239,68,68,0.2)" }}>
+            <Trash2 className="w-4 h-4" /> Delete Account
+          </button>
+
+          {/* Delete Account Confirmation Dialog */}
+          <AnimatePresence>
+            {showDeleteConfirm && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center px-6"
+                style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 16 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                  className="w-full max-w-sm rounded-3xl p-6"
+                  style={{ background: "rgba(12,8,20,0.98)", border: "1px solid rgba(239,68,68,0.25)" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                    style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                    <AlertTriangle className="w-6 h-6 text-red-400" />
+                  </div>
+                  <h3 className="font-heading font-black text-white text-xl text-center mb-2">Delete Account?</h3>
+                  <p className="text-white/40 text-sm text-center leading-relaxed mb-6">
+                    To delete your account and all associated data, please contact our support team at{" "}
+                    <a href="mailto:support@uppervibemusic.com" className="text-cyan-400 underline">support@uppervibemusic.com</a>.
+                    We'll process your request within 48 hours.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="flex-1 py-3 rounded-2xl font-semibold text-sm text-white/50 hover:text-white/80 transition-colors"
+                      style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                      Cancel
+                    </button>
+                    <a
+                      href="mailto:support@uppervibemusic.com?subject=Account Deletion Request"
+                      className="flex-1 py-3 rounded-2xl font-black text-sm text-center transition-all hover:brightness-110"
+                      style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.35)", color: "#f87171" }}>
+                      Contact Support
+                    </a>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </motion.div>
       </div>
