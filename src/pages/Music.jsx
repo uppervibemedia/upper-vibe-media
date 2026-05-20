@@ -12,35 +12,12 @@ import FavLoginModal from "../components/shared/FavLoginModal";
 import { useFavorites } from "../hooks/useFavorite";
 import PullToRefresh from "../components/shared/PullToRefresh";
 
-const FILTERS = [
-  { id: "all", label: "All" },
-  { id: "hiphop", label: "Hip Hop / Rap" },
-  { id: "rnb", label: "R&B" },
-  { id: "electronic", label: "Electronic Music" },
-  { id: "instrumentals", label: "Instrumentals" },
-  { id: "meditation", label: "Meditation / Focus" },
-  { id: "car", label: "Car Music" },
-  { id: "new", label: "New Releases" },
-];
-
-const FILTER_MATCHERS = {
-  hiphop: (t) => matchCategory(t, ["hip", "rap", "hiphop"]),
-  rnb: (t) => matchCategory(t, ["r&b", "rnb", "soul"]),
-  electronic: (t) => matchCategory(t, ["electronic", "edm", "techno", "house"]),
-  instrumentals: (t) => matchCategory(t, ["instrumental"]),
-  meditation: (t) => matchCategory(t, ["meditation", "focus", "calm", "healing"]),
-  car: (t) => matchCategory(t, ["car", "driving", "road"]),
-  new: (t) => t.is_new_release,
-};
-
-function matchCategory(track, keywords) {
-  const haystack = [track.title, track.artist_display, track.album, track.description]
-    .join(" ").toLowerCase();
-  return keywords.some((k) => haystack.includes(k));
-}
+// Genre/mood category types to show as filter tabs (exclude artist lanes, learning, etc.)
+const GENRE_TYPES = ["genre", "mood", "editorial", "frequency"];
 
 export default function Music() {
   const [tracks, setTracks] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -55,8 +32,15 @@ export default function Music() {
 
   useEffect(() => {
     setLoading(true);
-    base44.entities.Track.filter({ status: "published" }, "-created_date", 500)
-      .then((t) => { setTracks(t); setLoading(false); });
+    Promise.all([
+      base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
+      base44.entities.Category.list("display_order", 100),
+    ]).then(([t, cats]) => {
+      setTracks(t);
+      // Only show genre/mood/editorial/frequency types as filters
+      setCategories(cats.filter((c) => c.is_active && GENRE_TYPES.includes(c.type)));
+      setLoading(false);
+    });
   }, [refreshKey]);
 
   const handleRefresh = async () => {
@@ -71,8 +55,11 @@ export default function Music() {
         (t.title || "").toLowerCase().includes(q) ||
         (t.artist_display || "").toLowerCase().includes(q)
       );
-    } else if (activeFilter !== "all" && FILTER_MATCHERS[activeFilter]) {
-      result = result.filter(FILTER_MATCHERS[activeFilter]);
+    } else if (activeFilter === "new") {
+      result = result.filter((t) => t.is_new_release);
+    } else if (activeFilter !== "all") {
+      // Filter by real category_id from the database
+      result = result.filter((t) => (t.category_ids || []).includes(activeFilter));
     }
     return result;
   }, [tracks, search, activeFilter]);
@@ -125,19 +112,42 @@ export default function Music() {
           )}
         </div>
 
-        {/* Filter tabs */}
+        {/* Filter tabs — driven by real Category records */}
         <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
-          {FILTERS.map((f) => (
+          {/* All */}
+          <button
+            onClick={() => { setActiveFilter("all"); setSearch(""); }}
+            className="whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold tracking-wider transition-all border flex-shrink-0"
+            style={activeFilter === "all" ? {
+              background: "rgba(0,229,255,0.12)", borderColor: "rgba(0,229,255,0.35)", color: "#00E5FF"
+            } : {
+              background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)"
+            }}>
+            All
+          </button>
+          {/* New Releases shortcut */}
+          <button
+            onClick={() => { setActiveFilter("new"); setSearch(""); }}
+            className="whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold tracking-wider transition-all border flex-shrink-0"
+            style={activeFilter === "new" ? {
+              background: "rgba(212,168,67,0.15)", borderColor: "rgba(212,168,67,0.4)", color: "#D4A843"
+            } : {
+              background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)"
+            }}>
+            New Releases
+          </button>
+          {/* Dynamic category filters */}
+          {categories.map((cat) => (
             <button
-              key={f.id}
-              onClick={() => { setActiveFilter(f.id); setSearch(""); }}
+              key={cat.id}
+              onClick={() => { setActiveFilter(cat.id); setSearch(""); }}
               className="whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold tracking-wider transition-all border flex-shrink-0"
-              style={activeFilter === f.id ? {
+              style={activeFilter === cat.id ? {
                 background: "rgba(0,229,255,0.12)", borderColor: "rgba(0,229,255,0.35)", color: "#00E5FF"
               } : {
                 background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)"
               }}>
-              {f.label}
+              {cat.name}
             </button>
           ))}
         </div>
