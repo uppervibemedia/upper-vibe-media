@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "./PlayerContext";
+import { usePwaRadioLockscreen } from "@/hooks/usePwaRadioLockscreen";
 
 const RadioContext = createContext(null);
 
@@ -38,7 +39,11 @@ function buildQueue(allTracks, currentSongId, likedIds = []) {
 }
 
 export function RadioProvider({ children }) {
-  const { registerNextHandler, registerPrevHandler, playTrack, sourceType, currentTrack } = usePlayer();
+  const {
+    registerNextHandler, registerPrevHandler,
+    playTrack, sourceType, currentTrack,
+    audioRef, savedTimeRef, playLockRef, clearPosition, safePlay, setIsPlaying,
+  } = usePlayer();
 
   const [allTracks,        setAllTracks]        = useState([]);
   const [tracksLoaded,     setTracksLoaded]     = useState(false);
@@ -267,6 +272,21 @@ export function RadioProvider({ children }) {
     if (onPlay) onPlay(song);
     console.log("[RadioContext] 🎯 Jumped to:", song.title);
   }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack]);
+
+  // ── PWA Radio lock-screen handler ────────────────────────────────────────
+  // Only active in PWA (Add-to-Home-Screen) mode. Does not affect Safari.
+  usePwaRadioLockscreen({
+    audioRef,
+    sourceType,
+    currentTrack,
+    allTracks,
+    savedTimeRef,
+    playLockRef,
+    clearPosition,
+    safePlay,
+    playTrack,
+    setIsPlaying,
+  });
 
   // ── Derived state for UI ──────────────────────────────────────────────────
   // "Radio is active" = the global player is currently playing a radio-sourced track
