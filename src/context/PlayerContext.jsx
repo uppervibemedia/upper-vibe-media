@@ -66,6 +66,8 @@ export function PlayerProvider({ children }) {
   const onPrevRef       = useRef(null);
   const loadedSrcRef    = useRef("");
   const savedTimeRef    = useRef(0); // synchronous mirror of savedTime state
+  // When true, the next track load will NOT auto-play (used by lock-screen next/prev)
+  const stayPausedRef   = useRef(false);
 
   // ── 500ms play/pause lock ─────────────────────────────────────────────────
   // Prevents stacked duplicate play() / pause() calls from firing simultaneously.
@@ -164,6 +166,7 @@ export function PlayerProvider({ children }) {
   // ── Load & play a new track ───────────────────────────────────────────────
   // Only sets src + loads + plays when the track URL actually changes.
   // If same track is already loaded but paused, just resumes — no reload.
+  // If stayPausedRef is true (set by lock-screen next/prev), loads but does NOT play.
   useEffect(() => {
     if (!currentTrack?.audio_url) return;
     const audio = audioRef.current;
@@ -174,7 +177,8 @@ export function PlayerProvider({ children }) {
       (audio.src && audio.src.endsWith(currentTrack.audio_url));
 
     if (isSameTrack) {
-      if (audio.paused) safePlay(audio);
+      if (audio.paused && !stayPausedRef.current) safePlay(audio);
+      stayPausedRef.current = false;
       return;
     }
 
@@ -183,7 +187,15 @@ export function PlayerProvider({ children }) {
     loadedSrcRef.current = currentTrack.audio_url;
     audio.src = currentTrack.audio_url;
     audio.load();
-    safePlay(audio);
+
+    if (stayPausedRef.current) {
+      // Lock-screen next/prev: load track, stay paused, show new metadata
+      stayPausedRef.current = false;
+      setIsPlaying(false);
+      console.log("[Player] loaded next/prev track (stay paused):", currentTrack.title);
+    } else {
+      safePlay(audio);
+    }
   }, [currentTrack, clearPosition, safePlay]);
 
   // ── Sync isPlaying + Media Session metadata from native audio events ─────
@@ -259,17 +271,13 @@ export function PlayerProvider({ children }) {
     };
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide",  onHide);
-    window.addEventListener("pageshow",  onShow);
-    window.addEventListener("blur",      onHide);
-    window.addEventListener("focus",     onShow);
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pageshow", onShow);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide",  onHide);
-      window.removeEventListener("pageshow",  onShow);
-      window.removeEventListener("blur",      onHide);
-      window.removeEventListener("focus",     onShow);
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pageshow", onShow);
     };
   }, [savePosition, forceReleaseLock]);
 
@@ -337,8 +345,16 @@ export function PlayerProvider({ children }) {
       }
     });
 
-    navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
-    navigator.mediaSession.setActionHandler("previoustrack", () => onPrevRef.current?.());
+    navigator.mediaSession.setActionHandler("nexttrack", () => {
+      // Load next track but stay paused — user must press Play to hear it
+      stayPausedRef.current = true;
+      onNextRef.current?.();
+    });
+    navigator.mediaSession.setActionHandler("previoustrack", () => {
+      // Load prev track but stay paused — user must press Play to hear it
+      stayPausedRef.current = true;
+      onPrevRef.current?.();
+    });
 
     return () => {
       ["play", "pause", "nexttrack", "previoustrack"].forEach((a) => {
