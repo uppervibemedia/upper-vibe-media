@@ -186,7 +186,16 @@ export function PlayerProvider({ children }) {
       (audio.src && audio.src.endsWith(currentTrack.audio_url));
 
     if (isSameTrack) {
-      if (audio.paused && !stayPausedRef.current) safePlay(audio);
+      if (audio.paused && !stayPausedRef.current) {
+        // If buffer was dropped (readyState < 2), force reload before playing
+        if (audio.readyState < 2) {
+          console.log("[Player] same track but buffer dropped, reloading");
+          audio.load();
+          audio.addEventListener("canplay", () => safePlay(audio), { once: true });
+        } else {
+          safePlay(audio);
+        }
+      }
       stayPausedRef.current = false;
       return;
     }
@@ -354,13 +363,13 @@ export function PlayerProvider({ children }) {
       const audio = audioRef.current;
       forceReleaseLock();
 
-      // ── PWA buffer recovery ───────────────────────────────────────────────
-      // iOS may have cleared audio.src or dropped the buffer (readyState < 1)
-      // while the PWA was backgrounded. Reload the src before playing so the
-      // lock-screen Play responds immediately instead of silently failing.
-      if (isPWA) {
+      // ── Buffer recovery (iOS Safari + PWA) ───────────────────────────────
+      // iOS may have cleared audio.src or dropped the buffer (readyState < 2)
+      // while backgrounded. Reload the src before playing so lock-screen Play
+      // responds immediately instead of silently failing.
+      {
         const needsSrc = !audio.src || audio.src === "" || audio.src === window.location.href;
-        const needsReload = needsSrc || audio.readyState < 1; // HAVE_NOTHING
+        const needsReload = needsSrc || audio.readyState < 2; // below HAVE_CURRENT_DATA
 
         if (needsReload) {
           const srcToRestore = needsSrc
@@ -368,21 +377,20 @@ export function PlayerProvider({ children }) {
             : audio.src;
 
           if (!srcToRestore) {
-            console.warn("[MediaSession/PWA] play — no src to restore, aborting");
+            console.warn("[MediaSession] play — no src to restore, aborting");
             return;
           }
 
-          console.log("[MediaSession/PWA] reloading src before play, readyState was", audio.readyState);
+          console.log("[MediaSession] reloading src before play, readyState was", audio.readyState);
           audio.src = srcToRestore;
           loadedSrcRef.current = srcToRestore;
           audio.load();
 
-          // Wait for enough data to be able to seek and play
+          // Wait for enough data to seek and play
           await new Promise((resolve) => {
             const onReady = () => { audio.removeEventListener("canplay", onReady); resolve(); };
             audio.addEventListener("canplay", onReady);
-            // Safety timeout — don't block forever
-            setTimeout(resolve, 4000);
+            setTimeout(resolve, 5000); // safety timeout
           });
         }
       }
@@ -449,41 +457,52 @@ export function PlayerProvider({ children }) {
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
 
-    // PWA: iOS may have cleared audio.src while backgrounded.
-    // Restore it from our saved ref so the in-app Play button still works
-    // without requiring a page refresh.
-    if (isPWA && (!audio.src || audio.src === window.location.href)) {
-      const fallbackSrc = pwaSavedSrcRef.current || loadedSrcRef.current;
-      if (fallbackSrc) {
-        console.log("[Player/PWA] togglePlay — restoring cleared src");
-        audio.src = fallbackSrc;
-        loadedSrcRef.current = fallbackSrc;
-        audio.load();
-        // Seek + play once canplay fires
-        audio.addEventListener("canplay", function onCanPlay() {
-          audio.removeEventListener("canplay", onCanPlay);
-          if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
-            audio.currentTime = savedTimeRef.current;
-          }
-          safePlay(audio);
-        }, { once: true });
-        return;
-      }
-    }
-
-    if (!audio.src || audio.src === window.location.href) return;
-
-    if (audio.paused) {
-      // Restore saved position before resuming
-      if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
-        audio.currentTime = savedTimeRef.current;
-        clearPosition();
-      }
-      safePlay(audio);
-    } else {
+    if (!audio.paused) {
+      // Currently playing — just pause
       safePause(audio);
+      return;
     }
-  }, [clearPosition, safePlay, safePause]);
+
+    // ── Audio needs to be resumed (it is paused) ──────────────────────────
+    // Determine the src we should be playing
+    const activeSrc = audio.src && audio.src !== window.location.href
+      ? audio.src
+      : (pwaSavedSrcRef.current || loadedSrcRef.current);
+
+    if (!activeSrc) return; // nothing to play
+
+    const savedT = savedTimeRef.current;
+
+    // If buffer was dropped (readyState < 2) we MUST reload before seeking+playing.
+    // This happens on iOS (Safari + PWA) after backgrounding — the element is paused
+    // but readyState drops to 0 (HAVE_NOTHING) so audio.play() silently fails.
+    const bufferDropped = audio.readyState < 2;
+    const srcLost = !audio.src || audio.src === window.location.href;
+
+    if (bufferDropped || srcLost) {
+      console.log("[Player] togglePlay — buffer dropped (readyState:", audio.readyState, "), reloading src");
+      forceReleaseLock();
+      audio.src = activeSrc;
+      loadedSrcRef.current = activeSrc;
+      audio.load();
+      audio.addEventListener("canplay", function onCanPlay() {
+        audio.removeEventListener("canplay", onCanPlay);
+        if (savedT > 0 && isFinite(audio.duration) && audio.duration > 0) {
+          audio.currentTime = savedT;
+          clearPosition();
+        }
+        safePlay(audio, true);
+      }, { once: true });
+      return;
+    }
+
+    // Buffer is intact — seek to saved position and resume normally
+    if (savedT > 0 && isFinite(audio.duration) && audio.duration > 0) {
+      audio.currentTime = savedT;
+      clearPosition();
+    }
+    safePlay(audio);
+  }, [clearPosition, safePlay, safePause, forceReleaseLock]);
 
   const playTrack = useCallback((track, source = "song") => {
     getOrCreateAudioContext(audioRef.current);
