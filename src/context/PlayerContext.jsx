@@ -18,9 +18,12 @@ let _audioCtx   = null;
 let _analyser   = null;
 let _sourceNode = null;
 
-function resumeAudioContext() {
-  if (_audioCtx && _audioCtx.state !== "running") {
-    _audioCtx.resume().catch(() => {});
+// Returns a promise that resolves once AudioContext is truly running
+// Awaiting this before play() prevents the "catch-up burst" glitch
+async function resumeAudioContext() {
+  if (!_audioCtx) return;
+  if (_audioCtx.state !== "running") {
+    try { await _audioCtx.resume(); } catch {}
   }
 }
 
@@ -45,7 +48,7 @@ function getOrCreateAudioContext(audioElement) {
   return _analyser;
 }
 
-export function resumeGlobalAudioContext() { resumeAudioContext(); }
+export function resumeGlobalAudioContext() { resumeAudioContext().catch(() => {}); }
 export function getGlobalAnalyser(audioElement) { return getOrCreateAudioContext(audioElement); }
 
 export function PlayerProvider({ children }) {
@@ -61,6 +64,33 @@ export function PlayerProvider({ children }) {
   const onPrevRef       = useRef(null);
   const loadedSrcRef    = useRef("");
   const savedTimeRef    = useRef(0); // synchronous mirror of savedTime state
+  const playLockRef     = useRef(false); // prevents stacked play() calls
+
+  // Safe play: awaits AudioContext, forces playbackRate=1, guards against stacking
+  const safePlay = useCallback(async (audio) => {
+    if (playLockRef.current) {
+      console.log("[Player] play() skipped — lock active");
+      return;
+    }
+    playLockRef.current = true;
+    try {
+      // Must await so AudioContext is RUNNING before audio starts — prevents catch-up burst
+      await resumeAudioContext();
+      // Force rate to 1 — guards against any OS/browser catch-up rate adjustment
+      audio.playbackRate = 1;
+      audio.defaultPlaybackRate = 1;
+      console.log("[Player] play() →", {
+        currentTime: audio.currentTime,
+        playbackRate: audio.playbackRate,
+        audioCtxState: _audioCtx?.state,
+      });
+      await audio.play();
+    } catch (err) {
+      if (err.name !== "AbortError") console.warn("[Player] play() error:", err);
+    } finally {
+      playLockRef.current = false;
+    }
+  }, []);
 
   // ── Save / clear position helpers ────────────────────────────────────────
   const savePosition = useCallback((time) => {
@@ -84,10 +114,7 @@ export function PlayerProvider({ children }) {
       (audio.src && audio.src.endsWith(currentTrack.audio_url));
 
     if (isSameTrack) {
-      if (audio.paused) {
-        resumeAudioContext();
-        audio.play().catch(() => {});
-      }
+      if (audio.paused) safePlay(audio);
       return;
     }
 
@@ -96,15 +123,13 @@ export function PlayerProvider({ children }) {
     loadedSrcRef.current = currentTrack.audio_url;
     audio.src = currentTrack.audio_url;
     audio.load();
-    audio.play().catch((err) => {
-      if (err.name !== "AbortError") console.warn("[Player] play() error:", err);
-    });
+    safePlay(audio);
   }, [currentTrack, clearPosition]);
 
   // ── Sync isPlaying from native audio events ───────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
-    const onPlay  = () => { resumeAudioContext(); setIsPlaying(true); };
+    const onPlay  = () => { setIsPlaying(true); };
     const onPause = () => setIsPlaying(false);
     const onEnded = () => {
       setIsPlaying(false);
@@ -236,8 +261,7 @@ export function PlayerProvider({ children }) {
         audio.currentTime = savedTimeRef.current;
         clearPosition();
       }
-      resumeAudioContext();
-      audio.play().catch(() => {});
+      safePlay(audio);
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
@@ -274,15 +298,15 @@ export function PlayerProvider({ children }) {
         audio.currentTime = savedTimeRef.current;
         clearPosition();
       }
-      resumeAudioContext();
-      audio.play().catch(() => {});
+      safePlay(audio);
     } else {
       savePosition(audio.currentTime);
       audio.pause();
     }
-  }, [clearPosition, savePosition]);
+  }, [clearPosition, savePosition, safePlay]);
 
   const playTrack = useCallback((track, source = "song") => {
+    // Ensure AudioContext graph is wired (idempotent) — playback happens in the load effect
     getOrCreateAudioContext(audioRef.current);
     setSourceType(source);
     setCurrentTrack(track);
