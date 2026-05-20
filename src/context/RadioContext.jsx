@@ -233,18 +233,22 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 📻 Radio started:", song.title);
   }, [allTracks, currentRadioSong, radioQueue, playTrack, likedTrackIds]);
 
-  // Resume radio (called after PWA background pause or non-radio interruption)
+  // Resume radio (called from the Resume banner button after PWA background pause)
+  // Does NOT call playTrack — that path skips savedTime for same-track.
+  // Instead: ensure sourceType="radio", then use togglePlay which correctly seeks savedTime first.
   const resumeRadio = useCallback((onPlay) => {
     if (!currentRadioSong) return startRadio(onPlay);
     const audio = audioRef.current;
-    // Clear any stuck play/pause locks before re-triggering playback
     clearPlayLocks();
-    console.log("[RadioContext] 📻 Radio resumeRadio —", {
-      song: currentRadioSong.title,
+
+    console.log("[RadioContext] 📻 resumeRadio —", {
+      song:        currentRadioSong.title,
       audioPaused: audio?.paused,
-      audioTime:   audio?.currentTime,
+      savedTime:   audio?.currentTime,
       readyState:  audio?.readyState,
     });
+
+    // Make sure we're in radio mode (sourceType may still be correct but be safe)
     playTrack(currentRadioSong, "radio");
     if (onPlay) onPlay(currentRadioSong);
     console.log("[RadioContext] 📻 Radio resumed:", currentRadioSong.title);

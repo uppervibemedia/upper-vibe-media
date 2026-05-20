@@ -156,7 +156,14 @@ export function PlayerProvider({ children }) {
       (audio.src && audio.src.endsWith(currentTrack.audio_url));
 
     if (isSameTrack) {
-      if (audio.paused) safePlay(audio);
+      if (audio.paused) {
+        // If we have a saved position (e.g. from PWA background pause), seek to it first
+        if (savedTimeRef.current > 0 && isFinite(audio.duration) && audio.duration > 0) {
+          try { audio.currentTime = savedTimeRef.current; } catch {}
+          clearPosition();
+        }
+        safePlay(audio);
+      }
       return;
     }
 
@@ -511,14 +518,16 @@ export function PlayerProvider({ children }) {
   // Identical net result to safePause(audio, true) but always goes through.
   const forcePauseForBackground = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio || !audio.src || audio.paused) return;
+    if (!audio || !audio.src) return;
     playLockRef.current  = false;
     pauseLockRef.current = false;
+    // Capture currentTime BEFORE pausing — works whether iOS already paused or not
     const ct = audio.currentTime;
-    audio.pause();
+    if (!audio.paused) audio.pause();
+    // Always save position — even if iOS beat us to the pause
     savePosition(ct);
     setIsPlaying(false);
-    console.log("[Player] forcePauseForBackground — paused at", ct.toFixed(2));
+    console.log("[Player] forcePauseForBackground — saved at", ct.toFixed(2), "was paused:", audio.paused);
   }, [savePosition]);
 
   return (
