@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useRef, useEffect, useCallb
 
 const PlayerContext = createContext(null);
 
-// ─── ONE global audio element, created once, never recreated ───────────────
+// ─── ONE global audio element — never recreated ────────────────────────────
 const persistentAudio = (() => {
   if (typeof window === "undefined") return null;
   const a = new Audio();
@@ -50,29 +50,46 @@ function getOrCreateAudioContext(audioElement) {
 export function resumeGlobalAudioContext() { resumeAudioContext(); }
 export function getGlobalAnalyser(audioElement) { return getOrCreateAudioContext(audioElement); }
 
-// ─── safePlay: handles low readyState, stacked play requests ──────────────
-let _playPending = false;
+// ─── safePlay — single guard, handles low readyState ─────────────────────
+// _actionLock prevents stacked play/pause calls within 500ms
+let _actionLock = false;
+function lockAction(ms = 500) {
+  _actionLock = true;
+  setTimeout(() => { _actionLock = false; }, ms);
+}
+
 function safePlay(audio) {
-  if (_playPending) return;
+  if (_actionLock) return;
+  lockAction();
   resumeAudioContext();
 
   if (audio.readyState >= 3) {
-    // HAVE_FUTURE_DATA or better — can play immediately
-    _playPending = true;
-    audio.play().catch(() => {}).finally(() => { _playPending = false; });
+    audio.play().catch(() => {});
   } else {
-    // Not enough data yet — wait for canplay then play
-    _playPending = true;
+    // Not enough data — reload from current position, then play on canplay
+    const savedTime = audio.currentTime;
     const onCanPlay = () => {
       audio.removeEventListener("canplay", onCanPlay);
-      audio.play().catch(() => {}).finally(() => { _playPending = false; });
+      // Restore position in case load() reset it
+      if (savedTime > 0 && Math.abs(audio.currentTime - savedTime) > 0.5) {
+        audio.currentTime = savedTime;
+      }
+      audio.play().catch(() => {});
     };
     audio.addEventListener("canplay", onCanPlay);
-    // If src is set but not loading, kick off load
-    if (audio.networkState === audio.NETWORK_IDLE || audio.networkState === audio.NETWORK_EMPTY) {
+    if (
+      audio.networkState === HTMLMediaElement.NETWORK_IDLE ||
+      audio.networkState === HTMLMediaElement.NETWORK_EMPTY
+    ) {
       audio.load();
     }
   }
+}
+
+function safePause(audio) {
+  if (_actionLock) return;
+  lockAction();
+  if (!audio.paused) audio.pause();
 }
 
 export function PlayerProvider({ children }) {
@@ -81,10 +98,10 @@ export function PlayerProvider({ children }) {
   const [queue,        setQueue]        = useState([]);
   const [sourceType,   setSourceType]   = useState("song");
 
-  const audioRef      = useRef(persistentAudio);
-  const onNextRef     = useRef(null);
-  const onPrevRef     = useRef(null);
-  const loadedSrcRef  = useRef("");
+  const audioRef     = useRef(persistentAudio);
+  const onNextRef    = useRef(null);
+  const onPrevRef    = useRef(null);
+  const loadedSrcRef = useRef("");
 
   // ── Load & play a new track ───────────────────────────────────────────────
   useEffect(() => {
@@ -97,29 +114,27 @@ export function PlayerProvider({ children }) {
       (audio.src && audio.src.endsWith(currentTrack.audio_url));
 
     if (isSameTrack) {
+      // Same song already loaded — just resume, don't reload or reset time
       if (audio.paused) safePlay(audio);
-      setIsPlaying(true);
       return;
     }
 
+    // New track — load and play
     loadedSrcRef.current = currentTrack.audio_url;
     audio.src = currentTrack.audio_url;
     audio.load();
     audio.play().catch((err) => {
       if (err.name !== "AbortError") console.warn("[PlayerContext] play() error:", err);
     });
-    setIsPlaying(true);
   }, [currentTrack]);
 
-  // ── Sync UI state FROM the native audio element ───────────────────────────
-  // This is the ONLY way isPlaying changes after initial load.
-  // We never drive audio.play/pause from isPlaying state changes.
+  // ── Sync React state FROM native audio events (single mount) ─────────────
+  // isPlaying is DERIVED from the real audio element, not the other way around.
   useEffect(() => {
     const audio = audioRef.current;
 
     const onPlay  = () => { resumeAudioContext(); setIsPlaying(true); };
     const onPause = () => {
-      // Ignore interim pause during audio.load() (readyState 0 or 1)
       if (audio.readyState >= 2) setIsPlaying(false);
     };
     const onEnded = () => {
@@ -140,25 +155,35 @@ export function PlayerProvider({ children }) {
     };
   }, []);
 
-  // ── Sync UI when user returns to the page ────────────────────────────────
-  // Only read the real audio state — never call play() or pause().
+  // ── Sync UI when returning from background / screen-lock ─────────────────
+  // Read actual audio element state — never call play() or pause() here.
   useEffect(() => {
-    const syncState = () => {
+    const syncUI = () => {
       const audio = audioRef.current;
       if (!audio.src) return;
+      // Just mirror what the audio element is actually doing
       setIsPlaying(!audio.paused);
     };
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") syncState();
-    });
-    window.addEventListener("pageshow", syncState);
-    window.addEventListener("focus",    syncState);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") syncUI();
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", syncUI);
+    // focus fires on return from Control Center / lock screen on iOS
+    window.addEventListener("focus", syncUI);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", syncUI);
+      window.removeEventListener("focus", syncUI);
+    };
   }, []);
 
-  // ── Media Session — iOS lock screen / Control Center ─────────────────────
-  // Registered immediately when the track changes. These are the authoritative
-  // play/pause handlers. They call audio.play/pause ONCE and update React state.
+  // ── Media Session — lock screen / Control Center ──────────────────────────
+  // Re-registered every time currentTrack changes.
+  // Handlers call safePlay/safePause directly — never togglePlay, never playTrack.
   useEffect(() => {
     if (!("mediaSession" in navigator) || !currentTrack) return;
 
@@ -166,25 +191,22 @@ export function PlayerProvider({ children }) {
       "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
 
     navigator.mediaSession.metadata = new MediaMetadata({
-      title:  currentTrack.title  || "Unknown",
+      title:  currentTrack.title || "Unknown",
       artist: currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media",
       album:  "Upper Vibe Media",
       artwork: [{ src: artSrc, sizes: "512x512", type: "image/jpeg" }],
     });
 
+    // These handlers are the authoritative source of truth for native controls.
+    // They do NOT call togglePlay / playTrack — that would reload the src.
     navigator.mediaSession.setActionHandler("play", () => {
       const audio = audioRef.current;
       if (!audio.src || audio.src === window.location.href) return;
-      // Do not reset currentTime or reload src — resume from wherever iOS left off
       safePlay(audio);
-      // State will sync via the native "play" event listener above
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
-      const audio = audioRef.current;
-      if (!audio.paused) audio.pause();
-      // Do not reset src or currentTime
-      // State will sync via the native "pause" event listener above
+      safePause(audioRef.current);
     });
 
     navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
@@ -197,7 +219,7 @@ export function PlayerProvider({ children }) {
     };
   }, [currentTrack]);
 
-  // ── Keep Media Session playback state badge in sync ──────────────────────
+  // ── Keep Media Session playback badge in sync ─────────────────────────────
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
@@ -205,17 +227,16 @@ export function PlayerProvider({ children }) {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  // togglePlay: called from the website UI buttons only.
-  // Directly drives the audio element once — no state-driven effect.
+  // togglePlay — used by website UI buttons only, never by Media Session
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio.src) return;
     if (audio.paused) {
       safePlay(audio);
     } else {
-      audio.pause();
+      safePause(audio);
     }
-    // isPlaying will update via the native play/pause event listeners
+    // isPlaying updates via native play/pause event listeners — not set here
   }, []);
 
   const playTrack = useCallback((track, source = "song") => {
