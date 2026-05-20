@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "./PlayerContext";
+import { usePwaRadioLockscreen } from "@/hooks/usePwaRadioLockscreen";
 
 const RadioContext = createContext(null);
 
@@ -38,7 +39,11 @@ function buildQueue(allTracks, currentSongId, likedIds = []) {
 }
 
 export function RadioProvider({ children }) {
-  const { registerNextHandler, registerPrevHandler, playTrack, sourceType, currentTrack, isPlaying, audioRef, safePlay, togglePlay, clearPlayLocks } = usePlayer();
+  const {
+    registerNextHandler, registerPrevHandler,
+    playTrack, sourceType, currentTrack,
+    audioRef, savedTimeRef, playLockRef, clearPosition, safePlay, setIsPlaying,
+  } = usePlayer();
 
   const [allTracks,        setAllTracks]        = useState([]);
   const [tracksLoaded,     setTracksLoaded]     = useState(false);
@@ -47,7 +52,6 @@ export function RadioProvider({ children }) {
   const [radioHistory,     setRadioHistory]     = useState([]);
   const [historyIndex,     setHistoryIndex]     = useState(-1);
   const [likedTrackIds,    setLikedTrackIds]    = useState([]);
-  const [pwaRadioPaused,   setPwaRadioPaused]   = useState(false); // kept for API compat
 
   // ── Load tracks once ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -152,8 +156,8 @@ export function RadioProvider({ children }) {
   // We need refs to the latest state values for use inside callbacks registered once
   const stateRef = useRef({});
   useEffect(() => {
-    stateRef.current = { allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType, likedTrackIds, isPlaying };
-  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType, likedTrackIds, isPlaying]);
+    stateRef.current = { allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType, likedTrackIds };
+  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType, likedTrackIds]);
 
   // Keep sourceType in stateRef so handlers can check it without stale closures
   // (sourceType is already in stateRef via the effect above, but we name it explicitly)
@@ -232,26 +236,13 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 📻 Radio started:", song.title);
   }, [allTracks, currentRadioSong, radioQueue, playTrack, likedTrackIds]);
 
-  // Resume radio (called from the Resume banner button after PWA background pause)
-  // Does NOT call playTrack — that path skips savedTime for same-track.
-  // Instead: ensure sourceType="radio", then use togglePlay which correctly seeks savedTime first.
+  // Resume radio (called when user interrupted radio by playing another song)
   const resumeRadio = useCallback((onPlay) => {
     if (!currentRadioSong) return startRadio(onPlay);
-    const audio = audioRef.current;
-    clearPlayLocks();
-
-    console.log("[RadioContext] 📻 resumeRadio —", {
-      song:        currentRadioSong.title,
-      audioPaused: audio?.paused,
-      savedTime:   audio?.currentTime,
-      readyState:  audio?.readyState,
-    });
-
-    // Make sure we're in radio mode (sourceType may still be correct but be safe)
     playTrack(currentRadioSong, "radio");
     if (onPlay) onPlay(currentRadioSong);
     console.log("[RadioContext] 📻 Radio resumed:", currentRadioSong.title);
-  }, [currentRadioSong, startRadio, playTrack, audioRef, clearPlayLocks]);
+  }, [currentRadioSong, startRadio, playTrack, likedTrackIds]);
 
   // Next — delegates to the same handler registered with PlayerContext
   const nextRadioSong = useCallback(() => {
@@ -282,10 +273,20 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 🎯 Jumped to:", song.title);
   }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack]);
 
-  // PlayerContext now handles pause-on-hide and AudioContext resume-on-show
-  // for ALL sourceTypes including radio, so no duplicate handler needed here.
-
-  const clearPwaRadioPaused = useCallback(() => setPwaRadioPaused(false), []);
+  // ── PWA Radio lock-screen handler ────────────────────────────────────────
+  // Only active in PWA (Add-to-Home-Screen) mode. Does not affect Safari.
+  usePwaRadioLockscreen({
+    audioRef,
+    sourceType,
+    currentTrack,
+    allTracks,
+    savedTimeRef,
+    playLockRef,
+    clearPosition,
+    safePlay,
+    playTrack,
+    setIsPlaying,
+  });
 
   // ── Derived state for UI ──────────────────────────────────────────────────
   // "Radio is active" = the global player is currently playing a radio-sourced track
@@ -322,8 +323,6 @@ export function RadioProvider({ children }) {
       nextRadioSong,
       prevRadioSong,
       jumpToSong,
-      pwaRadioPaused,
-      clearPwaRadioPaused,
     }}>
       {children}
     </RadioContext.Provider>
