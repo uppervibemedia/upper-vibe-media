@@ -279,15 +279,21 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 🎯 Jumped to:", song.title);
   }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack]);
 
-  // ── PWA-only: manage Radio lock-screen lifecycle ─────────────────────────
+  // ── PWA-only: Auto-pause on background, show Resume banner on return ────────
   // PlayerContext's generic hide/show handler is bypassed for PWA Radio.
   // This effect is the sole owner of hide/show logic in that scenario.
   //
+  // KEY INSIGHT: iOS lock-screen controls work reliably when audio is *cleanly paused*
+  // via the same safePause path the manual Pause button uses.
+  // If we leave audio running unattended while backgrounded, iOS loses the session.
+  //
   // Strategy:
-  //   ON HIDE  — do NOT pause; let iOS keep audio alive for lock-screen controls.
-  //              Just note that we went to background (for UI only).
-  //   ON SHOW  — reset locks so safePlay can run; user taps Resume or lock-screen Play.
-  //              Show the Resume banner only if audio actually stopped.
+  //   ON HIDE  — call safePause exactly like the manual Pause button does.
+  //              Remember we were playing so we can show the Resume banner.
+  //   ON SHOW  — if we auto-paused on hide, show the Resume banner.
+  //              Never auto-play; user must tap Resume or lock-screen Play.
+  const wasPlayingBeforeHideRef = useRef(false);
+
   useEffect(() => {
     const isPwa =
       window.navigator.standalone === true ||
@@ -299,29 +305,41 @@ export function RadioProvider({ children }) {
     const onHide = () => {
       const { sourceType: st } = stateRef.current;
       if (st !== "radio") return;
-      console.log("[PWA Radio] onHide — keeping audio alive for lock-screen controls");
-      // DO NOT pause — iOS lock-screen controls must stay connected.
-      // PlayerContext has already been instructed to skip hide logic for PWA Radio.
+
+      // Only auto-pause if actually playing right now
+      const isPlaying = audio && !audio.paused && !!audio.src;
+      wasPlayingBeforeHideRef.current = isPlaying;
+
+      if (isPlaying) {
+        // Use the same safePause path the manual Pause button uses.
+        // saveTime=true so the position is preserved and the progress bar freezes.
+        safePause(audio, true);
+        console.log("[PWA Radio] onHide — auto-paused at", audio.currentTime?.toFixed(2), "to keep lock-screen controls alive");
+      } else {
+        console.log("[PWA Radio] onHide — already paused, nothing to do");
+      }
     };
 
     const onShow = () => {
       const { sourceType: st } = stateRef.current;
       if (st !== "radio") return;
 
+      // Clear locks so lock-screen Play / Resume button can call safePlay without being blocked
+      clearPlayLocks();
+
       console.log("[PWA Radio] onShow —", {
-        audioPaused:  audio?.paused,
-        audioSrc:     !!audio?.src,
-        audioTime:    audio?.currentTime,
-        readyState:   audio?.readyState,
+        wasPlaying:  wasPlayingBeforeHideRef.current,
+        audioPaused: audio?.paused,
+        audioTime:   audio?.currentTime,
+        readyState:  audio?.readyState,
       });
 
-      // iOS may have paused audio while in background (e.g. phone call, notification)
-      // Show the Resume banner so the user can explicitly restart.
-      if (audio && audio.paused && audio.src) {
+      // Show the Resume banner only if we were playing before hide
+      if (wasPlayingBeforeHideRef.current) {
         setPwaRadioPaused(true);
-        console.log("[PWA Radio] onShow — audio paused, showing Resume banner");
+        wasPlayingBeforeHideRef.current = false;
+        console.log("[PWA Radio] onShow — showing Resume banner");
       }
-      // If audio is still playing (lock-screen kept it alive), no banner needed.
     };
 
     const onVisibility = () => {
@@ -331,13 +349,15 @@ export function RadioProvider({ children }) {
 
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onHide);
+    window.addEventListener("blur", onHide);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("blur", onHide);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [safePause, clearPlayLocks]);
 
   const clearPwaRadioPaused = useCallback(() => setPwaRadioPaused(false), []);
 

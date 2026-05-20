@@ -238,10 +238,9 @@ export function PlayerProvider({ children }) {
     const doHide = () => {
       hideScheduled = false;
 
-      // PWA Radio: let RadioContext handle this — do not interfere
+      // PWA Radio: RadioContext calls safePause directly — do not interfere at all
       if (isPwa && sourceTypeRef.current === "radio") {
-        console.log("[Player] onHide — PWA Radio, skipping PlayerContext hide logic");
-        sharedHiddenRef.current = true;
+        console.log("[Player] onHide — PWA Radio, RadioContext owns this");
         return;
       }
 
@@ -266,12 +265,9 @@ export function PlayerProvider({ children }) {
       showScheduled = false;
       sharedHiddenRef.current = false;
 
-      // PWA Radio: let RadioContext handle this — do not interfere
+      // PWA Radio: RadioContext owns show logic — do not interfere at all
       if (isPwa && sourceTypeRef.current === "radio") {
-        console.log("[Player] onShow — PWA Radio, skipping PlayerContext show logic");
-        // Still reset locks so safePlay can run when user taps Resume
-        playLockRef.current  = false;
-        pauseLockRef.current = false;
+        console.log("[Player] onShow — PWA Radio, RadioContext owns this");
         return;
       }
 
@@ -328,13 +324,11 @@ export function PlayerProvider({ children }) {
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onHide);
     window.addEventListener("pageshow", onShow);
-    window.addEventListener("focus",    onShow);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("pageshow", onShow);
-      window.removeEventListener("focus",    onShow);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savePosition]);
