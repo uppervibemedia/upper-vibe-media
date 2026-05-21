@@ -90,8 +90,9 @@ export function PlayerProvider({ children }) {
       // Fix: re-assign src (does NOT reset currentTime immediately like load()),
       // then seek inside 'loadedmetadata' before playback starts.
       if (audio.readyState === 0 && audio.src) {
-        const resumeTime = savedTimeRef.current;
-        const srcUrl     = audio.src; // preserve before reassign
+        const resumeTime  = savedTimeRef.current;
+        // Use loadedSrcRef as canonical URL — NOT audio.src (Safari absolute URL)
+        const canonicalUrl = loadedSrcRef.current || audio.src;
         console.log("[Player] safePlay — buffer evicted, reloading at", resumeTime.toFixed(2));
 
         await new Promise((resolve, reject) => {
@@ -101,7 +102,6 @@ export function PlayerProvider({ children }) {
           };
           const onMeta = () => {
             cleanup();
-            // Seek to saved position as soon as metadata is ready
             if (resumeTime > 0 && isFinite(audio.duration)) {
               try { audio.currentTime = resumeTime; } catch {}
             }
@@ -110,8 +110,9 @@ export function PlayerProvider({ children }) {
           const onErr = (e) => { cleanup(); reject(e); };
           audio.addEventListener("loadedmetadata", onMeta);
           audio.addEventListener("error",          onErr);
-          // Re-assigning src is the atomic reload — avoids the load()+seek race
-          audio.src = srcUrl;
+          // Re-assign canonical URL — keeps loadedSrcRef in sync
+          audio.src = canonicalUrl;
+          // loadedSrcRef already holds canonicalUrl — no update needed
         });
 
         savedTimeRef.current = 0;
@@ -124,8 +125,12 @@ export function PlayerProvider({ children }) {
 
       // Normal resume — buffer is intact, just call play()
       // DO NOT seek. Safari resumes from currentTime natively with no glitch.
+      // Rate must be set immediately before AND after play() — Safari resets it
+      audio.playbackRate        = 1;
+      audio.defaultPlaybackRate = 1;
       await audio.play();
-      audio.playbackRate = 1;
+      audio.playbackRate        = 1;
+      audio.defaultPlaybackRate = 1;
 
     } catch (err) {
       if (err.name !== "AbortError") console.warn("[Player] safePlay error:", err.name, err.message);
@@ -143,12 +148,13 @@ export function PlayerProvider({ children }) {
     if (!currentTrack?.audio_url) return;
     const audio = audioRef.current;
 
-    const isSameTrack =
-      loadedSrcRef.current === currentTrack.audio_url ||
-      audio.src             === currentTrack.audio_url ||
-      (audio.src && audio.src.endsWith(currentTrack.audio_url));
+    // isSameTrack: compare against loadedSrcRef only — the canonical source
+    // of truth. audio.src is Safari's fully-resolved absolute URL and will
+    // never match a relative/CDN path, causing false reloads.
+    const isSameTrack = loadedSrcRef.current === currentTrack.audio_url;
 
     if (isSameTrack) {
+      // Same track already loaded — just play, never reload src
       if (audio.paused) safePlay(audio);
       return;
     }
