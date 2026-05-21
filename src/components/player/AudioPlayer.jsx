@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X, Mic2 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { usePlayer, sharedHiddenRef } from "../../context/PlayerContext";
 
@@ -192,9 +192,13 @@ export default function AudioPlayer() {
               ) : (
                 <div
                   className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
-                  style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}
+                  style={currentTrack?._isHostDrop
+                    ? { background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.25)" }
+                    : { background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}
                 >
-                  <span className="text-cyan-400/60 text-xs">♪</span>
+                  {currentTrack?._isHostDrop
+                    ? <Mic2 className="w-4 h-4" style={{ color: "#A855F7" }} />
+                    : <span className="text-cyan-400/60 text-xs">♪</span>}
                 </div>
               )}
               <div className="min-w-0">

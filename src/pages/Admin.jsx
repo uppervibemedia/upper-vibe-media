@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2 } from "lucide-react";
+import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2, Mic2 } from "lucide-react";
 import AnalyticsDashboard from "../components/admin/AnalyticsDashboard";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
@@ -12,6 +12,7 @@ import YouTubeImporter from "../components/admin/YouTubeImporter";
 import AcademyImporter from "../components/admin/AcademyImporter";
 import AcademyVideoManager from "../components/admin/AcademyVideoManager";
 import ArtistManager from "../components/admin/ArtistManager";
+import HostDropManager from "../components/admin/HostDropManager.jsx";
 import { useAuth } from "@/lib/AuthContext";
 
 const TABS = [
@@ -19,6 +20,7 @@ const TABS = [
   { id: "manager", label: "Music Manager", icon: ListFilter },
   { id: "upload", label: "Upload Track", icon: Music },
   { id: "visualizers", label: "Visualizers", icon: Tv2 },
+  { id: "host_drops", label: "Host Drops", icon: Mic2 },
   { id: "yt_import", label: "YouTube Import", icon: Youtube },
   { id: "academy_import", label: "Academy Import", icon: GraduationCap },
   { id: "artists", label: "Artists", icon: Users },
@@ -153,6 +155,18 @@ export default function Admin() {
         {/* Visualizers tab */}
         {tab === "visualizers" && (
           <VisualizerManager tracks={tracks} onRefresh={loadAll} />
+        )}
+
+        {/* Host Drops tab */}
+        {tab === "host_drops" && (
+          <div>
+            <div className="mb-6">
+              <p className="text-xs tracking-[0.3em] uppercase text-secondary text-glow-gold mb-1">Radio</p>
+              <h2 className="font-heading font-bold text-2xl">Radio Host Drops</h2>
+              <p className="text-sm text-muted-foreground mt-1">Manage motivational interstitial clips that play after every 4 completed songs.</p>
+            </div>
+            <HostDropManager />
+          </div>
         )}
 
         {/* YouTube Import tab */}

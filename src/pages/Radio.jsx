@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack, Radio as RadioIcon, Waves, Download, Music4, Crown, Heart } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Radio as RadioIcon, Waves, Download, Music4, Crown, Heart, Mic2 } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -23,6 +23,7 @@ export default function RadioPage() {
     hasPrev,
     upNext,
     curatorActive,
+    isHostDropPlaying,
     setRadioLikedIds,
     curatorRecordLike,
     initRadio,
@@ -183,37 +184,65 @@ export default function RadioPage() {
               <div className="rounded-3xl p-8 text-center"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
-                {/* Cover */}
-                <div className="relative w-44 h-44 mx-auto mb-6">
-                  {currentRadioSong.cover_url ? (
-                    <img src={currentRadioSong.cover_url} alt={currentRadioSong.title}
-                      className="w-full h-full rounded-2xl object-cover"
-                      style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }} />
-                  ) : (
-                    <div className="w-full h-full rounded-2xl flex items-center justify-center"
-                      style={{ background: "rgba(0,200,220,0.08)", border: "1px solid rgba(0,200,220,0.15)" }}>
-                      <Music4 className="w-14 h-14 text-cyan-400/20" />
+                {/* Cover / Host Drop visual */}
+                {isHostDropPlaying ? (
+                  <div className="w-44 h-44 mx-auto mb-6 rounded-2xl flex flex-col items-center justify-center gap-3"
+                    style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.25)" }}>
+                    <Mic2 className="w-12 h-12" style={{ color: "#A855F7" }} />
+                    <div className="flex gap-1">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className="w-1 rounded-full animate-pulse"
+                          style={{ height: `${12 + i * 4}px`, background: "#A855F7", animationDelay: `${i * 0.12}s` }} />
+                      ))}
                     </div>
-                  )}
-                  {playingThisRadioSong && (
-                    <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center"
-                      style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)" }}>
-                      <Waves className="w-3.5 h-3.5 text-black animate-pulse" />
-                    </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="relative w-44 h-44 mx-auto mb-6">
+                    {currentRadioSong.cover_url ? (
+                      <img src={currentRadioSong.cover_url} alt={currentRadioSong.title}
+                        className="w-full h-full rounded-2xl object-cover"
+                        style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }} />
+                    ) : (
+                      <div className="w-full h-full rounded-2xl flex items-center justify-center"
+                        style={{ background: "rgba(0,200,220,0.08)", border: "1px solid rgba(0,200,220,0.15)" }}>
+                        <Music4 className="w-14 h-14 text-cyan-400/20" />
+                      </div>
+                    )}
+                    {playingThisRadioSong && (
+                      <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center"
+                        style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)" }}>
+                        <Waves className="w-3.5 h-3.5 text-black animate-pulse" />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Track info */}
-                <h2 className="font-heading font-black text-white text-lg mb-1 truncate px-2">
-                  {currentRadioSong.title}
-                </h2>
-                <p className="text-white/40 text-sm mb-3 truncate">
-                  {currentRadioSong.artist_display || "Upper Vibe Media"}
-                </p>
-                <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full mb-6"
-                  style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.2)", color: "#00C9E0" }}>
-                  <Waves className="w-2.5 h-2.5" /> 432 Hz
-                </span>
+                {isHostDropPlaying ? (
+                  <>
+                    <h2 className="font-heading font-black text-lg mb-1 px-2" style={{ color: "#A855F7" }}>
+                      Upper Vibe Radio Host
+                    </h2>
+                    <p className="text-white/40 text-sm mb-3">Upper Vibe Media</p>
+                    <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full mb-6"
+                      style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#A855F7" }}>
+                      <Mic2 className="w-2.5 h-2.5" /> Radio Check-In
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="font-heading font-black text-white text-lg mb-1 truncate px-2">
+                      {currentRadioSong.title}
+                    </h2>
+                    <p className="text-white/40 text-sm mb-3 truncate">
+                      {currentRadioSong.artist_display || "Upper Vibe Media"}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full mb-6"
+                      style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.2)", color: "#00C9E0" }}>
+                      <Waves className="w-2.5 h-2.5" /> 432 Hz
+                    </span>
+                  </>
+                )}
 
                 {/* Paused banner */}
                 {radioIsPaused && (
