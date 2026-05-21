@@ -1,18 +1,18 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react"; // useMemo kept for sessionSeed
 import { motion } from "framer-motion";
-import { Play, Waves, Music4, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Sparkles, Heart, Users, GraduationCap, Download, ExternalLink } from "lucide-react";
-// Note: Music4, ExternalLink still used in recommended/viz sections
+import { Play, Waves, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Heart, Users, GraduationCap, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
-import { recordPlay, getHistory } from "../components/home/DiscoverTab";
+import { recordPlay } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
 import LatestMusicSection from "../components/home/LatestMusicSection";
+import TrendingTracksSection from "../components/home/TrendingTracksSection";
 import SectionHeader from "../components/shared/SectionHeader";
 import PullToRefresh from "../components/shared/PullToRefresh";
 
@@ -38,53 +38,6 @@ function seededShuffle(arr, seed) {
   return a;
 }
 
-function buildHomeRecs(allTracks, allViz, favorites, history) {
-  const favTrackIds = new Set(favorites.filter((f) => f.type === "track").map((f) => f.track_id));
-  const favVizIds = new Set(favorites.filter((f) => f.type === "visualizer").map((f) => f.visualizer_id));
-  const historyIds = new Set(history.map((h) => h.id));
-
-  const signalTracks = [
-    ...allTracks.filter((t) => favTrackIds.has(t.id)),
-    ...allTracks.filter((t) => historyIds.has(t.id)).slice(0, 10),
-  ];
-  const moodFreq = {};
-  const catFreq = {};
-  signalTracks.flatMap((t) => t.mood_tags || []).forEach((m) => { moodFreq[m] = (moodFreq[m] || 0) + 1; });
-  signalTracks.flatMap((t) => t.category_ids || []).forEach((c) => { catFreq[c] = (catFreq[c] || 0) + 1; });
-
-  const scoredTracks = allTracks
-    .filter((t) => !favTrackIds.has(t.id) && !historyIds.has(t.id))
-    .map((t) => {
-      let score = 0;
-      (t.mood_tags || []).forEach((m) => { score += (moodFreq[m] || 0) * 2; });
-      (t.category_ids || []).forEach((c) => { score += (catFreq[c] || 0) * 1.5; });
-      if (t.is_featured) score += 3;
-      if (t.is_new_release) score += 2;
-      return { ...t, _score: score };
-    })
-    .sort((a, b) => b._score - a._score)
-    .slice(0, 6);
-
-  const recommendedTracks = scoredTracks.length > 0
-    ? scoredTracks
-    : allTracks.filter((t) => t.is_featured || t.is_new_release).slice(0, 6);
-
-  const scoredViz = allViz
-    .filter((v) => !favVizIds.has(v.id))
-    .map((v) => {
-      let score = 0;
-      if (v.is_featured) score += 3;
-      if (v.linked_song_id && (favTrackIds.has(v.linked_song_id) || historyIds.has(v.linked_song_id))) score += 5;
-      return { ...v, _score: score };
-    })
-    .sort((a, b) => b._score - a._score)
-    .slice(0, 6);
-
-  const recommendedViz = scoredViz.length > 0 ? scoredViz : allViz.slice(0, 6);
-
-  return { recommendedTracks, recommendedViz };
-}
-
 export default function Home() {
   const [latestTracks, setLatestTracks] = useState([]);
   const [allTracks, setAllTracks] = useState([]);
@@ -99,8 +52,7 @@ export default function Home() {
   const [premiumModal, setPremiumModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
-  const { favorites, isFaved, toggle } = useFavorites(user?.email);
-  const history = useMemo(() => getHistory(), []);
+  const { isFaved, toggle } = useFavorites(user?.email);
 
   const handlePlayTrack = (track) => {
     if (currentTrack?.id === track.id) { togglePlay(); return; }
@@ -137,11 +89,6 @@ export default function Home() {
     sessionStorage.removeItem("uv_home_seed");
     setRefreshKey((k) => k + 1);
   };
-
-  const { recommendedTracks, recommendedViz } = useMemo(
-    () => buildHomeRecs(allTracks, allViz, favorites, history),
-    [allTracks, allViz, favorites, history]
-  );
 
   const heartButton = (type, id, meta) => (
     <button
@@ -315,67 +262,23 @@ export default function Home() {
         user={user}
       />
 
-      {/* ── RECOMMENDED SONGS ── */}
-      {recommendedTracks.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="Picked For You" title="Recommended Songs" link="/music" linkLabel="All Music" labelColor="#D4A843" labelIcon={<Sparkles className="w-3 h-3" />} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {recommendedTracks.map((track, i) => {
-              const isCurrent = currentTrack?.id === track.id;
-              return (
-                <motion.div key={track.id}
-                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  className="flex items-center gap-3 p-3.5 rounded-2xl group cursor-pointer transition-all hover:border-white/15 active:scale-[0.98]"
-                  style={{
-                    background: isCurrent ? "rgba(212,168,67,0.06)" : "rgba(255,255,255,0.025)",
-                    border: `1px solid ${isCurrent ? "rgba(212,168,67,0.2)" : "rgba(255,255,255,0.06)"}`,
-                  }}
-                  onClick={() => track.audio_url && handlePlayTrack(track)}>
-                  <div className="relative flex-shrink-0">
-                    {track.cover_url ? (
-                      <img src={track.cover_url} alt={track.title} className="w-11 h-11 rounded-xl object-cover" />
-                    ) : (
-                      <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "rgba(212,168,67,0.08)" }}>
-                        <Music4 className="w-4 h-4 text-yellow-400/40" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: "rgba(0,0,0,0.65)" }}>
-                      {isCurrent && isPlaying ? <Pause className="w-3.5 h-3.5 text-yellow-400" /> : <Play className="w-3.5 h-3.5 text-white ml-0.5" />}
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()}
-                      className="text-sm font-bold text-white truncate block hover:text-yellow-300 transition-colors">
-                      {track.title}
-                    </Link>
-                    <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
-                    <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-0.5 text-[9px] text-white/25 hover:text-white/60 transition-colors mt-0.5">
-                      <ExternalLink className="w-2.5 h-2.5" /> View Song
-                    </Link>
-                  </div>
-                  <div className="flex items-center gap-0.5 flex-shrink-0">
-                    <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
-                      <Waves className="w-2 h-2" /> 432
-                    </span>
-                    {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
-                    {downloadButton(track)}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      {/* ── TRENDING TRACKS ── */}
+      <TrendingTracksSection
+        allTracks={allTracks}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        handlePlayTrack={handlePlayTrack}
+        heartButton={heartButton}
+        downloadButton={downloadButton}
+        user={user}
+      />
 
       {/* ── VISUALIZERS ── */}
-      {(recentViz.length > 0 || recommendedViz.length > 0) && (
+      {recentViz.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-10">
           <SectionHeader label="Visual Frequency" title="Latest Visualizers" link="/visualizers" linkLabel="See More" labelColor="#9B7EFF" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {(recentViz.length > 0 ? recentViz : recommendedViz).map((viz, i) => (
+            {recentViz.map((viz, i) => (
               <motion.div key={viz.id}
                 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
                 className="group rounded-2xl overflow-hidden"
