@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Download, Lock, Check, Loader2 } from "lucide-react";
-import { canDownloadContent, saveDownloadRecord, triggerBrowserDownload } from "@/lib/downloadService";
+import { canDownloadContent, saveDownloadRecord, recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 import { toast } from "sonner";
 
 /**
@@ -20,6 +20,7 @@ export default function DownloadButton({
   contentType = "track",
   userTier = "free",
   userEmail,
+  user,
   onUpgrade,
   size = "sm",
   className = "",
@@ -51,9 +52,13 @@ export default function DownloadButton({
 
     setStatus("downloading");
     try {
-      // Save record to user's library
+      // Save to legacy Download entity
       if (userEmail) {
         await saveDownloadRecord(userEmail, contentType, item);
+      }
+      // Save to UserDownload entity (for My Downloads page)
+      if (user && contentType === "track") {
+        await recordUserDownload(user, item);
       }
       // Trigger browser download
       triggerBrowserDownload(fileUrl, `${item.title || item.name || "download"}`);

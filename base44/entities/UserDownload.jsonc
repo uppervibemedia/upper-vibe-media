@@ -1,0 +1,42 @@
+{
+  "name": "UserDownload",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "ID of the user who downloaded"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who downloaded"
+    },
+    "song_id": {
+      "type": "string",
+      "description": "ID of the Track record"
+    },
+    "song_title": {
+      "type": "string",
+      "description": "Cached track title"
+    },
+    "artist_name": {
+      "type": "string",
+      "description": "Cached artist display name"
+    },
+    "artwork_url": {
+      "type": "string",
+      "description": "Cached cover art URL"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL of the downloadable audio file"
+    },
+    "downloaded_at": {
+      "type": "string",
+      "description": "ISO datetime of the download"
+    }
+  },
+  "required": [
+    "user_id",
+    "song_id"
+  ]
+}

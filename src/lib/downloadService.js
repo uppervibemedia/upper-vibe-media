@@ -1,8 +1,8 @@
 /**
  * Download Service — permission logic and download actions.
- * 
- * Rule: Only Premium users can download.
- * Content must also have is_downloadable = true.
+ *
+ * Rule: Only Premium/Admin users can download.
+ * Also writes to UserDownload entity for "My Downloads" page.
  */
 import { base44 } from "@/api/base44Client";
 
@@ -15,19 +15,46 @@ export function canUserDownload(userTier) {
 export function canDownloadContent(userTier, item) {
   if (!canUserDownload(userTier)) return false;
   if (!item?.is_downloadable) return false;
-  // download_tier_required defaults to "premium" if not set
   const required = item.download_tier_required || "premium";
   return required === "premium" ? userTier === "premium" : true;
 }
 
-/** Save a download record for the current user */
+/**
+ * Record a download in the UserDownload entity.
+ * Prevents duplicates for the same user + song.
+ */
+export async function recordUserDownload(user, track) {
+  if (!user?.id || !track?.id) return;
+  try {
+    const existing = await base44.entities.UserDownload.filter({
+      user_id: user.id,
+      song_id: track.id,
+    });
+    if (existing.length > 0) return existing[0]; // already recorded
+
+    return await base44.entities.UserDownload.create({
+      user_id: user.id,
+      user_email: user.email || "",
+      song_id: track.id,
+      song_title: track.title || "",
+      artist_name: track.artist_display || track.artist || "",
+      artwork_url: track.cover_url || "",
+      file_url: track.audio_url || "",
+      downloaded_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.warn("[downloadService] recordUserDownload error:", e.message);
+  }
+}
+
+/** Save a download record for the current user (legacy Download entity) */
 export async function saveDownloadRecord(userEmail, contentType, item) {
   const existing = await base44.entities.Download.filter({
     user_email: userEmail,
     content_type: contentType,
     content_id: item.id,
   });
-  if (existing.length > 0) return existing[0]; // already saved
+  if (existing.length > 0) return existing[0];
 
   return base44.entities.Download.create({
     user_email: userEmail,

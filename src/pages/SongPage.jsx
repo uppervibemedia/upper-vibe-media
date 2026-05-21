@@ -13,6 +13,7 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import SupportModal from "../components/shared/SupportModal";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
+import { recordUserDownload } from "@/lib/downloadService";
 
 function toEmbedUrl(url) {
   if (!url || typeof url !== "string") return null;
@@ -150,6 +151,8 @@ export default function SongPage() {
 
   const handleDownload = async () => {
     if (!track?.audio_url) return;
+    // Record to UserDownload (no-duplicate guard inside)
+    if (user) recordUserDownload(user, track).catch(() => {});
     try {
       const response = await fetch(track.audio_url);
       const blob = await response.blob();
