@@ -13,6 +13,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import { usePlayer } from "@/context/PlayerContext";
 
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
@@ -34,6 +35,8 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
+  const { isPlaying, sourceType } = usePlayer();
+  const radioIsLive = isPlaying && sourceType === "radio";
 
   const handleMobileNavTap = (e, path) => {
     if (location.pathname === path) {
@@ -80,11 +83,19 @@ export default function Sidebar() {
       </div>
 
       {/* ── Mobile bottom navigation ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 pb-safe"
-        style={{ background: "rgba(4,4,8,0.95)", backdropFilter: "blur(24px)" }}>
-        <div className="flex items-center justify-around px-1 pt-1.5 pb-2">
+      <div
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/5"
+        style={{
+          background: "rgba(4,4,8,0.97)",
+          backdropFilter: "blur(24px)",
+          paddingBottom: "env(safe-area-inset-bottom, 8px)",
+        }}
+      >
+        <div className="flex items-center justify-around px-1 pt-1.5 pb-1">
           {bottomNavMobile.map((item) => {
             const isActive = location.pathname === item.path;
+            const isRadioItem = item.path === "/radio";
+            const glowing = isRadioItem && radioIsLive;
             return (
               <Link
                 key={item.path}
@@ -92,10 +103,21 @@ export default function Sidebar() {
                 onClick={(e) => handleMobileNavTap(e, item.path)}
                 className="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl transition-all"
               >
-                <div className={`p-1.5 rounded-lg transition-all ${isActive ? "bg-cyan-400/15" : ""}`}>
-                  <item.icon className={`w-[18px] h-[18px] transition-colors ${isActive ? "text-cyan-400" : "text-white/40"}`} />
+                <div
+                  className={`p-1.5 rounded-lg transition-all ${isActive ? "bg-cyan-400/15" : ""}`}
+                  style={glowing ? { boxShadow: "0 0 10px rgba(0,229,255,0.4)" } : {}}
+                >
+                  <item.icon
+                    className={`w-[18px] h-[18px] transition-colors ${
+                      isActive ? "text-cyan-400" : glowing ? "text-cyan-400/80" : "text-white/40"
+                    }`}
+                    style={glowing && !isActive ? { filter: "drop-shadow(0 0 4px rgba(0,229,255,0.7))" } : {}}
+                  />
+                  {glowing && !isActive && (
+                    <span className="block w-1 h-1 rounded-full bg-cyan-400 mx-auto mt-0.5 animate-pulse" />
+                  )}
                 </div>
-                <span className={`text-[8px] font-semibold tracking-wide uppercase ${isActive ? "text-cyan-400" : "text-white/30"}`}>
+                <span className={`text-[8px] font-semibold tracking-wide uppercase ${isActive ? "text-cyan-400" : glowing ? "text-cyan-400/60" : "text-white/30"}`}>
                   {item.label}
                 </span>
               </Link>

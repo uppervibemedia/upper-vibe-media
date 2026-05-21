@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react"; // useMemo kept for sessionSeed
 import { motion } from "framer-motion";
-import { Play, Waves, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Heart, Users, GraduationCap, Download, Radio, Zap } from "lucide-react";
+import { Play, Waves, Tv2, Mail, CheckCircle2, Heart, Users, GraduationCap, Download, Radio, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -135,7 +135,7 @@ export default function Home() {
     <div className="min-h-screen pb-28 lg:pb-0">
 
       {/* ── HERO ── */}
-      <section className="relative flex items-center overflow-hidden" style={{ minHeight: "68vh" }}>
+      <section className="relative flex items-center overflow-hidden" style={{ minHeight: "clamp(52vh, 68vh, 68vh)" }}>
         {/* Background layers */}
         <div className="absolute inset-0 pointer-events-none">
           {/* Ambient glow — very restrained */}
@@ -151,14 +151,14 @@ export default function Home() {
             style={{ background: "linear-gradient(transparent, hsl(240 50% 2%))" }} />
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 w-full pt-28 pb-20 relative z-10">
+        <div className="max-w-7xl mx-auto px-6 w-full pt-16 md:pt-28 pb-10 md:pb-20 relative z-10">
           <div className="max-w-xl">
 
-            {/* ── Eyebrow label ── */}
+            {/* ── Eyebrow label — hidden on mobile to save space ── */}
             <motion.div
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="flex items-center gap-3 mb-8">
+              className="hidden sm:flex items-center gap-3 mb-8">
               {/* Frequency dot + label */}
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm"
                 style={{ background: "rgba(0,200,220,0.05)", border: "1px solid rgba(0,200,220,0.16)" }}>
@@ -177,12 +177,12 @@ export default function Home() {
             <motion.div
               initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.16, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className="mb-3">
+              className="mb-2 sm:mb-3">
 
-              {/* UPPER VIBE — platinum/white, wide tracked, geometric weight */}
+              {/* UPPER VIBE — smaller on mobile */}
               <div style={{
                 fontFamily: "var(--font-heading)",
-                fontSize: "clamp(2.6rem, 6.2vw, 4.8rem)",
+                fontSize: "clamp(2rem, 6.2vw, 4.8rem)",
                 fontWeight: 900,
                 lineHeight: 0.95,
                 letterSpacing: "0.06em",
@@ -192,14 +192,12 @@ export default function Home() {
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
                 display: "block",
-                // Very faint text-shadow glow — subtle platinum sheen
                 filter: "drop-shadow(0 0 18px rgba(0,210,240,0.07))",
               }}>UPPER VIBE</div>
 
-              {/* Thin divider accent line between the two words */}
-              <div className="flex items-center gap-2 my-1.5">
+              {/* Thin divider accent */}
+              <div className="flex items-center gap-2 my-1">
                 <div className="h-px w-8" style={{ background: "rgba(212,168,67,0.5)" }} />
-                {/* Minimal waveform accent — 5 bars */}
                 <div className="flex items-end gap-[2.5px]" style={{ height: "8px" }}>
                   {[3, 6, 8, 5, 3].map((h, i) => (
                     <div key={i} className="w-[2px] rounded-full"
@@ -209,10 +207,10 @@ export default function Home() {
                 <div className="h-px flex-1 max-w-[100px]" style={{ background: "linear-gradient(90deg, rgba(212,168,67,0.25), transparent)" }} />
               </div>
 
-              {/* MEDIA — refined gold gradient, slightly smaller, breathes under UPPER VIBE */}
+              {/* MEDIA — smaller on mobile */}
               <div style={{
                 fontFamily: "var(--font-heading)",
-                fontSize: "clamp(1.5rem, 3.6vw, 2.8rem)",
+                fontSize: "clamp(1.1rem, 3.6vw, 2.8rem)",
                 fontWeight: 800,
                 lineHeight: 1.0,
                 letterSpacing: "0.22em",
@@ -226,11 +224,11 @@ export default function Home() {
               }}>MEDIA</div>
             </motion.div>
 
-            {/* ── Subtitle ── */}
+            {/* ── Subtitle — hidden on mobile ── */}
             <motion.p
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.28, duration: 0.5 }}
-              className="mt-7 mb-9 font-body leading-[1.7]"
+              className="hidden sm:block mt-5 mb-7 font-body leading-[1.7]"
               style={{ fontSize: "clamp(0.85rem, 1.4vw, 1rem)", color: "rgba(255,255,255,0.35)", maxWidth: "27rem" }}>
               432 Hz music, visualizers, and high-vibe learning —
               all in one premium experience.
@@ -240,16 +238,16 @@ export default function Home() {
             <motion.div
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.38, duration: 0.45 }}
-              className="flex flex-col gap-3">
+              className="flex flex-col gap-2.5 mt-4 sm:mt-0">
               {/* Primary: Start Listening Live */}
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
                 <button
                   onClick={handleStartRadio}
-                  className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-sm font-black text-sm tracking-wider transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:scale-[0.98]"
+                  className="inline-flex items-center gap-2.5 px-6 py-3 sm:px-7 sm:py-3.5 rounded-sm font-black text-sm tracking-wider transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:scale-[0.98] w-fit"
                   style={{ background: "linear-gradient(135deg,#009CB8,#00C8E0)", color: "#000", boxShadow: "0 0 28px rgba(0,200,220,0.28)" }}>
                   <Radio className="w-4 h-4" /> Start Listening Live
                 </button>
-                <span className="text-[11px] text-white/20 flex items-center gap-1.5">
+                <span className="text-[10px] sm:text-[11px] text-white/20 flex items-center gap-1.5">
                   <Waves className="w-3 h-3 text-cyan-400/30 animate-pulse" />
                   Music keeps playing while you browse
                 </span>
@@ -280,47 +278,61 @@ export default function Home() {
       </section>
 
       {/* ── RADIO CTA ── */}
-      <section className="max-w-7xl mx-auto px-6 py-10">
+      <section className="max-w-7xl mx-auto px-6 pt-2 pb-6 md:py-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="relative rounded-3xl overflow-hidden p-8 md:p-12"
+          className="relative rounded-2xl md:rounded-3xl overflow-hidden p-5 md:p-12"
           style={{ background: "linear-gradient(135deg,rgba(0,180,210,0.07) 0%,rgba(0,229,255,0.03) 50%,rgba(212,168,67,0.04) 100%)", border: "1px solid rgba(0,229,255,0.12)" }}>
           {/* Glow */}
           <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full blur-[100px] opacity-20 pointer-events-none" style={{ background: "#00C9E0" }} />
           <div className="absolute -bottom-10 right-10 w-48 h-48 rounded-full blur-[80px] opacity-10 pointer-events-none" style={{ background: "#D4A843" }} />
 
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8">
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-5 md:gap-8">
             {/* Left: icon + text */}
             <div className="flex-1">
               {/* LIVE NOW badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full mb-3 md:mb-5"
                 style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}>
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[10px] font-black tracking-[0.25em] uppercase text-red-400">Live Now</span>
+                <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[9px] md:text-[10px] font-black tracking-[0.25em] uppercase text-red-400">Live Now</span>
               </div>
 
-              <h2 className="font-heading font-black text-2xl md:text-3xl lg:text-4xl text-white mb-3 leading-tight">
+              <h2 className="font-heading font-black text-xl md:text-3xl lg:text-4xl text-white mb-2 md:mb-3 leading-tight">
                 Upper Vibe Radio Is Live
               </h2>
-              <p className="text-white/40 text-sm md:text-base leading-relaxed max-w-lg mb-6">
+
+              {/* Now Playing info — shown when radio has a current song */}
+              {currentTrack && (
+                <div className="flex items-center gap-2.5 mb-3 md:mb-4">
+                  <div className="flex items-end gap-0.5 flex-shrink-0">
+                    {[3,5,7,5,3].map((h, i) => (
+                      <motion.div key={i}
+                        animate={{ height: [`${h * 0.5}px`, `${h}px`, `${h * 0.6}px`] }}
+                        transition={{ duration: 0.7 + i * 0.1, repeat: Infinity, ease: "easeInOut", delay: i * 0.08 }}
+                        className="w-[2px] rounded-full" style={{ background: "#00E5FF" }} />
+                    ))}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black tracking-[0.18em] uppercase text-cyan-400/60 leading-none mb-0.5">Now Playing</p>
+                    <p className="text-xs font-bold text-white/80 truncate">{currentTrack.title}</p>
+                    <p className="text-[10px] text-white/35 truncate">{currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}</p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-white/35 text-xs md:text-base leading-relaxed max-w-lg mb-4 md:mb-6">
                 432 Hz high-vibe music, positive radio drops, visual energy, and nonstop frequency for your day
               </p>
 
-              <div className="flex flex-wrap items-center gap-4">
-                <Link
-                  to="/radio"
-                  className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
-                  style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 28px rgba(0,229,255,0.3)" }}>
-                  <Radio className="w-4 h-4" /> Open Radio Page
-                </Link>
-                <p className="text-[11px] text-white/25 flex items-center gap-1.5">
-                  <Waves className="w-3 h-3 text-cyan-400/40 animate-pulse" />
-                  Music keeps playing while you browse
-                </p>
-              </div>
+              <Link
+                to="/radio"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
+                style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.25)", color: "#00E5FF", boxShadow: "0 0 12px rgba(0,229,255,0.1)" }}>
+                <Radio className="w-3.5 h-3.5" /> Open Radio Page
+              </Link>
             </div>
 
-            {/* Right: animated waveform visual */}
+            {/* Right: animated waveform visual — desktop only */}
             <div className="flex-shrink-0 hidden md:flex items-end gap-1.5 h-20">
               {[6, 10, 16, 24, 32, 20, 12, 28, 36, 22, 14, 30, 18, 8, 26].map((h, i) => (
                 <motion.div
