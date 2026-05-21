@@ -132,7 +132,7 @@ export default function Home() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className="min-h-screen pb-28 lg:pb-0">
+    <div className="min-h-screen" style={{ WebkitOverflowScrolling: "touch" }}>
 
       {/* ── HERO ── */}
       <section className="relative flex items-center overflow-hidden" style={{ minHeight: "clamp(52vh, 68vh, 68vh)" }}>
@@ -349,6 +349,7 @@ export default function Home() {
       </section>
 
       {/* ── LATEST MUSIC ── */}
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
       <LatestMusicSection
         tracks={latestTracks}
         currentTrack={currentTrack}
@@ -358,8 +359,10 @@ export default function Home() {
         downloadButton={downloadButton}
         user={user}
       />
+      </motion.div>
 
       {/* ── TRENDING TRACKS ── */}
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
       <TrendingTracksSection
         allTracks={allTracks}
         currentTrack={currentTrack}
@@ -369,6 +372,7 @@ export default function Home() {
         downloadButton={downloadButton}
         user={user}
       />
+      </motion.div>
 
       {/* ── FREQUENCY CTA ── */}
       <section className="max-w-7xl mx-auto px-6 py-6">
@@ -545,6 +549,7 @@ export default function Home() {
       )}
 
       {/* ── RECENTLY PLAYED ── */}
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
       <RecentlyListenedSection
         allTracks={allTracks}
         currentTrack={currentTrack}
@@ -553,6 +558,7 @@ export default function Home() {
         heartButton={heartButton}
         downloadButton={downloadButton}
       />
+      </motion.div>
 
       {/* ── EMAIL SIGNUP ── */}
       <EmailSignupSection />

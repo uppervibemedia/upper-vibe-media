@@ -101,6 +101,52 @@
   }
 }
 
+/* ── iOS Safe-Area & Momentum Scrolling ── */
+html {
+  /* Ensure viewport fills notch/Dynamic Island area with background color */
+  background-color: hsl(240 50% 2%);
+}
+
+body {
+  /* Smooth momentum scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* PWA standalone — add extra top padding for status bar */
+@media (display-mode: standalone) {
+  .mobile-topbar {
+    padding-top: env(safe-area-inset-top, 12px) !important;
+  }
+}
+
+/* Global smooth scrolling */
+* {
+  scroll-behavior: smooth;
+}
+
+/* Better touch targets on mobile */
+@media (max-width: 1024px) {
+  button, a {
+    min-height: 36px;
+  }
+}
+
+/* Prevent text size adjustment on orientation change */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Hide scrollbar for horizontal swipe rows */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -131,6 +177,46 @@
 }
 .text-glow-gold {
   text-shadow: 0 0 20px hsl(43 72% 52% / 0.4);
+}
+
+/* ── Desktop main content — reset mobile safe-area padding ── */
+@media (min-width: 1024px) {
+  main {
+    padding-top: 0 !important;
+    padding-bottom: 5rem !important;
+  }
+}
+
+/* ── Audio Player positioning ── */
+/* Mobile: player floats above bottom nav + safe area */
+.player-bar {
+  bottom: calc(56px + env(safe-area-inset-bottom, 12px));
+}
+/* Desktop: player sits at the very bottom */
+@media (min-width: 1024px) {
+  .player-bar {
+    bottom: 0;
+  }
+}
+
+/* Safe-area utilities */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.mt-safe {
+  margin-top: env(safe-area-inset-top, 0px);
+}
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Glass effect */

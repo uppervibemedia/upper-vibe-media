@@ -12,15 +12,77 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
   return (
     <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
       <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor="#00E5FF" />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Mobile: horizontal swipe scroll; desktop: grid */}
+      <div className="flex sm:hidden gap-3 overflow-x-auto pb-2 -mx-6 px-6 snap-x snap-mandatory hide-scrollbar"
+        style={{ WebkitOverflowScrolling: "touch" }}>
+        {tracks.map((track, i) => {
+          const isCurrent = currentTrack?.id === track.id;
+          return (
+            <motion.div
+              key={track.id + "-mobile"}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.06, ease: [0.22,1,0.36,1] }}
+              className="group rounded-2xl overflow-hidden cursor-pointer flex-shrink-0 snap-start active:scale-[0.97] transition-transform"
+              style={{
+                width: "calc(50vw - 2rem)",
+                background: isCurrent ? "rgba(0,229,255,0.07)" : "rgba(255,255,255,0.03)",
+                border: `1px solid ${isCurrent ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.07)"}`,
+              }}
+              onClick={() => track.audio_url && handlePlayTrack(track)}>
+              <div className="relative w-full aspect-square overflow-hidden">
+                {track.cover_url ? (
+                  <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg,rgba(0,200,220,0.1),rgba(0,180,200,0.04))" }}>
+                    <Music4 className="w-10 h-10 text-cyan-400/15" />
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: "rgba(0,0,0,0.45)" }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)" }}>
+                    {isCurrent && isPlaying
+                      ? <Pause className="w-4 h-4 text-black fill-current" />
+                      : <Play className="w-4 h-4 text-black fill-current ml-0.5" />}
+                  </div>
+                </div>
+                {track.is_new_release && (
+                  <div className="absolute top-2 left-2">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider"
+                      style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", color: "#000" }}>NEW</span>
+                  </div>
+                )}
+              </div>
+              <div className="p-2.5">
+                <p className="font-heading font-black text-xs text-white truncate">{track.title}</p>
+                <p className="text-[10px] text-white/40 truncate mt-0.5">{track.artist_display || "Upper Vibe Media"}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full"
+                    style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.2)", color: "#00C9E0" }}>
+                    <Waves className="w-2 h-2" /> 432
+                  </span>
+                  <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Desktop grid */}
+      <div className="hidden sm:grid sm:grid-cols-4 gap-3">
         {tracks.map((track, i) => {
           const isCurrent = currentTrack?.id === track.id;
           return (
             <motion.div
               key={track.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
+              transition={{ delay: i * 0.07, ease: [0.22,1,0.36,1] }}
               className="group rounded-2xl overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 active:scale-[0.98]"
               style={{
                 background: isCurrent ? "rgba(0,229,255,0.07)" : "rgba(255,255,255,0.03)",

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Music4, Waves, TrendingUp, ExternalLink, Download, Heart, Lock } from "lucide-react";
+import { Play, Pause, Music4, Waves, TrendingUp, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import SectionHeader from "../shared/SectionHeader";
@@ -134,21 +134,16 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
                   {track.title}
                 </Link>
                 <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
-                {/* Micro stats */}
-                <div className="flex items-center gap-2 mt-0.5">
-                  {track._totalPlays > 0 && (
-                    <span className="text-[9px] text-white/25 tabular-nums">{track._totalPlays} plays</span>
-                  )}
-                  {track._favorites > 0 && (
-                    <span className="text-[9px] text-white/25 tabular-nums flex items-center gap-0.5">
-                      <Heart className="w-2 h-2" />{track._favorites}
-                    </span>
-                  )}
-                  {track._completionRate > 0 && (
-                    <span className="text-[9px] text-white/20 tabular-nums">
-                      {Math.round(track._completionRate * 100)}% completed
-                    </span>
-                  )}
+                {/* Editorial label instead of raw metrics */}
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {(() => {
+                    if (i === 0) return <span className="text-[9px] font-bold text-yellow-400/70 tracking-wide">🔥 Most Played Today</span>;
+                    if (i === 1) return <span className="text-[9px] font-bold text-cyan-400/60 tracking-wide">Listener Favorite</span>;
+                    if (i === 2) return <span className="text-[9px] font-bold text-purple-400/60 tracking-wide">Rising</span>;
+                    if (track._completionRate > 0.7) return <span className="text-[9px] font-bold text-green-400/50 tracking-wide">High Energy</span>;
+                    if (track._favorites > 2) return <span className="text-[9px] font-bold text-pink-400/50 tracking-wide">Fan Favorite</span>;
+                    return <span className="text-[9px] font-bold text-white/20 tracking-wide">Trending</span>;
+                  })()}
                 </div>
               </div>
 

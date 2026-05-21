@@ -136,11 +136,10 @@ export default function AudioPlayer() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 200 }}
-          className="fixed bottom-0 left-0 right-0 lg:left-[72px] z-40 border-t border-white/[0.06]"
+          className="fixed left-0 right-0 lg:left-[72px] z-40 border-t border-white/[0.06] player-bar"
           style={{
-            background: "linear-gradient(180deg,rgba(6,6,18,0.97),rgba(4,4,12,0.99))",
+            background: "linear-gradient(180deg,rgba(6,6,18,0.98),rgba(4,4,12,0.99))",
             backdropFilter: "blur(40px)",
-            paddingBottom: "env(safe-area-inset-bottom, 0px)",
           }}
         >
           {/* Seek bar */}

@@ -57,12 +57,16 @@ function LayoutContent() {
       <div className="hidden lg:block fixed top-4 right-5 z-40">
         <TopRightAuth />
       </div>
-      {/* pt-14 for mobile topbar; pb accounts for bottom nav + audio player + safe-area */}
+      {/* Mobile: pt must clear topbar height + safe-area-inset-top (notch/Dynamic Island) */}
+      {/* Bottom: clear bottom nav (56px) + optional mini player (72px) + home indicator */}
       <main
-        className={`lg:ml-[72px] pt-14 lg:pt-0 ${currentTrack && !isRadioPage ? "pb-36 lg:pb-20" : "pb-24 lg:pb-0"}`}
-        style={{ paddingBottom: currentTrack && !isRadioPage
-          ? "calc(8rem + env(safe-area-inset-bottom, 0px))"
-          : "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
+        className="lg:ml-[72px] lg:pt-0"
+        style={{
+          paddingTop: "calc(56px + env(safe-area-inset-top, 0px))",
+          paddingBottom: currentTrack && !isRadioPage
+            ? "calc(56px + 72px + env(safe-area-inset-bottom, 12px))"
+            : "calc(56px + env(safe-area-inset-bottom, 12px))",
+        }}
       >
         <Outlet />
       </main>

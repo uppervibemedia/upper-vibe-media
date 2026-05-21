@@ -53,9 +53,16 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* ── Mobile top bar ── */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-3 border-b border-white/5"
-        style={{ background: "rgba(4,4,8,0.92)", backdropFilter: "blur(24px)" }}>
+      {/* ── Mobile top bar — sits above notch/Dynamic Island ── */}
+      <div
+        className="lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-white/5"
+        style={{
+          background: "rgba(4,4,8,0.96)",
+          backdropFilter: "blur(24px)",
+          paddingTop: "env(safe-area-inset-top, 0px)",
+        }}
+      >
+      <div className="flex items-center justify-between px-5 py-3">
         <Link to="/" className="flex items-center gap-2.5">
           <img
             src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png"
@@ -80,6 +87,7 @@ export default function Sidebar() {
             Log In
           </button>
         )}
+      </div>
       </div>
 
       {/* ── Mobile bottom navigation ── */}
