@@ -227,16 +227,27 @@ export function RadioProvider({ children }) {
   }, [playTrack]);
 
   // ── Register next/prev handlers ───────────────────────────────────────────
+  // handleNext is called by PlayerContext for BOTH:
+  //   (a) natural song end (onEnded fires → onNextRef.current())  [fromSkip=false]
+  //   (b) user skip press                                          [fromSkip=true]
+  //   (c) lock screen next                                         [fromSkip=true via op-queue]
+  // We disambiguate via a flag on the call site: pass true for user-initiated skip.
+  // For natural end, PlayerContext calls handleNext() with no arg → fromSkip defaults false.
   useEffect(() => {
-    const handleNext = () => {
-      const { sourceType } = stateRef.current;
+    const handleNext = (fromSkip = false) => {
+      const { sourceType, currentRadioSong: cs, allTracks: aT } = stateRef.current;
       if (sourceType !== "radio") return;
 
-      // If a host drop is playing, skip it and go to the next song
+      // Case 1: Host drop just ended (natural end) or skipped (user)
       if (isHostDropRef.current) {
         const drop = currentDropRef.current;
-        console.log("[RadioContext] 🎙 Host drop skipped by user");
-        if (drop) trackDropSkipped(drop);
+        if (fromSkip) {
+          console.log("[RadioContext] 🎙 Host drop skipped by user");
+          if (drop) trackDropSkipped(drop);
+        } else {
+          console.log("[RadioContext] 🎙 Host drop ended naturally:", drop?.title);
+          if (drop) trackDropCompleted(drop);
+        }
         isHostDropRef.current  = false;
         currentDropRef.current = null;
         setIsHostDropPlaying(false);
@@ -244,7 +255,28 @@ export function RadioProvider({ children }) {
         return;
       }
 
-      _playNext(true); // fromSkip = true
+      // Case 2: User-initiated skip
+      if (fromSkip) {
+        _playNext(true);
+        return;
+      }
+
+      // Case 3: Natural song end — run curator + host drop logic
+      if (cs) {
+        recordComplete(cs.id, aT);
+        setCuratorActive(isCuratorActive());
+      }
+      const newCount = completedCountRef.current + 1;
+      completedCountRef.current = newCount;
+      setCompletedSongCount(newCount);
+      console.log("[RadioContext] ✅ Song completed — count:", newCount);
+
+      if (newCount % 4 === 0) {
+        console.log("[RadioContext] 🎙 Triggering host drop after", newCount, "completions");
+        _playHostDropThenNext();
+      } else {
+        _playNext(false);
+      }
     };
 
     const handlePrev = () => {
@@ -264,58 +296,25 @@ export function RadioProvider({ children }) {
       _playPrev(h, hi, cs, q);
     };
 
-    nextFnRef.current = handleNext;
+    // User-facing skip (Radio page next button, lock screen next) → fromSkip=true
+    const handleNextUser = () => handleNext(true);
+
+    nextFnRef.current = handleNextUser;  // user-initiated skips
     prevFnRef.current = handlePrev;
+    // PlayerContext calls onNextRef on natural song end — passes no arg → fromSkip=false
     registerNextHandler(handleNext);
     registerPrevHandler(handlePrev);
     console.log("[RadioContext] ✅ next/prev handlers registered");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_playNext, _playPrev, registerNextHandler, registerPrevHandler]);
 
-  // ── Audio event listeners for host drop & curator ─────────────────────────
+  // ── Audio event listeners for curator (pause only) ───────────────────────
+  // NOTE: "ended" is NOT listened to here. Instead, the next/prev handler
+  // registered above is called by PlayerContext's onEnded → onNextRef.current().
+  // This prevents double-trigger: RadioContext ended + PlayerContext onNextRef.
   useEffect(() => {
     const audio = audioRef?.current;
     if (!audio) return;
-
-    const onEnded = () => {
-      const { currentRadioSong: cs, allTracks: aT, sourceType: st } = stateRef.current;
-      if (st !== "radio") return;
-
-      // ── Case 1: Host drop just ended ───────────────────────────────────
-      if (isHostDropRef.current) {
-        const drop = currentDropRef.current;
-        console.log("[RadioContext] 🎙 Host drop ended:", drop?.title);
-        if (drop) trackDropCompleted(drop);
-        isHostDropRef.current  = false;
-        currentDropRef.current = null;
-        setIsHostDropPlaying(false);
-        // Play the next real song
-        _playNext(false);
-        return;
-      }
-
-      // ── Case 2: Real song ended naturally ──────────────────────────────
-      if (!cs) return;
-
-      // Curator: record completion
-      recordComplete(cs.id, aT);
-      setCuratorActive(isCuratorActive());
-
-      // Increment completed count
-      const newCount = completedCountRef.current + 1;
-      completedCountRef.current = newCount;
-      setCompletedSongCount(newCount);
-
-      console.log("[RadioContext] ✅ Song completed — count:", newCount);
-
-      // Every 4 completions → queue a host drop
-      if (newCount % 4 === 0) {
-        console.log("[RadioContext] 🎙 Triggering host drop after", newCount, "completions");
-        _playHostDropThenNext();
-      } else {
-        _playNext(false);
-      }
-    };
 
     const onPause = () => {
       const { currentRadioSong: cs, allTracks: aT, sourceType: st } = stateRef.current;
@@ -324,15 +323,13 @@ export function RadioProvider({ children }) {
       recordListen(cs.id, secs, aT);
     };
 
-    audio.addEventListener("ended", onEnded);
     audio.addEventListener("pause", onPause);
     return () => {
-      audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("pause", onPause);
     };
   // Re-attach when audio element changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioRef?.current, _playNext, _playHostDropThenNext]);
+  }, [audioRef?.current]);
 
   // ── Public API ────────────────────────────────────────────────────────────
   const initRadio = useCallback(() => {
@@ -372,7 +369,7 @@ export function RadioProvider({ children }) {
     if (onPlay) onPlay(currentRadioSong);
   }, [currentRadioSong, startRadio, playTrack]);
 
-  const nextRadioSong = useCallback(() => { nextFnRef.current?.(); }, []);
+  const nextRadioSong = useCallback(() => { nextFnRef.current?.(); }, []); // calls handleNextUser → fromSkip=true
   const prevRadioSong = useCallback(() => { prevFnRef.current?.(); }, []);
 
   const curatorRecordLike = useCallback((trackId, liked) => {
