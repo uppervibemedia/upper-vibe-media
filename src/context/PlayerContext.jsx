@@ -177,9 +177,12 @@ export function PlayerProvider({ children }) {
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       playPromise
-        .then(() => console.log("[Player] play() resolved ✓"))
+        .then(() => {
+          console.log("[Player] play() resolved ✓ readyState:", audio.readyState);
+          setIsPlaying(true);
+        })
         .catch((err) => {
-          console.warn("[Player] play() error:", err.name, err.message);
+          console.warn("[Player] play() FAILED:", err.name, err.message, "| src:", url?.slice(-40));
           if (err.name === "AbortError") {
             // Expected on rapid track change — retry on canplay
             const targetUrl = url;
@@ -189,9 +192,15 @@ export function PlayerProvider({ children }) {
               console.log("[Player] canplay retry play()");
               audio.playbackRate        = 1;
               audio.defaultPlaybackRate = 1;
-              audio.play().catch((e) => console.warn("[Player] canplay play() error:", e.name));
+              audio.play()
+                .then(() => { console.log("[Player] canplay retry resolved ✓"); setIsPlaying(true); })
+                .catch((e) => console.warn("[Player] canplay play() error:", e.name));
             };
             audio.addEventListener("canplay", onCanPlay);
+          } else if (err.name === "NotSupportedError") {
+            console.error("[Player] NotSupportedError — likely 404 audio URL:", url?.slice(-60));
+          } else if (err.name === "NotAllowedError") {
+            console.error("[Player] NotAllowedError — iOS gesture policy blocked play(). Must call play() synchronously in gesture handler.");
           }
         });
     }
@@ -225,6 +234,11 @@ export function PlayerProvider({ children }) {
         audio.defaultPlaybackRate = 1;
       }
     };
+    const onError = () => {
+      const err = audio.error;
+      const codes = { 1: "ABORTED", 2: "NETWORK", 3: "DECODE", 4: "SRC_NOT_SUPPORTED" };
+      console.error("[Player] audio error:", codes[err?.code] || err?.code, err?.message, "| src:", audio.src?.slice(-60));
+    };
     const onTimeUpdate = () => { lastTimeRef.current = audio.currentTime; };
 
     audio.addEventListener("play",       onPlay);
@@ -234,6 +248,7 @@ export function PlayerProvider({ children }) {
     audio.addEventListener("waiting",    onStall);
     audio.addEventListener("ratechange", onRateChange);
     audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("error",      onError);
 
     return () => {
       audio.removeEventListener("play",       onPlay);
@@ -243,6 +258,7 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("waiting",    onStall);
       audio.removeEventListener("ratechange", onRateChange);
       audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("error",      onError);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack]);
