@@ -6,9 +6,7 @@ const PlayerContext = createContext(null);
 const persistentAudio = (() => {
   if (typeof window === "undefined") return null;
   const a = new Audio();
-  // Do NOT set crossOrigin="anonymous" — this forces a CORS preflight on every
-  // audio URL. If the server doesn't send CORS headers the element silently
-  // fails on iOS. Only needed if you use WebAudio analysis from a different origin.
+  a.crossOrigin = "anonymous";
   a.preload = "auto";
   a.setAttribute("x-webkit-airplay", "allow");
   a.setAttribute("playsinline", "");
@@ -17,18 +15,24 @@ const persistentAudio = (() => {
 
 export const sharedHiddenRef = { current: false };
 
-// ── AudioContext — used ONLY for the visualizer analyser ─────────────────────
-// IMPORTANT: createMediaElementSource routes ALL audio through the AudioContext
-// graph. If the AudioContext is suspended/interrupted, the audio element becomes
-// silent even though it reports "playing". This is the root cause of the
-// lock-screen silent playback bug on iOS.
-//
-// Solution: we still create the graph for the visualizer, but we must keep the
-// AudioContext running at all times and handle the iOS "interrupted" state by
-// resuming it the moment a user gesture is available.
+// ONE global AudioContext — shared with visualizer
 let _audioCtx   = null;
 let _analyser   = null;
 let _sourceNode = null;
+
+async function resumeAudioContext() {
+  if (!_audioCtx) return;
+  if (_audioCtx.state !== "running") {
+    try { await _audioCtx.resume(); } catch {}
+  }
+}
+
+function suspendAudioContext() {
+  if (!_audioCtx) return;
+  if (_audioCtx.state === "running") {
+    try { _audioCtx.suspend(); } catch {}
+  }
+}
 
 function getOrCreateAudioContext(audioElement) {
   if (!audioElement) return null;
@@ -50,16 +54,7 @@ function getOrCreateAudioContext(audioElement) {
   return _analyser;
 }
 
-// Resume AudioContext — must be called from a user gesture AND after any
-// iOS AVAudioSession interruption. Never suspend it.
-async function ensureAudioContextRunning() {
-  if (!_audioCtx) return;
-  if (_audioCtx.state !== "running") {
-    try { await _audioCtx.resume(); } catch {}
-  }
-}
-
-export function resumeGlobalAudioContext() { ensureAudioContextRunning().catch(() => {}); }
+export function resumeGlobalAudioContext() { resumeAudioContext().catch(() => {}); }
 export function getGlobalAnalyser(audioElement) { return getOrCreateAudioContext(audioElement); }
 
 export function PlayerProvider({ children }) {
@@ -68,69 +63,19 @@ export function PlayerProvider({ children }) {
   const [queue,        setQueue]        = useState([]);
   const [sourceType,   setSourceType]   = useState("song");
 
-  const audioRef            = useRef(persistentAudio);
-  const onNextRef           = useRef(null);
-  const onPrevRef           = useRef(null);
-  const loadedSrcRef        = useRef("");
-  const lastTimeRef         = useRef(0);
-  const savedTimeRef        = useRef(0);
-  const playingTrackUrlRef  = useRef("");
-  // True when the user intends audio to be playing — survives interruptions
-  const intentPlayingRef    = useRef(false);
-
-  // ── AudioContext interruption handler ─────────────────────────────────────
-  // iOS WebKit sets AudioContext.state = "interrupted" when AVAudioSession is
-  // interrupted (phone call, lock screen with certain configs, Siri, etc.).
-  // While interrupted the AudioContext graph produces silence even though
-  // HTMLAudioElement.paused === false and timeupdate still fires.
-  // We must resume the AudioContext as soon as iOS allows it.
-  useEffect(() => {
-    const audio = audioRef.current;
-
-    const handleCtxStateChange = () => {
-      if (!_audioCtx) return;
-      console.log("[Player] AudioContext state:", _audioCtx.state);
-
-      if (_audioCtx.state === "interrupted") {
-        // iOS interrupted us — pause the element so its clock matches
-        // what the user will hear. Do NOT lose intentPlayingRef.
-        if (!audio.paused) {
-          audio.pause();
-          // intentPlayingRef stays true — we want to resume when uninterrupted
-        }
-        setIsPlaying(false);
-      }
-
-      if (_audioCtx.state === "running" && intentPlayingRef.current) {
-        // Interruption ended AND user intended to be playing — resume
-        if (audio.paused && audio.src) {
-          audio.playbackRate        = 1;
-          audio.defaultPlaybackRate = 1;
-          audio.play().catch(() => {});
-        }
-      }
-    };
-
-    // Poll for AudioContext creation — it's created lazily on first user gesture
-    const ctxPollInterval = setInterval(() => {
-      if (_audioCtx && !_audioCtx.onstatechange) {
-        _audioCtx.onstatechange = handleCtxStateChange;
-        clearInterval(ctxPollInterval);
-      }
-    }, 500);
-
-    return () => clearInterval(ctxPollInterval);
-  }, []);
+  const audioRef     = useRef(persistentAudio);
+  const onNextRef    = useRef(null);
+  const onPrevRef    = useRef(null);
+  const loadedSrcRef = useRef("");
+  const lastTimeRef  = useRef(0);
+  const savedTimeRef = useRef(0);
 
   // ── safePlay ─────────────────────────────────────────────────────────────
-  // Resume playback. Never touches src, never seeks, never suspends AudioContext.
-  // The ONLY legitimate reasons to touch src/load are in the new-track effect.
+  // Just resumes playback. Never touches src or load() here.
+  // The only safe way to resume on iOS is audio.play() — nothing else.
   const safePlay = useCallback(async (audio) => {
     try {
-      intentPlayingRef.current = true;
-      // Must resume AudioContext FIRST — if it's interrupted/suspended,
-      // audio.play() will succeed but produce silence through the graph.
-      await ensureAudioContextRunning();
+      await resumeAudioContext();
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
       if (!audio.paused) return;
@@ -143,40 +88,46 @@ export function PlayerProvider({ children }) {
   }, []);
 
   // ── safePause ─────────────────────────────────────────────────────────────
-  // Just pause — never touch AudioContext state. Keeping AudioContext running
-  // is critical; suspending it causes a clock-resync glitch on resume.
+  // Suspend AudioContext FIRST so the audio graph stops processing immediately,
+  // eliminating the post-pause buffer drain glitch on iOS Safari.
   const safePause = useCallback((audio) => {
-    intentPlayingRef.current = false;
     if (audio.paused) return;
+    suspendAudioContext(); // stops AudioContext graph instantly — no buffer drain
     audio.pause();
   }, []);
 
   // ── Load & play a new track ───────────────────────────────────────────────
+  // IMPORTANT: we use a flag ref to serialize the async play call so we never
+  // call play() on a stale src if the track changes rapidly.
+  const playingTrackUrlRef = useRef("");
+
   useEffect(() => {
     if (!currentTrack?.audio_url) return;
     const audio = audioRef.current;
     const url   = currentTrack.audio_url;
 
-    // Same track — just resume if paused
+    // Same track already loaded — just resume, never touch src/load
     if (loadedSrcRef.current === url) {
       if (audio.paused) safePlay(audio);
       return;
     }
 
-    // New track
-    intentPlayingRef.current   = true;
-    loadedSrcRef.current       = url;
+    // New track — set src and load, then play
+    loadedSrcRef.current   = url;
     playingTrackUrlRef.current = url;
-    savedTimeRef.current       = 0;
-    lastTimeRef.current        = 0;
+    savedTimeRef.current   = 0;
+    lastTimeRef.current    = 0;
 
     audio.src = url;
+    // Must call load() after setting src on a new track so iOS fetches it
     audio.load();
 
+    // Wait for canplay before calling play() — avoids the decode-before-data race.
+    // cleanup() is called on track change (effect cleanup) so we never play a stale src.
     const targetUrl = url;
     const onCanPlay = () => {
       audio.removeEventListener("canplay", onCanPlay);
-      if (playingTrackUrlRef.current !== targetUrl) return;
+      if (playingTrackUrlRef.current !== targetUrl) return; // track changed, skip
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
       audio.play().catch((err) => {
@@ -185,7 +136,10 @@ export function PlayerProvider({ children }) {
     };
     audio.addEventListener("canplay", onCanPlay);
 
-    return () => { audio.removeEventListener("canplay", onCanPlay); };
+    // Cleanup: remove listener if track changes before canplay fires
+    return () => {
+      audio.removeEventListener("canplay", onCanPlay);
+    };
 
   }, [currentTrack, safePlay]);
 
@@ -199,13 +153,13 @@ export function PlayerProvider({ children }) {
     };
     const onPause = () => { setIsPlaying(false); };
     const onEnded = () => {
-      intentPlayingRef.current = false;
       setIsPlaying(false);
       lastTimeRef.current  = 0;
       savedTimeRef.current = 0;
       onNextRef.current?.();
     };
     const onStall = () => { if (audio.paused) setIsPlaying(false); };
+    // Rate guard — iOS/Safari can drift playbackRate during suspension
     const onRateChange = () => {
       if (audio.playbackRate !== 1) {
         console.warn("[Player] ratechange →", audio.playbackRate, "forcing 1");
@@ -213,7 +167,9 @@ export function PlayerProvider({ children }) {
         audio.defaultPlaybackRate = 1;
       }
     };
-    const onTimeUpdate = () => { lastTimeRef.current = audio.currentTime; };
+    const onTimeUpdate = () => {
+      lastTimeRef.current = audio.currentTime;
+    };
 
     audio.addEventListener("play",       onPlay);
     audio.addEventListener("pause",      onPause);
@@ -235,60 +191,65 @@ export function PlayerProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack]);
 
-  // ── Background / Foreground ───────────────────────────────────────────────
-  // ON HIDE: Do NOT pause. iOS handles background audio natively.
-  //          Only freeze the UI progress ref.
-  // ON SHOW: Sync UI state. Reset rate. If AudioContext got interrupted while
-  //          hidden, resume it now (we're back in foreground = user gesture context).
+  // ── Background / visibility handler ──────────────────────────────────────
+  //
+  // KEY INSIGHT for iOS Safari:
+  // iOS supports background audio natively — you do NOT need to pause on hide.
+  // In fact, pausing on hide then reloading src on show IS the cause of the
+  // sped-up glitch. The decoder catches up to the last network-buffered position.
+  //
+  // Correct strategy:
+  // - ON HIDE: do nothing to the audio. Let iOS play in background naturally.
+  //   Only update the hidden ref so the UI progress bar freezes.
+  // - ON SHOW: reset playbackRate (safety), sync UI state from audio element.
+  //   Never reload src, never seek.
   useEffect(() => {
     const audio = audioRef.current;
     let showTimer = null;
 
     const doHide = () => {
       sharedHiddenRef.current = true;
+      // Save current time for reference — but DO NOT pause, DO NOT touch src
       if (audio.currentTime > 0) {
         savedTimeRef.current = audio.currentTime;
         lastTimeRef.current  = audio.currentTime;
       }
-      // Do NOT pause — let iOS background audio work naturally
-      console.log("[Player] hide — ct:", audio.currentTime.toFixed(2), "paused:", audio.paused);
+      // Do NOT pause — iOS will continue playing in background correctly
+      console.log("[Player] hide — ct:", audio.currentTime.toFixed(2), "playing:", !audio.paused);
     };
 
     const doShow = () => {
       clearTimeout(showTimer);
       sharedHiddenRef.current = false;
 
-      if (!audio.src || audio.ended) { setIsPlaying(false); return; }
+      if (!audio.src || audio.ended) {
+        setIsPlaying(false);
+        return;
+      }
 
+      // Reset rate in case iOS drifted it (safety)
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
 
-      // Returning to foreground = valid user gesture context.
-      // If AudioContext was interrupted by iOS while in background, resume it now.
-      // This is the fix for "bar moves but no sound" — the AudioContext was
-      // interrupted so the graph was silent even though audio was "playing".
-      if (_audioCtx && _audioCtx.state !== "running") {
-        _audioCtx.resume().then(() => {
-          // If element somehow paused during the interruption but user intended
-          // to play, restart it
-          if (intentPlayingRef.current && audio.paused && audio.src) {
-            audio.playbackRate        = 1;
-            audio.defaultPlaybackRate = 1;
-            audio.play().catch(() => {});
-          }
-        }).catch(() => {});
-      }
-
+      // Sync React state to actual audio element state
       setIsPlaying(!audio.paused);
-      console.log("[Player] show — ct:", audio.currentTime.toFixed(2), "paused:", audio.paused, "ctxState:", _audioCtx?.state);
+      console.log("[Player] show — ct:", audio.currentTime.toFixed(2), "paused:", audio.paused, "readyState:", audio.readyState);
     };
 
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") doHide();
-      else { clearTimeout(showTimer); showTimer = setTimeout(doShow, 50); }
+      if (document.visibilityState === "hidden") {
+        doHide();
+      } else {
+        clearTimeout(showTimer);
+        showTimer = setTimeout(doShow, 50);
+      }
     };
+
     const onPageHide = () => doHide();
-    const onPageShow = () => { clearTimeout(showTimer); showTimer = setTimeout(doShow, 50); };
+    const onPageShow = () => {
+      clearTimeout(showTimer);
+      showTimer = setTimeout(doShow, 50);
+    };
 
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onPageHide);
@@ -339,11 +300,16 @@ export function PlayerProvider({ children }) {
 
     navigator.mediaSession.setActionHandler("play", () => {
       if (!audio.src) return;
+      audio.playbackRate        = 1;
+      audio.defaultPlaybackRate = 1;
       safePlay(audio);
     });
+
     navigator.mediaSession.setActionHandler("pause", () => {
       safePause(audio);
+      setIsPlaying(false);
     });
+
     navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
     navigator.mediaSession.setActionHandler("previoustrack", () => onPrevRef.current?.());
 
@@ -354,17 +320,23 @@ export function PlayerProvider({ children }) {
     };
   }, [safePlay, safePause]);
 
+  // Sync lock-screen playback badge
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
 
-  // ── togglePlay ────────────────────────────────────────────────────────────
+  // ── togglePlay (UI button) ────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio.src) return;
-    if (audio.paused || audio.ended) safePlay(audio);
-    else safePause(audio);
+    if (audio.paused || audio.ended) {
+      audio.playbackRate        = 1;
+      audio.defaultPlaybackRate = 1;
+      safePlay(audio);
+    } else {
+      safePause(audio);
+    }
   }, [safePlay, safePause]);
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -376,12 +348,11 @@ export function PlayerProvider({ children }) {
 
   const stopPlaying = useCallback(() => {
     const audio = audioRef.current;
-    intentPlayingRef.current   = false;
     audio.pause();
-    audio.src                  = "";
-    loadedSrcRef.current       = "";
-    lastTimeRef.current        = 0;
-    savedTimeRef.current       = 0;
+    audio.src            = "";
+    loadedSrcRef.current = "";
+    lastTimeRef.current  = 0;
+    savedTimeRef.current = 0;
     playingTrackUrlRef.current = "";
     setIsPlaying(false);
     setCurrentTrack(null);
@@ -391,8 +362,9 @@ export function PlayerProvider({ children }) {
   const registerPrevHandler = useCallback((fn) => { onPrevRef.current = fn; }, []);
   const handleNext          = useCallback(() => { onNextRef.current?.(); }, []);
   const handlePrev          = useCallback(() => { onPrevRef.current?.(); }, []);
-  const clearPosition       = useCallback(() => { savedTimeRef.current = 0; }, []);
-  const savePosition        = useCallback((t) => { savedTimeRef.current = t; }, []);
+
+  const clearPosition = useCallback(() => { savedTimeRef.current = 0; }, []);
+  const savePosition  = useCallback((t) => { savedTimeRef.current = t; }, []);
 
   return (
     <PlayerContext.Provider value={{
