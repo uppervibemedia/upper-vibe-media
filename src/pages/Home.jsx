@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react"; // useMemo kept for sessionSeed
 import { motion } from "framer-motion";
-import { Play, Waves, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Heart, Users, GraduationCap, Download } from "lucide-react";
+import { Play, Waves, ArrowRight, Tv2, Mail, CheckCircle2, Pause, Heart, Users, GraduationCap, Download, Radio, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -253,6 +253,63 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── RADIO CTA ── */}
+      <section className="max-w-7xl mx-auto px-6 py-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          className="relative rounded-3xl overflow-hidden p-8 md:p-12"
+          style={{ background: "linear-gradient(135deg,rgba(0,180,210,0.07) 0%,rgba(0,229,255,0.03) 50%,rgba(212,168,67,0.04) 100%)", border: "1px solid rgba(0,229,255,0.12)" }}>
+          {/* Glow */}
+          <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full blur-[100px] opacity-20 pointer-events-none" style={{ background: "#00C9E0" }} />
+          <div className="absolute -bottom-10 right-10 w-48 h-48 rounded-full blur-[80px] opacity-10 pointer-events-none" style={{ background: "#D4A843" }} />
+
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8">
+            {/* Left: icon + text */}
+            <div className="flex-1">
+              {/* LIVE NOW badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
+                style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[10px] font-black tracking-[0.25em] uppercase text-red-400">Live Now</span>
+              </div>
+
+              <h2 className="font-heading font-black text-2xl md:text-3xl lg:text-4xl text-white mb-3 leading-tight">
+                Upper Vibe Radio Is Live
+              </h2>
+              <p className="text-white/40 text-sm md:text-base leading-relaxed max-w-lg mb-6">
+                432 Hz high-vibe music, positive radio drops, visual energy, and nonstop frequency for your day
+              </p>
+
+              <div className="flex flex-wrap items-center gap-4">
+                <Link
+                  to="/radio"
+                  className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 28px rgba(0,229,255,0.3)" }}>
+                  <Radio className="w-4 h-4" /> Start Listening Live
+                </Link>
+                <p className="text-[11px] text-white/25 flex items-center gap-1.5">
+                  <Waves className="w-3 h-3 text-cyan-400/40 animate-pulse" />
+                  Music keeps playing while you browse
+                </p>
+              </div>
+            </div>
+
+            {/* Right: animated waveform visual */}
+            <div className="flex-shrink-0 hidden md:flex items-end gap-1.5 h-20">
+              {[6, 10, 16, 24, 32, 20, 12, 28, 36, 22, 14, 30, 18, 8, 26].map((h, i) => (
+                <motion.div
+                  key={i}
+                  animate={{ height: [`${h * 0.5}px`, `${h}px`, `${h * 0.6}px`, `${h}px`] }}
+                  transition={{ duration: 1.2 + i * 0.07, repeat: Infinity, ease: "easeInOut", delay: i * 0.05 }}
+                  className="w-1.5 rounded-full"
+                  style={{ background: i % 3 === 0 ? "rgba(0,229,255,0.7)" : i % 3 === 1 ? "rgba(0,180,210,0.4)" : "rgba(212,168,67,0.35)" }}
+                />
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
       {/* ── LATEST MUSIC ── */}
       <LatestMusicSection
         tracks={latestTracks}
@@ -274,6 +331,36 @@ export default function Home() {
         downloadButton={downloadButton}
         user={user}
       />
+
+      {/* ── FREQUENCY CTA ── */}
+      <section className="max-w-7xl mx-auto px-6 py-6">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          className="relative rounded-2xl p-8 text-center overflow-hidden"
+          style={{ background: "rgba(155,126,255,0.04)", border: "1px solid rgba(155,126,255,0.1)" }}>
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-32 rounded-full blur-[80px] opacity-10" style={{ background: "#9B7EFF" }} />
+          </div>
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full" style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.15)" }}>
+              <Zap className="w-3 h-3 text-purple-400" />
+              <span className="text-[10px] font-black tracking-[0.2em] uppercase text-purple-400">Curated Frequency</span>
+            </div>
+            <h3 className="font-heading font-black text-xl md:text-2xl text-white mb-2">
+              Not sure what to play? Let the frequency choose for you
+            </h3>
+            <p className="text-white/35 text-sm mb-6 max-w-md mx-auto">
+              Our radio engine picks the perfect high-vibe track based on energy, mood, and what's resonating right now.
+            </p>
+            <Link
+              to="/radio"
+              className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
+              style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.8),rgba(120,90,220,0.9))", color: "#fff", boxShadow: "0 0 24px rgba(155,126,255,0.25)" }}>
+              <Zap className="w-4 h-4" /> Enter The Frequency
+            </Link>
+          </div>
+        </motion.div>
+      </section>
 
       {/* ── VISUALIZERS ── */}
       {recentViz.length > 0 && (
