@@ -5,6 +5,8 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
 import { usePlayer } from "../context/PlayerContext";
+import { useRadio } from "../context/RadioContext";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
@@ -51,7 +53,14 @@ export default function Home() {
   const [loginModal, setLoginModal] = useState(false);
   const [premiumModal, setPremiumModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
+  const { startRadio, tracksLoaded } = useRadio();
+  const navigate = useNavigate();
   const { user } = useAuth();
+
+  const handleStartRadio = () => {
+    startRadio();
+    navigate("/radio");
+  };
   const { isFaved, toggle } = useFavorites(user?.email);
 
   const handlePlayTrack = (track) => {
@@ -231,21 +240,38 @@ export default function Home() {
             <motion.div
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.38, duration: 0.45 }}
-              className="flex flex-wrap gap-2.5">
-              <Link to="/music"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:brightness-105 hover:-translate-y-0.5 active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg,#009CB8,#00C8E0)", color: "#000" }}>
-                <Play className="w-3.5 h-3.5 fill-current" /> Explore Music
-              </Link>
-              <Link to="/visualizers"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
-                style={{ background: "transparent", border: "1px solid rgba(185,135,45,0.35)", color: "#C08830" }}>
-                <Tv2 className="w-3.5 h-3.5" /> Watch Visualizers
-              </Link>
+              className="flex flex-col gap-3">
+              {/* Primary: Start Listening Live */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={handleStartRadio}
+                  className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-sm font-black text-sm tracking-wider transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:scale-[0.98]"
+                  style={{ background: "linear-gradient(135deg,#009CB8,#00C8E0)", color: "#000", boxShadow: "0 0 28px rgba(0,200,220,0.28)" }}>
+                  <Radio className="w-4 h-4" /> Start Listening Live
+                </button>
+                <span className="text-[11px] text-white/20 flex items-center gap-1.5">
+                  <Waves className="w-3 h-3 text-cyan-400/30 animate-pulse" />
+                  Music keeps playing while you browse
+                </span>
+              </div>
+              {/* Secondary: Browse Music + Watch Visualizers */}
+              <div className="flex flex-wrap gap-2">
+                <Link to="/music"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                  style={{ background: "transparent", border: "1px solid rgba(0,200,220,0.25)", color: "rgba(0,200,220,0.7)" }}>
+                  <Play className="w-3 h-3 fill-current" /> Browse Music
+                </Link>
+                <Link to="/visualizers"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                  style={{ background: "transparent", border: "1px solid rgba(185,135,45,0.3)", color: "rgba(192,136,48,0.8)" }}>
+                  <Tv2 className="w-3 h-3" /> Watch Visualizers
+                </Link>
+              </div>
+              {/* Low priority: Academy */}
               <Link to="/academy"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.38)" }}>
-                <GraduationCap className="w-3.5 h-3.5" /> Upper Vibe Academy
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-sm font-black text-[10px] tracking-[0.1em] uppercase transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] w-fit"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.28)" }}>
+                <GraduationCap className="w-3 h-3" /> Upper Vibe Academy
               </Link>
             </motion.div>
 
@@ -285,7 +311,7 @@ export default function Home() {
                   to="/radio"
                   className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
                   style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 28px rgba(0,229,255,0.3)" }}>
-                  <Radio className="w-4 h-4" /> Start Listening Live
+                  <Radio className="w-4 h-4" /> Open Radio Page
                 </Link>
                 <p className="text-[11px] text-white/25 flex items-center gap-1.5">
                   <Waves className="w-3 h-3 text-cyan-400/40 animate-pulse" />
