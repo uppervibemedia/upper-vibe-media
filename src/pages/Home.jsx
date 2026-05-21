@@ -61,15 +61,17 @@ export default function Home() {
   };
 
   const loadData = () => Promise.all([
-      base44.entities.Track.filter({ status: "published" }, "-release_date", 30),
+      base44.entities.Track.filter({ status: "published" }, "-created_date", 10),
       base44.entities.Track.filter({ status: "published" }, "-created_date", 200),
       base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
       base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 200),
       base44.entities.Artist.filter({ is_active: true, is_featured: true }, "-created_date", 8),
       base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
       base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3),
-  ]).then(([recentPool, all, recentVizPool, allVizFull, featuredArtists, allTracksForCount, lessons]) => {
-    setLatestTracks(recentPool.slice(0, 4));
+  ]).then(([latest10, all, recentVizPool, allVizFull, featuredArtists, allTracksForCount, lessons]) => {
+    // Shuffle the latest 10 using the session seed so it rotates each visit but stays stable within a session
+    const shuffled = seededShuffle(latest10, sessionSeed + "t");
+    setLatestTracks(shuffled.slice(0, 4));
     setAllTracks(all);
     const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
     setRecentViz(rotatedViz);
