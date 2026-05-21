@@ -229,9 +229,10 @@ export function RadioProvider({ children }) {
     }
 
     // Use the same global audio element via playTrack
+    console.log("[RadioContext] 📻 startRadio calling playTrack →", song.title, "| audio_url:", song.audio_url?.slice(0, 60));
     playTrack(song, "radio");
     if (onPlay) onPlay(song);
-    console.log("[RadioContext] 📻 Radio started:", song.title);
+    console.log("[RadioContext] 📻 Radio started (playTrack called):", song.title);
   }, [allTracks, currentRadioSong, radioQueue, playTrack, likedTrackIds]);
 
   // Resume radio (called when user interrupted radio by playing another song)

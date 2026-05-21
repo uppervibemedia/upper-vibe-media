@@ -3,6 +3,11 @@ import React, { createContext, useContext, useState, useRef, useEffect, useCallb
 const PlayerContext = createContext(null);
 
 // ONE global audio element — never recreated
+// NOTE: Do NOT set crossOrigin="anonymous" — it forces CORS preflight on every
+// audio URL. Many CDNs don't send CORS headers, causing silent failures on iOS.
+// The AudioContext (createMediaElementSource) works fine without crossOrigin
+// when the audio and page are served from the same origin or when the CDN
+// sends Access-Control-Allow-Origin headers.
 const persistentAudio = (() => {
   if (typeof window === "undefined") return null;
   const a = new Audio();
@@ -14,7 +19,7 @@ const persistentAudio = (() => {
 
 export const sharedHiddenRef = { current: false };
 
-// ── AudioContext — for visualiser only ───────────────────────────────────────
+// ── AudioContext — for visualiser analyser only ──────────────────────────────
 let _audioCtx   = null;
 let _analyser   = null;
 let _sourceNode = null;
@@ -31,7 +36,7 @@ function getOrCreateAudioContext(audioElement) {
     try {
       _sourceNode = _audioCtx.createMediaElementSource(audioElement);
       _analyser   = _audioCtx.createAnalyser();
-      _analyser.fftSize             = 256;
+      _analyser.fftSize = 256;
       _analyser.smoothingTimeConstant = 0.82;
       _sourceNode.connect(_analyser);
       _analyser.connect(_audioCtx.destination);
@@ -65,8 +70,6 @@ export function PlayerProvider({ children }) {
   const savedTimeRef       = useRef(0);
   const playingTrackUrlRef = useRef("");
   const intentPlayingRef   = useRef(false);
-  // Tracks the pending track to load — set synchronously in playTrack
-  const pendingTrackRef    = useRef(null);
 
   // ── AudioContext interruption recovery ────────────────────────────────────
   useEffect(() => {
@@ -76,7 +79,7 @@ export function PlayerProvider({ children }) {
         _audioCtx.onstatechange = () => {
           console.log("[Player] AudioContext state:", _audioCtx.state);
           if (_audioCtx.state === "interrupted") {
-            if (!audio.paused) { audio.pause(); }
+            if (!audio.paused) audio.pause();
             setIsPlaying(false);
           }
           if (_audioCtx.state === "running" && intentPlayingRef.current) {
@@ -93,7 +96,7 @@ export function PlayerProvider({ children }) {
     return () => clearInterval(ctxPoll);
   }, []);
 
-  // ── safePlay ──────────────────────────────────────────────────────────────
+  // ── safePlay — for resume only (same track, already loaded) ──────────────
   const safePlay = useCallback(async (audio) => {
     try {
       intentPlayingRef.current = true;
@@ -110,91 +113,92 @@ export function PlayerProvider({ children }) {
   }, []);
 
   // ── safePause ─────────────────────────────────────────────────────────────
-  // Never touch AudioContext state — suspending it causes clock-resync glitch on resume
   const safePause = useCallback((audio) => {
     intentPlayingRef.current = false;
     if (audio.paused) return;
     audio.pause();
   }, []);
 
-  // ── playTrack — THE iOS-CRITICAL PATH ─────────────────────────────────────
-  // On iOS Safari, audio.play() MUST be called synchronously within the
-  // user-gesture call stack. React state updates (setState → effect) break
-  // this because the effect runs asynchronously after the gesture.
+  // ── playTrack — iOS CORRECT PATTERN ──────────────────────────────────────
   //
-  // Strategy:
-  //   1. Call audio.play() SYNCHRONOUSLY inside playTrack (before any await/setState)
-  //      This "unlocks" the audio element with iOS for this gesture.
-  //   2. Then set the src, call load(), and the element continues playing
-  //      because iOS already granted permission in step 1.
+  // iOS Safari requires audio.play() to be called synchronously within the
+  // user gesture event handler. The critical rules are:
   //
-  // This is the standard Apple-recommended pattern for web audio on iOS.
+  //   1. Set audio.src synchronously
+  //   2. Call audio.load() synchronously  
+  //   3. Call audio.play() synchronously — ALL in the same call stack as the tap
+  //
+  // audio.play() returns a Promise that resolves when playback starts.
+  // We do NOT await it (that would break synchronous guarantee).
+  // iOS will buffer and start playing — the promise resolves later.
+  //
+  // We do NOT call play() before setting src (that was the previous bug —
+  // play() on empty src throws NotSupportedError, consuming the gesture token).
+  //
   const playTrack = useCallback((track, source = "song") => {
     if (!track?.audio_url) return;
     const audio = audioRef.current;
+    const url   = track.audio_url;
 
-    // ── Step 1: Synchronous play() call — unlocks iOS audio ─────────────────
-    // This must happen in the same synchronous call stack as the user gesture.
-    // We call play() BEFORE setting src so iOS grants permission.
-    // The play() will briefly "fail" (AbortError) when we change src below,
-    // which is expected and handled.
+    console.log("[Player] playTrack →", track.title, "| src match:", loadedSrcRef.current === url, "| audio.src empty:", !audio.src);
+
     intentPlayingRef.current = true;
 
-    // Only call play() sync if audio is currently paused (don't double-play)
-    if (audio.paused) {
-      audio.play().catch((err) => {
-        // AbortError is expected — we're about to change the src immediately
-        if (err.name !== "AbortError" && err.name !== "NotSupportedError") {
-          console.warn("[Player] sync play() error:", err.name);
-        }
-      });
-    }
-
-    // ── Step 2: Initialise AudioContext (also must be synchronous on iOS) ────
+    // Init AudioContext synchronously (required by iOS for the gesture token)
     getOrCreateAudioContext(audio);
-
-    // ── Step 3: Set state (async from here is fine — permission already granted) ─
     setSourceType(source);
 
-    const url = track.audio_url;
-
     if (loadedSrcRef.current === url) {
-      // Same track — already loaded, just ensure it's playing
+      // Same track already loaded — just resume
       setCurrentTrack(track);
       if (audio.paused) {
         audio.playbackRate        = 1;
         audio.defaultPlaybackRate = 1;
-        audio.play().catch(() => {});
+        console.log("[Player] same track — calling resume play()");
+        audio.play().catch((err) => {
+          console.warn("[Player] resume play() error:", err.name, err.message);
+        });
       }
       return;
     }
 
-    // New track — change src
+    // New track — set src + load + play ALL synchronously in gesture stack
     loadedSrcRef.current       = url;
     playingTrackUrlRef.current = url;
     savedTimeRef.current       = 0;
     lastTimeRef.current        = 0;
-    pendingTrackRef.current    = track;
 
+    // ── THE iOS UNLOCK SEQUENCE ───────────────────────────────────────────
     audio.src = url;
     audio.load();
-
-    const targetUrl = url;
-    const onCanPlay = () => {
-      audio.removeEventListener("canplay", onCanPlay);
-      if (playingTrackUrlRef.current !== targetUrl) return;
-      audio.playbackRate        = 1;
-      audio.defaultPlaybackRate = 1;
-      audio.play().catch((err) => {
-        if (err.name !== "AbortError") console.warn("[Player] canplay play() error:", err.name);
-      });
-    };
-    audio.addEventListener("canplay", onCanPlay);
+    audio.playbackRate        = 1;
+    audio.defaultPlaybackRate = 1;
+    console.log("[Player] new track — calling play() synchronously, readyState:", audio.readyState);
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => console.log("[Player] play() resolved ✓"))
+        .catch((err) => {
+          console.warn("[Player] play() error:", err.name, err.message);
+          if (err.name === "AbortError") {
+            // Expected on rapid track change — retry on canplay
+            const targetUrl = url;
+            const onCanPlay = () => {
+              audio.removeEventListener("canplay", onCanPlay);
+              if (playingTrackUrlRef.current !== targetUrl) return;
+              console.log("[Player] canplay retry play()");
+              audio.playbackRate        = 1;
+              audio.defaultPlaybackRate = 1;
+              audio.play().catch((e) => console.warn("[Player] canplay play() error:", e.name));
+            };
+            audio.addEventListener("canplay", onCanPlay);
+          }
+        });
+    }
+    // ── END iOS UNLOCK SEQUENCE ───────────────────────────────────────────
 
     setCurrentTrack(track);
 
-    // Cleanup stale canplay listeners on rapid track changes
-    pendingTrackRef._cleanup = () => audio.removeEventListener("canplay", onCanPlay);
   }, []);
 
   // ── Sync isPlaying from native audio events ───────────────────────────────
@@ -254,7 +258,7 @@ export function PlayerProvider({ children }) {
         savedTimeRef.current = audio.currentTime;
         lastTimeRef.current  = audio.currentTime;
       }
-      // Do NOT pause — let iOS background audio work naturally
+      // Do NOT pause — iOS background audio works natively
     };
 
     const doShow = () => {
@@ -265,8 +269,7 @@ export function PlayerProvider({ children }) {
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
 
-      // Returning to foreground = user gesture context — resume AudioContext
-      // if iOS interrupted it (this fixes "bar moves but no sound" bug)
+      // Foreground return = gesture context — resume AudioContext if interrupted
       if (_audioCtx && _audioCtx.state !== "running") {
         _audioCtx.resume().then(() => {
           if (intentPlayingRef.current && audio.paused && audio.src) {
@@ -332,19 +335,12 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     const audio = audioRef.current;
-
-    navigator.mediaSession.setActionHandler("play", () => {
-      if (!audio.src) return;
-      safePlay(audio);
-    });
-    navigator.mediaSession.setActionHandler("pause", () => {
-      safePause(audio);
-    });
+    navigator.mediaSession.setActionHandler("play",  () => { if (audio.src) safePlay(audio); });
+    navigator.mediaSession.setActionHandler("pause", () => safePause(audio));
     navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
     navigator.mediaSession.setActionHandler("previoustrack", () => onPrevRef.current?.());
-
     return () => {
-      ["play", "pause", "nexttrack", "previoustrack"].forEach((a) => {
+      ["play","pause","nexttrack","previoustrack"].forEach((a) => {
         try { navigator.mediaSession.setActionHandler(a, null); } catch {}
       });
     };
