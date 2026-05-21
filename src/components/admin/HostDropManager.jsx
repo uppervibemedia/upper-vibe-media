@@ -19,6 +19,10 @@ export default function HostDropManager() {
   const [uploading, setUploading] = useState(false);
   const [playingId, setPlayingId] = useState(null);
   const audioRef = useRef(new Audio());
+  const formRef  = useRef(null); // always mirrors form state for async access
+
+  // Keep formRef in sync so handleSave always reads latest values
+  useEffect(() => { formRef.current = form; }, [form]);
 
   const load = async () => {
     setLoading(true);
@@ -65,27 +69,38 @@ export default function HostDropManager() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setForm((f) => ({ ...f, audio_url: file_url }));
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setForm((f) => ({ ...f, audio_url: file_url }));
+      toast.success("Audio uploaded");
+    } catch (err) {
+      toast.error("Upload failed: " + err.message);
+    }
     setUploading(false);
-    toast.success("Audio uploaded");
   };
 
   const handleSave = async () => {
-    if (!form.title || !form.audio_url) {
+    // Use ref so we always get the latest form values after async upload
+    const current = formRef.current;
+    if (!current) return;
+    if (!current.title || !current.audio_url) {
       toast.error("Title and audio are required");
       return;
     }
     setSaving(true);
-    if (form.id) {
-      await base44.entities.RadioHostDrop.update(form.id, form);
-    } else {
-      await base44.entities.RadioHostDrop.create(form);
+    try {
+      if (current.id) {
+        await base44.entities.RadioHostDrop.update(current.id, current);
+      } else {
+        await base44.entities.RadioHostDrop.create(current);
+      }
+      setForm(null);
+      toast.success("Saved");
+      load();
+    } catch (err) {
+      toast.error("Save failed: " + err.message);
     }
     setSaving(false);
-    setForm(null);
-    toast.success("Saved");
-    load();
   };
 
   return (
