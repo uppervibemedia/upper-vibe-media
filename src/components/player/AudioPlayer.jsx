@@ -27,6 +27,7 @@ export default function AudioPlayer() {
 
   useEffect(() => {
     const audio = audioRef.current;
+    if (!audio) return; // guard: audio element not yet created
 
     const onTimeUpdate = () => {
       // ── Strict progress guard ─────────────────────────────────────────
@@ -106,6 +107,7 @@ export default function AudioPlayer() {
   }, [currentTrack?.audio_url]);
 
   useEffect(() => {
+    if (!audioRef.current) return;
     audioRef.current.volume = muted ? 0 : volume / 100;
   }, [volume, muted, audioRef]);
 
