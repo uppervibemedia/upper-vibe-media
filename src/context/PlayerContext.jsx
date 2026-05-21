@@ -62,51 +62,71 @@ export function PlayerProvider({ children }) {
   const loadedSrcRef = useRef("");
   const lastTimeRef  = useRef(0);
 
-  // The time we paused at — used ONLY when we need to reload the src after
-  // Safari evicts the buffer (long background pause).
-  const savedTimeRef   = useRef(0);
-  // Timestamp (ms) of when we hid — used to detect long background pauses
-  const hiddenAtRef    = useRef(0);
-  // Whether the last pause was triggered by backgrounding (not user)
-  const bgPausedRef    = useRef(false);
-  // Keep-alive interval while backgrounded
-  const keepAliveRef   = useRef(null);
+  // savedTimeRef: the currentTime captured synchronously on hide.
+  // Used ONLY when Safari evicts the buffer and we must reload src + seek.
+  const savedTimeRef = useRef(0);
+  // Keep-alive interval — prevents Safari from fully discarding the buffer
+  const keepAliveRef = useRef(null);
 
   // ── safePlay ─────────────────────────────────────────────────────────────
-  // Calls play() cleanly. If Safari evicted the buffer (long bg pause),
-  // reloads from savedTime first.
+  // Resume the audio element.
+  // If Safari evicted the buffer (readyState === 0), reload src atomically
+  // at savedTimeRef so we resume from the exact saved position, not from 0.
+  // NEVER call audio.load() standalone — that resets currentTime to 0 before
+  // the seek has a chance to fire and is the root cause of the catch-up glitch.
   const safePlay = useCallback(async (audio) => {
     try {
       await resumeAudioContext();
+
+      // Always enforce rate = 1 BEFORE play — Safari can drift it
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
-      if (!audio.paused) return;
 
-      // Detect Safari buffer eviction:
-      // readyState 0 (HAVE_NOTHING) after a pause means the buffer was cleared.
+      if (!audio.paused) return; // already playing
+
+      // ── Safari buffer eviction check ──────────────────────────────────────
+      // readyState 0 (HAVE_NOTHING) on a paused element with a valid src means
+      // Safari silently discarded the decode buffer while we were in background.
+      // Fix: re-assign src (does NOT reset currentTime immediately like load()),
+      // then seek inside 'loadedmetadata' before playback starts.
       if (audio.readyState === 0 && audio.src) {
-        console.log("[Player] safePlay — buffer evicted, reloading src at", savedTimeRef.current.toFixed(2));
         const resumeTime = savedTimeRef.current;
-        savedTimeRef.current = 0;
-        audio.load();
-        await new Promise((resolve) => {
-          const onCan = () => {
-            audio.removeEventListener("canplay", onCan);
-            if (resumeTime > 0) {
+        const srcUrl     = audio.src; // preserve before reassign
+        console.log("[Player] safePlay — buffer evicted, reloading at", resumeTime.toFixed(2));
+
+        await new Promise((resolve, reject) => {
+          const cleanup = () => {
+            audio.removeEventListener("loadedmetadata", onMeta);
+            audio.removeEventListener("error",          onErr);
+          };
+          const onMeta = () => {
+            cleanup();
+            // Seek to saved position as soon as metadata is ready
+            if (resumeTime > 0 && isFinite(audio.duration)) {
               try { audio.currentTime = resumeTime; } catch {}
             }
             resolve();
           };
-          audio.addEventListener("canplay", onCan);
+          const onErr = (e) => { cleanup(); reject(e); };
+          audio.addEventListener("loadedmetadata", onMeta);
+          audio.addEventListener("error",          onErr);
+          // Re-assigning src is the atomic reload — avoids the load()+seek race
+          audio.src = srcUrl;
         });
-        audio.playbackRate = 1;
+
+        savedTimeRef.current = 0;
+        audio.playbackRate        = 1;
+        audio.defaultPlaybackRate = 1;
         await audio.play();
         audio.playbackRate = 1;
         return;
       }
 
+      // Normal resume — buffer is intact, just call play()
+      // DO NOT seek. Safari resumes from currentTime natively with no glitch.
       await audio.play();
       audio.playbackRate = 1;
+
     } catch (err) {
       if (err.name !== "AbortError") console.warn("[Player] safePlay error:", err.name, err.message);
     }
@@ -133,6 +153,7 @@ export function PlayerProvider({ children }) {
       return;
     }
 
+    // Genuinely new track — full load from start
     savedTimeRef.current = 0;
     lastTimeRef.current  = 0;
     loadedSrcRef.current = currentTrack.audio_url;
@@ -146,7 +167,6 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
 
     const onPlay  = () => {
-      bgPausedRef.current = false;
       setIsPlaying(true);
       if (currentTrack) setMediaSessionMetadata(currentTrack);
     };
@@ -158,8 +178,10 @@ export function PlayerProvider({ children }) {
       onNextRef.current?.();
     };
     const onStall = () => { if (audio.paused) setIsPlaying(false); };
+    // Rate guard — iOS/Safari can drift playbackRate during suspension
     const onRateChange = () => {
       if (audio.playbackRate !== 1) {
+        console.warn("[Player] ratechange →", audio.playbackRate, "forcing 1");
         audio.playbackRate = 1;
       }
     };
@@ -183,8 +205,20 @@ export function PlayerProvider({ children }) {
   }, [currentTrack]);
 
   // ── Background / visibility handler ──────────────────────────────────────
+  // ON HIDE:
+  //   1. Capture audio.currentTime synchronously right now (before iOS suspends)
+  //   2. Pause immediately — same as pressing the Pause button
+  //   3. Freeze UI (isPlaying = false)
+  //   4. Start keep-alive to prevent Safari buffer eviction
+  //
+  // ON SHOW:
+  //   1. Stop keep-alive
+  //   2. Reset playbackRate (iOS can drift it)
+  //   3. Sync UI — leave audio PAUSED, wait for user to press Play
+  //   4. DO NOT auto-play
   useEffect(() => {
     const audio = audioRef.current;
+    let showTimer = null;
 
     const stopKeepAlive = () => {
       if (keepAliveRef.current) {
@@ -193,76 +227,68 @@ export function PlayerProvider({ children }) {
       }
     };
 
-    // While backgrounded, ping the audio element every 3s to prevent Safari
-    // from fully evicting the decode buffer. This is the "keepalive" trick.
+    // Ping currentTime every 4s while hidden — enough to keep Safari's
+    // network buffer alive without triggering a media policy violation.
     const startKeepAlive = () => {
       stopKeepAlive();
       keepAliveRef.current = setInterval(() => {
-        // Reading currentTime is enough to keep the element "active" in some
-        // Safari versions. For stubborn cases we also check readyState.
-        const _ = audio.currentTime; // eslint-disable-line no-unused-vars
-        console.log("[Player] keepalive ping — ct:", audio.currentTime.toFixed(2), "readyState:", audio.readyState);
-      }, 3000);
+        // Just reading currentTime keeps the media element "active"
+        void audio.currentTime;
+      }, 4000);
     };
 
     const doHide = () => {
       sharedHiddenRef.current = true;
       if (!audio.src || audio.ended) return;
 
+      // Capture position SYNCHRONOUSLY — before iOS has a chance to suspend
       const ct = audio.currentTime;
       if (ct > 0) {
         savedTimeRef.current = ct;
         lastTimeRef.current  = ct;
+        console.log("[Player] hide — saved ct:", ct.toFixed(2));
       }
-      hiddenAtRef.current = Date.now();
 
+      // Pause immediately — bypass nothing, this must be synchronous
       if (!audio.paused) {
-        bgPausedRef.current = true;
         audio.pause();
-        console.log("[Player] hide — paused at", ct.toFixed(2));
+        console.log("[Player] hide — paused");
       }
 
       setIsPlaying(false);
-      // Start keepalive so Safari doesn't evict the buffer
       startKeepAlive();
     };
 
     const doShow = () => {
+      clearTimeout(showTimer);
       sharedHiddenRef.current = false;
       stopKeepAlive();
 
       if (!audio.src || audio.ended) { setIsPlaying(false); return; }
 
+      // Reset rate — Safari can drift it during suspension
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
 
-      // If we were the ones who paused it (bgPausedRef), auto-resume.
-      // If the user manually paused before backgrounding, leave it paused.
-      if (bgPausedRef.current) {
-        bgPausedRef.current = false;
-        console.log("[Player] show — auto-resuming (bg paused)");
-        safePlay(audio);
-      } else {
-        setIsPlaying(!audio.paused);
-        console.log("[Player] show — user had paused, leaving paused");
-      }
+      // Always leave paused — user must press Play
+      // DO NOT call safePlay here
+      setIsPlaying(false);
+      console.log("[Player] show — leaving paused at", audio.currentTime.toFixed(2), "readyState:", audio.readyState);
     };
-
-    let showTimer = null;
 
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
         doHide();
       } else {
         clearTimeout(showTimer);
-        showTimer = setTimeout(doShow, 100);
+        showTimer = setTimeout(doShow, 50);
       }
     };
 
     const onPageHide = () => doHide();
     const onPageShow = () => {
       clearTimeout(showTimer);
-      showTimer = setTimeout(doShow, 100);
+      showTimer = setTimeout(doShow, 50);
     };
 
     document.addEventListener("visibilitychange", onVisibility);
@@ -277,7 +303,7 @@ export function PlayerProvider({ children }) {
       window.removeEventListener("pageshow",  onPageShow);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [safePlay]);
+  }, []);
 
   // ── Media Session metadata ────────────────────────────────────────────────
   const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
@@ -309,6 +335,8 @@ export function PlayerProvider({ children }) {
   }, [currentTrack]);
 
   // ── Media Session action handlers ─────────────────────────────────────────
+  // Lock-screen Play: enforce rate=1, then safePlay (handles buffer eviction).
+  // Lock-screen Pause: just pause, no seek.
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     const audio = audioRef.current;
@@ -316,7 +344,6 @@ export function PlayerProvider({ children }) {
     navigator.mediaSession.setActionHandler("play", () => {
       if (!audio.src) return;
       console.log("[Player] MediaSession play — readyState:", audio.readyState, "ct:", audio.currentTime);
-      bgPausedRef.current = false;
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
       safePlay(audio);
@@ -324,7 +351,6 @@ export function PlayerProvider({ children }) {
 
     navigator.mediaSession.setActionHandler("pause", () => {
       console.log("[Player] MediaSession pause");
-      bgPausedRef.current = false;
       safePause(audio);
       setIsPlaying(false);
     });
@@ -351,12 +377,10 @@ export function PlayerProvider({ children }) {
     if (!audio.src) return;
 
     if (audio.paused || audio.ended) {
-      bgPausedRef.current = false;
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
       safePlay(audio);
     } else {
-      bgPausedRef.current = false;
       safePause(audio);
     }
   }, [safePlay, safePause]);
@@ -376,7 +400,6 @@ export function PlayerProvider({ children }) {
     loadedSrcRef.current = "";
     lastTimeRef.current  = 0;
     savedTimeRef.current = 0;
-    bgPausedRef.current  = false;
     setIsPlaying(false);
     setCurrentTrack(null);
   }, []);
