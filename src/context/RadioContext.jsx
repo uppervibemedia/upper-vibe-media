@@ -1,3 +1,17 @@
+/**
+ * RadioContext — Upper Vibe Media
+ *
+ * COLD LAUNCH RULES:
+ * - On restore, we set currentRadioSong (metadata) but do NOT call playTrack.
+ * - isPlaying is never persisted as "auto-resume on launch".
+ * - User must press Play, or iOS Media Session must fire a play action.
+ *
+ * MEDIA SESSION:
+ * - next/prev handlers are registered with PlayerContext once.
+ * - They read latest state via stateRef (no stale closures).
+ * - The same handlers are called by both the UI buttons and iOS lock-screen buttons.
+ */
+
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "./PlayerContext";
@@ -27,7 +41,6 @@ function shuffleArray(arr) {
   return a;
 }
 
-// Build a weighted queue — liked tracks appear 3x more often
 function buildQueue(allTracks, currentSongId, likedIds = []) {
   const pool = [];
   allTracks.filter((t) => t.id !== currentSongId).forEach((t) => {
@@ -59,7 +72,7 @@ export function RadioProvider({ children }) {
     });
   }, []);
 
-  // ── Restore persisted state ───────────────────────────────────────────────
+  // ── Restore persisted state (METADATA ONLY — no autoplay) ─────────────────
   const restoredRef = useRef(false);
   useEffect(() => {
     if (!tracksLoaded || restoredRef.current) return;
@@ -71,7 +84,10 @@ export function RadioProvider({ children }) {
     if (saved.currentRadioSongId && allTracks.length > 0) {
       const song = allTracks.find((t) => t.id === saved.currentRadioSongId);
       if (song) {
+        // COLD LAUNCH: restore display state only — do NOT call playTrack
+        console.log("[RadioContext] cold_launch restore — song:", song.title, "(paused, waiting for user play)");
         setCurrentRadioSong(song);
+
         if (saved.radioHistoryIds?.length) {
           const hist = saved.radioHistoryIds.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean);
           setRadioHistory(hist);
@@ -87,7 +103,7 @@ export function RadioProvider({ children }) {
     }
   }, [tracksLoaded, allTracks]);
 
-  // ── Persist state changes ─────────────────────────────────────────────────
+  // ── Persist state (never persist isPlaying) ───────────────────────────────
   useEffect(() => {
     if (!tracksLoaded) return;
     persistState({
@@ -95,18 +111,22 @@ export function RadioProvider({ children }) {
       radioHistoryIds:    radioHistory.map((t) => t.id),
       radioQueueIds:      radioQueue.map((t) => t.id),
       lastUpdatedAt:      Date.now(),
+      // NOTE: isPlaying intentionally NOT persisted
     });
   }, [currentRadioSong, radioHistory, radioQueue, tracksLoaded]);
 
-  // ── Expose a setter so Radio page can push liked IDs in ──────────────────
   const setRadioLikedIds = useCallback((ids) => setLikedTrackIds(ids), []);
 
-  // ── Keep stable refs for next/prev so Media Session callbacks never go stale ──
-  // These refs always point to the latest function versions
-  const nextFnRef = useRef(null);
-  const prevFnRef = useRef(null);
+  // ── Stable state ref — always current, no stale closures ─────────────────
+  const stateRef = useRef({});
+  useEffect(() => {
+    stateRef.current = {
+      allTracks, radioQueue, radioHistory, historyIndex,
+      currentRadioSong, sourceType, likedTrackIds,
+    };
+  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType, likedTrackIds]);
 
-  // ── Internal: advance to next song and play it via global player ──────────
+  // ── Internal: advance to next song ────────────────────────────────────────
   const _playNext = useCallback((allT, queue, history, hIndex, currentSong, likedIds = []) => {
     let nextSong;
     let newQueue = [...queue];
@@ -121,7 +141,6 @@ export function RadioProvider({ children }) {
 
     if (!nextSong) return;
 
-    // Refill queue if running low
     if (newQueue.length < 10) {
       const extra = buildQueue(allT, nextSong.id, likedIds)
         .filter((t) => t.id !== nextSong.id && !newQueue.find((q) => q.id === t.id));
@@ -134,7 +153,7 @@ export function RadioProvider({ children }) {
     setCurrentRadioSong(nextSong);
     setRadioQueue(newQueue);
 
-    // Use the global player — same audio element as regular songs
+    // This changes audio.src and starts the selected song
     playTrack(nextSong, "radio");
     console.log("[RadioContext] ⏭ Next radio song:", nextSong.title);
   }, [playTrack]);
@@ -150,53 +169,49 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] ⏮ Prev radio song:", song.title);
   }, [playTrack]);
 
-  // ── Stable ref wrappers — always current, no stale closure in Media Session ─
-  // We need refs to the latest state values for use inside callbacks registered once
-  const stateRef = useRef({});
-  useEffect(() => {
-    stateRef.current = { allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType, likedTrackIds };
-  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType, likedTrackIds]);
+  // ── Register next/prev handlers ONCE ─────────────────────────────────────
+  // These refs store the latest handler versions — called by:
+  //   1. UI buttons (nextRadioSong / prevRadioSong)
+  //   2. iOS lock screen via PlayerContext Media Session handlers
+  //   3. onEnded (auto-advance)
+  const nextFnRef = useRef(null);
+  const prevFnRef = useRef(null);
 
-  // Keep sourceType in stateRef so handlers can check it without stale closures
-  // (sourceType is already in stateRef via the effect above, but we name it explicitly)
-
-  // Register next/prev handlers ONCE — they read latest state via stateRef
   useEffect(() => {
     const handleNext = () => {
-      // SAFETY: only advance the radio queue when sourceType is "radio".
-      // If a non-radio song ends (Music page, SongPage, etc.) this handler fires
-      // but must not hijack the radio queue — return immediately.
       const { sourceType } = stateRef.current;
       if (sourceType !== "radio") {
         console.log("[RadioContext] ⚠️ handleNext skipped — sourceType is", sourceType);
         return;
       }
       const { allTracks: aT, radioQueue: q, radioHistory: h, historyIndex: hi, currentRadioSong: cs, likedTrackIds: liked } = stateRef.current;
+      console.log("[RadioContext] ⏭ handleNext called — song:", cs?.title);
       _playNext(aT, q, h, hi, cs, liked);
     };
+
     const handlePrev = () => {
-      // SAFETY: same guard — only navigate radio history when in radio mode
       const { sourceType } = stateRef.current;
       if (sourceType !== "radio") return;
       const { radioHistory: h, historyIndex: hi, currentRadioSong: cs, radioQueue: q } = stateRef.current;
+      console.log("[RadioContext] ⏮ handlePrev called — song:", cs?.title);
       _playPrev(h, hi, cs, q);
     };
 
     nextFnRef.current = handleNext;
     prevFnRef.current = handlePrev;
 
-    // Register with PlayerContext — these control the lock-screen buttons too
+    // Wire into PlayerContext — these power both the audio player's onEnded
+    // and the iOS lock-screen Media Session buttons
     registerNextHandler(handleNext);
     registerPrevHandler(handlePrev);
 
-    console.log("[RadioContext] ✅ next/prev handlers registered with global PlayerContext");
+    console.log("[RadioContext] ✅ next/prev handlers registered");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_playNext, _playPrev, registerNextHandler, registerPrevHandler]);
-  // Note: intentionally not listing stateRef — it's a ref, always fresh
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  // Initialize radio display (no autoplay)
+  // Initialize display state (no autoplay)
   const initRadio = useCallback(() => {
     if (!allTracks.length) return null;
     if (currentRadioSong) return currentRadioSong;
@@ -210,9 +225,9 @@ export function RadioProvider({ children }) {
     setHistoryIndex(0);
     setRadioQueue(queue);
     return song;
-  }, [allTracks, currentRadioSong]);
+  }, [allTracks, currentRadioSong, likedTrackIds]);
 
-  // Start radio — loads song into the global player
+  // Start radio — requires explicit user action
   const startRadio = useCallback((onPlay) => {
     let song  = currentRadioSong;
     let queue = radioQueue;
@@ -228,31 +243,24 @@ export function RadioProvider({ children }) {
       setRadioQueue(queue);
     }
 
-    // Use the same global audio element via playTrack
+    // Creates a fresh audio source and starts playback
     playTrack(song, "radio");
     if (onPlay) onPlay(song);
     console.log("[RadioContext] 📻 Radio started:", song.title);
   }, [allTracks, currentRadioSong, radioQueue, playTrack, likedTrackIds]);
 
-  // Resume radio (called when user interrupted radio by playing another song)
+  // Resume after interruption
   const resumeRadio = useCallback((onPlay) => {
     if (!currentRadioSong) return startRadio(onPlay);
     playTrack(currentRadioSong, "radio");
     if (onPlay) onPlay(currentRadioSong);
     console.log("[RadioContext] 📻 Radio resumed:", currentRadioSong.title);
-  }, [currentRadioSong, startRadio, playTrack, likedTrackIds]);
+  }, [currentRadioSong, startRadio, playTrack]);
 
-  // Next — delegates to the same handler registered with PlayerContext
-  const nextRadioSong = useCallback(() => {
-    nextFnRef.current?.();
-  }, []);
+  // UI delegates — call the exact same internal functions as Media Session handlers
+  const nextRadioSong = useCallback(() => { nextFnRef.current?.(); }, []);
+  const prevRadioSong = useCallback(() => { prevFnRef.current?.(); }, []);
 
-  // Prev
-  const prevRadioSong = useCallback(() => {
-    prevFnRef.current?.();
-  }, []);
-
-  // Jump to a specific queued song
   const jumpToSong = useCallback((song, onPlay) => {
     if (!song) return;
     const newQueue = radioQueue.filter((t) => t.id !== song.id);
@@ -271,22 +279,9 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 🎯 Jumped to:", song.title);
   }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack]);
 
-  // ── Derived state for UI ──────────────────────────────────────────────────
-  // "Radio is active" = the global player is currently playing a radio-sourced track
-  const isRadioMode    = sourceType === "radio";
-  const hasPrev        = historyIndex > 0;
-  const upNext         = radioQueue.slice(0, 3);
-
-  // Debug
-  useEffect(() => {
-    if (currentTrack) {
-      console.log("[RadioContext] 🔍 sourceType:", sourceType,
-        "| currentTrack:", currentTrack?.id,
-        "| isRadioMode:", isRadioMode,
-        "| currentRadioSong:", currentRadioSong?.id,
-        "| same instance:", currentTrack === currentRadioSong || currentTrack?.id === currentRadioSong?.id);
-    }
-  }, [sourceType, currentTrack, isRadioMode, currentRadioSong]);
+  const isRadioMode = sourceType === "radio";
+  const hasPrev     = historyIndex > 0;
+  const upNext      = radioQueue.slice(0, 3);
 
   return (
     <RadioContext.Provider value={{
