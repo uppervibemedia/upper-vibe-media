@@ -69,30 +69,36 @@ export default function Home() {
     recordPlay(track);
   };
 
-  const loadData = () => Promise.all([
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 10),
+  const loadData = async () => {
+    // Batch 1: most critical above-the-fold data
+    const [allTracks, recentVizPool] = await Promise.all([
       base44.entities.Track.filter({ status: "published" }, "-created_date", 200),
       base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
-      base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 200),
-      base44.entities.Artist.filter({ is_active: true, is_featured: true }, "-created_date", 8),
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
-      base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3),
-  ]).then(([latest10, all, recentVizPool, allVizFull, featuredArtists, allTracksForCount, lessons]) => {
-    // Shuffle the latest 10 using the session seed so it rotates each visit but stays stable within a session
-    const shuffled = seededShuffle(latest10, sessionSeed + "t");
+    ]);
+
+    // Derive latest + trending from the already-fetched allTracks (no extra request)
+    const shuffled = seededShuffle(allTracks.slice(0, 50), sessionSeed + "t");
     setLatestTracks(shuffled.slice(0, 4));
-    setAllTracks(all);
+    setAllTracks(allTracks);
+
     const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
     setRecentViz(rotatedViz);
-    setAllViz(allVizFull);
-    setArtists(featuredArtists);
-    setAcademyLessons(lessons);
+
+    // Count tracks per artist from already-fetched data
     const counts = {};
-    allTracksForCount.forEach((t) => {
+    allTracks.forEach((t) => {
       if (t.primary_artist_id) counts[t.primary_artist_id] = (counts[t.primary_artist_id] || 0) + 1;
     });
     setTrackCounts(counts);
-  });
+
+    // Batch 2: secondary data (below the fold)
+    const [featuredArtists, lessons] = await Promise.all([
+      base44.entities.Artist.filter({ is_active: true, is_featured: true }, "-created_date", 8),
+      base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3),
+    ]);
+    setArtists(featuredArtists);
+    setAcademyLessons(lessons);
+  };
 
   useEffect(() => { loadData(); }, [sessionSeed, refreshKey]);
 
