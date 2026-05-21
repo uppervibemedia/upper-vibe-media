@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
+import { trackSongPlay, trackSongPause, trackSongComplete, streamStart, streamPause, streamEnd, streamSetMeta } from "@/lib/analytics";
 
 const PlayerContext = createContext(null);
 
@@ -87,7 +88,11 @@ export function PlayerProvider({ children }) {
   // Keep a ref to currentTrack so Media Session handlers (registered once) always
   // see the latest value without needing re-registration.
   const currentTrackRef = useRef(null);
-  useEffect(() => { currentTrackRef.current = currentTrack; }, [currentTrack]);
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+    // Update stream metadata whenever track changes
+    try { if (currentTrack) streamSetMeta(currentTrack); } catch {}
+  }, [currentTrack]);
 
   // Watchdog refs — detect silent stall (iOS suspends audio output without pausing element)
   const watchdogRef       = useRef(null);
@@ -313,16 +318,22 @@ export function PlayerProvider({ children }) {
 
     const onPlay  = () => {
       setIsPlaying(true);
-      if (currentTrackRef.current) setMediaSessionMetadata(currentTrackRef.current);
+      if (currentTrackRef.current) {
+        setMediaSessionMetadata(currentTrackRef.current);
+        // Analytics — fire-and-forget, never blocks playback
+        try { trackSongPlay(currentTrackRef.current); streamStart(currentTrackRef.current); } catch {}
+      }
       startWatchdog(audio);
     };
     const onPause = () => {
       setIsPlaying(false);
       stopWatchdog();
+      try { if (currentTrackRef.current) { trackSongPause(currentTrackRef.current); streamPause(); } } catch {}
     };
     const onEnded = () => {
       setIsPlaying(false);
       stopWatchdog();
+      try { if (currentTrackRef.current) { trackSongComplete(currentTrackRef.current); streamEnd(true); } } catch {}
       lastTimeRef.current  = 0;
       savedTimeRef.current = 0;
       onNextRef.current?.();

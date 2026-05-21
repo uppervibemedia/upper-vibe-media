@@ -7,7 +7,17 @@ import { usePlayer } from "../../context/PlayerContext";
 import { RadioProvider } from "../../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
 import { User } from "lucide-react";
-import IOSInstallBanner from "../shared/IOSInstallBanner";
+import EmailCaptureModal from "../shared/EmailCaptureModal";
+import { useEffect } from "react";
+import { trackPageView } from "@/lib/analytics";
+
+function PageViewTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView();
+  }, [location.pathname]);
+  return null;
+}
 
 function TopRightAuth() {
   const { user, isAuthenticated, navigateToLogin } = useAuth();
@@ -52,7 +62,8 @@ function LayoutContent() {
         <Outlet />
       </main>
       {!isRadioPage && <AudioPlayer />}
-      <IOSInstallBanner />
+      <PageViewTracker />
+      <EmailCaptureModal />
     </div>
   );
 }

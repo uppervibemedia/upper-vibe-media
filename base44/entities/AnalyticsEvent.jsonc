@@ -1,0 +1,71 @@
+{
+  "name": "AnalyticsEvent",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "page_view",
+        "song_play",
+        "song_pause",
+        "song_complete",
+        "visualizer_view",
+        "download_click",
+        "premium_click",
+        "playlist_save",
+        "search_used",
+        "email_signup",
+        "outbound_link_click"
+      ],
+      "description": "Type of analytics event"
+    },
+    "page_url": {
+      "type": "string",
+      "description": "Page URL where event occurred"
+    },
+    "song_id": {
+      "type": "string",
+      "description": "Track ID if applicable"
+    },
+    "song_title": {
+      "type": "string",
+      "description": "Track title if applicable"
+    },
+    "artist_name": {
+      "type": "string",
+      "description": "Artist name if applicable"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Logged-in user ID if available"
+    },
+    "anonymous_session_id": {
+      "type": "string",
+      "description": "Anonymous session ID for non-logged-in visitors"
+    },
+    "device_type": {
+      "type": "string",
+      "enum": [
+        "mobile",
+        "tablet",
+        "desktop"
+      ],
+      "description": "Device type"
+    },
+    "browser": {
+      "type": "string",
+      "description": "Browser name"
+    },
+    "referrer": {
+      "type": "string",
+      "description": "Referring URL"
+    },
+    "traffic_source": {
+      "type": "string",
+      "description": "Traffic source e.g. organic, direct, social"
+    }
+  },
+  "required": [
+    "event_type"
+  ]
+}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap } from "lucide-react";
+import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2 } from "lucide-react";
+import AnalyticsDashboard from "../components/admin/AnalyticsDashboard";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
 import TrackEditForm from "../components/admin/TrackEditForm";
@@ -14,6 +15,7 @@ import ArtistManager from "../components/admin/ArtistManager";
 import { useAuth } from "@/lib/AuthContext";
 
 const TABS = [
+  { id: "analytics", label: "Analytics", icon: BarChart2 },
   { id: "manager", label: "Music Manager", icon: ListFilter },
   { id: "upload", label: "Upload Track", icon: Music },
   { id: "visualizers", label: "Visualizers", icon: Tv2 },
@@ -26,7 +28,7 @@ const TABS = [
 
 export default function Admin() {
   const { user } = useAuth();
-  const [tab, setTab] = useState("manager");
+  const [tab, setTab] = useState("analytics");
   const [tracks, setTracks] = useState([]);
   const [artists, setArtists] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -112,6 +114,9 @@ export default function Admin() {
             </button>
           ))}
         </div>
+
+        {/* Analytics tab */}
+        {tab === "analytics" && <AnalyticsDashboard />}
 
         {/* Music Manager tab */}
         {tab === "manager" && (

@@ -1,0 +1,39 @@
+{
+  "name": "SongStream",
+  "type": "object",
+  "properties": {
+    "song_id": {
+      "type": "string",
+      "description": "ID of the Track record"
+    },
+    "song_title": {
+      "type": "string",
+      "description": "Track title"
+    },
+    "artist_name": {
+      "type": "string",
+      "description": "Artist display name"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Logged-in user ID if available"
+    },
+    "anonymous_session_id": {
+      "type": "string",
+      "description": "Anonymous session ID"
+    },
+    "listened_seconds": {
+      "type": "number",
+      "default": 0,
+      "description": "Total seconds listened in this session"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the user listened to completion"
+    }
+  },
+  "required": [
+    "song_id"
+  ]
+}
