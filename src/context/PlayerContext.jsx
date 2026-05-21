@@ -70,31 +70,100 @@ export function PlayerProvider({ children }) {
   const lastTimeRef  = useRef(0);
   const savedTimeRef = useRef(0);
 
+  // Watchdog refs — detect silent stall (iOS suspends audio output without pausing element)
+  const watchdogRef       = useRef(null);   // setInterval handle
+  const watchdogTimeRef   = useRef(0);      // last observed currentTime
+  const watchdogStampRef  = useRef(0);      // wall-clock when we last checked
+
+  // ── stopWatchdog / startWatchdog ─────────────────────────────────────────
+  // Polls every 800ms while audio is supposed to be playing.
+  // If currentTime hasn't advanced by ≥0.1s, iOS has silently suspended audio
+  // output (common on lock screen). We pause cleanly so the lock-screen bar stops.
+  const stopWatchdog = useCallback(() => {
+    if (watchdogRef.current) {
+      clearInterval(watchdogRef.current);
+      watchdogRef.current = null;
+    }
+  }, []);
+
+  const startWatchdog = useCallback((audio) => {
+    stopWatchdog();
+    watchdogTimeRef.current  = audio.currentTime;
+    watchdogStampRef.current = Date.now();
+
+    watchdogRef.current = setInterval(() => {
+      // Only fire when page is visible AND audio is not paused
+      if (document.visibilityState === "hidden") return;
+      if (audio.paused || audio.ended || !audio.src) { stopWatchdog(); return; }
+
+      const now     = Date.now();
+      const elapsed = (now - watchdogStampRef.current) / 1000; // seconds since last check
+      const ct      = audio.currentTime;
+      const advanced = ct - watchdogTimeRef.current;
+
+      // Expected: currentTime should have moved ~elapsed seconds (±30% tolerance)
+      // If it's moved less than 0.1s in 800ms+, something is wrong
+      if (elapsed >= 0.7 && advanced < 0.1) {
+        console.warn("[Player] 🚨 Watchdog: silent stall detected — ct:", ct.toFixed(2),
+          "advanced:", advanced.toFixed(3), "elapsed:", elapsed.toFixed(2));
+        // Save position so resume starts from here
+        savedTimeRef.current = ct;
+        lastTimeRef.current  = ct;
+        // Suspend audio context then pause cleanly
+        suspendAudioContext();
+        audio.pause();
+        // Explicitly tell Media Session we are paused — stops lock-screen bar
+        if ("mediaSession" in navigator) {
+          navigator.mediaSession.playbackState = "paused";
+        }
+        stopWatchdog();
+        return;
+      }
+
+      // Update refs for next check
+      watchdogTimeRef.current  = ct;
+      watchdogStampRef.current = now;
+    }, 800);
+  }, [stopWatchdog]);
+
   // ── safePlay ─────────────────────────────────────────────────────────────
-  // Just resumes playback. Never touches src or load() here.
-  // The only safe way to resume on iOS is audio.play() — nothing else.
+  // Resumes playback cleanly. Always resets rate. Seeks to savedTime if set.
+  // Never touches src or load() here.
   const safePlay = useCallback(async (audio) => {
     try {
       await resumeAudioContext();
+      // Always enforce rate=1 BEFORE play to prevent catch-up
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
+      // If we have a saved position (from watchdog pause or hide), seek there first.
+      // This ensures we resume from the exact point audio stopped, not from wherever
+      // the software clock drifted to during silent suspension.
+      if (savedTimeRef.current > 0 && Math.abs(audio.currentTime - savedTimeRef.current) > 0.5) {
+        audio.currentTime = savedTimeRef.current;
+      }
       if (!audio.paused) return;
       await audio.play();
+      // Enforce again after play — iOS can reset it
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
+      // Start watchdog to detect future silent stalls
+      startWatchdog(audio);
     } catch (err) {
       if (err.name !== "AbortError") console.warn("[Player] safePlay error:", err.name, err.message);
     }
-  }, []);
+  }, [startWatchdog]);
 
   // ── safePause ─────────────────────────────────────────────────────────────
   // Suspend AudioContext FIRST so the audio graph stops processing immediately,
   // eliminating the post-pause buffer drain glitch on iOS Safari.
   const safePause = useCallback((audio) => {
+    stopWatchdog();
+    // Save current position before pausing so safePlay resumes from here
+    if (audio.currentTime > 0) savedTimeRef.current = audio.currentTime;
     if (audio.paused) return;
     suspendAudioContext(); // stops AudioContext graph instantly — no buffer drain
     audio.pause();
-  }, []);
+  }, [stopWatchdog]);
 
   // ── Load & play a new track ───────────────────────────────────────────────
   // IMPORTANT: we use a flag ref to serialize the async play call so we never
@@ -130,7 +199,9 @@ export function PlayerProvider({ children }) {
       if (playingTrackUrlRef.current !== targetUrl) return; // track changed, skip
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
-      audio.play().catch((err) => {
+      audio.play().then(() => {
+        startWatchdog(audio);
+      }).catch((err) => {
         if (err.name !== "AbortError") console.warn("[Player] play error:", err.name);
       });
     };
@@ -141,7 +212,7 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("canplay", onCanPlay);
     };
 
-  }, [currentTrack, safePlay]);
+  }, [currentTrack, safePlay, startWatchdog]);
 
   // ── Sync isPlaying from native audio events ───────────────────────────────
   useEffect(() => {
@@ -150,10 +221,15 @@ export function PlayerProvider({ children }) {
     const onPlay  = () => {
       setIsPlaying(true);
       if (currentTrack) setMediaSessionMetadata(currentTrack);
+      startWatchdog(audio);
     };
-    const onPause = () => { setIsPlaying(false); };
+    const onPause = () => {
+      setIsPlaying(false);
+      stopWatchdog();
+    };
     const onEnded = () => {
       setIsPlaying(false);
+      stopWatchdog();
       lastTimeRef.current  = 0;
       savedTimeRef.current = 0;
       onNextRef.current?.();
@@ -189,7 +265,7 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("timeupdate", onTimeUpdate);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTrack]);
+  }, [currentTrack, startWatchdog, stopWatchdog]);
 
   // ── Background / visibility handler ──────────────────────────────────────
   //
@@ -209,13 +285,27 @@ export function PlayerProvider({ children }) {
 
     const doHide = () => {
       sharedHiddenRef.current = true;
-      // Save current time for reference — but DO NOT pause, DO NOT touch src
+      // Stop watchdog — no point polling while hidden
+      stopWatchdog();
+
+      // Save current position
       if (audio.currentTime > 0) {
         savedTimeRef.current = audio.currentTime;
         lastTimeRef.current  = audio.currentTime;
       }
-      // Do NOT pause — iOS will continue playing in background correctly
-      console.log("[Player] hide — ct:", audio.currentTime.toFixed(2), "playing:", !audio.paused);
+
+      // CRITICAL: Pause cleanly on hide so iOS lock screen bar stops.
+      // iOS Safari does NOT reliably maintain AVAudioSession background audio
+      // for web apps. If we don't pause, the software clock keeps ticking
+      // with no actual audio output → silent fake progress → catch-up glitch on resume.
+      if (!audio.paused) {
+        suspendAudioContext();
+        audio.pause();
+        if ("mediaSession" in navigator) {
+          navigator.mediaSession.playbackState = "paused";
+        }
+        console.log("[Player] hide — paused cleanly at ct:", savedTimeRef.current.toFixed(2));
+      }
     };
 
     const doShow = () => {
@@ -227,13 +317,12 @@ export function PlayerProvider({ children }) {
         return;
       }
 
-      // Reset rate in case iOS drifted it (safety)
+      // Sync React state — audio was paused on hide, so isPlaying = false
+      // safePlay (triggered by user pressing Play) will resume from savedTimeRef
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
-
-      // Sync React state to actual audio element state
       setIsPlaying(!audio.paused);
-      console.log("[Player] show — ct:", audio.currentTime.toFixed(2), "paused:", audio.paused, "readyState:", audio.readyState);
+      console.log("[Player] show — ct:", audio.currentTime.toFixed(2), "saved:", savedTimeRef.current.toFixed(2), "paused:", audio.paused);
     };
 
     const onVisibility = () => {
@@ -262,7 +351,7 @@ export function PlayerProvider({ children }) {
       window.removeEventListener("pageshow",  onPageShow);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [stopWatchdog]);
 
   // ── Media Session metadata ────────────────────────────────────────────────
   const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
@@ -348,6 +437,8 @@ export function PlayerProvider({ children }) {
 
   const stopPlaying = useCallback(() => {
     const audio = audioRef.current;
+    stopWatchdog();
+    suspendAudioContext();
     audio.pause();
     audio.src            = "";
     loadedSrcRef.current = "";
@@ -356,7 +447,7 @@ export function PlayerProvider({ children }) {
     playingTrackUrlRef.current = "";
     setIsPlaying(false);
     setCurrentTrack(null);
-  }, []);
+  }, [stopWatchdog]);
 
   const registerNextHandler = useCallback((fn) => { onNextRef.current = fn; }, []);
   const registerPrevHandler = useCallback((fn) => { onPrevRef.current = fn; }, []);
