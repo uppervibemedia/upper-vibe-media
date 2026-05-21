@@ -6,15 +6,24 @@
  * - isPlaying is never persisted as "auto-resume on launch".
  * - User must press Play, or iOS Media Session must fire a play action.
  *
- * MEDIA SESSION:
- * - next/prev handlers are registered with PlayerContext once.
- * - They read latest state via stateRef (no stale closures).
- * - The same handlers are called by both the UI buttons and iOS lock-screen buttons.
+ * CURATOR:
+ * - recordSkip   — fired when user presses next (with seconds listened)
+ * - recordComplete — fired on onEnded
+ * - recordListen  — fired on pause if listened > 30s but not complete
+ * - recordLike    — fired from Radio page heart button
+ * - buildWeightedQueue replaces the old buildQueue everywhere
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "./PlayerContext";
+import {
+  buildWeightedQueue,
+  recordSkip,
+  recordComplete,
+  recordListen,
+  isCuratorActive,
+} from "@/lib/radioCurator";
 
 const RadioContext = createContext(null);
 
@@ -32,28 +41,10 @@ function persistState(state) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch {}
 }
 
-function shuffleArray(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function buildQueue(allTracks, currentSongId, likedIds = []) {
-  const pool = [];
-  allTracks.filter((t) => t.id !== currentSongId).forEach((t) => {
-    const weight = likedIds.includes(t.id) ? 3 : 1;
-    for (let i = 0; i < weight; i++) pool.push(t);
-  });
-  return shuffleArray(pool);
-}
-
 export function RadioProvider({ children }) {
   const {
     registerNextHandler, registerPrevHandler,
-    playTrack, sourceType, currentTrack,
+    playTrack, sourceType, currentTrack, audioRef,
   } = usePlayer();
 
   const [allTracks,        setAllTracks]        = useState([]);
@@ -63,12 +54,14 @@ export function RadioProvider({ children }) {
   const [radioHistory,     setRadioHistory]     = useState([]);
   const [historyIndex,     setHistoryIndex]     = useState(-1);
   const [likedTrackIds,    setLikedTrackIds]    = useState([]);
+  const [curatorActive,    setCuratorActive]    = useState(false);
 
   // ── Load tracks once ──────────────────────────────────────────────────────
   useEffect(() => {
     base44.entities.Track.filter({ status: "published" }, "-created_date", 500).then((res) => {
       setAllTracks(res);
       setTracksLoaded(true);
+      setCuratorActive(isCuratorActive());
     });
   }, []);
 
@@ -84,7 +77,6 @@ export function RadioProvider({ children }) {
     if (saved.currentRadioSongId && allTracks.length > 0) {
       const song = allTracks.find((t) => t.id === saved.currentRadioSongId);
       if (song) {
-        // COLD LAUNCH: restore display state only — do NOT call playTrack
         console.log("[RadioContext] cold_launch restore — song:", song.title, "(paused, waiting for user play)");
         setCurrentRadioSong(song);
 
@@ -97,7 +89,7 @@ export function RadioProvider({ children }) {
           const queue = saved.radioQueueIds.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean);
           setRadioQueue(queue);
         } else {
-          setRadioQueue(buildQueue(allTracks, song.id));
+          setRadioQueue(buildWeightedQueue(allTracks, song.id, []));
         }
       }
     }
@@ -111,13 +103,12 @@ export function RadioProvider({ children }) {
       radioHistoryIds:    radioHistory.map((t) => t.id),
       radioQueueIds:      radioQueue.map((t) => t.id),
       lastUpdatedAt:      Date.now(),
-      // NOTE: isPlaying intentionally NOT persisted
     });
   }, [currentRadioSong, radioHistory, radioQueue, tracksLoaded]);
 
   const setRadioLikedIds = useCallback((ids) => setLikedTrackIds(ids), []);
 
-  // ── Stable state ref — always current, no stale closures ─────────────────
+  // ── Stable state ref ──────────────────────────────────────────────────────
   const stateRef = useRef({});
   useEffect(() => {
     stateRef.current = {
@@ -126,23 +117,37 @@ export function RadioProvider({ children }) {
     };
   }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType, likedTrackIds]);
 
+  // ── Helper: get seconds listened for current song ─────────────────────────
+  function getListenedSeconds() {
+    const audio = audioRef?.current;
+    return audio ? audio.currentTime : 0;
+  }
+
   // ── Internal: advance to next song ────────────────────────────────────────
-  const _playNext = useCallback((allT, queue, history, hIndex, currentSong, likedIds = []) => {
+  const _playNext = useCallback((allT, queue, history, hIndex, currentSong, likedIds = [], fromSkip = false) => {
+    // Record curator signal before leaving the song
+    if (currentSong && fromSkip) {
+      const secs = getListenedSeconds();
+      recordSkip(currentSong.id, secs, allT);
+      setCuratorActive(isCuratorActive());
+    }
+
     let nextSong;
     let newQueue = [...queue];
 
     if (newQueue.length > 0) {
       nextSong = newQueue.shift();
     } else {
-      const rebuilt = buildQueue(allT, currentSong?.id, likedIds);
+      const rebuilt = buildWeightedQueue(allT, currentSong?.id, likedIds);
       nextSong = rebuilt[0];
       newQueue  = rebuilt.slice(1);
     }
 
     if (!nextSong) return;
 
+    // Refill with curator-weighted queue when running low
     if (newQueue.length < 10) {
-      const extra = buildQueue(allT, nextSong.id, likedIds)
+      const extra = buildWeightedQueue(allT, nextSong.id, likedIds)
         .filter((t) => t.id !== nextSong.id && !newQueue.find((q) => q.id === t.id));
       newQueue = [...newQueue, ...extra].slice(0, 50);
     }
@@ -153,9 +158,9 @@ export function RadioProvider({ children }) {
     setCurrentRadioSong(nextSong);
     setRadioQueue(newQueue);
 
-    // This changes audio.src and starts the selected song
     playTrack(nextSong, "radio");
     console.log("[RadioContext] ⏭ Next radio song:", nextSong.title);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playTrack]);
 
   const _playPrev = useCallback((history, hIndex, currentSong, queue) => {
@@ -170,15 +175,11 @@ export function RadioProvider({ children }) {
   }, [playTrack]);
 
   // ── Register next/prev handlers ONCE ─────────────────────────────────────
-  // These refs store the latest handler versions — called by:
-  //   1. UI buttons (nextRadioSong / prevRadioSong)
-  //   2. iOS lock screen via PlayerContext Media Session handlers
-  //   3. onEnded (auto-advance)
   const nextFnRef = useRef(null);
   const prevFnRef = useRef(null);
 
   useEffect(() => {
-    const handleNext = () => {
+    const handleNext = (fromSkip = true) => {
       const { sourceType } = stateRef.current;
       if (sourceType !== "radio") {
         console.log("[RadioContext] ⚠️ handleNext skipped — sourceType is", sourceType);
@@ -186,7 +187,7 @@ export function RadioProvider({ children }) {
       }
       const { allTracks: aT, radioQueue: q, radioHistory: h, historyIndex: hi, currentRadioSong: cs, likedTrackIds: liked } = stateRef.current;
       console.log("[RadioContext] ⏭ handleNext called — song:", cs?.title);
-      _playNext(aT, q, h, hi, cs, liked);
+      _playNext(aT, q, h, hi, cs, liked, fromSkip);
     };
 
     const handlePrev = () => {
@@ -200,8 +201,6 @@ export function RadioProvider({ children }) {
     nextFnRef.current = handleNext;
     prevFnRef.current = handlePrev;
 
-    // Wire into PlayerContext — these power both the audio player's onEnded
-    // and the iOS lock-screen Media Session buttons
     registerNextHandler(handleNext);
     registerPrevHandler(handlePrev);
 
@@ -209,14 +208,42 @@ export function RadioProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_playNext, _playPrev, registerNextHandler, registerPrevHandler]);
 
+  // ── Listen to audio events for curator signals ────────────────────────────
+  useEffect(() => {
+    const audio = audioRef?.current;
+    if (!audio) return;
+
+    const onEnded = () => {
+      const { currentRadioSong: cs, allTracks: aT, sourceType: st } = stateRef.current;
+      if (st !== "radio" || !cs) return;
+      recordComplete(cs.id, aT);
+      setCuratorActive(isCuratorActive());
+    };
+
+    const onPause = () => {
+      const { currentRadioSong: cs, allTracks: aT, sourceType: st } = stateRef.current;
+      if (st !== "radio" || !cs) return;
+      const secs = audio.currentTime;
+      recordListen(cs.id, secs, aT);
+    };
+
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("pause", onPause);
+    return () => {
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("pause", onPause);
+    };
+  // Re-attach when audioRef element becomes available
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioRef?.current]);
+
   // ── Public API ────────────────────────────────────────────────────────────
 
-  // Initialize display state (no autoplay)
   const initRadio = useCallback(() => {
     if (!allTracks.length) return null;
     if (currentRadioSong) return currentRadioSong;
 
-    const built = buildQueue(allTracks, null, likedTrackIds);
+    const built = buildWeightedQueue(allTracks, null, likedTrackIds);
     const song  = built[0];
     const queue = built.slice(1);
     if (!song) return null;
@@ -227,13 +254,12 @@ export function RadioProvider({ children }) {
     return song;
   }, [allTracks, currentRadioSong, likedTrackIds]);
 
-  // Start radio — requires explicit user action
   const startRadio = useCallback((onPlay) => {
     let song  = currentRadioSong;
     let queue = radioQueue;
 
     if (!song) {
-      const built = buildQueue(allTracks, null, likedTrackIds);
+      const built = buildWeightedQueue(allTracks, null, likedTrackIds);
       song  = built[0];
       queue = built.slice(1);
       if (!song) return;
@@ -243,13 +269,11 @@ export function RadioProvider({ children }) {
       setRadioQueue(queue);
     }
 
-    // Creates a fresh audio source and starts playback
     playTrack(song, "radio");
     if (onPlay) onPlay(song);
     console.log("[RadioContext] 📻 Radio started:", song.title);
   }, [allTracks, currentRadioSong, radioQueue, playTrack, likedTrackIds]);
 
-  // Resume after interruption
   const resumeRadio = useCallback((onPlay) => {
     if (!currentRadioSong) return startRadio(onPlay);
     playTrack(currentRadioSong, "radio");
@@ -257,15 +281,23 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] 📻 Radio resumed:", currentRadioSong.title);
   }, [currentRadioSong, startRadio, playTrack]);
 
-  // UI delegates — call the exact same internal functions as Media Session handlers
   const nextRadioSong = useCallback(() => { nextFnRef.current?.(); }, []);
   const prevRadioSong = useCallback(() => { prevFnRef.current?.(); }, []);
+
+  // recordLike is exposed so Radio page can call it from the heart button
+  const curatorRecordLike = useCallback((trackId, liked) => {
+    const { allTracks: aT } = stateRef.current;
+    import("@/lib/radioCurator").then(({ recordLike }) => {
+      recordLike(trackId, liked, aT);
+      setCuratorActive(isCuratorActive());
+    });
+  }, []);
 
   const jumpToSong = useCallback((song, onPlay) => {
     if (!song) return;
     const newQueue = radioQueue.filter((t) => t.id !== song.id);
     const finalQueue = newQueue.length < 10
-      ? [...newQueue, ...buildQueue(allTracks, song.id).filter((t) => !newQueue.find((q) => q.id === t.id))].slice(0, 50)
+      ? [...newQueue, ...buildWeightedQueue(allTracks, song.id, likedTrackIds).filter((t) => !newQueue.find((q) => q.id === t.id))].slice(0, 50)
       : newQueue;
 
     const newHistory = [...radioHistory.slice(0, historyIndex + 1), song];
@@ -277,7 +309,7 @@ export function RadioProvider({ children }) {
     playTrack(song, "radio");
     if (onPlay) onPlay(song);
     console.log("[RadioContext] 🎯 Jumped to:", song.title);
-  }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack]);
+  }, [allTracks, radioQueue, radioHistory, historyIndex, playTrack, likedTrackIds]);
 
   const isRadioMode = sourceType === "radio";
   const hasPrev     = historyIndex > 0;
@@ -294,7 +326,9 @@ export function RadioProvider({ children }) {
       hasPrev,
       upNext,
       likedTrackIds,
+      curatorActive,
       setRadioLikedIds,
+      curatorRecordLike,
       initRadio,
       startRadio,
       resumeRadio,

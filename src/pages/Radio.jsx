@@ -5,6 +5,7 @@ import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
+import { Sparkles } from "lucide-react";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
@@ -21,7 +22,9 @@ export default function RadioPage() {
     isRadioMode,
     hasPrev,
     upNext,
+    curatorActive,
     setRadioLikedIds,
+    curatorRecordLike,
     initRadio,
     startRadio,
     resumeRadio,
@@ -81,11 +84,14 @@ export default function RadioPage() {
   const handleLike = async () => {
     if (!user) { setLoginModal(true); return; }
     if (!currentRadioSong) return;
+    const wasLiked = isFaved("track", currentRadioSong.id);
     await toggleFav("track", currentRadioSong.id, {
       title: currentRadioSong.title,
       artist: currentRadioSong.artist_display || "Upper Vibe Media",
       cover_url: currentRadioSong.cover_url || "",
     });
+    // Tell the curator about the like/unlike signal
+    curatorRecordLike(currentRadioSong.id, !wasLiked);
   };
 
   const handleDownload = () => {
@@ -125,7 +131,17 @@ export default function RadioPage() {
           <h1 className="font-heading font-black text-white mb-2" style={{ fontSize: "clamp(1.8rem,4vw,2.8rem)" }}>
             Upper Vibe Radio
           </h1>
-          <p className="text-white/35 text-sm">Shuffle through all 432 Hz Upper Vibe Media songs</p>
+          {curatorActive ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full mt-1"
+              style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.2)" }}>
+              <Sparkles className="w-3 h-3" style={{ color: "#A855F7" }} />
+              <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#A855F7" }}>
+                Tuned to You
+              </span>
+            </div>
+          ) : (
+            <p className="text-white/35 text-sm">Shuffle through all 432 Hz Upper Vibe Media songs</p>
+          )}
         </motion.div>
 
         {/* Audio Visualizer */}
