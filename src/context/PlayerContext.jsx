@@ -138,11 +138,20 @@ export function PlayerProvider({ children }) {
   }, [stopWatchdog]);
 
   // ── safePlay ─────────────────────────────────────────────────────────────
-  // Hardened for PWA lock-screen resume:
-  // - If readyState is too low, reload the src before playing
-  // - Always resume AudioContext first (it may be suspended)
-  // - Restore savedTimeRef position
-  // - Enforce playbackRate=1 before AND after play()
+  // Core resume function — handles both Safari and PWA paths.
+  //
+  // Safari anti-glitch rules (the original sped-up sound fix):
+  //   - NEVER call audio.load() on the same src without first clearing src=""
+  //     Safari ignores re-assignment of the same src value, so load() replays
+  //     from the buffered start position causing the catch-up glitch.
+  //   - ALWAYS seek to savedTimeRef AFTER canplay, not before.
+  //   - ALWAYS enforce playbackRate=1 before AND after play().
+  //   - ONLY reload if readyState < 2 or error is set (evicted buffer).
+  //   - Normal resume (readyState >= 2, no error): just play() — no load, no seek
+  //     unless time has drifted significantly from saved position.
+  //
+  // PWA lock-screen resume:
+  //   - Buffer may be evicted after long background — reload path handles this.
   const safePlay = useCallback(async (audio, reason) => {
     console.log("[Player] safePlay called — reason:", reason || "ui",
       "| src:", audio.src ? "set" : "MISSING",
@@ -150,10 +159,20 @@ export function PlayerProvider({ children }) {
       "| readyState:", audio.readyState,
       "| error:", audio.error?.code ?? null,
       "| savedTime:", savedTimeRef.current.toFixed(2),
+      "| ct:", audio.currentTime.toFixed(2),
       "| isPWA:", isPWA);
 
     if (!audio.src) {
       console.warn("[Player] safePlay blocked — no src");
+      return;
+    }
+
+    if (!audio.paused && audio.readyState >= 2) {
+      // Already playing and healthy — enforce rate and restart watchdog only
+      audio.playbackRate        = 1;
+      audio.defaultPlaybackRate = 1;
+      startWatchdog(audio);
+      console.log("[Player] safePlay — already playing, enforcing rate");
       return;
     }
 
@@ -165,16 +184,24 @@ export function PlayerProvider({ children }) {
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
 
-      // 3. If readyState is too low (iOS evicted buffer), reload
-      //    readyState 0 = HAVE_NOTHING, 1 = HAVE_METADATA — need at least 2
+      // 3. Reload if buffer is evicted (readyState < 2 or error)
+      //    CRITICAL: must clear src first so Safari sees a real src change,
+      //    otherwise audio.load() on the same url replays from buffer start → sped-up glitch.
       if (audio.readyState < 2 || audio.error) {
-        console.log("[Player] safePlay — reloading stale buffer (readyState:", audio.readyState, ")");
+        console.log("[Player] safePlay — buffer evicted, reloading (readyState:", audio.readyState, "error:", audio.error?.code ?? null, ")");
         const src = audio.src;
+        const restoreTime = savedTimeRef.current;
+
+        // Clear src so Safari treats next assignment as a genuine new resource
+        audio.src = "";
+        // Brief yield so Safari processes the src clear before we reassign
+        await new Promise(r => setTimeout(r, 0));
         audio.src = src;
         audio.load();
+
         await new Promise((resolve, reject) => {
           const onCanPlay = () => { cleanup(); resolve(); };
-          const onError   = () => { cleanup(); reject(new Error("load error")); };
+          const onError   = (e) => { cleanup(); reject(new Error("load error: " + e.message)); };
           const cleanup   = () => {
             audio.removeEventListener("canplay", onCanPlay);
             audio.removeEventListener("error",   onError);
@@ -182,24 +209,36 @@ export function PlayerProvider({ children }) {
           audio.addEventListener("canplay", onCanPlay);
           audio.addEventListener("error",   onError);
         });
+
+        // After reload, seek to saved position before play
         audio.playbackRate        = 1;
         audio.defaultPlaybackRate = 1;
-      }
-
-      // 4. Seek to saved position
-      if (savedTimeRef.current > 0 && Math.abs(audio.currentTime - savedTimeRef.current) > 0.5) {
-        audio.currentTime = savedTimeRef.current;
+        if (restoreTime > 0) {
+          audio.currentTime = restoreTime;
+          // Brief wait for seek to settle — Safari needs this or play() starts from 0
+          await new Promise(r => setTimeout(r, 50));
+        }
+      } else {
+        // 4. Normal resume — buffer is healthy.
+        //    Only seek if time has significantly drifted from where we paused
+        //    (e.g. software clock advanced during silent suspension).
+        //    Threshold: 0.5s to avoid micro-seeking on normal pauses.
+        if (savedTimeRef.current > 0 && Math.abs(audio.currentTime - savedTimeRef.current) > 0.5) {
+          console.log("[Player] safePlay — seeking from", audio.currentTime.toFixed(2), "→", savedTimeRef.current.toFixed(2));
+          audio.currentTime = savedTimeRef.current;
+        }
       }
 
       if (!audio.paused) {
-        console.log("[Player] safePlay — already playing, skip");
+        console.log("[Player] safePlay — already playing after reload, skip play()");
+        startWatchdog(audio);
         return;
       }
 
       // 5. Play
       await audio.play();
 
-      // 6. Enforce rate again — iOS can reset after play()
+      // 6. Enforce rate again — iOS can reset it after play()
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
 
@@ -213,12 +252,19 @@ export function PlayerProvider({ children }) {
   }, [startWatchdog]);
 
   // ── safePause ─────────────────────────────────────────────────────────────
+  // Suspend AudioContext FIRST so the audio graph stops instantly (no buffer drain).
+  // Always update mediaSession.playbackState so the lock-screen bar stops immediately.
   const safePause = useCallback((audio) => {
     stopWatchdog();
     if (audio.currentTime > 0) savedTimeRef.current = audio.currentTime;
     if (audio.paused) return;
     suspendAudioContext();
     audio.pause();
+    // Explicitly tell iOS lock screen the player is paused — without this,
+    // the lock-screen progress bar can keep advancing for a few seconds.
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "paused";
+    }
   }, [stopWatchdog]);
 
   // ── Load & play a new track ───────────────────────────────────────────────
@@ -341,9 +387,19 @@ export function PlayerProvider({ children }) {
         stopWatchdog();
         console.log("[Player] hide (PWA) — audio continues in background, ct:", audio.currentTime.toFixed(2));
       } else {
-        // Safari: pause cleanly to stop fake progress
+        // Safari: iOS suspends web audio on page hide.
+        // Pause cleanly NOW so:
+        //   (a) the lock-screen progress bar stops immediately
+        //   (b) we have the exact position for seekless resume (no catch-up)
+        //   (c) AudioContext is suspended before pause so no buffer drain glitch
         stopWatchdog();
         if (!audio.paused) {
+          // Capture position at the last possible moment before we pause
+          const ct = audio.currentTime;
+          if (ct > 0) {
+            savedTimeRef.current = ct;
+            lastTimeRef.current  = ct;
+          }
           suspendAudioContext();
           audio.pause();
           if ("mediaSession" in navigator) {
