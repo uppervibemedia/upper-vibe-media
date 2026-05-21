@@ -3,15 +3,10 @@ import React, { createContext, useContext, useState, useRef, useEffect, useCallb
 const PlayerContext = createContext(null);
 
 // ONE global audio element — never recreated
-// NOTE: Do NOT set crossOrigin="anonymous" — it forces CORS preflight on every
-// audio URL. Many CDNs don't send CORS headers, causing silent failures on iOS.
-// The AudioContext (createMediaElementSource) works fine without crossOrigin
-// when the audio and page are served from the same origin or when the CDN
-// sends Access-Control-Allow-Origin headers.
 const persistentAudio = (() => {
   if (typeof window === "undefined") return null;
   const a = new Audio();
-  a.preload = "auto";
+  a.preload = "metadata";
   a.setAttribute("x-webkit-airplay", "allow");
   a.setAttribute("playsinline", "");
   return a;
@@ -24,7 +19,7 @@ let _audioCtx   = null;
 let _analyser   = null;
 let _sourceNode = null;
 
-function getOrCreateAudioContext(audioElement) {
+export function getGlobalAnalyser(audioElement) {
   if (!audioElement) return null;
   if (!_audioCtx) {
     try {
@@ -46,15 +41,11 @@ function getOrCreateAudioContext(audioElement) {
   return _analyser;
 }
 
-async function ensureAudioContextRunning() {
-  if (!_audioCtx) return;
-  if (_audioCtx.state !== "running") {
-    try { await _audioCtx.resume(); } catch {}
+export function resumeGlobalAudioContext() {
+  if (_audioCtx && _audioCtx.state !== "running") {
+    _audioCtx.resume().catch(() => {});
   }
 }
-
-export function resumeGlobalAudioContext() { ensureAudioContextRunning().catch(() => {}); }
-export function getGlobalAnalyser(audioElement) { return getOrCreateAudioContext(audioElement); }
 
 export function PlayerProvider({ children }) {
   const [currentTrack, setCurrentTrack] = useState(null);
@@ -68,150 +59,87 @@ export function PlayerProvider({ children }) {
   const loadedSrcRef       = useRef("");
   const lastTimeRef        = useRef(0);
   const savedTimeRef       = useRef(0);
-  const playingTrackUrlRef = useRef("");
   const intentPlayingRef   = useRef(false);
 
-  // ── AudioContext interruption recovery ────────────────────────────────────
-  useEffect(() => {
-    const audio = audioRef.current;
-    const ctxPoll = setInterval(() => {
-      if (_audioCtx && !_audioCtx.onstatechange) {
-        _audioCtx.onstatechange = () => {
-          console.log("[Player] AudioContext state:", _audioCtx.state);
-          if (_audioCtx.state === "interrupted") {
-            if (!audio.paused) audio.pause();
-            setIsPlaying(false);
-          }
-          if (_audioCtx.state === "running" && intentPlayingRef.current) {
-            if (audio.paused && audio.src) {
-              audio.playbackRate = 1;
-              audio.defaultPlaybackRate = 1;
-              audio.play().catch(() => {});
-            }
-          }
-        };
-        clearInterval(ctxPoll);
-      }
-    }, 500);
-    return () => clearInterval(ctxPoll);
-  }, []);
-
-  // ── safePlay — for resume only (same track, already loaded) ──────────────
-  const safePlay = useCallback(async (audio) => {
-    try {
-      intentPlayingRef.current = true;
-      await ensureAudioContextRunning();
-      audio.playbackRate        = 1;
-      audio.defaultPlaybackRate = 1;
-      if (!audio.paused) return;
-      await audio.play();
-      audio.playbackRate        = 1;
-      audio.defaultPlaybackRate = 1;
-    } catch (err) {
-      if (err.name !== "AbortError") console.warn("[Player] safePlay error:", err.name, err.message);
-    }
-  }, []);
-
-  // ── safePause ─────────────────────────────────────────────────────────────
-  const safePause = useCallback((audio) => {
-    intentPlayingRef.current = false;
-    if (audio.paused) return;
-    audio.pause();
-  }, []);
-
-  // ── playTrack — iOS CORRECT PATTERN ──────────────────────────────────────
-  //
-  // iOS Safari requires audio.play() to be called synchronously within the
-  // user gesture event handler. The critical rules are:
-  //
-  //   1. Set audio.src synchronously
-  //   2. Call audio.load() synchronously  
-  //   3. Call audio.play() synchronously — ALL in the same call stack as the tap
-  //
-  // audio.play() returns a Promise that resolves when playback starts.
-  // We do NOT await it (that would break synchronous guarantee).
-  // iOS will buffer and start playing — the promise resolves later.
-  //
-  // We do NOT call play() before setting src (that was the previous bug —
-  // play() on empty src throws NotSupportedError, consuming the gesture token).
-  //
+  // ── playTrack ─────────────────────────────────────────────────────────────
+  // iOS Safari rule: audio.play() MUST be called synchronously inside the
+  // user gesture handler. No awaits, no async calls before play().
   const playTrack = useCallback((track, source = "song") => {
     if (!track?.audio_url) return;
     const audio = audioRef.current;
     const url   = track.audio_url;
 
-    console.log("[Player] playTrack →", track.title, "| src match:", loadedSrcRef.current === url, "| audio.src empty:", !audio.src);
-
     intentPlayingRef.current = true;
     setSourceType(source);
+    setCurrentTrack(track);
 
-    if (loadedSrcRef.current === url) {
-      // Same track already loaded — just resume
-      setCurrentTrack(track);
+    if (loadedSrcRef.current === url && !audio.ended) {
+      // Same track — just resume
       if (audio.paused) {
-        audio.playbackRate        = 1;
-        audio.defaultPlaybackRate = 1;
-        console.log("[Player] same track — calling resume play()");
         audio.play().catch((err) => {
-          console.warn("[Player] resume play() error:", err.name, err.message);
+          console.warn("[Player] resume error:", err.name, err.message);
         });
       }
       return;
     }
 
-    // New track — set src and play. Do NOT call audio.load() — on iOS it
-    // cancels the pending play and causes AbortError, breaking gesture unlock.
-    loadedSrcRef.current       = url;
-    playingTrackUrlRef.current = url;
-    savedTimeRef.current       = 0;
-    lastTimeRef.current        = 0;
+    // New track
+    loadedSrcRef.current = url;
+    savedTimeRef.current = 0;
+    lastTimeRef.current  = 0;
 
     audio.src = url;
+    audio.load();
     audio.play().catch((err) => {
-      console.warn("[Player] play() error:", err.name, err.message);
+      console.warn("[Player] play error:", err.name, err.message);
     });
-
-    setCurrentTrack(track);
 
   }, []);
 
-  // ── Sync isPlaying from native audio events ───────────────────────────────
+  // ── safePlay — resume only ────────────────────────────────────────────────
+  const safePlay = useCallback((audio) => {
+    intentPlayingRef.current = true;
+    if (_audioCtx && _audioCtx.state !== "running") {
+      _audioCtx.resume().catch(() => {});
+    }
+    if (!audio.paused) return;
+    audio.play().catch((err) => {
+      if (err.name !== "AbortError") console.warn("[Player] safePlay error:", err.name);
+    });
+  }, []);
+
+  // ── safePause ─────────────────────────────────────────────────────────────
+  const safePause = useCallback((audio) => {
+    intentPlayingRef.current = false;
+    if (!audio.paused) audio.pause();
+  }, []);
+
+  // ── Audio event listeners ─────────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
 
-    const onPlay  = () => {
-      setIsPlaying(true);
-      if (currentTrack) setMediaSessionMetadata(currentTrack);
-    };
-    const onPause = () => { setIsPlaying(false); };
-    const onEnded = () => {
+    const onPlay      = () => setIsPlaying(true);
+    const onPause     = () => setIsPlaying(false);
+    const onEnded     = () => {
       intentPlayingRef.current = false;
       setIsPlaying(false);
       lastTimeRef.current  = 0;
       savedTimeRef.current = 0;
       onNextRef.current?.();
     };
-    const onStall = () => { if (audio.paused) setIsPlaying(false); };
-    const onRateChange = () => {
-      if (audio.playbackRate !== 1) {
-        console.warn("[Player] ratechange →", audio.playbackRate, "forcing 1");
-        audio.playbackRate        = 1;
-        audio.defaultPlaybackRate = 1;
-      }
-    };
-    const onError = () => {
-      const err = audio.error;
-      const codes = { 1: "ABORTED", 2: "NETWORK", 3: "DECODE", 4: "SRC_NOT_SUPPORTED" };
-      console.error("[Player] audio error:", codes[err?.code] || err?.code, err?.message, "| src:", audio.src?.slice(-60));
-    };
+    const onStall     = () => { if (audio.paused) setIsPlaying(false); };
     const onTimeUpdate = () => { lastTimeRef.current = audio.currentTime; };
+    const onError     = () => {
+      const e = audio.error;
+      const codes = { 1: "ABORTED", 2: "NETWORK", 3: "DECODE", 4: "SRC_NOT_SUPPORTED" };
+      console.error("[Player] audio error:", codes[e?.code] || e?.code, e?.message, "| src:", audio.src?.slice(-60));
+    };
 
     audio.addEventListener("play",       onPlay);
     audio.addEventListener("pause",      onPause);
     audio.addEventListener("ended",      onEnded);
     audio.addEventListener("stalled",    onStall);
     audio.addEventListener("waiting",    onStall);
-    audio.addEventListener("ratechange", onRateChange);
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("error",      onError);
 
@@ -221,110 +149,59 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("ended",      onEnded);
       audio.removeEventListener("stalled",    onStall);
       audio.removeEventListener("waiting",    onStall);
-      audio.removeEventListener("ratechange", onRateChange);
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("error",      onError);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTrack]);
+  }, []);
 
   // ── Background / Foreground ───────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
-    let showTimer = null;
-
-    const doHide = () => {
-      sharedHiddenRef.current = true;
-      if (audio.currentTime > 0) {
-        savedTimeRef.current = audio.currentTime;
-        lastTimeRef.current  = audio.currentTime;
-      }
-      // Do NOT pause — iOS background audio works natively
-    };
-
-    const doShow = () => {
-      clearTimeout(showTimer);
-      sharedHiddenRef.current = false;
-      if (!audio.src || audio.ended) { setIsPlaying(false); return; }
-
-      audio.playbackRate        = 1;
-      audio.defaultPlaybackRate = 1;
-
-      // Foreground return = gesture context — resume AudioContext if interrupted
-      if (_audioCtx && _audioCtx.state !== "running") {
-        _audioCtx.resume().then(() => {
-          if (intentPlayingRef.current && audio.paused && audio.src) {
-            audio.playbackRate        = 1;
-            audio.defaultPlaybackRate = 1;
-            audio.play().catch(() => {});
-          }
-        }).catch(() => {});
-      }
-
-      setIsPlaying(!audio.paused);
-    };
 
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") doHide();
-      else { clearTimeout(showTimer); showTimer = setTimeout(doShow, 50); }
+      if (document.visibilityState === "hidden") {
+        sharedHiddenRef.current = true;
+        if (audio.currentTime > 0) savedTimeRef.current = audio.currentTime;
+        // Do NOT pause — iOS handles background audio natively
+      } else {
+        sharedHiddenRef.current = false;
+        // Foreground return — resume AudioContext if interrupted
+        if (_audioCtx && _audioCtx.state !== "running") {
+          _audioCtx.resume().then(() => {
+            if (intentPlayingRef.current && audio.paused && audio.src) {
+              audio.play().catch(() => {});
+            }
+          }).catch(() => {});
+        }
+        setIsPlaying(!audio.paused);
+      }
     };
-    const onPageHide = () => doHide();
-    const onPageShow = () => { clearTimeout(showTimer); showTimer = setTimeout(doShow, 50); };
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", onPageHide);
-    window.addEventListener("pageshow",  onPageShow);
-
-    return () => {
-      clearTimeout(showTimer);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", onPageHide);
-      window.removeEventListener("pageshow",  onPageShow);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
 
   // ── Media Session ─────────────────────────────────────────────────────────
   const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
 
-  function resolveArtworkUrl(url) {
-    if (!url) return FALLBACK_ART;
-    if (url.startsWith("https://")) return url;
-    return FALLBACK_ART;
-  }
-
-  function setMediaSessionMetadata(track) {
-    if (!("mediaSession" in navigator) || !track) return;
-    const artSrc = resolveArtworkUrl(track.cover_url);
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title:   track.title || "Unknown",
-      artist:  track.artist_display || track.artist || "Upper Vibe Media",
-      album:   "Upper Vibe Media",
-      artwork: [
-        { src: artSrc, sizes: "512x512",   type: "image/jpeg" },
-        { src: artSrc, sizes: "1024x1024", type: "image/jpeg" },
-      ],
-    });
-  }
-
   useEffect(() => {
-    if (!currentTrack) return;
-    setMediaSessionMetadata(currentTrack);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!("mediaSession" in navigator) || !currentTrack) return;
+    const art = currentTrack.cover_url?.startsWith("https://") ? currentTrack.cover_url : FALLBACK_ART;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title:   currentTrack.title   || "Unknown",
+      artist:  currentTrack.artist_display || "Upper Vibe Media",
+      album:   "Upper Vibe Media",
+      artwork: [{ src: art, sizes: "512x512", type: "image/jpeg" }],
+    });
   }, [currentTrack]);
 
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
     const audio = audioRef.current;
-    navigator.mediaSession.setActionHandler("play",  () => { if (audio.src) safePlay(audio); });
-    navigator.mediaSession.setActionHandler("pause", () => safePause(audio));
+    navigator.mediaSession.setActionHandler("play",          () => safePlay(audio));
+    navigator.mediaSession.setActionHandler("pause",         () => safePause(audio));
     navigator.mediaSession.setActionHandler("nexttrack",     () => onNextRef.current?.());
     navigator.mediaSession.setActionHandler("previoustrack", () => onPrevRef.current?.());
-    return () => {
-      ["play","pause","nexttrack","previoustrack"].forEach((a) => {
-        try { navigator.mediaSession.setActionHandler(a, null); } catch {}
-      });
-    };
   }, [safePlay, safePause]);
 
   useEffect(() => {
@@ -343,13 +220,12 @@ export function PlayerProvider({ children }) {
   // ── stopPlaying ───────────────────────────────────────────────────────────
   const stopPlaying = useCallback(() => {
     const audio = audioRef.current;
-    intentPlayingRef.current   = false;
+    intentPlayingRef.current = false;
     audio.pause();
-    audio.src                  = "";
-    loadedSrcRef.current       = "";
-    lastTimeRef.current        = 0;
-    savedTimeRef.current       = 0;
-    playingTrackUrlRef.current = "";
+    audio.src            = "";
+    loadedSrcRef.current = "";
+    lastTimeRef.current  = 0;
+    savedTimeRef.current = 0;
     setIsPlaying(false);
     setCurrentTrack(null);
   }, []);
