@@ -98,10 +98,10 @@ export default function Music() {
           </div>
 
           <div className="max-w-7xl mx-auto px-6 relative z-10"
-            style={{ paddingTop: "max(5.5rem, calc(4rem + env(safe-area-inset-top, 0px)))", paddingBottom: "1.5rem" }}>
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
+            style={{ paddingTop: "max(4.5rem, calc(3rem + env(safe-area-inset-top, 0px)))", paddingBottom: "1rem" }}>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
               {/* Eyebrow label */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm mb-5"
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm mb-3"
                 style={{ background: "rgba(0,200,220,0.05)", border: "1px solid rgba(0,200,220,0.16)" }}>
                 <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ background: "#00C9E0" }} />
                 <span style={{
@@ -110,18 +110,14 @@ export default function Music() {
                 }}>Music Library</span>
               </div>
 
-              <h1 className="font-heading font-black text-white mb-2 leading-tight"
-                style={{ fontSize: "clamp(2rem, 7vw, 3.5rem)" }}>
+              <h1 className="font-heading font-black text-white mb-1.5 leading-tight"
+                style={{ fontSize: "clamp(1.7rem, 6vw, 3rem)" }}>
                 Music Library
               </h1>
-              <p className="text-white/35 text-sm leading-relaxed mb-2 max-w-lg">
+              <p className="text-white/30 text-xs leading-relaxed max-w-lg">
                 Stream 432 Hz high-vibe music, new releases, and curated frequency tracks
+                {!loading && <span className="text-white/20"> · {tracks.length} tracks</span>}
               </p>
-              {!loading && (
-                <p className="text-white/20 text-xs tracking-wider">
-                  {tracks.length} tracks · All tuned to 432 Hz · Free to stream
-                </p>
-              )}
             </motion.div>
           </div>
         </section>
@@ -152,9 +148,9 @@ export default function Music() {
             </div>
           </div>
 
-          {/* Filter tabs — full-bleed horizontal scroll with side padding */}
-          <div className="overflow-x-auto pb-3 mb-4 hide-scrollbar">
-            <div className="flex gap-2 px-6" style={{ width: "max-content", minWidth: "100%" }}>
+          {/* Filter tabs — full-bleed horizontal scroll, chips never cut off */}
+          <div className="overflow-x-auto pb-2 mb-3 hide-scrollbar">
+            <div className="flex gap-2" style={{ width: "max-content", paddingLeft: "1.5rem", paddingRight: "1.5rem" }}>
               <FilterPill label="All" active={activeFilter === "all"} onClick={() => { setActiveFilter("all"); setSearch(""); }} color="cyan" />
               <FilterPill label="New Releases" active={activeFilter === "new"} onClick={() => { setActiveFilter("new"); setSearch(""); }} color="gold" />
               {categories.map((cat) => (
@@ -179,8 +175,8 @@ export default function Music() {
             </div>
           )}
 
-          {/* Track list */}
-          <div className="px-6" style={{ paddingBottom: "calc(9rem + env(safe-area-inset-bottom, 16px))" }}>
+          {/* Track list — extra bottom clearance for mini player + bottom nav + safe area */}
+          <div className="px-4 sm:px-6" style={{ paddingBottom: "calc(11rem + env(safe-area-inset-bottom, 20px))" }}>
             {loading ? (
               <div className="space-y-2">
                 {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
