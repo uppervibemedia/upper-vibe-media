@@ -143,9 +143,6 @@ export function PlayerProvider({ children }) {
     console.log("[Player] playTrack →", track.title, "| src match:", loadedSrcRef.current === url, "| audio.src empty:", !audio.src);
 
     intentPlayingRef.current = true;
-
-    // Init AudioContext synchronously (required by iOS for the gesture token)
-    getOrCreateAudioContext(audio);
     setSourceType(source);
 
     if (loadedSrcRef.current === url) {
@@ -162,49 +159,17 @@ export function PlayerProvider({ children }) {
       return;
     }
 
-    // New track — set src + load + play ALL synchronously in gesture stack
+    // New track — set src and play. Do NOT call audio.load() — on iOS it
+    // cancels the pending play and causes AbortError, breaking gesture unlock.
     loadedSrcRef.current       = url;
     playingTrackUrlRef.current = url;
     savedTimeRef.current       = 0;
     lastTimeRef.current        = 0;
 
-    // ── THE iOS UNLOCK SEQUENCE ───────────────────────────────────────────
     audio.src = url;
-    audio.load();
-    audio.playbackRate        = 1;
-    audio.defaultPlaybackRate = 1;
-    console.log("[Player] new track — calling play() synchronously, readyState:", audio.readyState);
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise
-        .then(() => {
-          console.log("[Player] play() resolved ✓ readyState:", audio.readyState);
-          setIsPlaying(true);
-        })
-        .catch((err) => {
-          console.warn("[Player] play() FAILED:", err.name, err.message, "| src:", url?.slice(-40));
-          if (err.name === "AbortError") {
-            // Expected on rapid track change — retry on canplay
-            const targetUrl = url;
-            const onCanPlay = () => {
-              audio.removeEventListener("canplay", onCanPlay);
-              if (playingTrackUrlRef.current !== targetUrl) return;
-              console.log("[Player] canplay retry play()");
-              audio.playbackRate        = 1;
-              audio.defaultPlaybackRate = 1;
-              audio.play()
-                .then(() => { console.log("[Player] canplay retry resolved ✓"); setIsPlaying(true); })
-                .catch((e) => console.warn("[Player] canplay play() error:", e.name));
-            };
-            audio.addEventListener("canplay", onCanPlay);
-          } else if (err.name === "NotSupportedError") {
-            console.error("[Player] NotSupportedError — likely 404 audio URL:", url?.slice(-60));
-          } else if (err.name === "NotAllowedError") {
-            console.error("[Player] NotAllowedError — iOS gesture policy blocked play(). Must call play() synchronously in gesture handler.");
-          }
-        });
-    }
-    // ── END iOS UNLOCK SEQUENCE ───────────────────────────────────────────
+    audio.play().catch((err) => {
+      console.warn("[Player] play() error:", err.name, err.message);
+    });
 
     setCurrentTrack(track);
 
