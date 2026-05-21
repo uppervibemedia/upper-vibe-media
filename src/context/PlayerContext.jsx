@@ -27,6 +27,13 @@ async function resumeAudioContext() {
   }
 }
 
+function suspendAudioContext() {
+  if (!_audioCtx) return;
+  if (_audioCtx.state === "running") {
+    try { _audioCtx.suspend(); } catch {}
+  }
+}
+
 function getOrCreateAudioContext(audioElement) {
   if (!audioElement) return null;
   if (!_audioCtx) {
@@ -81,8 +88,11 @@ export function PlayerProvider({ children }) {
   }, []);
 
   // ── safePause ─────────────────────────────────────────────────────────────
+  // Suspend AudioContext FIRST so the audio graph stops processing immediately,
+  // eliminating the post-pause buffer drain glitch on iOS Safari.
   const safePause = useCallback((audio) => {
     if (audio.paused) return;
+    suspendAudioContext(); // stops AudioContext graph instantly — no buffer drain
     audio.pause();
   }, []);
 
@@ -112,13 +122,12 @@ export function PlayerProvider({ children }) {
     // Must call load() after setting src on a new track so iOS fetches it
     audio.load();
 
-    // Wait for canplay before calling play() to avoid the race condition
-    // where play() is called before the decoder has anything to decode
+    // Wait for canplay before calling play() — avoids the decode-before-data race.
+    // cleanup() is called on track change (effect cleanup) so we never play a stale src.
     const targetUrl = url;
     const onCanPlay = () => {
       audio.removeEventListener("canplay", onCanPlay);
-      // Guard: if track changed again before canplay fired, skip
-      if (playingTrackUrlRef.current !== targetUrl) return;
+      if (playingTrackUrlRef.current !== targetUrl) return; // track changed, skip
       audio.playbackRate        = 1;
       audio.defaultPlaybackRate = 1;
       audio.play().catch((err) => {
@@ -126,6 +135,11 @@ export function PlayerProvider({ children }) {
       });
     };
     audio.addEventListener("canplay", onCanPlay);
+
+    // Cleanup: remove listener if track changes before canplay fires
+    return () => {
+      audio.removeEventListener("canplay", onCanPlay);
+    };
 
   }, [currentTrack, safePlay]);
 
