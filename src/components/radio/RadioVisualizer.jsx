@@ -59,8 +59,8 @@ function drawBars(ctx, W, H, freqData, bufLen) {
     const boost = i > 30 ? 1 + (i - 30) / 30 * 0.4 : 1;
     // Bass adds a beat kick but kept modest so bars don't sit at max
     const v = Math.min(1, rawV * boost * (1 + bPulse * 0.5));
-    // Scale to 75% of canvas height max so there's always headroom
-    const h = Math.max(3, v * H * 0.75);
+    // Scale to 85% of canvas height max — headroom at top, no clipping
+    const h = Math.max(3, v * H * 0.85);
     const x = i * (barW + gap);
     const hue = 185 + v * 60;
     const alpha = 0.5 + v * 0.45;
