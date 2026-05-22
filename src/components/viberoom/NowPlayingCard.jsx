@@ -47,7 +47,7 @@ export default function NowPlayingCard() {
             style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.12)" }}>
             <Music2 className="w-3.5 h-3.5 text-white/20" />
           </div>
-          <p className="text-xs text-white/30 italic">Start music to join the vibe</p>
+          <p className="text-xs text-white/30 italic">Start music to vibe with the room</p>
         </>
       )}
 

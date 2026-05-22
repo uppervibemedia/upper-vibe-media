@@ -13,19 +13,27 @@ const REACTIONS = [
 export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, onHide, onMute, onBan, onUnban, animDelay }) {
   const reactions = msg.reactions || {};
 
+  // Exclusive reaction: remove from all other keys first, then toggle on clicked key
   const handleReact = async (key) => {
     if (!user) return;
-    const current = reactions[key] || [];
-    const hasReacted = current.includes(user.email);
-    const updated = hasReacted
-      ? current.filter((e) => e !== user.email)
-      : [...current, user.email];
-    await base44.entities.VibeRoomMessage.update(msg.id, {
-      reactions: { ...reactions, [key]: updated },
-    });
-  };
+    const email = user.email;
 
-  const totalReactions = Object.values(reactions).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+    // Build new reactions object
+    const updated = {};
+    REACTIONS.forEach(({ key: k }) => {
+      const arr = reactions[k] || [];
+      if (k === key) {
+        // toggle: if already reacted on this key, remove; else add (and it's already cleared from others)
+        const alreadyOnThis = arr.includes(email);
+        updated[k] = alreadyOnThis ? arr.filter((e) => e !== email) : [...arr, email];
+      } else {
+        // always remove from other keys (exclusive)
+        updated[k] = arr.filter((e) => e !== email);
+      }
+    });
+
+    await base44.entities.VibeRoomMessage.update(msg.id, { reactions: updated });
+  };
 
   return (
     <motion.div
@@ -58,7 +66,7 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
 
         {/* Bubble */}
         <div
-          className="px-4 py-2.5 text-sm leading-relaxed relative"
+          className="px-4 py-2.5 text-sm leading-relaxed"
           style={isOwn ? {
             background: "rgba(155,126,255,0.15)",
             border: "1px solid rgba(155,126,255,0.28)",
@@ -77,48 +85,33 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
           {msg.content}
         </div>
 
-        {/* Reactions row */}
-        <div className={`flex flex-wrap gap-1 mt-1.5 ${isOwn ? "justify-end" : "justify-start"}`}>
+        {/* Reactions — always show all 4, clean and non-duplicated */}
+        <div className={`flex gap-1 mt-1.5 ${isOwn ? "justify-end" : "justify-start"}`}>
           {REACTIONS.map(({ key, emoji, label }) => {
             const arr = reactions[key] || [];
             const hasReacted = user ? arr.includes(user.email) : false;
             const count = arr.length;
-            if (!user && count === 0) return null;
             return (
               <button
                 key={key}
                 onClick={() => handleReact(key)}
                 title={label}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all active:scale-90"
+                disabled={!user}
+                className="flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all active:scale-90 disabled:cursor-default"
                 style={{
                   background: hasReacted
-                    ? "rgba(155,126,255,0.2)"
-                    : count > 0 ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)",
+                    ? "rgba(155,126,255,0.22)"
+                    : "rgba(255,255,255,0.03)",
                   border: hasReacted
-                    ? "1px solid rgba(155,126,255,0.4)"
-                    : count > 0 ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(255,255,255,0.05)",
-                  color: hasReacted ? "#b899ff" : count > 0 ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.2)",
+                    ? "1px solid rgba(155,126,255,0.45)"
+                    : "1px solid rgba(255,255,255,0.07)",
+                  color: hasReacted ? "#c4aaff" : count > 0 ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)",
                 }}>
-                <span>{emoji}</span>
-                {count > 0 && <span>{count}</span>}
+                <span style={{ fontSize: "11px" }}>{emoji}</span>
+                {count > 0 && <span className="ml-0.5">{count}</span>}
               </button>
             );
           })}
-          {/* Show all reaction buttons to logged-in users even if empty */}
-          {user && REACTIONS.filter(({ key }) => !(reactions[key]?.length > 0)).map(({ key, emoji, label }) => (
-            <button
-              key={key + "-empty"}
-              onClick={() => handleReact(key)}
-              title={label}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all active:scale-90 opacity-0 group-hover:opacity-100"
-              style={{
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid rgba(255,255,255,0.05)",
-                color: "rgba(255,255,255,0.2)",
-              }}>
-              <span>{emoji}</span>
-            </button>
-          ))}
         </div>
 
         {/* Admin moderation toolbar */}

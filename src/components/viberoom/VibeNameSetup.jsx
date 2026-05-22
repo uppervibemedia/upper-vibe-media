@@ -5,24 +5,36 @@ import { base44 } from "@/api/base44Client";
 
 const PROFANITY_LIST = ["fuck", "shit", "bitch", "ass", "cunt", "dick", "pussy", "nigger", "nigga", "faggot"];
 const VIBE_NAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
+const LOCALSTORAGE_KEY = "uv_vibe_name";
+const LOCALSTORAGE_SET_DATE_KEY = "uv_vibe_name_set_date";
 
 function containsProfanity(str) {
   const lower = str.toLowerCase();
   return PROFANITY_LIST.some((word) => lower.includes(word));
 }
 
-export default function VibeNameSetup({ onComplete }) {
+/** Returns saved vibe name for a user — checks profile first, then localStorage */
+export function getSavedVibeName(user) {
+  if (user?.vibe_name) return user.vibe_name;
+  return localStorage.getItem(LOCALSTORAGE_KEY) || null;
+}
+
+/** Returns true if user can change their vibe name (30-day cooldown) */
+export function canChangeVibeName() {
+  const setDate = localStorage.getItem(LOCALSTORAGE_SET_DATE_KEY);
+  if (!setDate) return true;
+  const daysSince = (Date.now() - parseInt(setDate, 10)) / (1000 * 60 * 60 * 24);
+  return daysSince >= 30;
+}
+
+export default function VibeNameSetup({ onComplete, isChange = false }) {
   const [vibeName, setVibeName] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const validate = (name) => {
-    if (!VIBE_NAME_REGEX.test(name)) {
-      return "3–20 characters, letters, numbers, and underscores only.";
-    }
-    if (containsProfanity(name)) {
-      return "That name isn't allowed. Please choose a positive vibe name.";
-    }
+    if (!VIBE_NAME_REGEX.test(name)) return "3–20 characters, letters, numbers, and underscores only.";
+    if (containsProfanity(name)) return "That name isn't allowed. Please choose a positive vibe name.";
     return null;
   };
 
@@ -34,7 +46,17 @@ export default function VibeNameSetup({ onComplete }) {
     setSaving(true);
     setError("");
     try {
-      await base44.auth.updateMe({ vibe_name: trimmed });
+      // Always persist to localStorage (works for guests + as cache for logged-in users)
+      localStorage.setItem(LOCALSTORAGE_KEY, trimmed);
+      localStorage.setItem(LOCALSTORAGE_SET_DATE_KEY, Date.now().toString());
+
+      // Try to persist to user profile if logged in
+      try {
+        await base44.auth.updateMe({ vibe_name: trimmed });
+      } catch (_) {
+        // Not logged in or update failed — localStorage is the fallback
+      }
+
       onComplete(trimmed);
     } catch (_) {
       setError("Something went wrong. Please try again.");
@@ -51,13 +73,12 @@ export default function VibeNameSetup({ onComplete }) {
         initial={{ opacity: 0, scale: 0.93, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", damping: 26, stiffness: 260 }}
-        className="w-full max-w-sm rounded-3xl overflow-hidden"
+        className="w-full max-w-sm rounded-3xl overflow-hidden relative"
         style={{
           background: "linear-gradient(160deg,#0d0d22,#0a0a1a)",
           border: "1px solid rgba(155,126,255,0.3)",
           boxShadow: "0 0 60px rgba(155,126,255,0.12)",
         }}>
-        {/* Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-24 rounded-full blur-[50px] opacity-20 pointer-events-none"
           style={{ background: "#9B7EFF" }} />
 
@@ -68,7 +89,7 @@ export default function VibeNameSetup({ onComplete }) {
           </div>
 
           <h2 className="font-heading font-black text-xl text-white text-center mb-1">
-            Create Your Vibe Name
+            {isChange ? "Change Your Vibe Name" : "Create Your Vibe Name"}
           </h2>
           <p className="text-white/40 text-sm text-center leading-relaxed mb-6">
             This is how people will see you in the Vibe Room.
@@ -103,6 +124,7 @@ export default function VibeNameSetup({ onComplete }) {
 
             <p className="text-[10px] text-white/25 leading-relaxed">
               3–20 characters · Letters, numbers & underscores only · No profanity
+              {isChange && " · Can be changed once every 30 days"}
             </p>
 
             <button
@@ -115,7 +137,7 @@ export default function VibeNameSetup({ onComplete }) {
                 boxShadow: "0 4px 20px rgba(155,126,255,0.3)",
                 letterSpacing: "0.05em",
               }}>
-              {saving ? "Setting vibe..." : "Enter the Room ✦"}
+              {saving ? "Setting vibe..." : isChange ? "Update Name ✦" : "Enter the Room ✦"}
             </button>
           </form>
         </div>
