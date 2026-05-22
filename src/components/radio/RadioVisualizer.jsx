@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { base44 } from "@/api/base44Client";
 
 const STORAGE_KEY = "uvm_visualizer_style";
 
 // ── Detect iOS Safari / PWA ───────────────────────────────────────────────────
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isSafari = /Safari\//.test(navigator.userAgent) && !/Chrome\//.test(navigator.userAgent);
+const iosNoAudioContext = isIOS; // iOS skips AudioContext entirely in PlayerContext
 
 // ── Safe roundRect polyfill (iOS < 15.4 doesn't have it) ─────────────────────
 function safeRoundRect(ctx, x, y, w, h, r) {
@@ -487,12 +490,125 @@ function StyleSheet({ open, onClose, current, onSelect }) {
   );
 }
 
+// ── iOS Artwork Fallback Visualizer ──────────────────────────────────────────
+// Used on iOS Safari where AudioContext cannot attach to the audio element.
+// Shows the current radio song's cover art with a pulsing glow animation.
+// Falls back to a generic animation if no cover art is available.
+function iOSArtworkFallback({ isPlaying, currentRadioSong, matchedVisualizer }) {
+  const coverUrl = currentRadioSong?.cover_url || matchedVisualizer?.thumbnail_url || null;
+  const songId   = currentRadioSong?.id || null;
+
+  console.log("[RadioVisualizer] iOS fallback | isIOS:", isIOS, "| isSafari:", isSafari,
+    "| radioAudioElementFound:", !!(window._uvAudioEl || document.querySelector("audio")),
+    "| radioAudioSrc:", (window._uvAudioEl || document.querySelector("audio"))?.src?.substring(0, 60) || "none",
+    "| audioContextState:", window._uvAudioCtx?.state || "not-created (iOS skip)",
+    "| analyserConnected:", !!(window._uvAnalyser),
+    "| currentRadioSongId:", songId,
+    "| matchedVisualizerId:", matchedVisualizer?.id || null,
+    "| usingFallbackVisualizer:", true,
+    "| radioStillPlaying:", !!(window._uvAudioEl || document.querySelector("audio"))?.paused === false);
+
+  if (!coverUrl) {
+    // Generic animated fallback — pulsing rings
+    return (
+      <div className="w-full flex items-center justify-center" style={{ height: 110, position: "relative" }}>
+        {[0, 1, 2].map((i) => (
+          <motion.div key={i}
+            animate={{ scale: isPlaying ? [1, 1.4 + i * 0.15, 1] : 1, opacity: isPlaying ? [0.3, 0.6, 0.3] : 0.15 }}
+            transition={{ duration: 1.8 + i * 0.3, repeat: Infinity, ease: "easeInOut", delay: i * 0.4 }}
+            style={{
+              position: "absolute",
+              width: 60 + i * 18,
+              height: 60 + i * 18,
+              borderRadius: "50%",
+              border: `1px solid ${i % 2 === 0 ? "rgba(0,229,255,0.5)" : "rgba(155,126,255,0.4)"}`,
+            }}
+          />
+        ))}
+        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(0,229,255,0.15)", position: "relative", zIndex: 1 }} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full flex items-center justify-center" style={{ height: 110, position: "relative", overflow: "hidden" }}>
+      {/* Blurred background */}
+      <div style={{
+        position: "absolute", inset: 0,
+        backgroundImage: `url(${coverUrl})`,
+        backgroundSize: "cover", backgroundPosition: "center",
+        filter: "blur(20px) brightness(0.35)",
+      }} />
+      {/* Pulsing artwork */}
+      <motion.img
+        key={songId}
+        src={coverUrl}
+        alt={currentRadioSong?.title || "Now Playing"}
+        animate={isPlaying ? {
+          boxShadow: ["0 0 12px rgba(0,229,255,0.2)", "0 0 32px rgba(0,229,255,0.5)", "0 0 12px rgba(0,229,255,0.2)"],
+          scale: [1, 1.03, 1],
+        } : { boxShadow: "0 0 8px rgba(0,0,0,0.5)", scale: 1 }}
+        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          width: 78, height: 78, borderRadius: 12, objectFit: "cover",
+          position: "relative", zIndex: 1,
+          border: "1px solid rgba(0,229,255,0.25)",
+        }}
+      />
+      {/* Waveform bars overlay */}
+      {isPlaying && (
+        <div className="absolute bottom-2 left-0 right-0 flex items-end justify-center gap-0.5" style={{ zIndex: 2 }}>
+          {[4, 7, 10, 14, 10, 7, 4, 10, 14, 7, 4].map((h, i) => (
+            <motion.div key={i}
+              animate={{ height: [`${h * 0.5}px`, `${h}px`, `${h * 0.6}px`] }}
+              transition={{ duration: 0.7 + i * 0.08, repeat: Infinity, ease: "easeInOut", delay: i * 0.06 }}
+              style={{ width: 3, borderRadius: 2, background: i % 3 === 0 ? "rgba(0,229,255,0.7)" : i % 3 === 1 ? "rgba(155,126,255,0.6)" : "rgba(237,184,74,0.5)" }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main exported component ───────────────────────────────────────────────────
-export default function RadioVisualizer({ isPlaying }) {
+// currentRadioSong: passed from Radio page so iOS fallback shows the right song art
+export default function RadioVisualizer({ isPlaying, currentRadioSong }) {
   const [style, setStyle] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY) || "Bars"; } catch { return "Bars"; }
   });
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [matchedVisualizer, setMatchedVisualizer] = useState(null);
+
+  // On iOS, look up a matching visualizer for the current song (for thumbnail fallback)
+  useEffect(() => {
+    if (!iosNoAudioContext || !currentRadioSong?.id) return;
+    base44.entities.Visualizer.filter({ linked_song_id: currentRadioSong.id, status: "published" }, "display_order", 1)
+      .then((v) => {
+        const match = v.find((viz) => viz.linked_song_id === currentRadioSong.id);
+        setMatchedVisualizer(match || null);
+
+        console.log("[RadioVisualizer] song lookup | currentRadioSongId:", currentRadioSong.id,
+          "| matchedVisualizerId:", match?.id || null,
+          "| usingFallbackVisualizer:", iosNoAudioContext);
+      })
+      .catch(() => setMatchedVisualizer(null));
+  }, [currentRadioSong?.id]);
+
+  // On non-iOS: also log debug info whenever key values are available
+  useEffect(() => {
+    if (iosNoAudioContext) return; // iOS logging is done in the fallback component
+    const audio = document.querySelector("audio") || null;
+    console.log("[RadioVisualizer] desktop/android | isIOS:", isIOS, "| isSafari:", isSafari,
+      "| radioAudioElementFound:", !!audio,
+      "| radioAudioSrc:", audio?.src?.substring(0, 60) || "none",
+      "| audioContextState:", window._uvAudioCtx?.state || "none",
+      "| analyserConnected:", !!(window._uvAnalyser),
+      "| currentRadioSongId:", currentRadioSong?.id || null,
+      "| matchedVisualizerId:", null,
+      "| usingFallbackVisualizer:", false,
+      "| radioStillPlaying:", audio ? !audio.paused : false);
+  }, [currentRadioSong?.id]);
 
   const handleSelect = (s) => {
     setStyle(s);
@@ -509,6 +625,16 @@ export default function RadioVisualizer({ isPlaying }) {
       default:                 return <BarsViz isPlaying={isPlaying} />;
     }
   };
+
+  // On iOS Safari: AudioContext is intentionally skipped (AirPlay/BT compatibility).
+  // Show the current song's artwork with animated waveform instead of blank canvas.
+  if (iosNoAudioContext) {
+    return (
+      <div className="w-full" style={{ minHeight: 110 }}>
+        {iOSArtworkFallback({ isPlaying, currentRadioSong, matchedVisualizer })}
+      </div>
+    );
+  }
 
   return (
     <>
