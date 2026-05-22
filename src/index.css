@@ -596,30 +596,28 @@ html.solar-transitioning *::after {
 
 /* ── SOLAR: HOMEPAGE HERO LOGO FIXES ────────────────────────────────────────── */
 
-/* UPPER VIBE logo — restore vibrant electric blue/teal with strong readability */
+/* UPPER VIBE logo — kill the gradient clip and force solid electric teal */
 .solar [style*="background: linear-gradient(165deg, #FFFFFF"] {
-  background: none !important;
-  WebkitBackgroundClip: unset !important;
-  WebkitTextFillColor: unset !important;
-  backgroundClip: unset !important;
-  -webkit-text-fill-color: unset !important;
+  background: transparent !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #00A8D4 !important;
   color: #00A8D4 !important;
-  font-weight: 900 !important;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 168, 212, 0.3) !important;
+  filter: none !important;
   opacity: 1 !important;
+  text-shadow: 0 2px 8px rgba(0, 100, 160, 0.18) !important;
 }
 
-/* MEDIA logo — restore vibrant rich gold */
+/* MEDIA logo — kill the gradient clip and force solid rich gold */
 .solar [style*="background: linear-gradient(105deg, #8A5E1A"] {
-  background: none !important;
-  WebkitBackgroundClip: unset !important;
-  WebkitTextFillColor: unset !important;
-  backgroundClip: unset !important;
-  -webkit-text-fill-color: unset !important;
+  background: transparent !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #C8892A !important;
   color: #C8892A !important;
-  font-weight: 800 !important;
-  text-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.06), 0 0 1px rgba(200, 137, 42, 0.25) !important;
+  filter: none !important;
   opacity: 1 !important;
+  text-shadow: 0 1px 6px rgba(160, 90, 0, 0.15) !important;
 }
 
 /* High-Vibration Music badge — stronger contrast */
