@@ -52,7 +52,11 @@ function drawBars(ctx, W, H, freqData, bufLen) {
     const rawV = freqData[i * step] / 255;
     // Right-side boost: bars at index > 30 get extra height multiplier
     const boost = i > 30 ? 1 + (i - 30) / 30 * 0.8 : 1;
-    const v = Math.min(1, rawV * boost);
+    // Extra global bass boost so every bar punches on the kick
+    const bassLen2 = Math.floor(bufLen * 0.06);
+    let bassS = 0; for (let j = 0; j < bassLen2; j++) bassS += freqData[j];
+    const bPulse = bassS / (bassLen2 * 255);
+    const v = Math.min(1, rawV * boost * (1 + bPulse * 0.9));
     const h = Math.max(4, v * H * 0.96);
     const x = i * (barW + gap);
     const hue = 185 + v * 60;
@@ -68,35 +72,42 @@ function drawBars(ctx, W, H, freqData, bufLen) {
   }
 }
 
-function drawWaveform(ctx, W, H, waveData) {
+function drawWaveform(ctx, W, H, waveData, freqData, bufLen) {
+  // Bass detection
+  const bassLen = Math.floor(bufLen * 0.08);
+  let bassSum = 0;
+  for (let i = 0; i < bassLen; i++) bassSum += freqData[i];
+  const bassPulse = bassSum / (bassLen * 255);
+  const beatScale = 1 + bassPulse * 1.4; // expands amplitude on beat
+
   // Primary wave
   ctx.beginPath();
   const sliceW = W / waveData.length;
   let x = 0;
   for (let i = 0; i < waveData.length; i++) {
-    const v = waveData[i] / 128.0;
+    const v = (waveData[i] / 128.0 - 1) * beatScale + 1;
     const y = (v * H) / 2;
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
     x += sliceW;
   }
-  ctx.strokeStyle = "rgba(0,229,255,0.9)";
-  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = `rgba(0,229,255,${0.7 + bassPulse * 0.3})`;
+  ctx.lineWidth = 2 + bassPulse * 2.5;
   ctx.lineJoin = "round";
   ctx.stroke();
 
-  // Mirror wave (lighter)
+  // Mirror wave
   ctx.beginPath();
   x = 0;
   for (let i = 0; i < waveData.length; i++) {
-    const v = waveData[i] / 128.0;
+    const v = (waveData[i] / 128.0 - 1) * beatScale + 1;
     const y = H - (v * H) / 2;
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
     x += sliceW;
   }
-  ctx.strokeStyle = "rgba(0,180,220,0.3)";
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = `rgba(0,180,220,${0.2 + bassPulse * 0.4})`;
+  ctx.lineWidth = 1 + bassPulse * 1.5;
   ctx.stroke();
 }
 
@@ -182,11 +193,11 @@ function drawPulse(ctx, W, H, freqData, bufLen) {
   const avgPulse = freqData.reduce((s, v) => s + v, 0) / (bufLen * 255);
   const baseR = Math.min(W, H) * 0.24;
 
-  // Concentric rings
+  // Concentric rings — slam outward on beat
   const rings = [
-    { r: baseR * (1 + bassPulse * 0.3),  alpha: 0.8,  width: 2.5, color: "0,220,255" },
-    { r: baseR * (1 + avgPulse * 0.5 + 0.12), alpha: 0.35, width: 1.5, color: "155,126,255" },
-    { r: baseR * (1 + avgPulse * 0.7 + 0.25), alpha: 0.15, width: 1,   color: "0,200,220" },
+    { r: baseR * (1 + bassPulse * 0.65),  alpha: Math.min(1, 0.7 + bassPulse * 0.3),  width: 2.5 + bassPulse * 2, color: "0,220,255" },
+    { r: baseR * (1 + avgPulse * 0.7 + bassPulse * 0.3), alpha: 0.3 + bassPulse * 0.3, width: 1.5, color: "155,126,255" },
+    { r: baseR * (1 + avgPulse * 0.9 + bassPulse * 0.45), alpha: 0.12 + bassPulse * 0.2, width: 1, color: "0,200,220" },
   ];
   for (const ring of rings) {
     if (ring.r <= 0) continue;
@@ -203,8 +214,8 @@ function drawPulse(ctx, W, H, freqData, bufLen) {
   for (let i = 0; i < barCount; i++) {
     const v = freqData[i * step] / 255;
     const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2;
-    const inner = baseR * (1.04 + bassPulse * 0.06);
-    const outer = inner + Math.max(0, v * baseR * 0.65 + 2);
+    const inner = baseR * (1.04 + bassPulse * 0.12);
+    const outer = inner + Math.max(0, v * baseR * (0.65 + bassPulse * 0.8) + 2);
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
     ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
@@ -229,16 +240,23 @@ function drawPulse(ctx, W, H, freqData, bufLen) {
 }
 
 function drawSpectrum(ctx, W, H, freqData, bufLen, t) {
+  // Bass detection for beat flash
+  const bassLen = Math.floor(bufLen * 0.08);
+  let bassSum = 0;
+  for (let i = 0; i < bassLen; i++) bassSum += freqData[i];
+  const bassPulse = bassSum / (bassLen * 255);
+  const isBeat = bassPulse > 0.5;
+
   const bands = 5;
   const bandSize = Math.floor(bufLen / bands);
   const bandAvgs = [];
   for (let b = 0; b < bands; b++) {
     let sum = 0;
     for (let i = b * bandSize; i < (b + 1) * bandSize; i++) sum += freqData[i] || 0;
-    bandAvgs.push(sum / bandSize / 255);
+    // Boost each band by bass energy so everything reacts to the beat
+    bandAvgs.push(Math.min(1, (sum / bandSize / 255) * (1 + bassPulse * 1.8)));
   }
 
-  // Draw a flowing wave per band (stacked vertically)
   const sliceH = H / bands;
   const colors = [
     "0,229,255", "0,200,220", "100,160,255", "155,126,255", "200,100,255"
@@ -247,35 +265,61 @@ function drawSpectrum(ctx, W, H, freqData, bufLen, t) {
   for (let b = 0; b < bands; b++) {
     const amp = bandAvgs[b];
     const centerY = sliceH * b + sliceH / 2;
-    const waveH = amp * sliceH * 0.75;
-    const freq = 1.5 + b * 0.6;
-    const phase = t * (0.8 + b * 0.3);
+    // Wave height scales hard with amplitude + extra beat kick on bass band
+    const beatBoost = b === 0 && isBeat ? 1.6 : 1;
+    const waveH = amp * sliceH * 1.1 * beatBoost;
+    const freq = 2 + b * 0.8;
+    // Phase speed ramps up with amplitude — faster = more active feel
+    const phase = t * (1.2 + b * 0.5 + amp * 2);
 
+    // Draw filled shape first (bottom half fill)
     ctx.beginPath();
-    for (let px = 0; px <= W; px += 3) {
+    for (let px = 0; px <= W; px += 2) {
       const nx = px / W;
       const y = centerY + Math.sin(nx * Math.PI * 2 * freq + phase) * waveH;
       if (px === 0) ctx.moveTo(px, y);
       else ctx.lineTo(px, y);
     }
-    ctx.strokeStyle = `rgba(${colors[b]}, ${0.4 + amp * 0.55})`;
-    ctx.lineWidth = 1.5 + amp * 2;
+    ctx.lineTo(W, centerY + sliceH * 0.6);
+    ctx.lineTo(0, centerY + sliceH * 0.6);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(${colors[b]}, ${0.04 + amp * 0.18})`;
+    ctx.fill();
+
+    // Main wave line — thicker & brighter on beat
+    ctx.beginPath();
+    for (let px = 0; px <= W; px += 2) {
+      const nx = px / W;
+      const y = centerY + Math.sin(nx * Math.PI * 2 * freq + phase) * waveH;
+      if (px === 0) ctx.moveTo(px, y);
+      else ctx.lineTo(px, y);
+    }
+    ctx.strokeStyle = `rgba(${colors[b]}, ${0.5 + amp * 0.5})`;
+    ctx.lineWidth = isBeat && b < 2 ? 3 + amp * 3 : 1.5 + amp * 2.5;
     ctx.lineJoin = "round";
     ctx.stroke();
 
-    // Fill glow below wave
+    // Second harmonic wave (lighter, offset phase) for richness
     ctx.beginPath();
-    for (let px = 0; px <= W; px += 3) {
+    for (let px = 0; px <= W; px += 2) {
       const nx = px / W;
-      const y = centerY + Math.sin(nx * Math.PI * 2 * freq + phase) * waveH;
+      const y = centerY + Math.sin(nx * Math.PI * 2 * (freq * 2) + phase * 1.3 + 1) * waveH * 0.35;
       if (px === 0) ctx.moveTo(px, y);
       else ctx.lineTo(px, y);
     }
-    ctx.lineTo(W, centerY + sliceH / 2);
-    ctx.lineTo(0, centerY + sliceH / 2);
-    ctx.closePath();
-    ctx.fillStyle = `rgba(${colors[b]}, ${amp * 0.08})`;
-    ctx.fill();
+    ctx.strokeStyle = `rgba(${colors[b]}, ${0.15 + amp * 0.25})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Beat flash overlay on hard kick
+  if (isBeat) {
+    const flashAlpha = (bassPulse - 0.5) * 0.18;
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, `rgba(0,229,255,${flashAlpha})`);
+    grad.addColorStop(1, `rgba(155,126,255,${flashAlpha * 0.5})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
   }
 }
 
@@ -406,20 +450,40 @@ function drawFallbackSpectrum(ctx, W, H, t, active) {
   const sliceH = H / bands;
   const colors = ["0,229,255", "0,200,220", "100,160,255", "155,126,255", "200,100,255"];
   for (let b = 0; b < bands; b++) {
-    const amp = active ? (0.2 + Math.sin(t * (0.9 + b * 0.3) + b * 1.2) * 0.18) : 0.05;
+    // More aggressive oscillation + bigger range
+    const amp = active
+      ? Math.max(0.05, 0.3 + Math.sin(t * (1.4 + b * 0.5) + b * 1.2) * 0.28 + Math.sin(t * (2.8 + b * 0.3)) * 0.12)
+      : 0.05;
     const centerY = sliceH * b + sliceH / 2;
-    const waveH = amp * sliceH * 0.75;
-    const freq = 1.5 + b * 0.6;
-    const phase = t * (0.8 + b * 0.3);
+    const waveH = amp * sliceH * 1.1;
+    const freq = 2 + b * 0.8;
+    const phase = t * (1.2 + b * 0.5 + amp * 2);
+
+    // Fill
     ctx.beginPath();
-    for (let px = 0; px <= W; px += 4) {
+    for (let px = 0; px <= W; px += 3) {
       const nx = px / W;
       const y = centerY + Math.sin(nx * Math.PI * 2 * freq + phase) * waveH;
       if (px === 0) ctx.moveTo(px, y);
       else ctx.lineTo(px, y);
     }
-    ctx.strokeStyle = `rgba(${colors[b]}, ${0.3 + amp * 0.6})`;
-    ctx.lineWidth = 1.5 + amp * 2;
+    ctx.lineTo(W, centerY + sliceH * 0.6);
+    ctx.lineTo(0, centerY + sliceH * 0.6);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(${colors[b]}, ${amp * 0.15})`;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    for (let px = 0; px <= W; px += 3) {
+      const nx = px / W;
+      const y = centerY + Math.sin(nx * Math.PI * 2 * freq + phase) * waveH;
+      if (px === 0) ctx.moveTo(px, y);
+      else ctx.lineTo(px, y);
+    }
+    ctx.strokeStyle = `rgba(${colors[b]}, ${0.4 + amp * 0.55})`;
+    ctx.lineWidth = 1.5 + amp * 2.5;
+    ctx.lineJoin = "round";
     ctx.stroke();
   }
 }
@@ -516,7 +580,7 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
 
         switch (currentMode) {
           case "bars":     drawBars(ctx, W, H, freqData, bufLen); break;
-          case "waveform": drawWaveform(ctx, W, H, waveData); break;
+          case "waveform": drawWaveform(ctx, W, H, waveData, freqData, bufLen); break;
           case "cosmic":   drawCosmic(ctx, W, H, freqData, bufLen, t, particlesRef); break;
           case "spectrum": drawSpectrum(ctx, W, H, freqData, bufLen, t); break;
           case "pulse":
