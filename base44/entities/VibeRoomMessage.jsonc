@@ -4,62 +4,32 @@
   "properties": {
     "user_email": {
       "type": "string",
-      "description": "Email of the post author"
+      "description": "Email of the message sender"
     },
     "user_name": {
       "type": "string",
-      "description": "Vibe Name of the author"
+      "description": "Vibe Name of the sender"
     },
     "user_avatar_url": {
       "type": "string",
-      "description": "Profile picture URL at time of post"
-    },
-    "post_type": {
-      "type": "string",
-      "enum": [
-        "thought",
-        "track_share",
-        "featured"
-      ],
-      "default": "thought",
-      "description": "Type of feed post"
+      "description": "Profile picture URL of the sender at time of message"
     },
     "content": {
       "type": "string",
-      "description": "Listener thought text (max 280 chars)"
-    },
-    "track_id": {
-      "type": "string",
-      "description": "ID of shared track (for track_share posts)"
-    },
-    "track_title": {
-      "type": "string",
-      "description": "Cached track title"
-    },
-    "track_artist": {
-      "type": "string",
-      "description": "Cached artist name"
-    },
-    "track_cover_url": {
-      "type": "string",
-      "description": "Cached cover art URL"
-    },
-    "track_frequency_type": {
-      "type": "string",
-      "description": "e.g. 432hz, 528hz"
+      "description": "Message content"
     },
     "is_listening": {
       "type": "boolean",
       "default": false,
-      "description": "Whether user had music playing when posting"
+      "description": "Whether the user had music playing when they sent the message"
     },
     "now_playing_title": {
       "type": "string",
-      "description": "Track title playing at time of post"
+      "description": "Track title playing at time of message (optional)"
     },
     "reactions": {
       "type": "object",
-      "description": "Reaction counts \u2014 arrays of user emails per type",
+      "description": "Reaction counts keyed by type \u2014 arrays of user emails",
       "properties": {
         "felt_that": {
           "type": "array",
@@ -90,27 +60,23 @@
     "is_hidden": {
       "type": "boolean",
       "default": false,
-      "description": "Admin soft-delete"
-    },
-    "is_pinned": {
-      "type": "boolean",
-      "default": false,
-      "description": "Featured Vibe of the Day \u2014 pinned to top by admin"
+      "description": "Admin soft-delete / hide message"
     },
     "report_count": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "description": "Number of times this message has been reported"
     },
     "reported_by": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "User emails who reported this post"
+      "description": "Array of user emails who reported this message"
     }
   },
   "required": [
     "user_email",
-    "post_type"
+    "content"
   ]
 }
