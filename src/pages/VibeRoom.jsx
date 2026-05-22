@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { usePlayer } from "@/context/PlayerContext";
 import AgeGateModal, { hasConfirmedAge } from "../components/viberoom/AgeGateModal";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import VibeNameSetup, { getSavedVibeName, getSavedVibeAvatar, canChangeVibeName } from "../components/viberoom/VibeNameSetup";
 import NowPlayingCard from "../components/viberoom/NowPlayingCard";
 import DailyPromptCard from "../components/viberoom/DailyPromptCard";
@@ -38,6 +39,12 @@ export default function VibeRoom() {
   const [vibeAvatar, setVibeAvatar] = useState(() => getSavedVibeAvatar(user));
   const [needsVibeName, setNeedsVibeName] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+
+  usePageMeta({
+    title:       "Vibe Room — Live Community Chat",
+    description: "Join the Upper Vibe Media community. Stream music together, share reactions, and raise the frequency in real time.",
+    pageUrl:     `${window.location.origin}/vibe-room`,
+  });
 
   // Analytics: track view once
   useEffect(() => {

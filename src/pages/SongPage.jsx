@@ -14,6 +14,7 @@ import SupportModal from "../components/shared/SupportModal";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
 import { recordUserDownload } from "@/lib/downloadService";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 function toEmbedUrl(url) {
   if (!url || typeof url !== "string") return null;
@@ -176,6 +177,19 @@ export default function SongPage() {
     }
   };
 
+  // ── Dynamic OG / page meta ───────────────────────────────────────────────
+  const artist = track?.artist_display || "Upper Vibe Media";
+  const freq   = track?.frequency_type === "432hz" ? " · 432 Hz" : track?.frequency_type === "528hz" ? " · 528 Hz" : "";
+  usePageMeta(track ? {
+    title:       `${track.title} — ${artist}`,
+    description: track.description
+      ? track.description.substring(0, 155)
+      : `Stream "${track.title}" by ${artist}${freq}. High-vibration music on Upper Vibe Media.`,
+    imageUrl:    track.cover_url || undefined,
+    pageUrl:     `${window.location.origin}/song/${id}`,
+    type:        "music.song",
+  } : { title: "Music" });
+
   const isCurrentTrack = currentTrack?.id === track?.id;
   // Only use visualizer if it's explicitly linked to this exact song
   const linkedVisualizer = visualizer?.linked_song_id === track?.id ? visualizer : null;
@@ -199,7 +213,6 @@ export default function SongPage() {
     );
   }
 
-  const freq = track.frequency_type === "432hz" ? "432 Hz" : track.frequency_type === "528hz" ? "528 Hz" : track.frequency_type || "";
   const releaseYear = track.release_date ? new Date(track.release_date).getFullYear() : null;
 
   return (
