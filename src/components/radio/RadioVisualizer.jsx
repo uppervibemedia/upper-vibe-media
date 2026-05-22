@@ -121,7 +121,7 @@ function drawCosmic(ctx, W, H, freqData, bufLen, t, particlesRef) {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       // Speed slams up on bass hit
-      const speedBase = isBeat ? 1.8 + bassPulse * 3 : 0.5 + pulse * 1.5;
+      const speedBase = isBeat ? 0.8 + bassPulse * 1.5 : 0.2 + pulse * 0.7;
       const speed = speedBase + Math.random() * speedBase * 0.5;
       const spawnR = Math.random() < 0.65 ? 0 : Math.random() * Math.min(W, H) * 0.3;
       particlesRef.current.push({
