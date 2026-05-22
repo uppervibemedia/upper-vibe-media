@@ -7,6 +7,23 @@
 
 import { base44 } from "@/api/base44Client";
 
+// ── Admin guard — never track admin activity ──────────────────────────────────
+// Cached so we only call auth.me() once per session.
+let _isAdminCached = null;
+
+async function isAdminUser() {
+  if (_isAdminCached !== null) return _isAdminCached;
+  try {
+    const isAuthed = await base44.auth.isAuthenticated();
+    if (!isAuthed) { _isAdminCached = false; return false; }
+    const me = await base44.auth.me();
+    _isAdminCached = me?.role === "admin";
+  } catch {
+    _isAdminCached = false;
+  }
+  return _isAdminCached;
+}
+
 // ── Session ID ────────────────────────────────────────────────────────────────
 const SESSION_KEY = "uvm_anon_session_id";
 
@@ -67,7 +84,10 @@ function buildEvent(eventType, extras = {}) {
 // ── Core track function ───────────────────────────────────────────────────────
 async function track(eventType, extras = {}) {
   try {
-    const event = buildEvent(eventType, extras);
+    // Never record admin activity — keeps stats clean
+    const adminUser = await isAdminUser();
+    if (adminUser) return;
+    const event = buildEvent(eventType, { ...extras, is_admin: false });
     await base44.entities.AnalyticsEvent.create(event);
   } catch {
     // silent — never break the app
@@ -199,6 +219,9 @@ export function streamEnd(completed = false) {
 async function _checkAndSaveStream(completed = false) {
   if (!streamState.songId) return;
   if (streamState.counted && !completed) return; // already saved a 30s stream
+
+  // Skip stream tracking for admins
+  if (await isAdminUser()) return;
 
   const listened = Math.floor(streamState.totalListened);
 

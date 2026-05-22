@@ -81,9 +81,12 @@ export default function AnalyticsDashboard() {
         base44.entities.EmailSubscriber.list("-created_date", 500),
       ]);
 
+      // Exclude admin-generated events (is_admin flag or legacy admin records)
+      const noAdmin = (arr) => arr.filter(r => r.is_admin !== true);
+
       const filter = since
-        ? (arr) => arr.filter(r => r.created_date >= since)
-        : (arr) => arr;
+        ? (arr) => noAdmin(arr).filter(r => r.created_date >= since)
+        : (arr) => noAdmin(arr);
 
       setEvents(filter(allEvents));
       setStreams(filter(allStreams));
