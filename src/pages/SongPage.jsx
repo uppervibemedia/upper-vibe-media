@@ -180,14 +180,12 @@ export default function SongPage() {
 
   // ── Dynamic OG / page meta ───────────────────────────────────────────────
   const artist = track?.artist_display || "Upper Vibe Media";
-  const freq   = track?.frequency_type === "432hz" ? " · 432 Hz" : track?.frequency_type === "528hz" ? " · 528 Hz" : "";
+  const freq   = track?.frequency_type === "432hz" ? "432 Hz" : track?.frequency_type === "528hz" ? "528 Hz" : "";
   usePageMeta(track ? {
-    title:       `${track.title} — ${artist}`,
-    description: track.description
-      ? track.description.substring(0, 155)
-      : `Stream "${track.title}" by ${artist}${freq}. High-vibration music on Upper Vibe Media.`,
+    title:       `${track.title} by ${artist}`,
+    description: "Listening live on Upper Vibe Media",
     imageUrl:    track.cover_url || undefined,
-    pageUrl:     `${window.location.origin}/song/${id}`,
+    pageUrl:     `https://uppervibemedia.com/song/${id}`,
     type:        "music.song",
   } : { title: "Music" });
 

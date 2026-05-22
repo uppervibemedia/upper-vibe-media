@@ -30,9 +30,12 @@ function setMeta(property, content) {
 
 export function usePageMeta({ title, description, imageUrl, pageUrl, type = "website" }) {
   useEffect(() => {
-    const fullTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
-    const img       = imageUrl || DEFAULT_IMG;
-    const desc      = description || `Premium high-vibration music on ${SITE_NAME}.`;
+    // For music.song pages use "[Title] by [Artist]" format, else append site name
+    const fullTitle = type === "music.song"
+      ? (title || SITE_NAME)
+      : (title ? `${title} | ${SITE_NAME}` : SITE_NAME);
+    const img  = imageUrl || DEFAULT_IMG;
+    const desc = description || `Premium high-vibration music on ${SITE_NAME}.`;
 
     // Browser tab title
     document.title = fullTitle;
@@ -41,17 +44,21 @@ export function usePageMeta({ title, description, imageUrl, pageUrl, type = "web
     setMeta("og:title",       fullTitle);
     setMeta("og:description", desc);
     setMeta("og:image",       img);
+    setMeta("og:image:width",  "1200");
+    setMeta("og:image:height", "630");
     if (pageUrl) setMeta("og:url", pageUrl);
-    setMeta("og:type",        type);
-    setMeta("og:site_name",   SITE_NAME);
+    setMeta("og:type",      type);
+    setMeta("og:site_name", SITE_NAME);
 
-    // Twitter/X tags
+    // Twitter/X tags — always summary_large_image for songs
+    const twitterCard = type === "music.song" ? "summary_large_image" : (img !== DEFAULT_IMG ? "summary_large_image" : "summary");
+    setMeta("twitter:card",        twitterCard);
     setMeta("twitter:title",       fullTitle);
     setMeta("twitter:description", desc);
     setMeta("twitter:image",       img);
-    setMeta("twitter:card",        img !== DEFAULT_IMG ? "summary_large_image" : "summary");
+    setMeta("twitter:site",        "@uppervibemedia");
 
-    // description tag
+    // Standard description tag
     setMeta("description", desc);
   }, [title, description, imageUrl, pageUrl, type]);
 }

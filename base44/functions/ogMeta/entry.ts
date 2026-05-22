@@ -33,7 +33,8 @@ function buildHtml({ title, description, imageUrl, pageUrl, type }) {
   const safeDesc   = escapeHtml(description);
   const safeImg    = escapeHtml(imageUrl);
   const safeUrl    = escapeHtml(pageUrl);
-  const twitterCard = imageUrl !== DEFAULT_IMG ? "summary_large_image" : "summary";
+  // Always use summary_large_image for tracks so Facebook/X shows the big artwork card
+  const twitterCard = type === "track" ? "summary_large_image" : (imageUrl !== DEFAULT_IMG ? "summary_large_image" : "summary");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -122,9 +123,8 @@ Deno.serve(async (req) => {
       }
 
       const artist      = track.artist_display || "Upper Vibe Media";
-      const freq        = track.frequency_type === "432hz" ? " · 432 Hz" : track.frequency_type === "528hz" ? " · 528 Hz" : "";
-      const pageTitle   = `${track.title} | ${SITE_NAME}`;
-      const description = `${artist} • Listening live on Upper Vibe Media`;
+      const pageTitle   = `${track.title} by ${artist}`;
+      const description = `Listening live on Upper Vibe Media`;
 
       const imageUrl = buildOgImageUrl({
         coverUrl: track.cover_url,
