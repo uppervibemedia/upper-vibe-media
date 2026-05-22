@@ -82,8 +82,9 @@ const isSafariOnly = (() => {
 // Only pause-on-hide when: not PWA AND is Safari tab.
 const shouldPauseOnHide = !isPWA && isSafariOnly;
 
-console.log("[Player] cold_launch | isPWA:", isPWA, "| isSafariOnly:", isSafariOnly,
-  "| shouldPauseOnHide:", shouldPauseOnHide, "| ua:", navigator.userAgent.substring(0, 80));
+console.log("[Player] cold_launch | isPWA:", isPWA, "| isIOS:", isIOS,
+  "| isSafariOnly:", isSafariOnly, "| shouldPauseOnHide:", shouldPauseOnHide,
+  "| ua:", navigator.userAgent.substring(0, 80));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Global audio instance tracker — detect duplicate audio objects (watchdog)
@@ -96,7 +97,20 @@ let _globalAudioInstanceCount = 0;
 export const sharedHiddenRef = { current: false };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// iOS detection — on iOS/iPadOS we MUST skip AudioContext routing.
+// Routing through Web Audio API (createMediaElementSource) prevents the OS
+// from routing audio to AirPlay, Bluetooth, or TV. On iOS we let the audio
+// element play directly to the system output (which supports all routing).
+// ─────────────────────────────────────────────────────────────────────────────
+const isIOS = (() => {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AudioContext — shared with visualiser, created lazily on first user gesture
+// IMPORTANT: Never created on iOS — would block AirPlay/Bluetooth routing
 // ─────────────────────────────────────────────────────────────────────────────
 let _audioCtx   = null;
 let _analyser   = null;
@@ -114,6 +128,12 @@ function suspendAudioContext() {
 }
 function getOrCreateAudioContext(audioElement) {
   if (!audioElement) return null;
+  // Skip AudioContext entirely on iOS — it intercepts system audio routing
+  // and prevents AirPlay, Bluetooth, and TV output from working.
+  if (isIOS) {
+    console.log("[Player] iOS detected — skipping AudioContext (AirPlay/BT compatible mode)");
+    return null;
+  }
   if (!_audioCtx) {
     _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     window._uvAudioCtx = _audioCtx;
@@ -153,6 +173,14 @@ function enforceRate(audio) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // createFreshAudio — ALWAYS creates a new element (never reuses)
+//
+// AirPlay / Bluetooth / TV requirements:
+//  1. Element must be attached to the DOM (iOS requires this for system routing)
+//  2. disableRemotePlayback = false (explicit opt-in to AirPlay/BT)
+//  3. x-webkit-airplay="allow" attribute (legacy WebKit AirPlay hook)
+//  4. playsinline attribute (prevents iOS from going fullscreen)
+//  5. NO crossOrigin="anonymous" on iOS — CORS header mismatch kills AirPlay
+//     routing on some CDN configs. Only set crossOrigin on non-iOS.
 // ─────────────────────────────────────────────────────────────────────────────
 function createFreshAudio() {
   _globalAudioInstanceCount++;
@@ -160,12 +188,32 @@ function createFreshAudio() {
     console.error("[WD:dup] duplicate audio instance created! count:", _globalAudioInstanceCount);
   }
   const a = new Audio();
-  a.crossOrigin = "anonymous";
-  a.preload     = "auto";
+
+  // CORS: only on non-iOS. On iOS, crossOrigin="anonymous" can break AirPlay
+  // routing when the CDN doesn't return Access-Control-Allow-Origin for the
+  // OPTIONS preflight that AirPlay triggers.
+  if (!isIOS) {
+    a.crossOrigin = "anonymous";
+  }
+
+  a.preload = "auto";
   enforceRate(a);
+
+  // AirPlay / remote playback — explicit enable
   a.setAttribute("x-webkit-airplay", "allow");
   a.setAttribute("playsinline", "");
-  console.log("[Player] audio_created | instance #", _globalAudioInstanceCount);
+  if ("disableRemotePlayback" in a) {
+    a.disableRemotePlayback = false; // explicitly allow AirPlay + BT
+  }
+
+  // Attach to DOM — required for iOS to route audio to AirPlay/BT/TV.
+  // Hidden, zero-size, no visual footprint.
+  a.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
+  a.setAttribute("aria-hidden", "true");
+  document.body.appendChild(a);
+
+  console.log("[Player] audio_created | instance #", _globalAudioInstanceCount,
+    "| iOS:", isIOS, "| domAttached: true");
   return a;
 }
 
@@ -175,6 +223,8 @@ function destroyAudio(audio) {
   audio.pause();
   audio.src = "";
   try { audio.load(); } catch {}
+  // Remove from DOM
+  try { if (audio.parentNode) audio.parentNode.removeChild(audio); } catch {}
   console.log("[Player] audio_destroyed | remaining instances:", _globalAudioInstanceCount);
 }
 
@@ -715,10 +765,15 @@ export function PlayerProvider({ children }) {
       }
     };
 
+    let lastPositionUpdateTime = 0;
     const onTimeUpdate = () => {
       lastTimeRef.current = audio.currentTime;
-      // Update lock screen progress (only from real currentTime)
-      if (!audio.paused && "mediaSession" in navigator && "setPositionState" in navigator.mediaSession) {
+      // Update lock screen progress — throttled to once per second to avoid
+      // flooding the MediaSession API on mobile devices.
+      const now = Date.now();
+      if (!audio.paused && now - lastPositionUpdateTime >= 1000 &&
+          "mediaSession" in navigator && "setPositionState" in navigator.mediaSession) {
+        lastPositionUpdateTime = now;
         try {
           if (audio.duration && isFinite(audio.duration)) {
             navigator.mediaSession.setPositionState({
