@@ -121,7 +121,7 @@ function drawCosmic(ctx, W, H, freqData, bufLen, t, particlesRef) {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       // Speed slams up on bass hit
-      const speedBase = isBeat ? 3.5 + bassPulse * 6 : 1.0 + pulse * 3;
+      const speedBase = isBeat ? 1.8 + bassPulse * 3 : 0.5 + pulse * 1.5;
       const speed = speedBase + Math.random() * speedBase * 0.5;
       const spawnR = Math.random() < 0.65 ? 0 : Math.random() * Math.min(W, H) * 0.3;
       particlesRef.current.push({
@@ -321,7 +321,7 @@ function drawFallbackCosmic(ctx, W, H, t, active, particlesRef) {
     const count = active ? Math.floor(1 + Math.random() * 3) : 1;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = active ? (1.0 + Math.random() * 3.5) : (0.3 + Math.random() * 0.8);
+      const speed = active ? (0.5 + Math.random() * 1.5) : (0.2 + Math.random() * 0.4);
       const spawnR = Math.random() < 0.5 ? 0 : Math.random() * Math.min(W, H) * 0.3;
       particlesRef.current.push({
         x: cx + Math.cos(angle) * spawnR,
