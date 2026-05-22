@@ -17,7 +17,6 @@ import LatestMusicSection from "../components/home/LatestMusicSection";
 import TrendingTracksSection from "../components/home/TrendingTracksSection";
 import SectionHeader from "../components/shared/SectionHeader";
 import PullToRefresh from "../components/shared/PullToRefresh";
-import { useTheme } from "../context/ThemeContext";
 
 // ── Session-stable shuffle ──────────────────────────────────────────────────
 // Same order within a session, different on every new tab/refresh
@@ -57,7 +56,6 @@ export default function Home() {
   const { startRadio, tracksLoaded } = useRadio();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { solarMode } = useTheme();
 
   const handleStartRadio = () => {
     startRadio();
@@ -188,17 +186,7 @@ export default function Home() {
               className="mb-2 sm:mb-3">
 
               {/* UPPER VIBE — smaller on mobile */}
-              <div style={solarMode ? {
-                fontFamily: "var(--font-heading)",
-                fontSize: "clamp(2rem, 6.2vw, 4.8rem)",
-                fontWeight: 900,
-                lineHeight: 0.95,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                display: "block",
-                color: "#0077AA",
-                textShadow: "0 2px 8px rgba(0,100,160,0.18)",
-              } : {
+              <div style={{
                 fontFamily: "var(--font-heading)",
                 fontSize: "clamp(2rem, 6.2vw, 4.8rem)",
                 fontWeight: 900,
@@ -215,28 +203,18 @@ export default function Home() {
 
               {/* Thin divider accent */}
               <div className="flex items-center gap-2 my-1">
-                <div className="h-px w-8" style={{ background: solarMode ? "#D4A843" : "rgba(212,168,67,0.5)" }} />
+                <div className="h-px w-8" style={{ background: "rgba(212,168,67,0.5)" }} />
                 <div className="flex items-end gap-[2.5px]" style={{ height: "8px" }}>
                   {[3, 6, 8, 5, 3].map((h, i) => (
                     <div key={i} className="w-[2px] rounded-full"
-                      style={{ height: `${h}px`, background: solarMode ? "#D4A843" : `rgba(212,168,67,${0.25 + i * 0.06})` }} />
+                      style={{ height: `${h}px`, background: `rgba(212,168,67,${0.25 + i * 0.06})` }} />
                   ))}
                 </div>
                 <div className="h-px flex-1 max-w-[100px]" style={{ background: "linear-gradient(90deg, rgba(212,168,67,0.25), transparent)" }} />
               </div>
 
               {/* MEDIA — smaller on mobile */}
-              <div style={solarMode ? {
-                fontFamily: "var(--font-heading)",
-                fontSize: "clamp(1.1rem, 3.6vw, 2.8rem)",
-                fontWeight: 800,
-                lineHeight: 1.0,
-                letterSpacing: "0.22em",
-                textTransform: "uppercase",
-                display: "block",
-                color: "#B8720A",
-                textShadow: "0 1px 6px rgba(160,90,0,0.18)",
-              } : {
+              <div style={{
                 fontFamily: "var(--font-heading)",
                 fontSize: "clamp(1.1rem, 3.6vw, 2.8rem)",
                 fontWeight: 800,
