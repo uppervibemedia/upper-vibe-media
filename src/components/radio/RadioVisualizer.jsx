@@ -139,23 +139,43 @@ export default function RadioVisualizer({ isPlaying }) {
     stopLoop();
 
     if (isPlaying && audioRef?.current) {
-      // Reuse the global analyser — never create a second AudioContext
       const an = getGlobalAnalyser(audioRef.current);
       if (an) {
         analyserRef.current = an;
         console.log("[RadioVisualizer] ▶️ Starting active animation loop");
         draw();
-        return;
+        return stopLoop;
       }
     }
 
-    // Idle animation
     analyserRef.current = null;
     console.log("[RadioVisualizer] 💤 Starting idle animation loop");
     drawIdle();
 
     return stopLoop;
   }, [isPlaying, audioRef, draw, drawIdle, stopLoop]);
+
+  // ── Pause/resume animation on tab visibility (never affects audio) ────────
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        // Pause RAF loop — audio keeps playing, only rendering stops
+        stopLoop();
+        console.log("[RadioVisualizer] Tab hidden — animation paused, audio unaffected");
+      } else {
+        // Resume animation loop to match current playback state
+        stopLoop();
+        if (isPlaying && analyserRef.current) {
+          draw();
+        } else if (!analyserRef.current) {
+          drawIdle();
+        }
+        console.log("[RadioVisualizer] Tab visible — animation resumed");
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [isPlaying, draw, drawIdle, stopLoop]);
 
   // ── Resize canvas to match container — DPR-aware, never 0×0 ────────────
   useEffect(() => {

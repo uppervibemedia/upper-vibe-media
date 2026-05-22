@@ -85,6 +85,14 @@ async function resumeAudioContext() {
   }
 }
 function suspendAudioContext() {
+  // Only suspend on iOS Safari — desktop browsers must keep AudioContext running
+  // for background playback (suspending it stops audio on Chrome/Edge/Firefox)
+  const isIos = typeof navigator !== "undefined" && /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const isPwaMode = typeof window !== "undefined" && (
+    window.navigator.standalone === true ||
+    window.matchMedia("(display-mode: standalone)").matches
+  );
+  if (!isIos || isPwaMode) return; // desktop + PWA: never suspend
   if (!_audioCtx || _audioCtx.state !== "running") return;
   try { _audioCtx.suspend(); } catch {}
 }
@@ -742,6 +750,24 @@ export function PlayerProvider({ children }) {
   }, [startWatchdog, stopWatchdog]);
 
   // ── Visibility / page lifecycle ───────────────────────────────────────────
+  //
+  // Desktop (Chrome/Edge/Firefox): browsers allow background audio — NEVER pause
+  //   on visibilitychange. Only resume AudioContext if it was suspended.
+  //
+  // iOS Safari tab (non-PWA): iOS aggressively suspends background tabs.
+  //   We pause on hide so the OS doesn't kill us, then let the user resume.
+  //
+  // PWA (iOS & desktop): audio keeps playing in background — never pause.
+  //
+  // Detection: isIosSafari = iOS + NOT PWA (mobile Safari tab mode)
+  // ─────────────────────────────────────────────────────────────────────────
+  const isIosSafari = (() => {
+    if (typeof navigator === "undefined") return false;
+    const ua = navigator.userAgent;
+    const isIos = /iPhone|iPad|iPod/.test(ua);
+    return isIos && !isPWA;
+  })();
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -749,38 +775,38 @@ export function PlayerProvider({ children }) {
 
     const doHide = (event) => {
       sharedHiddenRef.current = true;
-      // Save position before anything changes
       if (audio.currentTime > 0) {
         savedTimeRef.current = audio.currentTime;
         lastTimeRef.current  = audio.currentTime;
       }
       console.log("[Player] PAGE HIDE | event:", event, "| isPWA:", isPWA,
+        "| isIosSafari:", isIosSafari,
         "| ct:", audio.currentTime.toFixed(2), "| paused:", audio.paused);
 
-      if (isPWA) {
-        // PWA: iOS continues audio in background — just stop watchdog
-        stopWatchdog();
-      } else {
-        // Safari tab: pause and save position
+      if (isIosSafari) {
+        // iOS Safari tab: must pause or OS kills the audio buffer
         stopWatchdog();
         if (!audio.paused) {
           suspendAudioContext();
           audio.pause();
           setMediaSessionState(false);
-          console.log("[Player] Safari hide — paused at:", savedTimeRef.current.toFixed(2));
+          console.log("[Player] iOS Safari tab hide — paused at:", savedTimeRef.current.toFixed(2));
         }
+      } else {
+        // Desktop & PWA: just stop watchdog, let audio continue in background
+        stopWatchdog();
+        console.log("[Player] Desktop/PWA hide — audio continues in background");
       }
     };
 
     const doShow = (persisted, event) => {
       clearTimeout(showTimer);
       sharedHiddenRef.current = false;
-
-      const wasPlaying = !audio.paused;
       enforceRate(audio); // ALWAYS enforce on show
 
       console.log("[Player] PAGE SHOW | event:", event, "| persisted:", persisted,
-        "| isPWA:", isPWA, "| ct:", audio.currentTime.toFixed(2),
+        "| isPWA:", isPWA, "| isIosSafari:", isIosSafari,
+        "| ct:", audio.currentTime.toFixed(2),
         "| rate:", audio.playbackRate, "| paused:", audio.paused, "| rs:", audio.readyState);
 
       if (!audio.src && !loadedSrcRef.current) {
@@ -792,12 +818,27 @@ export function PlayerProvider({ children }) {
       setIsPlaying(!audio.paused);
       setMediaSessionState(!audio.paused);
 
-      if (isPWA) {
-        // PWA: resume watchdog if audio is playing
-        if (!audio.paused) startWatchdog(audio);
+      if (isIosSafari) {
+        // iOS Safari tab: audio was paused on hide — user must tap play to resume
+        // (This is correct behaviour — never auto-resume on iOS Safari tab)
+        console.log("[Player] iOS Safari tab show — awaiting user play tap");
       } else {
-        // Safari: audio was paused on hide — UI shows paused, user must tap play
-        // (This is correct — never auto-resume in Safari tab)
+        // Desktop / PWA: audio should still be playing — just resume AudioContext
+        // if it was suspended, enforce rate, and restart watchdog
+        resumeAudioContext().catch(() => {});
+        if (!audio.paused) {
+          enforceRate(audio);
+          startWatchdog(audio);
+          console.log("[Player] Desktop/PWA show — audio still playing, watchdog resumed");
+        } else if (loadedSrcRef.current) {
+          // AudioContext may have suspended audio on desktop — attempt recovery
+          console.log("[Player] Desktop show — audio unexpectedly paused, attempting recovery");
+          resumeAudioContext().then(() => {
+            enforceRate(audio);
+            safePlay(audio, "visibility-recovery");
+            setIsPlaying(true);
+          }).catch(() => {});
+        }
       }
     };
 
@@ -816,7 +857,7 @@ export function PlayerProvider({ children }) {
       showTimer = setTimeout(() => doShow(e.persisted, "pageshow"), 80);
     };
 
-    // freeze/resume for BFCache
+    // BFCache freeze/resume
     const onFreeze  = () => doHide("freeze");
     const onResume  = () => {
       clearTimeout(showTimer);
@@ -838,7 +879,7 @@ export function PlayerProvider({ children }) {
       window.removeEventListener("resume",    onResume);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stopWatchdog, startWatchdog]);
+  }, [stopWatchdog, startWatchdog, safePlay]);
 
   // ── togglePlay ────────────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
