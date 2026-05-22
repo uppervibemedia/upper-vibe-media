@@ -30,16 +30,8 @@ export default function AudioPlayer() {
     if (!audio) return; // guard: audio element not yet created
 
     const onTimeUpdate = () => {
-      // ── Strict progress guard ─────────────────────────────────────────
-      // Only advance the bar if the audio is truly playing forward.
-      // Conditions that must ALL be true:
-      //   1. Page is visible (sharedHiddenRef.current === false)
-      //   2. Audio is not paused
-      //   3. Audio has enough data (readyState >= 2 = HAVE_CURRENT_DATA)
-      //   4. currentTime is actually moving forward (not stuck, not replaying)
-      if (sharedHiddenRef.current) return;
-      if (audio.paused)            return;
-      if (audio.readyState < 2)    return;
+      if (audio.paused)         return;
+      if (audio.readyState < 2) return;
 
       const ct = audio.currentTime;
       // If time hasn't moved forward — freeze (handles iOS buffering stalls)
@@ -47,6 +39,10 @@ export default function AudioPlayer() {
 
       localLastTimeRef.current = ct;
       if (lastTimeRef) lastTimeRef.current = ct; // keep PlayerContext in sync
+
+      // Skip React state updates while page is hidden — no point rendering an
+      // invisible bar. Audio continues uninterrupted; bar will snap on show.
+      if (sharedHiddenRef.current) return;
 
       const pct = (ct / audio.duration) * 100 || 0;
       setProgress(pct);
@@ -83,11 +79,25 @@ export default function AudioPlayer() {
       setDuration(0);
     };
 
+    // Snap progress bar when user returns to tab after background playback
+    const onVisibilityShow = () => {
+      if (document.visibilityState !== "hidden") {
+        const ct = audio.currentTime;
+        if (ct > 0 && audio.duration) {
+          localLastTimeRef.current = ct;
+          if (lastTimeRef) lastTimeRef.current = ct;
+          setProgress((ct / audio.duration) * 100 || 0);
+          setCurrentSec(ct);
+        }
+      }
+    };
+
     audio.addEventListener("timeupdate",     onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("play",           onPlay);
     audio.addEventListener("pause",          onPause);
     audio.addEventListener("emptied",        onEmptied);
+    document.addEventListener("visibilitychange", onVisibilityShow);
 
     return () => {
       audio.removeEventListener("timeupdate",     onTimeUpdate);
@@ -95,6 +105,7 @@ export default function AudioPlayer() {
       audio.removeEventListener("play",           onPlay);
       audio.removeEventListener("pause",          onPause);
       audio.removeEventListener("emptied",        onEmptied);
+      document.removeEventListener("visibilitychange", onVisibilityShow);
     };
   }, [audioRef, lastTimeRef]);
 

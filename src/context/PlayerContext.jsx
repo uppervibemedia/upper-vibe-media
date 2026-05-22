@@ -59,7 +59,31 @@ const isPWA = (() => {
     window.matchMedia("(display-mode: fullscreen)").matches
   );
 })();
-console.log("[Player] cold_launch | isPWA:", isPWA, "| ua:", navigator.userAgent.substring(0, 80));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Safari detection — Safari is the ONLY browser that requires pause-on-hide
+// for background tab audio. Chrome, Firefox, Edge all support background audio.
+// ─────────────────────────────────────────────────────────────────────────────
+const isSafariOnly = (() => {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  // Safari: has "Safari/" but NOT "Chrome/" and NOT "Chromium/" and NOT "EdgA/" and NOT "Firefox/"
+  return (
+    /Safari\//.test(ua) &&
+    !/Chrome\//.test(ua) &&
+    !/Chromium\//.test(ua) &&
+    !/EdgA?\//.test(ua) &&
+    !/Firefox\//.test(ua) &&
+    !/FxiOS\//.test(ua)
+  );
+})();
+
+// On desktop non-Safari (Chrome, Edge, Firefox), audio plays in background tabs natively.
+// Only pause-on-hide when: not PWA AND is Safari tab.
+const shouldPauseOnHide = !isPWA && isSafariOnly;
+
+console.log("[Player] cold_launch | isPWA:", isPWA, "| isSafariOnly:", isSafariOnly,
+  "| shouldPauseOnHide:", shouldPauseOnHide, "| ua:", navigator.userAgent.substring(0, 80));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Global audio instance tracker — detect duplicate audio objects (watchdog)
@@ -755,20 +779,23 @@ export function PlayerProvider({ children }) {
         lastTimeRef.current  = audio.currentTime;
       }
       console.log("[Player] PAGE HIDE | event:", event, "| isPWA:", isPWA,
+        "| isSafariOnly:", isSafariOnly, "| shouldPauseOnHide:", shouldPauseOnHide,
         "| ct:", audio.currentTime.toFixed(2), "| paused:", audio.paused);
 
-      if (isPWA) {
-        // PWA: iOS continues audio in background — just stop watchdog
-        stopWatchdog();
-      } else {
-        // Safari tab: pause and save position
+      if (shouldPauseOnHide) {
+        // Safari tab only: pause and save position so iOS doesn't buffer-glitch
         stopWatchdog();
         if (!audio.paused) {
           suspendAudioContext();
           audio.pause();
           setMediaSessionState(false);
-          console.log("[Player] Safari hide — paused at:", savedTimeRef.current.toFixed(2));
+          console.log("[Player] Safari tab hide — paused at:", savedTimeRef.current.toFixed(2));
         }
+      } else {
+        // Desktop Chrome/Edge/Firefox + PWA: keep audio playing in background.
+        // Just stop the watchdog to avoid false stall alerts while hidden.
+        stopWatchdog();
+        console.log("[Player] desktop/PWA hide — audio continues in background");
       }
     };
 
@@ -776,11 +803,11 @@ export function PlayerProvider({ children }) {
       clearTimeout(showTimer);
       sharedHiddenRef.current = false;
 
-      const wasPlaying = !audio.paused;
-      enforceRate(audio); // ALWAYS enforce on show
+      enforceRate(audio); // ALWAYS enforce rate on show
 
       console.log("[Player] PAGE SHOW | event:", event, "| persisted:", persisted,
-        "| isPWA:", isPWA, "| ct:", audio.currentTime.toFixed(2),
+        "| isPWA:", isPWA, "| shouldPauseOnHide:", shouldPauseOnHide,
+        "| ct:", audio.currentTime.toFixed(2),
         "| rate:", audio.playbackRate, "| paused:", audio.paused, "| rs:", audio.readyState);
 
       if (!audio.src && !loadedSrcRef.current) {
@@ -788,16 +815,24 @@ export function PlayerProvider({ children }) {
         return;
       }
 
-      // Sync React state from actual audio state
+      // Sync React state from actual audio state (audio may have self-paused or kept playing)
       setIsPlaying(!audio.paused);
       setMediaSessionState(!audio.paused);
 
-      if (isPWA) {
-        // PWA: resume watchdog if audio is playing
-        if (!audio.paused) startWatchdog(audio);
+      if (!audio.paused) {
+        // Audio kept playing (desktop) — resume watchdog and resume AudioContext
+        resumeAudioContext().catch(() => {});
+        enforceRate(audio);
+        startWatchdog(audio);
+        console.log("[Player] PAGE SHOW — audio was playing, resumed watchdog + AudioContext");
+      } else if (!shouldPauseOnHide && audio.src) {
+        // Desktop/PWA: audio unexpectedly paused while hidden (e.g. OS media interruption)
+        // Resume AudioContext but don't force-play — respect current paused state
+        resumeAudioContext().catch(() => {});
+        console.log("[Player] PAGE SHOW — audio paused unexpectedly on desktop, AudioContext resumed");
       } else {
-        // Safari: audio was paused on hide — UI shows paused, user must tap play
-        // (This is correct — never auto-resume in Safari tab)
+        // Safari tab: audio was intentionally paused on hide — user must tap play
+        console.log("[Player] PAGE SHOW — Safari tab, audio paused, waiting for user");
       }
     };
 
@@ -913,6 +948,8 @@ export function PlayerProvider({ children }) {
       savePosition,
       setIsPlaying,
       isPWA,
+      isSafariOnly,
+      shouldPauseOnHide,
     }}>
       {children}
     </PlayerContext.Provider>
