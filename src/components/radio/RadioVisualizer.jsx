@@ -43,24 +43,27 @@ const isSafari = /Safari\//.test(navigator.userAgent) &&
 
 function drawBars(ctx, W, H, freqData, bufLen) {
   const barCount = 60;
-  // Use full frequency range but weight high indices to boost right-side energy
   const gap = 2;
   const barW = (W - gap * (barCount - 1)) / barCount;
+
+  // Compute bass pulse once (not per bar)
+  const bassLen = Math.floor(bufLen * 0.06);
+  let bassS = 0;
+  for (let j = 0; j < bassLen; j++) bassS += freqData[j];
+  const bPulse = bassS / (bassLen * 255);
+
   for (let i = 0; i < barCount; i++) {
-    // Map bars across the full spectrum but boost amplitude on right half
     const step = Math.floor(bufLen / barCount);
     const rawV = freqData[i * step] / 255;
-    // Right-side boost: bars at index > 30 get extra height multiplier
-    const boost = i > 30 ? 1 + (i - 30) / 30 * 0.8 : 1;
-    // Extra global bass boost so every bar punches on the kick
-    const bassLen2 = Math.floor(bufLen * 0.06);
-    let bassS = 0; for (let j = 0; j < bassLen2; j++) bassS += freqData[j];
-    const bPulse = bassS / (bassLen2 * 255);
-    const v = Math.min(1, rawV * boost * (1 + bPulse * 0.9));
-    const h = Math.max(4, v * H * 0.96);
+    // Subtle right-side boost for treble visibility
+    const boost = i > 30 ? 1 + (i - 30) / 30 * 0.4 : 1;
+    // Bass adds a beat kick but kept modest so bars don't sit at max
+    const v = Math.min(1, rawV * boost * (1 + bPulse * 0.5));
+    // Scale to 75% of canvas height max so there's always headroom
+    const h = Math.max(3, v * H * 0.75);
     const x = i * (barW + gap);
     const hue = 185 + v * 60;
-    const alpha = 0.55 + v * 0.45;
+    const alpha = 0.5 + v * 0.45;
     const grad = ctx.createLinearGradient(0, H, 0, H - h);
     grad.addColorStop(0, `hsla(${hue}, 100%, 50%, ${alpha})`);
     grad.addColorStop(0.5, `hsla(${hue + 15}, 100%, 65%, ${alpha * 0.85})`);
