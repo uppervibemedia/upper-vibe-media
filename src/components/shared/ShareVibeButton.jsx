@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Share2, X, Copy, Check } from "lucide-react";
+import { Share2, X, Copy, Check, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 
@@ -13,32 +13,47 @@ import { base44 } from "@/api/base44Client";
  *   className: extra classes
  *
  * SOCIAL SHARING STRATEGY:
- * Facebook/iMessage/Twitter crawlers cannot execute JavaScript, so they
- * see only the blank SPA shell at /song/<id> and show the generic homepage preview.
- * Fix: share the ogMeta backend URL which returns server-side HTML with full OG tags
- * + an instant JS redirect to the real song page for human visitors.
- * The og:url inside that HTML points to the canonical /song/<id> so Facebook
- * still shows uppervibemedia.com as the domain in the preview.
+ * - Copy Link / Twitter / native share → clean canonical URL: https://uppervibemedia.com/song/<id>
+ * - Facebook share → ogMeta URL so FB crawler gets server-side OG tags, then redirects humans
+ *
+ * CRITICAL: Always use hardcoded "https://uppervibemedia.com" as the origin.
+ * Never use window.location.origin — in Base44 sandbox/preview that gives the wrong host.
  */
 
-// Base44 backend function public URL — ogMeta returns server-rendered OG HTML
-// with a meta-refresh redirect to the real SPA page for human visitors.
-function getSongShareUrl(trackId) {
-  if (!trackId) return "https://uppervibemedia.com";
-  // The ogMeta function URL — Base44 exposes functions at /api/<functionName>
-  // relative to the app's public domain.
-  const base = typeof window !== "undefined"
-    ? `${window.location.origin}/api/ogMeta`
-    : "https://uppervibemedia.com/api/ogMeta";
-  return `${base}?type=track&id=${trackId}`;
+const PROD_ORIGIN = "https://uppervibemedia.com";
+
+// Returns the clean canonical song URL for copy/Twitter/native share
+function getCanonicalSongUrl(trackId) {
+  if (!trackId) return null;
+  return `${PROD_ORIGIN}/song/${trackId}`;
+}
+
+// Returns the ogMeta URL for Facebook (crawler gets OG tags, humans get redirected)
+function getOgMetaSongUrl(trackId) {
+  if (!trackId) return null;
+  return `${PROD_ORIGIN}/api/ogMeta?type=track&id=${trackId}`;
+}
+
+// A track ID is valid if it exists and doesn't look like a temp/session identifier
+function isValidTrackId(id) {
+  if (!id) return false;
+  if (typeof id !== "string" && typeof id !== "number") return false;
+  const str = String(id);
+  // Reject obviously invalid IDs
+  if (str.length < 4) return false;
+  return true;
 }
 
 export default function ShareVibeButton({ type = "site", track = null, size = "md", className = "" }) {
   const [open, setOpen]     = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Canonical display URL (shown in UI, used for copy)
-  const canonicalSongUrl = track?.id ? `https://uppervibemedia.com/song/${track.id}` : "https://uppervibemedia.com";
+  // For song type, validate the track has a real ID
+  const trackId = track?.id;
+  const hasValidId = type !== "song" || isValidTrackId(trackId);
+
+  const canonicalUrl = type === "song" ? getCanonicalSongUrl(trackId) : null;
+  const ogMetaUrl    = type === "song" ? getOgMetaSongUrl(trackId)    : null;
 
   const getShareData = () => {
     switch (type) {
@@ -48,32 +63,35 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
             ? `${track.title} by ${track.artist_display}`
             : `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
           text: `🎧⚡ "${track?.title || "this track"}" by ${track?.artist_display || "Upper Vibe Media"} • Listening live on Upper Vibe Media`,
-          // Share the ogMeta URL so Facebook/crawlers get server-side OG tags.
-          // Human visitors clicking from Facebook get instantly redirected to /song/<id>.
-          url: getSongShareUrl(track?.id),
-          // Display URL shown in the UI (not the ogMeta redirect URL)
-          displayUrl: canonicalSongUrl,
+          // Native share + Twitter + Copy → clean canonical URL (no redirect)
+          url: canonicalUrl || PROD_ORIGIN,
+          // Facebook → ogMeta URL so crawler gets OG tags
+          facebookUrl: ogMetaUrl || PROD_ORIGIN,
+          displayUrl: canonicalUrl || PROD_ORIGIN,
         };
       case "radio":
         return {
           title: "Upper Vibe Radio — Live Now",
           text: "🎧⚡ I'm listening live on Upper Vibe Radio — 432Hz high-vibe music streaming now",
-          url: "https://uppervibemedia.com/radio",
-          displayUrl: "https://uppervibemedia.com/radio",
+          url: `${PROD_ORIGIN}/radio`,
+          facebookUrl: `${PROD_ORIGIN}/radio`,
+          displayUrl: `${PROD_ORIGIN}/radio`,
         };
       case "viberoom":
         return {
           title: "Vibe Room — Upper Vibe Media",
           text: "🎧⚡ Join the positive 18+ Vibe Room community on Upper Vibe Media — listen together and raise the frequency",
-          url: "https://uppervibemedia.com/vibe-room",
-          displayUrl: "https://uppervibemedia.com/vibe-room",
+          url: `${PROD_ORIGIN}/vibe-room`,
+          facebookUrl: `${PROD_ORIGIN}/vibe-room`,
+          displayUrl: `${PROD_ORIGIN}/vibe-room`,
         };
       default:
         return {
           title: "Upper Vibe Media",
           text: "🎧⚡ Upper Vibe Radio — 432Hz high-vibe music streaming now on Upper Vibe Media",
-          url: "https://uppervibemedia.com",
-          displayUrl: "https://uppervibemedia.com",
+          url: PROD_ORIGIN,
+          facebookUrl: PROD_ORIGIN,
+          displayUrl: PROD_ORIGIN,
         };
     }
   };
@@ -81,6 +99,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
   const shareData = getShareData();
 
   const handleShare = async () => {
+    if (!hasValidId) return;
     base44.analytics.track({ eventName: "share_button_clicked", properties: { share_type: type } });
 
     // Try native share sheet first (mobile — best for iOS)
@@ -99,8 +118,8 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
   };
 
   const handleCopy = async () => {
-    // Copy the clean canonical URL, not the ogMeta redirect URL
-    await navigator.clipboard.writeText(shareData.displayUrl || shareData.url);
+    // Always copy the clean canonical URL — never the ogMeta redirect URL
+    await navigator.clipboard.writeText(shareData.displayUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -122,8 +141,10 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         </svg>
       ),
       action: () => {
+        // Twitter gets the clean canonical URL (not ogMeta) — Twitter's card crawler
+        // will try to fetch it but that's fine; the page still resolves for humans.
         const tweetText = encodeURIComponent(shareData.text);
-        const tweetUrl  = encodeURIComponent(shareData.displayUrl || shareData.url);
+        const tweetUrl  = encodeURIComponent(shareData.url);
         window.open(`https://twitter.com/intent/tweet?text=${tweetText}&url=${tweetUrl}`, "_blank");
         base44.analytics.track({ eventName: "share_twitter_clicked", properties: { share_type: type } });
       },
@@ -139,9 +160,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         </svg>
       ),
       action: () => {
-        // Pass the ogMeta URL — Facebook's crawler will fetch it and get real OG tags.
-        // og:url inside that response points to the canonical song page.
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareData.url)}`, "_blank");
+        // Facebook gets the ogMeta URL — FB crawler fetches OG tags from it,
+        // og:url inside points to the canonical /song/<id> for display.
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareData.facebookUrl)}`, "_blank");
         base44.analytics.track({ eventName: "share_facebook_clicked", properties: { share_type: type } });
       },
       color: "rgba(59,89,152,0.15)",
@@ -152,6 +173,24 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
 
   const iconSize   = size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4";
   const btnPadding = size === "sm" ? "px-3 py-1.5 text-[10px]" : "px-4 py-2 text-xs";
+
+  // Disabled state: song share with no valid ID
+  if (type === "song" && !hasValidId) {
+    return (
+      <div
+        className={`flex items-center gap-1.5 rounded-full font-black tracking-wide cursor-not-allowed opacity-50 ${btnPadding} ${className}`}
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          color: "rgba(255,255,255,0.3)",
+        }}
+        title="This song is still syncing. Try sharing again soon."
+      >
+        <AlertCircle className={iconSize} />
+        <span className="hidden sm:inline">Syncing…</span>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -209,7 +248,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
                   style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                   <div className="flex-1 min-w-0 pr-3">
                     <p className="font-heading font-black text-white text-base">Share The Vibe ⚡</p>
-                    <p className="text-[11px] text-white/30 mt-0.5 truncate">{shareData.displayUrl || shareData.url}</p>
+                    <p className="text-[11px] text-white/30 mt-0.5 truncate">{shareData.displayUrl}</p>
                   </div>
                   <button
                     onClick={() => setOpen(false)}
@@ -223,55 +262,53 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
 
               {/* Scrollable content area */}
               <div className="flex-1 overflow-y-auto min-w-0"
-                style={{
-                  WebkitOverflowScrolling: "touch",
-                }}>
+                style={{ WebkitOverflowScrolling: "touch" }}>
 
-              {/* Song preview card — with artwork if available */}
-              {type === "song" && (
-                <div className="mx-4 mt-4 rounded-2xl overflow-hidden flex gap-3 p-3"
-                  style={{
-                    background: "linear-gradient(135deg,rgba(0,200,220,0.07),rgba(155,126,255,0.05))",
-                    border: "1px solid rgba(0,200,220,0.15)",
-                  }}>
-                  {track?.cover_url ? (
-                    <img
-                      src={track.cover_url}
-                      alt={track?.title}
-                      className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
-                      style={{ boxShadow: "0 0 16px rgba(0,229,255,0.2)" }}
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center"
-                      style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}>
-                      <span className="text-xl">🎧</span>
+                {/* Song preview card — with artwork if available */}
+                {type === "song" && (
+                  <div className="mx-4 mt-4 rounded-2xl overflow-hidden flex gap-3 p-3"
+                    style={{
+                      background: "linear-gradient(135deg,rgba(0,200,220,0.07),rgba(155,126,255,0.05))",
+                      border: "1px solid rgba(0,200,220,0.15)",
+                    }}>
+                    {track?.cover_url ? (
+                      <img
+                        src={track.cover_url}
+                        alt={track?.title}
+                        className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+                        style={{ boxShadow: "0 0 16px rgba(0,229,255,0.2)" }}
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center"
+                        style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}>
+                        <span className="text-xl">🎧</span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <p className="text-sm font-black text-white truncate leading-snug">{track?.title}</p>
+                      <p className="text-[11px] text-white/40 truncate mt-0.5">{track?.artist_display || "Upper Vibe Media"}</p>
+                      <p className="text-[10px] text-cyan-400/60 mt-1 font-semibold">uppervibemedia.com/song/{trackId}</p>
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <p className="text-sm font-black text-white truncate leading-snug">{track?.title}</p>
-                    <p className="text-[11px] text-white/40 truncate mt-0.5">{track?.artist_display || "Upper Vibe Media"}</p>
-                    <p className="text-[10px] text-cyan-400/60 mt-1 font-semibold">Listening live on Upper Vibe Media</p>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Non-song preview */}
-              {type !== "song" && (
-                <div className="mx-4 mt-4 rounded-2xl p-3"
-                  style={{
-                    background: "linear-gradient(135deg,rgba(0,200,220,0.07),rgba(155,126,255,0.05))",
-                    border: "1px solid rgba(0,200,220,0.15)",
-                  }}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: "linear-gradient(135deg,#00B8D4,#9B7EFF)" }}>
-                      <span className="text-[7px] font-black text-white">UV</span>
+                {/* Non-song preview */}
+                {type !== "song" && (
+                  <div className="mx-4 mt-4 rounded-2xl p-3"
+                    style={{
+                      background: "linear-gradient(135deg,rgba(0,200,220,0.07),rgba(155,126,255,0.05))",
+                      border: "1px solid rgba(0,200,220,0.15)",
+                    }}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: "linear-gradient(135deg,#00B8D4,#9B7EFF)" }}>
+                        <span className="text-[7px] font-black text-white">UV</span>
+                      </div>
+                      <span className="text-[10px] font-black tracking-widest uppercase text-cyan-400/70">Upper Vibe Media</span>
                     </div>
-                    <span className="text-[10px] font-black tracking-widest uppercase text-cyan-400/70">Upper Vibe Media</span>
+                    <p className="text-xs text-white/70 leading-relaxed">{shareData.text}</p>
                   </div>
-                  <p className="text-xs text-white/70 leading-relaxed">{shareData.text}</p>
-                </div>
-              )}
+                )}
 
               </div>
 
@@ -289,7 +326,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
                       background: opt.color,
                       border: `1px solid ${opt.border}`,
                       color: opt.textColor,
-                      minHeight: 48, // Apple HIG minimum tap target
+                      minHeight: 48,
                     }}
                   >
                     {opt.icon}
