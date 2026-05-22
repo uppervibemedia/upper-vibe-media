@@ -594,25 +594,32 @@ html.solar-transitioning *::after {
   background: hsl(36 30% 96%) !important;
 }
 
-/* ── SOLAR: HOMEPAGE HERO CONTRAST FIXES ────────────────────────────────────── */
+/* ── SOLAR: HOMEPAGE HERO LOGO FIXES ────────────────────────────────────────── */
 
-/* UPPER VIBE / MEDIA gradient titles — solid dark instead of transparent gradient */
-.solar [style*="background: linear-gradient(165deg, #FFFFFF"],
+/* UPPER VIBE logo — restore vibrant electric blue/teal with strong readability */
+.solar [style*="background: linear-gradient(165deg, #FFFFFF"] {
+  background: none !important;
+  WebkitBackgroundClip: unset !important;
+  WebkitTextFillColor: unset !important;
+  backgroundClip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  color: #00A8D4 !important;
+  font-weight: 900 !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 168, 212, 0.3) !important;
+  opacity: 1 !important;
+}
+
+/* MEDIA logo — restore vibrant rich gold */
 .solar [style*="background: linear-gradient(105deg, #8A5E1A"] {
   background: none !important;
   WebkitBackgroundClip: unset !important;
   WebkitTextFillColor: unset !important;
   backgroundClip: unset !important;
   -webkit-text-fill-color: unset !important;
-}
-
-.solar [style*="background: linear-gradient(165deg, #FFFFFF"] {
-  color: hsl(240 30% 12%) !important;
-}
-
-.solar [style*="background: linear-gradient(105deg, #8A5E1A"] {
   color: #C8892A !important;
-  font-weight: 900 !important;
+  font-weight: 800 !important;
+  text-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.06), 0 0 1px rgba(200, 137, 42, 0.25) !important;
+  opacity: 1 !important;
 }
 
 /* High-Vibration Music badge — stronger contrast */
