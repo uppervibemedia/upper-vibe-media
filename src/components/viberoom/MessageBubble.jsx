@@ -143,14 +143,25 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
               );
             })}
 
-            {/* Report button for non-own messages */}
-            {!isOwn && user && (
+            {/* Report (regular users) — small quiet button */}
+            {!isOwn && user && !isAdmin && (
+              <button
+                onClick={handleReport}
+                title="Report message"
+                className="flex items-center px-1.5 py-0.5 rounded-full text-[10px] transition-all active:scale-90 opacity-0 group-hover:opacity-100 hover:text-orange-400"
+                style={{ color: "rgba(255,255,255,0.15)" }}>
+                <Flag className="w-2.5 h-2.5" />
+              </button>
+            )}
+
+            {/* Admin moderation menu */}
+            {!isOwn && isAdmin && (
               <div className="relative">
                 <button
                   onClick={() => setShowModMenu((v) => !v)}
                   className="flex items-center px-1.5 py-0.5 rounded-full text-[10px] transition-all active:scale-90 opacity-0 group-hover:opacity-100"
                   style={{ color: "rgba(255,255,255,0.15)" }}
-                  title="Options">
+                  title="Moderate">
                   <span style={{ fontSize: "11px" }}>···</span>
                 </button>
                 {showModMenu && (
@@ -168,27 +179,23 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
                       className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-orange-400 hover:bg-orange-500/10 transition-all">
                       <Flag className="w-3 h-3" /> Report
                     </button>
-                    {isAdmin && (
-                      <>
-                        <button onClick={() => { onHide(msg); setShowModMenu(false); }}
-                          className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                          <Trash2 className="w-3 h-3" /> Remove
-                        </button>
-                        <button onClick={() => { onMute(msg.user_email); setShowModMenu(false); }}
-                          className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all">
-                          <Mic2 className="w-3 h-3" /> Mute
-                        </button>
-                        <button onClick={() => { onBan(msg.user_email); setShowModMenu(false); }}
-                          className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-red-500 hover:bg-red-600/10 transition-all">
-                          <Ban className="w-3 h-3" /> Ban
-                        </button>
-                        {banStatus && (
-                          <button onClick={() => { onUnban(msg.user_email); setShowModMenu(false); }}
-                            className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-green-400 hover:bg-green-500/10 transition-all">
-                            ✓ Unban
-                          </button>
-                        )}
-                      </>
+                    <button onClick={() => { onHide(msg); setShowModMenu(false); }}
+                      className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                      <Trash2 className="w-3 h-3" /> Remove
+                    </button>
+                    <button onClick={() => { onMute(msg.user_email); setShowModMenu(false); }}
+                      className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all">
+                      <Mic2 className="w-3 h-3" /> Mute
+                    </button>
+                    <button onClick={() => { onBan(msg.user_email); setShowModMenu(false); }}
+                      className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-red-500 hover:bg-red-600/10 transition-all">
+                      <Ban className="w-3 h-3" /> Ban
+                    </button>
+                    {banStatus && (
+                      <button onClick={() => { onUnban(msg.user_email); setShowModMenu(false); }}
+                        className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-green-400 hover:bg-green-500/10 transition-all">
+                        ✓ Unban
+                      </button>
                     )}
                   </div>
                 )}

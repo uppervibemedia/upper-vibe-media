@@ -20,8 +20,8 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
     switch (type) {
       case "song":
         return {
-          title: `${track?.title || "Upper Vibe Music"} — Upper Vibe Media`,
-          text: `🎧⚡ "${track?.title || "this track"}" by ${track?.artist_display || "Upper Vibe Media"} — 432 Hz high-vibe music streaming now on Upper Vibe Media`,
+          title: `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
+          text: `🎧⚡ "${track?.title || "this track"}" by ${track?.artist_display || "Upper Vibe Media"} • Listening live on Upper Vibe Media`,
           url: track?.id
             ? `https://uppervibemedia.com/song/${track.id}`
             : "https://uppervibemedia.com",

@@ -280,8 +280,8 @@ export default function SongPage() {
                 <User className="w-3.5 h-3.5" /> {track.artist_display || "Upper Vibe Media"}
               </p>
 
-              {/* Action buttons */}
-              <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
+              {/* Action buttons — Row 1: Play + Download */}
+              <div className="flex flex-wrap gap-3 justify-center sm:justify-start mb-3">
                 <button onClick={() => handlePlay(track)}
                   className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02]"
                   style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 24px rgba(0,229,255,0.3)" }}>
@@ -310,6 +310,17 @@ export default function SongPage() {
                     <Crown className="w-3.5 h-3.5" />
                   </button>
                 )}
+              </div>
+
+              {/* Row 2: Support + Save + Share */}
+              <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
+                <button
+                  onClick={() => setSupportModal(true)}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
+                  style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.28)", color: "#D4A843" }}>
+                  <Zap className="w-4 h-4" />
+                  Support
+                </button>
 
                 <button
                   onClick={() => {
@@ -327,16 +338,8 @@ export default function SongPage() {
                   {isFaved("track", track.id) ? "Saved" : "Save"}
                 </button>
 
-                <button
-                onClick={() => setSupportModal(true)}
-                className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
-                style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.28)", color: "#D4A843" }}>
-                <Zap className="w-4 h-4" />
-                Support
-                </button>
-
                 <ShareVibeButton type="song" track={track} />
-                </div>
+              </div>
 
               {!isPlus && (
                 <div className="mt-4 flex items-start gap-2 max-w-sm mx-auto sm:mx-0 p-3 rounded-xl"

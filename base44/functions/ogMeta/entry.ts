@@ -123,10 +123,8 @@ Deno.serve(async (req) => {
 
       const artist      = track.artist_display || "Upper Vibe Media";
       const freq        = track.frequency_type === "432hz" ? " · 432 Hz" : track.frequency_type === "528hz" ? " · 528 Hz" : "";
-      const pageTitle   = `${track.title} — ${artist} | ${SITE_NAME}`;
-      const description = track.description
-        ? track.description.substring(0, 155) + (track.description.length > 155 ? "…" : "")
-        : `Stream "${track.title}" by ${artist}${freq}. High-vibration music on Upper Vibe Media.`;
+      const pageTitle   = `${track.title} | ${SITE_NAME}`;
+      const description = `${artist} • Listening live on Upper Vibe Media`;
 
       const imageUrl = buildOgImageUrl({
         coverUrl: track.cover_url,
