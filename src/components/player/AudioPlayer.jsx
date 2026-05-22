@@ -136,15 +136,16 @@ export default function AudioPlayer() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 200 }}
-          className="fixed left-0 right-0 lg:left-[72px] z-40 border-t border-white/[0.06] player-bar"
+          className="fixed left-0 right-0 lg:left-[72px] z-40 border-t border-border/30 player-bar"
           style={{
-            background: "linear-gradient(180deg,rgba(6,6,18,0.98),rgba(4,4,12,0.99))",
+            background: "hsl(var(--card) / 0.98)",
             backdropFilter: "blur(40px)",
+            WebkitBackdropFilter: "blur(40px)",
           }}
         >
           {/* Seek bar */}
           <div
-            className="relative h-[3px] w-full bg-white/5 cursor-pointer group"
+            className="relative h-[3px] w-full bg-muted cursor-pointer group"
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               const pct = ((e.clientX - rect.left) / rect.width) * 100;
@@ -201,8 +202,8 @@ export default function AudioPlayer() {
                 </div>
               )}
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-white/90 truncate leading-tight">{currentTrack.title}</p>
-                <p className="text-[11px] text-white/35 truncate mt-0.5">
+                <p className="text-sm font-semibold text-foreground truncate leading-tight">{currentTrack.title}</p>
+                <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">
                   {currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}
                 </p>
               </div>
@@ -210,7 +211,7 @@ export default function AudioPlayer() {
 
             {/* Controls */}
             <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-              <button onClick={handlePrev} className="text-white/25 hover:text-white/60 transition-colors hidden md:flex">
+              <button onClick={handlePrev} className="text-muted-foreground/40 hover:text-foreground/70 transition-colors hidden md:flex">
                 <SkipBack className="w-4 h-4" />
               </button>
               <button
@@ -226,20 +227,20 @@ export default function AudioPlayer() {
                   : <Play  className="w-4 h-4 text-black ml-0.5" />
                 }
               </button>
-              <button onClick={handleNext} className="text-white/25 hover:text-white/60 transition-colors hidden md:flex">
+              <button onClick={handleNext} className="text-muted-foreground/40 hover:text-foreground/70 transition-colors hidden md:flex">
                 <SkipForward className="w-4 h-4" />
               </button>
             </div>
 
             {/* Time + Volume + Close (desktop) */}
             <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
-              <span className="text-[11px] text-white/30 tabular-nums">{formatTime(currentSec)}</span>
-              <span className="text-[11px] text-white/20">/</span>
-              <span className="text-[11px] text-white/30 tabular-nums">{formatTime(duration)}</span>
+              <span className="text-[11px] text-muted-foreground/60 tabular-nums">{formatTime(currentSec)}</span>
+              <span className="text-[11px] text-muted-foreground/30">/</span>
+              <span className="text-[11px] text-muted-foreground/60 tabular-nums">{formatTime(duration)}</span>
 
-              <div className="w-px h-4 bg-white/10 mx-1" />
+              <div className="w-px h-4 bg-border mx-1" />
 
-              <button onClick={() => setMuted(!muted)} className="text-white/30 hover:text-white/60 transition-colors">
+              <button onClick={() => setMuted(!muted)} className="text-muted-foreground/50 hover:text-foreground/70 transition-colors">
                 {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
               </button>
               <div className="w-20">
@@ -252,10 +253,10 @@ export default function AudioPlayer() {
                 />
               </div>
 
-              <div className="w-px h-4 bg-white/10 mx-1" />
+              <div className="w-px h-4 bg-border mx-1" />
               <button
                 onClick={stopPlaying}
-                className="text-white/20 hover:text-white/50 transition-colors"
+                className="text-muted-foreground/40 hover:text-foreground/60 transition-colors"
                 title="Close player"
               >
                 <X className="w-3.5 h-3.5" />
@@ -263,7 +264,7 @@ export default function AudioPlayer() {
             </div>
 
             {/* Mobile close */}
-            <button onClick={stopPlaying} className="md:hidden text-white/20 hover:text-white/50 transition-colors ml-1">
+            <button onClick={stopPlaying} className="md:hidden text-muted-foreground/40 hover:text-foreground/60 transition-colors ml-1">
               <X className="w-4 h-4" />
             </button>
           </div>

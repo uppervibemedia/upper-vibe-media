@@ -310,3 +310,278 @@ html.solar-transitioning *::after {
 }
 .solar .text-glow-blue { text-shadow: none; }
 .solar .text-glow-gold { text-shadow: none; }
+
+/* ── Solar Mode: Global text readability fixes ───────────────────────────────
+   Override hard-coded white/light text that becomes invisible on Solar's
+   warm cream/off-white background. We use rgba matching to catch Tailwind's
+   opacity variants (text-white/90, text-white/70, etc.) which compile to
+   rgba(255,255,255,<alpha>) in CSS.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* High-contrast: near-white text → dark charcoal */
+.solar [class*="text-white"],
+.solar [style*="color: rgb(255, 255, 255)"],
+.solar [style*="color: rgba(255, 255, 255"] {
+  color: hsl(240 25% 14%) !important;
+}
+
+/* Tailwind opacity variants compiled to rgba — catch common opacities */
+/* text-white/90 = rgba(255,255,255,0.9) → charcoal */
+.solar [style*="color: rgba(255, 255, 255, 0.9)"],
+.solar [style*="color: rgba(255,255,255,0.9)"] { color: hsl(240 25% 14%) !important; }
+/* text-white/80 */
+.solar [style*="color: rgba(255, 255, 255, 0.8)"],
+.solar [style*="color: rgba(255,255,255,0.8)"] { color: hsl(240 20% 18%) !important; }
+/* text-white/70 */
+.solar [style*="color: rgba(255, 255, 255, 0.7)"],
+.solar [style*="color: rgba(255,255,255,0.7)"] { color: hsl(240 15% 26%) !important; }
+/* text-white/60 */
+.solar [style*="color: rgba(255, 255, 255, 0.6)"],
+.solar [style*="color: rgba(255,255,255,0.6)"] { color: hsl(240 12% 32%) !important; }
+/* text-white/50 and below → muted slate */
+.solar [style*="color: rgba(255, 255, 255, 0.5)"],
+.solar [style*="color: rgba(255,255,255,0.5)"],
+.solar [style*="color: rgba(255, 255, 255, 0.4)"],
+.solar [style*="color: rgba(255,255,255,0.4)"],
+.solar [style*="color: rgba(255, 255, 255, 0.35)"],
+.solar [style*="color: rgba(255,255,255,0.35)"],
+.solar [style*="color: rgba(255, 255, 255, 0.3)"],
+.solar [style*="color: rgba(255,255,255,0.3)"],
+.solar [style*="color: rgba(255, 255, 255, 0.25)"],
+.solar [style*="color: rgba(255,255,255,0.25)"] { color: hsl(240 10% 45%) !important; }
+/* Very faint white → light slate (keep as placeholder/secondary) */
+.solar [style*="color: rgba(255, 255, 255, 0.2)"],
+.solar [style*="color: rgba(255,255,255,0.2)"],
+.solar [style*="color: rgba(255, 255, 255, 0.15)"],
+.solar [style*="color: rgba(255,255,255,0.15)"],
+.solar [style*="color: rgba(255, 255, 255, 0.1)"],
+.solar [style*="color: rgba(255,255,255,0.1)"] { color: hsl(240 8% 58%) !important; }
+
+/* Dark backgrounds used as cards in dark mode → convert to Solar card */
+.solar [style*="background: rgba(6,6,18"],
+.solar [style*="background: rgba(8,8,24"],
+.solar [style*="background: rgba(12,12,28"],
+.solar [style*="background: rgba(4,4,12"],
+.solar [style*="background: rgba(0,0,0"],
+.solar [style*="background-color: rgba(0,0,0"],
+.solar [style*="background: linear-gradient(180deg,rgba(6"],
+.solar [style*="background: linear-gradient(180deg,rgba(4"],
+.solar [style*="background: linear-gradient(160deg,#0d0d22"],
+.solar [style*="background: linear-gradient(135deg,rgba(124,58,237,0.2)"] {
+  background: hsl(0 0% 100% / 0.9) !important;
+  border-color: hsl(36 20% 86%) !important;
+}
+
+/* Inline black/very-dark backgrounds → Solar white card */
+.solar [style*="background: #060610"],
+.solar [style*="background: #080818"],
+.solar [style*="background: #0a0a1a"] {
+  background: hsl(36 40% 98%) !important;
+}
+
+/* Dark gradient overlays on hero sections — lighten for Solar */
+.solar [style*="background: linear-gradient(135deg,#0d0d22"],
+.solar [style*="background: linear-gradient(180deg,#060"],
+.solar [style*="background: linear-gradient(180deg,rgba(155,126,255,0.055)"] {
+  background: linear-gradient(180deg, hsl(270 30% 96% / 0.7) 0%, transparent 100%) !important;
+}
+
+/* White borders → warm border */
+.solar [style*="border: 1px solid rgba(255,255,255,0.07)"],
+.solar [style*="border: 1px solid rgba(255, 255, 255, 0.07)"],
+.solar [style*="border: 1px solid rgba(255,255,255,0.04)"],
+.solar [style*="border: 1px solid rgba(255,255,255,0.06)"],
+.solar [style*="border: 1px solid rgba(255,255,255,0.1)"],
+.solar [style*="border: 1px solid rgba(255, 255, 255, 0.1)"] {
+  border-color: hsl(36 20% 84%) !important;
+}
+
+/* Purple-toned dark card backgrounds (Vibe Room etc.) */
+.solar [style*="background: linear-gradient(160deg,#0d0d22,#0a0a1a)"],
+.solar [style*="background: rgba(6, 6, 18"],
+.solar [style*="background: rgba(12, 12, 28"] {
+  background: hsl(0 0% 100% / 0.95) !important;
+}
+
+/* Ambient blobs — hide in Solar (they're dark purple) */
+.solar [style*="background: #9B7EFF"],
+.solar [style*="background: #00C9E0"] {
+  opacity: 0.04 !important;
+}
+
+/* Chat message bubbles — Solar readable */
+.solar [style*="background: rgba(255,255,255,0.04)"],
+.solar [style*="background: rgba(255, 255, 255, 0.04)"],
+.solar [style*="background: rgba(255,255,255,0.025)"],
+.solar [style*="background: rgba(255, 255, 255, 0.025)"],
+.solar [style*="background: rgba(255,255,255,0.03)"],
+.solar [style*="background: rgba(255, 255, 255, 0.03)"] {
+  background: hsl(36 30% 96%) !important;
+}
+
+/* ── Solar: Vibe Room chat own bubble (purple-toned) ── */
+.solar [style*="background: linear-gradient(135deg,rgba(124,58,237,0.2),rgba(155,126,255,0.12)"] {
+  background: hsl(270 50% 96%) !important;
+  border-color: hsl(270 40% 85%) !important;
+}
+.solar [style*="color: #ede8ff"] { color: hsl(270 40% 25%) !important; }
+
+/* Italic seeded message text in Vibe Room */
+.solar [style*="color: rgba(255,255,255,0.55)"],
+.solar [style*="color: rgba(255, 255, 255, 0.55)"],
+.solar [style*="color: rgba(255,255,255,0.88)"],
+.solar [style*="color: rgba(255, 255, 255, 0.88)"] {
+  color: hsl(240 20% 30%) !important;
+}
+
+/* Radio, hero: white heading text on dark bg → ensure readability */
+.solar h1[style*="color"],
+.solar h2[style*="color"],
+.solar h3[style*="color"] {
+  color: hsl(240 30% 12%) !important;
+}
+
+/* Specific: text-white class used in Tailwind → already caught above,
+   but add class-level specificity for italic/opacity combos */
+.solar .text-white { color: hsl(240 25% 14%) !important; }
+.solar .text-white\/90 { color: hsl(240 20% 18%) !important; }
+.solar .text-white\/80 { color: hsl(240 20% 22%) !important; }
+.solar .text-white\/70 { color: hsl(240 15% 28%) !important; }
+.solar .text-white\/60 { color: hsl(240 12% 35%) !important; }
+.solar .text-white\/50 { color: hsl(240 10% 42%) !important; }
+.solar .text-white\/40 { color: hsl(240 8% 50%) !important; }
+.solar .text-white\/35 { color: hsl(240 8% 54%) !important; }
+.solar .text-white\/30 { color: hsl(240 7% 58%) !important; }
+.solar .text-white\/25 { color: hsl(240 6% 62%) !important; }
+.solar .text-white\/20 { color: hsl(240 5% 66%) !important; }
+.solar .text-white\/15 { color: hsl(240 4% 70%) !important; }
+.solar .text-white\/10 { color: hsl(240 3% 75%) !important; }
+
+/* Dark section backgrounds (bg-black, bg-zinc-950, etc.) → Solar cream */
+.solar .bg-black,
+.solar .bg-zinc-950,
+.solar .bg-gray-950,
+.solar .bg-neutral-950 { background-color: hsl(36 40% 96%) !important; }
+
+/* Placeholder text in inputs */
+.solar input::placeholder,
+.solar textarea::placeholder { color: hsl(240 10% 55%) !important; }
+
+/* Locked input bar (free users - gold bordered) */
+.solar [style*="border: 1px solid rgba(212,168,67,0.18)"],
+.solar [style*="border: 1px solid rgba(212, 168, 67, 0.18)"] {
+  background: hsl(42 40% 98%) !important;
+  border-color: hsl(42 50% 72%) !important;
+}
+
+/* Track row separators */
+.solar .divide-white\/5 > * + * { border-color: hsl(36 20% 86%) !important; }
+
+/* Ensure bold headings that use inline white stay dark */
+.solar [style*="color: white"] { color: hsl(240 25% 14%) !important; }
+.solar [style*="color: #fff"] { color: hsl(240 25% 14%) !important; }
+.solar [style*="color: #ffffff"] { color: hsl(240 25% 14%) !important; }
+
+/* Radio station active glow → muted in Solar */
+.solar [style*="boxShadow"][style*="0,229,255"] {
+  box-shadow: 0 0 20px hsl(191 75% 38% / 0.15) !important;
+}
+
+/* Cyan / purple label badges on dark bg → Solar-readable */
+.solar .text-purple-400 { color: hsl(270 50% 40%) !important; }
+.solar .text-purple-300 { color: hsl(270 45% 45%) !important; }
+.solar .text-cyan-400 { color: hsl(191 75% 32%) !important; }
+.solar .text-cyan-300 { color: hsl(191 70% 35%) !important; }
+.solar .text-yellow-400 { color: hsl(43 80% 35%) !important; }
+.solar .text-yellow-500 { color: hsl(43 85% 32%) !important; }
+.solar .text-red-400 { color: hsl(0 65% 42%) !important; }
+.solar .text-green-400 { color: hsl(142 60% 30%) !important; }
+.solar .text-orange-400 { color: hsl(25 75% 38%) !important; }
+
+/* Purple accent text (e.g. "UPPER VIBE") — keep but darken */
+.solar [style*="color: #9B7EFF"],
+.solar [style*="color: rgba(155,126,255"] { color: hsl(270 50% 40%) !important; }
+.solar [style*="color: #c4aaff"] { color: hsl(270 45% 38%) !important; }
+.solar [style*="color: rgba(155, 126, 255"] { color: hsl(270 50% 40%) !important; }
+
+/* Cyan brand color in Solar */
+.solar [style*="color: #00C9E0"],
+.solar [style*="color: #00E5FF"],
+.solar [style*="color: rgba(0,200,220"],
+.solar [style*="color: rgba(0, 229, 255"] { color: hsl(191 75% 32%) !important; }
+
+/* Muted foreground already uses CSS vars — no override needed */
+
+/* Reaction buttons in Solar */
+.solar [style*="color: #c4aaff"] { color: hsl(270 45% 38%) !important; }
+
+/* Delete / destructive buttons — keep red but darken for readability */
+.solar .text-destructive { color: hsl(0 70% 40%) !important; }
+
+/* Ensure badges/chips with dark backgrounds get light text */
+.solar [style*="background: linear-gradient(135deg,#7C3AED"],
+.solar [style*="background: linear-gradient(135deg,rgba(124,58,237"] {
+  color: #fff !important;
+}
+
+/* Upgrade CTA button gradient — white text is fine on dark purple fill */
+.solar [style*="background: linear-gradient(135deg,#7C3AED,#9B7EFF)"] > *,
+.solar [style*="background: linear-gradient(135deg,#009CB8"] > * { color: #fff !important; }
+
+/* ── Solar: Vibe Room section header bg ── */
+.solar [style*="background: linear-gradient(180deg,rgba(155,126,255,0.055) 0%,transparent 100%)"] {
+  background: linear-gradient(180deg, hsl(270 40% 95% / 0.8) 0%, transparent 100%) !important;
+}
+
+/* ── Solar: ambient purple blob backgrounds ── */
+.solar [style*="background: linear-gradient(135deg,rgba(155,126,255,0.07)"] {
+  background: hsl(270 30% 96%) !important;
+  border-color: hsl(270 20% 88%) !important;
+}
+
+/* ── Solar: "Live Chat" badge ── */
+.solar [style*="background: rgba(155,126,255,0.08)"] {
+  background: hsl(270 40% 95%) !important;
+}
+
+/* ── Solar: "Premium Chat" / "18+" badge ── */  
+.solar [style*="background: rgba(212,168,67,0.08)"] {
+  background: hsl(42 50% 95%) !important;
+}
+.solar [style*="background: rgba(155,126,255,0.05)"] {
+  background: hsl(270 30% 96%) !important;
+}
+
+/* ── Solar: NowPlayingCard ── */
+.solar [style*="background: rgba(0,200,220,0.04)"],
+.solar [style*="background: rgba(0,229,255,0.08)"] {
+  background: hsl(191 50% 95%) !important;
+  border-color: hsl(191 40% 82%) !important;
+}
+.solar [style*="color: rgba(0,200,220,0.5)"],
+.solar [style*="color: rgba(0,229,255"] { color: hsl(191 75% 32%) !important; }
+
+/* ── Solar: Reaction buttons ── */
+.solar [style*="background: rgba(155,126,255,0.2)"] {
+  background: hsl(270 40% 92%) !important;
+  border-color: hsl(270 35% 78%) !important;
+}
+
+/* ── Solar: Message send button disabled state ── */
+.solar [style*="background: rgba(155,126,255,0.08)"] {
+  background: hsl(270 30% 94%) !important;
+}
+
+/* ── Solar: Crown icon in locked bar ── */
+.solar .text-yellow-500\/50 { color: hsl(43 70% 40%) !important; }
+
+/* ── Solar: page section stripe backgrounds (Home hero etc.) ── */
+.solar [style*="background: linear-gradient(180deg, rgba(0"] {
+  background: transparent !important;
+}
+
+/* ── Solar: Radio visualizer dark bg ── */
+.solar [style*="background: #000"],
+.solar [style*="background-color: #000"] {
+  background: hsl(36 30% 96%) !important;
+}

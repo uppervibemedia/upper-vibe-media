@@ -259,11 +259,11 @@ export default function VibeRoom() {
                     <span className="text-[9px] font-black tracking-[0.2em] uppercase text-purple-300/50">18+ Community</span>
                   </div>
                 </div>
-                <h1 className="font-heading font-black text-white leading-none mb-0.5"
+                <h1 className="font-heading font-black text-foreground leading-none mb-0.5"
                   style={{ fontSize: "clamp(1.6rem, 4.5vw, 2.4rem)" }}>
                   Vibe Room
                 </h1>
-                <p className="text-white/25 text-xs tracking-wide">Listen together. Raise the frequency.</p>
+                <p className="text-muted-foreground/60 text-xs tracking-wide">Listen together. Raise the frequency.</p>
               </div>
 
               {/* Right: avatar + name (premium only) */}
@@ -317,8 +317,8 @@ export default function VibeRoom() {
                   style={{ background: "rgba(155,126,255,0.07)", border: "1px solid rgba(155,126,255,0.15)" }}>
                   <Zap className="w-7 h-7 text-purple-400/35" />
                 </div>
-                <p className="font-heading font-black text-white/40 text-base mb-1">The vibe is waiting.</p>
-                <p className="text-white/20 text-xs max-w-xs leading-relaxed">
+                <p className="font-heading font-black text-muted-foreground/60 text-base mb-1">The vibe is waiting.</p>
+                <p className="text-muted-foreground/40 text-xs max-w-xs leading-relaxed">
                   Premium members can start the conversation.
                 </p>
               </motion.div>
@@ -425,7 +425,7 @@ export default function VibeRoom() {
                 boxShadow: "0 0 24px rgba(212,168,67,0.05), 0 12px 40px rgba(0,0,0,0.55)",
               }}>
               <Crown className="w-4 h-4 flex-shrink-0 text-yellow-500/50" />
-              <span className="text-sm text-white/25 flex-1">Premium members can post in the Vibe Room</span>
+              <span className="text-sm text-muted-foreground/60 flex-1">Premium members can post in the Vibe Room</span>
               <span className="text-[10px] font-black tracking-wider px-2.5 py-1 rounded-full flex-shrink-0"
                 style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.7)" }}>
                 Upgrade
