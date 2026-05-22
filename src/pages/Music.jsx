@@ -11,6 +11,7 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import { useFavorites } from "../hooks/useFavorite";
 import PullToRefresh from "../components/shared/PullToRefresh";
+import MoodFrequencyFilter, { filterByMood } from "../components/shared/MoodFrequencyFilter";
 
 const GENRE_TYPES = ["genre", "mood", "editorial", "frequency"];
 
@@ -38,6 +39,7 @@ export default function Music() {
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [activeMood, setActiveMood] = useState("all");
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
@@ -74,8 +76,10 @@ export default function Music() {
     } else if (activeFilter !== "all") {
       result = result.filter((t) => (t.category_ids || []).includes(activeFilter));
     }
+    // Apply mood/frequency filter on top
+    result = filterByMood(result, activeMood);
     return result;
-  }, [tracks, search, activeFilter]);
+  }, [tracks, search, activeFilter, activeMood]);
 
   const handlePlay = (track) => {
     if (currentTrack?.id === track.id) togglePlay();
@@ -146,6 +150,17 @@ export default function Music() {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Mood / Frequency filter */}
+          <div className="mb-3">
+            <div className="px-6 mb-1.5">
+              <p className="text-[9px] font-black tracking-[0.3em] uppercase text-white/20">Sonic Vibe</p>
+            </div>
+            <MoodFrequencyFilter
+              activeMood={activeMood}
+              onChange={(id) => { setActiveMood(id); setSearch(""); }}
+            />
           </div>
 
           {/* Filter tabs — full-bleed horizontal scroll, chips never cut off */}

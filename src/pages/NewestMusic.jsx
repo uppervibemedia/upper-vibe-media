@@ -10,9 +10,11 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import { useFavorites } from "../hooks/useFavorite";
+import MoodFrequencyFilter, { filterByMood } from "../components/shared/MoodFrequencyFilter";
 
 export default function NewestMusic() {
   const [tracks, setTracks] = useState([]);
+  const [activeMood, setActiveMood] = useState("all");
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
@@ -46,19 +48,32 @@ export default function NewestMusic() {
         </motion.div>
       </div>
 
+      {/* Mood filter */}
+      <div className="max-w-7xl mx-auto mb-4">
+        <div className="px-6 mb-1.5">
+          <p className="text-[9px] font-black tracking-[0.3em] uppercase text-white/20">Sonic Vibe</p>
+        </div>
+        <MoodFrequencyFilter activeMood={activeMood} onChange={setActiveMood} />
+      </div>
+
       <div className="max-w-7xl mx-auto px-6 pb-24">
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-6 h-6 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />
           </div>
-        ) : tracks.length === 0 ? (
+        ) : filterByMood(tracks, activeMood).length === 0 ? (
           <div className="text-center py-20">
             <Music4 className="w-10 h-10 text-white/10 mx-auto mb-3" />
-            <p className="text-white/25">No songs uploaded yet.</p>
+            <p className="text-white/25">{tracks.length === 0 ? "No songs uploaded yet." : "No tracks match this vibe yet."}</p>
+            {activeMood !== "all" && (
+              <button onClick={() => setActiveMood("all")} className="mt-3 text-xs text-cyan-400/60 hover:text-cyan-400 transition-colors">
+                Clear vibe filter
+              </button>
+            )}
           </div>
         ) : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-            {tracks.map((track, i) => {
+            {filterByMood(tracks, activeMood).map((track, i) => {
               const isCurrentTrack = currentTrack?.id === track.id;
               return (
                 <motion.div
