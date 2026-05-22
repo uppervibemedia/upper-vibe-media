@@ -43,19 +43,24 @@ const isSafari = /Safari\//.test(navigator.userAgent) &&
 
 function drawBars(ctx, W, H, freqData, bufLen) {
   const barCount = 60;
-  const step = Math.floor(bufLen / barCount);
+  // Use full frequency range but weight high indices to boost right-side energy
   const gap = 2;
   const barW = (W - gap * (barCount - 1)) / barCount;
   for (let i = 0; i < barCount; i++) {
-    const v = freqData[i * step] / 255;
-    const h = Math.max(3, v * H * 0.88);
+    // Map bars across the full spectrum but boost amplitude on right half
+    const step = Math.floor(bufLen / barCount);
+    const rawV = freqData[i * step] / 255;
+    // Right-side boost: bars at index > 30 get extra height multiplier
+    const boost = i > 30 ? 1 + (i - 30) / 30 * 0.8 : 1;
+    const v = Math.min(1, rawV * boost);
+    const h = Math.max(4, v * H * 0.96);
     const x = i * (barW + gap);
-    const hue = 185 + v * 50;
-    const alpha = 0.5 + v * 0.5;
-    // gradient bar
+    const hue = 185 + v * 60;
+    const alpha = 0.55 + v * 0.45;
     const grad = ctx.createLinearGradient(0, H, 0, H - h);
-    grad.addColorStop(0, `hsla(${hue}, 100%, 55%, ${alpha})`);
-    grad.addColorStop(1, `hsla(${hue + 20}, 100%, 70%, ${alpha * 0.6})`);
+    grad.addColorStop(0, `hsla(${hue}, 100%, 50%, ${alpha})`);
+    grad.addColorStop(0.5, `hsla(${hue + 15}, 100%, 65%, ${alpha * 0.85})`);
+    grad.addColorStop(1, `hsla(${hue + 30}, 100%, 80%, ${alpha * 0.5})`);
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.roundRect(x, H - h, barW, h, [3, 3, 0, 0]);
@@ -99,21 +104,29 @@ function drawCosmic(ctx, W, H, freqData, bufLen, t, particlesRef) {
   const cx = W / 2, cy = H / 2;
   const avgFreq = freqData.reduce((s, v) => s + v, 0) / bufLen;
   const pulse = avgFreq / 255;
+  const bassLen = Math.floor(bufLen * 0.08);
+  let bassSum = 0;
+  for (let i = 0; i < bassLen; i++) bassSum += freqData[i];
+  const bassPulse = bassSum / (bassLen * 255);
 
-  // Spawn on beats
-  if (pulse > 0.28 && particlesRef.current.length < 100) {
-    const count = Math.floor(1 + pulse * 3);
+  // Spawn more aggressively — lower threshold, higher cap, bigger & faster
+  if (pulse > 0.1 && particlesRef.current.length < 220) {
+    const count = Math.floor(2 + pulse * 8 + bassPulse * 6);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 0.6 + Math.random() * 2.2 * pulse;
+      // Speed proportional to bass — fills screen faster on beats
+      const speed = 1.2 + Math.random() * 4.5 * (pulse + bassPulse * 0.5);
+      // Spawn from random positions across the canvas, not just center
+      const spawnR = Math.random() < 0.6 ? 0 : Math.random() * Math.min(W, H) * 0.35;
       particlesRef.current.push({
-        x: cx, y: cy,
+        x: cx + Math.cos(angle) * spawnR,
+        y: cy + Math.sin(angle) * spawnR,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         life: 1,
-        decay: 0.013 + Math.random() * 0.016,
-        size: 1.8 + Math.random() * 2.8,
-        hue: 170 + Math.random() * 70,
+        decay: 0.006 + Math.random() * 0.012, // longer life = travel further
+        size: 2.5 + Math.random() * 5 * (0.5 + bassPulse),
+        hue: 160 + Math.random() * 100,
       });
     }
   }
@@ -123,26 +136,27 @@ function drawCosmic(ctx, W, H, freqData, bufLen, t, particlesRef) {
   for (const p of particlesRef.current) {
     p.x  += p.vx;
     p.y  += p.vy;
-    p.vx *= 0.97;
-    p.vy *= 0.97;
+    p.vx *= 0.985; // less drag = travel further
+    p.vy *= 0.985;
     p.life -= p.decay;
     if (p.life <= 0) continue;
     const r = Math.max(0, p.size * p.life);
     if (r > 0) {
       ctx.beginPath();
       ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = `hsla(${p.hue}, 100%, 70%, ${p.life * 0.85})`;
+      ctx.fillStyle = `hsla(${p.hue}, 100%, 72%, ${p.life * 0.9})`;
       ctx.fill();
     }
     alive.push(p);
   }
   particlesRef.current = alive;
 
-  // Center glow
-  const ringR = Math.min(W, H) * 0.22 + pulse * 18;
+  // Center glow — larger radius
+  const ringR = Math.min(W, H) * 0.32 + pulse * 30 + bassPulse * 20;
   if (ringR > 0) {
     const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, ringR);
-    grad.addColorStop(0, `rgba(0,220,255,${0.12 + pulse * 0.18})`);
+    grad.addColorStop(0, `rgba(0,220,255,${0.15 + pulse * 0.22})`);
+    grad.addColorStop(0.5, `rgba(155,126,255,${0.06 + pulse * 0.08})`);
     grad.addColorStop(1, "rgba(0,0,0,0)");
     ctx.beginPath();
     ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
@@ -293,18 +307,25 @@ function drawFallbackWaveform(ctx, W, H, t, active) {
 
 function drawFallbackCosmic(ctx, W, H, t, active, particlesRef) {
   const cx = W / 2, cy = H / 2;
-  if (active && Math.random() < 0.25 && particlesRef.current.length < 60) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 0.5 + Math.random() * 1.5;
-    particlesRef.current.push({
-      x: cx, y: cy,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: 1,
-      decay: 0.018 + Math.random() * 0.014,
-      size: 1.5 + Math.random() * 2.5,
-      hue: 175 + Math.random() * 60,
-    });
+  const spawnChance = active ? 0.55 : 0.08;
+  const maxParticles = active ? 160 : 30;
+  if (Math.random() < spawnChance && particlesRef.current.length < maxParticles) {
+    const count = active ? Math.floor(1 + Math.random() * 3) : 1;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = active ? (1.0 + Math.random() * 3.5) : (0.3 + Math.random() * 0.8);
+      const spawnR = Math.random() < 0.5 ? 0 : Math.random() * Math.min(W, H) * 0.3;
+      particlesRef.current.push({
+        x: cx + Math.cos(angle) * spawnR,
+        y: cy + Math.sin(angle) * spawnR,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.007 + Math.random() * 0.011,
+        size: 2 + Math.random() * 4.5,
+        hue: 160 + Math.random() * 100,
+      });
+    }
   }
   const alive = [];
   for (const p of particlesRef.current) {
