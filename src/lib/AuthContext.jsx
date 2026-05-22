@@ -12,10 +12,38 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [sessionLostError, setSessionLostError] = useState(false); // Safari/PWA storage cleared
 
   useEffect(() => {
     checkAppState();
   }, []);
+
+  // Re-check auth when tab becomes visible (catches Safari ITP & PWA storage clears)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && isAuthenticated) {
+        // Silently re-verify auth without updating loading states
+        base44.auth.me()
+          .then(() => {
+            // Still authenticated, clear any stale error
+            setSessionLostError(false);
+          })
+          .catch(() => {
+            // Session expired — Safari cleared localStorage or 90 days passed
+            setIsAuthenticated(false);
+            setUser(null);
+            setSessionLostError(true);
+            setAuthError({
+              type: 'session_expired',
+              message: 'Your session expired. Please log in again.'
+            });
+          });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [isAuthenticated]);
 
   const checkAppState = async () => {
     try {

@@ -63,6 +63,31 @@ const AuthenticatedApp = () => {
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
+    } else if (authError.type === 'session_expired') {
+      return (
+        <div className="fixed inset-0 flex items-center justify-center bg-background/95 backdrop-blur-sm z-50">
+          <div className="flex flex-col items-center gap-6 max-w-sm px-6 text-center">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(0,200,220,0.12)", border: "1px solid rgba(0,200,220,0.25)" }}>
+              <svg className="w-7 h-7 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="font-heading font-black text-xl text-foreground mb-2">Session Expired</h2>
+              <p className="text-sm text-muted-foreground/70">
+                Your login session was cleared (this happens on Safari/PWA after 7 days of no visits). Please log in again to continue.
+              </p>
+            </div>
+            <button
+              onClick={() => navigateToLogin()}
+              className="w-full px-6 py-3 rounded-lg font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-95"
+              style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}>
+              Log In Again
+            </button>
+          </div>
+        </div>
+      );
     } else if (authError.type === 'auth_required') {
       navigateToLogin();
       return null;
