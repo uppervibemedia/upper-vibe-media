@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
+import LiveRadioBadge from "../components/shared/LiveRadioBadge";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
 import RadioVisualizer from "../components/radio/RadioVisualizer";
@@ -113,16 +114,8 @@ export default function RadioPage() {
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
           className="text-center mb-5">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm mb-3"
-            style={{ background: "rgba(0,200,220,0.06)", border: "1px solid rgba(0,200,220,0.16)" }}>
-            {/* Live dot */}
-            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: playingThisRadioSong ? "#ef4444" : "#00C9E0",
-                animation: playingThisRadioSong ? "pulse 1.5s infinite" : "none" }} />
-            <RadioIcon className="w-3 h-3" style={{ color: "#00C9E0" }} />
-            <span className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: "#00C9E0" }}>
-              {playingThisRadioSong ? "Live Now" : "Live Radio"}
-            </span>
+          <div className="mb-3">
+            <LiveRadioBadge isLive={playingThisRadioSong} />
           </div>
           <h1 className="font-heading font-black text-white mb-1.5" style={{ fontSize: "clamp(1.6rem,5vw,2.6rem)" }}>
             Upper Vibe Radio
