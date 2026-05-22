@@ -42,10 +42,12 @@ function drawEnergy(ctx, W, H, freqData, bufLen) {
   const barCount = 64;
   const gap = 2;
   const barW = (W - gap * (barCount - 1)) / barCount;
+  // Only use first ~80% of buffer (high end is inaudible silence on most audio)
+  const usableBins = Math.floor(bufLen * 0.8);
   for (let i = 0; i < barCount; i++) {
-    const step = Math.floor(bufLen / barCount);
-    const raw = freqData[i * step] / 255;
-    const boost = i > 32 ? 1 + (i - 32) / 32 * 0.4 : 1;
+    const binIdx = Math.floor((i / barCount) * usableBins);
+    const raw = freqData[binIdx] / 255;
+    const boost = i > 32 ? 1 + (i - 32) / 32 * 0.5 : 1;
     const v = Math.min(1, raw * boost * (1 + bass * 0.5));
     const h = Math.max(3, v * H);
     const x = i * (barW + gap);
