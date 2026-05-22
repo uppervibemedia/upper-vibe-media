@@ -24,31 +24,21 @@ const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
 const isSafari = /Safari\//.test(navigator.userAgent) &&
   !/Chrome\//.test(navigator.userAgent) && !/Chromium\//.test(navigator.userAgent);
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function getBass(freqData, bufLen) {
-  const len = Math.floor(bufLen * 0.07);
-  let s = 0; for (let i = 0; i < len; i++) s += freqData[i];
-  return s / (len * 255);
-}
-function getAvg(freqData, bufLen) {
-  let s = 0; for (let i = 0; i < bufLen; i++) s += freqData[i];
-  return s / (bufLen * 255);
-}
+// (frequency helpers moved to smoothed section below draw functions)
 
 // ── Real-data draw functions ──────────────────────────────────────────────────
 
-function drawEnergy(ctx, W, H, freqData, bufLen) {
-  const bass = getBass(freqData, bufLen);
+function drawEnergy(ctx, W, H, s, bufLen, bass, mid, treble, beat) {
   const barCount = 64;
   const gap = 2;
   const barW = (W - gap * (barCount - 1)) / barCount;
-  // Only use first ~80% of buffer (high end is inaudible silence on most audio)
-  const usableBins = Math.floor(bufLen * 0.8);
+  const usableBins = Math.floor(bufLen * 0.78);
   for (let i = 0; i < barCount; i++) {
     const binIdx = Math.floor((i / barCount) * usableBins);
-    const raw = freqData[binIdx] / 255;
-    const boost = i > 32 ? 1 + (i - 32) / 32 * 0.5 : 1;
-    const v = Math.min(1, raw * boost * (1 + bass * 0.5));
+    const raw = s[binIdx];
+    // Treble boost on right side for visual balance
+    const boost = i > 38 ? 1 + (i - 38) / 26 * 0.6 : 1;
+    const v = Math.min(1, raw * boost * (1 + bass * 0.45));
     const h = Math.max(3, v * H);
     const x = i * (barW + gap);
     const hue = 185 + v * 70;
@@ -63,14 +53,13 @@ function drawEnergy(ctx, W, H, freqData, bufLen) {
   }
 }
 
-function drawCosmicWaves(ctx, W, H, freqData, bufLen, t, particlesRef) {
+function drawCosmicWaves(ctx, W, H, s, bufLen, t, particlesRef, bass, beat) {
   const cx = W / 2, cy = H / 2;
-  const avg = getAvg(freqData, bufLen);
-  const bass = getBass(freqData, bufLen);
-  const isBeat = bass > 0.45;
+  const avg = s.reduce((a, v) => a + v, 0) / bufLen;
+  const isBeat = beat;
   const maxP = isBeat ? 280 : 160;
 
-  if (avg > 0.08 && particlesRef.current.length < maxP) {
+  if (avg > 0.06 && particlesRef.current.length < maxP) {
     const count = isBeat ? Math.floor(8 + bass * 16) : Math.floor(1 + avg * 4);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -98,7 +87,6 @@ function drawCosmicWaves(ctx, W, H, freqData, bufLen, t, particlesRef) {
   }
   particlesRef.current = alive;
 
-  // Radial wave rings from centre
   for (let r = 1; r <= 3; r++) {
     const ringR = Math.min(W, H) * (0.1 * r) * (1 + avg * 0.5 + bass * 0.3);
     if (ringR <= 0) continue;
@@ -106,7 +94,6 @@ function drawCosmicWaves(ctx, W, H, freqData, bufLen, t, particlesRef) {
     ctx.strokeStyle = `rgba(0,220,255,${(0.15 - r * 0.04) + avg * 0.18})`;
     ctx.lineWidth = 1; ctx.stroke();
   }
-  // Centre glow
   const glowR = Math.min(W, H) * 0.3 + avg * 28 + bass * 18;
   const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
   g.addColorStop(0, `rgba(0,220,255,${0.14 + avg * 0.2})`);
@@ -116,10 +103,9 @@ function drawCosmicWaves(ctx, W, H, freqData, bufLen, t, particlesRef) {
   ctx.fillStyle = g; ctx.fill();
 }
 
-function drawNeonPulse(ctx, W, H, freqData, bufLen) {
+function drawNeonPulse(ctx, W, H, s, bufLen, bass, mid) {
   const cx = W / 2, cy = H / 2;
-  const bass = getBass(freqData, bufLen);
-  const avg = getAvg(freqData, bufLen);
+  const avg = mid;
   const baseR = Math.min(W, H) * 0.22;
 
   // Outer shock rings
@@ -133,11 +119,10 @@ function drawNeonPulse(ctx, W, H, freqData, bufLen) {
     ctx.beginPath(); ctx.arc(cx, cy, rg.r, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(${rg.c},${rg.alpha})`; ctx.lineWidth = rg.w; ctx.stroke();
   }
-  // Radial frequency spikes
   const bars = 80;
-  const step = Math.floor(bufLen / bars);
+  const usable = Math.floor(bufLen * 0.75);
   for (let i = 0; i < bars; i++) {
-    const v = freqData[i * step] / 255;
+    const v = s[Math.floor((i / bars) * usable)];
     const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
     const inner = baseR * (1.05 + bass * 0.1);
     const outer = inner + Math.max(0, v * baseR * (0.7 + bass * 0.9) + 2);
@@ -159,17 +144,16 @@ function drawNeonPulse(ctx, W, H, freqData, bufLen) {
   }
 }
 
-function drawAurora(ctx, W, H, freqData, bufLen, t) {
-  const bass = getBass(freqData, bufLen);
-  const isBeat = bass > 0.48;
+function drawAurora(ctx, W, H, s, bufLen, t, bass, beat) {
+  const isBeat = beat;
   const bands = 6;
   const bandSize = Math.floor(bufLen / bands);
   const colors = ["0,229,255","0,200,220","80,150,255","155,126,255","200,100,255","100,220,200"];
 
   for (let b = 0; b < bands; b++) {
     let sum = 0;
-    for (let i = b * bandSize; i < (b + 1) * bandSize; i++) sum += freqData[i] || 0;
-    const amp = Math.min(1, (sum / bandSize / 255) * (1 + bass * 1.6));
+    for (let i = b * bandSize; i < (b + 1) * bandSize; i++) sum += s[i] || 0;
+    const amp = Math.min(1, (sum / bandSize) * (1 + bass * 1.6));
     const sliceH = H / bands;
     const cy = sliceH * b + sliceH / 2;
     const beatBoost = b < 2 && isBeat ? 1.5 : 1;
@@ -213,17 +197,16 @@ function drawAurora(ctx, W, H, freqData, bufLen, t) {
   }
 }
 
-function drawTunnel(ctx, W, H, freqData, bufLen, t) {
+function drawTunnel(ctx, W, H, s, bufLen, t, bass, mid) {
   const cx = W / 2, cy = H / 2;
-  const bass = getBass(freqData, bufLen);
-  const avg = getAvg(freqData, bufLen);
+  const avg = mid;
   const rings = 12;
   const maxR = Math.min(W, H) * 0.52;
 
   for (let r = rings; r >= 1; r--) {
     const frac = r / rings;
     const bandIdx = Math.floor(frac * (bufLen * 0.5));
-    const amp = freqData[bandIdx] / 255;
+    const amp = s[bandIdx] || 0;
     const radius = maxR * frac * (1 + bass * 0.18 * (1 - frac));
     const sides = 6 + r;
     const rotation = t * (0.15 + (rings - r) * 0.05) + bass * 0.4;
@@ -264,11 +247,10 @@ function drawTunnel(ctx, W, H, freqData, bufLen, t) {
   ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
 }
 
-function drawPlasma(ctx, W, H, freqData, bufLen, t, particlesRef) {
+function drawPlasma(ctx, W, H, s, bufLen, t, particlesRef, bass, beat) {
   const cx = W / 2, cy = H / 2;
-  const bass = getBass(freqData, bufLen);
-  const avg = getAvg(freqData, bufLen);
-  const isBeat = bass > 0.42;
+  const avg = s.reduce((a, v) => a + v, 0) / bufLen;
+  const isBeat = beat;
   const orbitCount = 3;
   const orbitRadii = [Math.min(W, H) * 0.15, Math.min(W, H) * 0.26, Math.min(W, H) * 0.38];
 
@@ -302,10 +284,9 @@ function drawPlasma(ctx, W, H, freqData, bufLen, t, particlesRef) {
   }
   particlesRef.current = alive;
 
-  // Orbit rings
   for (let o = 0; o < orbitCount; o++) {
     const bandIdx = Math.floor((o / orbitCount) * bufLen * 0.5);
-    const amp = freqData[bandIdx] / 255;
+    const amp = s[bandIdx] || 0;
     const r = orbitRadii[o] * (1 + bass * 0.2 + amp * 0.1);
     const hue = 185 + o * 55;
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -321,9 +302,8 @@ function drawPlasma(ctx, W, H, freqData, bufLen, t, particlesRef) {
   ctx.beginPath(); ctx.arc(cx, cy, gr, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
 }
 
-function drawDrift(ctx, W, H, freqData, bufLen, t, particlesRef) {
-  const bass = getBass(freqData, bufLen);
-  const avg = getAvg(freqData, bufLen);
+function drawDrift(ctx, W, H, s, bufLen, t, particlesRef, bass, treble) {
+  const avg = s.reduce((a, v) => a + v, 0) / bufLen;
   const isBeat = bass > 0.44;
   const maxP = 200;
 
@@ -494,6 +474,40 @@ function fallbackDrift(ctx, W, H, t, active, particlesRef) {
   particlesRef.current = alive;
 }
 
+// ── Smoothed frequency data ────────────────────────────────────────────────────
+// Persistent smoothed buffer — attack fast, release slow
+const _smoothed = { data: null };
+function getSmoothedFreq(an) {
+  const bufLen = an.frequencyBinCount;
+  const raw = new Uint8Array(bufLen);
+  an.getByteFrequencyData(raw);
+
+  if (!_smoothed.data || _smoothed.data.length !== bufLen) {
+    _smoothed.data = new Float32Array(bufLen);
+  }
+  const s = _smoothed.data;
+  for (let i = 0; i < bufLen; i++) {
+    const r = raw[i] / 255;
+    // Attack 0.6 (fast on transients), release 0.12 (slow decay = smooth)
+    s[i] = r > s[i] ? s[i] * 0.4 + r * 0.6 : s[i] * 0.88 + r * 0.12;
+  }
+  return s; // values 0–1
+}
+
+function getBassS(s, bufLen)   { const n = Math.floor(bufLen * 0.07); let v=0; for(let i=0;i<n;i++) v+=s[i]; return v/n; }
+function getMidS(s, bufLen)    { const lo=Math.floor(bufLen*0.07), hi=Math.floor(bufLen*0.35); let v=0; for(let i=lo;i<hi;i++) v+=s[i]; return v/(hi-lo); }
+function getTrebleS(s, bufLen) { const lo=Math.floor(bufLen*0.35), hi=Math.floor(bufLen*0.75); let v=0; for(let i=lo;i<hi;i++) v+=s[i]; return v/(hi-lo); }
+
+// Beat detection — simple threshold on bass energy with cooldown
+const _beat = { last: 0, triggered: false };
+function detectBeat(bass) {
+  const now = Date.now();
+  const isBeat = bass > 0.45 && (now - _beat.last) > 280;
+  if (isBeat) { _beat.last = now; _beat.triggered = true; }
+  else _beat.triggered = false;
+  return isBeat;
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function RadioVisualizer({ isPlaying, currentSong }) {
   const canvasRef    = useRef(null);
@@ -501,6 +515,7 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
   const analyserRef  = useRef(null);
   const particlesRef = useRef([]);
   const chipRowRef   = useRef(null);
+  const logTimerRef  = useRef(0);
   const { audioRef } = usePlayer();
 
   const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "energy"; } catch { return "energy"; } };
@@ -516,14 +531,43 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
     if (active) active.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
   }, [mode]);
 
+  // ── Try to connect analyser — attempt on ALL platforms, iOS included ────────
   const tryConnectAnalyser = useCallback(() => {
     const audio = audioRef?.current;
+    const audioElementFound = !!audio;
     let connected = false;
-    if (!isIOS && audio) {
+    let ctxState = "N/A";
+
+    // Try even on iOS — AudioContext may work if user gesture already fired
+    if (audio) {
       const an = getGlobalAnalyser(audio);
-      if (an) { analyserRef.current = an; connected = true; }
-    } else { analyserRef.current = null; }
+      if (an) {
+        analyserRef.current = an;
+        connected = true;
+        try { ctxState = an.context?.state || "unknown"; } catch {}
+        // Tune for reactive beat response
+        an.fftSize = 2048;
+        an.smoothingTimeConstant = 0.0; // we do our own smoothing
+      }
+    }
+
+    if (!connected) analyserRef.current = null;
     setAnalyserConnected(connected);
+
+    const canvas = canvasRef.current;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas?.getBoundingClientRect();
+    console.log("[Viz] probe |",
+      "audioElementFound:", audioElementFound,
+      "| audioContextState:", ctxState,
+      "| analyserConnected:", connected,
+      "| usingFallbackVisualizer:", !connected,
+      "| isIOS:", isIOS,
+      "| devicePixelRatio:", dpr,
+      "| canvasWidth:", rect?.width ?? 0,
+      "| canvasHeight:", rect?.height ?? 0,
+    );
+
     return connected;
   }, [audioRef]);
 
@@ -534,50 +578,91 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
   const startLoop = useCallback((currentMode, useAnalyser) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const loop = () => {
-      const ctx = canvas.getContext("2d");
+      // ── Always re-read logical size and re-apply DPR scale each frame ──
+      const dpr  = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
-      const W = rect.width || canvas.width;
-      const H = rect.height || canvas.height;
-      const t = Date.now() / 1000;
-      ctx.clearRect(0, 0, W, H);
+      const lW   = rect.width  || 300;
+      const lH   = rect.height || 180;
+      const pW   = Math.round(lW * dpr);
+      const pH   = Math.round(lH * dpr);
+
+      // Only resize backing store when dimensions actually change (perf guard)
+      if (canvas.width !== pW || canvas.height !== pH) {
+        canvas.width  = pW;
+        canvas.height = pH;
+      }
+
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // always correct — no accumulated scale
+      ctx.clearRect(0, 0, lW, lH);
+
+      const t  = Date.now() / 1000;
       const an = useAnalyser ? analyserRef.current : null;
+
       if (an) {
         const bufLen = an.frequencyBinCount;
-        const freqData = new Uint8Array(bufLen);
+        const s      = getSmoothedFreq(an);
         const waveData = new Uint8Array(bufLen);
-        an.getByteFrequencyData(freqData);
         an.getByteTimeDomainData(waveData);
+
+        const bass   = getBassS(s, bufLen);
+        const mid    = getMidS(s, bufLen);
+        const treble = getTrebleS(s, bufLen);
+        const beat   = detectBeat(bass);
+
+        // Periodic debug log (every 3s)
+        const now = Date.now();
+        if (now - logTimerRef.current > 3000) {
+          logTimerRef.current = now;
+          // Check if data is actually changing
+          const nonZero = Array.from(s).filter(v => v > 0.01).length;
+          console.log("[Viz] live |",
+            "bassEnergy:", bass.toFixed(3),
+            "| midEnergy:", mid.toFixed(3),
+            "| trebleEnergy:", treble.toFixed(3),
+            "| beatDetected:", beat,
+            "| frequencyDataChanging:", nonZero > 5,
+            "| usingFallbackVisualizer: false",
+          );
+        }
+
         switch (currentMode) {
-          case "energy":  drawEnergy(ctx, W, H, freqData, bufLen); break;
-          case "cosmic":  drawCosmicWaves(ctx, W, H, freqData, bufLen, t, particlesRef); break;
-          case "neon":    drawNeonPulse(ctx, W, H, freqData, bufLen); break;
-          case "aurora":  drawAurora(ctx, W, H, freqData, bufLen, t); break;
-          case "tunnel":  drawTunnel(ctx, W, H, freqData, bufLen, t); break;
-          case "plasma":  drawPlasma(ctx, W, H, freqData, bufLen, t, particlesRef); break;
+          case "energy":  drawEnergy(ctx, lW, lH, s, bufLen, bass, mid, treble, beat); break;
+          case "cosmic":  drawCosmicWaves(ctx, lW, lH, s, bufLen, t, particlesRef, bass, beat); break;
+          case "neon":    drawNeonPulse(ctx, lW, lH, s, bufLen, bass, mid); break;
+          case "aurora":  drawAurora(ctx, lW, lH, s, bufLen, t, bass, beat); break;
+          case "tunnel":  drawTunnel(ctx, lW, lH, s, bufLen, t, bass, mid); break;
+          case "plasma":  drawPlasma(ctx, lW, lH, s, bufLen, t, particlesRef, bass, beat); break;
           case "drift":
-          default:        drawDrift(ctx, W, H, freqData, bufLen, t, particlesRef); break;
+          default:        drawDrift(ctx, lW, lH, s, bufLen, t, particlesRef, bass, treble); break;
         }
       } else {
         const active = isPlaying;
+        if (Date.now() - logTimerRef.current > 3000) {
+          logTimerRef.current = Date.now();
+          console.log("[Viz] fallback | usingFallbackVisualizer: true | isIOS:", isIOS, "| isPlaying:", active);
+        }
         switch (currentMode) {
-          case "energy":  fallbackEnergy(ctx, W, H, t, active); break;
-          case "cosmic":  fallbackCosmic(ctx, W, H, t, active, particlesRef); break;
-          case "neon":    fallbackNeon(ctx, W, H, t, active); break;
-          case "aurora":  fallbackAurora(ctx, W, H, t, active); break;
-          case "tunnel":  fallbackTunnel(ctx, W, H, t, active); break;
-          case "plasma":  fallbackPlasma(ctx, W, H, t, active, particlesRef); break;
+          case "energy":  fallbackEnergy(ctx, lW, lH, t, active); break;
+          case "cosmic":  fallbackCosmic(ctx, lW, lH, t, active, particlesRef); break;
+          case "neon":    fallbackNeon(ctx, lW, lH, t, active); break;
+          case "aurora":  fallbackAurora(ctx, lW, lH, t, active); break;
+          case "tunnel":  fallbackTunnel(ctx, lW, lH, t, active); break;
+          case "plasma":  fallbackPlasma(ctx, lW, lH, t, active, particlesRef); break;
           case "drift":
-          default:        fallbackDrift(ctx, W, H, t, active, particlesRef); break;
+          default:        fallbackDrift(ctx, lW, lH, t, active, particlesRef); break;
         }
       }
+
       rafRef.current = requestAnimationFrame(loop);
     };
     loop();
   }, [isPlaying]);
 
   useEffect(() => {
-    stopLoop(); particlesRef.current = [];
+    stopLoop(); particlesRef.current = []; _smoothed.data = null;
     const connected = tryConnectAnalyser();
     startLoop(mode, connected);
     return stopLoop;
@@ -586,7 +671,7 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
-      stopLoop(); particlesRef.current = [];
+      stopLoop(); particlesRef.current = []; _smoothed.data = null;
       const connected = tryConnectAnalyser();
       startLoop(mode, connected);
     };
@@ -594,19 +679,14 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [mode, isPlaying, tryConnectAnalyser, startLoop, stopLoop]);
 
+  // ResizeObserver just triggers a re-probe (canvas resize now happens in loop)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const syncSize = () => {
-      const rect = canvas.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return;
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width  = Math.round(rect.width  * dpr);
-      canvas.height = Math.round(rect.height * dpr);
-      canvas.getContext("2d").scale(dpr, dpr);
-    };
-    syncSize();
-    const ro = new ResizeObserver(syncSize);
+    const ro = new ResizeObserver(() => {
+      // Force canvas backing store refresh on next frame (handled in loop)
+      if (canvas) { canvas.width = 0; canvas.height = 0; }
+    });
     ro.observe(canvas);
     return () => ro.disconnect();
   }, []);
