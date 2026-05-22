@@ -9,6 +9,7 @@ import { useRadio } from "../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
+import ShareVibeButton from "../components/shared/ShareVibeButton";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
 import RadioVisualizer from "../components/radio/RadioVisualizer";
@@ -298,8 +299,8 @@ export default function RadioPage() {
                   </button>
                 </div>
 
-                {/* Like + Download */}
-                <div className="flex items-center justify-center gap-3">
+                {/* Like + Download + Share */}
+                <div className="flex items-center justify-center gap-3 flex-wrap">
                   <motion.button
                     onClick={handleLike}
                     whileTap={{ scale: 0.88 }}
@@ -324,6 +325,11 @@ export default function RadioPage() {
                     Download Song
                     {!isPlus && <Crown className="w-3 h-3 text-yellow-400/60" />}
                   </button>
+
+                  <ShareVibeButton
+                    type={isHostDropPlaying ? "radio" : "song"}
+                    track={currentRadioSong}
+                  />
                 </div>
               </div>
             </motion.div>

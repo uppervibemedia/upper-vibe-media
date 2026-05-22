@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X, Mic2 } from "lucide-react";
+import ShareVibeButton from "../shared/ShareVibeButton";
 import { Slider } from "@/components/ui/slider";
 import { usePlayer, sharedHiddenRef } from "../../context/PlayerContext";
 
@@ -263,6 +264,12 @@ export default function AudioPlayer() {
                   className="cursor-pointer"
                 />
               </div>
+
+              <ShareVibeButton
+                type={currentTrack?._isHostDrop ? "radio" : "song"}
+                track={currentTrack}
+                size="sm"
+              />
 
               <div className="w-px h-4 bg-border mx-1" />
               <button

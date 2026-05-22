@@ -13,6 +13,7 @@ import MessageBubble from "../components/viberoom/MessageBubble";
 import VibeAvatar from "../components/viberoom/VibeAvatar";
 import AvatarUpload from "../components/viberoom/AvatarUpload";
 import PremiumUpgradePrompt from "../components/viberoom/PremiumUpgradePrompt";
+import ShareVibeButton from "../components/shared/ShareVibeButton";
 
 // Layout constants
 const BOTTOM_NAV_H = 56;
@@ -271,6 +272,9 @@ export default function VibeRoom() {
                   Vibe Room
                 </h1>
                 <p className="text-muted-foreground/60 text-xs tracking-wide">Listen together. Raise the frequency.</p>
+                <div className="mt-3">
+                  <ShareVibeButton type="viberoom" size="sm" />
+                </div>
               </div>
 
               {/* Right: avatar + name (premium only) */}

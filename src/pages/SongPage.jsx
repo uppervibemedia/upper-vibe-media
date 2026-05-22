@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import SupportModal from "../components/shared/SupportModal";
+import ShareVibeButton from "../components/shared/ShareVibeButton";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
 import { recordUserDownload } from "@/lib/downloadService";
@@ -327,13 +328,15 @@ export default function SongPage() {
                 </button>
 
                 <button
-                  onClick={() => setSupportModal(true)}
-                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
-                  style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.28)", color: "#D4A843" }}>
-                  <Zap className="w-4 h-4" />
-                  Support
+                onClick={() => setSupportModal(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
+                style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.28)", color: "#D4A843" }}>
+                <Zap className="w-4 h-4" />
+                Support
                 </button>
-              </div>
+
+                <ShareVibeButton type="song" track={track} />
+                </div>
 
               {!isPlus && (
                 <div className="mt-4 flex items-start gap-2 max-w-sm mx-auto sm:mx-0 p-3 rounded-xl"
