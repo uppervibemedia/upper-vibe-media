@@ -487,28 +487,36 @@ html.solar-transitioning *::after {
   box-shadow: 0 0 20px hsl(191 75% 38% / 0.15) !important;
 }
 
-/* Cyan / purple label badges on dark bg → Solar-readable */
-.solar .text-purple-400 { color: hsl(270 50% 40%) !important; }
-.solar .text-purple-300 { color: hsl(270 45% 45%) !important; }
-.solar .text-cyan-400 { color: hsl(191 75% 32%) !important; }
-.solar .text-cyan-300 { color: hsl(191 70% 35%) !important; }
-.solar .text-yellow-400 { color: hsl(43 80% 35%) !important; }
-.solar .text-yellow-500 { color: hsl(43 85% 32%) !important; }
-.solar .text-red-400 { color: hsl(0 65% 42%) !important; }
-.solar .text-green-400 { color: hsl(142 60% 30%) !important; }
-.solar .text-orange-400 { color: hsl(25 75% 38%) !important; }
+/* ── SOLAR: PRESERVE VIBRANT UPPER VIBE BRAND COLORS ────────────────────────── */
+/* Keep official cyan (electric neon) and gold (rich metallic) — DO NOT MUTE */
 
-/* Purple accent text (e.g. "UPPER VIBE") — keep but darken */
+/* Purple accent → keep vibrant */
+.solar .text-purple-400 { color: #9B7EFF !important; }
+.solar .text-purple-300 { color: #A855F7 !important; }
+
+/* CYAN: Electric neon blue — vibrant in Solar */
+.solar .text-cyan-400 { color: #00D4EE !important; }
+.solar .text-cyan-300 { color: #00E5FF !important; }
+
+/* GOLD: Rich metallic yellow — vibrant in Solar */
+.solar .text-yellow-400 { color: #D4A843 !important; }
+.solar .text-yellow-500 { color: #EDB84A !important; }
+
+.solar .text-red-400 { color: #DC2626 !important; }
+.solar .text-green-400 { color: #16A34A !important; }
+.solar .text-orange-400 { color: #EA580C !important; }
+
+/* Upper Vibe official brand colors — VIBRANT in Solar */
 .solar [style*="color: #9B7EFF"],
-.solar [style*="color: rgba(155,126,255"] { color: hsl(270 50% 40%) !important; }
-.solar [style*="color: #c4aaff"] { color: hsl(270 45% 38%) !important; }
-.solar [style*="color: rgba(155, 126, 255"] { color: hsl(270 50% 40%) !important; }
+.solar [style*="color: rgba(155,126,255"] { color: #9B7EFF !important; }
+.solar [style*="color: #c4aaff"] { color: #C4AAFF !important; }
+.solar [style*="color: rgba(155, 126, 255"] { color: #9B7EFF !important; }
 
-/* Cyan brand color in Solar */
+/* Upper Vibe CYAN (official electric blue) — VIBRANT, not muted */
 .solar [style*="color: #00C9E0"],
 .solar [style*="color: #00E5FF"],
 .solar [style*="color: rgba(0,200,220"],
-.solar [style*="color: rgba(0, 229, 255"] { color: hsl(191 75% 32%) !important; }
+.solar [style*="color: rgba(0, 229, 255"] { color: #00D4EE !important; }
 
 /* Muted foreground already uses CSS vars — no override needed */
 
@@ -603,7 +611,7 @@ html.solar-transitioning *::after {
 }
 
 .solar [style*="background: linear-gradient(105deg, #8A5E1A"] {
-  color: hsl(43 70% 35%) !important;
+  color: #C8892A !important;
   font-weight: 900 !important;
 }
 
@@ -623,37 +631,50 @@ html.solar-transitioning *::after {
   color: hsl(240 15% 35%) !important;
 }
 
-/* Start Listening Live button — higher contrast fill + dark text */
+/* Start Listening Live button — official cyan gradient + glassmorphism */
 .solar [style*="background: linear-gradient(135deg,#009CB8,#00C8E0)"] {
-  background: linear-gradient(135deg, hsl(191 75% 35%), hsl(191 100% 42%)) !important;
-  color: #fff !important;
-  box-shadow: 0 0 28px hsl(191 85% 45% / 0.3) !important;
+  background: linear-gradient(135deg, #00B8D4, #00D4EE) !important;
+  color: #000 !important;
+  box-shadow: 0 0 32px rgba(0, 212, 238, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 
-/* Browse Music button — darker border + text */
+/* Browse Music button — vibrant cyan outline with glassmorphism */
 .solar [style*="border: 1px solid rgba(0,200,220,0.25)"] {
-  border-color: hsl(191 65% 55%) !important;
-  color: hsl(191 75% 28%) !important;
+  border-color: #00B8D4 !important;
+  color: #00B8D4 !important;
+  background: rgba(0, 184, 212, 0.08) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
 }
 
-/* Watch Visualizers button — darker gold */
+/* Watch Visualizers button — vibrant gold outline with glassmorphism */
 .solar [style*="border: 1px solid rgba(185,135,45,0.3)"] {
-  border-color: hsl(43 60% 55%) !important;
-  color: hsl(43 70% 30%) !important;
+  border-color: #C8892A !important;
+  color: #C8892A !important;
+  background: rgba(200, 137, 42, 0.08) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
 }
 
-/* Upper Vibe Academy link — more visible */
+/* Upper Vibe Academy link — vibrant with glassmorphism */
 .solar [style*="background: rgba(255,255,255,0.02)"],
 .solar [style*="border: 1px solid rgba(255,255,255,0.06)"] {
-  background: hsl(36 40% 94%) !important;
-  border-color: hsl(240 20% 60%) !important;
-  color: hsl(240 20% 30%) !important;
+  background: rgba(255, 255, 255, 0.4) !important;
+  border-color: #C0C0C0 !important;
+  color: #240 !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
 }
 
-/* Eyebrow label (animated) — stronger cyan */
+/* Eyebrow label "High-Vibration Music" — vibrant cyan badge with glassmorphism */
 .solar [style*="background: rgba(0,200,220,0.05)"][style*="border: 1px solid rgba(0,200,220,0.16)"] {
-  background: hsl(191 50% 92%) !important;
-  border-color: hsl(191 65% 60%) !important;
+  background: rgba(0, 184, 212, 0.15) !important;
+  border-color: #00B8D4 !important;
+  color: #00B8D4 !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
 }
 
 /* Description text in hero + sections — darker slate */
@@ -662,14 +683,26 @@ html.solar-transitioning *::after {
   color: hsl(240 15% 40%) !important;
 }
 
-/* Divider accent lines (gold) — darker gold */
+/* Divider accent lines (gold) — vibrant rich gold */
 .solar [style*="background: rgba(212,168,67,0.5)"],
 .solar [style*="background: rgba(212,168,67,0.25)"] {
-  background: hsl(43 60% 50%) !important;
+  background: #D4A843 !important;
 }
 
-/* Now Playing info text — readable on Solar */
+/* Now Playing info text + cyan animations — vibrant cyan */
 .solar [style*="color: rgba(0,200,220,0.6)"],
-.solar [style*="text-cyan-400/30"] {
-  color: hsl(191 75% 28%) !important;
+.solar [style*="text-cyan-400/30"],
+.solar [style*="color: rgba(0,229,255,0.7)"] {
+  color: #00D4EE !important;
+}
+
+/* Waveform bars in Radio CTA — vibrant cyan + gold */
+.solar [style*="background: rgba(0,229,255,0.7)"] {
+  background: #00D4EE !important;
+}
+.solar [style*="background: rgba(0,180,210,0.4)"] {
+  background: #00B8D4 !important;
+}
+.solar [style*="background: rgba(212,168,67,0.35)"] {
+  background: #D4A843 !important;
 }
