@@ -43,6 +43,7 @@ import Support from './pages/Support';
 import ForgotPassword from './pages/ForgotPassword';
 import Settings from './pages/Settings';
 import FAQ from './pages/FAQ';
+import VibeRoom from './pages/VibeRoom';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -106,6 +107,7 @@ const AuthenticatedApp = () => {
         <Route path="/support" element={<Support />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/vibe-room" element={<VibeRoom />} />
       </Route>
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="*" element={<PageNotFound />} />

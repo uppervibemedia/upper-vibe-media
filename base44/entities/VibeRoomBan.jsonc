@@ -1,0 +1,31 @@
+{
+  "name": "VibeRoomBan",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the banned/muted user"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "muted",
+        "banned"
+      ],
+      "default": "muted",
+      "description": "Type of moderation action"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for the action"
+    },
+    "applied_by": {
+      "type": "string",
+      "description": "Admin email who applied the action"
+    }
+  },
+  "required": [
+    "user_email",
+    "action"
+  ]
+}

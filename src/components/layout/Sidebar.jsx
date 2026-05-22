@@ -11,6 +11,7 @@ import {
   Users,
   Heart,
   GraduationCap,
+  MessageCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { usePlayer } from "@/context/PlayerContext";
@@ -18,6 +19,7 @@ import { usePlayer } from "@/context/PlayerContext";
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
   { path: "/radio", icon: Radio, label: "Radio" },
+  { path: "/vibe-room", icon: MessageCircle, label: "Vibe Room" },
   { path: "/artists", icon: Users, label: "Artists" },
   { path: "/my-vibes", icon: Heart, label: "My Vibe Library" },
 ];

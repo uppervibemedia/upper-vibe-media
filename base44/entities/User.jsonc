@@ -5,63 +5,16 @@
     "role": {
       "type": "string",
       "enum": [
+        "admin",
         "user",
-        "admin"
+        "premium"
       ],
       "default": "user"
     },
-    "tier": {
-      "type": "string",
-      "enum": [
-        "free",
-        "plus"
-      ],
-      "default": "free",
-      "description": "Subscription tier: free or plus"
-    },
-    "planName": {
-      "type": "string",
-      "description": "Display name of active plan e.g. Upper Vibe Plus"
-    },
-    "billingCycle": {
-      "type": "string",
-      "enum": [
-        "monthly",
-        "yearly"
-      ],
-      "description": "Billing cycle for paid plan"
-    },
-    "isPlus": {
+    "vibe_room_age_confirmed": {
       "type": "boolean",
       "default": false,
-      "description": "True for Upper Vibe Plus members"
-    },
-    "subscriptionStatus": {
-      "type": "string",
-      "enum": [
-        "inactive",
-        "active",
-        "cancelled",
-        "past_due"
-      ],
-      "default": "inactive",
-      "description": "Stripe subscription status"
-    },
-    "stripeCustomerId": {
-      "type": "string",
-      "description": "Stripe customer ID"
-    },
-    "stripeSubscriptionId": {
-      "type": "string",
-      "description": "Stripe subscription ID"
-    },
-    "plusStartedAt": {
-      "type": "string",
-      "description": "Date when Plus membership started"
-    },
-    "plusRenewsAt": {
-      "type": "string",
-      "description": "Date when Plus membership renews or expires"
+      "description": "User has confirmed they are 18+ to access Vibe Room"
     }
   }
 }

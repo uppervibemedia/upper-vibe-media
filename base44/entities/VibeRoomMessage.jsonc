@@ -1,0 +1,27 @@
+{
+  "name": "VibeRoomMessage",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the message sender"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Display name of the sender"
+    },
+    "content": {
+      "type": "string",
+      "description": "Message content"
+    },
+    "is_hidden": {
+      "type": "boolean",
+      "default": false,
+      "description": "Admin soft-delete / hide message"
+    }
+  },
+  "required": [
+    "user_email",
+    "content"
+  ]
+}
