@@ -109,23 +109,31 @@ function drawCosmic(ctx, W, H, freqData, bufLen, t, particlesRef) {
   for (let i = 0; i < bassLen; i++) bassSum += freqData[i];
   const bassPulse = bassSum / (bassLen * 255);
 
-  // Spawn more aggressively — lower threshold, higher cap, bigger & faster
-  if (pulse > 0.1 && particlesRef.current.length < 220) {
-    const count = Math.floor(2 + pulse * 8 + bassPulse * 6);
+  // Beat-reactive spawn: bass kick = burst, quiet = trickle
+  const beatThreshold = 0.08;
+  const isBeat = bassPulse > 0.45; // hard bass hit
+  const maxP = isBeat ? 300 : 180;
+  if (pulse > beatThreshold && particlesRef.current.length < maxP) {
+    // Big burst on bass hit, small trickle otherwise
+    const count = isBeat
+      ? Math.floor(10 + bassPulse * 18)
+      : Math.floor(1 + pulse * 4);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      // Speed proportional to bass — fills screen faster on beats
-      const speed = 1.2 + Math.random() * 4.5 * (pulse + bassPulse * 0.5);
-      // Spawn from random positions across the canvas, not just center
-      const spawnR = Math.random() < 0.6 ? 0 : Math.random() * Math.min(W, H) * 0.35;
+      // Speed slams up on bass hit
+      const speedBase = isBeat ? 3.5 + bassPulse * 6 : 1.0 + pulse * 3;
+      const speed = speedBase + Math.random() * speedBase * 0.5;
+      const spawnR = Math.random() < 0.65 ? 0 : Math.random() * Math.min(W, H) * 0.3;
       particlesRef.current.push({
         x: cx + Math.cos(angle) * spawnR,
         y: cy + Math.sin(angle) * spawnR,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         life: 1,
-        decay: 0.006 + Math.random() * 0.012, // longer life = travel further
-        size: 2.5 + Math.random() * 5 * (0.5 + bassPulse),
+        decay: isBeat ? 0.004 + Math.random() * 0.008 : 0.008 + Math.random() * 0.014,
+        size: isBeat
+          ? 3.5 + Math.random() * 6 * bassPulse
+          : 2 + Math.random() * 3,
         hue: 160 + Math.random() * 100,
       });
     }
