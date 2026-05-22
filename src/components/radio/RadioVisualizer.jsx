@@ -90,8 +90,10 @@ function drawCosmic(ctx, W, H, data, bufLen, t, particlesRef) {
     p.vx *= 0.98;
     p.vy *= 0.98;
     p.life -= p.decay;
+    const r = p.size * p.life;
+    if (r <= 0) continue;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
     ctx.fillStyle = `hsla(${p.hue}, 100%, 70%, ${p.life * 0.9})`;
     ctx.fill();
   }
