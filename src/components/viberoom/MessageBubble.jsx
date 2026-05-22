@@ -20,14 +20,19 @@ function formatTime(isoString) {
   } catch (_) { return ""; }
 }
 
-export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, onHide, onMute, onBan, onUnban, animDelay }) {
+export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, onHide, onMute, onBan, onUnban, animDelay, onReactionLoginRequired }) {
   const reactions = msg.reactions || {};
   const [showProfile, setShowProfile] = useState(false);
   const [showModMenu, setShowModMenu] = useState(false);
 
-  // Exclusive reaction: one per user across all types
+  // Exclusive reaction: one per user across all types (free + premium can react)
   const handleReact = async (key) => {
-    if (!user) return;
+    if (!user) {
+      if (onReactionLoginRequired) onReactionLoginRequired();
+      base44.analytics.track({ eventName: "vibe_room_free_reaction_clicked" });
+      return;
+    }
+    base44.analytics.track({ eventName: "vibe_room_free_reaction_clicked" });
     const email = user.email;
     const updated = {};
     REACTIONS.forEach(({ key: k }) => {

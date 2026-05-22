@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Send, ShieldCheck, Zap, Ban, Mic2, Camera } from "lucide-react";
+import { Send, ShieldCheck, Zap, Ban, Mic2, Crown } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { usePlayer } from "@/context/PlayerContext";
@@ -11,6 +11,7 @@ import DailyPromptCard from "../components/viberoom/DailyPromptCard";
 import MessageBubble from "../components/viberoom/MessageBubble";
 import VibeAvatar from "../components/viberoom/VibeAvatar";
 import AvatarUpload from "../components/viberoom/AvatarUpload";
+import PremiumUpgradePrompt from "../components/viberoom/PremiumUpgradePrompt";
 
 // Layout constants
 const BOTTOM_NAV_H = 56;
@@ -18,23 +19,35 @@ const PLAYER_H = 68;
 const INPUT_EXTRA = 8;
 const INPUT_BAR_H = 64;
 
+function isPremiumUser(user) {
+  return user?.role === "admin" || user?.role === "premium" || user?.tier === "premium" || user?.subscription_status === "active";
+}
+
 export default function VibeRoom() {
   const { user } = useAuth();
   const { currentTrack, isPlaying } = usePlayer();
   const isAdmin = user?.role === "admin";
+  const isPremium = isPremiumUser(user);
 
   // ── Age gate ──────────────────────────────────────────────────────────────
   const [ageConfirmed, setAgeConfirmed] = useState(() => hasConfirmedAge(user));
   const [showGate, setShowGate] = useState(!hasConfirmedAge(user));
 
-  // ── Identity: vibe name + avatar ─────────────────────────────────────────
+  // ── Identity: vibe name + avatar (premium only) ───────────────────────────
   const [vibeName, setVibeName]     = useState(() => getSavedVibeName(user));
   const [vibeAvatar, setVibeAvatar] = useState(() => getSavedVibeAvatar(user));
   const [needsVibeName, setNeedsVibeName] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
-  // When user auth resolves, sync identity from profile
+  // Analytics: track view once
   useEffect(() => {
     if (!ageConfirmed) return;
+    base44.analytics.track({ eventName: isPremium ? "vibe_room_viewed_premium" : "vibe_room_viewed_free" });
+  }, [ageConfirmed, isPremium]);
+
+  // When user auth resolves, sync identity from profile (premium only)
+  useEffect(() => {
+    if (!ageConfirmed || !isPremium) return;
     const savedName   = getSavedVibeName(user);
     const savedAvatar = getSavedVibeAvatar(user);
     if (savedName) {
@@ -44,14 +57,15 @@ export default function VibeRoom() {
       setNeedsVibeName(true);
     }
     if (savedAvatar) setVibeAvatar(savedAvatar);
-  }, [user, ageConfirmed]);
+  }, [user, ageConfirmed, isPremium]);
 
   // ── Chat state ────────────────────────────────────────────────────────────
-  const [messages, setMessages] = useState([]);
-  const [bans, setBans]         = useState([]);
-  const [input, setInput]       = useState("");
-  const [sending, setSending]   = useState(false);
-  const [loading, setLoading]   = useState(false);
+  const [messages, setMessages]       = useState([]);
+  const [seededMessages, setSeeded]   = useState([]);
+  const [bans, setBans]               = useState([]);
+  const [input, setInput]             = useState("");
+  const [sending, setSending]         = useState(false);
+  const [loading, setLoading]         = useState(false);
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
 
@@ -59,16 +73,18 @@ export default function VibeRoom() {
   const isMuted  = bans.some((b) => b.user_email === user?.email && b.action === "muted");
   const hasPlayer = !!currentTrack;
 
-  // ── Load messages + bans ─────────────────────────────────────────────────
+  // ── Load messages + bans + seeded ────────────────────────────────────────
   useEffect(() => {
     if (!ageConfirmed) return;
     setLoading(true);
     Promise.all([
       base44.entities.VibeRoomMessage.filter({ is_hidden: false }, "created_date", 100),
       base44.entities.VibeRoomBan.list("created_date", 200),
-    ]).then(([msgs, banList]) => {
+      base44.entities.VibeRoomSeededMessage.filter({ is_active: true }, "display_order", 20),
+    ]).then(([msgs, banList, seeded]) => {
       setMessages(msgs);
       setBans(banList);
+      setSeeded(seeded);
       setLoading(false);
     });
   }, [ageConfirmed]);
@@ -97,8 +113,15 @@ export default function VibeRoom() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ── Send message ──────────────────────────────────────────────────────────
+  // Build combined feed: seeded shown only when real messages < 3
+  const showSeeded = messages.length < 3;
+  const combinedFeed = showSeeded
+    ? [...seededMessages.map((s) => ({ ...s, _seeded: true })), ...messages]
+    : messages;
+
+  // ── Send message (premium only) ───────────────────────────────────────────
   const handleSend = useCallback(async () => {
+    if (!isPremium) { setShowUpgradePrompt(true); return; }
     if (!input.trim() || sending || isBanned || isMuted) return;
     if (!vibeName) { setNeedsVibeName(true); return; }
 
@@ -115,12 +138,18 @@ export default function VibeRoom() {
       now_playing_title: (currentTrack && isPlaying) ? currentTrack.title : null,
       reactions: { felt_that: [], needed_this: [], inspired: [], gratitude: [] },
     });
+    base44.analytics.track({ eventName: "vibe_room_premium_message_posted" });
     setSending(false);
     inputRef.current?.focus();
-  }, [input, sending, isBanned, isMuted, vibeName, vibeAvatar, user, currentTrack, isPlaying]);
+  }, [isPremium, input, sending, isBanned, isMuted, vibeName, vibeAvatar, user, currentTrack, isPlaying]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+
+  const handleLockedInputClick = () => {
+    base44.analytics.track({ eventName: "vibe_room_chat_locked_clicked" });
+    setShowUpgradePrompt(true);
   };
 
   // ── Admin / moderation ────────────────────────────────────────────────────
@@ -175,7 +204,7 @@ export default function VibeRoom() {
     );
   }
 
-  if (ageConfirmed && needsVibeName) {
+  if (ageConfirmed && isPremium && needsVibeName) {
     return (
       <VibeNameSetup
         onComplete={({ name, avatarUrl }) => {
@@ -218,6 +247,12 @@ export default function VibeRoom() {
                     <span className="text-[9px] font-black tracking-[0.35em] uppercase text-purple-400"
                       style={{ fontFamily: "var(--font-heading)" }}>Live Chat</span>
                   </div>
+                  {/* Premium Chat badge */}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                    style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)" }}>
+                    <Crown className="w-2.5 h-2.5 text-yellow-400/70" />
+                    <span className="text-[9px] font-black tracking-[0.2em] uppercase text-yellow-400/70">Premium Chat</span>
+                  </div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
                     style={{ background: "rgba(155,126,255,0.05)", border: "1px solid rgba(155,126,255,0.12)" }}>
                     <ShieldCheck className="w-2.5 h-2.5 text-purple-400/60" />
@@ -231,8 +266,8 @@ export default function VibeRoom() {
                 <p className="text-white/25 text-xs tracking-wide">Listen together. Raise the frequency.</p>
               </div>
 
-              {/* Right: current user avatar + name + avatar change */}
-              {vibeName && (
+              {/* Right: avatar + name (premium only) */}
+              {isPremium && vibeName && (
                 <div className="flex flex-col items-center gap-1 flex-shrink-0">
                   <AvatarUpload
                     name={vibeName}
@@ -274,7 +309,7 @@ export default function VibeRoom() {
               <div className="flex items-center justify-center py-16">
                 <div className="w-6 h-6 border-2 border-purple-400/20 border-t-purple-400 rounded-full animate-spin" />
               </div>
-            ) : messages.length === 0 ? (
+            ) : combinedFeed.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
                 className="flex flex-col items-center justify-center py-16 text-center">
@@ -282,28 +317,33 @@ export default function VibeRoom() {
                   style={{ background: "rgba(155,126,255,0.07)", border: "1px solid rgba(155,126,255,0.15)" }}>
                   <Zap className="w-7 h-7 text-purple-400/35" />
                 </div>
-                <p className="font-heading font-black text-white/40 text-base mb-1">Be the first to raise the frequency.</p>
+                <p className="font-heading font-black text-white/40 text-base mb-1">The vibe is waiting.</p>
                 <p className="text-white/20 text-xs max-w-xs leading-relaxed">
-                  Drop a positive message for the next listener.
+                  Premium members can start the conversation.
                 </p>
               </motion.div>
             ) : (
               <div className="flex flex-col gap-4">
-                {messages.map((msg, i) => (
-                  <MessageBubble
-                    key={msg.id}
-                    msg={msg}
-                    isOwn={msg.user_email === user?.email}
-                    isAdmin={isAdmin}
-                    user={user}
-                    banStatus={bans.find((b) => b.user_email === msg.user_email)}
-                    onHide={handleHide}
-                    onMute={handleMute}
-                    onBan={handleBan}
-                    onUnban={handleUnban}
-                    animDelay={i}
-                  />
-                ))}
+                {combinedFeed.map((msg, i) =>
+                  msg._seeded ? (
+                    <SeededMessageBubble key={`seeded-${msg.id}`} msg={msg} animDelay={i} />
+                  ) : (
+                    <MessageBubble
+                      key={msg.id}
+                      msg={msg}
+                      isOwn={msg.user_email === user?.email}
+                      isAdmin={isAdmin}
+                      user={user}
+                      banStatus={bans.find((b) => b.user_email === msg.user_email)}
+                      onHide={handleHide}
+                      onMute={handleMute}
+                      onBan={handleBan}
+                      onUnban={handleUnban}
+                      animDelay={i}
+                      onReactionLoginRequired={() => setShowUpgradePrompt(true)}
+                    />
+                  )
+                )}
               </div>
             )}
           </div>
@@ -327,7 +367,8 @@ export default function VibeRoom() {
               style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.18)" }}>
               <Mic2 className="w-4 h-4" /> You have been muted by a moderator.
             </div>
-          ) : (
+          ) : isPremium ? (
+            /* ── Premium input ── */
             <div
               className="flex items-center gap-2.5"
               style={{
@@ -339,7 +380,6 @@ export default function VibeRoom() {
                 WebkitBackdropFilter: "blur(32px)",
                 boxShadow: "0 0 28px rgba(155,126,255,0.09), 0 12px 40px rgba(0,0,0,0.55)",
               }}>
-              {/* User avatar in input bar */}
               {vibeName && (
                 <div className="flex-shrink-0">
                   <VibeAvatar name={vibeName} avatarUrl={vibeAvatar} size={28} />
@@ -370,9 +410,67 @@ export default function VibeRoom() {
                 <Send className="w-4 h-4 text-white" />
               </button>
             </div>
+          ) : (
+            /* ── Locked input for free users ── */
+            <button
+              onClick={handleLockedInputClick}
+              className="w-full flex items-center gap-3 text-left"
+              style={{
+                background: "rgba(6,6,18,0.95)",
+                border: "1px solid rgba(212,168,67,0.18)",
+                borderRadius: "1.25rem",
+                padding: "0.75rem 1rem",
+                backdropFilter: "blur(32px)",
+                WebkitBackdropFilter: "blur(32px)",
+                boxShadow: "0 0 24px rgba(212,168,67,0.05), 0 12px 40px rgba(0,0,0,0.55)",
+              }}>
+              <Crown className="w-4 h-4 flex-shrink-0 text-yellow-500/50" />
+              <span className="text-sm text-white/25 flex-1">Premium members can post in the Vibe Room</span>
+              <span className="text-[10px] font-black tracking-wider px-2.5 py-1 rounded-full flex-shrink-0"
+                style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.7)" }}>
+                Upgrade
+              </span>
+            </button>
           )}
         </div>
       </div>
+
+      <PremiumUpgradePrompt open={showUpgradePrompt} onClose={() => setShowUpgradePrompt(false)} />
     </div>
+  );
+}
+
+// ── Seeded (community inspiration) message bubble ─────────────────────────
+function SeededMessageBubble({ msg, animDelay }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(animDelay * 0.008, 0.2), duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      className="flex gap-2.5 flex-row">
+      {/* Generic community avatar */}
+      <div className="flex-shrink-0 self-end mb-1 w-[34px] h-[34px] rounded-full flex items-center justify-center text-xs font-black"
+        style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.2),rgba(0,200,220,0.1))", border: "1px solid rgba(155,126,255,0.2)", color: "rgba(155,126,255,0.7)", fontSize: "11px" }}>
+        {msg.user_name?.[0]?.toUpperCase() || "V"}
+      </div>
+      <div className="max-w-[75%] flex flex-col gap-1 items-start">
+        <div className="flex items-center gap-1.5 px-1">
+          <span className="text-[10px] font-bold text-white/30">{msg.user_name}</span>
+          <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold text-white/20"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            Community
+          </span>
+        </div>
+        <div className="px-4 py-2.5 text-sm leading-relaxed italic"
+          style={{
+            background: "rgba(255,255,255,0.025)",
+            border: "1px solid rgba(255,255,255,0.05)",
+            color: "rgba(255,255,255,0.55)",
+            borderRadius: "18px 18px 18px 4px",
+          }}>
+          {msg.content}
+        </div>
+      </div>
+    </motion.div>
   );
 }
