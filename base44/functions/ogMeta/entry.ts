@@ -151,6 +151,23 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── Radio page (generic — no specific song) ──────────────────────────────
+    if (type === "radio") {
+      const html = buildHtml({
+        title:       `Upper Vibe Radio — Live Now | ${SITE_NAME}`,
+        description: "432 Hz high-vibe music streaming live. Listening live on Upper Vibe Media.",
+        imageUrl:    DEFAULT_IMG,
+        pageUrl:     `${SITE_URL}/radio`,
+        type:        "website",
+      });
+      return new Response(html, {
+        headers: {
+          "Content-Type":  "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=300",
+        },
+      });
+    }
+
     // ── Vibe Room page ───────────────────────────────────────────────────────
     if (type === "viberoom") {
       const html = buildHtml({

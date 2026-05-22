@@ -11,10 +11,34 @@ import { base44 } from "@/api/base44Client";
  *   track: { title, artist_display, id, cover_url }  (only for type="song")
  *   size: "sm" | "md"  (default "md")
  *   className: extra classes
+ *
+ * SOCIAL SHARING STRATEGY:
+ * Facebook/iMessage/Twitter crawlers cannot execute JavaScript, so they
+ * see only the blank SPA shell at /song/<id> and show the generic homepage preview.
+ * Fix: share the ogMeta backend URL which returns server-side HTML with full OG tags
+ * + an instant JS redirect to the real song page for human visitors.
+ * The og:url inside that HTML points to the canonical /song/<id> so Facebook
+ * still shows uppervibemedia.com as the domain in the preview.
  */
+
+// Base44 backend function public URL — ogMeta returns server-rendered OG HTML
+// with a meta-refresh redirect to the real SPA page for human visitors.
+function getSongShareUrl(trackId) {
+  if (!trackId) return "https://uppervibemedia.com";
+  // The ogMeta function URL — Base44 exposes functions at /api/<functionName>
+  // relative to the app's public domain.
+  const base = typeof window !== "undefined"
+    ? `${window.location.origin}/api/ogMeta`
+    : "https://uppervibemedia.com/api/ogMeta";
+  return `${base}?type=track&id=${trackId}`;
+}
+
 export default function ShareVibeButton({ type = "site", track = null, size = "md", className = "" }) {
   const [open, setOpen]     = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Canonical display URL (shown in UI, used for copy)
+  const canonicalSongUrl = track?.id ? `https://uppervibemedia.com/song/${track.id}` : "https://uppervibemedia.com";
 
   const getShareData = () => {
     switch (type) {
@@ -24,27 +48,32 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
             ? `${track.title} by ${track.artist_display}`
             : `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
           text: `🎧⚡ "${track?.title || "this track"}" by ${track?.artist_display || "Upper Vibe Media"} • Listening live on Upper Vibe Media`,
-          url: track?.id
-            ? `https://uppervibemedia.com/song/${track.id}`
-            : "https://uppervibemedia.com",
+          // Share the ogMeta URL so Facebook/crawlers get server-side OG tags.
+          // Human visitors clicking from Facebook get instantly redirected to /song/<id>.
+          url: getSongShareUrl(track?.id),
+          // Display URL shown in the UI (not the ogMeta redirect URL)
+          displayUrl: canonicalSongUrl,
         };
       case "radio":
         return {
           title: "Upper Vibe Radio — Live Now",
           text: "🎧⚡ I'm listening live on Upper Vibe Radio — 432Hz high-vibe music streaming now",
           url: "https://uppervibemedia.com/radio",
+          displayUrl: "https://uppervibemedia.com/radio",
         };
       case "viberoom":
         return {
           title: "Vibe Room — Upper Vibe Media",
           text: "🎧⚡ Join the positive 18+ Vibe Room community on Upper Vibe Media — listen together and raise the frequency",
           url: "https://uppervibemedia.com/vibe-room",
+          displayUrl: "https://uppervibemedia.com/vibe-room",
         };
       default:
         return {
           title: "Upper Vibe Media",
           text: "🎧⚡ Upper Vibe Radio — 432Hz high-vibe music streaming now on Upper Vibe Media",
           url: "https://uppervibemedia.com",
+          displayUrl: "https://uppervibemedia.com",
         };
     }
   };
@@ -70,7 +99,8 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
   };
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(shareData.url);
+    // Copy the clean canonical URL, not the ogMeta redirect URL
+    await navigator.clipboard.writeText(shareData.displayUrl || shareData.url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -92,7 +122,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         </svg>
       ),
       action: () => {
-        const tweet = encodeURIComponent(`${shareData.text} ${shareData.url}`);
+        const tweet = encodeURIComponent(`${shareData.text} ${shareData.displayUrl || shareData.url}`);
         window.open(`https://twitter.com/intent/tweet?text=${tweet}`, "_blank");
         base44.analytics.track({ eventName: "share_twitter_clicked", properties: { share_type: type } });
       },
@@ -108,6 +138,8 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         </svg>
       ),
       action: () => {
+        // Pass the ogMeta URL — Facebook's crawler will fetch it and get real OG tags.
+        // og:url inside that response points to the canonical song page.
         window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareData.url)}`, "_blank");
         base44.analytics.track({ eventName: "share_facebook_clicked", properties: { share_type: type } });
       },
@@ -176,7 +208,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
                 style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                 <div className="flex-1 min-w-0 pr-3">
                   <p className="font-heading font-black text-white text-base">Share The Vibe ⚡</p>
-                  <p className="text-[11px] text-white/30 mt-0.5 truncate">{shareData.url}</p>
+                  <p className="text-[11px] text-white/30 mt-0.5 truncate">{shareData.displayUrl || shareData.url}</p>
                 </div>
                 <button
                   onClick={() => setOpen(false)}
