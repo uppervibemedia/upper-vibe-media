@@ -8,11 +8,41 @@
     },
     "user_name": {
       "type": "string",
-      "description": "Display name of the sender"
+      "description": "Vibe Name of the sender"
     },
     "content": {
       "type": "string",
       "description": "Message content"
+    },
+    "reactions": {
+      "type": "object",
+      "description": "Reaction counts: {felt_that: [], needed_this: [], inspired: [], gratitude: []} \u2014 arrays of user emails",
+      "properties": {
+        "felt_that": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "needed_this": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inspired": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gratitude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     },
     "is_hidden": {
       "type": "boolean",

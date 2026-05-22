@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Send, ShieldCheck, Users, Trash2, Mic2, Ban } from "lucide-react";
+import { motion } from "framer-motion";
+import { Send, ShieldCheck, Zap, Ban, Mic2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import AgeGateModal, { hasConfirmedAge } from "../components/viberoom/AgeGateModal";
-import Footer from "../components/shared/Footer";
+import VibeNameSetup from "../components/viberoom/VibeNameSetup";
+import NowPlayingCard from "../components/viberoom/NowPlayingCard";
+import DailyPromptCard from "../components/viberoom/DailyPromptCard";
+import MessageBubble from "../components/viberoom/MessageBubble";
 
 export default function VibeRoom() {
   const { user } = useAuth();
@@ -12,6 +15,8 @@ export default function VibeRoom() {
 
   const [ageConfirmed, setAgeConfirmed] = useState(() => hasConfirmedAge(user));
   const [showGate, setShowGate] = useState(!hasConfirmedAge(user));
+  const [vibeName, setVibeName] = useState(user?.vibe_name || null);
+  const [needsVibeName, setNeedsVibeName] = useState(false);
 
   const [messages, setMessages] = useState([]);
   const [bans, setBans] = useState([]);
@@ -19,10 +24,12 @@ export default function VibeRoom() {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
+  const inputRef = useRef(null);
 
   const isBanned = bans.some((b) => b.user_email === user?.email && b.action === "banned");
   const isMuted = bans.some((b) => b.user_email === user?.email && b.action === "muted");
 
+  // Load data once age gate passes
   useEffect(() => {
     if (!ageConfirmed) return;
     setLoading(true);
@@ -35,6 +42,17 @@ export default function VibeRoom() {
       setLoading(false);
     });
   }, [ageConfirmed]);
+
+  // Resolve vibeName from user after age confirmation
+  useEffect(() => {
+    if (!ageConfirmed || !user) return;
+    if (user.vibe_name) {
+      setVibeName(user.vibe_name);
+      setNeedsVibeName(false);
+    } else {
+      setNeedsVibeName(true);
+    }
+  }, [ageConfirmed, user]);
 
   // Real-time subscription
   useEffect(() => {
@@ -61,17 +79,19 @@ export default function VibeRoom() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || sending || isBanned || isMuted || !user) return;
+    if (!input.trim() || sending || isBanned || isMuted || !user || !vibeName) return;
     const text = input.trim();
     setInput("");
     setSending(true);
     await base44.entities.VibeRoomMessage.create({
       user_email: user.email,
-      user_name: user.full_name || user.email.split("@")[0],
+      user_name: vibeName,
       content: text,
       is_hidden: false,
+      reactions: { felt_that: [], needed_this: [], inspired: [], gratitude: [] },
     });
     setSending(false);
+    inputRef.current?.focus();
   };
 
   const handleKeyDown = (e) => {
@@ -89,9 +109,7 @@ export default function VibeRoom() {
       await base44.entities.VibeRoomBan.update(existing.id, { action: "muted" });
       setBans((prev) => prev.map((b) => b.id === existing.id ? { ...b, action: "muted" } : b));
     } else {
-      const nb = await base44.entities.VibeRoomBan.create({
-        user_email: email, action: "muted", applied_by: user.email
-      });
+      const nb = await base44.entities.VibeRoomBan.create({ user_email: email, action: "muted", applied_by: user.email });
       setBans((prev) => [...prev, nb]);
     }
   };
@@ -102,9 +120,7 @@ export default function VibeRoom() {
       await base44.entities.VibeRoomBan.update(existing.id, { action: "banned" });
       setBans((prev) => prev.map((b) => b.id === existing.id ? { ...b, action: "banned" } : b));
     } else {
-      const nb = await base44.entities.VibeRoomBan.create({
-        user_email: email, action: "banned", applied_by: user.email
-      });
+      const nb = await base44.entities.VibeRoomBan.create({ user_email: email, action: "banned", applied_by: user.email });
       setBans((prev) => [...prev, nb]);
     }
   };
@@ -117,7 +133,7 @@ export default function VibeRoom() {
     }
   };
 
-  // Age gate screen
+  // Age gate
   if (showGate) {
     return (
       <AgeGateModal
@@ -128,127 +144,125 @@ export default function VibeRoom() {
     );
   }
 
+  // Vibe name setup — only for logged-in users who don't have one yet
+  if (ageConfirmed && user && needsVibeName) {
+    return (
+      <VibeNameSetup onComplete={(name) => { setVibeName(name); setNeedsVibeName(false); }} />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col" style={{ WebkitOverflowScrolling: "touch" }}>
-      {/* Header */}
-      <section className="relative overflow-hidden flex-shrink-0"
-        style={{ background: "linear-gradient(180deg,rgba(155,126,255,0.08) 0%,transparent 100%)" }}>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[200px] rounded-full blur-[100px] opacity-[0.06] pointer-events-none"
+
+      {/* ── Background ambient glow ── */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full blur-[120px] opacity-[0.04]"
           style={{ background: "#9B7EFF" }} />
-        <div className="max-w-3xl mx-auto px-6 relative z-10"
-          style={{ paddingTop: "max(4.5rem, calc(3rem + env(safe-area-inset-top, 0px)))", paddingBottom: "1.25rem" }}>
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm"
+        <div className="absolute bottom-40 right-0 w-[300px] h-[300px] rounded-full blur-[100px] opacity-[0.03]"
+          style={{ background: "#00C9E0" }} />
+      </div>
+
+      {/* ── Header ── */}
+      <section className="relative flex-shrink-0 z-10"
+        style={{ background: "linear-gradient(180deg,rgba(155,126,255,0.06) 0%,transparent 100%)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+        <div className="max-w-2xl mx-auto px-5 relative z-10"
+          style={{ paddingTop: "max(4rem, calc(2.5rem + env(safe-area-inset-top, 0px)))", paddingBottom: "1rem" }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+            {/* Badges */}
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm"
                 style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.2)" }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#9B7EFF" }} />
-                <span style={{ fontSize: "9px", letterSpacing: "0.35em", fontWeight: 900, textTransform: "uppercase", color: "#9B7EFF", fontFamily: "var(--font-heading)" }}>
-                  Live Chat
-                </span>
+                <span className="text-[9px] font-black tracking-[0.35em] uppercase text-purple-400"
+                  style={{ fontFamily: "var(--font-heading)" }}>Live Chat</span>
               </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
-                style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.2)" }}>
-                <ShieldCheck className="w-3 h-3 text-purple-400" />
-                <span className="text-[10px] font-black tracking-widest uppercase text-purple-300">18+ Positive Community</span>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                style={{ background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.15)" }}>
+                <ShieldCheck className="w-2.5 h-2.5 text-purple-400/70" />
+                <span className="text-[9px] font-black tracking-[0.2em] uppercase text-purple-300/60">18+ Positive Community</span>
               </div>
             </div>
-            <h1 className="font-heading font-black text-white mt-2 leading-tight"
-              style={{ fontSize: "clamp(1.7rem, 5vw, 2.8rem)" }}>
+
+            {/* Title + subtitle */}
+            <h1 className="font-heading font-black text-white leading-none mb-0.5"
+              style={{ fontSize: "clamp(1.6rem, 4.5vw, 2.4rem)" }}>
               Vibe Room
             </h1>
-            <p className="text-white/30 text-xs mt-1">Connect with other Upper Vibe listeners</p>
+            <p className="text-white/30 text-xs tracking-wide">Listen together. Raise the frequency.</p>
+
+            {/* Now Playing card */}
+            <div className="mt-3">
+              <NowPlayingCard />
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Chat area */}
-      <div className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 flex flex-col"
-        style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom, 16px))" }}>
+      {/* ── Chat scroll area ── */}
+      <div
+        className="flex-1 relative z-10 overflow-y-auto"
+        style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 20px))" }}>
+        <div className="max-w-2xl mx-auto px-4 sm:px-5 pt-4 flex flex-col gap-3">
 
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-purple-400/20 border-t-purple-400 rounded-full animate-spin" />
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
-            <Users className="w-10 h-10 text-white/10 mb-3" />
-            <p className="text-white/25 text-sm">No messages yet. Start the vibe!</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2 py-4">
-            {messages.map((msg, i) => {
-              const isOwn = msg.user_email === user?.email;
-              const userBanStatus = bans.find((b) => b.user_email === msg.user_email);
-              return (
-                <motion.div
+          {/* Daily Prompt */}
+          <DailyPromptCard isAdmin={isAdmin} />
+
+          {/* Messages */}
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-6 h-6 border-2 border-purple-400/20 border-t-purple-400 rounded-full animate-spin" />
+            </div>
+          ) : messages.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+              className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 mx-auto"
+                style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.15)" }}>
+                <Zap className="w-7 h-7 text-purple-400/40" />
+              </div>
+              <p className="font-heading font-black text-white/50 text-base mb-1">Be the first to raise the frequency.</p>
+              <p className="text-white/25 text-xs max-w-xs leading-relaxed">
+                Drop a positive message for the next listener.
+              </p>
+            </motion.div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {messages.map((msg, i) => (
+                <MessageBubble
                   key={msg.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i * 0.01, 0.2) }}
-                  className={`flex gap-2.5 items-end ${isOwn ? "flex-row-reverse" : ""}`}>
-                  {/* Avatar */}
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-black"
-                    style={{ background: isOwn ? "rgba(155,126,255,0.25)" : "rgba(0,200,220,0.15)", color: isOwn ? "#9B7EFF" : "#00C9E0" }}>
-                    {(msg.user_name || msg.user_email || "?")[0].toUpperCase()}
-                  </div>
-
-                  {/* Bubble */}
-                  <div className={`max-w-[75%] group relative`}>
-                    {!isOwn && (
-                      <p className="text-[9px] font-bold text-white/30 mb-1 px-1 truncate">{msg.user_name || msg.user_email}</p>
-                    )}
-                    <div className="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed"
-                      style={isOwn ? {
-                        background: "rgba(155,126,255,0.18)",
-                        border: "1px solid rgba(155,126,255,0.3)",
-                        color: "#e8e0ff",
-                        borderBottomRightRadius: "6px",
-                      } : {
-                        background: "rgba(255,255,255,0.05)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        color: "rgba(255,255,255,0.85)",
-                        borderBottomLeftRadius: "6px",
-                      }}>
-                      {msg.content}
-                    </div>
-
-                    {/* Admin action buttons */}
-                    {isAdmin && !isOwn && (
-                      <div className="absolute -top-7 right-0 hidden group-hover:flex items-center gap-1 px-2 py-1 rounded-xl"
-                        style={{ background: "rgba(10,10,30,0.95)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                        <button onClick={() => handleHide(msg)} title="Remove message"
-                          className="p-1 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                        <button onClick={() => handleMute(msg.user_email)} title="Mute user"
-                          className="p-1 rounded-lg hover:bg-yellow-500/20 text-yellow-400 transition-colors">
-                          <Mic2 className="w-3 h-3" />
-                        </button>
-                        <button onClick={() => handleBan(msg.user_email)} title="Ban user"
-                          className="p-1 rounded-lg hover:bg-red-600/20 text-red-500 transition-colors">
-                          <Ban className="w-3 h-3" />
-                        </button>
-                        {userBanStatus && (
-                          <button onClick={() => handleUnban(msg.user_email)} title="Remove ban/mute"
-                            className="p-1 rounded-lg hover:bg-green-500/20 text-green-400 transition-colors text-[9px] font-bold px-1.5">
-                            Unban
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-            <div ref={bottomRef} />
-          </div>
-        )}
+                  msg={msg}
+                  isOwn={msg.user_email === user?.email}
+                  isAdmin={isAdmin}
+                  user={user}
+                  banStatus={bans.find((b) => b.user_email === msg.user_email)}
+                  onHide={handleHide}
+                  onMute={handleMute}
+                  onBan={handleBan}
+                  onUnban={handleUnban}
+                  animDelay={i}
+                />
+              ))}
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
       </div>
 
-      {/* Input bar — fixed above bottom nav */}
-      <div className="fixed left-0 right-0 z-30 flex justify-center px-4"
-        style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom, 8px))" }}>
-        <div className="w-full max-w-3xl">
+      {/* ── Input bar — fixed, iOS-safe ── */}
+      <div
+        className="fixed left-0 right-0 z-30"
+        style={{
+          /* Mobile: above bottom nav + safe area */
+          bottom: "calc(56px + env(safe-area-inset-bottom, 12px))",
+        }}>
+        {/* Desktop override */}
+        <style>{`
+          @media (min-width: 1024px) {
+            .vibe-input-bar { bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)) !important; }
+          }
+        `}</style>
+
+        <div className="vibe-input-bar max-w-2xl mx-auto px-4 sm:px-5">
           {isBanned ? (
             <div className="flex items-center justify-center gap-2 py-3 px-5 rounded-2xl text-sm text-red-400"
               style={{ background: "rgba(220,50,50,0.08)", border: "1px solid rgba(220,50,50,0.2)" }}>
@@ -261,7 +275,11 @@ export default function VibeRoom() {
             </div>
           ) : !user ? (
             <div className="flex items-center justify-center gap-3 py-3 px-5 rounded-2xl"
-              style={{ background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.18)" }}>
+              style={{
+                background: "rgba(10,10,25,0.92)",
+                border: "1px solid rgba(155,126,255,0.18)",
+                backdropFilter: "blur(20px)",
+              }}>
               <p className="text-sm text-white/40">Log in to join the conversation</p>
               <button onClick={() => base44.auth.redirectToLogin()}
                 className="px-4 py-1.5 rounded-xl font-black text-xs tracking-wider transition-all hover:brightness-110"
@@ -270,30 +288,48 @@ export default function VibeRoom() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2"
-              style={{ background: "rgba(10,10,25,0.95)", border: "1px solid rgba(155,126,255,0.2)", borderRadius: "1rem", padding: "0.5rem 0.5rem 0.5rem 1rem", backdropFilter: "blur(20px)" }}>
+            <div
+              className="flex items-center gap-2.5"
+              style={{
+                background: "rgba(8,8,22,0.94)",
+                border: "1px solid rgba(155,126,255,0.25)",
+                borderRadius: "1.25rem",
+                padding: "0.5rem 0.5rem 0.5rem 1.1rem",
+                backdropFilter: "blur(24px)",
+                boxShadow: "0 0 24px rgba(155,126,255,0.1), 0 8px 32px rgba(0,0,0,0.4)",
+              }}>
+              {/* Vibe name tag */}
+              {vibeName && (
+                <span className="text-[9px] font-black tracking-wide flex-shrink-0 px-2 py-1 rounded-full"
+                  style={{ background: "rgba(155,126,255,0.12)", color: "#9B7EFF", border: "1px solid rgba(155,126,255,0.2)", whiteSpace: "nowrap" }}>
+                  {vibeName}
+                </span>
+              )}
               <input
+                ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Send a vibe..."
                 maxLength={500}
-                className="flex-1 bg-transparent text-sm text-white placeholder:text-white/25 focus:outline-none"
+                className="flex-1 bg-transparent text-sm text-white placeholder:text-white/20 focus:outline-none min-w-0"
               />
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || sending}
-                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-40 active:scale-95"
-                style={{ background: "linear-gradient(135deg,#7C3AED,#9B7EFF)", color: "#fff" }}>
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-35 active:scale-90"
+                style={{
+                  background: input.trim() ? "linear-gradient(135deg,#7C3AED,#9B7EFF)" : "rgba(155,126,255,0.1)",
+                  color: "#fff",
+                  boxShadow: input.trim() ? "0 0 16px rgba(155,126,255,0.35)" : "none",
+                }}>
                 <Send className="w-4 h-4" />
               </button>
             </div>
           )}
         </div>
       </div>
-
-      <Footer />
     </div>
   );
 }

@@ -28,7 +28,7 @@ const bottomNavMobile = [
   { path: "/", icon: Home, label: "Home" },
   { path: "/music", icon: Music, label: "Music" },
   { path: "/radio", icon: Radio, label: "Radio" },
-  { path: "/academy", icon: GraduationCap, label: "Academy" },
+  { path: "/vibe-room", icon: MessageCircle, label: "Vibe Room" },
   { path: "/account", icon: User, label: "Account" },
 ];
 

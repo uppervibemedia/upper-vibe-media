@@ -1,0 +1,18 @@
+{
+  "name": "VibeRoomPrompt",
+  "type": "object",
+  "properties": {
+    "prompt_text": {
+      "type": "string",
+      "description": "The daily prompt question shown at the top of Vibe Room"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Only one prompt should be active at a time"
+    }
+  },
+  "required": [
+    "prompt_text"
+  ]
+}
