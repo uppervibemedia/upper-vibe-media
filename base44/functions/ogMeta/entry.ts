@@ -18,12 +18,13 @@ const SITE_URL     = "https://uppervibemedia.com";
 const BRAND_COLOR  = "#00E5FF";
 const DEFAULT_IMG  = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png";
 
-// ── Cloudinary OG image generation ──────────────────────────────────────────
-// We use Cloudinary's URL-based transformations to generate branded cards on the fly.
-// If no Cloudinary is set up, we fall back to the track's own cover art or default.
-function buildOgImageUrl({ coverUrl, title, artist, type }) {
-  // If track has cover art, use it directly (most social platforms will show it well)
+// ── OG image URL resolution ──────────────────────────────────────────────────
+// Facebook requires og:image to be an absolute HTTPS URL. The image must be at
+// least 200x200px; 1200x630 is ideal for the large card format (summary_large_image).
+// We always prefer the track's own cover art, falling back to the branded default.
+function buildOgImageUrl({ coverUrl }) {
   if (coverUrl && coverUrl.startsWith("https://")) return coverUrl;
+  if (coverUrl && coverUrl.startsWith("http://")) return coverUrl.replace("http://", "https://");
   return DEFAULT_IMG;
 }
 
@@ -126,12 +127,7 @@ Deno.serve(async (req) => {
       const pageTitle   = `${track.title} by ${artist}`;
       const description = `Listening live on Upper Vibe Media`;
 
-      const imageUrl = buildOgImageUrl({
-        coverUrl: track.cover_url,
-        title:    track.title,
-        artist,
-        type:     "track",
-      });
+      const imageUrl = buildOgImageUrl({ coverUrl: track.cover_url });
 
       const html = buildHtml({
         title:       pageTitle,
