@@ -289,24 +289,56 @@ function makeDebounce(ms) {
 // ─────────────────────────────────────────────────────────────────────────────
 // MEDIA SESSION — registered ONCE, talks to the op queue
 // ─────────────────────────────────────────────────────────────────────────────
-const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
+// Upper Vibe Media logo — absolute HTTPS, always accessible, used as fallback artwork
+const FALLBACK_ART = "https://uppervibemedia.com/favicon.png";
+// Secondary fallback in case the above ever 404s
+const FALLBACK_ART_2 = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
 
 function resolveArtworkUrl(url) {
   if (!url) return FALLBACK_ART;
-  if (url.startsWith("https://")) return url;
+  // Must be absolute HTTPS — reject blob:, data:, relative, or sandbox URLs
+  if (
+    url.startsWith("https://") &&
+    !url.startsWith("https://localhost") &&
+    !url.includes("base44.app/preview")
+  ) {
+    return url;
+  }
   return FALLBACK_ART;
+}
+
+// Detect image MIME type from URL extension (iOS is picky about this)
+function detectMimeType(url) {
+  if (!url) return "image/jpeg";
+  const clean = url.split("?")[0].toLowerCase();
+  if (clean.endsWith(".png"))  return "image/png";
+  if (clean.endsWith(".webp")) return "image/webp";
+  if (clean.endsWith(".gif"))  return "image/gif";
+  return "image/jpeg";
 }
 
 function setMediaSessionMetadata(track) {
   if (!("mediaSession" in navigator) || !track) return;
-  const artSrc = resolveArtworkUrl(track.cover_url);
+
+  const title      = track.title         || "Now Playing";
+  const artist     = track.artist_display || track.artist || "Upper Vibe Media";
+  const artSrc     = resolveArtworkUrl(track.cover_url);
+  const mimeType   = detectMimeType(artSrc);
+
+  console.log("[iOS MediaSession] Updating metadata", { title, artist, artworkUrl: artSrc, mimeType });
+
+  // iOS requires multiple sizes to reliably show artwork on lock screen / Control Center.
+  // Using the same source URL for all sizes — iOS picks the best fit.
   navigator.mediaSession.metadata = new MediaMetadata({
-    title:   track.title         || "Unknown",
-    artist:  track.artist_display || track.artist || "Upper Vibe Media",
-    album:   "Upper Vibe Media",
+    title,
+    artist,
+    album: "Upper Vibe Media",
     artwork: [
-      { src: artSrc, sizes: "512x512",   type: "image/jpeg" },
-      { src: artSrc, sizes: "1024x1024", type: "image/jpeg" },
+      { src: artSrc, sizes: "96x96",   type: mimeType },
+      { src: artSrc, sizes: "128x128", type: mimeType },
+      { src: artSrc, sizes: "192x192", type: mimeType },
+      { src: artSrc, sizes: "256x256", type: mimeType },
+      { src: artSrc, sizes: "512x512", type: mimeType },
     ],
   });
 }
