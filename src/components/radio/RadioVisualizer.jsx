@@ -1,72 +1,59 @@
 /**
  * RadioVisualizer — Upper Vibe Media
- *
- * ARCHITECTURE:
- * - Attaches to the SINGLE global audio element via getGlobalAnalyser()
- * - Never creates a second audio element, never touches playback
- * - On iOS Safari/PWA: AudioContext is blocked by the platform — we run
- *   a fallback CSS/rAF animation instead (driven only by isPlaying state)
- * - On desktop Chrome/Firefox/Edge: real AnalyserNode data drives all visuals
- * - Reconnects when navigating away and back (via useEffect + visibility)
- * - User preference saved to localStorage
- *
- * PROOF LOGS (search [Viz] in console):
- *   selectedVisualizer, isIOS, isSafari, radioAudioElementFound,
- *   radioAudioSrc, audioContextState, analyserConnected,
- *   fallbackAnimationActive, radioIsPlaying, currentSongTitle
+ * Attaches to the SINGLE global audio element via getGlobalAnalyser().
+ * iOS/Safari: fallback CSS/rAF animation (no AudioContext).
  */
 
 import React, { useRef, useEffect, useCallback, useState } from "react";
 import { usePlayer, getGlobalAnalyser } from "../../context/PlayerContext";
-import { ChevronDown } from "lucide-react";
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const PREF_KEY = "uvm_radio_viz_v2";
+const PREF_KEY = "uvm_radio_viz_v3";
 
 const MODES = [
-  { id: "bars",     label: "Frequency Bars" },
-  { id: "waveform", label: "Waveform" },
-  { id: "cosmic",   label: "Cosmic Particles" },
-  { id: "pulse",    label: "Pulse Ring" },
-  { id: "spectrum", label: "Spectrum Flow" },
+  { id: "energy",   label: "Energy Bars",      icon: "▋" },
+  { id: "cosmic",   label: "Cosmic Waves",      icon: "✦" },
+  { id: "neon",     label: "Neon Pulse",        icon: "◎" },
+  { id: "aurora",   label: "Aurora Flow",       icon: "≋" },
+  { id: "tunnel",   label: "Freq Tunnel",       icon: "⊙" },
+  { id: "plasma",   label: "Plasma Orbit",      icon: "◈" },
+  { id: "drift",    label: "Particle Drift",    icon: "·" },
 ];
 
-// Platform detection (same logic as PlayerContext)
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
 const isSafari = /Safari\//.test(navigator.userAgent) &&
-  !/Chrome\//.test(navigator.userAgent) &&
-  !/Chromium\//.test(navigator.userAgent);
+  !/Chrome\//.test(navigator.userAgent) && !/Chromium\//.test(navigator.userAgent);
 
-// ── Draw functions (real analyser data) ──────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getBass(freqData, bufLen) {
+  const len = Math.floor(bufLen * 0.07);
+  let s = 0; for (let i = 0; i < len; i++) s += freqData[i];
+  return s / (len * 255);
+}
+function getAvg(freqData, bufLen) {
+  let s = 0; for (let i = 0; i < bufLen; i++) s += freqData[i];
+  return s / (bufLen * 255);
+}
 
-function drawBars(ctx, W, H, freqData, bufLen) {
-  const barCount = 60;
+// ── Real-data draw functions ──────────────────────────────────────────────────
+
+function drawEnergy(ctx, W, H, freqData, bufLen) {
+  const bass = getBass(freqData, bufLen);
+  const barCount = 64;
   const gap = 2;
   const barW = (W - gap * (barCount - 1)) / barCount;
-
-  // Compute bass pulse once (not per bar)
-  const bassLen = Math.floor(bufLen * 0.06);
-  let bassS = 0;
-  for (let j = 0; j < bassLen; j++) bassS += freqData[j];
-  const bPulse = bassS / (bassLen * 255);
-
   for (let i = 0; i < barCount; i++) {
     const step = Math.floor(bufLen / barCount);
-    const rawV = freqData[i * step] / 255;
-    // Subtle right-side boost for treble visibility
-    const boost = i > 30 ? 1 + (i - 30) / 30 * 0.4 : 1;
-    // Bass adds a beat kick but kept modest so bars don't sit at max
-    const v = Math.min(1, rawV * boost * (1 + bPulse * 0.5));
+    const raw = freqData[i * step] / 255;
+    const boost = i > 32 ? 1 + (i - 32) / 32 * 0.4 : 1;
+    const v = Math.min(1, raw * boost * (1 + bass * 0.5));
     const h = Math.max(3, v * H);
     const x = i * (barW + gap);
-    const hue = 185 + v * 60;
-    const alpha = 0.5 + v * 0.45;
+    const hue = 185 + v * 70;
     const grad = ctx.createLinearGradient(0, H, 0, H - h);
-    grad.addColorStop(0, `hsla(${hue}, 100%, 50%, ${alpha})`);
-    grad.addColorStop(0.5, `hsla(${hue + 15}, 100%, 65%, ${alpha * 0.85})`);
-    grad.addColorStop(1, `hsla(${hue + 30}, 100%, 80%, ${alpha * 0.5})`);
+    grad.addColorStop(0, `hsla(${hue},100%,45%,${0.5 + v * 0.5})`);
+    grad.addColorStop(0.6, `hsla(${hue + 20},100%,65%,${0.7 + v * 0.3})`);
+    grad.addColorStop(1, `hsla(${hue + 40},100%,85%,${0.3 + v * 0.4})`);
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.roundRect(x, H - h, barW, h, [3, 3, 0, 0]);
@@ -74,420 +61,435 @@ function drawBars(ctx, W, H, freqData, bufLen) {
   }
 }
 
-function drawWaveform(ctx, W, H, waveData, freqData, bufLen) {
-  // Bass detection
-  const bassLen = Math.floor(bufLen * 0.08);
-  let bassSum = 0;
-  for (let i = 0; i < bassLen; i++) bassSum += freqData[i];
-  const bassPulse = bassSum / (bassLen * 255);
-  const beatScale = 1 + bassPulse * 1.4; // expands amplitude on beat
-
-  // Primary wave
-  ctx.beginPath();
-  const sliceW = W / waveData.length;
-  let x = 0;
-  for (let i = 0; i < waveData.length; i++) {
-    const v = (waveData[i] / 128.0 - 1) * beatScale + 1;
-    const y = (v * H) / 2;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-    x += sliceW;
-  }
-  ctx.strokeStyle = `rgba(0,229,255,${0.7 + bassPulse * 0.3})`;
-  ctx.lineWidth = 2 + bassPulse * 2.5;
-  ctx.lineJoin = "round";
-  ctx.stroke();
-
-  // Mirror wave
-  ctx.beginPath();
-  x = 0;
-  for (let i = 0; i < waveData.length; i++) {
-    const v = (waveData[i] / 128.0 - 1) * beatScale + 1;
-    const y = H - (v * H) / 2;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-    x += sliceW;
-  }
-  ctx.strokeStyle = `rgba(0,180,220,${0.2 + bassPulse * 0.4})`;
-  ctx.lineWidth = 1 + bassPulse * 1.5;
-  ctx.stroke();
-}
-
-function drawCosmic(ctx, W, H, freqData, bufLen, t, particlesRef) {
+function drawCosmicWaves(ctx, W, H, freqData, bufLen, t, particlesRef) {
   const cx = W / 2, cy = H / 2;
-  const avgFreq = freqData.reduce((s, v) => s + v, 0) / bufLen;
-  const pulse = avgFreq / 255;
-  const bassLen = Math.floor(bufLen * 0.08);
-  let bassSum = 0;
-  for (let i = 0; i < bassLen; i++) bassSum += freqData[i];
-  const bassPulse = bassSum / (bassLen * 255);
+  const avg = getAvg(freqData, bufLen);
+  const bass = getBass(freqData, bufLen);
+  const isBeat = bass > 0.45;
+  const maxP = isBeat ? 280 : 160;
 
-  // Beat-reactive spawn: bass kick = burst, quiet = trickle
-  const beatThreshold = 0.08;
-  const isBeat = bassPulse > 0.45; // hard bass hit
-  const maxP = isBeat ? 300 : 180;
-  if (pulse > beatThreshold && particlesRef.current.length < maxP) {
-    // Big burst on bass hit, small trickle otherwise
-    const count = isBeat
-      ? Math.floor(10 + bassPulse * 18)
-      : Math.floor(1 + pulse * 4);
+  if (avg > 0.08 && particlesRef.current.length < maxP) {
+    const count = isBeat ? Math.floor(8 + bass * 16) : Math.floor(1 + avg * 4);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      // Speed slams up on bass hit
-      const speedBase = isBeat ? 0.8 + bassPulse * 1.5 : 0.2 + pulse * 0.7;
-      const speed = speedBase + Math.random() * speedBase * 0.5;
-      const spawnR = Math.random() < 0.65 ? 0 : Math.random() * Math.min(W, H) * 0.3;
+      const spd = isBeat ? 0.9 + bass * 1.6 : 0.2 + avg * 0.8;
+      const spawnR = Math.random() < 0.6 ? 0 : Math.random() * Math.min(W, H) * 0.28;
       particlesRef.current.push({
-        x: cx + Math.cos(angle) * spawnR,
-        y: cy + Math.sin(angle) * spawnR,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 1,
-        decay: isBeat ? 0.004 + Math.random() * 0.008 : 0.008 + Math.random() * 0.014,
-        size: isBeat
-          ? 3.5 + Math.random() * 6 * bassPulse
-          : 2 + Math.random() * 3,
-        hue: 160 + Math.random() * 100,
+        x: cx + Math.cos(angle) * spawnR, y: cy + Math.sin(angle) * spawnR,
+        vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
+        life: 1, decay: isBeat ? 0.004 + Math.random() * 0.007 : 0.008 + Math.random() * 0.013,
+        size: isBeat ? 3 + Math.random() * 5 * bass : 1.5 + Math.random() * 3,
+        hue: 160 + Math.random() * 120,
       });
     }
   }
-
-  // Update and draw
   const alive = [];
   for (const p of particlesRef.current) {
-    p.x  += p.vx;
-    p.y  += p.vy;
-    p.vx *= 0.985; // less drag = travel further
-    p.vy *= 0.985;
-    p.life -= p.decay;
+    p.x += p.vx; p.y += p.vy; p.vx *= 0.987; p.vy *= 0.987; p.life -= p.decay;
     if (p.life <= 0) continue;
     const r = Math.max(0, p.size * p.life);
     if (r > 0) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = `hsla(${p.hue}, 100%, 72%, ${p.life * 0.9})`;
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue},100%,72%,${p.life * 0.88})`; ctx.fill();
     }
     alive.push(p);
   }
   particlesRef.current = alive;
 
-  // Center glow — larger radius
-  const ringR = Math.min(W, H) * 0.32 + pulse * 30 + bassPulse * 20;
-  if (ringR > 0) {
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, ringR);
-    grad.addColorStop(0, `rgba(0,220,255,${0.15 + pulse * 0.22})`);
-    grad.addColorStop(0.5, `rgba(155,126,255,${0.06 + pulse * 0.08})`);
-    grad.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.beginPath();
-    ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
-    ctx.fill();
+  // Radial wave rings from centre
+  for (let r = 1; r <= 3; r++) {
+    const ringR = Math.min(W, H) * (0.1 * r) * (1 + avg * 0.5 + bass * 0.3);
+    if (ringR <= 0) continue;
+    ctx.beginPath(); ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0,220,255,${(0.15 - r * 0.04) + avg * 0.18})`;
+    ctx.lineWidth = 1; ctx.stroke();
   }
+  // Centre glow
+  const glowR = Math.min(W, H) * 0.3 + avg * 28 + bass * 18;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+  g.addColorStop(0, `rgba(0,220,255,${0.14 + avg * 0.2})`);
+  g.addColorStop(0.5, `rgba(155,126,255,${0.05 + avg * 0.07})`);
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath(); ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+  ctx.fillStyle = g; ctx.fill();
 }
 
-function drawPulse(ctx, W, H, freqData, bufLen) {
+function drawNeonPulse(ctx, W, H, freqData, bufLen) {
   const cx = W / 2, cy = H / 2;
-  const bassLen = Math.floor(bufLen * 0.08);
-  let bassSum = 0;
-  for (let i = 0; i < bassLen; i++) bassSum += freqData[i];
-  const bassPulse = bassSum / (bassLen * 255);
-  const avgPulse = freqData.reduce((s, v) => s + v, 0) / (bufLen * 255);
-  const baseR = Math.min(W, H) * 0.24;
+  const bass = getBass(freqData, bufLen);
+  const avg = getAvg(freqData, bufLen);
+  const baseR = Math.min(W, H) * 0.22;
 
-  // Concentric rings — slam outward on beat
+  // Outer shock rings
   const rings = [
-    { r: baseR * (1 + bassPulse * 0.65),  alpha: Math.min(1, 0.7 + bassPulse * 0.3),  width: 2.5 + bassPulse * 2, color: "0,220,255" },
-    { r: baseR * (1 + avgPulse * 0.7 + bassPulse * 0.3), alpha: 0.3 + bassPulse * 0.3, width: 1.5, color: "155,126,255" },
-    { r: baseR * (1 + avgPulse * 0.9 + bassPulse * 0.45), alpha: 0.12 + bassPulse * 0.2, width: 1, color: "0,200,220" },
+    { r: baseR * (1 + bass * 0.7), alpha: Math.min(1, 0.65 + bass * 0.35), w: 2.5 + bass * 2.5, c: "0,229,255" },
+    { r: baseR * (1.22 + avg * 0.5 + bass * 0.28), alpha: 0.3 + bass * 0.3, w: 1.5, c: "155,126,255" },
+    { r: baseR * (1.44 + avg * 0.6 + bass * 0.4), alpha: 0.1 + bass * 0.18, w: 1, c: "0,200,220" },
   ];
-  for (const ring of rings) {
-    if (ring.r <= 0) continue;
-    ctx.beginPath();
-    ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(${ring.color},${ring.alpha})`;
-    ctx.lineWidth = ring.width;
-    ctx.stroke();
+  for (const rg of rings) {
+    if (rg.r <= 0) continue;
+    ctx.beginPath(); ctx.arc(cx, cy, rg.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${rg.c},${rg.alpha})`; ctx.lineWidth = rg.w; ctx.stroke();
   }
-
-  // Circular frequency bars
-  const barCount = 72;
-  const step = Math.floor(bufLen / barCount);
-  for (let i = 0; i < barCount; i++) {
+  // Radial frequency spikes
+  const bars = 80;
+  const step = Math.floor(bufLen / bars);
+  for (let i = 0; i < bars; i++) {
     const v = freqData[i * step] / 255;
-    const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2;
-    const inner = baseR * (1.04 + bassPulse * 0.12);
-    const outer = inner + Math.max(0, v * baseR * (0.65 + bassPulse * 0.8) + 2);
+    const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
+    const inner = baseR * (1.05 + bass * 0.1);
+    const outer = inner + Math.max(0, v * baseR * (0.7 + bass * 0.9) + 2);
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
     ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
-    ctx.strokeStyle = `hsla(${185 + v * 80}, 100%, 60%, ${0.45 + v * 0.55})`;
-    ctx.lineWidth = Math.max(1, (W / barCount) * 0.5);
-    ctx.lineCap = "round";
-    ctx.stroke();
+    ctx.strokeStyle = `hsla(${185 + v * 90},100%,62%,${0.4 + v * 0.6})`;
+    ctx.lineWidth = Math.max(1, (W / bars) * 0.45); ctx.lineCap = "round"; ctx.stroke();
   }
-
-  // Center dot
-  const dotR = Math.max(0, 5 + bassPulse * 14);
+  // Centre core
+  const dotR = Math.max(0, 4 + bass * 16);
   if (dotR > 0) {
-    const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3);
-    dg.addColorStop(0, `rgba(0,220,255,${0.8 + bassPulse * 0.2})`);
-    dg.addColorStop(0.5, `rgba(0,180,220,${0.2 + bassPulse * 0.2})`);
+    const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3.5);
+    dg.addColorStop(0, `rgba(0,229,255,${0.85 + bass * 0.15})`);
+    dg.addColorStop(0.4, `rgba(0,180,220,${0.18 + bass * 0.2})`);
     dg.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.beginPath();
-    ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
-    ctx.fillStyle = dg;
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = dg; ctx.fill();
   }
 }
 
-function drawSpectrum(ctx, W, H, freqData, bufLen, t) {
-  // Bass detection for beat flash
-  const bassLen = Math.floor(bufLen * 0.08);
-  let bassSum = 0;
-  for (let i = 0; i < bassLen; i++) bassSum += freqData[i];
-  const bassPulse = bassSum / (bassLen * 255);
-  const isBeat = bassPulse > 0.5;
-
-  const bands = 5;
+function drawAurora(ctx, W, H, freqData, bufLen, t) {
+  const bass = getBass(freqData, bufLen);
+  const isBeat = bass > 0.48;
+  const bands = 6;
   const bandSize = Math.floor(bufLen / bands);
-  const bandAvgs = [];
+  const colors = ["0,229,255","0,200,220","80,150,255","155,126,255","200,100,255","100,220,200"];
+
   for (let b = 0; b < bands; b++) {
     let sum = 0;
     for (let i = b * bandSize; i < (b + 1) * bandSize; i++) sum += freqData[i] || 0;
-    // Boost each band by bass energy so everything reacts to the beat
-    bandAvgs.push(Math.min(1, (sum / bandSize / 255) * (1 + bassPulse * 1.8)));
+    const amp = Math.min(1, (sum / bandSize / 255) * (1 + bass * 1.6));
+    const sliceH = H / bands;
+    const cy = sliceH * b + sliceH / 2;
+    const beatBoost = b < 2 && isBeat ? 1.5 : 1;
+    const wH = amp * sliceH * 1.15 * beatBoost;
+    const freq = 1.8 + b * 0.7;
+    const phase = t * (1.0 + b * 0.45 + amp * 2.2);
+
+    // Filled body
+    ctx.beginPath();
+    for (let px = 0; px <= W; px += 2) {
+      const y = cy + Math.sin((px / W) * Math.PI * 2 * freq + phase) * wH;
+      px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y);
+    }
+    ctx.lineTo(W, cy + sliceH * 0.55); ctx.lineTo(0, cy + sliceH * 0.55); ctx.closePath();
+    ctx.fillStyle = `rgba(${colors[b]},${0.03 + amp * 0.16})`; ctx.fill();
+
+    // Primary line
+    ctx.beginPath();
+    for (let px = 0; px <= W; px += 2) {
+      const y = cy + Math.sin((px / W) * Math.PI * 2 * freq + phase) * wH;
+      px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y);
+    }
+    ctx.strokeStyle = `rgba(${colors[b]},${0.45 + amp * 0.55})`;
+    ctx.lineWidth = isBeat && b < 2 ? 3 + amp * 2.5 : 1.5 + amp * 2;
+    ctx.lineJoin = "round"; ctx.stroke();
+
+    // Harmonic echo
+    ctx.beginPath();
+    for (let px = 0; px <= W; px += 3) {
+      const y = cy + Math.sin((px / W) * Math.PI * 2 * freq * 2 + phase * 1.4 + 1) * wH * 0.3;
+      px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y);
+    }
+    ctx.strokeStyle = `rgba(${colors[b]},${0.12 + amp * 0.22})`; ctx.lineWidth = 1; ctx.stroke();
   }
 
-  const sliceH = H / bands;
-  const colors = [
-    "0,229,255", "0,200,220", "100,160,255", "155,126,255", "200,100,255"
-  ];
-
-  for (let b = 0; b < bands; b++) {
-    const amp = bandAvgs[b];
-    const centerY = sliceH * b + sliceH / 2;
-    // Wave height scales hard with amplitude + extra beat kick on bass band
-    const beatBoost = b === 0 && isBeat ? 1.6 : 1;
-    const waveH = amp * sliceH * 1.1 * beatBoost;
-    const freq = 2 + b * 0.8;
-    // Phase speed ramps up with amplitude — faster = more active feel
-    const phase = t * (1.2 + b * 0.5 + amp * 2);
-
-    // Draw filled shape first (bottom half fill)
-    ctx.beginPath();
-    for (let px = 0; px <= W; px += 2) {
-      const nx = px / W;
-      const y = centerY + Math.sin(nx * Math.PI * 2 * freq + phase) * waveH;
-      if (px === 0) ctx.moveTo(px, y);
-      else ctx.lineTo(px, y);
-    }
-    ctx.lineTo(W, centerY + sliceH * 0.6);
-    ctx.lineTo(0, centerY + sliceH * 0.6);
-    ctx.closePath();
-    ctx.fillStyle = `rgba(${colors[b]}, ${0.04 + amp * 0.18})`;
-    ctx.fill();
-
-    // Main wave line — thicker & brighter on beat
-    ctx.beginPath();
-    for (let px = 0; px <= W; px += 2) {
-      const nx = px / W;
-      const y = centerY + Math.sin(nx * Math.PI * 2 * freq + phase) * waveH;
-      if (px === 0) ctx.moveTo(px, y);
-      else ctx.lineTo(px, y);
-    }
-    ctx.strokeStyle = `rgba(${colors[b]}, ${0.5 + amp * 0.5})`;
-    ctx.lineWidth = isBeat && b < 2 ? 3 + amp * 3 : 1.5 + amp * 2.5;
-    ctx.lineJoin = "round";
-    ctx.stroke();
-
-    // Second harmonic wave (lighter, offset phase) for richness
-    ctx.beginPath();
-    for (let px = 0; px <= W; px += 2) {
-      const nx = px / W;
-      const y = centerY + Math.sin(nx * Math.PI * 2 * (freq * 2) + phase * 1.3 + 1) * waveH * 0.35;
-      if (px === 0) ctx.moveTo(px, y);
-      else ctx.lineTo(px, y);
-    }
-    ctx.strokeStyle = `rgba(${colors[b]}, ${0.15 + amp * 0.25})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-
-  // Beat flash overlay on hard kick
   if (isBeat) {
-    const flashAlpha = (bassPulse - 0.5) * 0.18;
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, `rgba(0,229,255,${flashAlpha})`);
-    grad.addColorStop(1, `rgba(155,126,255,${flashAlpha * 0.5})`);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
+    const fa = (bass - 0.48) * 0.15;
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, `rgba(0,229,255,${fa})`); g.addColorStop(1, `rgba(155,126,255,${fa * 0.4})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
 }
 
-// ── Fallback animations (no analyser — iOS or pre-tap) ───────────────────────
-
-function drawFallbackBars(ctx, W, H, t, active) {
-  const barCount = 32;
-  const gap = 3;
-  const barW = (W - gap * (barCount - 1)) / barCount;
-  for (let i = 0; i < barCount; i++) {
-    const wave = active
-      ? (Math.sin(t * 2.5 + i * 0.4) * 0.5 + 0.5) * (Math.sin(t * 1.1 + i * 0.15) * 0.3 + 0.7)
-      : 0.05 + Math.sin(i * 0.5) * 0.03;
-    const h = Math.max(3, wave * H * 0.7);
-    const hue = 185 + i * 1.5;
-    ctx.fillStyle = `hsla(${hue}, 100%, 60%, ${0.3 + wave * 0.55})`;
-    ctx.beginPath();
-    ctx.roundRect(i * (barW + gap), H - h, barW, h, [2, 2, 0, 0]);
-    ctx.fill();
-  }
-}
-
-function drawFallbackWaveform(ctx, W, H, t, active) {
-  const speed = active ? 1.8 : 0.3;
-  const amp = active ? 0.32 : 0.05;
-  ctx.beginPath();
-  for (let px = 0; px <= W; px += 3) {
-    const nx = px / W;
-    const y = H / 2 + Math.sin(nx * Math.PI * 4 + t * speed) * H * amp;
-    if (px === 0) ctx.moveTo(px, y);
-    else ctx.lineTo(px, y);
-  }
-  ctx.strokeStyle = `rgba(0,229,255,${active ? 0.8 : 0.25})`;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-}
-
-function drawFallbackCosmic(ctx, W, H, t, active, particlesRef) {
+function drawTunnel(ctx, W, H, freqData, bufLen, t) {
   const cx = W / 2, cy = H / 2;
-  const spawnChance = active ? 0.55 : 0.08;
-  const maxParticles = active ? 160 : 30;
-  if (Math.random() < spawnChance && particlesRef.current.length < maxParticles) {
-    const count = active ? Math.floor(1 + Math.random() * 3) : 1;
+  const bass = getBass(freqData, bufLen);
+  const avg = getAvg(freqData, bufLen);
+  const rings = 12;
+  const maxR = Math.min(W, H) * 0.52;
+
+  for (let r = rings; r >= 1; r--) {
+    const frac = r / rings;
+    const bandIdx = Math.floor(frac * (bufLen * 0.5));
+    const amp = freqData[bandIdx] / 255;
+    const radius = maxR * frac * (1 + bass * 0.18 * (1 - frac));
+    const sides = 6 + r;
+    const rotation = t * (0.15 + (rings - r) * 0.05) + bass * 0.4;
+    const alpha = (1 - frac) * (0.25 + amp * 0.4);
+    const hue = 185 + frac * 80 + t * 10 % 60;
+
+    ctx.beginPath();
+    for (let s = 0; s <= sides; s++) {
+      const angle = (s / sides) * Math.PI * 2 + rotation;
+      const x = cx + Math.cos(angle) * radius;
+      const y = cy + Math.sin(angle) * radius;
+      s === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `hsla(${hue},100%,65%,${alpha})`;
+    ctx.lineWidth = 1 + amp * 1.5; ctx.stroke();
+
+    // Connect to next ring
+    if (r < rings) {
+      const nextFrac = (r + 1) / rings;
+      const nextR = maxR * nextFrac * (1 + bass * 0.18 * (1 - nextFrac));
+      const spokes = 4;
+      for (let s = 0; s < spokes; s++) {
+        const angle = (s / spokes) * Math.PI * 2 + rotation;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+        ctx.lineTo(cx + Math.cos(angle) * nextR, cy + Math.sin(angle) * nextR);
+        ctx.strokeStyle = `hsla(${hue},100%,65%,${alpha * 0.4})`; ctx.lineWidth = 0.5; ctx.stroke();
+      }
+    }
+  }
+
+  // Centre dot
+  const dotR = Math.max(0, 3 + bass * 12 + avg * 8);
+  const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 4);
+  dg.addColorStop(0, `rgba(0,229,255,${0.9 + bass * 0.1})`);
+  dg.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
+}
+
+function drawPlasma(ctx, W, H, freqData, bufLen, t, particlesRef) {
+  const cx = W / 2, cy = H / 2;
+  const bass = getBass(freqData, bufLen);
+  const avg = getAvg(freqData, bufLen);
+  const isBeat = bass > 0.42;
+  const orbitCount = 3;
+  const orbitRadii = [Math.min(W, H) * 0.15, Math.min(W, H) * 0.26, Math.min(W, H) * 0.38];
+
+  // Spawn particles from orbit positions
+  if (avg > 0.06 && particlesRef.current.length < 220) {
+    const count = isBeat ? Math.floor(6 + bass * 12) : Math.floor(1 + avg * 3);
     for (let i = 0; i < count; i++) {
+      const orbit = Math.floor(Math.random() * orbitCount);
       const angle = Math.random() * Math.PI * 2;
-      const speed = active ? (0.5 + Math.random() * 1.5) : (0.2 + Math.random() * 0.4);
-      const spawnR = Math.random() < 0.5 ? 0 : Math.random() * Math.min(W, H) * 0.3;
+      const r = orbitRadii[orbit] * (0.8 + Math.random() * 0.4);
+      const spd = isBeat ? 0.7 + bass * 1.2 : 0.3 + avg * 0.6;
       particlesRef.current.push({
-        x: cx + Math.cos(angle) * spawnR,
-        y: cy + Math.sin(angle) * spawnR,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 1,
-        decay: 0.007 + Math.random() * 0.011,
-        size: 2 + Math.random() * 4.5,
-        hue: 160 + Math.random() * 100,
+        x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r,
+        vx: (Math.random() - 0.5) * spd * 2, vy: (Math.random() - 0.5) * spd * 2,
+        life: 1, decay: 0.006 + Math.random() * 0.01,
+        size: 1.5 + Math.random() * (isBeat ? 4 * bass : 2),
+        hue: 180 + orbit * 50 + Math.random() * 40,
       });
     }
   }
   const alive = [];
   for (const p of particlesRef.current) {
-    p.x  += p.vx;
-    p.y  += p.vy;
-    p.vx *= 0.97;
-    p.vy *= 0.97;
-    p.life -= p.decay;
+    p.x += p.vx; p.y += p.vy; p.vx *= 0.96; p.vy *= 0.96; p.life -= p.decay;
     if (p.life <= 0) continue;
     const r = Math.max(0, p.size * p.life);
     if (r > 0) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = `hsla(${p.hue}, 100%, 70%, ${p.life * 0.75})`;
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue},100%,70%,${p.life * 0.85})`; ctx.fill();
     }
     alive.push(p);
   }
   particlesRef.current = alive;
-  // Center glow
-  const pulseR = Math.min(W, H) * 0.18 * (active ? (0.7 + Math.sin(t * 2) * 0.3) : 0.4);
-  if (pulseR > 0) {
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, pulseR);
-    g.addColorStop(0, `rgba(0,220,255,${active ? 0.2 : 0.06})`);
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.beginPath();
-    ctx.arc(cx, cy, pulseR, 0, Math.PI * 2);
-    ctx.fillStyle = g;
-    ctx.fill();
+
+  // Orbit rings
+  for (let o = 0; o < orbitCount; o++) {
+    const bandIdx = Math.floor((o / orbitCount) * bufLen * 0.5);
+    const amp = freqData[bandIdx] / 255;
+    const r = orbitRadii[o] * (1 + bass * 0.2 + amp * 0.1);
+    const hue = 185 + o * 55;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `hsla(${hue},100%,62%,${0.15 + amp * 0.3})`; ctx.lineWidth = 1; ctx.stroke();
+  }
+
+  // Centre plasma glow
+  const gr = Math.min(W, H) * 0.2 + bass * 20;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
+  g.addColorStop(0, `rgba(155,100,255,${0.2 + bass * 0.3})`);
+  g.addColorStop(0.5, `rgba(0,200,220,${0.08 + avg * 0.1})`);
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath(); ctx.arc(cx, cy, gr, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+}
+
+function drawDrift(ctx, W, H, freqData, bufLen, t, particlesRef) {
+  const bass = getBass(freqData, bufLen);
+  const avg = getAvg(freqData, bufLen);
+  const isBeat = bass > 0.44;
+  const maxP = 200;
+
+  if (avg > 0.05 && particlesRef.current.length < maxP) {
+    const count = isBeat ? Math.floor(5 + bass * 10) : Math.floor(1 + avg * 3);
+    for (let i = 0; i < count; i++) {
+      const side = Math.floor(Math.random() * 4);
+      let x, y;
+      if (side === 0) { x = Math.random() * W; y = H + 10; }
+      else if (side === 1) { x = -10; y = Math.random() * H; }
+      else if (side === 2) { x = W + 10; y = Math.random() * H; }
+      else { x = Math.random() * W; y = -10; }
+      const angle = Math.atan2(H / 2 - y, W / 2 - x) + (Math.random() - 0.5) * 1.2;
+      const spd = isBeat ? 0.6 + bass * 1.0 : 0.2 + avg * 0.5;
+      particlesRef.current.push({
+        x, y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
+        life: 1, decay: 0.005 + Math.random() * 0.009,
+        size: isBeat ? 2 + Math.random() * 4 * bass : 1 + Math.random() * 2.5,
+        hue: 160 + Math.random() * 130, trail: [],
+      });
+    }
+  }
+  const alive = [];
+  for (const p of particlesRef.current) {
+    p.trail.push({ x: p.x, y: p.y, life: p.life });
+    if (p.trail.length > 8) p.trail.shift();
+    p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.vy *= 0.99; p.life -= p.decay;
+    if (p.life <= 0) continue;
+
+    // Draw trail
+    for (let ti = 0; ti < p.trail.length - 1; ti++) {
+      const a = p.trail[ti], b = p.trail[ti + 1];
+      const alpha = (ti / p.trail.length) * p.life * 0.4;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = `hsla(${p.hue},100%,70%,${alpha})`; ctx.lineWidth = p.size * 0.5; ctx.stroke();
+    }
+    const r = Math.max(0, p.size * p.life);
+    if (r > 0) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue},100%,75%,${p.life * 0.9})`; ctx.fill();
+    }
+    alive.push(p);
+  }
+  particlesRef.current = alive;
+
+  // Ambient centre
+  const gr = Math.min(W, H) * 0.25 + avg * 25;
+  const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, gr);
+  g.addColorStop(0, `rgba(0,200,255,${0.06 + avg * 0.1})`);
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath(); ctx.arc(W / 2, H / 2, gr, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+}
+
+// ── Fallback draw functions (iOS / no analyser) ───────────────────────────────
+
+function fallbackEnergy(ctx, W, H, t, active) {
+  const count = 48, gap = 3;
+  const bw = (W - gap * (count - 1)) / count;
+  for (let i = 0; i < count; i++) {
+    const w = active ? (Math.sin(t * 2.4 + i * 0.38) * 0.5 + 0.5) * (Math.sin(t * 1.1 + i * 0.14) * 0.3 + 0.7) : 0.05 + Math.sin(i * 0.5) * 0.03;
+    const h = Math.max(3, w * H * 0.85);
+    ctx.fillStyle = `hsla(${185 + i * 1.2},100%,58%,${0.3 + w * 0.55})`;
+    ctx.beginPath(); ctx.roundRect(i * (bw + gap), H - h, bw, h, [2, 2, 0, 0]); ctx.fill();
   }
 }
 
-function drawFallbackPulse(ctx, W, H, t, active) {
+function fallbackCosmic(ctx, W, H, t, active, particlesRef) {
   const cx = W / 2, cy = H / 2;
-  const baseR = Math.min(W, H) * 0.24;
-  const pulse = active ? (0.7 + Math.sin(t * 2.2) * 0.3) : 0.4;
-  const rings = [
-    { scale: 1 + (active ? pulse * 0.12 : 0), alpha: 0.7 * pulse, width: 2.5, color: "0,220,255" },
-    { scale: 1.18,  alpha: 0.25 * pulse, width: 1.5, color: "155,126,255" },
-    { scale: 1.36,  alpha: 0.1 * pulse,  width: 1,   color: "0,200,220" },
-  ];
-  for (const ring of rings) {
-    const r = baseR * ring.scale;
-    if (r <= 0) continue;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(${ring.color},${ring.alpha})`;
-    ctx.lineWidth = ring.width;
-    ctx.stroke();
+  const spawn = active ? 0.5 : 0.06;
+  if (Math.random() < spawn && particlesRef.current.length < (active ? 150 : 25)) {
+    const n = active ? Math.floor(1 + Math.random() * 3) : 1;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, spd = active ? 0.5 + Math.random() * 1.4 : 0.2 + Math.random() * 0.4;
+      const sr = Math.random() < 0.5 ? 0 : Math.random() * Math.min(W, H) * 0.28;
+      particlesRef.current.push({ x: cx + Math.cos(a) * sr, y: cy + Math.sin(a) * sr, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 1, decay: 0.007 + Math.random() * 0.011, size: 1.5 + Math.random() * 4, hue: 160 + Math.random() * 110 });
+    }
   }
-  // Static bars
-  const barCount = 48;
-  for (let i = 0; i < barCount; i++) {
-    const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2;
-    const v = active ? (Math.sin(t * 1.8 + i * 0.26) * 0.5 + 0.5) : 0.1;
-    const inner = baseR * 1.04;
-    const outer = inner + Math.max(0, v * baseR * 0.35 + 2);
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
-    ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
-    ctx.strokeStyle = `hsla(${185 + v * 60}, 100%, 60%, ${active ? (0.4 + v * 0.4) : 0.15})`;
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.stroke();
+  const alive = [];
+  for (const p of particlesRef.current) {
+    p.x += p.vx; p.y += p.vy; p.vx *= 0.972; p.vy *= 0.972; p.life -= p.decay;
+    if (p.life <= 0) continue;
+    const r = Math.max(0, p.size * p.life);
+    if (r > 0) { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsla(${p.hue},100%,70%,${p.life * 0.75})`; ctx.fill(); }
+    alive.push(p);
+  }
+  particlesRef.current = alive;
+  const pr = Math.min(W, H) * 0.18 * (active ? 0.7 + Math.sin(t * 2) * 0.3 : 0.35);
+  if (pr > 0) { const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, pr); g.addColorStop(0, `rgba(0,220,255,${active ? 0.18 : 0.05})`); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.beginPath(); ctx.arc(cx, cy, pr, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill(); }
+}
+
+function fallbackNeon(ctx, W, H, t, active) {
+  const cx = W / 2, cy = H / 2, baseR = Math.min(W, H) * 0.22;
+  const pulse = active ? 0.7 + Math.sin(t * 2.2) * 0.3 : 0.35;
+  [[1, 2.5, "0,220,255"], [1.2, 1.5, "155,126,255"], [1.42, 1, "0,200,220"]].forEach(([scale, w, c]) => {
+    ctx.beginPath(); ctx.arc(cx, cy, baseR * scale, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${c},${0.55 * pulse})`; ctx.lineWidth = w; ctx.stroke();
+  });
+  const bars = 48;
+  for (let i = 0; i < bars; i++) {
+    const a = (i / bars) * Math.PI * 2 - Math.PI / 2;
+    const v = active ? Math.sin(t * 1.8 + i * 0.26) * 0.5 + 0.5 : 0.08;
+    const inner = baseR * 1.04, outer = inner + v * baseR * 0.4 + 2;
+    ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+    ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+    ctx.strokeStyle = `hsla(${185 + v * 60},100%,62%,${active ? 0.35 + v * 0.4 : 0.12})`; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.stroke();
   }
 }
 
-function drawFallbackSpectrum(ctx, W, H, t, active) {
-  const bands = 5;
-  const sliceH = H / bands;
-  const colors = ["0,229,255", "0,200,220", "100,160,255", "155,126,255", "200,100,255"];
+function fallbackAurora(ctx, W, H, t, active) {
+  const bands = 5, colors = ["0,229,255","0,200,220","100,160,255","155,126,255","200,100,255"];
   for (let b = 0; b < bands; b++) {
-    // More aggressive oscillation + bigger range
-    const amp = active
-      ? Math.max(0.05, 0.3 + Math.sin(t * (1.4 + b * 0.5) + b * 1.2) * 0.28 + Math.sin(t * (2.8 + b * 0.3)) * 0.12)
-      : 0.05;
-    const centerY = sliceH * b + sliceH / 2;
-    const waveH = amp * sliceH * 1.1;
-    const freq = 2 + b * 0.8;
-    const phase = t * (1.2 + b * 0.5 + amp * 2);
-
-    // Fill
+    const amp = active ? Math.max(0.04, 0.28 + Math.sin(t * (1.3 + b * 0.45) + b * 1.2) * 0.26 + Math.sin(t * (2.5 + b * 0.3)) * 0.1) : 0.04;
+    const sliceH = H / bands, cy = sliceH * b + sliceH / 2;
+    const wH = amp * sliceH * 1.1, freq = 2 + b * 0.75, phase = t * (1.1 + b * 0.4 + amp * 2);
     ctx.beginPath();
-    for (let px = 0; px <= W; px += 3) {
-      const nx = px / W;
-      const y = centerY + Math.sin(nx * Math.PI * 2 * freq + phase) * waveH;
-      if (px === 0) ctx.moveTo(px, y);
-      else ctx.lineTo(px, y);
-    }
-    ctx.lineTo(W, centerY + sliceH * 0.6);
-    ctx.lineTo(0, centerY + sliceH * 0.6);
-    ctx.closePath();
-    ctx.fillStyle = `rgba(${colors[b]}, ${amp * 0.15})`;
-    ctx.fill();
-
-    // Line
+    for (let px = 0; px <= W; px += 3) { const y = cy + Math.sin((px / W) * Math.PI * 2 * freq + phase) * wH; px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y); }
+    ctx.lineTo(W, cy + sliceH * 0.55); ctx.lineTo(0, cy + sliceH * 0.55); ctx.closePath();
+    ctx.fillStyle = `rgba(${colors[b]},${amp * 0.13})`; ctx.fill();
     ctx.beginPath();
-    for (let px = 0; px <= W; px += 3) {
-      const nx = px / W;
-      const y = centerY + Math.sin(nx * Math.PI * 2 * freq + phase) * waveH;
-      if (px === 0) ctx.moveTo(px, y);
-      else ctx.lineTo(px, y);
-    }
-    ctx.strokeStyle = `rgba(${colors[b]}, ${0.4 + amp * 0.55})`;
-    ctx.lineWidth = 1.5 + amp * 2.5;
-    ctx.lineJoin = "round";
-    ctx.stroke();
+    for (let px = 0; px <= W; px += 3) { const y = cy + Math.sin((px / W) * Math.PI * 2 * freq + phase) * wH; px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y); }
+    ctx.strokeStyle = `rgba(${colors[b]},${0.38 + amp * 0.5})`; ctx.lineWidth = 1.5 + amp * 2.2; ctx.lineJoin = "round"; ctx.stroke();
   }
+}
+
+function fallbackTunnel(ctx, W, H, t, active) {
+  const cx = W / 2, cy = H / 2, maxR = Math.min(W, H) * 0.5, rings = 10;
+  for (let r = rings; r >= 1; r--) {
+    const frac = r / rings;
+    const radius = maxR * frac * (active ? 1 + Math.sin(t * 1.2 + frac * 3) * 0.05 : 1);
+    const sides = 6 + r, rotation = t * (0.12 + (rings - r) * 0.04);
+    const alpha = (1 - frac) * (active ? 0.2 + frac * 0.2 : 0.1);
+    ctx.beginPath();
+    for (let s = 0; s <= sides; s++) { const a = (s / sides) * Math.PI * 2 + rotation; ctx.lineTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius); }
+    ctx.closePath(); ctx.strokeStyle = `hsla(${185 + frac * 80},100%,65%,${alpha})`; ctx.lineWidth = 1; ctx.stroke();
+  }
+}
+
+function fallbackPlasma(ctx, W, H, t, active, particlesRef) {
+  fallbackCosmic(ctx, W, H, t, active, particlesRef);
+}
+
+function fallbackDrift(ctx, W, H, t, active, particlesRef) {
+  const cx = W / 2, cy = H / 2;
+  if (active && Math.random() < 0.4 && particlesRef.current.length < 120) {
+    const side = Math.floor(Math.random() * 4);
+    let x, y;
+    if (side === 0) { x = Math.random() * W; y = H + 10; }
+    else if (side === 1) { x = -10; y = Math.random() * H; }
+    else if (side === 2) { x = W + 10; y = Math.random() * H; }
+    else { x = Math.random() * W; y = -10; }
+    const angle = Math.atan2(cy - y, cx - x) + (Math.random() - 0.5) * 1.0;
+    const spd = 0.3 + Math.random() * 0.8;
+    particlesRef.current.push({ x, y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd, life: 1, decay: 0.006 + Math.random() * 0.008, size: 1 + Math.random() * 2.5, hue: 160 + Math.random() * 130, trail: [] });
+  }
+  const alive = [];
+  for (const p of particlesRef.current) {
+    if (p.trail) { p.trail.push({ x: p.x, y: p.y }); if (p.trail.length > 6) p.trail.shift(); }
+    p.x += p.vx; p.y += p.vy; p.life -= p.decay;
+    if (p.life <= 0) continue;
+    if (p.trail) for (let ti = 0; ti < p.trail.length - 1; ti++) {
+      ctx.beginPath(); ctx.moveTo(p.trail[ti].x, p.trail[ti].y); ctx.lineTo(p.trail[ti + 1].x, p.trail[ti + 1].y);
+      ctx.strokeStyle = `hsla(${p.hue},100%,70%,${(ti / p.trail.length) * p.life * 0.35})`; ctx.lineWidth = p.size * 0.4; ctx.stroke();
+    }
+    const r = Math.max(0, p.size * p.life);
+    if (r > 0) { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsla(${p.hue},100%,72%,${p.life * 0.85})`; ctx.fill(); }
+    alive.push(p);
+  }
+  particlesRef.current = alive;
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -496,134 +498,93 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
   const rafRef       = useRef(null);
   const analyserRef  = useRef(null);
   const particlesRef = useRef([]);
+  const chipRowRef   = useRef(null);
   const { audioRef } = usePlayer();
 
-  const getSavedMode = () => {
-    try { return localStorage.getItem(PREF_KEY) || "bars"; } catch { return "bars"; }
-  };
-
-  const [mode, setMode]               = useState(getSavedMode);
-  const [showSelector, setShowSelector] = useState(false);
+  const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "energy"; } catch { return "energy"; } };
+  const [mode, setMode] = useState(getSavedMode);
   const [analyserConnected, setAnalyserConnected] = useState(false);
 
-  // Save preference
+  useEffect(() => { try { localStorage.setItem(PREF_KEY, mode); } catch {} }, [mode]);
+
+  // Scroll active chip into view
   useEffect(() => {
-    try { localStorage.setItem(PREF_KEY, mode); } catch {}
+    if (!chipRowRef.current) return;
+    const active = chipRowRef.current.querySelector("[data-active='true']");
+    if (active) active.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
   }, [mode]);
 
-  // ── Try to connect analyser ───────────────────────────────────────────────
   const tryConnectAnalyser = useCallback(() => {
     const audio = audioRef?.current;
-    const audioFound = !!audio;
-    const audioSrc = audio?.src || "(none)";
-    let ctxState = "N/A";
     let connected = false;
-
     if (!isIOS && audio) {
       const an = getGlobalAnalyser(audio);
-      if (an) {
-        analyserRef.current = an;
-        connected = true;
-        try { ctxState = an.context?.state || "unknown"; } catch {}
-      }
-    } else {
-      analyserRef.current = null;
-    }
-
-    const fallback = !connected;
-
-    console.log("[Viz] probe |",
-      "selectedVisualizer:", mode,
-      "| isIOS:", isIOS,
-      "| isSafari:", isSafari,
-      "| radioAudioElementFound:", audioFound,
-      "| radioAudioSrc:", audioSrc.substring(0, 60),
-      "| audioContextState:", ctxState,
-      "| analyserConnected:", connected,
-      "| fallbackAnimationActive:", fallback,
-      "| radioIsPlaying:", isPlaying,
-      "| currentSongTitle:", currentSong?.title || "(none)"
-    );
-
+      if (an) { analyserRef.current = an; connected = true; }
+    } else { analyserRef.current = null; }
     setAnalyserConnected(connected);
     return connected;
-  }, [audioRef, mode, isPlaying, currentSong]);
+  }, [audioRef]);
 
-  // ── Animation loop ────────────────────────────────────────────────────────
   const stopLoop = useCallback(() => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
   }, []);
 
   const startLoop = useCallback((currentMode, useAnalyser) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const loop = () => {
-      const ctx  = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d");
       const rect = canvas.getBoundingClientRect();
-      const W    = rect.width  || canvas.width;
-      const H    = rect.height || canvas.height;
-      const t    = Date.now() / 1000;
-
+      const W = rect.width || canvas.width;
+      const H = rect.height || canvas.height;
+      const t = Date.now() / 1000;
       ctx.clearRect(0, 0, W, H);
-
       const an = useAnalyser ? analyserRef.current : null;
-
       if (an) {
-        // Real analyser data
-        const bufLen   = an.frequencyBinCount;
+        const bufLen = an.frequencyBinCount;
         const freqData = new Uint8Array(bufLen);
         const waveData = new Uint8Array(bufLen);
         an.getByteFrequencyData(freqData);
         an.getByteTimeDomainData(waveData);
-
         switch (currentMode) {
-          case "bars":     drawBars(ctx, W, H, freqData, bufLen); break;
-          case "waveform": drawWaveform(ctx, W, H, waveData, freqData, bufLen); break;
-          case "cosmic":   drawCosmic(ctx, W, H, freqData, bufLen, t, particlesRef); break;
-          case "spectrum": drawSpectrum(ctx, W, H, freqData, bufLen, t); break;
-          case "pulse":
-          default:         drawPulse(ctx, W, H, freqData, bufLen); break;
+          case "energy":  drawEnergy(ctx, W, H, freqData, bufLen); break;
+          case "cosmic":  drawCosmicWaves(ctx, W, H, freqData, bufLen, t, particlesRef); break;
+          case "neon":    drawNeonPulse(ctx, W, H, freqData, bufLen); break;
+          case "aurora":  drawAurora(ctx, W, H, freqData, bufLen, t); break;
+          case "tunnel":  drawTunnel(ctx, W, H, freqData, bufLen, t); break;
+          case "plasma":  drawPlasma(ctx, W, H, freqData, bufLen, t, particlesRef); break;
+          case "drift":
+          default:        drawDrift(ctx, W, H, freqData, bufLen, t, particlesRef); break;
         }
       } else {
-        // Fallback animation
         const active = isPlaying;
         switch (currentMode) {
-          case "bars":     drawFallbackBars(ctx, W, H, t, active); break;
-          case "waveform": drawFallbackWaveform(ctx, W, H, t, active); break;
-          case "cosmic":   drawFallbackCosmic(ctx, W, H, t, active, particlesRef); break;
-          case "spectrum": drawFallbackSpectrum(ctx, W, H, t, active); break;
-          case "pulse":
-          default:         drawFallbackPulse(ctx, W, H, t, active); break;
+          case "energy":  fallbackEnergy(ctx, W, H, t, active); break;
+          case "cosmic":  fallbackCosmic(ctx, W, H, t, active, particlesRef); break;
+          case "neon":    fallbackNeon(ctx, W, H, t, active); break;
+          case "aurora":  fallbackAurora(ctx, W, H, t, active); break;
+          case "tunnel":  fallbackTunnel(ctx, W, H, t, active); break;
+          case "plasma":  fallbackPlasma(ctx, W, H, t, active, particlesRef); break;
+          case "drift":
+          default:        fallbackDrift(ctx, W, H, t, active, particlesRef); break;
         }
       }
-
       rafRef.current = requestAnimationFrame(loop);
     };
-
     loop();
   }, [isPlaying]);
 
-  // ── Reconnect + restart on relevant changes ───────────────────────────────
   useEffect(() => {
-    stopLoop();
-    particlesRef.current = [];
-
+    stopLoop(); particlesRef.current = [];
     const connected = tryConnectAnalyser();
     startLoop(mode, connected);
-
     return stopLoop;
-  }, [mode, isPlaying, currentSong?.id]); // reconnect when song changes or play state changes
+  }, [mode, isPlaying, currentSong?.id]);
 
-  // Re-probe analyser when page becomes visible again (navigation away/back)
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
-      stopLoop();
-      particlesRef.current = [];
+      stopLoop(); particlesRef.current = [];
       const connected = tryConnectAnalyser();
       startLoop(mode, connected);
     };
@@ -631,7 +592,6 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [mode, isPlaying, tryConnectAnalyser, startLoop, stopLoop]);
 
-  // ── DPR-aware canvas resize ───────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -641,8 +601,7 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
       const dpr = window.devicePixelRatio || 1;
       canvas.width  = Math.round(rect.width  * dpr);
       canvas.height = Math.round(rect.height * dpr);
-      const ctx = canvas.getContext("2d");
-      ctx.scale(dpr, dpr);
+      canvas.getContext("2d").scale(dpr, dpr);
     };
     syncSize();
     const ro = new ResizeObserver(syncSize);
@@ -650,83 +609,63 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
     return () => ro.disconnect();
   }, []);
 
-  const activeLabel = MODES.find(m => m.id === mode)?.label || "Frequency Bars";
-
   return (
-    <div style={{ position: "relative", width: "100%", paddingTop: "min(56.25%, 260px)", overflow: "hidden", borderRadius: "inherit" }}>
-      <canvas
-        ref={canvasRef}
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-      />
-
-      {/* ── Visualizer selector ── */}
-      <div style={{ position: "absolute", bottom: 10, right: 10, zIndex: 10 }}>
-        <button
-          onClick={() => setShowSelector(s => !s)}
-          style={{
-            display: "flex", alignItems: "center", gap: 5,
-            padding: "5px 10px", borderRadius: 20,
-            background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            border: `1px solid ${analyserConnected ? "rgba(0,220,255,0.35)" : "rgba(255,255,255,0.15)"}`,
-            cursor: "pointer",
-            color: analyserConnected ? "rgba(0,220,255,0.9)" : "rgba(255,255,255,0.45)",
-            fontSize: 10, fontWeight: 800,
-            letterSpacing: "0.05em", textTransform: "uppercase",
-            userSelect: "none", WebkitUserSelect: "none",
-          }}>
-          {activeLabel}
-          <ChevronDown style={{
-            width: 10, height: 10,
-            transform: showSelector ? "rotate(180deg)" : "none",
-            transition: "transform 0.2s",
-          }} />
-        </button>
-
-        {showSelector && (
-          <div style={{
-            position: "absolute", bottom: "calc(100% + 6px)", right: 0,
-            background: "rgba(4,4,18,0.94)", backdropFilter: "blur(18px)",
-            WebkitBackdropFilter: "blur(18px)",
-            border: "1px solid rgba(0,200,220,0.2)", borderRadius: 14,
-            overflow: "hidden", minWidth: 165,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-          }}>
-            {MODES.map(m => (
-              <button
-                key={m.id}
-                onClick={() => { setMode(m.id); setShowSelector(false); }}
-                style={{
-                  display: "block", width: "100%", textAlign: "left",
-                  padding: "10px 14px", fontSize: 11, fontWeight: 700,
-                  background: m.id === mode ? "rgba(0,200,220,0.1)" : "transparent",
-                  color: m.id === mode ? "#00E5FF" : "rgba(255,255,255,0.55)",
-                  border: "none", cursor: "pointer", letterSpacing: "0.03em",
-                  borderLeft: m.id === mode ? "2px solid #00E5FF" : "2px solid transparent",
-                  userSelect: "none", WebkitUserSelect: "none",
-                }}>
-                {m.label}
-              </button>
-            ))}
-          </div>
-        )}
+    <div style={{ position: "relative", width: "100%", overflow: "hidden", borderRadius: "inherit" }}>
+      {/* Canvas */}
+      <div style={{ paddingTop: "min(56.25%, 260px)", position: "relative" }}>
+        <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       </div>
 
-      {/* Fallback indicator dot (iOS/Safari only, no analyser) */}
-      {!analyserConnected && isIOS && (
-        <div style={{
-          position: "absolute", bottom: 10, left: 10,
-          display: "flex", alignItems: "center", gap: 5,
-          padding: "4px 8px", borderRadius: 20,
-          background: "rgba(0,0,0,0.5)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
-          color: "rgba(255,255,255,0.3)", textTransform: "uppercase",
-        }}>
-          <span style={{ width: 5, height: 5, borderRadius: "50%", background: isPlaying ? "#00C9E0" : "rgba(255,255,255,0.2)", display: "inline-block" }} />
-          Visual
+      {/* ── Premium swipeable chip selector ── */}
+      <div style={{
+        padding: "10px 12px 12px",
+        background: "linear-gradient(180deg, rgba(4,4,18,0) 0%, rgba(4,4,18,0.85) 100%)",
+        position: "relative",
+      }}>
+        <div
+          ref={chipRowRef}
+          style={{
+            display: "flex", gap: 6, overflowX: "auto", overflowY: "hidden",
+            scrollbarWidth: "none", WebkitOverflowScrolling: "touch",
+            paddingBottom: 2,
+          }}
+        >
+          {MODES.map(m => {
+            const isActive = m.id === mode;
+            return (
+              <button
+                key={m.id}
+                data-active={isActive}
+                onClick={() => setMode(m.id)}
+                style={{
+                  flexShrink: 0,
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  padding: "6px 12px", borderRadius: 20,
+                  fontSize: 10, fontWeight: 800, letterSpacing: "0.06em",
+                  textTransform: "uppercase", cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  transition: "all 0.2s ease",
+                  userSelect: "none", WebkitUserSelect: "none",
+                  background: isActive
+                    ? "rgba(0,220,255,0.15)"
+                    : "rgba(255,255,255,0.04)",
+                  border: isActive
+                    ? "1px solid rgba(0,220,255,0.55)"
+                    : "1px solid rgba(255,255,255,0.08)",
+                  color: isActive ? "#00E5FF" : "rgba(255,255,255,0.35)",
+                  boxShadow: isActive
+                    ? "0 0 12px rgba(0,220,255,0.2), inset 0 0 8px rgba(0,220,255,0.06)"
+                    : "none",
+                }}>
+                <span style={{ fontSize: 11, lineHeight: 1 }}>{m.icon}</span>
+                {m.label}
+              </button>
+            );
+          })}
         </div>
-      )}
+        {/* Hide scrollbar for webkit */}
+        <style>{`.viz-chips::-webkit-scrollbar{display:none}`}</style>
+      </div>
     </div>
   );
 }
