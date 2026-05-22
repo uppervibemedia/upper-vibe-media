@@ -4,6 +4,7 @@ import { Settings as SettingsIcon, Play, Zap, Moon, Sun, Cpu, Bell, Download, Cr
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
+import { useTheme } from "@/context/ThemeContext";
 
 const SETTINGS_KEY = "uvm_settings";
 
@@ -34,8 +35,8 @@ function Toggle({ value, onChange }) {
       onClick={() => onChange(!value)}
       className="relative flex-shrink-0 w-11 h-6 rounded-full transition-all duration-200"
       style={{
-        background: value ? "linear-gradient(135deg,#00A8C0,#00D4EE)" : "rgba(255,255,255,0.1)",
-        border: value ? "1px solid rgba(0,200,220,0.4)" : "1px solid rgba(255,255,255,0.12)",
+        background: value ? "linear-gradient(135deg,#00A8C0,#00D4EE)" : "rgba(128,128,128,0.15)",
+        border: value ? "1px solid rgba(0,200,220,0.4)" : "1px solid rgba(128,128,128,0.2)",
       }}
     >
       <span
@@ -48,9 +49,8 @@ function Toggle({ value, onChange }) {
 
 function Section({ title, children }) {
   return (
-    <div className="rounded-2xl overflow-hidden mb-4"
-      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-      <p className="px-5 pt-4 pb-2 text-[10px] font-black tracking-[0.3em] uppercase text-white/30">{title}</p>
+    <div className="rounded-2xl overflow-hidden mb-4 bg-card border border-border">
+      <p className="px-5 pt-4 pb-2 text-[10px] font-black tracking-[0.3em] uppercase text-muted-foreground">{title}</p>
       {children}
     </div>
   );
@@ -58,10 +58,10 @@ function Section({ title, children }) {
 
 function Row({ label, description, right, border = true }) {
   return (
-    <div className={`flex items-center justify-between gap-4 px-5 py-3.5 ${border ? "border-t border-white/[0.05]" : ""}`}>
+    <div className={`flex items-center justify-between gap-4 px-5 py-3.5 ${border ? "border-t border-border" : ""}`}>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-white/80">{label}</p>
-        {description && <p className="text-xs text-white/35 mt-0.5">{description}</p>}
+        <p className="text-sm font-semibold text-foreground/80">{typeof label === "string" ? label : label}</p>
+        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
       </div>
       <div className="flex-shrink-0">{right}</div>
     </div>
@@ -72,6 +72,7 @@ export default function Settings() {
   const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
   const [settings, setSettings] = useState(loadSettings);
   const [portalLoading, setPortalLoading] = useState(false);
+  const { solarMode, setSolarMode } = useTheme();
 
   const set = (key, val) => {
     const next = { ...settings, [key]: val };
@@ -100,13 +101,12 @@ export default function Settings() {
 
           {/* Header */}
           <div className="flex items-center gap-3 mb-7">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(0,200,220,0.08)", border: "1px solid rgba(0,200,220,0.18)" }}>
-              <SettingsIcon className="w-5 h-5 text-cyan-400/70" />
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-primary/10 border border-primary/20">
+              <SettingsIcon className="w-5 h-5 text-primary/70" />
             </div>
             <div>
-              <h1 className="font-heading font-black text-2xl text-white">Settings</h1>
-              <p className="text-white/35 text-xs">Customize your Upper Vibe experience</p>
+              <h1 className="font-heading font-black text-2xl text-foreground">Settings</h1>
+              <p className="text-muted-foreground text-xs">Customize your Upper Vibe experience</p>
             </div>
           </div>
 
@@ -130,8 +130,18 @@ export default function Settings() {
             <Row
               label="Dark Mode"
               description="Dark theme (recommended)"
-              right={<Toggle value={settings.darkMode} onChange={(v) => set("darkMode", v)} />}
+              right={<Toggle value={!solarMode} onChange={(v) => setSolarMode(!v)} />}
               border={false}
+            />
+            <Row
+              label={
+                <span className="flex items-center gap-2">
+                  <Sun className="w-3.5 h-3.5 text-yellow-500/70" />
+                  Solar Mode
+                </span>
+              }
+              description="Warm off-white luxury theme — calm, uplifting, premium"
+              right={<Toggle value={solarMode} onChange={setSolarMode} />}
             />
             <Row
               label="Reduce Motion"
@@ -184,9 +194,9 @@ export default function Settings() {
                   right={
                     <span className="text-xs font-black px-2.5 py-1 rounded-full"
                       style={{
-                        background: isPlus ? "rgba(212,168,67,0.12)" : "rgba(0,200,220,0.08)",
-                        border: isPlus ? "1px solid rgba(212,168,67,0.3)" : "1px solid rgba(0,200,220,0.2)",
-                        color: isPlus ? "#D4A843" : "#00C9E0"
+                        background: isPlus ? "rgba(212,168,67,0.12)" : "rgba(0,160,180,0.08)",
+                        border: isPlus ? "1px solid rgba(212,168,67,0.3)" : "1px solid rgba(0,160,180,0.2)",
+                        color: isPlus ? "#C8892A" : "#009CB8"
                       }}>
                       {isPlus ? "⭐ Plus" : "Free"}
                     </span>
@@ -249,13 +259,12 @@ export default function Settings() {
 
           {/* FAQ link */}
           <Link to="/faq"
-            className="flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:border-white/12 mb-4"
-            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            className="flex items-center justify-between px-5 py-4 rounded-2xl transition-all mb-4 bg-card border border-border hover:border-border/80">
             <div>
-              <p className="text-sm font-semibold text-white/80">Frequently Asked Questions</p>
-              <p className="text-xs text-white/35">Get answers about Plus, Radio, Academy & more</p>
+              <p className="text-sm font-semibold text-foreground/80">Frequently Asked Questions</p>
+              <p className="text-xs text-muted-foreground">Get answers about Plus, Radio, Academy & more</p>
             </div>
-            <ChevronRight className="w-4 h-4 text-white/20 flex-shrink-0" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
           </Link>
 
         </motion.div>

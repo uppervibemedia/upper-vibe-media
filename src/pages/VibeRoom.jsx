@@ -326,7 +326,7 @@ export default function VibeRoom() {
               <div className="flex flex-col gap-4">
                 {combinedFeed.map((msg, i) =>
                   msg._seeded ? (
-                    <SeededMessageBubble key={`seeded-${msg.id}`} msg={msg} animDelay={i} />
+                    <SeededMessageBubble key={`seeded-${msg.id}`} msg={msg} animDelay={i} user={user} onReactionLoginRequired={() => setShowUpgradePrompt(true)} />
                   ) : (
                     <MessageBubble
                       key={msg.id}
@@ -440,8 +440,41 @@ export default function VibeRoom() {
   );
 }
 
+const SEEDED_REACTIONS = [
+  { key: "felt_that",   emoji: "⚡", label: "Felt That" },
+  { key: "needed_this", emoji: "💎", label: "Needed This" },
+  { key: "inspired",    emoji: "🔥", label: "Inspired" },
+  { key: "gratitude",   emoji: "🙏", label: "Gratitude" },
+];
+
 // ── Seeded (community inspiration) message bubble ─────────────────────────
-function SeededMessageBubble({ msg, animDelay }) {
+function SeededMessageBubble({ msg, animDelay, user, onReactionLoginRequired }) {
+  const [localReactions, setLocalReactions] = useState(
+    msg.reactions || { felt_that: [], needed_this: [], inspired: [], gratitude: [] }
+  );
+
+  const handleReact = async (key) => {
+    if (!user) {
+      if (onReactionLoginRequired) onReactionLoginRequired();
+      base44.analytics.track({ eventName: "vibe_room_free_reaction_clicked" });
+      return;
+    }
+    base44.analytics.track({ eventName: "vibe_room_free_reaction_clicked" });
+    const email = user.email;
+    const updated = {};
+    SEEDED_REACTIONS.forEach(({ key: k }) => {
+      const arr = localReactions[k] || [];
+      if (k === key) {
+        updated[k] = arr.includes(email) ? arr.filter(e => e !== email) : [...arr, email];
+      } else {
+        updated[k] = arr.filter(e => e !== email);
+      }
+    });
+    setLocalReactions(updated);
+    // Seeded messages live in VibeRoomSeededMessage entity — update reactions there
+    await base44.entities.VibeRoomSeededMessage.update(msg.id, { reactions: updated });
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -469,6 +502,29 @@ function SeededMessageBubble({ msg, animDelay }) {
             borderRadius: "18px 18px 18px 4px",
           }}>
           {msg.content}
+        </div>
+        {/* Reactions — same 4 buttons as real messages */}
+        <div className="flex gap-1">
+          {SEEDED_REACTIONS.map(({ key, emoji, label }) => {
+            const arr = localReactions[key] || [];
+            const hasReacted = user ? arr.includes(user.email) : false;
+            const count = arr.length;
+            return (
+              <button
+                key={key}
+                onClick={() => handleReact(key)}
+                title={label}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold transition-all active:scale-90 select-none"
+                style={{
+                  background: hasReacted ? "rgba(155,126,255,0.2)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${hasReacted ? "rgba(155,126,255,0.45)" : "rgba(255,255,255,0.07)"}`,
+                  color: hasReacted ? "#c4aaff" : count > 0 ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.18)",
+                }}>
+                <span style={{ fontSize: "11px" }}>{emoji}</span>
+                {count > 0 && <span className="ml-0.5 tabular-nums">{count}</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
     </motion.div>

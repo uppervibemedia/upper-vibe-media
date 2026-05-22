@@ -57,10 +57,11 @@ export default function Sidebar() {
     <>
       {/* ── Mobile top bar — sits above notch/Dynamic Island ── */}
       <div
-        className="lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-white/5"
+        className="lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-border/40"
         style={{
-          background: "rgba(4,4,8,0.96)",
+          background: "hsl(var(--background) / 0.96)",
           backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
           paddingTop: "env(safe-area-inset-top, 0px)",
         }}
       >
@@ -71,16 +72,14 @@ export default function Sidebar() {
             alt="UVM"
             className="w-7 h-7 object-contain"
           />
-          <span className="font-heading font-black text-sm tracking-[0.22em] text-white">UPPER VIBE</span>
+          <span className="font-heading font-black text-sm tracking-[0.22em] text-foreground">UPPER VIBE</span>
         </Link>
         {isAuthenticated && user ? (
-          <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black"
-              style={{ background: "rgba(0,229,255,0.15)", color: "#00E5FF" }}>
+          <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted border border-border">
+            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black bg-primary/15 text-primary">
               {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
             </div>
-            <span className="text-[11px] font-semibold text-white/60">Account</span>
+            <span className="text-[11px] font-semibold text-muted-foreground">Account</span>
           </Link>
         ) : (
           <button onClick={navigateToLogin}
@@ -94,10 +93,11 @@ export default function Sidebar() {
 
       {/* ── Mobile bottom navigation ── */}
       <div
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/5"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/40"
         style={{
-          background: "rgba(4,4,8,0.97)",
+          background: "hsl(var(--background) / 0.97)",
           backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
           paddingBottom: "env(safe-area-inset-bottom, 8px)",
         }}
       >
@@ -114,20 +114,20 @@ export default function Sidebar() {
                 className="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl transition-all"
               >
                 <div
-                  className={`p-1.5 rounded-lg transition-all ${isActive ? "bg-cyan-400/15" : ""}`}
-                  style={glowing ? { boxShadow: "0 0 10px rgba(0,229,255,0.4)" } : {}}
+                  className={`p-1.5 rounded-lg transition-all ${isActive ? "bg-primary/15" : ""}`}
+                  style={glowing ? { boxShadow: "0 0 10px rgba(0,200,200,0.35)" } : {}}
                 >
                   <item.icon
                     className={`w-[18px] h-[18px] transition-colors ${
-                      isActive ? "text-cyan-400" : glowing ? "text-cyan-400/80" : "text-white/40"
+                      isActive ? "text-primary" : glowing ? "text-primary/80" : "text-muted-foreground/60"
                     }`}
                     style={glowing && !isActive ? { filter: "drop-shadow(0 0 4px rgba(0,229,255,0.7))" } : {}}
                   />
                   {glowing && !isActive && (
-                    <span className="block w-1 h-1 rounded-full bg-cyan-400 mx-auto mt-0.5 animate-pulse" />
+                    <span className="block w-1 h-1 rounded-full bg-primary mx-auto mt-0.5 animate-pulse" />
                   )}
                 </div>
-                <span className={`text-[8px] font-semibold tracking-wide uppercase ${isActive ? "text-cyan-400" : glowing ? "text-cyan-400/60" : "text-white/30"}`}>
+                <span className={`text-[8px] font-semibold tracking-wide uppercase ${isActive ? "text-primary" : glowing ? "text-primary/60" : "text-muted-foreground/50"}`}>
                   {item.label}
                 </span>
               </Link>
@@ -142,11 +142,11 @@ export default function Sidebar() {
         onMouseLeave={() => setExpanded(false)}
         animate={{ width: expanded ? 220 : 72 }}
         transition={{ type: "spring", damping: 28, stiffness: 220 }}
-        className="hidden lg:flex fixed left-0 top-0 bottom-0 z-50 flex-col border-r border-white/[0.06]"
-        style={{ background: "linear-gradient(180deg,#060610 0%,#080818 60%,#040408 100%)" }}
+        className="hidden lg:flex fixed left-0 top-0 bottom-0 z-50 flex-col border-r border-border/40"
+        style={{ background: "hsl(var(--sidebar-background))" }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 h-[70px] px-5 border-b border-white/[0.06] flex-shrink-0 overflow-hidden">
+        <div className="flex items-center gap-3 h-[70px] px-5 border-b border-border/30 flex-shrink-0 overflow-hidden">
           <img
             src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png"
             alt="Upper Vibe Media"
@@ -161,8 +161,8 @@ export default function Sidebar() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <p className="font-heading font-black text-xs tracking-[0.22em] text-white whitespace-nowrap">UPPER VIBE</p>
-                <p className="text-[9px] tracking-[0.15em] uppercase text-yellow-400/60 whitespace-nowrap">Media</p>
+                <p className="font-heading font-black text-xs tracking-[0.22em] text-foreground whitespace-nowrap">UPPER VIBE</p>
+                <p className="text-[9px] tracking-[0.15em] uppercase text-secondary/70 whitespace-nowrap">Media</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -178,20 +178,19 @@ export default function Sidebar() {
                 to={item.path}
                 title={!expanded ? item.label : undefined}
                 className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group overflow-hidden ${
-                  isActive ? "" : "hover:bg-white/[0.04]"
+                  isActive ? "" : "hover:bg-muted/50"
                 }`}
                 style={isActive ? {
-                  background: "linear-gradient(135deg,rgba(0,229,255,0.12),rgba(0,229,255,0.04))",
-                  boxShadow: "inset 0 0 0 1px rgba(0,229,255,0.15), 0 0 16px rgba(0,229,255,0.08)"
+                  background: "hsl(var(--primary) / 0.1)",
+                  boxShadow: "inset 0 0 0 1px hsl(var(--primary) / 0.2)"
                 } : {}}
               >
                 {/* Active indicator */}
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full"
-                    style={{ background: "linear-gradient(180deg,#00E5FF,#00B8D4)" }} />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full bg-primary" />
                 )}
                 <item.icon className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
-                  isActive ? "text-cyan-400" : "text-white/35 group-hover:text-white/65"
+                  isActive ? "text-primary" : "text-muted-foreground/50 group-hover:text-foreground/70"
                 }`} />
                 <AnimatePresence>
                   {expanded && (
@@ -201,7 +200,7 @@ export default function Sidebar() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
                       className={`text-[13px] font-medium whitespace-nowrap ${
-                        isActive ? "text-cyan-300" : "text-white/50 group-hover:text-white/80"
+                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground/80"
                       }`}
                     >
                       {item.label}
@@ -216,20 +215,17 @@ export default function Sidebar() {
         {/* spacer */}
 
         {/* User area */}
-        <div className="border-t border-white/[0.06] px-3 py-3 flex-shrink-0">
+        <div className="border-t border-border/30 px-3 py-3 flex-shrink-0">
           {isAuthenticated && user ? (
-            <Link to="/account" className="flex items-center gap-3 overflow-hidden rounded-xl px-2 py-1.5 hover:bg-white/[0.04] transition-colors">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-heading font-bold text-xs"
-                style={{ background: "linear-gradient(135deg,#00E5FF22,#00E5FF08)", border: "1px solid rgba(0,229,255,0.25)", color: "#00E5FF" }}>
+            <Link to="/account" className="flex items-center gap-3 overflow-hidden rounded-xl px-2 py-1.5 hover:bg-muted/50 transition-colors">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-heading font-bold text-xs bg-primary/10 border border-primary/25 text-primary">
                 {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
               </div>
               <AnimatePresence>
                 {expanded && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-white/80 truncate">{user.full_name || "Member"}</p>
-                    <p className="text-[9px] truncate" style={{
-                      color: user.role === "admin" ? "#D4A843" : (user.role === "premium" || user.tier === "premium") ? "#D4A843" : "#00C9E0"
-                    }}>
+                    <p className="text-xs font-semibold text-foreground/80 truncate">{user.full_name || "Member"}</p>
+                    <p className="text-[9px] truncate text-secondary/80">
                       {user.role === "admin" ? "👑 Admin" : (user.role === "premium" || user.tier === "premium") ? "⭐ Premium" : "Free Listener"}
                     </p>
                   </motion.div>
@@ -238,7 +234,7 @@ export default function Sidebar() {
               {expanded && (
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); logout(); }}
-                  className="text-white/25 hover:text-white/60 transition-colors flex-shrink-0 p-1">
+                  className="text-muted-foreground/40 hover:text-muted-foreground transition-colors flex-shrink-0 p-1">
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -246,16 +242,14 @@ export default function Sidebar() {
           ) : (
             <button
               onClick={navigateToLogin}
-              className="w-full flex items-center gap-3 px-2 py-1.5 rounded-xl transition-colors overflow-hidden"
-              style={{ background: "rgba(0,180,210,0.08)", border: "1px solid rgba(0,180,210,0.2)" }}>
-              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.2)" }}>
-                <User className="w-4 h-4 text-cyan-400/70" />
+              className="w-full flex items-center gap-3 px-2 py-1.5 rounded-xl transition-colors overflow-hidden bg-primary/8 border border-primary/20">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-primary/10 border border-primary/20">
+                <User className="w-4 h-4 text-primary/70" />
               </div>
               <AnimatePresence>
                 {expanded && (
                   <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="text-xs text-cyan-400 whitespace-nowrap font-black tracking-wide">
+                    className="text-xs text-primary whitespace-nowrap font-black tracking-wide">
                     Log In
                   </motion.span>
                 )}

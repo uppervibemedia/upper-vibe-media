@@ -78,6 +78,42 @@
     --sidebar-border: 260 30% 15%;
     --sidebar-ring: 185 100% 50%;
   }
+
+  /* ── Solar Mode ──────────────────────────────────────────────────────────── */
+  .solar {
+    --background: 36 40% 96%;
+    --foreground: 240 30% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 30% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 30% 12%;
+    --primary: 191 75% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 43 72% 48%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 40 30% 92%;
+    --muted-foreground: 240 15% 40%;
+    --accent: 270 30% 94%;
+    --accent-foreground: 270 40% 30%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 36 20% 86%;
+    --input: 36 20% 88%;
+    --ring: 191 75% 38%;
+    --chart-1: 191 75% 38%;
+    --chart-2: 43 72% 48%;
+    --chart-3: 270 50% 60%;
+    --chart-4: 240 30% 12%;
+    --chart-5: 191 60% 55%;
+    --sidebar-background: 36 30% 98%;
+    --sidebar-foreground: 240 30% 12%;
+    --sidebar-primary: 191 75% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 20% 94%;
+    --sidebar-accent-foreground: 240 30% 12%;
+    --sidebar-border: 36 20% 88%;
+    --sidebar-ring: 191 75% 38%;
+  }
 }
 
 @layer base {
@@ -226,3 +262,51 @@ html {
   -webkit-backdrop-filter: blur(30px);
   border: 1px solid hsl(260 30% 15% / 0.5);
 }
+
+/* ── Solar Mode global overrides ────────────────────────────────────────── */
+.solar body,
+.solar {
+  background-color: hsl(36 40% 96%);
+  color: hsl(240 30% 12%);
+}
+
+.solar html {
+  background-color: hsl(36 40% 96%);
+}
+
+/* Solar: smooth theme transition on all elements */
+.solar *,
+.solar *::before,
+.solar *::after {
+  transition: background-color 0.35s ease, border-color 0.35s ease, color 0.25s ease, box-shadow 0.35s ease !important;
+}
+
+/* Dark mode: also smooth on theme switch */
+html.solar-transitioning *,
+html.solar-transitioning *::before,
+html.solar-transitioning *::after {
+  transition: background-color 0.35s ease, border-color 0.35s ease, color 0.25s ease, box-shadow 0.35s ease !important;
+}
+
+/* Solar scrollbar */
+.solar ::-webkit-scrollbar-track { background: hsl(36 30% 92%); }
+.solar ::-webkit-scrollbar-thumb { background: hsl(36 20% 78%); }
+.solar ::-webkit-scrollbar-thumb:hover { background: hsl(191 60% 55% / 0.4); }
+
+/* Solar glass */
+.solar .glass {
+  background: rgba(255, 252, 248, 0.75);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(200, 185, 160, 0.35);
+}
+
+/* Solar glow utilities (softer, warm) */
+.solar .glow-blue {
+  box-shadow: 0 0 20px rgba(20, 150, 180, 0.1), 0 0 60px rgba(20, 150, 180, 0.04);
+}
+.solar .glow-gold {
+  box-shadow: 0 0 20px rgba(195, 145, 50, 0.12), 0 0 60px rgba(195, 145, 50, 0.04);
+}
+.solar .text-glow-blue { text-shadow: none; }
+.solar .text-glow-gold { text-shadow: none; }
