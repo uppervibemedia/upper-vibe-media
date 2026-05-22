@@ -186,7 +186,7 @@ export default function Home() {
               className="mb-2 sm:mb-3">
 
               {/* UPPER VIBE — smaller on mobile */}
-              <div style={{
+              <div className="hero-logo-upper" style={{
                 fontFamily: "var(--font-heading)",
                 fontSize: "clamp(2rem, 6.2vw, 4.8rem)",
                 fontWeight: 900,
@@ -214,7 +214,7 @@ export default function Home() {
               </div>
 
               {/* MEDIA — smaller on mobile */}
-              <div style={{
+              <div className="hero-logo-media" style={{
                 fontFamily: "var(--font-heading)",
                 fontSize: "clamp(1.1rem, 3.6vw, 2.8rem)",
                 fontWeight: 800,
