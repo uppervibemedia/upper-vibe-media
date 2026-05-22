@@ -4,32 +4,62 @@
   "properties": {
     "user_email": {
       "type": "string",
-      "description": "Email of the message sender"
+      "description": "Email of the post author"
     },
     "user_name": {
       "type": "string",
-      "description": "Vibe Name of the sender"
+      "description": "Vibe Name of the author"
     },
     "user_avatar_url": {
       "type": "string",
-      "description": "Profile picture URL of the sender at time of message"
+      "description": "Profile picture URL at time of post"
+    },
+    "post_type": {
+      "type": "string",
+      "enum": [
+        "thought",
+        "track_share",
+        "featured"
+      ],
+      "default": "thought",
+      "description": "Type of feed post"
     },
     "content": {
       "type": "string",
-      "description": "Message content"
+      "description": "Listener thought text (max 280 chars)"
+    },
+    "track_id": {
+      "type": "string",
+      "description": "ID of shared track (for track_share posts)"
+    },
+    "track_title": {
+      "type": "string",
+      "description": "Cached track title"
+    },
+    "track_artist": {
+      "type": "string",
+      "description": "Cached artist name"
+    },
+    "track_cover_url": {
+      "type": "string",
+      "description": "Cached cover art URL"
+    },
+    "track_frequency_type": {
+      "type": "string",
+      "description": "e.g. 432hz, 528hz"
     },
     "is_listening": {
       "type": "boolean",
       "default": false,
-      "description": "Whether the user had music playing when they sent the message"
+      "description": "Whether user had music playing when posting"
     },
     "now_playing_title": {
       "type": "string",
-      "description": "Track title playing at time of message (optional)"
+      "description": "Track title playing at time of post"
     },
     "reactions": {
       "type": "object",
-      "description": "Reaction counts keyed by type \u2014 arrays of user emails",
+      "description": "Reaction counts \u2014 arrays of user emails per type",
       "properties": {
         "felt_that": {
           "type": "array",
@@ -60,23 +90,27 @@
     "is_hidden": {
       "type": "boolean",
       "default": false,
-      "description": "Admin soft-delete / hide message"
+      "description": "Admin soft-delete"
+    },
+    "is_pinned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Featured Vibe of the Day \u2014 pinned to top by admin"
     },
     "report_count": {
       "type": "number",
-      "default": 0,
-      "description": "Number of times this message has been reported"
+      "default": 0
     },
     "reported_by": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Array of user emails who reported this message"
+      "description": "User emails who reported this post"
     }
   },
   "required": [
     "user_email",
-    "content"
+    "post_type"
   ]
 }
