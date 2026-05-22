@@ -61,6 +61,18 @@ const isPWA = (() => {
 })();
 
 // ─────────────────────────────────────────────────────────────────────────────
+// iOS detection — on iOS/iPadOS we MUST skip AudioContext routing.
+// Routing through Web Audio API (createMediaElementSource) prevents the OS
+// from routing audio to AirPlay, Bluetooth, or TV. On iOS we let the audio
+// element play directly to the system output (which supports all routing).
+// ─────────────────────────────────────────────────────────────────────────────
+const isIOS = (() => {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Safari detection — Safari is the ONLY browser that requires pause-on-hide
 // for background tab audio. Chrome, Firefox, Edge all support background audio.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,18 +107,6 @@ let _globalAudioInstanceCount = 0;
 // Shared visibility ref — exported so AudioPlayer bar can gate progress updates
 // ─────────────────────────────────────────────────────────────────────────────
 export const sharedHiddenRef = { current: false };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// iOS detection — on iOS/iPadOS we MUST skip AudioContext routing.
-// Routing through Web Audio API (createMediaElementSource) prevents the OS
-// from routing audio to AirPlay, Bluetooth, or TV. On iOS we let the audio
-// element play directly to the system output (which supports all routing).
-// ─────────────────────────────────────────────────────────────────────────────
-const isIOS = (() => {
-  if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-})();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AudioContext — shared with visualiser, created lazily on first user gesture
