@@ -122,8 +122,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         </svg>
       ),
       action: () => {
-        const tweet = encodeURIComponent(`${shareData.text} ${shareData.displayUrl || shareData.url}`);
-        window.open(`https://twitter.com/intent/tweet?text=${tweet}`, "_blank");
+        const tweetText = encodeURIComponent(shareData.text);
+        const tweetUrl  = encodeURIComponent(shareData.displayUrl || shareData.url);
+        window.open(`https://twitter.com/intent/tweet?text=${tweetText}&url=${tweetUrl}`, "_blank");
         base44.analytics.track({ eventName: "share_twitter_clicked", properties: { share_type: type } });
       },
       color: "rgba(255,255,255,0.05)",

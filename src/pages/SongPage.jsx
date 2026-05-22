@@ -278,65 +278,67 @@ export default function SongPage() {
                 <User className="w-3.5 h-3.5" /> {track.artist_display || "Upper Vibe Media"}
               </p>
 
-              {/* Action buttons — Row 1: Play + Download */}
-              <div className="flex flex-wrap gap-3 justify-center sm:justify-start mb-3">
-                <button onClick={() => handlePlay(track)}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02]"
-                  style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 24px rgba(0,229,255,0.3)" }}>
-                  {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-                  {isCurrentTrack && isPlaying ? "Pause" : "Play Song"}
-                </button>
-
-                {isPlus ? (
-                  track.audio_url ? (
-                    <button onClick={handleDownload}
-                      className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02]"
-                      style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000", boxShadow: "0 0 24px rgba(212,168,67,0.3)" }}>
-                      <Download className="w-4 h-4" /> Download MP3
-                    </button>
-                  ) : (
-                    <span className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm opacity-40 cursor-not-allowed"
-                      style={{ border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
-                      <Download className="w-4 h-4" /> Coming Soon
-                    </span>
-                  )
-                ) : (
-                  <button onClick={() => setUpgradeModal(true)}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110"
-                    style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.15),rgba(212,168,67,0.08))", border: "1px solid rgba(212,168,67,0.35)", color: "#D4A843" }}>
-                    <Lock className="w-4 h-4" /> Download MP3
-                    <Crown className="w-3.5 h-3.5" />
+              {/* Action buttons — responsive rows, no clipping on small iPhones */}
+              <div className="w-full max-w-full overflow-x-hidden">
+                {/* Row 1: Play + Download */}
+                <div className="flex flex-wrap gap-2.5 justify-center sm:justify-start mb-2.5">
+                  <button onClick={() => handlePlay(track)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02] flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 24px rgba(0,229,255,0.3)" }}>
+                    {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                    {isCurrentTrack && isPlaying ? "Pause" : "Play Song"}
                   </button>
-                )}
-              </div>
 
-              {/* Row 2: Support + Save + Share */}
-              <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
-                <button
-                  onClick={() => setSupportModal(true)}
-                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
-                  style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.28)", color: "#D4A843" }}>
-                  <Zap className="w-4 h-4" />
-                  Support
-                </button>
+                  {isPlus ? (
+                    track.audio_url ? (
+                      <button onClick={handleDownload}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02] flex-shrink-0"
+                        style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000", boxShadow: "0 0 24px rgba(212,168,67,0.3)" }}>
+                        <Download className="w-4 h-4" /> Download MP3
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm opacity-40 cursor-not-allowed flex-shrink-0"
+                        style={{ border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
+                        <Download className="w-4 h-4" /> Coming Soon
+                      </span>
+                    )
+                  ) : (
+                    <button onClick={() => setUpgradeModal(true)}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 flex-shrink-0"
+                      style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.15),rgba(212,168,67,0.08))", border: "1px solid rgba(212,168,67,0.35)", color: "#D4A843" }}>
+                      <Lock className="w-4 h-4" /> Download MP3
+                      <Crown className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
 
-                <button
-                  onClick={() => {
-                    if (!user) { setLoginPrompt(true); return; }
-                    toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-                  }}
-                  title={isFaved("track", track.id) ? "Saved to Favorites" : "Save to Favorites"}
-                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02]"
-                  style={isFaved("track", track.id) ? {
-                    background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.4)", color: "#ec4899"
-                  } : {
-                    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.55)"
-                  }}>
-                  <Heart className={`w-4 h-4 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-                  {isFaved("track", track.id) ? "Saved" : "Save"}
-                </button>
+                {/* Row 2: Support + Save + Share */}
+                <div className="flex flex-wrap gap-2.5 justify-center sm:justify-start">
+                  <button
+                    onClick={() => setSupportModal(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] flex-shrink-0"
+                    style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.28)", color: "#D4A843" }}>
+                    <Zap className="w-4 h-4" /> Support
+                  </button>
 
-                <ShareVibeButton type="song" track={track} />
+                  <button
+                    onClick={() => {
+                      if (!user) { setLoginPrompt(true); return; }
+                      toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
+                    }}
+                    title={isFaved("track", track.id) ? "Saved to Favorites" : "Save to Favorites"}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] flex-shrink-0"
+                    style={isFaved("track", track.id) ? {
+                      background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.4)", color: "#ec4899"
+                    } : {
+                      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.55)"
+                    }}>
+                    <Heart className={`w-4 h-4 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
+                    {isFaved("track", track.id) ? "Saved" : "Save"}
+                  </button>
+
+                  <ShareVibeButton type="song" track={track} />
+                </div>
               </div>
 
               {!isPlus && (

@@ -254,11 +254,13 @@ export default function VibeRoom() {
                     <span className="text-[9px] font-black tracking-[0.35em] uppercase text-purple-400"
                       style={{ fontFamily: "var(--font-heading)" }}>Live Chat</span>
                   </div>
-                  {/* Premium Chat badge */}
+                  {/* Premium badge */}
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
                     style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)" }}>
                     <Crown className="w-2.5 h-2.5 text-yellow-400/70" />
-                    <span className="text-[9px] font-black tracking-[0.2em] uppercase text-yellow-400/70">Premium Chat</span>
+                    <span className="text-[9px] font-black tracking-[0.2em] uppercase text-yellow-400/70">
+                      {isPremium ? "Premium" : "Premium 🔒"}
+                    </span>
                   </div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
                     style={{ background: "rgba(155,126,255,0.05)", border: "1px solid rgba(155,126,255,0.12)" }}>
