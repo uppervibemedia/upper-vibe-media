@@ -11,14 +11,50 @@
       ],
       "default": "user"
     },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "free",
+        "supporter",
+        "premium"
+      ],
+      "default": "free"
+    },
     "vibe_room_age_confirmed": {
       "type": "boolean",
       "default": false,
-      "description": "User has confirmed they are 18+ to access Vibe Room"
+      "description": "User has confirmed they are 18+ for Vibe Room"
     },
     "vibe_name": {
       "type": "string",
-      "description": "Public display name in the Vibe Room (3-20 chars, letters/numbers/underscores)"
+      "description": "User's chosen Vibe Room display name (3\u201320 chars)"
+    },
+    "vibe_avatar_url": {
+      "type": "string",
+      "description": "URL of the user's Vibe Room profile picture"
+    },
+    "stripe_customer_id": {
+      "type": "string",
+      "description": "Stripe customer ID for billing"
+    },
+    "stripe_subscription_id": {
+      "type": "string",
+      "description": "Active Stripe subscription ID"
+    },
+    "subscription_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "cancelled",
+        "past_due",
+        "trialing",
+        "none"
+      ],
+      "default": "none"
+    },
+    "subscription_ends_at": {
+      "type": "string",
+      "description": "ISO datetime when subscription ends or renews"
     }
   }
 }

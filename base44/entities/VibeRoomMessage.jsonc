@@ -10,13 +10,26 @@
       "type": "string",
       "description": "Vibe Name of the sender"
     },
+    "user_avatar_url": {
+      "type": "string",
+      "description": "Profile picture URL of the sender at time of message"
+    },
     "content": {
       "type": "string",
       "description": "Message content"
     },
+    "is_listening": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the user had music playing when they sent the message"
+    },
+    "now_playing_title": {
+      "type": "string",
+      "description": "Track title playing at time of message (optional)"
+    },
     "reactions": {
       "type": "object",
-      "description": "Reaction counts: {felt_that: [], needed_this: [], inspired: [], gratitude: []} \u2014 arrays of user emails",
+      "description": "Reaction counts keyed by type \u2014 arrays of user emails",
       "properties": {
         "felt_that": {
           "type": "array",
@@ -48,6 +61,18 @@
       "type": "boolean",
       "default": false,
       "description": "Admin soft-delete / hide message"
+    },
+    "report_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times this message has been reported"
+    },
+    "reported_by": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of user emails who reported this message"
     }
   },
   "required": [
