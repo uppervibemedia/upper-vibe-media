@@ -1,158 +1,346 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const STORAGE_KEY = "uvm_visualizer_style";
 
-const STYLES = ["Bars", "Waveform", "Pulse Ring", "Cosmic Particles", "Neon Tunnel", "Energy Grid"];
+// ── Canvas-based audio-reactive visualizers ───────────────────────────────────
+// Each uses requestAnimationFrame + AnalyserNode for real audio data.
+// Falls back to animated idle when analyser is unavailable (iOS / not playing).
 
-// ── Individual style renderers ────────────────────────────────────────────────
+function useAnalyserData(isPlaying, binCount = 64) {
+  const dataRef = useRef(new Uint8Array(binCount));
+  const rafRef  = useRef(null);
 
+  const tick = useCallback(() => {
+    const analyser = window._uvAnalyser;
+    if (analyser && isPlaying) {
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(buf);
+      // Downsample to binCount
+      const step = Math.floor(buf.length / binCount);
+      for (let i = 0; i < binCount; i++) {
+        let s = 0;
+        for (let j = 0; j < step; j++) s += buf[i * step + j];
+        dataRef.current[i] = s / step;
+      }
+    } else {
+      // Idle: fill with low noise
+      for (let i = 0; i < binCount; i++) {
+        dataRef.current[i] = 8 + Math.sin(Date.now() / 1200 + i * 0.4) * 6;
+      }
+    }
+    rafRef.current = requestAnimationFrame(tick);
+  }, [isPlaying, binCount]);
+
+  useEffect(() => {
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [tick]);
+
+  return dataRef;
+}
+
+// ── BARS ──────────────────────────────────────────────────────────────────────
 function BarsViz({ isPlaying }) {
-  const BAR_COUNT = 32;
-  return (
-    <div className="w-full flex items-end justify-center gap-[2px] px-4" style={{ height: 110 }}>
-      {Array.from({ length: BAR_COUNT }).map((_, i) => {
-        const delay = (i / BAR_COUNT) * 0.8;
-        const minH = 4 + Math.sin(i * 0.6) * 4;
-        const maxH = 30 + Math.sin(i * 0.4) * 40 + Math.cos(i * 0.7) * 20;
-        return (
-          <motion.div key={i} className="rounded-full flex-shrink-0"
-            style={{ width: 5, background: i % 3 === 0 ? "rgba(0,200,220,0.75)" : i % 3 === 1 ? "rgba(155,126,255,0.65)" : "rgba(0,200,220,0.35)" }}
-            animate={{ height: isPlaying ? [minH, maxH, minH * 1.5, maxH * 0.7, minH] : [minH, minH + 2, minH] }}
-            transition={{ duration: isPlaying ? 0.8 : 2, repeat: Infinity, ease: "easeInOut", delay }}
-          />
-        );
-      })}
-    </div>
-  );
+  const canvasRef = useRef(null);
+  const dataRef   = useAnalyserData(isPlaying, 48);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let raf;
+
+    const draw = () => {
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+      const bins = dataRef.current.length;
+      const gap  = 2;
+      const barW = (W - gap * (bins - 1)) / bins;
+
+      for (let i = 0; i < bins; i++) {
+        const val = dataRef.current[i] / 255;
+        const h   = Math.max(3, val * H);
+        const x   = i * (barW + gap);
+        const hue = i % 3 === 0 ? "rgba(0,200,220," : i % 3 === 1 ? "rgba(155,126,255," : "rgba(0,200,220,";
+        const alpha = 0.3 + val * 0.7;
+        ctx.fillStyle = `${hue}${alpha})`;
+        ctx.beginPath();
+        ctx.roundRect(x, H - h, barW, h, 3);
+        ctx.fill();
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [dataRef]);
+
+  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
 }
 
+// ── WAVEFORM ──────────────────────────────────────────────────────────────────
 function WaveformViz({ isPlaying }) {
-  const BAR_COUNT = 48;
-  return (
-    <div className="w-full flex items-center justify-center gap-[1.5px] px-2" style={{ height: 110 }}>
-      {Array.from({ length: BAR_COUNT }).map((_, i) => {
-        const center = BAR_COUNT / 2;
-        const dist = Math.abs(i - center) / center;
-        const base = 2;
-        const peak = isPlaying ? (1 - dist) * 60 + 4 : 6;
-        const delay = (i / BAR_COUNT) * 1.2;
-        return (
-          <motion.div key={i} className="rounded-full flex-shrink-0"
-            style={{ width: 3, background: `rgba(0,229,255,${0.3 + (1 - dist) * 0.6})` }}
-            animate={{ height: isPlaying ? [base, peak, base + 3, peak * 0.6, base] : [base, 8, base] }}
-            transition={{ duration: isPlaying ? 1.1 : 2.5, repeat: Infinity, ease: "easeInOut", delay }}
-          />
-        );
-      })}
-    </div>
-  );
+  const canvasRef = useRef(null);
+  const dataRef   = useAnalyserData(isPlaying, 64);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let raf;
+
+    const draw = () => {
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+      const bins = dataRef.current.length;
+      const sliceW = W / bins;
+
+      ctx.lineWidth = 2;
+      const grad = ctx.createLinearGradient(0, 0, W, 0);
+      grad.addColorStop(0,    "rgba(0,229,255,0.2)");
+      grad.addColorStop(0.5,  "rgba(0,229,255,0.9)");
+      grad.addColorStop(1,    "rgba(0,229,255,0.2)");
+      ctx.strokeStyle = grad;
+
+      ctx.beginPath();
+      for (let i = 0; i < bins; i++) {
+        const val = dataRef.current[i] / 255;
+        const x   = i * sliceW;
+        const y   = H / 2 - (val - 0.5) * H * 0.85;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Mirror bottom
+      ctx.beginPath();
+      for (let i = 0; i < bins; i++) {
+        const val = dataRef.current[i] / 255;
+        const x   = i * sliceW;
+        const y   = H / 2 + (val - 0.5) * H * 0.85;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.globalAlpha = 0.35;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [dataRef]);
+
+  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
 }
 
+// ── PULSE RING ────────────────────────────────────────────────────────────────
 function PulseRingViz({ isPlaying }) {
-  return (
-    <div className="w-full flex items-center justify-center" style={{ height: 110 }}>
-      <div className="relative flex items-center justify-center">
-        {[0, 1, 2, 3].map((i) => (
-          <motion.div key={i}
-            className="absolute rounded-full border"
-            style={{ borderColor: i % 2 === 0 ? "rgba(0,200,220,0.4)" : "rgba(155,126,255,0.35)" }}
-            animate={isPlaying
-              ? { width: [20 + i * 18, 32 + i * 22, 20 + i * 18], height: [20 + i * 18, 32 + i * 22, 20 + i * 18], opacity: [0.7, 0.2, 0.7] }
-              : { width: [20 + i * 18, 22 + i * 18, 20 + i * 18], height: [20 + i * 18, 22 + i * 18, 20 + i * 18], opacity: [0.3, 0.5, 0.3] }
-            }
-            transition={{ duration: isPlaying ? 1.2 + i * 0.3 : 3, repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }}
-          />
-        ))}
-        <motion.div className="w-5 h-5 rounded-full"
-          style={{ background: "radial-gradient(circle,#00E5FF,#009CB8)" }}
-          animate={{ scale: isPlaying ? [1, 1.4, 1] : [1, 1.05, 1], opacity: isPlaying ? [0.9, 0.5, 0.9] : [0.5, 0.7, 0.5] }}
-          transition={{ duration: isPlaying ? 0.9 : 2.5, repeat: Infinity, ease: "easeInOut" }}
-        />
-      </div>
-    </div>
-  );
+  const canvasRef = useRef(null);
+  const dataRef   = useAnalyserData(isPlaying, 32);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let raf;
+
+    const draw = () => {
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+      const cx = W / 2, cy = H / 2;
+
+      // Average low-freq energy for pulse
+      let energy = 0;
+      for (let i = 0; i < 8; i++) energy += dataRef.current[i];
+      energy = energy / 8 / 255;
+
+      const rings = [
+        { r: 18 + energy * 22, color: "rgba(0,229,255,", w: 2 },
+        { r: 32 + energy * 28, color: "rgba(155,126,255,", w: 1.5 },
+        { r: 46 + energy * 32, color: "rgba(0,229,255,", w: 1 },
+        { r: 60 + energy * 36, color: "rgba(155,126,255,", w: 1 },
+      ];
+
+      rings.forEach((ring, i) => {
+        const alpha = Math.max(0.08, 0.6 - i * 0.12 - (1 - energy) * 0.3);
+        ctx.beginPath();
+        ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
+        ctx.strokeStyle = `${ring.color}${alpha})`;
+        ctx.lineWidth = ring.w;
+        ctx.stroke();
+      });
+
+      // Core dot
+      const coreR = 6 + energy * 8;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
+      grad.addColorStop(0, "#00E5FF");
+      grad.addColorStop(1, "rgba(0,229,255,0)");
+      ctx.beginPath();
+      ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [dataRef]);
+
+  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
 }
 
+// ── COSMIC PARTICLES ──────────────────────────────────────────────────────────
 function CosmicParticlesViz({ isPlaying }) {
-  const DOTS = 20;
-  return (
-    <div className="w-full relative overflow-hidden" style={{ height: 110 }}>
-      {Array.from({ length: DOTS }).map((_, i) => {
-        const x = 5 + (i / DOTS) * 90;
-        const baseY = 30 + Math.sin(i * 1.3) * 25;
-        const color = i % 3 === 0 ? "#00E5FF" : i % 3 === 1 ? "#9B7EFF" : "#EDB84A";
-        const size = 3 + (i % 4);
-        return (
-          <motion.div key={i}
-            className="absolute rounded-full"
-            style={{ left: `${x}%`, width: size, height: size, background: color, boxShadow: `0 0 6px ${color}` }}
-            animate={isPlaying
-              ? { top: [baseY, baseY - 20 - (i % 5) * 10, baseY + 10, baseY], opacity: [0.6, 1, 0.4, 0.6] }
-              : { top: [baseY, baseY + 3, baseY], opacity: [0.3, 0.5, 0.3] }
-            }
-            transition={{ duration: isPlaying ? 1.5 + (i % 4) * 0.3 : 3, repeat: Infinity, ease: "easeInOut", delay: (i / DOTS) * 1.5 }}
-          />
-        );
-      })}
-    </div>
-  );
+  const canvasRef  = useRef(null);
+  const dataRef    = useAnalyserData(isPlaying, 24);
+  const partsRef   = useRef([]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
+
+    // Init particles
+    partsRef.current = Array.from({ length: 40 }, (_, i) => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: -0.3 - Math.random() * 0.4,
+      r: 1.5 + Math.random() * 2.5,
+      bin: Math.floor((i / 40) * 24),
+      color: i % 3 === 0 ? "#00E5FF" : i % 3 === 1 ? "#9B7EFF" : "#EDB84A",
+    }));
+
+    let raf;
+    const draw = () => {
+      ctx.clearRect(0, 0, W, H);
+      partsRef.current.forEach((p) => {
+        const energy = (dataRef.current[p.bin] || 0) / 255;
+        const speed  = isPlaying ? 1 + energy * 4 : 0.3;
+
+        p.x += p.vx * speed;
+        p.y += p.vy * speed;
+
+        if (p.y < -4) { p.y = H + 4; p.x = Math.random() * W; }
+        if (p.x < -4) p.x = W + 4;
+        if (p.x > W + 4) p.x = -4;
+
+        const alpha = 0.3 + energy * 0.7;
+        const size  = p.r * (1 + energy * 1.5);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = alpha;
+        ctx.fill();
+        if (energy > 0.4) {
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = p.color;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+        ctx.globalAlpha = 1;
+      });
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [dataRef, isPlaying]);
+
+  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
 }
 
+// ── NEON TUNNEL ───────────────────────────────────────────────────────────────
 function NeonTunnelViz({ isPlaying }) {
-  const RINGS = 6;
-  return (
-    <div className="w-full flex items-center justify-center" style={{ height: 110 }}>
-      <div className="relative flex items-center justify-center">
-        {Array.from({ length: RINGS }).map((_, i) => {
-          const size = 14 + i * 16;
-          const color = i % 2 === 0 ? "rgba(0,229,255," : "rgba(155,126,255,";
-          return (
-            <motion.div key={i}
-              className="absolute rounded-full"
-              style={{ width: size, height: size, border: `1.5px solid ${color}0.5)` }}
-              animate={isPlaying
-                ? { scale: [1, 1.15, 1], opacity: [0.3, 0.8, 0.3], rotate: [0, i % 2 === 0 ? 15 : -15, 0] }
-                : { scale: [1, 1.03, 1], opacity: [0.15, 0.3, 0.15] }
-              }
-              transition={{ duration: isPlaying ? 1.4 + i * 0.2 : 3.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.15 }}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
+  const canvasRef = useRef(null);
+  const dataRef   = useAnalyserData(isPlaying, 8);
+  const tRef      = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let raf;
+
+    const draw = () => {
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+      tRef.current += 0.02;
+      const t = tRef.current;
+
+      const cx = W / 2, cy = H / 2;
+      const RINGS = 7;
+
+      for (let i = RINGS; i >= 1; i--) {
+        const energy = (dataRef.current[RINGS - i] || 0) / 255;
+        const r      = (i / RINGS) * (Math.min(W, H) * 0.48) * (1 + (isPlaying ? energy * 0.2 : 0));
+        const alpha  = 0.15 + (isPlaying ? energy * 0.65 : 0.1);
+        const color  = i % 2 === 0 ? `rgba(0,229,255,${alpha})` : `rgba(155,126,255,${alpha})`;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(t * (i % 2 === 0 ? 1 : -1) * 0.4);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r, r * 0.45, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth   = 1.5;
+        ctx.stroke();
+        ctx.restore();
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [dataRef, isPlaying]);
+
+  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
 }
 
+// ── ENERGY GRID ───────────────────────────────────────────────────────────────
 function EnergyGridViz({ isPlaying }) {
-  const COLS = 8, ROWS = 3;
-  return (
-    <div className="w-full flex items-center justify-center" style={{ height: 110 }}>
-      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}>
-        {Array.from({ length: COLS * ROWS }).map((_, i) => {
-          const col = i % COLS;
-          const row = Math.floor(i / COLS);
-          const delay = (col + row) * 0.1;
-          const color = (col + row) % 3 === 0 ? "#00E5FF" : (col + row) % 3 === 1 ? "#9B7EFF" : "#EDB84A";
-          return (
-            <motion.div key={i}
-              className="rounded-sm"
-              style={{ width: 10, height: 10, background: color }}
-              animate={isPlaying
-                ? { opacity: [0.15, 0.9, 0.15], scale: [0.8, 1.2, 0.8] }
-                : { opacity: [0.1, 0.2, 0.1], scale: [1, 1, 1] }
-              }
-              transition={{ duration: isPlaying ? 0.9 : 2.5, repeat: Infinity, ease: "easeInOut", delay }}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
+  const canvasRef = useRef(null);
+  const dataRef   = useAnalyserData(isPlaying, 24);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let raf;
+
+    const COLS = 10, ROWS = 4;
+    const draw = () => {
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const cw = W / COLS, ch = H / ROWS;
+      const gap = 3;
+
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const bin   = Math.floor(((col + row * COLS) / (COLS * ROWS)) * 24);
+          const energy= (dataRef.current[bin] || 0) / 255;
+          const x     = col * cw + gap;
+          const y     = row * ch + gap;
+          const w     = cw - gap * 2;
+          const h     = ch - gap * 2;
+          const alpha = 0.08 + energy * 0.85;
+          const color = (col + row) % 3 === 0 ? `rgba(0,229,255,${alpha})` : (col + row) % 3 === 1 ? `rgba(155,126,255,${alpha})` : `rgba(237,184,74,${alpha})`;
+
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, 4);
+          ctx.fill();
+        }
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [dataRef]);
+
+  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
 }
 
 // ── Style selector bottom sheet ───────────────────────────────────────────────
-
 function StyleSheet({ open, onClose, current, onSelect }) {
   const options = [
     { name: "Bars",             emoji: "📊" },
@@ -167,13 +355,11 @@ function StyleSheet({ open, onClose, current, onSelect }) {
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[90] flex items-end justify-center" style={{ WebkitOverflowScrolling: "touch" }}>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
-          {/* Sheet */}
           <motion.div
             initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 320 }}
@@ -186,18 +372,13 @@ function StyleSheet({ open, onClose, current, onSelect }) {
               boxShadow: "0 -8px 60px rgba(0,200,220,0.12)",
             }}
           >
-            {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }} />
             </div>
-
-            {/* Header */}
             <div className="px-5 pt-2 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
               <p className="font-heading font-black text-white text-base">Visualizer Style ⚡</p>
               <p className="text-[11px] text-white/30 mt-0.5">Choose how the radio comes alive</p>
             </div>
-
-            {/* Options */}
             <div className="px-4 py-3 grid grid-cols-2 gap-2.5"
               style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 16px) + 100px)` }}>
               {options.map((opt) => {
@@ -228,7 +409,6 @@ function StyleSheet({ open, onClose, current, onSelect }) {
 }
 
 // ── Main exported component ───────────────────────────────────────────────────
-
 export default function RadioVisualizer({ isPlaying }) {
   const [style, setStyle] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY) || "Bars"; } catch { return "Bars"; }
@@ -253,12 +433,10 @@ export default function RadioVisualizer({ isPlaying }) {
 
   return (
     <>
-      {/* Visualizer canvas */}
       <div className="w-full" style={{ minHeight: 110 }}>
         {renderViz()}
       </div>
 
-      {/* Change Visualizer button — sits below the viz, above controls */}
       <div className="flex justify-center pt-2 pb-1">
         <button
           onClick={() => setSheetOpen(true)}
@@ -273,7 +451,6 @@ export default function RadioVisualizer({ isPlaying }) {
         </button>
       </div>
 
-      {/* Bottom sheet selector */}
       <StyleSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
