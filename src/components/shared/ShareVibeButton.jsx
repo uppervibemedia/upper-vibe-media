@@ -172,7 +172,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
       <AnimatePresence>
         {open && (
           <div
-            className="fixed inset-0 z-[80] flex items-end justify-center"
+            className="fixed inset-0 z-[100] flex items-end justify-center"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
             {/* Backdrop */}
@@ -182,43 +182,50 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
               onClick={() => setOpen(false)}
             />
 
-            {/* Sheet — slides up from bottom, safe-area aware */}
+            {/* Sheet — slides up from bottom, safe-area aware, scrollable on mobile */}
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 320 }}
-              className="relative w-full max-w-lg overflow-hidden"
+              className="relative w-full max-w-lg overflow-hidden flex flex-col"
               style={{
                 background: "linear-gradient(160deg,#0d0d22,#0a0a1a)",
                 border: "1px solid rgba(155,126,255,0.2)",
                 borderBottom: "none",
                 borderRadius: "24px 24px 0 0",
                 boxShadow: "0 -8px 60px rgba(155,126,255,0.15), 0 -2px 40px rgba(0,0,0,0.7)",
-                // Safe area: leave room for home indicator
-                paddingBottom: "env(safe-area-inset-bottom, 16px)",
+                maxHeight: "calc(100dvh - 180px)",
               }}
             >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }} />
+              {/* Drag handle + Header (fixed) */}
+              <div className="flex-shrink-0">
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }} />
+                </div>
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 pt-3 pb-4"
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div className="flex-1 min-w-0 pr-3">
+                    <p className="font-heading font-black text-white text-base">Share The Vibe ⚡</p>
+                    <p className="text-[11px] text-white/30 mt-0.5 truncate">{shareData.displayUrl || shareData.url}</p>
+                  </div>
+                  <button
+                    onClick={() => setOpen(false)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white/40 hover:text-white/70 transition-colors"
+                    style={{ background: "rgba(255,255,255,0.06)" }}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 pt-3 pb-4"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                <div className="flex-1 min-w-0 pr-3">
-                  <p className="font-heading font-black text-white text-base">Share The Vibe ⚡</p>
-                  <p className="text-[11px] text-white/30 mt-0.5 truncate">{shareData.displayUrl || shareData.url}</p>
-                </div>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white/40 hover:text-white/70 transition-colors"
-                  style={{ background: "rgba(255,255,255,0.06)" }}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              {/* Scrollable content area */}
+              <div className="flex-1 overflow-y-auto min-w-0"
+                style={{
+                  WebkitOverflowScrolling: "touch",
+                }}>
 
               {/* Song preview card — with artwork if available */}
               {type === "song" && (
@@ -266,8 +273,13 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
                 </div>
               )}
 
-              {/* Share options */}
-              <div className="px-4 pt-3 pb-4 flex flex-col gap-2.5">
+              </div>
+
+              {/* Share options (fixed at bottom with safe area padding) */}
+              <div className="flex-shrink-0 px-4 pt-3 flex flex-col gap-2.5"
+                style={{
+                  paddingBottom: `calc(env(safe-area-inset-bottom, 12px) + 120px)`,
+                }}>
                 {SHARE_OPTIONS.map((opt) => (
                   <button
                     key={opt.label}
