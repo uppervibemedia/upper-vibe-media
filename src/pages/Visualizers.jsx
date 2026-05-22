@@ -47,6 +47,9 @@ function toWatchUrl(url) {
   return id ? `https://www.youtube.com/watch?v=${id}` : (url || null);
 }
 
+// Detect if on mobile (iOS Safari / Android) — iframes with autoplay are blocked
+const isMobileBrowser = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
 function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, onToggleFav }) {
   const [expanded, setExpanded] = useState(false);
   const [embedError, setEmbedError] = useState(false);
@@ -56,7 +59,15 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
   const thumb = viz.thumbnail_url || linkedTrack?.cover_url;
   const categoryLabel = CATEGORY_LABELS[viz.category] || viz.category || "";
 
-  const handleWatch = () => { setEmbedError(false); setExpanded(true); };
+  // On mobile, YouTube iframes block autoplay — show inline fallback with YouTube link
+  const handleWatch = () => {
+    if (isMobileBrowser && watchUrl) {
+      window.open(watchUrl, "_blank");
+      return;
+    }
+    setEmbedError(false);
+    setExpanded(true);
+  };
 
   return (
     <motion.div layout className="rounded-2xl overflow-hidden flex flex-col"
@@ -66,7 +77,7 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
         <div className="absolute inset-0">
           {expanded && embedUrl && !embedError ? (
             <iframe
-              src={`${embedUrl}?autoplay=1&rel=0`}
+              src={`${embedUrl}?autoplay=1&rel=0&playsinline=1`}
               title="Upper Vibe Media Visualizer"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -105,6 +116,12 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
                   <Play className="w-6 h-6 text-black ml-0.5" />
                 </div>
               </div>
+              {isMobileBrowser && watchUrl && (
+                <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md text-[9px] font-bold flex items-center gap-1"
+                  style={{ background: "rgba(0,0,0,0.7)", color: "rgba(255,255,255,0.7)" }}>
+                  <ExternalLink className="w-2.5 h-2.5" /> Opens YouTube
+                </div>
+              )}
               {viz.is_featured && (
                 <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase"
                   style={{ background: "rgba(212,168,67,0.9)", color: "#000" }}>Featured</div>

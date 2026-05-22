@@ -3,10 +3,45 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const STORAGE_KEY = "uvm_visualizer_style";
 
-// ── Canvas-based audio-reactive visualizers ───────────────────────────────────
-// Each uses requestAnimationFrame + AnalyserNode for real audio data.
-// Falls back to animated idle when analyser is unavailable (iOS / not playing).
+// ── Detect iOS Safari / PWA ───────────────────────────────────────────────────
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
+// ── Safe roundRect polyfill (iOS < 15.4 doesn't have it) ─────────────────────
+function safeRoundRect(ctx, x, y, w, h, r) {
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.moveTo(x + rr, y);
+    ctx.lineTo(x + w - rr, y);
+    ctx.arcTo(x + w, y, x + w, y + rr, rr);
+    ctx.lineTo(x + w, y + h - rr);
+    ctx.arcTo(x + w, y + h, x + w - rr, y + h, rr);
+    ctx.lineTo(x + rr, y + h);
+    ctx.arcTo(x, y + h, x, y + h - rr, rr);
+    ctx.lineTo(x, y + rr);
+    ctx.arcTo(x, y, x + rr, y, rr);
+    ctx.closePath();
+  }
+}
+
+// ── DPI-aware canvas setup ────────────────────────────────────────────────────
+// Call this whenever the canvas mounts or container resizes.
+// Returns the logical {W, H} to use in draw calls.
+function setupCanvas(canvas) {
+  if (!canvas) return { W: 1, H: 1 };
+  const dpr = Math.min(window.devicePixelRatio || 1, 2); // cap at 2× to save GPU on mobile
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width  || canvas.offsetWidth  || 440;
+  const H = rect.height || canvas.offsetHeight || 110;
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { W, H };
+}
+
+// ── Analyser data hook ────────────────────────────────────────────────────────
 function useAnalyserData(isPlaying, binCount = 64) {
   const dataRef = useRef(new Uint8Array(binCount));
   const rafRef  = useRef(null);
@@ -14,17 +49,20 @@ function useAnalyserData(isPlaying, binCount = 64) {
   const tick = useCallback(() => {
     const analyser = window._uvAnalyser;
     if (analyser && isPlaying) {
+      // Resume AudioContext if suspended (required after iOS user gesture)
+      const ac = window._uvAudioContext;
+      if (ac && ac.state === "suspended") {
+        ac.resume().catch(() => {});
+      }
       const buf = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(buf);
-      // Downsample to binCount
-      const step = Math.floor(buf.length / binCount);
+      const step = Math.max(1, Math.floor(buf.length / binCount));
       for (let i = 0; i < binCount; i++) {
         let s = 0;
-        for (let j = 0; j < step; j++) s += buf[i * step + j];
+        for (let j = 0; j < step; j++) s += buf[i * step + j] || 0;
         dataRef.current[i] = s / step;
       }
     } else {
-      // Idle: fill with low noise
       for (let i = 0; i < binCount; i++) {
         dataRef.current[i] = 8 + Math.sin(Date.now() / 1200 + i * 0.4) * 6;
       }
@@ -40,10 +78,40 @@ function useAnalyserData(isPlaying, binCount = 64) {
   return dataRef;
 }
 
+// ── Canvas hook: sets up DPI scaling on mount and on resize ──────────────────
+function useResponsiveCanvas(canvasRef) {
+  const sizeRef = useRef({ W: 440, H: 110 });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const update = () => {
+      sizeRef.current = setupCanvas(canvas);
+    };
+
+    // Small delay so the canvas has rendered into DOM and has offsetWidth
+    const t = setTimeout(update, 0);
+
+    const ro = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(update)
+      : null;
+    if (ro) ro.observe(canvas);
+
+    return () => {
+      clearTimeout(t);
+      if (ro) ro.disconnect();
+    };
+  }, [canvasRef]);
+
+  return sizeRef;
+}
+
 // ── BARS ──────────────────────────────────────────────────────────────────────
 function BarsViz({ isPlaying }) {
   const canvasRef = useRef(null);
   const dataRef   = useAnalyserData(isPlaying, 48);
+  const sizeRef   = useResponsiveCanvas(canvasRef);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -52,11 +120,11 @@ function BarsViz({ isPlaying }) {
     let raf;
 
     const draw = () => {
-      const W = canvas.width, H = canvas.height;
+      const { W, H } = sizeRef.current;
       ctx.clearRect(0, 0, W, H);
       const bins = dataRef.current.length;
       const gap  = 2;
-      const barW = (W - gap * (bins - 1)) / bins;
+      const barW = Math.max(1, (W - gap * (bins - 1)) / bins);
 
       for (let i = 0; i < bins; i++) {
         const val = dataRef.current[i] / 255;
@@ -66,22 +134,23 @@ function BarsViz({ isPlaying }) {
         const alpha = 0.3 + val * 0.7;
         ctx.fillStyle = `${hue}${alpha})`;
         ctx.beginPath();
-        ctx.roundRect(x, H - h, barW, h, 3);
+        safeRoundRect(ctx, x, H - h, barW, h, 3);
         ctx.fill();
       }
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [dataRef]);
+  }, [dataRef, sizeRef]);
 
-  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
+  return <canvas ref={canvasRef} className="w-full" style={{ height: 110, display: "block" }} />;
 }
 
 // ── WAVEFORM ──────────────────────────────────────────────────────────────────
 function WaveformViz({ isPlaying }) {
   const canvasRef = useRef(null);
   const dataRef   = useAnalyserData(isPlaying, 64);
+  const sizeRef   = useResponsiveCanvas(canvasRef);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -90,16 +159,16 @@ function WaveformViz({ isPlaying }) {
     let raf;
 
     const draw = () => {
-      const W = canvas.width, H = canvas.height;
+      const { W, H } = sizeRef.current;
       ctx.clearRect(0, 0, W, H);
       const bins = dataRef.current.length;
       const sliceW = W / bins;
 
       ctx.lineWidth = 2;
       const grad = ctx.createLinearGradient(0, 0, W, 0);
-      grad.addColorStop(0,    "rgba(0,229,255,0.2)");
-      grad.addColorStop(0.5,  "rgba(0,229,255,0.9)");
-      grad.addColorStop(1,    "rgba(0,229,255,0.2)");
+      grad.addColorStop(0,   "rgba(0,229,255,0.2)");
+      grad.addColorStop(0.5, "rgba(0,229,255,0.9)");
+      grad.addColorStop(1,   "rgba(0,229,255,0.2)");
       ctx.strokeStyle = grad;
 
       ctx.beginPath();
@@ -111,7 +180,6 @@ function WaveformViz({ isPlaying }) {
       }
       ctx.stroke();
 
-      // Mirror bottom
       ctx.beginPath();
       for (let i = 0; i < bins; i++) {
         const val = dataRef.current[i] / 255;
@@ -127,15 +195,16 @@ function WaveformViz({ isPlaying }) {
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [dataRef]);
+  }, [dataRef, sizeRef]);
 
-  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
+  return <canvas ref={canvasRef} className="w-full" style={{ height: 110, display: "block" }} />;
 }
 
 // ── PULSE RING ────────────────────────────────────────────────────────────────
 function PulseRingViz({ isPlaying }) {
   const canvasRef = useRef(null);
   const dataRef   = useAnalyserData(isPlaying, 32);
+  const sizeRef   = useResponsiveCanvas(canvasRef);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -144,11 +213,10 @@ function PulseRingViz({ isPlaying }) {
     let raf;
 
     const draw = () => {
-      const W = canvas.width, H = canvas.height;
+      const { W, H } = sizeRef.current;
       ctx.clearRect(0, 0, W, H);
       const cx = W / 2, cy = H / 2;
 
-      // Average low-freq energy for pulse
       let energy = 0;
       for (let i = 0; i < 8; i++) energy += dataRef.current[i];
       energy = energy / 8 / 255;
@@ -169,7 +237,6 @@ function PulseRingViz({ isPlaying }) {
         ctx.stroke();
       });
 
-      // Core dot
       const coreR = 6 + energy * 8;
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
       grad.addColorStop(0, "#00E5FF");
@@ -183,38 +250,45 @@ function PulseRingViz({ isPlaying }) {
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [dataRef]);
+  }, [dataRef, sizeRef]);
 
-  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
+  return <canvas ref={canvasRef} className="w-full" style={{ height: 110, display: "block" }} />;
 }
 
 // ── COSMIC PARTICLES ──────────────────────────────────────────────────────────
 function CosmicParticlesViz({ isPlaying }) {
-  const canvasRef  = useRef(null);
-  const dataRef    = useAnalyserData(isPlaying, 24);
-  const partsRef   = useRef([]);
+  const canvasRef = useRef(null);
+  const dataRef   = useAnalyserData(isPlaying, 24);
+  const sizeRef   = useResponsiveCanvas(canvasRef);
+  const partsRef  = useRef(null); // lazily initialized per canvas size
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const W = canvas.width, H = canvas.height;
-
-    // Init particles
-    partsRef.current = Array.from({ length: 40 }, (_, i) => ({
-      x: Math.random() * W,
-      y: Math.random() * H,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: -0.3 - Math.random() * 0.4,
-      r: 1.5 + Math.random() * 2.5,
-      bin: Math.floor((i / 40) * 24),
-      color: i % 3 === 0 ? "#00E5FF" : i % 3 === 1 ? "#9B7EFF" : "#EDB84A",
-    }));
+    partsRef.current = null; // reset particles when effect re-runs
 
     let raf;
     const draw = () => {
+      const { W, H } = sizeRef.current;
+
+      // Lazy-init particles with current canvas size
+      if (!partsRef.current || partsRef.current._W !== W) {
+        partsRef.current = Array.from({ length: 40 }, (_, i) => ({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: -0.3 - Math.random() * 0.4,
+          r: 1.5 + Math.random() * 2.5,
+          bin: Math.floor((i / 40) * 24),
+          color: i % 3 === 0 ? "#00E5FF" : i % 3 === 1 ? "#9B7EFF" : "#EDB84A",
+        }));
+        partsRef.current._W = W;
+      }
+
       ctx.clearRect(0, 0, W, H);
       partsRef.current.forEach((p) => {
+        if (p.bin === undefined) return;
         const energy = (dataRef.current[p.bin] || 0) / 255;
         const speed  = isPlaying ? 1 + energy * 4 : 0.3;
 
@@ -244,9 +318,9 @@ function CosmicParticlesViz({ isPlaying }) {
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [dataRef, isPlaying]);
+  }, [dataRef, sizeRef, isPlaying]);
 
-  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
+  return <canvas ref={canvasRef} className="w-full" style={{ height: 110, display: "block" }} />;
 }
 
 // ── NEON TUNNEL ───────────────────────────────────────────────────────────────
@@ -254,6 +328,7 @@ function NeonTunnelViz({ isPlaying }) {
   const canvasRef = useRef(null);
   const dataRef   = useAnalyserData(isPlaying, 8);
   const tRef      = useRef(0);
+  const sizeRef   = useResponsiveCanvas(canvasRef);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -262,11 +337,10 @@ function NeonTunnelViz({ isPlaying }) {
     let raf;
 
     const draw = () => {
-      const W = canvas.width, H = canvas.height;
+      const { W, H } = sizeRef.current;
       ctx.clearRect(0, 0, W, H);
       tRef.current += 0.02;
       const t = tRef.current;
-
       const cx = W / 2, cy = H / 2;
       const RINGS = 7;
 
@@ -290,15 +364,16 @@ function NeonTunnelViz({ isPlaying }) {
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [dataRef, isPlaying]);
+  }, [dataRef, sizeRef, isPlaying]);
 
-  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
+  return <canvas ref={canvasRef} className="w-full" style={{ height: 110, display: "block" }} />;
 }
 
 // ── ENERGY GRID ───────────────────────────────────────────────────────────────
 function EnergyGridViz({ isPlaying }) {
   const canvasRef = useRef(null);
   const dataRef   = useAnalyserData(isPlaying, 24);
+  const sizeRef   = useResponsiveCanvas(canvasRef);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -308,7 +383,7 @@ function EnergyGridViz({ isPlaying }) {
 
     const COLS = 10, ROWS = 4;
     const draw = () => {
-      const W = canvas.width, H = canvas.height;
+      const { W, H } = sizeRef.current;
       ctx.clearRect(0, 0, W, H);
 
       const cw = W / COLS, ch = H / ROWS;
@@ -316,18 +391,22 @@ function EnergyGridViz({ isPlaying }) {
 
       for (let row = 0; row < ROWS; row++) {
         for (let col = 0; col < COLS; col++) {
-          const bin   = Math.floor(((col + row * COLS) / (COLS * ROWS)) * 24);
-          const energy= (dataRef.current[bin] || 0) / 255;
-          const x     = col * cw + gap;
-          const y     = row * ch + gap;
-          const w     = cw - gap * 2;
-          const h     = ch - gap * 2;
-          const alpha = 0.08 + energy * 0.85;
-          const color = (col + row) % 3 === 0 ? `rgba(0,229,255,${alpha})` : (col + row) % 3 === 1 ? `rgba(155,126,255,${alpha})` : `rgba(237,184,74,${alpha})`;
+          const bin    = Math.floor(((col + row * COLS) / (COLS * ROWS)) * 24);
+          const energy = (dataRef.current[bin] || 0) / 255;
+          const x      = col * cw + gap;
+          const y      = row * ch + gap;
+          const w      = cw - gap * 2;
+          const h      = ch - gap * 2;
+          const alpha  = 0.08 + energy * 0.85;
+          const color  = (col + row) % 3 === 0
+            ? `rgba(0,229,255,${alpha})`
+            : (col + row) % 3 === 1
+              ? `rgba(155,126,255,${alpha})`
+              : `rgba(237,184,74,${alpha})`;
 
           ctx.fillStyle = color;
           ctx.beginPath();
-          ctx.roundRect(x, y, w, h, 4);
+          safeRoundRect(ctx, x, y, w, h, 4);
           ctx.fill();
         }
       }
@@ -335,9 +414,9 @@ function EnergyGridViz({ isPlaying }) {
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [dataRef]);
+  }, [dataRef, sizeRef]);
 
-  return <canvas ref={canvasRef} width={440} height={110} className="w-full" style={{ height: 110 }} />;
+  return <canvas ref={canvasRef} className="w-full" style={{ height: 110, display: "block" }} />;
 }
 
 // ── Style selector bottom sheet ───────────────────────────────────────────────

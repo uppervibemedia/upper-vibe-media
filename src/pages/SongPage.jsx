@@ -193,6 +193,11 @@ export default function SongPage() {
   // Only use visualizer if it's explicitly linked to this exact song
   const linkedVisualizer = visualizer?.linked_song_id === track?.id ? visualizer : null;
   const embedUrl = linkedVisualizer ? toEmbedUrl(linkedVisualizer.embed_url || linkedVisualizer.video_url) : null;
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const watchUrl = linkedVisualizer ? (() => {
+    const m = (linkedVisualizer.embed_url || linkedVisualizer.video_url || "").match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m ? `https://www.youtube.com/watch?v=${m[1]}` : null;
+  })() : null;
 
   if (loading) {
     return (
@@ -381,9 +386,9 @@ export default function SongPage() {
                 <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
                   <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
                     <div className="absolute inset-0">
-                      {vizPlaying && embedUrl ? (
+                      {vizPlaying && embedUrl && !isMobile ? (
                         <iframe
-                          src={`${embedUrl}?autoplay=1&rel=0`}
+                          src={`${embedUrl}?autoplay=1&rel=0&playsinline=1`}
                           title={linkedVisualizer.title}
                           frameBorder="0"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -391,6 +396,9 @@ export default function SongPage() {
                           referrerPolicy="strict-origin-when-cross-origin"
                           className="w-full h-full"
                         />
+                      ) : vizPlaying && isMobile && watchUrl ? (
+                        // iOS Safari blocks iframe autoplay — redirect to YouTube
+                        (() => { window.open(watchUrl, "_blank"); setVizPlaying(false); return null; })()
                       ) : (
                         <div className="w-full h-full cursor-pointer group relative" onClick={() => setVizPlaying(true)}>
                           {linkedVisualizer.thumbnail_url ? (
