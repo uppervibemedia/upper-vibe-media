@@ -84,10 +84,10 @@ export default function Sidebar() {
             onClick={(e) => { if (!isAuthenticated) { e.preventDefault(); navigateToLogin("/my-vibes"); } }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all hover:brightness-110"
             style={{
-             background: "rgba(0,160,220,0.12)",
-             borderColor: "rgba(0,160,220,0.35)",
-             color: "rgb(0,160,220)",
-             boxShadow: "0 0 12px rgba(0,160,220,0.15)",
+             background: `rgba(${radioThemeColor},0.12)`,
+             borderColor: `rgba(${radioThemeColor},0.35)`,
+             color: `rgb(${radioThemeColor})`,
+             boxShadow: `0 0 12px rgba(${radioThemeColor},0.15)`,
            }}>
             <Heart className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="hidden sm:inline text-[11px] font-semibold whitespace-nowrap">My Vibe Library</span>
@@ -98,13 +98,13 @@ export default function Sidebar() {
           {isAuthenticated && user ? (
             <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all hover:brightness-110"
               style={{
-                background: "rgba(0,160,220,0.12)",
-                borderColor: "rgba(0,160,220,0.35)",
-                color: "rgb(0,160,220)",
-                boxShadow: "0 0 12px rgba(0,160,220,0.15)",
+                background: `rgba(${radioThemeColor},0.12)`,
+                borderColor: `rgba(${radioThemeColor},0.35)`,
+                color: `rgb(${radioThemeColor})`,
+                boxShadow: `0 0 12px rgba(${radioThemeColor},0.15)`,
               }}>
               <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black"
-                style={{ background: "rgba(0,160,220,0.18)", color: "rgb(0,160,220)" }}>
+                style={{ background: `rgba(${radioThemeColor},0.18)`, color: `rgb(${radioThemeColor})` }}>
                 {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
               </div>
               <span className="text-[11px] font-semibold">Account</span>
@@ -112,7 +112,7 @@ export default function Sidebar() {
           ) : (
             <button onClick={navigateToLogin}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-black text-[11px] tracking-wide"
-              style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff" }}>
+              style={{ background: `linear-gradient(135deg,rgba(${radioThemeColor},0.7),rgb(${radioThemeColor}))`, color: "#000" }}>
               Log In
             </button>
           )}
