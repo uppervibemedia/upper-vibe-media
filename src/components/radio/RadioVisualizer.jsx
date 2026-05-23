@@ -28,15 +28,14 @@ import { usePlayer } from "../../context/PlayerContext";
 const PREF_KEY = "uvm_radio_viz_v7";
 
 const MODES = [
-  { id: "spectrum", label: "Spectrum",       icon: "▊" },
-  { id: "waveform", label: "Waveform",       icon: "∿" },
-  { id: "energy",   label: "Energy Bars",    icon: "▋" },
-  { id: "cosmic",   label: "Cosmic Waves",   icon: "✦" },
-  { id: "neon",     label: "Neon Pulse",     icon: "◎" },
-  { id: "aurora",   label: "Aurora Flow",    icon: "≋" },
-  { id: "tunnel",   label: "Freq Tunnel",    icon: "⊙" },
-  { id: "plasma",   label: "Plasma Orbit",   icon: "◈" },
-  { id: "drift",    label: "Particle Drift", icon: "·" },
+  { id: "spectrum", label: "Stargate Rings",   icon: "⬡" },
+  { id: "waveform", label: "Petal Spiral",     icon: "✾" },
+  { id: "energy",   label: "Solar Mandala",    icon: "✺" },
+  { id: "cosmic",   label: "Cosmic Burst",     icon: "✦" },
+  { id: "neon",     label: "Neon Pulse",       icon: "◎" },
+  { id: "tunnel",   label: "Freq Tunnel",      icon: "⊙" },
+  { id: "plasma",   label: "Plasma Orbit",     icon: "◈" },
+  { id: "drift",    label: "Particle Drift",   icon: "·" },
 ];
 
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
@@ -241,14 +240,14 @@ function getMid(sm, n)    { const lo = Math.floor(n * 0.05), hi = Math.floor(n *
 function getTreble(sm, n) { const lo = Math.floor(n * 0.30), hi = Math.floor(n * 0.70); let v = 0; for (let i = lo; i < hi; i++) v += sm[i]; return Math.min(1, v / (hi - lo)); }
 function getAvg(sm, n)    { let v = 0; for (let i = 0; i < n; i++) v += sm[i]; return Math.min(1, v / n); }
 
-const _beat = { last: 0, hist: new Float32Array(12), idx: 0 };
+const _beat = { last: 0, hist: new Float32Array(12), idx: 0, count: 0 };
 function detectBeat(bass) {
   const now = Date.now();
   _beat.hist[_beat.idx % 12] = bass; _beat.idx++;
   const avg = _beat.hist.reduce((a, b) => a + b, 0) / 12;
   // Threshold: 1.35x local average, minimum 0.15 — catches both loud and soft tracks
   const thresh = Math.min(0.5, avg * 1.35 + 0.10);
-  if (bass > thresh && bass > 0.15 && now - _beat.last > 220) { _beat.last = now; return true; }
+  if (bass > thresh && bass > 0.15 && now - _beat.last > 220) { _beat.last = now; _beat.count++; return true; }
   return false;
 }
 
@@ -585,30 +584,6 @@ function drawTunnel(ctx, W, H, sm, bufLen, t, bass, mid) {
   }
 }
 
-// ── Draw: Aurora ──────────────────────────────────────────────────────────────
-function drawAurora(ctx, W, H, sm, bufLen, t, bass, beat) {
-  const bands = 6, bandSize = Math.floor(bufLen / bands);
-  const colors = ["0,229,255","0,200,220","80,150,255","155,126,255","200,100,255","100,220,200"];
-  for (let b = 0; b < bands; b++) {
-    let sum = 0; for (let i = b * bandSize; i < (b + 1) * bandSize; i++) sum += sm[i] || 0;
-    const amp = Math.min(1, (sum / bandSize) * (1 + bass * 2.0));
-    const sliceH = H / bands, cy = sliceH * b + sliceH / 2;
-    const wH = amp * sliceH * 1.2 * (b < 2 && beat ? 1.6 : 1), freq = 1.8 + b * 0.7, phase = t * (1.0 + b * 0.45 + amp * 2.5);
-    ctx.beginPath();
-    for (let px = 0; px <= W; px += 2) { const y = cy + Math.sin((px / W) * Math.PI * 2 * freq + phase) * wH; px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y); }
-    ctx.lineTo(W, cy + sliceH * 0.55); ctx.lineTo(0, cy + sliceH * 0.55); ctx.closePath();
-    ctx.fillStyle = `rgba(${colors[b]},${0.04 + amp * 0.18})`; ctx.fill();
-    ctx.beginPath();
-    for (let px = 0; px <= W; px += 2) { const y = cy + Math.sin((px / W) * Math.PI * 2 * freq + phase) * wH; px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y); }
-    ctx.strokeStyle = `rgba(${colors[b]},${0.5 + amp * 0.5})`; ctx.lineWidth = beat && b < 2 ? 3.5 + amp * 3 : 1.8 + amp * 2.2; ctx.lineJoin = "round"; ctx.stroke();
-  }
-  if (beat && bass > 0.35) {
-    const fa = (bass - 0.35) * 0.18, g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, `rgba(0,229,255,${fa})`); g.addColorStop(1, `rgba(155,126,255,${fa * 0.4})`);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  }
-}
-
 // ── Draw: Cosmic ──────────────────────────────────────────────────────────────
 function drawCosmicWaves(ctx, W, H, sm, bufLen, t, particlesRef, bass, beat) {
   const cx = W / 2, cy = H / 2, avg = getAvg(sm, bufLen);
@@ -819,21 +794,6 @@ function fbNeon(ctx, W, H, t, active) {
   ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
 }
 
-function fbAurora(ctx, W, H, t, active) {
-  const colors = ["0,229,255","0,200,220","100,160,255","155,126,255","200,100,255"];
-  for (let b = 0; b < 5; b++) {
-    const amp = active ? Math.max(0.05, 0.32 + Math.sin(t * (1.3 + b * 0.45) + b * 1.2) * 0.28) : 0.05;
-    const sliceH = H / 5, cy = sliceH * b + sliceH / 2, wH = amp * sliceH * 1.15, freq = 2 + b * 0.75, phase = t * (1.1 + b * 0.4 + amp * 2);
-    ctx.beginPath();
-    for (let px = 0; px <= W; px += 2) { const y = cy + Math.sin((px / W) * Math.PI * 2 * freq + phase) * wH; px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y); }
-    ctx.lineTo(W, cy + sliceH * 0.55); ctx.lineTo(0, cy + sliceH * 0.55); ctx.closePath();
-    ctx.fillStyle = `rgba(${colors[b]},${amp * 0.14})`; ctx.fill();
-    ctx.beginPath();
-    for (let px = 0; px <= W; px += 2) { const y = cy + Math.sin((px / W) * Math.PI * 2 * freq + phase) * wH; px === 0 ? ctx.moveTo(px, y) : ctx.lineTo(px, y); }
-    ctx.strokeStyle = `rgba(${colors[b]},${0.42 + amp * 0.55})`; ctx.lineWidth = 1.8 + amp * 2.4; ctx.lineJoin = "round"; ctx.stroke();
-  }
-}
-
 function fbCosmic(ctx, W, H, t, active, particlesRef) {
   const cx = W / 2, cy = H / 2;
   if (Math.random() < (active ? 0.55 : 0.06) && particlesRef.current.length < (active ? 160 : 25)) {
@@ -893,7 +853,6 @@ function runFallback(ctx, W, H, t, mode, color, active, particlesRef) {
     case "energy":   fbEnergy(ctx, W, H, t, active); break;
     case "cosmic":   fbCosmic(ctx, W, H, t, active, particlesRef); break;
     case "neon":     fbNeon(ctx, W, H, t, active); break;
-    case "aurora":   fbAurora(ctx, W, H, t, active); break;
     case "tunnel":   fbTunnel(ctx, W, H, t, active); break;
     case "plasma":   fbCosmic(ctx, W, H, t, active, particlesRef); break;
     default:         fbDrift(ctx, W, H, t, active, particlesRef); break;
@@ -988,19 +947,17 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
         if (live) {
           const bass = getBass(sm, bufLen), mid = getMid(sm, bufLen), treble = getTreble(sm, bufLen), beat = detectBeat(bass);
           if (Date.now() - logTimerRef.current > 3000) {
+            const beatsPer3s = _beat.count;
+            _beat.count = 0;
             logTimerRef.current = Date.now();
-            console.log("[Viz] live | modeName:", currentMode,
-              "| isIOS:", isIOS, "| isSafari:", isSafari,
-              "| analyserConnected: true | frequencyDataChanging: true",
-              "| bassEnergy:", bass.toFixed(3), "| midEnergy:", mid.toFixed(3), "| trebleEnergy:", treble.toFixed(3),
-              "| beatDetected:", beat,
-              "| audioContextState:", activeCtx.state,
-              "| isAirPlayActive:", detectAirPlay(mainAudio),
-              "| isBluetoothOutput:", detectBluetooth(),
-              "| mediaSessionActive:", detectMediaSession(),
-              "| radioStillPlaying:", isPlaying,
-              "| usingFallbackVisualizer: false",
-              "| canvasDevicePixelRatio:", deviceDpr);
+            console.log(
+              `[Viz] LIVE ✔ mode=${currentMode} | bass=${bass.toFixed(3)} mid=${mid.toFixed(3)} treble=${treble.toFixed(3)}`,
+              `| beats/3s=${beatsPer3s} (${(beatsPer3s / 3 * 60).toFixed(0)} BPM est)`,
+              `| beatThisFrame=${beat}`,
+              `| iOS=${isIOS} ctx=${activeCtx.state}`,
+              `| airPlay=${detectAirPlay(mainAudio)} mediaSess=${detectMediaSession()}`,
+              `| playing=${isPlaying} dpr=${deviceDpr}`
+            );
           }
           switch (currentMode) {
             case "spectrum": drawSpectrum(ctx, lW, lH, sm, bufLen, bass, beat, color); break;
@@ -1008,7 +965,6 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
             case "energy":   drawEnergy(ctx, lW, lH, sm, bufLen, bass, mid, treble, beat); break;
             case "cosmic":   drawCosmicWaves(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, beat); break;
             case "neon":     drawNeonPulse(ctx, lW, lH, sm, bufLen, bass, mid); break;
-            case "aurora":   drawAurora(ctx, lW, lH, sm, bufLen, t, bass, beat); break;
             case "tunnel":   drawTunnel(ctx, lW, lH, sm, bufLen, t, bass, mid); break;
             case "plasma":   drawPlasma(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, beat); break;
             default:         drawDrift(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, treble); break;
