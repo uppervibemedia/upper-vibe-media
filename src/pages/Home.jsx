@@ -578,7 +578,7 @@ export default function Home() {
       {/* ── VISUALIZERS ── */}
       {recentViz.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="Visual Frequency" title="Latest Visualizers" link="/visualizers" linkLabel="See More" labelColor="#9B7EFF" />
+          <SectionHeader label="Visual Frequency" title="Latest Visualizers" link="/visualizers" linkLabel="See More" labelColor={`rgb(${rtPrimary})`} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {recentViz.map((viz, i) => (
               <motion.div key={viz.id}
@@ -623,7 +623,7 @@ export default function Home() {
       {/* ── UPPER VIBE ACADEMY ── */}
       {academyLessons.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="Learn" title="Upper Vibe Academy" link="/academy" linkLabel="See More" labelColor="#9B7EFF" labelIcon={<GraduationCap className="w-3 h-3" />} />
+          <SectionHeader label="Learn" title="Upper Vibe Academy" link="/academy" linkLabel="See More" labelColor={`rgb(${rtPrimary})`} labelIcon={<GraduationCap className="w-3 h-3" />} />
           <p className="text-white/30 text-sm mb-6 -mt-2">Go deeper into 432 Hz, manifesting, creativity, and expanding consciousness.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {academyLessons.map((lesson, i) => (
@@ -728,6 +728,7 @@ export default function Home() {
         handlePlayTrack={handlePlayTrack}
         heartButton={heartButton}
         downloadButton={downloadButton}
+        themeColor={rtPrimary}
       />
       </motion.div>
 

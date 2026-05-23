@@ -4,7 +4,7 @@ import { Play, Pause, Music4, Waves, History } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getHistory } from "./DiscoverTab";
 
-export default function RecentlyListenedSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, heartButton, downloadButton }) {
+export default function RecentlyListenedSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, heartButton, downloadButton, themeColor = "155,126,255" }) {
   const history = useMemo(() => getHistory(), []);
 
   const recentTracks = useMemo(() => {
@@ -23,7 +23,7 @@ export default function RecentlyListenedSection({ allTracks, currentTrack, isPla
   return (
     <section className="max-w-7xl mx-auto px-6 py-8">
       <div className="mb-5">
-        <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1 flex items-center gap-1.5" style={{ color: "#9B7EFF" }}>
+        <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1 flex items-center gap-1.5" style={{ color: `rgb(${themeColor})` }}>
           <History className="w-3 h-3" /> Recently Played
         </p>
         <h2 className="font-heading font-black text-xl text-white">Recently Played</h2>
@@ -31,7 +31,7 @@ export default function RecentlyListenedSection({ allTracks, currentTrack, isPla
 
       {recentTracks.length === 0 ? (
         <div className="flex items-center gap-3 px-5 py-6 rounded-2xl"
-          style={{ background: "rgba(155,126,255,0.04)", border: "1px solid rgba(155,126,255,0.1)" }}>
+          style={{ background: `rgba(${themeColor},0.04)`, border: `1px solid rgba(${themeColor},0.1)` }}>
           <History className="w-5 h-5 text-purple-400/30 flex-shrink-0" />
           <p className="text-sm text-white/30">Start listening and your recent songs will appear here.</p>
         </div>
@@ -47,8 +47,8 @@ export default function RecentlyListenedSection({ allTracks, currentTrack, isPla
               transition={{ delay: i * 0.04 }}
               className="flex items-center gap-3 px-3.5 py-3 rounded-xl group cursor-pointer transition-all hover:border-white/10 active:scale-[0.98]"
               style={{
-                background: isCurrent ? "rgba(155,126,255,0.06)" : "rgba(255,255,255,0.02)",
-                border: `1px solid ${isCurrent ? "rgba(155,126,255,0.2)" : "rgba(255,255,255,0.05)"}`,
+                background: isCurrent ? `rgba(${themeColor},0.06)` : "rgba(255,255,255,0.02)",
+                border: `1px solid ${isCurrent ? `rgba(${themeColor},0.2)` : "rgba(255,255,255,0.05)"}`,
               }}
               onClick={() => track.audio_url && handlePlayTrack(track)}>
               {/* Cover */}
