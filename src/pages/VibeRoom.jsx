@@ -82,8 +82,11 @@ export default function VibeRoom() {
   const [input, setInput]             = useState("");
   const [sending, setSending]         = useState(false);
   const [loading, setLoading]         = useState(false);
-  const bottomRef = useRef(null);
-  const inputRef  = useRef(null);
+  // How many older messages to show (newest always shown, scroll up reveals more)
+  const [visibleMsgCount, setVisibleMsgCount] = useState(30);
+  const bottomRef  = useRef(null);
+  const inputRef   = useRef(null);
+  const scrollRef  = useRef(null);
 
   const isBanned = bans.some((b) => b.user_email === user?.email && b.action === "banned");
   const isMuted  = bans.some((b) => b.user_email === user?.email && b.action === "muted");
@@ -124,16 +127,24 @@ export default function VibeRoom() {
     return unsub;
   }, [ageConfirmed]);
 
-  // ── Auto-scroll ───────────────────────────────────────────────────────────
+  // ── Auto-scroll to bottom on new messages ────────────────────────────────
+  const prevMsgCount = useRef(0);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const isNewMessage = messages.length > prevMsgCount.current;
+    prevMsgCount.current = messages.length;
+    if (isNewMessage) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   // Build combined feed: seeded shown only when real messages < 3
+  // Slice to visibleMsgCount from the END (newest at bottom, older above)
   const showSeeded = messages.length < 3;
-  const combinedFeed = showSeeded
+  const fullFeed = showSeeded
     ? [...seededMessages.map((s) => ({ ...s, _seeded: true })), ...messages]
     : messages;
+  const hasMore = fullFeed.length > visibleMsgCount;
+  const combinedFeed = fullFeed.slice(-visibleMsgCount);
 
   // ── Send message (premium only) ───────────────────────────────────────────
   const handleSend = useCallback(async () => {
@@ -327,6 +338,7 @@ export default function VibeRoom() {
 
       {/* Scrollable chat area */}
       <div
+        ref={scrollRef}
         className="flex-1 relative z-10 overflow-y-auto"
         style={{ paddingBottom: scrollPaddingBottom }}>
         <div className="max-w-2xl mx-auto px-4 sm:px-5 pt-4 flex flex-col gap-1">
@@ -338,7 +350,7 @@ export default function VibeRoom() {
               <div className="flex items-center justify-center py-16">
                 <div className="w-6 h-6 rounded-full animate-spin" style={{ border: `2px solid rgba(${rtPrimary},0.2)`, borderTopColor: `rgb(${rtPrimary})` }} />
               </div>
-            ) : combinedFeed.length === 0 ? (
+            ) : fullFeed.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
                 className="flex flex-col items-center justify-center py-16 text-center">
@@ -353,6 +365,29 @@ export default function VibeRoom() {
               </motion.div>
             ) : (
               <div className="flex flex-col gap-4">
+                {/* Load earlier messages */}
+                {hasMore && (
+                  <div className="flex justify-center pt-2 pb-1">
+                    <button
+                      onClick={() => {
+                        const el = scrollRef.current;
+                        const prevHeight = el?.scrollHeight || 0;
+                        setVisibleMsgCount((v) => v + 30);
+                        // After state update, restore scroll position so user stays in place
+                        requestAnimationFrame(() => {
+                          if (el) el.scrollTop += (el.scrollHeight - prevHeight);
+                        });
+                      }}
+                      className="text-xs font-bold px-4 py-2 rounded-full transition-all"
+                      style={{
+                        background: `rgba(${rtPrimary},0.08)`,
+                        border: `1px solid rgba(${rtPrimary},0.2)`,
+                        color: `rgba(${rtPrimary},0.7)`,
+                      }}>
+                      Load earlier messages
+                    </button>
+                  </div>
+                )}
                 {combinedFeed.map((msg, i) =>
                   msg._seeded ? (
                     <SeededMessageBubble key={`seeded-${msg.id}`} msg={msg} animDelay={i} user={user} onReactionLoginRequired={() => setShowUpgradePrompt(true)} />

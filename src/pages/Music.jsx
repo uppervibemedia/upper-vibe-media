@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -15,6 +15,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 
 const GENRE_TYPES = ["genre", "mood", "editorial", "frequency"];
+const PAGE_SIZE = 20;
 
 // Skeleton loader card
 function SkeletonCard() {
@@ -44,6 +45,7 @@ export default function Music() {
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
   const isPremium = user?.role === "premium" || user?.role === "admin";
@@ -65,6 +67,16 @@ export default function Music() {
   }, [refreshKey]);
 
   const handleRefresh = async () => setRefreshKey((k) => k + 1);
+
+  // Reset visible count when search/filter changes
+  const prevFilterRef = React.useRef({ search: "", activeFilter: "all" });
+  useEffect(() => {
+    const prev = prevFilterRef.current;
+    if (prev.search !== search || prev.activeFilter !== activeFilter) {
+      setVisibleCount(PAGE_SIZE);
+      prevFilterRef.current = { search, activeFilter };
+    }
+  }, [search, activeFilter]);
 
   const filtered = useMemo(() => {
     let result = tracks;
@@ -176,6 +188,13 @@ export default function Music() {
               </p>
             </div>
           )}
+          {!search && !loading && (
+            <div className="px-6 mb-2">
+              <p className="text-xs text-white/20">
+                Showing {Math.min(visibleCount, filtered.length)} of {filtered.length} tracks
+              </p>
+            </div>
+          )}
 
           {/* Track list — extra bottom clearance for mini player + bottom nav + safe area */}
           <div className="px-4 sm:px-6" style={{ paddingBottom: "calc(11rem + env(safe-area-inset-bottom, 20px))" }}>
@@ -196,7 +215,7 @@ export default function Music() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="space-y-2">
-                  {filtered.map((track, i) => (
+                  {filtered.slice(0, visibleCount).map((track, i) => (
                     <TrackRow
                       key={track.id}
                       track={track}
@@ -215,6 +234,20 @@ export default function Music() {
                       onDownload={() => setUpgradeModal(true)}
                     />
                   ))}
+                  {visibleCount < filtered.length && (
+                    <div className="pt-4 pb-2 flex justify-center">
+                      <button
+                        onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
+                        className="px-8 py-3 rounded-2xl text-sm font-black tracking-wide transition-all hover:brightness-110 active:scale-95"
+                        style={{
+                          background: `rgba(${themeColor},0.1)`,
+                          border: `1px solid rgba(${themeColor},0.3)`,
+                          color: `rgb(${themeColor})`,
+                        }}>
+                        Load More · {filtered.length - visibleCount} remaining
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               </AnimatePresence>
             )}
