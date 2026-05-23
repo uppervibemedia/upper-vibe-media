@@ -132,21 +132,26 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
   const displayCover = track?.cover_url || null;
 
   return (
-    <div className="w-full relative rounded-2xl overflow-hidden">
+    <div className="w-full relative rounded-2xl" style={{ overflow: "visible" }}>
       <style>{`
         @keyframes featuredSectionPulse {
-          0%, 100% { box-shadow: 0 0 28px rgba(${rtPrimary},0.45), 0 0 60px rgba(${rtPrimary},0.15); border-color: rgba(${rtPrimary},0.45); }
-          50% { box-shadow: 0 0 55px rgba(${rtPrimary},0.9), 0 0 110px rgba(${rtPrimary},0.4); border-color: rgba(${rtPrimary},0.85); }
+          0%, 100% { box-shadow: 0 0 35px rgba(${rtPrimary},0.55), 0 0 80px rgba(${rtPrimary},0.2); border-color: rgba(${rtPrimary},0.55); }
+          50% { box-shadow: 0 0 80px rgba(${rtPrimary},1), 0 0 160px rgba(${rtPrimary},0.6), 0 0 240px rgba(${rtPrimary},0.25); border-color: rgba(${rtPrimary},1); }
         }
-        @keyframes featuredRingPulse {
-          0%, 100% { box-shadow: 0 0 0px rgba(${rtPrimary},0); }
-          50% { box-shadow: 0 0 22px rgba(${rtPrimary},0.7), 0 0 45px rgba(${rtPrimary},0.3); }
+        @keyframes featuredBackBlast {
+          0%, 100% { opacity: 0.3; transform: scale(0.95); }
+          50% { opacity: 1; transform: scale(1.12); }
         }
       `}</style>
-      {/* Pulsating outer ring */}
+      {/* Hard background blast glow — behind everything */}
       <div
-        className="absolute inset-0 rounded-2xl pointer-events-none"
-        style={{ animation: "featuredRingPulse 2.8s ease-in-out infinite" }}
+        className="absolute pointer-events-none rounded-3xl"
+        style={{
+          inset: "-20px",
+          background: `radial-gradient(ellipse at center, rgba(${rtPrimary},0.55) 0%, rgba(${rtPrimary},0.2) 45%, transparent 75%)`,
+          animation: "featuredBackBlast 2.8s ease-in-out infinite",
+          zIndex: -1,
+        }}
       />
 
       {/* Card body */}
