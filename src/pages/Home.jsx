@@ -54,7 +54,7 @@ export default function Home() {
   const sessionSeed = useMemo(() => getSessionSeed(), []);
   const [loginModal, setLoginModal] = useState(false);
   const [premiumModal, setPremiumModal] = useState(false);
-  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
+  const { playTrack, currentTrack, isPlaying, togglePlay, sourceType, audioRef } = usePlayer();
   const { startRadio, tracksLoaded, currentRadioSong } = useRadio();
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -65,6 +65,13 @@ export default function Home() {
   const { user } = useAuth();
 
   const handleStartRadio = () => {
+    // If radio is already active (playing or paused on a radio source),
+    // just navigate — do NOT restart, rebuild the queue, or reload audio.
+    const alreadyRadio = sourceType === "radio" || currentRadioSong;
+    if (alreadyRadio) {
+      navigate("/radio");
+      return;
+    }
     startRadio();
     navigate("/radio");
   };

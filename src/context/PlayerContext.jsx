@@ -594,11 +594,14 @@ export function PlayerProvider({ children }) {
           } catch {}
         }
       } else {
-        // Normal resume — correct drift
-        const saved = savedTimeRef.current;
-        if (saved > 0 && Math.abs(audio.currentTime - saved) > 0.8) {
-          console.log("[Player] safePlay — drift correction:", audio.currentTime.toFixed(2), "→", saved.toFixed(2));
-          try { audio.currentTime = saved; } catch {}
+        // Normal resume — do NOT seek on iOS to avoid glitch/catch-up audio.
+        // iOS handles the buffer position natively; seeking here causes sped-up playback.
+        if (!isIOS) {
+          const saved = savedTimeRef.current;
+          if (saved > 0 && Math.abs(audio.currentTime - saved) > 0.8) {
+            console.log("[Player] safePlay — drift correction:", audio.currentTime.toFixed(2), "→", saved.toFixed(2));
+            try { audio.currentTime = saved; } catch {}
+          }
         }
       }
 
@@ -670,11 +673,16 @@ export function PlayerProvider({ children }) {
           return;
         }
         if (a.src) {
-          // Paused with valid src — resume directly, no reload
+          // Paused with valid src — resume directly, no reload.
+          // Do NOT set isPlaying(true) optimistically — set it only after
+          // play() resolves to prevent state desync on iOS lock screen.
+          enforceRate(a);
           const p = a.play();
           if (p && typeof p.then === "function") {
             p.then(() => {
               enforceRate(a);
+              setIsPlaying(true);
+              setMediaSessionState(true);
               startWatchdog(a);
             }).catch((e) => {
               if (e.name !== "AbortError") {
@@ -685,15 +693,13 @@ export function PlayerProvider({ children }) {
             });
           } else {
             enforceRate(a);
+            setIsPlaying(true);
+            setMediaSessionState(true);
             startWatchdog(a);
           }
-          setIsPlaying(true);
-          setMediaSessionState(true);
         } else {
           // src lost — need full reload
           safePlay(a, "lockscreen-play-nosrc");
-          setIsPlaying(true);
-          setMediaSessionState(true);
         }
       });
     });
@@ -890,8 +896,6 @@ export function PlayerProvider({ children }) {
       clearTimeout(showTimer);
       sharedHiddenRef.current = false;
 
-      enforceRate(audio); // ALWAYS enforce rate on show
-
       console.log("[Player] PAGE SHOW | event:", event, "| persisted:", persisted,
         "| isPWA:", isPWA, "| shouldPauseOnHide:", shouldPauseOnHide,
         "| ct:", audio.currentTime.toFixed(2),
@@ -902,21 +906,31 @@ export function PlayerProvider({ children }) {
         return;
       }
 
-      // Sync React state from actual audio state (audio may have self-paused or kept playing)
-      setIsPlaying(!audio.paused);
-      setMediaSessionState(!audio.paused);
+      // Always enforce rate immediately on show — before any state sync
+      enforceRate(audio);
 
-      if (!audio.paused) {
+      // Sync React state from ACTUAL audio element state.
+      // This is the source of truth — never trust stale React state here.
+      const actuallyPlaying = !audio.paused && !audio.ended && !!audio.src;
+      setIsPlaying(actuallyPlaying);
+      setMediaSessionState(actuallyPlaying);
+
+      // Update savedTimeRef from actual audio position (not stale saved value)
+      // This prevents the drift-correction in safePlay from seeking forward on iOS
+      if (audio.currentTime > 0) {
+        savedTimeRef.current = audio.currentTime;
+        lastTimeRef.current  = audio.currentTime;
+      }
+
+      if (actuallyPlaying) {
         // Audio kept playing (background) — resume watchdog and AudioContext
         resumeAudioContext().catch(() => {});
-        enforceRate(audio);
         startWatchdog(audio);
         console.log("[Player] PAGE SHOW — audio was playing, resumed watchdog + AudioContext");
       } else if (isIOS && audio.src) {
-        // iOS: audio may have self-paused on show (OS interruption like notification)
-        // DO NOT call load() — just resume AudioContext and let user tap if needed
+        // iOS: audio self-paused (OS interruption, notification, lock screen pause)
+        // DO NOT call load(), DO NOT seek — just resume AudioContext, let user tap
         resumeAudioContext().catch(() => {});
-        enforceRate(audio);
         console.log("[Player] PAGE SHOW — iOS, audio paused on show, AudioContext resumed, awaiting user gesture");
       } else if (!shouldPauseOnHide && audio.src) {
         // Desktop/PWA: audio unexpectedly paused while hidden

@@ -74,7 +74,20 @@ export default function RadioPage() {
   const radioIsPaused = currentRadioSong && sourceType !== "radio" && !!currentTrack;
   const playingThisRadioSong = isCurrentlyPlayingRadio && isPlaying;
 
-  const handlePlay = () => isCurrentlyPlayingRadio ? togglePlay() : startRadio();
+  // If radio session exists (song loaded), toggle play/pause on the existing audio.
+  // Only call startRadio() if no session exists yet (cold start).
+  const handlePlay = () => {
+    if (currentRadioSong && sourceType === "radio") {
+      // Session active — just toggle play/pause, no reload
+      togglePlay();
+    } else if (currentRadioSong) {
+      // Song known but source changed (e.g. user played a library track) — resume radio
+      resumeRadio();
+    } else {
+      // Cold start — no session yet
+      startRadio();
+    }
+  };
   const handleResume = () => resumeRadio();
   const handleNext = () => nextRadioSong();
   const handlePrev = () => prevRadioSong();
