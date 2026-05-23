@@ -1,7 +1,32 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Play, Pause, Music2 } from "lucide-react";
+import { Play, Music2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+
+function MusicBars() {
+  return (
+    <span style={{ display: "flex", alignItems: "flex-end", gap: "2px", height: "16px" }}>
+      {[1, 2, 3].map((i) => (
+        <span
+          key={i}
+          style={{
+            display: "block",
+            width: "3px",
+            borderRadius: "2px",
+            background: "#00A0DC",
+            animation: `musicBar${i} 0.7s ease-in-out infinite alternate`,
+            animationDelay: `${(i - 1) * 0.15}s`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes musicBar1 { from { height: 4px } to { height: 14px } }
+        @keyframes musicBar2 { from { height: 8px } to { height: 6px } }
+        @keyframes musicBar3 { from { height: 4px } to { height: 12px } }
+      `}</style>
+    </span>
+  );
+}
 
 export default function FeaturedTrackPlayer() {
   const [track, setTrack] = useState(null);
@@ -124,7 +149,7 @@ export default function FeaturedTrackPlayer() {
             }}
           >
             {playing
-              ? <Pause className="w-4 h-4" style={{ color: "#00A0DC" }} />
+              ? <MusicBars />
               : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />
             }
           </button>
