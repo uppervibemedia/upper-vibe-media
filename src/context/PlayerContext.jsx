@@ -84,9 +84,10 @@ const isSafariOnly = (() => {
   );
 })();
 
-// On desktop non-Safari (Chrome, Edge, Firefox), audio plays in background tabs natively.
-// Only pause-on-hide when: not PWA AND is Safari tab.
-const shouldPauseOnHide = !isPWA && isSafariOnly;
+// On iOS PWA and iOS Safari: NEVER pause on hide — iOS handles background audio natively.
+// The lock screen controls use MediaSession to play/pause without needing us to pause.
+// Only pause on hide for desktop Safari tabs (not iOS, not PWA).
+const shouldPauseOnHide = !isPWA && !isIOS && isSafariOnly;
 
 console.log("[Player] cold_launch | isPWA:", isPWA, "| isIOS:", isIOS,
   "| isSafariOnly:", isSafariOnly, "| shouldPauseOnHide:", shouldPauseOnHide,
@@ -655,9 +656,42 @@ export function PlayerProvider({ children }) {
         "| track:", currentTrackRef.current?.title ?? "none",
         "| paused:", audio?.paused, "| rate:", audio?.playbackRate);
       debounce("play", (intent) => {
-        if (intent === "play" && audioRef.current) {
-          enforceRate(audioRef.current);
-          safePlay(audioRef.current, "lockscreen-play");
+        if (intent !== "play" || !audioRef.current) return;
+        const a = audioRef.current;
+        enforceRate(a);
+        // iOS lock screen resume: DO NOT call load() or reset src.
+        // Just call play() directly — iOS has already buffered the audio.
+        // Calling load() here is the primary cause of sped-up/glitchy playback.
+        if (a.src && !a.paused) {
+          // Already playing — just enforce rate
+          enforceRate(a);
+          setIsPlaying(true);
+          setMediaSessionState(true);
+          return;
+        }
+        if (a.src) {
+          // Paused with valid src — resume directly, no reload
+          const p = a.play();
+          if (p && typeof p.then === "function") {
+            p.then(() => {
+              enforceRate(a);
+              startWatchdog(a);
+            }).catch((e) => {
+              if (e.name !== "AbortError") {
+                console.warn("[Player] lock-play error:", e.name, e.message);
+                // Only fall back to safePlay if direct play() fails
+                safePlay(a, "lockscreen-play-fallback");
+              }
+            });
+          } else {
+            enforceRate(a);
+            startWatchdog(a);
+          }
+          setIsPlaying(true);
+          setMediaSessionState(true);
+        } else {
+          // src lost — need full reload
+          safePlay(a, "lockscreen-play-nosrc");
           setIsPlaying(true);
           setMediaSessionState(true);
         }
@@ -752,8 +786,17 @@ export function PlayerProvider({ children }) {
       }
     };
 
+    // Guard rate on seeked — iOS can reset playbackRate after a seek
+    const onSeeked = () => { enforceRate(audio); };
+
     let lastPositionUpdateTime = 0;
     const onTimeUpdate = () => {
+      // Enforce rate on every timeupdate tick — cheapest place to catch iOS
+      // rate corruption that occurs during route transitions / React re-renders
+      if (audio.playbackRate !== 1) {
+        console.warn("[WD:rate] timeupdate: rate =", audio.playbackRate, "→ forcing 1.0");
+        enforceRate(audio);
+      }
       lastTimeRef.current = audio.currentTime;
       // Update lock screen progress — throttled to once per second to avoid
       // flooding the MediaSession API on mobile devices.
@@ -789,6 +832,7 @@ export function PlayerProvider({ children }) {
     audio.addEventListener("pause",       onPause);
     audio.addEventListener("ended",       onEnded);
     audio.addEventListener("ratechange",  onRateChange);
+    audio.addEventListener("seeked",      onSeeked);
     audio.addEventListener("timeupdate",  onTimeUpdate);
     audio.addEventListener("stalled",     onStall);
     audio.addEventListener("waiting",     onStall);
@@ -799,6 +843,7 @@ export function PlayerProvider({ children }) {
       audio.removeEventListener("pause",       onPause);
       audio.removeEventListener("ended",       onEnded);
       audio.removeEventListener("ratechange",  onRateChange);
+      audio.removeEventListener("seeked",      onSeeked);
       audio.removeEventListener("timeupdate",  onTimeUpdate);
       audio.removeEventListener("stalled",     onStall);
       audio.removeEventListener("waiting",     onStall);
@@ -862,18 +907,23 @@ export function PlayerProvider({ children }) {
       setMediaSessionState(!audio.paused);
 
       if (!audio.paused) {
-        // Audio kept playing (desktop) — resume watchdog and resume AudioContext
+        // Audio kept playing (background) — resume watchdog and AudioContext
         resumeAudioContext().catch(() => {});
         enforceRate(audio);
         startWatchdog(audio);
         console.log("[Player] PAGE SHOW — audio was playing, resumed watchdog + AudioContext");
-      } else if (!shouldPauseOnHide && audio.src) {
-        // Desktop/PWA: audio unexpectedly paused while hidden (e.g. OS media interruption)
-        // Resume AudioContext but don't force-play — respect current paused state
+      } else if (isIOS && audio.src) {
+        // iOS: audio may have self-paused on show (OS interruption like notification)
+        // DO NOT call load() — just resume AudioContext and let user tap if needed
         resumeAudioContext().catch(() => {});
-        console.log("[Player] PAGE SHOW — audio paused unexpectedly on desktop, AudioContext resumed");
+        enforceRate(audio);
+        console.log("[Player] PAGE SHOW — iOS, audio paused on show, AudioContext resumed, awaiting user gesture");
+      } else if (!shouldPauseOnHide && audio.src) {
+        // Desktop/PWA: audio unexpectedly paused while hidden
+        resumeAudioContext().catch(() => {});
+        console.log("[Player] PAGE SHOW — desktop/PWA, audio paused, AudioContext resumed");
       } else {
-        // Safari tab: audio was intentionally paused on hide — user must tap play
+        // Desktop Safari tab: audio was intentionally paused on hide — user must tap play
         console.log("[Player] PAGE SHOW — Safari tab, audio paused, waiting for user");
       }
     };

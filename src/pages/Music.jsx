@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -44,6 +44,7 @@ export default function Music() {
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(20);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user } = useAuth();
   const isPremium = user?.role === "premium" || user?.role === "admin";
@@ -64,8 +65,13 @@ export default function Music() {
     });
   }, [refreshKey]);
 
-  const handleRefresh = async () => setRefreshKey((k) => k + 1);
+  const handleRefresh = async () => { setRefreshKey((k) => k + 1); setVisibleCount(20); };
 
+  // Reset pagination when filter/search changes
+  const handleFilterChange = useCallback((filter) => { setActiveFilter(filter); setSearch(""); setVisibleCount(20); }, []);
+  const handleSearchChange = useCallback((val) => { setSearch(val); setActiveFilter("all"); setVisibleCount(20); }, []);
+
+  // filtered = full library result (for count display + search)
   const filtered = useMemo(() => {
     let result = tracks;
     if (search) {
@@ -81,6 +87,10 @@ export default function Music() {
     }
     return result;
   }, [tracks, search, activeFilter]);
+
+  // visibleTracks = paginated slice for rendering
+  const visibleTracks = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = visibleCount < filtered.length;
 
   const handlePlay = (track) => {
     if (currentTrack?.id === track.id) togglePlay();
@@ -135,7 +145,7 @@ export default function Music() {
                 type="text"
                 placeholder="Search songs or artists..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setActiveFilter("all"); }}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-11 pr-10 py-3.5 rounded-2xl text-sm text-white placeholder:text-white/25 focus:outline-none transition-all"
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                 onFocus={(e) => e.target.style.borderColor = "rgba(0,160,220,0.3)"}
@@ -153,14 +163,14 @@ export default function Music() {
           {/* Filter tabs — full-bleed horizontal scroll, chips never cut off */}
           <div className="overflow-x-auto pb-2 mb-3 hide-scrollbar">
             <div className="flex gap-2" style={{ width: "max-content", paddingLeft: "1.5rem", paddingRight: "1.5rem" }}>
-              <FilterPill label="All" active={activeFilter === "all"} onClick={() => { setActiveFilter("all"); setSearch(""); }} themeColor={themeColor} />
-              <FilterPill label="New Releases" active={activeFilter === "new"} onClick={() => { setActiveFilter("new"); setSearch(""); }} themeColor={themeColor} />
+              <FilterPill label="All" active={activeFilter === "all"} onClick={() => handleFilterChange("all")} themeColor={themeColor} />
+              <FilterPill label="New Releases" active={activeFilter === "new"} onClick={() => handleFilterChange("new")} themeColor={themeColor} />
               {categories.map((cat) => (
                 <FilterPill
                   key={cat.id}
                   label={cat.name}
                   active={activeFilter === cat.id}
-                  onClick={() => { setActiveFilter(cat.id); setSearch(""); }}
+                  onClick={() => handleFilterChange(cat.id)}
                   themeColor={themeColor}
                 />
               ))}
@@ -196,7 +206,7 @@ export default function Music() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="space-y-2">
-                  {filtered.map((track, i) => (
+                  {visibleTracks.map((track, i) => (
                     <TrackRow
                       key={track.id}
                       track={track}
@@ -215,6 +225,18 @@ export default function Music() {
                       onDownload={() => setUpgradeModal(true)}
                     />
                   ))}
+                  {hasMore && (
+                    <button
+                      onClick={() => setVisibleCount((c) => c + 20)}
+                      className="w-full mt-4 py-3.5 rounded-2xl text-sm font-bold tracking-wide transition-all hover:brightness-110 active:scale-[0.99]"
+                      style={{
+                        background: `rgba(${themeColor},0.08)`,
+                        border: `1px solid rgba(${themeColor},0.2)`,
+                        color: `rgb(${themeColor})`,
+                      }}>
+                      Load More · {filtered.length - visibleCount} remaining
+                    </button>
+                  )}
                 </motion.div>
               </AnimatePresence>
             )}
