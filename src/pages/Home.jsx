@@ -17,6 +17,8 @@ import LatestMusicSection from "../components/home/LatestMusicSection";
 import TrendingTracksSection from "../components/home/TrendingTracksSection";
 import SectionHeader from "../components/shared/SectionHeader";
 import PullToRefresh from "../components/shared/PullToRefresh";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 
 // ── Session-stable shuffle ──────────────────────────────────────────────────
 // Same order within a session, different on every new tab/refresh
@@ -54,6 +56,10 @@ export default function Home() {
   const [premiumModal, setPremiumModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { startRadio, tracksLoaded } = useRadio();
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtPrimary = radioTheme.vars["--rt-primary"];
+  const rtAmbient1 = radioTheme.vars["--rt-ambient1"];
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -288,9 +294,9 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="relative rounded-2xl md:rounded-3xl overflow-hidden p-5 md:p-12"
-          style={{ background: "linear-gradient(135deg,rgba(0,180,210,0.07) 0%,rgba(0,229,255,0.03) 50%,rgba(212,168,67,0.04) 100%)", border: "1px solid rgba(0,229,255,0.12)" }}>
+          style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.07) 0%,rgba(${rtPrimary},0.03) 50%,rgba(212,168,67,0.04) 100%)`, border: `1px solid rgba(${rtPrimary},0.12)` }}>
           {/* Glow */}
-          <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full blur-[100px] opacity-20 pointer-events-none" style={{ background: "#00C9E0" }} />
+          <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full blur-[100px] opacity-20 pointer-events-none" style={{ background: rtAmbient1 }} />
           <div className="absolute -bottom-10 right-10 w-48 h-48 rounded-full blur-[80px] opacity-10 pointer-events-none" style={{ background: "#D4A843" }} />
 
           <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-5 md:gap-8">
@@ -315,11 +321,11 @@ export default function Home() {
                       <motion.div key={i}
                         animate={{ height: [`${h * 0.5}px`, `${h}px`, `${h * 0.6}px`] }}
                         transition={{ duration: 0.7 + i * 0.1, repeat: Infinity, ease: "easeInOut", delay: i * 0.08 }}
-                        className="w-[2px] rounded-full" style={{ background: "#00E5FF" }} />
+                        className="w-[2px] rounded-full" style={{ background: `rgb(${rtPrimary})` }} />
                     ))}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[9px] font-black tracking-[0.18em] uppercase text-cyan-400/60 leading-none mb-0.5">Now Playing</p>
+                    <p className="text-[9px] font-black tracking-[0.18em] uppercase leading-none mb-0.5" style={{ color: `rgba(${rtPrimary},0.6)` }}>Now Playing</p>
                     <p className="text-xs font-bold text-white/80 truncate">{currentTrack.title}</p>
                     <p className="text-[10px] text-white/35 truncate">{currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}</p>
                   </div>
@@ -333,7 +339,7 @@ export default function Home() {
               <Link
                 to="/radio"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
-                style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.25)", color: "#00E5FF", boxShadow: "0 0 12px rgba(0,229,255,0.1)" }}>
+                style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})`, boxShadow: `0 0 12px rgba(${rtPrimary},0.1)` }}>
                 <Radio className="w-3.5 h-3.5" /> Open Radio Page
               </Link>
             </div>
@@ -346,7 +352,7 @@ export default function Home() {
                   animate={{ height: [`${h * 0.5}px`, `${h}px`, `${h * 0.6}px`, `${h}px`] }}
                   transition={{ duration: 1.2 + i * 0.07, repeat: Infinity, ease: "easeInOut", delay: i * 0.05 }}
                   className="w-1.5 rounded-full"
-                  style={{ background: i % 3 === 0 ? "rgba(0,229,255,0.7)" : i % 3 === 1 ? "rgba(0,180,210,0.4)" : "rgba(212,168,67,0.35)" }}
+                  style={{ background: i % 3 === 0 ? `rgba(${rtPrimary},0.7)` : i % 3 === 1 ? `rgba(${rtPrimary},0.4)` : "rgba(212,168,67,0.35)" }}
                 />
               ))}
             </div>
