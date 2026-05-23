@@ -3,11 +3,17 @@ import { motion } from "framer-motion";
 import { Play, Pause, Music4, Waves } from "lucide-react";
 import { Link } from "react-router-dom";
 import SectionHeader from "../shared/SectionHeader";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
 export default function LatestMusicSection({ tracks, currentTrack, isPlaying, handlePlayTrack, heartButton, downloadButton, user }) {
-  if (!tracks || tracks.length === 0) return null;
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtp = radioTheme.vars["--rt-primary"];
 
   const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin";
+
+  if (!tracks || tracks.length === 0) return null;
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
@@ -56,7 +62,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                   {track.is_new_release && (
                     <div className="absolute top-2 left-2">
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider"
-                        style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff" }}>NEW</span>
+                        style={{ background: `linear-gradient(135deg,rgba(${rtp},0.8),rgb(${rtp}))`, color: "#fff" }}>NEW</span>
                     </div>
                   )}
                 </div>
@@ -70,6 +76,12 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     </span>
                     <div className="flex items-center gap-0.5" onClick={(e) => e.preventDefault()}>
                       {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
+                      {!isPremium ? (
+                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full"
+                          style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
+                          Premium 🔒
+                        </span>
+                      ) : downloadButton(track)}
                     </div>
                   </div>
                 </div>
@@ -131,7 +143,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                   {track.is_new_release && (
                     <div className="absolute top-3 left-3">
                       <span className="px-2.5 py-1 rounded-full text-[9px] font-black tracking-wider"
-                        style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff" }}>
+                        style={{ background: `linear-gradient(135deg,rgba(${rtp},0.8),rgb(${rtp}))`, color: "#fff" }}>
                         NEW
                       </span>
                     </div>
