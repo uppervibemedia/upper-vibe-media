@@ -155,8 +155,8 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
             <Waves className="w-2.5 h-2.5" /> 432 Hz
           </span>
           {viz.release_date && (
-            <span className="flex items-center gap-1 text-[9px] text-white/30 px-2 py-0.5 rounded-full"
-              style={{ background: "rgba(255,255,255,0.03)" }}>
+            <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: "rgba(0,160,220,0.08)", border: "1px solid rgba(0,160,220,0.2)", color: "#00A0DC" }}>
               <Calendar className="w-2.5 h-2.5" /> {new Date(viz.release_date).getFullYear()}
             </span>
           )}
