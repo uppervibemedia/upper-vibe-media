@@ -268,7 +268,7 @@ export default function Home() {
               <div className="flex flex-wrap gap-2">
                 <Link to="/music"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
-                  style={{ background: `rgba(${rtPrimary},0.08)`, border: `1px solid rgba(${rtPrimary},0.35)`, color: `rgb(${rtPrimary})` }}>
+                  style={{ background: "rgba(0,200,220,0.08)", border: "1px solid rgba(0,200,220,0.35)", color: "#00C8E0" }}>
                   <Play className="w-3 h-3 fill-current" /> Browse Music
                 </Link>
                 <Link to="/visualizers"
