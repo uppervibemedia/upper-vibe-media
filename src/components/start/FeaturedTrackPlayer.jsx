@@ -3,28 +3,37 @@ import { Link } from "react-router-dom";
 import { Play, Music2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-function MusicBars() {
+function MusicBars({ color = "#00A0DC" }) {
   return (
-    <span style={{ display: "flex", alignItems: "flex-end", gap: "2px", height: "16px" }}>
-      {[1, 2, 3].map((i) => (
-        <span
-          key={i}
-          style={{
-            display: "block",
-            width: "3px",
-            borderRadius: "2px",
-            background: "#00A0DC",
-            animation: `musicBar${i} 0.7s ease-in-out infinite alternate`,
-            animationDelay: `${(i - 1) * 0.15}s`,
-          }}
-        />
-      ))}
+    <>
       <style>{`
-        @keyframes musicBar1 { from { height: 4px } to { height: 14px } }
-        @keyframes musicBar2 { from { height: 8px } to { height: 6px } }
-        @keyframes musicBar3 { from { height: 4px } to { height: 12px } }
+        @keyframes uvBar1 { 0%,100% { height: 4px } 50% { height: 14px } }
+        @keyframes uvBar2 { 0%,100% { height: 10px } 50% { height: 4px } }
+        @keyframes uvBar3 { 0%,100% { height: 6px } 50% { height: 13px } }
+        @keyframes uvBar4 { 0%,100% { height: 12px } 50% { height: 5px } }
       `}</style>
-    </span>
+      <span style={{ display: "inline-flex", alignItems: "flex-end", gap: "3px", height: "18px" }}>
+        {[
+          { anim: "uvBar1", delay: "0s" },
+          { anim: "uvBar2", delay: "0.18s" },
+          { anim: "uvBar3", delay: "0.09s" },
+          { anim: "uvBar4", delay: "0.27s" },
+        ].map(({ anim, delay }, i) => (
+          <span
+            key={i}
+            style={{
+              display: "inline-block",
+              width: "3px",
+              borderRadius: "2px",
+              background: color,
+              height: "6px",
+              animation: `${anim} 0.65s ease-in-out infinite`,
+              animationDelay: delay,
+            }}
+          />
+        ))}
+      </span>
+    </>
   );
 }
 
@@ -135,24 +144,24 @@ export default function FeaturedTrackPlayer() {
           </p>
         </div>
 
-        {/* Play button */}
+        {/* Play button + bars */}
         {track.audio_url && (
-          <button
-            onClick={handlePlay}
-            className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95"
-            style={{
-              background: playing
-                ? "rgba(0,160,220,0.2)"
-                : "linear-gradient(135deg,#0090C8,#00B8D4)",
-              border: playing ? "1px solid rgba(0,160,220,0.5)" : "none",
-              boxShadow: playing ? "none" : "0 0 16px rgba(0,160,220,0.4)",
-            }}
-          >
-            {playing
-              ? <MusicBars />
-              : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />
-            }
-          </button>
+          <div className="flex-shrink-0 flex flex-col items-center gap-2">
+            <button
+              onClick={handlePlay}
+              className="w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95"
+              style={{
+                background: playing
+                  ? "rgba(0,160,220,0.15)"
+                  : "linear-gradient(135deg,#0090C8,#00B8D4)",
+                border: playing ? "1px solid rgba(0,160,220,0.5)" : "none",
+                boxShadow: playing ? "0 0 16px rgba(0,160,220,0.3)" : "0 0 16px rgba(0,160,220,0.4)",
+              }}
+            >
+              <Play className="w-4 h-4 ml-0.5" style={{ color: playing ? "#00A0DC" : "#000" }} />
+            </button>
+            {playing && <MusicBars color="#00A0DC" />}
+          </div>
         )}
       </div>
 
