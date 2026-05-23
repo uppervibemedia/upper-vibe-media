@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Music4, Play, Pause, RotateCcw } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Download, Music4, Play, Pause, RotateCcw, ChevronLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -35,6 +35,7 @@ export default function Downloads() {
   const { accentId } = useTheme();
   const theme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rgb = theme.vars["--rt-primary"];
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!user?.id) return;
@@ -93,6 +94,11 @@ export default function Downloads() {
 
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <button onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 mb-5 text-xs font-bold tracking-wider transition-all hover:brightness-125"
+            style={{ color: `rgb(${rgb})` }}>
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
           <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-1">My Downloads</h1>
           <p className="font-heading font-bold mb-2 leading-snug flex items-center gap-2"
             style={{ fontSize: "clamp(0.85rem, 2.5vw, 1.1rem)", color: `rgb(${rgb})` }}>

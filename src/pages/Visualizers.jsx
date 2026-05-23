@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import VisualizerEditModal from "../components/visualizers/VisualizerEditModal";
 import { useFavorites } from "../hooks/useFavorite";
+import { useTheme } from "../context/ThemeContext";
+import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -47,7 +49,7 @@ function toWatchUrl(url) {
   return id ? `https://www.youtube.com/watch?v=${id}` : (url || null);
 }
 
-function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, onToggleFav }) {
+function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, onToggleFav, rgb }) {
   const [expanded, setExpanded] = useState(false);
   const [embedError, setEmbedError] = useState(false);
 
@@ -101,7 +103,7 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
               )}
               <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
                 <div className="w-14 h-14 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
-                  style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", boxShadow: "0 0 32px rgba(0,229,255,0.4)" }}>
+                  style={{ background: `linear-gradient(135deg,rgb(${rgb}),rgb(${rgb}))`, boxShadow: `0 0 32px rgba(${rgb},0.4)` }}>
                   <Play className="w-6 h-6 text-black ml-0.5" />
                 </div>
               </div>
@@ -144,7 +146,7 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
         <div className="flex flex-wrap gap-2">
           {categoryLabel && (
             <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)", color: "#00E5FF" }}>
+              style={{ background: `rgba(${rgb},0.08)`, border: `1px solid rgba(${rgb},0.15)`, color: `rgb(${rgb})` }}>
               <Tag className="w-2.5 h-2.5" /> {categoryLabel}
             </span>
           )}
@@ -184,7 +186,7 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
           {linkedTrack && (
             <button onClick={() => onPlay(linkedTrack)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}>
+              style={{ background: `rgba(${rgb},0.1)`, border: `1px solid rgba(${rgb},0.25)`, color: `rgb(${rgb})` }}>
               <Music4 className="w-3 h-3" /> Listen
             </button>
           )}
@@ -195,9 +197,9 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
             title={isFaved ? "Saved to Favorites" : "Save to Favorites"}
             className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 ml-auto flex-shrink-0"
             style={isFaved ? {
-              background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.4)", color: "#ec4899"
+              background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
             } : {
-              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.3)"
+              background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
             }}>
             <Heart className={`w-3.5 h-3.5 ${isFaved ? "fill-current" : ""}`} />
           </button>
@@ -219,6 +221,8 @@ export default function Visualizers() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const { isFaved, toggle } = useFavorites(user?.email);
+  const { accentId } = useTheme();
+  const rgb = (RADIO_THEMES[accentId] || RADIO_THEMES.cyan).vars["--rt-primary"];
 
   const handleToggleFav = (viz) => {
     if (!user) { setLoginPrompt(true); return; }
@@ -262,7 +266,7 @@ export default function Visualizers() {
       <div className="max-w-7xl mx-auto px-6 pt-20 pb-6">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4 text-[10px] font-black tracking-[0.3em] uppercase"
-            style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF" }}>
+            style={{ background: `rgba(${rgb},0.08)`, border: `1px solid rgba(${rgb},0.2)`, color: `rgb(${rgb})` }}>
             <Tv2 className="w-3 h-3" /> Music Visualizers
           </div>
           <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-2">Music Visualizers</h1>
@@ -291,7 +295,7 @@ export default function Visualizers() {
               onClick={() => { setActiveFilter(f.id); setSearch(""); }}
               className="whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold tracking-wider border flex-shrink-0 transition-all"
               style={activeFilter === f.id
-                ? { background: "rgba(0,229,255,0.12)", borderColor: "rgba(0,229,255,0.35)", color: "#00E5FF" }
+                ? { background: `rgba(${rgb},0.12)`, borderColor: `rgba(${rgb},0.35)`, color: `rgb(${rgb})` }
                 : { background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.35)" }
               }>
               {f.label}
@@ -320,6 +324,7 @@ export default function Visualizers() {
                   onPlay={playTrack}
                   isFaved={isFaved("visualizer", viz.id)}
                   onToggleFav={handleToggleFav}
+                  rgb={rgb}
                 />
               </motion.div>
             ))}
