@@ -3,29 +3,38 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * SINGLE GLOBAL AUDIO CONTROLLER
  *
- * iOS Safari design (CRITICAL):
- *  - On iOS, Web Audio (createMediaElementSource) is DISABLED entirely.
- *    Once you call createMediaElementSource(), the audio element is "captured"
- *    by the AudioContext. If the AudioContext is suspended (which iOS does
- *    aggressively on lock/background), audio output is SILENCED — even if the
- *    native <audio> element is still "playing". Disconnecting the source node
- *    does NOT restore native routing. This is a permanent breakage.
- *  - On iOS, window._uvAnalyser is always null → visualizer uses fallback.
- *  - On non-iOS: Web Audio analyser is set up on first user gesture.
+ * Architecture principles:
+ *  1. ONE audio element, ONE operation queue, ONE source of truth.
+ *  2. Every play/pause request goes through an async operation queue so
+ *     rapid lock-screen taps, visibility events, and React renders CANNOT
+ *     cause overlapping play() calls or rate corruption.
+ *  3. playbackRate is forced to 1.0 at 8 distinct points:
+ *       - audio element creation
+ *       - before every load()
+ *       - after every load() / canplay
+ *       - before every play()
+ *       - after every play() resolves
+ *       - on every ratechange event
+ *       - on every play native event
+ *       - on every visibility-show / pageshow
+ *  4. MediaSession handlers are registered ONCE and never re-registered.
+ *     They talk to the operation queue, not directly to the audio element.
+ *  5. Visibility / lifecycle events are handled by ONE listener block.
+ *     PWA mode: keep audio alive (iOS continues playing in background).
+ *     Safari tab mode: save position, pause, restore on show.
+ *  6. Lock-screen debounce: 200 ms window prevents rapid-tap corruption.
+ *  7. Stall watchdog: if audio.currentTime doesn't advance for 1.5 s
+ *     while supposedly playing, pause and log.
+ *  8. State saved to sessionStorage (not localStorage) so a hard refresh
+ *     gets a clean slate but a BFCache restore works correctly.
  *
- * Lock-screen resume design:
- *  - <audio> element is THE source of truth. React state follows the element.
- *  - On resume: call play() on the existing element. Never call load() unless
- *    readyState === 0 (buffer fully evicted).
- *  - playbackRate is enforced to 1 at every touch point.
- *  - All lock-screen play/pause use a pending-play guard (no duplicate calls).
- *  - savedTimeRef is updated on every timeupdate tick.
- *
- * Debug log prefixes:
- *   [Player]    general lifecycle
- *   [LS]        lock-screen MediaSession commands
- *   [WD:*]      watchdog alerts
- *   [iOS]       iOS-specific events
+ * WATCHDOGS (all log to console so you can verify on iOS):
+ *   [WD:rate]     playbackRate !== 1 detected and corrected
+ *   [WD:stall]    audio.currentTime not advancing
+ *   [WD:lock]     op-queue blocked > 3s (signals stuck lock)
+ *   [WD:desync]   MediaSession state != audio.paused state
+ *   [WD:dup]      duplicate audio instances detected
+ *   [WD:drift]    currentTime moved while paused
  */
 
 import React, {
@@ -40,7 +49,7 @@ import {
 const PlayerContext = createContext(null);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Environment detection — computed once at module load
+// PWA detection (stable — computed once at module load)
 // ─────────────────────────────────────────────────────────────────────────────
 const isPWA = (() => {
   if (typeof window === "undefined") return false;
@@ -57,9 +66,14 @@ const isIOS = (() => {
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 })();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Safari detection — Safari is the ONLY browser that requires pause-on-hide
+// for background tab audio. Chrome, Firefox, Edge all support background audio.
+// ─────────────────────────────────────────────────────────────────────────────
 const isSafariOnly = (() => {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
+  // Safari: has "Safari/" but NOT "Chrome/" and NOT "Chromium/" and NOT "EdgA/" and NOT "Firefox/"
   return (
     /Safari\//.test(ua) &&
     !/Chrome\//.test(ua) &&
@@ -70,40 +84,45 @@ const isSafariOnly = (() => {
   );
 })();
 
-// Only pause on hide for desktop Safari tabs. iOS handles background audio natively.
-const shouldPauseOnHide = !isPWA && !isIOS && isSafariOnly;
+// On desktop non-Safari (Chrome, Edge, Firefox), audio plays in background tabs natively.
+// Only pause-on-hide when: not PWA AND is Safari tab.
+const shouldPauseOnHide = !isPWA && isSafariOnly;
 
 console.log("[Player] cold_launch | isPWA:", isPWA, "| isIOS:", isIOS,
-  "| isSafari:", isSafariOnly, "| shouldPauseOnHide:", shouldPauseOnHide,
-  "| webAudioOnIOS: DISABLED (prevents lock-screen audio breakage)",
-  "| iosAudioStrategy: native-only",
+  "| isSafariOnly:", isSafariOnly, "| shouldPauseOnHide:", shouldPauseOnHide,
   "| ua:", navigator.userAgent.substring(0, 80));
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Global audio instance tracker
+// Global audio instance tracker — detect duplicate audio objects (watchdog)
 // ─────────────────────────────────────────────────────────────────────────────
 let _globalAudioInstanceCount = 0;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared visibility ref — exported so AudioPlayer bar can gate progress updates
+// ─────────────────────────────────────────────────────────────────────────────
 export const sharedHiddenRef = { current: false };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AudioContext + Analyser
+// AudioContext — shared with visualiser, created lazily on first user gesture.
 //
-// CRITICAL iOS RULE:
-//   createMediaElementSource() "captures" the audio element into the
-//   AudioContext graph. If iOS suspends the AudioContext (lock screen,
-//   background, interruption), audio is silenced — and disconnecting the
-//   source node does NOT restore native hardware routing. It stays broken.
-//
-//   Therefore: on iOS, we NEVER call createMediaElementSource().
-//   window._uvAnalyser stays null on iOS → visualizer uses fallback animation.
+// RULES:
+//  1. NEVER call setupAnalyserGraph at page load / bootstrap — only inside a
+//     user gesture (tap on Play button). This is the iOS Safari requirement.
+//  2. createMediaElementSource is called ONCE per audio element and cached.
+//     Calling it twice on the same element throws InvalidStateError.
+//  3. source → analyser → destination: audio still plays, analyser gets data.
+//  4. If setup fails for any reason: log it, disable analyser for session,
+//     audio keeps playing normally (safety net).
+//  5. Works on both iOS and non-iOS when called inside a user gesture.
 // ─────────────────────────────────────────────────────────────────────────────
-let _audioCtx          = null;
-let _analyser          = null;
-let _sourceNode        = null;
-let _sourceEl          = null;
-let _analyserDisabled  = false;
-let _analyserFailCount = 0;
+let _audioCtx   = null;
+let _analyser   = null;
+let _sourceNode = null;
+let _sourceEl   = null; // the element _sourceNode was created from
+// Flag: if analyser setup throws, disable for the rest of the session.
+// On iOS we allow one retry after gesture context, so this is not permanent.
+let _analyserDisabled = false;
+let _analyserFailCount = 0; // reset to allow retry after real gesture
 
 async function resumeAudioContext() {
   if (!_audioCtx) return;
@@ -116,14 +135,19 @@ function suspendAudioContext() {
   try { _audioCtx.suspend(); } catch {}
 }
 
+/**
+ * setupAnalyserGraph — wires the audio element into a Web Audio graph.
+ * MUST be called inside a user gesture (iOS Safari requirement).
+ * Safe to call multiple times — caches source node, never recreates it.
+ *
+ * AUDIO SAFETY: if this throws for any reason, we catch it, disable the
+ * analyser for the session, and audio keeps playing normally.
+ */
 function setupAnalyserGraph(audioElement) {
-  // NEVER set up Web Audio on iOS — it will permanently break lock-screen audio
-  if (isIOS) {
-    console.log("[Player] setupAnalyserGraph SKIPPED — iOS (web audio disabled to preserve lock-screen playback)");
-    return null;
-  }
   if (!audioElement || _analyserDisabled) return null;
+
   try {
+    // Create context if needed (or recreate if closed)
     if (!_audioCtx || _audioCtx.state === "closed") {
       _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       window._uvAudioCtx = _audioCtx;
@@ -131,95 +155,132 @@ function setupAnalyserGraph(audioElement) {
       _sourceNode = null;
       _sourceEl   = null;
     }
+
     if (_audioCtx.state === "suspended") {
       _audioCtx.resume().catch(() => {});
     }
+
+    // Create analyser once and reuse — changing mode never recreates this
     if (!_analyser) {
       _analyser = _audioCtx.createAnalyser();
       _analyser.fftSize = 2048;
       _analyser.smoothingTimeConstant = 0.75;
       window._uvAnalyser = _analyser;
     }
+
+    // Create source node once per audio element — NEVER recreate it
+    // createMediaElementSource() on the same element twice = InvalidStateError
     if (!_sourceNode || _sourceEl !== audioElement) {
-      if (_sourceNode) { try { _sourceNode.disconnect(); } catch {} _sourceNode = null; _sourceEl = null; }
+      if (_sourceNode) {
+        try { _sourceNode.disconnect(); } catch {}
+        _sourceNode = null;
+        _sourceEl   = null;
+      }
       _sourceNode = _audioCtx.createMediaElementSource(audioElement);
       _sourceEl   = audioElement;
+      // source → analyser → destination (audio still plays, analyser gets data)
       _sourceNode.connect(_analyser);
       _analyser.connect(_audioCtx.destination);
-      console.log("[Player] AudioGraph connected | ctxState:", _audioCtx.state, "| analyserAttached=true");
+      console.log("[Player] AudioGraph connected | iOS:", isIOS, "| ctxState:", _audioCtx.state,
+        "| src:", audioElement.src?.substring(0, 55));
     }
+
     return _analyser;
   } catch (e) {
+    // SAFETY NET: analyser failed — audio keeps playing, visualiser uses fallback.
+    // On iOS: allow up to 3 retries (gesture context may not be available yet on
+    // first call). Only permanently disable after 3 consecutive failures.
     _analyserFailCount++;
-    console.warn("[Player] setupAnalyserGraph failed |", e.name, e.message, "| failCount:", _analyserFailCount);
-    _sourceNode = null; _sourceEl = null;
+    console.warn("[Player] setupAnalyserGraph failed |", e.name, e.message,
+      "| failCount:", _analyserFailCount, "| iOS:", isIOS);
+    _sourceNode = null;
+    _sourceEl   = null;
     if (_analyserFailCount >= 3) {
-      console.warn("[Player] analyser disabled after 3 failures");
+      console.warn("[Player] setupAnalyserGraph — disabling after 3 failures");
       _analyserDisabled = true;
     }
     return null;
   }
 }
 
+/** resetAnalyserDisabled — call before a confirmed user gesture to allow retry */
 export function resetAnalyserDisabled() {
   if (_analyserDisabled || _analyserFailCount > 0) {
+    console.log("[Player] resetAnalyserDisabled — clearing failure state for gesture retry");
     _analyserDisabled = false;
     _analyserFailCount = 0;
   }
 }
 
-export function resumeGlobalAudioContext() {
-  if (isIOS) return Promise.resolve(); // no-op on iOS
-  return resumeAudioContext().catch(() => {});
-}
+export function resumeGlobalAudioContext() { return resumeAudioContext().catch(() => {}); }
 
+/**
+ * requestAnalyser — called by the visualiser after a user gesture.
+ * Works on iOS and non-iOS. Returns null if setup failed or not yet called.
+ */
 export function requestAnalyser(audioElement) {
-  // iOS: always return null — visualizer must use fallback
-  if (isIOS) return null;
   if (!audioElement || _analyserDisabled) return null;
   const an = setupAnalyserGraph(audioElement);
   if (!an) return null;
   return { analyser: an, ctx: _audioCtx, sourceNode: _sourceNode };
 }
 
-// detachAnalyserGraph is kept as a no-op export so imports don't break
-export function detachAnalyserGraph() {
-  // No-op — we no longer detach/reconnect the graph dynamically.
-  // On iOS, Web Audio is never connected. On desktop, it stays connected.
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// enforceRate — called at every audio touch point
+// enforceRate — call at every touch point
 // ─────────────────────────────────────────────────────────────────────────────
 function enforceRate(audio) {
   if (!audio) return;
-  if (audio.defaultPlaybackRate !== 1) audio.defaultPlaybackRate = 1;
   if (audio.playbackRate !== 1) {
     console.warn("[WD:rate] playbackRate was", audio.playbackRate, "→ forcing 1.0");
     audio.playbackRate = 1;
+  }
+  if (audio.defaultPlaybackRate !== 1) {
+    audio.defaultPlaybackRate = 1;
   }
   if ("preservesPitch" in audio) audio.preservesPitch = true;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// createFreshAudio
+// createFreshAudio — ALWAYS creates a new element (never reuses)
+//
+// CORS NOTE: crossOrigin="anonymous" is required on ALL platforms for
+// MediaElementSourceNode to receive actual PCM data from the audio pipeline.
+// Without it, getByteFrequencyData() returns all zeros (silence) even when
+// audio is playing. iOS Safari enforces this as strictly as desktop Safari.
+// The audio CDN (Base44 storage) serves CORS headers, so this is safe.
+//
+// AirPlay note: AirPlay still works with crossOrigin="anonymous" as long as
+// the CDN responds with Access-Control-Allow-Origin. Base44 storage does this.
 // ─────────────────────────────────────────────────────────────────────────────
 function createFreshAudio() {
   _globalAudioInstanceCount++;
   if (_globalAudioInstanceCount > 1) {
-    console.error("[WD:dup] duplicate audio instance! count:", _globalAudioInstanceCount);
+    console.error("[WD:dup] duplicate audio instance created! count:", _globalAudioInstanceCount);
   }
   const a = new Audio();
+
+  // REQUIRED for MediaElementSourceNode FFT data on ALL platforms including iOS.
+  // Without this, Web Audio analyser gets silence even when audio is playing.
   a.crossOrigin = "anonymous";
+
   a.preload = "auto";
   enforceRate(a);
+
+  // AirPlay / remote playback — explicit enable
   a.setAttribute("x-webkit-airplay", "allow");
   a.setAttribute("playsinline", "");
-  if ("disableRemotePlayback" in a) a.disableRemotePlayback = false;
+  if ("disableRemotePlayback" in a) {
+    a.disableRemotePlayback = false; // explicitly allow AirPlay + BT
+  }
+
+  // Attach to DOM — required for iOS to route audio to AirPlay/BT/TV.
+  // Hidden, zero-size, no visual footprint.
   a.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
   a.setAttribute("aria-hidden", "true");
   document.body.appendChild(a);
-  console.log("[Player] audio_created | instance #", _globalAudioInstanceCount, "| iOS:", isIOS);
+
+  console.log("[Player] audio_created | instance #", _globalAudioInstanceCount,
+    "| iOS:", isIOS, "| crossOrigin: anonymous | domAttached: true");
   return a;
 }
 
@@ -229,14 +290,23 @@ function destroyAudio(audio) {
   audio.pause();
   audio.src = "";
   try { audio.load(); } catch {}
+  // Remove from DOM
   try { if (audio.parentNode) audio.parentNode.removeChild(audio); } catch {}
+  console.log("[Player] audio_destroyed | remaining instances:", _globalAudioInstanceCount);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OPERATION QUEUE — serialises all play/pause requests
+// No two audio operations can run concurrently.
 // ─────────────────────────────────────────────────────────────────────────────
 class AudioOpQueue {
-  constructor() { this._running = false; this._queue = []; this._lockTime = 0; }
+  constructor() {
+    this._running = false;
+    this._queue   = [];
+    this._lockTime = 0;
+  }
+
+  /** Enqueue an async operation. Returns a promise that resolves when done. */
   push(fn) {
     return new Promise((resolve) => {
       this._queue.push(async () => {
@@ -248,19 +318,43 @@ class AudioOpQueue {
       this._drain();
     });
   }
+
   _drain() {
     if (this._running || this._queue.length === 0) return;
-    this._running = true; this._lockTime = Date.now();
+    this._running  = true;
+    this._lockTime = Date.now();
     const next = this._queue.shift();
-    Promise.resolve().then(next).finally(() => { this._running = false; this._lockTime = 0; this._drain(); });
+    Promise.resolve().then(next).finally(() => {
+      this._running  = false;
+      this._lockTime = 0;
+      this._drain();
+    });
   }
+
   get isRunning() { return this._running; }
   get lockAge()   { return this._lockTime ? Date.now() - this._lockTime : 0; }
   clearQueue()    { this._queue = []; }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MEDIA SESSION HELPERS
+// LOCK-SCREEN DEBOUNCE — prevents rapid play/pause from corrupting state
+// ─────────────────────────────────────────────────────────────────────────────
+function makeDebounce(ms) {
+  let timer = null;
+  let lastIntent = null; // "play" | "pause"
+  return function debounce(intent, fn) {
+    lastIntent = intent;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      console.log("[Player] debounce fired | intent:", lastIntent);
+      fn(lastIntent);
+      timer = null;
+    }, ms);
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MEDIA SESSION — registered ONCE, talks to the op queue
 // ─────────────────────────────────────────────────────────────────────────────
 const FALLBACK_ART = "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=512&h=512&fit=crop&q=80";
 
@@ -274,7 +368,7 @@ function setMediaSessionMetadata(track) {
   if (!("mediaSession" in navigator) || !track) return;
   const artSrc = resolveArtworkUrl(track.cover_url);
   navigator.mediaSession.metadata = new MediaMetadata({
-    title:   track.title          || "Unknown",
+    title:   track.title         || "Unknown",
     artist:  track.artist_display || track.artist || "Upper Vibe Media",
     album:   "Upper Vibe Media",
     artwork: [
@@ -302,24 +396,19 @@ export function PlayerProvider({ children }) {
   const audioRef         = useRef(null);
   const currentTrackRef  = useRef(null);
   const loadedSrcRef     = useRef("");
-  const savedTimeRef     = useRef(0);
-  const lastTimeRef      = useRef(0);
+  const playingUrlRef    = useRef("");   // guard for stale async ops
+  const savedTimeRef     = useRef(0);   // position to restore on resume
+  const lastTimeRef      = useRef(0);   // last known currentTime (for AudioPlayer bar)
   const onNextRef        = useRef(null);
   const onPrevRef        = useRef(null);
 
-  // Op queue
+  // Operation queue — ONE instance, persists for the life of the provider
   const opQueueRef = useRef(new AudioOpQueue());
 
-  // ── Pending play guard ────────────────────────────────────────────────────
-  const pendingPlayRef   = useRef(false);
-  const pendingPlayTimer = useRef(null);
+  // Lock-screen debounce (200 ms) — ONE instance
+  const lsDebounceRef = useRef(makeDebounce(200));
 
-  // ── Lock-screen command debounce ──────────────────────────────────────────
-  const lsDebounceTimer = useRef(null);
-  const lsLastCommand   = useRef(null);
-  const lsLastTime      = useRef(0);
-
-  // Watchdog refs
+  // Watchdog
   const watchdogRef      = useRef(null);
   const watchdogTimeRef  = useRef(0);
   const watchdogStampRef = useRef(0);
@@ -329,12 +418,17 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     const audio = createFreshAudio();
     audioRef.current = audio;
+    // NOTE: Do NOT call setupAnalyserGraph here — it must only be called inside
+    // a user gesture (required by iOS Safari and recommended by spec).
+
+    // Register MediaSession handlers ONCE here — they close over audioRef
     registerMediaSessionHandlers();
 
+    // Start queue-lock watchdog
     watchdogLockRef.current = setInterval(() => {
       const q = opQueueRef.current;
       if (q.isRunning && q.lockAge > 3000) {
-        console.warn("[WD:lock] op-queue blocked for", q.lockAge, "ms — clearing");
+        console.warn("[WD:lock] op-queue blocked for", q.lockAge, "ms — clearing queue");
         q.clearQueue();
       }
     }, 2000);
@@ -357,22 +451,35 @@ export function PlayerProvider({ children }) {
 
   // ── Watchdog: stall detector ──────────────────────────────────────────────
   const stopWatchdog = useCallback(() => {
-    if (watchdogRef.current) { clearInterval(watchdogRef.current); watchdogRef.current = null; }
+    if (watchdogRef.current) {
+      clearInterval(watchdogRef.current);
+      watchdogRef.current = null;
+    }
   }, []);
 
   const startWatchdog = useCallback((audio) => {
     stopWatchdog();
     watchdogTimeRef.current  = audio.currentTime;
     watchdogStampRef.current = Date.now();
+
     watchdogRef.current = setInterval(() => {
+      // Don't fire when page is hidden (PWA continues in background, that's fine)
       if (!isPWA && document.visibilityState === "hidden") return;
       if (audio.paused || audio.ended || !audio.src) { stopWatchdog(); return; }
+
       const elapsed  = (Date.now() - watchdogStampRef.current) / 1000;
       const ct       = audio.currentTime;
       const advanced = ct - watchdogTimeRef.current;
-      if (audio.playbackRate !== 1) { console.warn("[WD:rate]", audio.playbackRate, "→ 1.0"); enforceRate(audio); }
+
+      // Rate watchdog
+      if (audio.playbackRate !== 1) {
+        console.warn("[WD:rate] stall-check: playbackRate =", audio.playbackRate, "→ forcing 1.0");
+        enforceRate(audio);
+      }
+
+      // Stall watchdog: no advancement in 1.5 s while supposedly playing
       if (elapsed >= 1.5 && advanced < 0.05) {
-        console.warn("[WD:stall] not advancing — ct:", ct.toFixed(2), "elapsed:", elapsed.toFixed(1));
+        console.warn("[WD:stall] audio not advancing — ct:", ct.toFixed(2), "elapsed:", elapsed.toFixed(1));
         savedTimeRef.current = ct;
         lastTimeRef.current  = ct;
         suspendAudioContext();
@@ -382,218 +489,71 @@ export function PlayerProvider({ children }) {
         stopWatchdog();
         return;
       }
+
+      // Drift watchdog: currentTime moving while paused
+      if (audio.paused && advanced > 0.1) {
+        console.warn("[WD:drift] currentTime advanced", advanced.toFixed(2), "while paused!");
+      }
+
       watchdogTimeRef.current  = ct;
       watchdogStampRef.current = Date.now();
     }, 800);
   }, [stopWatchdog]);
 
-  // ── MediaSession desync watchdog (5s) ─────────────────────────────────────
+  // ── MediaSession desync watchdog ──────────────────────────────────────────
+  // Runs every 5 s to catch lock-screen / audio state mismatches
   useEffect(() => {
     const t = setInterval(() => {
       const audio = audioRef.current;
       if (!audio || !("mediaSession" in navigator)) return;
-      const msPlaying     = navigator.mediaSession.playbackState === "playing";
+      const msPlaying = navigator.mediaSession.playbackState === "playing";
       const actualPlaying = !audio.paused && !audio.ended && !!audio.src;
       if (msPlaying !== actualPlaying) {
-        console.warn("[WD:desync] MediaSession:", navigator.mediaSession.playbackState,
-          "vs audio.paused:", audio.paused, "— correcting");
+        console.warn("[WD:desync] MediaSession state (", navigator.mediaSession.playbackState,
+          ") does not match audio.paused (", audio.paused, ") — correcting");
         setMediaSessionState(actualPlaying);
-        setIsPlaying(actualPlaying);
       }
     }, 5000);
     return () => clearInterval(t);
   }, []);
 
-  // ── clearPendingPlay ──────────────────────────────────────────────────────
-  const clearPendingPlay = useCallback(() => {
-    pendingPlayRef.current = false;
-    clearTimeout(pendingPlayTimer.current);
-  }, []);
-
-  // Forward ref for safePlay so safeLockscreenPlay can reference it before definition
-  const safePlayRef = useRef(null);
-
-  // Stable refs so MediaSession handlers (registered once) always call latest callbacks
-  const safeLockscreenPlayRef  = useRef(null);
-  const safeLockscreenPauseRef = useRef(null);
-
-  // ── safeLockscreenPlay — the ONLY function called for lock-screen resume ──
-  //
-  // Requirements:
-  //  - Uses existing audio element only (never recreates)
-  //  - Checks audio.paused and readyState before calling play()
-  //  - Blocks duplicate calls while play promise is pending
-  //  - Does NOT call load() unless readyState === 0
-  //  - Does NOT seek
-  //  - Does NOT touch Web Audio / AudioContext
-  //  - Sets React isPlaying ONLY after play() resolves
-  const safeLockscreenPlay = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    console.log("[LS] safeLockscreenPlay | returnedFromLock=true",
-      "| pendingPlayPromise:", pendingPlayRef.current,
-      "| audioPaused:", audio.paused,
-      "| audioReadyState:", audio.readyState,
-      "| audioNetworkState:", audio.networkState,
-      "| audioSrc:", audio.src ? "set" : "MISSING",
-      "| audioCurrentTime:", audio.currentTime?.toFixed(2),
-      "| playbackRate:", audio.playbackRate,
-      "| audioContextState:", _audioCtx?.state ?? "none",
-      "| analyserAttached:", !!_sourceNode,
-      "| isIOS:", isIOS, "| isSafari:", isSafariOnly, "| isPWA:", isPWA,
-      "| visibility:", document.visibilityState);
-
-    // Block duplicate: if a play() is already in-flight, ignore
-    if (pendingPlayRef.current) {
-      console.log("[LS] safeLockscreenPlay | playCommandBlocked=true — play already pending");
-      return;
-    }
-
-    // No src — need full reload via safePlay
-    if (!audio.src && !loadedSrcRef.current) {
-      console.log("[LS] safeLockscreenPlay — no src, falling back to safePlay");
-      safePlayRef.current?.(audio, "lockscreen-play-nosrc");
-      return;
-    }
-    if (!audio.src && loadedSrcRef.current) {
-      console.log("[LS] safeLockscreenPlay — src lost, reloading | audioLoadCalledDuringResume=true");
-      audio.src = loadedSrcRef.current;
-      enforceRate(audio);
-      audio.load();
-    }
-
-    // Already playing — just enforce rate and sync state
-    if (!audio.paused && !audio.ended && audio.readyState >= 2) {
-      enforceRate(audio);
-      setIsPlaying(true);
-      setMediaSessionState(true);
-      startWatchdog(audio);
-      console.log("[LS] safeLockscreenPlay — already playing, rate enforced");
-      return;
-    }
-
-    // readyState 0 (HAVE_NOTHING) — buffer fully evicted, need reload
-    if (audio.readyState === 0 && audio.src) {
-      console.log("[LS] safeLockscreenPlay — readyState=0, reloading | audioLoadCalledDuringResume=true",
-        "| resumeAttempted=true");
-      const restoreTime = savedTimeRef.current;
-      enforceRate(audio);
-      audio.load();
-      audio.addEventListener("canplay", function onCp() {
-        audio.removeEventListener("canplay", onCp);
-        enforceRate(audio);
-        if (restoreTime > 1) {
-          try { audio.currentTime = restoreTime; } catch {}
-        }
-        const pp = audio.play();
-        if (pp && typeof pp.then === "function") {
-          pp.then(() => {
-            enforceRate(audio);
-            setIsPlaying(true);
-            setMediaSessionState(true);
-            startWatchdog(audio);
-            console.log("[LS] safeLockscreenPlay (after reload) | resumeSucceeded=true | rate:", audio.playbackRate);
-          }).catch((e) => {
-            console.warn("[LS] play after reload | resumeFailedReason:", e.name, e.message);
-          });
-        } else {
-          setIsPlaying(true);
-          setMediaSessionState(true);
-          startWatchdog(audio);
-        }
-      }, { once: true });
-      return;
-    }
-
-    // Normal resume path: audio is paused with valid buffer.
-    // CRITICAL: do NOT call resumeAudioContext() — on iOS lock screen there is
-    // no user gesture, and on iOS Web Audio is fully disabled anyway.
-    enforceRate(audio);
-
-    pendingPlayRef.current = true;
-    pendingPlayTimer.current = setTimeout(() => {
-      console.warn("[LS] safeLockscreenPlay — pendingPlay safety timeout cleared");
-      pendingPlayRef.current = false;
-    }, 3000);
-
-    console.log("[LS] safeLockscreenPlay — calling play() | resumeAttempted=true",
-      "| audioLoadCalledDuringResume=false | audioSrcChangedDuringResume=false");
-
-    const p = audio.play();
-    if (p && typeof p.then === "function") {
-      p.then(() => {
-        clearPendingPlay();
-        enforceRate(audio);
-        setIsPlaying(true);
-        setMediaSessionState(true);
-        startWatchdog(audio);
-        console.log("[LS] safeLockscreenPlay | resumeSucceeded=true | rate:", audio.playbackRate,
-          "| paused:", audio.paused, "| ct:", audio.currentTime.toFixed(2));
-      }).catch((e) => {
-        clearPendingPlay();
-        if (e.name === "AbortError") {
-          console.log("[LS] safeLockscreenPlay — AbortError (superseded)");
-          return;
-        }
-        console.warn("[LS] safeLockscreenPlay | resumeFailedReason:", e.name, e.message);
-        setIsPlaying(false);
-        setMediaSessionState(false);
-      });
-    } else {
-      // Old iOS: no promise — assume playing
-      clearPendingPlay();
-      enforceRate(audio);
-      setIsPlaying(true);
-      setMediaSessionState(true);
-      startWatchdog(audio);
-    }
-  }, [startWatchdog, clearPendingPlay]);
-
-  // ── safeLockscreenPause ───────────────────────────────────────────────────
-  const safeLockscreenPause = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    console.log("[LS] safeLockscreenPause | ct:", audio.currentTime.toFixed(2),
-      "| paused:", audio.paused);
-    clearPendingPlay();
-    stopWatchdog();
-    if (audio.currentTime > 0) {
-      savedTimeRef.current = audio.currentTime;
-      lastTimeRef.current  = audio.currentTime;
-    }
-    if (!audio.paused) {
-      audio.pause(); // do NOT call suspendAudioContext on iOS
-    }
-    setIsPlaying(false);
-    setMediaSessionState(false);
-    console.log("[LS] safeLockscreenPause — done | savedTime:", savedTimeRef.current.toFixed(2));
-  }, [stopWatchdog, clearPendingPlay]);
-
-  // ── CORE: safePlay (queue-based, for new tracks / error recovery) ─────────
+  // ── CORE: safePlay (goes through op queue) ────────────────────────────────
   const safePlay = useCallback(async (audio, reason) => {
     if (!audio) return;
     return opQueueRef.current.push(async () => {
       const src = audio.src || loadedSrcRef.current;
-      if (!src) { console.warn("[Player] safePlay blocked — no src | reason:", reason); return; }
+      if (!src) {
+        console.warn("[Player] safePlay blocked — no src | reason:", reason);
+        return;
+      }
 
       console.log("[Player] safePlay | reason:", reason,
-        "| paused:", audio.paused, "| rs:", audio.readyState,
-        "| ct:", audio.currentTime.toFixed(2), "| rate:", audio.playbackRate);
+        "| src:", src.substring(0, 60),
+        "| paused:", audio.paused,
+        "| rs:", audio.readyState,
+        "| ct:", audio.currentTime.toFixed(2),
+        "| rate:", audio.playbackRate,
+        "| isPWA:", isPWA);
 
+      // Already playing and healthy — just enforce rate
       if (!audio.paused && !audio.ended && audio.readyState >= 2) {
-        enforceRate(audio); startWatchdog(audio);
+        enforceRate(audio);
+        startWatchdog(audio);
+        console.log("[Player] safePlay — already playing, enforced rate");
         return;
       }
 
       enforceRate(audio);
-      if (!isIOS) await resumeAudioContext();
+      await resumeAudioContext();
 
+      // Needs reload (buffer evicted, error, or no src set)
       const needsReload = audio.readyState < 2 || audio.error || !audio.src;
       if (needsReload) {
-        console.log("[Player] safePlay — buffer evicted, reloading | audioLoadCalledDuringResume=true | rs:", audio.readyState);
+        console.log("[Player] safePlay — buffer evicted or no src, reloading | rs:", audio.readyState, "err:", audio.error?.code ?? null);
         const restoreTime = savedTimeRef.current;
         const reloadSrc   = src;
+
+        // Safari anti-glitch: clear → yield → set
         audio.src = "";
         await new Promise(r => setTimeout(r, 30));
         if (!audio.src) {
@@ -601,102 +561,143 @@ export function PlayerProvider({ children }) {
           enforceRate(audio);
           audio.load();
         }
+
         await new Promise((resolve, reject) => {
           let done = false;
-          const finish = (ok) => { if (done) return; done = true; cleanup(); ok ? resolve() : reject(new Error("load failed")); };
+          const finish = (ok) => {
+            if (done) return;
+            done = true;
+            cleanup();
+            ok ? resolve() : reject(new Error("load failed"));
+          };
           const onCanPlay = () => finish(true);
           const onError   = () => finish(false);
-          const cleanup   = () => { audio.removeEventListener("canplay", onCanPlay); audio.removeEventListener("error", onError); };
+          const cleanup   = () => {
+            audio.removeEventListener("canplay", onCanPlay);
+            audio.removeEventListener("error",   onError);
+          };
           audio.addEventListener("canplay", onCanPlay);
           audio.addEventListener("error",   onError);
-          setTimeout(() => finish(false), 8000);
-        }).catch((e) => { console.warn("[Player] safePlay reload timeout:", e.message); });
+          setTimeout(() => finish(false), 8000); // 8s timeout
+        }).catch((e) => {
+          console.warn("[Player] safePlay reload timeout/error:", e.message);
+        });
+
         enforceRate(audio);
+
+        // Restore position
         if (restoreTime > 1) {
-          try { audio.currentTime = restoreTime; await new Promise(r => setTimeout(r, 60)); } catch {}
+          try {
+            audio.currentTime = restoreTime;
+            await new Promise(r => setTimeout(r, 60));
+          } catch {}
+        }
+      } else {
+        // Normal resume — correct drift
+        const saved = savedTimeRef.current;
+        if (saved > 0 && Math.abs(audio.currentTime - saved) > 0.8) {
+          console.log("[Player] safePlay — drift correction:", audio.currentTime.toFixed(2), "→", saved.toFixed(2));
+          try { audio.currentTime = saved; } catch {}
         }
       }
 
-      if (!audio.paused) { enforceRate(audio); startWatchdog(audio); return; }
+      // Guard: if track changed during async work, abort
+      if (audio.src && !audio.src.includes(loadedSrcRef.current.split("?")[0].slice(-20))) {
+        console.log("[Player] safePlay — src changed during async, aborting");
+        return;
+      }
+
+      if (!audio.paused) {
+        enforceRate(audio);
+        startWatchdog(audio);
+        return;
+      }
 
       enforceRate(audio);
+      console.log("[Player] calling audio.play() | rate:", audio.playbackRate);
       const p = audio.play();
       if (p && typeof p.then === "function") {
         await p;
-        enforceRate(audio);
+        enforceRate(audio); // iOS can reset rate AFTER play() resolves
       }
+      console.log("[Player] play() resolved | rate:", audio.playbackRate, "| paused:", audio.paused);
       startWatchdog(audio);
     });
   }, [startWatchdog]);
 
-  // Wire stable refs so MediaSession handlers always call latest callbacks
-  useEffect(() => { safePlayRef.current = safePlay; }, [safePlay]);
-  useEffect(() => { safeLockscreenPlayRef.current  = safeLockscreenPlay;  }, [safeLockscreenPlay]);
-  useEffect(() => { safeLockscreenPauseRef.current = safeLockscreenPause; }, [safeLockscreenPause]);
-
-  // ── safePause ─────────────────────────────────────────────────────────────
+  // ── safePause (goes through op queue) ────────────────────────────────────
   const safePause = useCallback(async (audio, reason = "pause") => {
     if (!audio) return;
     return opQueueRef.current.push(async () => {
-      console.log("[Player] safePause | reason:", reason, "| ct:", audio.currentTime.toFixed(2));
-      clearPendingPlay();
+      console.log("[Player] safePause | reason:", reason, "| paused:", audio.paused, "| ct:", audio.currentTime.toFixed(2));
       stopWatchdog();
-      if (audio.currentTime > 0) { savedTimeRef.current = audio.currentTime; lastTimeRef.current = audio.currentTime; }
+      if (audio.currentTime > 0) {
+        savedTimeRef.current = audio.currentTime;
+        lastTimeRef.current  = audio.currentTime;
+      }
       if (!audio.paused) {
-        if (!isIOS) suspendAudioContext();
+        suspendAudioContext();
         audio.pause();
       }
       setMediaSessionState(false);
     });
-  }, [stopWatchdog, clearPendingPlay]);
+  }, [stopWatchdog]);
 
-  // ── Register MediaSession handlers — ONCE at mount ──────────────────────
+  // ── Register MediaSession handlers — called ONCE at mount ─────────────────
   function registerMediaSessionHandlers() {
     if (!("mediaSession" in navigator)) return;
 
+    const debounce = lsDebounceRef.current;
+
     navigator.mediaSession.setActionHandler("play", () => {
-      const now = Date.now();
-      lsLastCommand.current = "play";
-      lsLastTime.current = now;
-      clearTimeout(lsDebounceTimer.current);
-      lsDebounceTimer.current = setTimeout(() => {
-        console.log("[LS] MediaSession PLAY fired | ts:", now,
-          "| isIOS:", isIOS, "| isSafari:", isSafariOnly,
-          "| paused:", audioRef.current?.paused,
-          "| ct:", audioRef.current?.currentTime?.toFixed(2),
-          "| rs:", audioRef.current?.readyState);
-        safeLockscreenPlayRef.current?.();
-      }, 50);
+      const audio = audioRef.current;
+      console.log("[Player] 🔒 Lock screen PLAY | src:", audio?.src ? "set" : "MISSING",
+        "| track:", currentTrackRef.current?.title ?? "none",
+        "| paused:", audio?.paused, "| rate:", audio?.playbackRate);
+      debounce("play", (intent) => {
+        if (intent === "play" && audioRef.current) {
+          enforceRate(audioRef.current);
+          safePlay(audioRef.current, "lockscreen-play");
+          setIsPlaying(true);
+          setMediaSessionState(true);
+        }
+      });
     });
 
     navigator.mediaSession.setActionHandler("pause", () => {
-      lsLastCommand.current = "pause";
-      lsLastTime.current = Date.now();
-      clearTimeout(lsDebounceTimer.current);
-      lsDebounceTimer.current = setTimeout(() => {
-        console.log("[LS] MediaSession PAUSE fired");
-        safeLockscreenPauseRef.current?.();
-      }, 50);
+      const audio = audioRef.current;
+      console.log("[Player] 🔒 Lock screen PAUSE | ct:", audio?.currentTime?.toFixed(2));
+      debounce("pause", (intent) => {
+        if (intent === "pause" && audioRef.current) {
+          safePause(audioRef.current, "lockscreen-pause");
+          setIsPlaying(false);
+        }
+      });
     });
 
     navigator.mediaSession.setActionHandler("nexttrack", () => {
-      console.log("[LS] MediaSession NEXT");
+      console.log("[Player] 🔒 Lock screen NEXT");
       opQueueRef.current.push(async () => { onNextRef.current?.(); });
     });
 
     navigator.mediaSession.setActionHandler("previoustrack", () => {
-      console.log("[LS] MediaSession PREV");
+      console.log("[Player] 🔒 Lock screen PREV");
       opQueueRef.current.push(async () => { onPrevRef.current?.(); });
     });
 
+    // Disable seek to prevent iOS from changing currentTime unexpectedly
     try { navigator.mediaSession.setActionHandler("seekforward",  null); } catch {}
     try { navigator.mediaSession.setActionHandler("seekbackward", null); } catch {}
     try { navigator.mediaSession.setActionHandler("seekto",       null); } catch {}
 
-    console.log("[Player] MediaSession handlers registered");
+    console.log("[Player] MediaSession handlers registered (once)");
   }
 
-  // ── Native audio events → React state sync ────────────────────────────────
+  // NOTE: Track loading and playback is now handled directly in playTrack()
+  // above, keeping us inside the iOS user gesture window. This useEffect is
+  // intentionally removed — do not re-add it.
+
+  // ── Native audio events → React state ────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -710,36 +711,27 @@ export function PlayerProvider({ children }) {
         setMediaSessionMetadata(track);
         try { trackSongPlay(track); streamStart(track); } catch {}
       }
+      // Update lock screen position
       if ("mediaSession" in navigator && "setPositionState" in navigator.mediaSession) {
         try {
           if (audio.duration && isFinite(audio.duration)) {
-            navigator.mediaSession.setPositionState({ duration: audio.duration, playbackRate: 1, position: audio.currentTime });
+            navigator.mediaSession.setPositionState({
+              duration:     audio.duration,
+              playbackRate: 1,
+              position:     audio.currentTime,
+            });
           }
         } catch {}
       }
       startWatchdog(audio);
-      console.log("[iOS] audio 'play' event | ct:", audio.currentTime.toFixed(2), "| rate:", audio.playbackRate);
-    };
-
-    const onPlaying = () => {
-      enforceRate(audio);
-      setIsPlaying(true);
-      setMediaSessionState(true);
-      console.log("[iOS] audio 'playing' event | ct:", audio.currentTime.toFixed(2), "| rate:", audio.playbackRate);
     };
 
     const onPause = () => {
       setIsPlaying(false);
       setMediaSessionState(false);
       stopWatchdog();
-      if (audio.currentTime > 0) {
-        savedTimeRef.current = audio.currentTime;
-        lastTimeRef.current  = audio.currentTime;
-      }
       const track = currentTrackRef.current;
       try { if (track) { trackSongPause(track); streamPause(); } } catch {}
-      console.log("[iOS] audio 'pause' event | ct:", audio.currentTime.toFixed(2),
-        "| savedTime:", savedTimeRef.current.toFixed(2));
     };
 
     const onEnded = () => {
@@ -753,93 +745,67 @@ export function PlayerProvider({ children }) {
       onNextRef.current?.();
     };
 
-    const onSuspend = () => {
-      if (audio.currentTime > 0) {
-        savedTimeRef.current = audio.currentTime;
-        lastTimeRef.current  = audio.currentTime;
-      }
-      console.log("[iOS] audio 'suspend' event | paused:", audio.paused,
-        "| rs:", audio.readyState, "| ct:", audio.currentTime.toFixed(2),
-        "| isIOS:", isIOS);
-      if (audio.paused) {
-        setIsPlaying(false);
-        setMediaSessionState(false);
-        stopWatchdog();
-      }
-    };
-
-    const onWaiting = () => {
-      console.log("[iOS] audio 'waiting' event | rs:", audio.readyState, "| ct:", audio.currentTime.toFixed(2));
-    };
-    const onStalled = () => {
-      console.warn("[WD:stall] audio 'stalled' event | rs:", audio.readyState, "| ct:", audio.currentTime.toFixed(2));
-      if (audio.paused) { setIsPlaying(false); setMediaSessionState(false); }
-    };
-
     const onRateChange = () => {
       if (audio.playbackRate !== 1) {
-        console.warn("[WD:rate] ratechange | rate:", audio.playbackRate, "→ 1.0");
+        console.warn("[WD:rate] ratechange event fired | rate:", audio.playbackRate, "→ forcing 1.0");
         enforceRate(audio);
       }
     };
 
-    const onSeeked = () => { enforceRate(audio); };
-
-    let lastPosUpdate = 0;
+    let lastPositionUpdateTime = 0;
     const onTimeUpdate = () => {
-      savedTimeRef.current = audio.currentTime;
-      lastTimeRef.current  = audio.currentTime;
-      if (audio.playbackRate !== 1) {
-        console.warn("[WD:rate] timeupdate: rate =", audio.playbackRate, "→ 1.0");
-        enforceRate(audio);
-      }
+      lastTimeRef.current = audio.currentTime;
+      // Update lock screen progress — throttled to once per second to avoid
+      // flooding the MediaSession API on mobile devices.
       const now = Date.now();
-      if (!audio.paused && now - lastPosUpdate >= 1000 &&
+      if (!audio.paused && now - lastPositionUpdateTime >= 1000 &&
           "mediaSession" in navigator && "setPositionState" in navigator.mediaSession) {
-        lastPosUpdate = now;
+        lastPositionUpdateTime = now;
         try {
           if (audio.duration && isFinite(audio.duration)) {
-            navigator.mediaSession.setPositionState({ duration: audio.duration, playbackRate: 1, position: audio.currentTime });
+            navigator.mediaSession.setPositionState({
+              duration:     audio.duration,
+              playbackRate: 1,
+              position:     audio.currentTime,
+            });
           }
         } catch {}
       }
     };
 
+    const onStall = () => {
+      if (audio.paused) setIsPlaying(false);
+      console.warn("[WD:stall] stall/waiting event | rs:", audio.readyState, "| ct:", audio.currentTime.toFixed(2));
+    };
+
     const onError = () => {
       console.error("[Player] audio error | code:", audio.error?.code, "msg:", audio.error?.message);
-      clearPendingPlay();
       setIsPlaying(false);
       setMediaSessionState(false);
       stopWatchdog();
     };
 
-    audio.addEventListener("play",       onPlay);
-    audio.addEventListener("playing",    onPlaying);
-    audio.addEventListener("pause",      onPause);
-    audio.addEventListener("ended",      onEnded);
-    audio.addEventListener("suspend",    onSuspend);
-    audio.addEventListener("waiting",    onWaiting);
-    audio.addEventListener("stalled",    onStalled);
-    audio.addEventListener("ratechange", onRateChange);
-    audio.addEventListener("seeked",     onSeeked);
-    audio.addEventListener("timeupdate", onTimeUpdate);
-    audio.addEventListener("error",      onError);
+    audio.addEventListener("play",        onPlay);
+    audio.addEventListener("pause",       onPause);
+    audio.addEventListener("ended",       onEnded);
+    audio.addEventListener("ratechange",  onRateChange);
+    audio.addEventListener("timeupdate",  onTimeUpdate);
+    audio.addEventListener("stalled",     onStall);
+    audio.addEventListener("waiting",     onStall);
+    audio.addEventListener("error",       onError);
 
     return () => {
-      audio.removeEventListener("play",       onPlay);
-      audio.removeEventListener("playing",    onPlaying);
-      audio.removeEventListener("pause",      onPause);
-      audio.removeEventListener("ended",      onEnded);
-      audio.removeEventListener("suspend",    onSuspend);
-      audio.removeEventListener("waiting",    onWaiting);
-      audio.removeEventListener("stalled",    onStalled);
-      audio.removeEventListener("ratechange", onRateChange);
-      audio.removeEventListener("seeked",     onSeeked);
-      audio.removeEventListener("timeupdate", onTimeUpdate);
-      audio.removeEventListener("error",      onError);
+      audio.removeEventListener("play",        onPlay);
+      audio.removeEventListener("pause",       onPause);
+      audio.removeEventListener("ended",       onEnded);
+      audio.removeEventListener("ratechange",  onRateChange);
+      audio.removeEventListener("timeupdate",  onTimeUpdate);
+      audio.removeEventListener("stalled",     onStall);
+      audio.removeEventListener("waiting",     onStall);
+      audio.removeEventListener("error",       onError);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startWatchdog, stopWatchdog, clearPendingPlay]);
+  }, [startWatchdog, stopWatchdog]);
 
   // ── Visibility / page lifecycle ───────────────────────────────────────────
   useEffect(() => {
@@ -849,74 +815,66 @@ export function PlayerProvider({ children }) {
 
     const doHide = (event) => {
       sharedHiddenRef.current = true;
+      // Save position before anything changes
       if (audio.currentTime > 0) {
         savedTimeRef.current = audio.currentTime;
         lastTimeRef.current  = audio.currentTime;
       }
-      console.log("[Player] PAGE HIDE | event:", event,
-        "| isPWA:", isPWA, "| isIOS:", isIOS,
-        "| ct:", audio.currentTime.toFixed(2), "| paused:", audio.paused,
-        "| audioContextState:", _audioCtx?.state ?? "none",
-        "| analyserAttached:", !!_sourceNode);
+      console.log("[Player] PAGE HIDE | event:", event, "| isPWA:", isPWA,
+        "| isSafariOnly:", isSafariOnly, "| shouldPauseOnHide:", shouldPauseOnHide,
+        "| ct:", audio.currentTime.toFixed(2), "| paused:", audio.paused);
 
-      stopWatchdog();
-
-      if (shouldPauseOnHide && !audio.paused) {
-        // Desktop Safari tab only — pause on hide
-        suspendAudioContext();
-        audio.pause();
-        setMediaSessionState(false);
+      if (shouldPauseOnHide) {
+        // Safari tab only: pause and save position so iOS doesn't buffer-glitch
+        stopWatchdog();
+        if (!audio.paused) {
+          suspendAudioContext();
+          audio.pause();
+          setMediaSessionState(false);
+          console.log("[Player] Safari tab hide — paused at:", savedTimeRef.current.toFixed(2));
+        }
+      } else {
+        // Desktop Chrome/Edge/Firefox + PWA: keep audio playing in background.
+        // Just stop the watchdog to avoid false stall alerts while hidden.
+        stopWatchdog();
+        console.log("[Player] desktop/PWA hide — audio continues in background");
       }
-      // iOS/PWA: do NOT touch audio on hide — let it continue playing natively.
-      // Web Audio is disabled on iOS so there is nothing to detach.
     };
 
     const doShow = (persisted, event) => {
       clearTimeout(showTimer);
       sharedHiddenRef.current = false;
 
-      const actuallyPlaying = !audio.paused && !audio.ended && !!audio.src;
-      const realTime = audio.currentTime;
+      enforceRate(audio); // ALWAYS enforce rate on show
 
-      console.log("[Player] PAGE SHOW | returnedFromLock=true | event:", event, "| persisted:", persisted,
-        "| isIOS:", isIOS, "| isSafari:", isSafariOnly,
-        "| audioPaused:", audio.paused, "| audioReadyState:", audio.readyState,
-        "| audioNetworkState:", audio.networkState,
-        "| audioCurrentTime:", realTime.toFixed(2),
-        "| audioSrc:", audio.src ? "set" : "MISSING",
-        "| playbackRate:", audio.playbackRate,
-        "| audioContextState:", _audioCtx?.state ?? "none",
-        "| analyserAttached:", !!_sourceNode,
-        "| pendingPlayPromise:", pendingPlayRef.current,
-        "| mediaSessionPlaybackState:", ("mediaSession" in navigator) ? navigator.mediaSession.playbackState : "N/A",
-        "| visibilityState:", document.visibilityState);
+      console.log("[Player] PAGE SHOW | event:", event, "| persisted:", persisted,
+        "| isPWA:", isPWA, "| shouldPauseOnHide:", shouldPauseOnHide,
+        "| ct:", audio.currentTime.toFixed(2),
+        "| rate:", audio.playbackRate, "| paused:", audio.paused, "| rs:", audio.readyState);
 
       if (!audio.src && !loadedSrcRef.current) {
         setIsPlaying(false);
         return;
       }
 
-      enforceRate(audio);
-      setIsPlaying(actuallyPlaying);
-      setMediaSessionState(actuallyPlaying);
+      // Sync React state from actual audio state (audio may have self-paused or kept playing)
+      setIsPlaying(!audio.paused);
+      setMediaSessionState(!audio.paused);
 
-      if (realTime > 0) {
-        savedTimeRef.current = realTime;
-        lastTimeRef.current  = realTime;
-      }
-
-      if (actuallyPlaying) {
-        if (!isIOS) resumeAudioContext().catch(() => {});
+      if (!audio.paused) {
+        // Audio kept playing (desktop) — resume watchdog and resume AudioContext
+        resumeAudioContext().catch(() => {});
+        enforceRate(audio);
         startWatchdog(audio);
-        console.log("[Player] PAGE SHOW — audio still playing | isIOS:", isIOS,
-          "| ct:", audio.currentTime.toFixed(2));
-      } else if (audio.src) {
-        // Audio is paused — let user tap to resume
-        if (!isIOS) resumeAudioContext().catch(() => {});
-        console.log("[Player] PAGE SHOW — audio PAUSED | awaiting user gesture",
-          "| savedTime:", savedTimeRef.current.toFixed(2),
-          "| audioContextState:", _audioCtx?.state ?? "none",
-          "| resumeAttempted=false (awaiting tap)");
+        console.log("[Player] PAGE SHOW — audio was playing, resumed watchdog + AudioContext");
+      } else if (!shouldPauseOnHide && audio.src) {
+        // Desktop/PWA: audio unexpectedly paused while hidden (e.g. OS media interruption)
+        // Resume AudioContext but don't force-play — respect current paused state
+        resumeAudioContext().catch(() => {});
+        console.log("[Player] PAGE SHOW — audio paused unexpectedly on desktop, AudioContext resumed");
+      } else {
+        // Safari tab: audio was intentionally paused on hide — user must tap play
+        console.log("[Player] PAGE SHOW — Safari tab, audio paused, waiting for user");
       }
     };
 
@@ -925,19 +883,21 @@ export function PlayerProvider({ children }) {
       if (document.visibilityState === "hidden") {
         doHide("visibilitychange");
       } else {
-        showTimer = setTimeout(() => doShow(false, "visibilitychange"), 150);
+        showTimer = setTimeout(() => doShow(false, "visibilitychange"), 80);
       }
     };
 
-    const onPageHide = () => doHide("pagehide");
+    const onPageHide = (e) => doHide("pagehide");
     const onPageShow = (e) => {
       clearTimeout(showTimer);
-      showTimer = setTimeout(() => doShow(e.persisted, "pageshow"), 150);
+      showTimer = setTimeout(() => doShow(e.persisted, "pageshow"), 80);
     };
-    const onFreeze = () => doHide("freeze");
-    const onResume = () => {
+
+    // freeze/resume for BFCache
+    const onFreeze  = () => doHide("freeze");
+    const onResume  = () => {
       clearTimeout(showTimer);
-      showTimer = setTimeout(() => doShow(true, "resume"), 150);
+      showTimer = setTimeout(() => doShow(true, "resume"), 80);
     };
 
     document.addEventListener("visibilitychange", onVisibility);
@@ -957,48 +917,43 @@ export function PlayerProvider({ children }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopWatchdog, startWatchdog]);
 
-  // ── togglePlay (user gesture) ─────────────────────────────────────────────
+  // ── togglePlay ────────────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
-    // On non-iOS: set up analyser and resume AudioContext on user gesture
-    if (!isIOS) {
-      resetAnalyserDisabled();
-      setupAnalyserGraph(audio);
-      resumeAudioContext().catch(() => {});
-    }
-
-    console.log("[Player] togglePlay | isIOS:", isIOS,
-      "| analyserAttached:", !!_sourceNode,
-      "| audioContextState:", _audioCtx?.state ?? "none",
-      "| audioPaused:", audio.paused,
-      "| audioCurrentTime:", audio.currentTime.toFixed(2),
-      "| pendingPlayPromise:", pendingPlayRef.current);
+    // Wire Web Audio graph for visualiser — inside user gesture (iOS-safe).
+    // Reset failure state so a real gesture always gets a retry.
+    resetAnalyserDisabled();
+    setupAnalyserGraph(audio);
+    resumeAudioContext().catch(() => {});
 
     if (!audio.paused && !audio.ended) {
+      // Currently playing — pause it
       safePause(audio, "toggle-pause");
       return;
     }
 
+    // Currently paused — resume or reload
     enforceRate(audio);
 
+    // If src is gone (e.g. after stopPlaying or Safari clearing it), reload from ref
     if (!audio.src && loadedSrcRef.current) {
       audio.src = loadedSrcRef.current;
       enforceRate(audio);
       audio.load();
     }
 
-    // Call play() synchronously within user gesture
+    // iOS: call play() synchronously within gesture
     const playPromise = audio.play();
     if (playPromise && typeof playPromise.then === "function") {
       playPromise.then(() => {
         enforceRate(audio);
         startWatchdog(audio);
-        console.log("[Player] togglePlay resumed | resumeSucceeded=true | rate:", audio.playbackRate);
+        console.log("[Player] togglePlay resumed | rate:", audio.playbackRate);
       }).catch((e) => {
         if (e.name !== "AbortError") {
-          console.warn("[Player] togglePlay | resumeFailedReason:", e.name, e.message);
+          console.warn("[Player] togglePlay play() error:", e.name, e.message);
+          // Fall back to safePlay which handles buffer-evicted state
           safePlay(audio, "toggle-play-fallback");
         }
       });
@@ -1009,51 +964,80 @@ export function PlayerProvider({ children }) {
   }, [safePlay, safePause, startWatchdog]);
 
   // ── playTrack (public API) ────────────────────────────────────────────────
+  // iOS CRITICAL: audio.play() must be called synchronously within the user
+  // gesture handler. Any await before play() loses the gesture context on iOS
+  // Safari and the browser silently blocks playback with no error.
+  //
+  // Strategy:
+  //   1. Synchronously: clear queue, set src, load(), play() — all in one tick.
+  //      iOS unlocks audio on the synchronous play() call.
+  //   2. The play() Promise resolves async — we just handle errors there.
+  //   3. watchdog and state updates happen after play() resolves.
   const playTrack = useCallback((track, source = "song") => {
     const audio = audioRef.current;
     if (!audio || !track?.audio_url) return;
+
     const url = track.audio_url;
 
-    if (!isIOS) {
-      resetAnalyserDisabled();
-      setupAnalyserGraph(audio);
-    }
+    // Wire Web Audio graph for visualiser — called inside user gesture (iOS-safe).
+    // Reset failure count so a confirmed gesture always gets a retry attempt.
+    // Source node is created once and reused; changing tracks does NOT recreate it.
+    resetAnalyserDisabled();
+    setupAnalyserGraph(audio);
 
+    // Update React state
     setSourceType(source);
     setCurrentTrack(track);
+
+    // Clear any pending ops so this track wins
     opQueueRef.current.clearQueue();
     stopWatchdog();
-    clearPendingPlay();
 
+    // Update refs immediately (synchronous, before any async)
     loadedSrcRef.current  = url;
+    playingUrlRef.current = url;
     savedTimeRef.current  = 0;
     lastTimeRef.current   = 0;
 
+    // ── SYNCHRONOUS iOS unlock sequence ──────────────────────────────────────
+    // Must happen in the same call stack as the user gesture.
     enforceRate(audio);
     audio.src = url;
     enforceRate(audio);
     audio.load();
 
-    if (!isIOS && _audioCtx && _audioCtx.state === "suspended") _audioCtx.resume().catch(() => {});
+    // Resume AudioContext if suspended (required before play on all platforms)
+    if (_audioCtx && _audioCtx.state === "suspended") {
+      _audioCtx.resume().catch(() => {});
+    }
 
-    console.log("[Player] playTrack | title:", track.title, "| iOS:", isIOS,
-      "| webAudioDisabledOnIOS:", isIOS);
+    console.log("[Player] playTrack sync | title:", track.title, "| iOS:", isIOS, "| src set, load() called");
 
+    // play() called synchronously — this is the iOS gesture unlock
     const playPromise = audio.play();
+
+    // Handle the async resolution without blocking
     if (playPromise && typeof playPromise.then === "function") {
       playPromise.then(() => {
         enforceRate(audio);
         startWatchdog(audio);
-        console.log("[Player] playTrack resolved | rate:", audio.playbackRate, "| paused:", audio.paused);
+        console.log("[Player] playTrack resolved | title:", track.title, "| rate:", audio.playbackRate, "| paused:", audio.paused);
       }).catch((e) => {
-        if (e.name === "AbortError") { console.log("[Player] playTrack AbortError (superseded)"); return; }
-        console.warn("[Player] playTrack error:", e.name, e.message);
+        if (e.name === "AbortError") {
+          // Another track was queued — this is normal, ignore
+          console.log("[Player] playTrack AbortError (superseded by newer track) |", track.title);
+          return;
+        }
+        // NotAllowedError = iOS gesture unlock failed (shouldn't happen since we're sync)
+        // NetworkError = bad URL
+        console.warn("[Player] playTrack play() error:", e.name, e.message, "| title:", track.title);
       });
     } else {
+      // Older iOS: no promise returned, assume playing
       enforceRate(audio);
       startWatchdog(audio);
     }
-  }, [stopWatchdog, startWatchdog, clearPendingPlay]);
+  }, [stopWatchdog, startWatchdog]);
 
   // ── stopPlaying ───────────────────────────────────────────────────────────
   const stopPlaying = useCallback(() => {
@@ -1061,19 +1045,19 @@ export function PlayerProvider({ children }) {
     if (!audio) return;
     opQueueRef.current.clearQueue();
     stopWatchdog();
-    clearPendingPlay();
-    if (!isIOS) suspendAudioContext();
+    suspendAudioContext();
     if (!audio.paused) audio.pause();
-    audio.src             = "";
-    loadedSrcRef.current  = "";
-    savedTimeRef.current  = 0;
-    lastTimeRef.current   = 0;
+    audio.src            = "";
+    loadedSrcRef.current = "";
+    playingUrlRef.current = "";
+    savedTimeRef.current = 0;
+    lastTimeRef.current  = 0;
     setIsPlaying(false);
     setCurrentTrack(null);
     setMediaSessionState(false);
     if ("mediaSession" in navigator) navigator.mediaSession.metadata = null;
     console.log("[Player] stopPlaying — audio cleared");
-  }, [stopWatchdog, clearPendingPlay]);
+  }, [stopWatchdog]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const registerNextHandler = useCallback((fn) => { onNextRef.current = fn; }, []);
@@ -1103,7 +1087,7 @@ export function PlayerProvider({ children }) {
       handleNext,
       handlePrev,
       savedTimeRef,
-      playLockRef: { current: opQueueRef.current.isRunning },
+      playLockRef: { current: opQueueRef.current.isRunning }, // compat shim
       clearPosition,
       savePosition,
       setIsPlaying,

@@ -82,8 +82,6 @@ export default function VibeRoom() {
   const [input, setInput]             = useState("");
   const [sending, setSending]         = useState(false);
   const [loading, setLoading]         = useState(false);
-  const [visibleMsgStart, setVisibleMsgStart] = useState(0); // index into messages[] for lazy load
-  const MSG_PAGE = 30; // messages rendered per page
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
 
@@ -96,13 +94,11 @@ export default function VibeRoom() {
     if (!ageConfirmed) return;
     setLoading(true);
     Promise.all([
-      base44.entities.VibeRoomMessage.filter({ is_hidden: false }, "created_date", 200),
+      base44.entities.VibeRoomMessage.filter({ is_hidden: false }, "created_date", 100),
       base44.entities.VibeRoomBan.list("created_date", 200),
       base44.entities.VibeRoomSeededMessage.filter({ is_active: true }, "display_order", 20),
     ]).then(([msgs, banList, seeded]) => {
       setMessages(msgs);
-      // Start showing the last MSG_PAGE messages
-      setVisibleMsgStart(Math.max(0, msgs.length - MSG_PAGE));
       setBans(banList);
       setSeeded(seeded);
       setLoading(false);
@@ -114,12 +110,7 @@ export default function VibeRoom() {
     if (!ageConfirmed) return;
     const unsub = base44.entities.VibeRoomMessage.subscribe((event) => {
       if (event.type === "create" && !event.data?.is_hidden) {
-        setMessages((prev) => {
-          const next = [...prev, event.data];
-          // Auto-extend visible window so new messages always appear
-          setVisibleMsgStart((s) => Math.max(0, next.length - MSG_PAGE));
-          return next;
-        });
+        setMessages((prev) => [...prev, event.data]);
       } else if (event.type === "update") {
         setMessages((prev) =>
           event.data?.is_hidden
@@ -140,11 +131,9 @@ export default function VibeRoom() {
 
   // Build combined feed: seeded shown only when real messages < 3
   const showSeeded = messages.length < 3;
-  const visibleMessages = messages.slice(visibleMsgStart);
-  const hasEarlierMessages = visibleMsgStart > 0;
   const combinedFeed = showSeeded
-    ? [...seededMessages.map((s) => ({ ...s, _seeded: true })), ...visibleMessages]
-    : visibleMessages;
+    ? [...seededMessages.map((s) => ({ ...s, _seeded: true })), ...messages]
+    : messages;
 
   // ── Send message (premium only) ───────────────────────────────────────────
   const handleSend = useCallback(async () => {
@@ -343,22 +332,6 @@ export default function VibeRoom() {
         <div className="max-w-2xl mx-auto px-4 sm:px-5 pt-4 flex flex-col gap-1">
 
           <DailyPromptCard isAdmin={isAdmin} />
-
-          {/* Load earlier messages */}
-          {!loading && hasEarlierMessages && (
-            <div className="flex justify-center mt-3">
-              <button
-                onClick={() => setVisibleMsgStart((s) => Math.max(0, s - MSG_PAGE))}
-                className="px-4 py-2 rounded-full text-xs font-bold transition-all hover:brightness-110"
-                style={{
-                  background: `rgba(${rtPrimary},0.07)`,
-                  border: `1px solid rgba(${rtPrimary},0.2)`,
-                  color: `rgba(${rtPrimary},0.8)`,
-                }}>
-                ↑ Load earlier messages
-              </button>
-            </div>
-          )}
 
           <div className="mt-3">
             {loading ? (

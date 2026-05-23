@@ -82,17 +82,12 @@ export default function Sidebar() {
           <Link
             to="/my-vibes"
             onClick={(e) => { if (!isAuthenticated) { e.preventDefault(); navigateToLogin("/my-vibes"); } }}
-            className="flex items-center gap-1.5 px-3 rounded-lg border transition-all hover:brightness-110"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all hover:brightness-110"
             style={{
              background: `rgba(${radioThemeColor},0.12)`,
              borderColor: `rgba(${radioThemeColor},0.35)`,
              color: `rgb(${radioThemeColor})`,
              boxShadow: `0 0 12px rgba(${radioThemeColor},0.15)`,
-             minHeight: 44,
-             touchAction: "manipulation",
-             WebkitTapHighlightColor: "transparent",
-             position: "relative",
-             zIndex: 60,
            }}>
             <Heart className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="hidden sm:inline text-[11px] font-semibold whitespace-nowrap">My Vibe Library</span>
@@ -101,18 +96,12 @@ export default function Sidebar() {
 
           {/* Account / Login */}
           {isAuthenticated && user ? (
-            <Link to="/account"
-              className="flex items-center gap-1.5 px-3 rounded-lg border transition-all hover:brightness-110"
+            <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all hover:brightness-110"
               style={{
                 background: `rgba(${radioThemeColor},0.12)`,
                 borderColor: `rgba(${radioThemeColor},0.35)`,
                 color: `rgb(${radioThemeColor})`,
                 boxShadow: `0 0 12px rgba(${radioThemeColor},0.15)`,
-                minHeight: 44,
-                touchAction: "manipulation",
-                WebkitTapHighlightColor: "transparent",
-                position: "relative",
-                zIndex: 60,
               }}>
               <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black"
                 style={{ background: `rgba(${radioThemeColor},0.18)`, color: `rgb(${radioThemeColor})` }}>
@@ -122,16 +111,8 @@ export default function Sidebar() {
             </Link>
           ) : (
             <button onClick={navigateToLogin}
-              className="flex items-center gap-1.5 px-3.5 rounded-lg font-black text-[11px] tracking-wide"
-              style={{
-                background: `linear-gradient(135deg,rgba(${radioThemeColor},0.7),rgb(${radioThemeColor}))`,
-                color: "#000",
-                minHeight: 44,
-                touchAction: "manipulation",
-                WebkitTapHighlightColor: "transparent",
-                position: "relative",
-                zIndex: 60,
-              }}>
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-black text-[11px] tracking-wide"
+              style={{ background: `linear-gradient(135deg,rgba(${radioThemeColor},0.7),rgb(${radioThemeColor}))`, color: "#000" }}>
               Log In
             </button>
           )}
