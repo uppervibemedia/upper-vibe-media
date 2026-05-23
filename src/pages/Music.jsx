@@ -105,20 +105,17 @@ export default function Music() {
           <div className="max-w-7xl mx-auto px-6 relative z-10"
             style={{ paddingTop: "max(4.5rem, calc(3rem + env(safe-area-inset-top, 0px)))", paddingBottom: "1rem" }}>
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
-              {/* Eyebrow label */}
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm mb-3"
-                style={{ background: `rgba(${themeColor},0.05)`, border: `1px solid rgba(${themeColor},0.16)` }}>
-                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ background: `rgb(${themeColor})` }} />
-                <span style={{
-                  fontSize: "9px", letterSpacing: "0.38em", fontWeight: 900,
-                  textTransform: "uppercase", color: `rgb(${themeColor})`, fontFamily: "var(--font-heading)"
-                }}>Music Library</span>
-              </div>
-
-              <h1 className="font-heading font-black mb-1.5 leading-tight"
-                style={{ fontSize: "clamp(1.7rem, 6vw, 3rem)", color: `rgb(${themeColor})` }}>
-                Discover Your Frequency
+              {/* Main title */}
+              <h1 className="font-heading font-black mb-1 leading-tight"
+                style={{ fontSize: "clamp(1.9rem, 6vw, 3.2rem)", color: "rgba(255,255,255,0.92)" }}>
+                Music Library
               </h1>
+
+              {/* Subtitle */}
+              <p className="font-heading font-bold mb-2 leading-snug"
+                style={{ fontSize: "clamp(0.85rem, 2.5vw, 1.1rem)", color: `rgb(${themeColor})`, letterSpacing: "0.02em" }}>
+                Discover Your Frequency
+              </p>
               <p className="text-white/30 text-xs leading-relaxed max-w-lg">
                 Stream 432 Hz high-vibe music, new releases, and curated frequency tracks
                 {!loading && <span className="text-white/20"> · {tracks.length} tracks</span>}
