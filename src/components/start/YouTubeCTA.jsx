@@ -14,7 +14,7 @@ const DEFAULT_SECONDARY = [
 ];
 
 function YtThumb({ videoId, title, small = false }) {
-  const thumbUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+  const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
   return (
@@ -70,13 +70,7 @@ function YtThumb({ videoId, title, small = false }) {
           {title}
         </p>
       )}
-      {/* YouTube logo (main only) */}
-      {!small && (
-        <div className="absolute bottom-2 right-2.5 flex items-center gap-1">
-          <Youtube style={{ width: 14, height: 14, color: "#fff" }} />
-          <span style={{ fontSize: "10px", fontWeight: 700, color: "#fff" }}>YouTube</span>
-        </div>
-      )}
+
     </a>
   );
 }
