@@ -97,7 +97,7 @@ export default function Music() {
           {/* Ambient glow */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-[-60px] left-[-40px] w-[400px] h-[400px] rounded-full blur-[180px] opacity-[0.05]"
-              style={{ background: "#00C9E0" }} />
+              style={{ background: "#00A0DC" }} />
             <div className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none"
               style={{ background: "linear-gradient(transparent, hsl(240 50% 2%))" }} />
           </div>
@@ -141,7 +141,7 @@ export default function Music() {
                 onChange={(e) => { setSearch(e.target.value); setActiveFilter("all"); }}
                 className="w-full pl-11 pr-10 py-3.5 rounded-2xl text-sm text-white placeholder:text-white/25 focus:outline-none transition-all"
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-                onFocus={(e) => e.target.style.borderColor = "rgba(0,229,255,0.3)"}
+                onFocus={(e) => e.target.style.borderColor = "rgba(0,160,220,0.3)"}
                 onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
               />
               {search && (
@@ -275,7 +275,7 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
           <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
         ) : (
           <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(0,229,255,0.08)" }}>
+            style={{ background: "rgba(0,160,220,0.08)" }}>
             <Music4 className="w-5 h-5 text-cyan-400/30" />
           </div>
         )}
@@ -301,7 +301,7 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
         </Link>
         <div className="flex items-center gap-1.5 mt-1.5">
           <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.18)", color: "#00C9E0" }}>
+            style={{ background: "rgba(0,160,220,0.1)", border: "1px solid rgba(0,160,220,0.18)", color: "#00A0DC" }}>
             <Waves className="w-2 h-2" /> 432 Hz
           </span>
           {track.is_new_release && (
@@ -331,9 +331,9 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
           onClick={() => onPlay(track)}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
           style={{
-            background: isCurrent ? "rgba(0,200,220,0.18)" : "rgba(0,200,220,0.08)",
-            border: "1px solid rgba(0,200,220,0.35)",
-            color: "#00C8DC"
+            background: isCurrent ? "rgba(0,160,220,0.18)" : "rgba(0,160,220,0.08)",
+            border: "1px solid rgba(0,160,220,0.35)",
+            color: "#00A0DC"
           }}>
           {isCurrent && isPlaying
             ? <Pause className="w-3.5 h-3.5" />

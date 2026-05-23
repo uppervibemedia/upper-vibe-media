@@ -134,7 +134,7 @@ function TrackRow({ track, index }) {
       </div>
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-          style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+          style={{ background: "rgba(0,160,220,0.1)", color: "#00A0DC" }}>
           <Waves className="w-2 h-2" /> 432
         </span>
         {track.duration && <p className="text-[10px] text-white/25">{track.duration}</p>}
@@ -209,7 +209,7 @@ export default function DiscoverTab() {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center justify-center py-20 text-center px-4">
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-          style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)" }}>
+          style={{ background: "rgba(0,160,220,0.08)", border: "1px solid rgba(0,160,220,0.2)" }}>
           <Compass className="w-8 h-8 text-cyan-400" />
         </div>
         <h3 className="font-heading font-black text-2xl text-white mb-3">Your Discover Feed</h3>
@@ -219,7 +219,7 @@ export default function DiscoverTab() {
         <div className="flex flex-wrap gap-3 justify-center">
           <Link to="/music"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110"
-            style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}>
+            style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff" }}>
             <Play className="w-4 h-4" /> Start Listening
           </Link>
           <Link to="/favorites"
@@ -270,7 +270,7 @@ export default function DiscoverTab() {
         <section>
           <div className="flex items-center justify-between mb-5">
             <div>
-              <p className="text-[10px] font-black tracking-[0.25em] uppercase mb-1" style={{ color: "#00E5FF" }}>
+              <p className="text-[10px] font-black tracking-[0.25em] uppercase mb-1" style={{ color: "#00A0DC" }}>
                 <Sparkles className="w-3 h-3 inline mr-1" />Picked For You
               </p>
               <h3 className="font-heading font-black text-xl text-white">Recommended Songs</h3>

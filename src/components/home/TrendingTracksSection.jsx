@@ -52,15 +52,15 @@ function computeTrendingScores(tracks, streams, favCounts) {
 
 // Fixed accent colors — always the same regardless of theme
 const PURPLE  = "155,126,255";   // hearts — always purple
-const BLUE    = "0,200,220";     // 432 Hz badge — always electric blue
+const BLUE    = "0,160,220";     // 432 Hz badge — always electric blue
 const AMBER   = "212,168,67";    // download lock — always midnight amber
 
 // Cycling insight colors (theme-independent, rotates through all 3)
 const INSIGHT_COLORS = [
-  { color: "0,229,255",   label: "🔥 Most Played Today" },   // cyan
+  { color: "0,160,220",   label: "🔥 Most Played Today" },   // electric blue
   { color: "155,126,255", label: "Listener Favorite" },       // purple
   { color: "212,168,67",  label: "Rising" },                  // amber
-  { color: "0,229,255",   label: "High Energy" },             // cyan
+  { color: "0,160,220",   label: "High Energy" },             // electric blue
   { color: "155,126,255", label: "Fan Favorite" },            // purple
   { color: "212,168,67",  label: "Trending" },                // amber
 ];

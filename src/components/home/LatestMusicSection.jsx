@@ -11,7 +11,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
-      <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor="#00E5FF" />
+      <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor="#00A0DC" />
       {/* Mobile: horizontal swipe scroll; desktop: grid */}
       <div className="flex sm:hidden gap-3 overflow-x-auto pb-2 -mx-6 px-6 snap-x snap-mandatory hide-scrollbar"
         style={{ WebkitOverflowScrolling: "touch" }}>
@@ -29,15 +29,15 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                 className="block rounded-2xl overflow-hidden active:scale-[0.97] transition-transform"
                 style={{
                   width: "calc(50vw - 2rem)",
-                  background: isCurrent ? "rgba(0,229,255,0.07)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${isCurrent ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.07)"}`,
+                  background: isCurrent ? "rgba(0,160,220,0.07)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${isCurrent ? "rgba(0,160,220,0.25)" : "rgba(255,255,255,0.07)"}`,
                 }}>
                 <div className="relative w-full aspect-square overflow-hidden">
                   {track.cover_url ? (
                     <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"
-                      style={{ background: "linear-gradient(135deg,rgba(0,200,220,0.1),rgba(0,180,200,0.04))" }}>
+                      style={{ background: "linear-gradient(135deg,rgba(0,160,220,0.1),rgba(0,130,200,0.04))" }}>
                       <Music4 className="w-10 h-10 text-cyan-400/15" />
                     </div>
                   )}
@@ -47,16 +47,16 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     style={{ background: "rgba(0,0,0,0.45)" }}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (track.audio_url) handlePlayTrack(track); }}>
                     <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                      style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)" }}>
+                      style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)" }}>
                       {isCurrent && isPlaying
-                        ? <Pause className="w-4 h-4 text-black fill-current" />
-                        : <Play className="w-4 h-4 text-black fill-current ml-0.5" />}
+                        ? <Pause className="w-4 h-4 text-white fill-current" />
+                        : <Play className="w-4 h-4 text-white fill-current ml-0.5" />}
                     </div>
                   </div>
                   {track.is_new_release && (
                     <div className="absolute top-2 left-2">
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider"
-                        style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", color: "#000" }}>NEW</span>
+                        style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff" }}>NEW</span>
                     </div>
                   )}
                 </div>
@@ -94,9 +94,9 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                 to={`/song/${track.id}`}
                 className="block rounded-2xl overflow-hidden transition-all hover:-translate-y-0.5 active:scale-[0.98]"
                 style={{
-                  background: isCurrent ? "rgba(0,229,255,0.07)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${isCurrent ? "rgba(0,229,255,0.25)" : "rgba(255,255,255,0.07)"}`,
-                  boxShadow: isCurrent ? "0 0 30px rgba(0,200,220,0.1)" : "none",
+                  background: isCurrent ? "rgba(0,160,220,0.07)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${isCurrent ? "rgba(0,160,220,0.25)" : "rgba(255,255,255,0.07)"}`,
+                  boxShadow: isCurrent ? "0 0 30px rgba(0,160,220,0.1)" : "none",
                 }}>
 
                 {/* Cover art — square, full width */}
@@ -109,7 +109,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"
-                      style={{ background: "linear-gradient(135deg,rgba(0,200,220,0.1),rgba(0,180,200,0.04))" }}>
+                      style={{ background: "linear-gradient(135deg,rgba(0,160,220,0.1),rgba(0,130,200,0.04))" }}>
                       <Music4 className="w-16 h-16 text-cyan-400/15" />
                     </div>
                   )}
@@ -120,10 +120,10 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     style={{ background: "rgba(0,0,0,0.45)" }}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (track.audio_url) handlePlayTrack(track); }}>
                     <div className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110"
-                      style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", boxShadow: "0 0 16px rgba(0,200,220,0.4)" }}>
+                      style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", boxShadow: "0 0 16px rgba(0,160,220,0.4)" }}>
                       {isCurrent && isPlaying
-                        ? <Pause className="w-4 h-4 text-black fill-current" />
-                        : <Play className="w-4 h-4 text-black fill-current ml-0.5" />}
+                        ? <Pause className="w-4 h-4 text-white fill-current" />
+                        : <Play className="w-4 h-4 text-white fill-current ml-0.5" />}
                     </div>
                   </div>
 
@@ -131,7 +131,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                   {track.is_new_release && (
                     <div className="absolute top-3 left-3">
                       <span className="px-2.5 py-1 rounded-full text-[9px] font-black tracking-wider"
-                        style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", color: "#000" }}>
+                        style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff" }}>
                         NEW
                       </span>
                     </div>
@@ -140,8 +140,8 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                   {/* Currently playing indicator */}
                   {isCurrent && isPlaying && (
                     <div className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center"
-                      style={{ background: "rgba(0,229,255,0.9)" }}>
-                      <Waves className="w-4 h-4 text-black animate-pulse" />
+                      style={{ background: "rgba(0,160,220,0.9)" }}>
+                      <Waves className="w-4 h-4 text-white animate-pulse" />
                     </div>
                   )}
                 </div>
