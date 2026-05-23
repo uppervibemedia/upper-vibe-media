@@ -75,7 +75,10 @@ export default function Sidebar() {
             alt="UVM"
             className="w-7 h-7 object-contain"
           />
-          <span className="font-heading font-black text-sm tracking-[0.22em] text-foreground">UPPER VIBE</span>
+          <span className="font-heading font-black text-sm tracking-[0.22em]">
+            <span style={{ color: "#F5A800" }}>UPPER VIBE</span>
+            <span style={{ color: "#2B9FE8", marginLeft: "0.35em" }}>MEDIA</span>
+          </span>
         </Link>
         {isAuthenticated && user ? (
           <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted border border-border">
@@ -180,8 +183,8 @@ export default function Sidebar() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <p className="font-heading font-black text-xs tracking-[0.22em] text-foreground whitespace-nowrap">UPPER VIBE</p>
-                <p className="text-[9px] tracking-[0.15em] uppercase text-secondary/70 whitespace-nowrap">Media</p>
+                <p className="font-heading font-black text-xs tracking-[0.22em] whitespace-nowrap" style={{ color: "#F5A800" }}>UPPER VIBE</p>
+                <p className="text-[9px] tracking-[0.15em] uppercase font-black whitespace-nowrap" style={{ color: "#2B9FE8" }}>MEDIA</p>
               </motion.div>
             )}
           </AnimatePresence>

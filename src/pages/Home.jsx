@@ -191,7 +191,7 @@ export default function Home() {
               transition={{ delay: 0.16, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
               className="mb-2 sm:mb-3">
 
-              {/* UPPER VIBE — gold */}
+              {/* UPPER VIBE — official gold */}
               <div className="hero-logo-upper" style={{
                 fontFamily: "var(--font-heading)",
                 fontSize: "clamp(2rem, 6.2vw, 4.8rem)",
@@ -199,12 +199,9 @@ export default function Home() {
                 lineHeight: 0.95,
                 letterSpacing: "0.06em",
                 textTransform: "uppercase",
-                background: "linear-gradient(105deg, #A07820 0%, #D4A843 35%, #ECC050 55%, #D4A843 80%, #A07820 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
+                color: "#F5A800",
                 display: "block",
-                filter: "drop-shadow(0 0 16px rgba(200,140,40,0.18))",
+                filter: "drop-shadow(0 2px 12px rgba(245,168,0,0.25))",
               }}>UPPER VIBE</div>
 
               {/* Thin divider accent */}
@@ -219,7 +216,7 @@ export default function Home() {
                 <div className="h-px flex-1 max-w-[100px]" style={{ background: "linear-gradient(90deg, rgba(212,168,67,0.25), transparent)" }} />
               </div>
 
-              {/* MEDIA — cyan/electric blue */}
+              {/* MEDIA — official electric blue */}
               <div className="hero-logo-media" style={{
                 fontFamily: "var(--font-heading)",
                 fontSize: "clamp(1.1rem, 3.6vw, 2.8rem)",
@@ -227,12 +224,9 @@ export default function Home() {
                 lineHeight: 1.0,
                 letterSpacing: "0.22em",
                 textTransform: "uppercase",
-                background: "linear-gradient(105deg, #007A90 0%, #00B8D4 35%, #00E5FF 55%, #00B8D4 80%, #007A90 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
+                color: "#2B9FE8",
                 display: "block",
-                filter: "drop-shadow(0 0 14px rgba(0,200,220,0.22))",
+                filter: "drop-shadow(0 2px 10px rgba(43,159,232,0.3))",
               }}>MEDIA</div>
             </motion.div>
 
