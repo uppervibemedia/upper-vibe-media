@@ -15,9 +15,32 @@ import UpNextPanel from "../components/radio/UpNextPanel";
 import RadioVisualizer from "../components/radio/RadioVisualizer";
 import RadioThemePicker, { useRadioTheme } from "../components/radio/RadioThemePicker";
 
+// Breathing glow animation — injected once
+const GLOW_STYLE_ID = "radio-breathe-style";
+if (typeof document !== "undefined" && !document.getElementById(GLOW_STYLE_ID)) {
+  const s = document.createElement("style");
+  s.id = GLOW_STYLE_ID;
+  s.textContent = `
+    @keyframes radioBreathe {
+      0%,100% { opacity: 0.38; transform: scale(1); }
+      50%      { opacity: 0.72; transform: scale(1.06); }
+    }
+    .radio-glow-ring {
+      animation: radioBreathe 8s ease-in-out infinite;
+      pointer-events: none;
+      position: absolute;
+      inset: -12px;
+      border-radius: inherit;
+      z-index: 0;
+    }
+  `;
+  document.head.appendChild(s);
+}
+
 export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
+  const [glowEntered, setGlowEntered] = useState(false);
   const { themeId, theme, applyTheme } = useRadioTheme();
 
   const { currentTrack, isPlaying, togglePlay, sourceType } = usePlayer();
@@ -42,6 +65,12 @@ export default function RadioPage() {
   useEffect(() => {
     if (tracksLoaded) initRadio();
   }, [tracksLoaded, initRadio]);
+
+  // After page mounts, let the entrance glow finish then switch to pulse
+  useEffect(() => {
+    const t = setTimeout(() => setGlowEntered(true), 1200);
+    return () => clearTimeout(t);
+  }, []);
 
   const isCurrentlyPlayingRadio = sourceType === "radio" && currentTrack?.id === currentRadioSong?.id;
   const radioIsPaused = currentRadioSong && sourceType !== "radio" && !!currentTrack;
@@ -157,16 +186,32 @@ export default function RadioPage() {
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="relative mx-auto mb-5 rounded-3xl overflow-hidden"
-          style={{
-            maxWidth: 440,
-            background: "rgba(0,0,0,0.4)",
-            border: `1px solid ${playingThisRadioSong ? `rgba(${theme.vars["--rt-primary"]},0.18)` : `rgba(${theme.vars["--rt-primary"]},0.08)`}`,
-            transition: "border-color 1s ease",
-          }}>
-          <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} />
-          <div className="pointer-events-none absolute inset-0"
-            style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />
+          className="relative mx-auto mb-5 rounded-3xl"
+          style={{ maxWidth: 440 }}>
+          {/* Entrance burst → breathing glow */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={glowEntered
+              ? {}  // hand off to CSS animation
+              : { opacity: [0, 0.65, 0.38], scale: [0.9, 1.08, 1.0] }}
+            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+            className={glowEntered ? "radio-glow-ring" : "pointer-events-none absolute inset-[-12px] rounded-3xl z-0"}
+            style={{
+              background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.28) 0%, transparent 70%)`,
+              filter: "blur(18px)",
+              opacity: glowEntered ? undefined : 0.38,
+            }}
+          />
+          <div className="relative z-10 overflow-hidden rounded-3xl"
+            style={{
+              background: "rgba(0,0,0,0.4)",
+              border: `1px solid ${playingThisRadioSong ? `rgba(${theme.vars["--rt-primary"]},0.18)` : `rgba(${theme.vars["--rt-primary"]},0.08)`}`,
+              transition: "border-color 1s ease",
+            }}>
+            <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} />
+            <div className="pointer-events-none absolute inset-0"
+              style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />
+          </div>
         </motion.div>
 
         {/* ── No songs state ── */}
@@ -181,8 +226,20 @@ export default function RadioPage() {
             {/* ── Main Player Card ── */}
             <motion.div
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
-              className="w-full lg:w-[360px] flex-shrink-0">
-              <div className="rounded-3xl p-6"
+              className="w-full lg:w-[360px] flex-shrink-0 relative">
+              {/* Breathing glow behind the card */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={glowEntered ? {} : { opacity: [0, 0.55, 0.32], scale: [0.9, 1.06, 1.0] }}
+                transition={{ duration: 1.1, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                className={glowEntered ? "radio-glow-ring rounded-3xl" : "pointer-events-none absolute inset-[-12px] rounded-3xl z-0"}
+                style={{
+                  background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.22) 0%, transparent 70%)`,
+                  filter: "blur(22px)",
+                  opacity: glowEntered ? undefined : 0.32,
+                }}
+              />
+              <div className="relative z-10 rounded-3xl p-6"
                 style={{
                   background: "rgba(255,255,255,0.028)",
                   border: `1px solid ${playingThisRadioSong ? `rgba(${theme.vars["--rt-primary"]},0.15)` : "rgba(255,255,255,0.07)"}`,
@@ -346,7 +403,6 @@ export default function RadioPage() {
                 </div>
               </div>
             </motion.div>
-
             {/* ── Up Next Panel ── */}
             <motion.div
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, duration: 0.5 }}
