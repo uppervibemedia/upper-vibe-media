@@ -112,7 +112,7 @@ export default function Start() {
   // Load next tracks for the music stack whenever featured track is known
   useEffect(() => {
     if (!featuredTrackId) return;
-    base44.entities.Track.filter({ status: "published" }, "-created_date", 10).then((all) => {
+    base44.entities.Track.filter({ status: "published" }, "-release_date", 10).then((all) => {
       const withAudio = all.filter((t) => t.audio_url && t.id !== featuredTrackId);
       setStackTracks(withAudio.slice(0, 4));
     }).catch(() => {});

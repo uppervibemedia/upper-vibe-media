@@ -109,8 +109,8 @@ export default function YouTubeCTA() {
       if (rows?.[0]?.value) setPlaylistUrl(rows[0].value);
     });
 
-    // Load visualizers from the database
-    base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 20).then((rows) => {
+    // Load visualizers — newest by release_date first
+    base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 20).then((rows) => {
       const valid = rows
         .map((v) => {
           const id = extractVideoId(v.video_url) || extractVideoId(v.embed_url);
