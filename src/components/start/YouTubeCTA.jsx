@@ -129,7 +129,7 @@ export default function YouTubeCTA() {
         href={playlistUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
+        className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97] text-center justify-center"
         style={{
           background: "linear-gradient(135deg,#C00000,#FF3333)",
           color: "#fff",

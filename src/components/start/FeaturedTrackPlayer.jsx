@@ -6,7 +6,8 @@ import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
 
-function MusicBars({ color = "#00A0DC", active = false }) {
+// Music bars — always animate regardless of local play state
+function MusicBars({ color = "#00A0DC" }) {
   return (
     <>
       <style>{`
@@ -30,7 +31,7 @@ function MusicBars({ color = "#00A0DC", active = false }) {
               borderRadius: "2px",
               background: color,
               height: "6px",
-              animation: active ? `${anim} 0.65s ease-in-out infinite` : "none",
+              animation: `${anim} 0.65s ease-in-out infinite`,
               animationDelay: delay,
             }}
           />
@@ -46,10 +47,9 @@ export default function FeaturedTrackPlayer() {
   const [loading, setLoading] = useState(true);
   const audioRef = useRef(null);
 
-  // Theme
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
-  const rtPrimary = radioTheme.vars["--rt-primary"];       // e.g. "0,160,220"
+  const rtPrimary = radioTheme.vars["--rt-primary"];
   const rtPrimaryDark = radioTheme.vars["--rt-primary-dark"];
   const primaryColor = `rgb(${rtPrimary})`;
   const primaryRgba = (a) => `rgba(${rtPrimary},${a})`;
@@ -57,22 +57,22 @@ export default function FeaturedTrackPlayer() {
   useEffect(() => {
     async function loadTrack() {
       try {
-        // Get pool of published tracks with audio
-        const all = await base44.entities.Track.filter(
-          { status: "published" },
-          "-created_date",
-          50
-        );
-        const withAudio = all.filter((t) => t.audio_url);
-        if (!withAudio.length) { setLoading(false); return; }
+        // 1. Check for admin-selected featured track on /start
+        const featuredSetting = await base44.entities.AppSettings.filter({ key: "start_featured_track_id" });
+        const featuredId = featuredSetting?.[0]?.value;
 
-        // Prefer featured tracks; otherwise pick random from pool
-        const featured = withAudio.filter((t) => t.is_featured);
-        const pool = featured.length > 0 ? featured : withAudio;
-        const picked = pool[Math.floor(Math.random() * pool.length)];
-        setTrack(picked);
+        if (featuredId) {
+          const all = await base44.entities.Track.filter({ status: "published" }, "-created_date", 100);
+          const found = all.find((t) => t.id === featuredId && t.audio_url);
+          if (found) { setTrack(found); setLoading(false); return; }
+        }
+
+        // 2. Fall back to newest published track with audio
+        const newest = await base44.entities.Track.filter({ status: "published" }, "-created_date", 20);
+        const withAudio = newest.filter((t) => t.audio_url);
+        if (withAudio.length) setTrack(withAudio[0]);
       } catch {
-        // silently fail
+        // silently fail — fallback card shown
       }
       setLoading(false);
     }
@@ -98,15 +98,20 @@ export default function FeaturedTrackPlayer() {
     return () => el.removeEventListener("ended", onEnded);
   }, [track]);
 
-  if (loading || !track) return null;
+  if (loading) return null;
 
-  const freqLabel = track.frequency_type === "432hz" ? "432 Hz"
-    : track.frequency_type === "528hz" ? "528 Hz"
+  const freqLabel = track?.frequency_type === "432hz" ? "432 Hz"
+    : track?.frequency_type === "528hz" ? "528 Hz"
     : "High-Vibe";
+
+  // Fallback card when no published track exists
+  const displayTitle = track?.title || "Upper Vibe Media";
+  const displayArtist = track?.artist_display || "Tap in to the frequency";
+  const displayCover = track?.cover_url || null;
 
   return (
     <div className="w-full relative rounded-2xl overflow-hidden">
-      {/* Pulsating glow ring — matches Radio page style */}
+      {/* Pulsating glow ring */}
       <motion.div
         animate={{ scale: [1, 1.025, 1], opacity: [0.35, 0.9, 0.35] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -125,7 +130,7 @@ export default function FeaturedTrackPlayer() {
           border: `1px solid ${primaryRgba(0.15)}`,
         }}
       >
-        {track.audio_url && (
+        {track?.audio_url && (
           <audio ref={audioRef} src={track.audio_url} preload="none" />
         )}
 
@@ -136,12 +141,14 @@ export default function FeaturedTrackPlayer() {
             textTransform: "uppercase", color: primaryColor,
             fontFamily: "var(--font-heading)",
           }}>
-            Featured Track
+            {track ? "Newest Track" : "Upper Vibe Media"}
           </span>
-          <span className="inline-flex items-center gap-1 text-[8px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: primaryRgba(0.1), border: `1px solid ${primaryRgba(0.2)}`, color: primaryColor }}>
-            <Waves className="w-2 h-2" /> {freqLabel}
-          </span>
+          {track && (
+            <span className="inline-flex items-center gap-1 text-[8px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: primaryRgba(0.1), border: `1px solid ${primaryRgba(0.2)}`, color: primaryColor }}>
+              <Waves className="w-2 h-2" /> {freqLabel}
+            </span>
+          )}
         </div>
 
         {/* Track row */}
@@ -151,12 +158,11 @@ export default function FeaturedTrackPlayer() {
             className="flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center relative"
             style={{ background: primaryRgba(0.1), border: `1px solid ${primaryRgba(0.2)}` }}
           >
-            {track.cover_url ? (
-              <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />
+            {displayCover ? (
+              <img src={displayCover} alt={displayTitle} className="w-full h-full object-cover" />
             ) : (
               <Music2 className="w-6 h-6" style={{ color: primaryRgba(0.5) }} />
             )}
-            {/* Playing overlay */}
             {playing && (
               <div className="absolute inset-0 flex items-center justify-center rounded-xl"
                 style={{ background: "rgba(0,0,0,0.45)" }}>
@@ -168,15 +174,15 @@ export default function FeaturedTrackPlayer() {
           {/* Info */}
           <div className="flex-1 min-w-0">
             <p className="font-black text-white text-sm truncate" style={{ fontFamily: "var(--font-heading)" }}>
-              {track.title}
+              {displayTitle}
             </p>
             <p className="text-xs truncate mt-0.5" style={{ color: "rgba(255,255,255,0.42)" }}>
-              {track.artist_display || "Upper Vibe Media"}
+              {displayArtist}
             </p>
           </div>
 
-          {/* Play button + bars */}
-          {track.audio_url && (
+          {/* Play button + always-animated bars */}
+          {track?.audio_url && (
             <div className="flex-shrink-0 flex flex-col items-center gap-2">
               <motion.button
                 onClick={handlePlay}
@@ -194,7 +200,8 @@ export default function FeaturedTrackPlayer() {
                   ? <Pause className="w-4 h-4" style={{ color: primaryColor }} />
                   : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />}
               </motion.button>
-              <MusicBars color={playing ? primaryColor : primaryRgba(0.4)} active={playing} />
+              {/* Always-animated bars below play button */}
+              <MusicBars color={playing ? primaryColor : primaryRgba(0.35)} />
             </div>
           )}
         </div>
