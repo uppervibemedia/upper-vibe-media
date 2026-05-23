@@ -8,6 +8,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import AgeGateModal, { hasConfirmedAge } from "../components/viberoom/AgeGateModal";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import usePageVisible from "@/hooks/usePageVisible";
 import VibeNameSetup, { getSavedVibeName, getSavedVibeAvatar, canChangeVibeName } from "../components/viberoom/VibeNameSetup";
 import NowPlayingCard from "../components/viberoom/NowPlayingCard";
 import DailyPromptCard from "../components/viberoom/DailyPromptCard";
@@ -36,6 +37,7 @@ export default function VibeRoom() {
   const rtAmbient2 = radioTheme.vars["--rt-ambient2"];
   const isAdmin = user?.role === "admin";
   const isPremium = isPremiumUser(user);
+  const isPageVisible = usePageVisible();
 
   // ── Age gate ──────────────────────────────────────────────────────────────
   const [ageConfirmed, setAgeConfirmed] = useState(() => hasConfirmedAge(user));
@@ -234,15 +236,16 @@ export default function VibeRoom() {
     <div className="min-h-screen flex flex-col" style={{ WebkitOverflowScrolling: "touch" }}>
 
       {/* Animated theme-colored ambient background */}
+      {/* Infinite loops pause when tab is hidden to save GPU/battery on iOS PWA */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <motion.div
           animate={{ opacity: [0.04, 0.07, 0.04], scale: [1, 1.08, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 10, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut" }}
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[320px] rounded-full blur-[150px]"
           style={{ background: rtAmbient1 }} />
         <motion.div
           animate={{ opacity: [0.02, 0.04, 0.02], scale: [1, 1.12, 1] }}
-          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 5 }}
+          transition={{ duration: 14, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: 5 }}
           className="absolute bottom-48 right-0 w-[280px] h-[280px] rounded-full blur-[110px]"
           style={{ background: rtAmbient2 }} />
       </div>

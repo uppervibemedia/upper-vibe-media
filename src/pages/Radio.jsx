@@ -15,6 +15,7 @@ import UpNextPanel from "../components/radio/UpNextPanel";
 
 import RadioThemePicker, { useRadioTheme, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
 import RadioVisualizer, { MODES } from "../components/radio/RadioVisualizer";
+import usePageVisible from "../hooks/usePageVisible";
 
 // Breathing glow animation — injected once
 const GLOW_STYLE_ID = "radio-breathe-style";
@@ -34,6 +35,7 @@ export default function RadioPage() {
   const [vizMode, setVizMode] = useState(getSavedMode);
   const [pulseOn, setPulseOn] = useState(getPulseEnabled);
   const { themeId, theme, applyTheme } = useRadioTheme();
+  const isPageVisible = usePageVisible();
 
   const handleTogglePulse = (v) => { setPulseOn(v); setPulseEnabled(v); };
 
@@ -205,7 +207,7 @@ export default function RadioPage() {
           {pulseOn && (
             <motion.div
               animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              transition={{ duration: 5, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut" }}
               className="absolute inset-0 rounded-3xl pointer-events-none"
               style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
             />
@@ -241,7 +243,7 @@ export default function RadioPage() {
               {pulseOn && (
                 <motion.div
                   animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
-                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+                  transition={{ duration: 5, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: 0.4 }}
                   className="absolute inset-0 rounded-3xl pointer-events-none"
                   style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
                 />

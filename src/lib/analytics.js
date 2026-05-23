@@ -9,19 +9,31 @@ import { base44 } from "@/api/base44Client";
 
 // ── Admin guard — never track admin activity ──────────────────────────────────
 // Cached so we only call auth.me() once per session.
+// _adminCheckPromise prevents multiple simultaneous auth.me() calls during cold
+// startup (page_view + song_play + streamStart all fire within ~200ms of load).
 let _isAdminCached = null;
+let _adminCheckPromise = null;
 
 async function isAdminUser() {
   if (_isAdminCached !== null) return _isAdminCached;
-  try {
-    const isAuthed = await base44.auth.isAuthenticated();
-    if (!isAuthed) { _isAdminCached = false; return false; }
-    const me = await base44.auth.me();
-    _isAdminCached = me?.role === "admin";
-  } catch {
-    _isAdminCached = false;
-  }
-  return _isAdminCached;
+  // Return the in-flight promise if one is already resolving — prevents a
+  // thundering-herd of auth API calls when multiple analytics events fire
+  // simultaneously before the first check completes.
+  if (_adminCheckPromise) return _adminCheckPromise;
+  _adminCheckPromise = (async () => {
+    try {
+      const isAuthed = await base44.auth.isAuthenticated();
+      if (!isAuthed) { _isAdminCached = false; return false; }
+      const me = await base44.auth.me();
+      _isAdminCached = me?.role === "admin";
+    } catch {
+      _isAdminCached = false;
+    } finally {
+      _adminCheckPromise = null; // clear so a future re-check is possible
+    }
+    return _isAdminCached;
+  })();
+  return _adminCheckPromise;
 }
 
 // ── Session ID ────────────────────────────────────────────────────────────────

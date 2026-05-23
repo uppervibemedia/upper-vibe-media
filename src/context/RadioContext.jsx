@@ -226,94 +226,115 @@ export function RadioProvider({ children }) {
     console.log("[RadioContext] ⏮ Prev radio song:", song.title);
   }, [playTrack]);
 
-  // ── Register next/prev handlers ───────────────────────────────────────────
+  // ── Stable next/prev handlers ─────────────────────────────────────────────
+  // FIX: These were previously defined inside a useEffect and re-registered
+  // every time _playNext/_playPrev changed. This created a race window: if a
+  // song's "ended" event fired during the React commit cycle between the old
+  // handler being de-registered (effect cleanup) and the new one being set
+  // (effect re-run), onNextRef.current was briefly null/stale and auto-advance
+  // would silently fail.
+  //
+  // Solution: define as stable useCallback hooks that read exclusively from
+  // stateRef.current (never from reactive closure). Register them ONCE via
+  // a mount-only useEffect. Since all state is accessed via stateRef, the
+  // callbacks are always current without needing re-registration.
+  //
   // handleNext is called by PlayerContext for BOTH:
   //   (a) natural song end (onEnded fires → onNextRef.current())  [fromSkip=false]
   //   (b) user skip press                                          [fromSkip=true]
   //   (c) lock screen next                                         [fromSkip=true via op-queue]
-  // We disambiguate via a flag on the call site: pass true for user-initiated skip.
-  // For natural end, PlayerContext calls handleNext() with no arg → fromSkip defaults false.
-  useEffect(() => {
-    const handleNext = (fromSkip = false) => {
-      const { sourceType, currentRadioSong: cs, allTracks: aT } = stateRef.current;
-      if (sourceType !== "radio") return;
+  const handleNext = useCallback((fromSkip = false) => {
+    const { sourceType, currentRadioSong: cs, allTracks: aT } = stateRef.current;
+    if (sourceType !== "radio") return;
 
-      // Case 1: Host drop just ended (natural end) or skipped (user)
-      if (isHostDropRef.current) {
-        const drop = currentDropRef.current;
-        if (fromSkip) {
-          console.log("[RadioContext] 🎙 Host drop skipped by user");
-          if (drop) trackDropSkipped(drop);
-        } else {
-          console.log("[RadioContext] 🎙 Host drop ended naturally:", drop?.title);
-          if (drop) trackDropCompleted(drop);
-        }
-        isHostDropRef.current  = false;
-        currentDropRef.current = null;
-        setIsHostDropPlaying(false);
-        _playNext(false);
-        return;
-      }
-
-      // Case 2: User-initiated skip
+    // Case 1: Host drop just ended (natural end) or skipped (user)
+    if (isHostDropRef.current) {
+      const drop = currentDropRef.current;
       if (fromSkip) {
-        _playNext(true);
-        return;
-      }
-
-      // Case 3: Natural song end — run curator + host drop logic
-      if (cs) {
-        recordComplete(cs.id, aT);
-        setCuratorActive(isCuratorActive());
-      }
-      const newCount = completedCountRef.current + 1;
-      completedCountRef.current = newCount;
-      setCompletedSongCount(newCount);
-      console.log("[RadioContext] ✅ Song completed — count:", newCount);
-
-      if (newCount % 4 === 0) {
-        console.log("[RadioContext] 🎙 Triggering host drop after", newCount, "completions");
-        _playHostDropThenNext();
-      } else {
-        _playNext(false);
-      }
-    };
-
-    const handlePrev = () => {
-      const { sourceType } = stateRef.current;
-      if (sourceType !== "radio") return;
-      // If host drop playing, just skip it
-      if (isHostDropRef.current) {
-        const drop = currentDropRef.current;
+        console.log("[RadioContext] 🎙 Host drop skipped by user");
         if (drop) trackDropSkipped(drop);
-        isHostDropRef.current  = false;
-        currentDropRef.current = null;
-        setIsHostDropPlaying(false);
-        _playNext(false);
-        return;
+      } else {
+        console.log("[RadioContext] 🎙 Host drop ended naturally:", drop?.title);
+        if (drop) trackDropCompleted(drop);
       }
-      const { radioHistory: h, historyIndex: hi, currentRadioSong: cs, radioQueue: q } = stateRef.current;
-      _playPrev(h, hi, cs, q);
-    };
+      isHostDropRef.current  = false;
+      currentDropRef.current = null;
+      setIsHostDropPlaying(false);
+      _playNext(false);
+      return;
+    }
 
+    // Case 2: User-initiated skip
+    if (fromSkip) {
+      _playNext(true);
+      return;
+    }
+
+    // Case 3: Natural song end — run curator + host drop logic
+    if (cs) {
+      recordComplete(cs.id, aT);
+      setCuratorActive(isCuratorActive());
+    }
+    const newCount = completedCountRef.current + 1;
+    completedCountRef.current = newCount;
+    setCompletedSongCount(newCount);
+    console.log("[RadioContext] ✅ Song completed — count:", newCount);
+
+    if (newCount % 4 === 0) {
+      console.log("[RadioContext] 🎙 Triggering host drop after", newCount, "completions");
+      _playHostDropThenNext();
+    } else {
+      _playNext(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [_playNext, _playHostDropThenNext]);
+
+  const handlePrev = useCallback(() => {
+    const { sourceType } = stateRef.current;
+    if (sourceType !== "radio") return;
+    // If host drop playing, just skip it
+    if (isHostDropRef.current) {
+      const drop = currentDropRef.current;
+      if (drop) trackDropSkipped(drop);
+      isHostDropRef.current  = false;
+      currentDropRef.current = null;
+      setIsHostDropPlaying(false);
+      _playNext(false);
+      return;
+    }
+    const { radioHistory: h, historyIndex: hi, currentRadioSong: cs, radioQueue: q } = stateRef.current;
+    _playPrev(h, hi, cs, q);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [_playNext, _playPrev]);
+
+  // Keep user-facing skip refs current whenever stable callbacks update
+  useEffect(() => {
     // User-facing skip (Radio page next button, lock screen next) → fromSkip=true
-    const handleNextUser = () => handleNext(true);
-
-    nextFnRef.current = handleNextUser;  // user-initiated skips
+    nextFnRef.current = () => handleNext(true);
     prevFnRef.current = handlePrev;
-    // PlayerContext calls onNextRef on natural song end — passes no arg → fromSkip=false
+  }, [handleNext, handlePrev]);
+
+  // Register with PlayerContext ONCE on mount — stable callbacks mean there is
+  // no re-registration race. onNextRef in PlayerContext always holds a valid fn.
+  useEffect(() => {
     registerNextHandler(handleNext);
     registerPrevHandler(handlePrev);
-    console.log("[RadioContext] ✅ next/prev handlers registered");
+    console.log("[RadioContext] ✅ next/prev handlers registered (stable, once)");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [_playNext, _playPrev, registerNextHandler, registerPrevHandler]);
+  }, []);
 
   // ── Audio event listeners for curator (pause only) ───────────────────────
   // NOTE: "ended" is NOT listened to here. Instead, the next/prev handler
   // registered above is called by PlayerContext's onEnded → onNextRef.current().
   // This prevents double-trigger: RadioContext ended + PlayerContext onNextRef.
+  //
+  // FIX: Use stable [] deps with audioRef (the ref object, not .current).
+  // audioRef?.current was an invalid React dependency — React does not track
+  // .current mutations, so the effect would only ever run once regardless.
+  // Using [] is semantically equivalent (audio element is singleton) but
+  // correctly expressed and avoids ESLint warnings about invalid deps.
   useEffect(() => {
-    const audio = audioRef?.current;
+    const audio = audioRef.current;
     if (!audio) return;
 
     const onPause = () => {
@@ -327,9 +348,8 @@ export function RadioProvider({ children }) {
     return () => {
       audio.removeEventListener("pause", onPause);
     };
-  // Re-attach when audio element changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioRef?.current]);
+  }, []);
 
   // ── Public API ────────────────────────────────────────────────────────────
   const initRadio = useCallback(() => {

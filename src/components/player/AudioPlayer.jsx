@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { usePlayer, sharedHiddenRef } from "../../context/PlayerContext";
 import { useTheme } from "../../context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
+import usePageVisible from "@/hooks/usePageVisible";
 
 export default function AudioPlayer() {
   const {
@@ -31,6 +32,8 @@ export default function AudioPlayer() {
     { id: "cyan",   rgb: "0,160,220",   hex: "#00A0DC" },
   ];
   const others = allThree.filter(c => c.id !== accentId);
+
+  const isPageVisible = usePageVisible();
 
   const [progress,   setProgress]   = useState(0);
   const [duration,   setDuration]   = useState(0);
@@ -223,7 +226,7 @@ export default function AudioPlayer() {
                         <motion.div
                           key={i}
                           animate={{ height: ["2px", "8px", "2px"] }}
-                          transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.12 }}
+                          transition={{ duration: 0.5, repeat: isPageVisible ? Infinity : 0, delay: i * 0.12 }}
                           className="w-0.5 rounded-full"
                           style={{ background: themeHex }}
                         />
