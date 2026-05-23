@@ -320,14 +320,14 @@ export default function RadioPage() {
                     className="w-11 h-11 rounded-full flex items-center justify-center transition-all"
                     style={{
                       background: currentRadioSong && isFaved("track", currentRadioSong.id)
-                        ? "rgba(236,72,153,0.18)" : "rgba(255,255,255,0.05)",
+                        ? "rgba(155,126,255,0.22)" : "rgba(155,126,255,0.06)",
                       border: currentRadioSong && isFaved("track", currentRadioSong.id)
-                        ? "1px solid rgba(236,72,153,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                        ? "1px solid rgba(155,126,255,0.55)" : "1px solid rgba(155,126,255,0.35)",
                     }}>
                     <Heart className="w-4 h-4 transition-colors"
                       style={{
-                        color: currentRadioSong && isFaved("track", currentRadioSong.id) ? "#EC4899" : "rgba(255,255,255,0.35)",
-                        fill: currentRadioSong && isFaved("track", currentRadioSong.id) ? "#EC4899" : "none",
+                        color: currentRadioSong && isFaved("track", currentRadioSong.id) ? "#9B7EFF" : "rgba(155,126,255,0.6)",
+                        fill: currentRadioSong && isFaved("track", currentRadioSong.id) ? "#9B7EFF" : "none",
                       }} />
                   </motion.button>
 

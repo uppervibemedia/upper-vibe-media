@@ -1,8 +1,12 @@
 import React from "react";
 import { Music4, Waves, Play } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "./RadioThemePicker";
 
 export default function UpNextPanel({ upNext, onJump }) {
+  const { accentId } = useTheme();
+  const rtPrimary = (RADIO_THEMES[accentId] || RADIO_THEMES.cyan).vars["--rt-primary"];
   if (!upNext || upNext.length === 0) return null;
 
   return (
@@ -25,7 +29,7 @@ export default function UpNextPanel({ upNext, onJump }) {
 
             {/* Position number */}
             <span className="text-[10px] font-black w-4 text-center flex-shrink-0"
-              style={{ color: i === 0 ? "#00E5FF" : "rgba(255,255,255,0.2)" }}>
+              style={{ color: i === 0 ? `rgb(${rtPrimary})` : "rgba(255,255,255,0.2)" }}>
               {i + 1}
             </span>
 
@@ -58,7 +62,7 @@ export default function UpNextPanel({ upNext, onJump }) {
 
             {/* 432 tag */}
             <span className="flex-shrink-0 inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full"
-              style={{ background: "rgba(0,200,220,0.08)", color: "#00C9E0" }}>
+              style={{ background: `rgba(${rtPrimary},0.1)`, color: `rgb(${rtPrimary})` }}>
               <Waves className="w-2 h-2" /> 432
             </span>
           </motion.div>
