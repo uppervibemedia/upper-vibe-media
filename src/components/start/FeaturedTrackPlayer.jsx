@@ -160,7 +160,7 @@ export default function FeaturedTrackPlayer() {
             >
               <Play className="w-4 h-4 ml-0.5" style={{ color: playing ? "#00A0DC" : "#000" }} />
             </button>
-            {playing && <MusicBars color="#00A0DC" />}
+            <MusicBars color={playing ? "#00A0DC" : "rgba(0,160,220,0.35)"} />
           </div>
         )}
       </div>
