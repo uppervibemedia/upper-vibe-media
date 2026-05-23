@@ -1,16 +1,31 @@
 /**
  * RadioVisualizer — Upper Vibe Media
  *
- * iOS FIX: Uses a SEPARATE read-only AnalyserNode (does NOT reroute audio output).
- * The main PlayerContext skips AudioContext on iOS to protect AirPlay/Bluetooth.
- * This component creates its own "tap" AudioContext solely for frequency analysis,
- * with NO destination connection — so AirPlay/Bluetooth output is completely unaffected.
+ * iOS ANALYSER FIX (v7):
+ * ─────────────────────────────────────────────────────────────────────────────
+ * ROOT CAUSE: On iOS Safari/PWA, calling createMediaElementSource() on the MAIN
+ * audio element — even without connecting to destination — internally reroutes
+ * the HTMLMediaElement through the Web Audio graph. This BREAKS system audio
+ * routing: AirPlay, Bluetooth, and normal speaker output all stop working.
+ *
+ * FIX: Use a MIRROR audio element — a second hidden <audio> with volume=0 that
+ * loads the same src and syncs currentTime to the main element every 2s.
+ * The mirror is connected to a Web Audio analyser for frequency data.
+ * The main audio element is NEVER touched by Web Audio, so AirPlay/BT/BG
+ * audio, lockscreen controls, and Control Center all remain fully intact.
+ *
+ * NON-iOS: connects directly to the main audio element (no routing side-effects
+ * on Chrome/Desktop/Android where Web Audio doesn't break system routing).
+ *
+ * Detection logs emitted every 3s:
+ *   isAirPlayActive, isBluetoothOutput, audioContextState, analyserConnected,
+ *   frequencyDataChanging, mediaSessionActive, radioStillPlaying
  */
 
 import React, { useRef, useEffect, useCallback, useState } from "react";
 import { usePlayer } from "../../context/PlayerContext";
 
-const PREF_KEY = "uvm_radio_viz_v6";
+const PREF_KEY = "uvm_radio_viz_v7";
 
 const MODES = [
   { id: "spectrum", label: "Spectrum",       icon: "▊" },
@@ -29,13 +44,144 @@ const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
 const isSafari = /Safari\//.test(navigator.userAgent) && !/Chrome\//.test(navigator.userAgent);
 const getDpr = () => window.devicePixelRatio || 1;
 
-// ── Tap-only AudioContext (no output routing — AirPlay/BT safe) ───────────────
+// ── Detection helpers ─────────────────────────────────────────────────────────
+function detectAirPlay(audioEl) {
+  // AirPlay active: iOS reports remotePlaybackState or the element has a
+  // remote playback object with state "connected"
+  try {
+    if (audioEl && audioEl.remote && audioEl.remote.state === "connected") return true;
+  } catch {}
+  return false;
+}
+
+function detectBluetooth() {
+  // No reliable sync API — check userAgent hints or AudioOutput (async-only)
+  // We log "unknown" since getBluetooth() is async and not universally available
+  return "unknown";
+}
+
+function detectMediaSession() {
+  return "mediaSession" in navigator
+    ? (navigator.mediaSession.playbackState || "none")
+    : "unsupported";
+}
+
+// ── Mirror AudioContext (iOS-safe: uses a SEPARATE muted audio element) ───────
+// On iOS we MUST NOT call createMediaElementSource on the main audio element.
+// Instead we create a silent mirror element with the same src, attach it to Web
+// Audio, and sync its currentTime periodically. This gives us frequency data
+// without touching the main element's system-routing chain.
+let _mirrorEl   = null;  // the muted mirror <audio>
+let _mirrorCtx  = null;  // AudioContext for the mirror
+let _mirrorSrc  = null;  // MediaElementSourceNode of mirror
+let _mirrorAn   = null;  // AnalyserNode
+let _mirrorSyncUrl = ""; // last src we set on the mirror
+let _mirrorSyncTimer = null;
+
+function destroyMirror() {
+  clearInterval(_mirrorSyncTimer); _mirrorSyncTimer = null;
+  try { if (_mirrorSrc) _mirrorSrc.disconnect(); } catch {}
+  try { if (_mirrorAn)  _mirrorAn.disconnect();  } catch {}
+  if (_mirrorEl) { _mirrorEl.pause(); _mirrorEl.src = ""; try { _mirrorEl.load(); } catch {} try { _mirrorEl.parentNode?.removeChild(_mirrorEl); } catch {} }
+  _mirrorEl = null; _mirrorSrc = null; _mirrorAn = null; _mirrorSyncUrl = "";
+}
+
+function getOrCreateMirrorAnalyser(mainAudioEl) {
+  if (!mainAudioEl || !mainAudioEl.src) return null;
+  const url = mainAudioEl.src;
+
+  // Reuse if mirror is already set up for this url and ctx is alive
+  if (_mirrorAn && _mirrorEl && _mirrorSyncUrl === url && _mirrorCtx && _mirrorCtx.state !== "closed") {
+    return _mirrorAn;
+  }
+
+  destroyMirror();
+
+  try {
+    // Create or reuse AudioContext
+    if (!_mirrorCtx || _mirrorCtx.state === "closed") {
+      _mirrorCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    // Create mirror audio element — muted, not attached to system output
+    _mirrorEl = document.createElement("audio");
+    _mirrorEl.volume = 0;         // completely silent — only used for Web Audio tap
+    _mirrorEl.muted  = true;      // belt-and-suspenders mute
+    _mirrorEl.crossOrigin = "anonymous";
+    _mirrorEl.preload = "auto";
+    _mirrorEl.setAttribute("playsinline", "");
+    // Do NOT set x-webkit-airplay or disableRemotePlayback — this element
+    // must NOT register with the system as a media session source.
+    _mirrorEl.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
+    _mirrorEl.setAttribute("aria-hidden", "true");
+    document.body.appendChild(_mirrorEl);
+
+    // Connect mirror → analyser (NO destination → no audio output from mirror)
+    _mirrorSrc = _mirrorCtx.createMediaElementSource(_mirrorEl);
+    _mirrorAn  = _mirrorCtx.createAnalyser();
+    _mirrorAn.fftSize = 2048;
+    _mirrorAn.smoothingTimeConstant = 0.0;
+    _mirrorSrc.connect(_mirrorAn);
+    // Intentionally NOT connecting to _mirrorCtx.destination
+
+    // Load the same src
+    _mirrorEl.src = url;
+    _mirrorSyncUrl = url;
+    _mirrorEl.load();
+
+    // Sync mirror currentTime to main element every 2s (prevents drift)
+    clearInterval(_mirrorSyncTimer);
+    _mirrorSyncTimer = setInterval(() => {
+      if (!_mirrorEl || !mainAudioEl) return;
+      const diff = Math.abs(_mirrorEl.currentTime - mainAudioEl.currentTime);
+      if (diff > 2.5) {
+        try { _mirrorEl.currentTime = mainAudioEl.currentTime; } catch {}
+      }
+      // Mirror playback state tracks main
+      const mainPlaying = !mainAudioEl.paused && !mainAudioEl.ended;
+      if (mainPlaying && _mirrorEl.paused) {
+        _mirrorEl.play().catch(() => {});
+        if (_mirrorCtx.state === "suspended") _mirrorCtx.resume().catch(() => {});
+      } else if (!mainPlaying && !_mirrorEl.paused) {
+        _mirrorEl.pause();
+      }
+    }, 2000);
+
+    console.log("[Viz] iOS mirror analyser created | url:", url.substring(0, 60),
+      "| ctxState:", _mirrorCtx.state, "| isIOS:", isIOS);
+    return _mirrorAn;
+  } catch (e) {
+    console.warn("[Viz] iOS mirror analyser failed:", e.message);
+    destroyMirror();
+    return null;
+  }
+}
+
+async function startMirrorPlayback(mainAudioEl) {
+  if (!_mirrorEl || !mainAudioEl) return;
+  if (_mirrorCtx && _mirrorCtx.state === "suspended") {
+    try { await _mirrorCtx.resume(); } catch {}
+  }
+  const mainPlaying = !mainAudioEl.paused && !mainAudioEl.ended;
+  if (mainPlaying && _mirrorEl.paused && _mirrorEl.readyState >= 2) {
+    try {
+      _mirrorEl.currentTime = mainAudioEl.currentTime;
+      await _mirrorEl.play();
+    } catch (e) {
+      console.warn("[Viz] mirror play failed:", e.message);
+    }
+  }
+}
+
+// ── Non-iOS: direct tap on the main element ───────────────────────────────────
+// On non-iOS (Chrome/Desktop/Android), Web Audio does NOT break system routing,
+// so we connect directly. We also reconnect to destination so audio still plays.
 let _tapCtx    = null;
 let _tapSource = null;
 let _tapAn     = null;
 let _tapEl     = null;
 
-function getTapAnalyser(audioEl) {
+function getTapAnalyserDirect(audioEl) {
   if (!audioEl) return null;
   if (_tapAn && _tapEl === audioEl && _tapCtx && _tapCtx.state !== "closed") {
     return _tapAn;
@@ -51,19 +197,20 @@ function getTapAnalyser(audioEl) {
     _tapAn     = _tapCtx.createAnalyser();
     _tapAn.fftSize = 2048;
     _tapAn.smoothingTimeConstant = 0.0;
-    // Connect source → analyser ONLY (no destination = silent tap)
+    // On non-iOS: connect source → analyser → destination (preserves audio output)
     _tapSource.connect(_tapAn);
+    _tapAn.connect(_tapCtx.destination);
     _tapEl = audioEl;
-    console.log("[Viz] tapAnalyser created | iOS:", isIOS, "| Safari:", isSafari, "| ctxState:", _tapCtx.state);
+    console.log("[Viz] direct tapAnalyser (non-iOS) | ctxState:", _tapCtx.state);
     return _tapAn;
   } catch (e) {
-    console.warn("[Viz] tapAnalyser failed:", e.message);
+    console.warn("[Viz] direct tapAnalyser failed:", e.message);
     _tapAn = null; _tapSource = null;
     return null;
   }
 }
 
-async function resumeTapCtx() {
+async function resumeDirectCtx() {
   if (_tapCtx && _tapCtx.state === "suspended") {
     try { await _tapCtx.resume(); } catch {}
   }
@@ -587,15 +734,45 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
   const tryConnectAnalyser = useCallback(async () => {
     const audio = audioRef?.current;
     if (!audio) { analyserRef.current = null; return false; }
-    await resumeTapCtx();
-    const an = getTapAnalyser(audio);
-    if (an) {
-      analyserRef.current = an;
-      console.log("[Viz] probe | audioElementFound: true | analyserConnected: true | ctxState:", _tapCtx?.state, "| isIOS:", isIOS, "| isSafari:", isSafari, "| dpr:", getDpr());
-      return true;
+
+    let an = null;
+
+    if (isIOS) {
+      // iOS: use mirror element to avoid breaking AirPlay/BT/system routing
+      an = getOrCreateMirrorAnalyser(audio);
+      if (an) {
+        analyserRef.current = an;
+        await startMirrorPlayback(audio);
+        console.log("[Viz] probe | isIOS: true | isSafari:", isSafari,
+          "| analyserConnected: true | analyserStrategy: mirror_element",
+          "| audioContextState:", _mirrorCtx?.state,
+          "| isAirPlayActive:", detectAirPlay(audio),
+          "| isBluetoothOutput:", detectBluetooth(),
+          "| mediaSessionActive:", detectMediaSession(),
+          "| radioStillPlaying:", !audio.paused,
+          "| dpr:", getDpr());
+        return true;
+      }
+    } else {
+      // Non-iOS: direct tap on main element — safe, no routing side-effects
+      await resumeDirectCtx();
+      an = getTapAnalyserDirect(audio);
+      if (an) {
+        analyserRef.current = an;
+        console.log("[Viz] probe | isIOS: false | analyserConnected: true | analyserStrategy: direct",
+          "| audioContextState:", _tapCtx?.state,
+          "| mediaSessionActive:", detectMediaSession(),
+          "| radioStillPlaying:", !audio.paused);
+        return true;
+      }
     }
+
     analyserRef.current = null;
-    console.log("[Viz] probe | audioElementFound: true | analyserConnected: false | isIOS:", isIOS);
+    console.log("[Viz] probe | analyserConnected: false | isIOS:", isIOS,
+      "| isAirPlayActive:", detectAirPlay(audio),
+      "| audioContextState:", (isIOS ? _mirrorCtx?.state : _tapCtx?.state) || "null",
+      "| mediaSessionActive:", detectMediaSession(),
+      "| radioStillPlaying:", !audio.paused);
     return false;
   }, [audioRef]);
 
@@ -616,14 +793,30 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       ctx.clearRect(0, 0, lW, lH);
       const t = Date.now() / 1000, an = analyserRef.current;
 
-      if (an && _tapCtx && _tapCtx.state === "running") {
+      // Determine active AudioContext based on strategy
+      const activeCtx = isIOS ? _mirrorCtx : _tapCtx;
+      const ctxRunning = activeCtx && activeCtx.state === "running";
+
+      if (an && ctxRunning) {
         const bufLen = an.frequencyBinCount, sm = getSmoothedFreq(an);
         const live = isAnalyserLive(sm, bufLen);
+        const mainAudio = audioRef?.current;
         if (live) {
           const bass = getBass(sm, bufLen), mid = getMid(sm, bufLen), treble = getTreble(sm, bufLen), beat = detectBeat(bass);
           if (Date.now() - logTimerRef.current > 3000) {
             logTimerRef.current = Date.now();
-            console.log("[Viz] live | modeName:", currentMode, "| isIOS:", isIOS, "| isSafari:", isSafari, "| analyserConnected: true | frequencyDataChanging: true | bassEnergy:", bass.toFixed(3), "| midEnergy:", mid.toFixed(3), "| trebleEnergy:", treble.toFixed(3), "| beatDetected:", beat, "| canvasDevicePixelRatio:", deviceDpr, "| usingFallbackVisualizer: false | radioStillPlaying:", isPlaying);
+            console.log("[Viz] live | modeName:", currentMode,
+              "| isIOS:", isIOS, "| isSafari:", isSafari,
+              "| analyserConnected: true | frequencyDataChanging: true",
+              "| bassEnergy:", bass.toFixed(3), "| midEnergy:", mid.toFixed(3), "| trebleEnergy:", treble.toFixed(3),
+              "| beatDetected:", beat,
+              "| audioContextState:", activeCtx.state,
+              "| isAirPlayActive:", detectAirPlay(mainAudio),
+              "| isBluetoothOutput:", detectBluetooth(),
+              "| mediaSessionActive:", detectMediaSession(),
+              "| radioStillPlaying:", isPlaying,
+              "| usingFallbackVisualizer: false",
+              "| canvasDevicePixelRatio:", deviceDpr);
           }
           switch (currentMode) {
             case "spectrum": drawSpectrum(ctx, lW, lH, sm, bufLen, bass, beat, color); break;
@@ -637,11 +830,36 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
             default:         drawDrift(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, treble); break;
           }
         } else {
-          if (Date.now() - logTimerRef.current > 3000) { logTimerRef.current = Date.now(); console.log("[Viz] live | analyserConnected: true | frequencyDataChanging: false | usingFallbackVisualizer: true | modeName:", currentMode, "| isIOS:", isIOS); }
+          // Analyser connected but data is silent — mirror may need to start playing
+          if (isIOS && _mirrorEl && _mirrorEl.paused && mainAudio && !mainAudio.paused) {
+            _mirrorEl.play().catch(() => {});
+            if (_mirrorCtx?.state === "suspended") _mirrorCtx.resume().catch(() => {});
+          }
+          if (Date.now() - logTimerRef.current > 3000) {
+            logTimerRef.current = Date.now();
+            console.log("[Viz] live | analyserConnected: true | frequencyDataChanging: false",
+              "| usingFallbackVisualizer: true | modeName:", currentMode,
+              "| isIOS:", isIOS, "| audioContextState:", activeCtx.state,
+              "| isAirPlayActive:", detectAirPlay(mainAudio),
+              "| mediaSessionActive:", detectMediaSession(),
+              "| radioStillPlaying:", isPlaying);
+          }
           runFallback(ctx, lW, lH, t, currentMode, color, isPlaying, particlesRef);
         }
       } else {
-        if (Date.now() - logTimerRef.current > 3000) { logTimerRef.current = Date.now(); console.log("[Viz] fallback | modeName:", currentMode, "| isIOS:", isIOS, "| isSafari:", isSafari, "| audioElementFound:", !!audioRef?.current, "| audioContextState:", _tapCtx?.state || "null", "| analyserConnected: false | usingFallbackVisualizer: true | radioStillPlaying:", isPlaying); }
+        if (Date.now() - logTimerRef.current > 3000) {
+          logTimerRef.current = Date.now();
+          const mainAudio = audioRef?.current;
+          console.log("[Viz] fallback | modeName:", currentMode,
+            "| isIOS:", isIOS, "| isSafari:", isSafari,
+            "| audioElementFound:", !!mainAudio,
+            "| audioContextState:", activeCtx?.state || "null",
+            "| analyserConnected: false | usingFallbackVisualizer: true",
+            "| isAirPlayActive:", detectAirPlay(mainAudio),
+            "| isBluetoothOutput:", detectBluetooth(),
+            "| mediaSessionActive:", detectMediaSession(),
+            "| radioStillPlaying:", isPlaying);
+        }
         runFallback(ctx, lW, lH, t, currentMode, color, isPlaying, particlesRef);
       }
       rafRef.current = requestAnimationFrame(loop);
@@ -662,7 +880,15 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     const onVisible = async () => {
       if (document.visibilityState !== "visible") return;
       stopLoop(); particlesRef.current = []; _sm.data = null;
-      await resumeTapCtx();
+      // Resume appropriate context
+      if (isIOS) {
+        if (_mirrorCtx?.state === "suspended") { try { await _mirrorCtx.resume(); } catch {} }
+        if (_mirrorEl && audioRef?.current && !audioRef.current.paused && _mirrorEl.paused) {
+          try { await _mirrorEl.play(); } catch {}
+        }
+      } else {
+        await resumeDirectCtx();
+      }
       const connected = await tryConnectAnalyser();
       if (!connected) { startLoop(mode, themeColor); } else { setTimeout(() => startLoop(mode, themeColor), 80); }
     };
@@ -672,19 +898,32 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
 
   useEffect(() => {
     if (!isPlaying) return;
-    const t = setTimeout(async () => {
-      if (analyserRef.current && _tapCtx?.state === "running") return;
-      await resumeTapCtx();
+    const timer = setTimeout(async () => {
+      const activeCtx = isIOS ? _mirrorCtx : _tapCtx;
+      if (analyserRef.current && activeCtx?.state === "running") {
+        // On iOS: ensure mirror is actually playing
+        if (isIOS && _mirrorEl && _mirrorEl.paused) {
+          await startMirrorPlayback(audioRef?.current);
+        }
+        return;
+      }
       const connected = await tryConnectAnalyser();
       if (connected && !rafRef.current) startLoop(mode, themeColor);
-    }, 300);
-    return () => clearTimeout(t);
+    }, 400);
+    return () => clearTimeout(timer);
   }, [isPlaying]);
 
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
     const ro = new ResizeObserver(() => { if (canvas) { canvas.width = 0; canvas.height = 0; } });
     ro.observe(canvas); return () => ro.disconnect();
+  }, []);
+
+  // Cleanup mirror element on unmount
+  useEffect(() => {
+    return () => {
+      if (isIOS) destroyMirror();
+    };
   }, []);
 
   const currentModeObj = MODES.find(m => m.id === mode) || MODES[0];
