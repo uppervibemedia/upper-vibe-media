@@ -476,25 +476,25 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className="relative rounded-2xl p-8 text-center overflow-hidden"
-          style={{ background: "rgba(155,126,255,0.04)", border: "1px solid rgba(155,126,255,0.1)" }}>
+          style={{ background: `rgba(${rtPrimary},0.04)`, border: `1px solid rgba(${rtPrimary},0.12)` }}>
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-32 rounded-full blur-[80px] opacity-10" style={{ background: "#9B7EFF" }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-32 rounded-full blur-[80px] opacity-10" style={{ background: rtAmbient1 }} />
           </div>
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full" style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.15)" }}>
-              <Zap className="w-3 h-3 text-purple-400" />
-              <span className="text-[10px] font-black tracking-[0.2em] uppercase text-purple-400">Curated Frequency</span>
+            <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 rounded-full" style={{ background: `rgba(${rtPrimary},0.08)`, border: `1px solid rgba(${rtPrimary},0.18)` }}>
+              <Zap className="w-3 h-3" style={{ color: `rgb(${rtPrimary})` }} />
+              <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: `rgb(${rtPrimary})` }}>Curated Frequency</span>
             </div>
             <h3 className="font-heading font-black text-xl md:text-2xl text-white mb-2">
               Not sure what to play? Let the frequency choose for you
             </h3>
-            <p className="text-white/35 text-sm mb-6 max-w-md mx-auto">
+            <p className="text-white/45 text-sm mb-6 max-w-md mx-auto">
               Our radio engine picks the perfect high-vibe track based on energy, mood, and what's resonating right now.
             </p>
             <Link
               to="/radio"
               className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
-              style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.8),rgba(120,90,220,0.9))", color: "#fff", boxShadow: "0 0 24px rgba(155,126,255,0.25)" }}>
+              style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.8),rgba(${rtPrimary},0.95))`, color: "#000", boxShadow: `0 0 24px rgba(${rtPrimary},0.25)` }}>
               <Zap className="w-4 h-4" /> Enter The Frequency
             </Link>
           </div>
@@ -674,6 +674,10 @@ function EmailSignupSection() {
   const [form, setForm] = useState({ name: "", email: "" });
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtPrimary = radioTheme.vars["--rt-primary"];
+  const rtAmbient1 = radioTheme.vars["--rt-ambient1"];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -694,17 +698,17 @@ function EmailSignupSection() {
       <motion.div
         initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
         className="rounded-3xl p-8 md:p-12"
-        style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.04),rgba(212,168,67,0.03))", border: "1px solid rgba(0,229,255,0.09)" }}>
+        style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.05),rgba(${rtPrimary},0.02))`, border: `1px solid rgba(${rtPrimary},0.1)` }}>
 
         {!submitted ? (
           <div className="flex flex-col lg:flex-row gap-10 items-start lg:items-center">
             <div className="lg:max-w-xs flex-shrink-0">
               <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-4"
-                style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.18)" }}>
-                <Mail className="w-5 h-5 text-cyan-400" />
+                style={{ background: `rgba(${rtPrimary},0.08)`, border: `1px solid rgba(${rtPrimary},0.2)` }}>
+                <Mail className="w-5 h-5" style={{ color: `rgb(${rtPrimary})` }} />
               </div>
               <h3 className="font-heading font-black text-2xl text-white mb-2">Get Notified When New Music Drops</h3>
-              <p className="text-white/35 text-sm leading-relaxed">
+              <p className="text-white/45 text-sm leading-relaxed">
                 Join the Upper Vibe Media list for new 432 Hz songs, visualizers, exclusive drops, and high-vibe updates.
               </p>
             </div>
@@ -712,21 +716,21 @@ function EmailSignupSection() {
               <input type="text" placeholder="Your name (optional)"
                 value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="flex-1 px-4 py-3 rounded-xl text-sm text-white placeholder:text-white/25 focus:outline-none"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }} />
+                style={{ background: "rgba(255,255,255,0.05)", border: `1px solid rgba(${rtPrimary},0.12)` }} />
               <input type="email" placeholder="Your email *" required
                 value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="flex-1 px-4 py-3 rounded-xl text-sm text-white placeholder:text-white/25 focus:outline-none"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }} />
+                style={{ background: "rgba(255,255,255,0.05)", border: `1px solid rgba(${rtPrimary},0.12)` }} />
               <button type="submit" disabled={saving}
                 className="px-6 py-3 rounded-xl font-black text-xs tracking-wider transition-all hover:brightness-110 flex-shrink-0 disabled:opacity-60 whitespace-nowrap"
-                style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}>
+                style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.8),rgb(${rtPrimary}))`, color: "#000" }}>
                 {saving ? "..." : "Notify Me"}
               </button>
             </form>
           </div>
         ) : (
           <div className="flex items-center gap-4">
-            <CheckCircle2 className="w-8 h-8 text-cyan-400 flex-shrink-0" />
+            <CheckCircle2 className="w-8 h-8 flex-shrink-0" style={{ color: `rgb(${rtPrimary})` }} />
             <div>
               <p className="font-heading font-bold text-white text-lg">You're locked in.</p>
               <p className="text-white/40 text-sm">New Upper Vibe drops will hit your inbox first.</p>

@@ -75,10 +75,6 @@ export default function Sidebar() {
             alt="UVM"
             className="w-7 h-7 object-contain"
           />
-          <span className="font-heading font-black text-sm tracking-[0.22em]">
-            <span style={{ color: "#F5A800" }}>UPPER VIBE</span>
-            <span style={{ color: "#2B9FE8", marginLeft: "0.35em" }}>MEDIA</span>
-          </span>
         </Link>
         {isAuthenticated && user ? (
           <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted border border-border">
