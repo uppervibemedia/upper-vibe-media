@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import FeaturedTrackPlayer from "@/components/start/FeaturedTrackPlayer";
 
 const PRIMARY = "0,160,220";
 const GOLD = "212,168,67";
@@ -141,6 +142,9 @@ export default function Start() {
               MEDIA
             </div>
           </div>
+
+          {/* Featured Track Player */}
+          <FeaturedTrackPlayer />
 
           {/* Headline */}
           <div>
