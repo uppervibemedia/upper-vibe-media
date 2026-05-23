@@ -95,11 +95,17 @@ export default function Sidebar() {
 
           {/* Account / Login */}
           {isAuthenticated && user ? (
-            <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted border border-border">
-              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black bg-primary/15 text-primary">
+            <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all"
+              style={{
+                background: "rgba(0,160,220,0.07)",
+                borderColor: "rgba(0,160,220,0.28)",
+                color: "rgb(0,160,220)",
+              }}>
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black"
+                style={{ background: "rgba(0,160,220,0.15)", color: "rgb(0,160,220)" }}>
                 {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
               </div>
-              <span className="text-[11px] font-semibold text-muted-foreground">Account</span>
+              <span className="text-[11px] font-semibold">Account</span>
             </Link>
           ) : (
             <button onClick={navigateToLogin}
