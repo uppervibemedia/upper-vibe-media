@@ -593,36 +593,30 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
         <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       </div>
 
-      {/* ── Mode buttons row ── */}
+      {/* ── Single cycle button ── */}
       <div style={{
         padding: "10px 12px 12px",
         background: "linear-gradient(180deg, rgba(4,4,18,0) 0%, rgba(4,4,18,0.85) 100%)",
-        display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        {MODES.map((m) => {
-          const active = m.id === mode;
-          return (
-            <button
-              key={m.id}
-              onClick={() => setMode(m.id)}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 4,
-                padding: "5px 11px", borderRadius: 20,
-                fontSize: 9, fontWeight: 800, letterSpacing: "0.07em",
-                textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap",
-                transition: "all 0.2s ease",
-                userSelect: "none", WebkitUserSelect: "none",
-                background: active ? "rgba(0,229,255,0.15)" : "rgba(0,220,255,0.04)",
-                border: active ? "1px solid rgba(0,229,255,0.6)" : "1px solid rgba(0,220,255,0.18)",
-                color: active ? "#00E5FF" : "rgba(255,255,255,0.35)",
-                boxShadow: active ? "0 0 10px rgba(0,229,255,0.2)" : "none",
-              }}
-            >
-              <span style={{ fontSize: 10, lineHeight: 1 }}>{m.icon}</span>
-              {m.label}
-            </button>
-          );
-        })}
+        <button
+          onClick={cycleMode}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "6px 16px", borderRadius: 20,
+            fontSize: 10, fontWeight: 800, letterSpacing: "0.07em",
+            textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap",
+            transition: "all 0.2s ease",
+            userSelect: "none", WebkitUserSelect: "none",
+            background: "rgba(0,229,255,0.12)",
+            border: "1px solid rgba(0,229,255,0.5)",
+            color: "#00E5FF",
+            boxShadow: "0 0 12px rgba(0,229,255,0.15)",
+          }}
+        >
+          <span style={{ fontSize: 11, lineHeight: 1 }}>{currentModeObj.icon}</span>
+          {currentModeObj.label}
+        </button>
       </div>
     </div>
   );
