@@ -3,27 +3,31 @@ import { Youtube } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const DEFAULT_PLAYLIST_URL = "https://youtube.com/playlist?list=PLH-5EaZv0Utx6dsoODbo4wBFTTc_iGs0S&si=xevHTdJKQhdfwUw7";
-const DEFAULT_MAIN_ID = "hzR4m-w2924";
 
-// Hardcoded fallback secondary videos from the UVM visualizer playlist
-const DEFAULT_SECONDARY = [
-  { id: "Qq9YO4FVYQQ", title: "Quantum Ascend" },
-  { id: "1JNmz7mCFmg", title: "Cosmic Control" },
-  { id: "QP4FxSwkc1c", title: "432 Hz Session" },
-  { id: "6VXNZ1NOFDI", title: "High Vibe Drop" },
-];
+// Extract YouTube video ID from a URL or embed URL
+function extractVideoId(url) {
+  if (!url) return null;
+  const m = url.match(/(?:v=|\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
 
 // YouTube thumbnails via i.ytimg.com (avoids some CORS issues with img.youtube.com)
 const THUMB_SIZES = ["maxresdefault", "sddefault", "hqdefault", "mqdefault"];
 
-function YtThumb({ videoId, title, small = false }) {
+function YtThumb({ videoId, title, small = false, overrideThumbnail = null }) {
   const [sizeIdx, setSizeIdx] = React.useState(0);
   const [pressed, setPressed] = React.useState(false);
+  const [useFallback, setUseFallback] = React.useState(false);
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  const thumbUrl = `https://i.ytimg.com/vi/${videoId}/${THUMB_SIZES[sizeIdx]}.jpg`;
+  const fallbackThumb = `https://i.ytimg.com/vi/${videoId}/${THUMB_SIZES[sizeIdx]}.jpg`;
+  const thumbUrl = (overrideThumbnail && !useFallback) ? overrideThumbnail : fallbackThumb;
 
   const handleError = () => {
-    if (sizeIdx < THUMB_SIZES.length - 1) setSizeIdx((i) => i + 1);
+    if (overrideThumbnail && !useFallback) {
+      setUseFallback(true); // override failed, try ytimg fallback chain
+    } else if (sizeIdx < THUMB_SIZES.length - 1) {
+      setSizeIdx((i) => i + 1);
+    }
   };
 
   return (
@@ -96,21 +100,27 @@ function YtThumb({ videoId, title, small = false }) {
 
 export default function YouTubeCTA() {
   const [playlistUrl, setPlaylistUrl] = useState(DEFAULT_PLAYLIST_URL);
-  const [mainVideoId, setMainVideoId] = useState(DEFAULT_MAIN_ID);
-  const [secondaryVideos, setSecondaryVideos] = useState(DEFAULT_SECONDARY);
+  const [mainVideo, setMainVideo] = useState(null);
+  const [secondaryVideos, setSecondaryVideos] = useState([]);
 
   useEffect(() => {
+    // Load playlist URL from settings
     base44.entities.AppSettings.filter({ key: "youtube_playlist_url" }).then((rows) => {
       if (rows?.[0]?.value) setPlaylistUrl(rows[0].value);
     });
-    base44.entities.AppSettings.filter({ key: "youtube_preview_video_id" }).then((rows) => {
-      if (rows?.[0]?.value) setMainVideoId(rows[0].value);
-    });
-    // Admin can override secondary videos as a JSON array in AppSettings
-    base44.entities.AppSettings.filter({ key: "youtube_secondary_videos" }).then((rows) => {
-      if (rows?.[0]?.value) {
-        try { setSecondaryVideos(JSON.parse(rows[0].value)); } catch {}
-      }
+
+    // Load visualizers from the database
+    base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 20).then((rows) => {
+      const valid = rows
+        .map((v) => {
+          const id = extractVideoId(v.video_url) || extractVideoId(v.embed_url);
+          if (!id) return null;
+          return { id, title: v.title || v.linked_song_title || "Watch Now", thumbnail_url: v.thumbnail_url };
+        })
+        .filter(Boolean);
+
+      if (valid.length > 0) setMainVideo(valid[0]);
+      if (valid.length > 1) setSecondaryVideos(valid.slice(1, 5));
     });
   }, []);
 
@@ -153,17 +163,19 @@ export default function YouTubeCTA() {
       </div>
 
       {/* Main featured video */}
-      <YtThumb videoId={mainVideoId} title="Featured Visualizer" />
+      {mainVideo && <YtThumb videoId={mainVideo.id} title={mainVideo.title} overrideThumbnail={mainVideo.thumbnail_url} />}
 
       {/* Secondary videos — horizontal swipe row */}
-      <div
-        className="flex gap-3 overflow-x-auto pb-1"
-        style={{ scrollSnapType: "x mandatory" }}
-      >
-        {secondaryVideos.slice(0, 4).map((v) => (
-          <YtThumb key={v.id} videoId={v.id} title={v.title} small />
-        ))}
-      </div>
+      {secondaryVideos.length > 0 && (
+        <div
+          className="flex gap-3 overflow-x-auto pb-1"
+          style={{ scrollSnapType: "x mandatory" }}
+        >
+          {secondaryVideos.map((v) => (
+            <YtThumb key={v.id} videoId={v.id} title={v.title} overrideThumbnail={v.thumbnail_url} small />
+          ))}
+        </div>
+      )}
 
       {/* CTA */}
       <a
