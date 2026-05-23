@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Youtube, ExternalLink } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-const DEFAULT_PLAYLIST_URL = "https://youtube.com/playlist?list=PLH-5EaZv0Utx6dsoODbo4wBFTTc_iGs0S";
+const DEFAULT_PLAYLIST_URL = "https://youtube.com/playlist?list=PLH-5EaZv0Utx6dsoODbo4wBFTTc_iGs0S&si=xevHTdJKQhdfwUw7";
 // First (newest) video from the UVM visualizer playlist — admin can update via AppSettings
 const DEFAULT_PREVIEW_VIDEO_ID = "hzR4m-w2924";
 
