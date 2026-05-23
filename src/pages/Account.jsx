@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard, Trash2, AlertTriangle, HelpCircle, Palette } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard, Trash2, AlertTriangle, HelpCircle, Palette, ChevronLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
@@ -67,6 +67,7 @@ function ThemePicker() {
 
 export default function Account() {
   const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
+  const navigate = useNavigate();
   const [portalLoading, setPortalLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { accentId } = useTheme();
@@ -139,6 +140,16 @@ export default function Account() {
           style={{ background: `rgb(${rtPrimary})` }} />
       </div>
       <div className="max-w-lg mx-auto px-6 relative z-10">
+        {/* Back button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 text-xs mb-5 transition-colors"
+          style={{ color: `rgba(${rtPrimary},0.6)` }}
+          onMouseEnter={e => e.currentTarget.style.color = `rgb(${rtPrimary})`}
+          onMouseLeave={e => e.currentTarget.style.color = `rgba(${rtPrimary},0.6)`}
+        >
+          <ChevronLeft className="w-3.5 h-3.5" /> Back
+        </button>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-4">
 
           {/* Profile card */}
