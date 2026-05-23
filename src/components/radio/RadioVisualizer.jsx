@@ -587,18 +587,16 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
   const currentModeObj = MODES.find(m => m.id === mode) || MODES[0];
 
   return (
-    <div style={{ position: "relative", width: "100%", overflow: "hidden", borderRadius: "inherit" }}>
-      {/* Canvas */}
-      <div style={{ paddingTop: "min(56.25%, 260px)", position: "relative" }}>
-        <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+    <div style={{ width: "100%" }}>
+      {/* Canvas box */}
+      <div style={{ position: "relative", width: "100%", overflow: "hidden", borderRadius: "inherit" }}>
+        <div style={{ paddingTop: "min(56.25%, 260px)", position: "relative" }}>
+          <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+        </div>
       </div>
 
-      {/* ── Single cycle button ── */}
-      <div style={{
-        padding: "6px 10px 8px",
-        background: "linear-gradient(180deg, rgba(4,4,18,0) 0%, rgba(4,4,18,0.85) 100%)",
-        display: "flex", alignItems: "center", justifyContent: "flex-end",
-      }}>
+      {/* ── Cycle button — outside the visualizer box ── */}
+      <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 8, paddingRight: 4 }}>
         <button
           onClick={cycleMode}
           style={{
