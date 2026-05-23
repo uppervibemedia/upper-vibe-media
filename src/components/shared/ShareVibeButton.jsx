@@ -46,8 +46,8 @@ function isValidTrackId(id) {
   return true;
 }
 
-// Fixed cosmic cyan — Share button is always cyan regardless of theme
-const SHARE_CYAN = "0,200,220";
+// Fixed electric blue — Share button is always electric blue regardless of theme
+const SHARE_CYAN = "0,160,220";
 
 export default function ShareVibeButton({ type = "site", track = null, size = "md", className = "" }) {
   const [open, setOpen]     = useState(false);

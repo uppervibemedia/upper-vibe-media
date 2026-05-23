@@ -83,7 +83,7 @@ export default function PremiumDownloadModal({ open, onClose }) {
                     : { color: "rgba(255,255,255,0.35)", border: "1px solid transparent" }}>
                   Yearly
                   <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full"
-                    style={{ background: "rgba(0,200,220,0.12)", color: "#00C9E0" }}>SAVE</span>
+                    style={{ background: "rgba(0,160,220,0.12)", color: "#00A0DC" }}>SAVE</span>
                 </button>
               </div>
 

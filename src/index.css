@@ -15,7 +15,7 @@
     --card-foreground: 0 0% 94%;
     --popover: 240 40% 5%;
     --popover-foreground: 0 0% 94%;
-    --primary: 191 100% 50%;
+    --primary: 201 100% 43%;
     --primary-foreground: 240 50% 2%;
     --secondary: 43 72% 52%;
     --secondary-foreground: 0 0% 2%;
@@ -27,16 +27,16 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 30% 12%;
     --input: 240 30% 12%;
-    --ring: 191 100% 50%;
-    --chart-1: 185 100% 50%;
+    --ring: 201 100% 43%;
+    --chart-1: 201 100% 43%;
     --chart-2: 43 72% 52%;
     --chart-3: 270 80% 30%;
     --chart-4: 0 0% 94%;
-    --chart-5: 185 80% 30%;
+    --chart-5: 201 80% 30%;
     --radius: 0.75rem;
     --sidebar-background: 0 0% 2%;
     --sidebar-foreground: 0 0% 94%;
-    --sidebar-primary: 185 100% 50%;
+    --sidebar-primary: 201 100% 43%;
     --sidebar-primary-foreground: 0 0% 2%;
     --sidebar-accent: 260 30% 12%;
     --sidebar-accent-foreground: 0 0% 94%;
@@ -51,7 +51,7 @@
     --card-foreground: 0 0% 94%;
     --popover: 240 40% 5%;
     --popover-foreground: 0 0% 94%;
-    --primary: 191 100% 50%;
+    --primary: 201 100% 43%;
     --primary-foreground: 240 50% 2%;
     --secondary: 43 72% 52%;
     --secondary-foreground: 0 0% 2%;
@@ -63,15 +63,15 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 30% 12%;
     --input: 240 30% 12%;
-    --ring: 191 100% 50%;
-    --chart-1: 185 100% 50%;
+    --ring: 201 100% 43%;
+    --chart-1: 201 100% 43%;
     --chart-2: 43 72% 52%;
     --chart-3: 270 80% 30%;
     --chart-4: 0 0% 94%;
-    --chart-5: 185 80% 30%;
+    --chart-5: 201 80% 30%;
     --sidebar-background: 0 0% 2%;
     --sidebar-foreground: 0 0% 94%;
-    --sidebar-primary: 185 100% 50%;
+    --sidebar-primary: 201 100% 43%;
     --sidebar-primary-foreground: 0 0% 2%;
     --sidebar-accent: 260 30% 12%;
     --sidebar-accent-foreground: 0 0% 94%;
@@ -87,7 +87,7 @@
     --card-foreground: 240 30% 12%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 30% 12%;
-    --primary: 191 75% 38%;
+    --primary: 201 100% 36%;
     --primary-foreground: 0 0% 100%;
     --secondary: 43 72% 48%;
     --secondary-foreground: 0 0% 100%;
@@ -99,15 +99,15 @@
     --destructive-foreground: 0 0% 98%;
     --border: 36 20% 86%;
     --input: 36 20% 88%;
-    --ring: 191 75% 38%;
-    --chart-1: 191 75% 38%;
+    --ring: 201 100% 36%;
+    --chart-1: 201 100% 36%;
     --chart-2: 43 72% 48%;
     --chart-3: 270 50% 60%;
     --chart-4: 240 30% 12%;
-    --chart-5: 191 60% 55%;
+    --chart-5: 201 80% 50%;
     --sidebar-background: 36 30% 98%;
     --sidebar-foreground: 240 30% 12%;
-    --sidebar-primary: 191 75% 38%;
+    --sidebar-primary: 201 100% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 270 20% 94%;
     --sidebar-accent-foreground: 240 30% 12%;
@@ -139,7 +139,6 @@
 
 /* ── iOS Safe-Area & Momentum Scrolling ── */
 html {
-  /* Ensure viewport fills notch/Dynamic Island area with background color */
   background-color: hsl(240 50% 2%);
 }
 
@@ -195,12 +194,12 @@ html {
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(185 100% 50% / 0.4);
+  background: hsl(201 100% 43% / 0.4);
 }
 
 /* Glow utilities */
 .glow-blue {
-  box-shadow: 0 0 20px hsl(185 100% 50% / 0.15), 0 0 60px hsl(185 100% 50% / 0.05);
+  box-shadow: 0 0 20px hsl(201 100% 43% / 0.15), 0 0 60px hsl(201 100% 43% / 0.05);
 }
 .glow-gold {
   box-shadow: 0 0 20px hsl(43 72% 52% / 0.15), 0 0 60px hsl(43 72% 52% / 0.05);
@@ -209,7 +208,7 @@ html {
   box-shadow: 0 0 20px hsl(270 80% 30% / 0.2), 0 0 60px hsl(270 80% 30% / 0.08);
 }
 .text-glow-blue {
-  text-shadow: 0 0 20px hsl(185 100% 50% / 0.4);
+  text-shadow: 0 0 20px hsl(201 100% 43% / 0.4);
 }
 .text-glow-gold {
   text-shadow: 0 0 20px hsl(43 72% 52% / 0.4);
@@ -303,7 +302,7 @@ html.solar-transitioning *::after {
 
 /* Solar glow utilities (softer, warm) */
 .solar .glow-blue {
-  box-shadow: 0 0 20px rgba(20, 150, 180, 0.1), 0 0 60px rgba(20, 150, 180, 0.04);
+  box-shadow: 0 0 20px rgba(0, 120, 175, 0.1), 0 0 60px rgba(0, 120, 175, 0.04);
 }
 .solar .glow-gold {
   box-shadow: 0 0 20px rgba(195, 145, 50, 0.12), 0 0 60px rgba(195, 145, 50, 0.04);
@@ -483,15 +482,15 @@ html.solar-transitioning *::after {
 .solar [style*="color: #ffffff"] { color: hsl(240 25% 14%) !important; }
 
 /* Radio station active glow → muted in Solar */
-.solar [style*="boxShadow"][style*="0,229,255"] {
-  box-shadow: 0 0 20px hsl(191 75% 38% / 0.15) !important;
+.solar [style*="boxShadow"][style*="0,160,220"] {
+  box-shadow: 0 0 20px hsl(201 80% 38% / 0.15) !important;
 }
 
 /* Cyan / purple label badges on dark bg → Solar-readable */
 .solar .text-purple-400 { color: hsl(270 50% 40%) !important; }
 .solar .text-purple-300 { color: hsl(270 45% 45%) !important; }
-.solar .text-cyan-400 { color: hsl(191 75% 32%) !important; }
-.solar .text-cyan-300 { color: hsl(191 70% 35%) !important; }
+.solar .text-cyan-400 { color: hsl(201 80% 32%) !important; }
+.solar .text-cyan-300 { color: hsl(201 75% 35%) !important; }
 .solar .text-yellow-400 { color: hsl(43 80% 35%) !important; }
 .solar .text-yellow-500 { color: hsl(43 85% 32%) !important; }
 .solar .text-red-400 { color: hsl(0 65% 42%) !important; }
@@ -504,11 +503,11 @@ html.solar-transitioning *::after {
 .solar [style*="color: #c4aaff"] { color: hsl(270 45% 38%) !important; }
 .solar [style*="color: rgba(155, 126, 255"] { color: hsl(270 50% 40%) !important; }
 
-/* Cyan brand color in Solar */
-.solar [style*="color: #00C9E0"],
-.solar [style*="color: #00E5FF"],
-.solar [style*="color: rgba(0,200,220"],
-.solar [style*="color: rgba(0, 229, 255"] { color: hsl(191 75% 32%) !important; }
+/* Electric blue brand color in Solar */
+.solar [style*="color: #00A0DC"],
+.solar [style*="color: #0090C8"],
+.solar [style*="color: rgba(0,160,220"],
+.solar [style*="color: rgba(0, 160, 220"] { color: hsl(201 80% 32%) !important; }
 
 /* Muted foreground already uses CSS vars — no override needed */
 
@@ -554,10 +553,10 @@ html.solar-transitioning *::after {
 }
 
 .solar .hero-logo-media {
-  color: #1a7bbf !important;
+  color: #0080B8 !important;
   background: none !important;
-  -webkit-text-fill-color: #1a7bbf !important;
-  filter: drop-shadow(0 2px 6px rgba(26, 123, 191, 0.25)) !important;
+  -webkit-text-fill-color: #0080B8 !important;
+  filter: drop-shadow(0 2px 6px rgba(0, 128, 184, 0.25)) !important;
   opacity: 1 !important;
 }
 
@@ -570,13 +569,13 @@ html.solar-transitioning *::after {
 }
 
 /* ── Solar: NowPlayingCard ── */
-.solar [style*="background: rgba(0,200,220,0.04)"],
-.solar [style*="background: rgba(0,229,255,0.08)"] {
-  background: hsl(191 50% 95%) !important;
-  border-color: hsl(191 40% 82%) !important;
+.solar [style*="background: rgba(0,160,220,0.04)"],
+.solar [style*="background: rgba(0,160,220,0.08)"] {
+  background: hsl(201 50% 95%) !important;
+  border-color: hsl(201 40% 82%) !important;
 }
-.solar [style*="color: rgba(0,200,220,0.5)"],
-.solar [style*="color: rgba(0,229,255"] { color: hsl(191 75% 32%) !important; }
+.solar [style*="color: rgba(0,160,220,0.5)"],
+.solar [style*="color: rgba(0,160,220"] { color: hsl(201 80% 32%) !important; }
 
 /* ── Solar: Reaction buttons ── */
 .solar [style*="background: rgba(155,126,255,0.2)"] {

@@ -6,14 +6,14 @@ import { useTheme } from "@/context/ThemeContext";
 export const RADIO_THEMES = {
   cyan: {
     id: "cyan",
-    label: "Cosmic Cyan",
-    swatch: "#00E5FF",
+    label: "Electric Blue",
+    swatch: "#00A0DC",
     vars: {
-      "--rt-primary":       "0,229,255",
-      "--rt-primary-dark":  "0,168,192",
-      "--rt-primary-glow":  "0,200,220",
+      "--rt-primary":       "0,160,220",
+      "--rt-primary-dark":  "0,120,175",
+      "--rt-primary-glow":  "0,145,200",
       "--rt-secondary":     "155,126,255",
-      "--rt-ambient1":      "#00C9E0",
+      "--rt-ambient1":      "#0090C8",
       "--rt-ambient2":      "#9B7EFF",
       "--rt-blob-opacity":  "0.06",
     },

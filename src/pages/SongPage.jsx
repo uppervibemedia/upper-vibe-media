@@ -122,7 +122,7 @@ export default function SongPage() {
   const rtp = radioTheme.vars["--rt-primary"];    // e.g. "0,229,255"
   const rts = radioTheme.vars["--rt-secondary"];  // e.g. "155,126,255"
   // Fixed colors (independent of theme)
-  const CYAN    = "0,200,220";      // cosmic cyan — Support + Share default
+  const CYAN    = "0,160,220";      // electric blue — Support + Share default
   const PURPLE  = "91,33,182";      // deep violet — Save/heart
   const AMBER   = "212,168,67";     // midnight amber — music buttons
 
@@ -415,7 +415,7 @@ export default function SongPage() {
                             <img src={linkedVisualizer.thumbnail_url} alt={linkedVisualizer.title} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center"
-                              style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.07),rgba(0,0,0,0.5))" }}>
+                              style={{ background: "linear-gradient(135deg,rgba(0,160,220,0.07),rgba(0,0,0,0.5))" }}>
                               <Tv2 className="w-12 h-12 text-white/10" />
                             </div>
                           )}
@@ -488,7 +488,7 @@ export default function SongPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
             className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl"
-            style={{ background: "linear-gradient(135deg,rgba(0,180,210,0.95),rgba(0,229,255,0.9))", color: "#000", backdropFilter: "blur(12px)" }}>
+            style={{ background: "linear-gradient(135deg,rgba(0,120,175,0.95),rgba(0,160,220,0.9))", color: "#fff", backdropFilter: "blur(12px)" }}>
             <Zap className="w-5 h-5 fill-current" />
             <div>
               <p className="font-black text-sm">Thank you for the boost! 🙏</p>

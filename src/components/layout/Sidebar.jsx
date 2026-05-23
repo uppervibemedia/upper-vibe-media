@@ -86,7 +86,7 @@ export default function Sidebar() {
         ) : (
           <button onClick={navigateToLogin}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-black text-[11px] tracking-wide"
-            style={{ background: "linear-gradient(135deg,#009CB8,#00C8E0)", color: "#000" }}>
+            style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff" }}>
             Log In
           </button>
         )}

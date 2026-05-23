@@ -11,13 +11,13 @@ export default function HeroSection() {
         <div className="absolute inset-0" style={{ background: "linear-gradient(135deg,#04040e 0%,#070714 60%,#080820 100%)" }} />
         {/* Teal glow top-right */}
         <div className="absolute -top-32 right-0 w-[700px] h-[700px] rounded-full opacity-[0.07] blur-[120px] pointer-events-none"
-          style={{ background: "radial-gradient(circle,#00E5FF,transparent 70%)" }} />
+          style={{ background: "radial-gradient(circle,#00A0DC,transparent 70%)" }} />
         {/* Gold glow bottom-left */}
         <div className="absolute bottom-0 -left-32 w-[500px] h-[500px] rounded-full opacity-[0.07] blur-[100px] pointer-events-none"
           style={{ background: "radial-gradient(circle,#D4A843,transparent 70%)" }} />
         {/* Center subtle pulse */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full opacity-[0.03] blur-[160px] pointer-events-none"
-          style={{ background: "radial-gradient(circle,#00E5FF,transparent 60%)" }} />
+          style={{ background: "radial-gradient(circle,#00A0DC,transparent 60%)" }} />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 pt-28 pb-20 md:pt-0 md:pb-0 md:h-screen md:flex md:items-center">
@@ -40,10 +40,10 @@ export default function HeroSection() {
           >
             <span className="text-white block">Music That</span>
             <span className="text-white block">Reprograms The</span>
-            <span className="block" style={{ color: "#00E5FF", textShadow: "0 0 60px rgba(0,229,255,0.45), 0 0 120px rgba(0,229,255,0.15)" }}>
+            <span className="block" style={{ color: "#00A0DC", textShadow: "0 0 60px rgba(0,160,220,0.45), 0 0 120px rgba(0,160,220,0.15)" }}>
               Way You Feel,
             </span>
-            <span className="block" style={{ color: "#00E5FF", textShadow: "0 0 60px rgba(0,229,255,0.45), 0 0 120px rgba(0,229,255,0.15)" }}>
+            <span className="block" style={{ color: "#00A0DC", textShadow: "0 0 60px rgba(0,160,220,0.45), 0 0 120px rgba(0,160,220,0.15)" }}>
               Think, And Move
             </span>
           </motion.h1>
@@ -63,7 +63,7 @@ export default function HeroSection() {
           >
             <Link to="/discover"
               className="flex items-center gap-2.5 px-7 py-4 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.03]"
-              style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 32px rgba(0,229,255,0.35)" }}>
+              style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff", boxShadow: "0 0 32px rgba(0,160,220,0.35)" }}>
               <Play className="w-4 h-4" /> Enter The Music Vault
             </Link>
             <Link to="/academy"

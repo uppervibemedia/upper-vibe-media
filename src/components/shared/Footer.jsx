@@ -74,7 +74,7 @@ function FooterEmailSignup() {
         type="submit"
         disabled={saving}
         className="px-4 py-2 rounded-lg font-black text-[10px] tracking-wider transition-all hover:brightness-110 flex-shrink-0 disabled:opacity-60"
-        style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}>
+        style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff" }}>
         {saving ? "..." : "Notify Me"}
       </button>
     </form>
@@ -103,7 +103,7 @@ export default function Footer() {
               A private high-vibration music vault and learning hub for conscious listeners.
             </p>
             <div className="flex items-center gap-1.5 mt-4 text-[10px] font-bold tracking-widest uppercase"
-              style={{ color: "#00E5FF" }}>
+              style={{ color: "#00A0DC" }}>
               <Waves className="w-3 h-3" /> Stream The Frequency
             </div>
           </div>
