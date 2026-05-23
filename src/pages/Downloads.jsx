@@ -96,7 +96,7 @@ export default function Downloads() {
           <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-1">My Downloads</h1>
           <p className="font-heading font-bold mb-2 leading-snug flex items-center gap-2"
             style={{ fontSize: "clamp(0.85rem, 2.5vw, 1.1rem)", color: `rgb(${rgb})` }}>
-            Library <Download className="w-4 h-4 flex-shrink-0" />
+            Offline Library <Download className="w-4 h-4 flex-shrink-0" />
           </p>
           <p className="text-white/40 text-sm">
             {downloads.length} track{downloads.length !== 1 ? "s" : ""} in your offline library
