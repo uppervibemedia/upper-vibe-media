@@ -120,7 +120,7 @@ function getOrCreateMirrorAnalyser(mainAudioEl) {
     _mirrorSrc = _mirrorCtx.createMediaElementSource(_mirrorEl);
     _mirrorAn  = _mirrorCtx.createAnalyser();
     _mirrorAn.fftSize = 2048;
-    _mirrorAn.smoothingTimeConstant = 0.0;
+    _mirrorAn.smoothingTimeConstant = 0.55; // moderate built-in smoothing, manual layer handles the rest
     _mirrorSrc.connect(_mirrorAn);
     // Intentionally NOT connecting to _mirrorCtx.destination
 
@@ -196,7 +196,7 @@ function getTapAnalyserDirect(audioEl) {
     _tapSource = _tapCtx.createMediaElementSource(audioEl);
     _tapAn     = _tapCtx.createAnalyser();
     _tapAn.fftSize = 2048;
-    _tapAn.smoothingTimeConstant = 0.0;
+    _tapAn.smoothingTimeConstant = 0.55;
     // On non-iOS: connect source → analyser → destination (preserves audio output)
     _tapSource.connect(_tapAn);
     _tapAn.connect(_tapCtx.destination);
@@ -220,7 +220,7 @@ async function resumeDirectCtx() {
 const _sm    = { data: null };
 const _peaks = { data: null, decay: null };
 const _wfSm  = { data: null };
-const IOS_GAIN = isIOS ? 1.6 : 1.0;
+const IOS_GAIN = isIOS ? 2.2 : 1.0;
 
 function getSmoothedFreq(an) {
   const bufLen = an.frequencyBinCount;
@@ -229,24 +229,26 @@ function getSmoothedFreq(an) {
   if (!_sm.data || _sm.data.length !== bufLen) _sm.data = new Float32Array(bufLen);
   const sm = _sm.data;
   for (let i = 0; i < bufLen; i++) {
-    let r = Math.min(1, (raw[i] / 255) * IOS_GAIN);
-    sm[i] = r > sm[i] ? sm[i] * 0.3 + r * 0.7 : sm[i] * 0.85 + r * 0.15;
+    const r = Math.min(1, (raw[i] / 255) * IOS_GAIN);
+    // Fast attack (0.8 weight on new data), slow decay — preserves beat transients
+    sm[i] = r > sm[i] ? r * 0.8 + sm[i] * 0.2 : sm[i] * 0.72 + r * 0.28;
   }
   return sm;
 }
 
-function getBass(sm, n)   { const e = Math.max(1, Math.floor(n * 0.06)); let v = 0; for (let i = 0; i < e; i++) v += sm[i]; return Math.min(1, v / e); }
-function getMid(sm, n)    { const lo = Math.floor(n * 0.06), hi = Math.floor(n * 0.32); let v = 0; for (let i = lo; i < hi; i++) v += sm[i]; return Math.min(1, v / (hi - lo)); }
-function getTreble(sm, n) { const lo = Math.floor(n * 0.32), hi = Math.floor(n * 0.72); let v = 0; for (let i = lo; i < hi; i++) v += sm[i]; return Math.min(1, v / (hi - lo)); }
+function getBass(sm, n)   { const e = Math.max(1, Math.floor(n * 0.05)); let v = 0; for (let i = 0; i < e; i++) v += sm[i]; return Math.min(1, v / e); }
+function getMid(sm, n)    { const lo = Math.floor(n * 0.05), hi = Math.floor(n * 0.30); let v = 0; for (let i = lo; i < hi; i++) v += sm[i]; return Math.min(1, v / (hi - lo)); }
+function getTreble(sm, n) { const lo = Math.floor(n * 0.30), hi = Math.floor(n * 0.70); let v = 0; for (let i = lo; i < hi; i++) v += sm[i]; return Math.min(1, v / (hi - lo)); }
 function getAvg(sm, n)    { let v = 0; for (let i = 0; i < n; i++) v += sm[i]; return Math.min(1, v / n); }
 
-const _beat = { last: 0, hist: new Float32Array(8), idx: 0 };
+const _beat = { last: 0, hist: new Float32Array(12), idx: 0 };
 function detectBeat(bass) {
   const now = Date.now();
-  _beat.hist[_beat.idx % 8] = bass; _beat.idx++;
-  const avg = _beat.hist.reduce((a, b) => a + b, 0) / 8;
-  const thresh = Math.min(0.55, avg * 1.45 + 0.12);
-  if (bass > thresh && bass > 0.18 && now - _beat.last > 250) { _beat.last = now; return true; }
+  _beat.hist[_beat.idx % 12] = bass; _beat.idx++;
+  const avg = _beat.hist.reduce((a, b) => a + b, 0) / 12;
+  // Threshold: 1.35x local average, minimum 0.15 — catches both loud and soft tracks
+  const thresh = Math.min(0.5, avg * 1.35 + 0.10);
+  if (bass > thresh && bass > 0.15 && now - _beat.last > 220) { _beat.last = now; return true; }
   return false;
 }
 
@@ -267,98 +269,190 @@ function roundedBar(ctx, x, y, w, h, r) {
 }
 
 // ── Draw: Spectrum ────────────────────────────────────────────────────────────
+// Logarithmic frequency bars with falling peaks and beat flash
 function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat, color) {
-  const barCount = 72, gap = Math.max(1, W * 0.003);
+  const barCount = 64, gap = Math.max(1.5, W * 0.004);
   const barW = (W - gap * (barCount - 1)) / barCount;
-  const usable = Math.floor(bufLen * 0.75);
+  const usable = Math.floor(bufLen * 0.80);
   if (!_peaks.data || _peaks.data.length !== barCount) {
     _peaks.data = new Float32Array(barCount); _peaks.decay = new Float32Array(barCount);
   }
-  for (let i = 0; i < barCount; i++) {
-    const logStart = Math.pow(usable, i / barCount), logEnd = Math.pow(usable, (i + 1) / barCount);
-    const binFrom = Math.floor(logStart), binTo = Math.max(binFrom + 1, Math.ceil(logEnd));
-    let max = 0;
-    for (let b = binFrom; b < binTo && b < usable; b++) max = Math.max(max, sm[b]);
-    const boost = i < 10 ? 1.5 + bass * 0.8 : i < 20 ? 1.2 + bass * 0.4 : 1.0;
-    const v = Math.min(1, max * boost);
-    const h = Math.max(2, v * (H - 6));
-    const x = i * (barW + gap), y = H - h;
-    const grad = ctx.createLinearGradient(0, H, 0, y);
-    grad.addColorStop(0, `rgba(${color},0.65)`); grad.addColorStop(0.5, `rgba(${color},1.0)`);
-    grad.addColorStop(0.88, `rgba(${color},1.0)`); grad.addColorStop(1, "rgba(255,255,255,0.95)");
-    ctx.fillStyle = grad; roundedBar(ctx, x, y, barW, h, 2); ctx.fill();
-    if (v >= _peaks.data[i]) { _peaks.data[i] = v; _peaks.decay[i] = 0; }
-    else { _peaks.decay[i] += 0.002; _peaks.data[i] = Math.max(0, _peaks.data[i] - _peaks.decay[i]); }
-    const py = H - Math.max(2, _peaks.data[i] * (H - 6)) - 2;
-    ctx.fillStyle = beat && i < 14 ? "rgba(255,255,255,1)" : `rgba(${color},0.85)`;
-    ctx.fillRect(x, py, barW, 2);
+  // Beat flash: brief white overlay on kick
+  if (beat) {
+    ctx.fillStyle = `rgba(${color},${bass * 0.12})`;
+    ctx.fillRect(0, 0, W, H);
   }
-  ctx.save(); ctx.globalAlpha = 0.1; ctx.scale(1, -1); ctx.translate(0, -H * 2);
+  for (let i = 0; i < barCount; i++) {
+    // Logarithmic bin mapping — gives more space to bass/mid
+    const logStart = Math.pow(usable, i / barCount);
+    const logEnd   = Math.pow(usable, (i + 1) / barCount);
+    const binFrom  = Math.floor(logStart);
+    const binTo    = Math.max(binFrom + 1, Math.ceil(logEnd));
+    let max = 0;
+    for (let b = binFrom; b < binTo && b < usable; b++) max = Math.max(max, sm[b]);
+    // Bass bars get extra height boost on beat
+    const beatBoost = beat && i < 8 ? 1.0 + bass * 0.6 : 1.0;
+    const v = Math.min(1, max * beatBoost);
+    const h = Math.max(2, v * (H - 4));
+    const x = i * (barW + gap), y = H - h;
+    // Color: base at bottom, white tip at high energy
+    const grad = ctx.createLinearGradient(0, H, 0, y);
+    grad.addColorStop(0,    `rgba(${color},0.55)`);
+    grad.addColorStop(0.6,  `rgba(${color},1.0)`);
+    grad.addColorStop(1,    `rgba(255,255,255,${0.7 + v * 0.3})`);
+    ctx.fillStyle = grad;
+    roundedBar(ctx, x, y, barW, h, 2);
+    ctx.fill();
+    // Falling peak dot
+    if (v >= _peaks.data[i]) { _peaks.data[i] = v; _peaks.decay[i] = 0.001; }
+    else { _peaks.decay[i] = Math.min(_peaks.decay[i] * 1.06 + 0.0005, 0.025); _peaks.data[i] = Math.max(0, _peaks.data[i] - _peaks.decay[i]); }
+    if (_peaks.data[i] > 0.02) {
+      const py = H - _peaks.data[i] * (H - 4) - 2;
+      ctx.fillStyle = beat && i < 10 ? "rgba(255,255,255,0.95)" : `rgba(${color},0.9)`;
+      ctx.fillRect(x, py, barW, 2);
+    }
+  }
+  // Subtle reflection
+  ctx.save();
+  ctx.globalAlpha = 0.07;
+  ctx.scale(1, -1);
+  ctx.translate(0, -H * 2);
   for (let i = 0; i < barCount; i++) {
     const logStart = Math.pow(usable, i / barCount), logEnd = Math.pow(usable, (i + 1) / barCount);
     const binFrom = Math.floor(logStart), binTo = Math.max(binFrom + 1, Math.ceil(logEnd));
     let max = 0;
     for (let b = binFrom; b < binTo && b < usable; b++) max = Math.max(max, sm[b]);
-    const v = Math.min(1, max), h = Math.max(1, v * (H - 6) * 0.35);
-    ctx.fillStyle = `rgba(${color},1)`; ctx.fillRect(i * (barW + gap), H - h, barW, h);
+    const h = Math.max(1, Math.min(1, max) * (H - 4) * 0.3);
+    ctx.fillStyle = `rgba(${color},1)`;
+    ctx.fillRect(i * (barW + gap), H - h, barW, h);
   }
   ctx.restore();
 }
 
 // ── Draw: Waveform ────────────────────────────────────────────────────────────
+// Oscilloscope-style time-domain wave — looks completely different from bars
 function drawWaveform(ctx, W, H, an, bass, beat, color) {
-  const bufLen = an.fftSize;
-  const raw = new Uint8Array(bufLen);
+  // Use raw time-domain data — unsmoothed so it shows real waveform shape
+  const rawLen = an.fftSize;
+  const raw = new Uint8Array(rawLen);
   an.getByteTimeDomainData(raw);
-  if (!_wfSm.data || _wfSm.data.length !== bufLen) _wfSm.data = new Float32Array(bufLen);
-  const wf = _wfSm.data;
+
+  const cy = H / 2;
+  const step = W / rawLen;
+
+  // Compute RMS amplitude for scaling
   let rms = 0;
-  for (let i = 0; i < bufLen; i++) {
+  for (let i = 0; i < rawLen; i++) {
     const s = (raw[i] / 128.0) - 1.0; rms += s * s;
-    wf[i] = s > wf[i] ? wf[i] * 0.4 + s * 0.6 : wf[i] * 0.75 + s * 0.25;
   }
-  rms = Math.sqrt(rms / bufLen) * IOS_GAIN;
-  const cy = H / 2, amplitude = H * 0.45 * Math.max(0.08, rms * 3.0) * (1 + bass * 0.6);
-  const drawLen = Math.min(bufLen, 1024), step = W / drawLen;
-  ctx.save();
-  ctx.shadowBlur = beat ? 28 : 14;
-  ctx.shadowColor = `rgba(${color},${0.6 + bass * 0.4})`;
-  ctx.beginPath(); ctx.moveTo(0, cy);
-  for (let i = 0; i < drawLen; i++) ctx.lineTo(i * step, cy + wf[i * Math.floor(bufLen / drawLen)] * amplitude);
-  ctx.lineTo(W, cy); ctx.closePath();
-  const fg = ctx.createLinearGradient(0, cy - amplitude, 0, cy + amplitude);
-  fg.addColorStop(0, `rgba(${color},0.18)`); fg.addColorStop(0.5, `rgba(${color},0.08)`); fg.addColorStop(1, `rgba(${color},0.18)`);
-  ctx.fillStyle = fg; ctx.fill();
+  rms = Math.sqrt(rms / rawLen) * IOS_GAIN;
+  const amplitude = H * 0.42 * Math.max(0.06, rms * 4.0) * (1 + bass * 0.5);
+
+  // Center guide line
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy);
+  ctx.strokeStyle = `rgba(${color},0.08)`; ctx.lineWidth = 1; ctx.stroke();
+
+  // Filled area under waveform
   ctx.beginPath();
-  for (let i = 0; i < drawLen; i++) {
-    const x = i * step, y = cy + wf[i * Math.floor(bufLen / drawLen)] * amplitude;
+  ctx.moveTo(0, cy);
+  for (let i = 0; i < rawLen; i++) {
+    const s = (raw[i] / 128.0) - 1.0;
+    ctx.lineTo(i * step, cy + s * amplitude);
+  }
+  ctx.lineTo(W, cy); ctx.closePath();
+  const fillG = ctx.createLinearGradient(0, cy - amplitude, 0, cy + amplitude);
+  fillG.addColorStop(0,   `rgba(${color},0.22)`);
+  fillG.addColorStop(0.5, `rgba(${color},0.04)`);
+  fillG.addColorStop(1,   `rgba(${color},0.22)`);
+  ctx.fillStyle = fillG; ctx.fill();
+
+  // The actual waveform line — glow on beat
+  ctx.save();
+  ctx.shadowBlur  = beat ? 24 : 10;
+  ctx.shadowColor = `rgba(${color},${0.5 + bass * 0.5})`;
+  ctx.beginPath();
+  for (let i = 0; i < rawLen; i++) {
+    const s = (raw[i] / 128.0) - 1.0;
+    const x = i * step, y = cy + s * amplitude;
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   }
-  const lg = ctx.createLinearGradient(0, 0, W, 0);
-  lg.addColorStop(0, `rgba(${color},0.35)`); lg.addColorStop(0.25, `rgba(${color},1.0)`);
-  lg.addColorStop(0.5, "rgba(255,255,255,0.95)"); lg.addColorStop(0.75, `rgba(${color},1.0)`); lg.addColorStop(1, `rgba(${color},0.35)`);
-  ctx.strokeStyle = lg; ctx.lineWidth = beat ? 3 : 2; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke();
+  // Gradient along the wave: brighter in middle
+  const lineG = ctx.createLinearGradient(0, 0, W, 0);
+  lineG.addColorStop(0,    `rgba(${color},0.4)`);
+  lineG.addColorStop(0.15, `rgba(${color},0.9)`);
+  lineG.addColorStop(0.5,  `rgba(255,255,255,${0.8 + bass * 0.2})`);
+  lineG.addColorStop(0.85, `rgba(${color},0.9)`);
+  lineG.addColorStop(1,    `rgba(${color},0.4)`);
+  ctx.strokeStyle = lineG;
+  ctx.lineWidth = beat ? 2.5 : 1.8;
+  ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke();
   ctx.restore();
-  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy);
-  ctx.strokeStyle = `rgba(${color},0.07)`; ctx.lineWidth = 1; ctx.stroke();
+
+  // Second mirrored wave (inverted, dim) for visual depth
+  ctx.save(); ctx.globalAlpha = 0.18;
+  ctx.beginPath();
+  for (let i = 0; i < rawLen; i++) {
+    const s = (raw[i] / 128.0) - 1.0;
+    i === 0 ? ctx.moveTo(i * step, cy - s * amplitude * 0.5)
+            : ctx.lineTo(i * step, cy - s * amplitude * 0.5);
+  }
+  ctx.strokeStyle = `rgba(${color},0.7)`; ctx.lineWidth = 1; ctx.stroke();
+  ctx.restore();
 }
 
 // ── Draw: Energy Bars ─────────────────────────────────────────────────────────
+// MIRRORED bars growing from CENTER — visually distinct from spectrum (which is bottom-up)
+// Wide bars, color split by frequency band: bass=cyan, mid=purple, treble=white
 function drawEnergy(ctx, W, H, sm, bufLen, bass, mid, treble, beat) {
-  const barCount = 60, gap = Math.max(1, W * 0.004);
+  const barCount = 28, gap = Math.max(2, W * 0.008);
   const barW = (W - gap * (barCount - 1)) / barCount;
-  const usable = Math.floor(bufLen * 0.8);
-  for (let i = 0; i < barCount; i++) {
-    const binIdx = Math.floor((i / barCount) * usable);
-    const boost = i < 12 ? 1.6 + bass * 1.0 : i < 25 ? 1.2 + mid * 0.5 : i > 45 ? 0.9 + treble * 0.4 : 1.0;
-    const v = Math.min(1, sm[binIdx] * boost);
-    const h = Math.max(3, v * H * 0.96), x = i * (barW + gap), hue = 185 + v * 75;
-    const grad = ctx.createLinearGradient(0, H, 0, H - h);
-    grad.addColorStop(0, `hsla(${hue},100%,42%,${0.55 + v * 0.45})`);
-    grad.addColorStop(0.55, `hsla(${hue + 18},100%,62%,${0.75 + v * 0.25})`);
-    grad.addColorStop(1, `hsla(${hue + 36},100%,84%,${0.35 + v * 0.45})`);
-    ctx.fillStyle = grad; roundedBar(ctx, x, H - h, barW, h, 3); ctx.fill();
+  const usable = Math.floor(bufLen * 0.75);
+  const cy = H / 2;
+
+  // Beat pulse: glow ring from center
+  if (beat) {
+    const beatAge = (Date.now() - _beat.last) / 400;
+    const pulseR = W * 0.4 * beatAge;
+    ctx.save();
+    ctx.globalAlpha = (1 - beatAge) * bass * 0.35;
+    ctx.strokeStyle = `rgba(${bass > 0.5 ? "255,255,255" : "0,229,255"},1)`;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(W / 2, cy, pulseR, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
   }
+
+  for (let i = 0; i < barCount; i++) {
+    // Linear bin mapping for energy bars (different from spectrum's log)
+    const binIdx = Math.floor((i / barCount) * usable);
+    // Band-specific boosts
+    const isBass = i < 6, isMid = i >= 6 && i < 16, isTreble = i >= 16;
+    const boost = isBass ? 1.8 + bass * 1.2 : isMid ? 1.3 + mid * 0.8 : 1.0 + treble * 0.5;
+    const v = Math.min(1, sm[binIdx] * boost);
+    const halfH = Math.max(3, v * (H * 0.46));
+    const x = i * (barW + gap);
+
+    // Color by band
+    let c1, c2;
+    if (isBass)   { c1 = `rgba(0,229,255,${0.6 + v * 0.4})`;    c2 = `rgba(0,180,220,${0.3 + v * 0.3})`; }
+    else if (isMid) { c1 = `rgba(155,100,255,${0.6 + v * 0.4})`; c2 = `rgba(100,60,200,${0.3 + v * 0.3})`; }
+    else          { c1 = `rgba(255,255,255,${0.5 + v * 0.5})`;   c2 = `rgba(180,220,255,${0.2 + v * 0.3})`; }
+
+    // TOP half bar (upward from center)
+    const gradUp = ctx.createLinearGradient(0, cy, 0, cy - halfH);
+    gradUp.addColorStop(0, c2); gradUp.addColorStop(1, c1);
+    ctx.fillStyle = gradUp;
+    roundedBar(ctx, x, cy - halfH, barW, halfH, 3); ctx.fill();
+
+    // BOTTOM half bar (downward from center, slightly smaller)
+    const gradDown = ctx.createLinearGradient(0, cy, 0, cy + halfH * 0.7);
+    gradDown.addColorStop(0, c2); gradDown.addColorStop(1, c1);
+    ctx.fillStyle = gradDown;
+    roundedBar(ctx, x, cy, barW, halfH * 0.7, 3); ctx.fill();
+  }
+
+  // Center divider line
+  ctx.strokeStyle = `rgba(255,255,255,0.08)`; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
 }
 
 // ── Draw: Neon Pulse ──────────────────────────────────────────────────────────
