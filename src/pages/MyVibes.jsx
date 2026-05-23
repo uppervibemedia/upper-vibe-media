@@ -87,14 +87,10 @@ export default function MyVibes() {
               style={{ color: "rgba(255,255,255,0.4)" }}>
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4 text-[10px] font-black tracking-[0.25em] uppercase"
-              style={{ background: `rgba(${rgb},0.08)`, border: `1px solid rgba(${rgb},0.2)`, color: `rgb(${rgb})` }}>
-              <Heart className="w-3 h-3 fill-current" /> Saved Vibes
-            </div>
             <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-1">My Vibe Library</h1>
-            <p className="font-heading font-bold mb-2 leading-snug"
+            <p className="font-heading font-bold mb-2 leading-snug flex items-center gap-2"
               style={{ fontSize: "clamp(0.85rem, 2.5vw, 1.1rem)", color: `rgb(${rgb})` }}>
-              Your Saved Frequency
+              Your Saved Frequency <Heart className="w-4 h-4 fill-current flex-shrink-0" />
             </p>
             <p className="text-white/35 text-sm">
               {savedTracks.length} song{savedTracks.length !== 1 ? "s" : ""} · {savedVisualizers.length} visualizer{savedVisualizers.length !== 1 ? "s" : ""}
@@ -113,12 +109,12 @@ export default function MyVibes() {
             <button key={t.id} onClick={() => setTab(t.id)}
               className="flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 -mb-px transition-all"
               style={tab === t.id
-                ? { borderColor: "#9B7EFF", color: "#9B7EFF" }
+                ? { borderColor: `rgb(${rgb})`, color: `rgb(${rgb})` }
                 : { borderColor: "transparent", color: "rgba(255,255,255,0.3)" }}>
               <t.icon className="w-4 h-4" />
               {t.label}
               <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black"
-                style={{ background: tab === t.id ? "rgba(155,126,255,0.2)" : "rgba(255,255,255,0.07)", color: tab === t.id ? "#9B7EFF" : "rgba(255,255,255,0.3)" }}>
+                style={{ background: tab === t.id ? `rgba(${rgb},0.2)` : "rgba(255,255,255,0.07)", color: tab === t.id ? `rgb(${rgb})` : "rgba(255,255,255,0.3)" }}>
                 {t.count}
               </span>
             </button>
