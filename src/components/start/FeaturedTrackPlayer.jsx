@@ -139,8 +139,8 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
           50% { box-shadow: 0 0 80px rgba(${rtPrimary},1), 0 0 160px rgba(${rtPrimary},0.6), 0 0 240px rgba(${rtPrimary},0.25); border-color: rgba(${rtPrimary},1); }
         }
         @keyframes featuredBackBlast {
-          0%, 100% { opacity: 0.3; transform: scale(0.95); }
-          50% { opacity: 1; transform: scale(1.12); }
+          0%, 100% { opacity: 0.12; transform: scale(0.95); }
+          50% { opacity: 0.45; transform: scale(1.12); }
         }
       `}</style>
       {/* Hard background blast glow — behind everything */}
