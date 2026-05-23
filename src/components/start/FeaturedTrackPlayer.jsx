@@ -135,8 +135,8 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
     <div className="w-full relative rounded-2xl" style={{ overflow: "visible" }}>
       <style>{`
         @keyframes featuredSectionPulse {
-          0%, 100% { box-shadow: 0 0 35px rgba(${rtPrimary},0.55), 0 0 80px rgba(${rtPrimary},0.2); border-color: rgba(${rtPrimary},0.55); }
-          50% { box-shadow: 0 0 80px rgba(${rtPrimary},1), 0 0 160px rgba(${rtPrimary},0.6), 0 0 240px rgba(${rtPrimary},0.25); border-color: rgba(${rtPrimary},1); }
+          0%, 100% { box-shadow: 0 0 18px rgba(${rtPrimary},0.25), 0 0 40px rgba(${rtPrimary},0.08); border-color: rgba(${rtPrimary},0.35); }
+          50% { box-shadow: 0 0 40px rgba(${rtPrimary},0.55), 0 0 80px rgba(${rtPrimary},0.22), 0 0 130px rgba(${rtPrimary},0.1); border-color: rgba(${rtPrimary},0.6); }
         }
         @keyframes featuredBackBlast {
           0%, 100% { opacity: 0.12; transform: scale(0.95); }
