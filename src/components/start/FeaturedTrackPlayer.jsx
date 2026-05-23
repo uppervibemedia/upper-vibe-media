@@ -41,7 +41,7 @@ function MusicBars({ color = "#00A0DC" }) {
   );
 }
 
-export default function FeaturedTrackPlayer() {
+export default function FeaturedTrackPlayer({ onTrackLoaded }) {
   const [track, setTrack] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -64,13 +64,21 @@ export default function FeaturedTrackPlayer() {
         if (featuredId) {
           const all = await base44.entities.Track.filter({ status: "published" }, "-created_date", 100);
           const found = all.find((t) => t.id === featuredId && t.audio_url);
-          if (found) { setTrack(found); setLoading(false); return; }
+          if (found) {
+          setTrack(found);
+          onTrackLoaded?.(found);
+          setLoading(false);
+          return;
+        }
         }
 
         // 2. Fall back to newest published track with audio
         const newest = await base44.entities.Track.filter({ status: "published" }, "-created_date", 20);
         const withAudio = newest.filter((t) => t.audio_url);
-        if (withAudio.length) setTrack(withAudio[0]);
+        if (withAudio.length) {
+          setTrack(withAudio[0]);
+          onTrackLoaded?.(withAudio[0]);
+        }
       } catch {
         // silently fail — fallback card shown
       }

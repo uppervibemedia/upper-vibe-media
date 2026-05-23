@@ -4,6 +4,7 @@ import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, X,
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import FeaturedTrackPlayer from "@/components/start/FeaturedTrackPlayer";
+import MusicStack from "@/components/start/MusicStack";
 import YouTubeCTA from "@/components/start/YouTubeCTA";
 
 const PRIMARY = "0,160,220";
@@ -103,8 +104,19 @@ export default function Start() {
   const [saving, setSaving] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const [stackTracks, setStackTracks] = useState([]);
+  const [featuredTrackId, setFeaturedTrackId] = useState(null);
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
+
+  // Load next tracks for the music stack whenever featured track is known
+  useEffect(() => {
+    if (!featuredTrackId) return;
+    base44.entities.Track.filter({ status: "published" }, "-created_date", 10).then((all) => {
+      const withAudio = all.filter((t) => t.audio_url && t.id !== featuredTrackId);
+      setStackTracks(withAudio.slice(0, 4));
+    }).catch(() => {});
+  }, [featuredTrackId]);
 
   // Check membership status and redirect if needed — all hooks before any returns
   useEffect(() => {
@@ -227,7 +239,7 @@ export default function Start() {
           </div>
 
           {/* Featured Track Player */}
-          <FeaturedTrackPlayer />
+          <FeaturedTrackPlayer onTrackLoaded={(t) => setFeaturedTrackId(t.id)} />
 
           {/* Headline */}
           <div>
@@ -257,6 +269,9 @@ export default function Start() {
             </Link>
           </div>
         </section>
+
+        {/* Music stack — 3-4 smaller song cards */}
+        {stackTracks.length > 0 && <MusicStack tracks={stackTracks} />}
 
         {/* ── YOUTUBE CTA ── */}
         <YouTubeCTA />
