@@ -88,10 +88,14 @@ export default function MyVibes() {
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4 text-[10px] font-black tracking-[0.25em] uppercase"
-              style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.2)", color: "#9B7EFF" }}>
-              <Heart className="w-3 h-3 fill-current" /> My Vibe Library
+              style={{ background: `rgba(${rgb},0.08)`, border: `1px solid rgba(${rgb},0.2)`, color: `rgb(${rgb})` }}>
+              <Heart className="w-3 h-3 fill-current" /> Saved Vibes
             </div>
-            <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-2">My Vibe Library</h1>
+            <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-1">My Vibe Library</h1>
+            <p className="font-heading font-bold mb-2 leading-snug"
+              style={{ fontSize: "clamp(0.85rem, 2.5vw, 1.1rem)", color: `rgb(${rgb})` }}>
+              Your Saved Frequency
+            </p>
             <p className="text-white/35 text-sm">
               {savedTracks.length} song{savedTracks.length !== 1 ? "s" : ""} · {savedVisualizers.length} visualizer{savedVisualizers.length !== 1 ? "s" : ""}
             </p>
