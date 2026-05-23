@@ -58,7 +58,7 @@ const _peaks = { data: null, decay: null };
 // ── Real-data draw functions ──────────────────────────────────────────────────
 
 // ── HIGH-FIDELITY SPECTRUM ANALYZER ─────────────────────────────────────────
-function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat) {
+function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat, themeColor = "0,229,255") {
   const barCount = 80;
   const gap = 2;
   const barW = (W - gap * (barCount - 1)) / barCount;
@@ -84,12 +84,12 @@ function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat) {
     const x = i * (barW + gap);
     const y = H - h;
 
-    // Gradient per bar: teal → white top
+    // Gradient per bar: theme color base → white top
     const grad = ctx.createLinearGradient(0, H, 0, y);
-    grad.addColorStop(0,   `hsla(185,100%,35%,0.9)`);
-    grad.addColorStop(0.5, `hsla(195,100%,55%,1.0)`);
-    grad.addColorStop(0.85,`hsla(200,100%,75%,1.0)`);
-    grad.addColorStop(1,   `hsla(210,100%,92%,0.9)`);
+    grad.addColorStop(0,   `rgba(${themeColor},0.7)`);
+    grad.addColorStop(0.5, `rgba(${themeColor},1.0)`);
+    grad.addColorStop(0.85,`rgba(${themeColor},1.0)`);
+    grad.addColorStop(1,   "rgba(255,255,255,0.9)");
     ctx.fillStyle = grad;
     drawRoundedBar(ctx, x, y, barW, h, 2);
     ctx.fill();
@@ -103,7 +103,7 @@ function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat) {
       _peaks.data[i] = Math.max(0, _peaks.data[i] - _peaks.decay[i]);
     }
     const peakY = H - Math.max(2, _peaks.data[i] * (H - 4)) - 2;
-    ctx.fillStyle = beat && i < 12 ? "rgba(255,255,255,1)" : "rgba(0,229,255,0.9)";
+    ctx.fillStyle = beat && i < 12 ? "rgba(255,255,255,1)" : `rgba(${themeColor},0.9)`;
     ctx.fillRect(x, peakY, barW, 2);
   }
 
@@ -122,7 +122,7 @@ function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat) {
     const v = Math.min(1, max * (1 + bass * 0.3));
     const h = Math.max(2, v * (H - 4) * 0.3);
     const x = i * (barW + gap);
-    ctx.fillStyle = `hsla(185,100%,55%,1)`;
+    ctx.fillStyle = `rgba(${themeColor},1)`;
     ctx.fillRect(x, H - h, barW, h);
   }
   ctx.restore();
@@ -130,7 +130,7 @@ function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat) {
 
 // ── REAL-TIME WAVEFORM (OSCILLOSCOPE) ────────────────────────────────────────
 const _wfSmoothed = { data: null };
-function drawWaveform(ctx, W, H, an, bass, beat) {
+function drawWaveform(ctx, W, H, an, bass, beat, themeColor = "0,229,255") {
   const bufLen = an.fftSize;
   const raw = new Uint8Array(bufLen);
   an.getByteTimeDomainData(raw);
@@ -152,7 +152,7 @@ function drawWaveform(ctx, W, H, an, bass, beat) {
   // Glow halo behind the line
   ctx.save();
   ctx.shadowBlur = beat ? 22 : 12;
-  ctx.shadowColor = `rgba(0,229,255,${0.5 + bass * 0.4})`;
+  ctx.shadowColor = `rgba(${themeColor},${0.5 + bass * 0.4})`;
 
   // Fill under the wave
   ctx.beginPath();
@@ -163,9 +163,9 @@ function drawWaveform(ctx, W, H, an, bass, beat) {
   ctx.lineTo(W, cy);
   ctx.closePath();
   const fillGrad = ctx.createLinearGradient(0, cy - amplitude, 0, cy + amplitude);
-  fillGrad.addColorStop(0,   "rgba(0,229,255,0.12)");
-  fillGrad.addColorStop(0.5, "rgba(0,200,220,0.06)");
-  fillGrad.addColorStop(1,   "rgba(0,229,255,0.12)");
+  fillGrad.addColorStop(0,   `rgba(${themeColor},0.12)`);
+  fillGrad.addColorStop(0.5, `rgba(${themeColor},0.06)`);
+  fillGrad.addColorStop(1,   `rgba(${themeColor},0.12)`);
   ctx.fillStyle = fillGrad;
   ctx.fill();
 
@@ -177,11 +177,11 @@ function drawWaveform(ctx, W, H, an, bass, beat) {
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   }
   const lineGrad = ctx.createLinearGradient(0, 0, W, 0);
-  lineGrad.addColorStop(0,    "rgba(0,229,255,0.4)");
-  lineGrad.addColorStop(0.25, "rgba(0,229,255,1.0)");
-  lineGrad.addColorStop(0.5,  "rgba(155,200,255,1.0)");
-  lineGrad.addColorStop(0.75, "rgba(0,229,255,1.0)");
-  lineGrad.addColorStop(1,    "rgba(0,229,255,0.4)");
+  lineGrad.addColorStop(0,    `rgba(${themeColor},0.4)`);
+  lineGrad.addColorStop(0.25, `rgba(${themeColor},1.0)`);
+  lineGrad.addColorStop(0.5,  "rgba(255,255,255,0.95)");
+  lineGrad.addColorStop(0.75, `rgba(${themeColor},1.0)`);
+  lineGrad.addColorStop(1,    `rgba(${themeColor},0.4)`);
   ctx.strokeStyle = lineGrad;
   ctx.lineWidth = beat ? 2.5 : 1.8;
   ctx.lineJoin = "round";
@@ -193,13 +193,13 @@ function drawWaveform(ctx, W, H, an, bass, beat) {
   ctx.beginPath();
   ctx.moveTo(0, cy);
   ctx.lineTo(W, cy);
-  ctx.strokeStyle = "rgba(0,229,255,0.08)";
+  ctx.strokeStyle = `rgba(${themeColor},0.08)`;
   ctx.lineWidth = 1;
   ctx.stroke();
 }
 
 // Fallback waveform (no analyser — animated sine)
-function fallbackWaveform(ctx, W, H, t, active) {
+function fallbackWaveform(ctx, W, H, t, active, themeColor = "0,229,255") {
   const cy = H / 2;
   const amplitude = H * (active ? 0.36 + Math.sin(t * 1.4) * 0.08 : 0.05);
   ctx.beginPath();
@@ -210,22 +210,22 @@ function fallbackWaveform(ctx, W, H, t, active) {
     x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   }
   const grad = ctx.createLinearGradient(0, 0, W, 0);
-  grad.addColorStop(0,    "rgba(0,229,255,0.3)");
-  grad.addColorStop(0.5,  "rgba(0,229,255,0.9)");
-  grad.addColorStop(1,    "rgba(0,229,255,0.3)");
+  grad.addColorStop(0,    `rgba(${themeColor},0.3)`);
+  grad.addColorStop(0.5,  `rgba(${themeColor},0.9)`);
+  grad.addColorStop(1,    `rgba(${themeColor},0.3)`);
   ctx.strokeStyle = grad;
   ctx.lineWidth = 1.8;
   ctx.lineJoin = "round";
   ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(0, cy); ctx.lineTo(W, cy);
-  ctx.strokeStyle = "rgba(0,229,255,0.07)";
+  ctx.strokeStyle = `rgba(${themeColor},0.07)`;
   ctx.lineWidth = 1;
   ctx.stroke();
 }
 
 // Fallback spectrum (no analyser — animated bars)
-function fallbackSpectrum(ctx, W, H, t, active) {
+function fallbackSpectrum(ctx, W, H, t, active, themeColor = "0,229,255") {
   const barCount = 80, gap = 2;
   const bw = (W - gap * (barCount - 1)) / barCount;
   for (let i = 0; i < barCount; i++) {
@@ -235,9 +235,9 @@ function fallbackSpectrum(ctx, W, H, t, active) {
       : 0.03 + Math.sin(i * 0.6) * 0.02;
     const h = Math.max(2, v * (H - 4));
     const grad = ctx.createLinearGradient(0, H, 0, H - h);
-    grad.addColorStop(0,   "hsla(185,100%,35%,0.85)");
-    grad.addColorStop(0.7, "hsla(195,100%,60%,1.0)");
-    grad.addColorStop(1,   "hsla(210,100%,88%,0.9)");
+    grad.addColorStop(0,   `rgba(${themeColor},0.7)`);
+    grad.addColorStop(0.7, `rgba(${themeColor},1.0)`);
+    grad.addColorStop(1,   "rgba(255,255,255,0.9)");
     ctx.fillStyle = grad;
     drawRoundedBar(ctx, i * (bw + gap), H - h, bw, h, 2);
     ctx.fill();
@@ -656,7 +656,7 @@ function fallbackDrift(ctx, W, H, t, active, particlesRef) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function RadioVisualizer({ isPlaying, currentSong }) {
+export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "0,229,255" }) {
   const canvasRef    = useRef(null);
   const rafRef       = useRef(null);
   const analyserRef  = useRef(null);
@@ -695,7 +695,7 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
   }, []);
 
-  const startLoop = useCallback((currentMode, useAnalyser) => {
+  const startLoop = useCallback((currentMode, useAnalyser, color) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const loop = () => {
@@ -724,8 +724,8 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
           console.log("[Viz] live | bass:", bass.toFixed(3), "| mid:", mid.toFixed(3), "| treble:", treble.toFixed(3), "| beat:", beat, "| active bins:", nonZero);
         }
         switch (currentMode) {
-          case "spectrum": drawSpectrum(ctx, lW, lH, sm, bufLen, bass, beat); break;
-          case "waveform": drawWaveform(ctx, lW, lH, an, bass, beat); break;
+          case "spectrum": drawSpectrum(ctx, lW, lH, sm, bufLen, bass, beat, color); break;
+          case "waveform": drawWaveform(ctx, lW, lH, an, bass, beat, color); break;
           case "energy":   drawEnergy(ctx, lW, lH, sm, bufLen, bass, mid, treble, beat); break;
           case "cosmic":   drawCosmicWaves(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, beat); break;
           case "neon":     drawNeonPulse(ctx, lW, lH, sm, bufLen, bass, mid); break;
@@ -738,8 +738,8 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
         const active = isPlaying;
         if (Date.now() - logTimerRef.current > 3000) { logTimerRef.current = Date.now(); console.log("[Viz] fallback | isIOS:", isIOS, "| isPlaying:", active); }
         switch (currentMode) {
-          case "spectrum": fallbackSpectrum(ctx, lW, lH, t, active); break;
-          case "waveform": fallbackWaveform(ctx, lW, lH, t, active); break;
+          case "spectrum": fallbackSpectrum(ctx, lW, lH, t, active, color); break;
+          case "waveform": fallbackWaveform(ctx, lW, lH, t, active, color); break;
           case "energy":   fallbackEnergy(ctx, lW, lH, t, active); break;
           case "cosmic":   fallbackCosmic(ctx, lW, lH, t, active, particlesRef); break;
           case "neon":     fallbackNeon(ctx, lW, lH, t, active); break;
@@ -757,16 +757,16 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
   useEffect(() => {
     stopLoop(); particlesRef.current = []; _smoothed.data = null; _wfSmoothed.data = null; _peaks.data = null; _peaks.decay = null;
     const connected = tryConnectAnalyser();
-    startLoop(mode, connected);
+    startLoop(mode, connected, themeColor);
     return stopLoop;
-  }, [mode, isPlaying, currentSong?.id]);
+  }, [mode, isPlaying, currentSong?.id, themeColor]);
 
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       stopLoop(); particlesRef.current = []; _smoothed.data = null;
       const connected = tryConnectAnalyser();
-      startLoop(mode, connected);
+      startLoop(mode, connected, themeColor);
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
@@ -802,10 +802,10 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
             textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap",
             transition: "all 0.2s ease",
             userSelect: "none", WebkitUserSelect: "none",
-            background: "rgba(0,229,255,0.10)",
-            border: "1px solid rgba(0,229,255,0.45)",
-            color: "#00E5FF",
-            boxShadow: "0 0 8px rgba(0,229,255,0.12)",
+            background: `rgba(${themeColor},0.10)`,
+            border: `1px solid rgba(${themeColor},0.45)`,
+            color: `rgb(${themeColor})`,
+            boxShadow: `0 0 8px rgba(${themeColor},0.12)`,
           }}
         >
           <span style={{ fontSize: 9, lineHeight: 1 }}>{currentModeObj.icon}</span>

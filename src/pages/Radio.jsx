@@ -164,7 +164,7 @@ export default function RadioPage() {
             border: `1px solid ${playingThisRadioSong ? `rgba(${theme.vars["--rt-primary"]},0.18)` : `rgba(${theme.vars["--rt-primary"]},0.08)`}`,
             transition: "border-color 1s ease",
           }}>
-          <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} />
+          <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} />
           <div className="pointer-events-none absolute inset-0"
             style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />
         </motion.div>
