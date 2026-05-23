@@ -243,83 +243,70 @@ export default function Home() {
               }}>MEDIA</div>
             </motion.div>
 
-            {/* ── Hero Now Playing card — always visible ── */}
-            <motion.div
-              key={currentTrack?.id || "idle"}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="flex items-center gap-3 mt-3 mb-4 px-3 py-2.5 rounded-2xl"
-              style={{
-                background: `linear-gradient(135deg, rgba(${rtPrimary},0.09) 0%, rgba(${rtPrimary},0.04) 100%)`,
-                border: `1px solid rgba(${rtPrimary},0.22)`,
-                boxShadow: `0 0 24px rgba(${rtPrimary},0.08)`,
-                maxWidth: "min(420px, 90vw)",
-              }}>
-              {/* Cover art */}
-              <div className="relative flex-shrink-0">
-                {currentTrack?.cover_url ? (
-                  <img src={currentTrack.cover_url} alt={currentTrack.title}
-                    className="w-11 h-11 rounded-xl object-cover ring-1 ring-white/10" />
-                ) : (
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center"
-                    style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.15)` }}>
-                    <Music4 className="w-5 h-5" style={{ color: `rgba(${rtPrimary},0.5)` }} />
-                  </div>
-                )}
-                {/* Always-on slow pulse ring */}
+            {/* ── Hero Now Playing card — always shows real cover art ── */}
+            {(currentTrack || currentRadioSong) && (() => {
+              const displayTrack = currentTrack || currentRadioSong;
+              return (
                 <motion.div
-                  animate={{ scale: [1, 1.18, 1], opacity: [0.3, 0, 0.3] }}
-                  transition={{ duration: isPlaying ? 1.6 : 3.5, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute inset-0 rounded-xl pointer-events-none"
-                  style={{ border: `2px solid rgb(${rtPrimary})` }} />
-              </div>
-              {/* Animated equalizer — always moving, dimmer when idle */}
-              <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "14px" }}>
-                {[3,5,8,6,4,7,5].map((h, i) => (
-                  <motion.div key={i}
-                    animate={{ height: [`${h * (currentTrack ? 0.4 : 0.25)}px`, `${h * (currentTrack ? 1 : 0.7)}px`, `${h * (currentTrack ? 0.55 : 0.3)}px`] }}
-                    transition={{ duration: (currentTrack ? 0.6 : 1.1) + i * 0.09, repeat: Infinity, ease: "easeInOut", delay: i * 0.07 }}
-                    className="w-[2px] rounded-full"
-                    style={{ background: `rgb(${rtPrimary})`, opacity: isPlaying ? 0.85 : currentTrack ? 0.4 : 0.28 }} />
-                ))}
-              </div>
-              {/* Track info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-[8px] font-black tracking-[0.18em] uppercase leading-none mb-0.5" style={{ color: `rgba(${rtPrimary},0.7)` }}>
-                  {isPlaying ? "Now Playing" : currentTrack ? "Paused" : "Upper Vibe Radio"}
-                </p>
-                <p className="text-xs font-bold text-white/90 truncate">
-                  {currentTrack ? currentTrack.title : "432 Hz · High Vibe Music"}
-                </p>
-                <p className="text-[10px] text-white/45 truncate">
-                  {currentTrack ? (currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media") : "Nonstop frequency music"}
-                </p>
-              </div>
-              {/* Play/Pause or Live button */}
-              {currentTrack ? (
-                <button
-                  onClick={togglePlay}
-                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+                  key={displayTrack.id}
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex items-center gap-3 mt-3 mb-4 px-3 py-2.5 rounded-2xl"
                   style={{
-                    background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`,
-                    boxShadow: `0 0 16px rgba(${rtPrimary},0.3)`,
+                    background: `linear-gradient(135deg, rgba(${rtPrimary},0.09) 0%, rgba(${rtPrimary},0.04) 100%)`,
+                    border: `1px solid rgba(${rtPrimary},0.22)`,
+                    boxShadow: `0 0 24px rgba(${rtPrimary},0.08)`,
+                    maxWidth: "min(420px, 90vw)",
                   }}>
-                  {isPlaying
-                    ? <Pause className="w-3.5 h-3.5 text-black fill-current" />
-                    : <Play className="w-3.5 h-3.5 text-black fill-current ml-0.5" />}
-                </button>
-              ) : (
-                <button
-                  onClick={handleStartRadio}
-                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
-                  style={{
-                    background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`,
-                    boxShadow: `0 0 16px rgba(${rtPrimary},0.3)`,
-                  }}>
-                  <Radio className="w-3.5 h-3.5 text-black" />
-                </button>
-              )}
-            </motion.div>
+                  {/* Real cover art */}
+                  <div className="relative flex-shrink-0">
+                    <img src={displayTrack.cover_url} alt={displayTrack.title}
+                      className="w-11 h-11 rounded-xl object-cover ring-1 ring-white/10" />
+                    <motion.div
+                      animate={{ scale: [1, 1.18, 1], opacity: [0.3, 0, 0.3] }}
+                      transition={{ duration: isPlaying ? 1.6 : 3.5, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute inset-0 rounded-xl pointer-events-none"
+                      style={{ border: `2px solid rgb(${rtPrimary})` }} />
+                  </div>
+                  {/* Animated equalizer */}
+                  <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "14px" }}>
+                    {[3,5,8,6,4,7,5].map((h, i) => (
+                      <motion.div key={i}
+                        animate={{ height: [`${h * (isPlaying ? 0.4 : 0.25)}px`, `${h * (isPlaying ? 1 : 0.7)}px`, `${h * (isPlaying ? 0.55 : 0.3)}px`] }}
+                        transition={{ duration: (isPlaying ? 0.6 : 1.1) + i * 0.09, repeat: Infinity, ease: "easeInOut", delay: i * 0.07 }}
+                        className="w-[2px] rounded-full"
+                        style={{ background: `rgb(${rtPrimary})`, opacity: isPlaying ? 0.85 : 0.35 }} />
+                    ))}
+                  </div>
+                  {/* Real track info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[8px] font-black tracking-[0.18em] uppercase leading-none mb-0.5" style={{ color: `rgba(${rtPrimary},0.7)` }}>
+                      {isPlaying ? "Now Playing" : currentTrack ? "Paused" : "Live on Radio"}
+                    </p>
+                    <p className="text-xs font-bold text-white/90 truncate">{displayTrack.title}</p>
+                    <p className="text-[10px] text-white/45 truncate">
+                      {displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}
+                    </p>
+                  </div>
+                  {/* Play/Pause or Radio button */}
+                  {currentTrack ? (
+                    <button onClick={togglePlay}
+                      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+                      style={{ background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`, boxShadow: `0 0 16px rgba(${rtPrimary},0.3)` }}>
+                      {isPlaying
+                        ? <Pause className="w-3.5 h-3.5 text-black fill-current" />
+                        : <Play className="w-3.5 h-3.5 text-black fill-current ml-0.5" />}
+                    </button>
+                  ) : (
+                    <button onClick={handleStartRadio}
+                      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+                      style={{ background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`, boxShadow: `0 0 16px rgba(${rtPrimary},0.3)` }}>
+                      <Radio className="w-3.5 h-3.5 text-black" />
+                    </button>
+                  )}
+                </motion.div>
+              );
+            })()}
 
             {/* ── Subtitle ── */}
             <motion.p

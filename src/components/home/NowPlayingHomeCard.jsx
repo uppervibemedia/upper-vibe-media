@@ -1,16 +1,21 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Music4, Waves, Radio } from "lucide-react";
+import { Play, Pause, Waves, Radio, Music4 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
+import { useRadio } from "@/context/RadioContext";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
 
 export default function NowPlayingHomeCard() {
   const { currentTrack, isPlaying, togglePlay } = usePlayer();
+  const { currentRadioSong } = useRadio();
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtPrimary = radioTheme.vars["--rt-primary"];
+
+  // Always show something real — active track first, then radio queue, then nothing
+  const displayTrack = currentTrack || currentRadioSong;
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-4">
@@ -29,11 +34,11 @@ export default function NowPlayingHomeCard() {
               boxShadow: `0 0 30px rgba(${rtPrimary},0.07)`,
             }}
           >
-            {/* Cover art */}
+            {/* Cover art — always real art */}
             <div className="relative flex-shrink-0">
-              {currentTrack.cover_url ? (
+              {(currentTrack.cover_url || currentRadioSong?.cover_url) ? (
                 <img
-                  src={currentTrack.cover_url}
+                  src={currentTrack.cover_url || currentRadioSong?.cover_url}
                   alt={currentTrack.title}
                   className="w-14 h-14 rounded-xl object-cover ring-1 ring-white/10"
                 />
@@ -97,9 +102,10 @@ export default function NowPlayingHomeCard() {
                 : <Play className="w-4 h-4 text-black fill-current ml-0.5" />}
             </button>
           </motion.div>
-        ) : (
+        ) : displayTrack ? (
+          /* Idle but radio has a song loaded — show real cover art */
           <motion.div
-            key="idle"
+            key={displayTrack.id + "-idle"}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -111,11 +117,13 @@ export default function NowPlayingHomeCard() {
               boxShadow: `0 0 24px rgba(${rtPrimary},0.05)`,
             }}
           >
-            {/* Static album art placeholder */}
-            <div className="relative flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center"
-              style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.15)` }}>
-              <Music4 className="w-6 h-6" style={{ color: `rgba(${rtPrimary},0.5)` }} />
-              {/* Subtle slow pulse ring */}
+            {/* Real cover art */}
+            <div className="relative flex-shrink-0">
+              <img
+                src={displayTrack.cover_url}
+                alt={displayTrack.title}
+                className="w-14 h-14 rounded-xl object-cover ring-1 ring-white/10"
+              />
               <motion.div
                 animate={{ scale: [1, 1.14, 1], opacity: [0.25, 0, 0.25] }}
                 transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
@@ -124,7 +132,7 @@ export default function NowPlayingHomeCard() {
               />
             </div>
 
-            {/* Animated bars — always moving, slightly dim */}
+            {/* Animated bars — dim idle state */}
             <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "18px" }}>
               {[4, 7, 11, 8, 5, 9, 6].map((h, i) => (
                 <motion.div
@@ -137,13 +145,13 @@ export default function NowPlayingHomeCard() {
               ))}
             </div>
 
-            {/* Text */}
+            {/* Real track info */}
             <div className="flex-1 min-w-0">
               <p className="text-[9px] font-black tracking-[0.22em] uppercase mb-0.5" style={{ color: `rgba(${rtPrimary},0.55)` }}>
-                Upper Vibe Radio
+                Live on Radio
               </p>
-              <p className="text-sm font-bold text-white/70 truncate leading-tight">432 Hz · High Vibe Music</p>
-              <p className="text-xs text-white/30 truncate">Nonstop frequency music</p>
+              <p className="text-sm font-bold text-white/85 truncate leading-tight">{displayTrack.title}</p>
+              <p className="text-xs text-white/40 truncate">{displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}</p>
             </div>
 
             {/* Live badge */}
@@ -153,7 +161,6 @@ export default function NowPlayingHomeCard() {
               LIVE
             </span>
 
-            {/* Play button → goes to radio */}
             <Link to="/radio"
               className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
               style={{
@@ -163,7 +170,7 @@ export default function NowPlayingHomeCard() {
               <Radio className="w-4 h-4 text-black" />
             </Link>
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </section>
   );
