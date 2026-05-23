@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -37,11 +37,37 @@ function PremiumButton({ children, onClick, href, className = "", style = {} }) 
   return null;
 }
 
+const PAGE_TITLE = "Start Listening | Upper Vibe Media";
+const PAGE_DESC = "Stream 432 Hz high-vibe music free on Upper Vibe Media. Upgrade to Premium for $4.99/month to download every song and build your personal vibe library.";
+
 export default function Start() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+
+  // Inject page-specific meta tags for social sharing
+  useEffect(() => {
+    const prev = document.title;
+    document.title = PAGE_TITLE;
+
+    const setMeta = (sel, attr, val) => {
+      let el = document.querySelector(sel);
+      if (!el) { el = document.createElement("meta"); document.head.appendChild(el); }
+      el.setAttribute(attr, val);
+    };
+
+    setMeta('meta[name="description"]', "content", PAGE_DESC);
+    setMeta('meta[property="og:title"]', "content", PAGE_TITLE);
+    setMeta('meta[property="og:description"]', "content", PAGE_DESC);
+    setMeta('meta[property="og:url"]', "content", "https://uppervibemedia.com/start");
+    setMeta('meta[name="twitter:title"]', "content", PAGE_TITLE);
+    setMeta('meta[name="twitter:description"]', "content", PAGE_DESC);
+
+    return () => {
+      document.title = prev;
+    };
+  }, []);
 
   const handleCheckout = async () => {
     if (window.self !== window.top) {
@@ -120,10 +146,10 @@ export default function Start() {
           <div>
             <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.45rem, 6vw, 2rem)", fontWeight: 900, lineHeight: 1.15, color: "#fff", marginBottom: "0.6rem" }}>
               Stream Free.<br />
-              <span style={{ color: "#00A0DC" }}>Download Everything</span> for $4.99/mo.
+              <span style={{ color: "#00A0DC" }}>Download Everything</span> for $4.99/month.
             </h1>
             <p style={{ fontSize: "0.875rem", lineHeight: 1.65, color: "rgba(255,255,255,0.45)", maxWidth: "24rem", margin: "0 auto" }}>
-              Listen to Upper Vibe Media free anytime. Upgrade to Premium to download every song, build your vibe library, and keep the frequency with you offline.
+              Listen to Upper Vibe Media free anytime. Upgrade to Premium to download every song, save your favorite tracks, and keep the frequency with you offline.
             </p>
           </div>
 
