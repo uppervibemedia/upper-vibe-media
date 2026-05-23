@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,6 +15,34 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { usePlayer } from "@/context/PlayerContext";
+
+const RADIO_THEMES = {
+  cyan:   { primary: "0,229,255" },
+  violet: { primary: "168,85,247" },
+  amber:  { primary: "245,158,11" },
+};
+
+function useRadioThemeColor() {
+  const getColor = () => {
+    try {
+      const id = localStorage.getItem("uvm_radio_theme_v1") || "cyan";
+      return (RADIO_THEMES[id] || RADIO_THEMES.cyan).primary;
+    } catch { return "0,229,255"; }
+  };
+  const [color, setColor] = useState(getColor);
+
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === "uvm_radio_theme_v1") setColor(getColor());
+    };
+    window.addEventListener("storage", onStorage);
+    // Poll for same-tab changes
+    const interval = setInterval(() => setColor(getColor()), 1000);
+    return () => { window.removeEventListener("storage", onStorage); clearInterval(interval); };
+  }, []);
+
+  return color;
+}
 
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
@@ -39,6 +67,7 @@ export default function Sidebar() {
   const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
   const { isPlaying, sourceType } = usePlayer();
   const radioIsLive = isPlaying && sourceType === "radio";
+  const radioThemeColor = useRadioThemeColor();
 
   const handleMobileNavTap = (e, path) => {
     if (location.pathname === path) {
@@ -114,20 +143,36 @@ export default function Sidebar() {
                 className="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl transition-all"
               >
                 <div
-                  className={`p-1.5 rounded-lg transition-all ${isActive ? "bg-primary/15" : ""}`}
-                  style={glowing ? { boxShadow: "0 0 10px rgba(0,200,200,0.35)" } : {}}
+                  className="p-1.5 rounded-lg transition-all"
+                  style={{
+                    background: isActive && isRadioItem
+                      ? `rgba(${radioThemeColor},0.15)`
+                      : isActive ? "rgba(var(--primary),0.15)" : "transparent",
+                    boxShadow: glowing ? `0 0 10px rgba(${radioThemeColor},0.35)` : "none",
+                  }}
                 >
                   <item.icon
-                    className={`w-[18px] h-[18px] transition-colors ${
-                      isActive ? "text-primary" : glowing ? "text-primary/80" : "text-muted-foreground/60"
-                    }`}
-                    style={glowing && !isActive ? { filter: "drop-shadow(0 0 4px rgba(0,229,255,0.7))" } : {}}
+                    className="w-[18px] h-[18px] transition-colors"
+                    style={{
+                      color: isRadioItem && (isActive || glowing)
+                        ? `rgb(${radioThemeColor})`
+                        : isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground) / 0.6)",
+                      filter: glowing && !isActive ? `drop-shadow(0 0 4px rgba(${radioThemeColor},0.7))` : "none",
+                    }}
                   />
                   {glowing && !isActive && (
-                    <span className="block w-1 h-1 rounded-full bg-primary mx-auto mt-0.5 animate-pulse" />
+                    <span className="block w-1 h-1 rounded-full mx-auto mt-0.5 animate-pulse"
+                      style={{ background: `rgb(${radioThemeColor})` }} />
                   )}
                 </div>
-                <span className={`text-[8px] font-semibold tracking-wide uppercase ${isActive ? "text-primary" : glowing ? "text-primary/60" : "text-muted-foreground/50"}`}>
+                <span
+                  className="text-[8px] font-semibold tracking-wide uppercase"
+                  style={{
+                    color: isRadioItem && (isActive || glowing)
+                      ? `rgb(${radioThemeColor})`
+                      : isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground) / 0.5)",
+                  }}
+                >
                   {item.label}
                 </span>
               </Link>
@@ -172,6 +217,8 @@ export default function Sidebar() {
         <nav className="flex-1 flex flex-col gap-0.5 px-3 py-4 overflow-hidden">
           {allNavItems.map((item) => {
             const isActive = location.pathname === item.path;
+            const isRadioItem = item.path === "/radio";
+            const accentColor = isRadioItem ? radioThemeColor : null;
             return (
               <Link
                 key={item.path}
@@ -181,17 +228,22 @@ export default function Sidebar() {
                   isActive ? "" : "hover:bg-muted/50"
                 }`}
                 style={isActive ? {
-                  background: "hsl(var(--primary) / 0.1)",
-                  boxShadow: "inset 0 0 0 1px hsl(var(--primary) / 0.2)"
+                  background: accentColor ? `rgba(${accentColor},0.1)` : "hsl(var(--primary) / 0.1)",
+                  boxShadow: accentColor
+                    ? `inset 0 0 0 1px rgba(${accentColor},0.2)`
+                    : "inset 0 0 0 1px hsl(var(--primary) / 0.2)",
                 } : {}}
               >
-                {/* Active indicator */}
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full bg-primary" />
+                  <div
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full"
+                    style={{ background: accentColor ? `rgb(${accentColor})` : "hsl(var(--primary))" }}
+                  />
                 )}
-                <item.icon className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
-                  isActive ? "text-primary" : "text-muted-foreground/50 group-hover:text-foreground/70"
-                }`} />
+                <item.icon
+                  className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${!isActive ? "text-muted-foreground/50 group-hover:text-foreground/70" : ""}`}
+                  style={isActive ? { color: accentColor ? `rgb(${accentColor})` : "hsl(var(--primary))" } : {}}
+                />
                 <AnimatePresence>
                   {expanded && (
                     <motion.span
@@ -200,8 +252,9 @@ export default function Sidebar() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
                       className={`text-[13px] font-medium whitespace-nowrap ${
-                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground/80"
+                        !isActive ? "text-muted-foreground group-hover:text-foreground/80" : ""
                       }`}
+                      style={isActive && accentColor ? { color: `rgb(${accentColor})` } : isActive ? { color: "hsl(var(--primary))" } : {}}
                     >
                       {item.label}
                     </motion.span>
