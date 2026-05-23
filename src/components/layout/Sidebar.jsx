@@ -145,15 +145,15 @@ export default function Sidebar() {
                 <div
                   className="p-1.5 rounded-lg transition-all"
                   style={{
-                    background: isActive ? "rgba(0,160,220,0.15)" : "transparent",
-                    boxShadow: glowing ? "0 0 10px rgba(0,160,220,0.35)" : "none",
+                    background: isActive ? `rgba(${radioThemeColor},0.15)` : "transparent",
+                    boxShadow: glowing ? `0 0 10px rgba(${radioThemeColor},0.35)` : "none",
                   }}
                 >
                   <item.icon
                     className="w-[18px] h-[18px] transition-colors"
                     style={{
-                      color: isActive || glowing ? "rgb(0,160,220)" : "hsl(var(--muted-foreground) / 0.6)",
-                      filter: glowing && !isActive ? "drop-shadow(0 0 4px rgba(0,160,220,0.7))" : "none",
+                      color: isActive || glowing ? `rgb(${radioThemeColor})` : "hsl(var(--muted-foreground) / 0.6)",
+                      filter: glowing && !isActive ? `drop-shadow(0 0 4px rgba(${radioThemeColor},0.7))` : "none",
                     }}
                   />
                   {glowing && !isActive && (
@@ -164,8 +164,8 @@ export default function Sidebar() {
                 <span
                   className="text-[8px] font-semibold tracking-wide uppercase"
                   style={{
-                    color: isActive || glowing ? "rgb(0,160,220)" : "hsl(var(--muted-foreground) / 0.5)",
-                  }}
+                     color: isActive || glowing ? `rgb(${radioThemeColor})` : "hsl(var(--muted-foreground) / 0.5)",
+                   }}
                 >
                   {item.label}
                 </span>
@@ -222,20 +222,20 @@ export default function Sidebar() {
                   isActive ? "" : "hover:bg-muted/50"
                 }`}
                 style={isActive ? {
-                  background: "rgba(0,160,220,0.1)",
-                  boxShadow: "inset 0 0 0 1px rgba(0,160,220,0.2)",
+                  background: `rgba(${radioThemeColor},0.1)`,
+                  boxShadow: `inset 0 0 0 1px rgba(${radioThemeColor},0.2)`,
                 } : {}}
               >
                 {isActive && (
-                  <div
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full"
-                    style={{ background: "rgb(0,160,220)" }}
-                  />
-                )}
+                   <div
+                     className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full"
+                     style={{ background: `rgb(${radioThemeColor})` }}
+                   />
+                 )}
                 <item.icon
-                  className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${!isActive ? "text-muted-foreground/50 group-hover:text-foreground/70" : ""}`}
-                  style={isActive ? { color: "rgb(0,160,220)" } : {}}
-                />
+                   className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${!isActive ? "text-muted-foreground/50 group-hover:text-foreground/70" : ""}`}
+                   style={isActive ? { color: `rgb(${radioThemeColor})` } : {}}
+                 />
                 <AnimatePresence>
                   {expanded && (
                     <motion.span
@@ -244,9 +244,9 @@ export default function Sidebar() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
                       className={`text-[13px] font-medium whitespace-nowrap ${
-                        !isActive ? "text-muted-foreground group-hover:text-foreground/80" : ""
-                      }`}
-                      style={isActive ? { color: "rgb(0,160,220)" } : {}}
+                         !isActive ? "text-muted-foreground group-hover:text-foreground/80" : ""
+                       }`}
+                       style={isActive ? { color: `rgb(${radioThemeColor})` } : {}}
                     >
                       {item.label}
                     </motion.span>
