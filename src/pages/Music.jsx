@@ -13,6 +13,7 @@ import { useFavorites } from "../hooks/useFavorite";
 import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
+import IOSTip from "../components/shared/iOSTip";
 
 const GENRE_TYPES = ["genre", "mood", "editorial", "frequency"];
 const PAGE_SIZE = 20;
@@ -270,6 +271,7 @@ export default function Music() {
 
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
+      <IOSTip trigger="on-play" isPlaying={isPlaying} />
     </PullToRefresh>
   );
 }

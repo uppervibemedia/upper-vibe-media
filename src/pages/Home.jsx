@@ -19,6 +19,7 @@ import SectionHeader from "../components/shared/SectionHeader";
 import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
+import IOSTip from "../components/shared/iOSTip";
 
 // ── Session-stable shuffle ──────────────────────────────────────────────────
 // Same order within a session, different on every new tab/refresh
@@ -716,6 +717,7 @@ export default function Home() {
 
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
       <PremiumDownloadModal open={premiumModal} onClose={() => setPremiumModal(false)} />
+      <IOSTip trigger="on-play" isPlaying={isPlaying} />
     </div>
     </PullToRefresh>
   );

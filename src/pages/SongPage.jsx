@@ -18,6 +18,7 @@ import { recordUserDownload } from "@/lib/downloadService";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
+import IOSTip from "@/components/shared/iOSTip";
 
 function toEmbedUrl(url) {
   if (!url || typeof url !== "string") return null;
@@ -486,6 +487,7 @@ export default function SongPage() {
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <SupportModal open={supportModal} onClose={() => setSupportModal(false)} track={track} />
+      <IOSTip trigger="always" />
 
       {/* Support success banner */}
       <AnimatePresence>

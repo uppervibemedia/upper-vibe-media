@@ -16,6 +16,7 @@ import UpNextPanel from "../components/radio/UpNextPanel";
 import RadioThemePicker, { useRadioTheme, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
 import RadioVisualizer, { MODES } from "../components/radio/RadioVisualizer";
 import usePageVisible from "../hooks/usePageVisible";
+import IOSTip from "../components/shared/iOSTip";
 
 // Breathing glow animation — injected once
 const GLOW_STYLE_ID = "radio-breathe-style";
@@ -431,6 +432,7 @@ export default function RadioPage() {
 
       <PremiumDownloadModal open={premiumModal} onClose={() => setPremiumModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
+      <IOSTip trigger="always" />
     </div>
   );
 }
