@@ -60,12 +60,6 @@ const isPWA = (() => {
   );
 })();
 
-// ─────────────────────────────────────────────────────────────────────────────
-// iOS detection — on iOS/iPadOS we MUST skip AudioContext routing.
-// Routing through Web Audio API (createMediaElementSource) prevents the OS
-// from routing audio to AirPlay, Bluetooth, or TV. On iOS we let the audio
-// element play directly to the system output (which supports all routing).
-// ─────────────────────────────────────────────────────────────────────────────
 const isIOS = (() => {
   if (typeof navigator === "undefined") return false;
   return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
@@ -125,8 +119,10 @@ let _audioCtx   = null;
 let _analyser   = null;
 let _sourceNode = null;
 let _sourceEl   = null; // the element _sourceNode was created from
-// Flag: if analyser setup throws, disable for the rest of the session
+// Flag: if analyser setup throws, disable for the rest of the session.
+// On iOS we allow one retry after gesture context, so this is not permanent.
 let _analyserDisabled = false;
+let _analyserFailCount = 0; // reset to allow retry after real gesture
 
 async function resumeAudioContext() {
   if (!_audioCtx) return;
@@ -191,12 +187,28 @@ function setupAnalyserGraph(audioElement) {
 
     return _analyser;
   } catch (e) {
-    // SAFETY NET: analyser failed — audio keeps playing, visualiser uses fallback
-    console.warn("[Player] setupAnalyserGraph failed — disabling analyser |", e.name, e.message);
-    _analyserDisabled = true;
+    // SAFETY NET: analyser failed — audio keeps playing, visualiser uses fallback.
+    // On iOS: allow up to 3 retries (gesture context may not be available yet on
+    // first call). Only permanently disable after 3 consecutive failures.
+    _analyserFailCount++;
+    console.warn("[Player] setupAnalyserGraph failed |", e.name, e.message,
+      "| failCount:", _analyserFailCount, "| iOS:", isIOS);
     _sourceNode = null;
     _sourceEl   = null;
+    if (_analyserFailCount >= 3) {
+      console.warn("[Player] setupAnalyserGraph — disabling after 3 failures");
+      _analyserDisabled = true;
+    }
     return null;
+  }
+}
+
+/** resetAnalyserDisabled — call before a confirmed user gesture to allow retry */
+export function resetAnalyserDisabled() {
+  if (_analyserDisabled || _analyserFailCount > 0) {
+    console.log("[Player] resetAnalyserDisabled — clearing failure state for gesture retry");
+    _analyserDisabled = false;
+    _analyserFailCount = 0;
   }
 }
 
@@ -231,13 +243,14 @@ function enforceRate(audio) {
 // ─────────────────────────────────────────────────────────────────────────────
 // createFreshAudio — ALWAYS creates a new element (never reuses)
 //
-// AirPlay / Bluetooth / TV requirements:
-//  1. Element must be attached to the DOM (iOS requires this for system routing)
-//  2. disableRemotePlayback = false (explicit opt-in to AirPlay/BT)
-//  3. x-webkit-airplay="allow" attribute (legacy WebKit AirPlay hook)
-//  4. playsinline attribute (prevents iOS from going fullscreen)
-//  5. NO crossOrigin="anonymous" on iOS — CORS header mismatch kills AirPlay
-//     routing on some CDN configs. Only set crossOrigin on non-iOS.
+// CORS NOTE: crossOrigin="anonymous" is required on ALL platforms for
+// MediaElementSourceNode to receive actual PCM data from the audio pipeline.
+// Without it, getByteFrequencyData() returns all zeros (silence) even when
+// audio is playing. iOS Safari enforces this as strictly as desktop Safari.
+// The audio CDN (Base44 storage) serves CORS headers, so this is safe.
+//
+// AirPlay note: AirPlay still works with crossOrigin="anonymous" as long as
+// the CDN responds with Access-Control-Allow-Origin. Base44 storage does this.
 // ─────────────────────────────────────────────────────────────────────────────
 function createFreshAudio() {
   _globalAudioInstanceCount++;
@@ -246,12 +259,9 @@ function createFreshAudio() {
   }
   const a = new Audio();
 
-  // CORS: only on non-iOS. On iOS, crossOrigin="anonymous" can break AirPlay
-  // routing when the CDN doesn't return Access-Control-Allow-Origin for the
-  // OPTIONS preflight that AirPlay triggers.
-  if (!isIOS) {
-    a.crossOrigin = "anonymous";
-  }
+  // REQUIRED for MediaElementSourceNode FFT data on ALL platforms including iOS.
+  // Without this, Web Audio analyser gets silence even when audio is playing.
+  a.crossOrigin = "anonymous";
 
   a.preload = "auto";
   enforceRate(a);
@@ -270,7 +280,7 @@ function createFreshAudio() {
   document.body.appendChild(a);
 
   console.log("[Player] audio_created | instance #", _globalAudioInstanceCount,
-    "| iOS:", isIOS, "| domAttached: true");
+    "| iOS:", isIOS, "| crossOrigin: anonymous | domAttached: true");
   return a;
 }
 
@@ -912,6 +922,8 @@ export function PlayerProvider({ children }) {
     const audio = audioRef.current;
     if (!audio) return;
     // Wire Web Audio graph for visualiser — inside user gesture (iOS-safe).
+    // Reset failure state so a real gesture always gets a retry.
+    resetAnalyserDisabled();
     setupAnalyserGraph(audio);
     resumeAudioContext().catch(() => {});
 
@@ -968,7 +980,9 @@ export function PlayerProvider({ children }) {
     const url = track.audio_url;
 
     // Wire Web Audio graph for visualiser — called inside user gesture (iOS-safe).
+    // Reset failure count so a confirmed gesture always gets a retry attempt.
     // Source node is created once and reused; changing tracks does NOT recreate it.
+    resetAnalyserDisabled();
     setupAnalyserGraph(audio);
 
     // Update React state

@@ -25,7 +25,7 @@
  */
 
 import React, { useRef, useEffect, useCallback, useState } from "react";
-import { usePlayer, requestAnalyser, resumeGlobalAudioContext } from "../../context/PlayerContext";
+import { usePlayer, requestAnalyser, resumeGlobalAudioContext, resetAnalyserDisabled } from "../../context/PlayerContext";
 
 const PREF_KEY = "uvm_radio_viz_v9";
 const DEBUG_KEY = "uvm_radio_viz_debug";
@@ -43,6 +43,8 @@ const MODES = [
 
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isSafari = /Safari\//.test(navigator.userAgent) &&
+  !/Chrome\//.test(navigator.userAgent) && !/Chromium\//.test(navigator.userAgent);
 const getDpr = () => Math.min(window.devicePixelRatio || 1, 2);
 
 // ── Smoothed frequency data ───────────────────────────────────────────────────
@@ -640,22 +642,25 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     // Resume AudioContext (needed on all platforms after suspension)
     await resumeGlobalAudioContext();
 
+    // Allow retry — previous gesture should have unlocked the context
+    resetAnalyserDisabled();
+
     // requestAnalyser reuses the existing source node — never recreates it.
-    // Works on iOS and non-iOS when audio is already playing (user gesture done).
     const result = requestAnalyser(audio);
     if (result?.analyser) {
       analyserRef.current = result.analyser;
       if (result.ctx?.state === "suspended") {
         try { await result.ctx.resume(); } catch {}
       }
-      console.log("[Viz] tryConnect | analyser ready | iOS:", isIOS, "| ctxState:", result.ctx?.state,
-        "| sameEl:", result.sourceNode != null);
+      console.log("[Viz] tryConnect | analyser ready | iOS:", isIOS, "| isSafari:", isSafari,
+        "| ctxState:", result.ctx?.state, "| sameEl:", result.sourceNode != null);
       return true;
     }
 
     analyserRef.current = null;
     console.log("[Viz] tryConnect | analyser not ready yet — using fallback | iOS:", isIOS,
-      "| audio.paused:", audio.paused, "| audio.src:", audio.src?.substring(0, 40));
+      "| isSafari:", isSafari, "| audio.paused:", audio.paused,
+      "| audio.src:", audio.src?.substring(0, 40));
     return false;
   }, [audioRef]);
 
@@ -696,6 +701,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
           soundPlaying: audio ? !audio.paused : false,
           analyserConnected: true,
           frequencyDataChanging: live,
+          usingFallbackVisualizer: !live,
           activeVisualizerTheme: currentMode,
           sameAudioElementReused: !!audio,
           sourceNodeReused: !!window._uvAnalyser,
@@ -703,6 +709,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
           bassEnergy: bass,
           beatDetected: beat,
           iOS: isIOS,
+          isSafari,
         };
 
         if (Date.now() - logTimerRef.current > 3000) {
@@ -745,6 +752,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
           soundPlaying: audio ? !audio.paused : false,
           analyserConnected: false,
           frequencyDataChanging: false,
+          usingFallbackVisualizer: true,
           activeVisualizerTheme: currentMode,
           sameAudioElementReused: !!audio,
           sourceNodeReused: false,
@@ -752,6 +760,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
           bassEnergy: 0,
           beatDetected: false,
           iOS: isIOS,
+          isSafari,
         };
 
         if (Date.now() - logTimerRef.current > 3000) {
@@ -806,18 +815,29 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [mode, isPlaying, tryConnectAnalyser, startLoop, stopLoop, themeColor]);
 
-  // Retry connection shortly after playback starts (context may be suspended until gesture)
+  // Retry connection after playback starts.
+  // iOS Safari: AudioContext may take 300-800ms to reach "running" after gesture.
+  // We attempt reconnection at 350ms, 800ms, and 1800ms to cover all iOS timing.
   useEffect(() => {
     if (!isPlaying) return;
-    const timer = setTimeout(async () => {
+    const attempt = async (label) => {
       await resumeGlobalAudioContext();
       const sharedCtx = window._uvAudioCtx;
-      if (!analyserRef.current || !sharedCtx || sharedCtx.state !== "running") {
+      const ctxOk = sharedCtx && sharedCtx.state === "running";
+      const needsConnect = !analyserRef.current || !ctxOk;
+      console.log(`[Viz] retry-${label} | ctxState:`, sharedCtx?.state || "null",
+        "| analyserRef:", !!analyserRef.current, "| needsConnect:", needsConnect,
+        "| iOS:", isIOS, "| isSafari:", isSafari);
+      if (needsConnect) {
         const connected = await tryConnectAnalyser();
         if (connected && !rafRef.current) startLoop(mode, themeColor);
       }
-    }, 350);
-    return () => clearTimeout(timer);
+    };
+    const t1 = setTimeout(() => attempt("350ms"), 350);
+    const t2 = setTimeout(() => attempt("800ms"), 800);
+    // Third attempt only on iOS Safari where timing is most variable
+    const t3 = (isIOS || isSafari) ? setTimeout(() => attempt("1800ms"), 1800) : null;
+    return () => { clearTimeout(t1); clearTimeout(t2); if (t3) clearTimeout(t3); };
   }, [isPlaying]);
 
   const currentModeObj = MODES.find(m => m.id === mode) || MODES[0];
@@ -841,13 +861,15 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
                 ["soundPlaying", debugInfo.soundPlaying],
                 ["analyserConnected", debugInfo.analyserConnected],
                 ["frequencyDataChanging", debugInfo.frequencyDataChanging],
-                ["activeVisualizerTheme", debugInfo.activeVisualizerTheme],
-                ["sameAudioElementReused", debugInfo.sameAudioElementReused],
-                ["sourceNodeReused", debugInfo.sourceNodeReused],
+                ["usingFallbackVisualizer", debugInfo.usingFallbackVisualizer],
                 ["audioContextState", debugInfo.audioContextState],
+                ["sourceNodeReused", debugInfo.sourceNodeReused],
+                ["sameAudioElementReused", debugInfo.sameAudioElementReused],
+                ["activeVisualizerTheme", debugInfo.activeVisualizerTheme],
                 ["bassEnergy", typeof debugInfo.bassEnergy === "number" ? debugInfo.bassEnergy.toFixed(4) : "-"],
                 ["beatDetected", debugInfo.beatDetected],
                 ["iOS", debugInfo.iOS],
+                ["isSafari", debugInfo.isSafari],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ color: "rgba(255,255,255,0.5)" }}>{k}:</span>
@@ -861,7 +883,11 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", paddingTop: 8, paddingRight: 4, paddingLeft: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8, paddingRight: 4, paddingLeft: 4 }}>
+        {/* Debug toggle — tap to show/hide the live debug overlay */}
+        <button onClick={toggleDebug} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap", userSelect: "none", WebkitUserSelect: "none", background: debugMode ? "rgba(255,80,80,0.15)" : "rgba(255,255,255,0.04)", border: debugMode ? "1px solid rgba(255,80,80,0.5)" : "1px solid rgba(255,255,255,0.12)", color: debugMode ? "#ff8080" : "rgba(255,255,255,0.3)" }}>
+          {debugMode ? "● DEBUG" : "DEBUG"}
+        </button>
         <button onClick={cycleMode} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s ease", userSelect: "none", WebkitUserSelect: "none", background: `rgba(${themeColor},0.10)`, border: `1px solid rgba(${themeColor},0.45)`, color: `rgb(${themeColor})`, boxShadow: `0 0 8px rgba(${themeColor},0.12)` }}>
           <span style={{ fontSize: 9, lineHeight: 1 }}>{currentModeObj.icon}</span>
           {currentModeObj.label}
