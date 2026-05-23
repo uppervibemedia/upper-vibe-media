@@ -67,6 +67,8 @@ export function useRadioTheme() {
 
 export default function RadioThemePicker({ themeId, onSelect, pulseEnabled, onTogglePulse }) {
   const [open, setOpen] = useState(false);
+  const currentTheme = RADIO_THEMES[themeId] || RADIO_THEMES.cyan;
+  const p = currentTheme.vars["--rt-primary"];
 
   return (
     <div style={{ position: "relative" }}>
@@ -79,9 +81,10 @@ export default function RadioThemePicker({ themeId, onSelect, pulseEnabled, onTo
           textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap",
           transition: "all 0.2s ease",
           userSelect: "none", WebkitUserSelect: "none",
-          background: open ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.14)",
-          color: "rgba(255,255,255,0.55)",
+          background: open ? `rgba(${p},0.18)` : `rgba(${p},0.10)`,
+          border: `1px solid rgba(${p},0.45)`,
+          color: `rgb(${p})`,
+          boxShadow: `0 0 8px rgba(${p},0.12)`,
         }}
       >
         <Palette style={{ width: 10, height: 10 }} />
