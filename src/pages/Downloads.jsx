@@ -7,6 +7,8 @@ import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import { format } from "date-fns";
+import { useTheme } from "../context/ThemeContext";
+import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 
 async function forceDownloadMp3(audioUrl, title, artist) {
   const filename = `${title || "song"}${artist ? " - " + artist : ""}.mp3`
@@ -30,6 +32,9 @@ export default function Downloads() {
   const [redownloading, setRedownloading] = useState({});
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isAuthenticated, navigateToLogin } = useAuth();
+  const { accentId } = useTheme();
+  const theme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rgb = theme.vars["--rt-primary"];
 
   useEffect(() => {
     if (!user?.id) return;
@@ -88,11 +93,11 @@ export default function Downloads() {
 
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4 text-[10px] font-black tracking-[0.3em] uppercase"
-            style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
-            <Download className="w-3 h-3" /> Library
-          </div>
-          <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-2">My Downloads</h1>
+          <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-1">My Downloads</h1>
+          <p className="font-heading font-bold mb-2 leading-snug flex items-center gap-2"
+            style={{ fontSize: "clamp(0.85rem, 2.5vw, 1.1rem)", color: `rgb(${rgb})` }}>
+            Library <Download className="w-4 h-4 flex-shrink-0" />
+          </p>
           <p className="text-white/40 text-sm">
             {downloads.length} track{downloads.length !== 1 ? "s" : ""} in your offline library
           </p>
