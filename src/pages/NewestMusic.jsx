@@ -111,24 +111,8 @@ export default function NewestMusic() {
                     <p className="text-xs text-white/25 flex-shrink-0 hidden sm:block">{track.duration}</p>
                   )}
 
-                  {/* Actions */}
+                  {/* Actions: Play → Download → Heart */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {/* Heart */}
-                    <button
-                      onClick={() => {
-                        if (!user) { setLoginModal(true); return; }
-                        toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-                      }}
-                      title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
-                      className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                      style={isFaved("track", track.id) ? {
-                        background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.35)", color: "#ec4899"
-                      } : {
-                        background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.3)"
-                      }}>
-                      <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-                    </button>
-
                     {/* Play */}
                     <button onClick={() => handlePlay(track)}
                       className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
@@ -162,6 +146,22 @@ export default function NewestMusic() {
                         <Lock className="w-3.5 h-3.5" />
                       </button>
                     )}
+
+                    {/* Heart — violet purple */}
+                    <button
+                      onClick={() => {
+                        if (!user) { setLoginModal(true); return; }
+                        toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
+                      }}
+                      title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
+                      className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                      style={isFaved("track", track.id) ? {
+                        background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
+                      } : {
+                        background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
+                      }}>
+                      <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
+                    </button>
                   </div>
                 </motion.div>
               );
