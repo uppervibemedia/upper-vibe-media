@@ -13,9 +13,17 @@ const DEFAULT_SECONDARY = [
   { id: "6VXNZ1NOFDI", title: "High Vibe Drop" },
 ];
 
+// Thumbnail sizes tried in order until one loads without black bars
+const THUMB_SIZES = ["maxresdefault", "sddefault", "hqdefault", "mqdefault"];
+
 function YtThumb({ videoId, title, small = false }) {
-  const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  const [sizeIdx, setSizeIdx] = React.useState(0);
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const thumbUrl = `https://img.youtube.com/vi/${videoId}/${THUMB_SIZES[sizeIdx]}.jpg`;
+
+  const handleError = () => {
+    if (sizeIdx < THUMB_SIZES.length - 1) setSizeIdx((i) => i + 1);
+  };
 
   return (
     <a
@@ -25,7 +33,7 @@ function YtThumb({ videoId, title, small = false }) {
       className="relative block overflow-hidden rounded-xl flex-shrink-0 transition-all active:scale-[0.97]"
       style={{
         aspectRatio: "16/9",
-        background: "#000",
+        background: "#111",
         border: "1px solid rgba(255,60,60,0.15)",
         width: small ? "calc(50vw - 28px)" : "100%",
         maxWidth: small ? 160 : "100%",
@@ -33,44 +41,47 @@ function YtThumb({ videoId, title, small = false }) {
       }}
     >
       <img
+        key={thumbUrl}
         src={thumbUrl}
         alt={title}
         loading="lazy"
+        onError={handleError}
         className="w-full h-full object-cover"
+        style={{ display: "block" }}
       />
       <div
         className="absolute inset-0"
-        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)" }}
+        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)" }}
       />
-      {/* Play button */}
+      {/* Subtle play circle */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div
           style={{
-            width: small ? 32 : 48,
-            height: small ? 22 : 34,
-            borderRadius: 6,
-            background: "rgba(200,0,0,0.92)",
+            width: small ? 28 : 44,
+            height: small ? 28 : 44,
+            borderRadius: "50%",
+            background: "rgba(0,0,0,0.5)",
+            border: "1.5px solid rgba(255,255,255,0.6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.5)",
+            backdropFilter: "blur(4px)",
           }}
         >
-          <svg viewBox="0 0 24 24" fill="white" style={{ width: small ? 10 : 16, height: small ? 10 : 16, marginLeft: 1 }}>
+          <svg viewBox="0 0 24 24" fill="white" style={{ width: small ? 9 : 14, height: small ? 9 : 14, marginLeft: 2 }}>
             <path d="M8 5v14l11-7z" />
           </svg>
         </div>
       </div>
-      {/* Title (small only) */}
-      {small && title && (
+      {/* Title */}
+      {title && (
         <p
           className="absolute bottom-1.5 left-2 right-2 text-white truncate"
-          style={{ fontSize: "9px", fontWeight: 700, lineHeight: 1.2 }}
+          style={{ fontSize: small ? "9px" : "11px", fontWeight: 700, lineHeight: 1.2 }}
         >
           {title}
         </p>
       )}
-
     </a>
   );
 }
