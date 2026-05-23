@@ -221,6 +221,10 @@ const _peaks = { data: null, decay: null };
 const _wfSm  = { data: null };
 const IOS_GAIN = isIOS ? 2.2 : 1.0;
 
+// Accumulated spin angles driven by audio energy — NOT by wall-clock time
+// This ensures rotation speed is zero when silent and fast on loud beats
+const _spin = { acc: 0, last: 0 };
+
 function getSmoothedFreq(an) {
   const bufLen = an.frequencyBinCount;
   const raw = new Uint8Array(bufLen);
@@ -229,8 +233,8 @@ function getSmoothedFreq(an) {
   const sm = _sm.data;
   for (let i = 0; i < bufLen; i++) {
     const r = Math.min(1, (raw[i] / 255) * IOS_GAIN);
-    // Fast attack (0.8 weight on new data), slow decay — preserves beat transients
-    sm[i] = r > sm[i] ? r * 0.8 + sm[i] * 0.2 : sm[i] * 0.72 + r * 0.28;
+    // Fast attack, moderate decay — captures transients well
+    sm[i] = r > sm[i] ? r * 0.85 + sm[i] * 0.15 : sm[i] * 0.68 + r * 0.32;
   }
   return sm;
 }
@@ -240,14 +244,23 @@ function getMid(sm, n)    { const lo = Math.floor(n * 0.05), hi = Math.floor(n *
 function getTreble(sm, n) { const lo = Math.floor(n * 0.30), hi = Math.floor(n * 0.70); let v = 0; for (let i = lo; i < hi; i++) v += sm[i]; return Math.min(1, v / (hi - lo)); }
 function getAvg(sm, n)    { let v = 0; for (let i = 0; i < n; i++) v += sm[i]; return Math.min(1, v / n); }
 
+// Accumulate audio-driven spin angle (called each frame with current energy)
+function tickSpin(energy) {
+  const now = Date.now();
+  const dt = Math.min(0.05, (now - _spin.last) / 1000); // cap at 50ms
+  _spin.last = now;
+  // Base crawl + strong audio push — nearly stops when silent, races on loud bass
+  _spin.acc += dt * (0.08 + energy * 4.5);
+  return _spin.acc;
+}
+
 const _beat = { last: 0, hist: new Float32Array(12), idx: 0, count: 0 };
 function detectBeat(bass) {
   const now = Date.now();
   _beat.hist[_beat.idx % 12] = bass; _beat.idx++;
   const avg = _beat.hist.reduce((a, b) => a + b, 0) / 12;
-  // Threshold: 1.35x local average, minimum 0.15 — catches both loud and soft tracks
-  const thresh = Math.min(0.5, avg * 1.35 + 0.10);
-  if (bass > thresh && bass > 0.15 && now - _beat.last > 220) { _beat.last = now; _beat.count++; return true; }
+  const thresh = Math.min(0.5, avg * 1.3 + 0.08);
+  if (bass > thresh && bass > 0.12 && now - _beat.last > 200) { _beat.last = now; _beat.count++; return true; }
   return false;
 }
 
@@ -268,17 +281,19 @@ function roundedBar(ctx, x, y, w, h, r) {
 }
 
 // ── Draw: Spectrum → STARGATE RINGS ──────────────────────────────────────────
-// Concentric rotating rings whose radius pulses with frequency bands
+// Rings rotate FASTER with more bass energy — dead silent = nearly frozen
 function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat, color) {
-  const cx = W / 2, cy = H / 2, t = Date.now() / 1000;
+  const cx = W / 2, cy = H / 2;
   const usable = Math.floor(bufLen * 0.75);
   const ringCount = 9;
   const maxR = Math.min(W, H) * 0.48;
+  // Audio-driven spin — accumulates proportional to energy each frame
+  const spinBase = tickSpin(bass + getMid(sm, bufLen) * 0.5);
 
-  // Beat flash
+  // Beat flash — hard pop on kick
   if (beat) {
     const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 1.5);
-    bg.addColorStop(0, `rgba(${color},${bass * 0.18})`);
+    bg.addColorStop(0, `rgba(${color},${0.25 + bass * 0.25})`);
     bg.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   }
@@ -287,13 +302,15 @@ function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat, color) {
     const frac = (ri + 1) / ringCount;
     const binIdx = Math.floor(frac * usable * 0.55);
     const energy = sm[binIdx] || 0;
-    const beatPush = beat && ri < 3 ? bass * 0.22 : 0;
-    const radius = maxR * frac * (1 + energy * 0.35 + beatPush);
-    const sides = 3 + ri * 2; // 3, 5, 7, 9 ... sided polygons
-    const spin = t * (0.18 + ri * 0.09) * (ri % 2 === 0 ? 1 : -1);
-    const alpha = 0.12 + energy * 0.65 + bass * 0.2;
-    const hue = 185 + frac * 100 + (t * 20 % 60);
-    const lw = 1.0 + energy * 3.5 + (ri < 2 ? bass * 2.5 : 0);
+    // Radius grows strongly with energy — visually "breathes" with the song
+    const radius = maxR * frac * (0.6 + energy * 0.7 + (beat && ri < 4 ? bass * 0.35 : 0));
+    const sides = 3 + ri * 2;
+    // Each ring spins at its own speed, direction alternates — all audio-driven
+    const dir = ri % 2 === 0 ? 1 : -1;
+    const spin = spinBase * (0.4 + ri * 0.15) * dir;
+    const alpha = 0.08 + energy * 0.85 + (beat ? bass * 0.35 : 0);
+    const hue = 185 + frac * 110 + (spinBase * 8 % 60);
+    const lw = 0.8 + energy * 4.0 + (beat && ri < 3 ? bass * 3 : 0);
 
     ctx.save();
     ctx.translate(cx, cy);
@@ -301,71 +318,81 @@ function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat, color) {
     ctx.beginPath();
     for (let s = 0; s <= sides; s++) {
       const a = (s / sides) * Math.PI * 2;
-      const wobble = 1 + Math.sin(t * 2.5 + s * 1.3 + ri) * 0.06 * energy;
-      const rx = Math.cos(a) * radius * wobble;
-      const ry = Math.sin(a) * radius * wobble;
-      s === 0 ? ctx.moveTo(rx, ry) : ctx.lineTo(rx, ry);
+      // Wobble amplitude tied to energy — flat when silent
+      const wobble = 1 + energy * 0.12 * Math.sin(s * 1.3 + spinBase * 2);
+      ctx.lineTo(Math.cos(a) * radius * wobble, Math.sin(a) * radius * wobble);
     }
     ctx.closePath();
     ctx.strokeStyle = `hsla(${hue},100%,68%,${Math.min(1, alpha)})`;
     ctx.lineWidth = lw;
-    ctx.shadowBlur = beat && ri < 3 ? 18 : 6;
-    ctx.shadowColor = `hsla(${hue},100%,68%,0.7)`;
+    ctx.shadowBlur = beat && ri < 3 ? 22 : energy * 8;
+    ctx.shadowColor = `hsla(${hue},100%,68%,0.9)`;
     ctx.stroke();
     ctx.restore();
 
-    // Connecting spokes between rings
-    if (ri < ringCount - 1) {
+    // Spokes — only visible when there's real energy
+    if (ri < ringCount - 1 && energy > 0.15) {
       const nextFrac = (ri + 2) / ringCount;
-      const nextR = maxR * nextFrac * (1 + (sm[Math.floor(nextFrac * usable * 0.55)] || 0) * 0.35);
-      const spokeCount = Math.min(4, 2 + Math.floor(bass * 3));
-      for (let sp = 0; sp < spokeCount; sp++) {
+      const nextEnergy = sm[Math.floor(nextFrac * usable * 0.55)] || 0;
+      const nextR = maxR * nextFrac * (0.6 + nextEnergy * 0.7);
+      const spokeCount = 2 + Math.floor(bass * 4);
+      for (let sp = 0; sp < Math.min(spokeCount, 6); sp++) {
         const a = (sp / spokeCount) * Math.PI * 2 + spin;
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
-        ctx.lineTo(cx + Math.cos(a) * nextR,  cy + Math.sin(a) * nextR);
-        ctx.strokeStyle = `hsla(${hue},100%,68%,${alpha * 0.35})`;
-        ctx.lineWidth = 0.7; ctx.shadowBlur = 0; ctx.stroke();
+        ctx.lineTo(cx + Math.cos(a) * nextR, cy + Math.sin(a) * nextR);
+        ctx.strokeStyle = `hsla(${hue},100%,68%,${energy * 0.4})`;
+        ctx.lineWidth = 0.6; ctx.stroke();
       }
     }
   }
 
-  // Central orb
-  const orbR = Math.max(0, 5 + bass * 28 + (beat ? 14 : 0));
+  // Central orb — scales dramatically with bass
+  const orbR = Math.max(0, bass * 36 + (beat ? 18 : 0));
   if (orbR > 0) {
     const og = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR * 3.5);
-    og.addColorStop(0, `rgba(255,255,255,${0.9 + bass * 0.1})`);
-    og.addColorStop(0.3, `rgba(${color},${0.6 + bass * 0.4})`);
+    og.addColorStop(0, `rgba(255,255,255,${0.85 + bass * 0.15})`);
+    og.addColorStop(0.3, `rgba(${color},${0.7 + bass * 0.3})`);
     og.addColorStop(1, "rgba(0,0,0,0)");
     ctx.beginPath(); ctx.arc(cx, cy, orbR, 0, Math.PI * 2);
     ctx.fillStyle = og; ctx.fill();
   }
 }
 
-// ── Draw: Waveform → LISSAJOUS SPIRAL ────────────────────────────────────────
-// Polar waveform: frequency data mapped to angles, drawing a glowing petal/spiral shape
+// ── Draw: Waveform → PETAL SPIRAL ────────────────────────────────────────────
+// Shape contracts to near-circle when silent, blooms into petals on loud hits
 function drawWaveform(ctx, W, H, an, bass, beat, color) {
-  const cx = W / 2, cy = H / 2, t = Date.now() / 1000;
+  const cx = W / 2, cy = H / 2;
   const bufLen = an.frequencyBinCount;
   const sm2 = _sm.data || new Float32Array(bufLen);
   const usable = Math.floor(bufLen * 0.70);
-  const baseR = Math.min(W, H) * 0.12;
-  const maxR  = Math.min(W, H) * 0.44;
+  const baseR = Math.min(W, H) * 0.08; // tighter base so silence = small circle
+  const maxR  = Math.min(W, H) * 0.46;
   const points = 360;
-  const spin = t * 0.28;
+  // Audio-driven rotation — fast on loud, barely moves on silence
+  const spin = tickSpin(bass * 0.8 + getMid(sm2, bufLen) * 0.4);
 
-  // Outer glow halo
-  const haloR = maxR * (0.9 + bass * 0.3);
-  const hg = ctx.createRadialGradient(cx, cy, maxR * 0.55, cx, cy, haloR * 1.4);
-  hg.addColorStop(0, `rgba(${color},${0.06 + bass * 0.08})`);
-  hg.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H);
+  // Halo only when there's energy
+  if (bass > 0.08) {
+    const haloR = maxR * (0.7 + bass * 0.6);
+    const hg = ctx.createRadialGradient(cx, cy, maxR * 0.3, cx, cy, haloR * 1.3);
+    hg.addColorStop(0, `rgba(${color},${bass * 0.15})`);
+    hg.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H);
+  }
 
-  // Draw 2 layers: filled shape + bright outline
+  // Beat pop — brief bright flash
+  if (beat) {
+    const bf = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+    bf.addColorStop(0, `rgba(${color},${bass * 0.3})`);
+    bf.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = bf; ctx.fillRect(0, 0, W, H);
+  }
+
   for (let layer = 0; layer < 2; layer++) {
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(spin * (layer === 0 ? 1 : -0.6));
+    ctx.rotate(spin * (layer === 0 ? 1 : -0.55));
     ctx.beginPath();
 
     for (let i = 0; i <= points; i++) {
@@ -373,132 +400,134 @@ function drawWaveform(ctx, W, H, an, bass, beat, color) {
       const binIdx = Math.floor(frac * usable);
       const energy = sm2[binIdx] || 0;
       const angle = frac * Math.PI * 2;
-      // Radius modulated by frequency energy + harmonic wobble
-      const harmonic = Math.sin(angle * 3 + t * 1.8) * 0.08 + Math.sin(angle * 7 + t * 0.9) * 0.04;
-      const r = baseR + (maxR - baseR) * energy + (maxR - baseR) * 0.12 * harmonic + (beat ? bass * 18 : 0);
-      const x = Math.cos(angle) * r, y = Math.sin(angle) * r;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      // Shape is FULLY audio-driven: silence = tiny circle, loud = full petal bloom
+      const r = baseR + (maxR - baseR) * energy + (beat ? bass * 22 : 0);
+      ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
     }
     ctx.closePath();
 
     if (layer === 0) {
-      // Filled interior — dim cosmic glow
       const fg = ctx.createRadialGradient(0, 0, baseR, 0, 0, maxR);
-      fg.addColorStop(0, `rgba(${color},${0.08 + bass * 0.12})`);
-      fg.addColorStop(1, `rgba(${color},0.02)`);
+      fg.addColorStop(0, `rgba(${color},${0.04 + bass * 0.14})`);
+      fg.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = fg; ctx.fill();
     } else {
-      // Glowing outline
-      ctx.shadowBlur = beat ? 28 : 14;
-      ctx.shadowColor = `rgba(${color},0.9)`;
-      const hue = 185 + bass * 60 + (t * 18 % 80);
-      ctx.strokeStyle = `hsla(${hue},100%,72%,${0.7 + bass * 0.3})`;
-      ctx.lineWidth = beat ? 2.2 : 1.4;
+      // Line brightness and width tied directly to bass
+      ctx.shadowBlur = beat ? 32 : bass * 20;
+      ctx.shadowColor = `rgba(${color},0.95)`;
+      const hue = 185 + bass * 70 + (spin * 15 % 80);
+      ctx.strokeStyle = `hsla(${hue},100%,72%,${0.3 + bass * 0.7})`;
+      ctx.lineWidth = 0.8 + bass * 2.5 + (beat ? 1.5 : 0);
       ctx.lineJoin = "round"; ctx.stroke();
     }
     ctx.restore();
   }
 
-  // Inner spinning star
-  const starR = baseR * (0.6 + bass * 0.9);
-  const spokes = 6;
-  ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * 0.9 + bass * 2);
-  ctx.beginPath();
-  for (let s = 0; s < spokes * 2; s++) {
-    const a = (s / (spokes * 2)) * Math.PI * 2;
-    const r = s % 2 === 0 ? starR : starR * 0.4;
-    s === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  // Inner star — only shows when there's bass
+  if (bass > 0.1) {
+    const starR = Math.min(W, H) * 0.04 + bass * Math.min(W, H) * 0.12;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(spin * 1.8);
+    ctx.beginPath();
+    for (let s = 0; s < 12; s++) {
+      const a = (s / 12) * Math.PI * 2;
+      const r = s % 2 === 0 ? starR : starR * 0.38;
+      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `rgba(255,255,255,${bass * 0.9})`;
+    ctx.lineWidth = 1.2; ctx.shadowBlur = 14; ctx.shadowColor = `rgba(${color},1)`; ctx.stroke();
+    ctx.restore();
   }
-  ctx.closePath();
-  ctx.strokeStyle = `rgba(255,255,255,${0.5 + bass * 0.5})`;
-  ctx.lineWidth = 1.2; ctx.shadowBlur = 12; ctx.shadowColor = `rgba(${color},1)`; ctx.stroke();
-  ctx.restore();
 
-  // Center dot
-  const dotR = Math.max(0, 3 + bass * 16 + (beat ? 10 : 0));
+  // Center dot — punches on beat
+  const dotR = Math.max(0, bass * 22 + (beat ? 14 : 0));
   if (dotR > 0) {
     const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3);
     dg.addColorStop(0, "rgba(255,255,255,1)");
-    dg.addColorStop(0.4, `rgba(${color},0.7)`);
+    dg.addColorStop(0.4, `rgba(${color},0.8)`);
     dg.addColorStop(1, "rgba(0,0,0,0)");
     ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
     ctx.fillStyle = dg; ctx.fill();
   }
 }
 
-// ── Draw: Energy → RADIAL MANDALA ─────────────────────────────────────────────
-// Frequency bins mapped as radial spokes in a mandala — rotates and pulses with the beat
+// ── Draw: Energy → SOLAR MANDALA ─────────────────────────────────────────────
+// Spokes are ONLY as long as the frequency energy at that bin — silence = all short, loud = full bloom
 function drawEnergy(ctx, W, H, sm, bufLen, bass, mid, treble, beat) {
-  const cx = W / 2, cy = H / 2, t = Date.now() / 1000;
+  const cx = W / 2, cy = H / 2;
   const usable = Math.floor(bufLen * 0.70);
   const spokeCount = 64;
-  const innerR = Math.min(W, H) * 0.08;
+  const innerR = Math.min(W, H) * 0.06;
   const maxR   = Math.min(W, H) * 0.46;
-  const spin   = t * 0.22;
+  // Audio-driven spin
+  const spinBase = tickSpin(bass * 0.6 + mid * 0.5);
 
-  // Ambient background pulse on beat
+  // Beat flash
   if (beat) {
     const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 1.6);
-    bg.addColorStop(0, `rgba(155,100,255,${bass * 0.14})`);
-    bg.addColorStop(0.5, `rgba(0,200,220,${bass * 0.06})`);
+    bg.addColorStop(0, `rgba(155,100,255,${0.1 + bass * 0.2})`);
+    bg.addColorStop(0.5, `rgba(0,200,220,${bass * 0.08})`);
     bg.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   }
 
-  // Draw two counter-rotating layers for mandala depth
   for (let layer = 0; layer < 2; layer++) {
-    const layerSpin = spin * (layer === 0 ? 1 : -0.7) + layer * (Math.PI / spokeCount);
-    const layerBoost = layer === 0 ? 1.0 : 0.65;
+    const dir = layer === 0 ? 1 : -0.7;
+    const layerSpin = spinBase * dir + layer * (Math.PI / spokeCount);
+    const layerBoost = layer === 0 ? 1.0 : 0.6;
 
     for (let i = 0; i < spokeCount; i++) {
       const frac = i / spokeCount;
       const binIdx = Math.floor(frac * usable);
       const energy = sm[binIdx] || 0;
-      const boost = frac < 0.08 ? 1.8 + bass * 1.2 : frac < 0.35 ? 1.3 + mid * 0.7 : 1.0 + treble * 0.4;
+      // Boost bass bins more — kick drum = outer spoke explosion
+      const boost = frac < 0.08 ? 2.0 + bass * 1.5 : frac < 0.35 ? 1.4 + mid * 0.8 : 1.0 + treble * 0.5;
       const v = Math.min(1, energy * boost * layerBoost);
 
       const angle = frac * Math.PI * 2 + layerSpin;
-      const r1 = innerR + (beat && i % 8 === 0 ? bass * 10 : 0);
+      // Inner radius jumps outward on beat for low-freq spokes
+      const r1 = innerR + (beat && frac < 0.1 ? bass * 14 : 0);
       const r2 = innerR + (maxR - innerR) * v;
 
-      // Hue cycles around the circle + shifts over time
-      const hue = 185 + frac * 220 + layer * 40 + (t * 25 % 90);
-      const alpha = 0.3 + v * 0.7;
+      if (r2 <= r1 + 1) continue; // skip invisible spokes
+
+      const hue = 185 + frac * 220 + layer * 40 + (spinBase * 12 % 90);
+      const alpha = 0.15 + v * 0.85;
 
       ctx.save();
-      ctx.shadowBlur = v > 0.6 ? 10 : 3;
-      ctx.shadowColor = `hsla(${hue},100%,65%,0.8)`;
+      ctx.shadowBlur = v > 0.5 ? 12 + bass * 8 : 2;
+      ctx.shadowColor = `hsla(${hue},100%,65%,0.9)`;
       ctx.beginPath();
       ctx.moveTo(cx + Math.cos(angle) * r1, cy + Math.sin(angle) * r1);
       ctx.lineTo(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2);
       ctx.strokeStyle = `hsla(${hue},100%,68%,${alpha})`;
-      ctx.lineWidth = layer === 0 ? 2.2 : 1.2;
+      ctx.lineWidth = layer === 0 ? 1.8 + bass * 1.5 : 1.0;
       ctx.lineCap = "round";
       ctx.stroke();
 
-      // Tip dot on energetic spokes
-      if (v > 0.45) {
-        const dotR = Math.max(0, 1.5 + v * 3.5);
+      // Tip dot only on high-energy spokes
+      if (v > 0.5) {
+        const dotR = Math.max(0, v * 4);
         ctx.beginPath();
         ctx.arc(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2, dotR, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${hue},100%,88%,${0.5 + v * 0.5})`;
+        ctx.fillStyle = `hsla(${hue},100%,90%,${v * 0.9})`;
         ctx.fill();
       }
       ctx.restore();
     }
   }
 
-  // Inner ring
+  // Inner ring — brightness reacts to bass
   ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-  ctx.strokeStyle = `rgba(255,255,255,${0.1 + bass * 0.25})`; ctx.lineWidth = 1; ctx.stroke();
+  ctx.strokeStyle = `rgba(255,255,255,${0.05 + bass * 0.4})`; ctx.lineWidth = 1 + bass; ctx.stroke();
 
-  // Central orb
-  const orbR = Math.max(0, 4 + bass * 22 + mid * 8 + (beat ? 12 : 0));
+  // Central orb — punches hard on beats
+  const orbR = Math.max(0, bass * 28 + mid * 10 + (beat ? 16 : 0));
   if (orbR > 0) {
     const og = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR * 4);
     og.addColorStop(0, "rgba(255,255,255,1)");
     og.addColorStop(0.25, `rgba(0,229,255,${0.8 + bass * 0.2})`);
-    og.addColorStop(0.6, `rgba(155,100,255,${0.3 + bass * 0.2})`);
+    og.addColorStop(0.6, `rgba(155,100,255,${0.3 + bass * 0.3})`);
     og.addColorStop(1, "rgba(0,0,0,0)");
     ctx.beginPath(); ctx.arc(cx, cy, orbR, 0, Math.PI * 2);
     ctx.fillStyle = og; ctx.fill();
@@ -506,80 +535,102 @@ function drawEnergy(ctx, W, H, sm, bufLen, bass, mid, treble, beat) {
 }
 
 // ── Draw: Neon Pulse ──────────────────────────────────────────────────────────
+// Rings expand with bass, bars are pure frequency bars — silence = flat
 function drawNeonPulse(ctx, W, H, sm, bufLen, bass, mid) {
-  const cx = W / 2, cy = H / 2, t = Date.now() / 1000, baseR = Math.min(W, H) * 0.20;
+  const cx = W / 2, cy = H / 2, baseR = Math.min(W, H) * 0.20;
+  // Concentric rings — radii driven by bass & mid directly
   [
-    { r: baseR * (1 + bass * 1.8), alpha: Math.min(1, 0.7 + bass * 0.8), w: 3 + bass * 6, c: "0,229,255" },
-    { r: baseR * (1.35 + mid * 0.9 + bass * 0.8), alpha: 0.45 + bass * 0.55, w: 2 + bass * 3, c: "155,126,255" },
-    { r: baseR * (1.7 + mid + bass * 0.9), alpha: 0.2 + bass * 0.4, w: 1.5 + bass * 2, c: "0,200,220" },
-    { r: baseR * (2.1 + mid * 0.7 + bass * 0.6), alpha: 0.08 + bass * 0.22, w: 0.8, c: "200,100,255" },
+    { r: baseR * (0.8 + bass * 2.2), alpha: Math.min(1, bass * 1.5), w: 2 + bass * 8, c: "0,229,255" },
+    { r: baseR * (1.1 + mid * 1.2 + bass * 0.9), alpha: bass * 1.2 + mid * 0.5, w: 1.5 + bass * 4, c: "155,126,255" },
+    { r: baseR * (1.5 + mid * 1.0 + bass * 0.7), alpha: 0.1 + bass * 0.6, w: 1 + bass * 2, c: "0,200,220" },
+    { r: baseR * (1.9 + mid * 0.8 + bass * 0.5), alpha: 0.05 + bass * 0.25, w: 0.7, c: "200,100,255" },
   ].forEach(rg => {
-    if (rg.r <= 0) return;
+    if (rg.r <= 0 || rg.alpha <= 0.01) return;
     ctx.beginPath(); ctx.arc(cx, cy, rg.r, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(${rg.c},${rg.alpha})`; ctx.lineWidth = rg.w; ctx.stroke();
+    ctx.strokeStyle = `rgba(${rg.c},${Math.min(1, rg.alpha)})`; ctx.lineWidth = rg.w; ctx.stroke();
   });
+  // Shockwave on beat
   const sinceBeat = Date.now() - _beat.last;
-  if (sinceBeat < 400) {
-    const prog = sinceBeat / 400, shockR = baseR * (1 + prog * 3.5);
+  if (sinceBeat < 500) {
+    const prog = sinceBeat / 500, shockR = baseR * (0.8 + prog * 3.5);
     ctx.beginPath(); ctx.arc(cx, cy, shockR, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(0,229,255,${(1 - prog) * 0.7})`; ctx.lineWidth = (1 - prog) * 8; ctx.stroke();
+    ctx.strokeStyle = `rgba(0,229,255,${(1 - prog) * 0.85})`; ctx.lineWidth = (1 - prog) * 10; ctx.stroke();
   }
-  const bars = 80, usable = Math.floor(bufLen * 0.75), spin = t * 0.45;
+  // Bars — height = pure frequency energy, no time-wobble
+  const bars = 80, usable = Math.floor(bufLen * 0.75);
+  const spin = tickSpin(bass * 0.7 + mid * 0.4); // audio-driven rotation
   for (let i = 0; i < bars; i++) {
-    const v = sm[Math.floor((i / bars) * usable)];
+    const v = sm[Math.floor((i / bars) * usable)] || 0;
+    if (v < 0.02) continue; // don't draw near-silent bars
     const angle = (i / bars) * Math.PI * 2 - Math.PI / 2 + spin;
-    const wobble = Math.sin(t * 3.5 + i * 0.18) * 0.05 * (1 + bass);
-    const inner = baseR * (0.92 + bass * 0.18 + wobble), outer = inner + Math.max(2, v * baseR * (1.4 + bass * 1.8));
+    const inner = baseR * (0.9 + bass * 0.15);
+    const outer = inner + v * baseR * (1.6 + bass * 2.0);
     ctx.beginPath(); ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
     ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
-    ctx.strokeStyle = `hsla(${185 + v * 120 + i * 0.8},100%,62%,${0.4 + v * 0.65})`;
-    ctx.lineWidth = Math.max(1.5, (W / bars) * 0.6); ctx.lineCap = "round"; ctx.stroke();
+    ctx.strokeStyle = `hsla(${185 + v * 120 + i * 0.8},100%,65%,${0.3 + v * 0.7})`;
+    ctx.lineWidth = Math.max(1.5, (W / bars) * 0.55); ctx.lineCap = "round"; ctx.stroke();
   }
-  const breathe = Math.sin(t * 2.8) * 0.3 + 0.7, dotR = Math.max(0, 6 + bass * 32 + mid * 12) * breathe;
+  // Center dot — scales only with real bass, not time
+  const dotR = Math.max(0, bass * 38 + mid * 14);
   if (dotR > 0) {
     const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 4);
-    dg.addColorStop(0, `rgba(0,229,255,${0.95 + bass * 0.05})`);
-    dg.addColorStop(0.3, `rgba(155,100,255,${0.3 + bass * 0.3})`); dg.addColorStop(1, "rgba(0,0,0,0)");
+    dg.addColorStop(0, `rgba(0,229,255,${0.9 + bass * 0.1})`);
+    dg.addColorStop(0.3, `rgba(155,100,255,${0.3 + bass * 0.4})`); dg.addColorStop(1, "rgba(0,0,0,0)");
     ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
   }
 }
 
 // ── Draw: Tunnel ──────────────────────────────────────────────────────────────
+// Zoom depth driven by bass — silence = static concentric rings, loud = rushing tunnel
 function drawTunnel(ctx, W, H, sm, bufLen, t, bass, mid) {
   const cx = W / 2, cy = H / 2, rings = 14, maxR = Math.min(W, H) * 0.5;
-  const beatAge = (Date.now() - _beat.last) / 1000, beatPulse = Math.max(0, 1 - beatAge * 3.5);
+  const beatAge = (Date.now() - _beat.last) / 1000, beatPulse = Math.max(0, 1 - beatAge * 2.5);
+  // Audio-driven rotation — nearly frozen when silent
+  const spinBase = tickSpin(bass * 0.9 + mid * 0.4);
+
   for (let ri = rings; ri >= 1; ri--) {
-    const frac = ri / rings, amp = sm[Math.floor(frac * bufLen * 0.45)] || 0;
-    const zoomBass = bass * 0.55 + beatPulse * 0.35;
-    const radius = maxR * frac * (1 + zoomBass * (1 - frac * 0.5));
-    const sides = 5 + ri, rotation = t * (0.25 + (rings - ri) * 0.07) + bass * 0.9 + beatPulse * 0.5;
-    const alpha = (1 - frac) * (0.35 + amp * 0.55 + bass * 0.3);
-    const hue = 185 + frac * 90 + (t * 15 % 60);
+    const frac = ri / rings;
+    const amp = sm[Math.floor(frac * bufLen * 0.45)] || 0;
+    // Zoom proportional to bass + beat: near-zero when silent
+    const zoom = bass * 0.8 + beatPulse * 0.5;
+    const radius = maxR * frac * (0.7 + zoom * (1 - frac * 0.4));
+    const sides = 5 + ri;
+    // Each ring rotates at its own speed, all audio-driven
+    const rotation = spinBase * (0.5 + (rings - ri) * 0.12);
+    const alpha = (1 - frac) * (amp * 0.9 + bass * 0.4 + 0.05);
+    const hue = 185 + frac * 90 + (spinBase * 10 % 60);
+
+    if (alpha < 0.02) continue;
+
     ctx.beginPath();
     for (let si = 0; si <= sides; si++) {
       const a = (si / sides) * Math.PI * 2 + rotation;
-      si === 0 ? ctx.moveTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius)
-               : ctx.lineTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
+      ctx.lineTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
     }
-    ctx.closePath(); ctx.strokeStyle = `hsla(${hue},100%,68%,${Math.min(1, alpha)})`;
-    ctx.lineWidth = 1.2 + amp * 2.5 + (ri < 4 ? beatPulse * 3 : 0); ctx.stroke();
-    if (ri < rings) {
-      const nextFrac = (ri + 1) / rings, nextR = maxR * nextFrac * (1 + zoomBass * (1 - nextFrac * 0.5));
-      const sc = Math.min(6, 3 + Math.floor(bass * 4));
-      for (let sp = 0; sp < sc; sp++) {
+    ctx.closePath();
+    ctx.strokeStyle = `hsla(${hue},100%,68%,${Math.min(1, alpha)})`;
+    ctx.lineWidth = 0.8 + amp * 3 + (ri < 4 ? beatPulse * 4 : 0); ctx.stroke();
+
+    if (ri < rings && bass > 0.08) {
+      const nextFrac = (ri + 1) / rings;
+      const nextZoom = zoom;
+      const nextR = maxR * nextFrac * (0.7 + nextZoom * (1 - nextFrac * 0.4));
+      const sc = 2 + Math.floor(bass * 5);
+      for (let sp = 0; sp < Math.min(sc, 7); sp++) {
         const a = (sp / sc) * Math.PI * 2 + rotation;
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
         ctx.lineTo(cx + Math.cos(a) * nextR, cy + Math.sin(a) * nextR);
-        ctx.strokeStyle = `hsla(${hue},100%,68%,${alpha * 0.45})`; ctx.lineWidth = 0.7; ctx.stroke();
+        ctx.strokeStyle = `hsla(${hue},100%,68%,${alpha * 0.4})`; ctx.lineWidth = 0.6; ctx.stroke();
       }
     }
   }
-  const dotR = Math.max(0, 4 + bass * 18 + mid * 10 + beatPulse * 20);
+
+  const dotR = Math.max(0, bass * 24 + mid * 12 + beatPulse * 24);
   if (dotR > 0) {
     const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 4.5);
     dg.addColorStop(0, `rgba(0,229,255,${0.95 + bass * 0.05})`);
-    dg.addColorStop(0.4, `rgba(155,100,255,${0.3 + bass * 0.2})`); dg.addColorStop(1, "rgba(0,0,0,0)");
+    dg.addColorStop(0.4, `rgba(155,100,255,${0.3 + bass * 0.3})`); dg.addColorStop(1, "rgba(0,0,0,0)");
     ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
   }
 }
@@ -1008,7 +1059,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
   }, [isPlaying, audioRef]);
 
   useEffect(() => {
-    stopLoop(); particlesRef.current = []; _sm.data = null; _peaks.data = null; _peaks.decay = null; _wfSm.data = null; _beat.hist.fill(0); _beat.idx = 0;
+    stopLoop(); particlesRef.current = []; _sm.data = null; _peaks.data = null; _peaks.decay = null; _wfSm.data = null; _beat.hist.fill(0); _beat.idx = 0; _spin.acc = 0; _spin.last = Date.now();
     tryConnectAnalyser().then(connected => {
       if (!connected) { startLoop(mode, themeColor); }
       else { setTimeout(() => startLoop(mode, themeColor), 80); }
