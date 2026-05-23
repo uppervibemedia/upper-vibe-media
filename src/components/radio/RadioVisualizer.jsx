@@ -631,34 +631,31 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
   };
 
   const tryConnectAnalyser = useCallback(async () => {
-    // On iOS, analyser is never available — visualiser always uses fallback animation.
-    // This is intentional: we never route iOS audio through Web Audio to avoid
-    // breaking playback. The visualiser looks great in fallback mode.
-    if (isIOS) {
-      analyserRef.current = null;
-      return false;
-    }
-
     const audio = audioRef?.current;
     if (!audio) {
       console.log("[Viz] tryConnect | no audio element found");
       return false;
     }
 
+    // Resume AudioContext (needed on all platforms after suspension)
     await resumeGlobalAudioContext();
 
+    // requestAnalyser reuses the existing source node — never recreates it.
+    // Works on iOS and non-iOS when audio is already playing (user gesture done).
     const result = requestAnalyser(audio);
     if (result?.analyser) {
       analyserRef.current = result.analyser;
       if (result.ctx?.state === "suspended") {
         try { await result.ctx.resume(); } catch {}
       }
-      console.log("[Viz] tryConnect | analyser ready | ctxState:", result.ctx?.state);
+      console.log("[Viz] tryConnect | analyser ready | iOS:", isIOS, "| ctxState:", result.ctx?.state,
+        "| sameEl:", result.sourceNode != null);
       return true;
     }
 
     analyserRef.current = null;
-    console.log("[Viz] tryConnect | no analyser (disabled or not yet set up) — using fallback");
+    console.log("[Viz] tryConnect | analyser not ready yet — using fallback | iOS:", isIOS,
+      "| audio.paused:", audio.paused, "| audio.src:", audio.src?.substring(0, 40));
     return false;
   }, [audioRef]);
 
@@ -696,15 +693,16 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
 
         // Update debug ref every frame (cheap)
         debugRef.current = {
-          audioElementFound: !!audio,
-          audioContextState: sharedCtx?.state || "null",
-          sourceNodeConnected: !!window._uvAnalyser,
+          soundPlaying: audio ? !audio.paused : false,
           analyserConnected: true,
           frequencyDataChanging: live,
+          activeVisualizerTheme: currentMode,
+          sameAudioElementReused: !!audio,
+          sourceNodeReused: !!window._uvAnalyser,
+          audioContextState: sharedCtx?.state || "null",
           bassEnergy: bass,
           beatDetected: beat,
-          songId: currentSong?.id || null,
-          radioStillPlaying: audio ? !audio.paused : false,
+          iOS: isIOS,
         };
 
         if (Date.now() - logTimerRef.current > 3000) {
@@ -744,14 +742,16 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       } else {
         // No analyser yet
         debugRef.current = {
-          audioElementFound: !!audio,
-          audioContextState: sharedCtx?.state || "not created",
-          sourceNodeConnected: !!window._uvAnalyser,
+          soundPlaying: audio ? !audio.paused : false,
           analyserConnected: false,
           frequencyDataChanging: false,
-          bassEnergy: 0, beatDetected: false,
-          songId: currentSong?.id || null,
-          radioStillPlaying: audio ? !audio.paused : false,
+          activeVisualizerTheme: currentMode,
+          sameAudioElementReused: !!audio,
+          sourceNodeReused: false,
+          audioContextState: sharedCtx?.state || "not created",
+          bassEnergy: 0,
+          beatDetected: false,
+          iOS: isIOS,
         };
 
         if (Date.now() - logTimerRef.current > 3000) {
@@ -838,15 +838,16 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
               pointerEvents: "none",
             }}>
               {[
-                ["audioElementFound", debugInfo.audioElementFound],
-                ["audioContextState", debugInfo.audioContextState],
-                ["sourceNodeConnected", debugInfo.sourceNodeConnected],
+                ["soundPlaying", debugInfo.soundPlaying],
                 ["analyserConnected", debugInfo.analyserConnected],
                 ["frequencyDataChanging", debugInfo.frequencyDataChanging],
+                ["activeVisualizerTheme", debugInfo.activeVisualizerTheme],
+                ["sameAudioElementReused", debugInfo.sameAudioElementReused],
+                ["sourceNodeReused", debugInfo.sourceNodeReused],
+                ["audioContextState", debugInfo.audioContextState],
                 ["bassEnergy", typeof debugInfo.bassEnergy === "number" ? debugInfo.bassEnergy.toFixed(4) : "-"],
                 ["beatDetected", debugInfo.beatDetected],
-                ["currentRadioSongId", debugInfo.songId || "null"],
-                ["radioStillPlaying", debugInfo.radioStillPlaying],
+                ["iOS", debugInfo.iOS],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ color: "rgba(255,255,255,0.5)" }}>{k}:</span>
