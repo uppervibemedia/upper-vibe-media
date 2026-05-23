@@ -77,20 +77,38 @@ export default function Sidebar() {
             className="w-7 h-7 object-contain"
           />
         </Link>
-        {isAuthenticated && user ? (
-          <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted border border-border">
-            <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black bg-primary/15 text-primary">
-              {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
-            </div>
-            <span className="text-[11px] font-semibold text-muted-foreground">Account</span>
+        <div className="flex items-center gap-2">
+          {/* My Vibe Library shortcut */}
+          <Link
+            to="/my-vibes"
+            onClick={(e) => { if (!isAuthenticated) { e.preventDefault(); navigateToLogin("/my-vibes"); } }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all"
+            style={{
+              background: `rgba(${radioThemeColor},0.07)`,
+              borderColor: `rgba(${radioThemeColor},0.28)`,
+              color: `rgb(${radioThemeColor})`,
+            }}>
+            <Heart className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="hidden sm:inline text-[11px] font-semibold whitespace-nowrap">My Vibe Library</span>
+            <span className="sm:hidden text-[11px] font-semibold whitespace-nowrap">Library</span>
           </Link>
-        ) : (
-          <button onClick={navigateToLogin}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-black text-[11px] tracking-wide"
-            style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff" }}>
-            Log In
-          </button>
-        )}
+
+          {/* Account / Login */}
+          {isAuthenticated && user ? (
+            <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted border border-border">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black bg-primary/15 text-primary">
+                {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
+              </div>
+              <span className="text-[11px] font-semibold text-muted-foreground">Account</span>
+            </Link>
+          ) : (
+            <button onClick={navigateToLogin}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-black text-[11px] tracking-wide"
+              style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff" }}>
+              Log In
+            </button>
+          )}
+        </div>
       </div>
       </div>
 
