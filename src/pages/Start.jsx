@@ -109,12 +109,15 @@ export default function Start() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
 
-  // Load next tracks for the music stack whenever featured track is known
+  // Load next tracks for the music stack — always pin Fourth Dimension Hustler first
+  const FOURTH_DIM_ID = "6a09d6af27b5ce7fe9970479";
   useEffect(() => {
-    if (!featuredTrackId) return;
-    base44.entities.Track.filter({ status: "published" }, "-release_date", 10).then((all) => {
-      const withAudio = all.filter((t) => t.audio_url && t.id !== featuredTrackId);
-      setStackTracks(withAudio.slice(0, 4));
+    base44.entities.Track.filter({ status: "published" }, "-release_date", 12).then((all) => {
+      const withAudio = all.filter((t) => t.audio_url);
+      const pinned = withAudio.find((t) => t.id === FOURTH_DIM_ID);
+      const rest = withAudio.filter((t) => t.id !== FOURTH_DIM_ID && t.id !== featuredTrackId).slice(0, 3);
+      const stack = pinned ? [pinned, ...rest] : rest.slice(0, 4);
+      setStackTracks(stack);
     }).catch(() => {});
   }, [featuredTrackId]);
 
@@ -252,7 +255,7 @@ export default function Start() {
             </p>
           </div>
 
-          {/* Primary CTA */}
+          {/* Primary CTA — below headline */}
           <div className="w-full flex flex-col gap-3">
             <PremiumButton onClick={handleCheckout}>
               Unlock All Downloads — $4.99/mo
@@ -268,10 +271,10 @@ export default function Start() {
               Listen Free First
             </Link>
           </div>
-        </section>
 
-        {/* Music stack — 3-4 smaller song cards */}
-        {stackTracks.length > 0 && <MusicStack tracks={stackTracks} />}
+          {/* Music stack — right under the player */}
+          {stackTracks.length > 0 && <MusicStack tracks={stackTracks} />}
+        </section>
 
         {/* ── YOUTUBE CTA ── */}
         <YouTubeCTA />

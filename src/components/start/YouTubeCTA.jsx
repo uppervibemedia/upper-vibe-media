@@ -109,7 +109,8 @@ export default function YouTubeCTA() {
       if (rows?.[0]?.value) setPlaylistUrl(rows[0].value);
     });
 
-    // Load visualizers — newest by release_date first
+    // Load visualizers — pin Fourth Dimension Hustler first
+    const FOURTH_DIM_VID = "hzR4m-w2924";
     base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 20).then((rows) => {
       const valid = rows
         .map((v) => {
@@ -119,8 +120,12 @@ export default function YouTubeCTA() {
         })
         .filter(Boolean);
 
-      if (valid.length > 0) setMainVideo(valid[0]);
-      if (valid.length > 1) setSecondaryVideos(valid.slice(1, 5));
+      const pinned = valid.find((v) => v.id === FOURTH_DIM_VID);
+      const rest = valid.filter((v) => v.id !== FOURTH_DIM_VID);
+      const ordered = pinned ? [pinned, ...rest] : valid;
+
+      if (ordered.length > 0) setMainVideo(ordered[0]);
+      if (ordered.length > 1) setSecondaryVideos(ordered.slice(1, 5));
     });
   }, []);
 
@@ -128,8 +133,9 @@ export default function YouTubeCTA() {
     <section
       className="flex flex-col gap-4 p-5 rounded-3xl"
       style={{
-        background: "rgba(255,0,0,0.04)",
-        border: "1px solid rgba(255,60,60,0.18)",
+        background: "rgba(255,0,0,0.05)",
+        border: "1px solid rgba(255,60,60,0.3)",
+        boxShadow: "0 0 40px rgba(200,0,0,0.2), 0 0 80px rgba(200,0,0,0.08)",
       }}
     >
       {/* Label */}
