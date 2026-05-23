@@ -17,15 +17,21 @@ export default function MusicStack({ tracks = [] }) {
     <>
       <style>{`
         @keyframes stackCardPulse {
-          0%, 100% { box-shadow: 0 0 14px rgba(${rtPrimary},0.25), 0 0 4px rgba(${rtPrimary},0.12); }
-          50% { box-shadow: 0 0 38px rgba(${rtPrimary},0.7), 0 0 18px rgba(${rtPrimary},0.45); }
+          0%, 100% { box-shadow: 0 0 14px rgba(${rtPrimary},0.22), 0 0 4px rgba(${rtPrimary},0.1); }
+          50% { box-shadow: 0 0 38px rgba(${rtPrimary},0.65), 0 0 18px rgba(${rtPrimary},0.4); }
         }
       `}</style>
-      <div className="flex flex-col gap-3">
-        {/* Horizontal swipe row on mobile, grid on desktop */}
+      <div className="w-full flex flex-col gap-3">
+        {/* Horizontal swipe row — 3–4 cards */}
         <div
-          className="flex gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-4 md:overflow-visible"
-          style={{ scrollSnapType: "x mandatory" }}
+          className="flex gap-3 overflow-x-auto pb-1"
+          style={{
+            scrollSnapType: "x mandatory",
+            WebkitOverflowScrolling: "touch",
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+            paddingRight: "20px", // ensure last card scrolls fully into view
+          }}
         >
           {tracks.slice(0, 4).map((track) => (
             <Link
@@ -34,11 +40,12 @@ export default function MusicStack({ tracks = [] }) {
               className="flex-shrink-0 flex flex-col rounded-2xl overflow-hidden transition-all active:scale-[0.97]"
               style={{
                 width: "calc(50vw - 28px)",
-                maxWidth: 160,
+                maxWidth: 155,
+                minWidth: 130,
                 background: primaryRgba(0.07),
-                border: `1px solid ${primaryRgba(0.3)}`,
+                border: `1px solid ${primaryRgba(0.28)}`,
                 scrollSnapAlign: "start",
-                animation: "stackCardPulse 2.2s ease-in-out infinite",
+                animation: "stackCardPulse 2.4s ease-in-out infinite",
               }}
             >
               {/* Artwork */}
@@ -85,6 +92,24 @@ export default function MusicStack({ tracks = [] }) {
             </Link>
           ))}
         </div>
+
+        {/* Swipe hint dots */}
+        {tracks.length > 2 && (
+          <div className="flex justify-center gap-1.5">
+            {tracks.slice(0, 4).map((_, i) => (
+              <span
+                key={i}
+                style={{
+                  width: i === 0 ? 14 : 5,
+                  height: 5,
+                  borderRadius: 3,
+                  background: i === 0 ? primaryColor : primaryRgba(0.25),
+                  transition: "all 0.2s",
+                }}
+              />
+            ))}
+          </div>
+        )}
 
         {/* CTA button */}
         <Link

@@ -109,15 +109,11 @@ export default function Start() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
 
-  // Load next tracks for the music stack — always pin Fourth Dimension Hustler first
-  const FOURTH_DIM_ID = "6a09d6af27b5ce7fe9970479";
+  // Load next tracks for the music stack — newest published, excluding the featured track
   useEffect(() => {
-    base44.entities.Track.filter({ status: "published" }, "-release_date", 12).then((all) => {
-      const withAudio = all.filter((t) => t.audio_url);
-      const pinned = withAudio.find((t) => t.id === FOURTH_DIM_ID);
-      const rest = withAudio.filter((t) => t.id !== FOURTH_DIM_ID && t.id !== featuredTrackId).slice(0, 3);
-      const stack = pinned ? [pinned, ...rest] : rest.slice(0, 4);
-      setStackTracks(stack);
+    base44.entities.Track.filter({ status: "published" }, "-release_date", 20).then((all) => {
+      const withAudio = all.filter((t) => t.audio_url && t.id !== featuredTrackId);
+      setStackTracks(withAudio.slice(0, 4));
     }).catch(() => {});
   }, [featuredTrackId]);
 
@@ -244,6 +240,9 @@ export default function Start() {
           {/* Featured Track Player */}
           <FeaturedTrackPlayer onTrackLoaded={(t) => setFeaturedTrackId(t.id)} />
 
+          {/* Small song cards — directly under the player */}
+          {stackTracks.length > 0 && <MusicStack tracks={stackTracks} />}
+
           {/* Headline */}
           <div>
             <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.45rem, 6vw, 2rem)", fontWeight: 900, lineHeight: 1.15, color: "#fff", marginBottom: "0.6rem" }}>
@@ -271,9 +270,6 @@ export default function Start() {
               Listen Free First
             </Link>
           </div>
-
-          {/* Music stack — right under the player */}
-          {stackTracks.length > 0 && <MusicStack tracks={stackTracks} />}
         </section>
 
         {/* ── YOUTUBE CTA ── */}

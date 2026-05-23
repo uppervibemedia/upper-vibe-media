@@ -6,7 +6,11 @@ import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
 
-// Music bars — always animate regardless of local play state
+// The default featured track title — used as fallback when no admin override is set
+const DEFAULT_FEATURED_TITLE = "Fourth Dimension Hustler";
+const DEFAULT_FEATURED_ARTIST = "Montae DeVine";
+
+// Music bars — always animate
 function MusicBars({ color = "#00A0DC" }) {
   return (
     <>
@@ -65,22 +69,33 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
           const all = await base44.entities.Track.filter({ status: "published" }, "-created_date", 100);
           const found = all.find((t) => t.id === featuredId && t.audio_url);
           if (found) {
-          setTrack(found);
-          onTrackLoaded?.(found);
+            setTrack(found);
+            onTrackLoaded?.(found);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // 2. Look up "Fourth Dimension Hustler" by title as the default featured track
+        const allPublished = await base44.entities.Track.filter({ status: "published" }, "-release_date", 50);
+        const byTitle = allPublished.find(
+          (t) => t.audio_url && t.title?.toLowerCase().includes("fourth dimension hustler")
+        );
+        if (byTitle) {
+          setTrack(byTitle);
+          onTrackLoaded?.(byTitle);
           setLoading(false);
           return;
         }
-        }
 
-        // 2. Fall back to newest published track with audio
-        const newest = await base44.entities.Track.filter({ status: "published" }, "-created_date", 20);
-        const withAudio = newest.filter((t) => t.audio_url);
+        // 3. Fall back to newest published track with audio
+        const withAudio = allPublished.filter((t) => t.audio_url);
         if (withAudio.length) {
           setTrack(withAudio[0]);
           onTrackLoaded?.(withAudio[0]);
         }
       } catch {
-        // silently fail — fallback card shown
+        // silently fail
       }
       setLoading(false);
     }
@@ -112,9 +127,8 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
     : track?.frequency_type === "528hz" ? "528 Hz"
     : "High-Vibe";
 
-  // Fallback card when no published track exists
-  const displayTitle = track?.title || "Upper Vibe Media";
-  const displayArtist = track?.artist_display || "Tap in to the frequency";
+  const displayTitle = track?.title || DEFAULT_FEATURED_TITLE;
+  const displayArtist = track?.artist_display || DEFAULT_FEATURED_ARTIST;
   const displayCover = track?.cover_url || null;
 
   return (
@@ -149,7 +163,7 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
             textTransform: "uppercase", color: primaryColor,
             fontFamily: "var(--font-heading)",
           }}>
-            {track ? "Newest Track" : "Upper Vibe Media"}
+            Featured Track
           </span>
           {track && (
             <span className="inline-flex items-center gap-1 text-[8px] font-bold px-2 py-0.5 rounded-full"
@@ -189,7 +203,7 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
             </p>
           </div>
 
-          {/* Play button + always-animated bars */}
+          {/* Play button + animated bars */}
           {track?.audio_url && (
             <div className="flex-shrink-0 flex flex-col items-center gap-2">
               <motion.button
@@ -208,7 +222,6 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
                   ? <Pause className="w-4 h-4" style={{ color: primaryColor }} />
                   : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />}
               </motion.button>
-              {/* Always-animated bars below play button */}
               <MusicBars color={playing ? primaryColor : primaryRgba(0.35)} />
             </div>
           )}
@@ -232,7 +245,7 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
               fontFamily: "var(--font-heading)",
             }}
           >
-            Explore Music Library
+            Explore Library
           </Link>
         </div>
       </div>

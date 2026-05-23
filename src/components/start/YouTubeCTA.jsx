@@ -1,30 +1,29 @@
-import React, { useState, useEffect } from "react";
-import { Youtube } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Youtube, ChevronLeft, ChevronRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const DEFAULT_PLAYLIST_URL = "https://youtube.com/playlist?list=PLH-5EaZv0Utx6dsoODbo4wBFTTc_iGs0S&si=xevHTdJKQhdfwUw7";
+const FOURTH_DIM_VID = "hzR4m-w2924";
 
-// Extract YouTube video ID from a URL or embed URL
 function extractVideoId(url) {
   if (!url) return null;
   const m = url.match(/(?:v=|\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : null;
 }
 
-// YouTube thumbnails via i.ytimg.com (avoids some CORS issues with img.youtube.com)
 const THUMB_SIZES = ["maxresdefault", "sddefault", "hqdefault", "mqdefault"];
 
-function YtThumb({ videoId, title, small = false, overrideThumbnail = null }) {
-  const [sizeIdx, setSizeIdx] = React.useState(0);
-  const [pressed, setPressed] = React.useState(false);
-  const [useFallback, setUseFallback] = React.useState(false);
+function YtThumb({ videoId, title, overrideThumbnail = null }) {
+  const [sizeIdx, setSizeIdx] = useState(0);
+  const [useFallback, setUseFallback] = useState(false);
+
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const fallbackThumb = `https://i.ytimg.com/vi/${videoId}/${THUMB_SIZES[sizeIdx]}.jpg`;
   const thumbUrl = (overrideThumbnail && !useFallback) ? overrideThumbnail : fallbackThumb;
 
   const handleError = () => {
     if (overrideThumbnail && !useFallback) {
-      setUseFallback(true); // override failed, try ytimg fallback chain
+      setUseFallback(true);
     } else if (sizeIdx < THUMB_SIZES.length - 1) {
       setSizeIdx((i) => i + 1);
     }
@@ -35,18 +34,15 @@ function YtThumb({ videoId, title, small = false, overrideThumbnail = null }) {
       href={videoUrl}
       target="_blank"
       rel="noopener noreferrer"
-      onMouseEnter={() => setPressed(true)}
-      onMouseLeave={() => setPressed(false)}
-      onTouchStart={() => setPressed(true)}
-      onTouchEnd={() => setPressed(false)}
-      className="relative block overflow-hidden rounded-xl flex-shrink-0 transition-all active:scale-[0.97]"
+      className="relative flex-shrink-0 block overflow-hidden rounded-xl transition-all active:scale-[0.97] group"
       style={{
         aspectRatio: "16/9",
+        width: "calc(75vw - 32px)",
+        maxWidth: 260,
+        minWidth: 200,
+        scrollSnapAlign: "start",
         background: "#111",
         border: "1px solid rgba(255,60,60,0.15)",
-        width: small ? "calc(50vw - 28px)" : "100%",
-        maxWidth: small ? 160 : "100%",
-        scrollSnapAlign: "start",
       }}
     >
       <img
@@ -56,41 +52,30 @@ function YtThumb({ videoId, title, small = false, overrideThumbnail = null }) {
         loading="lazy"
         onError={handleError}
         className="w-full h-full object-cover"
-        style={{ display: "block" }}
       />
       {/* Gradient overlay */}
       <div
         className="absolute inset-0"
-        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)" }}
+        style={{ background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 55%)" }}
       />
-      {/* Play button — only visible on hover/press */}
-      {pressed && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div
-            style={{
-              width: small ? 28 : 44,
-              height: small ? 28 : 44,
-              borderRadius: "50%",
-              background: "rgba(0,0,0,0.65)",
-              border: "1.5px solid rgba(255,255,255,0.7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backdropFilter: "blur(4px)",
-            }}
-          >
-            <svg viewBox="0 0 24 24" fill="white" style={{ width: small ? 9 : 14, height: small ? 9 : 14, marginLeft: 2 }}>
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
+      {/* Play button — shows on hover/touch */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <div style={{
+          width: 42, height: 42, borderRadius: "50%",
+          background: "rgba(0,0,0,0.65)",
+          border: "1.5px solid rgba(255,255,255,0.7)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(4px)",
+        }}>
+          <svg viewBox="0 0 24 24" fill="white" style={{ width: 14, height: 14, marginLeft: 2 }}>
+            <path d="M8 5v14l11-7z" />
+          </svg>
         </div>
-      )}
+      </div>
       {/* Title */}
       {title && (
-        <p
-          className="absolute bottom-1.5 left-2 right-2 text-white truncate"
-          style={{ fontSize: small ? "9px" : "11px", fontWeight: 700, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
-        >
+        <p className="absolute bottom-2 left-2.5 right-2.5 text-white truncate"
+          style={{ fontSize: "11px", fontWeight: 700, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>
           {title}
         </p>
       )}
@@ -100,17 +85,16 @@ function YtThumb({ videoId, title, small = false, overrideThumbnail = null }) {
 
 export default function YouTubeCTA() {
   const [playlistUrl, setPlaylistUrl] = useState(DEFAULT_PLAYLIST_URL);
-  const [mainVideo, setMainVideo] = useState(null);
-  const [secondaryVideos, setSecondaryVideos] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   useEffect(() => {
-    // Load playlist URL from settings
     base44.entities.AppSettings.filter({ key: "youtube_playlist_url" }).then((rows) => {
       if (rows?.[0]?.value) setPlaylistUrl(rows[0].value);
     });
 
-    // Load visualizers — pin Fourth Dimension Hustler first
-    const FOURTH_DIM_VID = "hzR4m-w2924";
     base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 20).then((rows) => {
       const valid = rows
         .map((v) => {
@@ -120,14 +104,38 @@ export default function YouTubeCTA() {
         })
         .filter(Boolean);
 
+      // Pin Fourth Dimension Hustler first
       const pinned = valid.find((v) => v.id === FOURTH_DIM_VID);
       const rest = valid.filter((v) => v.id !== FOURTH_DIM_VID);
-      const ordered = pinned ? [pinned, ...rest] : valid;
-
-      if (ordered.length > 0) setMainVideo(ordered[0]);
-      if (ordered.length > 1) setSecondaryVideos(ordered.slice(1, 5));
+      setVideos(pinned ? [pinned, ...rest] : valid);
     });
   }, []);
+
+  // Track scroll state for arrows
+  const checkScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 8);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    checkScroll();
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    window.addEventListener("resize", checkScroll);
+    return () => {
+      el.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, [videos]);
+
+  const scrollBy = (dir) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * 260, behavior: "smooth" });
+  };
 
   return (
     <section
@@ -140,10 +148,8 @@ export default function YouTubeCTA() {
     >
       {/* Label */}
       <div className="flex items-center justify-center gap-2">
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(255,0,0,0.12)", border: "1px solid rgba(255,60,60,0.25)" }}
-        >
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(255,0,0,0.12)", border: "1px solid rgba(255,60,60,0.25)" }}>
           <Youtube style={{ width: 14, height: 14, color: "#FF4444" }} />
         </div>
         <span style={{
@@ -168,18 +174,55 @@ export default function YouTubeCTA() {
         </p>
       </div>
 
-      {/* Main featured video */}
-      {mainVideo && <YtThumb videoId={mainVideo.id} title={mainVideo.title} overrideThumbnail={mainVideo.thumbnail_url} />}
+      {/* Video carousel */}
+      {videos.length > 0 && (
+        <div className="relative">
+          {/* Left arrow — desktop */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scrollBy(-1)}
+              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10 w-8 h-8 rounded-full items-center justify-center transition-all hover:scale-110"
+              style={{ background: "rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}
+            >
+              <ChevronLeft style={{ width: 16, height: 16, color: "#fff" }} />
+            </button>
+          )}
 
-      {/* Secondary videos — horizontal swipe row */}
-      {secondaryVideos.length > 0 && (
-        <div
-          className="flex gap-3 overflow-x-auto pb-1"
-          style={{ scrollSnapType: "x mandatory" }}
-        >
-          {secondaryVideos.map((v) => (
-            <YtThumb key={v.id} videoId={v.id} title={v.title} overrideThumbnail={v.thumbnail_url} small />
-          ))}
+          {/* Scrollable row */}
+          <div
+            ref={scrollRef}
+            className="flex gap-3 overflow-x-auto pb-2"
+            style={{
+              scrollSnapType: "x mandatory",
+              WebkitOverflowScrolling: "touch",
+              msOverflowStyle: "none",
+              scrollbarWidth: "none",
+              paddingRight: "20px",
+            }}
+          >
+            {videos.map((v) => (
+              <YtThumb key={v.id} videoId={v.id} title={v.title} overrideThumbnail={v.thumbnail_url} />
+            ))}
+          </div>
+
+          {/* Right arrow — desktop */}
+          {canScrollRight && (
+            <button
+              onClick={() => scrollBy(1)}
+              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10 w-8 h-8 rounded-full items-center justify-center transition-all hover:scale-110"
+              style={{ background: "rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.15)" }}
+            >
+              <ChevronRight style={{ width: 16, height: 16, color: "#fff" }} />
+            </button>
+          )}
+
+          {/* Swipe hint — mobile */}
+          {videos.length > 1 && (
+            <p className="text-center text-[9px] mt-1 md:hidden"
+              style={{ color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em" }}>
+              ← swipe to see more →
+            </p>
+          )}
         </div>
       )}
 
