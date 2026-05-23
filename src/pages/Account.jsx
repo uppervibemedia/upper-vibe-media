@@ -262,11 +262,14 @@ export default function Account() {
             <LogOut className="w-4 h-4" /> Log Out
           </button>
 
-          <button onClick={() => setShowDeleteConfirm(true)}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-sm text-red-400/60 hover:text-red-400 transition-colors"
-            style={{ border: "1px solid rgba(239,68,68,0.2)" }}>
-            <Trash2 className="w-4 h-4" /> Delete Account
-          </button>
+          {/* Danger zone — visually separated */}
+          <div className="pt-4">
+            <button onClick={() => setShowDeleteConfirm(true)}
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm transition-all active:scale-[0.98] hover:brightness-110"
+              style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", minHeight: 56 }}>
+              <Trash2 className="w-4 h-4" /> Delete Account
+            </button>
+          </div>
 
           {/* Delete Account Confirmation Dialog */}
           <AnimatePresence>
@@ -292,24 +295,22 @@ export default function Account() {
                     <AlertTriangle className="w-6 h-6 text-red-400" />
                   </div>
                   <h3 className="font-heading font-black text-white text-xl text-center mb-2">Delete Account?</h3>
-                  <p className="text-white/40 text-sm text-center leading-relaxed mb-6">
-                    To delete your account and all associated data, please contact our support team at{" "}
-                    <a href="mailto:support@uppervibemusic.com" className="underline" style={{ color: `rgb(${rtPrimary})` }}>support@uppervibemusic.com</a>.
-                    We'll process your request within 48 hours.
+                  <p className="text-white/40 text-sm text-center leading-relaxed mb-7">
+                    This action permanently removes your account, saved songs, vibe library, and personal data. This cannot be undone.
                   </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowDeleteConfirm(false)}
-                      className="flex-1 py-3 rounded-2xl font-semibold text-sm text-white/50 hover:text-white/80 transition-colors"
-                      style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-                      Cancel
-                    </button>
+                  <div className="flex flex-col gap-3">
                     <a
                       href="mailto:support@uppervibemusic.com?subject=Account Deletion Request"
-                      className="flex-1 py-3 rounded-2xl font-black text-sm text-center transition-all hover:brightness-110"
-                      style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.35)", color: "#f87171" }}>
-                      Contact Support
+                      className="w-full py-4 rounded-2xl font-black text-sm text-center transition-all hover:brightness-110"
+                      style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", minHeight: 52 }}>
+                      Yes, Delete My Account
                     </a>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="w-full py-4 rounded-2xl font-semibold text-sm text-white/50 hover:text-white/80 transition-colors"
+                      style={{ border: "1px solid rgba(255,255,255,0.08)", minHeight: 52 }}>
+                      Cancel
+                    </button>
                   </div>
                 </motion.div>
               </motion.div>

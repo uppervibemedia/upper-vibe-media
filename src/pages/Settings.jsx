@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings as SettingsIcon, Play, Zap, Moon, Sun, Cpu, Bell, Download, CreditCard, LogOut, Crown, ChevronRight } from "lucide-react";
+import { Settings as SettingsIcon, Play, Zap, Moon, Sun, Cpu, Bell, Download, CreditCard, Crown, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -229,15 +229,7 @@ export default function Settings() {
                     }
                   />
                 )}
-                <Row
-                  label="Log Out"
-                  right={
-                    <button onClick={logout}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-red-400/60 hover:text-red-400 transition-colors">
-                      <LogOut className="w-3.5 h-3.5" /> Log Out
-                    </button>
-                  }
-                />
+
               </>
             )}
           </Section>
