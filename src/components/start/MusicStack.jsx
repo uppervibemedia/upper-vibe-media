@@ -24,24 +24,24 @@ export default function MusicStack({ tracks = [] }) {
       <div className="w-full flex flex-col gap-3">
         {/* Horizontal swipe row — 3–4 cards */}
         <div
-          className="flex gap-3 pb-1"
+          className="flex gap-3 overflow-x-auto pb-1"
           style={{
-            overflowX: "scroll",
             scrollSnapType: "x mandatory",
             WebkitOverflowScrolling: "touch",
             msOverflowStyle: "none",
             scrollbarWidth: "none",
+            paddingRight: "20px", // ensure last card scrolls fully into view
           }}
         >
           {tracks.slice(0, 4).map((track) => (
             <Link
               key={track.id}
               to={`/song/${track.id}`}
-              className="flex flex-col rounded-2xl overflow-hidden transition-all active:scale-[0.97]"
+              className="flex-shrink-0 flex flex-col rounded-2xl overflow-hidden transition-all active:scale-[0.97]"
               style={{
-                flex: "0 0 44vw",
-                maxWidth: 160,
-                minWidth: 120,
+                width: "calc(50vw - 28px)",
+                maxWidth: 155,
+                minWidth: 130,
                 background: primaryRgba(0.07),
                 border: `1px solid ${primaryRgba(0.28)}`,
                 scrollSnapAlign: "start",
