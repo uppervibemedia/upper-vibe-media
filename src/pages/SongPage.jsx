@@ -121,8 +121,10 @@ export default function SongPage() {
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtp = radioTheme.vars["--rt-primary"];    // e.g. "0,229,255"
   const rts = radioTheme.vars["--rt-secondary"];  // e.g. "155,126,255"
-  // Purple is always fixed for hearts
-  const PURPLE = "155,126,255";
+  // Fixed colors (independent of theme)
+  const CYAN    = "0,200,220";      // cosmic cyan — Support + Share default
+  const PURPLE  = "91,33,182";      // deep violet — Save/heart
+  const AMBER   = "212,168,67";     // midnight amber — music buttons
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -331,7 +333,7 @@ export default function SongPage() {
                   <button
                     onClick={() => setSupportModal(true)}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] flex-shrink-0"
-                    style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.28)", color: "#D4A843" }}>
+                    style={{ background: `rgba(${CYAN},0.1)`, border: `1px solid rgba(${CYAN},0.28)`, color: `rgb(${CYAN})` }}>
                     <Zap className="w-4 h-4" /> Support
                   </button>
 
@@ -343,9 +345,9 @@ export default function SongPage() {
                     title={isFaved("track", track.id) ? "Saved to Favorites" : "Save to Favorites"}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] flex-shrink-0"
                     style={isFaved("track", track.id) ? {
-                      background: `rgba(${PURPLE},0.18)`, border: `1px solid rgba(${PURPLE},0.5)`, color: `rgb(${PURPLE})`
+                      background: `rgba(${PURPLE},0.22)`, border: `1px solid rgba(${PURPLE},0.55)`, color: `rgb(${PURPLE})`
                     } : {
-                      background: `rgba(${PURPLE},0.06)`, border: `1px solid rgba(${PURPLE},0.3)`, color: `rgba(${PURPLE},0.7)`
+                      background: `rgba(${PURPLE},0.08)`, border: `1px solid rgba(${PURPLE},0.35)`, color: `rgba(${PURPLE},0.8)`
                     }}>
                     <Heart className={`w-4 h-4 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
                     {isFaved("track", track.id) ? "Saved" : "Save"}
@@ -453,7 +455,7 @@ export default function SongPage() {
               </Link>
               <Link to="/music"
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}>
+                style={{ background: `rgba(${AMBER},0.08)`, border: `1px solid rgba(${AMBER},0.25)`, color: `rgb(${AMBER})` }}>
                 <Music4 className="w-3.5 h-3.5" /> All Music
               </Link>
             </div>

@@ -292,7 +292,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <p className="text-sm font-black text-white truncate leading-snug">{track?.title}</p>
                       <p className="text-[11px] text-white/40 truncate mt-0.5">{track?.artist_display || "Upper Vibe Media"}</p>
-                      <p className="text-[10px] text-cyan-400/60 mt-1 font-semibold">uppervibemedia.com/song/{trackId}</p>
+                      <p className="text-[10px] mt-1 font-semibold" style={{ color: `rgba(${rtPrimary},0.6)` }}>uppervibemedia.com/song/{trackId}</p>
                     </div>
                   </div>
                 )}
@@ -309,7 +309,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
                         style={{ background: "linear-gradient(135deg,#00B8D4,#9B7EFF)" }}>
                         <span className="text-[7px] font-black text-white">UV</span>
                       </div>
-                      <span className="text-[10px] font-black tracking-widest uppercase text-cyan-400/70">Upper Vibe Media</span>
+                      <span className="text-[10px] font-black tracking-widest uppercase" style={{ color: `rgba(${rtPrimary},0.7)` }}>Upper Vibe Media</span>
                     </div>
                     <p className="text-xs text-white/70 leading-relaxed">{shareData.text}</p>
                   </div>
