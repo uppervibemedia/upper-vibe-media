@@ -84,10 +84,10 @@ export default function Sidebar() {
             onClick={(e) => { if (!isAuthenticated) { e.preventDefault(); navigateToLogin("/my-vibes"); } }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all"
             style={{
-              background: `rgba(${radioThemeColor},0.07)`,
-              borderColor: `rgba(${radioThemeColor},0.28)`,
-              color: `rgb(${radioThemeColor})`,
-            }}>
+             background: `rgba(${radioThemeColor},0.14)`,
+             borderColor: `rgba(${radioThemeColor},0.4)`,
+             color: `rgb(${radioThemeColor})`,
+           }}>
             <Heart className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="hidden sm:inline text-[11px] font-semibold whitespace-nowrap">My Vibe Library</span>
             <span className="sm:hidden text-[11px] font-semibold whitespace-nowrap">Library</span>
@@ -97,12 +97,12 @@ export default function Sidebar() {
           {isAuthenticated && user ? (
             <Link to="/account" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all"
               style={{
-                background: `rgba(${radioThemeColor},0.07)`,
-                borderColor: `rgba(${radioThemeColor},0.28)`,
+                background: `rgba(${radioThemeColor},0.14)`,
+                borderColor: `rgba(${radioThemeColor},0.4)`,
                 color: `rgb(${radioThemeColor})`,
               }}>
               <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black"
-                style={{ background: `rgba(${radioThemeColor},0.15)`, color: `rgb(${radioThemeColor})` }}>
+                style={{ background: `rgba(${radioThemeColor},0.22)`, color: `rgb(${radioThemeColor})` }}>
                 {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
               </div>
               <span className="text-[11px] font-semibold">Account</span>
@@ -269,7 +269,7 @@ export default function Sidebar() {
         <div className="border-t border-border/30 px-3 py-3 flex-shrink-0">
           {isAuthenticated && user ? (
             <Link to="/account" className="flex items-center gap-3 overflow-hidden rounded-xl px-2 py-1.5 hover:bg-muted/50 transition-colors">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-heading font-bold text-xs bg-primary/10 border border-primary/25 text-primary">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-heading font-bold text-xs" style={{ background: `rgba(${radioThemeColor},0.15)`, border: `1px solid rgba(${radioThemeColor},0.3)`, color: `rgb(${radioThemeColor})` }}>
                 {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
               </div>
               <AnimatePresence>
@@ -293,14 +293,14 @@ export default function Sidebar() {
           ) : (
             <button
               onClick={navigateToLogin}
-              className="w-full flex items-center gap-3 px-2 py-1.5 rounded-xl transition-colors overflow-hidden bg-primary/8 border border-primary/20">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-primary/10 border border-primary/20">
-                <User className="w-4 h-4 text-primary/70" />
+              className="w-full flex items-center gap-3 px-2 py-1.5 rounded-xl transition-colors overflow-hidden" style={{ background: `rgba(${radioThemeColor},0.08)`, border: `1px solid rgba(${radioThemeColor},0.2)` }}>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `rgba(${radioThemeColor},0.15)`, border: `1px solid rgba(${radioThemeColor},0.3)`, color: `rgb(${radioThemeColor})` }}>
+                <User className="w-4 h-4" />
               </div>
               <AnimatePresence>
                 {expanded && (
                   <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="text-xs text-primary whitespace-nowrap font-black tracking-wide">
+                    className="text-xs whitespace-nowrap font-black tracking-wide" style={{ color: `rgb(${radioThemeColor})` }}>
                     Log In
                   </motion.span>
                 )}
