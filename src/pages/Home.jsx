@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { motion, useAnimationFrame } from "framer-motion";
-import { Play, Waves, Tv2, Mail, CheckCircle2, Heart, Users, GraduationCap, Download, Radio, Zap } from "lucide-react";
+import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Heart, Users, GraduationCap, Download, Radio, Zap, Music4 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -244,29 +244,70 @@ export default function Home() {
               }}>MEDIA</div>
             </motion.div>
 
-            {/* ── Now Playing strip — always visible above fold ── */}
+            {/* ── Hero Now Playing card — full media card with play/pause ── */}
             {currentTrack && (
               <motion.div
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25, duration: 0.4 }}
-                className="flex items-center gap-3 mt-3 mb-4 px-3 py-2.5 rounded-xl w-fit"
-                style={{ background: "rgba(0,200,220,0.06)", border: "1px solid rgba(0,200,220,0.18)", maxWidth: "90vw" }}>
-                {currentTrack.cover_url && (
-                  <img src={currentTrack.cover_url} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
-                )}
+                key={currentTrack.id}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="flex items-center gap-3 mt-3 mb-4 px-3 py-2.5 rounded-2xl"
+                style={{
+                  background: `linear-gradient(135deg, rgba(${rtPrimary},0.09) 0%, rgba(${rtPrimary},0.04) 100%)`,
+                  border: `1px solid rgba(${rtPrimary},0.22)`,
+                  boxShadow: `0 0 24px rgba(${rtPrimary},0.08)`,
+                  maxWidth: "min(420px, 90vw)",
+                }}>
+                {/* Cover art */}
+                <div className="relative flex-shrink-0">
+                  {currentTrack.cover_url ? (
+                    <img src={currentTrack.cover_url} alt={currentTrack.title}
+                      className="w-11 h-11 rounded-xl object-cover ring-1 ring-white/10" />
+                  ) : (
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+                      style={{ background: `rgba(${rtPrimary},0.1)` }}>
+                      <Music4 className="w-5 h-5" style={{ color: `rgba(${rtPrimary},0.5)` }} />
+                    </div>
+                  )}
+                  {isPlaying && (
+                    <motion.div
+                      animate={{ scale: [1, 1.18, 1], opacity: [0.4, 0, 0.4] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute inset-0 rounded-xl pointer-events-none"
+                      style={{ border: `2px solid rgb(${rtPrimary})` }} />
+                  )}
+                </div>
+                {/* Animated equalizer */}
                 <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "14px" }}>
                   {[3,5,8,6,4,7,5].map((h, i) => (
                     <motion.div key={i}
-                      animate={{ height: [`${h * 0.4}px`, `${h}px`, `${h * 0.55}px`] }}
+                      animate={isPlaying
+                        ? { height: [`${h * 0.4}px`, `${h}px`, `${h * 0.55}px`] }
+                        : { height: "2px" }}
                       transition={{ duration: 0.6 + i * 0.09, repeat: Infinity, ease: "easeInOut", delay: i * 0.07 }}
-                      className="w-[2px] rounded-full" style={{ background: `rgb(${rtPrimary})` }} />
+                      className="w-[2px] rounded-full"
+                      style={{ background: `rgb(${rtPrimary})`, opacity: isPlaying ? 0.85 : 0.3 }} />
                   ))}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[8px] font-black tracking-[0.18em] uppercase leading-none mb-0.5" style={{ color: `rgba(${rtPrimary},0.7)` }}>Now Playing</p>
+                {/* Track info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[8px] font-black tracking-[0.18em] uppercase leading-none mb-0.5" style={{ color: `rgba(${rtPrimary},0.7)` }}>
+                    {isPlaying ? "Now Playing" : "Paused"}
+                  </p>
                   <p className="text-xs font-bold text-white/90 truncate">{currentTrack.title}</p>
                   <p className="text-[10px] text-white/45 truncate">{currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}</p>
                 </div>
+                {/* Play/Pause button */}
+                <button
+                  onClick={togglePlay}
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+                  style={{
+                    background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`,
+                    boxShadow: `0 0 16px rgba(${rtPrimary},0.3)`,
+                  }}>
+                  {isPlaying
+                    ? <Pause className="w-3.5 h-3.5 text-black fill-current" />
+                    : <Play className="w-3.5 h-3.5 text-black fill-current ml-0.5" />}
+                </button>
               </motion.div>
             )}
 
