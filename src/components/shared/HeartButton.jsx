@@ -38,9 +38,9 @@ export default function HeartButton({ isSaved, onToggle, isPremium, onUpgrade, s
       title={isSaved ? "Saved to My Vibe Library" : "Save to My Vibe Library"}
       className={`${dim} rounded-xl flex items-center justify-center flex-shrink-0 transition-all`}
       style={isSaved ? {
-        background: "rgba(236,72,153,0.15)",
-        border: "1px solid rgba(236,72,153,0.35)",
-        color: "#ec4899",
+        background: "rgba(155,126,255,0.18)",
+        border: "1px solid rgba(155,126,255,0.45)",
+        color: "#9B7EFF",
       } : {
         background: "rgba(255,255,255,0.04)",
         border: "1px solid rgba(255,255,255,0.1)",

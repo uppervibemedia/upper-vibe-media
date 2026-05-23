@@ -256,7 +256,7 @@ function FilterPill({ label, active, onClick, themeColor }) {
 }
 
 function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user, themeColor, onPlay, onFav, onDownload }) {
-  const tc = themeColor || "0,229,255";
+  const tc = themeColor || "0,160,220";
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}

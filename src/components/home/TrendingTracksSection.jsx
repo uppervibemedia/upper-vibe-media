@@ -178,7 +178,7 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}
                   className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                  style={{ color: isFaved && isFaved("track", track.id) ? "#ec4899" : `rgba(${PURPLE},0.5)` }}>
+                  style={{ color: isFaved && isFaved("track", track.id) ? `rgb(${PURPLE})` : `rgba(${PURPLE},0.5)` }}>
                   <Heart className={`w-3.5 h-3.5 ${isFaved && isFaved("track", track.id) ? "fill-current" : ""}`} />
                 </button>
                 {/* Download — always amber */}
