@@ -313,27 +313,27 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
 
       {/* Action buttons — always aligned, never crowded */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        {/* Favorite — purple theme */}
+        {/* Favorite — always purple, outline when unfaved, filled when faved */}
         <button
           onClick={() => onFav(track)}
           title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
           style={isFaved("track", track.id) ? {
-            background: "rgba(155,126,255,0.18)", border: "1px solid rgba(155,126,255,0.4)", color: "#9B7EFF"
+            background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
           } : {
-            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.3)"
+            background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
           }}>
           <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
         </button>
 
-        {/* Play/Pause */}
+        {/* Play/Pause — always cosmic cyan */}
         <button
           onClick={() => onPlay(track)}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
           style={{
-            background: isCurrent ? `rgba(${tc},0.18)` : `rgba(${tc},0.08)`,
-            border: `1px solid rgba(${tc},0.25)`,
-            color: `rgb(${tc})`
+            background: isCurrent ? "rgba(0,200,220,0.18)" : "rgba(0,200,220,0.08)",
+            border: "1px solid rgba(0,200,220,0.35)",
+            color: "#00C8DC"
           }}>
           {isCurrent && isPlaying
             ? <Pause className="w-3.5 h-3.5" />
