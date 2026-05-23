@@ -160,13 +160,13 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                       <Waves className="w-2 h-2" /> 432
                     </span>
                     <div className="flex items-center gap-0.5" onClick={(e) => e.preventDefault()}>
+                      {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                       {!isPremium ? (
                         <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full"
                           style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
                           Premium 🔒
                         </span>
                       ) : downloadButton(track)}
-                      {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                     </div>
                   </div>
                 </div>

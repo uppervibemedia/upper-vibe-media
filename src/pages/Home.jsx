@@ -121,7 +121,7 @@ export default function Home() {
         toggle(type, id, meta);
       }}
       className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-      style={isFaved(type, id) ? { color: "#9B7EFF" } : { color: "rgba(155,126,255,0.45)" }}>
+      style={isFaved(type, id) ? { color: "#9B7EFF" } : { color: "rgba(255,255,255,0.2)" }}>
       <Heart className={`w-3.5 h-3.5 ${isFaved(type, id) ? "fill-current" : ""}`} />
     </button>
   );
