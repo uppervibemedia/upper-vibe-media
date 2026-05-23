@@ -7,16 +7,18 @@
 import React, { useRef, useEffect, useCallback, useState } from "react";
 import { usePlayer, getGlobalAnalyser } from "../../context/PlayerContext";
 
-const PREF_KEY = "uvm_radio_viz_v4";
+const PREF_KEY = "uvm_radio_viz_v5";
 
 const MODES = [
-  { id: "energy",  label: "Energy Bars",   icon: "▋" },
-  { id: "cosmic",  label: "Cosmic Waves",  icon: "✦" },
-  { id: "neon",    label: "Neon Pulse",    icon: "◎" },
-  { id: "aurora",  label: "Aurora Flow",   icon: "≋" },
-  { id: "tunnel",  label: "Freq Tunnel",   icon: "⊙" },
-  { id: "plasma",  label: "Plasma Orbit",  icon: "◈" },
-  { id: "drift",   label: "Particle Drift",icon: "·" },
+  { id: "spectrum", label: "Spectrum",      icon: "▊" },
+  { id: "waveform", label: "Waveform",      icon: "∿" },
+  { id: "energy",   label: "Energy Bars",   icon: "▋" },
+  { id: "cosmic",   label: "Cosmic Waves",  icon: "✦" },
+  { id: "neon",     label: "Neon Pulse",    icon: "◎" },
+  { id: "aurora",   label: "Aurora Flow",   icon: "≋" },
+  { id: "tunnel",   label: "Freq Tunnel",   icon: "⊙" },
+  { id: "plasma",   label: "Plasma Orbit",  icon: "◈" },
+  { id: "drift",    label: "Particle Drift",icon: "·" },
 ];
 
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
@@ -50,7 +52,197 @@ function detectBeat(bass) {
   return false;
 }
 
+// ── Shared peak state for spectrum mode ──────────────────────────────────────
+const _peaks = { data: null, decay: null };
+
 // ── Real-data draw functions ──────────────────────────────────────────────────
+
+// ── HIGH-FIDELITY SPECTRUM ANALYZER ─────────────────────────────────────────
+function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat) {
+  const barCount = 80;
+  const gap = 2;
+  const barW = (W - gap * (barCount - 1)) / barCount;
+  const usableBins = Math.floor(bufLen * 0.72);
+
+  // Init peak tracking
+  if (!_peaks.data || _peaks.data.length !== barCount) {
+    _peaks.data = new Float32Array(barCount);
+    _peaks.decay = new Float32Array(barCount);
+  }
+
+  for (let i = 0; i < barCount; i++) {
+    // Log-scale bin mapping for perceptually even spread
+    const logStart = Math.pow(usableBins, i / barCount);
+    const logEnd = Math.pow(usableBins, (i + 1) / barCount);
+    const binFrom = Math.floor(logStart);
+    const binTo = Math.max(binFrom + 1, Math.floor(logEnd));
+    let max = 0;
+    for (let b = binFrom; b < binTo && b < usableBins; b++) max = Math.max(max, sm[b]);
+    const boost = i < 8 ? 1.3 : i > 55 ? 1 + (i - 55) / 25 * 0.5 : 1;
+    const v = Math.min(1, max * boost * (1 + bass * 0.3));
+    const h = Math.max(2, v * (H - 4));
+    const x = i * (barW + gap);
+    const y = H - h;
+
+    // Gradient per bar: teal → white top
+    const grad = ctx.createLinearGradient(0, H, 0, y);
+    grad.addColorStop(0,   `hsla(185,100%,35%,0.9)`);
+    grad.addColorStop(0.5, `hsla(195,100%,55%,1.0)`);
+    grad.addColorStop(0.85,`hsla(200,100%,75%,1.0)`);
+    grad.addColorStop(1,   `hsla(210,100%,92%,0.9)`);
+    ctx.fillStyle = grad;
+    drawRoundedBar(ctx, x, y, barW, h, 2);
+    ctx.fill();
+
+    // Peak marker — small bright cap that holds then falls
+    if (v >= _peaks.data[i]) {
+      _peaks.data[i] = v;
+      _peaks.decay[i] = 0;
+    } else {
+      _peaks.decay[i] += 0.0015;
+      _peaks.data[i] = Math.max(0, _peaks.data[i] - _peaks.decay[i]);
+    }
+    const peakY = H - Math.max(2, _peaks.data[i] * (H - 4)) - 2;
+    ctx.fillStyle = beat && i < 12 ? "rgba(255,255,255,1)" : "rgba(0,229,255,0.9)";
+    ctx.fillRect(x, peakY, barW, 2);
+  }
+
+  // Subtle reflection below the bars
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ctx.scale(1, -1);
+  ctx.translate(0, -H * 2);
+  for (let i = 0; i < barCount; i++) {
+    const logStart = Math.pow(usableBins, i / barCount);
+    const logEnd = Math.pow(usableBins, (i + 1) / barCount);
+    const binFrom = Math.floor(logStart);
+    const binTo = Math.max(binFrom + 1, Math.floor(logEnd));
+    let max = 0;
+    for (let b = binFrom; b < binTo && b < usableBins; b++) max = Math.max(max, sm[b]);
+    const v = Math.min(1, max * (1 + bass * 0.3));
+    const h = Math.max(2, v * (H - 4) * 0.3);
+    const x = i * (barW + gap);
+    ctx.fillStyle = `hsla(185,100%,55%,1)`;
+    ctx.fillRect(x, H - h, barW, h);
+  }
+  ctx.restore();
+}
+
+// ── REAL-TIME WAVEFORM (OSCILLOSCOPE) ────────────────────────────────────────
+const _wfSmoothed = { data: null };
+function drawWaveform(ctx, W, H, an, bass, beat) {
+  const bufLen = an.fftSize;
+  const raw = new Uint8Array(bufLen);
+  an.getByteTimeDomainData(raw);
+
+  // Smooth the waveform slightly
+  if (!_wfSmoothed.data || _wfSmoothed.data.length !== bufLen) {
+    _wfSmoothed.data = new Float32Array(bufLen);
+  }
+  const wf = _wfSmoothed.data;
+  for (let i = 0; i < bufLen; i++) {
+    const s = (raw[i] / 128.0) - 1.0; // -1..1
+    wf[i] = wf[i] * 0.55 + s * 0.45;
+  }
+
+  const cy = H / 2;
+  const amplitude = H * 0.42 * (1 + bass * 0.5);
+  const step = W / bufLen;
+
+  // Glow halo behind the line
+  ctx.save();
+  ctx.shadowBlur = beat ? 22 : 12;
+  ctx.shadowColor = `rgba(0,229,255,${0.5 + bass * 0.4})`;
+
+  // Fill under the wave
+  ctx.beginPath();
+  ctx.moveTo(0, cy);
+  for (let i = 0; i < bufLen; i++) {
+    ctx.lineTo(i * step, cy + wf[i] * amplitude);
+  }
+  ctx.lineTo(W, cy);
+  ctx.closePath();
+  const fillGrad = ctx.createLinearGradient(0, cy - amplitude, 0, cy + amplitude);
+  fillGrad.addColorStop(0,   "rgba(0,229,255,0.12)");
+  fillGrad.addColorStop(0.5, "rgba(0,200,220,0.06)");
+  fillGrad.addColorStop(1,   "rgba(0,229,255,0.12)");
+  ctx.fillStyle = fillGrad;
+  ctx.fill();
+
+  // Main waveform line
+  ctx.beginPath();
+  for (let i = 0; i < bufLen; i++) {
+    const x = i * step;
+    const y = cy + wf[i] * amplitude;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  const lineGrad = ctx.createLinearGradient(0, 0, W, 0);
+  lineGrad.addColorStop(0,    "rgba(0,229,255,0.4)");
+  lineGrad.addColorStop(0.25, "rgba(0,229,255,1.0)");
+  lineGrad.addColorStop(0.5,  "rgba(155,200,255,1.0)");
+  lineGrad.addColorStop(0.75, "rgba(0,229,255,1.0)");
+  lineGrad.addColorStop(1,    "rgba(0,229,255,0.4)");
+  ctx.strokeStyle = lineGrad;
+  ctx.lineWidth = beat ? 2.5 : 1.8;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.stroke();
+  ctx.restore();
+
+  // Centre zero line (subtle)
+  ctx.beginPath();
+  ctx.moveTo(0, cy);
+  ctx.lineTo(W, cy);
+  ctx.strokeStyle = "rgba(0,229,255,0.08)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+// Fallback waveform (no analyser — animated sine)
+function fallbackWaveform(ctx, W, H, t, active) {
+  const cy = H / 2;
+  const amplitude = H * (active ? 0.36 + Math.sin(t * 1.4) * 0.08 : 0.05);
+  ctx.beginPath();
+  for (let x = 0; x <= W; x += 2) {
+    const phase1 = (x / W) * Math.PI * 6 + t * 2.8;
+    const phase2 = (x / W) * Math.PI * 3 + t * 1.4;
+    const y = cy + Math.sin(phase1) * amplitude * 0.7 + Math.sin(phase2) * amplitude * 0.3;
+    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  const grad = ctx.createLinearGradient(0, 0, W, 0);
+  grad.addColorStop(0,    "rgba(0,229,255,0.3)");
+  grad.addColorStop(0.5,  "rgba(0,229,255,0.9)");
+  grad.addColorStop(1,    "rgba(0,229,255,0.3)");
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 1.8;
+  ctx.lineJoin = "round";
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, cy); ctx.lineTo(W, cy);
+  ctx.strokeStyle = "rgba(0,229,255,0.07)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+// Fallback spectrum (no analyser — animated bars)
+function fallbackSpectrum(ctx, W, H, t, active) {
+  const barCount = 80, gap = 2;
+  const bw = (W - gap * (barCount - 1)) / barCount;
+  for (let i = 0; i < barCount; i++) {
+    const logFrac = i / barCount;
+    const v = active
+      ? Math.max(0.03, (Math.sin(t * 2.2 + logFrac * Math.PI * 4) * 0.5 + 0.5) * (Math.sin(t * 0.9 + logFrac * 7) * 0.3 + 0.7))
+      : 0.03 + Math.sin(i * 0.6) * 0.02;
+    const h = Math.max(2, v * (H - 4));
+    const grad = ctx.createLinearGradient(0, H, 0, H - h);
+    grad.addColorStop(0,   "hsla(185,100%,35%,0.85)");
+    grad.addColorStop(0.7, "hsla(195,100%,60%,1.0)");
+    grad.addColorStop(1,   "hsla(210,100%,88%,0.9)");
+    ctx.fillStyle = grad;
+    drawRoundedBar(ctx, i * (bw + gap), H - h, bw, h, 2);
+    ctx.fill();
+  }
+}
 
 // iOS Safari <15.4 lacks roundRect — use a safe polyfill
 function drawRoundedBar(ctx, x, y, w, h, r) {
@@ -472,7 +664,7 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
   const logTimerRef  = useRef(0);
   const { audioRef } = usePlayer();
 
-  const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "energy"; } catch { return "energy"; } };
+  const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
   const [mode, setMode] = useState(getSavedMode);
 
   useEffect(() => { try { localStorage.setItem(PREF_KEY, mode); } catch {} }, [mode]);
@@ -488,7 +680,7 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
     const an = getGlobalAnalyser(audio);
     if (an) {
       analyserRef.current = an;
-      an.fftSize = 2048;
+      an.fftSize = 4096;
       an.smoothingTimeConstant = 0.0;
       const ctxState = an.context?.state || "unknown";
       console.log("[Viz] probe | analyserConnected: true | ctxState:", ctxState, "| isIOS:", isIOS, "| dpr:", window.devicePixelRatio || 1);
@@ -532,25 +724,29 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
           console.log("[Viz] live | bass:", bass.toFixed(3), "| mid:", mid.toFixed(3), "| treble:", treble.toFixed(3), "| beat:", beat, "| active bins:", nonZero);
         }
         switch (currentMode) {
-          case "energy":  drawEnergy(ctx, lW, lH, sm, bufLen, bass, mid, treble, beat); break;
-          case "cosmic":  drawCosmicWaves(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, beat); break;
-          case "neon":    drawNeonPulse(ctx, lW, lH, sm, bufLen, bass, mid); break;
-          case "aurora":  drawAurora(ctx, lW, lH, sm, bufLen, t, bass, beat); break;
-          case "tunnel":  drawTunnel(ctx, lW, lH, sm, bufLen, t, bass, mid); break;
-          case "plasma":  drawPlasma(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, beat); break;
-          default:        drawDrift(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, treble); break;
+          case "spectrum": drawSpectrum(ctx, lW, lH, sm, bufLen, bass, beat); break;
+          case "waveform": drawWaveform(ctx, lW, lH, an, bass, beat); break;
+          case "energy":   drawEnergy(ctx, lW, lH, sm, bufLen, bass, mid, treble, beat); break;
+          case "cosmic":   drawCosmicWaves(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, beat); break;
+          case "neon":     drawNeonPulse(ctx, lW, lH, sm, bufLen, bass, mid); break;
+          case "aurora":   drawAurora(ctx, lW, lH, sm, bufLen, t, bass, beat); break;
+          case "tunnel":   drawTunnel(ctx, lW, lH, sm, bufLen, t, bass, mid); break;
+          case "plasma":   drawPlasma(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, beat); break;
+          default:         drawDrift(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, treble); break;
         }
       } else {
         const active = isPlaying;
         if (Date.now() - logTimerRef.current > 3000) { logTimerRef.current = Date.now(); console.log("[Viz] fallback | isIOS:", isIOS, "| isPlaying:", active); }
         switch (currentMode) {
-          case "energy":  fallbackEnergy(ctx, lW, lH, t, active); break;
-          case "cosmic":  fallbackCosmic(ctx, lW, lH, t, active, particlesRef); break;
-          case "neon":    fallbackNeon(ctx, lW, lH, t, active); break;
-          case "aurora":  fallbackAurora(ctx, lW, lH, t, active); break;
-          case "tunnel":  fallbackTunnel(ctx, lW, lH, t, active); break;
-          case "plasma":  fallbackCosmic(ctx, lW, lH, t, active, particlesRef); break;
-          default:        fallbackDrift(ctx, lW, lH, t, active, particlesRef); break;
+          case "spectrum": fallbackSpectrum(ctx, lW, lH, t, active); break;
+          case "waveform": fallbackWaveform(ctx, lW, lH, t, active); break;
+          case "energy":   fallbackEnergy(ctx, lW, lH, t, active); break;
+          case "cosmic":   fallbackCosmic(ctx, lW, lH, t, active, particlesRef); break;
+          case "neon":     fallbackNeon(ctx, lW, lH, t, active); break;
+          case "aurora":   fallbackAurora(ctx, lW, lH, t, active); break;
+          case "tunnel":   fallbackTunnel(ctx, lW, lH, t, active); break;
+          case "plasma":   fallbackCosmic(ctx, lW, lH, t, active, particlesRef); break;
+          default:         fallbackDrift(ctx, lW, lH, t, active, particlesRef); break;
         }
       }
       rafRef.current = requestAnimationFrame(loop);
@@ -559,7 +755,7 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
   }, [isPlaying]);
 
   useEffect(() => {
-    stopLoop(); particlesRef.current = []; _smoothed.data = null;
+    stopLoop(); particlesRef.current = []; _smoothed.data = null; _wfSmoothed.data = null; _peaks.data = null; _peaks.decay = null;
     const connected = tryConnectAnalyser();
     startLoop(mode, connected);
     return stopLoop;
