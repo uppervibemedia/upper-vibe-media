@@ -22,8 +22,8 @@ if (typeof document !== "undefined" && !document.getElementById(GLOW_STYLE_ID)) 
   s.id = GLOW_STYLE_ID;
   s.textContent = `
     @keyframes radioBorderPulse {
-      0%,100% { opacity: 0.25; }
-      50%      { opacity: 1; }
+      0%,100% { opacity: 0.3; box-shadow: var(--rp-shadow-lo); }
+      50%      { opacity: 1;   box-shadow: var(--rp-shadow-hi); }
     }
     .radio-border-pulse {
       animation: radioBorderPulse 2s ease-in-out infinite;
@@ -182,7 +182,8 @@ export default function RadioPage() {
             style={{
               background: "rgba(0,0,0,0.4)",
               border: `2px solid rgba(${theme.vars["--rt-primary"]},0.9)`,
-              boxShadow: `0 0 18px rgba(${theme.vars["--rt-primary"]},0.5), inset 0 0 12px rgba(${theme.vars["--rt-primary"]},0.08)`,
+              "--rp-shadow-lo": `0 0 12px rgba(${theme.vars["--rt-primary"]},0.25), 0 0 30px rgba(${theme.vars["--rt-primary"]},0.08)`,
+              "--rp-shadow-hi": `0 0 40px rgba(${theme.vars["--rt-primary"]},0.9), 0 0 80px rgba(${theme.vars["--rt-primary"]},0.45), 0 0 120px rgba(${theme.vars["--rt-primary"]},0.15)`,
             }}>
             <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} />
             <div className="pointer-events-none absolute inset-0"
@@ -207,7 +208,8 @@ export default function RadioPage() {
                 style={{
                   background: "rgba(255,255,255,0.028)",
                   border: `2px solid rgba(${theme.vars["--rt-primary"]},0.9)`,
-                  boxShadow: `0 0 18px rgba(${theme.vars["--rt-primary"]},0.45), inset 0 0 10px rgba(${theme.vars["--rt-primary"]},0.06)`,
+                  "--rp-shadow-lo": `0 0 12px rgba(${theme.vars["--rt-primary"]},0.25), 0 0 30px rgba(${theme.vars["--rt-primary"]},0.08)`,
+                  "--rp-shadow-hi": `0 0 40px rgba(${theme.vars["--rt-primary"]},0.9), 0 0 80px rgba(${theme.vars["--rt-primary"]},0.45), 0 0 120px rgba(${theme.vars["--rt-primary"]},0.15)`,
                 }}>
 
                 {/* Cover art */}
