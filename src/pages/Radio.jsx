@@ -21,17 +21,12 @@ if (typeof document !== "undefined" && !document.getElementById(GLOW_STYLE_ID)) 
   const s = document.createElement("style");
   s.id = GLOW_STYLE_ID;
   s.textContent = `
-    @keyframes radioBreathe {
-      0%,100% { opacity: 0.45; transform: scale(1); }
-      50%      { opacity: 1; transform: scale(1.1); }
+    @keyframes radioBorderPulse {
+      0%,100% { opacity: 0.25; }
+      50%      { opacity: 1; }
     }
-    .radio-glow-ring {
-      animation: radioBreathe 3s ease-in-out infinite;
-      pointer-events: none;
-      position: absolute;
-      inset: -16px;
-      border-radius: inherit;
-      z-index: 0;
+    .radio-border-pulse {
+      animation: radioBorderPulse 2s ease-in-out infinite;
     }
   `;
   document.head.appendChild(s);
@@ -183,19 +178,11 @@ export default function RadioPage() {
           transition={{ delay: 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="relative mx-auto mb-5 rounded-3xl"
           style={{ maxWidth: 440 }}>
-          {/* Breathing glow ring */}
-          <div
-            className="radio-glow-ring rounded-3xl"
-            style={{
-              background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.55) 0%, transparent 68%)`,
-              filter: "blur(20px)",
-            }}
-          />
-          <div className="relative z-10 overflow-hidden rounded-3xl"
+          <div className="relative z-10 overflow-hidden rounded-3xl radio-border-pulse"
             style={{
               background: "rgba(0,0,0,0.4)",
-              border: `1px solid ${playingThisRadioSong ? `rgba(${theme.vars["--rt-primary"]},0.18)` : `rgba(${theme.vars["--rt-primary"]},0.08)`}`,
-              transition: "border-color 1s ease",
+              border: `2px solid rgba(${theme.vars["--rt-primary"]},0.9)`,
+              boxShadow: `0 0 18px rgba(${theme.vars["--rt-primary"]},0.5), inset 0 0 12px rgba(${theme.vars["--rt-primary"]},0.08)`,
             }}>
             <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} />
             <div className="pointer-events-none absolute inset-0"
@@ -216,19 +203,11 @@ export default function RadioPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
               className="w-full lg:w-[360px] flex-shrink-0 relative">
-              {/* Breathing glow ring */}
-              <div
-                className="radio-glow-ring rounded-3xl"
-                style={{
-                  background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.48) 0%, transparent 68%)`,
-                  filter: "blur(22px)",
-                }}
-              />
-              <div className="relative z-10 rounded-3xl p-6"
+              <div className="relative z-10 rounded-3xl p-6 radio-border-pulse"
                 style={{
                   background: "rgba(255,255,255,0.028)",
-                  border: `1px solid ${playingThisRadioSong ? `rgba(${theme.vars["--rt-primary"]},0.15)` : "rgba(255,255,255,0.07)"}`,
-                  transition: "border-color 1s ease",
+                  border: `2px solid rgba(${theme.vars["--rt-primary"]},0.9)`,
+                  boxShadow: `0 0 18px rgba(${theme.vars["--rt-primary"]},0.45), inset 0 0 10px rgba(${theme.vars["--rt-primary"]},0.06)`,
                 }}>
 
                 {/* Cover art */}
