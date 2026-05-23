@@ -4,6 +4,8 @@ import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X, Mic2 } from "l
 import ShareVibeButton from "../shared/ShareVibeButton";
 import { Slider } from "@/components/ui/slider";
 import { usePlayer, sharedHiddenRef } from "../../context/PlayerContext";
+import { useTheme } from "../../context/ThemeContext";
+import { RADIO_THEMES } from "../radio/RadioThemePicker";
 
 export default function AudioPlayer() {
   const {
@@ -16,6 +18,12 @@ export default function AudioPlayer() {
     handlePrev,
     lastTimeRef,
   } = usePlayer();
+
+  const { accentId } = useTheme();
+  const theme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  // Primary = user's chosen theme color; always blend amber + violet + primary at end
+  const themeRgb = theme.vars["--rt-primary"]; // e.g. "0,160,220"
+  const themeHex = theme.swatch;               // e.g. "#00A0DC"
 
   const [progress,   setProgress]   = useState(0);
   const [duration,   setDuration]   = useState(0);
@@ -168,12 +176,16 @@ export default function AudioPlayer() {
               className="h-full"
               style={{
                 width: `${progress}%`,
-                background: "linear-gradient(90deg,#00B8D4,#00E5FF,#D4A843)"
+                background: `linear-gradient(90deg, #D4A843 0%, #9B7EFF 45%, rgba(${themeRgb},0.8) 72%, rgb(${themeRgb}) 100%)`
               }}
             />
             <div
-              className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50 opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ left: `calc(${progress}% - 5px)` }}
+              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{
+                left: `calc(${progress}% - 6px)`,
+                background: themeHex,
+                boxShadow: `0 0 10px rgba(${themeRgb},0.8), 0 0 20px rgba(${themeRgb},0.4)`
+              }}
             />
           </div>
 
@@ -186,7 +198,7 @@ export default function AudioPlayer() {
                     src={currentTrack.cover_url}
                     alt={currentTrack.title}
                     className="w-10 h-10 rounded-lg object-cover"
-                    style={{ boxShadow: "0 0 16px rgba(0,229,255,0.2)" }}
+                    style={{ boxShadow: `0 0 16px rgba(${themeRgb},0.25)` }}
                   />
                   {isPlaying && (
                     <div className="absolute inset-0 rounded-lg flex items-end justify-center pb-1 gap-0.5 bg-black/20">
@@ -195,7 +207,8 @@ export default function AudioPlayer() {
                           key={i}
                           animate={{ height: ["2px", "8px", "2px"] }}
                           transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.12 }}
-                          className="w-0.5 bg-cyan-400 rounded-full"
+                          className="w-0.5 rounded-full"
+                          style={{ background: themeHex }}
                         />
                       ))}
                     </div>
@@ -230,8 +243,8 @@ export default function AudioPlayer() {
                 onClick={togglePlay}
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-105"
                 style={{
-                  background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
-                  boxShadow: "0 0 20px rgba(0,229,255,0.35)"
+                  background: `linear-gradient(135deg, rgba(${themeRgb},0.9), rgb(${themeRgb}))`,
+                  boxShadow: `0 0 20px rgba(${themeRgb},0.45)`
                 }}
               >
                 {isPlaying
