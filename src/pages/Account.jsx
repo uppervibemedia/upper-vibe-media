@@ -4,11 +4,17 @@ import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Downl
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 
 export default function Account() {
   const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
   const [portalLoading, setPortalLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtPrimary = radioTheme.vars["--rt-primary"];
+  const rtAmbient1 = radioTheme.vars["--rt-ambient1"];
 
   if (!isAuthenticated || !user) {
     return (
@@ -58,8 +64,22 @@ export default function Account() {
   };
 
   return (
-    <div className="min-h-screen pb-28 lg:pb-8 pt-20 lg:pt-8">
-      <div className="max-w-lg mx-auto px-6">
+    <div className="min-h-screen pb-28 lg:pb-8 pt-20 lg:pt-8 relative">
+      {/* Animated theme ambient glow */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0.06, 0.04], scale: [0.9, 1.05, 1] }}
+          transition={{ duration: 2.5, ease: "easeOut" }}
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full blur-[160px]"
+          style={{ background: rtAmbient1 }} />
+        <motion.div
+          animate={{ opacity: [0.02, 0.045, 0.02], scale: [1, 1.1, 1] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+          className="absolute bottom-1/4 right-0 w-[300px] h-[300px] rounded-full blur-[120px]"
+          style={{ background: `rgb(${rtPrimary})` }} />
+      </div>
+      <div className="max-w-lg mx-auto px-6 relative z-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-4">
 
           {/* Profile card */}
@@ -67,7 +87,7 @@ export default function Account() {
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-heading font-black text-xl flex-shrink-0"
-                style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.15),rgba(0,229,255,0.05))", border: "1px solid rgba(0,229,255,0.25)", color: "#00E5FF" }}>
+                style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.15),rgba(${rtPrimary},0.05))`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})` }}>
                 {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
               </div>
               <div className="flex-1 min-w-0">

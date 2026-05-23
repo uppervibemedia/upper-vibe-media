@@ -4,6 +4,8 @@ import { Send, ShieldCheck, Zap, Ban, Mic2, Crown } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { usePlayer } from "@/context/PlayerContext";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import AgeGateModal, { hasConfirmedAge } from "../components/viberoom/AgeGateModal";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import VibeNameSetup, { getSavedVibeName, getSavedVibeAvatar, canChangeVibeName } from "../components/viberoom/VibeNameSetup";
@@ -27,6 +29,11 @@ function isPremiumUser(user) {
 export default function VibeRoom() {
   const { user } = useAuth();
   const { currentTrack, isPlaying } = usePlayer();
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtPrimary = radioTheme.vars["--rt-primary"];
+  const rtAmbient1 = radioTheme.vars["--rt-ambient1"];
+  const rtAmbient2 = radioTheme.vars["--rt-ambient2"];
   const isAdmin = user?.role === "admin";
   const isPremium = isPremiumUser(user);
 
@@ -226,18 +233,24 @@ export default function VibeRoom() {
   return (
     <div className="min-h-screen flex flex-col" style={{ WebkitOverflowScrolling: "touch" }}>
 
-      {/* Ambient background */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[280px] rounded-full blur-[140px] opacity-[0.035]"
-          style={{ background: "#9B7EFF" }} />
-        <div className="absolute bottom-48 right-0 w-[260px] h-[260px] rounded-full blur-[100px] opacity-[0.02]"
-          style={{ background: "#00C9E0" }} />
+      {/* Animated theme-colored ambient background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <motion.div
+          animate={{ opacity: [0.04, 0.07, 0.04], scale: [1, 1.08, 1] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[320px] rounded-full blur-[150px]"
+          style={{ background: rtAmbient1 }} />
+        <motion.div
+          animate={{ opacity: [0.02, 0.04, 0.02], scale: [1, 1.12, 1] }}
+          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 5 }}
+          className="absolute bottom-48 right-0 w-[280px] h-[280px] rounded-full blur-[110px]"
+          style={{ background: rtAmbient2 }} />
       </div>
 
       {/* Header */}
       <section className="relative flex-shrink-0 z-10"
         style={{
-          background: "linear-gradient(180deg,rgba(155,126,255,0.055) 0%,transparent 100%)",
+          background: `linear-gradient(180deg,rgba(${rtPrimary},0.055) 0%,transparent 100%)`,
           borderBottom: "1px solid rgba(255,255,255,0.04)",
         }}>
         <div className="max-w-2xl mx-auto px-5 relative z-10"
@@ -249,10 +262,10 @@ export default function VibeRoom() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm"
-                    style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.2)" }}>
-                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#9B7EFF" }} />
-                    <span className="text-[9px] font-black tracking-[0.35em] uppercase text-purple-400"
-                      style={{ fontFamily: "var(--font-heading)" }}>Live Chat</span>
+                    style={{ background: `rgba(${rtPrimary},0.08)`, border: `1px solid rgba(${rtPrimary},0.22)` }}>
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: `rgb(${rtPrimary})` }} />
+                    <span className="text-[9px] font-black tracking-[0.35em] uppercase"
+                      style={{ fontFamily: "var(--font-heading)", color: `rgb(${rtPrimary})` }}>Live Chat</span>
                   </div>
                   {/* Premium badge */}
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
@@ -316,15 +329,15 @@ export default function VibeRoom() {
           <div className="mt-3">
             {loading ? (
               <div className="flex items-center justify-center py-16">
-                <div className="w-6 h-6 border-2 border-purple-400/20 border-t-purple-400 rounded-full animate-spin" />
+                <div className="w-6 h-6 rounded-full animate-spin" style={{ border: `2px solid rgba(${rtPrimary},0.2)`, borderTopColor: `rgb(${rtPrimary})` }} />
               </div>
             ) : combinedFeed.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
                 className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-                  style={{ background: "rgba(155,126,255,0.07)", border: "1px solid rgba(155,126,255,0.15)" }}>
-                  <Zap className="w-7 h-7 text-purple-400/35" />
+                  style={{ background: `rgba(${rtPrimary},0.07)`, border: `1px solid rgba(${rtPrimary},0.15)` }}>
+                  <Zap className="w-7 h-7" style={{ color: `rgba(${rtPrimary},0.45)` }} />
                 </div>
                 <p className="font-heading font-black text-muted-foreground/60 text-base mb-1">The vibe is waiting.</p>
                 <p className="text-muted-foreground/40 text-xs max-w-xs leading-relaxed">
@@ -382,12 +395,12 @@ export default function VibeRoom() {
               className="flex items-center gap-2.5"
               style={{
                 background: "rgba(6,6,18,0.97)",
-                border: "1px solid rgba(155,126,255,0.22)",
+                border: `1px solid rgba(${rtPrimary},0.25)`,
                 borderRadius: "1.25rem",
                 padding: "0.45rem 0.45rem 0.45rem 0.9rem",
                 backdropFilter: "blur(32px)",
                 WebkitBackdropFilter: "blur(32px)",
-                boxShadow: "0 0 28px rgba(155,126,255,0.09), 0 12px 40px rgba(0,0,0,0.55)",
+                boxShadow: `0 0 28px rgba(${rtPrimary},0.1), 0 12px 40px rgba(0,0,0,0.55)`,
               }}>
               {vibeName && (
                 <div className="flex-shrink-0">
@@ -412,8 +425,8 @@ export default function VibeRoom() {
                 disabled={vibeName ? (!input.trim() || sending) : false}
                 className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30 active:scale-90"
                 style={{
-                  background: (vibeName && input.trim()) ? "linear-gradient(135deg,#7C3AED,#9B7EFF)" : "rgba(155,126,255,0.08)",
-                  boxShadow: (vibeName && input.trim()) ? "0 0 18px rgba(155,126,255,0.4)" : "none",
+                  background: (vibeName && input.trim()) ? `linear-gradient(135deg,rgba(${rtPrimary},0.7),rgb(${rtPrimary}))` : `rgba(${rtPrimary},0.08)`,
+                  boxShadow: (vibeName && input.trim()) ? `0 0 18px rgba(${rtPrimary},0.4)` : "none",
                   transition: "all 0.2s ease",
                 }}>
                 <Send className="w-4 h-4 text-white" />
