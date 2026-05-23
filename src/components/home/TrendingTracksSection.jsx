@@ -4,6 +4,8 @@ import { Play, Pause, Music4, Waves, TrendingUp, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import SectionHeader from "../shared/SectionHeader";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
 /**
  * Scores tracks by real listener engagement:
@@ -52,6 +54,11 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
   const [streams, setStreams]     = useState([]);
   const [favCounts, setFavCounts] = useState({});
   const [loading, setLoading]     = useState(true);
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtp = radioTheme.vars["--rt-primary"];       // e.g. "0,229,255"
+  const rts = radioTheme.vars["--rt-secondary"];     // e.g. "155,126,255"
+  const amb = radioTheme.vars["--rt-ambient1"];      // e.g. "#00C9E0" (hex)
 
   useEffect(() => {
     if (!allTracks || allTracks.length === 0) return;
@@ -84,7 +91,7 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
         title="Trending Tracks"
         link="/music"
         linkLabel="All Music"
-        labelColor="#00E5FF"
+        labelColor={`rgb(${rtp})`}
         labelIcon={<TrendingUp className="w-3 h-3" />}
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -96,16 +103,17 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="flex items-center gap-3 p-3.5 rounded-2xl group cursor-pointer transition-all hover:border-white/15 active:scale-[0.98]"
+              className="flex items-center gap-3 p-3.5 rounded-2xl group cursor-pointer transition-all active:scale-[0.98]"
               style={{
-                background: isCurrent ? "rgba(0,229,255,0.06)" : "rgba(255,255,255,0.025)",
-                border: `1px solid ${isCurrent ? "rgba(0,229,255,0.2)" : "rgba(255,255,255,0.06)"}`,
+                background: isCurrent ? `rgba(${rtp},0.06)` : "rgba(255,255,255,0.025)",
+                border: `1px solid ${isCurrent ? `rgba(${rtp},0.22)` : "rgba(255,255,255,0.06)"}`,
+                boxShadow: isCurrent ? `0 0 18px rgba(${rtp},0.08)` : "none",
               }}
               onClick={() => track.audio_url && handlePlayTrack(track)}
             >
               {/* Rank number */}
               <span className="flex-shrink-0 w-5 text-center text-[10px] font-black tabular-nums"
-                style={{ color: i < 3 ? "#00E5FF" : "rgba(255,255,255,0.18)" }}>
+                style={{ color: i < 3 ? `rgb(${rtp})` : "rgba(255,255,255,0.18)" }}>
                 {i + 1}
               </span>
 
@@ -115,14 +123,14 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
                   <img src={track.cover_url} alt={track.title} className="w-11 h-11 rounded-xl object-cover" />
                 ) : (
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center"
-                    style={{ background: "rgba(0,229,255,0.08)" }}>
-                    <Music4 className="w-4 h-4 text-cyan-400/30" />
+                    style={{ background: `rgba(${rtp},0.08)` }}>
+                    <Music4 className="w-4 h-4" style={{ color: `rgba(${rtp},0.3)` }} />
                   </div>
                 )}
                 <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ background: "rgba(0,0,0,0.65)" }}>
                   {isCurrent && isPlaying
-                    ? <Pause className="w-3.5 h-3.5 text-cyan-400" />
+                    ? <Pause className="w-3.5 h-3.5" style={{ color: `rgb(${rtp})` }} />
                     : <Play  className="w-3.5 h-3.5 text-white ml-0.5" />}
                 </div>
               </div>
@@ -130,18 +138,20 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()}
-                  className="text-sm font-bold text-white truncate block hover:text-cyan-300 transition-colors">
+                  className="text-sm font-bold text-white truncate block transition-colors"
+                  style={{ ["--hover-color"]: `rgb(${rtp})` }}
+                  onMouseEnter={e => e.currentTarget.style.color = `rgb(${rtp})`}
+                  onMouseLeave={e => e.currentTarget.style.color = ""}>
                   {track.title}
                 </Link>
                 <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
-                {/* Editorial label instead of raw metrics */}
                 <div className="flex items-center gap-1.5 mt-0.5">
                   {(() => {
-                    if (i === 0) return <span className="text-[9px] font-bold text-yellow-400/70 tracking-wide">🔥 Most Played Today</span>;
-                    if (i === 1) return <span className="text-[9px] font-bold text-cyan-400/60 tracking-wide">Listener Favorite</span>;
-                    if (i === 2) return <span className="text-[9px] font-bold text-purple-400/60 tracking-wide">Rising</span>;
-                    if (track._completionRate > 0.7) return <span className="text-[9px] font-bold text-green-400/50 tracking-wide">High Energy</span>;
-                    if (track._favorites > 2) return <span className="text-[9px] font-bold text-pink-400/50 tracking-wide">Fan Favorite</span>;
+                    if (i === 0) return <span className="text-[9px] font-bold tracking-wide" style={{ color: `rgba(${rtp},0.75)` }}>🔥 Most Played Today</span>;
+                    if (i === 1) return <span className="text-[9px] font-bold tracking-wide" style={{ color: `rgba(${rtp},0.6)` }}>Listener Favorite</span>;
+                    if (i === 2) return <span className="text-[9px] font-bold tracking-wide" style={{ color: `rgba(${rts},0.7)` }}>Rising</span>;
+                    if (track._completionRate > 0.7) return <span className="text-[9px] font-bold tracking-wide" style={{ color: `rgba(${rtp},0.5)` }}>High Energy</span>;
+                    if (track._favorites > 2) return <span className="text-[9px] font-bold tracking-wide" style={{ color: `rgba(${rts},0.55)` }}>Fan Favorite</span>;
                     return <span className="text-[9px] font-bold text-white/20 tracking-wide">Trending</span>;
                   })()}
                 </div>
@@ -150,12 +160,12 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
               {/* Actions */}
               <div className="flex items-center gap-0.5 flex-shrink-0">
                 <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+                  style={{ background: `rgba(${rtp},0.1)`, color: `rgb(${rtp})` }}>
                   <Waves className="w-2 h-2" /> 432
                 </span>
                 {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                 {isPremium ? downloadButton(track) : (
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ color: "rgba(212,168,67,0.35)" }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ color: `rgba(${rtp},0.3)` }}>
                     <Lock className="w-3.5 h-3.5" />
                   </div>
                 )}
