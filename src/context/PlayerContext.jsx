@@ -67,7 +67,9 @@ const isSafariOnly = (() => {
 const shouldPauseOnHide = !isPWA && !isIOS && isSafariOnly;
 
 console.log("[Player] cold_launch | isPWA:", isPWA, "| isIOS:", isIOS,
-  "| isSafariOnly:", isSafariOnly, "| shouldPauseOnHide:", shouldPauseOnHide,
+  "| isSafari:", isSafariOnly, "| shouldPauseOnHide:", shouldPauseOnHide,
+  "| analyserAttached=false | analyserDetachedForIOSBackground=false",
+  "| iosBackgroundAudioStrategy:", isIOS ? "detach-webaudio-on-hide" : "standard",
   "| ua:", navigator.userAgent.substring(0, 80));
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,7 +89,14 @@ let _sourceEl   = null;
 let _analyserDisabled  = false;
 let _analyserFailCount = 0;
 
+// iOS background state — when true, the Web Audio graph is intentionally
+// detached so the <audio> element routes directly to hardware (no AudioContext
+// dependency). Re-attached only on explicit user gesture while page is visible.
+let _iosGraphDetached = false;
+
 async function resumeAudioContext() {
+  // On iOS: never call audioCtx.resume() from a background/MediaSession context.
+  // Only resume when the page is visible — caller must enforce this.
   if (!_audioCtx) return;
   if (_audioCtx.state !== "running") {
     try { await _audioCtx.resume(); } catch {}
@@ -98,8 +107,38 @@ function suspendAudioContext() {
   try { _audioCtx.suspend(); } catch {}
 }
 
+/**
+ * detachAnalyserGraph — disconnect Web Audio graph from <audio> on iOS background.
+ * Audio continues playing via the native pipeline; AudioContext is left suspended.
+ * Does NOT pause audio, reset src, or call load().
+ */
+export function detachAnalyserGraph() {
+  if (!_sourceNode && !_audioCtx) return;
+  try {
+    if (_sourceNode) {
+      _sourceNode.disconnect();
+      console.log("[Player] detachAnalyserGraph | sourceNode disconnected | iOS:", isIOS,
+        "| ctxState:", _audioCtx?.state);
+    }
+    // Do NOT close the AudioContext — just leave it suspended so we can reuse it.
+    // Do NOT call _audioCtx.suspend() here — iOS may already be handling that.
+    _sourceNode = null;
+    _sourceEl   = null;
+    _iosGraphDetached = true;
+    window._uvAnalyser = null; // signal to visualizer: use fallback
+    console.log("[Player] analyserDetachedForIOSBackground=true | visualizerFallbackActive=true");
+  } catch (e) {
+    console.warn("[Player] detachAnalyserGraph error:", e.name, e.message);
+  }
+}
+
 function setupAnalyserGraph(audioElement) {
   if (!audioElement || _analyserDisabled) return null;
+  // On iOS, do not reconnect if the page is hidden — wait for user gesture on show
+  if (isIOS && document.visibilityState === "hidden") {
+    console.log("[Player] setupAnalyserGraph SKIPPED — iOS + page hidden");
+    return null;
+  }
   try {
     if (!_audioCtx || _audioCtx.state === "closed") {
       _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -107,8 +146,12 @@ function setupAnalyserGraph(audioElement) {
       _analyser   = null;
       _sourceNode = null;
       _sourceEl   = null;
+      _iosGraphDetached = false;
     }
-    if (_audioCtx.state === "suspended") _audioCtx.resume().catch(() => {});
+    // Only resume AudioContext when page is visible and we have a user gesture
+    if (_audioCtx.state === "suspended" && document.visibilityState === "visible") {
+      _audioCtx.resume().catch(() => {});
+    }
     if (!_analyser) {
       _analyser = _audioCtx.createAnalyser();
       _analyser.fftSize = 2048;
@@ -121,7 +164,9 @@ function setupAnalyserGraph(audioElement) {
       _sourceEl   = audioElement;
       _sourceNode.connect(_analyser);
       _analyser.connect(_audioCtx.destination);
-      console.log("[Player] AudioGraph connected | iOS:", isIOS, "| ctxState:", _audioCtx.state);
+      _iosGraphDetached = false;
+      console.log("[Player] AudioGraph connected | iOS:", isIOS, "| ctxState:", _audioCtx.state,
+        "| analyserAttached=true | analyserDetachedForIOSBackground=false");
     }
     return _analyser;
   } catch (e) {
@@ -139,9 +184,24 @@ export function resetAnalyserDisabled() {
     _analyserFailCount = 0;
   }
 }
-export function resumeGlobalAudioContext() { return resumeAudioContext().catch(() => {}); }
+export function resumeGlobalAudioContext() {
+  // Only resume if page is visible — do not fight iOS background suspension
+  if (isIOS && document.visibilityState !== "visible") {
+    console.log("[Player] resumeGlobalAudioContext SKIPPED — iOS + page not visible | audioContextState:", _audioCtx?.state);
+    return Promise.resolve();
+  }
+  return resumeAudioContext().catch(() => {});
+}
 export function requestAnalyser(audioElement) {
   if (!audioElement || _analyserDisabled) return null;
+  // On iOS: if page is hidden or graph was detached for background, return null
+  // so the visualizer uses its fallback animation instead of trying to analyse.
+  if (isIOS && (document.visibilityState === "hidden" || _iosGraphDetached)) {
+    console.log("[Player] requestAnalyser — returning null | iosGraphDetached:", _iosGraphDetached,
+      "| pageHidden:", document.visibilityState === "hidden",
+      "| visualizerFallbackActive=true");
+    return null;
+  }
   const an = setupAnalyserGraph(audioElement);
   if (!an) return null;
   return { analyser: an, ctx: _audioCtx, sourceNode: _sourceNode };
@@ -465,9 +525,16 @@ export function PlayerProvider({ children }) {
     }
 
     // Normal resume path: audio is paused with valid buffer
-    // CRITICAL: enforce rate BEFORE play(), do NOT seek, do NOT load
+    // CRITICAL: enforce rate BEFORE play(), do NOT seek, do NOT load.
+    // Do NOT call resumeAudioContext() here — on iOS lock screen there is no
+    // user gesture, so AudioContext.resume() silently fails / is a no-op.
+    // The native <audio> element plays directly to hardware without AudioContext.
     enforceRate(audio);
-    resumeAudioContext().catch(() => {});
+    console.log("[Player] safeLockscreenPlay — native resume path | audioContextState:", _audioCtx?.state ?? "none",
+      "| analyserDetachedForIOSBackground:", _iosGraphDetached,
+      "| nativeAudioStillPlaying:", !audio.paused,
+      "| audioCurrentTime:", audio.currentTime.toFixed(2),
+      "| mediaSessionState:", ("mediaSession" in navigator) ? navigator.mediaSession.playbackState : "N/A");
 
     pendingPlayRef.current = true;
     // Safety: clear pending flag after 3s max regardless
@@ -831,6 +898,7 @@ export function PlayerProvider({ children }) {
         "| isPWA:", isPWA, "| isIOS:", isIOS, "| isSafari:", isSafariOnly,
         "| shouldPauseOnHide:", shouldPauseOnHide,
         "| ct:", audio.currentTime.toFixed(2), "| paused:", audio.paused,
+        "| audioContextState:", _audioCtx?.state ?? "none",
         "| visibilityState:", document.visibilityState);
 
       stopWatchdog();
@@ -842,9 +910,15 @@ export function PlayerProvider({ children }) {
           audio.pause();
           setMediaSessionState(false);
         }
+      } else if (isIOS) {
+        // iOS Safari / PWA: detach Web Audio graph so native <audio> plays
+        // directly to hardware without depending on AudioContext state.
+        // CRITICAL: do NOT pause, do NOT reset src, do NOT call load().
+        detachAnalyserGraph();
+        console.log("[Player] iOS PAGE HIDE — analyser detached | nativeAudioStillPlaying:", !audio.paused,
+          "| audioPaused:", audio.paused, "| audioCurrentTime:", audio.currentTime.toFixed(2),
+          "| mediaSessionState:", ("mediaSession" in navigator) ? navigator.mediaSession.playbackState : "N/A");
       }
-      // iOS/PWA: do NOT pause — iOS continues playing in background.
-      // The 'suspend' event on the audio element will tell us if iOS pauses it.
     };
 
     const doShow = (persisted, event) => {
@@ -883,15 +957,25 @@ export function PlayerProvider({ children }) {
       }
 
       if (actuallyPlaying) {
-        resumeAudioContext().catch(() => {});
+        // Only resume AudioContext when page is visible (never from background)
+        if (document.visibilityState === "visible") {
+          resumeAudioContext().catch(() => {});
+        }
         startWatchdog(audio);
-        console.log("[Player] PAGE SHOW — audio WAS playing (continued in background)");
+        console.log("[Player] PAGE SHOW — audio WAS playing (continued in background)",
+          "| isIOS:", isIOS, "| analyserWillReconnectOnUserGesture:", isIOS,
+          "| audioCurrentTime:", audio.currentTime.toFixed(2),
+          "| mediaSessionState:", ("mediaSession" in navigator) ? navigator.mediaSession.playbackState : "N/A");
       } else if (audio.src) {
         // Audio is paused — update UI, don't auto-resume, let user tap
-        resumeAudioContext().catch(() => {});
-        console.log("[Player] PAGE SHOW — audio is PAUSED | iOS suspended it during lock/background");
-        console.log("[Player] PAGE SHOW — savedTimeRef updated to:", savedTimeRef.current.toFixed(2),
-          "| awaiting user gesture to resume");
+        // NOTE: do not call resumeAudioContext here on iOS — requires user gesture
+        if (!isIOS && document.visibilityState === "visible") {
+          resumeAudioContext().catch(() => {});
+        }
+        console.log("[Player] PAGE SHOW — audio is PAUSED | iOS suspended it during lock/background",
+          "| savedTime:", savedTimeRef.current.toFixed(2),
+          "| audioContextState:", _audioCtx?.state ?? "none",
+          "| awaiting user gesture to resume and reconnect analyser");
       }
     };
 
@@ -937,9 +1021,13 @@ export function PlayerProvider({ children }) {
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    // User gesture: safe to reconnect Web Audio graph and resume AudioContext
     resetAnalyserDisabled();
-    setupAnalyserGraph(audio);
+    setupAnalyserGraph(audio); // reconnects analyser now that user tapped
     resumeAudioContext().catch(() => {});
+    console.log("[Player] togglePlay — user gesture | isIOS:", isIOS,
+      "| analyserAttached:", !!_sourceNode, "| audioContextState:", _audioCtx?.state ?? "none",
+      "| audioPaused:", audio.paused, "| audioCurrentTime:", audio.currentTime.toFixed(2));
 
     if (!audio.paused && !audio.ended) {
       safePause(audio, "toggle-pause");
@@ -980,7 +1068,10 @@ export function PlayerProvider({ children }) {
     const url = track.audio_url;
 
     resetAnalyserDisabled();
-    setupAnalyserGraph(audio);
+    // Only connect Web Audio graph if page is visible (user-gesture context)
+    if (document.visibilityState === "visible") {
+      setupAnalyserGraph(audio);
+    }
 
     setSourceType(source);
     setCurrentTrack(track);
