@@ -154,7 +154,7 @@ export default function Home() {
           <div className="absolute top-[-80px] left-[-60px] w-[560px] h-[560px] rounded-full blur-[200px] opacity-[0.055]"
             style={{ background: "#00C9E0" }} />
           <div className="absolute bottom-0 right-[-40px] w-[320px] h-[320px] rounded-full blur-[150px] opacity-[0.03]"
-            style={{ background: "#C9902A" }} />
+            style={{ background: "#D4A843" }} />
           {/* Fine vertical scan-line grid — very subtle, editorial feel */}
           <div className="absolute inset-0 opacity-[0.018]"
             style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(255,255,255,0.6) 0px, rgba(255,255,255,0.6) 1px, transparent 1px, transparent 80px)" }} />
@@ -227,7 +227,7 @@ export default function Home() {
                 lineHeight: 1.0,
                 letterSpacing: "0.22em",
                 textTransform: "uppercase",
-                background: "linear-gradient(105deg, #8A5E1A 0%, #C8892A 30%, #E8AC40 55%, #C08020 80%, #A06818 100%)",
+                background: "linear-gradient(105deg, #A07820 0%, #D4A843 35%, #ECC050 55%, #D4A843 80%, #A07820 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -299,6 +299,7 @@ export default function Home() {
           <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full blur-[100px] opacity-20 pointer-events-none" style={{ background: rtAmbient1 }} />
           <div className="absolute -bottom-10 right-10 w-48 h-48 rounded-full blur-[80px] opacity-10 pointer-events-none" style={{ background: "#D4A843" }} />
 
+
           <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-5 md:gap-8">
             {/* Left: icon + text */}
             <div className="flex-1">
@@ -352,7 +353,7 @@ export default function Home() {
                   animate={{ height: [`${h * 0.5}px`, `${h}px`, `${h * 0.6}px`, `${h}px`] }}
                   transition={{ duration: 1.2 + i * 0.07, repeat: Infinity, ease: "easeInOut", delay: i * 0.05 }}
                   className="w-1.5 rounded-full"
-                  style={{ background: i % 3 === 0 ? `rgba(${rtPrimary},0.7)` : i % 3 === 1 ? `rgba(${rtPrimary},0.4)` : "rgba(212,168,67,0.35)" }}
+                  style={{ background: i % 3 === 0 ? `rgba(${rtPrimary},0.7)` : i % 3 === 1 ? `rgba(${rtPrimary},0.4)` : "rgba(212,168,67,0.4)" }}
                 />
               ))}
             </div>
@@ -486,7 +487,7 @@ export default function Home() {
                   <div className="absolute top-2 left-2 flex gap-1.5">
                     {lesson.is_premium && (
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider"
-                        style={{ background: "rgba(212,168,67,0.9)", color: "#000" }}>PREMIUM</span>
+                        style={{ background: "#D4A843", color: "#000" }}>PREMIUM</span>
                     )}
                     {lesson.is_premium && lesson.free_preview_seconds > 0 && (
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-bold"
@@ -610,6 +611,7 @@ function EmailSignupSection() {
         initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
         className="rounded-3xl p-8 md:p-12"
         style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.04),rgba(212,168,67,0.03))", border: "1px solid rgba(0,229,255,0.09)" }}>
+
         {!submitted ? (
           <div className="flex flex-col lg:flex-row gap-10 items-start lg:items-center">
             <div className="lg:max-w-xs flex-shrink-0">
