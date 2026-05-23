@@ -24,13 +24,13 @@ export default function AudioPlayer() {
   const themeRgb = theme.vars["--rt-primary"];
   const themeHex = theme.swatch;
 
-  // The two colors NOT currently selected always lead the progress bar (small sections)
+  // The two colors NOT currently selected lead the tip of the progress bar
   const allThree = [
-    { rgb: "245,158,11",  hex: "#F59E0B" }, // amber
-    { rgb: "155,126,255", hex: "#9B7EFF" }, // violet
-    { rgb: "0,160,220",   hex: "#00A0DC" }, // electric blue
+    { id: "amber",  rgb: "245,158,11",  hex: "#F59E0B" },
+    { id: "violet", rgb: "168,85,247",  hex: "#A855F7" },
+    { id: "cyan",   rgb: "0,160,220",   hex: "#00A0DC" },
   ];
-  const others = allThree.filter(c => c.hex.toLowerCase() !== themeHex.toLowerCase());
+  const others = allThree.filter(c => c.id !== accentId);
 
   const [progress,   setProgress]   = useState(0);
   const [duration,   setDuration]   = useState(0);
