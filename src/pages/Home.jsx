@@ -465,9 +465,18 @@ export default function Home() {
         currentTrack={currentTrack}
         isPlaying={isPlaying}
         handlePlayTrack={handlePlayTrack}
-        heartButton={heartButton}
-        downloadButton={downloadButton}
         user={user}
+        isFaved={isFaved}
+        onToggleFav={(track) => {
+          if (!user) { setLoginModal(true); return; }
+          toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
+        }}
+        onDownload={(track) => {
+          if (!user) { setLoginModal(true); return; }
+          const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin";
+          if (!isPremium) { setPremiumModal(true); return; }
+          if (track.audio_url) window.open(track.audio_url, "_blank");
+        }}
       />
       </motion.div>
 

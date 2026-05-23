@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Music4, Waves, TrendingUp, Lock } from "lucide-react";
+import { Play, Pause, Music4, Waves, TrendingUp, Lock, Heart, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import SectionHeader from "../shared/SectionHeader";
@@ -50,15 +50,28 @@ function computeTrendingScores(tracks, streams, favCounts) {
     .slice(0, 6);
 }
 
-export default function TrendingTracksSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, heartButton, downloadButton, user }) {
+// Fixed accent colors — always the same regardless of theme
+const PURPLE  = "155,126,255";   // hearts — always purple
+const BLUE    = "0,200,220";     // 432 Hz badge — always electric blue
+const AMBER   = "212,168,67";    // download lock — always midnight amber
+
+// Cycling insight colors (theme-independent, rotates through all 3)
+const INSIGHT_COLORS = [
+  { color: "0,229,255",   label: "🔥 Most Played Today" },   // cyan
+  { color: "155,126,255", label: "Listener Favorite" },       // purple
+  { color: "212,168,67",  label: "Rising" },                  // amber
+  { color: "0,229,255",   label: "High Energy" },             // cyan
+  { color: "155,126,255", label: "Fan Favorite" },            // purple
+  { color: "212,168,67",  label: "Trending" },                // amber
+];
+
+export default function TrendingTracksSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, user, onToggleFav, isFaved, onDownload }) {
   const [streams, setStreams]     = useState([]);
   const [favCounts, setFavCounts] = useState({});
   const [loading, setLoading]     = useState(true);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
-  const rtp = radioTheme.vars["--rt-primary"];       // e.g. "0,229,255"
-  const rts = radioTheme.vars["--rt-secondary"];     // e.g. "155,126,255"
-  const amb = radioTheme.vars["--rt-ambient1"];      // e.g. "#00C9E0" (hex)
+  const rtp = radioTheme.vars["--rt-primary"];   // theme primary — used for rank #1-3 & card active state
 
   useEffect(() => {
     if (!allTracks || allTracks.length === 0) return;
@@ -111,7 +124,7 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
               }}
               onClick={() => track.audio_url && handlePlayTrack(track)}
             >
-              {/* Rank number */}
+              {/* Rank number — theme color for top 3, faded for rest */}
               <span className="flex-shrink-0 w-5 text-center text-[10px] font-black tabular-nums"
                 style={{ color: i < 3 ? `rgb(${rtp})` : "rgba(255,255,255,0.18)" }}>
                 {i + 1}
@@ -145,27 +158,40 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
                   {track.title}
                 </Link>
                 <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                {/* Insights — cycle through cyan / purple / amber in order */}
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  {(() => {
-                    if (i === 0) return <span className="text-[9px] font-bold tracking-wide" style={{ color: `rgba(${rtp},0.75)` }}>🔥 Most Played Today</span>;
-                    if (i === 1) return <span className="text-[9px] font-bold tracking-wide" style={{ color: `rgba(${rtp},0.6)` }}>Listener Favorite</span>;
-                    if (i === 2) return <span className="text-[9px] font-bold tracking-wide" style={{ color: `rgba(${rts},0.7)` }}>Rising</span>;
-                    if (track._completionRate > 0.7) return <span className="text-[9px] font-bold tracking-wide" style={{ color: `rgba(${rtp},0.5)` }}>High Energy</span>;
-                    if (track._favorites > 2) return <span className="text-[9px] font-bold tracking-wide" style={{ color: `rgba(${rts},0.55)` }}>Fan Favorite</span>;
-                    return <span className="text-[9px] font-bold text-white/20 tracking-wide">Trending</span>;
-                  })()}
+                  <span className="text-[9px] font-bold tracking-wide"
+                    style={{ color: `rgba(${INSIGHT_COLORS[i % INSIGHT_COLORS.length].color},0.75)` }}>
+                    {INSIGHT_COLORS[i].label}
+                  </span>
                 </div>
               </div>
 
               {/* Actions */}
               <div className="flex items-center gap-0.5 flex-shrink-0">
+                {/* 432 badge — always electric blue */}
                 <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: `rgba(${rtp},0.1)`, color: `rgb(${rtp})` }}>
+                  style={{ background: `rgba(${BLUE},0.1)`, color: `rgb(${BLUE})` }}>
                   <Waves className="w-2 h-2" /> 432
                 </span>
-                {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
-                {isPremium ? downloadButton(track) : (
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ color: `rgba(${rtp},0.3)` }}>
+                {/* Heart — always purple */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}
+                  className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+                  style={{ color: isFaved && isFaved("track", track.id) ? "#ec4899" : `rgba(${PURPLE},0.5)` }}>
+                  <Heart className={`w-3.5 h-3.5 ${isFaved && isFaved("track", track.id) ? "fill-current" : ""}`} />
+                </button>
+                {/* Download — always amber */}
+                {isPremium ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDownload && onDownload(track); }}
+                    className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+                    style={{ color: `rgba(${AMBER},0.7)` }}>
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    style={{ color: `rgba(${AMBER},0.4)` }}>
                     <Lock className="w-3.5 h-3.5" />
                   </div>
                 )}
