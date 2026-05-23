@@ -4,6 +4,8 @@ import { Trash2, Mic2, Ban, Flag, Music2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import VibeAvatar from "./VibeAvatar";
 import UserProfileCard from "./UserProfileCard";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "../radio/RadioThemePicker";
 
 const REACTIONS = [
   { key: "felt_that",   emoji: "⚡", label: "Felt That" },
@@ -24,6 +26,10 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
   const reactions = msg.reactions || {};
   const [showProfile, setShowProfile] = useState(false);
   const [showModMenu, setShowModMenu] = useState(false);
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtPrimary = radioTheme.vars["--rt-primary"];
+  const rtSecondary = radioTheme.vars["--rt-secondary"];
 
   // Exclusive reaction: one per user across all types (free + premium can react)
   const handleReact = async (key) => {
@@ -88,7 +94,7 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
             )}
             {msg.is_listening && (
               <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-black tracking-wide"
-                style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.2)", color: "#00C9E0" }}>
+                style={{ background: `rgba(${rtSecondary},0.1)`, border: `1px solid rgba(${rtSecondary},0.25)`, color: `rgb(${rtSecondary})`, transition: "all 0.2s ease" }}>
                 <Music2 style={{ width: 7, height: 7 }} /> LISTENING
               </span>
             )}
@@ -99,13 +105,14 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
           <div
             className="px-4 py-2.5 text-sm leading-relaxed relative"
             style={isOwn ? {
-              background: "linear-gradient(135deg,rgba(124,58,237,0.2),rgba(155,126,255,0.12))",
-              border: "1px solid rgba(155,126,255,0.3)",
+              background: `linear-gradient(135deg,rgba(${rtPrimary},0.18),rgba(${rtPrimary},0.08))`,
+              border: `1px solid rgba(${rtPrimary},0.35)`,
               backdropFilter: "blur(16px)",
               WebkitBackdropFilter: "blur(16px)",
-              color: "#ede8ff",
+              color: "rgba(255,255,255,0.92)",
               borderRadius: "18px 18px 4px 18px",
-              boxShadow: "0 2px 20px rgba(155,126,255,0.1), inset 0 0 0 1px rgba(255,255,255,0.04)",
+              boxShadow: `0 2px 20px rgba(${rtPrimary},0.12), inset 0 0 0 1px rgba(255,255,255,0.04)`,
+              transition: "background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease",
             } : {
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.07)",
@@ -132,10 +139,11 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
                   disabled={!user}
                   className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold transition-all active:scale-90 disabled:cursor-default select-none"
                   style={{
-                    background: hasReacted ? "rgba(155,126,255,0.2)" : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${hasReacted ? "rgba(155,126,255,0.45)" : "rgba(255,255,255,0.07)"}`,
-                    color: hasReacted ? "#c4aaff" : count > 0 ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.18)",
-                    transition: "all 0.15s ease",
+                    background: hasReacted ? `rgba(${rtPrimary},0.22)` : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${hasReacted ? `rgba(${rtPrimary},0.5)` : "rgba(255,255,255,0.07)"}`,
+                    color: hasReacted ? `rgb(${rtPrimary})` : count > 0 ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.18)",
+                    transition: "all 0.2s ease",
+                    boxShadow: hasReacted ? `0 0 8px rgba(${rtPrimary},0.25)` : "none",
                   }}>
                   <span style={{ fontSize: "11px" }}>{emoji}</span>
                   {count > 0 && <span className="ml-0.5 tabular-nums">{count}</span>}

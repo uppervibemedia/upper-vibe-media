@@ -296,13 +296,17 @@ export default function VibeRoom() {
                     currentAvatarUrl={vibeAvatar}
                     onUploaded={(url) => setVibeAvatar(url)}
                   />
-                  <span className="text-[9px] font-bold text-purple-400/60 max-w-[64px] truncate text-center">
+                  <span className="text-[9px] font-bold max-w-[64px] truncate text-center"
+                    style={{ color: `rgba(${rtPrimary},0.7)`, transition: "color 0.25s ease" }}>
                     {vibeName}
                   </span>
                   {canChangeVibeName() && (
                     <button
                       onClick={() => setNeedsVibeName(true)}
-                      className="text-[8px] text-white/20 hover:text-purple-400/50 transition-colors">
+                      className="text-[8px] text-white/20 transition-colors"
+                      style={{ "--hover-color": `rgba(${rtPrimary},0.5)` }}
+                      onMouseEnter={e => e.currentTarget.style.color = `rgba(${rtPrimary},0.5)`}
+                      onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.2)"}>
                       change name
                     </button>
                   )}
@@ -474,6 +478,9 @@ function SeededMessageBubble({ msg, animDelay, user, onReactionLoginRequired }) 
   const [localReactions, setLocalReactions] = useState(
     msg.reactions || { felt_that: [], needed_this: [], inspired: [], gratitude: [] }
   );
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtPrimary = radioTheme.vars["--rt-primary"];
 
   const handleReact = async (key) => {
     if (!user) {
@@ -505,7 +512,7 @@ function SeededMessageBubble({ msg, animDelay, user, onReactionLoginRequired }) 
       className="flex gap-2.5 flex-row">
       {/* Generic community avatar */}
       <div className="flex-shrink-0 self-end mb-1 w-[34px] h-[34px] rounded-full flex items-center justify-center text-xs font-black"
-        style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.2),rgba(0,200,220,0.1))", border: "1px solid rgba(155,126,255,0.2)", color: "rgba(155,126,255,0.7)", fontSize: "11px" }}>
+        style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.2),rgba(${rtPrimary},0.05))`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})`, fontSize: "11px", transition: "all 0.25s ease" }}>
         {msg.user_name?.[0]?.toUpperCase() || "V"}
       </div>
       <div className="max-w-[75%] flex flex-col gap-1 items-start">
@@ -538,9 +545,11 @@ function SeededMessageBubble({ msg, animDelay, user, onReactionLoginRequired }) 
                 title={label}
                 className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold transition-all active:scale-90 select-none"
                 style={{
-                  background: hasReacted ? "rgba(155,126,255,0.2)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${hasReacted ? "rgba(155,126,255,0.45)" : "rgba(255,255,255,0.07)"}`,
-                  color: hasReacted ? "#c4aaff" : count > 0 ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.18)",
+                  background: hasReacted ? `rgba(${rtPrimary},0.22)` : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${hasReacted ? `rgba(${rtPrimary},0.5)` : "rgba(255,255,255,0.07)"}`,
+                  color: hasReacted ? `rgb(${rtPrimary})` : count > 0 ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.18)",
+                  transition: "all 0.2s ease",
+                  boxShadow: hasReacted ? `0 0 8px rgba(${rtPrimary},0.25)` : "none",
                 }}>
                 <span style={{ fontSize: "11px" }}>{emoji}</span>
                 {count > 0 && <span className="ml-0.5 tabular-nums">{count}</span>}
