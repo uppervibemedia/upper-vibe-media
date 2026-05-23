@@ -250,13 +250,20 @@ export default function SongPage() {
             className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-center sm:items-end">
 
             {/* Album Cover — bigger on mobile, centered */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 relative">
+              {/* Pulsating glow ring — same as radio player */}
+              <motion.div
+                animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-0 rounded-2xl pointer-events-none"
+                style={{ border: `2px solid rgb(${rtp})`, boxShadow: `0 0 30px rgba(${rtp},0.5)` }}
+              />
               {track.cover_url ? (
                 <img src={track.cover_url} alt={track.title}
-                  className="w-44 h-44 sm:w-64 sm:h-64 rounded-2xl object-cover mx-auto"
+                  className="relative z-10 w-44 h-44 sm:w-64 sm:h-64 rounded-2xl object-cover mx-auto"
                   style={{ boxShadow: `0 8px 60px rgba(0,0,0,0.7), 0 0 40px rgba(${rtp},0.15)` }} />
               ) : (
-                <div className="w-44 h-44 sm:w-64 sm:h-64 rounded-2xl mx-auto flex items-center justify-center"
+                <div className="relative z-10 w-44 h-44 sm:w-64 sm:h-64 rounded-2xl mx-auto flex items-center justify-center"
                   style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.1),rgba(212,168,67,0.06))", border: "1px solid rgba(255,255,255,0.1)" }}>
                   <Music4 className="w-16 h-16 text-white/10" />
                 </div>
