@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Music4, Waves } from "lucide-react";
+import { Play, Pause, Music4, Waves, Radio } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -100,29 +100,68 @@ export default function NowPlayingHomeCard() {
         ) : (
           <motion.div
             key="idle"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex items-center gap-4 px-5 py-3.5 rounded-2xl"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="flex items-center gap-4 p-4 rounded-2xl"
             style={{
-              background: "rgba(255,255,255,0.025)",
-              border: "1px solid rgba(255,255,255,0.07)",
+              background: `linear-gradient(135deg, rgba(${rtPrimary},0.07) 0%, rgba(${rtPrimary},0.02) 100%)`,
+              border: `1px solid rgba(${rtPrimary},0.18)`,
+              boxShadow: `0 0 24px rgba(${rtPrimary},0.05)`,
             }}
           >
-            <div className="flex items-end gap-[2px] flex-shrink-0 opacity-25" style={{ height: "14px" }}>
-              {[3, 5, 8, 5, 3].map((h, i) => (
-                <div key={i} className="w-[2px] rounded-full bg-white" style={{ height: `${h}px` }} />
+            {/* Static album art placeholder */}
+            <div className="relative flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center"
+              style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.15)` }}>
+              <Music4 className="w-6 h-6" style={{ color: `rgba(${rtPrimary},0.5)` }} />
+              {/* Subtle slow pulse ring */}
+              <motion.div
+                animate={{ scale: [1, 1.14, 1], opacity: [0.25, 0, 0.25] }}
+                transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-0 rounded-xl pointer-events-none"
+                style={{ border: `2px solid rgb(${rtPrimary})` }}
+              />
+            </div>
+
+            {/* Animated bars — always moving, slightly dim */}
+            <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "18px" }}>
+              {[4, 7, 11, 8, 5, 9, 6].map((h, i) => (
+                <motion.div
+                  key={i}
+                  animate={{ height: [`${h * 0.3}px`, `${h * 0.9}px`, `${h * 0.4}px`] }}
+                  transition={{ duration: 0.9 + i * 0.12, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 }}
+                  className="w-[2.5px] rounded-full flex-shrink-0"
+                  style={{ background: `rgb(${rtPrimary})`, opacity: 0.35 }}
+                />
               ))}
             </div>
-            <p className="text-xs text-white/30 flex-1">No track playing — browse music or start the radio</p>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Link to="/music"
-                className="px-4 py-1.5 rounded-full text-[10px] font-black tracking-wider transition-all hover:brightness-110"
-                style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.2)`, color: `rgb(${rtPrimary})` }}>
-                Browse Music
-              </Link>
+
+            {/* Text */}
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black tracking-[0.22em] uppercase mb-0.5" style={{ color: `rgba(${rtPrimary},0.55)` }}>
+                Upper Vibe Radio
+              </p>
+              <p className="text-sm font-bold text-white/70 truncate leading-tight">432 Hz · High Vibe Music</p>
+              <p className="text-xs text-white/30 truncate">Nonstop frequency music</p>
             </div>
+
+            {/* Live badge */}
+            <span className="hidden sm:inline-flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-full flex-shrink-0"
+              style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.2)`, color: `rgb(${rtPrimary})` }}>
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: `rgb(${rtPrimary})`, animation: "pulse 1.5s infinite" }} />
+              LIVE
+            </span>
+
+            {/* Play button → goes to radio */}
+            <Link to="/radio"
+              className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+              style={{
+                background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`,
+                boxShadow: `0 0 20px rgba(${rtPrimary},0.3)`,
+              }}>
+              <Radio className="w-4 h-4 text-black" />
+            </Link>
           </motion.div>
         )}
       </AnimatePresence>

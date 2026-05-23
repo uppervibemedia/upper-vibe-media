@@ -5,29 +5,62 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
-import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
+import { RADIO_THEMES, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
 
 function ThemePicker() {
   const { accentId, setAccent } = useTheme();
+  const [pulseOn, setPulseOn] = useState(getPulseEnabled);
+
+  const handleTogglePulse = (v) => {
+    setPulseOn(v);
+    setPulseEnabled(v);
+  };
+
   return (
-    <div className="flex gap-3 flex-wrap">
-      {Object.values(RADIO_THEMES).map((t) => (
+    <div>
+      <div className="flex gap-3 flex-wrap mb-5">
+        {Object.values(RADIO_THEMES).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setAccent(t.id)}
+            title={t.label}
+            className="flex flex-col items-center gap-1.5 transition-all"
+            style={{ opacity: accentId === t.id ? 1 : 0.5 }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
+              style={{
+                background: t.swatch,
+                boxShadow: accentId === t.id ? `0 0 16px ${t.swatch}aa` : "none",
+                border: accentId === t.id ? `2px solid ${t.swatch}` : "2px solid transparent",
+                outline: accentId === t.id ? `2px solid rgba(255,255,255,0.25)` : "none",
+              }} />
+            <span className="text-[9px] font-black tracking-wider uppercase text-white/50">{t.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Pulse Effect Toggle */}
+      <div className="flex items-center justify-between pt-4 border-t border-white/[0.06]">
+        <div>
+          <p className="text-sm font-bold text-white">Pulse Effect</p>
+          <p className="text-xs text-white/35">Glowing border animation on Radio page</p>
+        </div>
         <button
-          key={t.id}
-          onClick={() => setAccent(t.id)}
-          title={t.label}
-          className="flex flex-col items-center gap-1.5 transition-all"
-          style={{ opacity: accentId === t.id ? 1 : 0.5 }}>
-          <div className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
-            style={{
-              background: t.swatch,
-              boxShadow: accentId === t.id ? `0 0 16px ${t.swatch}aa` : "none",
-              border: accentId === t.id ? `2px solid ${t.swatch}` : "2px solid transparent",
-              outline: accentId === t.id ? `2px solid rgba(255,255,255,0.25)` : "none",
-            }} />
-          <span className="text-[9px] font-black tracking-wider uppercase text-white/50">{t.label}</span>
+          onClick={() => handleTogglePulse(!pulseOn)}
+          style={{
+            width: 44, height: 24, borderRadius: 12, flexShrink: 0,
+            background: pulseOn ? "rgba(0,200,220,0.55)" : "rgba(255,255,255,0.12)",
+            position: "relative", transition: "background 0.2s ease",
+            border: "none", cursor: "pointer",
+          }}
+        >
+          <span style={{
+            position: "absolute", top: 3, left: pulseOn ? 22 : 3,
+            width: 18, height: 18, borderRadius: "50%", background: "#fff",
+            transition: "left 0.2s ease",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+          }} />
         </button>
-      ))}
+      </div>
     </div>
   );
 }
