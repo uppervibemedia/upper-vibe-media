@@ -40,7 +40,7 @@ export default function NewestMusic() {
             style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.18)", color: "#00E5FF" }}>
             <Zap className="w-3 h-3" /> New Releases
           </div>
-          <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-2">Newest Music</h1>
+          <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-2">Latest Music</h1>
           <p className="text-white/35 text-sm mb-1">The latest Upper Vibe Media songs and 432 Hz releases.</p>
           <p className="text-white/20 text-xs">Showing newest {tracks.length} uploads</p>
         </motion.div>
