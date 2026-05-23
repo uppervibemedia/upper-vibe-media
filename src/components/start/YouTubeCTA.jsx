@@ -88,39 +88,35 @@ export default function YouTubeCTA() {
           alt="Featured Visualizer — Upper Vibe Media"
           loading="lazy"
           className="w-full h-full object-cover"
-          style={{ opacity: 0.88 }}
         />
-        {/* Dark overlay */}
+        {/* Subtle bottom gradient so YouTube bar is readable */}
         <div
-          className="absolute inset-0 flex flex-col items-center justify-center gap-2"
-          style={{ background: "rgba(0,0,0,0.38)" }}
-        >
-          {/* Play button */}
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)" }}
+        />
+        {/* Centered YouTube-style play button */}
+        <div className="absolute inset-0 flex items-center justify-center">
           <div
-            className="flex items-center justify-center w-14 h-14 rounded-full"
-            style={{ background: "rgba(220,0,0,0.9)", boxShadow: "0 4px 24px rgba(255,0,0,0.5)" }}
+            style={{
+              width: 48,
+              height: 34,
+              borderRadius: 8,
+              background: "rgba(220,0,0,0.92)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.5)",
+            }}
           >
-            <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6 ml-1">
+            <svg viewBox="0 0 24 24" fill="white" style={{ width: 18, height: 18, marginLeft: 2 }}>
               <path d="M8 5v14l11-7z" />
             </svg>
           </div>
-          {/* Featured label */}
-          <span
-            style={{
-              fontSize: "9px",
-              fontWeight: 900,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.65)",
-              fontFamily: "var(--font-heading)",
-            }}
-          >
-            Featured Visualizer
-          </span>
         </div>
-        {/* YouTube logo bottom-right */}
-        <div className="absolute bottom-2 right-2 opacity-60">
-          <Youtube style={{ width: 18, height: 18, color: "#FF4444" }} />
+        {/* YouTube logo bottom-right — matches real YouTube UI */}
+        <div className="absolute bottom-2 right-2.5 flex items-center gap-1">
+          <Youtube style={{ width: 16, height: 16, color: "#fff" }} />
+          <span style={{ fontSize: "10px", fontWeight: 700, color: "#fff", letterSpacing: "0.02em" }}>YouTube</span>
         </div>
       </a>
 
