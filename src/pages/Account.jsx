@@ -21,8 +21,8 @@ export default function Account() {
       <div className="min-h-screen flex items-center justify-center px-6 pb-28 lg:pb-0">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-sm">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-            style={{ background: "rgba(0,200,220,0.08)", border: "1px solid rgba(0,200,220,0.2)" }}>
-            <User className="w-8 h-8 text-cyan-400/60" />
+            style={{ background: `rgba(${rtPrimary},0.08)`, border: `1px solid rgba(${rtPrimary},0.2)` }}>
+            <User className="w-8 h-8" style={{ color: `rgba(${rtPrimary},0.7)` }} />
           </div>
           <h1 className="font-heading font-black text-2xl text-white mb-3">Sign In to Your Account</h1>
           <p className="text-white/40 text-sm mb-8 leading-relaxed">
@@ -30,7 +30,7 @@ export default function Account() {
           </p>
           <button onClick={navigateToLogin}
             className="w-full py-3.5 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
-            style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", color: "#000" }}>
+            style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.8),rgb(${rtPrimary}))`, color: "#000" }}>
             Sign In / Create Account
           </button>
         </motion.div>
@@ -43,8 +43,9 @@ export default function Account() {
   const isPaid = !isAdmin && isPlus;
 
   const tierLabel = isAdmin ? "Admin" : isPlus ? "Upper Vibe Plus" : "Free Listener";
-  const tierColor = isAdmin ? "#D4A843" : isPlus ? "#D4A843" : "#00C9E0";
   const tierBadge = isAdmin ? "👑 Admin" : isPlus ? "⭐ Plus" : "Free";
+  // All tier colors now use active theme primary
+  const tierColor = `rgb(${rtPrimary})`;
 
   const handlePortal = async () => {
     if (window.self !== window.top) {
@@ -104,8 +105,9 @@ export default function Account() {
           {/* Membership card */}
           <div className="rounded-3xl p-6"
             style={{
-              background: isPlus ? "linear-gradient(135deg,rgba(212,168,67,0.07),rgba(212,168,67,0.02))" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${isPlus ? "rgba(212,168,67,0.28)" : "rgba(255,255,255,0.07)"}`,
+              background: isPlus ? `linear-gradient(135deg,rgba(${rtPrimary},0.07),rgba(${rtPrimary},0.02))` : "rgba(255,255,255,0.03)",
+              border: `1px solid ${isPlus ? `rgba(${rtPrimary},0.3)` : "rgba(255,255,255,0.07)"}`,
+              transition: "background 0.3s ease, border-color 0.3s ease",
             }}>
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -121,21 +123,21 @@ export default function Account() {
                   </div>
                 )}
               </div>
-              <Crown className={`w-6 h-6 flex-shrink-0 ${isPlus ? "text-yellow-400" : "text-white/15"}`} />
+              <Crown className="w-6 h-6 flex-shrink-0" style={{ color: isPlus || isAdmin ? `rgb(${rtPrimary})` : "rgba(255,255,255,0.15)", transition: "color 0.25s ease" }} />
             </div>
 
             <div className="space-y-2 mb-5">
               {isPlus || isAdmin ? (
                 <>
-                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Download every available song</div>
-                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Access premium Academy lessons</div>
-                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" /> Save 432 Hz music offline</div>
+                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: `rgb(${rtPrimary})` }} /> Download every available song</div>
+                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: `rgb(${rtPrimary})` }} /> Access premium Academy lessons</div>
+                  <div className="flex items-center gap-2 text-sm text-white/60"><Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: `rgb(${rtPrimary})` }} /> Save 432 Hz music offline</div>
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Stream all songs free</div>
-                  <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Upper Vibe Radio</div>
-                  <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" /> Save to My Vibe Library</div>
+                  <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: `rgb(${rtPrimary})` }} /> Stream all songs free</div>
+                  <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: `rgb(${rtPrimary})` }} /> Upper Vibe Radio</div>
+                  <div className="flex items-center gap-2 text-sm text-white/50"><Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: `rgb(${rtPrimary})` }} /> Save to My Vibe Library</div>
                   <div className="flex items-center gap-2 text-sm text-white/25"><Lock className="w-3.5 h-3.5 flex-shrink-0" /> Downloads (Plus only)</div>
                 </>
               )}
@@ -144,7 +146,7 @@ export default function Account() {
             {!isPlus && !isAdmin && (
               <Link to="/membership"
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
-                style={{ background: "linear-gradient(135deg,#C8892A,#EDB84A)", color: "#000" }}>
+                style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.8),rgb(${rtPrimary}))`, color: "#000" }}>
                 <Crown className="w-4 h-4" /> Upgrade to Plus — from $4.99/mo
               </Link>
             )}
@@ -161,9 +163,9 @@ export default function Account() {
           {/* Admin shortcut */}
           {isAdmin && (
             <Link to="/admin"
-              className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-yellow-400/20"
-              style={{ background: "rgba(212,168,67,0.05)", border: "1px solid rgba(212,168,67,0.15)" }}>
-              <Settings className="w-5 h-5 text-yellow-400/70" />
+              className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all"
+              style={{ background: `rgba(${rtPrimary},0.05)`, border: `1px solid rgba(${rtPrimary},0.18)`, transition: "all 0.2s ease" }}>
+              <Settings className="w-5 h-5" style={{ color: `rgba(${rtPrimary},0.8)` }} />
               <div className="flex-1">
                 <p className="text-sm font-bold text-white">Music Manager</p>
                 <p className="text-xs text-white/35">Upload and manage all content</p>
@@ -173,9 +175,9 @@ export default function Account() {
           )}
 
           <Link to="/my-vibes"
-            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-white/12"
-            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <Music4 className="w-5 h-5 text-cyan-400/60" />
+            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all"
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", transition: "all 0.2s ease" }}>
+            <Music4 className="w-5 h-5" style={{ color: `rgba(${rtPrimary},0.65)` }} />
             <div className="flex-1">
               <p className="text-sm font-bold text-white">My Vibe Library</p>
               <p className="text-xs text-white/35">Your saved songs and favorites</p>
@@ -184,9 +186,9 @@ export default function Account() {
           </Link>
 
           <Link to="/downloads"
-            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-white/12"
-            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <Download className="w-5 h-5 text-yellow-400/50" />
+            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all"
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", transition: "all 0.2s ease" }}>
+            <Download className="w-5 h-5" style={{ color: `rgba(${rtPrimary},0.55)` }} />
             <div className="flex-1">
               <p className="text-sm font-bold text-white">My Downloads</p>
               <p className="text-xs text-white/35">Your downloaded tracks</p>
@@ -206,9 +208,9 @@ export default function Account() {
           </Link>
 
           <Link to="/faq"
-            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-white/12"
-            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <HelpCircle className="w-5 h-5 text-cyan-400/40" />
+            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all"
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", transition: "all 0.2s ease" }}>
+            <HelpCircle className="w-5 h-5" style={{ color: `rgba(${rtPrimary},0.45)` }} />
             <div className="flex-1">
               <p className="text-sm font-bold text-white">FAQ</p>
               <p className="text-xs text-white/35">Common questions about Plus, Radio & more</p>
@@ -254,7 +256,7 @@ export default function Account() {
                   <h3 className="font-heading font-black text-white text-xl text-center mb-2">Delete Account?</h3>
                   <p className="text-white/40 text-sm text-center leading-relaxed mb-6">
                     To delete your account and all associated data, please contact our support team at{" "}
-                    <a href="mailto:support@uppervibemusic.com" className="text-cyan-400 underline">support@uppervibemusic.com</a>.
+                    <a href="mailto:support@uppervibemusic.com" className="underline" style={{ color: `rgb(${rtPrimary})` }}>support@uppervibemusic.com</a>.
                     We'll process your request within 48 hours.
                   </p>
                   <div className="flex gap-3">
