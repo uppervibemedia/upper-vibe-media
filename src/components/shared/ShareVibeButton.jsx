@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Share2, X, Copy, Check, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
 /**
  * ShareVibeButton — reusable share sheet for Upper Vibe Media
@@ -47,6 +49,9 @@ function isValidTrackId(id) {
 export default function ShareVibeButton({ type = "site", track = null, size = "md", className = "" }) {
   const [open, setOpen]     = useState(false);
   const [copied, setCopied] = useState(false);
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtPrimary = radioTheme.vars["--rt-primary"];
 
   // For song type, validate the track has a real ID
   const trackId = track?.id;
@@ -129,9 +134,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
       label: "Copy Link",
       icon: copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />,
       action: handleCopy,
-      color: "rgba(0,200,220,0.12)",
-      border: "rgba(0,200,220,0.25)",
-      textColor: "#00C9E0",
+      color: `rgba(${rtPrimary},0.12)`,
+      border: `rgba(${rtPrimary},0.28)`,
+      textColor: `rgb(${rtPrimary})`,
     },
     {
       label: "Twitter / X",
@@ -198,9 +203,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         onClick={handleShare}
         className={`flex items-center gap-1.5 rounded-full font-black tracking-wide transition-all hover:brightness-115 active:scale-95 ${btnPadding} ${className}`}
         style={{
-          background: "rgba(155,126,255,0.1)",
-          border: "1px solid rgba(155,126,255,0.25)",
-          color: "#c4aaff",
+          background: `rgba(${rtPrimary},0.1)`,
+          border: `1px solid rgba(${rtPrimary},0.28)`,
+          color: `rgb(${rtPrimary})`,
         }}
       >
         <Share2 className={iconSize} />
@@ -230,10 +235,10 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
               className="relative w-full max-w-lg overflow-hidden flex flex-col"
               style={{
                 background: "linear-gradient(160deg,#0d0d22,#0a0a1a)",
-                border: "1px solid rgba(155,126,255,0.2)",
+                border: `1px solid rgba(${rtPrimary},0.2)`,
                 borderBottom: "none",
                 borderRadius: "24px 24px 0 0",
-                boxShadow: "0 -8px 60px rgba(155,126,255,0.15), 0 -2px 40px rgba(0,0,0,0.7)",
+                boxShadow: `0 -8px 60px rgba(${rtPrimary},0.12), 0 -2px 40px rgba(0,0,0,0.7)`,
                 maxHeight: "calc(100dvh - 180px)",
               }}
             >
@@ -268,8 +273,8 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
                 {type === "song" && (
                   <div className="mx-4 mt-4 rounded-2xl overflow-hidden flex gap-3 p-3"
                     style={{
-                      background: "linear-gradient(135deg,rgba(0,200,220,0.07),rgba(155,126,255,0.05))",
-                      border: "1px solid rgba(0,200,220,0.15)",
+                      background: `linear-gradient(135deg,rgba(${rtPrimary},0.07),rgba(${rtPrimary},0.03))`,
+                      border: `1px solid rgba(${rtPrimary},0.15)`,
                     }}>
                     {track?.cover_url ? (
                       <img
@@ -296,8 +301,8 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
                 {type !== "song" && (
                   <div className="mx-4 mt-4 rounded-2xl p-3"
                     style={{
-                      background: "linear-gradient(135deg,rgba(0,200,220,0.07),rgba(155,126,255,0.05))",
-                      border: "1px solid rgba(0,200,220,0.15)",
+                      background: `linear-gradient(135deg,rgba(${rtPrimary},0.07),rgba(${rtPrimary},0.03))`,
+                      border: `1px solid rgba(${rtPrimary},0.15)`,
                     }}>
                     <div className="flex items-center gap-2 mb-1">
                       <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"

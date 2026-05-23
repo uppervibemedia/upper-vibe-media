@@ -1,11 +1,36 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard, Trash2, AlertTriangle, HelpCircle } from "lucide-react";
+import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard, Trash2, AlertTriangle, HelpCircle, Palette } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
+
+function ThemePicker() {
+  const { accentId, setAccent } = useTheme();
+  return (
+    <div className="flex gap-3 flex-wrap">
+      {Object.values(RADIO_THEMES).map((t) => (
+        <button
+          key={t.id}
+          onClick={() => setAccent(t.id)}
+          title={t.label}
+          className="flex flex-col items-center gap-1.5 transition-all"
+          style={{ opacity: accentId === t.id ? 1 : 0.5 }}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
+            style={{
+              background: t.swatch,
+              boxShadow: accentId === t.id ? `0 0 16px ${t.swatch}aa` : "none",
+              border: accentId === t.id ? `2px solid ${t.swatch}` : "2px solid transparent",
+              outline: accentId === t.id ? `2px solid rgba(255,255,255,0.25)` : "none",
+            }} />
+          <span className="text-[9px] font-black tracking-wider uppercase text-white/50">{t.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function Account() {
   const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
@@ -195,6 +220,19 @@ export default function Account() {
             </div>
             <ChevronRight className="w-4 h-4 text-white/20" />
           </Link>
+
+          {/* Theme Picker */}
+          <div className="rounded-3xl p-5"
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="flex items-center gap-3 mb-4">
+              <Palette className="w-5 h-5" style={{ color: `rgba(${rtPrimary},0.7)` }} />
+              <div>
+                <p className="text-sm font-bold text-white">App Color Theme</p>
+                <p className="text-xs text-white/35">Choose your vibe</p>
+              </div>
+            </div>
+            <ThemePicker />
+          </div>
 
           <Link to="/settings"
             className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:border-white/12"

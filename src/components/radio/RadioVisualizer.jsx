@@ -618,19 +618,13 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
   const { audioRef } = usePlayer();
 
   const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
-  const getDebugMode = () => { try { return localStorage.getItem(DEBUG_KEY) === "true"; } catch { return false; } };
   const [mode, setMode] = useState(getSavedMode);
-  const [debugMode, setDebugMode] = useState(getDebugMode);
+  const debugMode = false;
   const [debugInfo, setDebugInfo] = useState(null);
 
   useEffect(() => { try { localStorage.setItem(PREF_KEY, mode); } catch {} }, [mode]);
 
   const cycleMode = () => { const idx = MODES.findIndex(m => m.id === mode); setMode(MODES[(idx + 1) % MODES.length].id); };
-  const toggleDebug = () => {
-    const next = !debugMode;
-    setDebugMode(next);
-    try { localStorage.setItem(DEBUG_KEY, String(next)); } catch {}
-  };
 
   const tryConnectAnalyser = useCallback(async () => {
     const audio = audioRef?.current;
