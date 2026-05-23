@@ -144,8 +144,7 @@ export default function YouTubeCTA() {
           boxShadow: "0 4px 20px rgba(200,0,0,0.3)",
         }}
       >
-        <Youtube className="w-4 h-4" />
-        Watch Full Playlist On YouTube
+        Watch 432 Hz Visualizer Videos
         <ExternalLink className="w-3 h-3 opacity-60" />
       </a>
     </section>
