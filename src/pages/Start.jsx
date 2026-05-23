@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, X } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, X, Crown, Library } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import FeaturedTrackPlayer from "@/components/start/FeaturedTrackPlayer";
 
 const PRIMARY = "0,160,220";
@@ -41,11 +42,80 @@ function PremiumButton({ children, onClick, href, className = "", style = {} }) 
 const PAGE_TITLE = "Start Listening | Upper Vibe Media";
 const PAGE_DESC = "Stream 432 Hz high-vibe music free on Upper Vibe Media. Upgrade to Premium for $4.99/month to download every song and build your personal vibe library.";
 
+function PremiumWelcome() {
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center"
+      style={{
+        background: "linear-gradient(160deg,#06060f 0%,#090914 55%,#04040d 100%)",
+        fontFamily: "var(--font-body)",
+      }}
+    >
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+        <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[500px] h-[400px] rounded-full blur-[180px]"
+          style={{ background: "rgba(0,144,200,0.08)" }} />
+      </div>
+      <div className="relative z-10 w-full max-w-md px-5 py-16 flex flex-col items-center gap-6 text-center">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          style={{ background: "rgba(0,160,220,0.1)", border: "1px solid rgba(0,160,220,0.25)" }}>
+          <Crown className="w-8 h-8" style={{ color: "#00A0DC" }} />
+        </div>
+        <div>
+          <p className="text-[9px] font-black tracking-[0.35em] uppercase mb-3" style={{ color: "rgba(0,160,220,0.7)" }}>
+            Upper Vibe Plus Member
+          </p>
+          <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.5rem,6vw,2rem)", fontWeight: 900, color: "#fff", lineHeight: 1.15, marginBottom: "0.75rem" }}>
+            Welcome Back To Your<br /><span style={{ color: "#00A0DC" }}>Vibe Library</span>
+          </h1>
+          <p style={{ fontSize: "0.9rem", lineHeight: 1.65, color: "rgba(255,255,255,0.45)" }}>
+            Your Premium downloads and saved frequency collection are ready.
+          </p>
+        </div>
+        <div className="w-full flex flex-col gap-3 mt-2">
+          <Link to="/my-vibes"
+            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
+            style={{ background: "linear-gradient(135deg,#0090C8,#00A0DC)", color: "#000", boxShadow: "0 0 32px rgba(0,160,220,0.35)", fontFamily: "var(--font-heading)" }}>
+            <Library className="w-4 h-4" /> Open My Vibe Library
+          </Link>
+          <Link to="/music"
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
+            style={{ background: "rgba(0,160,220,0.07)", border: "1px solid rgba(0,160,220,0.22)", color: "#00A0DC" }}>
+            <Music4 className="w-4 h-4" /> Browse Music
+          </Link>
+          <Link to="/radio"
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.5)" }}>
+            <Radio className="w-4 h-4" /> Listen To Live Radio
+          </Link>
+        </div>
+        <Link to="/" className="text-sm font-bold" style={{ color: "rgba(0,160,220,0.5)" }}>
+          Enter Full Site →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function Start() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const navigate = useNavigate();
+  const { user, isAuthenticated, isLoadingAuth } = useAuth();
+
+  // Check membership status and redirect if needed — all hooks before any returns
+  useEffect(() => {
+    if (isLoadingAuth) return;
+    if (isAuthenticated && user) {
+      const isAdmin = user.role === "admin";
+      const isPlus = isAdmin || user.isPlus === true || user.tier === "plus"
+        || user.tier === "premium" || user.isPremium === true || user.role === "premium";
+      if (isAdmin) { navigate("/admin", { replace: true }); return; }
+      if (isPlus) { navigate("/my-vibes", { replace: true }); setIsPremiumUser(true); return; }
+    }
+  }, [isAuthenticated, isLoadingAuth, user, navigate]);
 
   // Inject page-specific meta tags for social sharing
   useEffect(() => {
@@ -65,10 +135,21 @@ export default function Start() {
     setMeta('meta[name="twitter:title"]', "content", PAGE_TITLE);
     setMeta('meta[name="twitter:description"]', "content", PAGE_DESC);
 
-    return () => {
-      document.title = prev;
-    };
+    return () => { document.title = prev; };
   }, []);
+
+  // Show loading while auth resolves
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center"
+        style={{ background: "linear-gradient(160deg,#06060f 0%,#090914 55%,#04040d 100%)" }}>
+        <div className="w-6 h-6 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Premium/admin fallback welcome screen (shown if navigate hasn't fired yet)
+  if (isPremiumUser) return <PremiumWelcome />;
 
   const handleCheckout = async () => {
     if (window.self !== window.top) {
