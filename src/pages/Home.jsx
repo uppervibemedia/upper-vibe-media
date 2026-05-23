@@ -188,14 +188,14 @@ export default function Home() {
               transition={{ delay: 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className="flex items-center gap-3 mb-5 sm:mb-6">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm"
-                style={{ background: "rgba(0,200,220,0.05)", border: "1px solid rgba(0,200,220,0.16)" }}>
-                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ background: "#00C9E0" }} />
-                <span style={{ fontSize: "9px", letterSpacing: "0.38em", fontWeight: 900, textTransform: "uppercase", color: "#00C9E0", fontFamily: "var(--font-heading)" }}>
+                style={{ background: `rgba(${rtPrimary},0.05)`, border: `1px solid rgba(${rtPrimary},0.16)` }}>
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ background: `rgb(${rtPrimary})` }} />
+                <span style={{ fontSize: "9px", letterSpacing: "0.38em", fontWeight: 900, textTransform: "uppercase", color: `rgb(${rtPrimary})`, fontFamily: "var(--font-heading)" }}>
                   High-Vibration Music
                 </span>
               </div>
               <div className="hidden sm:block h-px flex-1 max-w-[60px]"
-                style={{ background: "linear-gradient(90deg, rgba(0,200,220,0.35), transparent)" }} />
+                style={{ background: `linear-gradient(90deg, rgba(${rtPrimary},0.35), transparent)` }} />
             </motion.div>
 
             {/* ── Main title lockup — 20-25% smaller on mobile ── */}
