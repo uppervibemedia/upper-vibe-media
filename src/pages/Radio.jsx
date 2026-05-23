@@ -90,66 +90,23 @@ export default function RadioPage() {
   return (
     <div className="min-h-screen" style={themeStyle}>
 
-      {/* ── Fixed ambient background — slow breathing pulse ── */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        {/* Primary orb — large center fill */}
+      {/* ── Fixed ambient background ── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <motion.div
-          initial={{ opacity: 0.18 }}
-          animate={{
-            opacity: playingThisRadioSong ? [0.22, 0.34, 0.22] : [0.18, 0.26, 0.18],
-            scale: [1, 1.07, 1],
-          }}
-          transition={{ duration: 8, ease: "easeInOut", repeat: Infinity, repeatType: "loop" }}
-          className="absolute rounded-full"
-          style={{
-            top: "-20%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: 900,
-            height: 900,
-            background: theme.vars["--rt-ambient1"],
-            filter: "blur(140px)",
-            willChange: "transform, opacity",
-          }}
+          animate={{ opacity: playingThisRadioSong ? 0.06 : 0.03 }}
+          transition={{ duration: 2, ease: "easeInOut" }}
+          className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full blur-[180px]"
+          style={{ background: "rgb(var(--rt-ambient1, #00C9E0))", background: theme.vars["--rt-ambient1"] }}
         />
-        {/* Secondary orb — bottom left */}
-        <motion.div
-          initial={{ opacity: 0.12 }}
-          animate={{
-            opacity: playingThisRadioSong ? [0.14, 0.22, 0.14] : [0.10, 0.16, 0.10],
-            scale: [1, 1.09, 1],
-          }}
-          transition={{ duration: 10, ease: "easeInOut", repeat: Infinity, repeatType: "loop", delay: 2 }}
-          className="absolute rounded-full"
-          style={{
-            bottom: "5%",
-            left: "-10%",
-            width: 600,
-            height: 600,
-            background: theme.vars["--rt-ambient2"],
-            filter: "blur(110px)",
-            willChange: "transform, opacity",
-          }}
-        />
-        {/* Tertiary accent orb — bottom right */}
-        <motion.div
-          initial={{ opacity: 0.10 }}
-          animate={{
-            opacity: playingThisRadioSong ? [0.12, 0.20, 0.12] : [0.08, 0.14, 0.08],
-            scale: [1, 1.06, 1],
-          }}
-          transition={{ duration: 9, ease: "easeInOut", repeat: Infinity, repeatType: "loop", delay: 4 }}
-          className="absolute rounded-full"
-          style={{
-            bottom: "15%",
-            right: "-10%",
-            width: 550,
-            height: 550,
-            background: theme.vars["--rt-ambient1"],
-            filter: "blur(120px)",
-            willChange: "transform, opacity",
-          }}
-        />
+        {playingThisRadioSong && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.025 }}
+            transition={{ duration: 2 }}
+            className="absolute bottom-1/3 right-1/4 w-[300px] h-[300px] rounded-full blur-[120px]"
+            style={{ background: theme.vars["--rt-ambient2"] }}
+          />
+        )}
       </div>
 
       <div
@@ -197,38 +154,20 @@ export default function RadioPage() {
         </div>
 
         {/* ── Visualizer ── */}
-        <div className="relative mx-auto mb-5" style={{ maxWidth: 440 }}>
-          {/* Ambient glow halo behind visualizer */}
-          <motion.div
-            initial={{ opacity: 0.25 }}
-            animate={{
-              opacity: playingThisRadioSong ? [0.35, 0.55, 0.35] : [0.22, 0.35, 0.22],
-              scale: [0.94, 1.06, 0.94],
-            }}
-            transition={{ duration: 7, ease: "easeInOut", repeat: Infinity, repeatType: "loop", delay: 1 }}
-            className="absolute inset-0 rounded-3xl pointer-events-none"
-            style={{
-              background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.5) 0%, transparent 72%)`,
-              filter: "blur(28px)",
-              willChange: "transform, opacity",
-              zIndex: 0,
-            }}
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="relative rounded-3xl overflow-hidden"
-            style={{
-              background: "rgba(0,0,0,0.4)",
-              border: `1px solid rgba(${theme.vars["--rt-primary"]},${playingThisRadioSong ? 0.22 : 0.08})`,
-              transition: "border-color 1s ease",
-              zIndex: 1,
-            }}>
-            <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} />
-            <div className="pointer-events-none absolute inset-0"
-              style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />
-          </motion.div>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="relative mx-auto mb-5 rounded-3xl overflow-hidden"
+          style={{
+            maxWidth: 440,
+            background: "rgba(0,0,0,0.4)",
+            border: `1px solid ${playingThisRadioSong ? `rgba(${theme.vars["--rt-primary"]},0.18)` : `rgba(${theme.vars["--rt-primary"]},0.08)`}`,
+            transition: "border-color 1s ease",
+          }}>
+          <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} />
+          <div className="pointer-events-none absolute inset-0"
+            style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />
+        </motion.div>
 
         {/* ── No songs state ── */}
         {!currentRadioSong ? (
