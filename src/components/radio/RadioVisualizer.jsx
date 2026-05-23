@@ -585,7 +585,6 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
   }, []);
 
   const currentModeObj = MODES.find(m => m.id === mode) || MODES[0];
-  const nextModeObj = MODES[(MODES.findIndex(m => m.id === mode) + 1) % MODES.length];
 
   return (
     <div style={{ position: "relative", width: "100%", overflow: "hidden", borderRadius: "inherit" }}>
@@ -594,39 +593,36 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
         <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
       </div>
 
-      {/* ── Single cycle button ── */}
+      {/* ── Mode buttons row ── */}
       <div style={{
         padding: "10px 12px 12px",
         background: "linear-gradient(180deg, rgba(4,4,18,0) 0%, rgba(4,4,18,0.85) 100%)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap",
       }}>
-        {/* Current mode label */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 13, lineHeight: 1, color: "#00E5FF" }}>{currentModeObj.icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#00E5FF" }}>
-            {currentModeObj.label}
-          </span>
-        </div>
-
-        {/* Cycle button */}
-        <button
-          onClick={cycleMode}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            padding: "6px 14px", borderRadius: 20,
-            fontSize: 10, fontWeight: 800, letterSpacing: "0.06em",
-            textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap",
-            transition: "all 0.2s ease",
-            userSelect: "none", WebkitUserSelect: "none",
-            background: "rgba(0,220,255,0.08)",
-            border: "1px solid rgba(0,220,255,0.3)",
-            color: "rgba(255,255,255,0.55)",
-          }}
-        >
-          <span style={{ fontSize: 11, lineHeight: 1 }}>{nextModeObj.icon}</span>
-          Next: {nextModeObj.label}
-          <span style={{ fontSize: 9, opacity: 0.5 }}>›</span>
-        </button>
+        {MODES.map((m) => {
+          const active = m.id === mode;
+          return (
+            <button
+              key={m.id}
+              onClick={() => setMode(m.id)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "5px 11px", borderRadius: 20,
+                fontSize: 9, fontWeight: 800, letterSpacing: "0.07em",
+                textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap",
+                transition: "all 0.2s ease",
+                userSelect: "none", WebkitUserSelect: "none",
+                background: active ? "rgba(0,229,255,0.15)" : "rgba(0,220,255,0.04)",
+                border: active ? "1px solid rgba(0,229,255,0.6)" : "1px solid rgba(0,220,255,0.18)",
+                color: active ? "#00E5FF" : "rgba(255,255,255,0.35)",
+                boxShadow: active ? "0 0 10px rgba(0,229,255,0.2)" : "none",
+              }}
+            >
+              <span style={{ fontSize: 10, lineHeight: 1 }}>{m.icon}</span>
+              {m.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
