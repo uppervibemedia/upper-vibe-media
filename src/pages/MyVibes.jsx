@@ -165,7 +165,7 @@ export default function MyVibes() {
                             <p className="text-xs text-white/40 truncate">{track.artist_display || "Upper Vibe Media"}</p>
                             <div className="flex items-center gap-1.5 mt-1">
                               <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                                style={{ background: `rgba(${rgb},0.1)`, color: `rgb(${rgb})` }}>
+                                style={{ background: "rgba(0,160,220,0.1)", color: "#00A0DC" }}>
                                 <Waves className="w-2.5 h-2.5" /> 432 Hz
                               </span>
                             </div>
@@ -177,7 +177,7 @@ export default function MyVibes() {
                             {/* Play Song */}
                             <button onClick={() => handlePlay(track)}
                               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                              style={{ background: `rgba(${rgb},0.08)`, border: `1px solid rgba(${rgb},0.22)`, color: `rgb(${rgb})` }}>
+                              style={{ background: "rgba(0,160,220,0.08)", border: "1px solid rgba(0,160,220,0.3)", color: "#00A0DC" }}>
                               {isCurrentTrack && isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
                               <span className="hidden sm:inline">{isCurrentTrack && isPlaying ? "Pause" : "Play"}</span>
                             </button>
@@ -247,7 +247,7 @@ export default function MyVibes() {
                               <p className="text-sm font-bold text-white truncate">{viz.title}</p>
                               <p className="text-xs text-white/40">{viz.artist || "Upper Vibe Media"}</p>
                               <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1"
-                                style={{ background: `rgba(${rgb},0.1)`, color: `rgb(${rgb})` }}>
+                                style={{ background: "rgba(0,160,220,0.1)", color: "#00A0DC" }}>
                                 <Waves className="w-2 h-2" /> 432 Hz
                               </span>
                             </div>

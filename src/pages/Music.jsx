@@ -311,22 +311,9 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
         </div>
       </div>
 
-      {/* Action buttons — always aligned, never crowded */}
+      {/* Action buttons — Play → Download → Heart */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        {/* Favorite — always purple, outline when unfaved, filled when faved */}
-        <button
-          onClick={() => onFav(track)}
-          title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
-          style={isFaved("track", track.id) ? {
-            background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
-          } : {
-            background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
-          }}>
-          <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-        </button>
-
-        {/* Play/Pause — always cosmic cyan */}
+        {/* Play/Pause — electric blue */}
         <button
           onClick={() => onPlay(track)}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
@@ -340,7 +327,7 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
             : <Play className="w-3.5 h-3.5 ml-0.5" />}
         </button>
 
-        {/* Download — premium locked */}
+        {/* Download — midnight amber */}
         {isPremium ? (
           <a
             href={track.audio_url}
@@ -355,11 +342,24 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
           <button
             onClick={() => onDownload(track)}
             className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.2)" }}
+            style={{ background: "rgba(212,168,67,0.05)", border: "1px solid rgba(212,168,67,0.15)", color: "rgba(212,168,67,0.3)" }}
             title="Premium download">
             <Lock className="w-3.5 h-3.5" />
           </button>
         )}
+
+        {/* Favorite — violet purple */}
+        <button
+          onClick={() => onFav(track)}
+          title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
+          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+          style={isFaved("track", track.id) ? {
+            background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
+          } : {
+            background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
+          }}>
+          <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
+        </button>
       </div>
     </motion.div>
   );
