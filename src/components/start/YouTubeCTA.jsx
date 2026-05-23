@@ -13,13 +13,14 @@ const DEFAULT_SECONDARY = [
   { id: "6VXNZ1NOFDI", title: "High Vibe Drop" },
 ];
 
-// Thumbnail sizes tried in order until one loads without black bars
+// YouTube thumbnails via i.ytimg.com (avoids some CORS issues with img.youtube.com)
 const THUMB_SIZES = ["maxresdefault", "sddefault", "hqdefault", "mqdefault"];
 
 function YtThumb({ videoId, title, small = false }) {
   const [sizeIdx, setSizeIdx] = React.useState(0);
+  const [pressed, setPressed] = React.useState(false);
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  const thumbUrl = `https://img.youtube.com/vi/${videoId}/${THUMB_SIZES[sizeIdx]}.jpg`;
+  const thumbUrl = `https://i.ytimg.com/vi/${videoId}/${THUMB_SIZES[sizeIdx]}.jpg`;
 
   const handleError = () => {
     if (sizeIdx < THUMB_SIZES.length - 1) setSizeIdx((i) => i + 1);
@@ -30,6 +31,10 @@ function YtThumb({ videoId, title, small = false }) {
       href={videoUrl}
       target="_blank"
       rel="noopener noreferrer"
+      onMouseEnter={() => setPressed(true)}
+      onMouseLeave={() => setPressed(false)}
+      onTouchStart={() => setPressed(true)}
+      onTouchEnd={() => setPressed(false)}
       className="relative block overflow-hidden rounded-xl flex-shrink-0 transition-all active:scale-[0.97]"
       style={{
         aspectRatio: "16/9",
@@ -49,35 +54,38 @@ function YtThumb({ videoId, title, small = false }) {
         className="w-full h-full object-cover"
         style={{ display: "block" }}
       />
+      {/* Gradient overlay */}
       <div
         className="absolute inset-0"
         style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)" }}
       />
-      {/* Subtle play circle */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div
-          style={{
-            width: small ? 28 : 44,
-            height: small ? 28 : 44,
-            borderRadius: "50%",
-            background: "rgba(0,0,0,0.5)",
-            border: "1.5px solid rgba(255,255,255,0.6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backdropFilter: "blur(4px)",
-          }}
-        >
-          <svg viewBox="0 0 24 24" fill="white" style={{ width: small ? 9 : 14, height: small ? 9 : 14, marginLeft: 2 }}>
-            <path d="M8 5v14l11-7z" />
-          </svg>
+      {/* Play button — only visible on hover/press */}
+      {pressed && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div
+            style={{
+              width: small ? 28 : 44,
+              height: small ? 28 : 44,
+              borderRadius: "50%",
+              background: "rgba(0,0,0,0.65)",
+              border: "1.5px solid rgba(255,255,255,0.7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backdropFilter: "blur(4px)",
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="white" style={{ width: small ? 9 : 14, height: small ? 9 : 14, marginLeft: 2 }}>
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
         </div>
-      </div>
+      )}
       {/* Title */}
       {title && (
         <p
           className="absolute bottom-1.5 left-2 right-2 text-white truncate"
-          style={{ fontSize: small ? "9px" : "11px", fontWeight: 700, lineHeight: 1.2 }}
+          style={{ fontSize: small ? "9px" : "11px", fontWeight: 700, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
         >
           {title}
         </p>
