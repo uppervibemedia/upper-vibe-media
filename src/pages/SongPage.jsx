@@ -233,38 +233,40 @@ export default function SongPage() {
   return (
     <div className="min-h-screen">
       {/* Hero */}
-      <div className="relative overflow-hidden" style={{ minHeight: 420 }}>
+      <div className="relative overflow-hidden">
         {track.cover_url && (
           <div className="absolute inset-0 scale-110"
             style={{ backgroundImage: `url(${track.cover_url})`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(60px) brightness(0.18)" }} />
         )}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,rgba(4,4,14,0.3) 0%,rgba(4,4,14,0.95) 100%)" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,rgba(4,4,14,0.3) 0%,rgba(4,4,14,0.97) 100%)" }} />
 
-        <div className="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-10">
-          <Link to="/music" className="inline-flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors mb-8">
+        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-8"
+          style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)" }}>
+          <Link to="/music" className="inline-flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors mb-6">
             <ChevronLeft className="w-3.5 h-3.5" /> Back to Music
           </Link>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col sm:flex-row gap-8 items-start sm:items-end">
+            className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-center sm:items-end">
 
-            {/* Album Cover */}
-            <div className="flex-shrink-0 mx-auto sm:mx-0">
+            {/* Album Cover — bigger on mobile, centered */}
+            <div className="flex-shrink-0">
               {track.cover_url ? (
                 <img src={track.cover_url} alt={track.title}
-                  className="w-52 h-52 sm:w-64 sm:h-64 rounded-2xl object-cover"
-                  style={{ boxShadow: `0 8px 60px rgba(0,0,0,0.7), 0 0 40px rgba(${rtp},0.12)` }} />
+                  className="w-44 h-44 sm:w-64 sm:h-64 rounded-2xl object-cover mx-auto"
+                  style={{ boxShadow: `0 8px 60px rgba(0,0,0,0.7), 0 0 40px rgba(${rtp},0.15)` }} />
               ) : (
-                <div className="w-52 h-52 sm:w-64 sm:h-64 rounded-2xl mx-auto sm:mx-0 flex items-center justify-center"
+                <div className="w-44 h-44 sm:w-64 sm:h-64 rounded-2xl mx-auto flex items-center justify-center"
                   style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.1),rgba(212,168,67,0.06))", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <Music4 className="w-20 h-20 text-white/10" />
+                  <Music4 className="w-16 h-16 text-white/10" />
                 </div>
               )}
             </div>
 
             {/* Info */}
-            <div className="flex-1 text-center sm:text-left pb-2">
-              <div className="flex flex-wrap gap-2 justify-center sm:justify-start mb-4">
+            <div className="flex-1 w-full text-center sm:text-left pb-2">
+              {/* Badges */}
+              <div className="flex flex-wrap gap-2 justify-center sm:justify-start mb-3">
                 {freq && (
                   <span className="flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full"
                     style={{ background: `rgba(${rtp},0.12)`, border: `1px solid rgba(${rtp},0.3)`, color: `rgb(${rtp})` }}>
@@ -289,18 +291,18 @@ export default function SongPage() {
                 )}
               </div>
 
-              <h1 className="font-heading font-black text-4xl sm:text-5xl text-white mb-2 leading-tight">{track.title}</h1>
+              <h1 className="font-heading font-black text-3xl sm:text-5xl text-white mb-1.5 leading-tight">{track.title}</h1>
               <p className="text-white/50 text-sm mb-5 flex items-center gap-1.5 justify-center sm:justify-start">
                 <User className="w-3.5 h-3.5" /> {track.artist_display || "Upper Vibe Media"}
               </p>
 
-              {/* Action buttons — responsive rows, no clipping on small iPhones */}
-              <div className="w-full max-w-full overflow-x-hidden">
+              {/* Action buttons — two clean rows, full-width on mobile */}
+              <div className="w-full space-y-2.5">
                 {/* Row 1: Play + Download */}
-                <div className="flex flex-wrap gap-2.5 justify-center sm:justify-start mb-2.5">
+                <div className="flex gap-2.5 justify-center sm:justify-start">
                   <button onClick={() => handlePlay(track)}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02] flex-shrink-0"
-                    style={{ background: `linear-gradient(135deg,rgba(${rtp},0.8),rgb(${rtp}))`, color: "#000", boxShadow: `0 0 24px rgba(${rtp},0.3)` }}>
+                    className="flex items-center justify-center gap-2 flex-1 sm:flex-none sm:px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
+                    style={{ background: `linear-gradient(135deg,rgba(${rtp},0.8),rgb(${rtp}))`, color: "#000", boxShadow: `0 0 24px rgba(${rtp},0.3)`, maxWidth: "160px" }}>
                     {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
                     {isCurrentTrack && isPlaying ? "Pause" : "Play Song"}
                   </button>
@@ -308,33 +310,33 @@ export default function SongPage() {
                   {isPlus ? (
                     track.audio_url ? (
                       <button onClick={handleDownload}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02] flex-shrink-0"
-                        style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000", boxShadow: "0 0 24px rgba(212,168,67,0.3)" }}>
-                        <Download className="w-4 h-4" /> Download MP3
+                        className="flex items-center justify-center gap-2 flex-1 sm:flex-none sm:px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
+                        style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000", boxShadow: "0 0 24px rgba(212,168,67,0.3)", maxWidth: "160px" }}>
+                        <Download className="w-4 h-4" /> Download
                       </button>
                     ) : (
-                      <span className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm opacity-40 cursor-not-allowed flex-shrink-0"
-                        style={{ border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
-                        <Download className="w-4 h-4" /> Coming Soon
+                      <span className="flex items-center justify-center gap-2 flex-1 sm:flex-none sm:px-5 py-3 rounded-xl font-black text-sm opacity-40 cursor-not-allowed"
+                        style={{ border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843", maxWidth: "160px" }}>
+                        <Download className="w-4 h-4" /> Soon
                       </span>
                     )
                   ) : (
                     <button onClick={() => setUpgradeModal(true)}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 flex-shrink-0"
-                      style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.15),rgba(212,168,67,0.08))", border: "1px solid rgba(212,168,67,0.35)", color: "#D4A843" }}>
-                      <Lock className="w-4 h-4" /> Download MP3
+                      className="flex items-center justify-center gap-2 flex-1 sm:flex-none sm:px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
+                      style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.15),rgba(212,168,67,0.08))", border: "1px solid rgba(212,168,67,0.35)", color: "#D4A843", maxWidth: "160px" }}>
+                      <Lock className="w-4 h-4" /> Download
                       <Crown className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
 
-                {/* Row 2: Support + Save + Share */}
-                <div className="flex flex-wrap gap-2.5 justify-center sm:justify-start">
+                {/* Row 2: Support + Save + Share — equal width on mobile */}
+                <div className="flex gap-2.5 justify-center sm:justify-start">
                   <button
                     onClick={() => setSupportModal(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] flex-shrink-0"
+                    className="flex items-center justify-center gap-1.5 flex-1 sm:flex-none sm:px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] active:scale-[0.97]"
                     style={{ background: `rgba(${CYAN},0.1)`, border: `1px solid rgba(${CYAN},0.28)`, color: `rgb(${CYAN})` }}>
-                    <Zap className="w-4 h-4" /> Support
+                    <Zap className="w-4 h-4" /> <span>Support</span>
                   </button>
 
                   <button
@@ -342,23 +344,23 @@ export default function SongPage() {
                       if (!user) { setLoginPrompt(true); return; }
                       toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
                     }}
-                    title={isFaved("track", track.id) ? "Saved to Favorites" : "Save to Favorites"}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] flex-shrink-0"
+                    title={isFaved("track", track.id) ? "Saved" : "Save"}
+                    className="flex items-center justify-center gap-1.5 flex-1 sm:flex-none sm:px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] active:scale-[0.97]"
                     style={isFaved("track", track.id) ? {
                       background: `rgba(${PURPLE},0.22)`, border: `1px solid rgba(${PURPLE},0.55)`, color: `rgb(${PURPLE})`
                     } : {
                       background: `rgba(${PURPLE},0.08)`, border: `1px solid rgba(${PURPLE},0.35)`, color: `rgba(${PURPLE},0.8)`
                     }}>
                     <Heart className={`w-4 h-4 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-                    {isFaved("track", track.id) ? "Saved" : "Save"}
+                    <span>{isFaved("track", track.id) ? "Saved" : "Save"}</span>
                   </button>
 
-                  <ShareVibeButton type="song" track={track} />
+                  <ShareVibeButton type="song" track={track} className="flex-1 sm:flex-none justify-center" />
                 </div>
               </div>
 
               {!isPlus && (
-                <div className="mt-4 flex items-start gap-2 max-w-sm mx-auto sm:mx-0 p-3 rounded-xl"
+                <div className="mt-4 flex items-start gap-2 p-3 rounded-xl"
                   style={{ background: "rgba(212,168,67,0.06)", border: "1px solid rgba(212,168,67,0.15)" }}>
                   <Crown className="w-3.5 h-3.5 text-yellow-400/60 flex-shrink-0 mt-0.5" />
                   <p className="text-[11px] text-white/35 leading-relaxed">

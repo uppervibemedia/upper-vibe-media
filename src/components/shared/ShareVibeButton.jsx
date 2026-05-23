@@ -46,12 +46,17 @@ function isValidTrackId(id) {
   return true;
 }
 
+// Fixed cosmic cyan — Share button is always cyan regardless of theme
+const SHARE_CYAN = "0,200,220";
+
 export default function ShareVibeButton({ type = "site", track = null, size = "md", className = "" }) {
   const [open, setOpen]     = useState(false);
   const [copied, setCopied] = useState(false);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  // Sheet UI uses theme, but the trigger button is always cosmic cyan
   const rtPrimary = radioTheme.vars["--rt-primary"];
+  const shareCyan = SHARE_CYAN;
 
   // For song type, validate the track has a real ID
   const trackId = track?.id;
@@ -201,11 +206,11 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
     <>
       <button
         onClick={handleShare}
-        className={`flex items-center gap-1.5 rounded-full font-black tracking-wide transition-all hover:brightness-115 active:scale-95 ${btnPadding} ${className}`}
+        className={`flex items-center justify-center gap-1.5 rounded-xl font-black tracking-wide transition-all hover:brightness-115 active:scale-95 ${btnPadding} ${className}`}
         style={{
-          background: `rgba(${rtPrimary},0.1)`,
-          border: `1px solid rgba(${rtPrimary},0.28)`,
-          color: `rgb(${rtPrimary})`,
+          background: `rgba(${shareCyan},0.1)`,
+          border: `1px solid rgba(${shareCyan},0.28)`,
+          color: `rgb(${shareCyan})`,
         }}
       >
         <Share2 className={iconSize} />
@@ -318,9 +323,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
               </div>
 
               {/* Share options (fixed at bottom with safe area padding) */}
-              <div className="flex-shrink-0 px-4 pt-3 flex flex-col gap-2.5"
+              <div className="flex-shrink-0 px-4 pt-3 pb-4 flex flex-col gap-2.5"
                 style={{
-                  paddingBottom: `calc(env(safe-area-inset-bottom, 12px) + 120px)`,
+                  paddingBottom: `calc(env(safe-area-inset-bottom, 16px) + 1rem)`,
                 }}>
                 {SHARE_OPTIONS.map((opt) => (
                   <button
