@@ -315,9 +315,16 @@ export default function Start() {
         </section>
 
         {/* Footer */}
-        <p className="text-[10px] text-center" style={{ color: "rgba(255,255,255,0.18)", letterSpacing: "0.05em" }}>
-          © Upper Vibe Media · All rights reserved
-        </p>
+        <div className="flex flex-col items-center gap-2">
+          <Link to="/"
+            className="text-sm font-bold transition-all"
+            style={{ color: "rgba(0,160,220,0.6)" }}>
+            Enter Full Site →
+          </Link>
+          <p className="text-[10px] text-center" style={{ color: "rgba(255,255,255,0.18)", letterSpacing: "0.05em" }}>
+            © Upper Vibe Media · All rights reserved
+          </p>
+        </div>
       </div>
     </div>
   );

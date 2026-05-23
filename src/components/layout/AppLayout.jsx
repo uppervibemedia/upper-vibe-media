@@ -50,6 +50,7 @@ function LayoutContent() {
   const { currentTrack } = usePlayer();
   const location = useLocation();
   const isRadioPage = location.pathname === "/radio";
+  const isStartPage = location.pathname === "/start";
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -62,8 +63,8 @@ function LayoutContent() {
       <main
         className="lg:ml-[72px] lg:pt-0"
         style={{
-          paddingTop: "calc(56px + env(safe-area-inset-top, 0px))",
-          paddingBottom: currentTrack && !isRadioPage
+          paddingTop: isStartPage ? "0px" : "calc(56px + env(safe-area-inset-top, 0px))",
+          paddingBottom: isStartPage ? "0px" : currentTrack && !isRadioPage
             ? "calc(56px + 72px + env(safe-area-inset-bottom, 12px))"
             : "calc(56px + env(safe-area-inset-bottom, 12px))",
         }}

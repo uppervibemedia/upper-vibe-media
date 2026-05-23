@@ -59,9 +59,9 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* ── Mobile top bar — sits above notch/Dynamic Island ── */}
+      {/* ── Mobile top bar — hidden on /start ── */}
       <div
-        className="lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-border/40"
+        className={`lg:hidden fixed top-0 left-0 right-0 z-50 border-b border-border/40 ${location.pathname === "/start" ? "hidden" : ""}`}
         style={{
           background: "hsl(var(--background) / 0.96)",
           backdropFilter: "blur(24px)",
@@ -139,9 +139,9 @@ export default function Sidebar() {
       </div>
       </div>
 
-      {/* ── Mobile bottom navigation ── */}
+      {/* ── Mobile bottom navigation — hidden on /start ── */}
       <div
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/40"
+        className={`lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 ${location.pathname === "/start" ? "hidden" : ""}`}
         style={{
           background: "hsl(var(--background) / 0.97)",
           backdropFilter: "blur(24px)",
