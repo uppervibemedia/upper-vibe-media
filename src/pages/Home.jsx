@@ -270,12 +270,12 @@ export default function Home() {
                   </div>
                   {/* Animated equalizer */}
                   <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "14px" }}>
-                    {[3,5,8,6,4,7,5].map((h, i) => (
+                    {[4, 8, 14, 10, 6, 12, 8].map((h, i) => (
                       <motion.div key={i}
-                        animate={{ height: [`${h * (isPlaying ? 0.4 : 0.25)}px`, `${h * (isPlaying ? 1 : 0.7)}px`, `${h * (isPlaying ? 0.55 : 0.3)}px`] }}
-                        transition={{ duration: (isPlaying ? 0.6 : 1.1) + i * 0.09, repeat: Infinity, ease: "easeInOut", delay: i * 0.07 }}
+                        animate={{ height: [`${h * 0.2}px`, `${h}px`, `${h * 0.4}px`, `${h * 0.8}px`, `${h * 0.2}px`] }}
+                        transition={{ duration: (isPlaying ? 0.28 : 0.42) + i * 0.06, repeat: Infinity, ease: "linear", delay: i * 0.04 }}
                         className="w-[2px] rounded-full"
-                        style={{ background: `rgb(${rtPrimary})`, opacity: isPlaying ? 0.85 : 0.35 }} />
+                        style={{ background: `rgb(${rtPrimary})`, opacity: isPlaying ? 1 : 0.5 }} />
                     ))}
                   </div>
                   {/* Real track info */}

@@ -61,15 +61,15 @@ export default function NowPlayingHomeCard() {
 
             {/* Animated bars */}
             <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "18px" }}>
-              {[4, 7, 11, 8, 5, 9, 6].map((h, i) => (
+              {[6, 11, 18, 14, 8, 16, 10].map((h, i) => (
                 <motion.div
                   key={i}
                   animate={isPlaying
-                    ? { height: [`${h * 0.35}px`, `${h}px`, `${h * 0.5}px`] }
+                    ? { height: [`${h * 0.2}px`, `${h}px`, `${h * 0.45}px`, `${h * 0.8}px`, `${h * 0.2}px`] }
                     : { height: "3px" }}
-                  transition={{ duration: 0.55 + i * 0.09, repeat: Infinity, ease: "easeInOut", delay: i * 0.07 }}
+                  transition={{ duration: 0.28 + i * 0.06, repeat: Infinity, ease: "linear", delay: i * 0.04 }}
                   className="w-[2.5px] rounded-full flex-shrink-0"
-                  style={{ background: `rgb(${rtPrimary})`, opacity: isPlaying ? 0.85 : 0.3 }}
+                  style={{ background: `rgb(${rtPrimary})`, opacity: isPlaying ? 1 : 0.3 }}
                 />
               ))}
             </div>
@@ -134,13 +134,13 @@ export default function NowPlayingHomeCard() {
 
             {/* Animated bars — dim idle state */}
             <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "18px" }}>
-              {[4, 7, 11, 8, 5, 9, 6].map((h, i) => (
+              {[6, 11, 18, 14, 8, 16, 10].map((h, i) => (
                 <motion.div
                   key={i}
-                  animate={{ height: [`${h * 0.3}px`, `${h * 0.9}px`, `${h * 0.4}px`] }}
-                  transition={{ duration: 0.9 + i * 0.12, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 }}
+                  animate={{ height: [`${h * 0.2}px`, `${h * 0.85}px`, `${h * 0.35}px`, `${h * 0.7}px`, `${h * 0.2}px`] }}
+                  transition={{ duration: 0.38 + i * 0.07, repeat: Infinity, ease: "linear", delay: i * 0.05 }}
                   className="w-[2.5px] rounded-full flex-shrink-0"
-                  style={{ background: `rgb(${rtPrimary})`, opacity: 0.35 }}
+                  style={{ background: `rgb(${rtPrimary})`, opacity: 0.55 }}
                 />
               ))}
             </div>
