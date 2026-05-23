@@ -16,6 +16,8 @@ import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
 import { recordUserDownload } from "@/lib/downloadService";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
 function toEmbedUrl(url) {
   if (!url || typeof url !== "string") return null;
@@ -25,6 +27,9 @@ function toEmbedUrl(url) {
 
 function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
   const { isFaved } = useFavorites(null);
+  const { accentId: mspAccentId } = useTheme();
+  const mspTheme = RADIO_THEMES[mspAccentId] || RADIO_THEMES.cyan;
+  const mspRtp = mspTheme.vars["--rt-primary"];
 
   const related = useMemo(() => {
     if (!allTracks.length || !currentTrack) return [];
@@ -51,7 +56,7 @@ function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
     <div className="rounded-3xl p-4"
       style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
       <h3 className="font-heading font-black text-white text-sm tracking-wide uppercase mb-4 flex items-center gap-2">
-        <Music4 className="w-4 h-4 text-cyan-400" /> More Songs
+        <Music4 className="w-4 h-4" style={{ color: `rgb(${mspRtp})` }} /> More Songs
       </h3>
       <div className="space-y-2">
         {related.map((song) => (
@@ -66,7 +71,7 @@ function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center"
-                  style={{ background: "rgba(0,229,255,0.06)" }}>
+                  style={{ background: `rgba(${mspRtp},0.06)` }}>
                   <Music4 className="w-5 h-5 text-white/20" />
                 </div>
               )}
@@ -79,12 +84,15 @@ function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
             <div className="flex-1 min-w-0">
               <Link to={`/song/${song.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="text-xs font-bold text-white leading-snug line-clamp-2 block group-hover:text-cyan-300 transition-colors">
+                className="text-xs font-bold text-white leading-snug line-clamp-2 block transition-colors"
+                style={{ ["--hover-color"]: `rgb(${mspRtp})` }}
+                onMouseEnter={e => e.currentTarget.style.color = `rgb(${mspRtp})`}
+                onMouseLeave={e => e.currentTarget.style.color = ""}>
                 {song.title}
               </Link>
               <p className="text-[10px] text-white/35 truncate mt-0.5">{song.artist_display || "Upper Vibe Media"}</p>
               <span className="inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full mt-1"
-                style={{ background: "rgba(0,229,255,0.08)", color: "#00C9E0" }}>
+                style={{ background: `rgba(${mspRtp},0.08)`, color: `rgb(${mspRtp})` }}>
                 <Waves className="w-2 h-2" /> 432 Hz
               </span>
             </div>
@@ -109,6 +117,12 @@ export default function SongPage() {
   const [loginPrompt, setLoginPrompt] = useState(false);
   const [supportModal, setSupportModal] = useState(false);
   const [showSupportedBanner, setShowSupportedBanner] = useState(false);
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtp = radioTheme.vars["--rt-primary"];    // e.g. "0,229,255"
+  const rts = radioTheme.vars["--rt-secondary"];  // e.g. "155,126,255"
+  // Purple is always fixed for hearts
+  const PURPLE = "155,126,255";
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -237,7 +251,7 @@ export default function SongPage() {
               {track.cover_url ? (
                 <img src={track.cover_url} alt={track.title}
                   className="w-52 h-52 sm:w-64 sm:h-64 rounded-2xl object-cover"
-                  style={{ boxShadow: "0 8px 60px rgba(0,0,0,0.7), 0 0 40px rgba(0,229,255,0.12)" }} />
+                  style={{ boxShadow: `0 8px 60px rgba(0,0,0,0.7), 0 0 40px rgba(${rtp},0.12)` }} />
               ) : (
                 <div className="w-52 h-52 sm:w-64 sm:h-64 rounded-2xl mx-auto sm:mx-0 flex items-center justify-center"
                   style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.1),rgba(212,168,67,0.06))", border: "1px solid rgba(255,255,255,0.1)" }}>
@@ -251,7 +265,7 @@ export default function SongPage() {
               <div className="flex flex-wrap gap-2 justify-center sm:justify-start mb-4">
                 {freq && (
                   <span className="flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(0,229,255,0.12)", border: "1px solid rgba(0,229,255,0.3)", color: "#00E5FF" }}>
+                    style={{ background: `rgba(${rtp},0.12)`, border: `1px solid rgba(${rtp},0.3)`, color: `rgb(${rtp})` }}>
                     <Waves className="w-2.5 h-2.5" /> {freq}
                   </span>
                 )}
@@ -284,7 +298,7 @@ export default function SongPage() {
                 <div className="flex flex-wrap gap-2.5 justify-center sm:justify-start mb-2.5">
                   <button onClick={() => handlePlay(track)}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.02] flex-shrink-0"
-                    style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000", boxShadow: "0 0 24px rgba(0,229,255,0.3)" }}>
+                    style={{ background: `linear-gradient(135deg,rgba(${rtp},0.8),rgb(${rtp}))`, color: "#000", boxShadow: `0 0 24px rgba(${rtp},0.3)` }}>
                     {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
                     {isCurrentTrack && isPlaying ? "Pause" : "Play Song"}
                   </button>
@@ -329,9 +343,9 @@ export default function SongPage() {
                     title={isFaved("track", track.id) ? "Saved to Favorites" : "Save to Favorites"}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] flex-shrink-0"
                     style={isFaved("track", track.id) ? {
-                      background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.4)", color: "#ec4899"
+                      background: `rgba(${PURPLE},0.18)`, border: `1px solid rgba(${PURPLE},0.5)`, color: `rgb(${PURPLE})`
                     } : {
-                      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.55)"
+                      background: `rgba(${PURPLE},0.06)`, border: `1px solid rgba(${PURPLE},0.3)`, color: `rgba(${PURPLE},0.7)`
                     }}>
                     <Heart className={`w-4 h-4 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
                     {isFaved("track", track.id) ? "Saved" : "Save"}
@@ -404,7 +418,7 @@ export default function SongPage() {
                           <div className="absolute inset-0 flex items-center justify-center"
                             style={{ background: "rgba(0,0,0,0.4)" }}>
                             <div className="w-16 h-16 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform"
-                              style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", boxShadow: "0 0 32px rgba(0,229,255,0.4)" }}>
+                              style={{ background: `linear-gradient(135deg,rgba(${rtp},0.8),rgb(${rtp}))`, boxShadow: `0 0 32px rgba(${rtp},0.4)` }}>
                               <Play className="w-7 h-7 text-black ml-1" />
                             </div>
                           </div>
@@ -434,7 +448,7 @@ export default function SongPage() {
             <div className="flex gap-3 flex-wrap">
               <Link to="/visualizers"
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.2)", color: "#00E5FF" }}>
+                style={{ background: `rgba(${rtp},0.08)`, border: `1px solid rgba(${rtp},0.2)`, color: `rgb(${rtp})` }}>
                 <Tv2 className="w-3.5 h-3.5" /> All Visualizers
               </Link>
               <Link to="/music"
@@ -485,15 +499,15 @@ export default function SongPage() {
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setLoginPrompt(false)} />
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
             className="relative w-full max-w-sm rounded-2xl p-7 text-center"
-            style={{ background: "#0a0a1e", border: "1px solid rgba(236,72,153,0.25)" }}>
-            <Heart className="w-8 h-8 text-pink-400 fill-current mx-auto mb-3" />
+            style={{ background: "#0a0a1e", border: `1px solid rgba(${PURPLE},0.25)` }}>
+            <Heart className="w-8 h-8 fill-current mx-auto mb-3" style={{ color: `rgb(${PURPLE})` }} />
             <h3 className="font-heading font-black text-lg text-white mb-2">Save Your Favorites</h3>
             <p className="text-sm text-white/45 leading-relaxed mb-5">
               Create a free account to save your favorite Upper Vibe Media songs and visualizers.
             </p>
             <button onClick={() => base44.auth.redirectToLogin()}
               className="w-full py-3 rounded-xl font-black text-sm tracking-wider transition-all hover:brightness-110"
-              style={{ background: "linear-gradient(135deg,#be185d,#ec4899)", color: "#fff" }}>
+              style={{ background: `linear-gradient(135deg,rgba(${PURPLE},0.7),rgb(${PURPLE}))`, color: "#fff" }}>
               Create Free Account
             </button>
             <button onClick={() => base44.auth.redirectToLogin()}
