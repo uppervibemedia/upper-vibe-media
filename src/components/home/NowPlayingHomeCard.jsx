@@ -13,6 +13,8 @@ export default function NowPlayingHomeCard() {
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtPrimary = radioTheme.vars["--rt-primary"];
+  const rtSecondary = radioTheme.vars["--rt-secondary"];
+  const barColors = [rtPrimary, rtSecondary, "245,158,11", rtSecondary, rtPrimary, rtSecondary, "245,158,11"];
 
   // Always show something real — active track first, then radio queue, then nothing
   const displayTrack = currentTrack || currentRadioSong;
@@ -69,7 +71,7 @@ export default function NowPlayingHomeCard() {
                     : { height: "3px" }}
                   transition={{ duration: 0.28 + i * 0.06, repeat: Infinity, ease: "linear", delay: i * 0.04 }}
                   className="w-[2.5px] rounded-full flex-shrink-0"
-                  style={{ background: `rgb(${rtPrimary})`, opacity: isPlaying ? 1 : 0.3 }}
+                  style={{ background: `rgb(${barColors[i]})`, opacity: isPlaying ? 1 : 0.3 }}
                 />
               ))}
             </div>
@@ -140,7 +142,7 @@ export default function NowPlayingHomeCard() {
                   animate={{ height: [`${h * 0.2}px`, `${h * 0.85}px`, `${h * 0.35}px`, `${h * 0.7}px`, `${h * 0.2}px`] }}
                   transition={{ duration: 0.38 + i * 0.07, repeat: Infinity, ease: "linear", delay: i * 0.05 }}
                   className="w-[2.5px] rounded-full flex-shrink-0"
-                  style={{ background: `rgb(${rtPrimary})`, opacity: 0.55 }}
+                  style={{ background: `rgb(${barColors[i]})`, opacity: 0.55 }}
                 />
               ))}
             </div>
