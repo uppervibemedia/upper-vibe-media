@@ -25,7 +25,7 @@
  */
 
 import React, { useRef, useEffect, useCallback, useState } from "react";
-import { usePlayer } from "../../context/PlayerContext";
+import { usePlayer, requestAnalyser, resumeGlobalAudioContext } from "../../context/PlayerContext";
 
 const PREF_KEY = "uvm_radio_viz_v9";
 const DEBUG_KEY = "uvm_radio_viz_debug";
@@ -44,71 +44,6 @@ const MODES = [
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const getDpr = () => Math.min(window.devicePixelRatio || 1, 2);
-
-// ── Single shared Web Audio graph ────────────────────────────────────────────
-// One AudioContext, one AnalyserNode, one cached source per audio element.
-// Never call createMediaElementSource twice on the same element.
-let _ctx    = null;  // AudioContext
-let _an     = null;  // AnalyserNode
-let _src    = null;  // MediaElementSourceNode
-let _srcEl  = null;  // the audio element that owns _src
-
-function getOrCreateAnalyser(audioEl) {
-  if (!audioEl) return null;
-
-  // Reuse if already connected to this exact element and context is alive
-  if (_an && _srcEl === audioEl && _ctx && _ctx.state !== "closed") {
-    return _an;
-  }
-
-  // If we have a source on a DIFFERENT element, disconnect it
-  if (_src && _srcEl !== audioEl) {
-    try { _src.disconnect(); } catch {}
-    _src = null;
-    _srcEl = null;
-  }
-
-  try {
-    // Create context if needed
-    if (!_ctx || _ctx.state === "closed") {
-      _ctx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-
-    // Create analyser
-    if (!_an) {
-      _an = _ctx.createAnalyser();
-      _an.fftSize = 2048;
-      _an.smoothingTimeConstant = 0.75; // WebAudio built-in smoothing
-    }
-
-    // Create source node for this element (only if not already done)
-    if (!_src || _srcEl !== audioEl) {
-      _src = _ctx.createMediaElementSource(audioEl);
-      _srcEl = audioEl;
-    }
-
-    // Wire: source → analyser → destination
-    // Connecting to destination is REQUIRED — without it audio is silent on
-    // non-iOS after createMediaElementSource hijacks the element output.
-    _src.connect(_an);
-    _an.connect(_ctx.destination);
-
-    console.log("[Viz] AudioGraph connected | element:", audioEl.src?.substring(0, 60),
-      "| ctxState:", _ctx.state, "| isIOS:", isIOS);
-    return _an;
-  } catch (e) {
-    console.warn("[Viz] getOrCreateAnalyser failed:", e.message);
-    // If we already have a source node, it may still be wired — return existing _an
-    if (_an && _srcEl === audioEl) return _an;
-    return null;
-  }
-}
-
-async function resumeCtx() {
-  if (_ctx && _ctx.state === "suspended") {
-    try { await _ctx.resume(); } catch {}
-  }
-}
 
 // ── Smoothed frequency data ───────────────────────────────────────────────────
 const _sm = { data: null };
@@ -702,20 +637,29 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       return false;
     }
 
-    // Resume context after user gesture
-    await resumeCtx();
+    // Resume any suspended context first (required after iOS gesture)
+    await resumeGlobalAudioContext();
 
-    const an = getOrCreateAnalyser(audio);
-    if (an) {
-      analyserRef.current = an;
-      if (_ctx?.state === "suspended") await resumeCtx();
-      console.log("[Viz] tryConnect | analyser ready | ctxState:", _ctx?.state,
-        "| src:", audio.src?.substring(0, 55),
-        "| paused:", audio.paused, "| isIOS:", isIOS);
+    // Use the shared PlayerContext analyser — this is the one connected to the
+    // real audio element, works on both iOS and non-iOS.
+    const result = requestAnalyser(audio);
+    if (result?.analyser) {
+      analyserRef.current = result.analyser;
+      // Ensure context is running
+      if (result.ctx?.state === "suspended") {
+        try { await result.ctx.resume(); } catch {}
+      }
+      console.log("[Viz] tryConnect | analyser ready",
+        "| ctxState:", result.ctx?.state,
+        "| srcConnected:", !!result.sourceNode,
+        "| audio.src:", audio.src?.substring(0, 55),
+        "| audio.paused:", audio.paused,
+        "| isIOS:", isIOS);
       return true;
     }
+
     analyserRef.current = null;
-    console.warn("[Viz] tryConnect | getOrCreateAnalyser returned null");
+    console.warn("[Viz] tryConnect | requestAnalyser returned null | audio.src:", audio.src?.substring(0, 55));
     return false;
   }, [audioRef]);
 
@@ -737,7 +681,9 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       ctx.clearRect(0, 0, lW, lH);
       const t = Date.now() / 1000;
       const an = analyserRef.current;
-      const ctxRunning = _ctx && _ctx.state === "running";
+      // Read context state from the global shared context (owned by PlayerContext)
+      const sharedCtx = window._uvAudioCtx || null;
+      const ctxRunning = sharedCtx && sharedCtx.state === "running";
       const audio = audioRef?.current;
 
       // ── Live path ──
@@ -752,8 +698,8 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
         // Update debug ref every frame (cheap)
         debugRef.current = {
           audioElementFound: !!audio,
-          audioContextState: _ctx?.state || "null",
-          sourceNodeConnected: !!_src,
+          audioContextState: sharedCtx?.state || "null",
+          sourceNodeConnected: !!window._uvAnalyser,
           analyserConnected: true,
           frequencyDataChanging: live,
           bassEnergy: bass,
@@ -770,8 +716,8 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
             `[Viz] LIVE=${live} mode=${currentMode}`,
             `bass=${bass.toFixed(3)} mid=${mid.toFixed(3)} treble=${treble.toFixed(3)}`,
             `beat=${beat} beats/3s→${bpm}BPM est`,
-            `ctx=${_ctx?.state} iOS=${isIOS}`,
-            `srcConnected=${!!_src} playing=${audio ? !audio.paused : false}`
+            `ctx=${sharedCtx?.state} iOS=${isIOS}`,
+            `srcConnected=${!!window._uvAnalyser} playing=${audio ? !audio.paused : false}`
           );
         }
 
@@ -800,8 +746,8 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
         // No analyser yet
         debugRef.current = {
           audioElementFound: !!audio,
-          audioContextState: _ctx?.state || "not created",
-          sourceNodeConnected: !!_src,
+          audioContextState: sharedCtx?.state || "not created",
+          sourceNodeConnected: !!window._uvAnalyser,
           analyserConnected: false,
           frequencyDataChanging: false,
           bassEnergy: 0, beatDetected: false,
@@ -811,7 +757,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
 
         if (Date.now() - logTimerRef.current > 3000) {
           logTimerRef.current = Date.now();
-          console.log("[Viz] no analyser | ctxState:", _ctx?.state || "null",
+          console.log("[Viz] no analyser | ctxState:", window._uvAudioCtx?.state || "null",
             "| audioEl:", !!audio, "| paused:", audio?.paused);
         }
         runFallback(ctx, lW, lH, t, currentMode, color, isPlaying);
@@ -834,12 +780,13 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     stopLoop();
     particlesRef.current = [];
     _sm.data = null;
-    _beat.hist.fill(0); _beat.idx = 0; _beat.count = 0;
+    _beat.hist.fill(0); _beat.idx = 0; _beat.count = 0; _beat.lastMs = 0;
     _spin.acc = 0; _spin.lastMs = Date.now();
 
     tryConnectAnalyser().then(connected => {
-      if (connected && _ctx?.state === "suspended") {
-        resumeCtx().then(() => setTimeout(() => startLoop(mode, themeColor), 60));
+      const sharedCtx = window._uvAudioCtx;
+      if (connected && sharedCtx?.state === "suspended") {
+        resumeGlobalAudioContext().then(() => setTimeout(() => startLoop(mode, themeColor), 60));
       } else {
         setTimeout(() => startLoop(mode, themeColor), connected ? 60 : 0);
       }
@@ -852,7 +799,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     const onVisible = async () => {
       if (document.visibilityState !== "visible") return;
       stopLoop(); particlesRef.current = []; _sm.data = null;
-      await resumeCtx();
+      await resumeGlobalAudioContext();
       const connected = await tryConnectAnalyser();
       setTimeout(() => startLoop(mode, themeColor), connected ? 60 : 0);
     };
@@ -864,8 +811,9 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
   useEffect(() => {
     if (!isPlaying) return;
     const timer = setTimeout(async () => {
-      if (_ctx?.state === "suspended") await resumeCtx();
-      if (!analyserRef.current || _ctx?.state !== "running") {
+      await resumeGlobalAudioContext();
+      const sharedCtx = window._uvAudioCtx;
+      if (!analyserRef.current || !sharedCtx || sharedCtx.state !== "running") {
         const connected = await tryConnectAnalyser();
         if (connected && !rafRef.current) startLoop(mode, themeColor);
       }

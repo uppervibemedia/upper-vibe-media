@@ -109,12 +109,23 @@ let _globalAudioInstanceCount = 0;
 export const sharedHiddenRef = { current: false };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AudioContext — shared with visualiser, created lazily on first user gesture
-// IMPORTANT: Never created on iOS — would block AirPlay/Bluetooth routing
+// AudioContext — shared with visualiser, created lazily on first user gesture.
+//
+// iOS NOTES:
+//   - createMediaElementSource() on iOS Safari CAN work for visualisation,
+//     but ONLY if the AudioContext is created AND resumed inside a user-gesture
+//     handler (e.g. tap on Play button). Calling it at page-load fails silently.
+//   - Connecting source → analyser → destination keeps audio playing normally.
+//   - AirPlay/BT continue to work when destination is connected.
+//   - crossOrigin must NOT be set on the iOS audio element (breaks AirPlay CDN
+//     preflight). Because of this, getByteFrequencyData may return all-zeros
+//     if the CDN lacks CORS headers. This is a CDN limitation, not a code bug.
+//   - The visualiser layer handles the "all-zeros" case by showing fallback.
 // ─────────────────────────────────────────────────────────────────────────────
 let _audioCtx   = null;
 let _analyser   = null;
 let _sourceNode = null;
+let _sourceEl   = null; // the element _sourceNode was created from
 
 async function resumeAudioContext() {
   if (!_audioCtx) return;
@@ -126,35 +137,84 @@ function suspendAudioContext() {
   if (!_audioCtx || _audioCtx.state !== "running") return;
   try { _audioCtx.suspend(); } catch {}
 }
+
+/**
+ * getOrCreateAudioContext — wires the audio element into a Web Audio graph.
+ * Safe to call multiple times: caches source node per element, never calls
+ * createMediaElementSource twice on the same element.
+ * Works on both iOS and non-iOS — on iOS only call inside a user gesture.
+ */
 function getOrCreateAudioContext(audioElement) {
   if (!audioElement) return null;
-  // Skip AudioContext entirely on iOS — it intercepts system audio routing
-  // and prevents AirPlay, Bluetooth, and TV output from working.
-  if (isIOS) {
-    console.log("[Player] iOS detected — skipping AudioContext (AirPlay/BT compatible mode)");
-    return null;
-  }
-  if (!_audioCtx) {
+
+  // Create context if needed (or if previous one was closed)
+  if (!_audioCtx || _audioCtx.state === "closed") {
     _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     window._uvAudioCtx = _audioCtx;
+    // Reset nodes when context is recreated
+    _analyser   = null;
+    _sourceNode = null;
+    _sourceEl   = null;
   }
-  if (!_sourceNode) {
+
+  // Resume if suspended
+  if (_audioCtx.state === "suspended") {
+    _audioCtx.resume().catch(() => {});
+  }
+
+  // Create analyser if needed
+  if (!_analyser) {
+    _analyser = _audioCtx.createAnalyser();
+    _analyser.fftSize = 2048;
+    _analyser.smoothingTimeConstant = 0.75;
+    window._uvAnalyser = _analyser;
+  }
+
+  // Create source node if needed, or if the element changed
+  if (!_sourceNode || _sourceEl !== audioElement) {
+    // Disconnect old source if it exists
+    if (_sourceNode) {
+      try { _sourceNode.disconnect(); } catch {}
+      _sourceNode = null;
+      _sourceEl   = null;
+    }
     try {
       _sourceNode = _audioCtx.createMediaElementSource(audioElement);
-      _analyser   = _audioCtx.createAnalyser();
-      _analyser.fftSize = 256;
-      _analyser.smoothingTimeConstant = 0.82;
+      _sourceEl   = audioElement;
+      // Wire: source → analyser → destination (destination keeps audio playing)
       _sourceNode.connect(_analyser);
       _analyser.connect(_audioCtx.destination);
-      window._uvAnalyser = _analyser;
+      console.log("[Player] AudioGraph connected | element src:",
+        audioElement.src?.substring(0, 55), "| ctxState:", _audioCtx.state,
+        "| isIOS:", isIOS);
     } catch (e) {
-      console.warn("[Player] AudioContext setup error:", e.message);
+      // InvalidStateError = already captured — just reconnect analyser to destination
+      if (e.name === "InvalidStateError") {
+        console.log("[Player] source already captured (InvalidStateError) — analyser still connected");
+      } else {
+        console.warn("[Player] AudioContext setup error:", e.name, e.message);
+        _sourceNode = null;
+        _sourceEl   = null;
+      }
     }
   }
+
   return _analyser;
 }
+
 export function resumeGlobalAudioContext() { resumeAudioContext().catch(() => {}); }
 export function getGlobalAnalyser(el) { return getOrCreateAudioContext(el); }
+
+/**
+ * requestAnalyser — called by the visualiser after a user gesture.
+ * Returns { analyser, ctx } or null. Safe to call repeatedly.
+ */
+export function requestAnalyser(audioElement) {
+  if (!audioElement) return null;
+  const an = getOrCreateAudioContext(audioElement);
+  if (!an) return null;
+  return { analyser: an, ctx: _audioCtx, sourceNode: _sourceNode };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // enforceRate — call at every touch point
@@ -934,6 +994,8 @@ export function PlayerProvider({ children }) {
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio || !audio.src) return;
+    // Wire Web Audio graph on user gesture — safe on iOS Safari here.
+    getOrCreateAudioContext(audio);
     if (audio.paused || audio.ended) {
       enforceRate(audio);
       safePlay(audio, "toggle-play");
@@ -945,6 +1007,8 @@ export function PlayerProvider({ children }) {
   // ── playTrack (public API) ────────────────────────────────────────────────
   const playTrack = useCallback((track, source = "song") => {
     if (!audioRef.current) return;
+    // Wire the audio element into Web Audio graph now (user gesture context).
+    // On iOS this is the first safe point to call createMediaElementSource.
     getOrCreateAudioContext(audioRef.current);
     setSourceType(source);
     setCurrentTrack(track);
