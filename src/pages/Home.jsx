@@ -122,7 +122,7 @@ export default function Home() {
         toggle(type, id, meta);
       }}
       className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-      style={isFaved(type, id) ? { color: "#ec4899" } : { color: "rgba(255,255,255,0.2)" }}>
+      style={isFaved(type, id) ? { color: "#9B7EFF" } : { color: "rgba(255,255,255,0.2)" }}>
       <Heart className={`w-3.5 h-3.5 ${isFaved(type, id) ? "fill-current" : ""}`} />
     </button>
   );
@@ -313,9 +313,9 @@ export default function Home() {
               <div className="flex flex-wrap gap-2">
                 <Link to="/music"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase"
-                  style={{ background: "rgba(0,200,220,0.06)", border: "1px solid rgba(0,200,220,0.28)", color: "#00C8E0", transition: "all 0.2s ease" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,200,220,0.12)"; e.currentTarget.style.boxShadow = "0 0 18px rgba(0,200,220,0.2)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,200,220,0.06)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}>
+                  style={{ background: `rgba(${rtPrimary},0.07)`, border: `1px solid rgba(${rtPrimary},0.3)`, color: `rgb(${rtPrimary})`, transition: "all 0.2s ease" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = `rgba(${rtPrimary},0.14)`; e.currentTarget.style.boxShadow = `0 0 18px rgba(${rtPrimary},0.22)`; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = `rgba(${rtPrimary},0.07)`; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}>
                   <Play className="w-3 h-3 fill-current" /> Browse Music
                 </Link>
                 <Link to="/visualizers"
