@@ -180,18 +180,18 @@ export default function AudioPlayer() {
               handleSeek([pct]);
             }}
           >
-            {/* Progress fill: two small accent leads, then theme color owns the long tail */}
+            {/* Progress fill: theme color is the big background line, the two others lead as small bright tips */}
             <div
               className="h-full"
               style={{
                 width: `${progress}%`,
                 background: `linear-gradient(90deg,
-                  ${others[0].hex} 0%,
-                  ${others[0].hex} 6%,
-                  ${others[1].hex} 10%,
-                  ${others[1].hex} 16%,
-                  rgba(${themeRgb},0.55) 22%,
-                  rgb(${themeRgb}) 100%
+                  rgba(${themeRgb},0.5) 0%,
+                  rgb(${themeRgb}) 60%,
+                  ${others[0].hex} 78%,
+                  ${others[0].hex} 88%,
+                  ${others[1].hex} 92%,
+                  ${others[1].hex} 100%
                 )`
               }}
             />
