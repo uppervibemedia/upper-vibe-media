@@ -590,7 +590,7 @@ export default function Home() {
                     <img src={viz.thumbnail_url} alt={viz.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"
-                      style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.1),rgba(0,229,255,0.05))" }}>
+                      style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.1),rgba(${rtPrimary},0.04))` }}>
                       <Tv2 className="w-8 h-8 text-white/10" />
                     </div>
                   )}
@@ -598,7 +598,7 @@ export default function Home() {
                     className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     style={{ background: "rgba(0,0,0,0.5)" }}>
                     <div className="w-12 h-12 rounded-full flex items-center justify-center"
-                      style={{ background: "rgba(155,126,255,0.9)" }}>
+                      style={{ background: `rgba(${rtPrimary},0.9)` }}>
                       <Play className="w-5 h-5 text-white ml-0.5" />
                     </div>
                   </Link>
@@ -637,7 +637,7 @@ export default function Home() {
                     <img src={lesson.thumbnail_url} alt={lesson.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"
-                      style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.12),rgba(0,229,255,0.05))" }}>
+                      style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.12),rgba(${rtPrimary},0.04))` }}>
                       <GraduationCap className="w-10 h-10 text-white/10" />
                     </div>
                   )}
@@ -665,7 +665,7 @@ export default function Home() {
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       {lesson.labels.slice(0, 3).map((lbl) => (
                         <span key={lbl} className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.2)", color: "#9B7EFF" }}>
+                          style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.2)`, color: `rgb(${rtPrimary})` }}>
                           {lbl}
                         </span>
                       ))}
@@ -673,7 +673,7 @@ export default function Home() {
                   )}
                   <Link to="/academy"
                     className="mt-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110 self-start"
-                    style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.25)", color: "#9B7EFF" }}>
+                    style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})` }}>
                     <Play className="w-3 h-3" /> Watch
                   </Link>
                 </div>
