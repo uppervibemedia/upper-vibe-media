@@ -4,6 +4,8 @@ import { base44 } from "@/api/base44Client";
 
 const DEFAULT_PLAYLIST_URL = "https://youtube.com/playlist?list=PLH-5EaZv0Utx6dsoODbo4wBFTTc_iGs0S&si=xevHTdJKQhdfwUw7";
 const FOURTH_DIM_VID = "hzR4m-w2924";
+const QUANTUM_ASCEND_VID = "895KXA7fv0E";
+const ANXIETY_MUTE_VID = "DsSmpEKjbGE"; // excluded from lineup
 
 function extractVideoId(url) {
   if (!url) return null;
@@ -111,9 +113,16 @@ export default function YouTubeCTA() {
         })
         .filter(Boolean);
 
-      const pinned = valid.find((v) => v.id === FOURTH_DIM_VID);
-      const rest = valid.filter((v) => v.id !== FOURTH_DIM_VID);
-      const ordered = pinned ? [pinned, ...rest] : valid;
+      // Exclude Anxiety on Mute, pin Fourth Dimension Hustler first, then Quantum Ascend second
+      const filtered = valid.filter((v) => v.id !== ANXIETY_MUTE_VID);
+      const pinned = filtered.find((v) => v.id === FOURTH_DIM_VID);
+      const quantum = filtered.find((v) => v.id === QUANTUM_ASCEND_VID);
+      const rest = filtered.filter((v) => v.id !== FOURTH_DIM_VID && v.id !== QUANTUM_ASCEND_VID);
+      const ordered = [
+        ...(pinned ? [pinned] : []),
+        ...(quantum ? [quantum] : []),
+        ...rest,
+      ];
 
       if (ordered.length > 0) setMainVideo(ordered[0]);
       if (ordered.length > 1) setSecondaryVideos(ordered.slice(1, 5));
