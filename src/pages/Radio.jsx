@@ -137,9 +137,9 @@ export default function RadioPage() {
           </h1>
           {curatorActive ? (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
-              style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.2)" }}>
-              <Sparkles className="w-3 h-3" style={{ color: "#A855F7" }} />
-              <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: "#A855F7" }}>
+              style={{ background: `rgba(${theme.vars["--rt-primary"]},0.08)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.2)` }}>
+              <Sparkles className="w-3 h-3" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
+              <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }}>
                 Tuned to You
               </span>
             </div>
