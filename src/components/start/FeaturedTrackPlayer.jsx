@@ -133,15 +133,20 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
 
   return (
     <div className="w-full relative rounded-2xl overflow-hidden">
-      {/* Pulsating glow ring */}
-      <motion.div
-        animate={{ scale: [1, 1.025, 1], opacity: [0.35, 0.9, 0.35] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+      <style>{`
+        @keyframes featuredSectionPulse {
+          0%, 100% { box-shadow: 0 0 28px rgba(${rtPrimary},0.45), 0 0 60px rgba(${rtPrimary},0.15); border-color: rgba(${rtPrimary},0.45); }
+          50% { box-shadow: 0 0 55px rgba(${rtPrimary},0.9), 0 0 110px rgba(${rtPrimary},0.4); border-color: rgba(${rtPrimary},0.85); }
+        }
+        @keyframes featuredRingPulse {
+          0%, 100% { box-shadow: 0 0 0px rgba(${rtPrimary},0); }
+          50% { box-shadow: 0 0 22px rgba(${rtPrimary},0.7), 0 0 45px rgba(${rtPrimary},0.3); }
+        }
+      `}</style>
+      {/* Pulsating outer ring */}
+      <div
         className="absolute inset-0 rounded-2xl pointer-events-none"
-        style={{
-          border: `2px solid ${primaryColor}`,
-          boxShadow: `0 0 28px ${primaryRgba(0.45)}`,
-        }}
+        style={{ animation: "featuredRingPulse 2.8s ease-in-out infinite" }}
       />
 
       {/* Card body */}
@@ -149,7 +154,8 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
         className="relative z-10 rounded-2xl overflow-hidden"
         style={{
           background: primaryRgba(0.06),
-          border: `1px solid ${primaryRgba(0.15)}`,
+          border: `1px solid rgba(${rtPrimary},0.45)`,
+          animation: "featuredSectionPulse 2.8s ease-in-out infinite",
         }}
       >
         {track?.audio_url && (
