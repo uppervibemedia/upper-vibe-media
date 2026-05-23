@@ -112,7 +112,7 @@ export default function Start() {
       const isAdmin = user.role === "admin";
       const isPlus = isAdmin || user.isPlus === true || user.tier === "plus"
         || user.tier === "premium" || user.isPremium === true || user.role === "premium";
-      if (isAdmin) { navigate("/admin", { replace: true }); return; }
+      if (isAdmin) { return; } // Admin can view /start normally
       if (isPlus) { navigate("/my-vibes", { replace: true }); setIsPremiumUser(true); return; }
     }
   }, [isAuthenticated, isLoadingAuth, user, navigate]);
