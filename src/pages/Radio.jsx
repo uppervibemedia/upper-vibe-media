@@ -92,58 +92,61 @@ export default function RadioPage() {
 
       {/* ── Fixed ambient background — slow breathing pulse ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        {/* Primary orb — center top */}
+        {/* Primary orb — large center fill */}
         <motion.div
+          initial={{ opacity: 0.18 }}
           animate={{
-            opacity: playingThisRadioSong ? [0.055, 0.09, 0.055] : [0.022, 0.038, 0.022],
-            scale: [1, 1.06, 1],
+            opacity: playingThisRadioSong ? [0.22, 0.34, 0.22] : [0.18, 0.26, 0.18],
+            scale: [1, 1.07, 1],
           }}
           transition={{ duration: 8, ease: "easeInOut", repeat: Infinity, repeatType: "loop" }}
           className="absolute rounded-full"
           style={{
-            top: "-10%",
+            top: "-20%",
             left: "50%",
             transform: "translateX(-50%)",
-            width: 700,
-            height: 700,
+            width: 900,
+            height: 900,
             background: theme.vars["--rt-ambient1"],
-            filter: "blur(160px)",
+            filter: "blur(140px)",
             willChange: "transform, opacity",
           }}
         />
         {/* Secondary orb — bottom left */}
         <motion.div
+          initial={{ opacity: 0.12 }}
           animate={{
-            opacity: playingThisRadioSong ? [0.03, 0.055, 0.03] : [0.012, 0.022, 0.012],
-            scale: [1, 1.08, 1],
+            opacity: playingThisRadioSong ? [0.14, 0.22, 0.14] : [0.10, 0.16, 0.10],
+            scale: [1, 1.09, 1],
           }}
           transition={{ duration: 10, ease: "easeInOut", repeat: Infinity, repeatType: "loop", delay: 2 }}
           className="absolute rounded-full"
           style={{
-            bottom: "10%",
-            left: "-5%",
-            width: 420,
-            height: 420,
+            bottom: "5%",
+            left: "-10%",
+            width: 600,
+            height: 600,
             background: theme.vars["--rt-ambient2"],
-            filter: "blur(120px)",
+            filter: "blur(110px)",
             willChange: "transform, opacity",
           }}
         />
         {/* Tertiary accent orb — bottom right */}
         <motion.div
+          initial={{ opacity: 0.10 }}
           animate={{
-            opacity: playingThisRadioSong ? [0.025, 0.045, 0.025] : [0.01, 0.018, 0.01],
-            scale: [1, 1.05, 1],
+            opacity: playingThisRadioSong ? [0.12, 0.20, 0.12] : [0.08, 0.14, 0.08],
+            scale: [1, 1.06, 1],
           }}
           transition={{ duration: 9, ease: "easeInOut", repeat: Infinity, repeatType: "loop", delay: 4 }}
           className="absolute rounded-full"
           style={{
-            bottom: "20%",
-            right: "-8%",
-            width: 380,
-            height: 380,
+            bottom: "15%",
+            right: "-10%",
+            width: 550,
+            height: 550,
             background: theme.vars["--rt-ambient1"],
-            filter: "blur(130px)",
+            filter: "blur(120px)",
             willChange: "transform, opacity",
           }}
         />
@@ -197,15 +200,16 @@ export default function RadioPage() {
         <div className="relative mx-auto mb-5" style={{ maxWidth: 440 }}>
           {/* Ambient glow halo behind visualizer */}
           <motion.div
+            initial={{ opacity: 0.25 }}
             animate={{
-              opacity: playingThisRadioSong ? [0.18, 0.32, 0.18] : [0.06, 0.10, 0.06],
-              scale: [0.95, 1.04, 0.95],
+              opacity: playingThisRadioSong ? [0.35, 0.55, 0.35] : [0.22, 0.35, 0.22],
+              scale: [0.94, 1.06, 0.94],
             }}
             transition={{ duration: 7, ease: "easeInOut", repeat: Infinity, repeatType: "loop", delay: 1 }}
             className="absolute inset-0 rounded-3xl pointer-events-none"
             style={{
-              background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.35) 0%, transparent 70%)`,
-              filter: "blur(24px)",
+              background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.5) 0%, transparent 72%)`,
+              filter: "blur(28px)",
               willChange: "transform, opacity",
               zIndex: 0,
             }}
