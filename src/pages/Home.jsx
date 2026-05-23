@@ -244,32 +244,6 @@ export default function Home() {
               }}>MEDIA</div>
             </motion.div>
 
-            {/* ── Now Playing strip — always visible above fold ── */}
-            {currentTrack && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25, duration: 0.4 }}
-                className="flex items-center gap-3 mt-3 mb-4 px-3 py-2.5 rounded-xl w-fit"
-                style={{ background: "rgba(0,200,220,0.06)", border: "1px solid rgba(0,200,220,0.18)", maxWidth: "90vw" }}>
-                {currentTrack.cover_url && (
-                  <img src={currentTrack.cover_url} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
-                )}
-                <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "14px" }}>
-                  {[3,5,8,6,4,7,5].map((h, i) => (
-                    <motion.div key={i}
-                      animate={{ height: [`${h * 0.4}px`, `${h}px`, `${h * 0.55}px`] }}
-                      transition={{ duration: 0.6 + i * 0.09, repeat: Infinity, ease: "easeInOut", delay: i * 0.07 }}
-                      className="w-[2px] rounded-full" style={{ background: `rgb(${rtPrimary})` }} />
-                  ))}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[8px] font-black tracking-[0.18em] uppercase leading-none mb-0.5" style={{ color: `rgba(${rtPrimary},0.7)` }}>Now Playing</p>
-                  <p className="text-xs font-bold text-white/90 truncate">{currentTrack.title}</p>
-                  <p className="text-[10px] text-white/45 truncate">{currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}</p>
-                </div>
-              </motion.div>
-            )}
-
             {/* ── Subtitle ── */}
             <motion.p
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
