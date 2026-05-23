@@ -327,12 +327,12 @@ export default function Home() {
               </div>
 
               {/* TERTIARY */}
-              <Link to="/academy"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-sm font-black text-[10px] tracking-[0.1em] uppercase w-fit"
-                style={{ color: "rgba(155,126,255,0.65)", transition: "color 0.2s ease" }}
-                onMouseEnter={e => { e.currentTarget.style.color = "#9B7EFF"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "rgba(155,126,255,0.65)"; }}>
-                <GraduationCap className="w-3 h-3" /> Upper Vibe Academy →
+              <Link to="/vibe-room"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase"
+                style={{ background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.28)", color: "#9B7EFF", transition: "all 0.2s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(155,126,255,0.12)"; e.currentTarget.style.boxShadow = "0 0 16px rgba(155,126,255,0.18)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(155,126,255,0.06)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}>
+                <Users className="w-3 h-3" /> Vibe Room
               </Link>
             </motion.div>
 
