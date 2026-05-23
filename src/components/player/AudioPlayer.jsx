@@ -21,9 +21,16 @@ export default function AudioPlayer() {
 
   const { accentId } = useTheme();
   const theme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
-  // Primary = user's chosen theme color; always blend amber + violet + primary at end
-  const themeRgb = theme.vars["--rt-primary"]; // e.g. "0,160,220"
-  const themeHex = theme.swatch;               // e.g. "#00A0DC"
+  const themeRgb = theme.vars["--rt-primary"];
+  const themeHex = theme.swatch;
+
+  // The two colors NOT currently selected always lead the progress bar (small sections)
+  const allThree = [
+    { rgb: "245,158,11",  hex: "#F59E0B" }, // amber
+    { rgb: "155,126,255", hex: "#9B7EFF" }, // violet
+    { rgb: "0,160,220",   hex: "#00A0DC" }, // electric blue
+  ];
+  const others = allThree.filter(c => c.hex.toLowerCase() !== themeHex.toLowerCase());
 
   const [progress,   setProgress]   = useState(0);
   const [duration,   setDuration]   = useState(0);
@@ -165,26 +172,36 @@ export default function AudioPlayer() {
         >
           {/* Seek bar */}
           <div
-            className="relative h-[3px] w-full bg-muted cursor-pointer group"
+            className="relative h-[3px] w-full cursor-pointer group"
+            style={{ background: `rgba(${themeRgb}, 0.18)` }}
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               const pct = ((e.clientX - rect.left) / rect.width) * 100;
               handleSeek([pct]);
             }}
           >
+            {/* Progress fill: two small accent leads, then theme color owns the long tail */}
             <div
               className="h-full"
               style={{
                 width: `${progress}%`,
-                background: `linear-gradient(90deg, #D4A843 0%, #9B7EFF 45%, rgba(${themeRgb},0.8) 72%, rgb(${themeRgb}) 100%)`
+                background: `linear-gradient(90deg,
+                  ${others[0].hex} 0%,
+                  ${others[0].hex} 6%,
+                  ${others[1].hex} 10%,
+                  ${others[1].hex} 16%,
+                  rgba(${themeRgb},0.55) 22%,
+                  rgb(${themeRgb}) 100%
+                )`
               }}
             />
+            {/* Hover thumb */}
             <div
               className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
               style={{
                 left: `calc(${progress}% - 6px)`,
                 background: themeHex,
-                boxShadow: `0 0 10px rgba(${themeRgb},0.8), 0 0 20px rgba(${themeRgb},0.4)`
+                boxShadow: `0 0 10px rgba(${themeRgb},0.9), 0 0 20px rgba(${themeRgb},0.5)`
               }}
             />
           </div>
