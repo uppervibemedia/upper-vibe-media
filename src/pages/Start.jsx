@@ -130,7 +130,6 @@ export default function Start() {
           {/* Primary CTA */}
           <div className="w-full flex flex-col gap-3">
             <PremiumButton onClick={handleCheckout}>
-              <Download className="w-4 h-4" />
               Unlock All Downloads — $4.99/mo
             </PremiumButton>
 
