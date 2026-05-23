@@ -273,7 +273,7 @@ export default function Home() {
                 </Link>
                 <Link to="/visualizers"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
-                  style={{ background: "transparent", border: "1px solid rgba(185,135,45,0.3)", color: "rgba(192,136,48,0.8)" }}>
+                  style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.35)", color: "#D4A843" }}>
                   <Tv2 className="w-3 h-3" /> Watch Visualizers
                 </Link>
               </div>
