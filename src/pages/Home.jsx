@@ -244,56 +244,31 @@ export default function Home() {
               }}>MEDIA</div>
             </motion.div>
 
-            {/* ── Now Playing strip — always visible, glowing, right under logo ── */}
-            {(() => {
-              const displayTrack = currentTrack || currentRadioSong;
-              const isLive = !!displayTrack;
-              const coverUrl = displayTrack?.cover_url;
-              const title = displayTrack?.title || "Upper Vibe Radio";
-              const artist = displayTrack
-                ? (displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media")
-                : "Tap to start the frequency";
-              return (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25, duration: 0.4 }}
-                  animate2={!isLive ? { boxShadow: [`0 0 0px rgba(${rtPrimary},0)`, `0 0 18px rgba(${rtPrimary},0.22)`, `0 0 0px rgba(${rtPrimary},0)`] } : {}}
-                  className="flex items-center gap-3 mt-3 mb-4 px-3 py-2.5 rounded-xl w-fit"
-                  style={{
-                    background: `rgba(${rtPrimary},0.06)`,
-                    border: `1px solid rgba(${rtPrimary},0.18)`,
-                    maxWidth: "90vw",
-                    animation: !isLive ? "pulse-glow 2.5s ease-in-out infinite" : "none",
-                  }}>
-                  {coverUrl ? (
-                    <img src={coverUrl} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: `rgba(${rtPrimary},0.12)`, border: `1px solid rgba(${rtPrimary},0.2)` }}>
-                      <img
-                        src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png"
-                        alt="Upper Vibe Media"
-                        className="w-5 h-5 object-contain opacity-80"
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "14px" }}>
-                    {[3,5,8,6,4,7,5].map((h, i) => (
-                      <motion.div key={i}
-                        animate={{ height: [`${h * 0.4}px`, `${h}px`, `${h * 0.55}px`] }}
-                        transition={{ duration: 0.6 + i * 0.09, repeat: Infinity, ease: "easeInOut", delay: i * 0.07 }}
-                        className="w-[2px] rounded-full"
-                        style={{ background: `rgb(${rtPrimary})`, opacity: isLive ? 0.9 : 0.55 }} />
-                    ))}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[8px] font-black tracking-[0.18em] uppercase leading-none mb-0.5" style={{ color: `rgba(${rtPrimary},0.7)` }}>Live Now</p>
-                    <p className="text-xs font-bold text-white/90 truncate">{title}</p>
-                    <p className="text-[10px] truncate" style={{ color: isLive ? "rgba(255,255,255,0.45)" : `rgba(${rtPrimary},0.6)` }}>{artist}</p>
-                  </div>
-                </motion.div>
-              );
-            })()}
+            {/* ── Now Playing strip — always visible above fold ── */}
+            {currentTrack && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.4 }}
+                className="flex items-center gap-3 mt-3 mb-4 px-3 py-2.5 rounded-xl w-fit"
+                style={{ background: "rgba(0,200,220,0.06)", border: "1px solid rgba(0,200,220,0.18)", maxWidth: "90vw" }}>
+                {currentTrack.cover_url && (
+                  <img src={currentTrack.cover_url} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
+                )}
+                <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "14px" }}>
+                  {[3,5,8,6,4,7,5].map((h, i) => (
+                    <motion.div key={i}
+                      animate={{ height: [`${h * 0.4}px`, `${h}px`, `${h * 0.55}px`] }}
+                      transition={{ duration: 0.6 + i * 0.09, repeat: Infinity, ease: "easeInOut", delay: i * 0.07 }}
+                      className="w-[2px] rounded-full" style={{ background: `rgb(${rtPrimary})` }} />
+                  ))}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[8px] font-black tracking-[0.18em] uppercase leading-none mb-0.5" style={{ color: `rgba(${rtPrimary},0.7)` }}>Now Playing</p>
+                  <p className="text-xs font-bold text-white/90 truncate">{currentTrack.title}</p>
+                  <p className="text-[10px] text-white/45 truncate">{currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}</p>
+                </div>
+              </motion.div>
+            )}
 
             {/* ── Subtitle ── */}
             <motion.p
@@ -417,7 +392,52 @@ export default function Home() {
                 Upper Vibe Radio Is Live
               </h2>
 
-
+              {/* Now Playing strip — always visible, shows real song or placeholder */}
+              {(() => {
+                const displayTrack = currentTrack || currentRadioSong;
+                const isLive = !!displayTrack;
+                const coverUrl = displayTrack?.cover_url;
+                const title = displayTrack?.title || "Upper Vibe Radio";
+                const artist = displayTrack
+                  ? (displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media")
+                  : "Tap to start the frequency";
+                return (
+                  <motion.div
+                    animate={!isLive ? { boxShadow: [`0 0 0px rgba(${rtPrimary},0)`, `0 0 18px rgba(${rtPrimary},0.18)`, `0 0 0px rgba(${rtPrimary},0)`] } : {}}
+                    transition={!isLive ? { duration: 2.5, repeat: Infinity, ease: "easeInOut" } : {}}
+                    className="flex items-center gap-3 mb-4 px-3 py-2.5 rounded-xl w-fit"
+                    style={{ background: `rgba(${rtPrimary},0.07)`, border: `1px solid rgba(${rtPrimary},0.15)` }}>
+                    {/* Artwork or logo placeholder */}
+                    {coverUrl ? (
+                      <img src={coverUrl} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0 ring-1 ring-white/10" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: `rgba(${rtPrimary},0.12)`, border: `1px solid rgba(${rtPrimary},0.2)` }}>
+                        <img
+                          src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png"
+                          alt="Upper Vibe Media"
+                          className="w-6 h-6 object-contain opacity-80"
+                        />
+                      </div>
+                    )}
+                    {/* Animated equalizer bars */}
+                    <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "14px" }}>
+                      {[3,5,8,6,4,7,5,3].map((h, i) => (
+                        <motion.div key={i}
+                          animate={{ height: [`${h * 0.4}px`, `${h}px`, `${h * 0.55}px`] }}
+                          transition={{ duration: 0.6 + i * 0.08, repeat: Infinity, ease: "easeInOut", delay: i * 0.07 }}
+                          className="w-[2px] rounded-full"
+                          style={{ background: `rgb(${rtPrimary})`, opacity: isLive ? 0.9 : 0.5 }} />
+                      ))}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[9px] font-black tracking-[0.18em] uppercase leading-none mb-0.5" style={{ color: `rgba(${rtPrimary},0.7)` }}>Live Now</p>
+                      <p className="text-xs font-bold text-white/90 truncate">{title}</p>
+                      <p className="text-[10px] truncate" style={{ color: isLive ? "rgba(255,255,255,0.45)" : `rgba(${rtPrimary},0.6)` }}>{artist}</p>
+                    </div>
+                  </motion.div>
+                );
+              })()}
 
               <p className="text-white/50 text-sm md:text-base leading-relaxed max-w-lg mb-5 md:mb-6">
                 432 Hz high-vibe music, positive radio drops, visual energy, and nonstop frequency for your day.
