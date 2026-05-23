@@ -20,15 +20,7 @@ const GLOW_STYLE_ID = "radio-breathe-style";
 if (typeof document !== "undefined" && !document.getElementById(GLOW_STYLE_ID)) {
   const s = document.createElement("style");
   s.id = GLOW_STYLE_ID;
-  s.textContent = `
-    @keyframes radioBorderPulse {
-      0%,100% { opacity: 0.3; box-shadow: var(--rp-shadow-lo); }
-      50%      { opacity: 1;   box-shadow: var(--rp-shadow-hi); }
-    }
-    .radio-border-pulse {
-      animation: radioBorderPulse 2s ease-in-out infinite;
-    }
-  `;
+  s.textContent = ``;
   document.head.appendChild(s);
 }
 
@@ -178,12 +170,16 @@ export default function RadioPage() {
           transition={{ delay: 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="relative mx-auto mb-5 rounded-3xl"
           style={{ maxWidth: 440 }}>
-          <div className="relative z-10 overflow-hidden rounded-3xl radio-border-pulse"
+          <motion.div
+            animate={{ scale: [1, 1.04, 1], opacity: [0.35, 1, 0.35] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute inset-0 rounded-3xl pointer-events-none"
+            style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
+          />
+          <div className="relative z-10 overflow-hidden rounded-3xl"
             style={{
               background: "rgba(0,0,0,0.4)",
-              border: `2px solid rgba(${theme.vars["--rt-primary"]},0.9)`,
-              "--rp-shadow-lo": `0 0 12px rgba(${theme.vars["--rt-primary"]},0.25), 0 0 30px rgba(${theme.vars["--rt-primary"]},0.08)`,
-              "--rp-shadow-hi": `0 0 40px rgba(${theme.vars["--rt-primary"]},0.9), 0 0 80px rgba(${theme.vars["--rt-primary"]},0.45), 0 0 120px rgba(${theme.vars["--rt-primary"]},0.15)`,
+              border: `1px solid rgba(${theme.vars["--rt-primary"]},0.15)`,
             }}>
             <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} />
             <div className="pointer-events-none absolute inset-0"
@@ -204,12 +200,16 @@ export default function RadioPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
               className="w-full lg:w-[360px] flex-shrink-0 relative">
-              <div className="relative z-10 rounded-3xl p-6 radio-border-pulse"
+              <motion.div
+                animate={{ scale: [1, 1.04, 1], opacity: [0.35, 1, 0.35] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                className="absolute inset-0 rounded-3xl pointer-events-none"
+                style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
+              />
+              <div className="relative z-10 rounded-3xl p-6"
                 style={{
                   background: "rgba(255,255,255,0.028)",
-                  border: `2px solid rgba(${theme.vars["--rt-primary"]},0.9)`,
-                  "--rp-shadow-lo": `0 0 12px rgba(${theme.vars["--rt-primary"]},0.25), 0 0 30px rgba(${theme.vars["--rt-primary"]},0.08)`,
-                  "--rp-shadow-hi": `0 0 40px rgba(${theme.vars["--rt-primary"]},0.9), 0 0 80px rgba(${theme.vars["--rt-primary"]},0.45), 0 0 120px rgba(${theme.vars["--rt-primary"]},0.15)`,
+                  border: `1px solid rgba(${theme.vars["--rt-primary"]},0.12)`,
                 }}>
 
                 {/* Cover art */}
