@@ -52,6 +52,21 @@ function detectBeat(bass) {
 
 // ── Real-data draw functions ──────────────────────────────────────────────────
 
+// iOS Safari <15.4 lacks roundRect — use a safe polyfill
+function drawRoundedBar(ctx, x, y, w, h, r) {
+  if (h <= 0 || w <= 0) return;
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
 function drawEnergy(ctx, W, H, sm, bufLen, bass, mid, treble, beat) {
   const barCount = 64, gap = 2;
   const barW = (W - gap * (barCount - 1)) / barCount;
@@ -68,8 +83,7 @@ function drawEnergy(ctx, W, H, sm, bufLen, bass, mid, treble, beat) {
     grad.addColorStop(0.6, `hsla(${hue + 20},100%,65%,${0.7 + v * 0.3})`);
     grad.addColorStop(1, `hsla(${hue + 40},100%,85%,${0.3 + v * 0.4})`);
     ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.roundRect(x, H - h, barW, h, [3, 3, 0, 0]);
+    drawRoundedBar(ctx, x, H - h, barW, h, 3);
     ctx.fill();
   }
 }
@@ -335,7 +349,8 @@ function fallbackEnergy(ctx, W, H, t, active) {
     const v = active ? (Math.sin(t * 2.4 + i * 0.38) * 0.5 + 0.5) * (Math.sin(t * 1.1 + i * 0.14) * 0.3 + 0.7) : 0.05 + Math.sin(i * 0.5) * 0.03;
     const h = Math.max(3, v * H * 0.85);
     ctx.fillStyle = `hsla(${185 + i * 1.2},100%,58%,${0.3 + v * 0.55})`;
-    ctx.beginPath(); ctx.roundRect(i * (bw + gap), H - h, bw, h, [2, 2, 0, 0]); ctx.fill();
+    drawRoundedBar(ctx, i * (bw + gap), H - h, bw, h, 2);
+    ctx.fill();
   }
 }
 

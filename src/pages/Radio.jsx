@@ -30,7 +30,8 @@ export default function RadioPage() {
   useEffect(() => {
     const ids = trackFavs.map((f) => f.track_id).filter(Boolean);
     setRadioLikedIds(ids);
-  }, [trackFavs, setRadioLikedIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trackFavs]);
 
   const isPlus =
     user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" ||
