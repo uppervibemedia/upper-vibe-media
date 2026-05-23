@@ -1,12 +1,66 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Radio, Music4, Tv2, Mail, CheckCircle2 } from "lucide-react";
+import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+
+const PRIMARY = "0,160,220";
+const GOLD = "212,168,67";
+
+function PremiumButton({ children, onClick, href, className = "", style = {} }) {
+  const base = {
+    background: "linear-gradient(135deg,#0090C8,#00A0DC)",
+    color: "#000",
+    boxShadow: "0 0 32px rgba(0,160,220,0.4), 0 4px 18px rgba(0,0,0,0.35)",
+    fontFamily: "var(--font-heading)",
+    fontWeight: 900,
+    letterSpacing: "0.05em",
+    ...style,
+  };
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer"
+        className={`w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl text-sm tracking-wider transition-all active:scale-[0.97] ${className}`}
+        style={base}>
+        {children}
+      </a>
+    );
+  }
+  if (onClick) {
+    return (
+      <button onClick={onClick}
+        className={`w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl text-sm tracking-wider transition-all active:scale-[0.97] ${className}`}
+        style={base}>
+        {children}
+      </button>
+    );
+  }
+  return null;
+}
 
 export default function Start() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+
+  const handleCheckout = async () => {
+    if (window.self !== window.top) {
+      setCheckoutError("Checkout is only available from the published app. Please open uppervibemedia.com directly.");
+      return;
+    }
+    setCheckoutError("");
+    try {
+      const res = await base44.functions.invoke("stripeCheckout", {
+        plan: "plus",
+        billingCycle: "monthly",
+        successUrl: `${window.location.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/start`,
+      });
+      if (res.data?.url) window.location.href = res.data.url;
+    } catch (e) {
+      setCheckoutError("Something went wrong. Please try again.");
+    }
+  };
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
@@ -24,244 +78,244 @@ export default function Start() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-start px-5 py-10"
+      className="min-h-screen flex flex-col items-center"
       style={{
-        background: "linear-gradient(160deg, #060610 0%, #0a0a1e 60%, #040410 100%)",
+        background: "linear-gradient(160deg,#06060f 0%,#090914 55%,#04040d 100%)",
         WebkitOverflowScrolling: "touch",
+        fontFamily: "var(--font-body)",
       }}
     >
-      {/* Ambient glow — static, no animation loop */}
+      {/* Static ambient glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-        <div
-          className="absolute top-[-120px] left-1/2 -translate-x-1/2 w-[420px] h-[420px] rounded-full blur-[160px]"
-          style={{ background: "rgba(0,160,220,0.07)" }}
-        />
-        <div
-          className="absolute bottom-[-60px] right-[-40px] w-[260px] h-[260px] rounded-full blur-[120px]"
-          style={{ background: "rgba(245,168,0,0.05)" }}
-        />
+        <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[500px] h-[400px] rounded-full blur-[180px]"
+          style={{ background: "rgba(0,144,200,0.06)" }} />
+        <div className="absolute bottom-[-60px] right-[-30px] w-[280px] h-[280px] rounded-full blur-[130px]"
+          style={{ background: "rgba(212,168,67,0.04)" }} />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm flex flex-col items-center gap-6">
+      <div className="relative z-10 w-full max-w-md px-5 pb-16 pt-10 flex flex-col gap-10">
 
-        {/* ── Branding ── */}
-        <div className="text-center mt-4">
-          {/* Frequency badge */}
-          <div
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-5"
-            style={{
-              background: "rgba(0,160,220,0.07)",
-              border: "1px solid rgba(0,160,220,0.22)",
-            }}
-          >
-            <span
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: "#00A0DC" }}
-            />
-            <span
-              style={{
-                fontSize: "9px",
-                fontWeight: 900,
-                letterSpacing: "0.38em",
-                textTransform: "uppercase",
-                color: "#00A0DC",
-                fontFamily: "var(--font-heading)",
-              }}
-            >
-              432 Hz High-Vibe Music
-            </span>
-          </div>
+        {/* ── HERO ── */}
+        <section className="flex flex-col items-center text-center gap-5">
 
-          {/* Logo wordmark */}
-          <div className="mb-1">
-            <div
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "clamp(2rem, 10vw, 2.8rem)",
-                fontWeight: 900,
-                lineHeight: 0.95,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "#F5A800",
-                filter: "drop-shadow(0 2px 12px rgba(245,168,0,0.3))",
-              }}
-            >
+          {/* Wordmark */}
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
+              style={{ background: "rgba(0,160,220,0.07)", border: "1px solid rgba(0,160,220,0.22)" }}>
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#00A0DC" }} />
+              <span style={{ fontSize: "9px", fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "#00A0DC", fontFamily: "var(--font-heading)" }}>
+                432 Hz High-Vibe Music
+              </span>
+            </div>
+
+            <div style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.9rem, 9vw, 2.6rem)", fontWeight: 900, lineHeight: 0.93, letterSpacing: "0.06em", textTransform: "uppercase", color: "#F5A800", filter: "drop-shadow(0 2px 12px rgba(245,168,0,0.28))" }}>
               UPPER VIBE
             </div>
-            <div
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "clamp(1.05rem, 5vw, 1.5rem)",
-                fontWeight: 800,
-                lineHeight: 1.1,
-                letterSpacing: "0.22em",
-                textTransform: "uppercase",
-                color: "#2B9FE8",
-                filter: "drop-shadow(0 2px 8px rgba(43,159,232,0.3))",
-              }}
-            >
+            <div style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1rem, 5vw, 1.4rem)", fontWeight: 800, lineHeight: 1.1, letterSpacing: "0.22em", textTransform: "uppercase", color: "#2B9FE8", filter: "drop-shadow(0 2px 8px rgba(43,159,232,0.28))" }}>
               MEDIA
             </div>
           </div>
 
-          {/* Tagline */}
-          <p
-            className="mt-4 text-sm leading-relaxed"
-            style={{ color: "rgba(255,255,255,0.45)", maxWidth: "22rem" }}
-          >
-            Stream new high-vibe music, visualizers, and frequency-based sounds from Upper Vibe Media.
+          {/* Headline */}
+          <div>
+            <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.45rem, 6vw, 2rem)", fontWeight: 900, lineHeight: 1.15, color: "#fff", marginBottom: "0.6rem" }}>
+              Stream Free.<br />
+              <span style={{ color: "#00A0DC" }}>Download Everything</span> for $4.99/mo.
+            </h1>
+            <p style={{ fontSize: "0.875rem", lineHeight: 1.65, color: "rgba(255,255,255,0.45)", maxWidth: "24rem", margin: "0 auto" }}>
+              Listen to Upper Vibe Media free anytime. Upgrade to Premium to download every song, build your vibe library, and keep the frequency with you offline.
+            </p>
+          </div>
+
+          {/* Primary CTA */}
+          <div className="w-full flex flex-col gap-3">
+            <PremiumButton onClick={handleCheckout}>
+              <Download className="w-4 h-4" />
+              Unlock All Downloads — $4.99/mo
+            </PremiumButton>
+
+            {checkoutError && (
+              <p className="text-xs text-center px-2" style={{ color: "rgba(255,100,100,0.85)" }}>{checkoutError}</p>
+            )}
+
+            <Link to="/music"
+              className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold tracking-wide transition-all active:scale-[0.97]"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)" }}>
+              Listen Free First
+            </Link>
+          </div>
+        </section>
+
+        {/* ── BENEFIT CARDS ── */}
+        <section className="flex flex-col gap-3">
+          <p className="text-[9px] font-black tracking-[0.3em] uppercase text-center" style={{ color: `rgba(${PRIMARY},0.6)` }}>
+            What You Get with Premium
           </p>
-        </div>
 
-        {/* ── Main Buttons ── */}
-        <div className="w-full flex flex-col gap-3">
-
-          {/* Try Live Radio — primary CTA */}
-          <Link
-            to="/radio"
-            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-black text-sm tracking-wider transition-all active:scale-[0.97]"
-            style={{
-              background: "linear-gradient(135deg,#0090C8,#00A0DC)",
-              color: "#000",
-              boxShadow: "0 0 28px rgba(0,160,220,0.35), 0 4px 16px rgba(0,0,0,0.3)",
-            }}
-          >
-            <Radio className="w-4 h-4" />
-            Try Live Radio
-          </Link>
-
-          {/* Latest Music */}
-          <Link
-            to="/music"
-            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl font-black text-sm tracking-wider transition-all active:scale-[0.97]"
-            style={{
-              background: "rgba(0,160,220,0.07)",
-              border: "1px solid rgba(0,160,220,0.28)",
-              color: "#00A0DC",
-            }}
-          >
-            <Music4 className="w-4 h-4" />
-            Latest Music
-          </Link>
-
-          {/* Watch Visualizers */}
-          <Link
-            to="/visualizers"
-            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl font-black text-sm tracking-wider transition-all active:scale-[0.97]"
-            style={{
-              background: "rgba(245,168,0,0.06)",
-              border: "1px solid rgba(245,168,0,0.25)",
-              color: "#F5A800",
-            }}
-          >
-            <Tv2 className="w-4 h-4" />
-            Watch Visualizers
-          </Link>
-
-          {/* Divider */}
-          <div
-            className="w-full h-px my-1"
-            style={{ background: "rgba(255,255,255,0.07)" }}
-          />
-
-          {/* Listen on Spotify */}
-          <a
-            href="https://open.spotify.com/artist/uppervibemedia"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl font-black text-sm tracking-wider transition-all active:scale-[0.97]"
-            style={{
-              background: "rgba(30,215,96,0.07)",
-              border: "1px solid rgba(30,215,96,0.25)",
-              color: "#1ED760",
-            }}
-          >
-            {/* Spotify icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-            </svg>
-            Listen on Spotify
-          </a>
-
-          {/* Listen on Apple Music */}
-          <a
-            href="https://music.apple.com/us/artist/upper-vibe-media"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl font-black text-sm tracking-wider transition-all active:scale-[0.97]"
-            style={{
-              background: "rgba(252,60,68,0.07)",
-              border: "1px solid rgba(252,60,68,0.22)",
-              color: "#FC3C44",
-            }}
-          >
-            {/* Apple Music icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a6.303 6.303 0 00-1.903-.737 9.55 9.55 0 00-1.555-.205c-.08-.006-.16-.013-.24-.018H5.562a9.55 9.55 0 00-1.555.205 6.303 6.303 0 00-1.904.737C1.066 1.624.32 2.624.003 3.934A9.23 9.23 0 00-.237 6.124c0 .085-.006.17-.008.256v11.241c0 .086.003.17.008.255a9.23 9.23 0 00.24 2.19c.317 1.31 1.062 2.31 2.18 3.044a6.303 6.303 0 001.904.737 9.55 9.55 0 001.555.205l.24.018h12.758l.24-.018a9.55 9.55 0 001.555-.205 6.303 6.303 0 001.903-.737c1.118-.734 1.863-1.734 2.18-3.044a9.23 9.23 0 00.24-2.19c.005-.085.007-.17.007-.255V6.38c0-.086-.002-.17-.007-.256zM12 17.15c-2.84 0-5.15-2.31-5.15-5.15S9.16 6.85 12 6.85s5.15 2.31 5.15 5.15-2.31 5.15-5.15 5.15zm0-8.3a3.15 3.15 0 100 6.3 3.15 3.15 0 000-6.3zm5.35-2.35a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z"/>
-            </svg>
-            Listen on Apple Music
-          </a>
-
-          {/* Divider */}
-          <div
-            className="w-full h-px my-1"
-            style={{ background: "rgba(255,255,255,0.07)" }}
-          />
-
-          {/* Join Email List */}
-          {!submitted ? (
-            <form onSubmit={handleEmailSubmit} className="w-full flex flex-col gap-2">
-              <label
-                className="text-xs font-black tracking-wider text-center"
-                style={{ color: "rgba(255,255,255,0.35)", letterSpacing: "0.15em", textTransform: "uppercase" }}
-              >
-                <Mail className="w-3.5 h-3.5 inline mr-1.5 mb-0.5" />
-                Join the Email List
-              </label>
-              <input
-                type="email"
-                placeholder="Your email address"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder:text-white/25 focus:outline-none"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(0,160,220,0.18)",
-                  WebkitAppearance: "none",
-                }}
-              />
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full py-3 rounded-xl font-black text-sm tracking-wider transition-all active:scale-[0.97] disabled:opacity-60"
-                style={{
-                  background: "rgba(0,160,220,0.12)",
-                  border: "1px solid rgba(0,160,220,0.3)",
-                  color: "#00A0DC",
-                }}
-              >
-                {saving ? "Joining..." : "Get New Music Alerts"}
-              </button>
-            </form>
-          ) : (
-            <div
-              className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl"
-              style={{ background: "rgba(0,160,220,0.07)", border: "1px solid rgba(0,160,220,0.2)" }}
-            >
-              <CheckCircle2 className="w-4 h-4" style={{ color: "#00A0DC" }} />
-              <span className="text-sm font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>
-                You're on the list!
-              </span>
+          {[
+            {
+              icon: <Download className="w-5 h-5" style={{ color: "#00A0DC" }} />,
+              title: "Unlimited Song Downloads",
+              desc: "Download every Upper Vibe Media track with Premium.",
+              accent: PRIMARY,
+            },
+            {
+              icon: <Heart className="w-5 h-5" style={{ color: "#9B7EFF" }} />,
+              title: "Build Your Vibe Library",
+              desc: "Save your favorite 432 Hz songs and keep your personal frequency collection.",
+              accent: "155,126,255",
+            },
+            {
+              icon: <Zap className="w-5 h-5" style={{ color: "#F5A800" }} />,
+              title: "Support Independent High-Vibe Music",
+              desc: "Your membership helps Upper Vibe Media keep releasing new music, visualizers, and frequency-based content.",
+              accent: GOLD,
+            },
+          ].map((card) => (
+            <div key={card.title}
+              className="flex gap-4 items-start p-4 rounded-2xl"
+              style={{ background: `rgba(${card.accent},0.05)`, border: `1px solid rgba(${card.accent},0.15)` }}>
+              <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{ background: `rgba(${card.accent},0.1)`, border: `1px solid rgba(${card.accent},0.2)` }}>
+                {card.icon}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white mb-0.5" style={{ fontFamily: "var(--font-heading)" }}>{card.title}</p>
+                <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.42)" }}>{card.desc}</p>
+              </div>
             </div>
+          ))}
+        </section>
+
+        {/* ── FREE vs PREMIUM COMPARISON ── */}
+        <section className="flex flex-col gap-4">
+          <p className="text-[9px] font-black tracking-[0.3em] uppercase text-center" style={{ color: `rgba(${PRIMARY},0.6)` }}>
+            Free vs Premium
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Free */}
+            <div className="rounded-2xl p-4 flex flex-col gap-3"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div>
+                <p className="text-xs font-black text-white mb-0.5" style={{ fontFamily: "var(--font-heading)" }}>Free</p>
+                <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>Always free</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                {["Stream songs", "Listen to Live Radio", "Watch visualizers", "Explore latest music"].map((item) => (
+                  <div key={item} className="flex items-start gap-2">
+                    <Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }} />
+                    <span className="text-[11px] leading-tight" style={{ color: "rgba(255,255,255,0.45)" }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Premium */}
+            <div className="rounded-2xl p-4 flex flex-col gap-3 relative overflow-hidden"
+              style={{ background: `rgba(${PRIMARY},0.07)`, border: `1px solid rgba(${PRIMARY},0.3)`, boxShadow: `0 0 24px rgba(${PRIMARY},0.1)` }}>
+              {/* Glow */}
+              <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-[40px] pointer-events-none"
+                style={{ background: `rgba(${PRIMARY},0.15)` }} />
+              <div className="relative z-10">
+                <p className="text-xs font-black mb-0.5" style={{ color: "#00A0DC", fontFamily: "var(--font-heading)" }}>Premium</p>
+                <p className="text-[10px] font-bold" style={{ color: `rgba(${PRIMARY},0.7)` }}>$4.99/month</p>
+              </div>
+              <div className="flex flex-col gap-2 relative z-10">
+                {["Download all songs", "Save to My Vibe Library", "Offline listening", "Premium music drops", "Support UVM directly"].map((item) => (
+                  <div key={item} className="flex items-start gap-2">
+                    <Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "#00A0DC" }} />
+                    <span className="text-[11px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.75)" }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── CONVERSION CTA ── */}
+        <section className="flex flex-col items-center gap-4 py-6 px-5 rounded-3xl"
+          style={{ background: `rgba(${PRIMARY},0.06)`, border: `1px solid rgba(${PRIMARY},0.18)` }}>
+          <div className="text-center">
+            <h2 style={{ fontFamily: "var(--font-heading)", fontSize: "1.25rem", fontWeight: 900, color: "#fff", marginBottom: "0.5rem" }}>
+              Keep The Frequency With You
+            </h2>
+            <p className="text-sm" style={{ color: "rgba(255,255,255,0.42)", lineHeight: 1.6 }}>
+              For only $4.99/month, unlock downloads for the full Upper Vibe Media catalog.
+            </p>
+          </div>
+          <PremiumButton onClick={handleCheckout} style={{ background: "linear-gradient(135deg,#0090C8,#00B8D4)", color: "#000", boxShadow: "0 0 36px rgba(0,160,220,0.45)" }}>
+            <Download className="w-4 h-4" />
+            Start Premium — $4.99/month
+          </PremiumButton>
+          {checkoutError && (
+            <p className="text-xs text-center" style={{ color: "rgba(255,100,100,0.85)" }}>{checkoutError}</p>
           )}
-        </div>
+          <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.2)" }}>Cancel anytime · Streaming always free</p>
+        </section>
+
+        {/* ── DIVIDER ── */}
+        <div className="w-full h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+        {/* ── NAVIGATION BUTTONS ── */}
+        <section className="flex flex-col gap-3">
+          <p className="text-[9px] font-black tracking-[0.3em] uppercase text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
+            Explore Free
+          </p>
+
+          <Link to="/radio"
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
+            style={{ background: "rgba(0,160,220,0.07)", border: "1px solid rgba(0,160,220,0.22)", color: "#00A0DC" }}>
+            <Radio className="w-4 h-4" /> Try Live Radio
+          </Link>
+
+          <Link to="/music"
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.5)" }}>
+            <Music4 className="w-4 h-4" /> Latest Music
+          </Link>
+
+          <Link to="/visualizers"
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
+            style={{ background: "rgba(245,168,0,0.05)", border: "1px solid rgba(245,168,0,0.2)", color: "#C89432" }}>
+            <Tv2 className="w-4 h-4" /> Watch Visualizers
+          </Link>
+
+          {/* Email signup */}
+          <div className="pt-1">
+            {!submitted ? (
+              <form onSubmit={handleEmailSubmit} className="flex flex-col gap-2">
+                <p className="text-[10px] font-black tracking-[0.2em] uppercase text-center" style={{ color: "rgba(255,255,255,0.25)" }}>
+                  <Mail className="w-3 h-3 inline mr-1 mb-0.5" />
+                  Join the Email List
+                </p>
+                <input
+                  type="email"
+                  placeholder="Your email address"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder:text-white/25 focus:outline-none"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", WebkitAppearance: "none" }}
+                />
+                <button type="submit" disabled={saving}
+                  className="w-full py-3 rounded-xl text-sm font-black tracking-wide transition-all active:scale-[0.97] disabled:opacity-60"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.5)" }}>
+                  {saving ? "Joining..." : "Get New Music Alerts"}
+                </button>
+              </form>
+            ) : (
+              <div className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl"
+                style={{ background: "rgba(0,160,220,0.07)", border: "1px solid rgba(0,160,220,0.2)" }}>
+                <CheckCircle2 className="w-4 h-4" style={{ color: "#00A0DC" }} />
+                <span className="text-sm font-bold" style={{ color: "rgba(255,255,255,0.65)" }}>You're on the list!</span>
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* Footer */}
-        <p
-          className="text-[10px] text-center pb-6"
-          style={{ color: "rgba(255,255,255,0.2)", letterSpacing: "0.05em" }}
-        >
+        <p className="text-[10px] text-center" style={{ color: "rgba(255,255,255,0.18)", letterSpacing: "0.05em" }}>
           © Upper Vibe Media · All rights reserved
         </p>
       </div>
