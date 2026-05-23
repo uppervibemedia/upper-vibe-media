@@ -11,6 +11,8 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import { useFavorites } from "../hooks/useFavorite";
 import PullToRefresh from "../components/shared/PullToRefresh";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 
 const GENRE_TYPES = ["genre", "mood", "editorial", "frequency"];
 
@@ -46,6 +48,9 @@ export default function Music() {
   const { user } = useAuth();
   const isPremium = user?.role === "premium" || user?.role === "admin";
   const { isFaved, toggle } = useFavorites(user?.email);
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const themeColor = radioTheme.vars["--rt-primary"]; // e.g. "0,229,255"
 
   useEffect(() => {
     setLoading(true);
@@ -102,16 +107,16 @@ export default function Music() {
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
               {/* Eyebrow label */}
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm mb-3"
-                style={{ background: "rgba(0,200,220,0.05)", border: "1px solid rgba(0,200,220,0.16)" }}>
-                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ background: "#00C9E0" }} />
+                style={{ background: `rgba(${themeColor},0.05)`, border: `1px solid rgba(${themeColor},0.16)` }}>
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ background: `rgb(${themeColor})` }} />
                 <span style={{
                   fontSize: "9px", letterSpacing: "0.38em", fontWeight: 900,
-                  textTransform: "uppercase", color: "#00C9E0", fontFamily: "var(--font-heading)"
+                  textTransform: "uppercase", color: `rgb(${themeColor})`, fontFamily: "var(--font-heading)"
                 }}>Music Library</span>
               </div>
 
-              <h1 className="font-heading font-black text-white mb-1.5 leading-tight"
-                style={{ fontSize: "clamp(1.7rem, 6vw, 3rem)" }}>
+              <h1 className="font-heading font-black mb-1.5 leading-tight"
+                style={{ fontSize: "clamp(1.7rem, 6vw, 3rem)", color: `rgb(${themeColor})` }}>
                 Music Library
               </h1>
               <p className="text-white/30 text-xs leading-relaxed max-w-lg">
@@ -151,15 +156,15 @@ export default function Music() {
           {/* Filter tabs — full-bleed horizontal scroll, chips never cut off */}
           <div className="overflow-x-auto pb-2 mb-3 hide-scrollbar">
             <div className="flex gap-2" style={{ width: "max-content", paddingLeft: "1.5rem", paddingRight: "1.5rem" }}>
-              <FilterPill label="All" active={activeFilter === "all"} onClick={() => { setActiveFilter("all"); setSearch(""); }} color="cyan" />
-              <FilterPill label="New Releases" active={activeFilter === "new"} onClick={() => { setActiveFilter("new"); setSearch(""); }} color="gold" />
+              <FilterPill label="All" active={activeFilter === "all"} onClick={() => { setActiveFilter("all"); setSearch(""); }} themeColor={themeColor} />
+              <FilterPill label="New Releases" active={activeFilter === "new"} onClick={() => { setActiveFilter("new"); setSearch(""); }} themeColor={themeColor} />
               {categories.map((cat) => (
                 <FilterPill
                   key={cat.id}
                   label={cat.name}
                   active={activeFilter === cat.id}
                   onClick={() => { setActiveFilter(cat.id); setSearch(""); }}
-                  color="cyan"
+                  themeColor={themeColor}
                 />
               ))}
             </div>
@@ -204,6 +209,7 @@ export default function Music() {
                       isFaved={isFaved}
                       isPremium={isPremium}
                       user={user}
+                      themeColor={themeColor}
                       onPlay={handlePlay}
                       onFav={(track) => {
                         if (!user) { setLoginModal(true); return; }
@@ -229,16 +235,15 @@ export default function Music() {
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function FilterPill({ label, active, onClick, color }) {
-  const cyan = color === "cyan";
+function FilterPill({ label, active, onClick, themeColor }) {
   return (
     <button
       onClick={onClick}
       className="whitespace-nowrap px-4 py-2.5 rounded-full text-xs font-bold tracking-wider transition-all border flex-shrink-0"
       style={active ? {
-        background: cyan ? "rgba(0,229,255,0.12)" : "rgba(212,168,67,0.15)",
-        borderColor: cyan ? "rgba(0,229,255,0.35)" : "rgba(212,168,67,0.4)",
-        color: cyan ? "#00E5FF" : "#D4A843",
+        background: `rgba(${themeColor},0.12)`,
+        borderColor: `rgba(${themeColor},0.4)`,
+        color: `rgb(${themeColor})`,
       } : {
         background: "rgba(255,255,255,0.03)",
         borderColor: "rgba(255,255,255,0.07)",
@@ -250,7 +255,8 @@ function FilterPill({ label, active, onClick, color }) {
   );
 }
 
-function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user, onPlay, onFav, onDownload }) {
+function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user, themeColor, onPlay, onFav, onDownload }) {
+  const tc = themeColor || "0,229,255";
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -258,9 +264,9 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
       transition={{ delay: Math.min(index * 0.02, 0.3) }}
       className="flex items-center gap-3 p-3.5 rounded-2xl transition-all active:scale-[0.99]"
       style={{
-        background: isCurrent ? "rgba(0,229,255,0.06)" : "rgba(255,255,255,0.025)",
-        border: `1px solid ${isCurrent ? "rgba(0,229,255,0.2)" : "rgba(255,255,255,0.06)"}`,
-        boxShadow: isCurrent ? "0 0 20px rgba(0,200,220,0.06)" : "none",
+        background: isCurrent ? `rgba(${tc},0.06)` : "rgba(255,255,255,0.025)",
+        border: `1px solid ${isCurrent ? `rgba(${tc},0.2)` : "rgba(255,255,255,0.06)"}`,
+        boxShadow: isCurrent ? `0 0 20px rgba(${tc},0.06)` : "none",
       }}
     >
       {/* Cover art */}
@@ -286,7 +292,7 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
       <div className="flex-1 min-w-0">
         <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()} className="block">
           <p className="text-sm font-bold text-white truncate leading-snug"
-            style={{ color: isCurrent ? "#00E5FF" : "#fff" }}>
+            style={{ color: isCurrent ? `rgb(${tc})` : "#fff" }}>
             {track.title}
           </p>
           <p className="text-xs text-white/40 truncate mt-0.5">
@@ -307,13 +313,13 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
 
       {/* Action buttons — always aligned, never crowded */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        {/* Favorite */}
+        {/* Favorite — purple theme */}
         <button
           onClick={() => onFav(track)}
           title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
           style={isFaved("track", track.id) ? {
-            background: "rgba(236,72,153,0.15)", border: "1px solid rgba(236,72,153,0.35)", color: "#ec4899"
+            background: "rgba(155,126,255,0.18)", border: "1px solid rgba(155,126,255,0.4)", color: "#9B7EFF"
           } : {
             background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.3)"
           }}>
@@ -325,9 +331,9 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
           onClick={() => onPlay(track)}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
           style={{
-            background: isCurrent ? "rgba(0,229,255,0.18)" : "rgba(0,229,255,0.08)",
-            border: "1px solid rgba(0,229,255,0.25)",
-            color: "#00E5FF"
+            background: isCurrent ? `rgba(${tc},0.18)` : `rgba(${tc},0.08)`,
+            border: `1px solid rgba(${tc},0.25)`,
+            color: `rgb(${tc})`
           }}>
           {isCurrent && isPlaying
             ? <Pause className="w-3.5 h-3.5" />

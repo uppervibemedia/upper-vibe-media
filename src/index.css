@@ -544,22 +544,22 @@ html.solar-transitioning *::after {
   background: hsl(270 40% 95%) !important;
 }
 
-/* ── Solar: Hero logo text — UPPER VIBE & MEDIA ── */
+/* ── Solar: Hero logo text — UPPER VIBE (gold) & MEDIA (cyan) ── */
 .solar .hero-logo-upper {
-  background: #0891b2 !important;
+  background: linear-gradient(105deg, #8a6510, #b8860b, #d4a017, #b8860b, #8a6510) !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
-  filter: drop-shadow(0 2px 6px rgba(8, 145, 178, 0.4)) !important;
+  filter: drop-shadow(0 2px 6px rgba(184, 134, 11, 0.35)) !important;
   opacity: 1 !important;
 }
 
 .solar .hero-logo-media {
-  background: #b8860b !important;
+  background: linear-gradient(105deg, #006d82, #009ab5, #00c8e0, #009ab5, #006d82) !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
-  filter: drop-shadow(0 2px 6px rgba(184, 134, 11, 0.4)) !important;
+  filter: drop-shadow(0 2px 6px rgba(0, 180, 210, 0.35)) !important;
   opacity: 1 !important;
 }
 
