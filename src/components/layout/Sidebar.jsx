@@ -145,19 +145,15 @@ export default function Sidebar() {
                 <div
                   className="p-1.5 rounded-lg transition-all"
                   style={{
-                    background: isActive && isRadioItem
-                      ? `rgba(${radioThemeColor},0.15)`
-                      : isActive ? "rgba(var(--primary),0.15)" : "transparent",
-                    boxShadow: glowing ? `0 0 10px rgba(${radioThemeColor},0.35)` : "none",
+                    background: isActive ? "rgba(0,160,220,0.15)" : "transparent",
+                    boxShadow: glowing ? "0 0 10px rgba(0,160,220,0.35)" : "none",
                   }}
                 >
                   <item.icon
                     className="w-[18px] h-[18px] transition-colors"
                     style={{
-                      color: isRadioItem && (isActive || glowing)
-                        ? `rgb(${radioThemeColor})`
-                        : isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground) / 0.6)",
-                      filter: glowing && !isActive ? `drop-shadow(0 0 4px rgba(${radioThemeColor},0.7))` : "none",
+                      color: isActive || glowing ? "rgb(0,160,220)" : "hsl(var(--muted-foreground) / 0.6)",
+                      filter: glowing && !isActive ? "drop-shadow(0 0 4px rgba(0,160,220,0.7))" : "none",
                     }}
                   />
                   {glowing && !isActive && (
@@ -168,9 +164,7 @@ export default function Sidebar() {
                 <span
                   className="text-[8px] font-semibold tracking-wide uppercase"
                   style={{
-                    color: isRadioItem && (isActive || glowing)
-                      ? `rgb(${radioThemeColor})`
-                      : isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground) / 0.5)",
+                    color: isActive || glowing ? "rgb(0,160,220)" : "hsl(var(--muted-foreground) / 0.5)",
                   }}
                 >
                   {item.label}
@@ -228,21 +222,19 @@ export default function Sidebar() {
                   isActive ? "" : "hover:bg-muted/50"
                 }`}
                 style={isActive ? {
-                  background: accentColor ? `rgba(${accentColor},0.1)` : "hsl(var(--primary) / 0.1)",
-                  boxShadow: accentColor
-                    ? `inset 0 0 0 1px rgba(${accentColor},0.2)`
-                    : "inset 0 0 0 1px hsl(var(--primary) / 0.2)",
+                  background: "rgba(0,160,220,0.1)",
+                  boxShadow: "inset 0 0 0 1px rgba(0,160,220,0.2)",
                 } : {}}
               >
                 {isActive && (
                   <div
                     className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full"
-                    style={{ background: accentColor ? `rgb(${accentColor})` : "hsl(var(--primary))" }}
+                    style={{ background: "rgb(0,160,220)" }}
                   />
                 )}
                 <item.icon
                   className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${!isActive ? "text-muted-foreground/50 group-hover:text-foreground/70" : ""}`}
-                  style={isActive ? { color: accentColor ? `rgb(${accentColor})` : "hsl(var(--primary))" } : {}}
+                  style={isActive ? { color: "rgb(0,160,220)" } : {}}
                 />
                 <AnimatePresence>
                   {expanded && (
@@ -254,7 +246,7 @@ export default function Sidebar() {
                       className={`text-[13px] font-medium whitespace-nowrap ${
                         !isActive ? "text-muted-foreground group-hover:text-foreground/80" : ""
                       }`}
-                      style={isActive && accentColor ? { color: `rgb(${accentColor})` } : isActive ? { color: "hsl(var(--primary))" } : {}}
+                      style={isActive ? { color: "rgb(0,160,220)" } : {}}
                     >
                       {item.label}
                     </motion.span>
