@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart, ChevronLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { recordPlay } from "../components/home/DiscoverTab";
@@ -53,6 +53,7 @@ export default function Music() {
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const themeColor = radioTheme.vars["--rt-primary"]; // e.g. "0,229,255"
+  const navigate = useNavigate();
 
   useEffect(() => {
     setLoading(true);
@@ -117,6 +118,16 @@ export default function Music() {
           <div className="max-w-7xl mx-auto px-6 relative z-10"
             style={{ paddingTop: "max(4.5rem, calc(3rem + env(safe-area-inset-top, 0px)))", paddingBottom: "1rem" }}>
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
+              {/* Back button */}
+              <button
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center gap-1.5 text-xs mb-4 transition-colors"
+                style={{ color: `rgba(${themeColor},0.6)` }}
+                onMouseEnter={e => e.currentTarget.style.color = `rgb(${themeColor})`}
+                onMouseLeave={e => e.currentTarget.style.color = `rgba(${themeColor},0.6)`}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Back
+              </button>
               {/* Main title */}
               <h1 className="font-heading font-black mb-1 leading-tight"
                 style={{ fontSize: "clamp(1.9rem, 6vw, 3.2rem)", color: "rgba(255,255,255,0.92)" }}>
