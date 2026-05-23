@@ -84,9 +84,9 @@ export default function Sidebar() {
             onClick={(e) => { if (!isAuthenticated) { e.preventDefault(); navigateToLogin("/my-vibes"); } }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all"
             style={{
-              background: `rgba(${radioThemeColor},0.07)`,
-              borderColor: `rgba(${radioThemeColor},0.28)`,
-              color: `rgb(${radioThemeColor})`,
+              background: "rgba(0,160,220,0.07)",
+              borderColor: "rgba(0,160,220,0.28)",
+              color: "rgb(0,160,220)",
             }}>
             <Heart className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="hidden sm:inline text-[11px] font-semibold whitespace-nowrap">My Vibe Library</span>
