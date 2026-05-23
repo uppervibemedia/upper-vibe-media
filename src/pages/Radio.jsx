@@ -22,14 +22,14 @@ if (typeof document !== "undefined" && !document.getElementById(GLOW_STYLE_ID)) 
   s.id = GLOW_STYLE_ID;
   s.textContent = `
     @keyframes radioBreathe {
-      0%,100% { opacity: 0.38; transform: scale(1); }
-      50%      { opacity: 0.72; transform: scale(1.06); }
+      0%,100% { opacity: 0.45; transform: scale(1); }
+      50%      { opacity: 1; transform: scale(1.1); }
     }
     .radio-glow-ring {
-      animation: radioBreathe 8s ease-in-out infinite;
+      animation: radioBreathe 3s ease-in-out infinite;
       pointer-events: none;
       position: absolute;
-      inset: -12px;
+      inset: -16px;
       border-radius: inherit;
       z-index: 0;
     }
@@ -40,7 +40,6 @@ if (typeof document !== "undefined" && !document.getElementById(GLOW_STYLE_ID)) 
 export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
-  const [glowEntered, setGlowEntered] = useState(false);
   const { themeId, theme, applyTheme } = useRadioTheme();
 
   const { currentTrack, isPlaying, togglePlay, sourceType } = usePlayer();
@@ -66,11 +65,7 @@ export default function RadioPage() {
     if (tracksLoaded) initRadio();
   }, [tracksLoaded, initRadio]);
 
-  // After page mounts, let the entrance glow finish then switch to pulse
-  useEffect(() => {
-    const t = setTimeout(() => setGlowEntered(true), 1200);
-    return () => clearTimeout(t);
-  }, []);
+
 
   const isCurrentlyPlayingRadio = sourceType === "radio" && currentTrack?.id === currentRadioSong?.id;
   const radioIsPaused = currentRadioSong && sourceType !== "radio" && !!currentTrack;
@@ -188,18 +183,12 @@ export default function RadioPage() {
           transition={{ delay: 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="relative mx-auto mb-5 rounded-3xl"
           style={{ maxWidth: 440 }}>
-          {/* Entrance burst → breathing glow */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={glowEntered
-              ? {}  // hand off to CSS animation
-              : { opacity: [0, 0.65, 0.38], scale: [0.9, 1.08, 1.0] }}
-            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-            className={glowEntered ? "radio-glow-ring" : "pointer-events-none absolute inset-[-12px] rounded-3xl z-0"}
+          {/* Breathing glow ring */}
+          <div
+            className="radio-glow-ring rounded-3xl"
             style={{
-              background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.28) 0%, transparent 70%)`,
-              filter: "blur(18px)",
-              opacity: glowEntered ? undefined : 0.38,
+              background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.55) 0%, transparent 68%)`,
+              filter: "blur(20px)",
             }}
           />
           <div className="relative z-10 overflow-hidden rounded-3xl"
@@ -227,16 +216,12 @@ export default function RadioPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
               className="w-full lg:w-[360px] flex-shrink-0 relative">
-              {/* Breathing glow behind the card */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={glowEntered ? {} : { opacity: [0, 0.55, 0.32], scale: [0.9, 1.06, 1.0] }}
-                transition={{ duration: 1.1, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-                className={glowEntered ? "radio-glow-ring rounded-3xl" : "pointer-events-none absolute inset-[-12px] rounded-3xl z-0"}
+              {/* Breathing glow ring */}
+              <div
+                className="radio-glow-ring rounded-3xl"
                 style={{
-                  background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.22) 0%, transparent 70%)`,
+                  background: `radial-gradient(ellipse at center, rgba(${theme.vars["--rt-primary"]},0.48) 0%, transparent 68%)`,
                   filter: "blur(22px)",
-                  opacity: glowEntered ? undefined : 0.32,
                 }}
               />
               <div className="relative z-10 rounded-3xl p-6"
