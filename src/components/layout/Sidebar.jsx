@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,34 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { usePlayer } from "@/context/PlayerContext";
-
-const RADIO_THEMES = {
-  cyan:   { primary: "0,229,255" },
-  violet: { primary: "168,85,247" },
-  amber:  { primary: "245,158,11" },
-};
-
-function useRadioThemeColor() {
-  const getColor = () => {
-    try {
-      const id = localStorage.getItem("uvm_radio_theme_v1") || "cyan";
-      return (RADIO_THEMES[id] || RADIO_THEMES.cyan).primary;
-    } catch { return "0,229,255"; }
-  };
-  const [color, setColor] = useState(getColor);
-
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === "uvm_radio_theme_v1") setColor(getColor());
-    };
-    window.addEventListener("storage", onStorage);
-    // Poll for same-tab changes
-    const interval = setInterval(() => setColor(getColor()), 1000);
-    return () => { window.removeEventListener("storage", onStorage); clearInterval(interval); };
-  }, []);
-
-  return color;
-}
+import { useTheme } from "@/context/ThemeContext";
 
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
@@ -67,7 +40,8 @@ export default function Sidebar() {
   const { user, isAuthenticated, logout, navigateToLogin } = useAuth();
   const { isPlaying, sourceType } = usePlayer();
   const radioIsLive = isPlaying && sourceType === "radio";
-  const radioThemeColor = useRadioThemeColor();
+  const { accent } = useTheme();
+  const radioThemeColor = accent.rgb;
 
   const handleMobileNavTap = (e, path) => {
     if (location.pathname === path) {

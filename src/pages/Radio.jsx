@@ -13,7 +13,7 @@ import ShareVibeButton from "../components/shared/ShareVibeButton";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
 import RadioVisualizer from "../components/radio/RadioVisualizer";
-import RadioThemePicker, { useRadioTheme } from "../components/radio/RadioThemePicker";
+import RadioThemePicker, { useRadioTheme } from "@/components/radio/RadioThemePicker.jsx";
 
 export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
