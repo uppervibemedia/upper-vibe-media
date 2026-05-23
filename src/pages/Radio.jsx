@@ -12,8 +12,9 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
-import RadioVisualizer from "../components/radio/RadioVisualizer";
+
 import RadioThemePicker, { useRadioTheme } from "../components/radio/RadioThemePicker";
+import RadioVisualizer, { MODES } from "../components/radio/RadioVisualizer";
 
 // Breathing glow animation — injected once
 const GLOW_STYLE_ID = "radio-breathe-style";
@@ -24,10 +25,20 @@ if (typeof document !== "undefined" && !document.getElementById(GLOW_STYLE_ID)) 
   document.head.appendChild(s);
 }
 
+const PREF_KEY = "uvm_radio_viz_v9";
+const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
+
 export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
+  const [vizMode, setVizMode] = useState(getSavedMode);
   const { themeId, theme, applyTheme } = useRadioTheme();
+
+  const handleCycleMode = (next) => {
+    setVizMode(next);
+    try { localStorage.setItem(PREF_KEY, next); } catch {}
+  };
+  const currentModeObj = MODES.find(m => m.id === vizMode) || MODES[0];
 
   const { currentTrack, isPlaying, togglePlay, sourceType } = usePlayer();
   const {
@@ -159,8 +170,26 @@ export default function RadioPage() {
           )}
         </motion.div>
 
-        {/* ── Theme Picker ── */}
-        <div className="flex justify-end mb-2" style={{ maxWidth: 440, margin: "0 auto 8px" }}>
+        {/* ── Theme Picker + Viz Mode Picker ── */}
+        <div className="flex justify-between items-center mb-2" style={{ maxWidth: 440, margin: "0 auto 8px" }}>
+          {/* Viz mode — left side */}
+          <button
+            onClick={() => handleCycleMode(MODES[(MODES.findIndex(m => m.id === vizMode) + 1) % MODES.length].id)}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5,
+              padding: "5px 12px", borderRadius: 20,
+              fontSize: 9, fontWeight: 800, letterSpacing: "0.07em",
+              textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap",
+              transition: "all 0.2s ease", userSelect: "none", WebkitUserSelect: "none",
+              background: `rgba(${theme.vars["--rt-primary"]},0.10)`,
+              border: `1px solid rgba(${theme.vars["--rt-primary"]},0.45)`,
+              color: `rgb(${theme.vars["--rt-primary"]})`,
+              boxShadow: `0 0 8px rgba(${theme.vars["--rt-primary"]},0.12)`,
+            }}>
+            <span style={{ fontSize: 9, lineHeight: 1 }}>{currentModeObj.icon}</span>
+            {currentModeObj.label}
+          </button>
+          {/* Theme picker — right side */}
           <RadioThemePicker themeId={themeId} onSelect={applyTheme} />
         </div>
 
@@ -181,7 +210,7 @@ export default function RadioPage() {
               background: "rgba(0,0,0,0.4)",
               border: `1px solid rgba(${theme.vars["--rt-primary"]},0.15)`,
             }}>
-            <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} />
+            <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} mode={vizMode} onCycleMode={handleCycleMode} />
             <div className="pointer-events-none absolute inset-0"
               style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />
           </div>

@@ -111,6 +111,7 @@ export default function PremiumDownloadModal({ open, onClose }) {
                   "Build your My Vibe Library",
                   "Download tracks & listen offline",
                   "Watch full Upper Vibe Academy videos",
+                  "Access Premium Chat in the Vibe Room",
                   "Support Upper Vibe Media",
                 ].map((b) => (
                   <li key={b} className="flex items-center gap-2.5 text-xs text-white/60">

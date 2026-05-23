@@ -608,7 +608,8 @@ function runFallback(ctx, W, H, t, mode, color, active) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "0,229,255" }) {
+export { MODES };
+export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "0,229,255", mode: modeProp, onCycleMode }) {
   const canvasRef    = useRef(null);
   const rafRef       = useRef(null);
   const analyserRef  = useRef(null);
@@ -618,13 +619,19 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
   const { audioRef } = usePlayer();
 
   const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
-  const [mode, setMode] = useState(getSavedMode);
+  const [internalMode, setInternalMode] = useState(getSavedMode);
+  const mode = modeProp !== undefined ? modeProp : internalMode;
   const debugMode = false;
   const [debugInfo, setDebugInfo] = useState(null);
 
   useEffect(() => { try { localStorage.setItem(PREF_KEY, mode); } catch {} }, [mode]);
 
-  const cycleMode = () => { const idx = MODES.findIndex(m => m.id === mode); setMode(MODES[(idx + 1) % MODES.length].id); };
+  const cycleMode = () => {
+    const idx = MODES.findIndex(m => m.id === mode);
+    const next = MODES[(idx + 1) % MODES.length].id;
+    if (onCycleMode) onCycleMode(next);
+    else setInternalMode(next);
+  };
 
   const tryConnectAnalyser = useCallback(async () => {
     const audio = audioRef?.current;
@@ -841,6 +848,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       <div style={{ position: "relative", width: "100%", overflow: "hidden", borderRadius: "inherit" }}>
         <div style={{ paddingTop: "min(56.25%, 260px)", position: "relative" }}>
           <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+          {/* Mode picker moved to parent — spacer kept for layout */}
 
           {/* ── Debug Overlay ── */}
           {debugMode && debugInfo && (
@@ -877,12 +885,6 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", paddingTop: 8, paddingRight: 4, paddingLeft: 4 }}>
-        <button onClick={cycleMode} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s ease", userSelect: "none", WebkitUserSelect: "none", background: `rgba(${themeColor},0.10)`, border: `1px solid rgba(${themeColor},0.45)`, color: `rgb(${themeColor})`, boxShadow: `0 0 8px rgba(${themeColor},0.12)` }}>
-          <span style={{ fontSize: 9, lineHeight: 1 }}>{currentModeObj.icon}</span>
-          {currentModeObj.label}
-        </button>
-      </div>
     </div>
   );
 }
