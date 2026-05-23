@@ -4,6 +4,7 @@ import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, X,
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import FeaturedTrackPlayer from "@/components/start/FeaturedTrackPlayer";
+import YouTubeCTA from "@/components/start/YouTubeCTA";
 
 const PRIMARY = "0,160,220";
 const GOLD = "212,168,67";
@@ -110,9 +111,10 @@ export default function Start() {
     if (isLoadingAuth) return;
     if (isAuthenticated && user) {
       const isAdmin = user.role === "admin";
-      const isPlus = isAdmin || user.isPlus === true || user.tier === "plus"
+      // Admins can preview /start — do NOT redirect them
+      if (isAdmin) return;
+      const isPlus = user.isPlus === true || user.tier === "plus"
         || user.tier === "premium" || user.isPremium === true || user.role === "premium";
-      if (isAdmin) { navigate("/admin", { replace: true }); return; }
       if (isPlus) { navigate("/my-vibes", { replace: true }); setIsPremiumUser(true); return; }
     }
   }, [isAuthenticated, isLoadingAuth, user, navigate]);
@@ -255,6 +257,9 @@ export default function Start() {
             </Link>
           </div>
         </section>
+
+        {/* ── YOUTUBE CTA ── */}
+        <YouTubeCTA />
 
         {/* ── BENEFIT CARDS ── */}
         <section className="flex flex-col gap-3">

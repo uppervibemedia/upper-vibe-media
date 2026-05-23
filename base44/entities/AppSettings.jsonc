@@ -1,0 +1,22 @@
+{
+  "name": "AppSettings",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Setting key identifier e.g. youtube_playlist_url"
+    },
+    "value": {
+      "type": "string",
+      "description": "Setting value"
+    },
+    "label": {
+      "type": "string",
+      "description": "Human-readable label for admin display"
+    }
+  },
+  "required": [
+    "key",
+    "value"
+  ]
+}
