@@ -5,7 +5,7 @@ const RADIO_THEME_KEY = "uvm_radio_theme_v1";
 
 // RGB string values for each accent
 export const ACCENT_THEMES = {
-  cyan:   { id: "cyan",   label: "Cosmic Cyan",    rgb: "0,229,255",   hex: "#00E5FF" },
+  cyan:   { id: "cyan",   label: "Electric Blue",  rgb: "0,160,220",   hex: "#00A0DC" },
   violet: { id: "violet", label: "Deep Violet",    rgb: "168,85,247",  hex: "#A855F7" },
   amber:  { id: "amber",  label: "Midnight Amber", rgb: "245,158,11",  hex: "#F59E0B" },
 };
@@ -52,7 +52,7 @@ export function ThemeProvider({ children }) {
     const root = document.documentElement;
     // Map rgb → hsl for CSS vars (used by Tailwind tokens)
     const hslMap = {
-      cyan:   { primary: "191 100% 50%", ring: "191 100% 50%", sidebar: "185 100% 50%" },
+      cyan:   { primary: "201 100% 43%", ring: "201 100% 43%", sidebar: "201 100% 43%" },
       violet: { primary: "271 83% 65%",  ring: "271 83% 65%",  sidebar: "271 83% 65%" },
       amber:  { primary: "38 92% 50%",   ring: "38 92% 50%",   sidebar: "38 92% 50%"  },
     };
