@@ -13,7 +13,7 @@ import ShareVibeButton from "../components/shared/ShareVibeButton";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
 
-import RadioThemePicker, { useRadioTheme } from "../components/radio/RadioThemePicker";
+import RadioThemePicker, { useRadioTheme, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
 import RadioVisualizer, { MODES } from "../components/radio/RadioVisualizer";
 
 // Breathing glow animation — injected once
@@ -32,7 +32,10 @@ export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
   const [vizMode, setVizMode] = useState(getSavedMode);
+  const [pulseOn, setPulseOn] = useState(getPulseEnabled);
   const { themeId, theme, applyTheme } = useRadioTheme();
+
+  const handleTogglePulse = (v) => { setPulseOn(v); setPulseEnabled(v); };
 
   const handleCycleMode = (next) => {
     setVizMode(next);
@@ -190,7 +193,7 @@ export default function RadioPage() {
             {currentModeObj.label}
           </button>
           {/* Theme picker — right side */}
-          <RadioThemePicker themeId={themeId} onSelect={applyTheme} />
+          <RadioThemePicker themeId={themeId} onSelect={applyTheme} pulseEnabled={pulseOn} onTogglePulse={handleTogglePulse} />
         </div>
 
         {/* ── Visualizer ── */}
@@ -199,12 +202,18 @@ export default function RadioPage() {
           transition={{ delay: 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="relative mx-auto mb-5 rounded-3xl"
           style={{ maxWidth: 440 }}>
-          <motion.div
-            animate={{ scale: [1, 1.04, 1], opacity: [0.35, 1, 0.35] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute inset-0 rounded-3xl pointer-events-none"
-            style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
-          />
+          {pulseOn && (
+            <motion.div
+              animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute inset-0 rounded-3xl pointer-events-none"
+              style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
+            />
+          )}
+          {!pulseOn && (
+            <div className="absolute inset-0 rounded-3xl pointer-events-none"
+              style={{ border: `1px solid rgba(${theme.vars["--rt-primary"]},0.3)` }} />
+          )}
           <div className="relative z-10 overflow-hidden rounded-3xl"
             style={{
               background: "rgba(0,0,0,0.4)",
@@ -229,12 +238,18 @@ export default function RadioPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
               className="w-full lg:w-[360px] flex-shrink-0 relative">
-              <motion.div
-                animate={{ scale: [1, 1.04, 1], opacity: [0.35, 1, 0.35] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
-                className="absolute inset-0 rounded-3xl pointer-events-none"
-                style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
-              />
+              {pulseOn && (
+                <motion.div
+                  animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+                  className="absolute inset-0 rounded-3xl pointer-events-none"
+                  style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
+                />
+              )}
+              {!pulseOn && (
+                <div className="absolute inset-0 rounded-3xl pointer-events-none"
+                  style={{ border: `1px solid rgba(${theme.vars["--rt-primary"]},0.3)` }} />
+              )}
               <div className="relative z-10 rounded-3xl p-6"
                 style={{
                   background: "rgba(255,255,255,0.028)",

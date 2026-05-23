@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Palette, Check } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 
+const PULSE_PREF_KEY = "uvm_radio_pulse";
+export const getPulseEnabled = () => { try { return localStorage.getItem(PULSE_PREF_KEY) !== "off"; } catch { return true; } };
+export const setPulseEnabled = (v) => { try { localStorage.setItem(PULSE_PREF_KEY, v ? "on" : "off"); } catch {} };
+
 export const RADIO_THEMES = {
   cyan: {
     id: "cyan",
@@ -61,7 +65,7 @@ export function useRadioTheme() {
   return { themeId: accentId, theme, applyTheme };
 }
 
-export default function RadioThemePicker({ themeId, onSelect }) {
+export default function RadioThemePicker({ themeId, onSelect, pulseEnabled, onTogglePulse }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -133,6 +137,35 @@ export default function RadioThemePicker({ themeId, onSelect }) {
                   {themeId === t.id && <Check style={{ width: 10, height: 10, color: t.swatch }} />}
                 </button>
               ))}
+
+              {/* Pulse toggle */}
+              <div style={{ margin: "8px 0 2px", borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 8 }}>
+                <button
+                  onClick={() => { onTogglePulse(!pulseEnabled); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    width: "100%", padding: "8px 10px", borderRadius: 10,
+                    background: "transparent", border: "none", cursor: "pointer",
+                    transition: "background 0.15s ease",
+                  }}
+                >
+                  <span style={{
+                    width: 28, height: 16, borderRadius: 8, flexShrink: 0,
+                    background: pulseEnabled ? "rgba(0,200,220,0.55)" : "rgba(255,255,255,0.12)",
+                    position: "relative", transition: "background 0.2s ease",
+                  }}>
+                    <span style={{
+                      position: "absolute", top: 2, left: pulseEnabled ? 14 : 2,
+                      width: 12, height: 12, borderRadius: "50%", background: "#fff",
+                      transition: "left 0.2s ease",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+                    }} />
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.55)", flex: 1, textAlign: "left" }}>
+                    Pulse Effect
+                  </span>
+                </button>
+              </div>
             </motion.div>
           </>
         )}
