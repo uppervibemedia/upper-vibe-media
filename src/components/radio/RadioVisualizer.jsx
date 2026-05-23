@@ -268,191 +268,242 @@ function roundedBar(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
 }
 
-// ── Draw: Spectrum ────────────────────────────────────────────────────────────
-// Logarithmic frequency bars with falling peaks and beat flash
+// ── Draw: Spectrum → STARGATE RINGS ──────────────────────────────────────────
+// Concentric rotating rings whose radius pulses with frequency bands
 function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat, color) {
-  const barCount = 64, gap = Math.max(1.5, W * 0.004);
-  const barW = (W - gap * (barCount - 1)) / barCount;
-  const usable = Math.floor(bufLen * 0.80);
-  if (!_peaks.data || _peaks.data.length !== barCount) {
-    _peaks.data = new Float32Array(barCount); _peaks.decay = new Float32Array(barCount);
-  }
-  // Beat flash: brief white overlay on kick
+  const cx = W / 2, cy = H / 2, t = Date.now() / 1000;
+  const usable = Math.floor(bufLen * 0.75);
+  const ringCount = 9;
+  const maxR = Math.min(W, H) * 0.48;
+
+  // Beat flash
   if (beat) {
-    ctx.fillStyle = `rgba(${color},${bass * 0.12})`;
-    ctx.fillRect(0, 0, W, H);
+    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 1.5);
+    bg.addColorStop(0, `rgba(${color},${bass * 0.18})`);
+    bg.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   }
-  for (let i = 0; i < barCount; i++) {
-    // Logarithmic bin mapping — gives more space to bass/mid
-    const logStart = Math.pow(usable, i / barCount);
-    const logEnd   = Math.pow(usable, (i + 1) / barCount);
-    const binFrom  = Math.floor(logStart);
-    const binTo    = Math.max(binFrom + 1, Math.ceil(logEnd));
-    let max = 0;
-    for (let b = binFrom; b < binTo && b < usable; b++) max = Math.max(max, sm[b]);
-    // Bass bars get extra height boost on beat
-    const beatBoost = beat && i < 8 ? 1.0 + bass * 0.6 : 1.0;
-    const v = Math.min(1, max * beatBoost);
-    const h = Math.max(2, v * (H - 4));
-    const x = i * (barW + gap), y = H - h;
-    // Color: base at bottom, white tip at high energy
-    const grad = ctx.createLinearGradient(0, H, 0, y);
-    grad.addColorStop(0,    `rgba(${color},0.55)`);
-    grad.addColorStop(0.6,  `rgba(${color},1.0)`);
-    grad.addColorStop(1,    `rgba(255,255,255,${0.7 + v * 0.3})`);
-    ctx.fillStyle = grad;
-    roundedBar(ctx, x, y, barW, h, 2);
-    ctx.fill();
-    // Falling peak dot
-    if (v >= _peaks.data[i]) { _peaks.data[i] = v; _peaks.decay[i] = 0.001; }
-    else { _peaks.decay[i] = Math.min(_peaks.decay[i] * 1.06 + 0.0005, 0.025); _peaks.data[i] = Math.max(0, _peaks.data[i] - _peaks.decay[i]); }
-    if (_peaks.data[i] > 0.02) {
-      const py = H - _peaks.data[i] * (H - 4) - 2;
-      ctx.fillStyle = beat && i < 10 ? "rgba(255,255,255,0.95)" : `rgba(${color},0.9)`;
-      ctx.fillRect(x, py, barW, 2);
+
+  for (let ri = 0; ri < ringCount; ri++) {
+    const frac = (ri + 1) / ringCount;
+    const binIdx = Math.floor(frac * usable * 0.55);
+    const energy = sm[binIdx] || 0;
+    const beatPush = beat && ri < 3 ? bass * 0.22 : 0;
+    const radius = maxR * frac * (1 + energy * 0.35 + beatPush);
+    const sides = 3 + ri * 2; // 3, 5, 7, 9 ... sided polygons
+    const spin = t * (0.18 + ri * 0.09) * (ri % 2 === 0 ? 1 : -1);
+    const alpha = 0.12 + energy * 0.65 + bass * 0.2;
+    const hue = 185 + frac * 100 + (t * 20 % 60);
+    const lw = 1.0 + energy * 3.5 + (ri < 2 ? bass * 2.5 : 0);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(spin);
+    ctx.beginPath();
+    for (let s = 0; s <= sides; s++) {
+      const a = (s / sides) * Math.PI * 2;
+      const wobble = 1 + Math.sin(t * 2.5 + s * 1.3 + ri) * 0.06 * energy;
+      const rx = Math.cos(a) * radius * wobble;
+      const ry = Math.sin(a) * radius * wobble;
+      s === 0 ? ctx.moveTo(rx, ry) : ctx.lineTo(rx, ry);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `hsla(${hue},100%,68%,${Math.min(1, alpha)})`;
+    ctx.lineWidth = lw;
+    ctx.shadowBlur = beat && ri < 3 ? 18 : 6;
+    ctx.shadowColor = `hsla(${hue},100%,68%,0.7)`;
+    ctx.stroke();
+    ctx.restore();
+
+    // Connecting spokes between rings
+    if (ri < ringCount - 1) {
+      const nextFrac = (ri + 2) / ringCount;
+      const nextR = maxR * nextFrac * (1 + (sm[Math.floor(nextFrac * usable * 0.55)] || 0) * 0.35);
+      const spokeCount = Math.min(4, 2 + Math.floor(bass * 3));
+      for (let sp = 0; sp < spokeCount; sp++) {
+        const a = (sp / spokeCount) * Math.PI * 2 + spin;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
+        ctx.lineTo(cx + Math.cos(a) * nextR,  cy + Math.sin(a) * nextR);
+        ctx.strokeStyle = `hsla(${hue},100%,68%,${alpha * 0.35})`;
+        ctx.lineWidth = 0.7; ctx.shadowBlur = 0; ctx.stroke();
+      }
     }
   }
-  // Subtle reflection
-  ctx.save();
-  ctx.globalAlpha = 0.07;
-  ctx.scale(1, -1);
-  ctx.translate(0, -H * 2);
-  for (let i = 0; i < barCount; i++) {
-    const logStart = Math.pow(usable, i / barCount), logEnd = Math.pow(usable, (i + 1) / barCount);
-    const binFrom = Math.floor(logStart), binTo = Math.max(binFrom + 1, Math.ceil(logEnd));
-    let max = 0;
-    for (let b = binFrom; b < binTo && b < usable; b++) max = Math.max(max, sm[b]);
-    const h = Math.max(1, Math.min(1, max) * (H - 4) * 0.3);
-    ctx.fillStyle = `rgba(${color},1)`;
-    ctx.fillRect(i * (barW + gap), H - h, barW, h);
+
+  // Central orb
+  const orbR = Math.max(0, 5 + bass * 28 + (beat ? 14 : 0));
+  if (orbR > 0) {
+    const og = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR * 3.5);
+    og.addColorStop(0, `rgba(255,255,255,${0.9 + bass * 0.1})`);
+    og.addColorStop(0.3, `rgba(${color},${0.6 + bass * 0.4})`);
+    og.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.beginPath(); ctx.arc(cx, cy, orbR, 0, Math.PI * 2);
+    ctx.fillStyle = og; ctx.fill();
   }
-  ctx.restore();
 }
 
-// ── Draw: Waveform ────────────────────────────────────────────────────────────
-// Oscilloscope-style time-domain wave — looks completely different from bars
+// ── Draw: Waveform → LISSAJOUS SPIRAL ────────────────────────────────────────
+// Polar waveform: frequency data mapped to angles, drawing a glowing petal/spiral shape
 function drawWaveform(ctx, W, H, an, bass, beat, color) {
-  // Use raw time-domain data — unsmoothed so it shows real waveform shape
-  const rawLen = an.fftSize;
-  const raw = new Uint8Array(rawLen);
-  an.getByteTimeDomainData(raw);
+  const cx = W / 2, cy = H / 2, t = Date.now() / 1000;
+  const bufLen = an.frequencyBinCount;
+  const sm2 = _sm.data || new Float32Array(bufLen);
+  const usable = Math.floor(bufLen * 0.70);
+  const baseR = Math.min(W, H) * 0.12;
+  const maxR  = Math.min(W, H) * 0.44;
+  const points = 360;
+  const spin = t * 0.28;
 
-  const cy = H / 2;
-  const step = W / rawLen;
+  // Outer glow halo
+  const haloR = maxR * (0.9 + bass * 0.3);
+  const hg = ctx.createRadialGradient(cx, cy, maxR * 0.55, cx, cy, haloR * 1.4);
+  hg.addColorStop(0, `rgba(${color},${0.06 + bass * 0.08})`);
+  hg.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H);
 
-  // Compute RMS amplitude for scaling
-  let rms = 0;
-  for (let i = 0; i < rawLen; i++) {
-    const s = (raw[i] / 128.0) - 1.0; rms += s * s;
-  }
-  rms = Math.sqrt(rms / rawLen) * IOS_GAIN;
-  const amplitude = H * 0.42 * Math.max(0.06, rms * 4.0) * (1 + bass * 0.5);
-
-  // Center guide line
-  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy);
-  ctx.strokeStyle = `rgba(${color},0.08)`; ctx.lineWidth = 1; ctx.stroke();
-
-  // Filled area under waveform
-  ctx.beginPath();
-  ctx.moveTo(0, cy);
-  for (let i = 0; i < rawLen; i++) {
-    const s = (raw[i] / 128.0) - 1.0;
-    ctx.lineTo(i * step, cy + s * amplitude);
-  }
-  ctx.lineTo(W, cy); ctx.closePath();
-  const fillG = ctx.createLinearGradient(0, cy - amplitude, 0, cy + amplitude);
-  fillG.addColorStop(0,   `rgba(${color},0.22)`);
-  fillG.addColorStop(0.5, `rgba(${color},0.04)`);
-  fillG.addColorStop(1,   `rgba(${color},0.22)`);
-  ctx.fillStyle = fillG; ctx.fill();
-
-  // The actual waveform line — glow on beat
-  ctx.save();
-  ctx.shadowBlur  = beat ? 24 : 10;
-  ctx.shadowColor = `rgba(${color},${0.5 + bass * 0.5})`;
-  ctx.beginPath();
-  for (let i = 0; i < rawLen; i++) {
-    const s = (raw[i] / 128.0) - 1.0;
-    const x = i * step, y = cy + s * amplitude;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  }
-  // Gradient along the wave: brighter in middle
-  const lineG = ctx.createLinearGradient(0, 0, W, 0);
-  lineG.addColorStop(0,    `rgba(${color},0.4)`);
-  lineG.addColorStop(0.15, `rgba(${color},0.9)`);
-  lineG.addColorStop(0.5,  `rgba(255,255,255,${0.8 + bass * 0.2})`);
-  lineG.addColorStop(0.85, `rgba(${color},0.9)`);
-  lineG.addColorStop(1,    `rgba(${color},0.4)`);
-  ctx.strokeStyle = lineG;
-  ctx.lineWidth = beat ? 2.5 : 1.8;
-  ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.stroke();
-  ctx.restore();
-
-  // Second mirrored wave (inverted, dim) for visual depth
-  ctx.save(); ctx.globalAlpha = 0.18;
-  ctx.beginPath();
-  for (let i = 0; i < rawLen; i++) {
-    const s = (raw[i] / 128.0) - 1.0;
-    i === 0 ? ctx.moveTo(i * step, cy - s * amplitude * 0.5)
-            : ctx.lineTo(i * step, cy - s * amplitude * 0.5);
-  }
-  ctx.strokeStyle = `rgba(${color},0.7)`; ctx.lineWidth = 1; ctx.stroke();
-  ctx.restore();
-}
-
-// ── Draw: Energy Bars ─────────────────────────────────────────────────────────
-// MIRRORED bars growing from CENTER — visually distinct from spectrum (which is bottom-up)
-// Wide bars, color split by frequency band: bass=cyan, mid=purple, treble=white
-function drawEnergy(ctx, W, H, sm, bufLen, bass, mid, treble, beat) {
-  const barCount = 28, gap = Math.max(2, W * 0.008);
-  const barW = (W - gap * (barCount - 1)) / barCount;
-  const usable = Math.floor(bufLen * 0.75);
-  const cy = H / 2;
-
-  // Beat pulse: glow ring from center
-  if (beat) {
-    const beatAge = (Date.now() - _beat.last) / 400;
-    const pulseR = W * 0.4 * beatAge;
+  // Draw 2 layers: filled shape + bright outline
+  for (let layer = 0; layer < 2; layer++) {
     ctx.save();
-    ctx.globalAlpha = (1 - beatAge) * bass * 0.35;
-    ctx.strokeStyle = `rgba(${bass > 0.5 ? "255,255,255" : "0,229,255"},1)`;
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(W / 2, cy, pulseR, 0, Math.PI * 2); ctx.stroke();
+    ctx.translate(cx, cy);
+    ctx.rotate(spin * (layer === 0 ? 1 : -0.6));
+    ctx.beginPath();
+
+    for (let i = 0; i <= points; i++) {
+      const frac = i / points;
+      const binIdx = Math.floor(frac * usable);
+      const energy = sm2[binIdx] || 0;
+      const angle = frac * Math.PI * 2;
+      // Radius modulated by frequency energy + harmonic wobble
+      const harmonic = Math.sin(angle * 3 + t * 1.8) * 0.08 + Math.sin(angle * 7 + t * 0.9) * 0.04;
+      const r = baseR + (maxR - baseR) * energy + (maxR - baseR) * 0.12 * harmonic + (beat ? bass * 18 : 0);
+      const x = Math.cos(angle) * r, y = Math.sin(angle) * r;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+
+    if (layer === 0) {
+      // Filled interior — dim cosmic glow
+      const fg = ctx.createRadialGradient(0, 0, baseR, 0, 0, maxR);
+      fg.addColorStop(0, `rgba(${color},${0.08 + bass * 0.12})`);
+      fg.addColorStop(1, `rgba(${color},0.02)`);
+      ctx.fillStyle = fg; ctx.fill();
+    } else {
+      // Glowing outline
+      ctx.shadowBlur = beat ? 28 : 14;
+      ctx.shadowColor = `rgba(${color},0.9)`;
+      const hue = 185 + bass * 60 + (t * 18 % 80);
+      ctx.strokeStyle = `hsla(${hue},100%,72%,${0.7 + bass * 0.3})`;
+      ctx.lineWidth = beat ? 2.2 : 1.4;
+      ctx.lineJoin = "round"; ctx.stroke();
+    }
     ctx.restore();
   }
 
-  for (let i = 0; i < barCount; i++) {
-    // Linear bin mapping for energy bars (different from spectrum's log)
-    const binIdx = Math.floor((i / barCount) * usable);
-    // Band-specific boosts
-    const isBass = i < 6, isMid = i >= 6 && i < 16, isTreble = i >= 16;
-    const boost = isBass ? 1.8 + bass * 1.2 : isMid ? 1.3 + mid * 0.8 : 1.0 + treble * 0.5;
-    const v = Math.min(1, sm[binIdx] * boost);
-    const halfH = Math.max(3, v * (H * 0.46));
-    const x = i * (barW + gap);
+  // Inner spinning star
+  const starR = baseR * (0.6 + bass * 0.9);
+  const spokes = 6;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * 0.9 + bass * 2);
+  ctx.beginPath();
+  for (let s = 0; s < spokes * 2; s++) {
+    const a = (s / (spokes * 2)) * Math.PI * 2;
+    const r = s % 2 === 0 ? starR : starR * 0.4;
+    s === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = `rgba(255,255,255,${0.5 + bass * 0.5})`;
+  ctx.lineWidth = 1.2; ctx.shadowBlur = 12; ctx.shadowColor = `rgba(${color},1)`; ctx.stroke();
+  ctx.restore();
 
-    // Color by band
-    let c1, c2;
-    if (isBass)   { c1 = `rgba(0,229,255,${0.6 + v * 0.4})`;    c2 = `rgba(0,180,220,${0.3 + v * 0.3})`; }
-    else if (isMid) { c1 = `rgba(155,100,255,${0.6 + v * 0.4})`; c2 = `rgba(100,60,200,${0.3 + v * 0.3})`; }
-    else          { c1 = `rgba(255,255,255,${0.5 + v * 0.5})`;   c2 = `rgba(180,220,255,${0.2 + v * 0.3})`; }
+  // Center dot
+  const dotR = Math.max(0, 3 + bass * 16 + (beat ? 10 : 0));
+  if (dotR > 0) {
+    const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3);
+    dg.addColorStop(0, "rgba(255,255,255,1)");
+    dg.addColorStop(0.4, `rgba(${color},0.7)`);
+    dg.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = dg; ctx.fill();
+  }
+}
 
-    // TOP half bar (upward from center)
-    const gradUp = ctx.createLinearGradient(0, cy, 0, cy - halfH);
-    gradUp.addColorStop(0, c2); gradUp.addColorStop(1, c1);
-    ctx.fillStyle = gradUp;
-    roundedBar(ctx, x, cy - halfH, barW, halfH, 3); ctx.fill();
+// ── Draw: Energy → RADIAL MANDALA ─────────────────────────────────────────────
+// Frequency bins mapped as radial spokes in a mandala — rotates and pulses with the beat
+function drawEnergy(ctx, W, H, sm, bufLen, bass, mid, treble, beat) {
+  const cx = W / 2, cy = H / 2, t = Date.now() / 1000;
+  const usable = Math.floor(bufLen * 0.70);
+  const spokeCount = 64;
+  const innerR = Math.min(W, H) * 0.08;
+  const maxR   = Math.min(W, H) * 0.46;
+  const spin   = t * 0.22;
 
-    // BOTTOM half bar (downward from center, slightly smaller)
-    const gradDown = ctx.createLinearGradient(0, cy, 0, cy + halfH * 0.7);
-    gradDown.addColorStop(0, c2); gradDown.addColorStop(1, c1);
-    ctx.fillStyle = gradDown;
-    roundedBar(ctx, x, cy, barW, halfH * 0.7, 3); ctx.fill();
+  // Ambient background pulse on beat
+  if (beat) {
+    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 1.6);
+    bg.addColorStop(0, `rgba(155,100,255,${bass * 0.14})`);
+    bg.addColorStop(0.5, `rgba(0,200,220,${bass * 0.06})`);
+    bg.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   }
 
-  // Center divider line
-  ctx.strokeStyle = `rgba(255,255,255,0.08)`; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
+  // Draw two counter-rotating layers for mandala depth
+  for (let layer = 0; layer < 2; layer++) {
+    const layerSpin = spin * (layer === 0 ? 1 : -0.7) + layer * (Math.PI / spokeCount);
+    const layerBoost = layer === 0 ? 1.0 : 0.65;
+
+    for (let i = 0; i < spokeCount; i++) {
+      const frac = i / spokeCount;
+      const binIdx = Math.floor(frac * usable);
+      const energy = sm[binIdx] || 0;
+      const boost = frac < 0.08 ? 1.8 + bass * 1.2 : frac < 0.35 ? 1.3 + mid * 0.7 : 1.0 + treble * 0.4;
+      const v = Math.min(1, energy * boost * layerBoost);
+
+      const angle = frac * Math.PI * 2 + layerSpin;
+      const r1 = innerR + (beat && i % 8 === 0 ? bass * 10 : 0);
+      const r2 = innerR + (maxR - innerR) * v;
+
+      // Hue cycles around the circle + shifts over time
+      const hue = 185 + frac * 220 + layer * 40 + (t * 25 % 90);
+      const alpha = 0.3 + v * 0.7;
+
+      ctx.save();
+      ctx.shadowBlur = v > 0.6 ? 10 : 3;
+      ctx.shadowColor = `hsla(${hue},100%,65%,0.8)`;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * r1, cy + Math.sin(angle) * r1);
+      ctx.lineTo(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2);
+      ctx.strokeStyle = `hsla(${hue},100%,68%,${alpha})`;
+      ctx.lineWidth = layer === 0 ? 2.2 : 1.2;
+      ctx.lineCap = "round";
+      ctx.stroke();
+
+      // Tip dot on energetic spokes
+      if (v > 0.45) {
+        const dotR = Math.max(0, 1.5 + v * 3.5);
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2, dotR, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${hue},100%,88%,${0.5 + v * 0.5})`;
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  // Inner ring
+  ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(255,255,255,${0.1 + bass * 0.25})`; ctx.lineWidth = 1; ctx.stroke();
+
+  // Central orb
+  const orbR = Math.max(0, 4 + bass * 22 + mid * 8 + (beat ? 12 : 0));
+  if (orbR > 0) {
+    const og = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR * 4);
+    og.addColorStop(0, "rgba(255,255,255,1)");
+    og.addColorStop(0.25, `rgba(0,229,255,${0.8 + bass * 0.2})`);
+    og.addColorStop(0.6, `rgba(155,100,255,${0.3 + bass * 0.2})`);
+    og.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.beginPath(); ctx.arc(cx, cy, orbR, 0, Math.PI * 2);
+    ctx.fillStyle = og; ctx.fill();
+  }
 }
 
 // ── Draw: Neon Pulse ──────────────────────────────────────────────────────────
@@ -654,41 +705,80 @@ function drawDrift(ctx, W, H, sm, bufLen, t, particlesRef, bass, treble) {
 
 // ── Premium Fallbacks (analyser blocked) ──────────────────────────────────────
 function fbSpectrum(ctx, W, H, t, active, color) {
-  const barCount = 72, gap = Math.max(1, W * 0.003), bw = (W - gap * (barCount - 1)) / barCount;
-  const pulse = active ? 0.7 + Math.sin(t * 1.1) * 0.3 : 0.1;
-  for (let i = 0; i < barCount; i++) {
-    const frac = i / barCount;
-    const v = active ? Math.max(0.04, pulse * (Math.sin(t * 2.5 + frac * Math.PI * 4.5) * 0.5 + 0.5) * (0.5 + Math.pow(1 - frac, 0.8) * 0.5)) : 0.04 + Math.sin(i * 0.55) * 0.025;
-    const h = Math.max(2, v * (H - 6));
-    const grad = ctx.createLinearGradient(0, H, 0, H - h);
-    grad.addColorStop(0, `rgba(${color},0.65)`); grad.addColorStop(0.6, `rgba(${color},1.0)`); grad.addColorStop(1, "rgba(255,255,255,0.9)");
-    ctx.fillStyle = grad; roundedBar(ctx, i * (bw + gap), H - h, bw, h, 2); ctx.fill();
+  const cx = W / 2, cy = H / 2, ringCount = 9, maxR = Math.min(W, H) * 0.48;
+  const pulse = active ? 0.6 + Math.sin(t * 1.2) * 0.4 : 0.15;
+  for (let ri = 0; ri < ringCount; ri++) {
+    const frac = (ri + 1) / ringCount;
+    const energy = active ? Math.max(0.04, pulse * (Math.sin(t * 1.8 + ri * 0.9) * 0.5 + 0.5)) : 0.04;
+    const radius = maxR * frac * (1 + energy * 0.2);
+    const sides = 3 + ri * 2;
+    const spin = t * (0.18 + ri * 0.09) * (ri % 2 === 0 ? 1 : -1);
+    const hue = 185 + frac * 100 + (t * 20 % 60);
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(spin);
+    ctx.beginPath();
+    for (let s = 0; s <= sides; s++) {
+      const a = (s / sides) * Math.PI * 2;
+      s === 0 ? ctx.moveTo(Math.cos(a) * radius, Math.sin(a) * radius) : ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `hsla(${hue},100%,68%,${0.1 + energy * 0.55})`; ctx.lineWidth = 1 + energy * 2.5; ctx.stroke();
+    ctx.restore();
   }
+  const dotR = 4 + pulse * 12;
+  const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3);
+  dg.addColorStop(0, "rgba(255,255,255,0.9)"); dg.addColorStop(0.4, `rgba(${color},0.6)`); dg.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
 }
 
 function fbWaveform(ctx, W, H, t, active, color) {
-  const cy = H / 2, amp = H * (active ? 0.38 + Math.sin(t * 1.1) * 0.1 : 0.05);
-  ctx.beginPath();
-  for (let x = 0; x <= W; x += 2) {
-    const y = cy + Math.sin((x / W) * Math.PI * 7 + t * 3.2) * amp * 0.65 + Math.sin((x / W) * Math.PI * 3 + t * 1.6) * amp * 0.35;
-    x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  const cx = W / 2, cy = H / 2, baseR = Math.min(W, H) * 0.12, maxR = Math.min(W, H) * 0.44;
+  const pulse = active ? 0.55 + Math.sin(t * 1.3) * 0.45 : 0.1;
+  const points = 200, spin = t * 0.28;
+  for (let layer = 0; layer < 2; layer++) {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(spin * (layer === 0 ? 1 : -0.6));
+    ctx.beginPath();
+    for (let i = 0; i <= points; i++) {
+      const frac = i / points, angle = frac * Math.PI * 2;
+      const energy = active ? Math.max(0.06, pulse * (Math.sin(t * 1.8 + frac * Math.PI * 8) * 0.5 + 0.5)) : 0.06;
+      const harmonic = Math.sin(angle * 3 + t * 1.8) * 0.08;
+      const r = baseR + (maxR - baseR) * energy + (maxR - baseR) * 0.12 * harmonic;
+      i === 0 ? ctx.moveTo(Math.cos(angle) * r, Math.sin(angle) * r) : ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+    }
+    ctx.closePath();
+    if (layer === 0) { ctx.fillStyle = `rgba(${color},${0.06 * pulse})`; ctx.fill(); }
+    else { const hue = 185 + pulse * 60 + (t * 18 % 80); ctx.strokeStyle = `hsla(${hue},100%,72%,${0.5 + pulse * 0.5})`; ctx.lineWidth = 1.4; ctx.stroke(); }
+    ctx.restore();
   }
-  const g = ctx.createLinearGradient(0, 0, W, 0);
-  g.addColorStop(0, `rgba(${color},0.3)`); g.addColorStop(0.5, `rgba(${color},0.95)`); g.addColorStop(1, `rgba(${color},0.3)`);
-  ctx.strokeStyle = g; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy);
-  ctx.strokeStyle = `rgba(${color},0.07)`; ctx.lineWidth = 1; ctx.stroke();
+  const dotR = 3 + pulse * 12;
+  const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3);
+  dg.addColorStop(0, "rgba(255,255,255,1)"); dg.addColorStop(0.4, `rgba(${color},0.7)`); dg.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
 }
 
 function fbEnergy(ctx, W, H, t, active) {
-  const count = 60, gap = Math.max(1, W * 0.004), bw = (W - gap * (count - 1)) / count;
-  const pulse = active ? 0.7 + Math.sin(t * 1.2) * 0.3 : 0.1;
-  for (let i = 0; i < count; i++) {
-    const frac = i / count;
-    const v = active ? Math.max(0.04, pulse * (Math.sin(t * 2.2 + frac * 11) * 0.5 + 0.5) * (Math.sin(t * 0.9 + frac * 7) * 0.3 + 0.7)) : 0.04 + Math.sin(i * 0.5) * 0.02;
-    const h = Math.max(3, v * H * 0.92), hue = 185 + v * 70;
-    ctx.fillStyle = `hsla(${hue},100%,58%,${0.35 + v * 0.55})`; roundedBar(ctx, i * (bw + gap), H - h, bw, h, 2); ctx.fill();
+  const cx = W / 2, cy = H / 2, spokeCount = 64, innerR = Math.min(W, H) * 0.08, maxR = Math.min(W, H) * 0.46;
+  const pulse = active ? 0.6 + Math.sin(t * 1.2) * 0.4 : 0.12;
+  const spin = t * 0.22;
+  for (let layer = 0; layer < 2; layer++) {
+    const layerSpin = spin * (layer === 0 ? 1 : -0.7) + layer * (Math.PI / spokeCount);
+    for (let i = 0; i < spokeCount; i++) {
+      const frac = i / spokeCount;
+      const v = active ? Math.max(0.04, pulse * (Math.sin(t * 1.9 + frac * Math.PI * 6.5 + layer) * 0.5 + 0.5)) : 0.04;
+      const angle = frac * Math.PI * 2 + layerSpin;
+      const r2 = innerR + (maxR - innerR) * v * (layer === 0 ? 1 : 0.65);
+      const hue = 185 + frac * 220 + layer * 40 + (t * 25 % 90);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
+      ctx.lineTo(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2);
+      ctx.strokeStyle = `hsla(${hue},100%,68%,${0.2 + v * 0.7})`; ctx.lineWidth = layer === 0 ? 2 : 1; ctx.lineCap = "round"; ctx.stroke();
+    }
   }
+  ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(255,255,255,${0.08 + pulse * 0.15})`; ctx.lineWidth = 1; ctx.stroke();
+  const orbR = 4 + pulse * 18;
+  const og = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR * 4);
+  og.addColorStop(0, "rgba(255,255,255,1)"); og.addColorStop(0.3, `rgba(0,229,255,${0.7 + pulse * 0.3})`); og.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath(); ctx.arc(cx, cy, orbR, 0, Math.PI * 2); ctx.fillStyle = og; ctx.fill();
 }
 
 function fbTunnel(ctx, W, H, t, active) {
