@@ -595,26 +595,26 @@ export default function RadioVisualizer({ isPlaying, currentSong }) {
 
       {/* ── Single cycle button ── */}
       <div style={{
-        padding: "10px 12px 12px",
+        padding: "6px 10px 8px",
         background: "linear-gradient(180deg, rgba(4,4,18,0) 0%, rgba(4,4,18,0.85) 100%)",
-        display: "flex", alignItems: "center", justifyContent: "center",
+        display: "flex", alignItems: "center", justifyContent: "flex-end",
       }}>
         <button
           onClick={cycleMode}
           style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "6px 16px", borderRadius: 20,
-            fontSize: 10, fontWeight: 800, letterSpacing: "0.07em",
+            display: "inline-flex", alignItems: "center", gap: 4,
+            padding: "4px 10px", borderRadius: 20,
+            fontSize: 9, fontWeight: 800, letterSpacing: "0.07em",
             textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap",
             transition: "all 0.2s ease",
             userSelect: "none", WebkitUserSelect: "none",
-            background: "rgba(0,229,255,0.12)",
-            border: "1px solid rgba(0,229,255,0.5)",
+            background: "rgba(0,229,255,0.10)",
+            border: "1px solid rgba(0,229,255,0.45)",
             color: "#00E5FF",
-            boxShadow: "0 0 12px rgba(0,229,255,0.15)",
+            boxShadow: "0 0 8px rgba(0,229,255,0.12)",
           }}
         >
-          <span style={{ fontSize: 11, lineHeight: 1 }}>{currentModeObj.icon}</span>
+          <span style={{ fontSize: 9, lineHeight: 1 }}>{currentModeObj.icon}</span>
           {currentModeObj.label}
         </button>
       </div>
