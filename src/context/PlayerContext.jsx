@@ -149,8 +149,13 @@ function getOrCreateAudioContext(audioElement) {
 
   // Create context if needed (or if previous one was closed)
   if (!_audioCtx || _audioCtx.state === "closed") {
-    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    window._uvAudioCtx = _audioCtx;
+    try {
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      window._uvAudioCtx = _audioCtx;
+    } catch (e) {
+      console.warn("[Player] AudioContext creation failed:", e.message);
+      return null;
+    }
     // Reset nodes when context is recreated
     _analyser   = null;
     _sourceNode = null;
@@ -202,7 +207,7 @@ function getOrCreateAudioContext(audioElement) {
   return _analyser;
 }
 
-export function resumeGlobalAudioContext() { resumeAudioContext().catch(() => {}); }
+export function resumeGlobalAudioContext() { return resumeAudioContext().catch(() => {}); }
 export function getGlobalAnalyser(el) { return getOrCreateAudioContext(el); }
 
 /**
@@ -685,90 +690,9 @@ export function PlayerProvider({ children }) {
     console.log("[Player] MediaSession handlers registered (once)");
   }
 
-  // ── Load & play new track ─────────────────────────────────────────────────
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack?.audio_url) return;
-
-    const url = currentTrack.audio_url;
-
-    // Same src — just resume if paused
-    if (loadedSrcRef.current === url && audio.src) {
-      if (audio.paused) safePlay(audio, "same-track-resume");
-      return;
-    }
-
-    // New track — enqueue full load
-    opQueueRef.current.push(async () => {
-      const thisUrl = currentTrack?.audio_url;
-      if (!thisUrl) return;
-
-      console.log("[Player] loading new track:", currentTrack.title, "| url:", thisUrl.substring(0, 60));
-
-      // Snapshot the url we're loading
-      loadedSrcRef.current   = thisUrl;
-      playingUrlRef.current  = thisUrl;
-      savedTimeRef.current   = 0;
-      lastTimeRef.current    = 0;
-
-      stopWatchdog();
-
-      // Fully clear old audio state
-      enforceRate(audio);
-      audio.src = "";
-      await new Promise(r => setTimeout(r, 30)); // Safari yield
-
-      // Guard: if another track was queued during yield, abort
-      if (playingUrlRef.current !== thisUrl) {
-        console.log("[Player] track changed during yield, aborting load");
-        return;
-      }
-
-      audio.src = thisUrl;
-      enforceRate(audio);
-      audio.load();
-
-      await new Promise((resolve) => {
-        let done = false;
-        const finish = () => {
-          if (done) return;
-          done = true;
-          audio.removeEventListener("canplay", finish);
-          audio.removeEventListener("error",   onErr);
-          resolve();
-        };
-        const onErr = () => {
-          console.warn("[Player] track load error");
-          finish();
-        };
-        audio.addEventListener("canplay", finish);
-        audio.addEventListener("error",   onErr);
-        setTimeout(finish, 8000);
-      });
-
-      // Guard again after async
-      if (playingUrlRef.current !== thisUrl) {
-        console.log("[Player] track changed after load, aborting play");
-        return;
-      }
-
-      enforceRate(audio);
-      await resumeAudioContext();
-
-      console.log("[Player] playing track | rate:", audio.playbackRate, "| ct:", audio.currentTime.toFixed(2));
-      const p = audio.play();
-      if (p && typeof p.then === "function") {
-        await p.catch((e) => {
-          if (e.name !== "AbortError") console.warn("[Player] new track play error:", e.name, e.message);
-        });
-      }
-      enforceRate(audio);
-      console.log("[Player] new track started | rate:", audio.playbackRate);
-      startWatchdog(audio);
-    });
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTrack]);
+  // NOTE: Track loading and playback is now handled directly in playTrack()
+  // above, keeping us inside the iOS user gesture window. This useEffect is
+  // intentionally removed — do not re-add it.
 
   // ── Native audio events → React state ────────────────────────────────────
   useEffect(() => {
@@ -993,26 +917,115 @@ export function PlayerProvider({ children }) {
   // ── togglePlay ────────────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio || !audio.src) return;
+    if (!audio) return;
     // Wire Web Audio graph on user gesture — safe on iOS Safari here.
     getOrCreateAudioContext(audio);
-    if (audio.paused || audio.ended) {
-      enforceRate(audio);
-      safePlay(audio, "toggle-play");
-    } else {
+    // Resume AudioContext synchronously inside the user gesture (iOS requirement)
+    resumeAudioContext().catch(() => {});
+
+    if (!audio.paused && !audio.ended) {
+      // Currently playing — pause it
       safePause(audio, "toggle-pause");
+      return;
     }
-  }, [safePlay, safePause]);
+
+    // Currently paused — resume or reload
+    enforceRate(audio);
+
+    // If src is gone (e.g. after stopPlaying or Safari clearing it), reload from ref
+    if (!audio.src && loadedSrcRef.current) {
+      audio.src = loadedSrcRef.current;
+      enforceRate(audio);
+      audio.load();
+    }
+
+    // iOS: call play() synchronously within gesture
+    const playPromise = audio.play();
+    if (playPromise && typeof playPromise.then === "function") {
+      playPromise.then(() => {
+        enforceRate(audio);
+        startWatchdog(audio);
+        console.log("[Player] togglePlay resumed | rate:", audio.playbackRate);
+      }).catch((e) => {
+        if (e.name !== "AbortError") {
+          console.warn("[Player] togglePlay play() error:", e.name, e.message);
+          // Fall back to safePlay which handles buffer-evicted state
+          safePlay(audio, "toggle-play-fallback");
+        }
+      });
+    } else {
+      enforceRate(audio);
+      startWatchdog(audio);
+    }
+  }, [safePlay, safePause, startWatchdog]);
 
   // ── playTrack (public API) ────────────────────────────────────────────────
+  // iOS CRITICAL: audio.play() must be called synchronously within the user
+  // gesture handler. Any await before play() loses the gesture context on iOS
+  // Safari and the browser silently blocks playback with no error.
+  //
+  // Strategy:
+  //   1. Synchronously: clear queue, set src, load(), play() — all in one tick.
+  //      iOS unlocks audio on the synchronous play() call.
+  //   2. The play() Promise resolves async — we just handle errors there.
+  //   3. watchdog and state updates happen after play() resolves.
   const playTrack = useCallback((track, source = "song") => {
-    if (!audioRef.current) return;
-    // Wire the audio element into Web Audio graph now (user gesture context).
-    // On iOS this is the first safe point to call createMediaElementSource.
-    getOrCreateAudioContext(audioRef.current);
+    const audio = audioRef.current;
+    if (!audio || !track?.audio_url) return;
+
+    const url = track.audio_url;
+
+    // Wire Web Audio graph inside user gesture context (iOS-safe)
+    getOrCreateAudioContext(audio);
+
+    // Update React state
     setSourceType(source);
     setCurrentTrack(track);
-  }, []);
+
+    // Clear any pending ops so this track wins
+    opQueueRef.current.clearQueue();
+    stopWatchdog();
+
+    // Update refs immediately (synchronous, before any async)
+    loadedSrcRef.current  = url;
+    playingUrlRef.current = url;
+    savedTimeRef.current  = 0;
+    lastTimeRef.current   = 0;
+
+    // ── SYNCHRONOUS iOS unlock sequence ──────────────────────────────────────
+    // Must happen in the same call stack as the user gesture.
+    enforceRate(audio);
+    audio.src = url;
+    enforceRate(audio);
+    audio.load();
+
+    console.log("[Player] playTrack sync | title:", track.title, "| iOS:", isIOS, "| src set, load() called");
+
+    // play() called synchronously — this is the iOS gesture unlock
+    const playPromise = audio.play();
+
+    // Handle the async resolution without blocking
+    if (playPromise && typeof playPromise.then === "function") {
+      playPromise.then(() => {
+        enforceRate(audio);
+        startWatchdog(audio);
+        console.log("[Player] playTrack resolved | title:", track.title, "| rate:", audio.playbackRate, "| paused:", audio.paused);
+      }).catch((e) => {
+        if (e.name === "AbortError") {
+          // Another track was queued — this is normal, ignore
+          console.log("[Player] playTrack AbortError (superseded by newer track) |", track.title);
+          return;
+        }
+        // NotAllowedError = iOS gesture unlock failed (shouldn't happen since we're sync)
+        // NetworkError = bad URL
+        console.warn("[Player] playTrack play() error:", e.name, e.message, "| title:", track.title);
+      });
+    } else {
+      // Older iOS: no promise returned, assume playing
+      enforceRate(audio);
+      startWatchdog(audio);
+    }
+  }, [stopWatchdog, startWatchdog]);
 
   // ── stopPlaying ───────────────────────────────────────────────────────────
   const stopPlaying = useCallback(() => {
