@@ -14,6 +14,7 @@ import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
 import LatestMusicSection from "../components/home/LatestMusicSection";
+import NowPlayingHomeCard from "../components/home/NowPlayingHomeCard";
 import TrendingTracksSection from "../components/home/TrendingTracksSection";
 import SectionHeader from "../components/shared/SectionHeader";
 import PullToRefresh from "../components/shared/PullToRefresh";
@@ -444,6 +445,9 @@ export default function Home() {
           </div>
         </motion.div>
       </section>
+
+      {/* ── NOW PLAYING ── */}
+      <NowPlayingHomeCard />
 
       {/* ── LATEST MUSIC ── */}
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
