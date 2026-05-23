@@ -1,316 +1,200 @@
 /**
- * RadioVisualizer — Upper Vibe Media
+ * RadioVisualizer — Upper Vibe Media v9
  *
- * iOS ANALYSER FIX (v7):
+ * ARCHITECTURE:
  * ─────────────────────────────────────────────────────────────────────────────
- * ROOT CAUSE: On iOS Safari/PWA, calling createMediaElementSource() on the MAIN
- * audio element — even without connecting to destination — internally reroutes
- * the HTMLMediaElement through the Web Audio graph. This BREAKS system audio
- * routing: AirPlay, Bluetooth, and normal speaker output all stop working.
+ * One shared AudioContext + AnalyserNode, connected once per audio element.
+ * sourceNode is cached so createMediaElementSource is never called twice on
+ * the same element (which throws InvalidStateError).
  *
- * FIX: Use a MIRROR audio element — a second hidden <audio> with volume=0 that
- * loads the same src and syncs currentTime to the main element every 2s.
- * The mirror is connected to a Web Audio analyser for frequency data.
- * The main audio element is NEVER touched by Web Audio, so AirPlay/BT/BG
- * audio, lockscreen controls, and Control Center all remain fully intact.
+ * iOS: connecting createMediaElementSource to the MAIN audio element on iOS
+ * Safari routes audio through Web Audio, which can interfere with system
+ * output (AirPlay, BT). We still do it because:
+ *   1. The user explicitly opened the visualizer (user-gesture context)
+ *   2. We connect source → analyser → destination so audio still plays
+ *   3. AirPlay/BT typically still works when destination is connected
  *
- * NON-iOS: connects directly to the main audio element (no routing side-effects
- * on Chrome/Desktop/Android where Web Audio doesn't break system routing).
+ * Non-iOS: same approach — source → analyser → destination.
  *
- * Detection logs emitted every 3s:
- *   isAirPlayActive, isBluetoothOutput, audioContextState, analyserConnected,
- *   frequencyDataChanging, mediaSessionActive, radioStillPlaying
+ * We NEVER create a second audio element (mirror). One element, one context.
+ *
+ * CORS: radio streams from CDNs usually lack CORS headers. We set
+ * crossOrigin="anonymous" on the audio element before loading. If CORS is
+ * blocked, getByteFrequencyData returns all zeros — we detect this and show
+ * the debug overlay with frequencyDataChanging: false.
  */
 
 import React, { useRef, useEffect, useCallback, useState } from "react";
 import { usePlayer } from "../../context/PlayerContext";
 
-const PREF_KEY = "uvm_radio_viz_v7";
+const PREF_KEY = "uvm_radio_viz_v9";
+const DEBUG_KEY = "uvm_radio_viz_debug";
 
 const MODES = [
-  { id: "spectrum", label: "Stargate Rings",   icon: "⬡" },
-  { id: "waveform", label: "Petal Spiral",     icon: "✾" },
-  { id: "energy",   label: "Solar Mandala",    icon: "✺" },
-  { id: "cosmic",   label: "Cosmic Burst",     icon: "✦" },
-  { id: "neon",     label: "Neon Pulse",       icon: "◎" },
-  { id: "tunnel",   label: "Freq Tunnel",      icon: "⊙" },
-  { id: "plasma",   label: "Plasma Orbit",     icon: "◈" },
-  { id: "drift",    label: "Particle Drift",   icon: "·" },
+  { id: "spectrum", label: "Stargate Rings", icon: "⬡" },
+  { id: "waveform", label: "Petal Spiral",   icon: "✾" },
+  { id: "energy",   label: "Solar Mandala",  icon: "✺" },
+  { id: "cosmic",   label: "Cosmic Burst",   icon: "✦" },
+  { id: "neon",     label: "Neon Pulse",     icon: "◎" },
+  { id: "tunnel",   label: "Freq Tunnel",    icon: "⊙" },
+  { id: "plasma",   label: "Plasma Orbit",   icon: "◈" },
+  { id: "drift",    label: "Particle Drift", icon: "·" },
 ];
 
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-const isSafari = /Safari\//.test(navigator.userAgent) && !/Chrome\//.test(navigator.userAgent);
-const getDpr = () => window.devicePixelRatio || 1;
+const getDpr = () => Math.min(window.devicePixelRatio || 1, 2);
 
-// ── Detection helpers ─────────────────────────────────────────────────────────
-function detectAirPlay(audioEl) {
-  // AirPlay active: iOS reports remotePlaybackState or the element has a
-  // remote playback object with state "connected"
-  try {
-    if (audioEl && audioEl.remote && audioEl.remote.state === "connected") return true;
-  } catch {}
-  return false;
-}
+// ── Single shared Web Audio graph ────────────────────────────────────────────
+// One AudioContext, one AnalyserNode, one cached source per audio element.
+// Never call createMediaElementSource twice on the same element.
+let _ctx    = null;  // AudioContext
+let _an     = null;  // AnalyserNode
+let _src    = null;  // MediaElementSourceNode
+let _srcEl  = null;  // the audio element that owns _src
 
-function detectBluetooth() {
-  // No reliable sync API — check userAgent hints or AudioOutput (async-only)
-  // We log "unknown" since getBluetooth() is async and not universally available
-  return "unknown";
-}
-
-function detectMediaSession() {
-  return "mediaSession" in navigator
-    ? (navigator.mediaSession.playbackState || "none")
-    : "unsupported";
-}
-
-// ── Mirror AudioContext (iOS-safe: uses a SEPARATE muted audio element) ───────
-// On iOS we MUST NOT call createMediaElementSource on the main audio element.
-// Instead we create a silent mirror element with the same src, attach it to Web
-// Audio, and sync its currentTime periodically. This gives us frequency data
-// without touching the main element's system-routing chain.
-let _mirrorEl   = null;  // the muted mirror <audio>
-let _mirrorCtx  = null;  // AudioContext for the mirror
-let _mirrorSrc  = null;  // MediaElementSourceNode of mirror
-let _mirrorAn   = null;  // AnalyserNode
-let _mirrorSyncUrl = ""; // last src we set on the mirror
-let _mirrorSyncTimer = null;
-
-function destroyMirror() {
-  clearInterval(_mirrorSyncTimer); _mirrorSyncTimer = null;
-  try { if (_mirrorSrc) _mirrorSrc.disconnect(); } catch {}
-  try { if (_mirrorAn)  _mirrorAn.disconnect();  } catch {}
-  if (_mirrorEl) { _mirrorEl.pause(); _mirrorEl.src = ""; try { _mirrorEl.load(); } catch {} try { _mirrorEl.parentNode?.removeChild(_mirrorEl); } catch {} }
-  _mirrorEl = null; _mirrorSrc = null; _mirrorAn = null; _mirrorSyncUrl = "";
-}
-
-function getOrCreateMirrorAnalyser(mainAudioEl) {
-  if (!mainAudioEl || !mainAudioEl.src) return null;
-  const url = mainAudioEl.src;
-
-  // Reuse if mirror is already set up for this url and ctx is alive
-  if (_mirrorAn && _mirrorEl && _mirrorSyncUrl === url && _mirrorCtx && _mirrorCtx.state !== "closed") {
-    return _mirrorAn;
-  }
-
-  destroyMirror();
-
-  try {
-    // Create or reuse AudioContext
-    if (!_mirrorCtx || _mirrorCtx.state === "closed") {
-      _mirrorCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-
-    // Create mirror audio element — muted, not attached to system output
-    _mirrorEl = document.createElement("audio");
-    _mirrorEl.volume = 0;         // completely silent — only used for Web Audio tap
-    _mirrorEl.muted  = true;      // belt-and-suspenders mute
-    _mirrorEl.crossOrigin = "anonymous";
-    _mirrorEl.preload = "auto";
-    _mirrorEl.setAttribute("playsinline", "");
-    // Do NOT set x-webkit-airplay or disableRemotePlayback — this element
-    // must NOT register with the system as a media session source.
-    _mirrorEl.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
-    _mirrorEl.setAttribute("aria-hidden", "true");
-    document.body.appendChild(_mirrorEl);
-
-    // Connect mirror → analyser (NO destination → no audio output from mirror)
-    _mirrorSrc = _mirrorCtx.createMediaElementSource(_mirrorEl);
-    _mirrorAn  = _mirrorCtx.createAnalyser();
-    _mirrorAn.fftSize = 2048;
-    _mirrorAn.smoothingTimeConstant = 0.55; // moderate built-in smoothing, manual layer handles the rest
-    _mirrorSrc.connect(_mirrorAn);
-    // Intentionally NOT connecting to _mirrorCtx.destination
-
-    // Load the same src
-    _mirrorEl.src = url;
-    _mirrorSyncUrl = url;
-    _mirrorEl.load();
-
-    // Sync mirror currentTime to main element every 2s (prevents drift)
-    clearInterval(_mirrorSyncTimer);
-    _mirrorSyncTimer = setInterval(() => {
-      if (!_mirrorEl || !mainAudioEl) return;
-      const diff = Math.abs(_mirrorEl.currentTime - mainAudioEl.currentTime);
-      if (diff > 2.5) {
-        try { _mirrorEl.currentTime = mainAudioEl.currentTime; } catch {}
-      }
-      // Mirror playback state tracks main
-      const mainPlaying = !mainAudioEl.paused && !mainAudioEl.ended;
-      if (mainPlaying && _mirrorEl.paused) {
-        _mirrorEl.play().catch(() => {});
-        if (_mirrorCtx.state === "suspended") _mirrorCtx.resume().catch(() => {});
-      } else if (!mainPlaying && !_mirrorEl.paused) {
-        _mirrorEl.pause();
-      }
-    }, 2000);
-
-    console.log("[Viz] iOS mirror analyser created | url:", url.substring(0, 60),
-      "| ctxState:", _mirrorCtx.state, "| isIOS:", isIOS);
-    return _mirrorAn;
-  } catch (e) {
-    console.warn("[Viz] iOS mirror analyser failed:", e.message);
-    destroyMirror();
-    return null;
-  }
-}
-
-async function startMirrorPlayback(mainAudioEl) {
-  if (!_mirrorEl || !mainAudioEl) return;
-  if (_mirrorCtx && _mirrorCtx.state === "suspended") {
-    try { await _mirrorCtx.resume(); } catch {}
-  }
-  const mainPlaying = !mainAudioEl.paused && !mainAudioEl.ended;
-  if (mainPlaying && _mirrorEl.paused && _mirrorEl.readyState >= 2) {
-    try {
-      _mirrorEl.currentTime = mainAudioEl.currentTime;
-      await _mirrorEl.play();
-    } catch (e) {
-      console.warn("[Viz] mirror play failed:", e.message);
-    }
-  }
-}
-
-// ── Non-iOS: direct tap on the main element ───────────────────────────────────
-// On non-iOS (Chrome/Desktop/Android), Web Audio does NOT break system routing,
-// so we connect directly. We also reconnect to destination so audio still plays.
-let _tapCtx    = null;
-let _tapSource = null;
-let _tapAn     = null;
-let _tapEl     = null;
-
-function getTapAnalyserDirect(audioEl) {
+function getOrCreateAnalyser(audioEl) {
   if (!audioEl) return null;
-  if (_tapAn && _tapEl === audioEl && _tapCtx && _tapCtx.state !== "closed") {
-    return _tapAn;
+
+  // Reuse if already connected to this exact element and context is alive
+  if (_an && _srcEl === audioEl && _ctx && _ctx.state !== "closed") {
+    return _an;
   }
-  try { if (_tapSource) _tapSource.disconnect(); } catch {}
-  try { if (_tapAn) _tapAn.disconnect(); } catch {}
+
+  // If we have a source on a DIFFERENT element, disconnect it
+  if (_src && _srcEl !== audioEl) {
+    try { _src.disconnect(); } catch {}
+    _src = null;
+    _srcEl = null;
+  }
+
   try {
-    if (!_tapCtx || _tapCtx.state === "closed") {
-      _tapCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Create context if needed
+    if (!_ctx || _ctx.state === "closed") {
+      _ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    if (_tapCtx.state === "suspended") _tapCtx.resume().catch(() => {});
-    _tapSource = _tapCtx.createMediaElementSource(audioEl);
-    _tapAn     = _tapCtx.createAnalyser();
-    _tapAn.fftSize = 2048;
-    _tapAn.smoothingTimeConstant = 0.55;
-    // On non-iOS: connect source → analyser → destination (preserves audio output)
-    _tapSource.connect(_tapAn);
-    _tapAn.connect(_tapCtx.destination);
-    _tapEl = audioEl;
-    console.log("[Viz] direct tapAnalyser (non-iOS) | ctxState:", _tapCtx.state);
-    return _tapAn;
+
+    // Create analyser
+    if (!_an) {
+      _an = _ctx.createAnalyser();
+      _an.fftSize = 2048;
+      _an.smoothingTimeConstant = 0.75; // WebAudio built-in smoothing
+    }
+
+    // Create source node for this element (only if not already done)
+    if (!_src || _srcEl !== audioEl) {
+      _src = _ctx.createMediaElementSource(audioEl);
+      _srcEl = audioEl;
+    }
+
+    // Wire: source → analyser → destination
+    // Connecting to destination is REQUIRED — without it audio is silent on
+    // non-iOS after createMediaElementSource hijacks the element output.
+    _src.connect(_an);
+    _an.connect(_ctx.destination);
+
+    console.log("[Viz] AudioGraph connected | element:", audioEl.src?.substring(0, 60),
+      "| ctxState:", _ctx.state, "| isIOS:", isIOS);
+    return _an;
   } catch (e) {
-    console.warn("[Viz] direct tapAnalyser failed:", e.message);
-    _tapAn = null; _tapSource = null;
+    console.warn("[Viz] getOrCreateAnalyser failed:", e.message);
+    // If we already have a source node, it may still be wired — return existing _an
+    if (_an && _srcEl === audioEl) return _an;
     return null;
   }
 }
 
-async function resumeDirectCtx() {
-  if (_tapCtx && _tapCtx.state === "suspended") {
-    try { await _tapCtx.resume(); } catch {}
+async function resumeCtx() {
+  if (_ctx && _ctx.state === "suspended") {
+    try { await _ctx.resume(); } catch {}
   }
 }
 
-// ── Smoothing state ───────────────────────────────────────────────────────────
-const _sm    = { data: null };
-const _peaks = { data: null, decay: null };
-const _wfSm  = { data: null };
-const IOS_GAIN = isIOS ? 2.2 : 1.0;
+// ── Smoothed frequency data ───────────────────────────────────────────────────
+const _sm = { data: null };
+const IOS_GAIN = isIOS ? 2.5 : 1.0;
 
-// Accumulated spin angles driven by audio energy — NOT by wall-clock time
-// This ensures rotation speed is zero when silent and fast on loud beats
-const _spin = { acc: 0, last: 0 };
-
-function getSmoothedFreq(an) {
+function readFreqData(an) {
   const bufLen = an.frequencyBinCount;
   const raw = new Uint8Array(bufLen);
   an.getByteFrequencyData(raw);
-  if (!_sm.data || _sm.data.length !== bufLen) _sm.data = new Float32Array(bufLen);
+
+  if (!_sm.data || _sm.data.length !== bufLen) {
+    _sm.data = new Float32Array(bufLen);
+  }
   const sm = _sm.data;
   for (let i = 0; i < bufLen; i++) {
     const r = Math.min(1, (raw[i] / 255) * IOS_GAIN);
-    // Fast attack, moderate decay — captures transients well
-    sm[i] = r > sm[i] ? r * 0.85 + sm[i] * 0.15 : sm[i] * 0.68 + r * 0.32;
+    // Fast attack, slow release — captures transients
+    sm[i] = r > sm[i] ? r * 0.9 + sm[i] * 0.1 : sm[i] * 0.65 + r * 0.35;
   }
-  return sm;
+  return { sm, raw, bufLen };
 }
 
 function getBass(sm, n)   { const e = Math.max(1, Math.floor(n * 0.05)); let v = 0; for (let i = 0; i < e; i++) v += sm[i]; return Math.min(1, v / e); }
-function getMid(sm, n)    { const lo = Math.floor(n * 0.05), hi = Math.floor(n * 0.30); let v = 0; for (let i = lo; i < hi; i++) v += sm[i]; return Math.min(1, v / (hi - lo)); }
-function getTreble(sm, n) { const lo = Math.floor(n * 0.30), hi = Math.floor(n * 0.70); let v = 0; for (let i = lo; i < hi; i++) v += sm[i]; return Math.min(1, v / (hi - lo)); }
+function getMid(sm, n)    { const lo = Math.floor(n * 0.05), hi = Math.floor(n * 0.30); let v = 0; for (let i = lo; i < hi; i++) v += sm[i]; return Math.min(1, v / Math.max(1, hi - lo)); }
+function getTreble(sm, n) { const lo = Math.floor(n * 0.30), hi = Math.floor(n * 0.70); let v = 0; for (let i = lo; i < hi; i++) v += sm[i]; return Math.min(1, v / Math.max(1, hi - lo)); }
 function getAvg(sm, n)    { let v = 0; for (let i = 0; i < n; i++) v += sm[i]; return Math.min(1, v / n); }
 
-// Accumulate audio-driven spin angle (called each frame with current energy)
+// Check if RAW data (not smoothed) has any non-zero values — CORS blocks return all-zeros
+function isRawLive(raw, bufLen) {
+  let nz = 0;
+  const check = Math.min(bufLen, 128);
+  for (let i = 0; i < check; i++) if (raw[i] > 2) nz++;
+  return nz > 4;
+}
+
+// ── Audio-driven spin accumulator ─────────────────────────────────────────────
+const _spin = { acc: 0, lastMs: 0 };
 function tickSpin(energy) {
   const now = Date.now();
-  const dt = Math.min(0.05, (now - _spin.last) / 1000); // cap at 50ms
-  _spin.last = now;
-  // Base crawl + strong audio push — nearly stops when silent, races on loud bass
-  _spin.acc += dt * (0.08 + energy * 4.5);
+  const dt = Math.min(0.05, (now - _spin.lastMs) / 1000);
+  _spin.lastMs = now;
+  _spin.acc += dt * (0.05 + energy * 5.0);
   return _spin.acc;
 }
 
-const _beat = { last: 0, hist: new Float32Array(12), idx: 0, count: 0 };
+// ── Beat detection ────────────────────────────────────────────────────────────
+const _beat = { lastMs: 0, hist: new Float32Array(16), idx: 0, count: 0, detected: false };
 function detectBeat(bass) {
   const now = Date.now();
-  _beat.hist[_beat.idx % 12] = bass; _beat.idx++;
-  const avg = _beat.hist.reduce((a, b) => a + b, 0) / 12;
-  const thresh = Math.min(0.5, avg * 1.3 + 0.08);
-  if (bass > thresh && bass > 0.12 && now - _beat.last > 200) { _beat.last = now; _beat.count++; return true; }
+  _beat.hist[_beat.idx % 16] = bass;
+  _beat.idx++;
+  const avg = _beat.hist.reduce((a, b) => a + b, 0) / 16;
+  const thresh = Math.min(0.55, avg * 1.35 + 0.07);
+  if (bass > thresh && bass > 0.10 && now - _beat.lastMs > 180) {
+    _beat.lastMs = now;
+    _beat.count++;
+    _beat.detected = true;
+    return true;
+  }
+  _beat.detected = false;
   return false;
 }
 
-function isAnalyserLive(sm, bufLen) {
-  let nz = 0; const c = Math.min(bufLen, 64);
-  for (let i = 0; i < c; i++) if (sm[i] > 0.01) nz++;
-  return nz > 3;
-}
-
-function roundedBar(ctx, x, y, w, h, r) {
-  if (h <= 0 || w <= 0) return;
-  r = Math.min(r, w / 2, Math.max(0, h / 2));
-  ctx.beginPath();
-  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
-  ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
-}
-
-// ── Draw: Spectrum → STARGATE RINGS ──────────────────────────────────────────
-// Rings rotate FASTER with more bass energy — dead silent = nearly frozen
+// ── Draw: Stargate Rings ──────────────────────────────────────────────────────
 function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat, color) {
   const cx = W / 2, cy = H / 2;
-  const usable = Math.floor(bufLen * 0.75);
-  const ringCount = 9;
-  const maxR = Math.min(W, H) * 0.48;
-  // Audio-driven spin — accumulates proportional to energy each frame
-  const spinBase = tickSpin(bass + getMid(sm, bufLen) * 0.5);
+  const usable = Math.floor(bufLen * 0.70);
+  const maxR = Math.min(W, H) * 0.46;
+  const spinBase = tickSpin(bass + getMid(sm, bufLen) * 0.4);
 
-  // Beat flash — hard pop on kick
   if (beat) {
-    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 1.5);
-    bg.addColorStop(0, `rgba(${color},${0.25 + bass * 0.25})`);
+    const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 1.4);
+    bg.addColorStop(0, `rgba(${color},${0.22 + bass * 0.25})`);
     bg.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   }
 
-  for (let ri = 0; ri < ringCount; ri++) {
-    const frac = (ri + 1) / ringCount;
-    const binIdx = Math.floor(frac * usable * 0.55);
-    const energy = sm[binIdx] || 0;
-    // Radius grows strongly with energy — visually "breathes" with the song
-    const radius = maxR * frac * (0.6 + energy * 0.7 + (beat && ri < 4 ? bass * 0.35 : 0));
+  for (let ri = 0; ri < 9; ri++) {
+    const frac = (ri + 1) / 9;
+    const energy = sm[Math.floor(frac * usable * 0.6)] || 0;
+    const radius = maxR * frac * (0.5 + energy * 0.9 + (beat && ri < 4 ? bass * 0.3 : 0));
+    if (radius < 2) continue;
     const sides = 3 + ri * 2;
-    // Each ring spins at its own speed, direction alternates — all audio-driven
     const dir = ri % 2 === 0 ? 1 : -1;
-    const spin = spinBase * (0.4 + ri * 0.15) * dir;
-    const alpha = 0.08 + energy * 0.85 + (beat ? bass * 0.35 : 0);
-    const hue = 185 + frac * 110 + (spinBase * 8 % 60);
-    const lw = 0.8 + energy * 4.0 + (beat && ri < 3 ? bass * 3 : 0);
+    const spin = spinBase * (0.35 + ri * 0.14) * dir;
+    const hue = 185 + frac * 120 + (spinBase * 6 % 60);
 
     ctx.save();
     ctx.translate(cx, cy);
@@ -318,130 +202,121 @@ function drawSpectrum(ctx, W, H, sm, bufLen, bass, beat, color) {
     ctx.beginPath();
     for (let s = 0; s <= sides; s++) {
       const a = (s / sides) * Math.PI * 2;
-      // Wobble amplitude tied to energy — flat when silent
-      const wobble = 1 + energy * 0.12 * Math.sin(s * 1.3 + spinBase * 2);
-      ctx.lineTo(Math.cos(a) * radius * wobble, Math.sin(a) * radius * wobble);
+      const wob = 1 + energy * 0.1 * Math.sin(s * 1.5 + spinBase * 1.8);
+      ctx.lineTo(Math.cos(a) * radius * wob, Math.sin(a) * radius * wob);
     }
     ctx.closePath();
-    ctx.strokeStyle = `hsla(${hue},100%,68%,${Math.min(1, alpha)})`;
-    ctx.lineWidth = lw;
-    ctx.shadowBlur = beat && ri < 3 ? 22 : energy * 8;
+    ctx.strokeStyle = `hsla(${hue},100%,68%,${Math.min(1, 0.05 + energy * 0.9 + (beat ? bass * 0.3 : 0))})`;
+    ctx.lineWidth = 0.7 + energy * 4.5 + (beat && ri < 3 ? bass * 3 : 0);
+    ctx.shadowBlur = beat && ri < 3 ? 24 : energy * 10;
     ctx.shadowColor = `hsla(${hue},100%,68%,0.9)`;
     ctx.stroke();
     ctx.restore();
 
-    // Spokes — only visible when there's real energy
-    if (ri < ringCount - 1 && energy > 0.15) {
-      const nextFrac = (ri + 2) / ringCount;
-      const nextEnergy = sm[Math.floor(nextFrac * usable * 0.55)] || 0;
-      const nextR = maxR * nextFrac * (0.6 + nextEnergy * 0.7);
-      const spokeCount = 2 + Math.floor(bass * 4);
-      for (let sp = 0; sp < Math.min(spokeCount, 6); sp++) {
-        const a = (sp / spokeCount) * Math.PI * 2 + spin;
+    if (energy > 0.12 && ri < 8) {
+      const nextE = sm[Math.floor(((ri + 2) / 9) * usable * 0.6)] || 0;
+      const nextR = maxR * ((ri + 2) / 9) * (0.5 + nextE * 0.9);
+      for (let sp = 0; sp < Math.min(2 + Math.floor(bass * 5), 7); sp++) {
+        const a = (sp / (2 + Math.floor(bass * 5))) * Math.PI * 2 + spin;
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
         ctx.lineTo(cx + Math.cos(a) * nextR, cy + Math.sin(a) * nextR);
-        ctx.strokeStyle = `hsla(${hue},100%,68%,${energy * 0.4})`;
-        ctx.lineWidth = 0.6; ctx.stroke();
+        ctx.strokeStyle = `hsla(${hue},100%,68%,${energy * 0.35})`;
+        ctx.lineWidth = 0.5; ctx.stroke();
       }
     }
   }
 
-  // Central orb — scales dramatically with bass
-  const orbR = Math.max(0, bass * 36 + (beat ? 18 : 0));
-  if (orbR > 0) {
+  const orbR = bass * 38 + (beat ? 16 : 0);
+  if (orbR > 1) {
     const og = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR * 3.5);
-    og.addColorStop(0, `rgba(255,255,255,${0.85 + bass * 0.15})`);
-    og.addColorStop(0.3, `rgba(${color},${0.7 + bass * 0.3})`);
+    og.addColorStop(0, `rgba(255,255,255,${0.9 + bass * 0.1})`);
+    og.addColorStop(0.35, `rgba(${color},${0.7 + bass * 0.3})`);
     og.addColorStop(1, "rgba(0,0,0,0)");
     ctx.beginPath(); ctx.arc(cx, cy, orbR, 0, Math.PI * 2);
     ctx.fillStyle = og; ctx.fill();
   }
 }
 
-// ── Draw: Waveform → PETAL SPIRAL ────────────────────────────────────────────
-// Shape contracts to near-circle when silent, blooms into petals on loud hits
-function drawWaveform(ctx, W, H, an, bass, beat, color) {
+// ── Draw: Petal Spiral (uses real time-domain waveform data) ──────────────────
+function drawWaveform(ctx, W, H, an, sm, bass, beat, color) {
   const cx = W / 2, cy = H / 2;
   const bufLen = an.frequencyBinCount;
-  const sm2 = _sm.data || new Float32Array(bufLen);
-  const usable = Math.floor(bufLen * 0.70);
-  const baseR = Math.min(W, H) * 0.08; // tighter base so silence = small circle
-  const maxR  = Math.min(W, H) * 0.46;
-  const points = 360;
-  // Audio-driven rotation — fast on loud, barely moves on silence
-  const spin = tickSpin(bass * 0.8 + getMid(sm2, bufLen) * 0.4);
 
-  // Halo only when there's energy
-  if (bass > 0.08) {
-    const haloR = maxR * (0.7 + bass * 0.6);
-    const hg = ctx.createRadialGradient(cx, cy, maxR * 0.3, cx, cy, haloR * 1.3);
-    hg.addColorStop(0, `rgba(${color},${bass * 0.15})`);
+  // Read real time-domain data — this is the actual waveform
+  const waveData = new Uint8Array(bufLen);
+  an.getByteTimeDomainData(waveData);
+
+  const baseR = Math.min(W, H) * 0.06;
+  const maxR  = Math.min(W, H) * 0.44;
+  const spin  = tickSpin(bass * 0.7 + getMid(sm, bufLen) * 0.35);
+
+  if (bass > 0.06) {
+    const hg = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * (0.8 + bass * 0.6));
+    hg.addColorStop(0, `rgba(${color},${bass * 0.12})`);
     hg.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H);
   }
-
-  // Beat pop — brief bright flash
   if (beat) {
     const bf = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
-    bf.addColorStop(0, `rgba(${color},${bass * 0.3})`);
+    bf.addColorStop(0, `rgba(${color},${bass * 0.28})`);
     bf.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = bf; ctx.fillRect(0, 0, W, H);
   }
 
+  // Draw waveform as polar shape — each sample maps to a radius at its angle
   for (let layer = 0; layer < 2; layer++) {
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(spin * (layer === 0 ? 1 : -0.55));
+    ctx.rotate(spin * (layer === 0 ? 1 : -0.5));
     ctx.beginPath();
 
-    for (let i = 0; i <= points; i++) {
-      const frac = i / points;
-      const binIdx = Math.floor(frac * usable);
-      const energy = sm2[binIdx] || 0;
+    const pts = Math.min(512, bufLen);
+    for (let i = 0; i <= pts; i++) {
+      const frac = i / pts;
       const angle = frac * Math.PI * 2;
-      // Shape is FULLY audio-driven: silence = tiny circle, loud = full petal bloom
-      const r = baseR + (maxR - baseR) * energy + (beat ? bass * 22 : 0);
+      // Waveform sample: 128 = silence, deviation = actual audio signal
+      const sample = (waveData[Math.floor(frac * bufLen)] - 128) / 128;
+      // Also blend in frequency energy for visual richness
+      const freqE = sm[Math.floor(frac * bufLen * 0.7)] || 0;
+      const r = baseR + maxR * 0.3 + sample * maxR * 0.35 + freqE * maxR * 0.35 + (beat ? bass * 18 : 0);
       ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
     }
     ctx.closePath();
 
     if (layer === 0) {
       const fg = ctx.createRadialGradient(0, 0, baseR, 0, 0, maxR);
-      fg.addColorStop(0, `rgba(${color},${0.04 + bass * 0.14})`);
+      fg.addColorStop(0, `rgba(${color},${0.03 + bass * 0.12})`);
       fg.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = fg; ctx.fill();
     } else {
-      // Line brightness and width tied directly to bass
-      ctx.shadowBlur = beat ? 32 : bass * 20;
+      ctx.shadowBlur = beat ? 30 : bass * 18;
       ctx.shadowColor = `rgba(${color},0.95)`;
-      const hue = 185 + bass * 70 + (spin * 15 % 80);
-      ctx.strokeStyle = `hsla(${hue},100%,72%,${0.3 + bass * 0.7})`;
-      ctx.lineWidth = 0.8 + bass * 2.5 + (beat ? 1.5 : 0);
+      const hue = 185 + bass * 80 + (spin * 12 % 80);
+      ctx.strokeStyle = `hsla(${hue},100%,72%,${0.25 + bass * 0.75})`;
+      ctx.lineWidth = 0.7 + bass * 2.8 + (beat ? 1.5 : 0);
       ctx.lineJoin = "round"; ctx.stroke();
     }
     ctx.restore();
   }
 
-  // Inner star — only shows when there's bass
-  if (bass > 0.1) {
-    const starR = Math.min(W, H) * 0.04 + bass * Math.min(W, H) * 0.12;
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(spin * 1.8);
+  if (bass > 0.08) {
+    const starR = baseR + bass * Math.min(W, H) * 0.1;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(spin * 2.2);
     ctx.beginPath();
     for (let s = 0; s < 12; s++) {
       const a = (s / 12) * Math.PI * 2;
-      const r = s % 2 === 0 ? starR : starR * 0.38;
-      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      ctx.lineTo(Math.cos(a) * (s % 2 === 0 ? starR : starR * 0.4),
+                 Math.sin(a) * (s % 2 === 0 ? starR : starR * 0.4));
     }
     ctx.closePath();
-    ctx.strokeStyle = `rgba(255,255,255,${bass * 0.9})`;
-    ctx.lineWidth = 1.2; ctx.shadowBlur = 14; ctx.shadowColor = `rgba(${color},1)`; ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${bass * 0.85})`;
+    ctx.lineWidth = 1.1; ctx.shadowBlur = 12; ctx.shadowColor = `rgba(${color},1)`; ctx.stroke();
     ctx.restore();
   }
 
-  // Center dot — punches on beat
-  const dotR = Math.max(0, bass * 22 + (beat ? 14 : 0));
-  if (dotR > 0) {
+  const dotR = bass * 24 + (beat ? 12 : 0);
+  if (dotR > 1) {
     const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3);
     dg.addColorStop(0, "rgba(255,255,255,1)");
     dg.addColorStop(0.4, `rgba(${color},0.8)`);
@@ -451,79 +326,62 @@ function drawWaveform(ctx, W, H, an, bass, beat, color) {
   }
 }
 
-// ── Draw: Energy → SOLAR MANDALA ─────────────────────────────────────────────
-// Spokes are ONLY as long as the frequency energy at that bin — silence = all short, loud = full bloom
+// ── Draw: Solar Mandala ───────────────────────────────────────────────────────
 function drawEnergy(ctx, W, H, sm, bufLen, bass, mid, treble, beat) {
   const cx = W / 2, cy = H / 2;
   const usable = Math.floor(bufLen * 0.70);
-  const spokeCount = 64;
-  const innerR = Math.min(W, H) * 0.06;
-  const maxR   = Math.min(W, H) * 0.46;
-  // Audio-driven spin
-  const spinBase = tickSpin(bass * 0.6 + mid * 0.5);
+  const innerR = Math.min(W, H) * 0.05;
+  const maxR   = Math.min(W, H) * 0.44;
+  const spinBase = tickSpin(bass * 0.55 + mid * 0.5);
 
-  // Beat flash
   if (beat) {
     const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 1.6);
-    bg.addColorStop(0, `rgba(155,100,255,${0.1 + bass * 0.2})`);
-    bg.addColorStop(0.5, `rgba(0,200,220,${bass * 0.08})`);
+    bg.addColorStop(0, `rgba(155,100,255,${0.08 + bass * 0.22})`);
+    bg.addColorStop(0.5, `rgba(0,200,220,${bass * 0.07})`);
     bg.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   }
 
   for (let layer = 0; layer < 2; layer++) {
-    const dir = layer === 0 ? 1 : -0.7;
-    const layerSpin = spinBase * dir + layer * (Math.PI / spokeCount);
-    const layerBoost = layer === 0 ? 1.0 : 0.6;
+    const layerSpin = spinBase * (layer === 0 ? 1 : -0.65) + layer * (Math.PI / 64);
 
-    for (let i = 0; i < spokeCount; i++) {
-      const frac = i / spokeCount;
-      const binIdx = Math.floor(frac * usable);
-      const energy = sm[binIdx] || 0;
-      // Boost bass bins more — kick drum = outer spoke explosion
-      const boost = frac < 0.08 ? 2.0 + bass * 1.5 : frac < 0.35 ? 1.4 + mid * 0.8 : 1.0 + treble * 0.5;
-      const v = Math.min(1, energy * boost * layerBoost);
+    for (let i = 0; i < 64; i++) {
+      const frac = i / 64;
+      const energy = sm[Math.floor(frac * usable)] || 0;
+      const boost = frac < 0.08 ? 2.2 + bass * 1.6 : frac < 0.35 ? 1.5 + mid * 0.9 : 1.0 + treble * 0.5;
+      const v = Math.min(1, energy * boost * (layer === 0 ? 1 : 0.58));
+      if (v < 0.02) continue;
 
       const angle = frac * Math.PI * 2 + layerSpin;
-      // Inner radius jumps outward on beat for low-freq spokes
-      const r1 = innerR + (beat && frac < 0.1 ? bass * 14 : 0);
+      const r1 = innerR + (beat && frac < 0.1 ? bass * 16 : 0);
       const r2 = innerR + (maxR - innerR) * v;
+      if (r2 <= r1 + 2) continue;
 
-      if (r2 <= r1 + 1) continue; // skip invisible spokes
-
-      const hue = 185 + frac * 220 + layer * 40 + (spinBase * 12 % 90);
-      const alpha = 0.15 + v * 0.85;
-
+      const hue = 185 + frac * 230 + layer * 45 + (spinBase * 10 % 90);
       ctx.save();
-      ctx.shadowBlur = v > 0.5 ? 12 + bass * 8 : 2;
+      ctx.shadowBlur = v > 0.45 ? 14 + bass * 8 : 2;
       ctx.shadowColor = `hsla(${hue},100%,65%,0.9)`;
       ctx.beginPath();
       ctx.moveTo(cx + Math.cos(angle) * r1, cy + Math.sin(angle) * r1);
       ctx.lineTo(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2);
-      ctx.strokeStyle = `hsla(${hue},100%,68%,${alpha})`;
-      ctx.lineWidth = layer === 0 ? 1.8 + bass * 1.5 : 1.0;
-      ctx.lineCap = "round";
-      ctx.stroke();
+      ctx.strokeStyle = `hsla(${hue},100%,68%,${0.12 + v * 0.88})`;
+      ctx.lineWidth = layer === 0 ? 1.6 + bass * 1.8 : 0.9;
+      ctx.lineCap = "round"; ctx.stroke();
 
-      // Tip dot only on high-energy spokes
-      if (v > 0.5) {
-        const dotR = Math.max(0, v * 4);
+      if (v > 0.48) {
         ctx.beginPath();
-        ctx.arc(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2, dotR, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${hue},100%,90%,${v * 0.9})`;
-        ctx.fill();
+        ctx.arc(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2, v * 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${hue},100%,90%,${v * 0.88})`; ctx.fill();
       }
       ctx.restore();
     }
   }
 
-  // Inner ring — brightness reacts to bass
   ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-  ctx.strokeStyle = `rgba(255,255,255,${0.05 + bass * 0.4})`; ctx.lineWidth = 1 + bass; ctx.stroke();
+  ctx.strokeStyle = `rgba(255,255,255,${0.04 + bass * 0.45})`; ctx.lineWidth = 1 + bass * 1.5; ctx.stroke();
 
-  // Central orb — punches hard on beats
-  const orbR = Math.max(0, bass * 28 + mid * 10 + (beat ? 16 : 0));
-  if (orbR > 0) {
+  const orbR = bass * 30 + mid * 10 + (beat ? 18 : 0);
+  if (orbR > 1) {
     const og = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR * 4);
     og.addColorStop(0, "rgba(255,255,255,1)");
     og.addColorStop(0.25, `rgba(0,229,255,${0.8 + bass * 0.2})`);
@@ -535,44 +393,47 @@ function drawEnergy(ctx, W, H, sm, bufLen, bass, mid, treble, beat) {
 }
 
 // ── Draw: Neon Pulse ──────────────────────────────────────────────────────────
-// Rings expand with bass, bars are pure frequency bars — silence = flat
 function drawNeonPulse(ctx, W, H, sm, bufLen, bass, mid) {
-  const cx = W / 2, cy = H / 2, baseR = Math.min(W, H) * 0.20;
-  // Concentric rings — radii driven by bass & mid directly
+  const cx = W / 2, cy = H / 2, baseR = Math.min(W, H) * 0.18;
+  const spin = tickSpin(bass * 0.6 + mid * 0.4);
+
+  // Concentric rings — radius = pure audio energy
   [
-    { r: baseR * (0.8 + bass * 2.2), alpha: Math.min(1, bass * 1.5), w: 2 + bass * 8, c: "0,229,255" },
-    { r: baseR * (1.1 + mid * 1.2 + bass * 0.9), alpha: bass * 1.2 + mid * 0.5, w: 1.5 + bass * 4, c: "155,126,255" },
-    { r: baseR * (1.5 + mid * 1.0 + bass * 0.7), alpha: 0.1 + bass * 0.6, w: 1 + bass * 2, c: "0,200,220" },
-    { r: baseR * (1.9 + mid * 0.8 + bass * 0.5), alpha: 0.05 + bass * 0.25, w: 0.7, c: "200,100,255" },
+    { r: baseR * (0.7 + bass * 2.5), alpha: Math.min(1, bass * 1.8), w: 1.5 + bass * 9, c: "0,229,255" },
+    { r: baseR * (1.0 + mid * 1.4 + bass * 0.8), alpha: Math.min(1, bass * 1.4 + mid * 0.6), w: 1 + bass * 5, c: "155,126,255" },
+    { r: baseR * (1.45 + mid * 1.1 + bass * 0.6), alpha: 0.08 + bass * 0.7, w: 0.8 + bass * 2, c: "0,200,220" },
+    { r: baseR * (1.85 + mid * 0.9 + bass * 0.4), alpha: 0.04 + bass * 0.3, w: 0.6, c: "200,100,255" },
   ].forEach(rg => {
-    if (rg.r <= 0 || rg.alpha <= 0.01) return;
+    if (rg.r <= 2 || rg.alpha <= 0.02) return;
     ctx.beginPath(); ctx.arc(cx, cy, rg.r, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(${rg.c},${Math.min(1, rg.alpha)})`; ctx.lineWidth = rg.w; ctx.stroke();
+    ctx.strokeStyle = `rgba(${rg.c},${rg.alpha})`; ctx.lineWidth = rg.w; ctx.stroke();
   });
-  // Shockwave on beat
-  const sinceBeat = Date.now() - _beat.last;
-  if (sinceBeat < 500) {
-    const prog = sinceBeat / 500, shockR = baseR * (0.8 + prog * 3.5);
-    ctx.beginPath(); ctx.arc(cx, cy, shockR, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(0,229,255,${(1 - prog) * 0.85})`; ctx.lineWidth = (1 - prog) * 10; ctx.stroke();
+
+  // Expanding shockwave ring on beat
+  const sinceBeat = Date.now() - _beat.lastMs;
+  if (sinceBeat < 600) {
+    const prog = sinceBeat / 600;
+    ctx.beginPath(); ctx.arc(cx, cy, baseR * (0.7 + prog * 4), 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0,229,255,${(1 - prog) * 0.9})`; ctx.lineWidth = (1 - prog) * 12; ctx.stroke();
   }
-  // Bars — height = pure frequency energy, no time-wobble
+
+  // Frequency bars — pure energy, no time offset
   const bars = 80, usable = Math.floor(bufLen * 0.75);
-  const spin = tickSpin(bass * 0.7 + mid * 0.4); // audio-driven rotation
   for (let i = 0; i < bars; i++) {
     const v = sm[Math.floor((i / bars) * usable)] || 0;
-    if (v < 0.02) continue; // don't draw near-silent bars
+    if (v < 0.015) continue;
     const angle = (i / bars) * Math.PI * 2 - Math.PI / 2 + spin;
-    const inner = baseR * (0.9 + bass * 0.15);
-    const outer = inner + v * baseR * (1.6 + bass * 2.0);
-    ctx.beginPath(); ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
+    const inner = baseR * (0.88 + bass * 0.12);
+    const outer = inner + v * baseR * (1.7 + bass * 2.2);
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
     ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
-    ctx.strokeStyle = `hsla(${185 + v * 120 + i * 0.8},100%,65%,${0.3 + v * 0.7})`;
-    ctx.lineWidth = Math.max(1.5, (W / bars) * 0.55); ctx.lineCap = "round"; ctx.stroke();
+    ctx.strokeStyle = `hsla(${185 + v * 130 + i * 0.7},100%,65%,${0.25 + v * 0.75})`;
+    ctx.lineWidth = Math.max(1.2, (W / bars) * 0.5); ctx.lineCap = "round"; ctx.stroke();
   }
-  // Center dot — scales only with real bass, not time
-  const dotR = Math.max(0, bass * 38 + mid * 14);
-  if (dotR > 0) {
+
+  const dotR = bass * 40 + mid * 12;
+  if (dotR > 1) {
     const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 4);
     dg.addColorStop(0, `rgba(0,229,255,${0.9 + bass * 0.1})`);
     dg.addColorStop(0.3, `rgba(155,100,255,${0.3 + bass * 0.4})`); dg.addColorStop(1, "rgba(0,0,0,0)");
@@ -580,27 +441,24 @@ function drawNeonPulse(ctx, W, H, sm, bufLen, bass, mid) {
   }
 }
 
-// ── Draw: Tunnel ──────────────────────────────────────────────────────────────
-// Zoom depth driven by bass — silence = static concentric rings, loud = rushing tunnel
-function drawTunnel(ctx, W, H, sm, bufLen, t, bass, mid) {
-  const cx = W / 2, cy = H / 2, rings = 14, maxR = Math.min(W, H) * 0.5;
-  const beatAge = (Date.now() - _beat.last) / 1000, beatPulse = Math.max(0, 1 - beatAge * 2.5);
-  // Audio-driven rotation — nearly frozen when silent
-  const spinBase = tickSpin(bass * 0.9 + mid * 0.4);
+// ── Draw: Freq Tunnel ─────────────────────────────────────────────────────────
+function drawTunnel(ctx, W, H, sm, bufLen, bass, mid) {
+  const cx = W / 2, cy = H / 2, maxR = Math.min(W, H) * 0.5;
+  const beatAge = (Date.now() - _beat.lastMs) / 1000;
+  const beatPulse = Math.max(0, 1 - beatAge * 2.2);
+  const spinBase = tickSpin(bass * 0.85 + mid * 0.35);
 
-  for (let ri = rings; ri >= 1; ri--) {
-    const frac = ri / rings;
+  for (let ri = 14; ri >= 1; ri--) {
+    const frac = ri / 14;
     const amp = sm[Math.floor(frac * bufLen * 0.45)] || 0;
-    // Zoom proportional to bass + beat: near-zero when silent
-    const zoom = bass * 0.8 + beatPulse * 0.5;
-    const radius = maxR * frac * (0.7 + zoom * (1 - frac * 0.4));
+    const zoom = bass * 0.9 + beatPulse * 0.55;
+    const radius = maxR * frac * (0.6 + zoom * (1 - frac * 0.35));
+    if (radius < 3) continue;
     const sides = 5 + ri;
-    // Each ring rotates at its own speed, all audio-driven
-    const rotation = spinBase * (0.5 + (rings - ri) * 0.12);
-    const alpha = (1 - frac) * (amp * 0.9 + bass * 0.4 + 0.05);
-    const hue = 185 + frac * 90 + (spinBase * 10 % 60);
-
-    if (alpha < 0.02) continue;
+    const rotation = spinBase * (0.45 + (14 - ri) * 0.11);
+    const alpha = (1 - frac) * (amp * 0.95 + bass * 0.45 + 0.04);
+    if (alpha < 0.015) continue;
+    const hue = 185 + frac * 95 + (spinBase * 8 % 55);
 
     ctx.beginPath();
     for (let si = 0; si <= sides; si++) {
@@ -609,25 +467,24 @@ function drawTunnel(ctx, W, H, sm, bufLen, t, bass, mid) {
     }
     ctx.closePath();
     ctx.strokeStyle = `hsla(${hue},100%,68%,${Math.min(1, alpha)})`;
-    ctx.lineWidth = 0.8 + amp * 3 + (ri < 4 ? beatPulse * 4 : 0); ctx.stroke();
+    ctx.lineWidth = 0.6 + amp * 3.5 + (ri < 4 ? beatPulse * 5 : 0); ctx.stroke();
 
-    if (ri < rings && bass > 0.08) {
-      const nextFrac = (ri + 1) / rings;
-      const nextZoom = zoom;
-      const nextR = maxR * nextFrac * (0.7 + nextZoom * (1 - nextFrac * 0.4));
-      const sc = 2 + Math.floor(bass * 5);
-      for (let sp = 0; sp < Math.min(sc, 7); sp++) {
+    if (bass > 0.06 && ri < 14) {
+      const nextFrac = (ri + 1) / 14;
+      const nextR = maxR * nextFrac * (0.6 + zoom * (1 - nextFrac * 0.35));
+      const sc = 2 + Math.floor(bass * 6);
+      for (let sp = 0; sp < Math.min(sc, 8); sp++) {
         const a = (sp / sc) * Math.PI * 2 + rotation;
         ctx.beginPath();
         ctx.moveTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
         ctx.lineTo(cx + Math.cos(a) * nextR, cy + Math.sin(a) * nextR);
-        ctx.strokeStyle = `hsla(${hue},100%,68%,${alpha * 0.4})`; ctx.lineWidth = 0.6; ctx.stroke();
+        ctx.strokeStyle = `hsla(${hue},100%,68%,${alpha * 0.38})`; ctx.lineWidth = 0.5; ctx.stroke();
       }
     }
   }
 
-  const dotR = Math.max(0, bass * 24 + mid * 12 + beatPulse * 24);
-  if (dotR > 0) {
+  const dotR = bass * 26 + mid * 14 + beatPulse * 28;
+  if (dotR > 1) {
     const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 4.5);
     dg.addColorStop(0, `rgba(0,229,255,${0.95 + bass * 0.05})`);
     dg.addColorStop(0.4, `rgba(155,100,255,${0.3 + bass * 0.3})`); dg.addColorStop(1, "rgba(0,0,0,0)");
@@ -635,46 +492,56 @@ function drawTunnel(ctx, W, H, sm, bufLen, t, bass, mid) {
   }
 }
 
-// ── Draw: Cosmic ──────────────────────────────────────────────────────────────
+// ── Draw: Cosmic Burst ────────────────────────────────────────────────────────
 function drawCosmicWaves(ctx, W, H, sm, bufLen, t, particlesRef, bass, beat) {
   const cx = W / 2, cy = H / 2, avg = getAvg(sm, bufLen);
-  if (avg > 0.05 && particlesRef.current.length < (beat ? 300 : 180)) {
-    const count = beat ? Math.floor(10 + bass * 20) : Math.floor(1 + avg * 5);
+  if (avg > 0.04 && particlesRef.current.length < (beat ? 280 : 160)) {
+    const count = beat ? Math.floor(8 + bass * 22) : Math.floor(1 + avg * 5);
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2, spd = beat ? 1.2 + bass * 2.0 : 0.3 + avg * 1.0;
-      const sr = Math.random() < 0.6 ? 0 : Math.random() * Math.min(W, H) * 0.3;
-      particlesRef.current.push({ x: cx + Math.cos(angle) * sr, y: cy + Math.sin(angle) * sr, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd, life: 1, decay: beat ? 0.004 + Math.random() * 0.007 : 0.007 + Math.random() * 0.012, size: beat ? 3.5 + Math.random() * 6 * bass : 1.5 + Math.random() * 3.5, hue: 160 + Math.random() * 120 });
+      const angle = Math.random() * Math.PI * 2;
+      const spd = beat ? 1.1 + bass * 2.2 : 0.25 + avg * 0.9;
+      const sr = Math.random() < 0.65 ? 0 : Math.random() * Math.min(W, H) * 0.28;
+      particlesRef.current.push({ x: cx + Math.cos(angle) * sr, y: cy + Math.sin(angle) * sr,
+        vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
+        life: 1, decay: beat ? 0.004 + Math.random() * 0.006 : 0.007 + Math.random() * 0.011,
+        size: beat ? 3 + Math.random() * 6 * bass : 1.2 + Math.random() * 3, hue: 160 + Math.random() * 120 });
     }
   }
   const alive = [];
   for (const p of particlesRef.current) {
-    p.x += p.vx; p.y += p.vy; p.vx *= 0.985; p.vy *= 0.985; p.life -= p.decay;
+    p.x += p.vx; p.y += p.vy; p.vx *= 0.984; p.vy *= 0.984; p.life -= p.decay;
     if (p.life <= 0) continue;
     const r = Math.max(0, p.size * p.life);
-    if (r > 0) { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsla(${p.hue},100%,72%,${p.life * 0.9})`; ctx.fill(); }
+    if (r > 0) { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsla(${p.hue},100%,72%,${p.life * 0.88})`; ctx.fill(); }
     alive.push(p);
   }
   particlesRef.current = alive;
   for (let ri = 1; ri <= 3; ri++) {
-    const ringR = Math.min(W, H) * (0.1 * ri) * (1 + avg * 0.6 + bass * 0.4);
+    const ringR = Math.min(W, H) * (0.1 * ri) * (1 + avg * 0.65 + bass * 0.45);
     ctx.beginPath(); ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(0,220,255,${(0.18 - ri * 0.04) + avg * 0.22})`; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.strokeStyle = `rgba(0,220,255,${(0.15 - ri * 0.03) + avg * 0.25})`; ctx.lineWidth = 1.2; ctx.stroke();
   }
-  const gr = Math.min(W, H) * 0.32 + avg * 30 + bass * 22, g = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
-  g.addColorStop(0, `rgba(0,220,255,${0.16 + avg * 0.25})`); g.addColorStop(0.5, `rgba(155,126,255,${0.06 + avg * 0.08})`); g.addColorStop(1, "rgba(0,0,0,0)");
+  const gr = Math.min(W, H) * 0.3 + avg * 32 + bass * 24;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
+  g.addColorStop(0, `rgba(0,220,255,${0.14 + avg * 0.28})`);
+  g.addColorStop(0.5, `rgba(155,126,255,${0.05 + avg * 0.09})`); g.addColorStop(1, "rgba(0,0,0,0)");
   ctx.beginPath(); ctx.arc(cx, cy, gr, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
 }
 
-// ── Draw: Plasma ──────────────────────────────────────────────────────────────
+// ── Draw: Plasma Orbit ────────────────────────────────────────────────────────
 function drawPlasma(ctx, W, H, sm, bufLen, t, particlesRef, bass, beat) {
   const cx = W / 2, cy = H / 2, avg = getAvg(sm, bufLen);
-  const orbitRadii = [Math.min(W, H) * 0.15, Math.min(W, H) * 0.27, Math.min(W, H) * 0.40];
-  if (avg > 0.05 && particlesRef.current.length < 240) {
-    const count = beat ? Math.floor(8 + bass * 15) : Math.floor(1 + avg * 4);
+  const orbitRadii = [Math.min(W, H) * 0.14, Math.min(W, H) * 0.26, Math.min(W, H) * 0.38];
+  if (avg > 0.04 && particlesRef.current.length < 220) {
+    const count = beat ? Math.floor(7 + bass * 14) : Math.floor(1 + avg * 4);
     for (let i = 0; i < count; i++) {
-      const orbit = Math.floor(Math.random() * 3), angle = Math.random() * Math.PI * 2, r = orbitRadii[orbit] * (0.8 + Math.random() * 0.4);
-      const spd = beat ? 0.9 + bass * 1.5 : 0.35 + avg * 0.7;
-      particlesRef.current.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r, vx: (Math.random() - 0.5) * spd * 2, vy: (Math.random() - 0.5) * spd * 2, life: 1, decay: 0.006 + Math.random() * 0.01, size: 1.5 + Math.random() * (beat ? 5 * bass : 2.5), hue: 180 + orbit * 50 + Math.random() * 40 });
+      const orbit = Math.floor(Math.random() * 3), angle = Math.random() * Math.PI * 2;
+      const r = orbitRadii[orbit] * (0.8 + Math.random() * 0.4);
+      const spd = beat ? 0.85 + bass * 1.6 : 0.3 + avg * 0.7;
+      particlesRef.current.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r,
+        vx: (Math.random() - 0.5) * spd * 2, vy: (Math.random() - 0.5) * spd * 2,
+        life: 1, decay: 0.006 + Math.random() * 0.010,
+        size: 1.2 + Math.random() * (beat ? 5 * bass : 2.2), hue: 180 + orbit * 55 + Math.random() * 40 });
     }
   }
   const alive = [];
@@ -682,31 +549,40 @@ function drawPlasma(ctx, W, H, sm, bufLen, t, particlesRef, bass, beat) {
     p.x += p.vx; p.y += p.vy; p.vx *= 0.96; p.vy *= 0.96; p.life -= p.decay;
     if (p.life <= 0) continue;
     const r = Math.max(0, p.size * p.life);
-    if (r > 0) { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsla(${p.hue},100%,70%,${p.life * 0.88})`; ctx.fill(); }
+    if (r > 0) { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsla(${p.hue},100%,70%,${p.life * 0.86})`; ctx.fill(); }
     alive.push(p);
   }
   particlesRef.current = alive;
   for (let o = 0; o < 3; o++) {
-    const amp = sm[Math.floor((o / 3) * bufLen * 0.5)] || 0, r = orbitRadii[o] * (1 + bass * 0.25 + amp * 0.12);
+    const amp = sm[Math.floor((o / 3) * bufLen * 0.5)] || 0;
+    const r = orbitRadii[o] * (1 + bass * 0.28 + amp * 0.14);
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = `hsla(${185 + o * 55},100%,62%,${0.18 + amp * 0.35})`; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.strokeStyle = `hsla(${185 + o * 55},100%,62%,${0.14 + amp * 0.38})`; ctx.lineWidth = 1.2; ctx.stroke();
   }
-  const gr = Math.min(W, H) * 0.22 + bass * 24, g = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
-  g.addColorStop(0, `rgba(155,100,255,${0.22 + bass * 0.35})`); g.addColorStop(0.5, `rgba(0,200,220,${0.09 + avg * 0.12})`); g.addColorStop(1, "rgba(0,0,0,0)");
+  const gr = Math.min(W, H) * 0.2 + bass * 26;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
+  g.addColorStop(0, `rgba(155,100,255,${0.2 + bass * 0.38})`);
+  g.addColorStop(0.5, `rgba(0,200,220,${0.08 + avg * 0.12})`); g.addColorStop(1, "rgba(0,0,0,0)");
   ctx.beginPath(); ctx.arc(cx, cy, gr, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
 }
 
-// ── Draw: Drift ───────────────────────────────────────────────────────────────
+// ── Draw: Particle Drift ──────────────────────────────────────────────────────
 function drawDrift(ctx, W, H, sm, bufLen, t, particlesRef, bass, treble) {
-  const avg = getAvg(sm, bufLen), isBeat = bass > 0.32;
-  if (avg > 0.04 && particlesRef.current.length < 220) {
-    const count = isBeat ? Math.floor(6 + bass * 12) : Math.floor(1 + avg * 4);
+  const avg = getAvg(sm, bufLen), isBeat = bass > 0.28;
+  if (avg > 0.03 && particlesRef.current.length < 200) {
+    const count = isBeat ? Math.floor(5 + bass * 13) : Math.floor(1 + avg * 4);
     for (let i = 0; i < count; i++) {
       const side = Math.floor(Math.random() * 4); let x, y;
-      if (side === 0) { x = Math.random() * W; y = H + 10; } else if (side === 1) { x = -10; y = Math.random() * H; }
-      else if (side === 2) { x = W + 10; y = Math.random() * H; } else { x = Math.random() * W; y = -10; }
-      const angle = Math.atan2(H / 2 - y, W / 2 - x) + (Math.random() - 0.5) * 1.2, spd = isBeat ? 0.7 + bass * 1.2 : 0.25 + avg * 0.6;
-      particlesRef.current.push({ x, y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd, life: 1, decay: 0.005 + Math.random() * 0.009, size: isBeat ? 2 + Math.random() * 5 * bass : 1 + Math.random() * 2.5, hue: 160 + Math.random() * 130, trail: [] });
+      if (side === 0) { x = Math.random() * W; y = H + 10; }
+      else if (side === 1) { x = -10; y = Math.random() * H; }
+      else if (side === 2) { x = W + 10; y = Math.random() * H; }
+      else { x = Math.random() * W; y = -10; }
+      const angle = Math.atan2(H / 2 - y, W / 2 - x) + (Math.random() - 0.5) * 1.1;
+      const spd = isBeat ? 0.65 + bass * 1.3 : 0.22 + avg * 0.55;
+      particlesRef.current.push({ x, y, vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
+        life: 1, decay: 0.005 + Math.random() * 0.008,
+        size: isBeat ? 1.8 + Math.random() * 5 * bass : 0.8 + Math.random() * 2.2,
+        hue: 160 + Math.random() * 130, trail: [] });
     }
   }
   const alive = [];
@@ -715,199 +591,83 @@ function drawDrift(ctx, W, H, sm, bufLen, t, particlesRef, bass, treble) {
     p.x += p.vx; p.y += p.vy; p.vx *= 0.99; p.vy *= 0.99; p.life -= p.decay;
     if (p.life <= 0) continue;
     for (let ti = 0; ti < p.trail.length - 1; ti++) {
-      const a = p.trail[ti], b2 = p.trail[ti + 1];
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y);
-      ctx.strokeStyle = `hsla(${p.hue},100%,70%,${(ti / p.trail.length) * p.life * 0.45})`; ctx.lineWidth = p.size * 0.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.trail[ti].x, p.trail[ti].y); ctx.lineTo(p.trail[ti + 1].x, p.trail[ti + 1].y);
+      ctx.strokeStyle = `hsla(${p.hue},100%,70%,${(ti / p.trail.length) * p.life * 0.42})`; ctx.lineWidth = p.size * 0.48; ctx.stroke();
     }
     const r = Math.max(0, p.size * p.life);
-    if (r > 0) { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsla(${p.hue},100%,75%,${p.life * 0.92})`; ctx.fill(); }
+    if (r > 0) { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsla(${p.hue},100%,74%,${p.life * 0.9})`; ctx.fill(); }
     alive.push(p);
   }
   particlesRef.current = alive;
-  const gr = Math.min(W, H) * 0.26 + avg * 28, g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, gr);
-  g.addColorStop(0, `rgba(0,200,255,${0.07 + avg * 0.12})`); g.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.beginPath(); ctx.arc(W / 2, H / 2, gr, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
-}
-
-// ── Premium Fallbacks (analyser blocked) ──────────────────────────────────────
-function fbSpectrum(ctx, W, H, t, active, color) {
-  const cx = W / 2, cy = H / 2, ringCount = 9, maxR = Math.min(W, H) * 0.48;
-  const pulse = active ? 0.6 + Math.sin(t * 1.2) * 0.4 : 0.15;
-  for (let ri = 0; ri < ringCount; ri++) {
-    const frac = (ri + 1) / ringCount;
-    const energy = active ? Math.max(0.04, pulse * (Math.sin(t * 1.8 + ri * 0.9) * 0.5 + 0.5)) : 0.04;
-    const radius = maxR * frac * (1 + energy * 0.2);
-    const sides = 3 + ri * 2;
-    const spin = t * (0.18 + ri * 0.09) * (ri % 2 === 0 ? 1 : -1);
-    const hue = 185 + frac * 100 + (t * 20 % 60);
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(spin);
-    ctx.beginPath();
-    for (let s = 0; s <= sides; s++) {
-      const a = (s / sides) * Math.PI * 2;
-      s === 0 ? ctx.moveTo(Math.cos(a) * radius, Math.sin(a) * radius) : ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = `hsla(${hue},100%,68%,${0.1 + energy * 0.55})`; ctx.lineWidth = 1 + energy * 2.5; ctx.stroke();
-    ctx.restore();
+  if (avg > 0.03) {
+    const gr = Math.min(W, H) * 0.22 + avg * 28;
+    const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, gr);
+    g.addColorStop(0, `rgba(0,200,255,${0.05 + avg * 0.12})`); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.beginPath(); ctx.arc(W / 2, H / 2, gr, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
   }
-  const dotR = 4 + pulse * 12;
-  const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3);
-  dg.addColorStop(0, "rgba(255,255,255,0.9)"); dg.addColorStop(0.4, `rgba(${color},0.6)`); dg.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
 }
 
-function fbWaveform(ctx, W, H, t, active, color) {
-  const cx = W / 2, cy = H / 2, baseR = Math.min(W, H) * 0.12, maxR = Math.min(W, H) * 0.44;
-  const pulse = active ? 0.55 + Math.sin(t * 1.3) * 0.45 : 0.1;
-  const points = 200, spin = t * 0.28;
-  for (let layer = 0; layer < 2; layer++) {
-    ctx.save(); ctx.translate(cx, cy); ctx.rotate(spin * (layer === 0 ? 1 : -0.6));
-    ctx.beginPath();
-    for (let i = 0; i <= points; i++) {
-      const frac = i / points, angle = frac * Math.PI * 2;
-      const energy = active ? Math.max(0.06, pulse * (Math.sin(t * 1.8 + frac * Math.PI * 8) * 0.5 + 0.5)) : 0.06;
-      const harmonic = Math.sin(angle * 3 + t * 1.8) * 0.08;
-      const r = baseR + (maxR - baseR) * energy + (maxR - baseR) * 0.12 * harmonic;
+// ── Fallback (no live data) — gentle animation to show the mode ───────────────
+function runFallback(ctx, W, H, t, mode, color, active) {
+  const cx = W / 2, cy = H / 2, pulse = active ? 0.55 + Math.sin(t * 1.4) * 0.45 : 0.15;
+
+  if (mode === "spectrum" || mode === "tunnel") {
+    const maxR = Math.min(W, H) * 0.44, rings = mode === "tunnel" ? 10 : 7;
+    for (let ri = 0; ri < rings; ri++) {
+      const frac = (ri + 1) / rings;
+      const energy = active ? Math.max(0.03, pulse * (Math.sin(t * 1.6 + ri * 0.8) * 0.5 + 0.5)) : 0.03;
+      const sides = mode === "tunnel" ? 6 + ri : 3 + ri * 2;
+      const spin = t * (0.15 + ri * 0.07) * (ri % 2 === 0 ? 1 : -1);
+      const hue = 185 + frac * 100 + (t * 18 % 55);
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(spin);
+      ctx.beginPath();
+      for (let s = 0; s <= sides; s++) {
+        const a = (s / sides) * Math.PI * 2;
+        ctx.lineTo(Math.cos(a) * maxR * frac * (1 + energy * 0.18), Math.sin(a) * maxR * frac * (1 + energy * 0.18));
+      }
+      ctx.closePath();
+      ctx.strokeStyle = `hsla(${hue},100%,68%,${0.08 + energy * 0.45})`; ctx.lineWidth = 0.8 + energy * 2; ctx.stroke();
+      ctx.restore();
+    }
+  } else if (mode === "waveform") {
+    const baseR = Math.min(W, H) * 0.1, maxR = Math.min(W, H) * 0.4, spin = t * 0.22;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(spin); ctx.beginPath();
+    for (let i = 0; i <= 200; i++) {
+      const frac = i / 200, angle = frac * Math.PI * 2;
+      const energy = active ? Math.max(0.04, pulse * (Math.sin(t * 1.7 + frac * Math.PI * 7) * 0.5 + 0.5)) : 0.04;
+      const r = baseR + (maxR - baseR) * energy;
       i === 0 ? ctx.moveTo(Math.cos(angle) * r, Math.sin(angle) * r) : ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
     }
     ctx.closePath();
-    if (layer === 0) { ctx.fillStyle = `rgba(${color},${0.06 * pulse})`; ctx.fill(); }
-    else { const hue = 185 + pulse * 60 + (t * 18 % 80); ctx.strokeStyle = `hsla(${hue},100%,72%,${0.5 + pulse * 0.5})`; ctx.lineWidth = 1.4; ctx.stroke(); }
+    const hue = 185 + pulse * 55 + (t * 15 % 75);
+    ctx.strokeStyle = `hsla(${hue},100%,72%,${0.4 + pulse * 0.5})`; ctx.lineWidth = 1.2; ctx.stroke();
     ctx.restore();
-  }
-  const dotR = 3 + pulse * 12;
-  const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3);
-  dg.addColorStop(0, "rgba(255,255,255,1)"); dg.addColorStop(0.4, `rgba(${color},0.7)`); dg.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
-}
-
-function fbEnergy(ctx, W, H, t, active) {
-  const cx = W / 2, cy = H / 2, spokeCount = 64, innerR = Math.min(W, H) * 0.08, maxR = Math.min(W, H) * 0.46;
-  const pulse = active ? 0.6 + Math.sin(t * 1.2) * 0.4 : 0.12;
-  const spin = t * 0.22;
-  for (let layer = 0; layer < 2; layer++) {
-    const layerSpin = spin * (layer === 0 ? 1 : -0.7) + layer * (Math.PI / spokeCount);
-    for (let i = 0; i < spokeCount; i++) {
-      const frac = i / spokeCount;
-      const v = active ? Math.max(0.04, pulse * (Math.sin(t * 1.9 + frac * Math.PI * 6.5 + layer) * 0.5 + 0.5)) : 0.04;
-      const angle = frac * Math.PI * 2 + layerSpin;
-      const r2 = innerR + (maxR - innerR) * v * (layer === 0 ? 1 : 0.65);
-      const hue = 185 + frac * 220 + layer * 40 + (t * 25 % 90);
+  } else if (mode === "energy") {
+    const maxR = Math.min(W, H) * 0.42, spin = t * 0.18;
+    for (let i = 0; i < 48; i++) {
+      const frac = i / 48, v = active ? Math.max(0.03, pulse * (Math.sin(t * 1.7 + frac * Math.PI * 6) * 0.5 + 0.5)) : 0.03;
+      const angle = frac * Math.PI * 2 + spin;
+      const r2 = Math.min(W, H) * 0.06 + (maxR - Math.min(W, H) * 0.06) * v;
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
+      ctx.moveTo(cx + Math.cos(angle) * Math.min(W, H) * 0.06, cy + Math.sin(angle) * Math.min(W, H) * 0.06);
       ctx.lineTo(cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2);
-      ctx.strokeStyle = `hsla(${hue},100%,68%,${0.2 + v * 0.7})`; ctx.lineWidth = layer === 0 ? 2 : 1; ctx.lineCap = "round"; ctx.stroke();
+      ctx.strokeStyle = `hsla(${185 + frac * 220},100%,68%,${0.15 + v * 0.7})`; ctx.lineWidth = 1.5; ctx.lineCap = "round"; ctx.stroke();
     }
+  } else {
+    // Neon/cosmic/plasma/drift — gentle orb
+    const baseR = Math.min(W, H) * 0.18;
+    [1, 1.4, 1.8, 2.2].forEach((scale, idx) => {
+      const breathe = active ? scale + Math.sin(t * (1.5 + idx * 0.35)) * 0.07 : scale;
+      ctx.beginPath(); ctx.arc(cx, cy, baseR * breathe, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0,220,255,${(0.35 - idx * 0.06) * pulse})`; ctx.lineWidth = 1.5 - idx * 0.25; ctx.stroke();
+    });
   }
-  ctx.beginPath(); ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-  ctx.strokeStyle = `rgba(255,255,255,${0.08 + pulse * 0.15})`; ctx.lineWidth = 1; ctx.stroke();
-  const orbR = 4 + pulse * 18;
-  const og = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR * 4);
-  og.addColorStop(0, "rgba(255,255,255,1)"); og.addColorStop(0.3, `rgba(0,229,255,${0.7 + pulse * 0.3})`); og.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.beginPath(); ctx.arc(cx, cy, orbR, 0, Math.PI * 2); ctx.fillStyle = og; ctx.fill();
-}
 
-function fbTunnel(ctx, W, H, t, active) {
-  const cx = W / 2, cy = H / 2, maxR = Math.min(W, H) * 0.5, rings = 12;
-  const pulse = active ? 0.7 + Math.sin(t * 1.8) * 0.3 : 0.35;
-  for (let ri = rings; ri >= 1; ri--) {
-    const frac = ri / rings, radius = maxR * frac * (active ? 1 + Math.sin(t * 1.5 + frac * 4) * 0.09 * pulse : 1);
-    const sides = 5 + ri, rotation = t * (0.22 + (rings - ri) * 0.06);
-    const alpha = (1 - frac) * (active ? 0.28 + frac * 0.25 : 0.1);
-    ctx.beginPath();
-    for (let si = 0; si <= sides; si++) { const a = (si / sides) * Math.PI * 2 + rotation; ctx.lineTo(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius); }
-    ctx.closePath(); ctx.strokeStyle = `hsla(${185 + frac * 90},100%,65%,${Math.min(1, alpha)})`; ctx.lineWidth = 1 + pulse * 0.5; ctx.stroke();
-  }
-  const coreR = Math.max(0, (8 + Math.sin(t * 2.5) * 4) * pulse);
-  if (coreR > 0) {
-    const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 5);
-    dg.addColorStop(0, `rgba(0,229,255,${0.8 * pulse})`); dg.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.beginPath(); ctx.arc(cx, cy, coreR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
-  }
-}
-
-function fbNeon(ctx, W, H, t, active) {
-  const cx = W / 2, cy = H / 2, baseR = Math.min(W, H) * 0.22, pulse = active ? 0.7 + Math.sin(t * 2.2) * 0.3 : 0.35, spin = t * 0.45;
-  [[1, 2.5, "0,220,255"], [1.35, 1.5, "155,126,255"], [1.7, 1, "0,200,220"], [2.1, 0.5, "200,100,255"]].forEach(([scale, w, c], idx) => {
-    const breathe = active ? scale + Math.sin(t * (1.8 + idx * 0.4)) * 0.08 : scale;
-    ctx.beginPath(); ctx.arc(cx, cy, baseR * breathe, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(${c},${0.6 * pulse})`; ctx.lineWidth = w; ctx.stroke();
-  });
-  for (let i = 0; i < 80; i++) {
-    const a = (i / 80) * Math.PI * 2 - Math.PI / 2 + spin, v = active ? Math.sin(t * 1.8 + i * 0.26) * 0.5 + 0.5 : 0.08;
-    const inner = baseR * 0.95, outer = inner + v * baseR * 0.75 + 2;
-    ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
-    ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
-    ctx.strokeStyle = `hsla(${185 + v * 80 + i * 0.8},100%,62%,${active ? 0.4 + v * 0.45 : 0.12})`; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.stroke();
-  }
-  const dotR = baseR * (active ? 0.2 + Math.sin(t * 2.8) * 0.09 : 0.1), dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 4);
-  dg.addColorStop(0, `rgba(0,229,255,${active ? 0.8 : 0.2})`); dg.addColorStop(0.4, `rgba(155,100,255,${active ? 0.22 : 0.05})`); dg.addColorStop(1, "rgba(0,0,0,0)");
+  // Always show a breathing center dot in fallback
+  const dotR = 4 + pulse * 10;
+  const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3.5);
+  dg.addColorStop(0, `rgba(${color},${0.8 * pulse})`); dg.addColorStop(1, "rgba(0,0,0,0)");
   ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
-}
-
-function fbCosmic(ctx, W, H, t, active, particlesRef) {
-  const cx = W / 2, cy = H / 2;
-  if (Math.random() < (active ? 0.55 : 0.06) && particlesRef.current.length < (active ? 160 : 25)) {
-    const n = active ? Math.floor(1 + Math.random() * 3) : 1;
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, spd = active ? 0.6 + Math.random() * 1.6 : 0.2 + Math.random() * 0.4;
-      const sr = Math.random() < 0.5 ? 0 : Math.random() * Math.min(W, H) * 0.3;
-      particlesRef.current.push({ x: cx + Math.cos(a) * sr, y: cy + Math.sin(a) * sr, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, life: 1, decay: 0.006 + Math.random() * 0.010, size: 1.5 + Math.random() * 4.5, hue: 160 + Math.random() * 110 });
-    }
-  }
-  const alive = [];
-  for (const p of particlesRef.current) {
-    p.x += p.vx; p.y += p.vy; p.vx *= 0.972; p.vy *= 0.972; p.life -= p.decay;
-    if (p.life <= 0) continue;
-    const r = Math.max(0, p.size * p.life);
-    if (r > 0) { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsla(${p.hue},100%,70%,${p.life * 0.8})`; ctx.fill(); }
-    alive.push(p);
-  }
-  particlesRef.current = alive;
-  const pr = Math.min(W, H) * 0.18 * (active ? 0.7 + Math.sin(t * 2) * 0.3 : 0.35);
-  if (pr > 0) {
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, pr);
-    g.addColorStop(0, `rgba(0,220,255,${active ? 0.2 : 0.05})`); g.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.beginPath(); ctx.arc(cx, cy, pr, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
-  }
-}
-
-function fbDrift(ctx, W, H, t, active, particlesRef) {
-  const cx = W / 2, cy = H / 2;
-  if (active && Math.random() < 0.45 && particlesRef.current.length < 130) {
-    const side = Math.floor(Math.random() * 4); let x, y;
-    if (side === 0) { x = Math.random() * W; y = H + 10; } else if (side === 1) { x = -10; y = Math.random() * H; }
-    else if (side === 2) { x = W + 10; y = Math.random() * H; } else { x = Math.random() * W; y = -10; }
-    const angle = Math.atan2(cy - y, cx - x) + (Math.random() - 0.5) * 1.0;
-    particlesRef.current.push({ x, y, vx: Math.cos(angle) * (0.4 + Math.random() * 0.9), vy: Math.sin(angle) * (0.4 + Math.random() * 0.9), life: 1, decay: 0.006 + Math.random() * 0.008, size: 1.2 + Math.random() * 2.8, hue: 160 + Math.random() * 130, trail: [] });
-  }
-  const alive = [];
-  for (const p of particlesRef.current) {
-    if (p.trail) { p.trail.push({ x: p.x, y: p.y }); if (p.trail.length > 7) p.trail.shift(); }
-    p.x += p.vx; p.y += p.vy; p.life -= p.decay;
-    if (p.life <= 0) continue;
-    if (p.trail) for (let ti = 0; ti < p.trail.length - 1; ti++) {
-      ctx.beginPath(); ctx.moveTo(p.trail[ti].x, p.trail[ti].y); ctx.lineTo(p.trail[ti + 1].x, p.trail[ti + 1].y);
-      ctx.strokeStyle = `hsla(${p.hue},100%,70%,${(ti / p.trail.length) * p.life * 0.4})`; ctx.lineWidth = p.size * 0.4; ctx.stroke();
-    }
-    const r = Math.max(0, p.size * p.life);
-    if (r > 0) { ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fillStyle = `hsla(${p.hue},100%,72%,${p.life * 0.88})`; ctx.fill(); }
-    alive.push(p);
-  }
-  particlesRef.current = alive;
-}
-
-function runFallback(ctx, W, H, t, mode, color, active, particlesRef) {
-  switch (mode) {
-    case "spectrum": fbSpectrum(ctx, W, H, t, active, color); break;
-    case "waveform": fbWaveform(ctx, W, H, t, active, color); break;
-    case "energy":   fbEnergy(ctx, W, H, t, active); break;
-    case "cosmic":   fbCosmic(ctx, W, H, t, active, particlesRef); break;
-    case "neon":     fbNeon(ctx, W, H, t, active); break;
-    case "tunnel":   fbTunnel(ctx, W, H, t, active); break;
-    case "plasma":   fbCosmic(ctx, W, H, t, active, particlesRef); break;
-    default:         fbDrift(ctx, W, H, t, active, particlesRef); break;
-  }
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -917,56 +677,45 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
   const analyserRef  = useRef(null);
   const particlesRef = useRef([]);
   const logTimerRef  = useRef(0);
+  const debugRef     = useRef({ audioElementFound: false, audioContextState: "none", sourceNodeConnected: false, analyserConnected: false, frequencyDataChanging: false, bassEnergy: 0, beatDetected: false, songId: null, radioStillPlaying: false });
   const { audioRef } = usePlayer();
 
   const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
+  const getDebugMode = () => { try { return localStorage.getItem(DEBUG_KEY) === "true"; } catch { return false; } };
   const [mode, setMode] = useState(getSavedMode);
+  const [debugMode, setDebugMode] = useState(getDebugMode);
+  const [debugInfo, setDebugInfo] = useState(null);
+
   useEffect(() => { try { localStorage.setItem(PREF_KEY, mode); } catch {} }, [mode]);
 
   const cycleMode = () => { const idx = MODES.findIndex(m => m.id === mode); setMode(MODES[(idx + 1) % MODES.length].id); };
+  const toggleDebug = () => {
+    const next = !debugMode;
+    setDebugMode(next);
+    try { localStorage.setItem(DEBUG_KEY, String(next)); } catch {}
+  };
 
   const tryConnectAnalyser = useCallback(async () => {
     const audio = audioRef?.current;
-    if (!audio) { analyserRef.current = null; return false; }
-
-    let an = null;
-
-    if (isIOS) {
-      // iOS: use mirror element to avoid breaking AirPlay/BT/system routing
-      an = getOrCreateMirrorAnalyser(audio);
-      if (an) {
-        analyserRef.current = an;
-        await startMirrorPlayback(audio);
-        console.log("[Viz] probe | isIOS: true | isSafari:", isSafari,
-          "| analyserConnected: true | analyserStrategy: mirror_element",
-          "| audioContextState:", _mirrorCtx?.state,
-          "| isAirPlayActive:", detectAirPlay(audio),
-          "| isBluetoothOutput:", detectBluetooth(),
-          "| mediaSessionActive:", detectMediaSession(),
-          "| radioStillPlaying:", !audio.paused,
-          "| dpr:", getDpr());
-        return true;
-      }
-    } else {
-      // Non-iOS: direct tap on main element — safe, no routing side-effects
-      await resumeDirectCtx();
-      an = getTapAnalyserDirect(audio);
-      if (an) {
-        analyserRef.current = an;
-        console.log("[Viz] probe | isIOS: false | analyserConnected: true | analyserStrategy: direct",
-          "| audioContextState:", _tapCtx?.state,
-          "| mediaSessionActive:", detectMediaSession(),
-          "| radioStillPlaying:", !audio.paused);
-        return true;
-      }
+    if (!audio) {
+      console.log("[Viz] tryConnect | no audio element found");
+      return false;
     }
 
+    // Resume context after user gesture
+    await resumeCtx();
+
+    const an = getOrCreateAnalyser(audio);
+    if (an) {
+      analyserRef.current = an;
+      if (_ctx?.state === "suspended") await resumeCtx();
+      console.log("[Viz] tryConnect | analyser ready | ctxState:", _ctx?.state,
+        "| src:", audio.src?.substring(0, 55),
+        "| paused:", audio.paused, "| isIOS:", isIOS);
+      return true;
+    }
     analyserRef.current = null;
-    console.log("[Viz] probe | analyserConnected: false | isIOS:", isIOS,
-      "| isAirPlayActive:", detectAirPlay(audio),
-      "| audioContextState:", (isIOS ? _mirrorCtx?.state : _tapCtx?.state) || "null",
-      "| mediaSessionActive:", detectMediaSession(),
-      "| radioStillPlaying:", !audio.paused);
+    console.warn("[Viz] tryConnect | getOrCreateAnalyser returned null");
     return false;
   }, [audioRef]);
 
@@ -977,6 +726,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
   const startLoop = useCallback((currentMode, color) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const loop = () => {
       const deviceDpr = getDpr(), rect = canvas.getBoundingClientRect();
       const lW = rect.width || 300, lH = rect.height || 180;
@@ -985,137 +735,143 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       const ctx = canvas.getContext("2d");
       ctx.setTransform(deviceDpr, 0, 0, deviceDpr, 0, 0);
       ctx.clearRect(0, 0, lW, lH);
-      const t = Date.now() / 1000, an = analyserRef.current;
+      const t = Date.now() / 1000;
+      const an = analyserRef.current;
+      const ctxRunning = _ctx && _ctx.state === "running";
+      const audio = audioRef?.current;
 
-      // Determine active AudioContext based on strategy
-      const activeCtx = isIOS ? _mirrorCtx : _tapCtx;
-      const ctxRunning = activeCtx && activeCtx.state === "running";
-
+      // ── Live path ──
       if (an && ctxRunning) {
-        const bufLen = an.frequencyBinCount, sm = getSmoothedFreq(an);
-        const live = isAnalyserLive(sm, bufLen);
-        const mainAudio = audioRef?.current;
+        const { sm, raw, bufLen } = readFreqData(an);
+        const live = isRawLive(raw, bufLen);
+        const bass = getBass(sm, bufLen);
+        const mid  = getMid(sm, bufLen);
+        const treble = getTreble(sm, bufLen);
+        const beat = detectBeat(bass);
+
+        // Update debug ref every frame (cheap)
+        debugRef.current = {
+          audioElementFound: !!audio,
+          audioContextState: _ctx?.state || "null",
+          sourceNodeConnected: !!_src,
+          analyserConnected: true,
+          frequencyDataChanging: live,
+          bassEnergy: bass,
+          beatDetected: beat,
+          songId: currentSong?.id || null,
+          radioStillPlaying: audio ? !audio.paused : false,
+        };
+
+        if (Date.now() - logTimerRef.current > 3000) {
+          logTimerRef.current = Date.now();
+          const bpm = (_beat.count / 3 * 60).toFixed(0);
+          _beat.count = 0;
+          console.log(
+            `[Viz] LIVE=${live} mode=${currentMode}`,
+            `bass=${bass.toFixed(3)} mid=${mid.toFixed(3)} treble=${treble.toFixed(3)}`,
+            `beat=${beat} beats/3s→${bpm}BPM est`,
+            `ctx=${_ctx?.state} iOS=${isIOS}`,
+            `srcConnected=${!!_src} playing=${audio ? !audio.paused : false}`
+          );
+        }
+
         if (live) {
-          const bass = getBass(sm, bufLen), mid = getMid(sm, bufLen), treble = getTreble(sm, bufLen), beat = detectBeat(bass);
-          if (Date.now() - logTimerRef.current > 3000) {
-            const beatsPer3s = _beat.count;
-            _beat.count = 0;
-            logTimerRef.current = Date.now();
-            console.log(
-              `[Viz] LIVE ✔ mode=${currentMode} | bass=${bass.toFixed(3)} mid=${mid.toFixed(3)} treble=${treble.toFixed(3)}`,
-              `| beats/3s=${beatsPer3s} (${(beatsPer3s / 3 * 60).toFixed(0)} BPM est)`,
-              `| beatThisFrame=${beat}`,
-              `| iOS=${isIOS} ctx=${activeCtx.state}`,
-              `| airPlay=${detectAirPlay(mainAudio)} mediaSess=${detectMediaSession()}`,
-              `| playing=${isPlaying} dpr=${deviceDpr}`
-            );
-          }
           switch (currentMode) {
             case "spectrum": drawSpectrum(ctx, lW, lH, sm, bufLen, bass, beat, color); break;
-            case "waveform": drawWaveform(ctx, lW, lH, an, bass, beat, color); break;
+            case "waveform": drawWaveform(ctx, lW, lH, an, sm, bass, beat, color); break;
             case "energy":   drawEnergy(ctx, lW, lH, sm, bufLen, bass, mid, treble, beat); break;
             case "cosmic":   drawCosmicWaves(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, beat); break;
             case "neon":     drawNeonPulse(ctx, lW, lH, sm, bufLen, bass, mid); break;
-            case "tunnel":   drawTunnel(ctx, lW, lH, sm, bufLen, t, bass, mid); break;
+            case "tunnel":   drawTunnel(ctx, lW, lH, sm, bufLen, bass, mid); break;
             case "plasma":   drawPlasma(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, beat); break;
             default:         drawDrift(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, treble); break;
           }
         } else {
-          // Analyser connected but data is silent — mirror may need to start playing
-          if (isIOS && _mirrorEl && _mirrorEl.paused && mainAudio && !mainAudio.paused) {
-            _mirrorEl.play().catch(() => {});
-            if (_mirrorCtx?.state === "suspended") _mirrorCtx.resume().catch(() => {});
-          }
+          // Analyser connected but CORS/stream not giving data — show fallback + log
           if (Date.now() - logTimerRef.current > 3000) {
             logTimerRef.current = Date.now();
-            console.log("[Viz] live | analyserConnected: true | frequencyDataChanging: false",
-              "| usingFallbackVisualizer: true | modeName:", currentMode,
-              "| isIOS:", isIOS, "| audioContextState:", activeCtx.state,
-              "| isAirPlayActive:", detectAirPlay(mainAudio),
-              "| mediaSessionActive:", detectMediaSession(),
-              "| radioStillPlaying:", isPlaying);
+            console.warn("[Viz] analyser connected but frequencyDataChanging=false",
+              "| likely CORS block or audio not playing",
+              "| audio.paused:", audio?.paused, "| audio.src:", audio?.src?.substring(0, 60));
           }
-          runFallback(ctx, lW, lH, t, currentMode, color, isPlaying, particlesRef);
+          runFallback(ctx, lW, lH, t, currentMode, color, isPlaying);
         }
       } else {
+        // No analyser yet
+        debugRef.current = {
+          audioElementFound: !!audio,
+          audioContextState: _ctx?.state || "not created",
+          sourceNodeConnected: !!_src,
+          analyserConnected: false,
+          frequencyDataChanging: false,
+          bassEnergy: 0, beatDetected: false,
+          songId: currentSong?.id || null,
+          radioStillPlaying: audio ? !audio.paused : false,
+        };
+
         if (Date.now() - logTimerRef.current > 3000) {
           logTimerRef.current = Date.now();
-          const mainAudio = audioRef?.current;
-          console.log("[Viz] fallback | modeName:", currentMode,
-            "| isIOS:", isIOS, "| isSafari:", isSafari,
-            "| audioElementFound:", !!mainAudio,
-            "| audioContextState:", activeCtx?.state || "null",
-            "| analyserConnected: false | usingFallbackVisualizer: true",
-            "| isAirPlayActive:", detectAirPlay(mainAudio),
-            "| isBluetoothOutput:", detectBluetooth(),
-            "| mediaSessionActive:", detectMediaSession(),
-            "| radioStillPlaying:", isPlaying);
+          console.log("[Viz] no analyser | ctxState:", _ctx?.state || "null",
+            "| audioEl:", !!audio, "| paused:", audio?.paused);
         }
-        runFallback(ctx, lW, lH, t, currentMode, color, isPlaying, particlesRef);
+        runFallback(ctx, lW, lH, t, currentMode, color, isPlaying);
       }
+
       rafRef.current = requestAnimationFrame(loop);
     };
     loop();
-  }, [isPlaying, audioRef]);
+  }, [isPlaying, audioRef, currentSong]);
 
+  // Update debug overlay from ref every 200ms when debug is on
   useEffect(() => {
-    stopLoop(); particlesRef.current = []; _sm.data = null; _peaks.data = null; _peaks.decay = null; _wfSm.data = null; _beat.hist.fill(0); _beat.idx = 0; _spin.acc = 0; _spin.last = Date.now();
+    if (!debugMode) { setDebugInfo(null); return; }
+    const timer = setInterval(() => { setDebugInfo({ ...debugRef.current }); }, 200);
+    return () => clearInterval(timer);
+  }, [debugMode]);
+
+  // Main effect: reconnect and restart loop when mode/song/playing changes
+  useEffect(() => {
+    stopLoop();
+    particlesRef.current = [];
+    _sm.data = null;
+    _beat.hist.fill(0); _beat.idx = 0; _beat.count = 0;
+    _spin.acc = 0; _spin.lastMs = Date.now();
+
     tryConnectAnalyser().then(connected => {
-      if (!connected) { startLoop(mode, themeColor); }
-      else { setTimeout(() => startLoop(mode, themeColor), 80); }
+      if (connected && _ctx?.state === "suspended") {
+        resumeCtx().then(() => setTimeout(() => startLoop(mode, themeColor), 60));
+      } else {
+        setTimeout(() => startLoop(mode, themeColor), connected ? 60 : 0);
+      }
     });
     return stopLoop;
   }, [mode, isPlaying, currentSong?.id, themeColor]);
 
+  // Re-connect when tab becomes visible again
   useEffect(() => {
     const onVisible = async () => {
       if (document.visibilityState !== "visible") return;
       stopLoop(); particlesRef.current = []; _sm.data = null;
-      // Resume appropriate context
-      if (isIOS) {
-        if (_mirrorCtx?.state === "suspended") { try { await _mirrorCtx.resume(); } catch {} }
-        if (_mirrorEl && audioRef?.current && !audioRef.current.paused && _mirrorEl.paused) {
-          try { await _mirrorEl.play(); } catch {}
-        }
-      } else {
-        await resumeDirectCtx();
-      }
+      await resumeCtx();
       const connected = await tryConnectAnalyser();
-      if (!connected) { startLoop(mode, themeColor); } else { setTimeout(() => startLoop(mode, themeColor), 80); }
+      setTimeout(() => startLoop(mode, themeColor), connected ? 60 : 0);
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [mode, isPlaying, tryConnectAnalyser, startLoop, stopLoop, themeColor]);
 
+  // Retry connection shortly after playback starts (context may be suspended until gesture)
   useEffect(() => {
     if (!isPlaying) return;
     const timer = setTimeout(async () => {
-      const activeCtx = isIOS ? _mirrorCtx : _tapCtx;
-      if (analyserRef.current && activeCtx?.state === "running") {
-        // On iOS: ensure mirror is actually playing
-        if (isIOS && _mirrorEl && _mirrorEl.paused) {
-          await startMirrorPlayback(audioRef?.current);
-        }
-        return;
+      if (_ctx?.state === "suspended") await resumeCtx();
+      if (!analyserRef.current || _ctx?.state !== "running") {
+        const connected = await tryConnectAnalyser();
+        if (connected && !rafRef.current) startLoop(mode, themeColor);
       }
-      const connected = await tryConnectAnalyser();
-      if (connected && !rafRef.current) startLoop(mode, themeColor);
-    }, 400);
+    }, 350);
     return () => clearTimeout(timer);
   }, [isPlaying]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ro = new ResizeObserver(() => { if (canvas) { canvas.width = 0; canvas.height = 0; } });
-    ro.observe(canvas); return () => ro.disconnect();
-  }, []);
-
-  // Cleanup mirror element on unmount
-  useEffect(() => {
-    return () => {
-      if (isIOS) destroyMirror();
-    };
-  }, []);
 
   const currentModeObj = MODES.find(m => m.id === mode) || MODES[0];
 
@@ -1124,9 +880,50 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       <div style={{ position: "relative", width: "100%", overflow: "hidden", borderRadius: "inherit" }}>
         <div style={{ paddingTop: "min(56.25%, 260px)", position: "relative" }}>
           <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
+
+          {/* ── Debug Overlay ── */}
+          {debugMode && debugInfo && (
+            <div style={{
+              position: "absolute", top: 6, left: 6, right: 6, zIndex: 10,
+              background: "rgba(0,0,0,0.82)", borderRadius: 8, padding: "8px 10px",
+              fontFamily: "monospace", fontSize: 10, lineHeight: 1.6,
+              border: "1px solid rgba(255,255,255,0.12)",
+              pointerEvents: "none",
+            }}>
+              {[
+                ["audioElementFound", debugInfo.audioElementFound],
+                ["audioContextState", debugInfo.audioContextState],
+                ["sourceNodeConnected", debugInfo.sourceNodeConnected],
+                ["analyserConnected", debugInfo.analyserConnected],
+                ["frequencyDataChanging", debugInfo.frequencyDataChanging],
+                ["bassEnergy", typeof debugInfo.bassEnergy === "number" ? debugInfo.bassEnergy.toFixed(4) : "-"],
+                ["beatDetected", debugInfo.beatDetected],
+                ["currentRadioSongId", debugInfo.songId || "null"],
+                ["radioStillPlaying", debugInfo.radioStillPlaying],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ color: "rgba(255,255,255,0.5)" }}>{k}:</span>
+                  <span style={{ color: v === true ? "#4eff91" : v === false ? "#ff5555" : "#ffdd55", fontWeight: "bold" }}>
+                    {String(v)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 8, paddingRight: 4 }}>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8, paddingRight: 4, paddingLeft: 4 }}>
+        {/* Debug toggle — small tap target bottom-left */}
+        <button
+          onClick={toggleDebug}
+          style={{ fontSize: 8, padding: "3px 7px", borderRadius: 10, cursor: "pointer", opacity: 0.4,
+            background: debugMode ? "rgba(255,80,80,0.18)" : "rgba(255,255,255,0.06)",
+            border: debugMode ? "1px solid rgba(255,80,80,0.4)" : "1px solid rgba(255,255,255,0.12)",
+            color: debugMode ? "#ff6060" : "rgba(255,255,255,0.5)", userSelect: "none" }}>
+          {debugMode ? "DBG ON" : "DBG"}
+        </button>
+
         <button onClick={cycleMode} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s ease", userSelect: "none", WebkitUserSelect: "none", background: `rgba(${themeColor},0.10)`, border: `1px solid rgba(${themeColor},0.45)`, color: `rgb(${themeColor})`, boxShadow: `0 0 8px rgba(${themeColor},0.12)` }}>
           <span style={{ fontSize: 9, lineHeight: 1 }}>{currentModeObj.icon}</span>
           {currentModeObj.label}
