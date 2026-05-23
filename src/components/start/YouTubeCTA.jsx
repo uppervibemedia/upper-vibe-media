@@ -94,6 +94,8 @@ function YtThumb({ videoId, title, small = false, overrideThumbnail = null }) {
   );
 }
 
+const RED = "220,40,40";
+
 export default function YouTubeCTA() {
   const [playlistUrl, setPlaylistUrl] = useState(DEFAULT_PLAYLIST_URL);
   const [mainVideo, setMainVideo] = useState(null);
@@ -129,83 +131,103 @@ export default function YouTubeCTA() {
     });
   }, []);
 
+  const r = RED;
+
   return (
-    <section
-      className="flex flex-col gap-4 p-5 rounded-3xl"
-      style={{
-        background: "rgba(255,0,0,0.05)",
-        border: "1px solid rgba(255,60,60,0.3)",
-        boxShadow: "0 0 40px rgba(200,0,0,0.2), 0 0 80px rgba(200,0,0,0.08)",
-      }}
-    >
-      {/* Label */}
-      <div className="flex items-center justify-center gap-2">
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(255,0,0,0.12)", border: "1px solid rgba(255,60,60,0.25)" }}
-        >
-          <Youtube style={{ width: 14, height: 14, color: "#FF4444" }} />
-        </div>
-        <span style={{
-          fontSize: "9px", fontWeight: 900, letterSpacing: "0.32em",
-          textTransform: "uppercase", color: "rgba(255,80,80,0.75)",
-          fontFamily: "var(--font-heading)",
-        }}>
-          Watch On YouTube
-        </span>
-      </div>
-
-      {/* Headline */}
-      <div className="text-center">
-        <h2 style={{
-          fontFamily: "var(--font-heading)", fontSize: "1.15rem", fontWeight: 900,
-          color: "#fff", marginBottom: "0.4rem", lineHeight: 1.2,
-        }}>
-          See The Frequency In Motion
-        </h2>
-        <p style={{ fontSize: "0.8rem", lineHeight: 1.6, color: "rgba(255,255,255,0.45)" }}>
-          Visualizers, music videos, and 432 Hz frequency drops.
-        </p>
-      </div>
-
-      {/* Main featured video */}
-      {mainVideo && <YtThumb videoId={mainVideo.id} title={mainVideo.title} overrideThumbnail={mainVideo.thumbnail_url} />}
-
-      {/* Secondary videos — horizontal swipe row */}
-      {secondaryVideos.length > 0 && (
-        <div
-          className="flex gap-3 overflow-x-auto pb-1"
-          style={{
-            scrollSnapType: "x mandatory",
-            WebkitOverflowScrolling: "touch",
-            msOverflowStyle: "none",
-            scrollbarWidth: "none",
-            paddingRight: "16px",
-          }}
-        >
-          {secondaryVideos.map((v) => (
-            <YtThumb key={v.id} videoId={v.id} title={v.title} overrideThumbnail={v.thumbnail_url} small />
-          ))}
-        </div>
-      )}
-
-      {/* CTA */}
-      <a
-        href={playlistUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
+    <>
+      <style>{`
+        @keyframes ytSectionPulse {
+          0%, 100% { box-shadow: 0 0 28px rgba(${r},0.45), 0 0 60px rgba(${r},0.15); border-color: rgba(${r},0.45); }
+          50% { box-shadow: 0 0 55px rgba(${r},0.9), 0 0 110px rgba(${r},0.4); border-color: rgba(${r},0.85); }
+        }
+        @keyframes ytRingPulse {
+          0%, 100% { box-shadow: 0 0 0px rgba(${r},0); }
+          50% { box-shadow: 0 0 22px rgba(${r},0.7), 0 0 45px rgba(${r},0.3); }
+        }
+      `}</style>
+      <section
+        className="flex flex-col gap-4 p-5 rounded-3xl relative"
         style={{
-          background: "linear-gradient(135deg,#C00000,#FF3333)",
-          color: "#fff",
-          fontFamily: "var(--font-heading)",
-          letterSpacing: "0.05em",
-          boxShadow: "0 4px 20px rgba(200,0,0,0.3)",
+          background: `rgba(${r},0.06)`,
+          border: `1px solid rgba(${r},0.45)`,
+          animation: "ytSectionPulse 2.8s ease-in-out infinite",
         }}
       >
-        <Youtube style={{ width: 15, height: 15 }} />
-        Watch Full Visualizer Playlist
-      </a>
-    </section>
+        {/* Pulsing outer ring */}
+        <div
+          className="absolute inset-0 rounded-3xl pointer-events-none"
+          style={{ animation: "ytRingPulse 2.8s ease-in-out infinite" }}
+        />
+
+        {/* Label */}
+        <div className="flex items-center justify-center gap-2">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: `rgba(${r},0.15)`, border: `1px solid rgba(${r},0.35)` }}
+          >
+            <Youtube style={{ width: 14, height: 14, color: `rgb(${r})` }} />
+          </div>
+          <span style={{
+            fontSize: "9px", fontWeight: 900, letterSpacing: "0.32em",
+            textTransform: "uppercase", color: `rgba(${r},0.9)`,
+            fontFamily: "var(--font-heading)",
+          }}>
+            Watch On YouTube
+          </span>
+        </div>
+
+        {/* Headline */}
+        <div className="text-center">
+          <h2 style={{
+            fontFamily: "var(--font-heading)", fontSize: "1.15rem", fontWeight: 900,
+            color: "#fff", marginBottom: "0.4rem", lineHeight: 1.2,
+          }}>
+            See The Frequency In Motion
+          </h2>
+          <p style={{ fontSize: "0.8rem", lineHeight: 1.6, color: "rgba(255,255,255,0.45)" }}>
+            Visualizers, music videos, and 432 Hz frequency drops.
+          </p>
+        </div>
+
+        {/* Main featured video */}
+        {mainVideo && <YtThumb videoId={mainVideo.id} title={mainVideo.title} overrideThumbnail={mainVideo.thumbnail_url} />}
+
+        {/* Secondary videos — horizontal swipe row */}
+        {secondaryVideos.length > 0 && (
+          <div
+            className="flex gap-3 overflow-x-auto pb-1"
+            style={{
+              scrollSnapType: "x mandatory",
+              WebkitOverflowScrolling: "touch",
+              msOverflowStyle: "none",
+              scrollbarWidth: "none",
+              paddingRight: "16px",
+            }}
+          >
+            {secondaryVideos.map((v) => (
+              <YtThumb key={v.id} videoId={v.id} title={v.title} overrideThumbnail={v.thumbnail_url} small />
+            ))}
+          </div>
+        )}
+
+        {/* CTA */}
+        <a
+          href={playlistUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
+          style={{
+            background: `linear-gradient(135deg,rgb(${r}),rgba(${r},0.75))`,
+            color: "#fff",
+            fontFamily: "var(--font-heading)",
+            letterSpacing: "0.05em",
+            boxShadow: `0 4px 24px rgba(${r},0.5)`,
+          }}
+        >
+          <Youtube style={{ width: 15, height: 15 }} />
+          Watch Full Visualizer Playlist
+        </a>
+      </section>
+    </>
   );
 }
