@@ -117,7 +117,7 @@ export default function Music() {
 
               <h1 className="font-heading font-black mb-1.5 leading-tight"
                 style={{ fontSize: "clamp(1.7rem, 6vw, 3rem)", color: `rgb(${themeColor})` }}>
-                Music Library
+                Discover Your Frequency
               </h1>
               <p className="text-white/30 text-xs leading-relaxed max-w-lg">
                 Stream 432 Hz high-vibe music, new releases, and curated frequency tracks
