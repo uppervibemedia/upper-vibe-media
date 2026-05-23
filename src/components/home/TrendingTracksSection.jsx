@@ -65,13 +65,13 @@ const INSIGHT_COLORS = [
   { color: "212,168,67",  label: "Trending" },                // amber
 ];
 
-export default function TrendingTracksSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, user, onToggleFav, isFaved, onDownload }) {
+export default function TrendingTracksSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, user, onToggleFav, isFaved, onDownload, themeColor }) {
   const [streams, setStreams]     = useState([]);
   const [favCounts, setFavCounts] = useState({});
   const [loading, setLoading]     = useState(true);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
-  const rtp = radioTheme.vars["--rt-primary"];   // theme primary — used for rank #1-3 & card active state
+  const rtp = themeColor || radioTheme.vars["--rt-primary"];   // theme primary — used for rank #1-3 & card active state
 
   useEffect(() => {
     if (!allTracks || allTracks.length === 0) return;

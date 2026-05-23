@@ -403,14 +403,18 @@ export default function Home() {
             style={{ background: "#F5A800" }} />
 
           {/* Full-width waveform strip at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center gap-[1.5px] h-8 opacity-20 pointer-events-none overflow-hidden">
-            {Array.from({ length: 80 }).map((_, i) => (
-              <motion.div key={i}
-                animate={{ height: [`${3 + Math.sin(i * 0.35) * 8}px`, `${6 + Math.sin(i * 0.35 + 1.5) * 12}px`, `${3 + Math.sin(i * 0.35) * 8}px`] }}
-                transition={{ duration: 1.8 + (i % 5) * 0.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.015 }}
-                className="w-[2px] rounded-full flex-shrink-0"
-                style={{ background: i % 3 === 0 ? `rgb(${rtPrimary})` : i % 3 === 1 ? `rgb(${rtPrimary})` : "#F5A800" }} />
-            ))}
+          <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center gap-[1.5px] h-16 opacity-25 pointer-events-none overflow-hidden">
+            {Array.from({ length: 80 }).map((_, i) => {
+              const colorCycle = i % 3;
+              const barColor = colorCycle === 0 ? `rgb(${rtPrimary})` : colorCycle === 1 ? rtAmbient1 : "#F5A800";
+              return (
+                <motion.div key={i}
+                  animate={{ height: [`${8 + Math.sin(i * 0.35) * 16}px`, `${16 + Math.sin(i * 0.35 + 1.5) * 28}px`, `${8 + Math.sin(i * 0.35) * 16}px`] }}
+                  transition={{ duration: 1.8 + (i % 5) * 0.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.015 }}
+                  className="w-[2px] rounded-full flex-shrink-0"
+                  style={{ background: barColor }} />
+              );
+            })}
           </div>
 
           <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-5 md:gap-8 p-5 md:p-10 pb-10 md:pb-12">
@@ -473,6 +477,7 @@ export default function Home() {
         heartButton={heartButton}
         downloadButton={downloadButton}
         user={user}
+        themeColor={rtPrimary}
       />
       </motion.div>
 
@@ -485,6 +490,7 @@ export default function Home() {
         handlePlayTrack={handlePlayTrack}
         user={user}
         isFaved={isFaved}
+        themeColor={rtPrimary}
         onToggleFav={(track) => {
           if (!user) { setLoginModal(true); return; }
           toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
@@ -639,7 +645,7 @@ export default function Home() {
       {/* ── FEATURED ARTISTS ── */}
       {artists.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="The Artists" title="Featured Artists" link="/artists" linkLabel="All Artists" labelColor="#D4A843" />
+          <SectionHeader label="The Artists" title="Featured Artists" link="/artists" linkLabel="All Artists" labelColor={`rgb(${rtPrimary})`} />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {artists.map((artist, i) => (
               <motion.div key={artist.id}
@@ -682,6 +688,7 @@ export default function Home() {
         heartButton={heartButton}
         downloadButton={downloadButton}
         themeColor={rtPrimary}
+        radioThemeColor={rtPrimary}
       />
       </motion.div>
 
