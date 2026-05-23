@@ -109,23 +109,26 @@ let _globalAudioInstanceCount = 0;
 export const sharedHiddenRef = { current: false };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AudioContext — shared with visualiser, created lazily on first user gesture.
+// AudioContext — optional, visualiser-only. NEVER used on iOS.
 //
-// iOS NOTES:
-//   - createMediaElementSource() on iOS Safari CAN work for visualisation,
-//     but ONLY if the AudioContext is created AND resumed inside a user-gesture
-//     handler (e.g. tap on Play button). Calling it at page-load fails silently.
-//   - Connecting source → analyser → destination keeps audio playing normally.
-//   - AirPlay/BT continue to work when destination is connected.
-//   - crossOrigin must NOT be set on the iOS audio element (breaks AirPlay CDN
-//     preflight). Because of this, getByteFrequencyData may return all-zeros
-//     if the CDN lacks CORS headers. This is a CDN limitation, not a code bug.
-//   - The visualiser layer handles the "all-zeros" case by showing fallback.
+// iOS CRITICAL: We do NOT route the audio element through Web Audio on iOS.
+// createMediaElementSource() on iOS can:
+//   1. Require a suspended AudioContext resume before audio plays
+//   2. Conflict with AirPlay / BT routing
+//   3. Silently block playback if called outside a user gesture
+//
+// On iOS, the audio element plays directly to the system output — no Web
+// Audio graph. The visualiser falls back to its animation-only mode on iOS.
+//
+// On non-iOS: Web Audio graph is set up lazily on first user gesture and used
+// exclusively for visualiser frequency analysis.
 // ─────────────────────────────────────────────────────────────────────────────
 let _audioCtx   = null;
 let _analyser   = null;
 let _sourceNode = null;
 let _sourceEl   = null; // the element _sourceNode was created from
+// Flag: if analyser setup throws, disable for the rest of the session
+let _analyserDisabled = false;
 
 async function resumeAudioContext() {
   if (!_audioCtx) return;
@@ -139,84 +142,72 @@ function suspendAudioContext() {
 }
 
 /**
- * getOrCreateAudioContext — wires the audio element into a Web Audio graph.
- * Safe to call multiple times: caches source node per element, never calls
- * createMediaElementSource twice on the same element.
- * Works on both iOS and non-iOS — on iOS only call inside a user gesture.
+ * setupAnalyserGraph — wires the audio element into a Web Audio graph for
+ * visualisation purposes ONLY. Never called on iOS. Safe to call multiple
+ * times — caches source node per element.
+ *
+ * AUDIO SAFETY: if this throws for any reason, we catch it, disable the
+ * analyser for the session, and let audio continue playing normally.
  */
-function getOrCreateAudioContext(audioElement) {
-  if (!audioElement) return null;
+function setupAnalyserGraph(audioElement) {
+  if (!audioElement || isIOS || _analyserDisabled) return null;
 
-  // Create context if needed (or if previous one was closed)
-  if (!_audioCtx || _audioCtx.state === "closed") {
-    try {
+  try {
+    // Create context if needed
+    if (!_audioCtx || _audioCtx.state === "closed") {
       _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       window._uvAudioCtx = _audioCtx;
-    } catch (e) {
-      console.warn("[Player] AudioContext creation failed:", e.message);
-      return null;
-    }
-    // Reset nodes when context is recreated
-    _analyser   = null;
-    _sourceNode = null;
-    _sourceEl   = null;
-  }
-
-  // Resume if suspended
-  if (_audioCtx.state === "suspended") {
-    _audioCtx.resume().catch(() => {});
-  }
-
-  // Create analyser if needed
-  if (!_analyser) {
-    _analyser = _audioCtx.createAnalyser();
-    _analyser.fftSize = 2048;
-    _analyser.smoothingTimeConstant = 0.75;
-    window._uvAnalyser = _analyser;
-  }
-
-  // Create source node if needed, or if the element changed
-  if (!_sourceNode || _sourceEl !== audioElement) {
-    // Disconnect old source if it exists
-    if (_sourceNode) {
-      try { _sourceNode.disconnect(); } catch {}
+      _analyser   = null;
       _sourceNode = null;
       _sourceEl   = null;
     }
-    try {
-      _sourceNode = _audioCtx.createMediaElementSource(audioElement);
-      _sourceEl   = audioElement;
-      // Wire: source → analyser → destination (destination keeps audio playing)
-      _sourceNode.connect(_analyser);
-      _analyser.connect(_audioCtx.destination);
-      console.log("[Player] AudioGraph connected | element src:",
-        audioElement.src?.substring(0, 55), "| ctxState:", _audioCtx.state,
-        "| isIOS:", isIOS);
-    } catch (e) {
-      // InvalidStateError = already captured — just reconnect analyser to destination
-      if (e.name === "InvalidStateError") {
-        console.log("[Player] source already captured (InvalidStateError) — analyser still connected");
-      } else {
-        console.warn("[Player] AudioContext setup error:", e.name, e.message);
+
+    if (_audioCtx.state === "suspended") {
+      _audioCtx.resume().catch(() => {});
+    }
+
+    if (!_analyser) {
+      _analyser = _audioCtx.createAnalyser();
+      _analyser.fftSize = 2048;
+      _analyser.smoothingTimeConstant = 0.75;
+      window._uvAnalyser = _analyser;
+    }
+
+    if (!_sourceNode || _sourceEl !== audioElement) {
+      if (_sourceNode) {
+        try { _sourceNode.disconnect(); } catch {}
         _sourceNode = null;
         _sourceEl   = null;
       }
+      _sourceNode = _audioCtx.createMediaElementSource(audioElement);
+      _sourceEl   = audioElement;
+      _sourceNode.connect(_analyser);
+      _analyser.connect(_audioCtx.destination);
+      console.log("[Player] AudioGraph connected (non-iOS) | ctxState:", _audioCtx.state);
     }
-  }
 
-  return _analyser;
+    return _analyser;
+  } catch (e) {
+    // ── SAFETY NET: analyser setup failed — disable for session, audio keeps playing ──
+    console.warn("[Player] setupAnalyserGraph failed — disabling analyser for session |", e.name, e.message);
+    _analyserDisabled = true;
+    _sourceNode = null;
+    _sourceEl   = null;
+    // Do NOT rethrow — audio element continues playing normally
+    return null;
+  }
 }
 
 export function resumeGlobalAudioContext() { return resumeAudioContext().catch(() => {}); }
-export function getGlobalAnalyser(el) { return getOrCreateAudioContext(el); }
 
 /**
  * requestAnalyser — called by the visualiser after a user gesture.
- * Returns { analyser, ctx } or null. Safe to call repeatedly.
+ * On iOS always returns null (visualiser uses fallback animation).
+ * On non-iOS, lazily sets up the Web Audio graph for frequency analysis.
  */
 export function requestAnalyser(audioElement) {
-  if (!audioElement) return null;
-  const an = getOrCreateAudioContext(audioElement);
+  if (!audioElement || isIOS || _analyserDisabled) return null;
+  const an = setupAnalyserGraph(audioElement);
   if (!an) return null;
   return { analyser: an, ctx: _audioCtx, sourceNode: _sourceNode };
 }
@@ -416,7 +407,8 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     const audio = createFreshAudio();
     audioRef.current = audio;
-    getOrCreateAudioContext(audio);
+    // NOTE: Do NOT call setupAnalyserGraph here — it must only be called inside
+    // a user gesture (required by iOS Safari and recommended by spec).
 
     // Register MediaSession handlers ONCE here — they close over audioRef
     registerMediaSessionHandlers();
@@ -918,10 +910,12 @@ export function PlayerProvider({ children }) {
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    // Wire Web Audio graph on user gesture — safe on iOS Safari here.
-    getOrCreateAudioContext(audio);
-    // Resume AudioContext synchronously inside the user gesture (iOS requirement)
-    resumeAudioContext().catch(() => {});
+    // Non-iOS: wire Web Audio graph for visualiser on user gesture.
+    // iOS: skip entirely — audio plays directly through the element.
+    if (!isIOS) {
+      setupAnalyserGraph(audio);
+      resumeAudioContext().catch(() => {});
+    }
 
     if (!audio.paused && !audio.ended) {
       // Currently playing — pause it
@@ -975,8 +969,11 @@ export function PlayerProvider({ children }) {
 
     const url = track.audio_url;
 
-    // Wire Web Audio graph inside user gesture context (iOS-safe)
-    getOrCreateAudioContext(audio);
+    // Non-iOS only: wire Web Audio graph for visualiser (inside user gesture context).
+    // On iOS this is intentionally skipped — audio plays directly through the element.
+    if (!isIOS) {
+      setupAnalyserGraph(audio);
+    }
 
     // Update React state
     setSourceType(source);
@@ -998,6 +995,12 @@ export function PlayerProvider({ children }) {
     audio.src = url;
     enforceRate(audio);
     audio.load();
+
+    // On non-iOS, resume AudioContext before play (required after suspension)
+    // This is a no-op if _audioCtx is null (which it is on iOS)
+    if (!isIOS && _audioCtx && _audioCtx.state === "suspended") {
+      _audioCtx.resume().catch(() => {});
+    }
 
     console.log("[Player] playTrack sync | title:", track.title, "| iOS:", isIOS, "| src set, load() called");
 

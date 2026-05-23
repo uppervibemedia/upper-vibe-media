@@ -631,35 +631,34 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
   };
 
   const tryConnectAnalyser = useCallback(async () => {
+    // On iOS, analyser is never available — visualiser always uses fallback animation.
+    // This is intentional: we never route iOS audio through Web Audio to avoid
+    // breaking playback. The visualiser looks great in fallback mode.
+    if (isIOS) {
+      analyserRef.current = null;
+      return false;
+    }
+
     const audio = audioRef?.current;
     if (!audio) {
       console.log("[Viz] tryConnect | no audio element found");
       return false;
     }
 
-    // Resume any suspended context first (required after iOS gesture)
     await resumeGlobalAudioContext();
 
-    // Use the shared PlayerContext analyser — this is the one connected to the
-    // real audio element, works on both iOS and non-iOS.
     const result = requestAnalyser(audio);
     if (result?.analyser) {
       analyserRef.current = result.analyser;
-      // Ensure context is running
       if (result.ctx?.state === "suspended") {
         try { await result.ctx.resume(); } catch {}
       }
-      console.log("[Viz] tryConnect | analyser ready",
-        "| ctxState:", result.ctx?.state,
-        "| srcConnected:", !!result.sourceNode,
-        "| audio.src:", audio.src?.substring(0, 55),
-        "| audio.paused:", audio.paused,
-        "| isIOS:", isIOS);
+      console.log("[Viz] tryConnect | analyser ready | ctxState:", result.ctx?.state);
       return true;
     }
 
     analyserRef.current = null;
-    console.warn("[Viz] tryConnect | requestAnalyser returned null | audio.src:", audio.src?.substring(0, 55));
+    console.log("[Viz] tryConnect | no analyser (disabled or not yet set up) — using fallback");
     return false;
   }, [audioRef]);
 
