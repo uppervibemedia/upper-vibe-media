@@ -29,7 +29,7 @@ export default function UpNextPanel({ upNext, onJump }) {
 
             {/* Position number */}
             <span className="text-[10px] font-black w-4 text-center flex-shrink-0"
-              style={{ color: i === 0 ? `rgb(${rtPrimary})` : "rgba(255,255,255,0.2)" }}>
+              style={{ color: i < 3 ? `rgb(${rtPrimary})` : "rgba(255,255,255,0.2)" }}>
               {i + 1}
             </span>
 
@@ -52,7 +52,7 @@ export default function UpNextPanel({ upNext, onJump }) {
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-white truncate leading-snug group-hover:text-cyan-300 transition-colors">
+              <p className="text-xs font-bold text-white truncate leading-snug transition-colors" style={{ color: "rgba(255,255,255,0.9)" }} onMouseEnter={e => e.currentTarget.style.color = `rgb(${rtPrimary})`} onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.9)"}>
                 {song.title}
               </p>
               <p className="text-[10px] text-white/35 truncate mt-0.5">
