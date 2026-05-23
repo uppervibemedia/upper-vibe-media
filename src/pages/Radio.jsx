@@ -13,10 +13,12 @@ import ShareVibeButton from "../components/shared/ShareVibeButton";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
 import RadioVisualizer from "../components/radio/RadioVisualizer";
+import RadioThemePicker, { useRadioTheme } from "../components/radio/RadioThemePicker";
 
 export default function RadioPage() {
   const [premiumModal, setPremiumModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
+  const { themeId, theme, applyTheme } = useRadioTheme();
 
   const { currentTrack, isPlaying, togglePlay, sourceType } = usePlayer();
   const {
@@ -80,8 +82,13 @@ export default function RadioPage() {
     );
   }
 
+  // Build CSS variable style object from current theme
+  const themeStyle = Object.entries(theme.vars).reduce((acc, [k, v]) => {
+    acc[k] = v; return acc;
+  }, { WebkitOverflowScrolling: "touch" });
+
   return (
-    <div className="min-h-screen" style={{ WebkitOverflowScrolling: "touch" }}>
+    <div className="min-h-screen" style={themeStyle}>
 
       {/* ── Fixed ambient background ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -89,7 +96,7 @@ export default function RadioPage() {
           animate={{ opacity: playingThisRadioSong ? 0.06 : 0.03 }}
           transition={{ duration: 2, ease: "easeInOut" }}
           className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full blur-[180px]"
-          style={{ background: "#00C9E0" }}
+          style={{ background: "rgb(var(--rt-ambient1, #00C9E0))", background: theme.vars["--rt-ambient1"] }}
         />
         {playingThisRadioSong && (
           <motion.div
@@ -97,7 +104,7 @@ export default function RadioPage() {
             animate={{ opacity: 0.025 }}
             transition={{ duration: 2 }}
             className="absolute bottom-1/3 right-1/4 w-[300px] h-[300px] rounded-full blur-[120px]"
-            style={{ background: "#9B7EFF" }}
+            style={{ background: theme.vars["--rt-ambient2"] }}
           />
         )}
       </div>
@@ -115,13 +122,13 @@ export default function RadioPage() {
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
           className="text-center mb-5">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm mb-3"
-            style={{ background: "rgba(0,200,220,0.06)", border: "1px solid rgba(0,200,220,0.16)" }}>
+            style={{ background: `rgba(${theme.vars["--rt-primary"]},0.06)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.16)` }}>
             {/* Live dot */}
             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: playingThisRadioSong ? "#ef4444" : "#00C9E0",
+              style={{ background: playingThisRadioSong ? "#ef4444" : `rgb(${theme.vars["--rt-primary"]})`,
                 animation: playingThisRadioSong ? "pulse 1.5s infinite" : "none" }} />
-            <RadioIcon className="w-3 h-3" style={{ color: "#00C9E0" }} />
-            <span className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: "#00C9E0" }}>
+            <RadioIcon className="w-3 h-3" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
+            <span className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }}>
               {playingThisRadioSong ? "Live Now" : "Live Radio"}
             </span>
           </div>
@@ -141,6 +148,11 @@ export default function RadioPage() {
           )}
         </motion.div>
 
+        {/* ── Theme Picker ── */}
+        <div className="flex justify-end mb-2" style={{ maxWidth: 440, margin: "0 auto 8px" }}>
+          <RadioThemePicker themeId={themeId} onSelect={applyTheme} />
+        </div>
+
         {/* ── Visualizer ── */}
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
@@ -149,7 +161,7 @@ export default function RadioPage() {
           style={{
             maxWidth: 440,
             background: "rgba(0,0,0,0.4)",
-            border: `1px solid ${playingThisRadioSong ? "rgba(0,200,220,0.18)" : "rgba(0,200,220,0.08)"}`,
+            border: `1px solid ${playingThisRadioSong ? `rgba(${theme.vars["--rt-primary"]},0.18)` : `rgba(${theme.vars["--rt-primary"]},0.08)`}`,
             transition: "border-color 1s ease",
           }}>
           <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} />
@@ -173,7 +185,7 @@ export default function RadioPage() {
               <div className="rounded-3xl p-6"
                 style={{
                   background: "rgba(255,255,255,0.028)",
-                  border: `1px solid ${playingThisRadioSong ? "rgba(0,200,220,0.15)" : "rgba(255,255,255,0.07)"}`,
+                  border: `1px solid ${playingThisRadioSong ? `rgba(${theme.vars["--rt-primary"]},0.15)` : "rgba(255,255,255,0.07)"}`,
                   transition: "border-color 1s ease",
                 }}>
 
@@ -198,18 +210,18 @@ export default function RadioPage() {
                         <img src={currentRadioSong.cover_url} alt={currentRadioSong.title}
                           className="w-full h-full rounded-2xl object-cover"
                           style={{ boxShadow: playingThisRadioSong
-                            ? "0 8px 48px rgba(0,200,220,0.25), 0 4px 20px rgba(0,0,0,0.5)"
+                            ? `0 8px 48px rgba(${theme.vars["--rt-primary"]},0.25), 0 4px 20px rgba(0,0,0,0.5)`
                             : "0 8px 32px rgba(0,0,0,0.5)"
                           }} />
                       ) : (
                         <div className="w-full h-full rounded-2xl flex items-center justify-center"
-                          style={{ background: "rgba(0,200,220,0.08)", border: "1px solid rgba(0,200,220,0.15)" }}>
-                          <Music4 className="w-12 h-12 text-cyan-400/20" />
+                          style={{ background: `rgba(${theme.vars["--rt-primary"]},0.08)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.15)` }}>
+                          <Music4 className="w-12 h-12 opacity-20" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
                         </div>
                       )}
                       {playingThisRadioSong && (
                         <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center"
-                          style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)" }}>
+                          style={{ background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${theme.vars["--rt-primary"]}))` }}>
                           <Waves className="w-3.5 h-3.5 text-black animate-pulse" />
                         </div>
                       )}
@@ -240,8 +252,8 @@ export default function RadioPage() {
                         {currentRadioSong.artist_display || "Upper Vibe Media"}
                       </p>
                       <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full"
-                        style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.2)", color: "#00C9E0" }}>
-                        <Waves className="w-2.5 h-2.5" /> 432 Hz
+                      style={{ background: `rgba(${theme.vars["--rt-primary"]},0.1)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.2)`, color: `rgb(${theme.vars["--rt-primary"]})` }}>
+                      <Waves className="w-2.5 h-2.5" /> 432 Hz
                       </span>
                     </>
                   )}
@@ -253,8 +265,8 @@ export default function RadioPage() {
                     <motion.div
                       initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
                       className="mb-4 px-4 py-2.5 rounded-xl text-xs text-white/45 flex items-center justify-center gap-2"
-                      style={{ background: "rgba(0,200,220,0.05)", border: "1px solid rgba(0,200,220,0.1)" }}>
-                      <RadioIcon className="w-3 h-3 text-cyan-400/40" />
+                      style={{ background: `rgba(${theme.vars["--rt-primary"]},0.05)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.1)` }}>
+                      <RadioIcon className="w-3 h-3 opacity-40" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
                       Radio paused — playing another song
                     </motion.div>
                   )}
@@ -271,7 +283,7 @@ export default function RadioPage() {
                   {radioIsPaused ? (
                     <button onClick={handleResume}
                       className="px-6 h-14 rounded-full flex items-center gap-2 font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-                      style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", color: "#000", boxShadow: "0 0 28px rgba(0,200,220,0.25)" }}>
+                      style={{ background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${theme.vars["--rt-primary"]}))`, color: "#000", boxShadow: `0 0 28px rgba(${theme.vars["--rt-primary"]},0.25)` }}>
                       <RadioIcon className="w-3.5 h-3.5" />
                       Resume Radio
                     </button>
@@ -281,10 +293,10 @@ export default function RadioPage() {
                       whileTap={{ scale: 0.92 }}
                       className="w-16 h-16 rounded-full flex items-center justify-center transition-all hover:brightness-115"
                       style={{
-                        background: "linear-gradient(135deg,#00A8C0,#00D4EE)",
+                        background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${theme.vars["--rt-primary"]}))`,
                         boxShadow: playingThisRadioSong
-                          ? "0 0 36px rgba(0,200,220,0.4), 0 0 80px rgba(0,200,220,0.15)"
-                          : "0 0 20px rgba(0,200,220,0.2)",
+                          ? `0 0 36px rgba(${theme.vars["--rt-primary"]},0.4), 0 0 80px rgba(${theme.vars["--rt-primary"]},0.15)`
+                          : `0 0 20px rgba(${theme.vars["--rt-primary"]},0.2)`,
                         transition: "box-shadow 0.8s ease",
                       }}>
                       {playingThisRadioSong
