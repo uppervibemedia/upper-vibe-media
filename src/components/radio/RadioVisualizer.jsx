@@ -118,34 +118,45 @@ function drawCosmicWaves(ctx, W, H, sm, bufLen, t, particlesRef, bass, beat) {
 
 function drawNeonPulse(ctx, W, H, sm, bufLen, bass, mid) {
   const cx = W / 2, cy = H / 2;
+  const t = Date.now() / 1000;
   const baseR = Math.min(W, H) * 0.22;
+
+  // Pulsing shock rings — radius and alpha driven by bass
   const rings = [
-    { r: baseR * (1 + bass * 0.7), alpha: Math.min(1, 0.65 + bass * 0.35), w: 2.5 + bass * 2.5, c: "0,229,255" },
-    { r: baseR * (1.22 + mid * 0.5 + bass * 0.28), alpha: 0.3 + bass * 0.3, w: 1.5, c: "155,126,255" },
-    { r: baseR * (1.44 + mid * 0.6 + bass * 0.4), alpha: 0.1 + bass * 0.18, w: 1, c: "0,200,220" },
+    { r: baseR * (1 + bass * 1.1), alpha: Math.min(1, 0.65 + bass * 0.5), w: 2.5 + bass * 4, c: "0,229,255" },
+    { r: baseR * (1.3 + mid * 0.7 + bass * 0.5), alpha: 0.35 + bass * 0.45, w: 1.5 + bass * 2, c: "155,126,255" },
+    { r: baseR * (1.6 + mid * 0.8 + bass * 0.6), alpha: 0.12 + bass * 0.28, w: 1 + bass, c: "0,200,220" },
+    { r: baseR * (1.9 + mid * 0.5 + bass * 0.4), alpha: 0.05 + bass * 0.15, w: 0.5, c: "200,100,255" },
   ];
   for (const rg of rings) {
     if (rg.r <= 0) continue;
     ctx.beginPath(); ctx.arc(cx, cy, rg.r, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(${rg.c},${rg.alpha})`; ctx.lineWidth = rg.w; ctx.stroke();
   }
+
+  // Radial bars — wobble angle offset with time for constant spin feel
   const bars = 80, usable = Math.floor(bufLen * 0.75);
+  const spin = t * 0.4; // slow continuous rotation
   for (let i = 0; i < bars; i++) {
     const v = sm[Math.floor((i / bars) * usable)];
-    const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
-    const inner = baseR * (1.05 + bass * 0.1);
-    const outer = inner + Math.max(0, v * baseR * (0.7 + bass * 0.9) + 2);
+    const angle = (i / bars) * Math.PI * 2 - Math.PI / 2 + spin;
+    const wobble = Math.sin(t * 3.5 + i * 0.18) * 0.04 * (1 + bass);
+    const inner = baseR * (0.95 + bass * 0.15 + wobble);
+    const outer = inner + Math.max(2, v * baseR * (1.1 + bass * 1.4));
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
     ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
-    ctx.strokeStyle = `hsla(${185 + v * 90},100%,62%,${0.4 + v * 0.6})`;
-    ctx.lineWidth = Math.max(1, (W / bars) * 0.45); ctx.lineCap = "round"; ctx.stroke();
+    ctx.strokeStyle = `hsla(${185 + v * 120 + i * 0.8},100%,62%,${0.4 + v * 0.6})`;
+    ctx.lineWidth = Math.max(1.5, (W / bars) * 0.55); ctx.lineCap = "round"; ctx.stroke();
   }
-  const dotR = Math.max(0, 4 + bass * 16);
+
+  // Breathing centre core
+  const breathe = Math.sin(t * 2.8) * 0.3 + 0.7;
+  const dotR = Math.max(0, 5 + bass * 22 + mid * 8) * breathe;
   if (dotR > 0) {
-    const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 3.5);
-    dg.addColorStop(0, `rgba(0,229,255,${0.85 + bass * 0.15})`);
-    dg.addColorStop(0.4, `rgba(0,180,220,${0.18 + bass * 0.2})`);
+    const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 4);
+    dg.addColorStop(0, `rgba(0,229,255,${0.9 + bass * 0.1})`);
+    dg.addColorStop(0.3, `rgba(155,100,255,${0.25 + bass * 0.25})`);
     dg.addColorStop(1, "rgba(0,0,0,0)");
     ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
   }
@@ -354,18 +365,30 @@ function fallbackCosmic(ctx, W, H, t, active, particlesRef) {
 function fallbackNeon(ctx, W, H, t, active) {
   const cx = W / 2, cy = H / 2, baseR = Math.min(W, H) * 0.22;
   const pulse = active ? 0.7 + Math.sin(t * 2.2) * 0.3 : 0.35;
-  [[1, 2.5, "0,220,255"], [1.2, 1.5, "155,126,255"], [1.42, 1, "0,200,220"]].forEach(([scale, w, c]) => {
-    ctx.beginPath(); ctx.arc(cx, cy, baseR * scale, 0, Math.PI * 2);
+  const spin = t * 0.4;
+  // Rings — scale breathing when active
+  [[1, 2.5, "0,220,255"], [1.3, 1.5, "155,126,255"], [1.6, 1, "0,200,220"], [1.9, 0.5, "200,100,255"]].forEach(([scale, w, c], idx) => {
+    const breathe = active ? scale + Math.sin(t * (1.8 + idx * 0.4)) * 0.06 : scale;
+    ctx.beginPath(); ctx.arc(cx, cy, baseR * breathe, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(${c},${0.55 * pulse})`; ctx.lineWidth = w; ctx.stroke();
   });
-  for (let i = 0; i < 48; i++) {
-    const a = (i / 48) * Math.PI * 2 - Math.PI / 2;
+  // Spinning bars
+  for (let i = 0; i < 64; i++) {
+    const a = (i / 64) * Math.PI * 2 - Math.PI / 2 + spin;
+    const wobble = active ? Math.sin(t * 3.5 + i * 0.18) * 0.04 : 0;
     const v = active ? Math.sin(t * 1.8 + i * 0.26) * 0.5 + 0.5 : 0.08;
-    const inner = baseR * 1.04, outer = inner + v * baseR * 0.4 + 2;
+    const inner = baseR * (0.95 + wobble), outer = inner + v * baseR * 0.65 + 2;
     ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
     ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
-    ctx.strokeStyle = `hsla(${185 + v * 60},100%,62%,${active ? 0.35 + v * 0.4 : 0.12})`; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.stroke();
+    ctx.strokeStyle = `hsla(${185 + v * 80 + i * 0.8},100%,62%,${active ? 0.35 + v * 0.4 : 0.12})`; ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.stroke();
   }
+  // Breathing core
+  const dotR = baseR * (active ? 0.18 + Math.sin(t * 2.8) * 0.08 : 0.1);
+  const dg = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotR * 4);
+  dg.addColorStop(0, `rgba(0,229,255,${active ? 0.75 : 0.2})`);
+  dg.addColorStop(0.4, `rgba(155,100,255,${active ? 0.2 : 0.05})`);
+  dg.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath(); ctx.arc(cx, cy, dotR, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill();
 }
 
 function fallbackAurora(ctx, W, H, t, active) {
