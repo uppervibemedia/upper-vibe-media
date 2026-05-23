@@ -59,6 +59,7 @@ export default function Home() {
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtPrimary = radioTheme.vars["--rt-primary"];
+  const rtSecondary = radioTheme.vars["--rt-secondary"];
   const rtAmbient1 = radioTheme.vars["--rt-ambient1"];
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -403,10 +404,16 @@ export default function Home() {
             style={{ background: "#F5A800" }} />
 
           {/* Full-width waveform strip at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center gap-[1.5px] h-16 opacity-25 pointer-events-none overflow-hidden">
+          <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center gap-[1.5px] h-16 opacity-30 pointer-events-none overflow-hidden">
             {Array.from({ length: 80 }).map((_, i) => {
-              const colorCycle = i % 3;
-              const barColor = colorCycle === 0 ? `rgb(${rtPrimary})` : colorCycle === 1 ? rtAmbient1 : "#F5A800";
+              const colorCycle = i % 4;
+              const barColor = colorCycle === 0
+                ? `rgb(${rtPrimary})`
+                : colorCycle === 1
+                  ? `rgb(${rtSecondary})`
+                  : colorCycle === 2
+                    ? rtAmbient1
+                    : "#F5A800";
               return (
                 <motion.div key={i}
                   animate={{ height: [`${8 + Math.sin(i * 0.35) * 16}px`, `${16 + Math.sin(i * 0.35 + 1.5) * 28}px`, `${8 + Math.sin(i * 0.35) * 16}px`] }}
@@ -453,13 +460,23 @@ export default function Home() {
 
             {/* Right: tall animated waveform — desktop */}
             <div className="flex-shrink-0 hidden md:flex items-end gap-1 h-28">
-              {[5,8,14,22,30,38,28,18,32,40,24,16,34,20,10,26,36,22,12,28].map((h, i) => (
-                <motion.div key={i}
-                  animate={{ height: [`${h * 0.45}px`, `${h}px`, `${h * 0.6}px`, `${h}px`] }}
-                  transition={{ duration: 1.0 + i * 0.06, repeat: Infinity, ease: "easeInOut", delay: i * 0.04 }}
-                  className="w-1.5 rounded-full flex-shrink-0"
-                  style={{ background: i % 3 === 0 ? `rgba(${rtPrimary},0.8)` : i % 3 === 1 ? `rgba(${rtPrimary},0.45)` : "rgba(245,168,0,0.45)" }} />
-              ))}
+              {[5,8,14,22,30,38,28,18,32,40,24,16,34,20,10,26,36,22,12,28].map((h, i) => {
+                const cycle = i % 4;
+                const barColor = cycle === 0
+                  ? `rgba(${rtPrimary},0.9)`
+                  : cycle === 1
+                    ? `rgba(${rtSecondary},0.75)`
+                    : cycle === 2
+                      ? `${rtAmbient1}CC`
+                      : "rgba(245,158,11,0.7)";
+                return (
+                  <motion.div key={i}
+                    animate={{ height: [`${h * 0.45}px`, `${h}px`, `${h * 0.6}px`, `${h}px`] }}
+                    transition={{ duration: 1.0 + i * 0.06, repeat: Infinity, ease: "easeInOut", delay: i * 0.04 }}
+                    className="w-1.5 rounded-full flex-shrink-0"
+                    style={{ background: barColor }} />
+                );
+              })}
             </div>
           </div>
         </motion.div>
@@ -537,7 +554,7 @@ export default function Home() {
       {/* ── VISUALIZERS ── */}
       {recentViz.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="Visual Frequency" title="Latest Visualizers" link="/visualizers" linkLabel="See More" labelColor={`rgb(${rtPrimary})`} />
+          <SectionHeader label="Visual Frequency" title="Latest Visualizers" link="/visualizers" linkLabel="See More" labelColor={`rgb(${rtPrimary})`} themeColor={rtPrimary} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {recentViz.map((viz, i) => (
               <motion.div key={viz.id}
@@ -582,7 +599,7 @@ export default function Home() {
       {/* ── UPPER VIBE ACADEMY ── */}
       {academyLessons.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="Learn" title="Upper Vibe Academy" link="/academy" linkLabel="See More" labelColor={`rgb(${rtPrimary})`} labelIcon={<GraduationCap className="w-3 h-3" />} />
+          <SectionHeader label="Learn" title="Upper Vibe Academy" link="/academy" linkLabel="See More" labelColor={`rgb(${rtPrimary})`} labelIcon={<GraduationCap className="w-3 h-3" />} themeColor={rtPrimary} />
           <p className="text-white/30 text-sm mb-6 -mt-2">Go deeper into 432 Hz, manifesting, creativity, and expanding consciousness.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {academyLessons.map((lesson, i) => (
@@ -645,7 +662,7 @@ export default function Home() {
       {/* ── FEATURED ARTISTS ── */}
       {artists.length > 0 && (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="The Artists" title="Featured Artists" link="/artists" linkLabel="All Artists" labelColor={`rgb(${rtPrimary})`} />
+          <SectionHeader label="The Artists" title="Featured Artists" link="/artists" linkLabel="All Artists" labelColor={`rgb(${rtPrimary})`} themeColor={rtPrimary} />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {artists.map((artist, i) => (
               <motion.div key={artist.id}

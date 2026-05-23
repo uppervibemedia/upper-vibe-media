@@ -106,6 +106,7 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
         linkLabel="All Music"
         labelColor={`rgb(${rtp})`}
         labelIcon={<TrendingUp className="w-3 h-3" />}
+        themeColor={rtp}
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {trendingTracks.map((track, i) => {

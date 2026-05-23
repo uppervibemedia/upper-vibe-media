@@ -17,7 +17,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
-      <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor={`rgb(${themeColor || rtp})`} />
+      <SectionHeader label="New Releases" title="Latest Music" link="/newest-music" linkLabel="See More" labelColor={`rgb(${themeColor || rtp})`} themeColor={themeColor || rtp} />
       {/* Mobile: horizontal swipe scroll; desktop: grid */}
       <div className="flex sm:hidden gap-3 overflow-x-auto pb-2 -mx-6 px-6 snap-x snap-mandatory hide-scrollbar"
         style={{ WebkitOverflowScrolling: "touch" }}>
