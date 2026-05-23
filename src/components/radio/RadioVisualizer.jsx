@@ -861,17 +861,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8, paddingRight: 4, paddingLeft: 4 }}>
-        {/* Debug toggle — small tap target bottom-left */}
-        <button
-          onClick={toggleDebug}
-          style={{ fontSize: 8, padding: "3px 7px", borderRadius: 10, cursor: "pointer", opacity: 0.4,
-            background: debugMode ? "rgba(255,80,80,0.18)" : "rgba(255,255,255,0.06)",
-            border: debugMode ? "1px solid rgba(255,80,80,0.4)" : "1px solid rgba(255,255,255,0.12)",
-            color: debugMode ? "#ff6060" : "rgba(255,255,255,0.5)", userSelect: "none" }}>
-          {debugMode ? "DBG ON" : "DBG"}
-        </button>
-
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", paddingTop: 8, paddingRight: 4, paddingLeft: 4 }}>
         <button onClick={cycleMode} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, fontSize: 9, fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s ease", userSelect: "none", WebkitUserSelect: "none", background: `rgba(${themeColor},0.10)`, border: `1px solid rgba(${themeColor},0.45)`, color: `rgb(${themeColor})`, boxShadow: `0 0 8px rgba(${themeColor},0.12)` }}>
           <span style={{ fontSize: 9, lineHeight: 1 }}>{currentModeObj.icon}</span>
           {currentModeObj.label}

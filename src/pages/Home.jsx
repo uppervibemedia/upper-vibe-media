@@ -256,7 +256,7 @@ export default function Home() {
                 <button
                   onClick={handleStartRadio}
                   className="inline-flex items-center gap-2.5 px-6 py-3 sm:px-7 sm:py-3.5 rounded-sm font-black text-sm tracking-wider transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:scale-[0.98] w-fit"
-                  style={{ background: "linear-gradient(135deg,#009CB8,#00C8E0)", color: "#000", boxShadow: "0 0 28px rgba(0,200,220,0.28)" }}>
+                  style={{ background: `linear-gradient(135deg,rgb(${rtPrimary}),rgb(${rtPrimary}))`, color: "#000", boxShadow: `0 0 28px rgba(${rtPrimary},0.28)` }}>
                   <Radio className="w-4 h-4" /> Start Listening Live
                 </button>
                 <span className="text-[10px] sm:text-[11px] text-white/20 flex items-center gap-1.5">
@@ -268,7 +268,7 @@ export default function Home() {
               <div className="flex flex-wrap gap-2">
                 <Link to="/music"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
-                  style={{ background: "transparent", border: "1px solid rgba(0,200,220,0.25)", color: "rgba(0,200,220,0.7)" }}>
+                  style={{ background: "transparent", border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgba(${rtPrimary},0.7)` }}>
                   <Play className="w-3 h-3 fill-current" /> Browse Music
                 </Link>
                 <Link to="/visualizers"
@@ -280,7 +280,7 @@ export default function Home() {
               {/* Low priority: Academy */}
               <Link to="/academy"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-sm font-black text-[10px] tracking-[0.1em] uppercase transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] w-fit"
-                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.28)" }}>
+                style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.25)", color: "#9B7EFF" }}>
                 <GraduationCap className="w-3 h-3" /> Upper Vibe Academy
               </Link>
             </motion.div>
