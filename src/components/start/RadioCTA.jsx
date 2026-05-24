@@ -7,15 +7,15 @@ import { usePlayer } from "@/context/PlayerContext";
 
 const BLUE = "0,160,220";
 
-// Identical MusicBars to FeaturedTrackPlayer — always visible, fast when playing
+// Music bars — always animate, fast when playing
 function MusicBars({ color = `rgb(${BLUE})`, active = false }) {
   return (
     <>
       <style>{`
-        @keyframes rcBar1 { 0%,100% { height: 4px } 50% { height: 14px } }
-        @keyframes rcBar2 { 0%,100% { height: 10px } 50% { height: 4px } }
-        @keyframes rcBar3 { 0%,100% { height: 6px } 50% { height: 13px } }
-        @keyframes rcBar4 { 0%,100% { height: 12px } 50% { height: 5px } }
+        @keyframes rcBar1 { 0%,100% { height: 3px } 50% { height: 14px } }
+        @keyframes rcBar2 { 0%,100% { height: 10px } 50% { height: 3px } }
+        @keyframes rcBar3 { 0%,100% { height: 5px } 50% { height: 13px } }
+        @keyframes rcBar4 { 0%,100% { height: 12px } 50% { height: 4px } }
       `}</style>
       <span style={{ display: "inline-flex", alignItems: "flex-end", gap: "3px", height: "18px" }}>
         {[
@@ -32,9 +32,9 @@ function MusicBars({ color = `rgb(${BLUE})`, active = false }) {
               borderRadius: "2px",
               background: color,
               height: "6px",
-              animation: `${anim} ${active ? "0.65s" : "1.8s"} ease-in-out infinite`,
+              animation: `${anim} ${active ? "0.55s" : "2.2s"} ease-in-out infinite`,
               animationDelay: delay,
-              opacity: active ? 1 : 0.45,
+              opacity: active ? 1 : 0.5,
             }}
           />
         ))}
@@ -143,8 +143,9 @@ export default function RadioCTA() {
     ]).then(([settings, recent]) => {
       const featuredId = settings?.[0]?.value;
       let featured = null;
+      // 1. Admin-pinned track
       if (featuredId) featured = recent.find((t) => t.id === featuredId && t.audio_url) || null;
-      if (!featured) featured = recent.find((t) => t.audio_url && t.title?.toLowerCase().includes("fourth dimension hustler")) || null;
+      // 2. Newest track with audio
       if (!featured) featured = recent.find((t) => t.audio_url) || null;
       setFeaturedTrack(featured);
       const withMedia = recent.filter((t) => (t.audio_url || t.cover_url) && t.id !== featured?.id);
@@ -254,7 +255,7 @@ export default function RadioCTA() {
                 </p>
               </div>
 
-              {/* Play + bars */}
+              {/* Play + bars — bars always visible */}
               <div className="flex-shrink-0 flex flex-col items-center gap-2">
                 <motion.button
                   onClick={handlePlayFeatured}
@@ -272,7 +273,7 @@ export default function RadioCTA() {
                     ? <Pause className="w-4 h-4" style={{ color: primaryColor }} />
                     : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />}
                 </motion.button>
-                <MusicBars color={featuredPlaying ? primaryColor : rgba(0.35)} active={featuredPlaying} />
+                <MusicBars color={primaryColor} active={featuredPlaying} />
               </div>
             </div>
 
