@@ -113,37 +113,40 @@ export function isTikTokBrowser() {
 }
 
 /**
- * Trigger a browser download — safe across all platforms.
+ * Trigger a real MP3 download via the secure backend proxy.
  *
- * Strategy:
- *  1. Desktop / Android Chrome: fetch → blob → objectURL → anchor click. True "Save" dialog.
- *  2. iOS Safari / iOS TikTok / any iOS in-app browser:
- *       window.open(url, '_blank') — opens in a new tab.
- *       The current page is NEVER replaced or navigated away from.
- *       Caller MUST show DownloadToast with iosMode=true.
+ * The `downloadTrack` backend function fetches the audio and re-serves it
+ * with `Content-Disposition: attachment` — so Safari and all browsers
+ * trigger a real "Save File" dialog, not a browser audio player screen.
  *
- * NEVER use:
- *   - window.location.href = url  (replaces the page → black screen)
- *   - anchor.click() without target="_blank" on iOS (same problem)
+ * The frontend fetches the function response as a blob, then uses a
+ * temporary anchor (.download) to invoke the OS save dialog.
+ * The user stays on the current page throughout.
  *
- * Returns: "blob" | "ios_new_tab" | "error"
+ * @param {string} trackId  - The Track entity ID
+ * @param {string} filename - Desired filename (without extension)
+ * Returns: "blob" | "error"
  */
-export async function triggerBrowserDownload(fileUrl, filename) {
-  if (!fileUrl) return "error";
-  const safeFilename = (filename || "download").replace(/[/\\?%*:|"<>]/g, "") + ".mp3";
+export async function triggerBrowserDownload(trackId, filename) {
+  if (!trackId) return "error";
+  const safeFilename = (filename || "track").replace(/[/\\?%*:|"<>]/g, "").trim() + ".mp3";
 
-  // ── iOS path: open in new tab, keep current page intact ──────────────────
-  if (isIOS()) {
-    // window.open keeps the current page — Safari will show audio in a new tab
-    // The toast (iosMode=true) will instruct: "Tap Share → Save to Files"
-    window.open(fileUrl, "_blank", "noopener,noreferrer");
-    return "ios_new_tab";
-  }
-
-  // ── Desktop / Android: blob fetch → true save dialog ────────────────────
   try {
-    const response = await fetch(fileUrl, { mode: "cors" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    // base44.functions.fetch() gives raw Response access — required for binary/blob downloads.
+    // The downloadTrack backend function re-serves the MP3 with Content-Disposition: attachment.
+    const { base44 } = await import("@/api/base44Client");
+    const response = await base44.functions.fetch("downloadTrack", {
+      method: "POST",
+      body: JSON.stringify({ trackId }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("[downloadService] proxy error:", response.status, text);
+      return "error";
+    }
+
     const blob = await response.blob();
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -153,11 +156,10 @@ export async function triggerBrowserDownload(fileUrl, filename) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     return "blob";
-  } catch {
-    // CORS blocked — fallback: open in new tab (does not leave current page on desktop)
-    window.open(fileUrl, "_blank", "noopener,noreferrer");
-    return "ios_new_tab";
+  } catch (err) {
+    console.error("[downloadService] triggerBrowserDownload error:", err.message);
+    return "error";
   }
 }

@@ -14,7 +14,7 @@ import SupportModal from "../components/shared/SupportModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
-import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 import { toast } from "sonner";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTheme } from "@/context/ThemeContext";
@@ -113,7 +113,6 @@ export default function SongPage() {
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [vizPlaying, setVizPlaying] = useState(false);
-  const [iosModal, setIosModal] = useState(null); // holds audio_url when iOS needs manual save
   const [downloadIntent, setDownloadIntent] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus: isAuthPlus, isAdmin: isAuthAdmin } = useAuth();
@@ -175,11 +174,11 @@ export default function SongPage() {
     if (!track?.audio_url) return;
     if (user) recordUserDownload(user, track).catch(() => {});
     const filename = `${track.title || "song"}${track.artist_display ? " - " + track.artist_display : ""}`;
-    if (isIOS()) {
-      setIosModal(track.audio_url);
-    } else {
-      await triggerBrowserDownload(track.audio_url, filename);
+    const result = await triggerBrowserDownload(track.id, filename);
+    if (result === "blob") {
       toast.success("Download started");
+    } else {
+      toast.error("Download failed. Please try again.");
     }
   };
 
@@ -477,69 +476,7 @@ export default function SongPage() {
       <SupportModal open={supportModal} onClose={() => setSupportModal(false)} track={track} />
       <IOSTip trigger="always" />
 
-      {/* iOS Save-to-Files modal */}
-      {iosModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIosModal(null)} />
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="relative w-full max-w-sm rounded-2xl overflow-hidden"
-            style={{ background: "#0a0a1e", border: "1px solid rgba(212,168,67,0.25)" }}>
 
-            {/* Header */}
-            <div className="px-7 pt-7 pb-5 text-center">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{ background: "rgba(212,168,67,0.12)", border: "1px solid rgba(212,168,67,0.3)" }}>
-                <Download className="w-6 h-6 text-yellow-400" />
-              </div>
-              <h3 className="font-heading font-black text-lg text-white mb-2">Save Song To iPhone</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
-                iPhone requires one extra step. Tap <strong className="text-white/75">Open File To Save</strong>, then tap the Share icon and choose <strong className="text-white/75">Save to Files</strong>.
-              </p>
-            </div>
-
-            {/* Steps */}
-            <div className="mx-6 mb-5 rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              {[
-                "Tap Open File To Save",
-                "Tap the Share icon (box with arrow)",
-                "Choose Save to Files",
-                "Pick a folder and save the song",
-              ].map((step, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3"
-                  style={{ borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                  <span className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-black"
-                    style={{ background: "rgba(212,168,67,0.15)", color: "#D4A843" }}>
-                    {i + 1}
-                  </span>
-                  <span className="text-xs text-white/55">{step}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Note */}
-            <p className="text-center text-[11px] px-7 mb-5" style={{ color: "rgba(255,255,255,0.25)" }}>
-              The file may open in a simple audio screen first. That is normal on iPhone.
-            </p>
-
-            {/* Buttons */}
-            <div className="px-6 pb-6 space-y-2">
-              <a href={iosModal} target="_blank" rel="noopener noreferrer"
-                onClick={() => setIosModal(null)}
-                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg,#C8892A,#EDB84A)", color: "#000" }}>
-                <Download className="w-4 h-4" /> Open File To Save
-              </a>
-              <button onClick={() => setIosModal(null)}
-                className="w-full py-2.5 text-sm font-semibold transition-colors"
-                style={{ color: "rgba(255,255,255,0.3)" }}
-                onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}
-                onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.3)"}>
-                Keep Browsing
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
       {/* Support success banner */}
       <AnimatePresence>
