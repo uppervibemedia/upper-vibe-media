@@ -29,7 +29,7 @@ export default function NowPlayingHomeCard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="flex items-center gap-4 px-5 py-5 rounded-2xl"
+            className="flex items-center gap-5 px-6 py-6 rounded-3xl"
             style={{
               background: `linear-gradient(135deg, rgba(${rtPrimary},0.10) 0%, rgba(${rtPrimary},0.04) 100%)`,
               border: `1px solid rgba(${rtPrimary},0.22)`,
@@ -42,13 +42,13 @@ export default function NowPlayingHomeCard() {
                 <img
                   src={currentTrack.cover_url || currentRadioSong?.cover_url}
                   alt={currentTrack.title}
-                  className="w-[72px] h-[72px] rounded-2xl object-cover ring-1 ring-white/10"
-                  style={{ boxShadow: `0 4px 20px rgba(${rtPrimary},0.25)` }}
+                  className="w-[110px] h-[110px] rounded-2xl object-cover ring-1 ring-white/10"
+                  style={{ boxShadow: `0 6px 28px rgba(${rtPrimary},0.3)` }}
                 />
               ) : (
-                <div className="w-[72px] h-[72px] rounded-2xl flex items-center justify-center"
+                <div className="w-[110px] h-[110px] rounded-2xl flex items-center justify-center"
                   style={{ background: `rgba(${rtPrimary},0.1)` }}>
-                  <Music4 className="w-7 h-7" style={{ color: `rgba(${rtPrimary},0.5)` }} />
+                  <Music4 className="w-10 h-10" style={{ color: `rgba(${rtPrimary},0.5)` }} />
                 </div>
               )}
               {/* Pulsing ring when playing */}
@@ -63,7 +63,7 @@ export default function NowPlayingHomeCard() {
             </div>
 
             {/* Animated bars */}
-            <div className="flex items-end gap-[3px] flex-shrink-0" style={{ height: "24px" }}>
+            <div className="flex items-end gap-[3px] flex-shrink-0" style={{ height: "28px" }}>
               {[7, 13, 22, 17, 9, 19, 12].map((h, i) => (
                 <motion.div
                   key={i}
@@ -78,12 +78,12 @@ export default function NowPlayingHomeCard() {
             </div>
 
             {/* Track info */}
-            <div className="flex-1 min-w-0 flex flex-col gap-1">
+            <div className="flex-1 min-w-0 flex flex-col gap-1.5">
               <p className="text-[9px] font-black tracking-[0.22em] uppercase" style={{ color: `rgba(${rtPrimary},0.65)` }}>
                 {isPlaying ? "Now Playing" : "Paused"}
               </p>
-              <p className="text-base font-bold text-white truncate leading-tight">{currentTrack.title}</p>
-              <p className="text-xs text-white/45 truncate">{currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}</p>
+              <p className="text-lg font-bold text-white truncate leading-tight">{currentTrack.title}</p>
+              <p className="text-sm text-white/45 truncate">{currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}</p>
             </div>
 
             {/* 432 badge */}
@@ -95,16 +95,16 @@ export default function NowPlayingHomeCard() {
             {/* Play/Pause button */}
             <button
               onClick={togglePlay}
-              className="w-13 h-13 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+              className="rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
               style={{
-                width: 52, height: 52,
+                width: 68, height: 68,
                 background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`,
-                boxShadow: `0 0 28px rgba(${rtPrimary},0.4)`,
+                boxShadow: `0 0 36px rgba(${rtPrimary},0.5)`,
                 borderRadius: "50%",
               }}>
               {isPlaying
-                ? <Pause className="w-5 h-5 text-black fill-current" />
-                : <Play className="w-5 h-5 text-black fill-current ml-0.5" />}
+                ? <Pause className="w-7 h-7 text-black fill-current" />
+                : <Play className="w-7 h-7 text-black fill-current ml-1" />}
             </button>
           </motion.div>
         ) : displayTrack ? (
@@ -115,7 +115,7 @@ export default function NowPlayingHomeCard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="flex items-center gap-4 px-5 py-5 rounded-2xl"
+            className="flex items-center gap-5 px-6 py-6 rounded-3xl"
             style={{
               background: `linear-gradient(135deg, rgba(${rtPrimary},0.08) 0%, rgba(${rtPrimary},0.03) 100%)`,
               border: `1px solid rgba(${rtPrimary},0.18)`,
@@ -127,8 +127,8 @@ export default function NowPlayingHomeCard() {
               <img
                 src={displayTrack.cover_url}
                 alt={displayTrack.title}
-                className="w-[72px] h-[72px] rounded-2xl object-cover ring-1 ring-white/10"
-                style={{ boxShadow: `0 4px 20px rgba(${rtPrimary},0.2)` }}
+                className="w-[110px] h-[110px] rounded-2xl object-cover ring-1 ring-white/10"
+                style={{ boxShadow: `0 6px 28px rgba(${rtPrimary},0.25)` }}
               />
               <motion.div
                 animate={{ scale: [1, 1.14, 1], opacity: [0.25, 0, 0.25] }}
@@ -139,7 +139,7 @@ export default function NowPlayingHomeCard() {
             </div>
 
             {/* Animated bars — dim idle state */}
-            <div className="flex items-end gap-[3px] flex-shrink-0" style={{ height: "24px" }}>
+            <div className="flex items-end gap-[3px] flex-shrink-0" style={{ height: "28px" }}>
               {[7, 13, 22, 17, 9, 19, 12].map((h, i) => (
                 <motion.div
                   key={i}
@@ -152,12 +152,12 @@ export default function NowPlayingHomeCard() {
             </div>
 
             {/* Real track info */}
-            <div className="flex-1 min-w-0 flex flex-col gap-1">
+            <div className="flex-1 min-w-0 flex flex-col gap-1.5">
               <p className="text-[9px] font-black tracking-[0.22em] uppercase" style={{ color: `rgba(${rtPrimary},0.55)` }}>
                 Live on Radio
               </p>
-              <p className="text-base font-bold text-white/85 truncate leading-tight">{displayTrack.title}</p>
-              <p className="text-xs text-white/40 truncate">{displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}</p>
+              <p className="text-lg font-bold text-white/85 truncate leading-tight">{displayTrack.title}</p>
+              <p className="text-sm text-white/40 truncate">{displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}</p>
             </div>
 
             {/* Live badge */}
@@ -170,12 +170,12 @@ export default function NowPlayingHomeCard() {
             <Link to="/radio"
               className="flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
               style={{
-                width: 52, height: 52,
+                width: 68, height: 68,
                 background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`,
-                boxShadow: `0 0 28px rgba(${rtPrimary},0.4)`,
+                boxShadow: `0 0 36px rgba(${rtPrimary},0.5)`,
                 borderRadius: "50%",
               }}>
-              <Radio className="w-5 h-5 text-black" />
+              <Radio className="w-7 h-7 text-black" />
             </Link>
           </motion.div>
         ) : null}
