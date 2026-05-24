@@ -16,9 +16,11 @@
  */
 import { base44 } from "@/api/base44Client";
 
-/** Check if a user tier is allowed to download */
+/** Check if a user tier is allowed to download.
+ * Supports both old "premium" and new "plus" tier naming.
+ */
 export function canUserDownload(userTier) {
-  return userTier === "premium";
+  return userTier === "premium" || userTier === "plus";
 }
 
 /** Check if a specific content item is downloadable by this user */
@@ -132,15 +134,24 @@ export async function triggerBrowserDownload(trackId, filename) {
   const safeFilename = (filename || "track").replace(/[/\\?%*:|"<>]/g, "").trim() + ".mp3";
 
   try {
-    // Build the function URL directly using app params — same pattern the SDK uses internally.
-    // We need a raw fetch (not base44.functions.invoke) to get the binary blob response.
     const { appParams } = await import("@/lib/app-params");
     const { appId, token, appBaseUrl } = appParams;
 
-    // Pattern: https://<app-domain>/api/apps/<appId>/functions/<name>
     const base = (appBaseUrl || window.location.origin).replace(/\/$/, "");
     const fnBase = `${base}/api/apps/${appId}/functions/downloadTrack`;
 
+    // iOS Safari: blob URL + anchor .click() is unreliable.
+    // Open the backend GET endpoint directly in a new tab — the backend's
+    // Content-Disposition: attachment header tells iOS Safari to trigger "Save to Files".
+    // We skip the wasted POST round-trip entirely on iOS.
+    if (isIOS()) {
+      const iosUrl = `${fnBase}?trackId=${encodeURIComponent(trackId)}&token=${encodeURIComponent(token || "")}`;
+      window.open(iosUrl, "_blank");
+      return "blob";
+    }
+
+    // Desktop / Android: fetch as blob then trigger anchor download.
+    // User stays on the page throughout.
     const headers = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -154,14 +165,6 @@ export async function triggerBrowserDownload(trackId, filename) {
       const text = await response.text();
       console.error("[downloadService] proxy error:", response.status, text);
       return "error";
-    }
-
-    // iOS Safari does not support blob URL + anchor .click() for downloads.
-    // Instead, open the backend proxy URL directly in a new tab — the backend's
-    // Content-Disposition: attachment header tells iOS Safari to save the file.
-    if (isIOS()) {
-      window.open(fnBase + `?trackId=${encodeURIComponent(trackId)}&token=${encodeURIComponent(token || "")}`, "_blank");
-      return "blob";
     }
 
     const blob = await response.blob();

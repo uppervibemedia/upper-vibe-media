@@ -62,11 +62,30 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Login required to download' }, { status: 401 });
     }
 
-    // Plus check: admin always allowed, otherwise check role/subscription fields
+    // Plus check — log actual user fields so we can confirm what a real paid user contains
+    console.log('[downloadTrack] user auth fields:', JSON.stringify({
+      role: user.role,
+      tier: user.tier,
+      isPlus: user.isPlus,
+      isPremium: user.isPremium,
+      is_plus: user.is_plus,
+      plan: user.plan,
+      subscription_status: user.subscription_status,
+      stripe_subscription_status: user.stripe_subscription_status,
+    }));
+
     const isPlus = user.role === 'admin' ||
       user.role === 'plus' ||
+      user.role === 'premium' ||
+      user.tier === 'plus' ||
+      user.tier === 'premium' ||
+      user.isPlus === true ||
+      user.isPremium === true ||
       user.is_plus === true ||
-      user.subscription_status === 'active';
+      user.plan === 'plus' ||
+      user.plan === 'premium' ||
+      user.subscription_status === 'active' ||
+      user.stripe_subscription_status === 'active';
 
     if (!isPlus) {
       return Response.json({ error: 'Plus membership required' }, { status: 403 });

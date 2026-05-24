@@ -159,12 +159,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Derived membership helpers — always computed from trusted server auth data
+  // Supports all tier/role naming variants (old "premium", new "plus", subscription fields)
   const isPlus = isAuthenticated && user && (
     user.isPlus === true ||
+    user.isPremium === true ||
+    user.is_plus === true ||
     user.tier === "plus" ||
     user.tier === "premium" ||
-    user.isPremium === true ||
-    user.role === "premium"
+    user.role === "plus" ||
+    user.role === "premium" ||
+    user.plan === "plus" ||
+    user.plan === "premium" ||
+    user.subscription_status === "active" ||
+    user.stripe_subscription_status === "active"
   );
   const isAdmin = isAuthenticated && user?.role === "admin";
 
