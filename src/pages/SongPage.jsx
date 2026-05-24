@@ -122,6 +122,7 @@ export default function SongPage() {
   const [supportModal, setSupportModal] = useState(false);
   const [showSupportedBanner, setShowSupportedBanner] = useState(false);
   const [inAppBrowserModal, setInAppBrowserModal] = useState(false);
+  const [downloadIntentActive, setDownloadIntentActive] = useState(false);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtp = radioTheme.vars["--rt-primary"];    // e.g. "0,229,255"
@@ -135,11 +136,24 @@ export default function SongPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("supported") === "1") {
       setShowSupportedBanner(true);
-      // Remove param from URL without reload
       const url = new URL(window.location.href);
       url.searchParams.delete("supported");
       window.history.replaceState({}, "", url.toString());
       setTimeout(() => setShowSupportedBanner(false), 6000);
+    }
+    if (params.get("downloadIntent") === "true") {
+      setDownloadIntentActive(true);
+      // Clean param from URL without reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete("downloadIntent");
+      window.history.replaceState({}, "", url.toString());
+      // Scroll to Download button after page settles
+      setTimeout(() => {
+        const el = document.getElementById("download-btn");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 800);
+      // Remove pulse after 5s
+      setTimeout(() => setDownloadIntentActive(false), 5000);
     }
   }, []);
   const { isFaved, toggle } = useFavorites(user?.email);
@@ -317,11 +331,27 @@ export default function SongPage() {
 
                   {isPlus ? (
                     track.audio_url ? (
-                      <button onClick={handleDownload}
-                        className="flex items-center justify-center gap-2 flex-1 sm:flex-none sm:px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
-                        style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000", boxShadow: "0 0 24px rgba(212,168,67,0.3)", maxWidth: "160px" }}>
-                        <Download className="w-4 h-4" /> Download
-                      </button>
+                      <div className="relative flex-1 sm:flex-none" style={{ maxWidth: "160px" }}>
+                        {downloadIntentActive && (
+                          <p className="absolute -top-6 left-0 right-0 text-center text-[10px] font-black tracking-wide text-yellow-400 whitespace-nowrap">
+                            Tap to save this track ↓
+                          </p>
+                        )}
+                        <button
+                          id="download-btn"
+                          onClick={handleDownload}
+                          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
+                          style={{
+                            background: "linear-gradient(135deg,#D4A843,#F0C060)",
+                            color: "#000",
+                            boxShadow: downloadIntentActive
+                              ? "0 0 0 3px rgba(212,168,67,0.6), 0 0 32px rgba(212,168,67,0.5)"
+                              : "0 0 24px rgba(212,168,67,0.3)",
+                            animation: downloadIntentActive ? "pulse-glow 1.2s ease-in-out infinite" : "none",
+                          }}>
+                          <Download className="w-4 h-4" /> Download
+                        </button>
+                      </div>
                     ) : (
                       <span className="flex items-center justify-center gap-2 flex-1 sm:flex-none sm:px-5 py-3 rounded-xl font-black text-sm opacity-40 cursor-not-allowed"
                         style={{ border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843", maxWidth: "160px" }}>
@@ -329,7 +359,7 @@ export default function SongPage() {
                       </span>
                     )
                   ) : (
-                    <button onClick={() => setUpgradeModal(true)}
+                    <button onClick={() => { setDownloadIntentActive(false); setUpgradeModal(true); }}
                       className="flex items-center justify-center gap-2 flex-1 sm:flex-none sm:px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
                       style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.15),rgba(212,168,67,0.08))", border: "1px solid rgba(212,168,67,0.35)", color: "#D4A843", maxWidth: "160px" }}>
                       <Lock className="w-4 h-4" /> Download

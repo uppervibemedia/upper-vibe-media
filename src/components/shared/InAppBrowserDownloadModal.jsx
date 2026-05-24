@@ -10,15 +10,19 @@ export default function InAppBrowserDownloadModal({ open, onClose, songUrl }) {
   const [copied, setCopied] = useState(false);
   const [openBlocked, setOpenBlocked] = useState(false);
 
+  // Append downloadIntent so Safari knows to highlight the Download button
+  const intentUrl = songUrl.includes("?")
+    ? `${songUrl}&downloadIntent=true`
+    : `${songUrl}?downloadIntent=true`;
+
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(songUrl);
+      await navigator.clipboard.writeText(intentUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // fallback
       const el = document.createElement("textarea");
-      el.value = songUrl;
+      el.value = intentUrl;
       document.body.appendChild(el);
       el.select();
       document.execCommand("copy");
@@ -29,8 +33,8 @@ export default function InAppBrowserDownloadModal({ open, onClose, songUrl }) {
   };
 
   const handleOpenInBrowser = () => {
-    // Try to open the song page URL (not the raw MP3) in the system browser
-    const w = window.open(songUrl, "_blank");
+    // Open the song page (with downloadIntent) — NOT the raw MP3
+    const w = window.open(intentUrl, "_blank");
     if (!w || w.closed) {
       setOpenBlocked(true);
     }
@@ -84,7 +88,7 @@ export default function InAppBrowserDownloadModal({ open, onClose, songUrl }) {
                 Open in Safari to Download
               </h2>
               <p className="text-sm text-white/45 leading-relaxed mb-6">
-                TikTok's browser may play the file instead of downloading it. Open this page in Safari for the best download experience.
+                TikTok's browser can't download files. Open the song page in Safari, then tap <strong className="text-white/70">Download</strong> there to save the track.
               </p>
 
               {/* Actions */}
@@ -109,7 +113,7 @@ export default function InAppBrowserDownloadModal({ open, onClose, songUrl }) {
                     color: "#fff",
                     boxShadow: "0 4px 16px rgba(0,160,220,0.2)",
                   }}>
-                  <ExternalLink className="w-4 h-4" /> Open in Safari
+                  <ExternalLink className="w-4 h-4" /> Open Song Page in Safari
                 </button>
 
                 {openBlocked && (
