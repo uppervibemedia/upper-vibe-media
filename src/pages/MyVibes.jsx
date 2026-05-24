@@ -9,6 +9,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
+import DownloadToast from "../components/shared/DownloadToast";
+import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
@@ -23,6 +25,8 @@ export default function MyVibes() {
   const { accent } = useTheme();
   const rgb = accent.rgb; // e.g. "0,229,255"
   const navigate = useNavigate();
+  const [downloadToast, setDownloadToast] = useState(null);
+  const [upgradeModal, setUpgradeModal] = useState(false);
 
   useEffect(() => {
     if (!user?.email) { setLoading(false); return; }
@@ -49,12 +53,13 @@ export default function MyVibes() {
   const handleDownload = async (track, e) => {
     e.stopPropagation();
     if (!isPremium) {
-      navigate(`/song/${track.id}`);
+      setUpgradeModal(true);
       return;
     }
     if (!track.audio_url) return;
-    await recordUserDownload(user, track);
-    await triggerBrowserDownload(track.audio_url, track.title);
+    recordUserDownload(user, track).catch(() => {});
+    triggerBrowserDownload(track.audio_url, track.title);
+    setDownloadToast(track);
   };
 
   // Not logged in
@@ -362,6 +367,8 @@ export default function MyVibes() {
       </div>
 
       <Footer />
+      <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
+      <DownloadToast track={downloadToast} onClose={() => setDownloadToast(null)} />
     </div>
   );
 }

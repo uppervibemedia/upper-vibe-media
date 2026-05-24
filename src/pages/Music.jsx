@@ -14,6 +14,8 @@ import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import IOSTip from "../components/shared/iOSTip";
+import DownloadToast from "../components/shared/DownloadToast";
+import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 
 const GENRE_TYPES = ["genre", "mood", "editorial", "frequency"];
 const PAGE_SIZE = 20;
@@ -45,6 +47,7 @@ export default function Music() {
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
+  const [downloadToast, setDownloadToast] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
@@ -243,7 +246,13 @@ export default function Music() {
                         if (!user) { setLoginModal(true); return; }
                         toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
                       }}
-                      onDownload={() => setUpgradeModal(true)}
+                      onDownload={async (track) => {
+                        if (!isPremium) { setUpgradeModal(true); return; }
+                        if (!track.audio_url) return;
+                        recordUserDownload(user, track).catch(() => {});
+                        triggerBrowserDownload(track.audio_url, track.title);
+                        setDownloadToast(track);
+                      }}
                     />
                   ))}
                   {visibleCount < filtered.length && (
@@ -271,6 +280,7 @@ export default function Music() {
 
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
+      <DownloadToast track={downloadToast} onClose={() => setDownloadToast(null)} />
       <IOSTip trigger="on-play" isPlaying={isPlaying} />
     </PullToRefresh>
   );
@@ -371,25 +381,15 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
         </button>
 
         {/* Download — midnight amber */}
-        {isPremium ? (
-          <a
-            href={track.audio_url}
-            download={`${track.title}.mp3`}
-            onClick={(e) => e.stopPropagation()}
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
-            style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
-            title="Download">
-            <Download className="w-3.5 h-3.5" />
-          </a>
-        ) : (
-          <button
-            onClick={() => onDownload(track)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
-            style={{ background: "rgba(212,168,67,0.05)", border: "1px solid rgba(212,168,67,0.15)", color: "rgba(212,168,67,0.3)" }}
-            title="Premium download">
-            <Lock className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <button
+          onClick={() => onDownload(track)}
+          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+          style={isPremium
+            ? { background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }
+            : { background: "rgba(212,168,67,0.05)", border: "1px solid rgba(212,168,67,0.15)", color: "rgba(212,168,67,0.3)" }}
+          title={isPremium ? "Download" : "Premium download"}>
+          {isPremium ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+        </button>
 
         {/* Favorite — violet purple */}
         <button

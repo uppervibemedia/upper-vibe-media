@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
+import DownloadToast from "../components/shared/DownloadToast";
 import { useFavorites } from "../hooks/useFavorite";
 import { useTheme } from "../context/ThemeContext";
 
@@ -18,6 +19,7 @@ export default function NewestMusic() {
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
+  const [downloadToast, setDownloadToast] = useState(null);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus, isAdmin } = useAuth();
   const isPremium = isPlus || isAdmin;
@@ -29,12 +31,13 @@ export default function NewestMusic() {
   const handleDownload = async (track, e) => {
     e.stopPropagation();
     if (!isPremium) {
-      navigate(`/song/${track.id}`);
+      setUpgradeModal(true);
       return;
     }
     if (!track.audio_url) return;
-    await recordUserDownload(user, track);
-    await triggerBrowserDownload(track.audio_url, track.title);
+    recordUserDownload(user, track).catch(() => {});
+    triggerBrowserDownload(track.audio_url, track.title);
+    setDownloadToast(track);
   };
 
   useEffect(() => {
@@ -187,6 +190,7 @@ export default function NewestMusic() {
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
+      <DownloadToast track={downloadToast} onClose={() => setDownloadToast(null)} />
     </div>
   );
 }
