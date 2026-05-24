@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Radio, Play, Pause, Waves, Music2 } from "lucide-react";
+import { Play, Pause, Waves, Music2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
@@ -177,71 +177,83 @@ export default function RadioCTA() {
           <div className="rounded-2xl overflow-hidden"
             style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${rgba(0.3)}` }}>
 
-            {/* Artwork + Info row */}
-            <div className="flex gap-3 p-3">
-              {/* Square artwork — fixed size, no overflow */}
-              <div className="flex-shrink-0 rounded-xl overflow-hidden"
-                style={{ width: 80, height: 80, background: rgba(0.1), border: `1px solid ${rgba(0.15)}` }}>
-                {featuredTrack.cover_url ? (
-                  <img src={featuredTrack.cover_url} alt={featuredTrack.title}
-                    loading="eager" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Music2 className="w-6 h-6" style={{ color: rgba(0.5) }} />
-                  </div>
-                )}
-              </div>
+            {/* Cover art — taller hero image */}
+            {featuredTrack.cover_url && (
+              <div className="relative w-full overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
+                <img
+                  src={featuredTrack.cover_url}
+                  alt={featuredTrack.title}
+                  loading="eager"
+                  className="w-full h-full object-cover"
+                />
+                {/* Gradient overlay */}
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 35%, rgba(0,0,0,0.88) 100%)" }} />
 
-              {/* Info + controls */}
-              <div className="flex-1 min-w-0 flex flex-col justify-between">
-                {/* Top: label + badge */}
-                <div className="flex items-center justify-between gap-2">
-                  <span style={{ fontSize: "7px", fontWeight: 900, letterSpacing: "0.3em", textTransform: "uppercase", color: rgba(0.7), fontFamily: "var(--font-heading)" }}>
-                    Featured Track
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0"
-                    style={{ fontSize: "7px", fontWeight: 700, background: rgba(0.1), border: `1px solid ${rgba(0.2)}`, color: primaryColor }}>
-                    <Waves className="w-2 h-2" />
-                    {freqLabel}
-                  </span>
-                </div>
+                {/* 432 Hz badge top-right */}
+                <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-1 rounded-full"
+                  style={{ fontSize: "8px", fontWeight: 800, background: "rgba(0,0,0,0.55)", border: `1px solid ${rgba(0.4)}`, color: primaryColor, backdropFilter: "blur(6px)" }}>
+                  <Waves className="w-2.5 h-2.5" />
+                  {freqLabel}
+                </span>
 
-                {/* Title + artist */}
-                <div className="min-w-0">
-                  <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.85rem", lineHeight: 1.2 }}>
+                {/* Title + artist + controls overlaid at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
+                  <p className="font-black text-white" style={{ fontFamily: "var(--font-heading)", fontSize: "1rem", lineHeight: 1.2, marginBottom: "2px" }}>
                     {featuredTrack.title}
                   </p>
-                  <p className="truncate mt-0.5" style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.45)" }}>
+                  <p style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.55)", marginBottom: "12px" }}>
                     {featuredTrack.artist_display || "Upper Vibe Media"}
                   </p>
-                </div>
 
-                {/* Bottom: bars + play button */}
-                <div className="flex items-center justify-between">
-                  <MusicBars color={primaryColor} active={featuredPlaying} />
-                  <motion.button
-                    onClick={handlePlayFeatured}
-                    whileTap={{ scale: 0.9 }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
-                    style={{
-                      background: featuredPlaying ? rgba(0.15) : `linear-gradient(135deg,rgba(${r},0.75),${primaryColor})`,
-                      border: featuredPlaying ? `1px solid ${rgba(0.5)}` : "none",
-                      boxShadow: `0 0 16px ${rgba(featuredPlaying ? 0.3 : 0.5)}`,
-                    }}
-                  >
-                    {featuredPlaying
-                      ? <Pause className="w-3.5 h-3.5" style={{ color: primaryColor }} />
-                      : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />}
-                  </motion.button>
+                  {/* Controls row */}
+                  <div className="flex items-center gap-3">
+                    <motion.button
+                      onClick={handlePlayFeatured}
+                      whileTap={{ scale: 0.9 }}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all"
+                      style={{
+                        background: featuredPlaying ? rgba(0.2) : `linear-gradient(135deg,rgba(${r},0.85),${primaryColor})`,
+                        border: featuredPlaying ? `1px solid ${rgba(0.6)}` : "none",
+                        color: featuredPlaying ? primaryColor : "#000",
+                        boxShadow: `0 0 20px ${rgba(0.45)}`,
+                        fontFamily: "var(--font-heading)",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      {featuredPlaying
+                        ? <><Pause className="w-3.5 h-3.5" /> Playing</>
+                        : <><Play className="w-3.5 h-3.5 ml-0.5" /> Play Now</>}
+                    </motion.button>
+                    <MusicBars color={primaryColor} active={featuredPlaying} />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Footer: Explore Library */}
-            <div className="px-3 pb-3">
+            {/* No-cover fallback row */}
+            {!featuredTrack.cover_url && (
+              <div className="flex items-center gap-3 p-4">
+                <div className="flex-shrink-0 rounded-xl flex items-center justify-center"
+                  style={{ width: 64, height: 64, background: rgba(0.1), border: `1px solid ${rgba(0.2)}` }}>
+                  <Music2 className="w-6 h-6" style={{ color: rgba(0.5) }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem" }}>{featuredTrack.title}</p>
+                  <p className="truncate mt-0.5" style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)" }}>{featuredTrack.artist_display || "Upper Vibe Media"}</p>
+                </div>
+                <motion.button onClick={handlePlayFeatured} whileTap={{ scale: 0.9 }}
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: `linear-gradient(135deg,rgba(${r},0.75),${primaryColor})`, boxShadow: `0 0 16px ${rgba(0.45)}` }}>
+                  {featuredPlaying ? <Pause className="w-4 h-4" style={{ color: primaryColor }} /> : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />}
+                </motion.button>
+              </div>
+            )}
+
+            {/* Explore Library footer */}
+            <div className="px-3 pb-3 pt-2">
               <Link to="/music"
                 className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-black tracking-wide transition-all active:scale-[0.97]"
-                style={{ background: rgba(0.1), border: `1px solid ${rgba(0.25)}`, color: primaryColor, fontFamily: "var(--font-heading)" }}>
+                style={{ background: rgba(0.08), border: `1px solid ${rgba(0.2)}`, color: primaryColor, fontFamily: "var(--font-heading)" }}>
                 Explore Library →
               </Link>
             </div>
@@ -263,20 +275,19 @@ export default function RadioCTA() {
           </div>
         )}
 
-        {/* ── Live Radio CTA ── */}
+        {/* ── Upgrade to Plus CTA ── */}
         <Link
-          to="/radio"
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
+          to="/membership"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
           style={{
-            background: `linear-gradient(135deg,${primaryColor},rgba(${r},0.7))`,
+            background: "linear-gradient(135deg,#0090C8,#00C8F0)",
             color: "#000",
             fontFamily: "var(--font-heading)",
-            letterSpacing: "0.05em",
-            boxShadow: `0 4px 20px rgba(${r},0.35)`,
+            letterSpacing: "0.06em",
+            boxShadow: "0 4px 28px rgba(0,160,220,0.45), 0 2px 8px rgba(0,0,0,0.3)",
           }}
         >
-          <Radio style={{ width: 14, height: 14 }} />
-          Listen To Live Radio
+          ⚡ Upgrade to Plus — $4.99/mo
         </Link>
       </div>
     </section>
