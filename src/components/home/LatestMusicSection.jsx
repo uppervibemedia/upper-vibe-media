@@ -11,7 +11,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtp = radioTheme.vars["--rt-primary"];
 
-  const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin";
+  const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin" || user?.role === "plus" || user?.tier === "plus";
 
   if (!tracks || tracks.length === 0) return null;
 

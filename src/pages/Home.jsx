@@ -139,7 +139,7 @@ export default function Home() {
       onClick={async (e) => {
         e.stopPropagation();
         if (!user) { setLoginModal(true); return; }
-        const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin";
+        const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin" || user?.role === "plus" || user?.tier === "plus";
         if (!isPremium) { setPremiumModal(true); return; }
         if (!track.audio_url) return;
         recordUserDownload(user, track).catch(() => {});
@@ -525,7 +525,7 @@ export default function Home() {
         }}
         onDownload={async (track) => {
           if (!user) { setLoginModal(true); return; }
-          const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin";
+          const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin" || user?.role === "plus" || user?.tier === "plus";
           if (!isPremium) { setPremiumModal(true); return; }
           if (!track.audio_url) return;
           recordUserDownload(user, track).catch(() => {});

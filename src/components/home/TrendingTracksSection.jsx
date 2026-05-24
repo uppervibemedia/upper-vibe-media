@@ -93,7 +93,7 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
     [allTracks, streams, favCounts]
   );
 
-  const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin";
+  const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin" || user?.role === "plus" || user?.tier === "plus";
 
   if (loading || trendingTracks.length === 0) return null;
 
