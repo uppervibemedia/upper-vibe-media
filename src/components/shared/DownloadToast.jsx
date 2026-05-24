@@ -1,20 +1,18 @@
 import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Download, Zap, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 /**
  * DownloadToast — appears after a Plus download starts.
  *
  * Props:
- *   track    — Track record (needs .id, .title)
- *   onClose  — dismiss callback
- *   iosMode  — if true, show iOS "Save to Files" tip instead of "Download started"
- *   simple   — if true, show only "Download started" with no support nudge (use on song detail page)
+ *   track      — Track record (needs .id, .title)
+ *   onClose    — dismiss callback
+ *   iosMode    — if true, show iOS "Save to Files" tip instead of "Download started"
+ *   simple     — if true, show only "Download started" with no support nudge
+ *   onSupport  — callback to open SupportModal; if omitted, support button is hidden
  */
-export default function DownloadToast({ track, onClose, iosMode = false, simple = false }) {
-  const navigate = useNavigate();
-
+export default function DownloadToast({ track, onClose, iosMode = false, simple = false, onSupport }) {
   // Auto-dismiss after 10s
   useEffect(() => {
     if (!track) return;
@@ -24,7 +22,7 @@ export default function DownloadToast({ track, onClose, iosMode = false, simple 
 
   const handleSupport = () => {
     onClose();
-    navigate(`/song/${track.id}`);
+    onSupport && onSupport(track);
   };
 
   return (

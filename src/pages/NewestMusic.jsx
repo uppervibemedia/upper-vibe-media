@@ -11,6 +11,7 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import DownloadToast from "../components/shared/DownloadToast";
+import SupportModal from "../components/shared/SupportModal";
 import { useFavorites } from "../hooks/useFavorite";
 import { useTheme } from "../context/ThemeContext";
 
@@ -21,6 +22,7 @@ export default function NewestMusic() {
   const [loginModal, setLoginModal] = useState(false);
   const [downloadToast, setDownloadToast] = useState(null);
   const [downloadIosMode, setDownloadIosMode] = useState(false);
+  const [supportModal, setSupportModal] = useState(null);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus, isAdmin } = useAuth();
   const isPremium = isPlus || isAdmin;
@@ -190,7 +192,8 @@ export default function NewestMusic() {
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
-      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} />
+      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} onSupport={(t) => setSupportModal(t)} />
+      <SupportModal open={!!supportModal} onClose={() => setSupportModal(null)} track={supportModal} />
     </div>
   );
 }

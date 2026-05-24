@@ -11,6 +11,7 @@ import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 import DownloadToast from "../components/shared/DownloadToast";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
+import SupportModal from "../components/shared/SupportModal";
 
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
@@ -28,6 +29,7 @@ export default function MyVibes() {
   const [downloadToast, setDownloadToast] = useState(null);
   const [downloadIosMode, setDownloadIosMode] = useState(false);
   const [upgradeModal, setUpgradeModal] = useState(false);
+  const [supportModal, setSupportModal] = useState(null);
 
   useEffect(() => {
     if (!user?.email) { setLoading(false); return; }
@@ -368,7 +370,8 @@ export default function MyVibes() {
 
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
-      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} />
+      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} onSupport={(t) => setSupportModal(t)} />
+      <SupportModal open={!!supportModal} onClose={() => setSupportModal(null)} track={supportModal} />
     </div>
   );
 }

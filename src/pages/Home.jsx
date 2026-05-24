@@ -13,6 +13,7 @@ import { recordPlay } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import DownloadToast from "../components/shared/DownloadToast";
+import SupportModal from "../components/shared/SupportModal";
 import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
 import LatestMusicSection from "../components/home/LatestMusicSection";
@@ -59,6 +60,7 @@ export default function Home() {
   const [premiumModal, setPremiumModal] = useState(false);
   const [downloadToast, setDownloadToast] = useState(null);
   const [downloadIosMode, setDownloadIosMode] = useState(false);
+  const [supportModal, setSupportModal] = useState(null);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { startRadio, tracksLoaded, currentRadioSong } = useRadio();
   const { accentId } = useTheme();
@@ -729,7 +731,8 @@ export default function Home() {
 
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
       <PremiumDownloadModal open={premiumModal} onClose={() => setPremiumModal(false)} />
-      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} />
+      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} onSupport={(t) => setSupportModal(t)} />
+      <SupportModal open={!!supportModal} onClose={() => setSupportModal(null)} track={supportModal} />
       <IOSTip trigger="on-play" isPlaying={isPlaying} />
     </div>
     </PullToRefresh>

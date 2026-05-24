@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
+import SupportModal from "../components/shared/SupportModal";
 import { useFavorites } from "../hooks/useFavorite";
 import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
@@ -49,6 +50,7 @@ export default function Music() {
   const [loginModal, setLoginModal] = useState(false);
   const [downloadToast, setDownloadToast] = useState(null);
   const [downloadIosMode, setDownloadIosMode] = useState(false);
+  const [supportModal, setSupportModal] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
@@ -282,7 +284,8 @@ export default function Music() {
 
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
-      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} />
+      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} onSupport={(t) => setSupportModal(t)} />
+      <SupportModal open={!!supportModal} onClose={() => setSupportModal(null)} track={supportModal} />
       <IOSTip trigger="on-play" isPlaying={isPlaying} />
     </PullToRefresh>
   );
