@@ -107,7 +107,7 @@ export default function Start() {
   const [stackTracks, setStackTracks] = useState([]);
   const [featuredTrackId, setFeaturedTrackId] = useState(null);
   const navigate = useNavigate();
-  const { isAuthenticated, isLoadingAuth, isPlus, isAdmin, hasPreviouslyLoggedIn, navigateToLogin } = useAuth();
+  const { isAuthenticated, isLoadingAuth, isPlus, isAdmin, navigateToLogin } = useAuth();
 
   // Load next tracks for the music stack — newest published, excluding the featured track
   useEffect(() => {
@@ -117,11 +117,11 @@ export default function Start() {
     }).catch(() => {});
   }, [featuredTrackId]);
 
-  // Routing: redirect based on auth + membership status (all hooks run first)
+  // Routing: only redirect non-admin free/plus users away from the sales page
   useEffect(() => {
     if (isLoadingAuth) return;
     if (!isAuthenticated) return; // logged-out visitors stay on /start
-    if (isAdmin) { navigate("/admin", { replace: true }); return; } // admins → admin panel
+    if (isAdmin) return; // admins can view /start to preview it
     if (isPlus) { navigate("/my-vibe-library", { replace: true }); return; } // Plus → library
     // Free logged-in users → send to music, not the sales page
     navigate("/music", { replace: true });
@@ -148,8 +148,10 @@ export default function Start() {
     return () => { document.title = prev; };
   }, []);
 
-  // Show loading while auth resolves, or while redirecting authenticated users
-  if (isLoadingAuth || (isAuthenticated && !isAdmin)) {
+  // Show loading while auth resolves, or while redirecting Plus/free logged-in users
+  // Admins are allowed to stay and preview the page, so no spinner for them
+  const isRedirecting = isAuthenticated && !isAdmin;
+  if (isLoadingAuth || isRedirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center"
         style={{ background: "linear-gradient(160deg,#06060f 0%,#090914 55%,#04040d 100%)" }}>
@@ -246,23 +248,7 @@ export default function Start() {
             </p>
           </div>
 
-          {/* Returning visitor hint — only shown when localStorage flag is set */}
-          {hasPreviouslyLoggedIn && (
-            <div className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl"
-              style={{ background: "rgba(0,160,220,0.06)", border: "1px solid rgba(0,160,220,0.2)" }}>
-              <span className="text-sm" style={{ color: "rgba(0,160,220,0.9)" }}>👋</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>Welcome back</p>
-                <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>Log in to open your library</p>
-              </div>
-              <button
-                onClick={() => navigateToLogin(`${window.location.origin}/my-vibes`)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-black transition-all active:scale-[0.97]"
-                style={{ background: "rgba(0,160,220,0.15)", border: "1px solid rgba(0,160,220,0.35)", color: "#00A0DC" }}>
-                Log In
-              </button>
-            </div>
-          )}
+
 
           {/* Primary CTA — below headline */}
           <div className="w-full flex flex-col gap-3">
