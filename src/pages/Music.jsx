@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Play, Pause, Download, Waves, Music4, Lock, Heart, ChevronLeft } from "lucide-react";
+import { Search, X, Play, Pause, Download, Waves, Music4, Heart, ChevronLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
@@ -51,8 +51,8 @@ export default function Music() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
-  const { user } = useAuth();
-  const isPremium = user?.role === "premium" || user?.role === "admin";
+  const { user, isPlus, isAdmin } = useAuth();
+  const isPremium = isPlus || isAdmin;
   const { isFaved, toggle } = useFavorites(user?.email);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -384,11 +384,9 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
         <button
           onClick={() => onDownload(track)}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
-          style={isPremium
-            ? { background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }
-            : { background: "rgba(212,168,67,0.05)", border: "1px solid rgba(212,168,67,0.15)", color: "rgba(212,168,67,0.3)" }}
-          title={isPremium ? "Download" : "Premium download"}>
-          {isPremium ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+          style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
+          title={isPremium ? "Download" : "Upgrade to Plus to download"}>
+          <Download className="w-3.5 h-3.5" />
         </button>
 
         {/* Favorite — violet purple */}

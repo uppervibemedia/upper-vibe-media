@@ -81,7 +81,7 @@ export default function Sidebar() {
           {/* My Vibe Library shortcut */}
           <Link
             to="/my-vibes"
-            onClick={(e) => { if (!isAuthenticated) { e.preventDefault(); navigateToLogin("/my-vibes"); } }}
+            onClick={(e) => { if (!isAuthenticated) { e.preventDefault(); navigateToLogin(window.location.origin + "/my-vibes"); } }}
             className="flex items-center gap-1.5 px-3 rounded-lg border transition-all"
             style={{
               background: `rgba(${radioThemeColor},0.12)`,

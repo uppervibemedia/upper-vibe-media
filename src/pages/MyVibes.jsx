@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, Lock, ChevronLeft, Sparkles } from "lucide-react";
+import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, ChevronLeft, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
@@ -276,12 +276,10 @@ export default function MyVibes() {
                             <button
                               onClick={(e) => handleDownload(track, e)}
                               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                              style={isPremium && track.audio_url
-                                ? { background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }
-                                : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
-                              title={isPremium ? "Download MP3" : "Go to song page to download"}>
-                              {isPremium ? <Download className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                              <span className="hidden sm:inline">{isPremium ? "Download MP3" : "Get Plus"}</span>
+                              style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
+                              title={isPremium ? "Download MP3" : "Upgrade to Plus to download"}>
+                              <Download className="w-3 h-3" />
+                              <span className="hidden sm:inline">Download MP3</span>
                             </button>
 
                             {/* Remove heart */}

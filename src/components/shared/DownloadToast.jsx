@@ -35,10 +35,11 @@ export default function DownloadToast({ track, onClose }) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 40, scale: 0.95 }}
           transition={{ type: "spring", damping: 22, stiffness: 300 }}
-          className="fixed z-[200] left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm"
+          className="fixed z-[200] w-[calc(100%-2rem)] max-w-sm"
           style={{
-            // Sits above player bar on mobile, above nav
             bottom: "calc(80px + env(safe-area-inset-bottom, 12px))",
+            left: "50%",
+            transform: "translateX(-50%)",
           }}
         >
           <div
