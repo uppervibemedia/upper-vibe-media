@@ -148,7 +148,7 @@ export default function NewestMusic() {
                     <button
                       onClick={(e) => handleDownload(track, e)}
                       className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                      style={{ background: "rgba(180,100,20,0.18)", border: "1px solid rgba(180,100,20,0.5)", color: "#C47820" }}
+                      style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
                       title={isPremium ? "Download MP3" : "Upgrade to Plus to download"}>
                       <Download className="w-3.5 h-3.5" />
                     </button>

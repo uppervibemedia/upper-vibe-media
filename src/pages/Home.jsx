@@ -145,8 +145,8 @@ export default function Home() {
         setDownloadIosMode(method === "anchor" && isIOS());
         setDownloadToast(track);
       }}
-      className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-      style={{ background: "rgba(212,168,67,0.12)", border: "1px solid rgba(212,168,67,0.28)", color: "#D4A843" }}
+      className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+      style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
       title="Download">
       <Download className="w-3.5 h-3.5" />
     </button>
