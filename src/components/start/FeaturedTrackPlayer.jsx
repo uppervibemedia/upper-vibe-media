@@ -10,16 +10,16 @@ import { RADIO_THEMES } from "../radio/RadioThemePicker";
 const DEFAULT_FEATURED_TITLE = "Fourth Dimension Hustler";
 const DEFAULT_FEATURED_ARTIST = "Montae DeVine";
 
-// Music bars — always animate
-function MusicBars({ color = "#00A0DC" }) {
+// Music bars — only animate when playing
+function MusicBars({ color = "#00A0DC", active = false }) {
   return (
     <>
-      <style>{`
+      {active && <style>{`
         @keyframes uvBar1 { 0%,100% { height: 4px } 50% { height: 14px } }
         @keyframes uvBar2 { 0%,100% { height: 10px } 50% { height: 4px } }
         @keyframes uvBar3 { 0%,100% { height: 6px } 50% { height: 13px } }
         @keyframes uvBar4 { 0%,100% { height: 12px } 50% { height: 5px } }
-      `}</style>
+      `}</style>}
       <span style={{ display: "inline-flex", alignItems: "flex-end", gap: "3px", height: "18px" }}>
         {[
           { anim: "uvBar1", delay: "0s" },
@@ -35,8 +35,8 @@ function MusicBars({ color = "#00A0DC" }) {
               borderRadius: "2px",
               background: color,
               height: "6px",
-              animation: `${anim} 0.65s ease-in-out infinite`,
-              animationDelay: delay,
+              animation: active ? `${anim} 0.65s ease-in-out infinite` : "none",
+              animationDelay: active ? delay : "0s",
             }}
           />
         ))}
@@ -61,42 +61,28 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
   useEffect(() => {
     async function loadTrack() {
       try {
-        // 1. Check for admin-selected featured track on /start
-        const featuredSetting = await base44.entities.AppSettings.filter({ key: "start_featured_track_id" });
-        const featuredId = featuredSetting?.[0]?.value;
+        // Single fetch: get newest 10 published tracks — enough to find featured or fallback
+        const [settingRows, recent] = await Promise.all([
+          base44.entities.AppSettings.filter({ key: "start_featured_track_id" }),
+          base44.entities.Track.filter({ status: "published" }, "-release_date", 10),
+        ]);
 
+        const featuredId = settingRows?.[0]?.value;
+
+        // 1. Admin-pinned track
         if (featuredId) {
-          const all = await base44.entities.Track.filter({ status: "published" }, "-created_date", 100);
-          const found = all.find((t) => t.id === featuredId && t.audio_url);
-          if (found) {
-            setTrack(found);
-            onTrackLoaded?.(found);
-            setLoading(false);
-            return;
-          }
+          const found = recent.find((t) => t.id === featuredId && t.audio_url);
+          if (found) { setTrack(found); onTrackLoaded?.(found); setLoading(false); return; }
         }
 
-        // 2. Look up "Fourth Dimension Hustler" by title as the default featured track
-        const allPublished = await base44.entities.Track.filter({ status: "published" }, "-release_date", 50);
-        const byTitle = allPublished.find(
-          (t) => t.audio_url && t.title?.toLowerCase().includes("fourth dimension hustler")
-        );
-        if (byTitle) {
-          setTrack(byTitle);
-          onTrackLoaded?.(byTitle);
-          setLoading(false);
-          return;
-        }
+        // 2. Default title match
+        const byTitle = recent.find((t) => t.audio_url && t.title?.toLowerCase().includes("fourth dimension hustler"));
+        if (byTitle) { setTrack(byTitle); onTrackLoaded?.(byTitle); setLoading(false); return; }
 
-        // 3. Fall back to newest published track with audio
-        const withAudio = allPublished.filter((t) => t.audio_url);
-        if (withAudio.length) {
-          setTrack(withAudio[0]);
-          onTrackLoaded?.(withAudio[0]);
-        }
-      } catch {
-        // silently fail
-      }
+        // 3. First with audio
+        const withAudio = recent.find((t) => t.audio_url);
+        if (withAudio) { setTrack(withAudio); onTrackLoaded?.(withAudio); }
+      } catch { /* silently fail */ }
       setLoading(false);
     }
     loadTrack();
@@ -133,34 +119,23 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
 
   return (
     <div className="w-full relative rounded-2xl" style={{ overflow: "visible" }}>
-      <style>{`
-        @keyframes featuredSectionPulse {
-          0%, 100% { box-shadow: 0 0 35px rgba(${rtPrimary},0.55), 0 0 80px rgba(${rtPrimary},0.2); border-color: rgba(${rtPrimary},0.55); }
-          50% { box-shadow: 0 0 80px rgba(${rtPrimary},1), 0 0 160px rgba(${rtPrimary},0.6), 0 0 240px rgba(${rtPrimary},0.25); border-color: rgba(${rtPrimary},1); }
-        }
-        @keyframes featuredBackBlast {
-          0%, 100% { opacity: 0.12; transform: scale(0.95); }
-          50% { opacity: 0.45; transform: scale(1.12); }
-        }
-      `}</style>
-      {/* Hard background blast glow — behind everything */}
+      {/* Static ambient glow — no animation, GPU-friendly */}
       <div
         className="absolute pointer-events-none rounded-3xl"
         style={{
-          inset: "-20px",
-          background: `radial-gradient(ellipse at center, rgba(${rtPrimary},0.55) 0%, rgba(${rtPrimary},0.2) 45%, transparent 75%)`,
-          animation: "featuredBackBlast 2.8s ease-in-out infinite",
+          inset: "-16px",
+          background: `radial-gradient(ellipse at center, rgba(${rtPrimary},0.22) 0%, rgba(${rtPrimary},0.08) 50%, transparent 75%)`,
           zIndex: -1,
         }}
       />
 
-      {/* Card body */}
+      {/* Card body — static border glow, no animation */}
       <div
         className="relative z-10 rounded-2xl overflow-hidden"
         style={{
           background: primaryRgba(0.06),
           border: `1px solid rgba(${rtPrimary},0.45)`,
-          animation: "featuredSectionPulse 2.8s ease-in-out infinite",
+          boxShadow: `0 0 28px rgba(${rtPrimary},0.18)`,
         }}
       >
         {track?.audio_url && (
@@ -192,7 +167,7 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
             style={{ background: primaryRgba(0.1), border: `1px solid ${primaryRgba(0.2)}` }}
           >
             {displayCover ? (
-              <img src={displayCover} alt={displayTitle} className="w-full h-full object-cover" />
+              <img src={displayCover} alt={displayTitle} loading="eager" fetchpriority="high" className="w-full h-full object-cover" />
             ) : (
               <Music2 className="w-6 h-6" style={{ color: primaryRgba(0.5) }} />
             )}
@@ -233,7 +208,7 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
                   ? <Pause className="w-4 h-4" style={{ color: primaryColor }} />
                   : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />}
               </motion.button>
-              <MusicBars color={playing ? primaryColor : primaryRgba(0.35)} />
+              <MusicBars color={playing ? primaryColor : primaryRgba(0.35)} active={playing} />
             </div>
           )}
         </div>

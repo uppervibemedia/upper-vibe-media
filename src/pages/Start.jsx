@@ -110,7 +110,7 @@ export default function Start() {
 
   // Load next tracks for the music stack — newest published, excluding the featured track
   useEffect(() => {
-    base44.entities.Track.filter({ status: "published" }, "-release_date", 20).then((all) => {
+    base44.entities.Track.filter({ status: "published" }, "-release_date", 8).then((all) => {
       const withAudio = all.filter((t) => t.audio_url && t.id !== featuredTrackId);
       setStackTracks(withAudio.slice(0, 4));
     }).catch(() => {});
@@ -199,12 +199,10 @@ export default function Start() {
         fontFamily: "var(--font-body)",
       }}
     >
-      {/* Static ambient glow */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-        <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[500px] h-[400px] rounded-full blur-[180px]"
-          style={{ background: "rgba(0,144,200,0.06)" }} />
-        <div className="absolute bottom-[-60px] right-[-30px] w-[280px] h-[280px] rounded-full blur-[130px]"
-          style={{ background: "rgba(212,168,67,0.04)" }} />
+      {/* Lightweight static ambient — no fixed positioning, reduced blur for mobile perf */}
+      <div className="absolute top-0 left-0 right-0 h-[300px] pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+        <div className="absolute top-[-60px] left-1/2 -translate-x-1/2 w-[320px] h-[240px] rounded-full blur-[80px]"
+          style={{ background: "rgba(0,144,200,0.07)" }} />
       </div>
 
       <div className="relative z-10 w-full max-w-md px-5 pb-16 pt-10 flex flex-col gap-10">

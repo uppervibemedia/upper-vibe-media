@@ -106,7 +106,7 @@ export default function YouTubeCTA() {
       if (rows?.[0]?.value) setPlaylistUrl(rows[0].value);
     });
 
-    base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 20).then((rows) => {
+    base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 8).then((rows) => {
       const valid = rows
         .map((v) => {
           const id = extractVideoId(v.video_url) || extractVideoId(v.embed_url);
@@ -135,29 +135,14 @@ export default function YouTubeCTA() {
 
   return (
     <>
-      <style>{`
-        @keyframes ytSectionPulse {
-          0%, 100% { box-shadow: 0 0 28px rgba(${r},0.45), 0 0 60px rgba(${r},0.15); border-color: rgba(${r},0.45); }
-          50% { box-shadow: 0 0 55px rgba(${r},0.9), 0 0 110px rgba(${r},0.4); border-color: rgba(${r},0.85); }
-        }
-        @keyframes ytRingPulse {
-          0%, 100% { box-shadow: 0 0 0px rgba(${r},0); }
-          50% { box-shadow: 0 0 22px rgba(${r},0.7), 0 0 45px rgba(${r},0.3); }
-        }
-      `}</style>
       <section
         className="flex flex-col gap-4 p-5 rounded-3xl relative"
         style={{
           background: `rgba(${r},0.06)`,
-          border: `1px solid rgba(${r},0.45)`,
-          animation: "ytSectionPulse 2.8s ease-in-out infinite",
+          border: `1px solid rgba(${r},0.4)`,
+          boxShadow: `0 0 24px rgba(${r},0.12)`,
         }}
       >
-        {/* Pulsing outer ring */}
-        <div
-          className="absolute inset-0 rounded-3xl pointer-events-none"
-          style={{ animation: "ytRingPulse 2.8s ease-in-out infinite" }}
-        />
 
         {/* Label */}
         <div className="flex items-center justify-center gap-2">
