@@ -17,8 +17,8 @@ export default function NewestMusic() {
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
-  const { user } = useAuth();
-  const isPremium = user?.role === "premium" || user?.role === "admin";
+  const { user, isPlus, isAdmin } = useAuth();
+  const isPremium = isPlus || isAdmin;
   const { isFaved, toggle } = useFavorites(user?.email);
 
   useEffect(() => {
@@ -128,13 +128,13 @@ export default function NewestMusic() {
                       track.audio_url ? (
                         <a href={track.audio_url} download={`${track.title}.mp3`}
                           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                          style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
+                          style={{ background: "rgba(180,100,20,0.18)", border: "1px solid rgba(180,100,20,0.5)", color: "#C47820" }}
                           onClick={(e) => e.stopPropagation()} title="Download">
                           <Download className="w-3.5 h-3.5" />
                         </a>
                       ) : (
                         <span className="w-9 h-9 rounded-xl flex items-center justify-center opacity-30 cursor-not-allowed"
-                          style={{ border: "1px solid rgba(212,168,67,0.15)", color: "#D4A843" }}>
+                          style={{ border: "1px solid rgba(180,100,20,0.3)", color: "#C47820" }}>
                           <Download className="w-3.5 h-3.5" />
                         </span>
                       )

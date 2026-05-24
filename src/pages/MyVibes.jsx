@@ -10,7 +10,7 @@ import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 
 export default function MyVibes() {
-  const { user } = useAuth();
+  const { user, isPlus, isAdmin } = useAuth();
   const { isFaved, toggle } = useFavorites(user?.email);
   const [tracks, setTracks] = useState([]);
   const [visualizers, setVisualizers] = useState([]);
@@ -18,7 +18,7 @@ export default function MyVibes() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("songs");
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
-  const isPremium = user?.role === "premium" || user?.role === "admin";
+  const isPremium = isPlus || isAdmin;
   const { accent } = useTheme();
   const rgb = accent.rgb; // e.g. "0,229,255"
   const navigate = useNavigate();

@@ -113,8 +113,8 @@ export default function SongPage() {
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [vizPlaying, setVizPlaying] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
-  const { user } = useAuth();
-  const isPlus = user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" || user?.tier === "premium" || user?.isPremium === true || user?.role === "premium";
+  const { user, isPlus: isAuthPlus, isAdmin: isAuthAdmin } = useAuth();
+  const isPlus = isAuthPlus || isAuthAdmin;
   const [loginPrompt, setLoginPrompt] = useState(false);
   const [supportModal, setSupportModal] = useState(false);
   const [showSupportedBanner, setShowSupportedBanner] = useState(false);
