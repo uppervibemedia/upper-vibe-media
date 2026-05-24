@@ -176,7 +176,7 @@ export default function RadioCTA() {
             <div className="flex items-center gap-3 p-3">
               {/* Square album art */}
               <div className="flex-shrink-0 rounded-xl overflow-hidden relative"
-                style={{ width: 88, height: 88, background: rgba(0.1), border: `1px solid ${rgba(0.2)}` }}>
+                style={{ width: 106, height: 106, background: rgba(0.1), border: `1px solid ${rgba(0.2)}` }}>
                 {featuredTrack.cover_url ? (
                   <img
                     src={featuredTrack.cover_url}
@@ -214,7 +214,7 @@ export default function RadioCTA() {
                   <motion.button
                     onClick={handlePlayFeatured}
                     whileTap={{ scale: 0.9 }}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-black text-xs transition-all"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-black text-xs transition-all"
                     style={{
                       background: featuredPlaying ? rgba(0.2) : `linear-gradient(135deg,rgba(${r},0.85),${primaryColor})`,
                       border: featuredPlaying ? `1px solid ${rgba(0.6)}` : "none",
