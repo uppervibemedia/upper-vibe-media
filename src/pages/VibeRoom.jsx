@@ -326,7 +326,7 @@ export default function VibeRoom() {
                     style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)" }}>
                     <Crown className="w-2.5 h-2.5 text-yellow-400/70" />
                     <span className="text-[9px] font-black tracking-[0.2em] uppercase text-yellow-400/70">
-                      {isPremium ? "Premium" : "Premium 🔒"}
+                      {isPremium ? "Plus" : "Plus 🔒"}
                     </span>
                   </div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
@@ -409,7 +409,7 @@ export default function VibeRoom() {
                 </div>
                 <p className="font-heading font-black text-muted-foreground/60 text-base mb-1">The vibe is waiting.</p>
                 <p className="text-muted-foreground/40 text-xs max-w-xs leading-relaxed">
-                  Premium members can start the conversation.
+                  Plus members can start the conversation.
                 </p>
               </motion.div>
             ) : (
@@ -539,7 +539,7 @@ export default function VibeRoom() {
                 boxShadow: "0 0 24px rgba(212,168,67,0.05), 0 12px 40px rgba(0,0,0,0.55)",
               }}>
               <Crown className="w-4 h-4 flex-shrink-0 text-yellow-500/50" />
-              <span className="text-sm text-muted-foreground/60 flex-1">Premium members can post in the Vibe Room</span>
+              <span className="text-sm text-muted-foreground/60 flex-1">Plus members can post in the Vibe Room</span>
               <span className="text-[10px] font-black tracking-wider px-2.5 py-1 rounded-full flex-shrink-0"
                 style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.7)" }}>
                 Upgrade
