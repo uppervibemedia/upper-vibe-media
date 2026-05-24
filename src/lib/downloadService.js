@@ -3,6 +3,16 @@
  *
  * Rule: Only Plus/Admin users can download.
  * Also writes to UserDownload entity for "My Downloads" page.
+ *
+ * iOS Safari behaviour:
+ *   - Anchor `.click()` with target="_self" replaces the page with the audio → BLACK SCREEN.
+ *   - Anchor `.click()` with target="_blank" opens a new tab with the audio → NEW TAB.
+ *   - fetch → blob → objectURL works on iOS 14.5+ but is blocked by CORS on most CDNs.
+ *   - Best approach: open the raw URL in a new tab so Safari shows its own media player
+ *     in a separate tab, and we keep a toast telling them "Tap Share → Save to Files".
+ *     The current page is NEVER replaced.
+ *
+ * Returns: "blob" | "ios_new_tab" | "error"
  */
 import { base44 } from "@/api/base44Client";
 
@@ -90,31 +100,47 @@ export async function getUserDownloads(userEmail) {
  */
 export function isIOS() {
   if (typeof navigator === "undefined") return false;
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) || 
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
 /**
- * Trigger a browser download.
+ * Detect TikTok in-app browser (special WebView with very restricted download support)
+ */
+export function isTikTokBrowser() {
+  if (typeof navigator === "undefined") return false;
+  return /bytedance|tiktok|musically/i.test(navigator.userAgent);
+}
+
+/**
+ * Trigger a browser download — safe across all platforms.
  *
  * Strategy:
- *  1. Try fetch → blob → objectURL (works on Android, desktop, Firefox).
- *  2. If fetch fails (CORS, network) or we're on iOS, fall back to anchor with download attr.
- *  3. On iOS the browser will open the file inline — caller should show a tip after calling this.
+ *  1. Desktop / Android Chrome: fetch → blob → objectURL → anchor click. True "Save" dialog.
+ *  2. iOS Safari / iOS TikTok / any iOS in-app browser:
+ *       window.open(url, '_blank') — opens in a new tab.
+ *       The current page is NEVER replaced or navigated away from.
+ *       Caller MUST show DownloadToast with iosMode=true.
  *
- * Returns: "blob" | "anchor" | "error"
+ * NEVER use:
+ *   - window.location.href = url  (replaces the page → black screen)
+ *   - anchor.click() without target="_blank" on iOS (same problem)
+ *
+ * Returns: "blob" | "ios_new_tab" | "error"
  */
 export async function triggerBrowserDownload(fileUrl, filename) {
+  if (!fileUrl) return "error";
   const safeFilename = (filename || "download").replace(/[/\\?%*:|"<>]/g, "") + ".mp3";
 
-  // On iOS, skip the fetch attempt entirely — it will fail with CORS or open a blank page.
-  // Just use the anchor approach directly.
+  // ── iOS path: open in new tab, keep current page intact ──────────────────
   if (isIOS()) {
-    _anchorDownload(fileUrl, safeFilename);
-    return "anchor";
+    // window.open keeps the current page — Safari will show audio in a new tab
+    // The toast (iosMode=true) will instruct: "Tap Share → Save to Files"
+    window.open(fileUrl, "_blank", "noopener,noreferrer");
+    return "ios_new_tab";
   }
 
-  // Desktop / Android: try blob fetch first for a true save dialog
+  // ── Desktop / Android: blob fetch → true save dialog ────────────────────
   try {
     const response = await fetch(fileUrl, { mode: "cors" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -123,26 +149,15 @@ export async function triggerBrowserDownload(fileUrl, filename) {
     const a = document.createElement("a");
     a.href = blobUrl;
     a.download = safeFilename;
+    a.rel = "noopener";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
     return "blob";
   } catch {
-    // Fallback: anchor download (browser may open inline if CORS blocks download attr)
-    _anchorDownload(fileUrl, safeFilename);
-    return "anchor";
+    // CORS blocked — fallback: open in new tab (does not leave current page on desktop)
+    window.open(fileUrl, "_blank", "noopener,noreferrer");
+    return "ios_new_tab";
   }
-}
-
-function _anchorDownload(fileUrl, filename) {
-  const a = document.createElement("a");
-  a.href = fileUrl;
-  a.download = filename;
-  // Do NOT use target="_blank" — that opens the audio URL as a page (black screen)
-  // target="_self" on iOS will open the audio inline in Safari — acceptable
-  a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
 }

@@ -16,7 +16,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import IOSTip from "../components/shared/iOSTip";
 import DownloadToast from "../components/shared/DownloadToast";
-import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 
 const GENRE_TYPES = ["genre", "mood", "editorial", "frequency"];
 const PAGE_SIZE = 20;
@@ -254,7 +254,7 @@ export default function Music() {
                         if (!track.audio_url) return;
                         recordUserDownload(user, track).catch(() => {});
                         const method = await triggerBrowserDownload(track.audio_url, track.title);
-                        setDownloadIosMode(method === "anchor" && isIOS());
+                        setDownloadIosMode(method === "ios_new_tab");
                         setDownloadToast(track);
                       }}
                     />

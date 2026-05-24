@@ -6,7 +6,7 @@ import SectionHeader from "../shared/SectionHeader";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
-export default function LatestMusicSection({ tracks, currentTrack, isPlaying, handlePlayTrack, heartButton, downloadButton, user, themeColor }) {
+export default function LatestMusicSection({ tracks, currentTrack, isPlaying, handlePlayTrack, heartButton, downloadButton, user, themeColor, onUpgrade }) {
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtp = radioTheme.vars["--rt-primary"];
@@ -77,10 +77,12 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     <div className="flex items-center gap-0.5" onClick={(e) => e.preventDefault()}>
                       {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                       {!isPremium ? (
-                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full"
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onUpgrade?.(); }}
+                          className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
                           style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
-                          Premium 🔒
-                        </span>
+                          Plus 🔒
+                        </button>
                       ) : downloadButton(track)}
                     </div>
                   </div>
@@ -174,10 +176,12 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     <div className="flex items-center gap-0.5" onClick={(e) => e.preventDefault()}>
                       {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                       {!isPremium ? (
-                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full"
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onUpgrade?.(); }}
+                          className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
                           style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
-                          Premium 🔒
-                        </span>
+                          Plus 🔒
+                        </button>
                       ) : downloadButton(track)}
                     </div>
                   </div>

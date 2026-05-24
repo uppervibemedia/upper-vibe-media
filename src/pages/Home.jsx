@@ -14,7 +14,7 @@ import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import DownloadToast from "../components/shared/DownloadToast";
 import SupportModal from "../components/shared/SupportModal";
-import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
 import LatestMusicSection from "../components/home/LatestMusicSection";
 import TrendingTracksSection from "../components/home/TrendingTracksSection";
@@ -144,7 +144,7 @@ export default function Home() {
         if (!track.audio_url) return;
         recordUserDownload(user, track).catch(() => {});
         const method = await triggerBrowserDownload(track.audio_url, track.title);
-        setDownloadIosMode(method === "anchor" && isIOS());
+        setDownloadIosMode(method === "ios_new_tab");
         setDownloadToast(track);
       }}
       className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
@@ -506,6 +506,7 @@ export default function Home() {
         downloadButton={downloadButton}
         user={user}
         themeColor={rtPrimary}
+        onUpgrade={() => { if (!user) setLoginModal(true); else setPremiumModal(true); }}
       />
       </motion.div>
 
@@ -523,6 +524,7 @@ export default function Home() {
           if (!user) { setLoginModal(true); return; }
           toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
         }}
+        onUpgrade={() => { if (!user) setLoginModal(true); else setPremiumModal(true); }}
         onDownload={async (track) => {
           if (!user) { setLoginModal(true); return; }
           const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin" || user?.role === "plus" || user?.tier === "plus";
@@ -530,7 +532,7 @@ export default function Home() {
           if (!track.audio_url) return;
           recordUserDownload(user, track).catch(() => {});
           const method = await triggerBrowserDownload(track.audio_url, track.title);
-          setDownloadIosMode(method === "anchor" && isIOS());
+          setDownloadIosMode(method === "ios_new_tab" || method === "anchor");
           setDownloadToast(track);
         }}
       />

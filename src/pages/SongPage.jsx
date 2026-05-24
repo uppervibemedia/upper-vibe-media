@@ -14,7 +14,7 @@ import SupportModal from "../components/shared/SupportModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
-import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 import DownloadToast from "@/components/shared/DownloadToast";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTheme } from "@/context/ThemeContext";
@@ -176,7 +176,7 @@ export default function SongPage() {
     if (user) recordUserDownload(user, track).catch(() => {});
     const filename = `${track.title || "song"}${track.artist_display ? " - " + track.artist_display : ""}`;
     const method = await triggerBrowserDownload(track.audio_url, filename);
-    setDownloadIosMode(method === "anchor" && isIOS());
+    setDownloadIosMode(method === "ios_new_tab");
     setDownloadToast(track);
   };
 

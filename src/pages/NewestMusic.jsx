@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Play, Pause, Download, Waves, Music4, Heart, Zap, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 import { usePlayer } from "../context/PlayerContext";
 import { recordPlay } from "../components/home/DiscoverTab";
 import { useAuth } from "@/lib/AuthContext";
@@ -40,7 +40,7 @@ export default function NewestMusic() {
     if (!track.audio_url) return;
     recordUserDownload(user, track).catch(() => {});
     const method = await triggerBrowserDownload(track.audio_url, track.title);
-    setDownloadIosMode(method === "anchor" && isIOS());
+    setDownloadIosMode(method === "ios_new_tab");
     setDownloadToast(track);
   };
 

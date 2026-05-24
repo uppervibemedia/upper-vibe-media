@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, ChevronLeft, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
@@ -62,7 +62,7 @@ export default function MyVibes() {
     if (!track.audio_url) return;
     recordUserDownload(user, track).catch(() => {});
     const method = await triggerBrowserDownload(track.audio_url, track.title);
-    setDownloadIosMode(method === "anchor" && isIOS());
+    setDownloadIosMode(method === "ios_new_tab");
     setDownloadToast(track);
   };
 
@@ -353,7 +353,7 @@ export default function MyVibes() {
                               <Link to={`/song/${viz.linked_song_id}`}
                                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:brightness-110"
                                 style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
-                                <Download className="w-3 h-3" /> Download Song
+                                View Song
                               </Link>
                             )}
                           </div>

@@ -65,7 +65,7 @@ const INSIGHT_COLORS = [
   { color: "212,168,67",  label: "Trending" },                // amber
 ];
 
-export default function TrendingTracksSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, user, onToggleFav, isFaved, onDownload, themeColor }) {
+export default function TrendingTracksSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, user, onToggleFav, isFaved, onDownload, onUpgrade, themeColor }) {
   const [streams, setStreams]     = useState([]);
   const [favCounts, setFavCounts] = useState({});
   const [loading, setLoading]     = useState(true);
@@ -195,10 +195,13 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
                     <Download className="w-3.5 h-3.5" />
                   </button>
                 ) : (
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                    style={{ background: "rgba(212,168,67,0.06)", border: "1px solid rgba(212,168,67,0.15)", color: `rgba(${AMBER},0.4)` }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onUpgrade?.(); }}
+                    className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:brightness-110"
+                    style={{ background: "rgba(212,168,67,0.06)", border: "1px solid rgba(212,168,67,0.15)", color: `rgba(${AMBER},0.4)` }}
+                    title="Upgrade to Plus to download">
                     <Lock className="w-3.5 h-3.5" />
-                  </div>
+                  </button>
                 )}
               </div>
             </motion.div>
