@@ -325,14 +325,9 @@ export default function SongPage() {
                   )}
                 </div>
 
-                {/* Row 2: Support + Save + Share — equal width on mobile */}
+                {/* Row 2: Share + Save + Support — equal width on mobile */}
                 <div className="flex gap-2.5 justify-center sm:justify-start">
-                  <button
-                    onClick={() => setSupportModal(true)}
-                    className="flex items-center justify-center gap-1.5 flex-1 sm:flex-none sm:px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] active:scale-[0.97]"
-                    style={{ background: `rgba(${CYAN},0.1)`, border: `1px solid rgba(${CYAN},0.28)`, color: `rgb(${CYAN})` }}>
-                    <Zap className="w-4 h-4" /> <span>Support</span>
-                  </button>
+                  <ShareVibeButton type="song" track={track} className="flex-1 sm:flex-none justify-center" />
 
                   <button
                     onClick={() => {
@@ -350,7 +345,12 @@ export default function SongPage() {
                     <span>{isFaved("track", track.id) ? "Saved" : "Save"}</span>
                   </button>
 
-                  <ShareVibeButton type="song" track={track} className="flex-1 sm:flex-none justify-center" />
+                  <button
+                    onClick={() => setSupportModal(true)}
+                    className="flex items-center justify-center gap-1.5 flex-1 sm:flex-none sm:px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] active:scale-[0.97]"
+                    style={{ background: `rgba(${CYAN},0.1)`, border: `1px solid rgba(${CYAN},0.28)`, color: `rgb(${CYAN})` }}>
+                    <Zap className="w-4 h-4" /> <span>Support</span>
+                  </button>
                 </div>
               </div>
 
