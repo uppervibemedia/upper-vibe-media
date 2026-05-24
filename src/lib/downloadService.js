@@ -107,11 +107,60 @@ export function isIOS() {
 }
 
 /**
- * Detect TikTok in-app browser (special WebView with very restricted download support)
+ * Detect TikTok in-app browser
  */
 export function isTikTokBrowser() {
   if (typeof navigator === "undefined") return false;
   return /bytedance|tiktok|musically/i.test(navigator.userAgent);
+}
+
+/**
+ * Detect Instagram in-app browser
+ */
+export function isInstagramBrowser() {
+  if (typeof navigator === "undefined") return false;
+  return /instagram/i.test(navigator.userAgent);
+}
+
+/**
+ * Detect Facebook in-app browser
+ */
+export function isFacebookBrowser() {
+  if (typeof navigator === "undefined") return false;
+  return /fban|fbav|fb_iab/i.test(navigator.userAgent);
+}
+
+/**
+ * Detect any restricted in-app browser where downloads are unreliable
+ */
+export function isRestrictedInAppBrowser() {
+  return isTikTokBrowser() || isInstagramBrowser() || isFacebookBrowser();
+}
+
+/**
+ * Detect Android
+ */
+export function isAndroid() {
+  if (typeof navigator === "undefined") return false;
+  return /android/i.test(navigator.userAgent);
+}
+
+/**
+ * Log download environment for debugging
+ */
+export function logDownloadEnv(songId, plusStatus) {
+  const ua = navigator?.userAgent || "unknown";
+  console.log("[download] env:", {
+    userAgent: ua,
+    isTikTokBrowser: isTikTokBrowser(),
+    isInstagramBrowser: isInstagramBrowser(),
+    isFacebookBrowser: isFacebookBrowser(),
+    isRestrictedInAppBrowser: isRestrictedInAppBrowser(),
+    isIOS: isIOS(),
+    isAndroid: isAndroid(),
+    plusStatus,
+    currentSongId: songId,
+  });
 }
 
 /**
@@ -139,6 +188,13 @@ export async function triggerBrowserDownload(trackId, filename) {
 
     const base = (appBaseUrl || window.location.origin).replace(/\/$/, "");
     const fnBase = `${base}/api/apps/${appId}/functions/downloadTrack`;
+
+    // Restricted in-app browsers (TikTok, Instagram, Facebook): block all raw URL navigation.
+    // Caller must show the in-app-browser modal instead — return sentinel value.
+    if (isRestrictedInAppBrowser()) {
+      console.log("[download] blocked — restricted in-app browser detected");
+      return "restricted_browser";
+    }
 
     // iOS Safari: blob URL + anchor .click() is unreliable.
     // Open the backend GET endpoint directly in a new tab — the backend's

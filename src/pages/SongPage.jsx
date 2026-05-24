@@ -14,7 +14,8 @@ import SupportModal from "../components/shared/SupportModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
-import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload, isRestrictedInAppBrowser, logDownloadEnv } from "@/lib/downloadService";
+import InAppBrowserDownloadModal from "../components/shared/InAppBrowserDownloadModal";
 import { toast } from "sonner";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTheme } from "@/context/ThemeContext";
@@ -120,6 +121,7 @@ export default function SongPage() {
   const [loginPrompt, setLoginPrompt] = useState(false);
   const [supportModal, setSupportModal] = useState(false);
   const [showSupportedBanner, setShowSupportedBanner] = useState(false);
+  const [inAppBrowserModal, setInAppBrowserModal] = useState(false);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtp = radioTheme.vars["--rt-primary"];    // e.g. "0,229,255"
@@ -172,11 +174,22 @@ export default function SongPage() {
 
   const handleDownload = async () => {
     if (!track?.audio_url) return;
+
+    logDownloadEnv(track.id, isPlus);
+
+    // Block restricted in-app browsers (TikTok, Instagram, Facebook) before any URL navigation
+    if (isRestrictedInAppBrowser()) {
+      setInAppBrowserModal(true);
+      return;
+    }
+
     if (user) recordUserDownload(user, track).catch(() => {});
     const filename = `${track.title || "song"}${track.artist_display ? " - " + track.artist_display : ""}`;
     const result = await triggerBrowserDownload(track.id, filename);
     if (result === "blob") {
       toast.success("Download started");
+    } else if (result === "restricted_browser") {
+      setInAppBrowserModal(true);
     } else {
       toast.error("Download failed. Please try again.");
     }
@@ -477,6 +490,11 @@ export default function SongPage() {
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <SupportModal open={supportModal} onClose={() => setSupportModal(false)} track={track} />
+      <InAppBrowserDownloadModal
+        open={inAppBrowserModal}
+        onClose={() => setInAppBrowserModal(false)}
+        songUrl={`https://uppervibemedia.com/song/${id}`}
+      />
       <IOSTip trigger="always" />
 
 
