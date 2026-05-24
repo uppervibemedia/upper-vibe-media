@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Play, Pause, Waves, Music2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
@@ -43,17 +43,13 @@ function MusicBars({ color = `rgb(${BLUE})`, active = false }) {
   );
 }
 
-// Small swipeable song card
+// Small swipeable song card — tapping card navigates to song page, play icon plays directly
 function SmallTrackCard({ track, isPlaying, onPlay }) {
-  const [pressed, setPressed] = React.useState(false);
+  const navigate = useNavigate();
 
   return (
     <div
-      onMouseEnter={() => setPressed(true)}
-      onMouseLeave={() => setPressed(false)}
-      onTouchStart={() => setPressed(true)}
-      onTouchEnd={() => setPressed(false)}
-      onClick={() => onPlay(track)}
+      onClick={() => navigate(`/song/${track.id}`)}
       className="relative flex-shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.97]"
       style={{
         width: 100,
@@ -77,36 +73,24 @@ function SmallTrackCard({ track, isPlaying, onPlay }) {
       {/* Dark gradient overlay */}
       <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%)" }} />
 
-      {/* Playing indicator */}
-      {isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: "50%",
-            background: `rgba(${BLUE},0.25)`, border: `1.5px solid rgba(${BLUE},0.7)`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <MusicBars color={`rgb(${BLUE})`} active />
-          </div>
-        </div>
-      )}
+      {/* Play button — stops propagation so it doesn't navigate */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onPlay(track); }}
+        className="absolute top-1.5 right-1.5 flex items-center justify-center transition-all active:scale-90"
+        style={{
+          width: 26, height: 26, borderRadius: "50%",
+          background: isPlaying ? `rgba(${BLUE},0.25)` : "rgba(0,0,0,0.6)",
+          border: isPlaying ? `1.5px solid rgba(${BLUE},0.7)` : "1px solid rgba(255,255,255,0.5)",
+          backdropFilter: "blur(4px)",
+        }}
+      >
+        {isPlaying
+          ? <MusicBars color={`rgb(${BLUE})`} active />
+          : <svg viewBox="0 0 24 24" fill="white" style={{ width: 9, height: 9, marginLeft: 1 }}><path d="M8 5v14l11-7z" /></svg>
+        }
+      </button>
 
-      {/* Hover play */}
-      {!isPlaying && pressed && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div style={{
-            width: 28, height: 28, borderRadius: "50%",
-            background: "rgba(0,0,0,0.65)", border: "1.5px solid rgba(255,255,255,0.7)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            backdropFilter: "blur(4px)",
-          }}>
-            <svg viewBox="0 0 24 24" fill="white" style={{ width: 9, height: 9, marginLeft: 2 }}>
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-        </div>
-      )}
-
-      <p className="absolute bottom-1.5 left-2 right-2 text-white truncate"
+      <p className="absolute bottom-1.5 left-2 right-8 text-white truncate"
         style={{ fontSize: "9px", fontWeight: 700, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>
         {track.title}
       </p>
