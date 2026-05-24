@@ -195,7 +195,7 @@ export default function MyVibes() {
                               <Link to={`/song/${track.id}`}
                                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:scale-105"
                                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
-                                title="Premium download">
+                                title="Plus download — Upgrade to unlock">
                                 <Lock className="w-3 h-3" />
                                 <span className="hidden sm:inline">Download MP3</span>
                               </Link>

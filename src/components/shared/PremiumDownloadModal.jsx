@@ -33,7 +33,8 @@ export default function PremiumDownloadModal({ open, onClose }) {
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ padding: "env(safe-area-inset-top,16px) 16px env(safe-area-inset-bottom,80px) 16px" }}>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
@@ -42,8 +43,12 @@ export default function PremiumDownloadModal({ open, onClose }) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", damping: 25 }}
-            className="relative w-full max-w-sm rounded-3xl overflow-hidden"
-            style={{ background: "linear-gradient(145deg,#0a0a1e,#0d0d1f)", border: "1px solid rgba(212,168,67,0.28)" }}>
+            className="relative w-full max-w-sm rounded-3xl overflow-y-auto"
+            style={{
+              background: "linear-gradient(145deg,#0a0a1e,#0d0d1f)",
+              border: "1px solid rgba(212,168,67,0.28)",
+              maxHeight: "calc(100vh - env(safe-area-inset-top,16px) - env(safe-area-inset-bottom,80px) - 32px)",
+            }}>
 
             <button onClick={onClose}
               className="absolute top-4 right-4 p-1.5 rounded-xl text-white/30 hover:text-white/70 transition-colors z-10">
@@ -63,7 +68,7 @@ export default function PremiumDownloadModal({ open, onClose }) {
                 Unlock Upper Vibe Plus
               </h2>
               <p className="text-white/40 text-sm text-center leading-relaxed mb-6">
-                Stream every 432 Hz song free. Upgrade for Plus downloads, My Vibe Library, and premium Academy access.
+                Stream every 432 Hz song free. Upgrade to download songs, save your favorites, and unlock Plus features.
               </p>
 
               {/* Billing toggle */}
@@ -111,7 +116,7 @@ export default function PremiumDownloadModal({ open, onClose }) {
                   "Build your My Vibe Library",
                   "Download tracks & listen offline",
                   "Watch full Upper Vibe Academy videos",
-                  "Access Premium Chat in the Vibe Room",
+                  "Plus Chat in the Vibe Room",
                   "Support Upper Vibe Media",
                 ].map((b) => (
                   <li key={b} className="flex items-center gap-2.5 text-xs text-white/60">

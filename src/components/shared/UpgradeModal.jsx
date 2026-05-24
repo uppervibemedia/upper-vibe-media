@@ -18,9 +18,9 @@ const TIER_INFO = {
     color: "text-primary",
     border: "border-primary/30",
     bg: "bg-primary/10",
-    label: "Premium",
-    price: "$9.99/mo",
-    perks: ["Everything in Supporter", "Full Vault access", "Unreleased exclusive drops", "Complete remastered catalog"],
+    label: "Plus",
+    price: "$4.99/mo",
+    perks: ["Download tracks & listen offline", "Build your My Vibe Library", "Full Academy access", "Plus Chat in the Vibe Room"],
   },
 };
 

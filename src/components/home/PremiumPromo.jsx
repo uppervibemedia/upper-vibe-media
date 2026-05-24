@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 const PERKS = [
   { icon: Waves, label: "Full 432 Hz Library", desc: "Extended sessions + exclusive drops" },
   { icon: GraduationCap, label: "UVM Academy", desc: "Music education & mindset courses" },
-  { icon: Download, label: "Downloads", desc: "Offline access to premium tracks" },
+  { icon: Download, label: "Downloads", desc: "Offline access to Plus tracks" },
   { icon: Crown, label: "Members Only", desc: "Early access & unreleased content" },
 ];
 
@@ -31,7 +31,7 @@ export default function PremiumPromo() {
             <div className="max-w-lg">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4 text-[10px] font-black tracking-[0.2em] uppercase"
                 style={{ background: "rgba(212,168,67,0.15)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}>
-                <Crown className="w-3 h-3" /> Premium Membership
+                <Crown className="w-3 h-3" /> Upper Vibe Plus
               </div>
               <h2 className="font-heading font-black text-3xl md:text-4xl text-white mb-4 leading-tight">
                 Unlock the Full<br />

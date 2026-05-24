@@ -41,14 +41,14 @@ export default function VibeUpgradeModal({ open, onClose }) {
                 Build Your Vibe Library
               </h2>
               <p className="text-white/45 text-sm text-center leading-relaxed mb-6">
-                Saving favorites and building your personal playlist is a <span className="text-pink-400 font-bold">Premium feature</span>. Upgrade to start curating your 432 Hz collection.
+                Saving favorites and building your personal playlist is a <span className="text-pink-400 font-bold">Plus feature</span>. Upgrade to start curating your 432 Hz collection.
               </p>
 
               <div className="p-4 rounded-2xl mb-6"
                 style={{ background: "rgba(236,72,153,0.06)", border: "1px solid rgba(236,72,153,0.18)" }}>
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="font-heading font-black text-white text-base">Premium Membership</p>
+                    <p className="font-heading font-black text-white text-base">Upper Vibe Plus</p>
                     <p className="text-xs text-white/40">Monthly membership</p>
                   </div>
                   <div className="text-right">
@@ -69,7 +69,7 @@ export default function VibeUpgradeModal({ open, onClose }) {
                 <a href="/pricing"
                   className="w-full py-3.5 rounded-2xl font-black text-sm tracking-wider text-center transition-all hover:brightness-110"
                   style={{ background: "linear-gradient(135deg,#be185d,#ec4899)", color: "#fff" }}>
-                  Upgrade To Premium
+                  Upgrade To Plus
                 </a>
                 <button onClick={onClose}
                   className="w-full py-3 rounded-2xl font-semibold text-sm text-white/40 hover:text-white/70 transition-colors">

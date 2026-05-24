@@ -11,7 +11,7 @@ const FREE_FEATURES = [
   { ok: true,  text: "Watch free visualizers" },
   { ok: true,  text: "Browse artists" },
   { ok: false, text: "My Vibe Library" },
-  { ok: false, text: "Premium downloads" },
+  { ok: false, text: "Plus downloads" },
   { ok: false, text: "Full Academy videos" },
 ];
 
@@ -89,7 +89,7 @@ export default function Membership() {
 
           <p className="text-white/45 leading-relaxed mx-auto"
             style={{ fontSize: "clamp(0.9rem, 1.4vw, 1.05rem)", maxWidth: "32rem" }}>
-            Stream every 432 Hz song for free. Upgrade to Upper Vibe Plus when you want downloads and premium Academy access.
+            Stream every 432 Hz song for free. Upgrade to Upper Vibe Plus when you want downloads and Academy access.
           </p>
 
           {/* Active plan badge */}

@@ -80,7 +80,7 @@ export default function DownloadButton({
     return (
       <button
         onClick={handleClick}
-        title="Premium only — Upgrade to download"
+        title="Plus only — Upgrade to download"
         className={`flex items-center justify-center transition-all border border-border/30 bg-card/40 text-muted-foreground hover:border-primary/30 hover:text-primary/60 ${sizeClasses} ${className}`}
       >
         <Lock className={size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} />

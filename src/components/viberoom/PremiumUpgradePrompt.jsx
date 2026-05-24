@@ -116,7 +116,7 @@ export default function PremiumUpgradePrompt({ open, onClose }) {
               {/* Benefits */}
               <ul className="space-y-1.5 mb-5">
                 {[
-                  "Premium Chat in the Vibe Room",
+                  "Plus Chat in the Vibe Room",
                   "Download tracks & listen offline",
                   "Watch full Academy videos",
                   "Build your My Vibe Library",
