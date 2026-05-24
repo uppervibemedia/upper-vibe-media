@@ -1,16 +1,15 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Copy, ExternalLink, Chrome, Check } from "lucide-react";
+import { X, Copy, Check } from "lucide-react";
 
 /**
  * Modal shown when a download is attempted inside TikTok/Instagram/Facebook in-app browser.
- * Guides the user to open the song page in Safari/Chrome for a real download.
+ * window.open() is blocked by TikTok — so we cannot programmatically open Safari.
+ * Instead: show manual instructions (··· → Open in Browser) + copy link button.
  */
 export default function InAppBrowserDownloadModal({ open, onClose, songUrl }) {
   const [copied, setCopied] = useState(false);
-  const [openBlocked, setOpenBlocked] = useState(false);
 
-  // Append downloadIntent so Safari knows to highlight the Download button
   const intentUrl = songUrl.includes("?")
     ? `${songUrl}&downloadIntent=true`
     : `${songUrl}?downloadIntent=true`;
@@ -18,8 +17,6 @@ export default function InAppBrowserDownloadModal({ open, onClose, songUrl }) {
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(intentUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
     } catch {
       const el = document.createElement("textarea");
       el.value = intentUrl;
@@ -27,17 +24,9 @@ export default function InAppBrowserDownloadModal({ open, onClose, songUrl }) {
       el.select();
       document.execCommand("copy");
       document.body.removeChild(el);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
     }
-  };
-
-  const handleOpenInBrowser = () => {
-    // Open the song page (with downloadIntent) — NOT the raw MP3
-    const w = window.open(intentUrl, "_blank");
-    if (!w || w.closed) {
-      setOpenBlocked(true);
-    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
   };
 
   return (
@@ -78,21 +67,56 @@ export default function InAppBrowserDownloadModal({ open, onClose, songUrl }) {
             </button>
 
             <div className="px-6 pt-5 pb-6">
-              {/* Icon */}
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
-                style={{ background: "rgba(0,160,220,0.12)", border: "1px solid rgba(0,160,220,0.3)" }}>
-                <Chrome className="w-6 h-6 text-cyan-400" />
-              </div>
-
-              <h2 className="font-heading font-black text-xl text-white mb-2">
+              <h2 className="font-heading font-black text-xl text-white mb-1">
                 Open in Safari to Download
               </h2>
-              <p className="text-sm text-white/45 leading-relaxed mb-6">
-                TikTok's browser can't download files. Open the song page in Safari, then tap <strong className="text-white/70">Download</strong> there to save the track.
+              <p className="text-sm text-white/45 leading-relaxed mb-5">
+                TikTok's browser can't download files. Follow these steps:
               </p>
 
-              {/* Actions */}
-              <div className="space-y-3">
+              {/* Step-by-step instructions */}
+              <div className="space-y-3 mb-6">
+                {/* Step 1 */}
+                <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-black mt-0.5"
+                    style={{ background: "rgba(0,160,220,0.2)", color: "#00A0DC", border: "1px solid rgba(0,160,220,0.3)" }}>1</span>
+                  <p className="text-sm text-white/70 leading-relaxed">
+                    Tap the <strong className="text-white">···</strong> menu at the bottom of your screen
+                  </p>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-black mt-0.5"
+                    style={{ background: "rgba(0,160,220,0.2)", color: "#00A0DC", border: "1px solid rgba(0,160,220,0.3)" }}>2</span>
+                  <p className="text-sm text-white/70 leading-relaxed">
+                    Tap <strong className="text-white">Open in browser</strong>
+                  </p>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-start gap-3 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-black mt-0.5"
+                    style={{ background: "rgba(0,160,220,0.2)", color: "#00A0DC", border: "1px solid rgba(0,160,220,0.3)" }}>3</span>
+                  <p className="text-sm text-white/70 leading-relaxed">
+                    Tap <strong className="text-white">Download</strong> on the song page in Safari
+                  </p>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 mb-5">
+                <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
+                <span className="text-xs text-white/25 font-semibold">OR</span>
+                <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
+              </div>
+
+              {/* Copy link fallback */}
+              <p className="text-xs text-white/35 text-center mb-3 leading-relaxed">
+                Copy this song link, open Safari manually, paste it, then tap Download.
+              </p>
+
+              <div className="space-y-2.5">
                 <button
                   onClick={handleCopyLink}
                   className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.98]"
@@ -102,31 +126,13 @@ export default function InAppBrowserDownloadModal({ open, onClose, songUrl }) {
                     color: copied ? "#4ade80" : "#00A0DC",
                   }}>
                   {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Song Link Copied!" : "Copy Song Link"}
+                  {copied ? "Link Copied!" : "Copy Song Link"}
                 </button>
-
-                <button
-                  onClick={handleOpenInBrowser}
-                  className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.98]"
-                  style={{
-                    background: "linear-gradient(135deg,rgba(0,128,184,0.9),rgba(0,160,220,0.85))",
-                    color: "#fff",
-                    boxShadow: "0 4px 16px rgba(0,160,220,0.2)",
-                  }}>
-                  <ExternalLink className="w-4 h-4" /> Open Song Page in Safari
-                </button>
-
-                {openBlocked && (
-                  <p className="text-center text-xs text-white/40 px-2 leading-relaxed mt-1">
-                    Tap the <strong className="text-white/60">•••</strong> menu and choose{" "}
-                    <strong className="text-white/60">Open in Browser</strong>
-                  </p>
-                )}
 
                 <button
                   onClick={onClose}
                   className="w-full py-2.5 text-sm font-semibold text-white/30 hover:text-white/60 transition-colors">
-                  Keep Browsing
+                  Cancel
                 </button>
               </div>
             </div>
