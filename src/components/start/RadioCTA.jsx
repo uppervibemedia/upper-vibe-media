@@ -214,7 +214,7 @@ export default function RadioCTA() {
                   <motion.button
                     onClick={handlePlayFeatured}
                     whileTap={{ scale: 0.9 }}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-black text-xs transition-all"
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg font-black transition-all"
                     style={{
                       background: featuredPlaying ? rgba(0.2) : `linear-gradient(135deg,rgba(${r},0.85),${primaryColor})`,
                       border: featuredPlaying ? `1px solid ${rgba(0.6)}` : "none",
@@ -222,12 +222,13 @@ export default function RadioCTA() {
                       boxShadow: `0 0 16px ${rgba(0.4)}`,
                       fontFamily: "var(--font-heading)",
                       letterSpacing: "0.04em",
+                      fontSize: "10px",
                       flexShrink: 0,
                     }}
                   >
                     {featuredPlaying
-                      ? <><Pause className="w-3 h-3" /> Playing</>
-                      : <><Play className="w-3 h-3 ml-0.5" /> Play Now</>}
+                      ? <><Pause className="w-2.5 h-2.5" /> Playing</>
+                      : <><Play className="w-2.5 h-2.5 ml-0.5" /> Play Now</>}
                   </motion.button>
                   <MusicBars color={primaryColor} active={featuredPlaying} />
                 </div>
