@@ -75,7 +75,7 @@ export default function DownloadToast({ track, onClose }) {
                     boxShadow: "0 0 16px rgba(0,160,220,0.35)",
                   }}
                 >
-                  <Zap className="w-3 h-3" /> Support Artist
+                  <Zap className="w-3 h-3" /> Support Upper Vibe Media
                 </button>
 
                 <button
