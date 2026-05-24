@@ -174,7 +174,7 @@ export default function RadioCTA() {
 
             {/* Cover art */}
             {featuredTrack.cover_url && (
-              <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 10" }}>
+              <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 7" }}>
                 <img
                   src={featuredTrack.cover_url}
                   alt={featuredTrack.title}
