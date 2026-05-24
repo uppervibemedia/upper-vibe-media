@@ -43,7 +43,7 @@ function MusicBars({ color = `rgb(${BLUE})`, active = false }) {
   );
 }
 
-// Small swipeable song card
+// Small song card — same sizing as YouTube secondary cards
 function SmallTrackCard({ track, isPlaying, onPlay }) {
   const [pressed, setPressed] = React.useState(false);
 
@@ -56,8 +56,9 @@ function SmallTrackCard({ track, isPlaying, onPlay }) {
       onClick={() => onPlay(track)}
       className="relative flex-shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.97]"
       style={{
-        width: 100,
-        height: 100,
+        width: "calc(50vw - 28px)",
+        maxWidth: 160,
+        aspectRatio: "1 / 1",
         background: "#111",
         border: isPlaying
           ? `1.5px solid rgba(${BLUE},0.7)`
@@ -74,10 +75,8 @@ function SmallTrackCard({ track, isPlaying, onPlay }) {
         </div>
       )}
 
-      {/* Dark gradient overlay */}
-      <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%)" }} />
+      <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 55%)" }} />
 
-      {/* Playing indicator */}
       {isPlaying && (
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
           <div style={{
@@ -90,7 +89,6 @@ function SmallTrackCard({ track, isPlaying, onPlay }) {
         </div>
       )}
 
-      {/* Hover play */}
       {!isPlaying && pressed && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div style={{
@@ -156,10 +154,10 @@ export default function RadioCTA() {
 
   return (
     <section
-      className="flex flex-col gap-3 rounded-3xl relative overflow-hidden"
+      className="flex flex-col gap-4 rounded-3xl relative overflow-hidden"
       style={{
         background: rgba(0.06),
-        border: `1px solid ${rgba(0.35)}`,
+        border: `1px solid ${rgba(0.4)}`,
         boxShadow: `0 0 24px rgba(${r},0.1)`,
       }}
     >
@@ -170,77 +168,87 @@ export default function RadioCTA() {
         zIndex: 0,
       }} />
 
-      <div className="relative z-10 flex flex-col gap-3 p-4">
+      <div className="relative z-10 flex flex-col gap-4 p-5">
 
-        {/* ── Featured Player Card ── */}
+        {/* Label */}
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: rgba(0.15), border: `1px solid ${rgba(0.35)}` }}>
+            <Radio style={{ width: 14, height: 14, color: primaryColor }} />
+          </div>
+          <span style={{
+            fontSize: "9px", fontWeight: 900, letterSpacing: "0.32em",
+            textTransform: "uppercase", color: rgba(0.9),
+            fontFamily: "var(--font-heading)",
+          }}>
+            Featured Music
+          </span>
+        </div>
+
+        {/* ── Featured Track — full width, same as YouTube main video ── */}
         {featuredTrack && (
           <div className="rounded-2xl overflow-hidden"
-            style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${rgba(0.3)}` }}>
+            style={{ background: "rgba(0,0,0,0.3)", border: `1px solid ${rgba(0.3)}` }}>
 
-            {/* Artwork + Info row */}
-            <div className="flex gap-3 p-3">
-              {/* Square artwork — fixed size, no overflow */}
-              <div className="flex-shrink-0 rounded-xl overflow-hidden"
-                style={{ width: 80, height: 80, background: rgba(0.1), border: `1px solid ${rgba(0.15)}` }}>
-                {featuredTrack.cover_url ? (
-                  <img src={featuredTrack.cover_url} alt={featuredTrack.title}
-                    loading="eager" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Music2 className="w-6 h-6" style={{ color: rgba(0.5) }} />
-                  </div>
-                )}
+            {/* Cover art — full width, same aspect ratio as YT main video */}
+            <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16/9" }}>
+              {featuredTrack.cover_url ? (
+                <img
+                  src={featuredTrack.cover_url}
+                  alt={featuredTrack.title}
+                  loading="eager"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center" style={{ background: rgba(0.08) }}>
+                  <Music2 className="w-10 h-10" style={{ color: rgba(0.4) }} />
+                </div>
+              )}
+
+              {/* Gradient overlay */}
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%)" }} />
+
+              {/* Play button overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <motion.button
+                  onClick={handlePlayFeatured}
+                  whileTap={{ scale: 0.9 }}
+                  className="flex items-center justify-center rounded-full transition-all"
+                  style={{
+                    width: 52, height: 52,
+                    background: featuredPlaying ? rgba(0.2) : "rgba(0,0,0,0.6)",
+                    border: `2px solid ${featuredPlaying ? primaryColor : "rgba(255,255,255,0.8)"}`,
+                    backdropFilter: "blur(6px)",
+                    boxShadow: featuredPlaying ? `0 0 24px ${rgba(0.6)}` : "0 4px 20px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  {featuredPlaying
+                    ? <Pause className="w-5 h-5" style={{ color: primaryColor }} />
+                    : <Play className="w-6 h-6 ml-1" style={{ color: "#fff" }} />}
+                </motion.button>
               </div>
 
-              {/* Info + controls */}
-              <div className="flex-1 min-w-0 flex flex-col justify-between">
-                {/* Top: label + badge */}
-                <div className="flex items-center justify-between gap-2">
-                  <span style={{ fontSize: "7px", fontWeight: 900, letterSpacing: "0.3em", textTransform: "uppercase", color: rgba(0.7), fontFamily: "var(--font-heading)" }}>
-                    Featured Track
-                  </span>
+              {/* Title + artist overlay at bottom */}
+              <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
+                <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem", lineHeight: 1.2 }}>
+                  {featuredTrack.title}
+                </p>
+                <p className="truncate mt-0.5 flex items-center gap-1.5" style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.6)" }}>
+                  {featuredTrack.artist_display || "Upper Vibe Media"}
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0"
-                    style={{ fontSize: "7px", fontWeight: 700, background: rgba(0.1), border: `1px solid ${rgba(0.2)}`, color: primaryColor }}>
+                    style={{ fontSize: "7px", fontWeight: 700, background: rgba(0.2), border: `1px solid ${rgba(0.4)}`, color: primaryColor }}>
                     <Waves className="w-2 h-2" />
                     {freqLabel}
                   </span>
-                </div>
-
-                {/* Title + artist */}
-                <div className="min-w-0">
-                  <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.85rem", lineHeight: 1.2 }}>
-                    {featuredTrack.title}
-                  </p>
-                  <p className="truncate mt-0.5" style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.45)" }}>
-                    {featuredTrack.artist_display || "Upper Vibe Media"}
-                  </p>
-                </div>
-
-                {/* Bottom: bars + play button */}
-                <div className="flex items-center justify-between">
-                  <MusicBars color={primaryColor} active={featuredPlaying} />
-                  <motion.button
-                    onClick={handlePlayFeatured}
-                    whileTap={{ scale: 0.9 }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
-                    style={{
-                      background: featuredPlaying ? rgba(0.15) : `linear-gradient(135deg,rgba(${r},0.75),${primaryColor})`,
-                      border: featuredPlaying ? `1px solid ${rgba(0.5)}` : "none",
-                      boxShadow: `0 0 16px ${rgba(featuredPlaying ? 0.3 : 0.5)}`,
-                    }}
-                  >
-                    {featuredPlaying
-                      ? <Pause className="w-3.5 h-3.5" style={{ color: primaryColor }} />
-                      : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />}
-                  </motion.button>
-                </div>
+                  {featuredPlaying && <MusicBars color={primaryColor} active />}
+                </p>
               </div>
             </div>
 
-            {/* Footer: Explore Library */}
-            <div className="px-3 pb-3">
+            {/* Explore Library button */}
+            <div className="px-3 py-2.5">
               <Link to="/music"
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-black tracking-wide transition-all active:scale-[0.97]"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black tracking-wide transition-all active:scale-[0.97]"
                 style={{ background: rgba(0.1), border: `1px solid ${rgba(0.25)}`, color: primaryColor, fontFamily: "var(--font-heading)" }}>
                 Explore Library →
               </Link>
@@ -248,10 +256,10 @@ export default function RadioCTA() {
           </div>
         )}
 
-        {/* ── Small song cards (3) ── */}
+        {/* ── Small song cards — same size as YouTube secondary cards ── */}
         {tracks.length > 0 && (
-          <div className="flex gap-2.5 overflow-x-auto"
-            style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
+          <div className="flex gap-3 overflow-x-auto pb-1"
+            style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none", paddingRight: "16px" }}>
             {tracks.map((track) => (
               <SmallTrackCard
                 key={track.id}
@@ -262,22 +270,6 @@ export default function RadioCTA() {
             ))}
           </div>
         )}
-
-        {/* ── Live Radio CTA ── */}
-        <Link
-          to="/radio"
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
-          style={{
-            background: `linear-gradient(135deg,${primaryColor},rgba(${r},0.7))`,
-            color: "#000",
-            fontFamily: "var(--font-heading)",
-            letterSpacing: "0.05em",
-            boxShadow: `0 4px 20px rgba(${r},0.35)`,
-          }}
-        >
-          <Radio style={{ width: 14, height: 14 }} />
-          Listen To Live Radio
-        </Link>
       </div>
     </section>
   );
