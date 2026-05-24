@@ -46,10 +46,15 @@ function MusicBars({ color = `rgb(${BLUE})`, active = false }) {
 // Small swipeable song card — tapping card navigates to song page, play icon plays directly
 function SmallTrackCard({ track, isPlaying, onPlay }) {
   const navigate = useNavigate();
+  const [hovered, setHovered] = React.useState(false);
 
   return (
     <div
       onClick={() => navigate(`/song/${track.id}`)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onTouchStart={() => setHovered(true)}
+      onTouchEnd={() => setTimeout(() => setHovered(false), 400)}
       className="relative flex-shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.97]"
       style={{
         width: 100,
@@ -71,26 +76,32 @@ function SmallTrackCard({ track, isPlaying, onPlay }) {
       )}
 
       {/* Dark gradient overlay */}
-      <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%)" }} />
+      <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 45%)" }} />
 
-      {/* Play button — stops propagation so it doesn't navigate */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onPlay(track); }}
-        className="absolute top-1.5 right-1.5 flex items-center justify-center transition-all active:scale-90"
-        style={{
-          width: 26, height: 26, borderRadius: "50%",
-          background: isPlaying ? `rgba(${BLUE},0.25)` : "rgba(0,0,0,0.6)",
-          border: isPlaying ? `1.5px solid rgba(${BLUE},0.7)` : "1px solid rgba(255,255,255,0.5)",
-          backdropFilter: "blur(4px)",
-        }}
-      >
-        {isPlaying
-          ? <MusicBars color={`rgb(${BLUE})`} active />
-          : <svg viewBox="0 0 24 24" fill="white" style={{ width: 9, height: 9, marginLeft: 1 }}><path d="M8 5v14l11-7z" /></svg>
-        }
-      </button>
+      {/* Play button — centered, only visible on hover/touch or when playing */}
+      {(hovered || isPlaying) && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onPlay(track); }}
+          className="absolute inset-0 flex items-center justify-center transition-all active:scale-90"
+          style={{ background: "rgba(0,0,0,0.25)", backdropFilter: "blur(2px)" }}
+        >
+          <div style={{
+            width: 36, height: 36, borderRadius: "50%",
+            background: isPlaying ? `rgba(${BLUE},0.3)` : "rgba(0,0,0,0.7)",
+            border: isPlaying ? `1.5px solid rgba(${BLUE},0.85)` : "1.5px solid rgba(255,255,255,0.85)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            backdropFilter: "blur(6px)",
+            boxShadow: isPlaying ? `0 0 14px rgba(${BLUE},0.5)` : "0 2px 12px rgba(0,0,0,0.5)",
+          }}>
+            {isPlaying
+              ? <MusicBars color={`rgb(${BLUE})`} active />
+              : <svg viewBox="0 0 24 24" fill="white" style={{ width: 12, height: 12, marginLeft: 2 }}><path d="M8 5v14l11-7z" /></svg>
+            }
+          </div>
+        </button>
+      )}
 
-      <p className="absolute bottom-1.5 left-2 right-8 text-white truncate"
+      <p className="absolute bottom-1.5 left-2 right-2 text-white truncate"
         style={{ fontSize: "9px", fontWeight: 700, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>
         {track.title}
       </p>
@@ -259,20 +270,7 @@ export default function RadioCTA() {
           </div>
         )}
 
-        {/* ── Upgrade to Plus CTA ── */}
-        <Link
-          to="/membership"
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
-          style={{
-            background: "linear-gradient(135deg,#0090C8,#00C8F0)",
-            color: "#000",
-            fontFamily: "var(--font-heading)",
-            letterSpacing: "0.06em",
-            boxShadow: "0 4px 28px rgba(0,160,220,0.45), 0 2px 8px rgba(0,0,0,0.3)",
-          }}
-        >
-          ⚡ Upgrade to Plus — $4.99/mo
-        </Link>
+
       </div>
     </section>
   );

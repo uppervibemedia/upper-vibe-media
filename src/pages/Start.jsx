@@ -70,7 +70,7 @@ function PremiumWelcome() {
             Welcome Back To Your<br /><span style={{ color: "#00A0DC" }}>Vibe Library</span>
           </h1>
           <p style={{ fontSize: "0.9rem", lineHeight: 1.65, color: "rgba(255,255,255,0.45)" }}>
-            Your Premium downloads and saved frequency collection are ready.
+            Your Plus downloads and saved frequency collection are ready.
           </p>
         </div>
         <div className="w-full flex flex-col gap-3 mt-2">
@@ -230,7 +230,7 @@ export default function Start() {
               <span style={{ color: "#00A0DC" }}>Download Everything</span> for $4.99/month.
             </h1>
             <p style={{ fontSize: "0.875rem", lineHeight: 1.65, color: "rgba(255,255,255,0.45)", maxWidth: "24rem", margin: "0 auto" }}>
-              Listen to Upper Vibe Media free anytime. Upgrade to Premium to download every song, save your favorite tracks, and keep the frequency with you offline.
+              Listen to Upper Vibe Media free anytime. Upgrade to Plus to download every song, save your favorite tracks, and keep the frequency with you offline.
             </p>
           </div>
 
@@ -314,7 +314,7 @@ export default function Start() {
           ))}
         </section>
 
-        {/* ── FREE vs PREMIUM COMPARISON ── */}
+        {/* ── FREE vs PLUS COMPARISON ── */}
         <section className="flex flex-col gap-4">
           <p className="text-[9px] font-black tracking-[0.3em] uppercase text-center" style={{ color: `rgba(${PRIMARY},0.6)` }}>
             Free vs Plus
