@@ -220,6 +220,9 @@ export default function Start() {
             </div>
           </div>
 
+          {/* Featured player card — at the top */}
+          <RadioCTA />
+
           {/* Headline */}
           <div>
             <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.45rem, 6vw, 2rem)", fontWeight: 900, lineHeight: 1.15, color: "#fff", marginBottom: "0.6rem" }}>
@@ -266,9 +269,6 @@ export default function Start() {
             </Link>
           </div>
         </section>
-
-        {/* ── RADIO CTA ── */}
-        <RadioCTA />
 
         {/* ── YOUTUBE CTA ── */}
         <YouTubeCTA />
