@@ -102,6 +102,7 @@ export default function YouTubeCTA() {
   const [secondaryVideos, setSecondaryVideos] = useState([]);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
     base44.entities.AppSettings.filter({ key: "youtube_playlist_url" }).then((rows) => {
       if (rows?.[0]?.value) setPlaylistUrl(rows[0].value);
     });
@@ -129,6 +130,8 @@ export default function YouTubeCTA() {
       if (ordered.length > 0) setMainVideo(ordered[0]);
       if (ordered.length > 1) setSecondaryVideos(ordered.slice(1, 5));
     });
+    }, 600);
+    return () => clearTimeout(timer);
   }, []);
 
   const r = RED;

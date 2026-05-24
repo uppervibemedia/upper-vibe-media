@@ -116,6 +116,7 @@ export default function RadioCTA() {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
 
   useEffect(() => {
+    const timer = setTimeout(() => {
     Promise.all([
       base44.entities.AppSettings.filter({ key: "start_featured_track_id" }),
       base44.entities.Track.filter({ status: "published" }, "-release_date", 10),
@@ -128,6 +129,8 @@ export default function RadioCTA() {
       const withMedia = recent.filter((t) => (t.audio_url || t.cover_url) && t.id !== featured?.id);
       setTracks(withMedia.slice(0, 3));
     }).catch(() => {});
+    }, 300);
+    return () => clearTimeout(timer);
   }, []);
 
   const handlePlayFeatured = () => {
