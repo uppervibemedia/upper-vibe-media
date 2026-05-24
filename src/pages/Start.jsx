@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import FeaturedTrackPlayer from "@/components/start/FeaturedTrackPlayer";
 import MusicStack from "@/components/start/MusicStack";
 import YouTubeCTA from "@/components/start/YouTubeCTA";
+import RadioCTA from "@/components/start/RadioCTA";
 
 const PRIMARY = "0,160,220";
 const GOLD = "212,168,67";
@@ -296,6 +297,9 @@ export default function Start() {
             </Link>
           </div>
         </section>
+
+        {/* ── RADIO CTA ── */}
+        <RadioCTA />
 
         {/* ── YOUTUBE CTA ── */}
         <YouTubeCTA />

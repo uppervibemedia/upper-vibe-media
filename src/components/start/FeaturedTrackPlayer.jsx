@@ -10,16 +10,16 @@ import { RADIO_THEMES } from "../radio/RadioThemePicker";
 const DEFAULT_FEATURED_TITLE = "Fourth Dimension Hustler";
 const DEFAULT_FEATURED_ARTIST = "Montae DeVine";
 
-// Music bars — only animate when playing
+// Music bars — always animate (shows motion even before play)
 function MusicBars({ color = "#00A0DC", active = false }) {
   return (
     <>
-      {active && <style>{`
+      <style>{`
         @keyframes uvBar1 { 0%,100% { height: 4px } 50% { height: 14px } }
         @keyframes uvBar2 { 0%,100% { height: 10px } 50% { height: 4px } }
         @keyframes uvBar3 { 0%,100% { height: 6px } 50% { height: 13px } }
         @keyframes uvBar4 { 0%,100% { height: 12px } 50% { height: 5px } }
-      `}</style>}
+      `}</style>
       <span style={{ display: "inline-flex", alignItems: "flex-end", gap: "3px", height: "18px" }}>
         {[
           { anim: "uvBar1", delay: "0s" },
@@ -35,8 +35,9 @@ function MusicBars({ color = "#00A0DC", active = false }) {
               borderRadius: "2px",
               background: color,
               height: "6px",
-              animation: active ? `${anim} 0.65s ease-in-out infinite` : "none",
-              animationDelay: active ? delay : "0s",
+              animation: `${anim} ${active ? "0.65s" : "1.8s"} ease-in-out infinite`,
+              animationDelay: delay,
+              opacity: active ? 1 : 0.45,
             }}
           />
         ))}
