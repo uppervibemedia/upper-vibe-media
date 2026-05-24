@@ -227,54 +227,70 @@ export default function RadioCTA() {
               </span>
             </div>
 
-            {/* Track row */}
-            <div className="flex items-center gap-3 px-3 pb-3">
-              {/* Artwork */}
-              <div className="flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center relative"
-                style={{ width: 64, height: 64, background: rgba(0.1), border: `1px solid rgba(${r},0.2)` }}>
-                {featuredTrack.cover_url ? (
-                  <img src={featuredTrack.cover_url} alt={featuredTrack.title} loading="eager" className="w-full h-full object-cover" />
-                ) : (
-                  <Music2 className="w-5 h-5" style={{ color: rgba(0.5) }} />
-                )}
-                {featuredPlaying && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-xl"
-                    style={{ background: "rgba(0,0,0,0.45)" }}>
-                    <Waves className="w-3 h-3 animate-pulse" style={{ color: primaryColor }} />
-                  </div>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.8rem" }}>
-                  {featuredTrack.title}
-                </p>
-                <p className="truncate mt-0.5" style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.42)" }}>
-                  {featuredTrack.artist_display || "Upper Vibe Media"}
-                </p>
-                <div className="mt-1.5">
-                  <MusicBars color={primaryColor} active={featuredPlaying} />
+            {/* Cover art — full width hero */}
+            {featuredTrack.cover_url && (
+              <div className="relative w-full overflow-hidden" style={{ aspectRatio: "1 / 1", maxHeight: 220 }}>
+                <img
+                  src={featuredTrack.cover_url}
+                  alt={featuredTrack.title}
+                  loading="eager"
+                  className="w-full h-full object-cover"
+                />
+                {/* Gradient fade into card bottom */}
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%)" }} />
+                {/* Title overlay on art */}
+                <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
+                  <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem" }}>
+                    {featuredTrack.title}
+                  </p>
+                  <p className="truncate mt-0.5" style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.55)" }}>
+                    {featuredTrack.artist_display || "Upper Vibe Media"}
+                  </p>
                 </div>
               </div>
+            )}
 
-              {/* Play button */}
-              <motion.button
-                onClick={handlePlayFeatured}
-                whileTap={{ scale: 0.92 }}
-                className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all"
-                style={{
-                  background: featuredPlaying
-                    ? rgba(0.15)
-                    : `linear-gradient(135deg,rgba(${r},0.7),${primaryColor})`,
-                  border: featuredPlaying ? `1px solid rgba(${r},0.5)` : "none",
-                  boxShadow: `0 0 18px rgba(${r},${featuredPlaying ? 0.35 : 0.45})`,
-                }}
-              >
-                {featuredPlaying
-                  ? <Pause className="w-4 h-4" style={{ color: primaryColor }} />
-                  : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />}
-              </motion.button>
+            {/* Controls row */}
+            <div className="flex items-center gap-3 px-3 pb-3" style={{ marginTop: featuredTrack.cover_url ? 0 : 0 }}>
+              {/* Music icon placeholder if no cover */}
+              {!featuredTrack.cover_url && (
+                <div className="flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
+                  style={{ width: 56, height: 56, background: rgba(0.1), border: `1px solid rgba(${r},0.2)` }}>
+                  <Music2 className="w-5 h-5" style={{ color: rgba(0.5) }} />
+                </div>
+              )}
+              {!featuredTrack.cover_url && (
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.8rem" }}>
+                    {featuredTrack.title}
+                  </p>
+                  <p className="truncate mt-0.5" style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.42)" }}>
+                    {featuredTrack.artist_display || "Upper Vibe Media"}
+                  </p>
+                </div>
+              )}
+              {featuredTrack.cover_url && <div className="flex-1" />}
+
+              {/* Bars + play */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <MusicBars color={primaryColor} active={featuredPlaying} />
+                <motion.button
+                  onClick={handlePlayFeatured}
+                  whileTap={{ scale: 0.92 }}
+                  className="w-11 h-11 rounded-full flex items-center justify-center transition-all"
+                  style={{
+                    background: featuredPlaying
+                      ? rgba(0.15)
+                      : `linear-gradient(135deg,rgba(${r},0.7),${primaryColor})`,
+                    border: featuredPlaying ? `1px solid rgba(${r},0.5)` : "none",
+                    boxShadow: `0 0 18px rgba(${r},${featuredPlaying ? 0.35 : 0.45})`,
+                  }}
+                >
+                  {featuredPlaying
+                    ? <Pause className="w-4 h-4" style={{ color: primaryColor }} />
+                    : <Play className="w-5 h-5 ml-0.5" style={{ color: "#000" }} />}
+                </motion.button>
+              </div>
             </div>
 
             {/* Footer */}
