@@ -71,7 +71,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                   <p className="text-[10px] text-white/40 truncate mt-0.5">{track.artist_display || "Upper Vibe Media"}</p>
                   <div className="flex items-center justify-between mt-2">
                     <span className="inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full"
-                      style={{ background: "rgba(0,200,220,0.1)", border: "1px solid rgba(0,200,220,0.2)", color: "#00C9E0" }}>
+                      style={{ background: "rgba(0,160,220,0.1)", border: "1px solid rgba(0,160,220,0.2)", color: "#00A0DC" }}>
                       <Waves className="w-2 h-2" /> 432
                     </span>
                     <div className="flex items-center gap-0.5" onClick={(e) => e.preventDefault()}>
