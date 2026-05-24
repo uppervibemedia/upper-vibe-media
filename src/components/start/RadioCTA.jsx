@@ -172,77 +172,69 @@ export default function RadioCTA() {
           <div className="rounded-2xl overflow-hidden"
             style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${rgba(0.3)}` }}>
 
-            {/* Cover art */}
-            {featuredTrack.cover_url && (
-              <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 7" }}>
-                <img
-                  src={featuredTrack.cover_url}
-                  alt={featuredTrack.title}
-                  loading="eager"
-                  className="w-full h-full object-cover"
-                />
-                {/* Gradient overlay */}
-                <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 35%, rgba(0,0,0,0.88) 100%)" }} />
+            {/* Music card layout — square art + info side by side */}
+            <div className="flex items-center gap-3 p-3">
+              {/* Square album art */}
+              <div className="flex-shrink-0 rounded-xl overflow-hidden relative"
+                style={{ width: 88, height: 88, background: rgba(0.1), border: `1px solid ${rgba(0.2)}` }}>
+                {featuredTrack.cover_url ? (
+                  <img
+                    src={featuredTrack.cover_url}
+                    alt={featuredTrack.title}
+                    loading="eager"
+                    className="w-full h-full"
+                    style={{ objectFit: "cover", objectPosition: "center top" }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Music2 className="w-6 h-6" style={{ color: rgba(0.5) }} />
+                  </div>
+                )}
+              </div>
 
-                {/* 432 Hz badge top-right */}
-                <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-1 rounded-full"
-                  style={{ fontSize: "8px", fontWeight: 800, background: "rgba(0,0,0,0.55)", border: `1px solid ${rgba(0.4)}`, color: primaryColor, backdropFilter: "blur(6px)" }}>
-                  <Waves className="w-2.5 h-2.5" />
-                  {freqLabel}
-                </span>
-
-                {/* Title + artist + controls overlaid at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
-                  <p className="font-black text-white" style={{ fontFamily: "var(--font-heading)", fontSize: "1rem", lineHeight: 1.2, marginBottom: "2px" }}>
+              {/* Info + controls */}
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                {/* Badge + title + artist */}
+                <div>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full mb-1"
+                    style={{ fontSize: "8px", fontWeight: 800, background: rgba(0.1), border: `1px solid ${rgba(0.3)}`, color: primaryColor }}>
+                    <Waves className="w-2 h-2" />
+                    {freqLabel}
+                  </span>
+                  <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.95rem", lineHeight: 1.2 }}>
                     {featuredTrack.title}
                   </p>
-                  <p style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.55)", marginBottom: "12px" }}>
+                  <p className="truncate" style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>
                     {featuredTrack.artist_display || "Upper Vibe Media"}
                   </p>
+                </div>
 
-                  {/* Controls row */}
-                  <div className="flex items-center gap-3">
-                    <motion.button
-                      onClick={handlePlayFeatured}
-                      whileTap={{ scale: 0.9 }}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all"
-                      style={{
-                        background: featuredPlaying ? rgba(0.2) : `linear-gradient(135deg,rgba(${r},0.85),${primaryColor})`,
-                        border: featuredPlaying ? `1px solid ${rgba(0.6)}` : "none",
-                        color: featuredPlaying ? primaryColor : "#000",
-                        boxShadow: `0 0 20px ${rgba(0.45)}`,
-                        fontFamily: "var(--font-heading)",
-                        letterSpacing: "0.04em",
-                      }}
-                    >
-                      {featuredPlaying
-                        ? <><Pause className="w-3.5 h-3.5" /> Playing</>
-                        : <><Play className="w-3.5 h-3.5 ml-0.5" /> Play Now</>}
-                    </motion.button>
-                    <MusicBars color={primaryColor} active={featuredPlaying} />
-                  </div>
+                {/* Play button + bars */}
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    onClick={handlePlayFeatured}
+                    whileTap={{ scale: 0.9 }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-black text-xs transition-all"
+                    style={{
+                      background: featuredPlaying ? rgba(0.2) : `linear-gradient(135deg,rgba(${r},0.85),${primaryColor})`,
+                      border: featuredPlaying ? `1px solid ${rgba(0.6)}` : "none",
+                      color: featuredPlaying ? primaryColor : "#000",
+                      boxShadow: `0 0 16px ${rgba(0.4)}`,
+                      fontFamily: "var(--font-heading)",
+                      letterSpacing: "0.04em",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {featuredPlaying
+                      ? <><Pause className="w-3 h-3" /> Playing</>
+                      : <><Play className="w-3 h-3 ml-0.5" /> Play Now</>}
+                  </motion.button>
+                  <MusicBars color={primaryColor} active={featuredPlaying} />
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* No-cover fallback row */}
-            {!featuredTrack.cover_url && (
-              <div className="flex items-center gap-3 p-4">
-                <div className="flex-shrink-0 rounded-xl flex items-center justify-center"
-                  style={{ width: 64, height: 64, background: rgba(0.1), border: `1px solid ${rgba(0.2)}` }}>
-                  <Music2 className="w-6 h-6" style={{ color: rgba(0.5) }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.9rem" }}>{featuredTrack.title}</p>
-                  <p className="truncate mt-0.5" style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)" }}>{featuredTrack.artist_display || "Upper Vibe Media"}</p>
-                </div>
-                <motion.button onClick={handlePlayFeatured} whileTap={{ scale: 0.9 }}
-                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: `linear-gradient(135deg,rgba(${r},0.75),${primaryColor})`, boxShadow: `0 0 16px ${rgba(0.45)}` }}>
-                  {featuredPlaying ? <Pause className="w-4 h-4" style={{ color: primaryColor }} /> : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />}
-                </motion.button>
-              </div>
-            )}
+
 
             {/* Explore Library footer */}
             <div className="px-3 pb-3 pt-2">
