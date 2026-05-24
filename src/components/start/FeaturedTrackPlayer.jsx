@@ -188,7 +188,7 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
         <div className="flex items-center gap-4 px-4 pb-4">
           {/* Artwork */}
           <div
-            className="flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center relative"
+            className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden flex items-center justify-center relative"
             style={{ background: primaryRgba(0.1), border: `1px solid ${primaryRgba(0.2)}` }}
           >
             {displayCover ? (
