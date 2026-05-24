@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, X, Crown, Library, MessageCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import FeaturedTrackPlayer from "@/components/start/FeaturedTrackPlayer";
 import MusicStack from "@/components/start/MusicStack";
 import YouTubeCTA from "@/components/start/YouTubeCTA";
 import RadioCTA from "@/components/start/RadioCTA";
@@ -105,17 +104,16 @@ export default function Start() {
   const [saving, setSaving] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [stackTracks, setStackTracks] = useState([]);
-  const [featuredTrackId, setFeaturedTrackId] = useState(null);
   const navigate = useNavigate();
   const { isAuthenticated, isLoadingAuth, isPlus, isAdmin, navigateToLogin } = useAuth();
 
-  // Load next tracks for the music stack — newest published, excluding the featured track
+  // Load next tracks for the music stack
   useEffect(() => {
     base44.entities.Track.filter({ status: "published" }, "-release_date", 8).then((all) => {
-      const withAudio = all.filter((t) => t.audio_url && t.id !== featuredTrackId);
+      const withAudio = all.filter((t) => t.audio_url);
       setStackTracks(withAudio.slice(0, 4));
     }).catch(() => {});
-  }, [featuredTrackId]);
+  }, []);
 
   // Routing: only redirect non-admin free/plus users away from the sales page
   useEffect(() => {
@@ -231,10 +229,7 @@ export default function Start() {
             </div>
           </div>
 
-          {/* Featured Track Player */}
-          <FeaturedTrackPlayer onTrackLoaded={(t) => setFeaturedTrackId(t.id)} />
-
-          {/* Small song cards — directly under the player */}
+          {/* Small song cards */}
           {stackTracks.length > 0 && <MusicStack tracks={stackTracks} />}
 
           {/* Headline */}
