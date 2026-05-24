@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, ChevronLeft, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
@@ -26,6 +26,7 @@ export default function MyVibes() {
   const rgb = accent.rgb; // e.g. "0,229,255"
   const navigate = useNavigate();
   const [downloadToast, setDownloadToast] = useState(null);
+  const [downloadIosMode, setDownloadIosMode] = useState(false);
   const [upgradeModal, setUpgradeModal] = useState(false);
 
   useEffect(() => {
@@ -58,7 +59,8 @@ export default function MyVibes() {
     }
     if (!track.audio_url) return;
     recordUserDownload(user, track).catch(() => {});
-    triggerBrowserDownload(track.audio_url, track.title);
+    const method = await triggerBrowserDownload(track.audio_url, track.title);
+    setDownloadIosMode(method === "anchor" && isIOS());
     setDownloadToast(track);
   };
 
@@ -366,7 +368,7 @@ export default function MyVibes() {
 
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
-      <DownloadToast track={downloadToast} onClose={() => setDownloadToast(null)} />
+      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} />
     </div>
   );
 }

@@ -79,9 +79,14 @@ export default function Sidebar() {
         </Link>
         <div className="flex items-center gap-2">
           {/* My Vibe Library shortcut */}
-          <Link
-            to="/my-vibes"
-            onClick={(e) => { if (!isAuthenticated) { e.preventDefault(); navigateToLogin(window.location.origin + "/my-vibes"); } }}
+          <button
+            onClick={() => {
+              if (isAuthenticated) {
+                navigate("/my-vibes");
+              } else {
+                navigateToLogin(window.location.origin + "/my-vibes");
+              }
+            }}
             className="flex items-center gap-1.5 px-3 rounded-lg border transition-all"
             style={{
               background: `rgba(${radioThemeColor},0.12)`,
@@ -92,12 +97,13 @@ export default function Sidebar() {
               touchAction: "manipulation",
               WebkitTapHighlightColor: "transparent",
               position: "relative",
-              zIndex: 10,
+              zIndex: 60,
+              cursor: "pointer",
             }}>
             <Heart className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="hidden sm:inline text-[11px] font-semibold whitespace-nowrap">My Vibe Library</span>
             <span className="sm:hidden text-[11px] font-semibold whitespace-nowrap">Library</span>
-          </Link>
+          </button>
 
           {/* Account / Login */}
           {isAuthenticated && user ? (

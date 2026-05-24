@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Play, Pause, Download, Waves, Music4, Heart, Zap, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
 import { usePlayer } from "../context/PlayerContext";
 import { recordPlay } from "../components/home/DiscoverTab";
 import { useAuth } from "@/lib/AuthContext";
@@ -20,6 +20,7 @@ export default function NewestMusic() {
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
   const [downloadToast, setDownloadToast] = useState(null);
+  const [downloadIosMode, setDownloadIosMode] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus, isAdmin } = useAuth();
   const isPremium = isPlus || isAdmin;
@@ -36,7 +37,8 @@ export default function NewestMusic() {
     }
     if (!track.audio_url) return;
     recordUserDownload(user, track).catch(() => {});
-    triggerBrowserDownload(track.audio_url, track.title);
+    const method = await triggerBrowserDownload(track.audio_url, track.title);
+    setDownloadIosMode(method === "anchor" && isIOS());
     setDownloadToast(track);
   };
 
@@ -188,7 +190,7 @@ export default function NewestMusic() {
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
-      <DownloadToast track={downloadToast} onClose={() => setDownloadToast(null)} />
+      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} />
     </div>
   );
 }

@@ -14,7 +14,8 @@ import SupportModal from "../components/shared/SupportModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
-import { recordUserDownload } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
+import DownloadToast from "@/components/shared/DownloadToast";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
@@ -112,6 +113,8 @@ export default function SongPage() {
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [vizPlaying, setVizPlaying] = useState(false);
+  const [downloadToast, setDownloadToast] = useState(null);
+  const [downloadIosMode, setDownloadIosMode] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus: isAuthPlus, isAdmin: isAuthAdmin } = useAuth();
   const isPlus = isAuthPlus || isAuthAdmin;
@@ -170,29 +173,11 @@ export default function SongPage() {
 
   const handleDownload = async () => {
     if (!track?.audio_url) return;
-    // Record to UserDownload (no-duplicate guard inside)
     if (user) recordUserDownload(user, track).catch(() => {});
-    try {
-      const response = await fetch(track.audio_url);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      const safeName = `${track.title || "song"}${track.artist_display ? " - " + track.artist_display : ""}.mp3`.replace(/[/\\?%*:|"<>]/g, "");
-      a.download = safeName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      const a = document.createElement("a");
-      a.href = track.audio_url;
-      a.download = `${track.title || "song"}.mp3`;
-      a.target = "_self";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
+    const filename = `${track.title || "song"}${track.artist_display ? " - " + track.artist_display : ""}`;
+    const method = await triggerBrowserDownload(track.audio_url, filename);
+    setDownloadIosMode(method === "anchor" && isIOS());
+    setDownloadToast(track);
   };
 
   // ── Dynamic OG / page meta ───────────────────────────────────────────────
@@ -488,6 +473,7 @@ export default function SongPage() {
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <SupportModal open={supportModal} onClose={() => setSupportModal(false)} track={track} />
       <IOSTip trigger="always" />
+      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} />
 
       {/* Support success banner */}
       <AnimatePresence>

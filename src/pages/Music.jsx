@@ -15,7 +15,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import IOSTip from "../components/shared/iOSTip";
 import DownloadToast from "../components/shared/DownloadToast";
-import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
+import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
 
 const GENRE_TYPES = ["genre", "mood", "editorial", "frequency"];
 const PAGE_SIZE = 20;
@@ -48,6 +48,7 @@ export default function Music() {
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
   const [downloadToast, setDownloadToast] = useState(null);
+  const [downloadIosMode, setDownloadIosMode] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
@@ -250,7 +251,8 @@ export default function Music() {
                         if (!isPremium) { setUpgradeModal(true); return; }
                         if (!track.audio_url) return;
                         recordUserDownload(user, track).catch(() => {});
-                        triggerBrowserDownload(track.audio_url, track.title);
+                        const method = await triggerBrowserDownload(track.audio_url, track.title);
+                        setDownloadIosMode(method === "anchor" && isIOS());
                         setDownloadToast(track);
                       }}
                     />
@@ -280,7 +282,7 @@ export default function Music() {
 
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
-      <DownloadToast track={downloadToast} onClose={() => setDownloadToast(null)} />
+      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} />
       <IOSTip trigger="on-play" isPlaying={isPlaying} />
     </PullToRefresh>
   );

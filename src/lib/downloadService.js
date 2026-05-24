@@ -1,7 +1,7 @@
 /**
  * Download Service — permission logic and download actions.
  *
- * Rule: Only Premium/Admin users can download.
+ * Rule: Only Plus/Admin users can download.
  * Also writes to UserDownload entity for "My Downloads" page.
  */
 import { base44 } from "@/api/base44Client";
@@ -86,32 +86,63 @@ export async function getUserDownloads(userEmail) {
 }
 
 /**
- * Trigger a true browser download (fetch → blob → save).
- * This forces the file to save directly to the user's device
- * rather than opening in a new tab.
+ * Detect iOS (iPhone/iPad) — Safari and in-app browsers (TikTok, Instagram, etc.)
+ */
+export function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) || 
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+/**
+ * Trigger a browser download.
+ *
+ * Strategy:
+ *  1. Try fetch → blob → objectURL (works on Android, desktop, Firefox).
+ *  2. If fetch fails (CORS, network) or we're on iOS, fall back to anchor with download attr.
+ *  3. On iOS the browser will open the file inline — caller should show a tip after calling this.
+ *
+ * Returns: "blob" | "anchor" | "error"
  */
 export async function triggerBrowserDownload(fileUrl, filename) {
+  const safeFilename = (filename || "download").replace(/[/\\?%*:|"<>]/g, "") + ".mp3";
+
+  // On iOS, skip the fetch attempt entirely — it will fail with CORS or open a blank page.
+  // Just use the anchor approach directly.
+  if (isIOS()) {
+    _anchorDownload(fileUrl, safeFilename);
+    return "anchor";
+  }
+
+  // Desktop / Android: try blob fetch first for a true save dialog
   try {
-    const response = await fetch(fileUrl);
-    if (!response.ok) throw new Error("Fetch failed");
+    const response = await fetch(fileUrl, { mode: "cors" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const blob = await response.blob();
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = blobUrl;
-    a.download = filename ? `${filename}.mp3` : "download.mp3";
+    a.download = safeFilename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+    return "blob";
   } catch {
-    // Fallback: open directly (some browsers restrict cross-origin blobs)
-    const a = document.createElement("a");
-    a.href = fileUrl;
-    a.download = filename ? `${filename}.mp3` : "download.mp3";
-    a.target = "_blank";
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // Fallback: anchor download (browser may open inline if CORS blocks download attr)
+    _anchorDownload(fileUrl, safeFilename);
+    return "anchor";
   }
+}
+
+function _anchorDownload(fileUrl, filename) {
+  const a = document.createElement("a");
+  a.href = fileUrl;
+  a.download = filename;
+  // Do NOT use target="_blank" — that opens the audio URL as a page (black screen)
+  // target="_self" on iOS will open the audio inline in Safari — acceptable
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
