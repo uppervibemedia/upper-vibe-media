@@ -85,14 +85,33 @@ export async function getUserDownloads(userEmail) {
   return base44.entities.Download.filter({ user_email: userEmail }, "-created_date", 200);
 }
 
-/** Trigger a browser download for a file URL */
-export function triggerBrowserDownload(fileUrl, filename) {
-  const a = document.createElement("a");
-  a.href = fileUrl;
-  a.download = filename || "download";
-  a.target = "_blank";
-  a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+/**
+ * Trigger a true browser download (fetch → blob → save).
+ * This forces the file to save directly to the user's device
+ * rather than opening in a new tab.
+ */
+export async function triggerBrowserDownload(fileUrl, filename) {
+  try {
+    const response = await fetch(fileUrl);
+    if (!response.ok) throw new Error("Fetch failed");
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename ? `${filename}.mp3` : "download.mp3";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+  } catch {
+    // Fallback: open directly (some browsers restrict cross-origin blobs)
+    const a = document.createElement("a");
+    a.href = fileUrl;
+    a.download = filename ? `${filename}.mp3` : "download.mp3";
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 }

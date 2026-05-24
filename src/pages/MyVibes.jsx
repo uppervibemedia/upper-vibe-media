@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, Lock, ChevronLeft, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
@@ -43,6 +44,17 @@ export default function MyVibes() {
   const handlePlay = (track) => {
     if (currentTrack?.id === track.id) togglePlay();
     else playTrack(track);
+  };
+
+  const handleDownload = async (track, e) => {
+    e.stopPropagation();
+    if (!isPremium) {
+      navigate(`/song/${track.id}`);
+      return;
+    }
+    if (!track.audio_url) return;
+    await recordUserDownload(user, track);
+    await triggerBrowserDownload(track.audio_url, track.title);
   };
 
   // Not logged in
@@ -256,23 +268,16 @@ export default function MyVibes() {
                             </button>
 
                             {/* Download MP3 */}
-                            {isPremium ? (
-                              <a href={track.audio_url} download={`${track.title}.mp3`}
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                                style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
-                                title="Download MP3" onClick={(e) => e.stopPropagation()}>
-                                <Download className="w-3 h-3" />
-                                <span className="hidden sm:inline">Download MP3</span>
-                              </a>
-                            ) : (
-                              <Link to={`/song/${track.id}`}
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:scale-105"
-                                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
-                                title="Plus download — Upgrade to unlock">
-                                <Lock className="w-3 h-3" />
-                                <span className="hidden sm:inline">Download MP3</span>
-                              </Link>
-                            )}
+                            <button
+                              onClick={(e) => handleDownload(track, e)}
+                              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+                              style={isPremium && track.audio_url
+                                ? { background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }
+                                : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
+                              title={isPremium ? "Download MP3" : "Go to song page to download"}>
+                              {isPremium ? <Download className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                              <span className="hidden sm:inline">{isPremium ? "Download MP3" : "Get Plus"}</span>
+                            </button>
 
                             {/* Remove heart */}
                             <button onClick={() => toggle("track", track.id)}

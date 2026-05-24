@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, Download, Waves, Music4, Lock, Heart, Zap, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 import { usePlayer } from "../context/PlayerContext";
 import { recordPlay } from "../components/home/DiscoverTab";
 import { useAuth } from "@/lib/AuthContext";
@@ -23,6 +24,18 @@ export default function NewestMusic() {
   const { isFaved, toggle } = useFavorites(user?.email);
   const { accent } = useTheme();
   const rgb = accent.rgb;
+  const navigate = useNavigate();
+
+  const handleDownload = async (track, e) => {
+    e.stopPropagation();
+    if (!isPremium) {
+      navigate(`/song/${track.id}`);
+      return;
+    }
+    if (!track.audio_url) return;
+    await recordUserDownload(user, track);
+    await triggerBrowserDownload(track.audio_url, track.title);
+  };
 
   useEffect(() => {
     base44.entities.Track.filter({ status: "published" }, "-created_date", 10)
@@ -127,28 +140,15 @@ export default function NewestMusic() {
                     </button>
 
                     {/* Download */}
-                    {isPremium ? (
-                      track.audio_url ? (
-                        <a href={track.audio_url} download={`${track.title}.mp3`}
-                          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                          style={{ background: "rgba(180,100,20,0.18)", border: "1px solid rgba(180,100,20,0.5)", color: "#C47820" }}
-                          onClick={(e) => e.stopPropagation()} title="Download">
-                          <Download className="w-3.5 h-3.5" />
-                        </a>
-                      ) : (
-                        <span className="w-9 h-9 rounded-xl flex items-center justify-center opacity-30 cursor-not-allowed"
-                          style={{ border: "1px solid rgba(180,100,20,0.3)", color: "#C47820" }}>
-                          <Download className="w-3.5 h-3.5" />
-                        </span>
-                      )
-                    ) : (
-                      <button onClick={() => setUpgradeModal(true)}
-                        className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
-                        title="Premium download">
-                        <Lock className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => handleDownload(track, e)}
+                      className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                      style={isPremium && track.audio_url
+                        ? { background: "rgba(180,100,20,0.18)", border: "1px solid rgba(180,100,20,0.5)", color: "#C47820" }
+                        : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
+                      title={isPremium ? "Download MP3" : "Go to song page to download"}>
+                      {isPremium ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                    </button>
 
                     {/* Heart — violet purple */}
                     <button
