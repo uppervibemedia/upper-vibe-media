@@ -10,6 +10,7 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import { useFavorites } from "../hooks/useFavorite";
+import { useTheme } from "../context/ThemeContext";
 
 export default function NewestMusic() {
   const [tracks, setTracks] = useState([]);
@@ -20,6 +21,8 @@ export default function NewestMusic() {
   const { user, isPlus, isAdmin } = useAuth();
   const isPremium = isPlus || isAdmin;
   const { isFaved, toggle } = useFavorites(user?.email);
+  const { accent } = useTheme();
+  const rgb = accent.rgb;
 
   useEffect(() => {
     base44.entities.Track.filter({ status: "published" }, "-created_date", 10)
@@ -37,7 +40,7 @@ export default function NewestMusic() {
       <div className="max-w-7xl mx-auto px-6 pt-20 pb-6">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4 text-[10px] font-black tracking-[0.3em] uppercase"
-            style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.18)", color: "#00E5FF" }}>
+            style={{ background: `rgba(${rgb},0.08)`, border: `1px solid rgba(${rgb},0.22)`, color: `rgb(${rgb})` }}>
             <Zap className="w-3 h-3" /> New Releases
           </div>
           <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-2">Latest Music</h1>
@@ -96,7 +99,7 @@ export default function NewestMusic() {
                     <p className="text-xs text-white/40 truncate">{track.artist_display || "Upper Vibe Media"}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                        style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
+                        style={{ background: "rgba(0,160,220,0.1)", color: "#00A0DC" }}>
                         <Waves className="w-2.5 h-2.5" /> 432 Hz
                       </span>
                       {track.is_new_release && (
