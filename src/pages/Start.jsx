@@ -207,7 +207,7 @@ export default function Start() {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
               style={{ background: "rgba(0,160,220,0.07)", border: "1px solid rgba(0,160,220,0.22)" }}>
               <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#00A0DC" }} />
-              <span style={{ fontSize: "9px", fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "#00A0DC", fontFamily: "var(--font-heading)" }}>
+              <span style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.3em", textTransform: "uppercase", color: "#00A0DC", fontFamily: "var(--font-heading)" }}>
                 432 Hz High-Vibe Music
               </span>
             </div>
