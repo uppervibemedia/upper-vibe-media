@@ -482,23 +482,61 @@ export default function SongPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIosModal(null)} />
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="relative w-full max-w-sm rounded-2xl p-7 text-center"
+            className="relative w-full max-w-sm rounded-2xl overflow-hidden"
             style={{ background: "#0a0a1e", border: "1px solid rgba(212,168,67,0.25)" }}>
-            <Download className="w-8 h-8 mx-auto mb-3 text-yellow-400" />
-            <h3 className="font-heading font-black text-lg text-white mb-2">Save to Your iPhone</h3>
-            <p className="text-sm text-white/45 leading-relaxed mb-5">
-              Tap <strong className="text-white/70">Open File</strong>, then tap the Share icon and choose <strong className="text-white/70">Save to Files</strong>.
+
+            {/* Header */}
+            <div className="px-7 pt-7 pb-5 text-center">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                style={{ background: "rgba(212,168,67,0.12)", border: "1px solid rgba(212,168,67,0.3)" }}>
+                <Download className="w-6 h-6 text-yellow-400" />
+              </div>
+              <h3 className="font-heading font-black text-lg text-white mb-2">Save Song To iPhone</h3>
+              <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+                iPhone requires one extra step. Tap <strong className="text-white/75">Open File To Save</strong>, then tap the Share icon and choose <strong className="text-white/75">Save to Files</strong>.
+              </p>
+            </div>
+
+            {/* Steps */}
+            <div className="mx-6 mb-5 rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              {[
+                "Tap Open File To Save",
+                "Tap the Share icon (box with arrow)",
+                "Choose Save to Files",
+                "Pick a folder and save the song",
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3"
+                  style={{ borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                  <span className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-black"
+                    style={{ background: "rgba(212,168,67,0.15)", color: "#D4A843" }}>
+                    {i + 1}
+                  </span>
+                  <span className="text-xs text-white/55">{step}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Note */}
+            <p className="text-center text-[11px] px-7 mb-5" style={{ color: "rgba(255,255,255,0.25)" }}>
+              The file may open in a simple audio screen first. That is normal on iPhone.
             </p>
-            <a href={iosModal} target="_blank" rel="noopener noreferrer"
-              onClick={() => setIosModal(null)}
-              className="block w-full py-3 rounded-xl font-black text-sm tracking-wider mb-2 transition-all hover:brightness-110"
-              style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000" }}>
-              Open File
-            </a>
-            <button onClick={() => setIosModal(null)}
-              className="w-full py-2.5 text-sm text-white/30 hover:text-white/60 transition-colors">
-              Keep Browsing
-            </button>
+
+            {/* Buttons */}
+            <div className="px-6 pb-6 space-y-2">
+              <a href={iosModal} target="_blank" rel="noopener noreferrer"
+                onClick={() => setIosModal(null)}
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-[0.98]"
+                style={{ background: "linear-gradient(135deg,#C8892A,#EDB84A)", color: "#000" }}>
+                <Download className="w-4 h-4" /> Open File To Save
+              </a>
+              <button onClick={() => setIosModal(null)}
+                className="w-full py-2.5 text-sm font-semibold transition-colors"
+                style={{ color: "rgba(255,255,255,0.3)" }}
+                onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}
+                onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.3)"}>
+                Keep Browsing
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
