@@ -228,7 +228,7 @@ export default function RadioCTA() {
                   >
                     {featuredPlaying
                       ? <><Pause className="w-2.5 h-2.5" /> Playing</>
-                      : <><Play className="w-2.5 h-2.5 ml-0.5" /> Play Now</>}
+                      : <><Play className="w-2.5 h-2.5 ml-0.5" /> Listen Now</>}
                   </motion.button>
                   <MusicBars color={primaryColor} active={featuredPlaying} />
                 </div>
