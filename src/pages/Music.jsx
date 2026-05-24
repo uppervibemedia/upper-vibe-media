@@ -253,7 +253,7 @@ export default function Music() {
                         if (!isPremium) { setUpgradeModal(true); return; }
                         if (!track.audio_url) return;
                         recordUserDownload(user, track).catch(() => {});
-                        const method = await triggerBrowserDownload(track.audio_url, track.title);
+                        const method = await triggerBrowserDownload(track.id, track.title);
                         setDownloadIosMode(method === "ios_new_tab");
                         setDownloadToast(track);
                       }}
