@@ -217,7 +217,7 @@ export default function AudioPlayer() {
                   <img
                     src={currentTrack.cover_url}
                     alt={currentTrack.title}
-                    className="w-10 h-10 rounded-lg object-cover"
+                    className="w-11 h-11 rounded-lg object-cover"
                     style={{ boxShadow: `0 0 16px rgba(${themeRgb},0.25)` }}
                   />
                   {isPlaying && (
@@ -236,7 +236,7 @@ export default function AudioPlayer() {
                 </div>
               ) : (
                 <div
-                  className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
+                  className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center"
                   style={currentTrack?._isHostDrop
                     ? { background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.25)" }
                     : { background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}
