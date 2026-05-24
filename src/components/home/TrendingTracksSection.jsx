@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Music4, Waves, TrendingUp, Lock, Heart, Download } from "lucide-react";
+import { Play, Pause, Music4, TrendingUp, Lock, Heart, Download } from "lucide-react";
+import FreqBadge from "@/components/shared/FreqBadge";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import SectionHeader from "../shared/SectionHeader";
@@ -172,10 +173,7 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
               {/* Actions */}
               <div className="flex items-center gap-0.5 flex-shrink-0">
                 {/* 432 badge — always electric blue */}
-                <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: `rgba(${BLUE},0.1)`, color: `rgb(${BLUE})` }}>
-                  <Waves className="w-2 h-2" /> 432
-                </span>
+                <FreqBadge label="432" />
                 {/* Heart — always purple */}
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}

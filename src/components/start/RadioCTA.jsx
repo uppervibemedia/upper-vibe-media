@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Play, Pause, Waves, Music2 } from "lucide-react";
+import { Play, Pause, Music2 } from "lucide-react";
+import FreqBadge from "@/components/shared/FreqBadge";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
@@ -196,11 +197,7 @@ export default function RadioCTA() {
               <div className="flex-1 min-w-0 flex flex-col gap-2">
                 {/* Badge + title + artist */}
                 <div>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full mb-1"
-                    style={{ fontSize: "8px", fontWeight: 800, background: rgba(0.1), border: `1px solid ${rgba(0.3)}`, color: primaryColor }}>
-                    <Waves className="w-2 h-2" />
-                    {freqLabel}
-                  </span>
+                  <FreqBadge label={freqLabel} className="mb-1" />
                   <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.95rem", lineHeight: 1.2 }}>
                     {featuredTrack.title}
                   </p>

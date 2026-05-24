@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Play, Pause, Music2, Waves } from "lucide-react";
+import FreqBadge from "@/components/shared/FreqBadge";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
@@ -152,12 +153,7 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
           }}>
             Featured Track
           </span>
-          {track && (
-            <span className="inline-flex items-center gap-1 text-[8px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: primaryRgba(0.1), border: `1px solid ${primaryRgba(0.2)}`, color: primaryColor }}>
-              <Waves className="w-2 h-2" /> {freqLabel}
-            </span>
-          )}
+          {track && <FreqBadge label={freqLabel} color={rtPrimary} />}
         </div>
 
         {/* Track row */}

@@ -5,6 +5,7 @@ import {
   Download, Play, Pause, Waves, Lock, Crown, Music4,
   Tv2, ChevronLeft, Tag, User, Heart, Zap
 } from "lucide-react";
+import FreqBadge from "@/components/shared/FreqBadge";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -94,10 +95,7 @@ function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
                 {song.title}
               </Link>
               <p className="text-[10px] text-white/35 truncate mt-0.5">{song.artist_display || "Upper Vibe Media"}</p>
-              <span className="inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full mt-1"
-                style={{ background: `rgba(${mspRtp},0.08)`, color: `rgb(${mspRtp})` }}>
-                <Waves className="w-2 h-2" /> 432 Hz
-              </span>
+              <FreqBadge label="432 Hz" color={mspRtp} className="mt-1" />
             </div>
           </div>
         ))}
@@ -289,12 +287,7 @@ export default function SongPage() {
             <div className="flex-1 w-full text-center sm:text-left pb-2">
               {/* Badges */}
               <div className="flex flex-wrap gap-2 justify-center sm:justify-start mb-3">
-                {freq && (
-                  <span className="flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full"
-                    style={{ background: `rgba(${rtp},0.12)`, border: `1px solid rgba(${rtp},0.3)`, color: `rgb(${rtp})` }}>
-                    <Waves className="w-2.5 h-2.5" /> {freq}
-                  </span>
-                )}
+                {freq && <FreqBadge label={freq} color={rtp} />}
                 {track.album && (
                   <span className="flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-full"
                     style={{ background: "rgba(212,168,67,0.12)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}>
