@@ -44,28 +44,21 @@ function MusicBars({ color = `rgb(${BLUE})`, active = false }) {
   );
 }
 
-// Small swipeable song card — tapping card navigates to song page, play icon plays directly
-function SmallTrackCard({ track, isPlaying, onPlay }) {
+// Small swipeable song card — entire card navigates to the song detail page
+function SmallTrackCard({ track }) {
   const navigate = useNavigate();
-  const [hovered, setHovered] = React.useState(false);
 
   return (
     <div
       onClick={() => navigate(`/song/${track.id}`)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onTouchStart={() => setHovered(true)}
-      onTouchEnd={() => setTimeout(() => setHovered(false), 400)}
-      className="relative flex-shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.97]"
+      className="relative flex-shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.95]"
       style={{
         width: 112,
         height: 112,
         background: "#111",
-        border: isPlaying
-          ? `1.5px solid rgba(${BLUE},0.7)`
-          : `1px solid rgba(255,255,255,0.08)`,
+        border: `1px solid rgba(255,255,255,0.08)`,
         scrollSnapAlign: "start",
-        boxShadow: isPlaying ? `0 0 14px rgba(${BLUE},0.35)` : "none",
+        WebkitTapHighlightColor: "transparent",
       }}
     >
       {track.cover_url ? (
@@ -78,29 +71,6 @@ function SmallTrackCard({ track, isPlaying, onPlay }) {
 
       {/* Dark gradient overlay */}
       <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 45%)" }} />
-
-      {/* Play button — centered, only visible on hover/touch or when playing */}
-      {(hovered || isPlaying) && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onPlay(track); }}
-          className="absolute inset-0 flex items-center justify-center transition-all active:scale-90"
-          style={{ background: "rgba(0,0,0,0.25)", backdropFilter: "blur(2px)" }}
-        >
-          <div style={{
-            width: 36, height: 36, borderRadius: "50%",
-            background: isPlaying ? `rgba(${BLUE},0.3)` : "rgba(0,0,0,0.7)",
-            border: isPlaying ? `1.5px solid rgba(${BLUE},0.85)` : "1.5px solid rgba(255,255,255,0.85)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            backdropFilter: "blur(6px)",
-            boxShadow: isPlaying ? `0 0 14px rgba(${BLUE},0.5)` : "0 2px 12px rgba(0,0,0,0.5)",
-          }}>
-            {isPlaying
-              ? <MusicBars color={`rgb(${BLUE})`} active />
-              : <svg viewBox="0 0 24 24" fill="white" style={{ width: 12, height: 12, marginLeft: 2 }}><path d="M8 5v14l11-7z" /></svg>
-            }
-          </div>
-        </button>
-      )}
 
       <p className="absolute bottom-2 left-2 right-2 text-white truncate"
         style={{ fontSize: "10px", fontWeight: 700, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>
@@ -137,11 +107,6 @@ export default function RadioCTA() {
     if (!featuredTrack) return;
     if (currentTrack?.id === featuredTrack.id) togglePlay();
     else playTrack(featuredTrack);
-  };
-
-  const handlePlay = (track) => {
-    if (currentTrack?.id === track.id) togglePlay();
-    else playTrack(track);
   };
 
   const featuredPlaying = currentTrack?.id === featuredTrack?.id && isPlaying;
@@ -256,8 +221,6 @@ export default function RadioCTA() {
               <SmallTrackCard
                 key={track.id}
                 track={track}
-                isPlaying={currentTrack?.id === track.id && isPlaying}
-                onPlay={handlePlay}
               />
             ))}
           </div>
