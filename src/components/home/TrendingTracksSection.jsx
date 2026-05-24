@@ -178,21 +178,25 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
                 {/* Heart — always purple */}
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}
-                  className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                  style={{ color: isFaved && isFaved("track", track.id) ? `rgb(${PURPLE})` : `rgba(${PURPLE},0.5)` }}>
+                  className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                  style={isFaved && isFaved("track", track.id) ? {
+                    background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
+                  } : {
+                    background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
+                  }}>
                   <Heart className={`w-3.5 h-3.5 ${isFaved && isFaved("track", track.id) ? "fill-current" : ""}`} />
                 </button>
                 {/* Download — always amber */}
                 {isPremium ? (
                   <button
                     onClick={(e) => { e.stopPropagation(); onDownload && onDownload(track); }}
-                    className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                    style={{ color: `rgba(${AMBER},0.7)` }}>
+                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                    style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}>
                     <Download className="w-3.5 h-3.5" />
                   </button>
                 ) : (
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ color: `rgba(${AMBER},0.4)` }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                    style={{ background: "rgba(212,168,67,0.06)", border: "1px solid rgba(212,168,67,0.15)", color: `rgba(${AMBER},0.4)` }}>
                     <Lock className="w-3.5 h-3.5" />
                   </div>
                 )}
