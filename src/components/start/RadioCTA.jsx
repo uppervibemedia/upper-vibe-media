@@ -57,8 +57,8 @@ function SmallTrackCard({ track, isPlaying, onPlay }) {
       onTouchEnd={() => setTimeout(() => setHovered(false), 400)}
       className="relative flex-shrink-0 rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.97]"
       style={{
-        width: 100,
-        height: 100,
+        width: 112,
+        height: 112,
         background: "#111",
         border: isPlaying
           ? `1.5px solid rgba(${BLUE},0.7)`
@@ -101,8 +101,8 @@ function SmallTrackCard({ track, isPlaying, onPlay }) {
         </button>
       )}
 
-      <p className="absolute bottom-1.5 left-2 right-2 text-white truncate"
-        style={{ fontSize: "9px", fontWeight: 700, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>
+      <p className="absolute bottom-2 left-2 right-2 text-white truncate"
+        style={{ fontSize: "10px", fontWeight: 700, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>
         {track.title}
       </p>
     </div>
@@ -172,9 +172,9 @@ export default function RadioCTA() {
           <div className="rounded-2xl overflow-hidden"
             style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${rgba(0.3)}` }}>
 
-            {/* Cover art — taller hero image */}
+            {/* Cover art */}
             {featuredTrack.cover_url && (
-              <div className="relative w-full overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
+              <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 10" }}>
                 <img
                   src={featuredTrack.cover_url}
                   alt={featuredTrack.title}
