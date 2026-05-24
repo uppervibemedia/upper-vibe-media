@@ -132,19 +132,36 @@ export async function triggerBrowserDownload(trackId, filename) {
   const safeFilename = (filename || "track").replace(/[/\\?%*:|"<>]/g, "").trim() + ".mp3";
 
   try {
-    // base44.functions.fetch() gives raw Response access — required for binary/blob downloads.
-    // The downloadTrack backend function re-serves the MP3 with Content-Disposition: attachment.
-    const { base44 } = await import("@/api/base44Client");
-    const response = await base44.functions.fetch("downloadTrack", {
+    // Build the function URL directly using app params — same pattern the SDK uses internally.
+    // We need a raw fetch (not base44.functions.invoke) to get the binary blob response.
+    const { appParams } = await import("@/lib/app-params");
+    const { appId, token, appBaseUrl } = appParams;
+
+    // Pattern: https://<app-domain>/api/apps/<appId>/functions/<name>
+    const base = (appBaseUrl || window.location.origin).replace(/\/$/, "");
+    const fnBase = `${base}/api/apps/${appId}/functions/downloadTrack`;
+
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch(fnBase, {
       method: "POST",
+      headers,
       body: JSON.stringify({ trackId }),
-      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
       const text = await response.text();
       console.error("[downloadService] proxy error:", response.status, text);
       return "error";
+    }
+
+    // iOS Safari does not support blob URL + anchor .click() for downloads.
+    // Instead, open the backend proxy URL directly in a new tab — the backend's
+    // Content-Disposition: attachment header tells iOS Safari to save the file.
+    if (isIOS()) {
+      window.open(fnBase + `?trackId=${encodeURIComponent(trackId)}&token=${encodeURIComponent(token || "")}`, "_blank");
+      return "blob";
     }
 
     const blob = await response.blob();

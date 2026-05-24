@@ -18,15 +18,33 @@ Deno.serve(async (req) => {
     return new Response(null, {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     });
   }
 
   try {
-    const base44 = createClientFromRequest(req);
-    const { trackId } = await req.json();
+    // Support both POST (JSON body) and GET (query params for iOS direct-open in new tab).
+    // For GET, the auth token is passed as a query param since custom headers can't be set.
+    const url = new URL(req.url);
+    let trackId;
+    let reqToUse = req;
+
+    if (req.method === 'GET') {
+      trackId = url.searchParams.get('trackId');
+      const tokenParam = url.searchParams.get('token');
+      // Inject token into a synthetic request so createClientFromRequest can read it
+      if (tokenParam) {
+        const headers = new Headers(req.headers);
+        headers.set('Authorization', `Bearer ${tokenParam}`);
+        reqToUse = new Request(req.url, { method: req.method, headers });
+      }
+    } else {
+      ({ trackId } = await req.json());
+    }
+
+    const base44 = createClientFromRequest(reqToUse);
 
     if (!trackId) {
       return Response.json({ error: 'trackId is required' }, { status: 400 });
