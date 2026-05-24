@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Music4, Play, Pause, RotateCcw, ChevronLeft } from "lucide-react";
+import { Download, Music4, Play, Pause, ExternalLink, ChevronLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
@@ -10,26 +10,9 @@ import { format } from "date-fns";
 import { useTheme } from "../context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 
-async function forceDownloadMp3(audioUrl, title, artist) {
-  const filename = `${title || "song"}${artist ? " - " + artist : ""}.mp3`
-    .replace(/[/\\?%*:|"<>]/g, "")
-    .trim();
-  const response = await fetch(audioUrl);
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 export default function Downloads() {
   const [downloads, setDownloads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [redownloading, setRedownloading] = useState({});
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isAuthenticated, navigateToLogin } = useAuth();
   const { accentId } = useTheme();
@@ -77,15 +60,8 @@ export default function Downloads() {
     } catch {}
   };
 
-  const handleRedownload = async (dl) => {
-    if (!dl.file_url) return;
-    setRedownloading((d) => ({ ...d, [dl.id]: true }));
-    try {
-      await forceDownloadMp3(dl.file_url, dl.song_title, dl.artist_name);
-      // analytics
-      base44.entities.AnalyticsEvent.create({ event_type: "download_click", song_id: dl.song_id, song_title: dl.song_title, artist_name: dl.artist_name }).catch(() => {});
-    } catch {}
-    setRedownloading((d) => ({ ...d, [dl.id]: false }));
+  const handleGoToSong = (dl) => {
+    if (dl.song_id) navigate(`/song/${dl.song_id}?downloadIntent=true`);
   };
 
   return (
@@ -136,7 +112,6 @@ export default function Downloads() {
             <AnimatePresence>
               {downloads.map((dl, i) => {
                 const isCurrentTrack = currentTrack?.id === dl.song_id;
-                const isRedownloading = redownloading[dl.id];
                 return (
                   <motion.div key={dl.id}
                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -188,14 +163,12 @@ export default function Downloads() {
                           : <Play className="w-3.5 h-3.5 ml-0.5" />}
                       </button>
 
-                      {/* Re-download */}
-                      <button onClick={() => handleRedownload(dl)} disabled={isRedownloading}
-                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl font-bold text-xs tracking-wider transition-all hover:brightness-110 active:scale-95 disabled:opacity-60"
+                      {/* Go to song page to download */}
+                      <button onClick={() => handleGoToSong(dl)}
+                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl font-bold text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
                         style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.2),rgba(212,168,67,0.1))", border: "1px solid rgba(212,168,67,0.3)", color: "#D4A843" }}>
-                        {isRedownloading
-                          ? <Download className="w-3.5 h-3.5 animate-bounce" />
-                          : <RotateCcw className="w-3.5 h-3.5" />}
-                        <span className="hidden sm:inline">{isRedownloading ? "Saving…" : "Re-download"}</span>
+                        <Download className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Download</span>
                       </button>
                     </div>
                   </motion.div>

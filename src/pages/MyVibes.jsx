@@ -3,15 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, ChevronLeft, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
-import DownloadToast from "../components/shared/DownloadToast";
-import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
-import SupportModal from "../components/shared/SupportModal";
 
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
@@ -26,10 +22,7 @@ export default function MyVibes() {
   const { accent } = useTheme();
   const rgb = accent.rgb; // e.g. "0,229,255"
   const navigate = useNavigate();
-  const [downloadToast, setDownloadToast] = useState(null);
-  const [downloadIosMode, setDownloadIosMode] = useState(false);
-  const [upgradeModal, setUpgradeModal] = useState(false);
-  const [supportModal, setSupportModal] = useState(null);
+
 
   useEffect(() => {
     if (!user?.email) { setLoading(false); return; }
@@ -53,17 +46,9 @@ export default function MyVibes() {
     else playTrack(track);
   };
 
-  const handleDownload = async (track, e) => {
+  const handleDownload = (track, e) => {
     e.stopPropagation();
-    if (!isPremium) {
-      setUpgradeModal(true);
-      return;
-    }
-    if (!track.audio_url) return;
-    recordUserDownload(user, track).catch(() => {});
-    const method = await triggerBrowserDownload(track.audio_url, track.title);
-    setDownloadIosMode(method === "ios_new_tab");
-    setDownloadToast(track);
+    navigate(`/song/${track.id}?downloadIntent=true`);
   };
 
   // Not logged in
@@ -369,9 +354,6 @@ export default function MyVibes() {
       </div>
 
       <Footer />
-      <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
-      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} onSupport={(t) => setSupportModal(t)} />
-      <SupportModal open={!!supportModal} onClose={() => setSupportModal(null)} track={supportModal} />
     </div>
   );
 }

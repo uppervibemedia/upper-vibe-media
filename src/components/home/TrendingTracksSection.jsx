@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, Music4, Waves, TrendingUp, Lock, Heart, Download } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import SectionHeader from "../shared/SectionHeader";
 import { useTheme } from "@/context/ThemeContext";
@@ -65,7 +65,7 @@ const INSIGHT_COLORS = [
   { color: "212,168,67",  label: "Trending" },                // amber
 ];
 
-export default function TrendingTracksSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, user, onToggleFav, isFaved, onDownload, onUpgrade, themeColor }) {
+export default function TrendingTracksSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, user, onToggleFav, isFaved, themeColor }) {
   const [streams, setStreams]     = useState([]);
   const [favCounts, setFavCounts] = useState({});
   const [loading, setLoading]     = useState(true);
@@ -94,6 +94,7 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
   );
 
   const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin" || user?.role === "plus" || user?.tier === "plus";
+  const navigate = useNavigate();
 
   if (loading || trendingTracks.length === 0) return null;
 
@@ -186,23 +187,18 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
                   }}>
                   <Heart className={`w-3.5 h-3.5 ${isFaved && isFaved("track", track.id) ? "fill-current" : ""}`} />
                 </button>
-                {/* Download — always amber */}
-                {isPremium ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onDownload && onDownload(track); }}
-                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                    style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}>
-                    <Download className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onUpgrade?.(); }}
-                    className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:brightness-110"
-                    style={{ background: "rgba(212,168,67,0.06)", border: "1px solid rgba(212,168,67,0.15)", color: `rgba(${AMBER},0.4)` }}
-                    title="Upgrade to Plus to download">
-                    <Lock className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                {/* Download — routes to song page */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
+                  className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                  style={{
+                    background: isPremium ? "rgba(212,168,67,0.1)" : "rgba(212,168,67,0.06)",
+                    border: `1px solid ${isPremium ? "rgba(212,168,67,0.25)" : "rgba(212,168,67,0.15)"}`,
+                    color: isPremium ? "#D4A843" : `rgba(${AMBER},0.4)`,
+                  }}
+                  title={isPremium ? "Download on song page" : "Upgrade to Plus to download"}>
+                  {isPremium ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                </button>
               </div>
             </motion.div>
           );

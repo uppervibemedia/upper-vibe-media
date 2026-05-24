@@ -14,8 +14,8 @@ import SupportModal from "../components/shared/SupportModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
 import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
-import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
-import DownloadToast from "@/components/shared/DownloadToast";
+import { recordUserDownload, triggerBrowserDownload, isIOS } from "@/lib/downloadService";
+import { toast } from "sonner";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
@@ -113,8 +113,8 @@ export default function SongPage() {
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [vizPlaying, setVizPlaying] = useState(false);
-  const [downloadToast, setDownloadToast] = useState(null);
-  const [downloadIosMode, setDownloadIosMode] = useState(false);
+  const [iosModal, setIosModal] = useState(null); // holds audio_url when iOS needs manual save
+  const [downloadIntent, setDownloadIntent] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus: isAuthPlus, isAdmin: isAuthAdmin } = useAuth();
   const isPlus = isAuthPlus || isAuthAdmin;
@@ -175,9 +175,12 @@ export default function SongPage() {
     if (!track?.audio_url) return;
     if (user) recordUserDownload(user, track).catch(() => {});
     const filename = `${track.title || "song"}${track.artist_display ? " - " + track.artist_display : ""}`;
-    const method = await triggerBrowserDownload(track.audio_url, filename);
-    setDownloadIosMode(method === "ios_new_tab");
-    setDownloadToast(track);
+    if (isIOS()) {
+      setIosModal(track.audio_url);
+    } else {
+      await triggerBrowserDownload(track.audio_url, filename);
+      toast.success("Download started");
+    }
   };
 
   // ── Dynamic OG / page meta ───────────────────────────────────────────────
@@ -473,7 +476,32 @@ export default function SongPage() {
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <SupportModal open={supportModal} onClose={() => setSupportModal(false)} track={track} />
       <IOSTip trigger="always" />
-      <DownloadToast track={downloadToast} iosMode={downloadIosMode} simple onClose={() => setDownloadToast(null)} />
+
+      {/* iOS Save-to-Files modal */}
+      {iosModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIosModal(null)} />
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="relative w-full max-w-sm rounded-2xl p-7 text-center"
+            style={{ background: "#0a0a1e", border: "1px solid rgba(212,168,67,0.25)" }}>
+            <Download className="w-8 h-8 mx-auto mb-3 text-yellow-400" />
+            <h3 className="font-heading font-black text-lg text-white mb-2">Save to Your iPhone</h3>
+            <p className="text-sm text-white/45 leading-relaxed mb-5">
+              Tap <strong className="text-white/70">Open File</strong>, then tap the Share icon and choose <strong className="text-white/70">Save to Files</strong>.
+            </p>
+            <a href={iosModal} target="_blank" rel="noopener noreferrer"
+              onClick={() => setIosModal(null)}
+              className="block w-full py-3 rounded-xl font-black text-sm tracking-wider mb-2 transition-all hover:brightness-110"
+              style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000" }}>
+              Open File
+            </a>
+            <button onClick={() => setIosModal(null)}
+              className="w-full py-2.5 text-sm text-white/30 hover:text-white/60 transition-colors">
+              Keep Browsing
+            </button>
+          </motion.div>
+        </div>
+      )}
 
       {/* Support success banner */}
       <AnimatePresence>

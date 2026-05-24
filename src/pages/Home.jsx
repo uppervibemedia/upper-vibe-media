@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { motion, useAnimationFrame } from "framer-motion";
-import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Heart, Users, GraduationCap, Download, Radio, Zap, Music4 } from "lucide-react";
+import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Heart, Users, GraduationCap, Radio, Zap, Music4, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -12,9 +12,7 @@ import { useFavorites } from "../hooks/useFavorite";
 import { recordPlay } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
-import DownloadToast from "../components/shared/DownloadToast";
-import SupportModal from "../components/shared/SupportModal";
-import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
+
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
 import LatestMusicSection from "../components/home/LatestMusicSection";
 import TrendingTracksSection from "../components/home/TrendingTracksSection";
@@ -58,9 +56,6 @@ export default function Home() {
   const sessionSeed = useMemo(() => getSessionSeed(), []);
   const [loginModal, setLoginModal] = useState(false);
   const [premiumModal, setPremiumModal] = useState(false);
-  const [downloadToast, setDownloadToast] = useState(null);
-  const [downloadIosMode, setDownloadIosMode] = useState(false);
-  const [supportModal, setSupportModal] = useState(null);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { startRadio, tracksLoaded, currentRadioSong } = useRadio();
   const { accentId } = useTheme();
@@ -134,25 +129,7 @@ export default function Home() {
     </button>
   );
 
-  const downloadButton = (track) => (
-    <button
-      onClick={async (e) => {
-        e.stopPropagation();
-        if (!user) { setLoginModal(true); return; }
-        const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin" || user?.role === "plus" || user?.tier === "plus";
-        if (!isPremium) { setPremiumModal(true); return; }
-        if (!track.audio_url) return;
-        recordUserDownload(user, track).catch(() => {});
-        const method = await triggerBrowserDownload(track.audio_url, track.title);
-        setDownloadIosMode(method === "ios_new_tab");
-        setDownloadToast(track);
-      }}
-      className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-      style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
-      title="Download">
-      <Download className="w-3.5 h-3.5" />
-    </button>
-  );
+
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
@@ -503,10 +480,8 @@ export default function Home() {
         isPlaying={isPlaying}
         handlePlayTrack={handlePlayTrack}
         heartButton={heartButton}
-        downloadButton={downloadButton}
         user={user}
         themeColor={rtPrimary}
-        onUpgrade={() => { if (!user) setLoginModal(true); else setPremiumModal(true); }}
       />
       </motion.div>
 
@@ -523,17 +498,6 @@ export default function Home() {
         onToggleFav={(track) => {
           if (!user) { setLoginModal(true); return; }
           toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-        }}
-        onUpgrade={() => { if (!user) setLoginModal(true); else setPremiumModal(true); }}
-        onDownload={async (track) => {
-          if (!user) { setLoginModal(true); return; }
-          const isPremium = user?.role === "premium" || user?.tier === "premium" || user?.role === "admin" || user?.role === "plus" || user?.tier === "plus";
-          if (!isPremium) { setPremiumModal(true); return; }
-          if (!track.audio_url) return;
-          recordUserDownload(user, track).catch(() => {});
-          const method = await triggerBrowserDownload(track.audio_url, track.title);
-          setDownloadIosMode(method === "ios_new_tab" || method === "anchor");
-          setDownloadToast(track);
         }}
       />
       </motion.div>
@@ -720,7 +684,6 @@ export default function Home() {
         isPlaying={isPlaying}
         handlePlayTrack={handlePlayTrack}
         heartButton={heartButton}
-        downloadButton={downloadButton}
         themeColor={rtPrimary}
         radioThemeColor={rtPrimary}
       />
@@ -733,8 +696,6 @@ export default function Home() {
 
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
       <PremiumDownloadModal open={premiumModal} onClose={() => setPremiumModal(false)} />
-      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} onSupport={(t) => setSupportModal(t)} />
-      <SupportModal open={!!supportModal} onClose={() => setSupportModal(null)} track={supportModal} />
       <IOSTip trigger="on-play" isPlaying={isPlaying} />
     </div>
     </PullToRefresh>

@@ -1,12 +1,13 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Music4, Waves } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Play, Pause, Music4, Waves, Download, Lock } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import SectionHeader from "../shared/SectionHeader";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
-export default function LatestMusicSection({ tracks, currentTrack, isPlaying, handlePlayTrack, heartButton, downloadButton, user, themeColor, onUpgrade }) {
+export default function LatestMusicSection({ tracks, currentTrack, isPlaying, handlePlayTrack, heartButton, user, themeColor }) {
+  const navigate = useNavigate();
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtp = radioTheme.vars["--rt-primary"];
@@ -76,14 +77,12 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     </span>
                     <div className="flex items-center gap-0.5" onClick={(e) => e.preventDefault()}>
                       {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
-                      {!isPremium ? (
-                        <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onUpgrade?.(); }}
-                          className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
-                          style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
-                          Plus 🔒
-                        </button>
-                      ) : downloadButton(track)}
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
+                        className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
+                        style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
+                        {isPremium ? <Download className="w-3 h-3 inline" /> : "Plus 🔒"}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -175,14 +174,12 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     </span>
                     <div className="flex items-center gap-0.5" onClick={(e) => e.preventDefault()}>
                       {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
-                      {!isPremium ? (
-                        <button
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onUpgrade?.(); }}
-                          className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
-                          style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
-                          Plus 🔒
-                        </button>
-                      ) : downloadButton(track)}
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
+                        className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
+                        style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
+                        {isPremium ? <Download className="w-3 h-3 inline" /> : "Plus 🔒"}
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -1,10 +1,11 @@
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Music4, Waves, History } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Play, Pause, Music4, Waves, History, Download } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { getHistory } from "./DiscoverTab";
 
-export default function RecentlyListenedSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, heartButton, downloadButton, themeColor = "155,126,255" }) {
+export default function RecentlyListenedSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, heartButton, themeColor = "155,126,255" }) {
+  const navigate = useNavigate();
   const history = useMemo(() => getHistory(), []);
 
   const recentTracks = useMemo(() => {
@@ -84,7 +85,13 @@ export default function RecentlyListenedSection({ allTracks, currentTrack, isPla
                   <Waves className="w-2 h-2" /> 432
                 </span>
                 {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
-                {downloadButton(track)}
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
+                  className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+                  style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}
+                  title="Download on song page">
+                  <Download className="w-3 h-3" />
+                </button>
               </div>
             </motion.div>
           );
