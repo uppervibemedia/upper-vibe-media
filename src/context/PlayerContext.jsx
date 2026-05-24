@@ -973,7 +973,10 @@ export function PlayerProvider({ children }) {
   //      iOS unlocks audio on the synchronous play() call.
   //   2. The play() Promise resolves async — we just handle errors there.
   //   3. watchdog and state updates happen after play() resolves.
-  const playTrack = useCallback((track, source = "song") => {
+  //
+  // startAt: optional position in seconds to restore (used by RadioContext
+  // to resume a saved radio session position without resetting to 0).
+  const playTrack = useCallback((track, source = "song", startAt = 0) => {
     const audio = audioRef.current;
     if (!audio || !track?.audio_url) return;
 
@@ -996,8 +999,9 @@ export function PlayerProvider({ children }) {
     // Update refs immediately (synchronous, before any async)
     loadedSrcRef.current  = url;
     playingUrlRef.current = url;
-    savedTimeRef.current  = 0;
-    lastTimeRef.current   = 0;
+    // If startAt provided (radio resume), preserve it; otherwise reset to 0
+    savedTimeRef.current  = startAt > 1 ? startAt : 0;
+    lastTimeRef.current   = startAt > 1 ? startAt : 0;
 
     // ── SYNCHRONOUS iOS unlock sequence ──────────────────────────────────────
     // Must happen in the same call stack as the user gesture.
@@ -1015,11 +1019,21 @@ export function PlayerProvider({ children }) {
 
     // play() called synchronously — this is the iOS gesture unlock
     const playPromise = audio.play();
+    const _startAt = startAt; // capture for async closure
 
     // Handle the async resolution without blocking
     if (playPromise && typeof playPromise.then === "function") {
       playPromise.then(() => {
         enforceRate(audio);
+        // Seek to saved position after play() resolves (audio must be playing first)
+        if (_startAt > 1) {
+          try {
+            audio.currentTime = _startAt;
+            console.log("[Player] playTrack seeked to startAt:", _startAt.toFixed(2));
+          } catch (e) {
+            console.warn("[Player] playTrack seek failed:", e.message);
+          }
+        }
         startWatchdog(audio);
         console.log("[Player] playTrack resolved | title:", track.title, "| rate:", audio.playbackRate, "| paused:", audio.paused);
       }).catch((e) => {

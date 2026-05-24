@@ -66,6 +66,10 @@ export function RadioProvider({ children }) {
   const [isHostDropPlaying,  setIsHostDropPlaying]  = useState(false);
   const [completedSongCount, setCompletedSongCount] = useState(0);
 
+  // Saved radio session position — persists across on-demand song plays
+  const radioSavedTimeRef   = useRef(0);
+  const radioWasPlayingRef  = useRef(false);
+
   // Refs for things needed inside event handlers without stale closures
   const stateRef            = useRef({});
   const isHostDropRef       = useRef(false);   // mirrors isHostDropPlaying
@@ -93,19 +97,24 @@ export function RadioProvider({ children }) {
     const saved = loadPersistedState();
     if (!saved) return;
     if (saved.currentRadioSongId && allTracks.length > 0) {
-      const song = allTracks.find((t) => t.id === saved.currentRadioSongId);
-      if (song) {
-        setCurrentRadioSong(song);
-        if (saved.radioHistoryIds?.length) {
-          const hist = saved.radioHistoryIds.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean);
-          setRadioHistory(hist);
-          setHistoryIndex(hist.length - 1);
-        }
-        const q = saved.radioQueueIds?.length
-          ? saved.radioQueueIds.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean)
-          : buildWeightedQueue(allTracks, song.id, []);
-        setRadioQueue(q);
-      }
+    const song = allTracks.find((t) => t.id === saved.currentRadioSongId);
+    if (song) {
+    setCurrentRadioSong(song);
+    if (saved.radioHistoryIds?.length) {
+      const hist = saved.radioHistoryIds.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean);
+      setRadioHistory(hist);
+      setHistoryIndex(hist.length - 1);
+    }
+    const q = saved.radioQueueIds?.length
+      ? saved.radioQueueIds.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean)
+      : buildWeightedQueue(allTracks, song.id, []);
+    setRadioQueue(q);
+    // Restore saved position
+    if (saved.radioSavedTime > 1) {
+      radioSavedTimeRef.current = saved.radioSavedTime;
+      console.log("[RadioContext] 📍 Restored saved radio time from localStorage:", saved.radioSavedTime.toFixed(2));
+    }
+    }
     }
   }, [tracksLoaded, allTracks]);
 
@@ -113,12 +122,37 @@ export function RadioProvider({ children }) {
   useEffect(() => {
     if (!tracksLoaded) return;
     persistState({
-      currentRadioSongId: currentRadioSong?.id || null,
-      radioHistoryIds:    radioHistory.map((t) => t.id),
-      radioQueueIds:      radioQueue.map((t) => t.id),
-      lastUpdatedAt:      Date.now(),
+      currentRadioSongId:  currentRadioSong?.id || null,
+      radioHistoryIds:     radioHistory.map((t) => t.id),
+      radioQueueIds:       radioQueue.map((t) => t.id),
+      radioSavedTime:      radioSavedTimeRef.current,
+      lastUpdatedAt:       Date.now(),
     });
   }, [currentRadioSong, radioHistory, radioQueue, tracksLoaded]);
+
+  // ── Save radio position when leaving radio (sourceType changes away) ───────
+  const prevSourceTypeRef = useRef(sourceType);
+  useEffect(() => {
+    const prev = prevSourceTypeRef.current;
+    prevSourceTypeRef.current = sourceType;
+
+    if (prev === "radio" && sourceType !== "radio") {
+      // User switched from radio to a library song — save position
+      const audio = audioRef?.current;
+      const ct = audio ? audio.currentTime : 0;
+      const wasPlaying = audio ? !audio.paused : false;
+      if (ct > 0) {
+        radioSavedTimeRef.current  = ct;
+        radioWasPlayingRef.current = wasPlaying;
+        console.log("[RadioContext] 📍 Radio position saved:", ct.toFixed(2), "wasPlaying:", wasPlaying);
+        // Also persist to localStorage
+        try {
+          const s = loadPersistedState() || {};
+          persistState({ ...s, radioSavedTime: ct });
+        } catch {}
+      }
+    }
+  }, [sourceType, audioRef]);
 
   // ── Sync stateRef ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -174,6 +208,9 @@ export function RadioProvider({ children }) {
       setCuratorActive(isCuratorActive());
     }
 
+    // Clear saved position — next song always starts from 0
+    radioSavedTimeRef.current = 0;
+
     const nextSong = _loadNextSong(aT, q, h, hi, cs, liked);
     if (nextSong) {
       playTrack(nextSong, "radio");
@@ -222,6 +259,7 @@ export function RadioProvider({ children }) {
     setRadioQueue((q) => [currentSong, ...q].filter(Boolean));
     setHistoryIndex(newIndex);
     setCurrentRadioSong(song);
+    radioSavedTimeRef.current = 0; // prev song always starts fresh
     playTrack(song, "radio");
     console.log("[RadioContext] ⏮ Prev radio song:", song.title);
   }, [playTrack]);
@@ -377,15 +415,28 @@ export function RadioProvider({ children }) {
       setRadioHistory([song]);
       setHistoryIndex(0);
       setRadioQueue(queue);
+      // Fresh session — clear any saved position
+      radioSavedTimeRef.current = 0;
+    } else {
+      // Resuming existing session — pass saved position directly to playTrack
+      const savedTime = radioSavedTimeRef.current;
+      if (savedTime > 1) {
+        console.log("[RadioContext] 📍 Restoring radio position:", savedTime.toFixed(2));
+      }
     }
-    playTrack(song, "radio");
+    const resumeTime = radioSavedTimeRef.current;
+    playTrack(song, "radio", resumeTime > 1 ? resumeTime : 0);
     if (onPlay) onPlay(song);
     console.log("[RadioContext] 📻 Radio started:", song.title);
   }, [allTracks, currentRadioSong, radioQueue, playTrack, likedTrackIds]);
 
   const resumeRadio = useCallback((onPlay) => {
     if (!currentRadioSong) return startRadio(onPlay);
-    playTrack(currentRadioSong, "radio");
+    const savedTime = radioSavedTimeRef.current;
+    if (savedTime > 1) {
+      console.log("[RadioContext] 📍 resumeRadio restoring position:", savedTime.toFixed(2));
+    }
+    playTrack(currentRadioSong, "radio", savedTime > 1 ? savedTime : 0);
     if (onPlay) onPlay(currentRadioSong);
   }, [currentRadioSong, startRadio, playTrack]);
 
