@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, Lock, ChevronLeft } from "lucide-react";
+import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, Lock, ChevronLeft, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
@@ -14,6 +14,7 @@ export default function MyVibes() {
   const { isFaved, toggle } = useFavorites(user?.email);
   const [tracks, setTracks] = useState([]);
   const [visualizers, setVisualizers] = useState([]);
+  const [latestTracks, setLatestTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("songs");
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
@@ -27,7 +28,13 @@ export default function MyVibes() {
     Promise.all([
       base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
       base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 500),
-    ]).then(([t, v]) => { setTracks(t); setVisualizers(v); setLoading(false); });
+      base44.entities.Track.filter({ status: "published" }, "-created_date", 5),
+    ]).then(([t, v, latest]) => {
+      setTracks(t);
+      setVisualizers(v);
+      setLatestTracks(latest.filter((tr) => tr.audio_url).slice(0, 5));
+      setLoading(false);
+    });
   }, [user]);
 
   const savedTracks = tracks.filter((t) => isFaved("track", t.id));
@@ -100,6 +107,72 @@ export default function MyVibes() {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 pb-24">
+
+        {/* ── Latest Music For You ── */}
+        {latestTracks.length > 0 && (
+          <div className="mb-8 pt-2">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="w-4 h-4" style={{ color: `rgb(${rgb})` }} />
+                  <h2 className="font-heading font-black text-white text-lg">Latest Music For You</h2>
+                </div>
+                <p className="text-white/35 text-xs">New 432 Hz drops added to Upper Vibe Media.</p>
+              </div>
+              <Link to="/music"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black tracking-wide transition-all hover:brightness-110 flex-shrink-0"
+                style={{ background: `rgba(${rgb},0.1)`, border: `1px solid rgba(${rgb},0.3)`, color: `rgb(${rgb})` }}>
+                Browse Latest Music <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {latestTracks.map((track, i) => {
+                const isCurrentTrack = currentTrack?.id === track.id;
+                return (
+                  <motion.div key={track.id}
+                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="flex items-center gap-3 p-3 rounded-2xl transition-all"
+                    style={{
+                      background: isCurrentTrack ? `rgba(${rgb},0.06)` : "rgba(255,255,255,0.02)",
+                      border: `1px solid ${isCurrentTrack ? `rgba(${rgb},0.2)` : "rgba(255,255,255,0.05)"}`,
+                    }}>
+                    <button onClick={() => handlePlay(track)} className="flex-shrink-0 relative group">
+                      {track.cover_url ? (
+                        <img src={track.cover_url} alt={track.title} className="w-11 h-11 rounded-xl object-cover" />
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: `rgba(${rgb},0.08)` }}>
+                          <Music4 className="w-4 h-4" style={{ color: `rgba(${rgb},0.4)` }} />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ background: "rgba(0,0,0,0.55)" }}>
+                        {isCurrentTrack && isPlaying ? <Pause className="w-3.5 h-3.5" style={{ color: `rgb(${rgb})` }} /> : <Play className="w-3.5 h-3.5 text-white ml-0.5" />}
+                      </div>
+                    </button>
+                    <Link to={`/song/${track.id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                      <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                      <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                    </Link>
+                    {track.is_new_release && (
+                      <span className="text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0"
+                        style={{ background: `rgba(${rgb},0.12)`, color: `rgb(${rgb})`, border: `1px solid rgba(${rgb},0.25)` }}>
+                        NEW
+                      </span>
+                    )}
+                    <button onClick={() => handlePlay(track)}
+                      className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:brightness-110"
+                      style={{ background: `rgba(${rgb},0.08)`, border: `1px solid rgba(${rgb},0.2)`, color: `rgb(${rgb})` }}>
+                      {isCurrentTrack && isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-1 border-b mb-8" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
           {[

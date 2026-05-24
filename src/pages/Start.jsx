@@ -120,8 +120,8 @@ export default function Start() {
   useEffect(() => {
     if (isLoadingAuth) return;
     if (!isAuthenticated) return; // logged-out visitors stay on /start
-    if (isAdmin) return;          // admins can preview /start freely
-    if (isPlus) { navigate("/my-vibes", { replace: true }); return; }
+    if (isAdmin) { navigate("/admin", { replace: true }); return; } // admins → admin panel
+    if (isPlus) { navigate("/my-vibe-library", { replace: true }); return; } // Plus → library
     // Free logged-in users → send to music, not the sales page
     navigate("/music", { replace: true });
   }, [isAuthenticated, isLoadingAuth, isPlus, isAdmin, navigate]);

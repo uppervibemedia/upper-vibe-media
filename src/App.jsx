@@ -119,6 +119,7 @@ const AuthenticatedApp = () => {
         <Route path="/newest-music" element={<NewestMusic />} />
         <Route path="/radio" element={<RadioPage />} />
         <Route path="/my-vibes" element={<MyVibes />} />
+        <Route path="/my-vibe-library" element={<MyVibes />} />
         <Route path="/favorites" element={<MyVibes />} />
         <Route path="/artists" element={<Artists />} />
         <Route path="/sessions" element={<Sessions />} />
