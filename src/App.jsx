@@ -81,7 +81,7 @@ const AuthenticatedApp = () => {
               </p>
             </div>
             <button
-              onClick={() => navigateToLogin()}
+              onClick={() => navigateToLogin(window.location.href)}
               className="w-full px-6 py-3 rounded-lg font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}>
               Log In Again
@@ -90,7 +90,7 @@ const AuthenticatedApp = () => {
         </div>
       );
     } else if (authError.type === 'auth_required') {
-      navigateToLogin();
+      navigateToLogin(window.location.href);
       return null;
     }
   }

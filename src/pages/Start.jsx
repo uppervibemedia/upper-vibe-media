@@ -103,11 +103,10 @@ export default function Start() {
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [stackTracks, setStackTracks] = useState([]);
   const [featuredTrackId, setFeaturedTrackId] = useState(null);
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoadingAuth } = useAuth();
+  const { isAuthenticated, isLoadingAuth, isPlus, isAdmin, hasPreviouslyLoggedIn, navigateToLogin } = useAuth();
 
   // Load next tracks for the music stack — newest published, excluding the featured track
   useEffect(() => {
@@ -117,18 +116,15 @@ export default function Start() {
     }).catch(() => {});
   }, [featuredTrackId]);
 
-  // Check membership status and redirect if needed — all hooks before any returns
+  // Routing: redirect based on auth + membership status (all hooks run first)
   useEffect(() => {
     if (isLoadingAuth) return;
-    if (isAuthenticated && user) {
-      const isAdmin = user.role === "admin";
-      // Admins can preview /start — do NOT redirect them
-      if (isAdmin) return;
-      const isPlus = user.isPlus === true || user.tier === "plus"
-        || user.tier === "premium" || user.isPremium === true || user.role === "premium";
-      if (isPlus) { navigate("/my-vibes", { replace: true }); setIsPremiumUser(true); return; }
-    }
-  }, [isAuthenticated, isLoadingAuth, user, navigate]);
+    if (!isAuthenticated) return; // logged-out visitors stay on /start
+    if (isAdmin) return;          // admins can preview /start freely
+    if (isPlus) { navigate("/my-vibes", { replace: true }); return; }
+    // Free logged-in users → send to music, not the sales page
+    navigate("/music", { replace: true });
+  }, [isAuthenticated, isLoadingAuth, isPlus, isAdmin, navigate]);
 
   // Inject page-specific meta tags for social sharing
   useEffect(() => {
@@ -151,8 +147,8 @@ export default function Start() {
     return () => { document.title = prev; };
   }, []);
 
-  // Show loading while auth resolves
-  if (isLoadingAuth) {
+  // Show loading while auth resolves, or while redirecting authenticated users
+  if (isLoadingAuth || (isAuthenticated && !isAdmin)) {
     return (
       <div className="min-h-screen flex items-center justify-center"
         style={{ background: "linear-gradient(160deg,#06060f 0%,#090914 55%,#04040d 100%)" }}>
@@ -160,9 +156,6 @@ export default function Start() {
       </div>
     );
   }
-
-  // Premium/admin fallback welcome screen (shown if navigate hasn't fired yet)
-  if (isPremiumUser) return <PremiumWelcome />;
 
   const handleCheckout = async () => {
     if (window.self !== window.top) {
@@ -254,6 +247,24 @@ export default function Start() {
             </p>
           </div>
 
+          {/* Returning visitor hint — only shown when localStorage flag is set */}
+          {hasPreviouslyLoggedIn && (
+            <div className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl"
+              style={{ background: "rgba(0,160,220,0.06)", border: "1px solid rgba(0,160,220,0.2)" }}>
+              <span className="text-sm" style={{ color: "rgba(0,160,220,0.9)" }}>👋</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>Welcome back</p>
+                <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>Log in to open your library</p>
+              </div>
+              <button
+                onClick={() => navigateToLogin(`${window.location.origin}/my-vibes`)}
+                className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-black transition-all active:scale-[0.97]"
+                style={{ background: "rgba(0,160,220,0.15)", border: "1px solid rgba(0,160,220,0.35)", color: "#00A0DC" }}>
+                Log In
+              </button>
+            </div>
+          )}
+
           {/* Primary CTA — below headline */}
           <div className="w-full flex flex-col gap-3">
             <PremiumButton onClick={handleCheckout}>
@@ -264,10 +275,26 @@ export default function Start() {
               <p className="text-xs text-center px-2" style={{ color: "rgba(255,100,100,0.85)" }}>{checkoutError}</p>
             )}
 
+            {/* Login / Create Account for logged-out visitors */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => navigateToLogin(`${window.location.origin}/music`)}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold tracking-wide transition-all active:scale-[0.97]"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)" }}>
+                Log In
+              </button>
+              <button
+                onClick={() => navigateToLogin(`${window.location.origin}/music`)}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold tracking-wide transition-all active:scale-[0.97]"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)" }}>
+                Create Account
+              </button>
+            </div>
+
             <Link to="/music"
               className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-bold tracking-wide transition-all active:scale-[0.97]"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)" }}>
-              Listen Free First
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}>
+              Listen Free — No Account Needed
             </Link>
           </div>
         </section>
@@ -278,14 +305,14 @@ export default function Start() {
         {/* ── BENEFIT CARDS ── */}
         <section className="flex flex-col gap-3">
           <p className="text-[9px] font-black tracking-[0.3em] uppercase text-center" style={{ color: `rgba(${PRIMARY},0.6)` }}>
-            What You Get with Premium
+            What You Get with Plus
           </p>
 
           {[
             {
               icon: <Download className="w-5 h-5" style={{ color: "#00A0DC" }} />,
               title: "Unlimited Song Downloads",
-              desc: "Download every Upper Vibe Media track with Premium.",
+              desc: "Download every Upper Vibe Media track with Plus.",
               accent: PRIMARY,
             },
             {
@@ -319,7 +346,7 @@ export default function Start() {
         {/* ── FREE vs PREMIUM COMPARISON ── */}
         <section className="flex flex-col gap-4">
           <p className="text-[9px] font-black tracking-[0.3em] uppercase text-center" style={{ color: `rgba(${PRIMARY},0.6)` }}>
-            Free vs Premium
+            Free vs Plus
           </p>
 
           <div className="grid grid-cols-2 gap-3">
@@ -347,11 +374,11 @@ export default function Start() {
               <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-[40px] pointer-events-none"
                 style={{ background: `rgba(${PRIMARY},0.15)` }} />
               <div className="relative z-10">
-                <p className="text-xs font-black mb-0.5" style={{ color: "#00A0DC", fontFamily: "var(--font-heading)" }}>Premium</p>
+                <p className="text-xs font-black mb-0.5" style={{ color: "#00A0DC", fontFamily: "var(--font-heading)" }}>Plus</p>
                 <p className="text-[10px] font-bold" style={{ color: `rgba(${PRIMARY},0.7)` }}>$4.99/month</p>
               </div>
               <div className="flex flex-col gap-2 relative z-10">
-                {["Download all songs", "Save to My Vibe Library", "Offline listening", "Premium music drops", "Support UVM directly"].map((item) => (
+                {["Download all songs", "Save to My Vibe Library", "Offline listening", "Plus music drops", "Support UVM directly"].map((item) => (
                   <div key={item} className="flex items-start gap-2">
                     <Check className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: "#00A0DC" }} />
                     <span className="text-[11px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.75)" }}>{item}</span>
@@ -375,7 +402,7 @@ export default function Start() {
           </div>
           <PremiumButton onClick={handleCheckout} style={{ background: "linear-gradient(135deg,#0090C8,#00B8D4)", color: "#000", boxShadow: "0 0 36px rgba(0,160,220,0.45)" }}>
             <Download className="w-4 h-4" />
-            Start Premium — $4.99/month
+            Start Plus — $4.99/month
           </PremiumButton>
           {checkoutError && (
             <p className="text-xs text-center" style={{ color: "rgba(255,100,100,0.85)" }}>{checkoutError}</p>

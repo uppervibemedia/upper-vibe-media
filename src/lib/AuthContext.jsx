@@ -122,6 +122,8 @@ export const AuthProvider = ({ children }) => {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
+      // Mark that this browser has logged in before (for returning visitor hint)
+      try { localStorage.setItem('uvm_has_logged_in', '1'); } catch {}
       setIsLoadingAuth(false);
     } catch (error) {
       console.error('User auth check failed:', error);
@@ -151,10 +153,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const navigateToLogin = () => {
+  const navigateToLogin = (nextUrl) => {
     // Use the SDK's redirectToLogin method
-    base44.auth.redirectToLogin(window.location.href);
+    base44.auth.redirectToLogin(nextUrl || window.location.href);
   };
+
+  // Derived membership helpers — always computed from trusted server auth data
+  const isPlus = isAuthenticated && user && (
+    user.isPlus === true ||
+    user.tier === "plus" ||
+    user.tier === "premium" ||
+    user.isPremium === true ||
+    user.role === "premium"
+  );
+  const isAdmin = isAuthenticated && user?.role === "admin";
+
+  // Non-blocking localStorage hint — only used for UI copy, never for access control
+  let hasPreviouslyLoggedIn = false;
+  try { hasPreviouslyLoggedIn = !!localStorage.getItem('uvm_has_logged_in'); } catch {}
 
   return (
     <AuthContext.Provider value={{ 
@@ -164,6 +180,9 @@ export const AuthProvider = ({ children }) => {
       isLoadingPublicSettings,
       authError,
       appPublicSettings,
+      isPlus,
+      isAdmin,
+      hasPreviouslyLoggedIn,
       logout,
       navigateToLogin,
       checkAppState

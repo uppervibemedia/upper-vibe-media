@@ -58,10 +58,10 @@ export default function PaymentSuccess() {
 
         {/* CTA */}
         <div className="flex flex-col gap-3">
-          <Link to="/downloads"
+          <Link to="/my-vibes"
             className="inline-flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
             style={{ background: "linear-gradient(135deg,#D4A843,#F0C060)", color: "#000" }}>
-            <Download className="w-4 h-4" /> Go To Downloads
+            <Sparkles className="w-4 h-4" /> Open My Vibe Library
           </Link>
           <Link to="/music"
             className="w-full py-3.5 rounded-2xl font-semibold text-sm text-white/50 hover:text-white/80 transition-colors text-center"
