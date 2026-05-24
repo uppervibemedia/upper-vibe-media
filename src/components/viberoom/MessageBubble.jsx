@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Trash2, Mic2, Ban, Flag, Music2 } from "lucide-react";
+import { Trash2, Mic2, Ban, Flag, Music2, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import VibeAvatar from "./VibeAvatar";
 import UserProfileCard from "./UserProfileCard";
@@ -22,7 +22,7 @@ function formatTime(isoString) {
   } catch (_) { return ""; }
 }
 
-export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, onHide, onMute, onBan, onUnban, animDelay, onReactionLoginRequired }) {
+export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, onHide, onDelete, onMute, onBan, onUnban, animDelay, onReactionLoginRequired }) {
   const reactions = msg.reactions || {};
   const [showProfile, setShowProfile] = useState(false);
   const [showModMenu, setShowModMenu] = useState(false);
@@ -64,7 +64,13 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
     setShowModMenu(false);
   };
 
-  const senderName = msg.user_name || msg.user_email?.split("@")[0] || "Vibe";
+  const senderName = msg.user_name || "Vibe Member";
+  const isMsgFromAdmin = msg.user_email && msg._isAdminMessage;
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this vibe?")) return;
+    if (onDelete) onDelete(msg);
+  };
 
   return (
     <>
@@ -88,9 +94,13 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
         <div className={`max-w-[75%] flex flex-col gap-1 ${isOwn ? "items-end" : "items-start"}`}>
 
           {/* Username + time + listening badge */}
-          <div className={`flex items-center gap-1.5 px-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
-            {!isOwn && (
-              <span className="text-[10px] font-bold text-white/40">{senderName}</span>
+          <div className={`flex items-center gap-1.5 px-1 flex-wrap ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
+            <span className="text-[10px] font-bold text-white/50">{senderName}</span>
+            {isMsgFromAdmin && (
+              <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-black tracking-wide"
+                style={{ background: "rgba(155,126,255,0.15)", border: "1px solid rgba(155,126,255,0.3)", color: "#9B7EFF" }}>
+                <ShieldCheck style={{ width: 7, height: 7 }} /> Admin
+              </span>
             )}
             {msg.is_listening && (
               <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-black tracking-wide"
@@ -162,48 +172,52 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
               </button>
             )}
 
-            {/* Admin moderation menu */}
-            {!isOwn && isAdmin && (
-              <div className="relative">
+            {/* Admin: visible delete button + mute/ban menu */}
+            {isAdmin && (
+              <div className="flex items-center gap-1">
+                {/* Prominent delete button — always visible to admin */}
                 <button
-                  onClick={() => setShowModMenu((v) => !v)}
-                  className="flex items-center px-1.5 py-0.5 rounded-full text-[10px] transition-all active:scale-90 opacity-0 group-hover:opacity-100"
-                  style={{ color: "rgba(255,255,255,0.15)" }}
-                  title="Moderate">
-                  <span style={{ fontSize: "11px" }}>···</span>
+                  onClick={handleDelete}
+                  title="Delete this vibe"
+                  className="flex items-center px-1.5 py-0.5 rounded-full text-[10px] transition-all active:scale-90 hover:bg-red-500/15"
+                  style={{ color: "rgba(255,80,80,0.55)" }}>
+                  <Trash2 className="w-3 h-3" />
                 </button>
-                {showModMenu && (
-                  <div
-                    className="absolute bottom-full mb-1 left-0 z-20 rounded-xl overflow-hidden"
-                    style={{
-                      background: "rgba(12,12,28,0.98)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      backdropFilter: "blur(20px)",
-                      minWidth: 120,
-                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-                    }}>
+                {/* Mute/Ban menu (non-own only) */}
+                {!isOwn && (
+                  <div className="relative">
                     <button
-                      onClick={handleReport}
-                      className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-orange-400 hover:bg-orange-500/10 transition-all">
-                      <Flag className="w-3 h-3" /> Report
+                      onClick={() => setShowModMenu((v) => !v)}
+                      className="flex items-center px-1.5 py-0.5 rounded-full text-[10px] transition-all active:scale-90"
+                      style={{ color: "rgba(255,255,255,0.2)" }}
+                      title="More actions">
+                      <span style={{ fontSize: "11px" }}>···</span>
                     </button>
-                    <button onClick={() => { onHide(msg); setShowModMenu(false); }}
-                      className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                      <Trash2 className="w-3 h-3" /> Remove
-                    </button>
-                    <button onClick={() => { onMute(msg.user_email); setShowModMenu(false); }}
-                      className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all">
-                      <Mic2 className="w-3 h-3" /> Mute
-                    </button>
-                    <button onClick={() => { onBan(msg.user_email); setShowModMenu(false); }}
-                      className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-red-500 hover:bg-red-600/10 transition-all">
-                      <Ban className="w-3 h-3" /> Ban
-                    </button>
-                    {banStatus && (
-                      <button onClick={() => { onUnban(msg.user_email); setShowModMenu(false); }}
-                        className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-green-400 hover:bg-green-500/10 transition-all">
-                        ✓ Unban
-                      </button>
+                    {showModMenu && (
+                      <div
+                        className="absolute bottom-full mb-1 left-0 z-20 rounded-xl overflow-hidden"
+                        style={{
+                          background: "rgba(12,12,28,0.98)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          backdropFilter: "blur(20px)",
+                          minWidth: 120,
+                          boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                        }}>
+                        <button onClick={() => { onMute(msg.user_email); setShowModMenu(false); }}
+                          className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all">
+                          <Mic2 className="w-3 h-3" /> Mute
+                        </button>
+                        <button onClick={() => { onBan(msg.user_email); setShowModMenu(false); }}
+                          className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-red-500 hover:bg-red-600/10 transition-all">
+                          <Ban className="w-3 h-3" /> Ban
+                        </button>
+                        {banStatus && (
+                          <button onClick={() => { onUnban(msg.user_email); setShowModMenu(false); }}
+                            className="flex items-center gap-2 px-3 py-2 w-full text-xs text-white/50 hover:text-green-400 hover:bg-green-500/10 transition-all">
+                            ✓ Unban
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Send, ShieldCheck, Zap, Ban, Mic2, Crown } from "lucide-react";
+import { Send, ShieldCheck, Zap, Ban, Mic2, Crown, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { usePlayer } from "@/context/PlayerContext";
@@ -84,6 +84,8 @@ export default function VibeRoom() {
   const [loading, setLoading]         = useState(false);
   // How many older messages to show (newest always shown, scroll up reveals more)
   const [visibleMsgCount, setVisibleMsgCount] = useState(30);
+  // Presence: count of viewers in Vibe Room (tracked via localStorage heartbeat)
+  const [viewerCount, setViewerCount] = useState(null);
   const bottomRef  = useRef(null);
   const inputRef   = useRef(null);
   const scrollRef  = useRef(null);
@@ -179,7 +181,45 @@ export default function VibeRoom() {
     setShowUpgradePrompt(true);
   };
 
+  // ── Presence: simple localStorage-based viewer count ────────────────────
+  useEffect(() => {
+    if (!ageConfirmed) return;
+    const sessionKey = "vr_session_" + (user?.email || "anon_" + Math.random().toString(36).slice(2));
+    const listKey = "vr_active_sessions";
+    const TTL = 45000; // 45s
+
+    const heartbeat = () => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(listKey) || "{}");
+        const now = Date.now();
+        // Remove expired sessions, add/refresh ours
+        const active = {};
+        Object.entries(raw).forEach(([k, ts]) => { if (now - ts < TTL) active[k] = ts; });
+        active[sessionKey] = now;
+        localStorage.setItem(listKey, JSON.stringify(active));
+        setViewerCount(Object.keys(active).length);
+      } catch {}
+    };
+
+    heartbeat();
+    const iv = setInterval(heartbeat, 20000);
+    return () => {
+      clearInterval(iv);
+      try {
+        const raw = JSON.parse(localStorage.getItem(listKey) || "{}");
+        delete raw[sessionKey];
+        localStorage.setItem(listKey, JSON.stringify(raw));
+      } catch {}
+    };
+  }, [ageConfirmed, user?.email]);
+
   // ── Admin / moderation ────────────────────────────────────────────────────
+  const handleDelete = async (msg) => {
+    // Optimistically remove from UI immediately
+    setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+    await base44.entities.VibeRoomMessage.delete(msg.id);
+  };
+
   const handleHide = async (msg) => {
     await base44.entities.VibeRoomMessage.update(msg.id, { is_hidden: true });
   };
@@ -294,6 +334,15 @@ export default function VibeRoom() {
                     <ShieldCheck className="w-2.5 h-2.5 text-purple-400/60" />
                     <span className="text-[9px] font-black tracking-[0.2em] uppercase text-purple-300/50">18+ Community</span>
                   </div>
+                  {/* Presence count */}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                    style={{ background: `rgba(${rtPrimary},0.06)`, border: `1px solid rgba(${rtPrimary},0.18)` }}>
+                    <Users className="w-2.5 h-2.5" style={{ color: `rgba(${rtPrimary},0.7)` }} />
+                    <span className="text-[9px] font-black tracking-[0.2em] uppercase"
+                      style={{ color: `rgba(${rtPrimary},0.7)` }}>
+                      {viewerCount !== null ? `${viewerCount} Vibing Now` : "Community Live"}
+                    </span>
+                  </div>
                 </div>
                 <h1 className="font-heading font-black text-foreground leading-none mb-0.5"
                   style={{ fontSize: "clamp(1.6rem, 4.5vw, 2.4rem)" }}>
@@ -400,6 +449,7 @@ export default function VibeRoom() {
                       user={user}
                       banStatus={bans.find((b) => b.user_email === msg.user_email)}
                       onHide={handleHide}
+                      onDelete={handleDelete}
                       onMute={handleMute}
                       onBan={handleBan}
                       onUnban={handleUnban}
