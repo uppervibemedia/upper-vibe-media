@@ -473,7 +473,7 @@ export default function SongPage() {
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <SupportModal open={supportModal} onClose={() => setSupportModal(false)} track={track} />
       <IOSTip trigger="always" />
-      <DownloadToast track={downloadToast} iosMode={downloadIosMode} onClose={() => setDownloadToast(null)} />
+      <DownloadToast track={downloadToast} iosMode={downloadIosMode} simple onClose={() => setDownloadToast(null)} />
 
       {/* Support success banner */}
       <AnimatePresence>

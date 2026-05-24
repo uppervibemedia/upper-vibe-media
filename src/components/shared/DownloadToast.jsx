@@ -5,14 +5,14 @@ import { useNavigate } from "react-router-dom";
 
 /**
  * DownloadToast — appears after a Plus download starts.
- * Shows "Download started" + a nudge to support the track.
  *
  * Props:
  *   track    — Track record (needs .id, .title)
  *   onClose  — dismiss callback
  *   iosMode  — if true, show iOS "Save to Files" tip instead of "Download started"
+ *   simple   — if true, show only "Download started" with no support nudge (use on song detail page)
  */
-export default function DownloadToast({ track, onClose, iosMode = false }) {
+export default function DownloadToast({ track, onClose, iosMode = false, simple = false }) {
   const navigate = useNavigate();
 
   // Auto-dismiss after 10s
@@ -74,40 +74,44 @@ export default function DownloadToast({ track, onClose, iosMode = false }) {
                 {iosMode ? (
                   <>
                     <p className="text-sm font-black text-white leading-snug">Opening audio file</p>
-                    <p className="text-xs mt-0.5 mb-2.5 leading-relaxed" style={{ color: "rgba(255,255,255,0.50)" }}>
+                    <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "rgba(255,255,255,0.50)" }}>
                       On iPhone: tap the share icon → <strong style={{ color: "rgba(212,168,67,0.9)" }}>Save to Files</strong> to keep it.
                     </p>
                   </>
                 ) : (
                   <>
                     <p className="text-sm font-black text-white leading-snug">Download started</p>
-                    <p className="text-xs mt-0.5 mb-2.5" style={{ color: "rgba(255,255,255,0.42)" }}>
-                      Want to support this track?
-                    </p>
+                    {!simple && (
+                      <p className="text-xs mt-0.5 mb-2.5" style={{ color: "rgba(255,255,255,0.42)" }}>
+                        Want to support this track?
+                      </p>
+                    )}
                   </>
                 )}
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={handleSupport}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
-                    style={{
-                      background: "linear-gradient(135deg,rgba(0,144,200,0.9),rgba(0,160,220,0.8))",
-                      color: "#fff",
-                      boxShadow: "0 0 14px rgba(0,160,220,0.3)",
-                    }}
-                  >
-                    <Zap className="w-3 h-3" /> Support Upper Vibe Media
-                  </button>
+                {!simple && !iosMode && (
+                  <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                    <button
+                      onClick={handleSupport}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
+                      style={{
+                        background: "linear-gradient(135deg,rgba(0,144,200,0.9),rgba(0,160,220,0.8))",
+                        color: "#fff",
+                        boxShadow: "0 0 14px rgba(0,160,220,0.3)",
+                      }}
+                    >
+                      <Zap className="w-3 h-3" /> Support Upper Vibe Media
+                    </button>
 
-                  <button
-                    onClick={onClose}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:bg-white/10"
-                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}
-                  >
-                    Keep Browsing
-                  </button>
-                </div>
+                    <button
+                      onClick={onClose}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:bg-white/10"
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}
+                    >
+                      Keep Browsing
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* X dismiss */}
