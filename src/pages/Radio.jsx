@@ -4,11 +4,11 @@ import {
   Play, Pause, SkipForward, SkipBack,
   Radio as RadioIcon, Waves, Download, Music4, Crown, Heart, Mic2, Sparkles,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
-import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import UpNextPanel from "../components/radio/UpNextPanel";
@@ -31,8 +31,8 @@ const PREF_KEY = "uvm_radio_viz_v9";
 const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
 
 export default function RadioPage() {
-  const [premiumModal, setPremiumModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
+  const navigate = useNavigate();
   const [vizMode, setVizMode] = useState(getSavedMode);
   const [pulseOn, setPulseOn] = useState(getPulseEnabled);
   const { themeId, theme, applyTheme } = useRadioTheme();
@@ -94,9 +94,8 @@ export default function RadioPage() {
   };
 
   const handleDownload = () => {
-    if (!user) { setLoginModal(true); return; }
-    if (!isPlus) { setPremiumModal(true); return; }
-    if (currentRadioSong?.audio_url) window.open(currentRadioSong.audio_url, "_blank");
+    if (!currentRadioSong?.id) return;
+    navigate(`/song/${currentRadioSong.id}?downloadIntent=true`);
   };
 
   if (!tracksLoaded) {
@@ -430,7 +429,6 @@ export default function RadioPage() {
         </p>
       </div>
 
-      <PremiumDownloadModal open={premiumModal} onClose={() => setPremiumModal(false)} />
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
       <IOSTip trigger="always" />
     </div>
