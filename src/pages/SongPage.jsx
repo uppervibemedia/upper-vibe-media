@@ -333,7 +333,7 @@ export default function SongPage() {
                         <button
                           id="download-btn"
                           onClick={handleDownload}
-                          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
+                          className="w-full flex items-center justify-center gap-2 flex-1 sm:flex-none sm:px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
                           style={{
                             background: "linear-gradient(135deg,#D4A843,#F0C060)",
                             color: "#000",
