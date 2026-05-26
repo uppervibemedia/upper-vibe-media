@@ -44,6 +44,38 @@ function seededShuffle(arr, seed) {
   return a;
 }
 
+// ── Featured track rotation ─────────────────────────────────────────────────
+// Picks 4 random published+playable tracks each session, avoiding recent picks
+const RECENT_PICKS_KEY = "uv_recent_featured";
+const MAX_RECENT = 12;
+
+function getRecentPicks() {
+  try { return JSON.parse(localStorage.getItem(RECENT_PICKS_KEY) || "[]"); } catch { return []; }
+}
+
+function saveRecentPicks(ids) {
+  try { localStorage.setItem(RECENT_PICKS_KEY, JSON.stringify(ids.slice(-MAX_RECENT))); } catch {}
+}
+
+function pickFeaturedTracks(allTracks, seed, count = 4) {
+  // Only use tracks with both audio and cover art
+  const eligible = allTracks.filter(t => t.audio_url && t.cover_url && t.status === "published");
+  if (eligible.length === 0) return [];
+
+  const recent = getRecentPicks();
+  // Prefer tracks NOT recently shown; fall back to full pool if needed
+  const fresh = eligible.filter(t => !recent.includes(t.id));
+  const pool = fresh.length >= count ? fresh : eligible;
+
+  const shuffled = seededShuffle(pool, seed + "featured");
+  const picked = shuffled.slice(0, count);
+
+  // Persist the picked IDs so next session avoids them
+  saveRecentPicks([...recent, ...picked.map(t => t.id)]);
+
+  return picked;
+}
+
 export default function Home() {
   const [latestTracks, setLatestTracks] = useState([]);
   const [allTracks, setAllTracks] = useState([]);
@@ -85,9 +117,9 @@ export default function Home() {
       base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
     ]);
 
-    // Derive latest + trending from the already-fetched allTracks (no extra request)
-    const shuffled = seededShuffle(allTracks.slice(0, 50), sessionSeed + "t");
-    setLatestTracks(shuffled.slice(0, 4));
+    // Pick 4 fresh featured tracks — avoids recently shown songs via localStorage
+    const featured = pickFeaturedTracks(allTracks, sessionSeed);
+    setLatestTracks(featured.length > 0 ? featured : seededShuffle(allTracks.slice(0, 50), sessionSeed + "t").slice(0, 4));
     setAllTracks(allTracks);
 
     const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
