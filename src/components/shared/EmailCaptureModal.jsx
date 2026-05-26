@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { trackEmailSignup } from "@/lib/analytics";
 
 const SEEN_KEY = "uvm_email_popup_seen";
-const DELAY_MS = 4000; // show after 4 seconds
+const DELAY_MS = 120000; // show after 2 minutes
 
 export default function EmailCaptureModal() {
   const [visible, setVisible] = useState(false);

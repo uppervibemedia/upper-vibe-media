@@ -262,9 +262,13 @@ export default function Home() {
               }}>MEDIA</div>
             </motion.div>
 
-            {/* ── Hero Now Playing card — always shows real cover art ── */}
-            {(currentTrack || currentRadioSong) && (() => {
-              const displayTrack = currentTrack || currentRadioSong;
+            {/* ── Hero media card — always visible on mobile/desktop ── */}
+            {/* Priority: active currentTrack > radio song > rotating homepage song */}
+            {(() => {
+              const displayTrack = currentTrack || currentRadioSong || latestTracks[0];
+              if (!displayTrack) return null;
+              const isActive = !!(currentTrack || currentRadioSong);
+              const label = isPlaying ? "Now Playing" : currentTrack ? "Paused" : currentRadioSong ? "Live on Radio" : "Featured Track";
               return (
                 <motion.div
                   key={displayTrack.id}
@@ -277,7 +281,7 @@ export default function Home() {
                     boxShadow: `0 0 24px rgba(${rtPrimary},0.08)`,
                     maxWidth: "min(420px, 90vw)",
                   }}>
-                  {/* Real cover art */}
+                  {/* Cover art */}
                   <div className="relative flex-shrink-0">
                     <img src={displayTrack.cover_url} alt={displayTrack.title}
                       className="w-11 h-11 rounded-xl object-cover ring-1 ring-white/10" />
@@ -287,7 +291,7 @@ export default function Home() {
                       className="absolute inset-0 rounded-xl pointer-events-none"
                       style={{ border: `2px solid rgb(${rtPrimary})` }} />
                   </div>
-                  {/* Animated equalizer */}
+                  {/* Equalizer bars */}
                   <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: "14px" }}>
                     {[4, 8, 14, 10, 6, 12, 8].map((h, i) => (
                       <motion.div key={i}
@@ -297,17 +301,17 @@ export default function Home() {
                         style={{ background: `rgb(${rtPrimary})`, opacity: isPlaying ? 1 : 0.5 }} />
                     ))}
                   </div>
-                  {/* Real track info */}
+                  {/* Track info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-[8px] font-black tracking-[0.18em] uppercase leading-none mb-0.5" style={{ color: `rgba(${rtPrimary},0.7)` }}>
-                      {isPlaying ? "Now Playing" : currentTrack ? "Paused" : "Live on Radio"}
+                      {label}
                     </p>
                     <p className="text-xs font-bold text-white/90 truncate">{displayTrack.title}</p>
                     <p className="text-[10px] text-white/45 truncate">
                       {displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}
                     </p>
                   </div>
-                  {/* Play/Pause or Radio button */}
+                  {/* Action button */}
                   {currentTrack ? (
                     <button onClick={togglePlay}
                       className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
@@ -316,11 +320,17 @@ export default function Home() {
                         ? <Pause className="w-3.5 h-3.5 text-black fill-current" />
                         : <Play className="w-3.5 h-3.5 text-black fill-current ml-0.5" />}
                     </button>
-                  ) : (
+                  ) : currentRadioSong ? (
                     <button onClick={handleStartRadio}
                       className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
                       style={{ background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`, boxShadow: `0 0 16px rgba(${rtPrimary},0.3)` }}>
                       <Radio className="w-3.5 h-3.5 text-black" />
+                    </button>
+                  ) : (
+                    <button onClick={() => handlePlayTrack(displayTrack)}
+                      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+                      style={{ background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`, boxShadow: `0 0 16px rgba(${rtPrimary},0.3)` }}>
+                      <Play className="w-3.5 h-3.5 text-black fill-current ml-0.5" />
                     </button>
                   )}
                 </motion.div>
