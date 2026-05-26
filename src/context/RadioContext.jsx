@@ -81,10 +81,12 @@ export function RadioProvider({ children }) {
 
   // ── Load tracks + drops ───────────────────────────────────────────────────
   useEffect(() => {
-    base44.entities.Track.filter({ status: "published" }, "-created_date", 500).then((res) => {
-      setAllTracks(res);
-      setTracksLoaded(true);
-      setCuratorActive(isCuratorActive());
+    import("@/lib/trackCache").then(({ getPublishedTracks }) => {
+      getPublishedTracks("-created_date", 500).then((res) => {
+        setAllTracks(res);
+        setTracksLoaded(true);
+        setCuratorActive(isCuratorActive());
+      });
     });
     loadHostDrops(); // pre-cache drops in background
   }, []);
@@ -188,7 +190,9 @@ export function RadioProvider({ children }) {
       newQueue = [...newQueue, ...extra].slice(0, 50);
     }
 
-    const newHistory = [...history.slice(0, hIndex + 1), nextSong];
+    // F: cap history at 50 to prevent unbounded memory/localStorage growth
+    const rawHistory = [...history.slice(0, hIndex + 1), nextSong];
+    const newHistory = rawHistory.length > 50 ? rawHistory.slice(rawHistory.length - 50) : rawHistory;
     setRadioHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
     setCurrentRadioSong(nextSong);

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { getPublishedTracks } from "@/lib/trackCache";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, ChevronLeft, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -27,19 +28,20 @@ export default function MyVibes() {
   useEffect(() => {
     if (!user?.email) { setLoading(false); return; }
     Promise.all([
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
+      getPublishedTracks("-created_date", 500),
       base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 500),
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 5),
-    ]).then(([t, v, latest]) => {
+    ]).then(([t, v]) => {
       setTracks(t);
+      // Latest 5 playable tracks derived from the same cached fetch
+      setLatestTracks(t.filter((tr) => tr.audio_url).slice(0, 5));
       setVisualizers(v);
-      setLatestTracks(latest.filter((tr) => tr.audio_url).slice(0, 5));
       setLoading(false);
     });
   }, [user]);
 
-  const savedTracks = tracks.filter((t) => isFaved("track", t.id));
-  const savedVisualizers = visualizers.filter((v) => isFaved("visualizer", v.id));
+  // C: memoize — avoid recomputing on every render triggered by playback state
+  const savedTracks = useMemo(() => tracks.filter((t) => isFaved("track", t.id)), [tracks, isFaved]);
+  const savedVisualizers = useMemo(() => visualizers.filter((v) => isFaved("visualizer", v.id)), [visualizers, isFaved]);
 
   const handlePlay = (track) => {
     if (currentTrack?.id === track.id) togglePlay();
@@ -145,7 +147,7 @@ export default function MyVibes() {
                     }}>
                     <button onClick={() => handlePlay(track)} className="flex-shrink-0 relative group">
                       {track.cover_url ? (
-                        <img src={track.cover_url} alt={track.title} className="w-11 h-11 rounded-xl object-cover" />
+                        <img src={track.cover_url} alt={track.title} width={44} height={44} loading="lazy" className="w-11 h-11 rounded-xl object-cover" />
                       ) : (
                         <div className="w-11 h-11 rounded-xl flex items-center justify-center"
                           style={{ background: `rgba(${rgb},0.08)` }}>
@@ -226,7 +228,7 @@ export default function MyVibes() {
                           }}>
                           <div className="relative flex-shrink-0 cursor-pointer" onClick={() => handlePlay(track)}>
                             {track.cover_url ? (
-                              <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
+                              <img src={track.cover_url} alt={track.title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-xl object-cover" />
                             ) : (
                               <div className="w-12 h-12 rounded-xl flex items-center justify-center"
                                 style={{ background: `rgba(${rgb},0.08)` }}>

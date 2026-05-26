@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, memo } from "react";
+import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Play, Pause, Download, Waves, Music4, Heart, ChevronLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -65,7 +66,7 @@ export default function Music() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
+      getPublishedTracks("-created_date", 500),
       base44.entities.Category.list("display_order", 100),
     ]).then(([t, cats]) => {
       setTracks(t);
@@ -74,7 +75,7 @@ export default function Music() {
     });
   }, [refreshKey]);
 
-  const handleRefresh = async () => setRefreshKey((k) => k + 1);
+  const handleRefresh = async () => { invalidateTrackCache(); setRefreshKey((k) => k + 1); };
 
   // Reset visible count when search/filter changes
   const prevFilterRef = React.useRef({ search: "", activeFilter: "all" });
@@ -313,7 +314,8 @@ function FilterPill({ label, active, onClick, themeColor }) {
   );
 }
 
-function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user, themeColor, onPlay, onFav, onDownload }) {
+// B: React.memo — prevents rerenders when only isPlaying/currentTrack changes on other rows
+const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user, themeColor, onPlay, onFav, onDownload }) {
   const tc = themeColor || "0,160,220";
   return (
     <motion.div
@@ -330,7 +332,7 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
       {/* Cover art */}
       <Link to={`/song/${track.id}`} className="relative flex-shrink-0 block" onClick={(e) => e.stopPropagation()}>
         {track.cover_url ? (
-          <img src={track.cover_url} alt={track.title} className="w-12 h-12 rounded-xl object-cover" />
+          <img src={track.cover_url} alt={track.title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-xl object-cover" />
         ) : (
           <div className="w-12 h-12 rounded-xl flex items-center justify-center"
             style={{ background: "rgba(0,160,220,0.08)" }}>
@@ -409,4 +411,4 @@ function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user
       </div>
     </motion.div>
   );
-}
+});

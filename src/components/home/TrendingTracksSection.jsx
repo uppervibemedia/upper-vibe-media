@@ -136,7 +136,7 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
               {/* Art */}
               <div className="relative flex-shrink-0">
                 {track.cover_url ? (
-                  <img src={track.cover_url} alt={track.title} className="w-11 h-11 rounded-xl object-cover" />
+                  <img src={track.cover_url} alt={track.title} width={44} height={44} loading="lazy" className="w-11 h-11 rounded-xl object-cover" />
                 ) : (
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center"
                     style={{ background: `rgba(${rtp},0.08)` }}>

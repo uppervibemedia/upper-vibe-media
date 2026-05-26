@@ -1,5 +1,7 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { motion, useAnimationFrame } from "framer-motion";
+import usePageVisible from "@/hooks/usePageVisible";
+import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
 import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Heart, Users, GraduationCap, Radio, Zap, Music4, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -94,6 +96,7 @@ export default function Home() {
   const rtAmbient1 = radioTheme.vars["--rt-ambient1"];
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isPageVisible = usePageVisible();
 
   const handleStartRadio = () => {
     startRadio();
@@ -110,7 +113,7 @@ export default function Home() {
   const loadData = async () => {
     // Batch 1: most critical above-the-fold data
     const [allTracks, recentVizPool] = await Promise.all([
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 200),
+      getPublishedTracks("-created_date", 200),
       base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
     ]);
 
@@ -143,10 +146,12 @@ export default function Home() {
   const handleRefresh = async () => {
     sessionStorage.removeItem("uv_home_seed");
     try { localStorage.removeItem(LAST_HOME_TRACK_KEY); } catch {}
+    invalidateTrackCache();
     setRefreshKey((k) => k + 1);
   };
 
-  const heartButton = (type, id, meta) => (
+  // H: memoized heartButton — prevents consumer rerenders when playback changes
+  const heartButton = useCallback((type, id, meta) => (
     <button
       onClick={(e) => {
         e.stopPropagation();
@@ -157,7 +162,7 @@ export default function Home() {
       style={isFaved(type, id) ? { color: "#9B7EFF" } : { color: "rgba(255,255,255,0.2)" }}>
       <Heart className={`w-3.5 h-3.5 ${isFaved(type, id) ? "fill-current" : ""}`} />
     </button>
-  );
+  ), [user, isFaved, toggle, setLoginModal]);
 
 
 
@@ -183,12 +188,12 @@ export default function Home() {
           {/* Subtle scan lines */}
           <div className="absolute inset-0 opacity-[0.014]"
             style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(255,255,255,0.6) 0px, rgba(255,255,255,0.6) 1px, transparent 1px, transparent 80px)" }} />
-          {/* Animated waveform behind logo */}
+          {/* Animated waveform behind logo — pauses when tab hidden (D) */}
           <div className="absolute left-0 right-0 bottom-[35%] flex items-end justify-center gap-[2px] opacity-[0.06] pointer-events-none">
             {Array.from({ length: 60 }).map((_, i) => (
               <motion.div key={i}
                 animate={{ height: [`${4 + Math.sin(i * 0.4) * 10}px`, `${8 + Math.sin(i * 0.4 + 1.2) * 16}px`, `${4 + Math.sin(i * 0.4) * 10}px`] }}
-                transition={{ duration: 2.2 + (i % 7) * 0.18, repeat: Infinity, ease: "easeInOut", delay: i * 0.03 }}
+                transition={{ duration: 2.2 + (i % 7) * 0.18, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: i * 0.03 }}
                 className="w-[3px] rounded-full flex-shrink-0"
                 style={{ background: i % 2 === 0 ? "#00C9E0" : "#F5A800" }} />
             ))}
@@ -431,7 +436,7 @@ export default function Home() {
             className="absolute -bottom-8 right-8 w-48 h-48 rounded-full blur-[70px] pointer-events-none"
             style={{ background: "#F5A800" }} />
 
-          {/* Full-width waveform strip at bottom */}
+          {/* Full-width waveform strip at bottom — pauses when tab hidden (D) */}
           <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center gap-[1.5px] h-16 opacity-30 pointer-events-none overflow-hidden">
             {Array.from({ length: 80 }).map((_, i) => {
               const colorCycle = i % 4;
@@ -445,7 +450,7 @@ export default function Home() {
               return (
                 <motion.div key={i}
                   animate={{ height: [`${8 + Math.sin(i * 0.35) * 16}px`, `${16 + Math.sin(i * 0.35 + 1.5) * 28}px`, `${8 + Math.sin(i * 0.35) * 16}px`] }}
-                  transition={{ duration: 1.8 + (i % 5) * 0.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.015 }}
+                  transition={{ duration: 1.8 + (i % 5) * 0.2, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: i * 0.015 }}
                   className="w-[2px] rounded-full flex-shrink-0"
                   style={{ background: barColor }} />
               );
@@ -486,7 +491,7 @@ export default function Home() {
               </Link>
             </div>
 
-            {/* Right: tall animated waveform — desktop */}
+            {/* Right: tall animated waveform — desktop — pauses when tab hidden (D) */}
             <div className="flex-shrink-0 hidden md:flex items-end gap-1 h-28">
               {[5,8,14,22,30,38,28,18,32,40,24,16,34,20,10,26,36,22,12,28].map((h, i) => {
                 const cycle = i % 4;
@@ -500,7 +505,7 @@ export default function Home() {
                 return (
                   <motion.div key={i}
                     animate={{ height: [`${h * 0.45}px`, `${h}px`, `${h * 0.6}px`, `${h}px`] }}
-                    transition={{ duration: 1.0 + i * 0.06, repeat: Infinity, ease: "easeInOut", delay: i * 0.04 }}
+                    transition={{ duration: 1.0 + i * 0.06, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: i * 0.04 }}
                     className="w-1.5 rounded-full flex-shrink-0"
                     style={{ background: barColor }} />
                 );

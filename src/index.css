@@ -132,6 +132,15 @@
     user-select: none;
     -webkit-user-select: none;
   }
+  /* G: touch-action manipulation — removes 300ms tap delay on Android/iOS */
+  button,
+  a,
+  [role="button"],
+  input[type="range"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    touch-action: manipulation;
+  }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
   }
