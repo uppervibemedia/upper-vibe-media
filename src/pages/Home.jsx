@@ -44,35 +44,32 @@ function seededShuffle(arr, seed) {
   return a;
 }
 
-// ── Featured track rotation ─────────────────────────────────────────────────
-// Picks 4 random published+playable tracks each session, avoiding recent picks
-const RECENT_PICKS_KEY = "uv_recent_featured";
-const MAX_RECENT = 12;
+// ── Homepage featured track rotation ──────────────────────────────────────
+// Picks 4 truly random published+playable tracks on every mount.
+// Avoids repeating the last shown song ID (stored in localStorage).
+const LAST_HOME_TRACK_KEY = "uv_last_home_track";
 
-function getRecentPicks() {
-  try { return JSON.parse(localStorage.getItem(RECENT_PICKS_KEY) || "[]"); } catch { return []; }
-}
-
-function saveRecentPicks(ids) {
-  try { localStorage.setItem(RECENT_PICKS_KEY, JSON.stringify(ids.slice(-MAX_RECENT))); } catch {}
-}
-
-function pickFeaturedTracks(allTracks, seed, count = 4) {
-  // Only use tracks with both audio and cover art
+function pickHomepageTracks(allTracks, count = 4) {
   const eligible = allTracks.filter(t => t.audio_url && t.cover_url && t.status === "published");
+  console.log("Homepage rotation songs available:", eligible.length);
   if (eligible.length === 0) return [];
 
-  const recent = getRecentPicks();
-  // Prefer tracks NOT recently shown; fall back to full pool if needed
-  const fresh = eligible.filter(t => !recent.includes(t.id));
-  const pool = fresh.length >= count ? fresh : eligible;
+  let lastId = null;
+  try { lastId = localStorage.getItem(LAST_HOME_TRACK_KEY); } catch {}
+  console.log("Last homepage song:", lastId);
 
-  const shuffled = seededShuffle(pool, seed + "featured");
-  const picked = shuffled.slice(0, count);
+  // Shuffle truly randomly (not seeded) so every mount is fresh
+  const shuffled = [...eligible].sort(() => Math.random() - 0.5);
 
-  // Persist the picked IDs so next session avoids them
-  saveRecentPicks([...recent, ...picked.map(t => t.id)]);
+  // Avoid leading with the same song as last time when possible
+  const reordered = lastId && shuffled[0]?.id === lastId && shuffled.length > 1
+    ? [shuffled[1], shuffled[0], ...shuffled.slice(2)]
+    : shuffled;
 
+  const picked = reordered.slice(0, count);
+  console.log("Selected homepage song:", picked[0]?.id, picked[0]?.title);
+
+  try { localStorage.setItem(LAST_HOME_TRACK_KEY, picked[0]?.id || ""); } catch {}
   return picked;
 }
 
@@ -117,9 +114,9 @@ export default function Home() {
       base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
     ]);
 
-    // Pick 4 fresh featured tracks — avoids recently shown songs via localStorage
-    const featured = pickFeaturedTracks(allTracks, sessionSeed);
-    setLatestTracks(featured.length > 0 ? featured : seededShuffle(allTracks.slice(0, 50), sessionSeed + "t").slice(0, 4));
+    // Pick 4 truly random featured tracks on every mount — rotates each visit/refresh
+    const featured = pickHomepageTracks(allTracks);
+    setLatestTracks(featured.length > 0 ? featured : allTracks.filter(t => t.audio_url && t.cover_url).slice(0, 4));
     setAllTracks(allTracks);
 
     const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
@@ -145,6 +142,7 @@ export default function Home() {
 
   const handleRefresh = async () => {
     sessionStorage.removeItem("uv_home_seed");
+    try { localStorage.removeItem(LAST_HOME_TRACK_KEY); } catch {}
     setRefreshKey((k) => k + 1);
   };
 
