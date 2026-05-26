@@ -71,11 +71,23 @@ export default function RadioPage() {
 
 
 
-  const isCurrentlyPlayingRadio = sourceType === "radio" && currentTrack?.id === currentRadioSong?.id;
-  const radioIsPaused = currentRadioSong && sourceType !== "radio" && !!currentTrack;
+  // If the homepage song is currently playing and its ID matches the radio song,
+  // treat it as radio playing so we don't show "Resume Radio" or restart anything.
+  const currentSongMatchesRadio = currentTrack?.id === currentRadioSong?.id;
+  const isCurrentlyPlayingRadio = (sourceType === "radio" || (isPlaying && currentSongMatchesRadio)) && currentSongMatchesRadio;
+  const radioIsPaused = currentRadioSong && !isCurrentlyPlayingRadio && !!currentTrack && !currentSongMatchesRadio;
   const playingThisRadioSong = isCurrentlyPlayingRadio && isPlaying;
 
-  const handlePlay = () => isCurrentlyPlayingRadio ? togglePlay() : startRadio();
+  const handlePlay = () => {
+    if (isCurrentlyPlayingRadio) {
+      togglePlay();
+    } else if (currentSongMatchesRadio && !isPlaying) {
+      // Same song, just paused — resume without restarting
+      togglePlay();
+    } else {
+      startRadio();
+    }
+  };
   const handleResume = () => resumeRadio();
   const handleNext = () => nextRadioSong();
   const handlePrev = () => prevRadioSong();

@@ -53,6 +53,7 @@ export function RadioProvider({ children }) {
   const {
     registerNextHandler, registerPrevHandler,
     playTrack, sourceType, currentTrack, audioRef,
+    isPlaying,
   } = usePlayer();
 
   const [allTracks,          setAllTracks]          = useState([]);
@@ -161,8 +162,10 @@ export function RadioProvider({ children }) {
     stateRef.current = {
       allTracks, radioQueue, radioHistory, historyIndex,
       currentRadioSong, sourceType, likedTrackIds,
+      // Track the currently playing song from PlayerContext so initRadio can adopt it
+      _currentPlayerTrack: isPlaying ? currentTrack : null,
     };
-  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType, likedTrackIds]);
+  }, [allTracks, radioQueue, radioHistory, historyIndex, currentRadioSong, sourceType, likedTrackIds, currentTrack, isPlaying]);
 
   // Keep refs in sync
   useEffect(() => { isHostDropRef.current = isHostDropPlaying; }, [isHostDropPlaying]);
@@ -397,6 +400,19 @@ export function RadioProvider({ children }) {
   const initRadio = useCallback(() => {
     if (!allTracks.length) return null;
     if (currentRadioSong) return currentRadioSong;
+
+    // If a song is already playing (from homepage/library), adopt it as the radio song
+    // so the Radio page shows it as the current track without restarting
+    const activeSong = stateRef.current._currentPlayerTrack;
+    if (activeSong) {
+      const built = buildWeightedQueue(allTracks, activeSong.id, likedTrackIds);
+      setCurrentRadioSong(activeSong);
+      setRadioHistory([activeSong]);
+      setHistoryIndex(0);
+      setRadioQueue(built.slice(1));
+      return activeSong;
+    }
+
     const built = buildWeightedQueue(allTracks, null, likedTrackIds);
     const song  = built[0];
     if (!song) return null;

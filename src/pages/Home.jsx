@@ -99,6 +99,13 @@ export default function Home() {
   const isPageVisible = usePageVisible();
 
   const handleStartRadio = () => {
+    const audio = document.querySelector("audio");
+    const audioActive = audio && audio.src && !audio.paused && audio.currentTime > 0;
+    // If something is already playing, just navigate — do not restart or reload
+    if (isPlaying || audioActive) {
+      navigate("/radio");
+      return;
+    }
     startRadio();
     navigate("/radio");
   };
