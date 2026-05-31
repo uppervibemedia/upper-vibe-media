@@ -1,9 +1,17 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Play, GraduationCap } from "lucide-react";
+import { Play, GraduationCap, UserPlus } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function HeroSection() {
+  const { isAuthenticated, isPlus, isAdmin, navigateToLogin } = useAuth();
+
+  const handleCreateAccount = () => {
+    // Redirect back to /music after signup for free users (Plus/admin handled by post-auth logic)
+    navigateToLogin(`${window.location.origin}/music`);
+  };
+
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background */}
@@ -72,6 +80,28 @@ export default function HeroSection() {
               <GraduationCap className="w-4 h-4" /> Watch Free Training
             </Link>
           </motion.div>
+
+          {/* Create Account — only shown to logged-out visitors */}
+          {!isAuthenticated && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.75 }}
+              className="flex items-center gap-3 mt-2"
+            >
+              <button
+                onClick={handleCreateAccount}
+                className="flex items-center gap-2 px-5 py-3 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-125 active:scale-95"
+                style={{
+                  background: "rgba(212,168,67,0.1)",
+                  border: "1px solid rgba(212,168,67,0.3)",
+                  color: "rgba(212,168,67,0.9)",
+                  minHeight: 44,
+                }}>
+                <UserPlus className="w-3.5 h-3.5 flex-shrink-0" />
+                Create Free Account
+              </button>
+              <span className="text-[10px] text-white/20 font-semibold">Free forever · No card needed</span>
+            </motion.div>
+          )}
 
           {/* Stats row */}
           <motion.div
