@@ -89,15 +89,23 @@ export default function RadioCTA() {
     const timer = setTimeout(() => {
     Promise.all([
       base44.entities.AppSettings.filter({ key: "start_featured_track_id" }),
-      base44.entities.Track.filter({ status: "published" }, "-release_date", 10),
+      // Sort by created_date (actual upload order) so newest uploads always surface first
+      base44.entities.Track.filter({ status: "published" }, "-created_date", 20),
     ]).then(([settings, recent]) => {
       const featuredId = settings?.[0]?.value;
+      // Only consider tracks with both audio and cover art
+      const eligible = recent.filter((t) => t.audio_url && t.cover_url);
+
       let featured = null;
-      if (featuredId) featured = recent.find((t) => t.id === featuredId && t.audio_url) || null;
-      if (!featured) featured = recent.find((t) => t.audio_url) || null;
+      // Use admin-selected featured song if it exists in our eligible set
+      if (featuredId) featured = eligible.find((t) => t.id === featuredId) || null;
+      // Otherwise fall back to the newest published song with audio + cover
+      if (!featured) featured = eligible[0] || null;
+
       setFeaturedTrack(featured);
-      const withMedia = recent.filter((t) => (t.audio_url || t.cover_url) && t.id !== featured?.id);
-      setTracks(withMedia.slice(0, 3));
+      // Small cards: next 3 newest songs, excluding the featured song, no duplicates
+      const smallCards = eligible.filter((t) => t.id !== featured?.id).slice(0, 3);
+      setTracks(smallCards);
     }).catch(() => {});
     }, 300);
     return () => clearTimeout(timer);
