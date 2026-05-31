@@ -222,7 +222,7 @@ export default function AnalyticsDashboard() {
         <StatCard icon={Play}      label="Song Plays"      value={songPlays}       color="#34D399" />
         <StatCard icon={Music}     label="Completions"     value={completions}     color="#60A5FA" />
         <StatCard icon={Download}  label="Download Clicks" value={dlClicks}        color="#D4A843" />
-        <StatCard icon={Crown}     label="Premium Clicks"  value={premClicks}      color="#F59E0B" />
+        <StatCard icon={Crown}     label="Plus Clicks"     value={premClicks}      color="#F59E0B" />
         <StatCard icon={Mail}      label="Email Signups"   value={emailSigns}      color="#EC4899" />
         <StatCard icon={TrendingUp} label="Visualizer Views" value={vizViews}     color="#00C9E0" />
       </div>
