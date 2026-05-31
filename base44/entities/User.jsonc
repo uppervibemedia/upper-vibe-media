@@ -5,56 +5,90 @@
     "role": {
       "type": "string",
       "enum": [
-        "admin",
         "user",
-        "premium"
+        "admin"
       ],
       "default": "user"
+    },
+    "isPlus": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if user has an active Plus subscription"
+    },
+    "isPremium": {
+      "type": "boolean",
+      "default": false,
+      "description": "Legacy compatibility field \u2014 same as isPlus"
     },
     "tier": {
       "type": "string",
       "enum": [
         "free",
-        "supporter",
+        "plus",
         "premium"
       ],
-      "default": "free"
+      "default": "free",
+      "description": "Membership tier"
     },
-    "vibe_room_age_confirmed": {
-      "type": "boolean",
-      "default": false,
-      "description": "User has confirmed they are 18+ for Vibe Room"
-    },
-    "vibe_name": {
+    "plan": {
       "type": "string",
-      "description": "User's chosen Vibe Room display name (3\u201320 chars)"
+      "description": "Active plan name e.g. plus"
     },
-    "vibe_avatar_url": {
+    "planName": {
       "type": "string",
-      "description": "URL of the user's Vibe Room profile picture"
+      "description": "Display name e.g. Upper Vibe Plus"
     },
-    "stripe_customer_id": {
+    "billingCycle": {
       "type": "string",
-      "description": "Stripe customer ID for billing"
+      "enum": [
+        "monthly",
+        "yearly"
+      ],
+      "description": "Billing interval"
     },
-    "stripe_subscription_id": {
+    "subscriptionStatus": {
       "type": "string",
-      "description": "Active Stripe subscription ID"
+      "description": "Stripe subscription status e.g. active, inactive, cancelled"
     },
     "subscription_status": {
       "type": "string",
-      "enum": [
-        "active",
-        "cancelled",
-        "past_due",
-        "trialing",
-        "none"
-      ],
-      "default": "none"
+      "description": "Snake-case alias of subscriptionStatus for legacy checks"
     },
-    "subscription_ends_at": {
+    "stripeCustomerId": {
       "type": "string",
-      "description": "ISO datetime when subscription ends or renews"
+      "description": "Stripe customer ID"
+    },
+    "stripeSubscriptionId": {
+      "type": "string",
+      "description": "Stripe subscription ID"
+    },
+    "stripePriceId": {
+      "type": "string",
+      "description": "Stripe price ID for the active plan"
+    },
+    "stripeProductId": {
+      "type": "string",
+      "description": "Stripe product ID"
+    },
+    "plusStartedAt": {
+      "type": "string",
+      "description": "ISO datetime when Plus was first activated"
+    },
+    "subscriptionCurrentPeriodEnd": {
+      "type": "string",
+      "description": "ISO datetime when current billing period ends"
+    },
+    "vibe_name": {
+      "type": "string",
+      "description": "Display name in the Vibe Room"
+    },
+    "vibe_avatar_url": {
+      "type": "string",
+      "description": "Custom avatar URL"
+    },
+    "vibe_room_age_confirmed": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

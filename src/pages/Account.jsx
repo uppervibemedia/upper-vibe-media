@@ -98,7 +98,16 @@ export default function Account() {
   }
 
   const isAdmin = user?.role === "admin";
-  const isPlus = isAdmin || user?.isPlus === true || user?.tier === "plus" || user?.tier === "premium" || user?.isPremium === true || user?.role === "premium";
+  // Use all known Plus indicators — mirrors AuthContext.isPlus
+  const isPlus = isAdmin ||
+    user?.isPlus === true ||
+    user?.isPremium === true ||
+    user?.tier === "plus" ||
+    user?.tier === "premium" ||
+    user?.plan === "plus" ||
+    user?.plan === "premium" ||
+    user?.subscriptionStatus === "active" ||
+    user?.subscription_status === "active";
   const isPaid = !isAdmin && isPlus;
 
   const tierLabel = isAdmin ? "Admin" : isPlus ? "Upper Vibe Plus" : "Free Listener";
