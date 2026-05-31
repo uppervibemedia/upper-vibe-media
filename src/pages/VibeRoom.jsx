@@ -14,7 +14,6 @@ import NowPlayingCard from "../components/viberoom/NowPlayingCard";
 import DailyPromptCard from "../components/viberoom/DailyPromptCard";
 import MessageBubble from "../components/viberoom/MessageBubble";
 import VibeAvatar from "../components/viberoom/VibeAvatar";
-import AvatarUpload from "../components/viberoom/AvatarUpload";
 import PremiumUpgradePrompt from "../components/viberoom/PremiumUpgradePrompt";
 
 // Layout constants
@@ -351,14 +350,10 @@ export default function VibeRoom() {
                 <p className="text-muted-foreground/60 text-xs tracking-wide">Listen together. Raise the frequency.</p>
               </div>
 
-              {/* Right: avatar + name (premium only) */}
+              {/* Right: avatar + name (premium only) — photo managed from Account page */}
               {isPremium && vibeName && (
                 <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                  <AvatarUpload
-                    name={vibeName}
-                    currentAvatarUrl={vibeAvatar}
-                    onUploaded={(url) => setVibeAvatar(url)}
-                  />
+                  <VibeAvatar name={vibeName} avatarUrl={vibeAvatar} size={52} />
                   <span className="text-[9px] font-bold max-w-[64px] truncate text-center"
                     style={{ color: `rgba(${rtPrimary},0.7)`, transition: "color 0.25s ease" }}>
                     {vibeName}
@@ -367,7 +362,6 @@ export default function VibeRoom() {
                     <button
                       onClick={() => setNeedsVibeName(true)}
                       className="text-[8px] text-white/20 transition-colors"
-                      style={{ "--hover-color": `rgba(${rtPrimary},0.5)` }}
                       onMouseEnter={e => e.currentTarget.style.color = `rgba(${rtPrimary},0.5)`}
                       onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.2)"}>
                       change name

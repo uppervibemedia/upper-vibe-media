@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
+import ProfilePhotoEditor from "../components/account/ProfilePhotoEditor";
 
 function ThemePicker() {
   const { accentId, setAccent } = useTheme();
@@ -70,6 +71,7 @@ export default function Account() {
   const navigate = useNavigate();
   const [portalLoading, setPortalLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(() => user?.vibe_avatar_url || null);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtPrimary = radioTheme.vars["--rt-primary"];
@@ -176,10 +178,13 @@ export default function Account() {
           {/* Profile card */}
           <div className="rounded-3xl p-6"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-heading font-black text-xl flex-shrink-0"
-                style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.15),rgba(${rtPrimary},0.05))`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})` }}>
-                {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-heading font-black text-xl flex-shrink-0 overflow-hidden"
+                style={{ background: avatarUrl ? "transparent" : `linear-gradient(135deg,rgba(${rtPrimary},0.15),rgba(${rtPrimary},0.05))`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})` }}>
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                  : (user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U")
+                }
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-heading font-black text-white text-lg truncate">{user.full_name || "Member"}</p>
@@ -189,6 +194,17 @@ export default function Account() {
                 style={{ background: `${tierColor}18`, border: `1px solid ${tierColor}40`, color: tierColor }}>
                 {tierBadge}
               </span>
+            </div>
+
+            {/* Profile photo editor */}
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "1.25rem" }}>
+              <p className="text-[10px] font-black tracking-[0.25em] uppercase mb-3" style={{ color: "rgba(255,255,255,0.25)" }}>Profile Photo</p>
+              <ProfilePhotoEditor
+                name={user.full_name || user.email}
+                currentAvatarUrl={avatarUrl}
+                rtPrimary={rtPrimary}
+                onUpdated={(url) => setAvatarUrl(url)}
+              />
             </div>
           </div>
 
