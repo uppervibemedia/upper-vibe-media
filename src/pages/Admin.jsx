@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2, Mic2 } from "lucide-react";
+import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2, Mic2, FlaskConical } from "lucide-react";
 import AnalyticsDashboard from "../components/admin/AnalyticsDashboard";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
@@ -13,6 +13,7 @@ import AcademyImporter from "../components/admin/AcademyImporter";
 import AcademyVideoManager from "../components/admin/AcademyVideoManager";
 import ArtistManager from "../components/admin/ArtistManager";
 import HostDropManager from "../components/admin/HostDropManager.jsx";
+import StripeTestPanel from "../components/admin/StripeTestPanel";
 import { useAuth } from "@/lib/AuthContext";
 
 const TABS = [
@@ -26,6 +27,7 @@ const TABS = [
   { id: "artists", label: "Artists", icon: Users },
   { id: "categories", label: "Categories", icon: Grid3X3 },
   { id: "ai_organizer", label: "AI Organizer", icon: Brain },
+  { id: "stripe_test",  label: "Stripe Test",  icon: FlaskConical },
 ];
 
 export default function Admin() {
@@ -208,6 +210,18 @@ export default function Admin() {
         {/* AI Organizer tab */}
         {tab === "ai_organizer" && (
           <AIOrganizerTab tracks={tracks} artists={artists} categories={categories} onRefresh={loadAll} />
+        )}
+
+        {/* Stripe Test tab — admin only, never visible to users */}
+        {tab === "stripe_test" && (
+          <div>
+            <div className="mb-6">
+              <p className="text-xs tracking-[0.3em] uppercase text-yellow-400 mb-1">Admin Only</p>
+              <h2 className="font-heading font-bold text-2xl">Stripe Test Mode</h2>
+              <p className="text-sm text-muted-foreground mt-1">Run safe end-to-end payment tests with no real charges. Requires <code className="text-yellow-300/70">STRIPE_TEST_SECRET_KEY</code> secret.</p>
+            </div>
+            <StripeTestPanel />
+          </div>
         )}
       </motion.div>
     </div>
