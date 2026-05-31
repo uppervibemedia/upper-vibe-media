@@ -110,6 +110,18 @@ export default function Account() {
     user?.subscription_status === "active";
   const isPaid = !isAdmin && isPlus;
 
+  // Cancelled but still within paid period
+  const isCancelledWithAccess = !isAdmin && isPlus &&
+    (user?.subscriptionStatus === "canceled" || user?.subscriptionStatus === "cancelled" ||
+     user?.subscription_status === "canceled" || user?.subscription_status === "cancelled");
+
+  // Format period end date if available
+  const periodEnd = user?.currentPeriodEnd || user?.current_period_end;
+  const periodEndFormatted = periodEnd
+    ? new Date(typeof periodEnd === "number" ? periodEnd * 1000 : periodEnd)
+        .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+    : null;
+
   const tierLabel = isAdmin ? "Admin" : isPlus ? "Upper Vibe Plus" : "Free Listener";
   const tierBadge = isAdmin ? "👑 Admin" : isPlus ? "⭐ Plus" : "Free";
   // All tier colors now use active theme primary
@@ -194,10 +206,22 @@ export default function Account() {
                 {user.billingCycle && isPlus && (
                   <p className="text-xs text-white/35 mt-0.5 capitalize">{user.billingCycle} billing</p>
                 )}
-                {user.subscriptionStatus === "active" && (
+                {isPlus && !isCancelledWithAccess && (
                   <div className="flex items-center gap-1.5 mt-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-xs text-green-400/70 font-semibold">Active</span>
+                  </div>
+                )}
+                {isCancelledWithAccess && periodEndFormatted && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                    <span className="text-xs text-yellow-400/70 font-semibold">Active until {periodEndFormatted}</span>
+                  </div>
+                )}
+                {isCancelledWithAccess && !periodEndFormatted && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                    <span className="text-xs text-yellow-400/70 font-semibold">Cancelled — access continues until period ends</span>
                   </div>
                 )}
               </div>
@@ -222,19 +246,29 @@ export default function Account() {
             </div>
 
             {!isPlus && !isAdmin && (
-              <Link to="/membership"
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
-                style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.8),rgb(${rtPrimary}))`, color: "#000" }}>
-                <Crown className="w-4 h-4" /> Upgrade to Plus — from $4.99/mo
-              </Link>
+              <>
+                <Link to="/membership"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110"
+                  style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.8),rgb(${rtPrimary}))`, color: "#000" }}>
+                  <Crown className="w-4 h-4" /> Upgrade to Plus
+                </Link>
+                <p className="text-xs text-center mt-2.5" style={{ color: "rgba(255,255,255,0.25)" }}>
+                  Download every song for $4.99/month.
+                </p>
+              </>
             )}
-            {isPaid && (
-              <button onClick={handlePortal} disabled={portalLoading}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-bold text-sm transition-all hover:brightness-110 disabled:opacity-60"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
-                <CreditCard className="w-4 h-4" />
-                {portalLoading ? "Opening..." : "Manage Subscription"}
-              </button>
+            {isPaid && !isAdmin && (
+              <>
+                <button onClick={handlePortal} disabled={portalLoading}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110 disabled:opacity-60"
+                  style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.12),rgba(${rtPrimary},0.06))`, border: `1px solid rgba(${rtPrimary},0.35)`, color: `rgb(${rtPrimary})` }}>
+                  <CreditCard className="w-4 h-4" />
+                  {portalLoading ? "Opening..." : "Manage Plus Subscription"}
+                </button>
+                <p className="text-xs text-center mt-2.5" style={{ color: "rgba(255,255,255,0.25)" }}>
+                  Cancel, update payment, or manage billing securely through Stripe.
+                </p>
+              </>
             )}
           </div>
 
