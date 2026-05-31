@@ -99,8 +99,25 @@ export default function AnalyticsDashboard() {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Derived stats ─────────────────────────────────────────────────────────
-  const pageViews   = events.filter(e => e.event_type === "page_view").length;
+  // ── Helper: stable visitor ID per event ──────────────────────────────────
+  // Events store visitor_id in user_id field (set by analytics.js).
+  // Fall back to anonymous_session_id for older events.
+  const visitorOf = (e) => e.user_id || e.anonymous_session_id || "unknown";
+
+  // ── Unique page views: one per visitorId + page + day ─────────────────────
+  // For "All Time": deduplicate by visitorId + page (no date component)
+  const pageViewEvents = events.filter(e => e.event_type === "page_view");
+
+  const uniquePageViewSet = new Set();
+  pageViewEvents.forEach(e => {
+    const day = filterDays === 0
+      ? "" // all-time: no day component
+      : new Date(e.created_date).toISOString().slice(0, 10);
+    uniquePageViewSet.add(`${visitorOf(e)}|${e.page_url || ""}|${day}`);
+  });
+  const pageViews = uniquePageViewSet.size;
+
+  // ── Other event counts (raw, not deduplicated — intentional) ──────────────
   const songPlays   = events.filter(e => e.event_type === "song_play").length;
   const dlClicks    = events.filter(e => e.event_type === "download_click").length;
   const premClicks  = events.filter(e => e.event_type === "premium_click").length;
@@ -108,13 +125,18 @@ export default function AnalyticsDashboard() {
   const vizViews    = events.filter(e => e.event_type === "visualizer_view").length;
   const completions = events.filter(e => e.event_type === "song_complete").length;
 
-  // Unique visitors by session ID
-  const uniqueSessions = new Set(events.map(e => e.anonymous_session_id || e.user_id).filter(Boolean));
+  // Unique visitors (distinct visitor IDs across all event types)
+  const uniqueSessions = new Set(events.map(visitorOf).filter(v => v !== "unknown"));
   const uniqueVisitors = uniqueSessions.size;
 
-  // Traffic sources
+  // Traffic sources — use unique page views (one per visitor+page+day)
+  const sourceSeenSet = new Set();
   const sourceMap = {};
-  events.filter(e => e.event_type === "page_view").forEach(e => {
+  pageViewEvents.forEach(e => {
+    const day = new Date(e.created_date).toISOString().slice(0, 10);
+    const dedupKey = `${visitorOf(e)}|${e.page_url || ""}|${day}`;
+    if (sourceSeenSet.has(dedupKey)) return;
+    sourceSeenSet.add(dedupKey);
     const src = e.traffic_source || "direct";
     sourceMap[src] = (sourceMap[src] || 0) + 1;
   });
@@ -122,7 +144,7 @@ export default function AnalyticsDashboard() {
     .map(([source, count]) => ({ source, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Most played songs
+  // Most played songs (raw plays — intentional)
   const songPlayMap = {};
   events.filter(e => e.event_type === "song_play" && e.song_title).forEach(e => {
     const key = e.song_title;
@@ -131,7 +153,7 @@ export default function AnalyticsDashboard() {
   });
   const topSongs = Object.values(songPlayMap).sort((a, b) => b.count - a.count);
 
-  // Most completed songs
+  // Most completed songs (raw)
   const completedMap = {};
   events.filter(e => e.event_type === "song_complete" && e.song_title).forEach(e => {
     const key = e.song_title;
@@ -140,17 +162,22 @@ export default function AnalyticsDashboard() {
   });
   const topCompleted = Object.values(completedMap).sort((a, b) => b.count - a.count);
 
-  // Top pages
+  // Top pages — unique visitors per page per day
+  const pageSeenSet = new Set();
   const pageMap = {};
-  events.filter(e => e.event_type === "page_view" && e.page_url).forEach(e => {
-    const key = e.page_url;
-    pageMap[key] = (pageMap[key] || 0) + 1;
+  pageViewEvents.forEach(e => {
+    if (!e.page_url) return;
+    const day = new Date(e.created_date).toISOString().slice(0, 10);
+    const dedupKey = `${visitorOf(e)}|${e.page_url}|${day}`;
+    if (pageSeenSet.has(dedupKey)) return;
+    pageSeenSet.add(dedupKey);
+    pageMap[e.page_url] = (pageMap[e.page_url] || 0) + 1;
   });
   const topPages = Object.entries(pageMap)
     .map(([page_url, count]) => ({ page_url, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Daily traffic chart (last 14 days)
+  // Daily traffic chart — unique page views per visitor+page+day per calendar day
   const dailyMap = {};
   const now = new Date();
   for (let i = 13; i >= 0; i--) {
@@ -159,13 +186,20 @@ export default function AnalyticsDashboard() {
     const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     dailyMap[key] = { date: key, views: 0, plays: 0 };
   }
+  const dailyPageSeenSet = new Set();
   events.forEach(e => {
     const d = new Date(e.created_date);
     const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    if (dailyMap[key]) {
-      if (e.event_type === "page_view") dailyMap[key].views++;
-      if (e.event_type === "song_play")  dailyMap[key].plays++;
+    if (!dailyMap[key]) return;
+    if (e.event_type === "page_view") {
+      const day = d.toISOString().slice(0, 10);
+      const dedupKey = `${visitorOf(e)}|${e.page_url || ""}|${day}`;
+      if (!dailyPageSeenSet.has(dedupKey)) {
+        dailyPageSeenSet.add(dedupKey);
+        dailyMap[key].views++;
+      }
     }
+    if (e.event_type === "song_play") dailyMap[key].plays++;
   });
   const dailyData = Object.values(dailyMap);
 
@@ -217,7 +251,7 @@ export default function AnalyticsDashboard() {
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={Eye}       label="Page Views"      value={pageViews}      color="#00C9E0" />
+        <StatCard icon={Eye}       label="Unique Page Views" value={pageViews}    color="#00C9E0" />
         <StatCard icon={Users}     label="Unique Visitors" value={uniqueVisitors}  color="#A78BFA" />
         <StatCard icon={Play}      label="Song Plays"      value={songPlays}       color="#34D399" />
         <StatCard icon={Music}     label="Completions"     value={completions}     color="#60A5FA" />
@@ -273,7 +307,7 @@ export default function AnalyticsDashboard() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         <TopList title="Top Traffic Sources"  items={topSources}   keyField="source"      valueField="count" valueLabel="visits" />
         <TopList title="Most Completed Songs" items={topCompleted} keyField="song_title"  valueField="count" valueLabel="✓" />
-        <TopList title="Top Pages"            items={topPages}     keyField="page_url"    valueField="count" valueLabel="views" />
+        <TopList title="Top Pages"            items={topPages}     keyField="page_url"    valueField="count" valueLabel="unique" />
         <TopList title="Devices"              items={topDevices}   keyField="device_type" valueField="count" valueLabel="visits" />
       </div>
 

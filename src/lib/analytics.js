@@ -36,7 +36,24 @@ async function isAdminUser() {
   return _adminCheckPromise;
 }
 
-// ── Session ID ────────────────────────────────────────────────────────────────
+// ── Stable Visitor ID ─────────────────────────────────────────────────────────
+// Persists across sessions. Used as the stable identifier for deduplication.
+const VISITOR_KEY = "uvm_visitor_id";
+
+function getVisitorId() {
+  try {
+    let id = localStorage.getItem(VISITOR_KEY);
+    if (!id) {
+      id = "v_" + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      localStorage.setItem(VISITOR_KEY, id);
+    }
+    return id;
+  } catch {
+    return "v_unknown";
+  }
+}
+
+// ── Session ID (kept for backward compat with stream tracking) ────────────────
 const SESSION_KEY = "uvm_anon_session_id";
 
 function getSessionId() {
@@ -49,6 +66,50 @@ function getSessionId() {
     return id;
   } catch {
     return "anon_unknown";
+  }
+}
+
+// ── Page View Deduplication ────────────────────────────────────────────────────
+// Unique key: visitorId + pagePath + YYYY-MM-DD
+// Stored as a Set serialized in localStorage. Entries are pruned to last 60 days.
+const PAGE_SEEN_KEY = "uvm_pages_seen";
+
+function getTodayDateStr() {
+  return new Date().toISOString().slice(0, 10); // "2025-01-15"
+}
+
+function hasSeenPageToday(pagePath) {
+  try {
+    const visitorId = getVisitorId();
+    const dedupKey = `${visitorId}|${pagePath}|${getTodayDateStr()}`;
+    const raw = localStorage.getItem(PAGE_SEEN_KEY);
+    const seen = raw ? JSON.parse(raw) : {};
+    return !!seen[dedupKey];
+  } catch {
+    return false;
+  }
+}
+
+function markPageSeen(pagePath) {
+  try {
+    const visitorId = getVisitorId();
+    const today = getTodayDateStr();
+    const dedupKey = `${visitorId}|${pagePath}|${today}`;
+    const raw = localStorage.getItem(PAGE_SEEN_KEY);
+    const seen = raw ? JSON.parse(raw) : {};
+    seen[dedupKey] = today;
+
+    // Prune entries older than 60 days to keep localStorage small
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 60);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    for (const k of Object.keys(seen)) {
+      if (seen[k] < cutoffStr) delete seen[k];
+    }
+
+    localStorage.setItem(PAGE_SEEN_KEY, JSON.stringify(seen));
+  } catch {
+    // silent
   }
 }
 
@@ -85,6 +146,8 @@ function buildEvent(eventType, extras = {}) {
     event_type: eventType,
     page_url: window.location.pathname,
     anonymous_session_id: getSessionId(),
+    // Include stable visitor ID so the dashboard can deduplicate
+    user_id: getVisitorId(),
     device_type: getDeviceType(),
     browser: getBrowser(),
     referrer,
@@ -109,6 +172,10 @@ async function track(eventType, extras = {}) {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export function trackPageView() {
+  const pagePath = window.location.pathname;
+  // Skip if this visitor already had a page_view recorded for this page today
+  if (hasSeenPageToday(pagePath)) return;
+  markPageSeen(pagePath);
   track("page_view");
 }
 
