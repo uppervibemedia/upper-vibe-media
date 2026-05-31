@@ -3,15 +3,20 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Download, Sparkles } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const [verified, setVerified] = useState(false);
   const sessionId = searchParams.get("session_id");
+  const { checkAppState } = useAuth();
 
   useEffect(() => {
-    // Give webhook a moment to fire, then refresh user data
-    const timer = setTimeout(() => setVerified(true), 2000);
+    // Give webhook a moment to fire, then refresh user auth so Plus status is live immediately
+    const timer = setTimeout(async () => {
+      await checkAppState();
+      setVerified(true);
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
