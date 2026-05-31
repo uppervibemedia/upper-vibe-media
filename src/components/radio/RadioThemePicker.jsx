@@ -88,7 +88,7 @@ export default function RadioThemePicker({ themeId, onSelect, pulseEnabled, onTo
         }}
       >
         <Palette style={{ width: 10, height: 10 }} />
-        Theme
+        Vibe Color
       </button>
 
       <AnimatePresence>
@@ -114,7 +114,7 @@ export default function RadioThemePicker({ themeId, onSelect, pulseEnabled, onTo
               }}
             >
               <p style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", paddingLeft: 8, marginBottom: 8 }}>
-                Color Theme
+                Vibe Color
               </p>
               {Object.values(RADIO_THEMES).map((t) => (
                 <button

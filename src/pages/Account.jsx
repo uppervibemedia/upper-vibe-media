@@ -280,7 +280,7 @@ export default function Account() {
             <div className="flex items-center gap-3 mb-4">
               <Palette className="w-5 h-5" style={{ color: `rgba(${rtPrimary},0.7)` }} />
               <div>
-                <p className="text-sm font-bold text-white">App Color Theme</p>
+                <p className="text-sm font-bold text-white">Vibe Color</p>
                 <p className="text-xs text-white/35">Choose your vibe</p>
               </div>
             </div>
