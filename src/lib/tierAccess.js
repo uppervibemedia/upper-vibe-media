@@ -1,15 +1,48 @@
 /**
  * Tier access utility for Upper Vibe
  *
- * Tiers: "free" < "supporter" < "premium"
+ * Tiers: "free" < "supporter" < "premium" (internally) / "plus" (public-facing)
  *
  * Rules:
+ * - "plus" and "premium" are the same tier — Plus is the public-facing name
  * - Premium always inherits supporter access
  * - tier_access is an array like ["free"], ["supporter", "premium"], ["premium"], etc.
  * - For legacy content using min_tier string, we convert on the fly
  */
 
 export const TIERS = ["free", "supporter", "premium"];
+
+/**
+ * Normalize user tier: treat "plus" as "premium" for access checks.
+ * The DB may store tier as "plus" (new) or "premium" (legacy) — both grant premium access.
+ */
+export function normalizeUserTier(tier) {
+  if (tier === "plus") return "premium";
+  return tier || "free";
+}
+
+/**
+ * Shared Plus access check — use this everywhere instead of checking individual fields.
+ * Returns true if the user has an active Plus/Premium subscription via any known field.
+ */
+export function hasPlusAccess(user) {
+  if (!user) return false;
+  return (
+    user.isPlus === true ||
+    user.isPremium === true ||
+    user.is_plus === true ||
+    user.tier === "plus" ||
+    user.tier === "premium" ||
+    user.role === "plus" ||
+    user.role === "premium" ||
+    user.role === "admin" ||
+    user.plan === "plus" ||
+    user.plan === "premium" ||
+    user.subscription_status === "active" ||
+    user.stripe_subscription_status === "active" ||
+    user.subscriptionStatus === "active"
+  );
+}
 
 /**
  * Convert legacy min_tier string to tier_access array.
@@ -46,12 +79,13 @@ export function getEffectiveAccess(item) {
 
 /**
  * Check if a user tier can access a content item.
- * @param {string} userTier - "free" | "supporter" | "premium"
+ * Normalizes "plus" → "premium" so new DB field works with existing content gates.
+ * @param {string} userTier - "free" | "supporter" | "premium" | "plus"
  * @param {object} item - content item with tier_access or min_tier
  */
 export function canAccess(userTier, item) {
   const access = getEffectiveAccess(item);
-  return access.includes(userTier || "free");
+  return access.includes(normalizeUserTier(userTier) || "free");
 }
 
 /**

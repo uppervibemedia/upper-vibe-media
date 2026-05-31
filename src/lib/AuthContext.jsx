@@ -171,6 +171,7 @@ export const AuthProvider = ({ children }) => {
     user.plan === "plus" ||
     user.plan === "premium" ||
     user.subscription_status === "active" ||
+    user.subscriptionStatus === "active" ||
     user.stripe_subscription_status === "active"
   );
   const isAdmin = isAuthenticated && user?.role === "admin";

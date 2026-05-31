@@ -18,7 +18,10 @@ async function updateUserSubscription(base44, userEmail, plan, billingCycle, sta
       ...updateData,
       tier: 'plus',
       isPlus: true,
-      isPremium: true, // backwards compat
+      isPremium: true,           // legacy compat
+      plan: 'plus',
+      subscription_status: 'active',
+      subscriptionStatus: 'active',
       planName: 'Upper Vibe Plus',
       billingCycle: billingCycle || 'monthly',
       plusStartedAt: new Date().toISOString(),
@@ -29,6 +32,9 @@ async function updateUserSubscription(base44, userEmail, plan, billingCycle, sta
       tier: 'free',
       isPlus: false,
       isPremium: false,
+      plan: null,
+      subscription_status: 'inactive',
+      subscriptionStatus: 'inactive',
       planName: null,
       billingCycle: null,
     };

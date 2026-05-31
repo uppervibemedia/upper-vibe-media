@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Crown, X, Check, GraduationCap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { saveCheckoutReturnUrl } from "@/pages/PaymentSuccess";
 
 export default function PremiumDownloadModal({ open, onClose }) {
   const [billing, setBilling] = useState("monthly");
@@ -15,6 +16,8 @@ export default function PremiumDownloadModal({ open, onClose }) {
     }
     setError("");
     setLoading(true);
+    // Save current page so Continue button returns here after payment
+    saveCheckoutReturnUrl(window.location.pathname + window.location.search);
     try {
       const res = await base44.functions.invoke("stripeCheckout", {
         plan: "plus",
