@@ -25,12 +25,14 @@
     <!-- Crawler redirect: bots hitting /song/:id get routed to ogMeta for dynamic OG tags -->
     <script>
       (function() {
-        var ua = navigator.userAgent || "";
-        var isCrawler = /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot|pinterest|iMessageBot/i.test(ua);
-        if (isCrawler) {
-          var songMatch = window.location.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
-          if (songMatch) {
-            window.location.replace("/api/ogMeta?type=track&id=" + songMatch[1]);
+        var songMatch = window.location.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
+        if (songMatch) {
+          var ogUrl = "/api/ogMeta?type=track&id=" + songMatch[1];
+          var ua = navigator.userAgent || "";
+          // For crawlers: redirect immediately (though FB won't run JS — see noscript below)
+          var isCrawler = /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot|pinterest/i.test(ua);
+          if (isCrawler) {
+            window.location.replace(ogUrl);
           }
         }
       })();

@@ -110,12 +110,22 @@ Deno.serve(async (req) => {
       } catch {}
     }
 
-    // Auto-detect /song/:id from the path (Facebook scrapes the real URL)
+    // Auto-detect /song/:id from the path or Referer header
+    // This handles cases where Facebook scrapes the canonical song URL directly
     if (!type && !id) {
+      // Check the request path itself
       const songMatch = url.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
       if (songMatch) {
         type = "track";
         id   = songMatch[1];
+      }
+    }
+    // Also check if the id is passed as the path segment after /ogMeta/
+    if (!type && !id) {
+      const pathSongMatch = url.pathname.match(/\/ogMeta\/([a-zA-Z0-9]+)/);
+      if (pathSongMatch) {
+        type = "track";
+        id   = pathSongMatch[1];
       }
     }
 
