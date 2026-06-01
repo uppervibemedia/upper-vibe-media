@@ -1,24 +1,42 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Headphones, ArrowLeft } from "lucide-react";
 
 export default function PageNotFound() {
   const navigate = useNavigate();
+  const [showContent, setShowContent] = useState(false);
 
-  // Auto-redirect away from 404 if a valid token exists in localStorage
-  // This catches the case where the platform redirects to a bad URL post-login.
   useEffect(() => {
+    // If user has a token, they're logged in — redirect immediately without showing 404
     try {
-      const token = localStorage.getItem("base44_access_token") || localStorage.getItem("token");
+      const token =
+        localStorage.getItem("base44_access_token") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("base44_token");
       if (token) {
-        // User is logged in — don't strand them on 404, send to /music
-        const timer = setTimeout(() => {
-          navigate("/music", { replace: true });
-        }, 2000);
-        return () => clearTimeout(timer);
+        // Redirect to music immediately — no 404 flash
+        navigate("/music", { replace: true });
+        return;
       }
     } catch {}
+
+    // No token — show 404 content after a brief grace period
+    // (avoids flash while SPA router is still hydrating on first load)
+    const timer = setTimeout(() => setShowContent(true), 300);
+    return () => clearTimeout(timer);
   }, [navigate]);
+
+  // Loading state — shown while checking token or while redirect is pending
+  if (!showContent) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">Loading your vibe...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">

@@ -50,6 +50,15 @@ import Start from './pages/Start';
 import CommunityGuidelines from './pages/CommunityGuidelines';
 import { isSafeRoute, defaultRouteForUser } from './lib/safeRedirect';
 
+const LoadingScreen = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-background">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">Loading your vibe...</p>
+    </div>
+  </div>
+);
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated, user } = useAuth();
 
@@ -68,15 +77,15 @@ const AuthenticatedApp = () => {
     }
   }, [isAuthenticated, user, isLoadingAuth]);
 
+  // While auth or settings are loading, ALWAYS show loading — never render 404
   if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-          <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">Loading frequency...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
+  }
+
+  // Auth resolved but user is authenticated and on an unknown path —
+  // the useEffect above will fire window.location.replace, show loading until it does
+  if (isAuthenticated && user && !isSafeRoute(window.location.pathname)) {
+    return <LoadingScreen />;
   }
 
   if (authError) {

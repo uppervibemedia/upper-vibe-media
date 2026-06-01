@@ -27,30 +27,24 @@ function isAuthRoute(path) {
 function useSafeBack(fallback = "/music") {
   const navigate = useNavigate();
   return () => {
-    // document.referrer gives the previous page URL within the same origin
+    // Check document.referrer — the actual previous page URL
     try {
       const ref = document.referrer;
       if (ref) {
         const url = new URL(ref);
+        // Only go back if previous page was same-origin AND not an auth route
         if (url.origin === window.location.origin && !isAuthRoute(url.pathname)) {
           navigate(-1);
           return;
         }
+        // Previous page was auth/login — go to safe fallback
+        navigate(fallback, { replace: true });
+        return;
       }
     } catch {}
-    // No valid referrer — check if history has a safe previous entry
-    // history.length > 1 means there's something behind us, but we can't
-    // read what it is. If we got here via a fresh login redirect, the
-    // previous entry IS the login page. In that case, replace instead.
-    const isLikelyFreshLoginRedirect =
-      !document.referrer ||
-      isAuthRoute(new URL(document.referrer || window.location.href).pathname);
-
-    if (isLikelyFreshLoginRedirect) {
-      navigate(fallback, { replace: true });
-    } else {
-      navigate(-1);
-    }
+    // No referrer (in-app navigation, fresh tab, or in-app browser)
+    // If history has entries but we can't verify they're safe, go to fallback
+    navigate(fallback, { replace: true });
   };
 }
 
