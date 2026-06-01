@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { getPublishedTracks } from "@/lib/trackCache";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, ChevronLeft, Sparkles } from "lucide-react";
+import ShareVibeButton from "@/components/shared/ShareVibeButton";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
@@ -312,6 +313,13 @@ export default function MyVibes() {
                               <span className="hidden sm:inline">Download MP3</span>
                             </button>
 
+                            {/* Share */}
+                            <ShareVibeButton
+                              type="song"
+                              track={track}
+                              size="sm"
+                            />
+
                             {/* Remove heart */}
                             <button onClick={() => toggle("track", track.id)}
                               className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
@@ -369,7 +377,7 @@ export default function MyVibes() {
                               <Heart className="w-3.5 h-3.5 fill-current" />
                             </button>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             <Link to="/visualizers"
                               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:brightness-110"
                               style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.25)", color: "#9B7EFF" }}>
@@ -381,6 +389,13 @@ export default function MyVibes() {
                                 style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "#D4A843" }}>
                                 View Song
                               </Link>
+                            )}
+                            {viz.linked_song_id && (
+                              <ShareVibeButton
+                                type="song"
+                                track={{ id: viz.linked_song_id, title: viz.title, artist_display: viz.artist, cover_url: viz.thumbnail_url }}
+                                size="sm"
+                              />
                             )}
                           </div>
                         </div>
