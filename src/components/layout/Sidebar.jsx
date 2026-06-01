@@ -10,9 +10,17 @@ import {
   User,
   Heart,
   GraduationCap,
-  MessageCircle,
   Tv2,
 } from "lucide-react";
+
+// Custom Vibe Check icon: pulse ring + checkmark
+const VibeCheckIcon = ({ className, style }) => (
+  <svg className={className} style={style} width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.4" strokeDasharray="3 2" opacity="0.5" />
+    <circle cx="9" cy="9" r="5" stroke="currentColor" strokeWidth="1.4" />
+    <path d="M6.5 9L8 10.5L11.5 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 import { useAuth } from "@/lib/AuthContext";
 import { usePlayer } from "@/context/PlayerContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -20,7 +28,7 @@ import { useTheme } from "@/context/ThemeContext";
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
   { path: "/radio", icon: Radio, label: "Radio" },
-  { path: "/vibe-check", icon: MessageCircle, label: "Vibe Check" },
+  { path: "/vibe-check", icon: VibeCheckIcon, label: "Vibe Check" },
   { path: "/academy", icon: GraduationCap, label: "Academy" },
   { path: "/visualizers", icon: Tv2, label: "Visualizers" },
   { path: "/my-vibes", icon: Heart, label: "My Vibe Library" },
@@ -30,7 +38,7 @@ const bottomNavMobile = [
   { path: "/", icon: Home, label: "Home" },
   { path: "/music", icon: Music, label: "Music" },
   { path: "/radio", icon: Radio, label: "Radio" },
-  { path: "/vibe-check", icon: MessageCircle, label: "Vibe Check" },
+  { path: "/vibe-check", icon: VibeCheckIcon, label: "Vibe Check" },
   { path: "/account", icon: User, label: "Account" },
 ];
 
