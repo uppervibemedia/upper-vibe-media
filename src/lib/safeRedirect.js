@@ -9,6 +9,7 @@ const VALID_ROUTE_PREFIXES = [
   "/start",
   "/music",
   "/radio",
+  "/vibe-check",
   "/vibe-room",
   "/account",
   "/my-vibe-library",
@@ -26,11 +27,8 @@ const VALID_ROUTE_PREFIXES = [
   "/academy",
   "/faq",
   "/settings",
-  "/pricing",
   "/membership",
   "/upgrade",
-  "/favorites",
-  "/discover",
   "/email-list",
   "/forgot-password",
   "/payment-success",
@@ -40,8 +38,7 @@ const VALID_ROUTE_PREFIXES = [
   "/dmca",
   "/refunds",
   "/contact",
-  "/dashboard",
-  "/vault",
+  "/admin",
 ];
 
 // Values that should never be used as routes

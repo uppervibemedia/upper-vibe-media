@@ -17,11 +17,6 @@ import About from './pages/About';
 import Admin from './pages/Admin';
 import Visualizers from './pages/Visualizers.jsx';
 import SongPage from './pages/SongPage';
-// Hidden pages (still routable but not in nav)
-import Discover from './pages/Discover';
-import Pricing from './pages/Pricing';
-import Dashboard from './pages/Dashboard';
-import Vault from './pages/Vault';
 import Contact from './pages/Contact';
 import Academy from './pages/Academy';
 import AcademyLessonPage from './pages/AcademyLessonPage';
@@ -29,11 +24,9 @@ import Artists from './pages/Artists';
 import MyVibes from './pages/MyVibes';
 import NewestMusic from './pages/NewestMusic';
 import RadioPage from './pages/Radio.jsx';
-import Favorites from './pages/Favorites';
 import Account from './pages/Account';
 import Sessions from './pages/Sessions';
 import EmailList from './pages/EmailList';
-import Upgrade from './pages/Upgrade';
 import Membership from './pages/Membership';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentCancelled from './pages/PaymentCancelled';
@@ -135,20 +128,15 @@ const AuthenticatedApp = () => {
         <Route path="/visualizers" element={<Visualizers />} />
         <Route path="/song/:id" element={<SongPage />} />
         <Route path="/admin" element={<Admin />} />
-        <Route path="/email-list" element={<EmailList />} />
-        {/* Legacy / hidden routes still accessible */}
-        <Route path="/discover" element={<Discover />} />
-        <Route path="/pricing" element={<Pricing />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/vault" element={<Vault />} />
+        {/* Active routes */}
         <Route path="/contact" element={<Contact />} />
         <Route path="/academy" element={<Academy />} />
         <Route path="/academy/lesson/:id" element={<AcademyLessonPage />} />
         <Route path="/newest-music" element={<NewestMusic />} />
         <Route path="/radio" element={<RadioPage />} />
+        <Route path="/vibe-check" element={<VibeCheck />} />
         <Route path="/my-vibes" element={<MyVibes />} />
         <Route path="/my-vibe-library" element={<MyVibes />} />
-        <Route path="/favorites" element={<MyVibes />} />
         <Route path="/artists" element={<Artists />} />
         <Route path="/sessions" element={<Sessions />} />
         <Route path="/account" element={<Account />} />
@@ -164,9 +152,9 @@ const AuthenticatedApp = () => {
         <Route path="/settings" element={<Settings />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/vibe-room" element={<VibeRoom />} />
-        <Route path="/vibe-check" element={<VibeCheck />} />
         <Route path="/start" element={<Start />} />
         <Route path="/community-guidelines" element={<CommunityGuidelines />} />
+        <Route path="/email-list" element={<EmailList />} />
       </Route>
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="*" element={<PageNotFound />} />
