@@ -758,6 +758,12 @@ export default function Home() {
           pauseAudio={isPlaying ? togglePlay : undefined}
           allVisualizers={allViz.length > 0 ? allViz : recentViz}
           onSwitchViz={(v) => setVizModal(v)}
+          isPremium={user?.role === "premium" || user?.role === "admin" || user?.tier === "premium" || user?.role === "plus"}
+          isFaved={isFaved("visualizer", vizModal.id)}
+          onToggleFav={(v) => {
+            if (!user) { setLoginModal(true); return; }
+            toggle("visualizer", v.id, { title: v.title, artist: v.artist, cover_url: v.thumbnail_url });
+          }}
         />
       )}
     </div>

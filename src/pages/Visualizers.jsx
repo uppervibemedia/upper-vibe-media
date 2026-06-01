@@ -334,6 +334,7 @@ export default function Visualizers() {
           onSwitchViz={(v) => setWatchingViz(v)}
           isFaved={isFaved("visualizer", watchingViz.id)}
           onToggleFav={handleToggleFav}
+          isPremium={user?.role === "premium" || user?.role === "admin" || user?.tier === "premium" || user?.role === "plus"}
         />
       )}
 
