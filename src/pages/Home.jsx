@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from "react"
 import { motion, useAnimationFrame } from "framer-motion";
 import usePageVisible from "@/hooks/usePageVisible";
 import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
-import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Heart, Users, GraduationCap, Radio, Zap, Music4, Download } from "lucide-react";
+import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Heart, Users, Radio, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -17,8 +17,7 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
 import LatestMusicSection from "../components/home/LatestMusicSection";
-import ListenerFrequencyDashboard from "../components/home/ListenerFrequencyDashboard";
-import MyVibeFeed from "../components/home/MyVibeFeed";
+import YourFrequencyFeed from "../components/home/YourFrequencyFeed";
 import SectionHeader from "../components/shared/SectionHeader";
 import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
@@ -538,10 +537,9 @@ export default function Home() {
       />
       </motion.div>
 
-      {/* ── MY VIBE FEED (logged-in users only) ── */}
-      {user && (
-        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
-        <MyVibeFeed
+      {/* ── YOUR FREQUENCY FEED ── */}
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
+        <YourFrequencyFeed
           allTracks={allTracks}
           allViz={recentViz}
           academyLessons={academyLessons}
@@ -556,24 +554,6 @@ export default function Home() {
             toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
           }}
         />
-        </motion.div>
-      )}
-
-      {/* ── LISTENER FREQUENCY DASHBOARD ── */}
-      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
-      <ListenerFrequencyDashboard
-        allTracks={allTracks}
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        handlePlayTrack={handlePlayTrack}
-        user={user}
-        isFaved={isFaved}
-        themeColor={rtPrimary}
-        onToggleFav={(track) => {
-          if (!user) { setLoginModal(true); return; }
-          toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-        }}
-      />
       </motion.div>
 
       {/* ── FREQUENCY CTA ── */}
@@ -606,113 +586,7 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* ── VISUALIZERS ── */}
-      {recentViz.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="Visual Frequency" title="Latest Visualizers" link="/visualizers" linkLabel="See More" labelColor={`rgb(${rtPrimary})`} themeColor={rtPrimary} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {recentViz.map((viz, i) => (
-              <motion.div key={viz.id}
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-                className="group rounded-2xl overflow-hidden"
-                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="aspect-video relative overflow-hidden">
-                  {viz.thumbnail_url ? (
-                    <img src={viz.thumbnail_url} alt={viz.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center"
-                      style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.1),rgba(${rtPrimary},0.04))` }}>
-                      <Tv2 className="w-8 h-8 text-white/10" />
-                    </div>
-                  )}
-                  <Link to="/visualizers"
-                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ background: "rgba(0,0,0,0.5)" }}>
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center"
-                      style={{ background: `rgba(${rtPrimary},0.9)` }}>
-                      <Play className="w-5 h-5 text-white ml-0.5" />
-                    </div>
-                  </Link>
-                </div>
-                <div className="p-4 flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-white truncate">{viz.title}</p>
-                    <p className="text-xs text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
-                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-2"
-                      style={{ background: "rgba(0,229,255,0.1)", color: "#00E5FF" }}>
-                      <Waves className="w-2 h-2" /> 432 Hz
-                    </span>
-                  </div>
-                  {heartButton("visualizer", viz.id, { title: viz.title, artist: viz.artist, cover_url: viz.thumbnail_url })}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      )}
 
-      {/* ── UPPER VIBE ACADEMY ── */}
-      {academyLessons.length > 0 && (
-        <section className="max-w-7xl mx-auto px-6 py-10">
-          <SectionHeader label="Learn" title="Upper Vibe Academy" link="/academy" linkLabel="See More" labelColor={`rgb(${rtPrimary})`} labelIcon={<GraduationCap className="w-3 h-3" />} themeColor={rtPrimary} />
-          <p className="text-white/30 text-sm mb-6 -mt-2">Go deeper into 432 Hz, manifesting, creativity, and expanding consciousness.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {academyLessons.map((lesson, i) => (
-              <motion.div key={lesson.id}
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                className="group rounded-2xl overflow-hidden flex flex-col"
-                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                {/* Thumbnail */}
-                <div className="aspect-video relative overflow-hidden flex-shrink-0">
-                  {lesson.thumbnail_url ? (
-                    <img src={lesson.thumbnail_url} alt={lesson.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center"
-                      style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.12),rgba(${rtPrimary},0.04))` }}>
-                      <GraduationCap className="w-10 h-10 text-white/10" />
-                    </div>
-                  )}
-                  {/* Badges */}
-                  <div className="absolute top-2 left-2 flex gap-1.5">
-                    {lesson.is_premium && (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider"
-                        style={{ background: "#D4A843", color: "#000" }}>PREMIUM</span>
-                    )}
-                    {lesson.is_premium && lesson.free_preview_seconds > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold"
-                        style={{ background: "rgba(0,0,0,0.7)", color: "rgba(255,255,255,0.7)" }}>
-                        {lesson.free_preview_seconds}s preview
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {/* Info */}
-                <div className="p-4 flex flex-col gap-2 flex-1">
-                  <p className="text-sm font-bold text-white leading-snug line-clamp-2">{lesson.title}</p>
-                  {lesson.description && (
-                    <p className="text-xs text-white/35 leading-relaxed line-clamp-2">{lesson.description}</p>
-                  )}
-                  {lesson.labels?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {lesson.labels.slice(0, 3).map((lbl) => (
-                        <span key={lbl} className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.2)`, color: `rgb(${rtPrimary})` }}>
-                          {lbl}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <Link to="/academy"
-                    className="mt-auto inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black tracking-wider transition-all hover:brightness-110 self-start"
-                    style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})` }}>
-                    <Play className="w-3 h-3" /> Watch
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* ── FEATURED ARTISTS ── */}
       {artists.length > 0 && (

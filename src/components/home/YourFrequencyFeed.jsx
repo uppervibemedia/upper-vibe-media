@@ -1,0 +1,486 @@
+import React, { useEffect, useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Play, Pause, Music4, Heart, Download, Lock,
+  Flame, Zap, TrendingUp, Star, Tv2, GraduationCap,
+  ArrowRight, Waves, Sparkles, Users
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { useTheme } from "@/context/ThemeContext";
+import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
+import FreqBadge from "@/components/shared/FreqBadge";
+
+// ── Badge definitions ────────────────────────────────────────────────────────
+const BADGE_DEFS = {
+  recommended:   { label: "💜 Recommended For You",  bg: "rgba(155,126,255,0.14)", border: "rgba(155,126,255,0.4)", color: "#c4aaff" },
+  trending:      { label: "🔥 Trending Now",          bg: "rgba(245,158,11,0.12)",  border: "rgba(245,158,11,0.35)", color: "#F59E0B" },
+  rising:        { label: "📈 Rising Fast",           bg: "rgba(74,222,128,0.12)",  border: "rgba(74,222,128,0.3)",  color: "#4ADE80" },
+  communityFav:  { label: "❤️ Community Favorite",    bg: "rgba(239,68,68,0.1)",    border: "rgba(239,68,68,0.3)",   color: "#F87171" },
+  mostSaved:     { label: "⭐ Most Saved",             bg: "rgba(212,168,67,0.12)",  border: "rgba(212,168,67,0.35)", color: "#D4A843" },
+  mostDownloaded:{ label: "⬇️ Most Downloaded",        bg: "rgba(56,189,248,0.12)",  border: "rgba(56,189,248,0.3)",  color: "#38BDF8" },
+  visualizer:    { label: "🎬 Visualizer",             bg: "rgba(0,229,255,0.1)",    border: "rgba(0,229,255,0.28)",  color: "#00E5FF" },
+  academy:       { label: "🎓 Academy",               bg: "rgba(168,85,247,0.12)",  border: "rgba(168,85,247,0.3)",  color: "#A855F7" },
+};
+
+// Mood → track tags affinity map
+const MOOD_AFFINITIES = {
+  high_vibe:    ["high_vibe", "hiphop", "energy", "motivation"],
+  intentional:  ["focus", "meditation_focus", "528hz", "432hz"],
+  neutral:      ["432hz", "balance", "meditation_focus"],
+  low_energy:   ["healing", "calm", "528hz", "432hz"],
+  scattered:    ["focus", "grounding", "432hz"],
+};
+
+function scoreTagMatch(track, targetTags) {
+  const haystack = [
+    ...(track.mood_tags || []).map(t => t.toLowerCase()),
+    ...(track.category_ids || []).map(t => t.toLowerCase()),
+  ];
+  let score = 0;
+  targetTags.forEach(tag => {
+    if (haystack.some(h => h.includes(tag) || tag.includes(h))) score += 2;
+  });
+  return score;
+}
+
+function computeCommunityScores(tracks, streams, favCounts, dlCounts) {
+  const byTrack = {};
+  for (const s of streams) {
+    if (!s.song_id) continue;
+    if (!byTrack[s.song_id]) byTrack[s.song_id] = { plays: 0, completions: 0 };
+    byTrack[s.song_id].plays += 1;
+    if (s.completed) byTrack[s.song_id].completions += 1;
+  }
+  return tracks.map(t => {
+    const stats = byTrack[t.id] || { plays: 0, completions: 0 };
+    const totalPlays = (t.plays || 0) + stats.plays;
+    const completionRate = stats.plays > 0 ? stats.completions / stats.plays : 0;
+    const favorites = favCounts[t.id] || 0;
+    const downloads = dlCounts[t.id] || 0;
+    return { ...t, _totalPlays: totalPlays, _completionRate: completionRate, _favorites: favorites, _downloads: downloads,
+      _communityScore: completionRate * 40 + favorites * 20 + totalPlays * 0.05 + downloads * 5 };
+  });
+}
+
+// ── Build the unified feed ───────────────────────────────────────────────────
+function buildFeed({ allTracks, allViz, academyLessons, streams, favCounts, dlCounts, userFavIds, targetTags, isLoggedIn }) {
+  const publishedTracks = (allTracks || []).filter(t => t.status === "published" && t.audio_url);
+  const scored = computeCommunityScores(publishedTracks, streams, favCounts, dlCounts);
+
+  // Sort by community score desc
+  const byCommunity = [...scored].sort((a, b) => b._communityScore - a._communityScore);
+  const byFavs = [...scored].sort((a, b) => b._favorites - a._favorites);
+  const byDownloads = [...scored].sort((a, b) => b._downloads - a._downloads);
+  // "Rising" = lower ranked but new-ish (recently added, lower play count)
+  const byRising = [...scored]
+    .filter(t => t._totalPlays < 50)
+    .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
+
+  const feed = [];
+  const usedIds = new Set();
+
+  const addTrack = (track, badgeKey) => {
+    if (!track || usedIds.has(track.id)) return;
+    usedIds.add(track.id);
+    feed.push({ type: "track", data: track, badge: BADGE_DEFS[badgeKey] });
+  };
+
+  // 1. Personalized recommendations (if logged in and we have mood data)
+  if (isLoggedIn && targetTags.length) {
+    const recommended = [...scored]
+      .map(t => ({ ...t, _recScore: scoreTagMatch(t, targetTags) + (userFavIds.has(t.id) ? 3 : 0) }))
+      .filter(t => t._recScore > 0)
+      .sort((a, b) => b._recScore - a._recScore)
+      .slice(0, 3);
+    recommended.forEach(t => addTrack(t, "recommended"));
+  }
+
+  // 2. Trending (top community score)
+  byCommunity.slice(0, 3).forEach(t => addTrack(t, "trending"));
+
+  // 3. Community favorite (most saved)
+  addTrack(byFavs[0], "communityFav");
+  addTrack(byFavs[1], "mostSaved");
+
+  // 4. Most downloaded
+  addTrack(byDownloads[0], "mostDownloaded");
+
+  // 5. Rising
+  byRising.slice(0, 2).forEach(t => addTrack(t, "rising"));
+
+  // 6. Interleave visualizers (after slot 3, 7)
+  const vizItems = (allViz || []).filter(v => v.status === "published").slice(0, 2);
+  vizItems.forEach(v => {
+    if (!usedIds.has("viz-" + v.id)) {
+      usedIds.add("viz-" + v.id);
+      feed.push({ type: "visualizer", data: v, badge: BADGE_DEFS.visualizer });
+    }
+  });
+
+  // 7. Academy items
+  (academyLessons || []).slice(0, 2).forEach(l => {
+    if (!usedIds.has("lesson-" + l.id)) {
+      usedIds.add("lesson-" + l.id);
+      feed.push({ type: "academy", data: l, badge: BADGE_DEFS.academy });
+    }
+  });
+
+  // 8. Fill remaining with trending tracks
+  byCommunity.forEach(t => addTrack(t, "trending"));
+
+  // Interleave: insert viz at position 4 and lesson at position 8 for natural mixing
+  const reordered = [];
+  const tracks = feed.filter(i => i.type === "track");
+  const visualizers = feed.filter(i => i.type === "visualizer");
+  const lessons = feed.filter(i => i.type === "academy");
+
+  tracks.forEach((item, i) => {
+    reordered.push(item);
+    if (i === 3 && visualizers[0]) reordered.push(visualizers[0]);
+    if (i === 5 && lessons[0]) reordered.push(lessons[0]);
+    if (i === 8 && visualizers[1]) reordered.push(visualizers[1]);
+    if (i === 10 && lessons[1]) reordered.push(lessons[1]);
+  });
+
+  return reordered.slice(0, 14);
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+export default function YourFrequencyFeed({
+  allTracks, allViz, academyLessons,
+  currentTrack, isPlaying, handlePlayTrack,
+  user, isFaved, onToggleFav, themeColor,
+}) {
+  const [streams, setStreams] = useState([]);
+  const [favCounts, setFavCounts] = useState({});
+  const [dlCounts, setDlCounts] = useState({});
+  const [userFavIds, setUserFavIds] = useState(new Set());
+  const [checkIns, setCheckIns] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const { accentId } = useTheme();
+  const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
+  const rtp = themeColor || radioTheme.vars["--rt-primary"];
+  const navigate = useNavigate();
+
+  const isPremium = user?.role === "premium" || user?.tier === "premium"
+    || user?.role === "admin" || user?.role === "plus" || user?.tier === "plus";
+
+  useEffect(() => {
+    if (!allTracks?.length) return;
+    const queries = [
+      base44.entities.SongStream.list("-created_date", 500),
+      base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000),
+      base44.entities.Download.filter({ content_type: "track" }, "-created_date", 1000),
+    ];
+    if (user?.id) {
+      queries.push(base44.entities.VibeCheckIn.filter({ user_id: user.id }, "-check_in_date", 7));
+      queries.push(base44.entities.Favorite.filter({ user_email: user.email, type: "track" }, "-created_date", 200));
+    }
+    Promise.all(queries).then(([streamData, allFavs, dlData, ci, userFavs]) => {
+      setStreams(streamData);
+      const fc = {};
+      allFavs.forEach(f => { if (f.track_id) fc[f.track_id] = (fc[f.track_id] || 0) + 1; });
+      setFavCounts(fc);
+      const dc = {};
+      dlData.forEach(d => { if (d.content_id) dc[d.content_id] = (dc[d.content_id] || 0) + 1; });
+      setDlCounts(dc);
+      if (ci) setCheckIns(ci);
+      if (userFavs) setUserFavIds(new Set(userFavs.map(f => f.track_id).filter(Boolean)));
+      setLoading(false);
+    });
+  }, [allTracks?.length, user?.id]);
+
+  // Dominant mood from recent check-ins
+  const dominantMood = useMemo(() => {
+    if (!checkIns.length) return null;
+    const tally = {};
+    checkIns.slice(0, 5).forEach(c => { tally[c.mood] = (tally[c.mood] || 0) + 1; });
+    return Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  }, [checkIns]);
+
+  const targetTags = useMemo(() =>
+    dominantMood ? MOOD_AFFINITIES[dominantMood] || [] : [],
+    [dominantMood]
+  );
+
+  const feed = useMemo(() => buildFeed({
+    allTracks, allViz, academyLessons,
+    streams, favCounts, dlCounts,
+    userFavIds, targetTags,
+    isLoggedIn: !!user,
+  }), [allTracks, allViz, academyLessons, streams, favCounts, dlCounts, userFavIds, targetTags, user]);
+
+  if (loading || !feed.length) return null;
+
+  const MOOD_META = {
+    high_vibe:    { emoji: "⚡", label: "High Vibe", color: "#4ADE80" },
+    intentional:  { emoji: "🎯", label: "Intentional", color: "#38BDF8" },
+    neutral:      { emoji: "😌", label: "Balanced", color: "#9B7EFF" },
+    low_energy:   { emoji: "🌊", label: "Low Energy", color: "#60A5FA" },
+    scattered:    { emoji: "🌀", label: "Scattered", color: "#FB923C" },
+  };
+  const moodMeta = dominantMood ? MOOD_META[dominantMood] : null;
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+
+      {/* ── Header ── */}
+      <div className="mb-7">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-px h-4 rounded-full" style={{ background: `rgb(${rtp})` }} />
+          <span className="text-[10px] font-black tracking-[0.35em] uppercase" style={{ color: `rgb(${rtp})` }}>
+            {user ? "Personalized" : "Community Discovery"}
+          </span>
+        </div>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap mb-1">
+              <h2 className="font-heading font-black text-3xl md:text-4xl text-white leading-tight">
+                Your Frequency Feed
+              </h2>
+              {moodMeta && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold flex-shrink-0"
+                  style={{ background: `${moodMeta.color}18`, border: `1px solid ${moodMeta.color}35`, color: moodMeta.color }}>
+                  {moodMeta.emoji} {moodMeta.label} vibe
+                </span>
+              )}
+            </div>
+            <p className="text-white/35 text-sm max-w-xl">
+              {user
+                ? "Personalized from your listening habits, favorites, downloads, and vibe profile."
+                : "Trending tracks, rising artists, community favorites, visualizers, and academy content — all in one feed."}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {user && (
+              <Link to="/vibe-check"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black tracking-wide transition-all hover:brightness-110"
+                style={{ background: `rgba(${rtp},0.08)`, border: `1px solid rgba(${rtp},0.22)`, color: `rgb(${rtp})` }}>
+                <Sparkles className="w-2.5 h-2.5" /> Vibe Check
+              </Link>
+            )}
+            <Link to="/music"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black tracking-wide transition-all hover:brightness-110"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.5)" }}>
+              All Music <ArrowRight className="w-2.5 h-2.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Feed grid ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+        <AnimatePresence>
+          {feed.map((item, i) => (
+            <motion.div
+              key={item.type + "-" + item.data.id}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.035, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {item.type === "track" && (
+                <TrackCard
+                  track={item.data}
+                  badge={item.badge}
+                  index={i}
+                  currentTrack={currentTrack}
+                  isPlaying={isPlaying}
+                  handlePlayTrack={handlePlayTrack}
+                  isFaved={isFaved}
+                  onToggleFav={onToggleFav}
+                  navigate={navigate}
+                  isPremium={isPremium}
+                  rtp={rtp}
+                />
+              )}
+              {item.type === "visualizer" && (
+                <VisualizerCard viz={item.data} badge={item.badge} rtp={rtp} />
+              )}
+              {item.type === "academy" && (
+                <AcademyCard lesson={item.data} badge={item.badge} rtp={rtp} />
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* ── CTA ── */}
+      <div className="flex flex-wrap gap-3 justify-center mt-8">
+        <Link to="/music"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
+          style={{ background: `rgba(${rtp},0.09)`, border: `1px solid rgba(${rtp},0.3)`, color: `rgb(${rtp})`, boxShadow: `0 0 20px rgba(${rtp},0.09)` }}>
+          <Waves className="w-4 h-4" /> Browse All Music
+        </Link>
+        <Link to="/visualizers"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
+          style={{ background: "rgba(0,229,255,0.07)", border: "1px solid rgba(0,229,255,0.22)", color: "#00E5FF" }}>
+          <Tv2 className="w-4 h-4" /> Watch Visualizers
+        </Link>
+        <Link to="/academy"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
+          style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.25)", color: "#A855F7" }}>
+          <GraduationCap className="w-4 h-4" /> Academy
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+// ── Sub-cards ─────────────────────────────────────────────────────────────────
+
+function TrackCard({ track, badge, index, currentTrack, isPlaying, handlePlayTrack, isFaved, onToggleFav, navigate, isPremium, rtp }) {
+  const isCurrent = currentTrack?.id === track.id;
+  const isGold = badge?.color === "#D4A843" || badge?.color === "#F59E0B";
+
+  return (
+    <div
+      className="flex items-center gap-3 p-3.5 rounded-2xl group cursor-pointer transition-all active:scale-[0.98] hover:border-white/15"
+      style={{
+        background: isCurrent ? `rgba(${rtp},0.07)` : isGold && index === 0 ? "rgba(212,168,67,0.04)" : "rgba(255,255,255,0.025)",
+        border: isCurrent ? `1px solid rgba(${rtp},0.28)` : isGold && index === 0 ? "1px solid rgba(212,168,67,0.2)" : "1px solid rgba(255,255,255,0.06)",
+        boxShadow: isCurrent ? `0 0 18px rgba(${rtp},0.1)` : "none",
+      }}
+      onClick={() => track.audio_url && handlePlayTrack(track)}
+    >
+      {/* Art */}
+      <div className="relative flex-shrink-0">
+        {track.cover_url ? (
+          <img src={track.cover_url} alt={track.title} width={48} height={48} loading="lazy"
+            className="w-12 h-12 rounded-xl object-cover" />
+        ) : (
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+            style={{ background: `rgba(${rtp},0.08)` }}>
+            <Music4 className="w-5 h-5" style={{ color: `rgba(${rtp},0.25)` }} />
+          </div>
+        )}
+        <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ background: "rgba(0,0,0,0.65)" }}>
+          {isCurrent && isPlaying
+            ? <Pause className="w-3.5 h-3.5" style={{ color: `rgb(${rtp})` }} />
+            : <Play className="w-3.5 h-3.5 text-white ml-0.5" />}
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <Link to={`/song/${track.id}`}
+          onClick={e => e.stopPropagation()}
+          className="text-sm font-bold text-white truncate block hover:underline">
+          {track.title}
+        </Link>
+        <p className="text-[11px] text-white/35 truncate mt-0.5">{track.artist_display || "Upper Vibe Media"}</p>
+        {badge && (
+          <span className="inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: badge.bg, border: `1px solid ${badge.border}`, color: badge.color }}>
+            {badge.label}
+          </span>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <FreqBadge label="432" />
+        <button
+          onClick={e => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}
+          className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+          style={isFaved && isFaved("track", track.id) ? {
+            background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
+          } : {
+            background: "rgba(155,126,255,0.05)", border: "1px solid rgba(155,126,255,0.22)", color: "rgba(155,126,255,0.5)"
+          }}>
+          <Heart className={`w-3.5 h-3.5 ${isFaved && isFaved("track", track.id) ? "fill-current" : ""}`} />
+        </button>
+        <button
+          onClick={e => { e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
+          className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+          style={{
+            background: isPremium ? "rgba(212,168,67,0.1)" : "rgba(212,168,67,0.04)",
+            border: `1px solid ${isPremium ? "rgba(212,168,67,0.25)" : "rgba(212,168,67,0.1)"}`,
+            color: isPremium ? "#D4A843" : "rgba(212,168,67,0.3)",
+          }}>
+          {isPremium ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function VisualizerCard({ viz, badge, rtp }) {
+  return (
+    <Link to="/visualizers"
+      className="flex items-center gap-3 p-3.5 rounded-2xl group transition-all hover:border-white/15 active:scale-[0.98]"
+      style={{ background: "rgba(0,229,255,0.03)", border: "1px solid rgba(0,229,255,0.12)" }}>
+      <div className="relative flex-shrink-0">
+        {viz.thumbnail_url ? (
+          <img src={viz.thumbnail_url} alt={viz.title} width={48} height={48} loading="lazy"
+            className="w-12 h-12 rounded-xl object-cover" />
+        ) : (
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+            style={{ background: "rgba(0,229,255,0.08)" }}>
+            <Tv2 className="w-5 h-5 text-cyan-400/30" />
+          </div>
+        )}
+        <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ background: "rgba(0,0,0,0.6)" }}>
+          <Play className="w-3.5 h-3.5 text-white ml-0.5" />
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-white truncate">{viz.title}</p>
+        <p className="text-[11px] text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
+        {badge && (
+          <span className="inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: badge.bg, border: `1px solid ${badge.border}`, color: badge.color }}>
+            {badge.label}
+          </span>
+        )}
+      </div>
+      <div className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all group-hover:brightness-125"
+        style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.25)", color: "#00E5FF" }}>
+        <Play className="w-3.5 h-3.5 ml-0.5" />
+      </div>
+    </Link>
+  );
+}
+
+function AcademyCard({ lesson, badge, rtp }) {
+  return (
+    <Link to={`/academy/lesson/${lesson.id}`}
+      className="flex items-center gap-3 p-3.5 rounded-2xl group transition-all hover:border-white/15 active:scale-[0.98]"
+      style={{ background: "rgba(168,85,247,0.03)", border: "1px solid rgba(168,85,247,0.12)" }}>
+      <div className="relative flex-shrink-0">
+        {lesson.thumbnail_url ? (
+          <img src={lesson.thumbnail_url} alt={lesson.title} width={48} height={48} loading="lazy"
+            className="w-12 h-12 rounded-xl object-cover" />
+        ) : (
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+            style={{ background: "rgba(168,85,247,0.08)" }}>
+            <GraduationCap className="w-5 h-5 text-purple-400/30" />
+          </div>
+        )}
+        <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ background: "rgba(0,0,0,0.6)" }}>
+          <Play className="w-3.5 h-3.5 text-white ml-0.5" />
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-white truncate leading-snug">{lesson.title}</p>
+        {lesson.description && (
+          <p className="text-[10px] text-white/30 truncate mt-0.5">{lesson.description}</p>
+        )}
+        {badge && (
+          <span className="inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: badge.bg, border: `1px solid ${badge.border}`, color: badge.color }}>
+            {badge.label}
+          </span>
+        )}
+      </div>
+      <div className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all group-hover:brightness-125"
+        style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.28)", color: "#A855F7" }}>
+        <Play className="w-3.5 h-3.5 ml-0.5" />
+      </div>
+    </Link>
+  );
+}
