@@ -2,7 +2,12 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
-import { resolvePostLoginRoute, clearAllStoredRedirects } from '@/lib/safeRedirect';
+import { isSafeRoute, defaultRouteForUser, clearAllStoredRedirects } from '@/lib/safeRedirect';
+
+// Detect fresh login BEFORE app-params.js strips access_token from the URL.
+// We check the raw href at module load time (before any URL mutation).
+const RAW_URL_AT_LOAD = typeof window !== "undefined" ? window.location.href : "";
+const IS_FRESH_LOGIN = RAW_URL_AT_LOAD.includes("access_token=");
 
 const AuthContext = createContext();
 
@@ -68,10 +73,7 @@ export const AuthProvider = ({ children }) => {
         
         // If we got the app public settings successfully, check if user is authenticated
         if (appParams.token) {
-          // Detect if the token just arrived in the URL (fresh login)
-          const urlParams = new URLSearchParams(window.location.search);
-          const isFreshLogin = !!urlParams.get("access_token");
-          await checkUserAuth(isFreshLogin);
+          await checkUserAuth();
         } else {
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
@@ -119,7 +121,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const checkUserAuth = async (isNewLogin = false) => {
+  const checkUserAuth = async () => {
     try {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
@@ -130,18 +132,18 @@ export const AuthProvider = ({ children }) => {
       // Mark that this browser has logged in before (for returning visitor hint)
       try { localStorage.setItem('uvm_has_logged_in', '1'); } catch {}
 
-      // On a fresh login (access_token just arrived in URL), redirect to a safe route
-      if (isNewLogin) {
-        // Read ?next= param if present
-        const urlParams = new URLSearchParams(window.location.search);
-        const nextParam = urlParams.get("next") || urlParams.get("returnUrl") || urlParams.get("redirect");
-        const destination = resolvePostLoginRoute(currentUser, nextParam);
-        clearAllStoredRedirects();
-        // Only navigate if we're not already on that page
-        if (window.location.pathname !== destination) {
+      // On a fresh login, validate and redirect to a safe route
+      if (IS_FRESH_LOGIN) {
+        const currentPath = window.location.pathname;
+        // If current path is invalid (e.g. /undefined, /null, or unregistered), redirect away
+        if (!isSafeRoute(currentPath)) {
+          const destination = defaultRouteForUser(currentUser);
+          clearAllStoredRedirects();
           window.location.replace(destination);
-          return; // don't set loading false — page is navigating
+          return; // page is navigating
         }
+        // Current path is valid — stay here, just clear any stale redirect storage
+        clearAllStoredRedirects();
       }
 
       setIsLoadingAuth(false);

@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -47,9 +48,20 @@ import FAQ from './pages/FAQ';
 import VibeRoom from './pages/VibeRoom';
 import Start from './pages/Start';
 import CommunityGuidelines from './pages/CommunityGuidelines';
+import { isSafeRoute, defaultRouteForUser } from './lib/safeRedirect';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated, user } = useAuth();
+
+  // Failsafe: if an authenticated user somehow lands on an unknown route right after login,
+  // redirect them to their role-appropriate default page instead of showing 404.
+  useEffect(() => {
+    if (!isAuthenticated || !user || isLoadingAuth) return;
+    const path = window.location.pathname;
+    if (!isSafeRoute(path)) {
+      window.location.replace(defaultRouteForUser(user));
+    }
+  }, [isAuthenticated, user, isLoadingAuth]);
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (

@@ -18,13 +18,13 @@ export default function FavLoginModal({ open, onClose }) {
           Create a free account to save your favorite Upper Vibe Media songs and visualizers.
         </p>
         <button
-          onClick={() => base44.auth.redirectToLogin()}
+          onClick={() => base44.auth.redirectToLogin(window.location.pathname)}
           className="w-full py-3 rounded-xl font-black text-sm tracking-wider transition-all hover:brightness-110 mb-2"
           style={{ background: "linear-gradient(135deg,#be185d,#ec4899)", color: "#fff" }}>
           Create Free Account
         </button>
         <button
-          onClick={() => base44.auth.redirectToLogin()}
+          onClick={() => base44.auth.redirectToLogin(window.location.pathname)}
           className="w-full py-2.5 rounded-xl font-bold text-sm transition-all hover:bg-white/10"
           style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)" }}>
           Log In
