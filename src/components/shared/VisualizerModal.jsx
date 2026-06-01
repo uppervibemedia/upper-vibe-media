@@ -14,7 +14,6 @@ function toEmbedUrl(videoId) {
   return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1&modestbranding=1&fs=1`;
 }
 
-
 export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualizers = [], onSwitchViz, isFaved, onToggleFav }) {
   const savedScrollY = useRef(0);
   const overlayRef = useRef(null);
@@ -28,17 +27,42 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
     .filter((v) => v.id !== viz?.id && (v.category === viz?.category || v.artist === viz?.artist))
     .slice(0, 4);
 
+  // Force the overlay scroll container to the very top.
+  // iOS Safari and PWA can defer scroll restoration — we fire at 4 points to guarantee it.
+  const forceScrollTop = () => {
+    const el = overlayRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    el.scrollLeft = 0;
+  };
+
   useEffect(() => {
+    // Save caller page scroll position so we can restore on close
     savedScrollY.current = window.scrollY;
     if (pauseAudio) pauseAudio();
-    // Scroll the overlay to top so video is immediately visible
-    if (overlayRef.current) {
-      overlayRef.current.scrollTop = 0;
-    }
+
+    // 1. Synchronous — before browser paint
+    forceScrollTop();
+
+    // 2. After first paint
+    const raf1 = requestAnimationFrame(() => {
+      forceScrollTop();
+      // 3. After second paint (layout fully settled)
+      requestAnimationFrame(forceScrollTop);
+    });
+
+    // 4. Fallback for iOS Safari which can restore scroll position asynchronously
+    const t50 = setTimeout(forceScrollTop, 50);
+    const t150 = setTimeout(forceScrollTop, 150);
+
     return () => {
+      cancelAnimationFrame(raf1);
+      clearTimeout(t50);
+      clearTimeout(t150);
+      // Restore the underlying page scroll when modal closes
       window.scrollTo({ top: savedScrollY.current, behavior: "instant" });
     };
-  }, [viz?.id]);
+  }, [viz?.id]); // re-runs every time a different viz is opened, including related cards
 
   useEffect(() => {
     const handler = (e) => { if (e.key === "Escape") onClose(); };
@@ -48,47 +72,34 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
 
   if (!viz) return null;
 
-  // Video container uses the padding-bottom trick correctly:
-  // parent is position:relative with paddingBottom:56.25%, child is absolute inset-0
-  // BUT the parent must have width defined (100%) and NOT be inside a flex/grid
-  // that collapses its height.
-  const videoContainerStyle = {
-    position: "relative",
-    width: "100%",
-    paddingBottom: "56.25%", // 16:9
-    background: "#000",
-    flexShrink: 0,
-  };
-
-  const videoAbsoluteStyle = {
-    position: "absolute",
-    top: 0, left: 0, right: 0, bottom: 0,
-    width: "100%",
-    height: "100%",
-  };
-
   return (
     <div
       onClick={onClose}
+      ref={overlayRef}
       style={{
         position: "fixed",
         top: 0, left: 0, right: 0, bottom: 0,
         zIndex: 9999,
         background: "rgba(4,4,14,0.96)",
-        overflowY: "scroll",
+        // overflowY auto (not scroll) avoids iOS creating a separate scroll layer
+        // that competes with scroll restoration
+        overflowY: "auto",
         WebkitOverflowScrolling: "touch",
+        // Prevent scroll chaining to body on iOS
+        overscrollBehavior: "none",
+        WebkitOverscrollBehavior: "none",
+        // Disable smooth scroll so our scrollTop=0 takes effect instantly
+        scrollBehavior: "auto",
         isolation: "isolate",
       }}
-      ref={overlayRef}
     >
-      {/* Content wrapper — max 896px centered, column layout */}
+      {/* Content wrapper — max 896px centered, block layout */}
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%",
           maxWidth: 896,
           margin: "0 auto",
-          // No flex here — block layout ensures padding-bottom on video container works correctly
           display: "block",
         }}
       >
@@ -124,9 +135,20 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
           </button>
         </div>
 
-        {/* ── VIDEO — padding-bottom 16:9 trick, iframe fills absolute inset ── */}
-        <div style={videoContainerStyle}>
-          <div style={videoAbsoluteStyle}>
+        {/* ── VIDEO — padding-bottom 16:9 trick ── */}
+        <div style={{
+          position: "relative",
+          width: "100%",
+          paddingBottom: "56.25%",
+          background: "#000",
+          flexShrink: 0,
+        }}>
+          <div style={{
+            position: "absolute",
+            top: 0, left: 0, right: 0, bottom: 0,
+            width: "100%",
+            height: "100%",
+          }}>
             {embedUrl ? (
               <iframe
                 key={embedUrl}
@@ -193,7 +215,6 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
                     background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
                     padding: 0, display: "block",
                   }}>
-                  {/* Thumbnail using same padding trick */}
                   <div style={{ position: "relative", width: "100%", paddingBottom: "56.25%", background: "#111" }}>
                     <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
                       {v.thumbnail_url
@@ -212,10 +233,8 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
           </div>
         )}
 
-        {/* Tap-outside hint + bottom padding */}
-        <p style={{ textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.15)", padding: "20px 16px 40px" }}>
-          Tap outside or press Esc to close
-        </p>
+        {/* Bottom padding */}
+        <div style={{ height: 48 }} />
       </div>
     </div>
   );
