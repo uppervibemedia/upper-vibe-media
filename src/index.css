@@ -610,3 +610,345 @@ html.solar-transitioning *::after {
 .solar [style*="background-color: #000"] {
   background: hsl(36 30% 96%) !important;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   SOLAR MODE — COMPREHENSIVE TEXT & CONTRAST AUDIT FIXES
+   Covers: Vibe Check, Music Library, Navigation, Account,
+           Radio, Modals, Player, Badges, Forms, Buttons
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── More dark card background patterns ── */
+.solar [style*="background: rgba(8, 8, 24"],
+.solar [style*="background: rgba(10,10,28"],
+.solar [style*="background: rgba(10, 10, 28"],
+.solar [style*="background: rgba(255,255,255,0.02)"],
+.solar [style*="background: rgba(255, 255, 255, 0.02)"],
+.solar [style*="background: rgba(255,255,255,0.015)"],
+.solar [style*="background: rgba(255, 255, 255, 0.015)"],
+.solar [style*="background: hsl(240 50% 2%)"],
+.solar [style*="background-color: hsl(240 50% 2%)"] {
+  background: hsl(36 30% 97%) !important;
+  border-color: hsl(36 20% 86%) !important;
+}
+
+/* ── Semi-transparent white overlays used as subtle cards ── */
+.solar [style*="background: rgba(255,255,255,0.06)"],
+.solar [style*="background: rgba(255, 255, 255, 0.06)"],
+.solar [style*="background: rgba(255,255,255,0.07)"],
+.solar [style*="background: rgba(255, 255, 255, 0.07)"],
+.solar [style*="background: rgba(255,255,255,0.08)"],
+.solar [style*="background: rgba(255, 255, 255, 0.08)"],
+.solar [style*="background: rgba(255,255,255,0.05)"],
+.solar [style*="background: rgba(255, 255, 255, 0.05)"] {
+  background: hsl(36 25% 95%) !important;
+  border-color: hsl(36 20% 86%) !important;
+}
+
+/* ── More border patterns ── */
+.solar [style*="border: 1px solid rgba(255,255,255,0.12)"],
+.solar [style*="border: 1px solid rgba(255, 255, 255, 0.12)"],
+.solar [style*="border: 1px solid rgba(255,255,255,0.15)"],
+.solar [style*="border: 1px solid rgba(255, 255, 255, 0.15)"],
+.solar [style*="border: 1px solid rgba(255,255,255,0.2)"],
+.solar [style*="border: 1px solid rgba(255, 255, 255, 0.2)"],
+.solar [style*="border-color: rgba(255,255,255,0.07)"],
+.solar [style*="border-color: rgba(255,255,255,0.1)"] {
+  border-color: hsl(36 20% 82%) !important;
+}
+
+/* ── Vibe Check score circle & label text ── */
+.solar [style*="color: #4ADE80"] { color: hsl(142 55% 28%) !important; }  /* Locked In green → dark green */
+.solar [style*="color: #FB923C"] { color: hsl(25 75% 38%) !important; }   /* Stabilizing orange → dark orange */
+.solar [style*="color: #FBBF24"] { color: hsl(43 80% 30%) !important; }   /* Aligned gold → dark gold */
+.solar [style*="color: #F87171"] { color: hsl(0 60% 40%) !important; }    /* Reset Needed red → dark red */
+.solar [style*="color: #34D399"] { color: hsl(152 55% 28%) !important; }  /* Green variants */
+.solar [style*="color: #60A5FA"] { color: hsl(213 75% 35%) !important; }  /* Blue variants */
+
+/* ── Score breakdown bar bg track ── */
+.solar [style*="background: rgba(255,255,255,0.06)"] {
+  background: hsl(36 15% 88%) !important;
+}
+
+/* ── Streak milestone colors ── */
+.solar [style*="color: rgba(212,168,67,0.8)"],
+.solar [style*="color: rgba(212,168,67,0.85)"],
+.solar [style*="color: rgba(212,168,67,0.9)"],
+.solar [style*="color: rgba(212, 168, 67"] { color: hsl(43 75% 32%) !important; }
+
+/* ── Streak / badge dark tile bg ── */
+.solar [style*="background: rgba(212,168,67,0.1)"],
+.solar [style*="background: rgba(212,168,67,0.12)"],
+.solar [style*="background: rgba(212, 168, 67, 0.1)"],
+.solar [style*="background: rgba(212, 168, 67, 0.12)"] {
+  background: hsl(43 60% 93%) !important;
+  border-color: hsl(43 45% 76%) !important;
+}
+
+/* ── Vibe Check gradient cards (purple-accented) ── */
+.solar [style*="background: linear-gradient(135deg,rgba(155,126,255,0.07"],
+.solar [style*="background: linear-gradient(135deg,rgba(155, 126, 255, 0.07"] {
+  background: hsl(270 30% 96%) !important;
+  border-color: hsl(270 20% 86%) !important;
+}
+
+/* ── Vibe Check: affirmation & CTA card text ── */
+.solar [style*="color: rgba(155,126,255,0.8)"],
+.solar [style*="color: rgba(155, 126, 255, 0.8)"] { color: hsl(270 50% 38%) !important; }
+
+/* ── Button text: gradient CTA buttons with color: "#000" ── */
+/* These already have dark text, but if the bg becomes light, keep text dark */
+.solar button[style*="color: \"#000\""],
+.solar a[style*="color: \"#000\""] { color: hsl(240 25% 10%) !important; }
+
+/* ── Music Library: track rows on hover / active ── */
+.solar [style*="background: rgba(0,160,220,0.06)"],
+.solar [style*="background: rgba(0, 160, 220, 0.06)"],
+.solar [style*="background: rgba(0,160,220,0.1)"],
+.solar [style*="background: rgba(0, 160, 220, 0.1)"] {
+  background: hsl(201 50% 94%) !important;
+  border-color: hsl(201 40% 82%) !important;
+}
+
+/* Music library: frequency badge */
+.solar [style*="background: rgba(0,160,220,0.1)"],
+.solar [style*="background: rgba(0,160,220,0.12)"] {
+  background: hsl(201 50% 93%) !important;
+}
+
+/* ── Download / action button colors ── */
+.solar [style*="background: rgba(212,168,67,0.1)"],
+.solar [style*="background: rgba(212, 168, 67, 0.1)"] {
+  background: hsl(43 55% 93%) !important;
+  border-color: hsl(43 45% 76%) !important;
+}
+.solar [style*="color: #D4A843"],
+.solar [style*="color: rgba(212,168,67"] { color: hsl(43 75% 30%) !important; }
+
+/* ── Share button purple ── */
+.solar [style*="background: rgba(155,126,255,0.12)"],
+.solar [style*="background: rgba(155, 126, 255, 0.12)"] {
+  background: hsl(270 35% 93%) !important;
+  border-color: hsl(270 28% 80%) !important;
+}
+
+/* ── New Release badge ── */
+.solar [style*="background: rgba(0,229,255,0.12)"],
+.solar [style*="background: rgba(0, 229, 255, 0.12)"] {
+  background: hsl(187 60% 92%) !important;
+  border-color: hsl(187 45% 76%) !important;
+}
+.solar [style*="color: #00E5FF"],
+.solar [style*="color: rgba(0,229,255"] { color: hsl(187 75% 30%) !important; }
+
+/* ── Player bar bg ── */
+.solar [style*="background: rgba(4,4,14"],
+.solar [style*="background: rgba(4, 4, 14"] {
+  background: hsl(36 30% 97%) !important;
+  border-color: hsl(36 20% 86%) !important;
+}
+
+/* ── Player controls: white icon text ── */
+.solar [style*="color: rgba(255,255,255,0.65)"],
+.solar [style*="color: rgba(255, 255, 255, 0.65)"] { color: hsl(240 12% 32%) !important; }
+.solar [style*="color: rgba(255,255,255,0.45)"],
+.solar [style*="color: rgba(255, 255, 255, 0.45)"] { color: hsl(240 10% 44%) !important; }
+
+/* ── Sidebar / nav dark bg ── */
+.solar [style*="background: rgba(0,0,0,0.4)"],
+.solar [style*="background: rgba(0, 0, 0, 0.4)"],
+.solar [style*="background: rgba(0,0,0,0.3)"],
+.solar [style*="background: rgba(0, 0, 0, 0.3)"],
+.solar [style*="background: rgba(0,0,0,0.2)"],
+.solar [style*="background: rgba(0, 0, 0, 0.2)"] {
+  background: hsl(36 25% 93%) !important;
+  border-color: hsl(36 18% 84%) !important;
+}
+
+/* ── Modal / dialog dark overlays ── */
+.solar [style*="background: rgba(0,0,0,0.7)"],
+.solar [style*="background: rgba(0, 0, 0, 0.7)"],
+.solar [style*="background: rgba(0,0,0,0.8)"],
+.solar [style*="background: rgba(0, 0, 0, 0.8)"],
+.solar [style*="background: rgba(0,0,0,0.85)"],
+.solar [style*="background: rgba(0,0,0,0.9)"],
+.solar [style*="background-color: rgba(0,0,0,0.7)"],
+.solar [style*="background-color: rgba(0,0,0,0.8)"],
+.solar [style*="background-color: rgba(0,0,0,0.9)"] {
+  background: rgba(210, 200, 185, 0.75) !important;
+}
+
+/* ── Fixed/absolute dark panels (mobile nav bottom sheet, dropdowns) ── */
+.solar [style*="background: rgba(10,10,24"],
+.solar [style*="background: rgba(10, 10, 24"],
+.solar [style*="background: rgba(14,14,32"],
+.solar [style*="background: rgba(14, 14, 32"] {
+  background: hsl(36 30% 97%) !important;
+  border-color: hsl(36 18% 84%) !important;
+}
+
+/* ── Tailwind bg-muted in Solar (already uses CSS var, but inline fixes) ── */
+.solar .bg-muted { background-color: hsl(40 30% 92%) !important; }
+.solar .bg-accent { background-color: hsl(40 25% 94%) !important; }
+.solar .bg-card { background-color: hsl(0 0% 100%) !important; }
+
+/* ── Form inputs in Solar ── */
+.solar input,
+.solar textarea,
+.solar select {
+  background-color: hsl(36 30% 98%) !important;
+  border-color: hsl(36 20% 82%) !important;
+  color: hsl(240 25% 14%) !important;
+}
+.solar input:focus,
+.solar textarea:focus,
+.solar select:focus {
+  border-color: hsl(201 70% 45%) !important;
+  outline-color: hsl(201 70% 45%) !important;
+}
+
+/* ── Shadcn Select / Dropdown trigger ── */
+.solar [data-radix-select-trigger],
+.solar [role="combobox"],
+.solar [role="listbox"] {
+  background: hsl(36 30% 98%) !important;
+  border-color: hsl(36 20% 82%) !important;
+  color: hsl(240 25% 14%) !important;
+}
+.solar [role="option"],
+.solar [data-radix-select-item] {
+  color: hsl(240 25% 14%) !important;
+}
+.solar [role="option"]:hover,
+.solar [data-radix-select-item][data-highlighted] {
+  background: hsl(36 25% 93%) !important;
+}
+
+/* ── Shadcn Card / popover / dialog content ── */
+.solar [data-radix-popper-content-wrapper] > *,
+.solar [role="dialog"] > *,
+.solar [role="alertdialog"] > * {
+  background: hsl(0 0% 100%) !important;
+  border-color: hsl(36 20% 84%) !important;
+  color: hsl(240 25% 14%) !important;
+}
+
+/* ── Tabs: active/inactive in Solar ── */
+.solar [role="tab"][data-state="active"] {
+  color: hsl(201 80% 32%) !important;
+  border-color: hsl(201 80% 32%) !important;
+}
+.solar [role="tab"][data-state="inactive"] {
+  color: hsl(240 10% 45%) !important;
+}
+.solar [role="tablist"] {
+  border-color: hsl(36 20% 84%) !important;
+}
+
+/* ── Skeleton / loading shimmer in Solar ── */
+.solar .animate-pulse {
+  background: hsl(36 20% 90%) !important;
+}
+
+/* ── Toast notifications ── */
+.solar [data-sonner-toast],
+.solar [data-type="success"],
+.solar [data-type="error"],
+.solar [data-type="info"] {
+  background: hsl(0 0% 100%) !important;
+  border-color: hsl(36 20% 82%) !important;
+  color: hsl(240 25% 14%) !important;
+}
+
+/* ── Progress bars (streak, score bars) ── */
+.solar [style*="background: rgba(255,255,255,0.06)"] {
+  background: hsl(36 15% 88%) !important;
+}
+.solar [style*="background: linear-gradient(90deg,rgba(212,168,67,0.5)"],
+.solar [style*="background: linear-gradient(90deg,rgba(212, 168, 67, 0.5)"] {
+  background: linear-gradient(90deg, hsl(43 55% 55%), hsl(43 65% 42%)) !important;
+}
+
+/* ── Locked/blurred preview overlays ── */
+.solar [style*="background: rgba(8,8,24,0.88)"],
+.solar [style*="background: rgba(8, 8, 24, 0.88)"],
+.solar [style*="backdrop-filter: blur"] {
+  /* keep backdrop filter but lightened bg handled per component */
+}
+
+/* ── "NEW" release tags & status pills ── */
+.solar .text-green-400 { color: hsl(142 60% 28%) !important; }
+.solar .text-green-300 { color: hsl(142 55% 32%) !important; }
+.solar .bg-green-400\/10,
+.solar [style*="background: rgba(74,222,128,0.1)"] {
+  background: hsl(142 40% 92%) !important;
+}
+
+/* ── Vibe Check: plus-gate overlay ── */
+.solar [style*="background: rgba(8,8,24,0.88)"] {
+  background: rgba(220, 212, 200, 0.9) !important;
+  border-color: hsl(36 20% 80%) !important;
+}
+
+/* ── Vibe Check: history entry rows ── */
+.solar [style*="background: rgba(255,255,255,0.025)"],
+.solar [style*="background: rgba(255, 255, 255, 0.025)"] {
+  background: hsl(36 25% 95%) !important;
+  border-color: hsl(36 18% 86%) !important;
+}
+
+/* ── Category shelf / badge ── */
+.solar .text-muted-foreground { color: hsl(240 10% 42%) !important; }
+.solar .border-border { border-color: hsl(36 20% 82%) !important; }
+
+/* ── Lucide icon strokes inherit color ── */
+.solar svg { color: inherit; }
+
+/* ── Bottom nav mobile: active icon ── */
+.solar [style*="color: rgb(0, 160, 220)"],
+.solar [style*="color: rgb(0,160,220)"] { color: hsl(201 80% 30%) !important; }
+
+/* ── Account / Settings page inputs ── */
+.solar .ring-offset-background { background: hsl(36 30% 98%) !important; }
+
+/* ── Ensure inline `color: #000` on buttons stays readable ── */
+.solar [style*="color: #000"] { color: hsl(240 25% 10%) !important; }
+.solar [style*="color: rgb(0, 0, 0)"] { color: hsl(240 25% 10%) !important; }
+
+/* ── Footer background ── */
+.solar [style*="background: rgba(4,4,14,0.8)"],
+.solar [style*="background: rgba(4, 4, 14, 0.8)"] {
+  background: hsl(36 25% 93%) !important;
+  border-color: hsl(36 18% 84%) !important;
+}
+
+/* ── Divider lines ── */
+.solar [style*="border-top: 1px solid rgba(255,255,255,0.04)"],
+.solar [style*="border-top: 1px solid rgba(255, 255, 255, 0.04)"] {
+  border-top-color: hsl(36 18% 84%) !important;
+}
+.solar [style*="borderTop"][style*="rgba(255,255,255,0.07)"],
+.solar [style*="borderColor"][style*="rgba(255,255,255,0.07)"] {
+  border-color: hsl(36 18% 84%) !important;
+}
+
+/* ── Shadcn component text overrides ── */
+.solar .text-foreground { color: hsl(240 25% 14%) !important; }
+.solar .text-card-foreground { color: hsl(240 25% 14%) !important; }
+.solar .text-popover-foreground { color: hsl(240 25% 14%) !important; }
+.solar .text-primary-foreground { color: hsl(0 0% 100%) !important; }
+.solar .text-secondary-foreground { color: hsl(240 20% 18%) !important; }
+.solar .text-accent-foreground { color: hsl(240 20% 18%) !important; }
+
+/* ── Ensure Badge component text readable ── */
+.solar .badge,
+.solar [class*="badge"] { color: hsl(240 25% 14%) !important; }
+
+/* ── Vibe Check: preview card blurred score ring on locked page ── */
+.solar [style*="filter: blur(3px)"] { opacity: 0.45 !important; }
+
+/* ── Score ring SVG stroke colors remain vibrant in Solar ── */
+/* The ring uses inline stroke color — keep as-is, only fix text inside */
+
+/* ── Misc: inline dark text in buttons that flip bg ── */
+.solar button { color: inherit; }
+.solar a { color: inherit; }
