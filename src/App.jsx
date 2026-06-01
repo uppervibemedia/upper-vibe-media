@@ -53,13 +53,18 @@ import { isSafeRoute, defaultRouteForUser } from './lib/safeRedirect';
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated, user } = useAuth();
 
-  // Failsafe: if an authenticated user somehow lands on an unknown route right after login,
-  // redirect them to their role-appropriate default page instead of showing 404.
+  // Failsafe: once auth resolves, if the current path isn't a known route,
+  // redirect to the user's role-appropriate default. Runs once per auth session.
+  const hasRunFallback = React.useRef(false);
   useEffect(() => {
     if (!isAuthenticated || !user || isLoadingAuth) return;
+    if (hasRunFallback.current) return;
+    hasRunFallback.current = true;
     const path = window.location.pathname;
     if (!isSafeRoute(path)) {
-      window.location.replace(defaultRouteForUser(user));
+      const dest = defaultRouteForUser(user);
+      console.log("[App] Fallback redirect — unsafe path:", path, "→", dest);
+      window.location.replace(dest);
     }
   }, [isAuthenticated, user, isLoadingAuth]);
 

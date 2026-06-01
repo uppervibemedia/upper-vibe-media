@@ -13,7 +13,6 @@ const VALID_ROUTE_PREFIXES = [
   "/account",
   "/my-vibe-library",
   "/my-vibes",
-  "/my-vibe-library",
   "/downloads",
   "/song/",
   "/visualizers",
@@ -33,11 +32,22 @@ const VALID_ROUTE_PREFIXES = [
   "/favorites",
   "/discover",
   "/email-list",
+  "/forgot-password",
+  "/payment-success",
+  "/payment-cancelled",
+  "/terms",
+  "/privacy",
+  "/dmca",
+  "/refunds",
+  "/contact",
+  "/dashboard",
+  "/vault",
 ];
 
 // Values that should never be used as routes
 const INVALID_ROUTE_VALUES = new Set([
   "undefined", "null", "false", "true", "", "/undefined", "/null", "/false",
+  "undefined/", "null/",
 ]);
 
 /**
@@ -48,10 +58,15 @@ export function isSafeRoute(path) {
   const normalized = path.trim();
   if (!normalized.startsWith("/")) return false;
   if (INVALID_ROUTE_VALUES.has(normalized)) return false;
-  // Must start with one of the known prefixes
-  return VALID_ROUTE_PREFIXES.some((prefix) =>
-    normalized === prefix || normalized.startsWith(prefix)
-  );
+  // Reject external URLs disguised as paths
+  if (normalized.includes("http") || normalized.includes("//")) return false;
+  // Reject raw media/audio file paths
+  if (/\.(mp3|mp4|m4a|wav|ogg|flac|jpg|jpeg|png|gif|webp|pdf)$/i.test(normalized)) return false;
+  // Must match one of the known prefixes
+  return VALID_ROUTE_PREFIXES.some((prefix) => {
+    if (prefix === "/") return normalized === "/"; // exact match only for root
+    return normalized === prefix || normalized.startsWith(prefix + "/") || normalized.startsWith(prefix + "?");
+  });
 }
 
 /**
@@ -66,6 +81,10 @@ export function defaultRouteForUser(user) {
     user.is_plus === true ||
     user.tier === "plus" ||
     user.tier === "premium" ||
+    user.role === "plus" ||
+    user.role === "premium" ||
+    user.plan === "plus" ||
+    user.plan === "premium" ||
     user.subscription_status === "active" ||
     user.subscriptionStatus === "active" ||
     user.stripe_subscription_status === "active";
@@ -73,14 +92,51 @@ export function defaultRouteForUser(user) {
   return "/music";
 }
 
-// Storage keys that may hold a returnUrl
+// All storage keys that may hold a returnUrl / redirect value
 const REDIRECT_STORAGE_KEYS = [
   "returnUrl",
   "checkoutReturnUrl",
   "authRedirect",
   "redirectAfterLogin",
   "intendedPath",
+  "lastPath",
+  "from",
+  "navigateAfterLogin",
 ];
+
+// The base44 platform key that stores from_url (set by app-params.js)
+const BASE44_FROM_URL_KEY = "base44_from_url";
+
+/**
+ * Sanitize the base44_from_url localStorage value.
+ * If it holds an invalid/unsafe URL, remove it so the platform
+ * doesn't redirect to a 404 after login.
+ */
+export function sanitizePlatformFromUrl() {
+  try {
+    const raw = localStorage.getItem(BASE44_FROM_URL_KEY);
+    if (!raw) return;
+
+    // Parse out just the pathname from the stored URL (may be a full URL)
+    let pathname = raw;
+    try {
+      const parsed = new URL(raw);
+      pathname = parsed.pathname;
+    } catch {
+      // Not a full URL — treat as path
+      pathname = raw;
+    }
+
+    console.log("[safeRedirect] base44_from_url raw:", raw, "→ pathname:", pathname);
+
+    if (!isSafeRoute(pathname)) {
+      console.log("[safeRedirect] base44_from_url is UNSAFE — removing it");
+      localStorage.removeItem(BASE44_FROM_URL_KEY);
+    } else {
+      console.log("[safeRedirect] base44_from_url is safe:", pathname);
+    }
+  } catch (_) {}
+}
 
 /**
  * Read any stored redirect from localStorage/sessionStorage,
@@ -108,6 +164,8 @@ export function clearAllStoredRedirects() {
       try { storage.removeItem(key); } catch (_) {}
     }
   }
+  // Also sanitize the platform's own from_url
+  sanitizePlatformFromUrl();
 }
 
 /**

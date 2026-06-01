@@ -2,12 +2,36 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
-import { isSafeRoute, defaultRouteForUser, clearAllStoredRedirects } from '@/lib/safeRedirect';
+import {
+  isSafeRoute,
+  defaultRouteForUser,
+  clearAllStoredRedirects,
+  sanitizePlatformFromUrl,
+} from '@/lib/safeRedirect';
 
-// Detect fresh login BEFORE app-params.js strips access_token from the URL.
-// We check the raw href at module load time (before any URL mutation).
-const RAW_URL_AT_LOAD = typeof window !== "undefined" ? window.location.href : "";
-const IS_FRESH_LOGIN = RAW_URL_AT_LOAD.includes("access_token=");
+// ── Fresh-login detection ──────────────────────────────────────────────────
+// app-params.js strips access_token from the URL synchronously at import time.
+// We use two signals to detect a fresh login:
+// 1. appParams.token exists (a token was just passed in the URL or stored)
+// 2. The platform sets a session flag we can check
+// We also mark a flag in sessionStorage immediately when the token is consumed.
+const IS_FRESH_LOGIN = (() => {
+  try {
+    // Signal 1: access_token was in the URL at page load (before app-params stripped it)
+    // app-params stores it in localStorage as base44_access_token — if the in-memory
+    // appParams.token is present it means it came from the URL *this* page load.
+    // Signal 2: check if this is a brand-new session (sessionStorage is empty = new tab/load)
+    const alreadyHandled = sessionStorage.getItem('uvm_login_handled');
+    if (alreadyHandled) return false;
+    // If appParams.token is present, the SDK just received a fresh token
+    return !!appParams.token;
+  } catch { return false; }
+})();
+
+// Mark immediately so we only run fresh-login logic once per page load
+if (IS_FRESH_LOGIN) {
+  try { sessionStorage.setItem('uvm_login_handled', '1'); } catch {}
+}
 
 const AuthContext = createContext();
 
@@ -17,10 +41,12 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
-  const [sessionLostError, setSessionLostError] = useState(false); // Safari/PWA storage cleared
+  const [appPublicSettings, setAppPublicSettings] = useState(null);
+  const [sessionLostError, setSessionLostError] = useState(false);
 
   useEffect(() => {
+    // Sanitize any bad from_url BEFORE auth check so the platform can't use it
+    sanitizePlatformFromUrl();
     checkAppState();
   }, []);
 
@@ -28,25 +54,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && isAuthenticated) {
-        // Silently re-verify auth without updating loading states
         base44.auth.me()
-          .then(() => {
-            // Still authenticated, clear any stale error
-            setSessionLostError(false);
-          })
+          .then(() => { setSessionLostError(false); })
           .catch(() => {
-            // Session expired — Safari cleared localStorage or 90 days passed
             setIsAuthenticated(false);
             setUser(null);
             setSessionLostError(true);
-            setAuthError({
-              type: 'session_expired',
-              message: 'Your session expired. Please log in again.'
-            });
+            setAuthError({ type: 'session_expired', message: 'Your session expired. Please log in again.' });
           });
       }
     };
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [isAuthenticated]);
@@ -55,23 +72,18 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
-      
-      // First, check app public settings (with token if available)
-      // This will tell us if auth is required, user not registered, etc.
+
       const appClient = createAxiosClient({
         baseURL: `/api/apps/public`,
-        headers: {
-          'X-App-Id': appParams.appId
-        },
-        token: appParams.token, // Include token if available
+        headers: { 'X-App-Id': appParams.appId },
+        token: appParams.token,
         interceptResponses: true
       });
-      
+
       try {
         const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
         setAppPublicSettings(publicSettings);
-        
-        // If we got the app public settings successfully, check if user is authenticated
+
         if (appParams.token) {
           await checkUserAuth();
         } else {
@@ -81,41 +93,18 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', appError);
-        
-        // Handle app-level errors
         if (appError.status === 403 && appError.data?.extra_data?.reason) {
           const reason = appError.data.extra_data.reason;
-          if (reason === 'auth_required') {
-            setAuthError({
-              type: 'auth_required',
-              message: 'Authentication required'
-            });
-          } else if (reason === 'user_not_registered') {
-            setAuthError({
-              type: 'user_not_registered',
-              message: 'User not registered for this app'
-            });
-          } else {
-            setAuthError({
-              type: reason,
-              message: appError.message
-            });
-          }
+          setAuthError({ type: reason, message: appError.message });
         } else {
-          setAuthError({
-            type: 'unknown',
-            message: appError.message || 'Failed to load app'
-          });
+          setAuthError({ type: 'unknown', message: appError.message || 'Failed to load app' });
         }
         setIsLoadingPublicSettings(false);
         setIsLoadingAuth(false);
       }
     } catch (error) {
       console.error('Unexpected error:', error);
-      setAuthError({
-        type: 'unknown',
-        message: error.message || 'An unexpected error occurred'
-      });
+      setAuthError({ type: 'unknown', message: error.message || 'An unexpected error occurred' });
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
     }
@@ -123,27 +112,42 @@ export const AuthProvider = ({ children }) => {
 
   const checkUserAuth = async () => {
     try {
-      // Now check if the user is authenticated
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
 
-      // Mark that this browser has logged in before (for returning visitor hint)
+      // Mark that this browser has logged in before
       try { localStorage.setItem('uvm_has_logged_in', '1'); } catch {}
 
-      // On a fresh login, validate and redirect to a safe route
+      // ── Post-login redirect logic ──────────────────────────────────────
       if (IS_FRESH_LOGIN) {
         const currentPath = window.location.pathname;
-        // If current path is invalid (e.g. /undefined, /null, or unregistered), redirect away
-        if (!isSafeRoute(currentPath)) {
-          const destination = defaultRouteForUser(currentUser);
-          clearAllStoredRedirects();
-          window.location.replace(destination);
-          return; // page is navigating
-        }
-        // Current path is valid — stay here, just clear any stale redirect storage
+        const destination = defaultRouteForUser(currentUser);
+
+        console.log("[AuthContext] Fresh login detected");
+        console.log("[AuthContext] Current path:", currentPath);
+        console.log("[AuthContext] User role:", currentUser?.role);
+        console.log("[AuthContext] isPlus fields:", {
+          isPlus: currentUser?.isPlus,
+          tier: currentUser?.tier,
+          subscription_status: currentUser?.subscription_status,
+          subscriptionStatus: currentUser?.subscriptionStatus,
+        });
+        console.log("[AuthContext] Destination:", destination);
+
+        // Always clear stale redirects on fresh login
         clearAllStoredRedirects();
+
+        // If the current path is not a valid/safe route, redirect to role default
+        if (!isSafeRoute(currentPath)) {
+          console.log("[AuthContext] Current path is UNSAFE — redirecting to:", destination);
+          window.location.replace(destination);
+          return; // navigating away
+        }
+
+        // Current path is safe — stay here (user may have logged in from /music, /vibe-room, etc.)
+        console.log("[AuthContext] Current path is safe — staying on:", currentPath);
       }
 
       setIsLoadingAuth(false);
@@ -151,13 +155,8 @@ export const AuthProvider = ({ children }) => {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
-      
-      // If user auth fails, it might be an expired token
       if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
+        setAuthError({ type: 'auth_required', message: 'Authentication required' });
       }
     }
   };
@@ -165,23 +164,20 @@ export const AuthProvider = ({ children }) => {
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    
+    // Clear login-handled flag so next login is detected fresh
+    try { sessionStorage.removeItem('uvm_login_handled'); } catch {}
     if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
       base44.auth.logout(window.location.href);
     } else {
-      // Just remove the token without redirect
       base44.auth.logout();
     }
   };
 
   const navigateToLogin = (nextUrl) => {
-    // Use the SDK's redirectToLogin method
     base44.auth.redirectToLogin(nextUrl || window.location.href);
   };
 
-  // Derived membership helpers — always computed from trusted server auth data
-  // Supports all tier/role naming variants (old "premium", new "plus", subscription fields)
+  // Derived membership helpers
   const isPlus = isAuthenticated && user && (
     user.isPlus === true ||
     user.isPremium === true ||
@@ -198,14 +194,13 @@ export const AuthProvider = ({ children }) => {
   );
   const isAdmin = isAuthenticated && user?.role === "admin";
 
-  // Non-blocking localStorage hint — only used for UI copy, never for access control
   let hasPreviouslyLoggedIn = false;
   try { hasPreviouslyLoggedIn = !!localStorage.getItem('uvm_has_logged_in'); } catch {}
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated,
       isLoadingAuth,
       isLoadingPublicSettings,
       authError,
@@ -224,8 +219,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
