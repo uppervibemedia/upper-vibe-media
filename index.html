@@ -22,6 +22,19 @@
         });
       })();
     </script>
+    <!-- Crawler redirect: bots hitting /song/:id get routed to ogMeta for dynamic OG tags -->
+    <script>
+      (function() {
+        var ua = navigator.userAgent || "";
+        var isCrawler = /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot|pinterest|iMessageBot/i.test(ua);
+        if (isCrawler) {
+          var songMatch = window.location.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
+          if (songMatch) {
+            window.location.replace("/api/ogMeta?type=track&id=" + songMatch[1]);
+          }
+        }
+      })();
+    </script>
     <title>Upper Vibe Music — Stream the Frequency</title>
     <meta name="description" content="Upper Vibe Music is a premium streaming platform for exclusive, high-vibration remastered tracks and unreleased soundscapes. Tap into premium sound." />
     <!-- Open Graph defaults (overridden per-page by React) -->

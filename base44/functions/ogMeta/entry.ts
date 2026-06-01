@@ -110,6 +110,15 @@ Deno.serve(async (req) => {
       } catch {}
     }
 
+    // Auto-detect /song/:id from the path (Facebook scrapes the real URL)
+    if (!type && !id) {
+      const songMatch = url.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
+      if (songMatch) {
+        type = "track";
+        id   = songMatch[1];
+      }
+    }
+
     type = type || "default";
 
     const base44 = createClientFromRequest(req);
