@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { createPortal } from "react-dom";
 import { X, Heart, Play, Tv2 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
@@ -18,53 +18,39 @@ function toEmbedUrl(url) {
 }
 
 export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualizers = [], onSwitchViz, isFaved, onToggleFav }) {
-  const containerRef = useRef(null);
   const savedScrollY = useRef(0);
   const { accentId } = useTheme();
   const rtp = (RADIO_THEMES[accentId] || RADIO_THEMES.cyan).vars["--rt-primary"];
 
   const embedUrl = toEmbedUrl(viz?.embed_url || viz?.video_url);
-
   const related = allVisualizers
     .filter((v) => v.id !== viz?.id && (v.category === viz?.category || v.artist === viz?.artist))
     .slice(0, 4);
 
-  // Every time a viz opens (or switches), lock body scroll and force container to top
   useEffect(() => {
-    savedScrollY.current = window.scrollY;
+    if (!viz) return;
 
-    // Lock body so underlying page can't scroll on iOS
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${savedScrollY.current}px`;
-    document.body.style.width = "100%";
+    // Save current scroll position
+    savedScrollY.current = window.scrollY || document.documentElement.scrollTop;
 
     if (pauseAudio) pauseAudio();
 
-    // Force container scroll to top — sync + two rAF passes + fallback timers
-    const scrollToTop = () => {
-      if (containerRef.current) {
-        containerRef.current.scrollTop = 0;
-      }
-    };
-
-    scrollToTop();
-    const raf1 = requestAnimationFrame(() => {
-      scrollToTop();
-      requestAnimationFrame(scrollToTop);
-    });
-    const t1 = setTimeout(scrollToTop, 50);
-    const t2 = setTimeout(scrollToTop, 200);
+    // Lock the body in place using the iOS-safe technique:
+    // position:fixed + top:-scrollY freezes the page without losing scroll position
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${savedScrollY.current}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
 
     return () => {
-      cancelAnimationFrame(raf1);
-      clearTimeout(t1);
-      clearTimeout(t2);
-      // Restore body scroll
+      // Restore body
       document.body.style.overflow = "";
       document.body.style.position = "";
       document.body.style.top = "";
-      document.body.style.width = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      // Restore page scroll position
       window.scrollTo(0, savedScrollY.current);
     };
   }, [viz?.id]);
@@ -77,27 +63,21 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
 
   if (!viz) return null;
 
-  return (
+  // Render into document.body via Portal — completely outside any scrolled parent
+  return createPortal(
     <div
-      ref={containerRef}
       onClick={onClose}
       style={{
         position: "fixed",
         top: 0, left: 0, right: 0, bottom: 0,
-        zIndex: 9999,
+        zIndex: 99999,
         background: "rgba(4,4,14,0.97)",
-        overflowY: "scroll",
-        // Disable smooth scroll so scrollTop=0 is instant
-        scrollBehavior: "auto",
-        // Prevent scroll chaining to body
+        overflowY: "auto",
         overscrollBehavior: "contain",
-        WebkitOverflowScrolling: "touch",
-        // Force stacking context so iOS doesn't inherit parent scroll
-        isolation: "isolate",
-        willChange: "scroll-position",
+        // No WebkitOverflowScrolling — avoids iOS creating independent scroll layer
       }}
     >
-      {/* Content — max-width centered, video is first visible element */}
+      {/* Inner content — click stops propagation so backdrop click closes */}
       <div
         onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 896, margin: "0 auto" }}
@@ -132,7 +112,7 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
           </button>
         </div>
 
-        {/* ── VIDEO ── */}
+        {/* ── VIDEO — 16:9 ratio via padding trick ── */}
         <div style={{ position: "relative", width: "100%", paddingBottom: "56.25%", background: "#000" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
             {embedUrl ? (
@@ -198,7 +178,6 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
               {related.map((v) => (
                 <button key={v.id}
                   onClick={() => onSwitchViz && onSwitchViz(v)}
-                  className="group"
                   style={{
                     borderRadius: 10, overflow: "hidden", textAlign: "left", cursor: "pointer",
                     background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
@@ -212,10 +191,6 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
                             <Tv2 style={{ width: 20, height: 20, color: "rgba(255,255,255,0.15)" }} />
                           </div>
                       }
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ background: "rgba(0,0,0,0.5)" }}>
-                        <Play style={{ width: 16, height: 16, color: "#fff" }} />
-                      </div>
                     </div>
                   </div>
                   <div style={{ padding: "8px 10px" }}>
@@ -231,6 +206,7 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
         {/* Bottom padding */}
         <div style={{ height: 48 }} />
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
