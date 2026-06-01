@@ -14,12 +14,12 @@ export default function YourFrequencyFeed({
   currentTrack, isPlaying, handlePlayTrack,
   user, isFaved, onToggleFav, themeColor, onOpenViz,
 }) {
-  const [userStreams, setUserStreams]     = useState([]);
-  const [userFavs, setUserFavs]         = useState([]);
+  const [userStreams, setUserStreams]       = useState([]);
+  const [userFavs, setUserFavs]           = useState([]);
   const [userDownloads, setUserDownloads] = useState([]);
-  const [checkIns, setCheckIns]         = useState([]);
-  const [communityIdx, setCommunityIdx] = useState({});
-  const [loading, setLoading]           = useState(true);
+  const [checkIns, setCheckIns]           = useState([]);
+  const [communityIdx, setCommunityIdx]   = useState({});
+  const [loading, setLoading]             = useState(true);
 
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -31,30 +31,21 @@ export default function YourFrequencyFeed({
 
   useEffect(() => {
     if (!allTracks?.length) return;
-
-    // Community data (always fetched)
     const communityQueries = [
       base44.entities.SongStream.list("-created_date", 500),
       base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000),
       base44.entities.Download.filter({ content_type: "track" }, "-created_date", 1000),
     ];
-
-    // User-specific data (only when logged in)
     const userQueries = user?.id ? [
       base44.entities.SongStream.filter({ user_id: user.id }, "-created_date", 300),
       base44.entities.Favorite.filter({ user_email: user.email, type: "track" }, "-created_date", 200),
       base44.entities.UserDownload.filter({ user_id: user.id }, "-created_date", 200),
       base44.entities.VibeCheckIn.filter({ user_id: user.id }, "-check_in_date", 7),
     ] : [
-      Promise.resolve([]),
-      Promise.resolve([]),
-      Promise.resolve([]),
-      Promise.resolve([]),
+      Promise.resolve([]), Promise.resolve([]), Promise.resolve([]), Promise.resolve([]),
     ];
-
     Promise.all([...communityQueries, ...userQueries]).then(([
-      allStreams, allFavs, allDls,
-      myStreams, myFavs, myDls, myCheckIns,
+      allStreams, allFavs, allDls, myStreams, myFavs, myDls, myCheckIns,
     ]) => {
       setCommunityIdx(buildCommunityIndex(allStreams, allFavs, allDls));
       setUserStreams(myStreams);
@@ -66,23 +57,34 @@ export default function YourFrequencyFeed({
   }, [allTracks?.length, user?.id]);
 
   const profile = useMemo(() => buildUserProfile({
-    userStreams, userFavs, userDownloads: userDownloads, checkIns, allTracks: allTracks || [],
+    userStreams, userFavs, userDownloads, checkIns, allTracks: allTracks || [],
   }), [userStreams, userFavs, userDownloads, checkIns, allTracks]);
 
   const feed = useMemo(() => buildPersonalizedFeed({
     allTracks, allViz, profile, communityIdx,
-    trackCount: 5, vizCount: 3,
+    trackCount: 6, vizCount: 2,
   }), [allTracks, allViz, profile, communityIdx]);
 
   if (loading || !feed.length) return null;
 
   const moodMeta = profile.dominantMood ? MOOD_META[profile.dominantMood] : null;
 
+  // Split feed: tracks and visualizers
+  const tracks = feed.filter(i => i.type === "track");
+  const vizItems = feed.filter(i => i.type === "visualizer");
+
+  // Desktop layout: left = first 4 tracks, right = first viz + remaining tracks
+  const leftTracks = tracks.slice(0, 4);
+  const rightViz = vizItems[0] || null;
+  const rightTracks = tracks.slice(4, 6);
+
+  const trackCardProps = { currentTrack, isPlaying, handlePlayTrack, isFaved, onToggleFav, navigate, isPremium, rtp };
+
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
 
       {/* ── Header ── */}
-      <div className="mb-7">
+      <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-px h-4 rounded-full" style={{ background: `rgb(${rtp})` }} />
           <span className="text-[10px] font-black tracking-[0.35em] uppercase" style={{ color: `rgb(${rtp})` }}>
@@ -92,9 +94,7 @@ export default function YourFrequencyFeed({
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap mb-1">
-              <h2 className="font-heading font-black text-3xl md:text-4xl text-white leading-tight">
-                My Vibe Feed
-              </h2>
+              <h2 className="font-heading font-black text-3xl md:text-4xl text-white leading-tight">My Vibe Feed</h2>
               {moodMeta && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black flex-shrink-0"
                   style={{ background: `rgba(${rtp},0.1)`, border: `1px solid rgba(${rtp},0.3)`, color: `rgb(${rtp})` }}>
@@ -131,36 +131,57 @@ export default function YourFrequencyFeed({
         </div>
       </div>
 
-      {/* ── Feed grid ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-        <AnimatePresence>
-          {feed.map((item, i) => (
-            <motion.div
-              key={item.type + "-" + item.data.id}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.035, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {item.type === "track" && (
-                <TrackCard
-                  track={item.data}
-                  badge={item.badge}
-                  currentTrack={currentTrack}
-                  isPlaying={isPlaying}
-                  handlePlayTrack={handlePlayTrack}
-                  isFaved={isFaved}
-                  onToggleFav={onToggleFav}
-                  navigate={navigate}
-                  isPremium={isPremium}
-                  rtp={rtp}
-                />
-              )}
-              {item.type === "visualizer" && (
-                <VisualizerCard viz={item.data} badge={item.badge} onOpen={onOpenViz} />
-              )}
+      {/* ── Desktop 2-col masonry / Mobile single col ── */}
+      {/* Mobile: flat list. Desktop: left=tracks, right=viz anchor + more tracks */}
+      <div className="block lg:hidden space-y-2.5">
+        {feed.map((item, i) => (
+          <motion.div key={item.type + "-" + item.data.id}
+            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.035, ease: [0.22, 1, 0.36, 1] }}>
+            {item.type === "track" && <TrackCard track={item.data} badge={item.badge} {...trackCardProps} />}
+            {item.type === "visualizer" && <VisualizerCard viz={item.data} badge={item.badge} onOpen={onOpenViz} />}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Desktop 2-column layout */}
+      <div className="hidden lg:grid lg:grid-cols-2 lg:gap-4">
+        {/* LEFT: 4 track cards stacked */}
+        <div className="flex flex-col gap-2.5">
+          {leftTracks.map((item, i) => (
+            <motion.div key={"l-" + item.data.id}
+              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}>
+              <TrackCard track={item.data} badge={item.badge} {...trackCardProps} />
             </motion.div>
           ))}
-        </AnimatePresence>
+        </div>
+
+        {/* RIGHT: featured visualizer anchors the column, then more tracks below */}
+        <div className="flex flex-col gap-2.5">
+          {rightViz && (
+            <motion.div key={"rv-" + rightViz.data.id}
+              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05, ease: [0.22, 1, 0.36, 1] }}>
+              <VisualizerCard viz={rightViz.data} badge={rightViz.badge} onOpen={onOpenViz} />
+            </motion.div>
+          )}
+          {rightTracks.map((item, i) => (
+            <motion.div key={"r-" + item.data.id}
+              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: (i + 1) * 0.04, ease: [0.22, 1, 0.36, 1] }}>
+              <TrackCard track={item.data} badge={item.badge} {...trackCardProps} />
+            </motion.div>
+          ))}
+          {/* If no viz, fill with extra tracks */}
+          {!rightViz && vizItems.slice(0, 1).map((item, i) => (
+            <motion.div key={"rv2-" + item.data.id}
+              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, ease: [0.22, 1, 0.36, 1] }}>
+              <VisualizerCard viz={item.data} badge={item.badge} onOpen={onOpenViz} />
+            </motion.div>
+          ))}
+        </div>
       </div>
 
       {/* ── CTAs ── */}
@@ -234,16 +255,15 @@ function TrackCard({ track, badge, currentTrack, isPlaying, handlePlayTrack, isF
   );
 }
 
-// ── VisualizerCard — opens inline modal on the same page ─────────────────────
+// ── VisualizerCard ────────────────────────────────────────────────────────────
 function VisualizerCard({ viz, badge, onOpen }) {
-  const handleClick = () => onOpen ? onOpen(viz) : null;
   return (
     <div
-      className="block rounded-2xl group transition-all active:scale-[0.98] overflow-hidden cursor-pointer"
+      className="rounded-2xl group transition-all active:scale-[0.98] overflow-hidden cursor-pointer"
       style={{ background: "rgba(0,229,255,0.03)", border: "1px solid rgba(0,229,255,0.15)" }}
-      onClick={handleClick}
+      onClick={() => onOpen && onOpen(viz)}
     >
-      <div className="relative overflow-hidden" style={{ paddingBottom: "62%" }}>
+      <div className="relative overflow-hidden" style={{ paddingBottom: "56.25%" }}>
         <div className="absolute inset-0">
           {viz.thumbnail_url
             ? <img src={viz.thumbnail_url} alt={viz.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -261,6 +281,11 @@ function VisualizerCard({ viz, badge, onOpen }) {
               </span>
             </div>
           )}
+          <div className="absolute top-2 right-2">
+            <span className="text-[8px] font-black px-2 py-1 rounded-full" style={{ background: "rgba(0,160,220,0.85)", color: "#fff" }}>
+              🎬 Visualizer
+            </span>
+          </div>
         </div>
       </div>
       <div className="flex items-center justify-between gap-2 px-3 py-2.5">

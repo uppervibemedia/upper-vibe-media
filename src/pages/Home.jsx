@@ -569,6 +569,73 @@ export default function Home() {
         />
       </motion.div>
 
+      {/* ── ACADEMY / LEARNING ── */}
+      {academyLessons.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+            <div className="flex items-end justify-between gap-3 mb-5 flex-wrap">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-px h-4 rounded-full" style={{ background: "rgb(155,126,255)" }} />
+                  <span className="text-[10px] font-black tracking-[0.35em] uppercase" style={{ color: "rgb(155,126,255)" }}>Learning Hub</span>
+                </div>
+                <h2 className="font-heading font-black text-3xl md:text-4xl text-white leading-tight">Upper Vibe Academy</h2>
+                <p className="text-white/35 text-sm mt-1">432 Hz education, music business, and high-vibe living.</p>
+              </div>
+              <Link to="/academy"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black tracking-wide transition-all hover:brightness-110 flex-shrink-0"
+                style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.25)", color: "#9B7EFF" }}>
+                <Zap className="w-3 h-3" /> All Lessons
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {academyLessons.map((lesson, i) => (
+                <motion.div key={lesson.id}
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
+                  <Link to={`/academy/lesson/${lesson.id}`}
+                    className="group block rounded-2xl overflow-hidden transition-all hover:border-purple-500/30"
+                    style={{ background: "rgba(155,126,255,0.04)", border: "1px solid rgba(155,126,255,0.14)", boxShadow: "0 0 20px rgba(155,126,255,0.05)" }}>
+                    <div className="relative overflow-hidden" style={{ paddingBottom: "56.25%" }}>
+                      <div className="absolute inset-0">
+                        {lesson.thumbnail_url
+                          ? <img src={lesson.thumbnail_url} alt={lesson.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                          : <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(155,126,255,0.08)" }}><Zap className="w-8 h-8 text-purple-400/20" /></div>}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.4)" }}>
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(155,126,255,0.9)", boxShadow: "0 0 16px rgba(155,126,255,0.5)" }}>
+                            <Play className="w-4 h-4 text-white ml-0.5" />
+                          </div>
+                        </div>
+                        <div className="absolute top-2 left-2">
+                          <span className="text-[8px] font-black px-2 py-1 rounded-full" style={{ background: "rgba(155,126,255,0.85)", color: "#fff" }}>🎓 Academy</span>
+                        </div>
+                        {lesson.is_premium && (
+                          <div className="absolute top-2 right-2">
+                            <span className="text-[8px] font-black px-2 py-1 rounded-full" style={{ background: "rgba(212,168,67,0.9)", color: "#000" }}>⭐ Premium</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="px-3 py-3">
+                      <p className="text-sm font-bold text-white leading-snug line-clamp-2">{lesson.title}</p>
+                      {lesson.labels?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {lesson.labels.slice(0, 2).map(l => (
+                            <span key={l} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                              style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.25)", color: "#c4aaff" }}>
+                              {l}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+        </motion.div>
+      )}
+
       {/* ── MUSIC VISUALIZERS ── */}
       {recentViz.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
