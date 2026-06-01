@@ -17,7 +17,7 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
 import LatestMusicSection from "../components/home/LatestMusicSection";
-import TrendingTracksSection from "../components/home/TrendingTracksSection";
+import ListenerFrequencyDashboard from "../components/home/ListenerFrequencyDashboard";
 import SectionHeader from "../components/shared/SectionHeader";
 import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
@@ -537,9 +537,9 @@ export default function Home() {
       />
       </motion.div>
 
-      {/* ── TRENDING TRACKS ── */}
+      {/* ── LISTENER FREQUENCY DASHBOARD ── */}
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
-      <TrendingTracksSection
+      <ListenerFrequencyDashboard
         allTracks={allTracks}
         currentTrack={currentTrack}
         isPlaying={isPlaying}
