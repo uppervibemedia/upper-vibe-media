@@ -4,7 +4,6 @@ import {
   Play, Pause, Music4, Heart, Download, Lock,
   Flame, Zap, ArrowRight, TrendingUp, Star, Crown
 } from "lucide-react";
-import FreqBadge from "@/components/shared/FreqBadge";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
@@ -255,10 +254,11 @@ export default function ListenerFrequencyDashboard({
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()}
-                  className="text-sm font-bold text-white truncate block hover:underline">
+                  className="text-sm font-bold text-white hover:underline leading-snug"
+                  style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {track.title}
                 </Link>
-                <p className="text-[11px] text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                <p className="text-[11px] text-white/35 truncate mt-0.5">{track.artist_display || "Upper Vibe Media"}</p>
                 <span className="inline-block mt-0.5 text-[9px] font-bold px-2 py-0.5 rounded-full"
                   style={{ background: badge.bg, border: `1px solid ${badge.border}`, color: badge.color }}>
                   {badge.text}
@@ -267,7 +267,6 @@ export default function ListenerFrequencyDashboard({
 
               {/* Actions */}
               <div className="flex items-center gap-1 flex-shrink-0">
-                <FreqBadge label="432" />
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}
                   className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
