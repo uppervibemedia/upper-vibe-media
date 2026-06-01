@@ -27,6 +27,7 @@ const footerLinks = [
       { label: "Privacy Policy", to: "/privacy" },
       { label: "DMCA / Copyright", to: "/dmca" },
       { label: "Refund Policy", to: "/refunds" },
+      { label: "Community Guidelines", to: "/community-guidelines" },
     ],
   },
 ];
@@ -137,6 +138,10 @@ export default function Footer() {
               New 432 Hz drops, visualizers & exclusive releases — straight to your inbox.
             </p>
             <FooterEmailSignup />
+            <p className="text-[10px] text-white/20 mt-2 leading-relaxed">
+              By joining, you agree to receive updates from Upper Vibe Media. Unsubscribe anytime. See our{" "}
+              <Link to="/privacy" className="text-white/35 hover:text-white/60 underline underline-offset-2">Privacy Policy</Link>.
+            </p>
           </div>
         </div>
 
@@ -151,6 +156,7 @@ export default function Footer() {
             <Link to="/dmca" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">DMCA</Link>
             <Link to="/refunds" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">Refunds</Link>
             <Link to="/support" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">Support</Link>
+            <Link to="/community-guidelines" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">Guidelines</Link>
             <Link to="/forgot-password" className="text-[10px] text-white/20 hover:text-white/50 transition-colors">Reset Password</Link>
           </div>
         </div>

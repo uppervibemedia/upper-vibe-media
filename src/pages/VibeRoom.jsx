@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Send, ShieldCheck, Zap, Ban, Mic2, Crown, Users } from "lucide-react";
+import { Send, ShieldCheck, Zap, Ban, Mic2, Crown, Users, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { usePlayer } from "@/context/PlayerContext";
@@ -348,6 +349,18 @@ export default function VibeRoom() {
                   Vibe Room
                 </h1>
                 <p className="text-muted-foreground/60 text-xs tracking-wide">Listen together. Raise the frequency.</p>
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                  <Link to="/community-guidelines"
+                    className="flex items-center gap-1 text-[9px] font-bold tracking-wider uppercase transition-colors"
+                    style={{ color: `rgba(${rtPrimary},0.45)` }}>
+                    <ShieldCheck className="w-2.5 h-2.5" /> Community Guidelines
+                  </Link>
+                  <Link to="/support"
+                    className="flex items-center gap-1 text-[9px] font-bold tracking-wider uppercase transition-colors"
+                    style={{ color: "rgba(255,255,255,0.2)" }}>
+                    <ExternalLink className="w-2.5 h-2.5" /> Support
+                  </Link>
+                </div>
               </div>
 
               {/* Right: avatar + name (premium only) — photo managed from Account page */}

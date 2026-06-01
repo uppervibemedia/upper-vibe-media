@@ -71,7 +71,6 @@ export default function Account() {
   const navigate = useNavigate();
   const [portalLoading, setPortalLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState(() => user?.vibe_avatar_url || null);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtPrimary = radioTheme.vars["--rt-primary"];
@@ -179,12 +178,9 @@ export default function Account() {
           <div className="rounded-3xl p-6"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
             <div className="flex items-center gap-4 mb-5">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-heading font-black text-xl flex-shrink-0 overflow-hidden"
-                style={{ background: avatarUrl ? "transparent" : `linear-gradient(135deg,rgba(${rtPrimary},0.15),rgba(${rtPrimary},0.05))`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})` }}>
-                {avatarUrl
-                  ? <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-                  : (user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U")
-                }
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-heading font-black text-xl flex-shrink-0"
+                style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.15),rgba(${rtPrimary},0.05))`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})` }}>
+                {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-heading font-black text-white text-lg truncate">{user.full_name || "Member"}</p>
@@ -196,14 +192,12 @@ export default function Account() {
               </span>
             </div>
 
-            {/* Profile photo editor */}
+            {/* Avatar info */}
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "1.25rem" }}>
-              <p className="text-[10px] font-black tracking-[0.25em] uppercase mb-3" style={{ color: "rgba(255,255,255,0.25)" }}>Profile Photo</p>
+              <p className="text-[10px] font-black tracking-[0.25em] uppercase mb-3" style={{ color: "rgba(255,255,255,0.25)" }}>Profile Avatar</p>
               <ProfilePhotoEditor
                 name={user.full_name || user.email}
-                currentAvatarUrl={avatarUrl}
                 rtPrimary={rtPrimary}
-                onUpdated={(url) => setAvatarUrl(url)}
               />
             </div>
           </div>
@@ -370,7 +364,7 @@ export default function Account() {
             <button onClick={() => setShowDeleteConfirm(true)}
               className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm transition-all active:scale-[0.98] hover:brightness-110"
               style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.25)", color: "#f87171", minHeight: 56 }}>
-              <Trash2 className="w-4 h-4" /> Delete Account
+              <Trash2 className="w-4 h-4" /> Request Account Deletion
             </button>
           </div>
 
@@ -397,16 +391,16 @@ export default function Account() {
                     style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)" }}>
                     <AlertTriangle className="w-6 h-6 text-red-400" />
                   </div>
-                  <h3 className="font-heading font-black text-white text-xl text-center mb-2">Delete Account?</h3>
+                  <h3 className="font-heading font-black text-white text-xl text-center mb-2">Request Account Deletion</h3>
                   <p className="text-white/40 text-sm text-center leading-relaxed mb-7">
-                    This action permanently removes your account, saved songs, vibe library, and personal data. This cannot be undone.
+                    This will send an account deletion request to our support team. We'll review and process it within a few business days. Your saved songs, vibe library, and personal data will be removed. Billing records may be retained as required by law.
                   </p>
                   <div className="flex flex-col gap-3">
                     <a
-                      href="mailto:support@uppervibemusic.com?subject=Account Deletion Request"
+                      href="mailto:uppervibemedia@gmail.com?subject=Account Deletion Request"
                       className="w-full py-4 rounded-2xl font-black text-sm text-center transition-all hover:brightness-110"
                       style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", minHeight: 52 }}>
-                      Yes, Delete My Account
+                      Send Deletion Request
                     </a>
                     <button
                       onClick={() => setShowDeleteConfirm(false)}

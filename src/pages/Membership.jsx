@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Lock, Crown, Waves, GraduationCap } from "lucide-react";
+import { Check, Lock, Crown, Waves } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -257,16 +257,26 @@ export default function Membership() {
                   </button>
                 </div>
               ) : (
-                <button onClick={handleCheckout} disabled={loading}
-                  className="w-full py-4 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
-                  style={{
-                    background: "linear-gradient(135deg,#C8892A,#EDB84A,#C8892A)",
-                    color: "#000",
-                    boxShadow: "0 4px 24px rgba(212,168,67,0.28), 0 1px 0 rgba(255,220,100,0.3) inset",
-                    letterSpacing: "0.06em",
-                  }}>
-                  {loading ? "Redirecting..." : "Upgrade To Plus"}
-                </button>
+                <>
+                  <button onClick={handleCheckout} disabled={loading}
+                    className="w-full py-4 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
+                    style={{
+                      background: "linear-gradient(135deg,#C8892A,#EDB84A,#C8892A)",
+                      color: "#000",
+                      boxShadow: "0 4px 24px rgba(212,168,67,0.28), 0 1px 0 rgba(255,220,100,0.3) inset",
+                      letterSpacing: "0.06em",
+                    }}>
+                    {loading ? "Redirecting..." : "Upgrade To Plus"}
+                  </button>
+                  <p className="text-center text-[10px] text-white/25 mt-2.5 leading-relaxed">
+                    Recurring billing. Cancel anytime from your account.
+                  </p>
+                  <p className="text-center text-[10px] text-white/20 mt-1">
+                    By subscribing you agree to our{" "}
+                    <Link to="/terms" className="underline underline-offset-2 hover:text-white/40">Terms</Link> and{" "}
+                    <Link to="/refunds" className="underline underline-offset-2 hover:text-white/40">Refund Policy</Link>.
+                  </p>
+                </>
               )}
             </div>
           </motion.div>

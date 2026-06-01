@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Trash2, Mic2, Ban, Flag, Music2, ShieldCheck } from "lucide-react";
+import { Trash2, Mic2, Ban, Flag, Music2, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import VibeAvatar from "./VibeAvatar";
 import UserProfileCard from "./UserProfileCard";
@@ -26,6 +26,7 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
   const reactions = msg.reactions || {};
   const [showProfile, setShowProfile] = useState(false);
   const [showModMenu, setShowModMenu] = useState(false);
+  const [reported, setReported] = useState(false);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtPrimary = radioTheme.vars["--rt-primary"];
@@ -62,6 +63,7 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
       reported_by: [...reportedBy, user.email],
     });
     setShowModMenu(false);
+    setReported(true);
   };
 
   const senderName = msg.user_name || "Vibe Member";
@@ -161,15 +163,22 @@ export default function MessageBubble({ msg, isOwn, isAdmin, user, banStatus, on
               );
             })}
 
-            {/* Report (regular users) — small quiet button */}
+            {/* Report (regular users) — always visible for mobile tap-ability */}
             {!isOwn && user && !isAdmin && (
-              <button
-                onClick={handleReport}
-                title="Report message"
-                className="flex items-center px-1.5 py-0.5 rounded-full text-[10px] transition-all active:scale-90 opacity-0 group-hover:opacity-100 hover:text-orange-400"
-                style={{ color: "rgba(255,255,255,0.15)" }}>
-                <Flag className="w-2.5 h-2.5" />
-              </button>
+              reported ? (
+                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] text-green-400/70"
+                  style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.15)" }}>
+                  <CheckCircle2 className="w-2.5 h-2.5" /> Reported
+                </span>
+              ) : (
+                <button
+                  onClick={handleReport}
+                  title="Report message"
+                  className="flex items-center px-1.5 py-0.5 rounded-full text-[10px] transition-all active:scale-90"
+                  style={{ color: "rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <Flag className="w-2.5 h-2.5" />
+                </button>
+              )
             )}
 
             {/* Admin: visible delete button + mute/ban menu */}

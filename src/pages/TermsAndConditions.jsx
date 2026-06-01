@@ -58,6 +58,26 @@ export default function TermsAndConditions() {
             <p>To the maximum extent permitted by applicable law, Upper Vibe Media and its owners, officers, employees, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of your use of or inability to use the platform or its content. Your sole remedy for dissatisfaction with the platform is to discontinue use.</p>
           </Section>
 
+          <Section title="11. Minimum Age Requirement">
+            <p>You must be at least 13 years of age to create an account on Upper Vibe Media. The Vibe Room community chat and any 18+ designated areas require you to be at least 18 years of age. By using the platform, you confirm that you meet the applicable age requirements. Upper Vibe Media does not knowingly collect data from children under 13. If we become aware that a user is under 13, we will delete their account and data promptly.</p>
+          </Section>
+
+          <Section title="12. User-Generated Content & Vibe Room">
+            <p>When you post messages, reactions, or other content in the Vibe Room, you retain ownership of your content but grant Upper Vibe Media a non-exclusive, royalty-free license to display and store that content as part of the platform. You are solely responsible for the content you post. You agree not to post content that violates our Community Guidelines, which are incorporated into these Terms by reference. Upper Vibe Media may remove any content at its sole discretion without prior notice.</p>
+          </Section>
+
+          <Section title="13. Community Guidelines">
+            <p>All use of the Vibe Room and community features is subject to our Community Guidelines. These include prohibitions on harassment, spam, hate speech, explicit content, impersonation, and sharing private information. Violations may result in content removal, account muting, or a permanent ban. Please review the full Community Guidelines at <a href="/community-guidelines" className="text-cyan-400 hover:underline">uppervibemusic.com/community-guidelines</a>.</p>
+          </Section>
+
+          <Section title="14. Subscription Billing & Auto-Renewal">
+            <p>Upper Vibe Plus subscriptions are recurring and will automatically renew at the end of each billing period (monthly or annually) unless you cancel before the renewal date. By subscribing, you authorize Upper Vibe Media to charge your payment method on a recurring basis at the then-current subscription price. You may cancel at any time through the Manage Subscription option in your Account page. Cancellation takes effect at the end of your current billing period — you retain Plus access until then. Please also review our Refund Policy.</p>
+          </Section>
+
+          <Section title="15. Changes to These Terms">
+            <p>Upper Vibe Media may update these Terms from time to time. We will indicate the "Last updated" date at the top of this page. For significant changes, we will make reasonable efforts to notify you (such as via email or a notice on the platform). Your continued use of Upper Vibe Media after changes are posted constitutes your acceptance of the updated Terms. If you do not agree to updated Terms, you may cancel your account by contacting support.</p>
+          </Section>
+
           <div className="mt-12 pt-8 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
             <p className="text-xs text-white/25">For questions about these Terms, contact us at <a href="mailto:uppervibemedia@gmail.com" className="text-cyan-400 hover:underline">uppervibemedia@gmail.com</a></p>
           </div>
