@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, ChevronRight, Check } from "lucide-react";
+import { Zap, ChevronRight, Check, Flame, TrendingUp, Target, Heart, Lock, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -200,21 +200,116 @@ export default function VibeCheck() {
 
   if (!loading && !user) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center py-24">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-            style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.25)" }}>
-            <Zap className="w-8 h-8" style={{ color: "#9B7EFF" }} />
+      <div className="min-h-screen flex flex-col" style={{ background: "hsl(240 50% 2%)" }}>
+        {/* Ambient glows */}
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full opacity-[0.07] blur-[130px]"
+            style={{ background: rtAmbient1 }} />
+          <div className="absolute top-32 right-0 w-[300px] h-[300px] rounded-full opacity-[0.05] blur-[100px]"
+            style={{ background: "#9B7EFF" }} />
+          <div className="absolute bottom-0 left-0 w-[250px] h-[250px] rounded-full opacity-[0.04] blur-[100px]"
+            style={{ background: "#D4A843" }} />
+        </div>
+
+        <div className="relative z-10 flex-1 max-w-lg mx-auto w-full px-5 pb-24">
+          {/* Header */}
+          <div className="pt-16 pb-8 text-center">
+            <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-5"
+                style={{ background: `rgba(${rtPrimary},0.08)`, border: `1px solid rgba(${rtPrimary},0.25)` }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: `rgb(${rtPrimary})` }} />
+                <span className="text-[9px] font-black tracking-[0.3em] uppercase" style={{ color: `rgb(${rtPrimary})` }}>Free Feature</span>
+              </div>
+              <h1 className="font-heading font-black text-3xl md:text-4xl text-white mb-3 leading-tight">
+                Check your vibe.<br />Build your streak.<br />Track your growth.
+              </h1>
+              <p className="text-white/40 text-sm max-w-xs mx-auto leading-relaxed">
+                Create a free account to unlock your daily Vibe Score, streaks, gratitude, intentions, and vibe history.
+              </p>
+            </motion.div>
           </div>
-          <h1 className="font-heading font-black text-3xl md:text-4xl text-white mb-3">Vibe Check</h1>
-          <p className="text-white/40 text-sm max-w-sm leading-relaxed mb-8">
-            Create a free account to start your daily Vibe Check and track your vibe.
-          </p>
-          <button onClick={() => base44.auth.redirectToLogin()}
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110"
-            style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.8),rgb(${rtPrimary}))`, color: "#000" }}>
-            Get Started Free
-          </button>
+
+          {/* Hero Score Mockup */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="relative mb-5 rounded-3xl p-6 text-center overflow-hidden"
+            style={{ background: "rgba(8,8,24,0.85)", border: `1px solid rgba(${rtPrimary},0.2)`, backdropFilter: "blur(20px)" }}>
+            {/* Glow behind circle */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full blur-[50px] pointer-events-none"
+              style={{ background: `rgba(${rtPrimary},0.18)` }} />
+            <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-4 relative z-10"
+              style={{ color: `rgba(${rtPrimary},0.7)` }}>Daily Vibe Score</p>
+            {/* Static score ring */}
+            <div className="relative inline-flex items-center justify-center mb-4" style={{ width: 144, height: 144 }}>
+              <svg width="144" height="144" style={{ transform: "rotate(-90deg)" }}>
+                <circle cx="72" cy="72" r="56" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+                <circle cx="72" cy="72" r="56" fill="none" stroke={`rgb(${rtPrimary})`} strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 56}`}
+                  strokeDashoffset={`${2 * Math.PI * 56 * (1 - 0.82)}`}
+                  style={{ filter: `drop-shadow(0 0 10px rgb(${rtPrimary}))`, opacity: 0.8 }} />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="font-heading font-black text-4xl text-white leading-none" style={{ filter: "blur(3px)", opacity: 0.6 }}>82</span>
+                <span className="text-[9px] font-black text-white/30 tracking-widest uppercase mt-0.5">VIBE SCORE</span>
+              </div>
+            </div>
+            <p className="text-white/40 text-xs relative z-10 max-w-[220px] mx-auto leading-relaxed">
+              Get a daily score based on your mood, intention, gratitude, and consistency.
+            </p>
+            {/* Blur overlay hint */}
+            <div className="absolute inset-0 rounded-3xl pointer-events-none"
+              style={{ background: "linear-gradient(180deg,transparent 40%,rgba(8,8,24,0.4) 100%)" }} />
+          </motion.div>
+
+          {/* Feature preview grid */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            className="grid grid-cols-2 gap-3 mb-5">
+            {[
+              { icon: Flame,      color: "#FB923C", label: "Vibe Streak",        desc: "Build levels like Vibe Starter, Builder & Vibe Master." },
+              { icon: TrendingUp, color: `rgb(${rtPrimary})`, label: "Vibe Trend", desc: "Track progress over time and see your best score." },
+              { icon: Target,     color: "#9B7EFF", label: "Daily Intention",    desc: "Set one aligned action for the day." },
+              { icon: Heart,      color: "#D4A843", label: "Gratitude Check",    desc: "Train your mind to focus on what's good." },
+            ].map(({ icon: Icon, color, label, desc }) => (
+              <div key={label} className="rounded-2xl p-4"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-2.5"
+                  style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
+                  <Icon className="w-4 h-4" style={{ color }} />
+                </div>
+                <p className="text-xs font-black text-white mb-1">{label}</p>
+                <p className="text-[10px] text-white/35 leading-relaxed">{desc}</p>
+              </div>
+            ))}
+          </motion.div>
+
+          {/* Coming Soon: Manifest Mode */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+            className="rounded-2xl p-4 mb-7 flex items-start gap-3"
+            style={{ background: "linear-gradient(135deg,rgba(124,58,237,0.1),rgba(155,126,255,0.06))", border: "1px solid rgba(155,126,255,0.2)" }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.25)" }}>
+              <Sparkles className="w-4 h-4 text-purple-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <p className="text-xs font-black text-white">Manifest Mode</p>
+                <span className="text-[8px] font-black px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(155,126,255,0.15)", color: "#c4aaff" }}>COMING SOON</span>
+              </div>
+              <p className="text-[10px] text-white/35 leading-relaxed">Get early access to the full Daily Shift system when Manifest Mode launches.</p>
+            </div>
+          </motion.div>
+
+          {/* CTA */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+            className="text-center">
+            <button onClick={() => base44.auth.redirectToLogin()}
+              className="w-full py-4 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110 mb-3"
+              style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.85),rgb(${rtPrimary}))`, color: "#000", boxShadow: `0 0 30px rgba(${rtPrimary},0.25)` }}>
+              Get Started Free
+            </button>
+            <p className="text-white/25 text-xs">Takes less than 30 seconds.</p>
+          </motion.div>
         </div>
         <Footer />
       </div>
