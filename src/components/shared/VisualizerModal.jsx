@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, ExternalLink, ChevronRight, Heart, Maximize2 } from "lucide-react";
+import React, { useEffect, useRef } from "react";
+import { X, ExternalLink, ChevronRight, Heart } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
@@ -29,24 +28,19 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
   const embedUrl = toEmbedUrl(videoId);
   const watchUrl = toWatchUrl(viz?.video_url || viz?.embed_url);
 
-  // Related visualizers
   const related = allVisualizers
     .filter((v) => v.id !== viz?.id && (v.category === viz?.category || v.artist === viz?.artist))
     .slice(0, 4);
 
-  // Save scroll pos and lock body on mount
+  // Pause audio on open; save scroll and lock body scroll without position:fixed (avoids iOS viewport shift)
   useEffect(() => {
     savedScrollY.current = window.scrollY;
     if (pauseAudio) pauseAudio();
+    // Simple overflow hidden — no position:fixed which breaks modal positioning on iOS
     document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${savedScrollY.current}px`;
-    document.body.style.width = "100%";
     return () => {
       document.body.style.overflow = "";
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
+      // Restore scroll position
       window.scrollTo({ top: savedScrollY.current, behavior: "instant" });
     };
   }, []);
@@ -61,174 +55,193 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
   if (!viz) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        key="viz-modal-backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[300] flex flex-col items-center overflow-y-auto"
-        style={{
-          background: "rgba(4,4,14,0.97)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          paddingTop: "env(safe-area-inset-top, 0px)",
-        }}
-        onClick={onClose}
+    // Full-screen fixed overlay — no overflow-y-auto on the backdrop itself
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: "rgba(4,4,14,0.97)",
+        display: "flex",
+        flexDirection: "column",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+      }}
+      onClick={onClose}
+    >
+      {/* Inner content — stops click propagation */}
+      <div
+        style={{ width: "100%", maxWidth: 896, margin: "0 auto", display: "flex", flexDirection: "column" }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <motion.div
-          key="viz-modal-content"
-          initial={{ scale: 0.97, opacity: 0, y: 12 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.97, opacity: 0, y: 12 }}
-          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          className="relative w-full max-w-4xl px-0 md:px-6 md:pt-8 pb-10"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* ── Top bar: brand + close ── */}
-          <div className="flex items-center justify-between px-4 md:px-0 py-3 md:pb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-md overflow-hidden flex-shrink-0">
-                <img
-                  src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png"
-                  alt="Upper Vibe Media"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <span className="text-[9px] font-black tracking-[0.25em] uppercase" style={{ color: `rgb(${rtp})` }}>
-                Upper Vibe Media
-              </span>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
-              style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)" }}
-            >
-              <X className="w-4 h-4" />
-            </button>
+        {/* ── Top bar: brand + close — always visible at top ── */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 16px",
+          flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <img
+              src="https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png"
+              alt="Upper Vibe Media"
+              style={{ width: 24, height: 24, borderRadius: 6, objectFit: "contain", flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.25em", textTransform: "uppercase", color: `rgb(${rtp})` }}>
+              Upper Vibe Media
+            </span>
           </div>
-
-          {/* ── Video player 16:9 ── */}
-          <div
-            className="relative w-full md:rounded-2xl overflow-hidden"
-            style={{ paddingBottom: "56.25%", background: "#000" }}
+          <button
+            onClick={onClose}
+            style={{
+              width: 36, height: 36, borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: "rgba(255,255,255,0.05)",
+              color: "rgba(255,255,255,0.8)",
+              cursor: "pointer", flexShrink: 0,
+            }}
           >
-            <div className="absolute inset-0">
-              {embedUrl ? (
-                <iframe
-                  src={embedUrl}
-                  title={viz.title}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                  allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  className="w-full h-full"
-                  // playsInline is critical for inline mobile playback
-                  style={{ display: "block" }}
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-6 text-center"
-                  style={{ background: "#000" }}>
-                  <p className="text-sm text-white/50">This visualizer can be watched on YouTube.</p>
-                  {watchUrl && (
-                    <a
-                      href={watchUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
-                      style={{ background: `rgba(${rtp},0.12)`, border: `1px solid rgba(${rtp},0.3)`, color: `rgb(${rtp})` }}
-                    >
-                      <ExternalLink className="w-4 h-4" /> Watch on YouTube
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+            <X style={{ width: 16, height: 16 }} />
+          </button>
+        </div>
 
-          {/* ── Info bar below video ── */}
-          <div className="px-4 md:px-0 mt-4 flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h2 className="font-heading font-black text-lg md:text-xl text-white leading-tight line-clamp-2">
-                {viz.title}
-              </h2>
-              <p className="text-sm text-white/40 mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
-              {viz.linked_song_title && (
-                <p className="text-xs mt-1" style={{ color: `rgba(${rtp},0.7)` }}>🎵 {viz.linked_song_title}</p>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {onToggleFav && (
-                <button
-                  onClick={() => onToggleFav(viz)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                  style={isFaved
-                    ? { background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF" }
-                    : { background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.3)", color: "rgba(155,126,255,0.55)" }}
-                >
-                  <Heart className={`w-4 h-4 ${isFaved ? "fill-current" : ""}`} />
-                </button>
-              )}
+        {/* ── VIDEO — 16:9, always visible, no absolute trickery on mobile ── */}
+        <div style={{
+          width: "100%",
+          aspectRatio: "16 / 9",
+          background: "#000",
+          flexShrink: 0,
+          position: "relative",
+        }}>
+          {embedUrl ? (
+            <iframe
+              src={embedUrl}
+              title={viz.title}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              style={{ width: "100%", height: "100%", display: "block", border: "none" }}
+            />
+          ) : (
+            <div style={{
+              width: "100%", height: "100%",
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              gap: 16, padding: "0 24px", textAlign: "center",
+              background: "#000",
+            }}>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)" }}>
+                This visualizer can be watched on YouTube.
+              </p>
               {watchUrl && (
                 <a
                   href={watchUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:bg-white/10"
-                  style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }}
-                  title="Open on YouTube"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    padding: "10px 20px", borderRadius: 12, fontSize: 14, fontWeight: 700,
+                    background: `rgba(${rtp},0.12)`, border: `1px solid rgba(${rtp},0.3)`,
+                    color: `rgb(${rtp})`, textDecoration: "none",
+                  }}
                 >
-                  <ExternalLink className="w-4 h-4" />
+                  <ExternalLink style={{ width: 16, height: 16 }} /> Watch on YouTube
                 </a>
               )}
             </div>
-          </div>
-
-          {/* ── Related visualizers ── */}
-          {related.length > 0 && (
-            <div className="px-4 md:px-0 mt-6">
-              <p className="text-[9px] font-black tracking-[0.28em] uppercase mb-3" style={{ color: "rgba(255,255,255,0.25)" }}>
-                Related Visualizers
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {related.map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => onSwitchViz && onSwitchViz(v)}
-                    className="group rounded-xl overflow-hidden text-left transition-all hover:opacity-80 active:scale-[0.97]"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
-                  >
-                    <div className="relative overflow-hidden" style={{ paddingBottom: "56.25%" }}>
-                      <div className="absolute inset-0">
-                        {v.thumbnail_url ? (
-                          <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center" style={{ background: `rgba(${rtp},0.06)` }} />
-                        )}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          style={{ background: "rgba(0,0,0,0.5)" }}>
-                          <ChevronRight className="w-5 h-5 text-white" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-2">
-                      <p className="text-xs font-bold text-white truncate">{v.title}</p>
-                      <p className="text-[10px] text-white/35 truncate">{v.artist}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
           )}
+        </div>
 
-          {/* Close hint */}
-          <p className="text-center text-[10px] text-white/15 mt-6 px-4">
-            Tap outside or press Esc to close
-          </p>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+        {/* ── Info + actions ── */}
+        <div style={{ padding: "16px 16px 0", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 900, fontSize: 18, color: "#fff", lineHeight: 1.2, margin: 0 }}>
+              {viz.title}
+            </h2>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
+              {viz.artist || "Upper Vibe Media"}
+            </p>
+            {viz.linked_song_title && (
+              <p style={{ fontSize: 12, marginTop: 4, color: `rgba(${rtp},0.7)` }}>🎵 {viz.linked_song_title}</p>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            {onToggleFav && (
+              <button
+                onClick={() => onToggleFav(viz)}
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                  ...(isFaved
+                    ? { background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF" }
+                    : { background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.3)", color: "rgba(155,126,255,0.55)" }),
+                }}
+              >
+                <Heart style={{ width: 16, height: 16, fill: isFaved ? "currentColor" : "none" }} />
+              </button>
+            )}
+            {watchUrl && (
+              <a
+                href={watchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.4)",
+                  textDecoration: "none",
+                }}
+                title="Open on YouTube"
+              >
+                <ExternalLink style={{ width: 16, height: 16 }} />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* ── Related visualizers ── */}
+        {related.length > 0 && (
+          <div style={{ padding: "20px 16px 0" }}>
+            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.28em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 12 }}>
+              Related Visualizers
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+              {related.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => onSwitchViz && onSwitchViz(v)}
+                  style={{
+                    borderRadius: 12, overflow: "hidden", textAlign: "left", cursor: "pointer",
+                    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+                    padding: 0,
+                  }}
+                >
+                  <div style={{ width: "100%", aspectRatio: "16 / 9", background: "#000", position: "relative" }}>
+                    {v.thumbnail_url ? (
+                      <img src={v.thumbnail_url} alt={v.title}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        loading="lazy" />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", background: `rgba(${rtp},0.06)` }} />
+                    )}
+                  </div>
+                  <div style={{ padding: "8px 10px" }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>{v.title}</p>
+                    <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.artist}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bottom spacing */}
+        <div style={{ height: 32 }} />
+      </div>
+    </div>
   );
 }
