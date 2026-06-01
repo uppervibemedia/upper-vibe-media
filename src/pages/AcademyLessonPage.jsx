@@ -27,6 +27,13 @@ export default function AcademyLessonPage() {
   const canWatchFull = isPlus;
   const { getStatus, markStarted, markCompleted } = useAcademyProgress(user?.email);
 
+  // Scroll to top whenever the lesson changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  }, [id]);
+
   useEffect(() => {
     Promise.all([
       base44.entities.AcademyLesson.filter({ id }),

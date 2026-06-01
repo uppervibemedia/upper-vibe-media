@@ -19,6 +19,17 @@ function PageViewTracker() {
   return null;
 }
 
+function ScrollToTop() {
+  const location = useLocation();
+  useEffect(() => {
+    // Scroll the window and any scrollable body containers to top on route change
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  }, [location.pathname]);
+  return null;
+}
+
 function TopRightAuth() {
   const { user, isAuthenticated, navigateToLogin } = useAuth();
 
@@ -72,6 +83,7 @@ function LayoutContent() {
         <Outlet />
       </main>
       {!isRadioPage && <AudioPlayer />}
+      <ScrollToTop />
       <PageViewTracker />
       <EmailCaptureModal />
     </div>

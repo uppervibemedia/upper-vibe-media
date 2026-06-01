@@ -156,6 +156,13 @@ export default function SongPage() {
   }, []);
   const { isFaved, toggle } = useFavorites(user?.email);
 
+  // Scroll to top whenever the song changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+  }, [id]);
+
   useEffect(() => {
     if (!id) return;
     setVisualizer(null);

@@ -569,6 +569,57 @@ export default function Home() {
         />
       </motion.div>
 
+      {/* ── MUSIC VISUALIZERS ── */}
+      {recentViz.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+            <div className="flex items-end justify-between gap-3 mb-5 flex-wrap">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-px h-4 rounded-full" style={{ background: `rgb(${rtPrimary})` }} />
+                  <span className="text-[10px] font-black tracking-[0.35em] uppercase" style={{ color: `rgb(${rtPrimary})` }}>Visual Experience</span>
+                </div>
+                <h2 className="font-heading font-black text-3xl md:text-4xl text-white leading-tight">Music Visualizers</h2>
+                <p className="text-white/35 text-sm mt-1">Watch the frequency come alive.</p>
+              </div>
+              <Link to="/visualizers"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black tracking-wide transition-all hover:brightness-110 flex-shrink-0"
+                style={{ background: `rgba(${rtPrimary},0.08)`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})` }}>
+                <Tv2 className="w-3 h-3" /> See All Visualizers
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recentViz.slice(0, 6).map((viz, i) => (
+                <motion.div key={viz.id}
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+                  className="group rounded-2xl overflow-hidden transition-all"
+                  style={{ background: "rgba(0,160,220,0.04)", border: "1px solid rgba(0,160,220,0.15)" }}>
+                  <button onClick={() => setVizModal(viz)} className="block w-full relative overflow-hidden cursor-pointer" style={{ paddingBottom: "56.25%" }}>
+                    <div className="absolute inset-0">
+                      {viz.thumbnail_url
+                        ? <img src={viz.thumbnail_url} alt={viz.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                        : <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(0,160,220,0.08)" }}><Tv2 className="w-8 h-8 text-cyan-400/20" /></div>}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.4)" }}>
+                        <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "rgba(0,160,220,0.9)", boxShadow: "0 0 16px rgba(0,160,220,0.6)" }}>
+                          <Play className="w-4 h-4 text-white ml-0.5" />
+                        </div>
+                      </div>
+                      <div className="absolute top-2 left-2">
+                        <span className="text-[8px] font-black px-2 py-1 rounded-full" style={{ background: "rgba(0,160,220,0.85)", color: "#fff" }}>🎬 Visualizer</span>
+                      </div>
+                    </div>
+                  </button>
+                  <div className="px-3 py-2.5">
+                    <p className="text-sm font-bold text-white truncate">{viz.title}</p>
+                    <p className="text-[11px] text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+        </motion.div>
+      )}
+
       {/* ── ACADEMY / LEARNING ── */}
       {academyLessons.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
@@ -629,57 +680,6 @@ export default function Home() {
                       )}
                     </div>
                   </Link>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        </motion.div>
-      )}
-
-      {/* ── MUSIC VISUALIZERS ── */}
-      {recentViz.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
-          <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-            <div className="flex items-end justify-between gap-3 mb-5 flex-wrap">
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <div className="w-px h-4 rounded-full" style={{ background: `rgb(${rtPrimary})` }} />
-                  <span className="text-[10px] font-black tracking-[0.35em] uppercase" style={{ color: `rgb(${rtPrimary})` }}>Visual Experience</span>
-                </div>
-                <h2 className="font-heading font-black text-3xl md:text-4xl text-white leading-tight">Music Visualizers</h2>
-                <p className="text-white/35 text-sm mt-1">Watch the frequency come alive.</p>
-              </div>
-              <Link to="/visualizers"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black tracking-wide transition-all hover:brightness-110 flex-shrink-0"
-                style={{ background: `rgba(${rtPrimary},0.08)`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})` }}>
-                <Tv2 className="w-3 h-3" /> See All Visualizers
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recentViz.slice(0, 6).map((viz, i) => (
-                <motion.div key={viz.id}
-                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-                  className="group rounded-2xl overflow-hidden transition-all"
-                  style={{ background: "rgba(0,160,220,0.04)", border: "1px solid rgba(0,160,220,0.15)" }}>
-                  <button onClick={() => setVizModal(viz)} className="block w-full relative overflow-hidden cursor-pointer" style={{ paddingBottom: "56.25%" }}>
-                    <div className="absolute inset-0">
-                      {viz.thumbnail_url
-                        ? <img src={viz.thumbnail_url} alt={viz.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                        : <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(0,160,220,0.08)" }}><Tv2 className="w-8 h-8 text-cyan-400/20" /></div>}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.4)" }}>
-                        <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "rgba(0,160,220,0.9)", boxShadow: "0 0 16px rgba(0,160,220,0.6)" }}>
-                          <Play className="w-4 h-4 text-white ml-0.5" />
-                        </div>
-                      </div>
-                      <div className="absolute top-2 left-2">
-                        <span className="text-[8px] font-black px-2 py-1 rounded-full" style={{ background: "rgba(0,160,220,0.85)", color: "#fff" }}>🎬 Visualizer</span>
-                      </div>
-                    </div>
-                  </button>
-                  <div className="px-3 py-2.5">
-                    <p className="text-sm font-bold text-white truncate">{viz.title}</p>
-                    <p className="text-[11px] text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
-                  </div>
                 </motion.div>
               ))}
             </div>
