@@ -10,7 +10,6 @@ const VALID_ROUTE_PREFIXES = [
   "/music",
   "/radio",
   "/vibe-check",
-  "/vibe-room",
   "/account",
   "/my-vibe-library",
   "/my-vibes",
@@ -18,7 +17,6 @@ const VALID_ROUTE_PREFIXES = [
   "/song/",
   "/visualizers",
   "/support",
-  "/community-guidelines",
   "/categories",
   "/about",
   "/artists",
@@ -30,6 +28,7 @@ const VALID_ROUTE_PREFIXES = [
   "/membership",
   "/upgrade",
   "/email-list",
+
   "/forgot-password",
   "/payment-success",
   "/payment-cancelled",

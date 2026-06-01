@@ -38,10 +38,8 @@ import Support from './pages/Support';
 import ForgotPassword from './pages/ForgotPassword';
 import Settings from './pages/Settings';
 import FAQ from './pages/FAQ';
-import VibeRoom from './pages/VibeRoom';
 import VibeCheck from './pages/VibeCheck';
 import Start from './pages/Start';
-import CommunityGuidelines from './pages/CommunityGuidelines';
 import { isSafeRoute, defaultRouteForUser } from './lib/safeRedirect';
 
 const LoadingScreen = () => (
@@ -151,9 +149,7 @@ const AuthenticatedApp = () => {
         <Route path="/support" element={<Support />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/faq" element={<FAQ />} />
-        <Route path="/vibe-room" element={<VibeRoom />} />
         <Route path="/start" element={<Start />} />
-        <Route path="/community-guidelines" element={<CommunityGuidelines />} />
         <Route path="/email-list" element={<EmailList />} />
       </Route>
       <Route path="/forgot-password" element={<ForgotPassword />} />

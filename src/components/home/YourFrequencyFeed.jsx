@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, Music4, Heart, Download, Lock,
   Flame, Zap, TrendingUp, Star, Tv2, GraduationCap,
-  ArrowRight, Waves, Sparkles, Users
+  ArrowRight, Waves, Sparkles
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -231,26 +231,24 @@ export default function YourFrequencyFeed({
         <div className="flex items-center gap-2 mb-2">
           <div className="w-px h-4 rounded-full" style={{ background: `rgb(${rtp})` }} />
           <span className="text-[10px] font-black tracking-[0.35em] uppercase" style={{ color: `rgb(${rtp})` }}>
-            {user ? "Personalized" : "Community Discovery"}
+            Personalized For You
           </span>
         </div>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap mb-1">
               <h2 className="font-heading font-black text-3xl md:text-4xl text-white leading-tight">
-                Your Frequency Feed
+                My Vibe Feed
               </h2>
               {moodMeta && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold flex-shrink-0"
-                  style={{ background: `${moodMeta.color}18`, border: `1px solid ${moodMeta.color}35`, color: moodMeta.color }}>
-                  {moodMeta.emoji} {moodMeta.label} vibe
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black flex-shrink-0"
+                  style={{ background: `rgba(${rtp},0.1)`, border: `1px solid rgba(${rtp},0.3)`, color: `rgb(${rtp})` }}>
+                  {moodMeta.emoji} Current Vibe: {moodMeta.label}
                 </span>
               )}
             </div>
             <p className="text-white/35 text-sm max-w-xl">
-              {user
-                ? "Personalized from your listening habits, favorites, downloads, and vibe profile."
-                : "Trending tracks, rising artists, community favorites, visualizers, and academy content — all in one feed."}
+              Personalized from your listening habits, favorites, downloads, and Vibe Check results.
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
