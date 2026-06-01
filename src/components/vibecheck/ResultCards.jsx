@@ -102,11 +102,15 @@ export function StreakCard({ streak }) {
         <span className="text-2xl">{current.emoji}</span>
         <p className="font-heading font-black text-white text-base">{current.label}</p>
       </div>
-      {next && (
-        <p className="text-white/35 text-xs mb-4">
-          Come back tomorrow — {daysToNext} more day{daysToNext !== 1 ? "s" : ""} to reach <span className="text-yellow-400 font-bold">{next.label}</span>.
-        </p>
-      )}
+      <p className="text-white/35 text-xs mb-4">
+        {streak <= 1
+          ? "Day 1 of Your Vibe Journey. Come back tomorrow to build momentum."
+          : streak < 7
+          ? `${streak} days in — you're building your vibe. ${next ? `${daysToNext} more day${daysToNext !== 1 ? "s" : ""} to reach ${next.label}.` : ""}`
+          : next
+          ? `${streak}-day streak — strong momentum. ${daysToNext} more day${daysToNext !== 1 ? "s" : ""} to reach ${next.label}.`
+          : "You've reached the highest streak level. Vibe Legend. 🌟"}
+      </p>
       <div className="flex items-center gap-1 justify-between">
         {STREAK_LEVELS.map((lvl) => {
           const reached = streak >= lvl.days;

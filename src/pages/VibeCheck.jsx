@@ -22,21 +22,27 @@ const MOODS = [
 ];
 
 function streakToScore(days) {
-  if (days >= 30) return 100;
-  if (days >= 7)  return Math.round(75 + ((days - 7) / 23) * 25);
-  if (days >= 3)  return Math.round(50 + ((days - 3) / 4) * 25);
-  return Math.round(20 + ((Math.max(days, 1) - 1) / 2) * 30);
+  if (days >= 90) return 100;
+  if (days >= 30) return Math.round(88 + ((days - 30) / 60) * 12);
+  if (days >= 7)  return Math.round(70 + ((days - 7) / 23) * 18);
+  if (days >= 3)  return Math.round(45 + ((days - 3) / 4) * 25);
+  return Math.round(15 + ((Math.max(days, 1) - 1) / 2) * 30);
 }
 
-// New 5-factor formula
-function calcVibeScore({ moodScore, intentionScore, gratitudeScore, streakScore, yesterdayCompletionScore }) {
-  return Math.round(
-    moodScore * 0.30 +
-    intentionScore * 0.20 +
-    gratitudeScore * 0.20 +
-    streakScore * 0.20 +
-    yesterdayCompletionScore * 0.10
+// 5-factor formula — consistency weighted at 40%
+function calcVibeScore({ moodScore, intentionScore, gratitudeScore, streakScore, yesterdayCompletionScore, streak }) {
+  const raw = Math.round(
+    moodScore * 0.20 +
+    intentionScore * 0.15 +
+    gratitudeScore * 0.15 +
+    yesterdayCompletionScore * 0.10 +
+    streakScore * 0.40
   );
+  // Score caps based on streak
+  if (streak < 3)  return Math.min(raw, 75);
+  if (streak < 7)  return Math.min(raw, 82);
+  if (streak < 30) return Math.min(raw, 89);
+  return raw;
 }
 
 function todayStr() {
@@ -58,6 +64,16 @@ function calcLongestStreak(dates) {
     else current = 1;
   }
   return longest;
+}
+
+// ── Motivational streak label ─────────────────────────────────────────────────
+function streakLabel(days) {
+  if (days <= 1)  return "Day 1 of Your Vibe Journey";
+  if (days < 3)   return `Day ${days} — Building Your Vibe`;
+  if (days < 7)   return `${days}-Day Streak — Keep Going`;
+  if (days < 30)  return `${days}-Day Streak — Vibe Builder`;
+  if (days < 90)  return `${days}-Day Streak — Vibe Locked In 💎`;
+  return `${days}-Day Streak — Vibe Legend 🌟`;
 }
 
 export default function VibeCheck() {
@@ -130,7 +146,7 @@ export default function VibeCheck() {
   const yesterdayCompletionScore = yesterdayHadIntention ? 100 : 0;
 
   const vibeScore = todayCheckIn?.vibe_score ?? calcVibeScore({
-    moodScore, intentionScore, gratitudeScore, streakScore, yesterdayCompletionScore,
+    moodScore, intentionScore, gratitudeScore, streakScore, yesterdayCompletionScore, streak,
   });
   const si = scoreLabel(vibeScore);
 
@@ -146,7 +162,7 @@ export default function VibeCheck() {
   const handleSubmit = async () => {
     if (!mood || !user || saving) return;
     setSaving(true);
-    const score = calcVibeScore({ moodScore, intentionScore, gratitudeScore, streakScore, yesterdayCompletionScore });
+    const score = calcVibeScore({ moodScore, intentionScore, gratitudeScore, streakScore, yesterdayCompletionScore, streak });
     const newStreak = streak + 1;
     try {
       const record = await base44.entities.VibeCheckIn.create({
@@ -238,7 +254,7 @@ export default function VibeCheck() {
             {step === "mood" && (
               <motion.div key="mood" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
                 <SectionCard>
-                  <p className="text-xs font-black tracking-widest uppercase mb-1" style={{ color: `rgba(${rtPrimary},0.7)` }}>Step 1 of 3 — Vibe Check · 30%</p>
+                  <p className="text-xs font-black tracking-widest uppercase mb-1" style={{ color: `rgba(${rtPrimary},0.7)` }}>Step 1 of 3 — Vibe Check · 20%</p>
                   <h2 className="font-heading font-black text-white text-xl mb-4">How are you feeling today?</h2>
                   <div className="space-y-2.5">
                     {MOODS.map((m) => (
@@ -276,9 +292,9 @@ export default function VibeCheck() {
             {step === "intention" && (
               <motion.div key="intention" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
                 <SectionCard>
-                  <p className="text-xs font-black tracking-widest uppercase mb-1" style={{ color: `rgba(${rtPrimary},0.7)` }}>Step 2 of 3 — Daily Intention · 20%</p>
+                  <p className="text-xs font-black tracking-widest uppercase mb-1" style={{ color: `rgba(${rtPrimary},0.7)` }}>Step 2 of 3 — Daily Intention · 15%</p>
                   <h2 className="font-heading font-black text-white text-xl mb-1">What one action would make today feel aligned?</h2>
-                  <p className="text-white/35 text-xs mb-4">Optional — adds 20 points to your Vibe Score.</p>
+                  <p className="text-white/35 text-xs mb-4">Optional — adds 15 points to your Vibe Score.</p>
                   <textarea value={intention} onChange={(e) => setIntention(e.target.value)}
                     placeholder="Today I will…" maxLength={200} rows={3}
                     className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 resize-none focus:outline-none"
@@ -296,9 +312,9 @@ export default function VibeCheck() {
             {step === "gratitude" && (
               <motion.div key="gratitude" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
                 <SectionCard>
-                  <p className="text-xs font-black tracking-widest uppercase mb-1" style={{ color: "rgba(212,168,67,0.8)" }}>Step 3 of 3 — Gratitude · 20%</p>
+                  <p className="text-xs font-black tracking-widest uppercase mb-1" style={{ color: "rgba(212,168,67,0.8)" }}>Step 3 of 3 — Gratitude · 15%</p>
                   <h2 className="font-heading font-black text-white text-xl mb-1">Name one thing you are grateful for today.</h2>
-                  <p className="text-white/35 text-xs mb-4">Optional — adds 20 points to your Vibe Score.</p>
+                  <p className="text-white/35 text-xs mb-4">Optional — adds 15 points to your Vibe Score.</p>
                   <textarea value={gratitude} onChange={(e) => setGratitude(e.target.value)}
                     placeholder="I am grateful for…" maxLength={200} rows={3}
                     className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 resize-none focus:outline-none"
@@ -318,21 +334,23 @@ export default function VibeCheck() {
 
                 {/* Score Meter */}
                 <SectionCard centered>
-                  <p className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40 mb-3">Today's Vibe</p>
-                  <ScoreMeter score={vibeScore} color={si.color} />
-                  <p className="font-heading font-black text-xl mt-4" style={{ color: si.color }}>{si.label}</p>
-                  <p className="text-white/50 text-sm mt-2 max-w-xs text-center leading-relaxed">{siMsg}</p>
+                  <p className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40 mb-4">Today's Vibe</p>
+                  <div className="flex flex-col items-center w-full">
+                    <ScoreMeter score={vibeScore} color={si.color} />
+                    <p className="font-heading font-black text-xl mt-4 text-center w-full" style={{ color: si.color }}>{si.label}</p>
+                    <p className="text-white/50 text-sm mt-2 text-center leading-relaxed w-full max-w-xs mx-auto">{siMsg}</p>
+                  </div>
                 </SectionCard>
 
                 {/* Score breakdown (free) */}
                 <SectionCard>
                   <p className="text-xs font-black tracking-widest uppercase text-white/30 mb-3">Score Breakdown</p>
                   <div className="space-y-2.5">
-                    <BreakdownRow label="Vibe Check" emoji="😐" value={`${todayCheckIn?.mood_score ?? moodScore}`} weight="30%" rtPrimary={rtPrimary} score={todayCheckIn?.mood_score ?? moodScore} />
-                    <BreakdownRow label="Daily Intention" emoji="🎯" value={intention.trim() ? "100" : "0"} weight="20%" rtPrimary={rtPrimary} score={intention.trim() ? 100 : 0} />
-                    <BreakdownRow label="Gratitude" emoji="🙏" value={gratitude.trim() ? "100" : "0"} weight="20%" rtPrimary={rtPrimary} score={gratitude.trim() ? 100 : 0} />
-                    <BreakdownRow label="Consistency" emoji="🔥" value={`${streakScore}`} weight="20%" rtPrimary={rtPrimary} score={streakScore} subtitle={`${streak}-day streak`} />
-                    <BreakdownRow label="Yesterday's Intention" emoji="✅" value={yesterdayCompletionScore ? "100" : "0"} weight="10%" rtPrimary={rtPrimary} score={yesterdayCompletionScore} subtitle={yesterdayCompletionScore ? "Completed" : "No entry yesterday"} />
+                    <BreakdownRow label="Consistency" emoji="🔥" value={`${streakScore}`} weight="40%" rtPrimary={rtPrimary} score={streakScore} subtitle={streakLabel(streak)} />
+                    <BreakdownRow label="Vibe Check" emoji="😐" value={`${todayCheckIn?.mood_score ?? moodScore}`} weight="20%" rtPrimary={rtPrimary} score={todayCheckIn?.mood_score ?? moodScore} />
+                    <BreakdownRow label="Daily Intention" emoji="🎯" value={intention.trim() ? "100" : "0"} weight="15%" rtPrimary={rtPrimary} score={intention.trim() ? 100 : 0} />
+                    <BreakdownRow label="Gratitude" emoji="🙏" value={gratitude.trim() ? "100" : "0"} weight="15%" rtPrimary={rtPrimary} score={gratitude.trim() ? 100 : 0} />
+                    <BreakdownRow label="Yesterday's Intention" emoji="✅" value={yesterdayCompletionScore ? "100" : "0"} weight="10%" rtPrimary={rtPrimary} score={yesterdayCompletionScore} subtitle={yesterdayCompletionScore ? "Completed ✓" : "No entry yesterday"} />
                   </div>
                 </SectionCard>
 
