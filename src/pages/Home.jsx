@@ -615,10 +615,21 @@ export default function Home() {
                     </div>
                   </button>
                   <div className="px-3 py-2.5">
-                    <p className="text-sm font-bold text-white truncate">{viz.title}</p>
-                    <p className="text-[11px] text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
+                   <p className="text-sm font-bold text-white truncate">{viz.title}</p>
+                   <p className="text-[11px] text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
+                   {viz.linked_song_id && (
+                     <div className="flex gap-2 mt-2">
+                       <Link
+                         to={`/song/${viz.linked_song_id}`}
+                         onClick={(e) => e.stopPropagation()}
+                         className="flex items-center gap-1 text-[9px] font-black px-2 py-1 rounded-full transition-all hover:brightness-125"
+                         style={{ background: `rgba(${rtPrimary},0.1)`, border: `1px solid rgba(${rtPrimary},0.3)`, color: `rgb(${rtPrimary})` }}>
+                         🎵 Listen to Song
+                       </Link>
+                     </div>
+                   )}
                   </div>
-                </motion.div>
+                  </motion.div>
               ))}
             </div>
           </section>

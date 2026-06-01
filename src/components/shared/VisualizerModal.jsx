@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { X, Heart, Play, Tv2, Headphones, Download, Lock } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
@@ -19,6 +20,7 @@ function toEmbedUrl(url) {
 
 export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualizers = [], onSwitchViz, isFaved, onToggleFav, isPremium }) {
   const savedScrollY = useRef(0);
+  const navigate = useNavigate();
   const { accentId } = useTheme();
   const rtp = (RADIO_THEMES[accentId] || RADIO_THEMES.cyan).vars["--rt-primary"];
 
@@ -171,15 +173,14 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
         {/* ── Song CTA buttons ── */}
         {viz.linked_song_id && (
           <div style={{ padding: "16px 16px 0", display: "flex", flexWrap: "wrap", gap: 10 }}>
-            {/* Primary: Listen to Song */}
-            <a
-              href={`/song/${viz.linked_song_id}`}
-              onClick={onClose}
+            {/* Primary: Listen to Song → exact song page */}
+            <button
+              onClick={() => { onClose(); navigate(`/song/${viz.linked_song_id}`); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "10px 20px", borderRadius: 12,
                 fontWeight: 900, fontSize: 13, letterSpacing: "0.04em",
-                cursor: "pointer", textDecoration: "none",
+                cursor: "pointer", border: "none",
                 background: `linear-gradient(135deg,rgb(${rtp}),rgba(${rtp},0.75))`,
                 color: "#000",
                 boxShadow: `0 0 20px rgba(${rtp},0.35)`,
@@ -187,17 +188,16 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
             >
               <Headphones style={{ width: 15, height: 15, flexShrink: 0 }} />
               Listen to Song
-            </a>
+            </button>
 
-            {/* Download: premium unlocks, others see lock */}
-            <a
-              href={`/song/${viz.linked_song_id}?downloadIntent=true`}
-              onClick={onClose}
+            {/* Download → exact song page with downloadIntent flag */}
+            <button
+              onClick={() => { onClose(); navigate(`/song/${viz.linked_song_id}?downloadIntent=true`); }}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "10px 18px", borderRadius: 12,
                 fontWeight: 800, fontSize: 13,
-                cursor: "pointer", textDecoration: "none",
+                cursor: "pointer",
                 background: isPremium ? "rgba(212,168,67,0.12)" : "rgba(212,168,67,0.06)",
                 border: `1px solid ${isPremium ? "rgba(212,168,67,0.4)" : "rgba(212,168,67,0.2)"}`,
                 color: isPremium ? "#D4A843" : "rgba(212,168,67,0.45)",
@@ -207,7 +207,7 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
                 ? <Download style={{ width: 14, height: 14, flexShrink: 0 }} />
                 : <Lock style={{ width: 14, height: 14, flexShrink: 0 }} />}
               Download Song
-            </a>
+            </button>
           </div>
         )}
 

@@ -129,9 +129,15 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
 
         <div className="flex items-center gap-2 flex-wrap mt-auto pt-1">
           {linkedTrack ? (
-            <Link to={`/song/${linkedTrack.id}`}
+            <Link to={`/song/${linkedTrack.id}?downloadIntent=true`}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
               style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.2),rgba(212,168,67,0.12))", border: "1px solid rgba(212,168,67,0.35)", color: "#D4A843" }}>
+              <Download className="w-3 h-3" /> Download Song
+            </Link>
+          ) : viz.linked_song_id ? (
+            <Link to={`/song/${viz.linked_song_id}?downloadIntent=true`}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+              style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.12),rgba(212,168,67,0.06))", border: "1px solid rgba(212,168,67,0.25)", color: "rgba(212,168,67,0.6)" }}>
               <Download className="w-3 h-3" /> Download Song
             </Link>
           ) : (
@@ -141,12 +147,13 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
             </span>
           )}
 
-          {linkedTrack && (
-            <button onClick={() => onPlay(linkedTrack)}
+          {(linkedTrack || viz.linked_song_id) && (
+            <Link
+              to={`/song/${linkedTrack?.id || viz.linked_song_id}`}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
               style={{ background: `rgba(${rgb},0.1)`, border: `1px solid rgba(${rgb},0.25)`, color: `rgb(${rgb})` }}>
               <Music4 className="w-3 h-3" /> Listen
-            </button>
+            </Link>
           )}
 
           {/* Heart / Favorite */}
