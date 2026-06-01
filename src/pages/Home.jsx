@@ -89,7 +89,7 @@ export default function Home() {
   const sessionSeed = useMemo(() => getSessionSeed(), []);
   const [loginModal, setLoginModal] = useState(false);
   const [premiumModal, setPremiumModal] = useState(false);
-  const { playTrack, currentTrack, isPlaying, togglePlay, pause } = usePlayer();
+  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const [vizModal, setVizModal] = useState(null);
   const { startRadio, tracksLoaded, currentRadioSong } = useRadio();
   const { accentId } = useTheme();
@@ -134,6 +134,7 @@ export default function Home() {
 
     const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
     setRecentViz(rotatedViz);
+    setAllViz(recentVizPool);
 
     // Count tracks per artist from already-fetched data
     const counts = {};
@@ -751,6 +752,8 @@ export default function Home() {
           viz={vizModal}
           onClose={() => setVizModal(null)}
           pauseAudio={isPlaying ? togglePlay : undefined}
+          allVisualizers={allViz.length > 0 ? allViz : recentViz}
+          onSwitchViz={(v) => setVizModal(v)}
         />
       )}
     </div>

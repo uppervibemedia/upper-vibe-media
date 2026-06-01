@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, X, Play, Music4, ExternalLink, Tv2, Calendar, Tag, Waves, Edit2, AlertCircle, Download, Heart } from "lucide-react";
+import { Search, X, Play, Music4, ExternalLink, Tv2, Calendar, Tag, Waves, Edit2, Download, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import VisualizerEditModal from "../components/visualizers/VisualizerEditModal";
+import VisualizerModal from "../components/shared/VisualizerModal";
 import { useFavorites } from "../hooks/useFavorite";
 import { useTheme } from "../context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
@@ -49,82 +50,39 @@ function toWatchUrl(url) {
   return id ? `https://www.youtube.com/watch?v=${id}` : (url || null);
 }
 
-function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, onToggleFav, rgb }) {
-  const [expanded, setExpanded] = useState(false);
-  const [embedError, setEmbedError] = useState(false);
-
-  const embedUrl = toEmbedUrl(viz.embed_url || viz.video_url);
-  const watchUrl = toWatchUrl(viz.video_url || viz.embed_url);
+function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, onToggleFav, rgb, onWatch }) {
   const thumb = viz.thumbnail_url || linkedTrack?.cover_url;
   const categoryLabel = CATEGORY_LABELS[viz.category] || viz.category || "";
-
-  const handleWatch = () => { setEmbedError(false); setExpanded(true); };
 
   return (
     <motion.div layout className="rounded-2xl overflow-hidden flex flex-col"
       style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
-      <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
+      <div className="relative w-full cursor-pointer group" style={{ paddingTop: "56.25%" }} onClick={() => onWatch(viz)}>
         <div className="absolute inset-0">
-          {expanded && embedUrl && !embedError ? (
-            <iframe
-              src={`${embedUrl}?autoplay=1&rel=0`}
-              title="Upper Vibe Media Visualizer"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-              className="w-full h-full"
-              onError={() => setEmbedError(true)}
-            />
-          ) : expanded && embedError ? (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-6 text-center"
-              style={{ background: "rgba(0,0,0,0.85)" }}>
-              <AlertCircle className="w-8 h-8 text-white/30" />
-              <p className="text-sm text-white/50">This visualizer can be watched on YouTube.</p>
-              {watchUrl && (
-                <a href={watchUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold"
-                  style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.8)" }}>
-                  <ExternalLink className="w-3.5 h-3.5" /> Watch on YouTube
-                </a>
-              )}
-              <button onClick={() => setExpanded(false)} className="text-xs text-white/25 hover:text-white/50">← Back</button>
-            </div>
+          {thumb ? (
+            <img src={thumb} alt={viz.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
           ) : (
-            <div className="w-full h-full cursor-pointer group relative" onClick={handleWatch}>
-              {thumb ? (
-                <img src={thumb} alt={viz.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.07),rgba(212,168,67,0.04))" }}>
-                  <Tv2 className="w-10 h-10 text-white/10" />
-                </div>
-              )}
-              <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
-                <div className="w-14 h-14 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
-                  style={{ background: `linear-gradient(135deg,rgb(${rgb}),rgb(${rgb}))`, boxShadow: `0 0 32px rgba(${rgb},0.4)` }}>
-                  <Play className="w-6 h-6 text-black ml-0.5" />
-                </div>
-              </div>
-              {viz.is_featured && (
-                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase"
-                  style={{ background: "rgba(212,168,67,0.9)", color: "#000" }}>Featured</div>
-              )}
-              {viz.duration && (
-                <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md text-[10px] font-bold"
-                  style={{ background: "rgba(0,0,0,0.75)", color: "rgba(255,255,255,0.85)" }}>
-                  {viz.duration}
-                </div>
-              )}
+            <div className="w-full h-full flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.07),rgba(212,168,67,0.04))" }}>
+              <Tv2 className="w-10 h-10 text-white/10" />
             </div>
           )}
-          {expanded && (
-            <button onClick={() => setExpanded(false)}
-              className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full flex items-center justify-center"
-              style={{ background: "rgba(0,0,0,0.7)" }}>
-              <X className="w-3.5 h-3.5 text-white" />
-            </button>
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
+            <div className="w-14 h-14 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
+              style={{ background: `linear-gradient(135deg,rgb(${rgb}),rgb(${rgb}))`, boxShadow: `0 0 32px rgba(${rgb},0.4)` }}>
+              <Play className="w-6 h-6 text-black ml-0.5" />
+            </div>
+          </div>
+          {viz.is_featured && (
+            <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider uppercase"
+              style={{ background: "rgba(212,168,67,0.9)", color: "#000" }}>Featured</div>
+          )}
+          {viz.duration && (
+            <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md text-[10px] font-bold"
+              style={{ background: "rgba(0,0,0,0.75)", color: "rgba(255,255,255,0.85)" }}>
+              {viz.duration}
+            </div>
           )}
         </div>
       </div>
@@ -216,6 +174,7 @@ export default function Visualizers() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [editingViz, setEditingViz] = useState(null);
+  const [watchingViz, setWatchingViz] = useState(null);
   const [loginPrompt, setLoginPrompt] = useState(false);
   const { playTrack } = usePlayer();
   const { user } = useAuth();
@@ -325,6 +284,7 @@ export default function Visualizers() {
                   isFaved={isFaved("visualizer", viz.id)}
                   onToggleFav={handleToggleFav}
                   rgb={rgb}
+                  onWatch={(v) => setWatchingViz(v)}
                 />
               </motion.div>
             ))}
@@ -363,6 +323,17 @@ export default function Visualizers() {
           tracks={tracks}
           onClose={() => setEditingViz(null)}
           onSaved={() => { setEditingViz(null); load(); }}
+        />
+      )}
+
+      {watchingViz && (
+        <VisualizerModal
+          viz={watchingViz}
+          onClose={() => setWatchingViz(null)}
+          allVisualizers={visualizers}
+          onSwitchViz={(v) => setWatchingViz(v)}
+          isFaved={isFaved("visualizer", watchingViz.id)}
+          onToggleFav={handleToggleFav}
         />
       )}
 
