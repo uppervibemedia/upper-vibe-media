@@ -9,8 +9,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
-import FreqBadge from "@/components/shared/FreqBadge";
-
 // ── Badge definitions ────────────────────────────────────────────────────────
 const BADGE_DEFS = {
   recommended:   { label: "💜 Recommended For You",  bg: "rgba(155,126,255,0.14)", border: "rgba(155,126,255,0.4)", color: "#c4aaff" },
@@ -143,7 +141,7 @@ function buildFeed({ allTracks, allViz, academyLessons, streams, favCounts, dlCo
     if (i === 10 && lessons[1]) reordered.push(lessons[1]);
   });
 
-  return reordered.slice(0, 14);
+  return reordered.slice(0, 8);
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -304,22 +302,12 @@ export default function YourFrequencyFeed({
         </AnimatePresence>
       </div>
 
-      {/* ── CTA ── */}
-      <div className="flex flex-wrap gap-3 justify-center mt-8">
+      {/* ── See More CTA ── */}
+      <div className="flex justify-center mt-6">
         <Link to="/music"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
           style={{ background: `rgba(${rtp},0.09)`, border: `1px solid rgba(${rtp},0.3)`, color: `rgb(${rtp})`, boxShadow: `0 0 20px rgba(${rtp},0.09)` }}>
-          <Waves className="w-4 h-4" /> Browse All Music
-        </Link>
-        <Link to="/visualizers"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
-          style={{ background: "rgba(0,229,255,0.07)", border: "1px solid rgba(0,229,255,0.22)", color: "#00E5FF" }}>
-          <Tv2 className="w-4 h-4" /> Watch Visualizers
-        </Link>
-        <Link to="/academy"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
-          style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.25)", color: "#A855F7" }}>
-          <GraduationCap className="w-4 h-4" /> Academy
+          <ArrowRight className="w-4 h-4" /> See More Personalized Picks
         </Link>
       </div>
     </section>
@@ -379,7 +367,6 @@ function TrackCard({ track, badge, index, currentTrack, isPlaying, handlePlayTra
 
       {/* Actions */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        <FreqBadge label="432" />
         <button
           onClick={e => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}
           className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
