@@ -6,7 +6,6 @@ import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
-import ProfilePhotoEditor from "../components/account/ProfilePhotoEditor";
 
 function ThemePicker() {
   const { accentId, setAccent } = useTheme();
@@ -177,29 +176,28 @@ export default function Account() {
           {/* Profile card */}
           <div className="rounded-3xl p-6"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <div className="flex items-center gap-4 mb-5">
+            <div className="flex items-center gap-4">
+              {/* Initials avatar */}
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-heading font-black text-xl flex-shrink-0"
                 style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.15),rgba(${rtPrimary},0.05))`, border: `1px solid rgba(${rtPrimary},0.25)`, color: `rgb(${rtPrimary})` }}>
                 {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
               </div>
+              {/* Name + email */}
               <div className="flex-1 min-w-0">
-                <p className="font-heading font-black text-white text-lg truncate">{user.full_name || "Member"}</p>
-                <p className="text-white/40 text-sm truncate">{user.email}</p>
+                <p className="font-heading font-black text-white text-base leading-snug break-words"
+                  style={{ wordBreak: "break-word" }}>
+                  {user.full_name || "Member"}
+                </p>
+                <p className="text-white/40 text-xs mt-0.5 break-all">{user.email}</p>
+                <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider"
+                  style={{ background: `${tierColor}18`, border: `1px solid ${tierColor}40`, color: tierColor }}>
+                  {tierBadge}
+                </span>
               </div>
-              <span className="flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-black tracking-wider"
-                style={{ background: `${tierColor}18`, border: `1px solid ${tierColor}40`, color: tierColor }}>
-                {tierBadge}
-              </span>
             </div>
-
-            {/* Avatar info */}
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "1.25rem" }}>
-              <p className="text-[10px] font-black tracking-[0.25em] uppercase mb-3" style={{ color: "rgba(255,255,255,0.25)" }}>Profile Avatar</p>
-              <ProfilePhotoEditor
-                name={user.full_name || user.email}
-                rtPrimary={rtPrimary}
-              />
-            </div>
+            <p className="text-[10px] text-white/20 mt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "0.75rem" }}>
+              Avatar uses your initials.
+            </p>
           </div>
 
           {/* Membership card */}
