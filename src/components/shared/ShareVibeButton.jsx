@@ -30,10 +30,10 @@ function getCanonicalSongUrl(trackId) {
   return `${PROD_ORIGIN}/song/${trackId}`;
 }
 
-// Returns the ogMeta URL for Facebook (crawler gets OG tags, humans get redirected)
+// Returns the share subdomain URL — crawler gets OG tags, humans get redirected to /song/:id
 function getOgMetaSongUrl(trackId) {
   if (!trackId) return null;
-  return `${PROD_ORIGIN}/api/ogMeta?type=track&id=${trackId}`;
+  return `https://share.uppervibemedia.com/song/${trackId}`;
 }
 
 // A track ID is valid if it exists and doesn't look like a temp/session identifier
