@@ -24,7 +24,18 @@ const INPUT_EXTRA = 8;
 const INPUT_BAR_H = 64;
 
 function isPremiumUser(user) {
-  return user?.role === "admin" || user?.role === "premium" || user?.tier === "premium" || user?.subscription_status === "active";
+  return (
+    user?.role === "admin" ||
+    user?.role === "premium" ||
+    user?.isPlus === true ||
+    user?.isPremium === true ||
+    user?.tier === "plus" ||
+    user?.tier === "premium" ||
+    user?.plan === "plus" ||
+    user?.plan === "premium" ||
+    user?.subscriptionStatus === "active" ||
+    user?.subscription_status === "active"
+  );
 }
 
 export default function VibeRoom() {

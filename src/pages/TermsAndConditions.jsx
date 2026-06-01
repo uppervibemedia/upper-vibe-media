@@ -16,7 +16,7 @@ export default function TermsAndConditions() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <p className="text-xs tracking-[0.3em] uppercase mb-3" style={{ color: "#00E5FF" }}>Legal</p>
           <h1 className="font-heading font-extrabold text-4xl md:text-5xl tracking-tight mb-2 text-white">Terms &amp; Conditions</h1>
-          <p className="text-xs text-white/25 mb-12">Last updated: May 2026</p>
+          <p className="text-xs text-white/25 mb-12">Last updated: June 2026</p>
 
           <Section title="1. Personal Use Only">
             <p>All music, audio content, visualizers, and educational materials available on Upper Vibe Media are licensed for personal, non-commercial use only. You may stream and download content for your own enjoyment but may not resell, redistribute, broadcast, or commercially exploit any content without express written permission from Upper Vibe Media.</p>

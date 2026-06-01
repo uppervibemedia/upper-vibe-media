@@ -16,7 +16,7 @@ export default function PrivacyPolicy() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <p className="text-xs tracking-[0.3em] uppercase mb-3" style={{ color: "#00E5FF" }}>Legal</p>
           <h1 className="font-heading font-extrabold text-4xl md:text-5xl tracking-tight mb-2 text-white">Privacy Policy</h1>
-          <p className="text-xs text-white/25 mb-12">Last updated: May 2026</p>
+          <p className="text-xs text-white/25 mb-12">Last updated: June 2026</p>
 
           <p className="text-sm text-white/40 leading-relaxed mb-10">
             Upper Vibe Media ("we", "us", "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and protect your information when you use our platform.
