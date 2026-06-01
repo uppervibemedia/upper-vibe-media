@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { X, ExternalLink, Heart } from "lucide-react";
+import { X, Heart } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
@@ -14,19 +14,15 @@ function toEmbedUrl(videoId) {
   return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1&modestbranding=1&fs=1`;
 }
 
-function toWatchUrl(url) {
-  const id = extractVideoId(url);
-  return id ? `https://www.youtube.com/watch?v=${id}` : (url || null);
-}
 
 export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualizers = [], onSwitchViz, isFaved, onToggleFav }) {
   const savedScrollY = useRef(0);
+  const overlayRef = useRef(null);
   const { accentId } = useTheme();
   const rtp = (RADIO_THEMES[accentId] || RADIO_THEMES.cyan).vars["--rt-primary"];
 
   const videoId = extractVideoId(viz?.embed_url || viz?.video_url);
   const embedUrl = toEmbedUrl(videoId);
-  const watchUrl = toWatchUrl(viz?.video_url || viz?.embed_url);
 
   const related = allVisualizers
     .filter((v) => v.id !== viz?.id && (v.category === viz?.category || v.artist === viz?.artist))
@@ -35,11 +31,14 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
   useEffect(() => {
     savedScrollY.current = window.scrollY;
     if (pauseAudio) pauseAudio();
-    // NO body scroll lock — it breaks iOS modal positioning
+    // Scroll the overlay to top so video is immediately visible
+    if (overlayRef.current) {
+      overlayRef.current.scrollTop = 0;
+    }
     return () => {
       window.scrollTo({ top: savedScrollY.current, behavior: "instant" });
     };
-  }, []);
+  }, [viz?.id]);
 
   useEffect(() => {
     const handler = (e) => { if (e.key === "Escape") onClose(); };
@@ -78,9 +77,9 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
         background: "rgba(4,4,14,0.96)",
         overflowY: "scroll",
         WebkitOverflowScrolling: "touch",
-        // Prevent the modal backdrop from jumping when body scroll is not locked
         isolation: "isolate",
       }}
+      ref={overlayRef}
     >
       {/* Content wrapper — max 896px centered, column layout */}
       <div
@@ -142,23 +141,11 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
             ) : (
               <div style={{
                 width: "100%", height: "100%", background: "#000",
-                display: "flex", flexDirection: "column",
-                alignItems: "center", justifyContent: "center", gap: 16, padding: "0 24px",
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", textAlign: "center" }}>
-                  This visualizer can be watched on YouTube.
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "0 24px" }}>
+                  Video unavailable
                 </p>
-                {watchUrl && (
-                  <a href={watchUrl} target="_blank" rel="noopener noreferrer"
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 8,
-                      padding: "10px 20px", borderRadius: 12, fontSize: 14, fontWeight: 700,
-                      background: `rgba(${rtp},0.15)`, border: `1px solid rgba(${rtp},0.4)`,
-                      color: `rgb(${rtp})`, textDecoration: "none",
-                    }}>
-                    <ExternalLink style={{ width: 16, height: 16 }} /> Watch on YouTube
-                  </a>
-                )}
               </div>
             )}
           </div>
@@ -179,31 +166,17 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
               </p>
             )}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            {onToggleFav && (
-              <button onClick={() => onToggleFav(viz)} style={{
-                width: 36, height: 36, borderRadius: 10, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                ...(isFaved
-                  ? { background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF" }
-                  : { background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.3)", color: "rgba(155,126,255,0.55)" }),
-              }}>
-                <Heart style={{ width: 16, height: 16, fill: isFaved ? "currentColor" : "none" }} />
-              </button>
-            )}
-            {watchUrl && (
-              <a href={watchUrl} target="_blank" rel="noopener noreferrer"
-                style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.45)",
-                  textDecoration: "none",
-                }}
-                title="Open on YouTube">
-                <ExternalLink style={{ width: 16, height: 16 }} />
-              </a>
-            )}
-          </div>
+          {onToggleFav && (
+            <button onClick={() => onToggleFav(viz)} style={{
+              width: 36, height: 36, borderRadius: 10, cursor: "pointer", flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              ...(isFaved
+                ? { background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF" }
+                : { background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.3)", color: "rgba(155,126,255,0.55)" }),
+            }}>
+              <Heart style={{ width: 16, height: 16, fill: isFaved ? "currentColor" : "none" }} />
+            </button>
+          )}
         </div>
 
         {/* ── Related ── */}
