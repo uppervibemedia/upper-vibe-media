@@ -12,7 +12,7 @@ import {
 export default function YourFrequencyFeed({
   allTracks, allViz,
   currentTrack, isPlaying, handlePlayTrack,
-  user, isFaved, onToggleFav, themeColor,
+  user, isFaved, onToggleFav, themeColor, onOpenViz,
 }) {
   const [userStreams, setUserStreams]     = useState([]);
   const [userFavs, setUserFavs]         = useState([]);
@@ -156,7 +156,7 @@ export default function YourFrequencyFeed({
                 />
               )}
               {item.type === "visualizer" && (
-                <VisualizerCard viz={item.data} badge={item.badge} />
+                <VisualizerCard viz={item.data} badge={item.badge} onOpen={onOpenViz} />
               )}
             </motion.div>
           ))}
@@ -234,12 +234,15 @@ function TrackCard({ track, badge, currentTrack, isPlaying, handlePlayTrack, isF
   );
 }
 
-// ── VisualizerCard — deep-links directly to the exact visualizer ──────────────
-function VisualizerCard({ viz, badge }) {
+// ── VisualizerCard — opens inline modal on the same page ─────────────────────
+function VisualizerCard({ viz, badge, onOpen }) {
+  const handleClick = () => onOpen ? onOpen(viz) : null;
   return (
-    <Link to={`/visualizers?play=${viz.id}`}
-      className="block rounded-2xl group transition-all active:scale-[0.98] overflow-hidden"
-      style={{ background: "rgba(0,229,255,0.03)", border: "1px solid rgba(0,229,255,0.15)" }}>
+    <div
+      className="block rounded-2xl group transition-all active:scale-[0.98] overflow-hidden cursor-pointer"
+      style={{ background: "rgba(0,229,255,0.03)", border: "1px solid rgba(0,229,255,0.15)" }}
+      onClick={handleClick}
+    >
       <div className="relative overflow-hidden" style={{ paddingBottom: "62%" }}>
         <div className="absolute inset-0">
           {viz.thumbnail_url
@@ -267,9 +270,9 @@ function VisualizerCard({ viz, badge }) {
         </div>
         <span className="flex-shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full transition-all group-hover:brightness-125"
           style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.28)", color: "#00E5FF" }}>
-          Watch
+          ▶ Watch
         </span>
       </div>
-    </Link>
+    </div>
   );
 }

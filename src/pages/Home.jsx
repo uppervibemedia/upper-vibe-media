@@ -24,6 +24,7 @@ import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import IOSTip from "../components/shared/iOSTip";
+import VisualizerModal from "../components/shared/VisualizerModal";
 
 // ── Session-stable shuffle ──────────────────────────────────────────────────
 // Same order within a session, different on every new tab/refresh
@@ -88,7 +89,8 @@ export default function Home() {
   const sessionSeed = useMemo(() => getSessionSeed(), []);
   const [loginModal, setLoginModal] = useState(false);
   const [premiumModal, setPremiumModal] = useState(false);
-  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
+  const { playTrack, currentTrack, isPlaying, togglePlay, pause } = usePlayer();
+  const [vizModal, setVizModal] = useState(null);
   const { startRadio, tracksLoaded, currentRadioSong } = useRadio();
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -542,6 +544,7 @@ export default function Home() {
           user={user}
           isFaved={isFaved}
           themeColor={rtPrimary}
+          onOpenViz={(viz) => { if (isPlaying) togglePlay(); setVizModal(viz); }}
           onToggleFav={(track) => {
             if (!user) { setLoginModal(true); return; }
             toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
@@ -591,7 +594,7 @@ export default function Home() {
                   initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
                   className="group rounded-2xl overflow-hidden transition-all"
                   style={{ background: "rgba(0,160,220,0.04)", border: "1px solid rgba(0,160,220,0.15)" }}>
-                  <Link to={`/visualizers?play=${viz.id}`} className="block relative overflow-hidden" style={{ paddingBottom: "56.25%" }}>
+                  <button onClick={() => setVizModal(viz)} className="block w-full relative overflow-hidden cursor-pointer" style={{ paddingBottom: "56.25%" }}>
                     <div className="absolute inset-0">
                       {viz.thumbnail_url
                         ? <img src={viz.thumbnail_url} alt={viz.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
@@ -605,7 +608,7 @@ export default function Home() {
                         <span className="text-[8px] font-black px-2 py-1 rounded-full" style={{ background: "rgba(0,160,220,0.85)", color: "#fff" }}>🎬 Visualizer</span>
                       </div>
                     </div>
-                  </Link>
+                  </button>
                   <div className="px-3 py-2.5">
                     <p className="text-sm font-bold text-white truncate">{viz.title}</p>
                     <p className="text-[11px] text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
@@ -676,6 +679,13 @@ export default function Home() {
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
       <PremiumDownloadModal open={premiumModal} onClose={() => setPremiumModal(false)} />
       <IOSTip trigger="on-play" isPlaying={isPlaying} />
+      {vizModal && (
+        <VisualizerModal
+          viz={vizModal}
+          onClose={() => setVizModal(null)}
+          pauseAudio={isPlaying ? togglePlay : undefined}
+        />
+      )}
     </div>
     </PullToRefresh>
   );
