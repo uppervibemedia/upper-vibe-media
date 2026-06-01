@@ -15,7 +15,11 @@
         "playlist_save",
         "search_used",
         "email_signup",
-        "outbound_link_click"
+        "outbound_link_click",
+        "radio_host_drop_started",
+        "radio_host_drop_completed",
+        "radio_host_drop_skipped",
+        "radio_host_drop_failed"
       ],
       "description": "Type of analytics event"
     },

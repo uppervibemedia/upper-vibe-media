@@ -90,5 +90,20 @@
       "type": "boolean",
       "default": false
     }
-  }
+  },
+  "required": [
+    "plan",
+    "planName",
+    "billingCycle",
+    "subscriptionStatus",
+    "subscription_status",
+    "stripeCustomerId",
+    "stripeSubscriptionId",
+    "stripePriceId",
+    "stripeProductId",
+    "plusStartedAt",
+    "subscriptionCurrentPeriodEnd",
+    "vibe_name",
+    "vibe_avatar_url"
+  ]
 }

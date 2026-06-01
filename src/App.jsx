@@ -46,6 +46,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import Settings from './pages/Settings';
 import FAQ from './pages/FAQ';
 import VibeRoom from './pages/VibeRoom';
+import VibeCheck from './pages/VibeCheck';
 import Start from './pages/Start';
 import CommunityGuidelines from './pages/CommunityGuidelines';
 import { isSafeRoute, defaultRouteForUser } from './lib/safeRedirect';
@@ -163,6 +164,7 @@ const AuthenticatedApp = () => {
         <Route path="/settings" element={<Settings />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/vibe-room" element={<VibeRoom />} />
+        <Route path="/vibe-check" element={<VibeCheck />} />
         <Route path="/start" element={<Start />} />
         <Route path="/community-guidelines" element={<CommunityGuidelines />} />
       </Route>

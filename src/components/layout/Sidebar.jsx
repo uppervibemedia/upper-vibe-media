@@ -20,7 +20,7 @@ import { useTheme } from "@/context/ThemeContext";
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
   { path: "/radio", icon: Radio, label: "Radio" },
-  { path: "/vibe-room", icon: MessageCircle, label: "Vibe Room" },
+  { path: "/vibe-check", icon: MessageCircle, label: "Vibe Check" },
   { path: "/academy", icon: GraduationCap, label: "Academy" },
   { path: "/visualizers", icon: Tv2, label: "Visualizers" },
   { path: "/my-vibes", icon: Heart, label: "My Vibe Library" },
@@ -30,7 +30,7 @@ const bottomNavMobile = [
   { path: "/", icon: Home, label: "Home" },
   { path: "/music", icon: Music, label: "Music" },
   { path: "/radio", icon: Radio, label: "Radio" },
-  { path: "/vibe-room", icon: MessageCircle, label: "Vibe Room" },
+  { path: "/vibe-check", icon: MessageCircle, label: "Vibe Check" },
   { path: "/account", icon: User, label: "Account" },
 ];
 

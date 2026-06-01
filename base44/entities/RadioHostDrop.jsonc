@@ -1,0 +1,47 @@
+{
+  "name": "RadioHostDrop",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Display title for this host drop"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "motivation",
+        "manifestation",
+        "wealth",
+        "discipline",
+        "calm_reset",
+        "station_id",
+        "premium_promo",
+        "new_music_promo"
+      ],
+      "default": "motivation",
+      "description": "Category of the host drop content"
+    },
+    "audio_url": {
+      "type": "string",
+      "description": "URL of the host drop audio file"
+    },
+    "duration": {
+      "type": "number",
+      "description": "Duration in seconds"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this drop is in rotation"
+    },
+    "play_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Total times this drop has been played"
+    }
+  },
+  "required": [
+    "title",
+    "audio_url"
+  ]
+}

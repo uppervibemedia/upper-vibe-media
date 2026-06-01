@@ -1,0 +1,55 @@
+{
+  "name": "VibeCheckIn",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "ID of the user who submitted the check-in"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user"
+    },
+    "check_in_date": {
+      "type": "string",
+      "description": "Date of check-in in YYYY-MM-DD format"
+    },
+    "mood": {
+      "type": "string",
+      "enum": [
+        "scattered",
+        "low_energy",
+        "neutral",
+        "intentional",
+        "high_vibe"
+      ],
+      "description": "Selected mood for the day"
+    },
+    "mood_score": {
+      "type": "number",
+      "description": "Numeric score for mood (10-100)"
+    },
+    "intention": {
+      "type": "string",
+      "description": "User's daily intention"
+    },
+    "gratitude": {
+      "type": "string",
+      "description": "User's gratitude entry"
+    },
+    "streak_days": {
+      "type": "number",
+      "default": 1,
+      "description": "Current streak at time of check-in"
+    },
+    "vibe_score": {
+      "type": "number",
+      "description": "Calculated daily vibe score (0-100)"
+    }
+  },
+  "required": [
+    "user_id",
+    "check_in_date",
+    "mood"
+  ]
+}
