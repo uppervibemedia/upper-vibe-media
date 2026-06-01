@@ -212,7 +212,7 @@ export default function SongPage() {
   const freq   = track?.frequency_type === "432hz" ? "432 Hz" : track?.frequency_type === "528hz" ? "528 Hz" : "";
   usePageMeta(track ? {
     title:       `${track.title} by ${artist}`,
-    description: "Listening live on Upper Vibe Media",
+    description: `Stream "${track.title}" on Upper Vibe Media. 432 Hz high-vibe music.`,
     imageUrl:    track.cover_url || undefined,
     pageUrl:     `https://uppervibemedia.com/song/${id}`,
     type:        "music.song",

@@ -124,8 +124,8 @@ Deno.serve(async (req) => {
       }
 
       const artist      = track.artist_display || "Upper Vibe Media";
-      const pageTitle   = `${track.title} by ${artist}`;
-      const description = `Listening live on Upper Vibe Media`;
+      const pageTitle   = `${track.title} by ${artist} | Upper Vibe Media`;
+      const description = `Stream "${track.title}" on Upper Vibe Media. 432 Hz high-vibe music.`;
 
       const imageUrl = buildOgImageUrl({ coverUrl: track.cover_url });
 
@@ -143,6 +143,23 @@ Deno.serve(async (req) => {
         headers: {
           "Content-Type":  "text/html; charset=utf-8",
           "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+        },
+      });
+    }
+
+    // ── /start landing page ──────────────────────────────────────────────────
+    if (type === "start" || url.pathname === "/start") {
+      const html = buildHtml({
+        title:       `Start Listening | Upper Vibe Media`,
+        description: "Stream free 432 Hz high-vibe music, visualizers, and live radio on Upper Vibe Media.",
+        imageUrl:    DEFAULT_IMG,
+        pageUrl:     `${SITE_URL}/start`,
+        type:        "website",
+      });
+      return new Response(html, {
+        headers: {
+          "Content-Type":  "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=3600",
         },
       });
     }

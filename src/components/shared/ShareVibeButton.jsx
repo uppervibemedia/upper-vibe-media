@@ -70,9 +70,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
       case "song":
         return {
           title: track?.title && track?.artist_display
-            ? `${track.title} by ${track.artist_display}`
+            ? `${track.title} by ${track.artist_display} | Upper Vibe Media`
             : `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
-          text: `🎧⚡ "${track?.title || "this track"}" by ${track?.artist_display || "Upper Vibe Media"} • Listening live on Upper Vibe Media`,
+          text: `🎧⚡ "${track?.title || "this track"}" by ${track?.artist_display || "Upper Vibe Media"} — Stream on Upper Vibe Media. 432 Hz high-vibe music.`,
           // Native share + Twitter + Copy → clean canonical URL (no redirect)
           url: canonicalUrl || PROD_ORIGIN,
           // Facebook → ogMeta URL so crawler gets OG tags

@@ -31,8 +31,9 @@ function setMeta(property, content) {
 export function usePageMeta({ title, description, imageUrl, pageUrl, type = "website" }) {
   useEffect(() => {
     // For music.song pages use "[Title] by [Artist]" format, else append site name
+    // For music.song: title is already formatted as "{Song} by {Artist}" — append site name
     const fullTitle = type === "music.song"
-      ? (title || SITE_NAME)
+      ? (title ? `${title} | ${SITE_NAME}` : SITE_NAME)
       : (title ? `${title} | ${SITE_NAME}` : SITE_NAME);
     const img  = imageUrl || DEFAULT_IMG;
     const desc = description || `Premium high-vibration music on ${SITE_NAME}.`;
