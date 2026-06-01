@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { getPublishedTracks } from "@/lib/trackCache";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, ChevronLeft, Sparkles } from "lucide-react";
+import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, Home, Sparkles } from "lucide-react";
 import ShareVibeButton from "@/components/shared/ShareVibeButton";
 import { Link, useNavigate } from "react-router-dom";
+
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -11,43 +12,7 @@ import { useFavorites } from "../hooks/useFavorite";
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 
-// Routes that a logged-in user should never be sent back to
-const AUTH_ROUTES = new Set([
-  "/login", "/signin", "/sign-in", "/signup", "/register", "/auth",
-  "/payment-success", "/payment-cancelled",
-]);
 
-function isAuthRoute(path) {
-  if (!path) return true;
-  const lower = path.toLowerCase();
-  if (AUTH_ROUTES.has(lower)) return true;
-  if (lower.startsWith("/auth/") || lower.startsWith("/login/") || lower.startsWith("/signin/")) return true;
-  return false;
-}
-
-function useSafeBack(fallback = "/music") {
-  const navigate = useNavigate();
-  return () => {
-    // Check document.referrer — the actual previous page URL
-    try {
-      const ref = document.referrer;
-      if (ref) {
-        const url = new URL(ref);
-        // Only go back if previous page was same-origin AND not an auth route
-        if (url.origin === window.location.origin && !isAuthRoute(url.pathname)) {
-          navigate(-1);
-          return;
-        }
-        // Previous page was auth/login — go to safe fallback
-        navigate(fallback, { replace: true });
-        return;
-      }
-    } catch {}
-    // No referrer (in-app navigation, fresh tab, or in-app browser)
-    // If history has entries but we can't verify they're safe, go to fallback
-    navigate(fallback, { replace: true });
-  };
-}
 
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
@@ -62,7 +27,6 @@ export default function MyVibes() {
   const { accent } = useTheme();
   const rgb = accent.rgb; // e.g. "0,229,255"
   const navigate = useNavigate();
-  const safeBack = useSafeBack("/music");
 
 
   useEffect(() => {
@@ -136,12 +100,12 @@ export default function MyVibes() {
           style={{ background: `radial-gradient(circle,${accent.hex},transparent)` }} />
         <div className="max-w-5xl mx-auto relative z-10">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-            {/* Back button */}
-            <button onClick={safeBack}
+            {/* Home button */}
+            <Link to="/"
               className="flex items-center gap-1.5 mb-5 text-xs font-bold tracking-wide transition-all hover:opacity-80"
               style={{ color: "rgba(255,255,255,0.4)" }}>
-              <ChevronLeft className="w-4 h-4" /> Back
-            </button>
+              <Home className="w-4 h-4" /> Home
+            </Link>
             <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-1">My Vibe Library</h1>
             <p className="font-heading font-bold mb-2 leading-snug flex items-center gap-2"
               style={{ fontSize: "clamp(0.85rem, 2.5vw, 1.1rem)", color: `rgb(${rgb})` }}>
