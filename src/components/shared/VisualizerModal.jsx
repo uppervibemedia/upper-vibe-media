@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { X, Heart, Play, Tv2 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
@@ -14,11 +14,11 @@ function toEmbedUrl(url) {
   if (!url) return null;
   const id = extractVideoId(url);
   if (id) return `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&playsinline=1&modestbranding=1&fs=1`;
-  // Already an embed URL or direct link
   return url;
 }
 
 export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualizers = [], onSwitchViz, isFaved, onToggleFav }) {
+  const containerRef = useRef(null);
   const savedScrollY = useRef(0);
   const { accentId } = useTheme();
   const rtp = (RADIO_THEMES[accentId] || RADIO_THEMES.cyan).vars["--rt-primary"];
@@ -29,11 +29,43 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
     .filter((v) => v.id !== viz?.id && (v.category === viz?.category || v.artist === viz?.artist))
     .slice(0, 4);
 
+  // Every time a viz opens (or switches), lock body scroll and force container to top
   useEffect(() => {
     savedScrollY.current = window.scrollY;
+
+    // Lock body so underlying page can't scroll on iOS
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${savedScrollY.current}px`;
+    document.body.style.width = "100%";
+
     if (pauseAudio) pauseAudio();
+
+    // Force container scroll to top — sync + two rAF passes + fallback timers
+    const scrollToTop = () => {
+      if (containerRef.current) {
+        containerRef.current.scrollTop = 0;
+      }
+    };
+
+    scrollToTop();
+    const raf1 = requestAnimationFrame(() => {
+      scrollToTop();
+      requestAnimationFrame(scrollToTop);
+    });
+    const t1 = setTimeout(scrollToTop, 50);
+    const t2 = setTimeout(scrollToTop, 200);
+
     return () => {
-      window.scrollTo({ top: savedScrollY.current, behavior: "instant" });
+      cancelAnimationFrame(raf1);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      // Restore body scroll
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, savedScrollY.current);
     };
   }, [viz?.id]);
 
@@ -46,31 +78,29 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
   if (!viz) return null;
 
   return (
-    // Outer: full-screen backdrop, flex column, scrollable — video card starts at very top
     <div
-      className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto"
-      style={{ padding: "0", background: "rgba(4,4,14,0.95)" }}
+      ref={containerRef}
       onClick={onClose}
+      style={{
+        position: "fixed",
+        top: 0, left: 0, right: 0, bottom: 0,
+        zIndex: 9999,
+        background: "rgba(4,4,14,0.97)",
+        overflowY: "scroll",
+        // Disable smooth scroll so scrollTop=0 is instant
+        scrollBehavior: "auto",
+        // Prevent scroll chaining to body
+        overscrollBehavior: "contain",
+        WebkitOverflowScrolling: "touch",
+        // Force stacking context so iOS doesn't inherit parent scroll
+        isolation: "isolate",
+        willChange: "scroll-position",
+      }}
     >
-      {/* Backdrop blur layer */}
-      <div className="absolute inset-0" style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }} />
-
-      {/* Modal card — starts at top, max width centered */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.97, y: 12 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.97 }}
-        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      {/* Content — max-width centered, video is first visible element */}
+      <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full z-10"
-        style={{
-          maxWidth: 896,
-          margin: "0 auto",
-          minHeight: "100vh",
-          background: "#08081a",
-          borderLeft: "1px solid rgba(255,255,255,0.06)",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
-        }}
+        style={{ width: "100%", maxWidth: 896, margin: "0 auto" }}
       >
         {/* ── Top bar ── */}
         <div style={{
@@ -102,7 +132,7 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
           </button>
         </div>
 
-        {/* ── VIDEO — aspect-ratio via padding-bottom trick ── */}
+        {/* ── VIDEO ── */}
         <div style={{ position: "relative", width: "100%", paddingBottom: "56.25%", background: "#000" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
             {embedUrl ? (
@@ -117,7 +147,10 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
                 style={{ width: "100%", height: "100%", display: "block", border: "none" }}
               />
             ) : (
-              <div style={{ width: "100%", height: "100%", background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+              <div style={{
+                width: "100%", height: "100%", background: "#000",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12,
+              }}>
                 <Tv2 style={{ width: 40, height: 40, color: "rgba(255,255,255,0.15)" }} />
                 <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)", textAlign: "center", padding: "0 24px" }}>
                   Video unavailable
@@ -155,7 +188,7 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
           )}
         </div>
 
-        {/* ── Related Visualizers — 2×2 grid (matches production layout) ── */}
+        {/* ── Related Visualizers — 2×2 grid ── */}
         {related.length > 0 && (
           <div style={{ padding: "20px 16px 0", borderTop: "1px solid rgba(255,255,255,0.05)", marginTop: 20 }}>
             <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.28em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 12 }}>
@@ -163,7 +196,8 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
               {related.map((v) => (
-                <button key={v.id} onClick={() => onSwitchViz && onSwitchViz(v)}
+                <button key={v.id}
+                  onClick={() => onSwitchViz && onSwitchViz(v)}
                   className="group"
                   style={{
                     borderRadius: 10, overflow: "hidden", textAlign: "left", cursor: "pointer",
@@ -196,7 +230,7 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
 
         {/* Bottom padding */}
         <div style={{ height: 48 }} />
-      </motion.div>
+      </div>
     </div>
   );
 }
