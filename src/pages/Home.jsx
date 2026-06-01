@@ -17,6 +17,7 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
 import LatestMusicSection from "../components/home/LatestMusicSection";
+import ListenerFrequencyDashboard from "../components/home/ListenerFrequencyDashboard";
 import MyVibeFeed from "../components/home/MyVibeFeed";
 import SectionHeader from "../components/shared/SectionHeader";
 import PullToRefresh from "../components/shared/PullToRefresh";
@@ -558,7 +559,22 @@ export default function Home() {
         </motion.div>
       )}
 
-
+      {/* ── LISTENER FREQUENCY DASHBOARD ── */}
+      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
+      <ListenerFrequencyDashboard
+        allTracks={allTracks}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        handlePlayTrack={handlePlayTrack}
+        user={user}
+        isFaved={isFaved}
+        themeColor={rtPrimary}
+        onToggleFav={(track) => {
+          if (!user) { setLoginModal(true); return; }
+          toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
+        }}
+      />
+      </motion.div>
 
       {/* ── FREQUENCY CTA ── */}
       <section className="max-w-7xl mx-auto px-6 py-6">
