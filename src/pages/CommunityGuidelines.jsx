@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { ShieldCheck, Flag, Bot } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ShieldCheck, Flag, Bot, ChevronLeft } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import Footer from "../components/shared/Footer";
 
 const Rule = ({ emoji, title, children }) => (
@@ -15,10 +15,28 @@ const Rule = ({ emoji, title, children }) => (
 );
 
 export default function CommunityGuidelines() {
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate("/vibe-room");
+    }
+  };
+
   return (
     <div>
       <div className="max-w-3xl mx-auto px-6 py-16 md:py-24">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <button
+            onClick={handleBack}
+            className="inline-flex items-center gap-1.5 text-xs font-bold mb-8 transition-colors"
+            style={{ color: "rgba(0,229,255,0.5)" }}
+            onMouseEnter={e => e.currentTarget.style.color = "#00E5FF"}
+            onMouseLeave={e => e.currentTarget.style.color = "rgba(0,229,255,0.5)"}>
+            <ChevronLeft className="w-3.5 h-3.5" /> Back to Vibe Room
+          </button>
           <p className="text-xs tracking-[0.3em] uppercase mb-3" style={{ color: "#00E5FF" }}>Community</p>
           <h1 className="font-heading font-extrabold text-4xl md:text-5xl tracking-tight mb-2 text-white">Community Guidelines</h1>
           <p className="text-xs text-white/25 mb-4">Last updated: June 2026</p>

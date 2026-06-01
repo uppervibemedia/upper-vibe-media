@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, AlertCircle } from "lucide-react";
+import { Check, AlertCircle, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import AvatarUpload from "./AvatarUpload";
 
 const PROFANITY_LIST = ["fuck", "shit", "bitch", "ass", "cunt", "dick", "pussy", "nigger", "nigga", "faggot"];
 const VIBE_NAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
@@ -35,9 +34,8 @@ export function canChangeVibeName() {
   return daysSince >= 30;
 }
 
-export default function VibeNameSetup({ onComplete, isChange = false, initialAvatar = null }) {
+export default function VibeNameSetup({ onComplete, onCancel, isChange = false }) {
   const [vibeName, setVibeName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState(initialAvatar || null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -45,11 +43,6 @@ export default function VibeNameSetup({ onComplete, isChange = false, initialAva
     if (!VIBE_NAME_REGEX.test(name)) return "3–20 characters, letters, numbers, and underscores only.";
     if (containsProfanity(name)) return "That name isn't allowed. Please choose a positive vibe name.";
     return null;
-  };
-
-  const handleAvatarUploaded = (url) => {
-    setAvatarUrl(url);
-    localStorage.setItem(LOCALSTORAGE_AVATAR_KEY, url);
   };
 
   const handleSubmit = async (e) => {
@@ -62,17 +55,14 @@ export default function VibeNameSetup({ onComplete, isChange = false, initialAva
     try {
       localStorage.setItem(LOCALSTORAGE_KEY, trimmed);
       localStorage.setItem(LOCALSTORAGE_SET_DATE_KEY, Date.now().toString());
-      if (avatarUrl) localStorage.setItem(LOCALSTORAGE_AVATAR_KEY, avatarUrl);
 
       try {
-        const updates = { vibe_name: trimmed };
-        if (avatarUrl) updates.vibe_avatar_url = avatarUrl;
-        await base44.auth.updateMe(updates);
+        await base44.auth.updateMe({ vibe_name: trimmed });
       } catch (_) {
         // Not logged in or update failed — localStorage fallback is set
       }
 
-      onComplete({ name: trimmed, avatarUrl });
+      onComplete({ name: trimmed, avatarUrl: localStorage.getItem(LOCALSTORAGE_AVATAR_KEY) || null });
     } catch (_) {
       setError("Something went wrong. Please try again.");
     }
@@ -83,7 +73,8 @@ export default function VibeNameSetup({ onComplete, isChange = false, initialAva
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+      style={{ background: "rgba(0,0,0,0.88)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}
+      onClick={onCancel}>
       <motion.div
         initial={{ opacity: 0, scale: 0.93, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -93,25 +84,26 @@ export default function VibeNameSetup({ onComplete, isChange = false, initialAva
           background: "linear-gradient(160deg,#0d0d22,#0a0a1a)",
           border: "1px solid rgba(155,126,255,0.3)",
           boxShadow: "0 0 80px rgba(155,126,255,0.15), 0 32px 80px rgba(0,0,0,0.7)",
-        }}>
+        }}
+        onClick={(e) => e.stopPropagation()}>
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-24 rounded-full blur-[50px] opacity-20 pointer-events-none"
           style={{ background: "#9B7EFF" }} />
 
-        <div className="relative p-8">
-          {/* Avatar upload at top */}
-          <div className="flex flex-col items-center mb-5">
-            <AvatarUpload
-              name={vibeName || "?"}
-              currentAvatarUrl={avatarUrl}
-              onUploaded={handleAvatarUploaded}
-            />
-            <p className="text-[10px] text-white/25 mt-2">Tap camera to add photo</p>
-          </div>
+        {/* X close button */}
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all hover:brightness-110"
+            style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }}>
+            <X className="w-4 h-4" />
+          </button>
+        )}
 
+        <div className="relative p-8">
           <h2 className="font-heading font-black text-xl text-white text-center mb-1">
             {isChange ? "Change Your Vibe Name" : "Create Your Vibe Name"}
           </h2>
-          <p className="text-white/35 text-sm text-center leading-relaxed mb-5">
+          <p className="text-white/35 text-sm text-center leading-relaxed mb-6">
             This is how you'll appear in the Vibe Room.
           </p>
 
@@ -158,8 +150,17 @@ export default function VibeNameSetup({ onComplete, isChange = false, initialAva
                 boxShadow: "0 4px 24px rgba(155,126,255,0.35)",
                 letterSpacing: "0.05em",
               }}>
-              {saving ? "Entering..." : isChange ? "Update Name ✦" : "Enter the Room ✦"}
+              {saving ? "Saving..." : isChange ? "Update Name ✦" : "Enter the Room ✦"}
             </button>
+
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full py-3 rounded-2xl text-sm font-semibold text-white/35 hover:text-white/60 transition-colors">
+                Cancel
+              </button>
+            )}
           </form>
         </div>
       </motion.div>

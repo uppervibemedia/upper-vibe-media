@@ -283,13 +283,16 @@ export default function VibeRoom() {
   }
 
   if (ageConfirmed && isPremium && needsVibeName) {
+    const isChanging = !!vibeName; // already has a name = changing, not first-time
     return (
       <VibeNameSetup
+        isChange={isChanging}
         onComplete={({ name, avatarUrl }) => {
           setVibeName(name);
           if (avatarUrl) setVibeAvatar(avatarUrl);
           setNeedsVibeName(false);
         }}
+        onCancel={() => setNeedsVibeName(false)}
       />
     );
   }
