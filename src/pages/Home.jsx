@@ -18,6 +18,7 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
 import LatestMusicSection from "../components/home/LatestMusicSection";
 import ListenerFrequencyDashboard from "../components/home/ListenerFrequencyDashboard";
+import MyVibeFeed from "../components/home/MyVibeFeed";
 import SectionHeader from "../components/shared/SectionHeader";
 import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
@@ -536,6 +537,27 @@ export default function Home() {
         themeColor={rtPrimary}
       />
       </motion.div>
+
+      {/* ── MY VIBE FEED (logged-in users only) ── */}
+      {user && (
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
+        <MyVibeFeed
+          allTracks={allTracks}
+          allViz={recentViz}
+          academyLessons={academyLessons}
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          handlePlayTrack={handlePlayTrack}
+          user={user}
+          isFaved={isFaved}
+          themeColor={rtPrimary}
+          onToggleFav={(track) => {
+            if (!user) { setLoginModal(true); return; }
+            toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
+          }}
+        />
+        </motion.div>
+      )}
 
       {/* ── LISTENER FREQUENCY DASHBOARD ── */}
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
