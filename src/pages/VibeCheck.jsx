@@ -354,11 +354,11 @@ export default function VibeCheck() {
                   </div>
                 </SectionCard>
 
-                {/* Daily Streak (free) */}
-                <StreakCard streak={streak} />
-
                 {/* Vibe Trend (Plus) */}
                 <VibeTrendCard allCheckIns={allCheckIns} todayScore={vibeScore} rtPrimary={rtPrimary} isPlus={isPlusUser} />
+
+                {/* Daily Streak (free) */}
+                <StreakCard streak={streak} />
 
                 {/* Future Self Progress (Plus) */}
                 <FutureSelfCard allCheckIns={allCheckIns} rtPrimary={rtPrimary} isPlus={isPlusUser} />

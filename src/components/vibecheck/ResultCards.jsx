@@ -65,11 +65,11 @@ export function scoreLabel(score) {
 
 // ── Streak levels ─────────────────────────────────────────────────────────────
 export const STREAK_LEVELS = [
-  { days: 1,   label: "Vibe Starter",   emoji: "🔥" },
-  { days: 7,   label: "Vibe Builder",   emoji: "⚡" },
-  { days: 30,  label: "Vibe Locked In", emoji: "💎" },
-  { days: 90,  label: "Vibe Master",    emoji: "👑" },
-  { days: 365, label: "Vibe Legend",    emoji: "🌟" },
+  { days: 1,  label: "Vibe Starter",   emoji: "🔥" },
+  { days: 7,  label: "Vibe Builder",   emoji: "⚡" },
+  { days: 14, label: "Vibe Locked In", emoji: "💎" },
+  { days: 30, label: "Vibe Master",    emoji: "👑" },
+  { days: 60, label: "Vibe Legend",    emoji: "⭐" },
 ];
 
 export function getStreakLevel(n) {
@@ -88,9 +88,15 @@ export function StreakCard({ streak }) {
   const next = getNextStreakLevel(streak);
   const daysToNext = next ? next.days - streak : 0;
 
+  // Progress between current and next milestone (0–100%)
+  const progressPct = next
+    ? Math.min(((streak - current.days) / (next.days - current.days)) * 100, 100)
+    : 100;
+
   return (
     <SectionCard>
-      <div className="flex items-center justify-between mb-3">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
         <p className="text-xs font-black tracking-widest uppercase text-white/30">Current Streak</p>
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
           style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.22)" }}>
@@ -98,38 +104,64 @@ export function StreakCard({ streak }) {
           <span className="text-xs font-black text-yellow-400">{streak} Day{streak !== 1 ? "s" : ""}</span>
         </div>
       </div>
+
+      {/* Current level label */}
       <div className="flex items-center gap-2 mb-4">
         <span className="text-2xl">{current.emoji}</span>
         <p className="font-heading font-black text-white text-base">{current.label}</p>
       </div>
-      <p className="text-white/35 text-xs mb-4">
-        {streak <= 1
-          ? "Day 1 of Your Vibe Journey. Come back tomorrow to build momentum."
-          : streak < 7
-          ? `${streak} days in — you're building your vibe. ${next ? `${daysToNext} more day${daysToNext !== 1 ? "s" : ""} to reach ${next.label}.` : ""}`
-          : next
-          ? `${streak}-day streak — strong momentum. ${daysToNext} more day${daysToNext !== 1 ? "s" : ""} to reach ${next.label}.`
-          : "You've reached the highest streak level. Vibe Legend. 🌟"}
-      </p>
-      <div className="flex items-center gap-1 justify-between">
-        {STREAK_LEVELS.map((lvl) => {
-          const reached = streak >= lvl.days;
-          return (
-            <div key={lvl.days} className="flex flex-col items-center gap-1 flex-1">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-base transition-all"
-                style={reached
-                  ? { background: "rgba(212,168,67,0.15)", border: "1px solid rgba(212,168,67,0.35)", filter: "drop-shadow(0 0 6px rgba(212,168,67,0.4))", opacity: 1 }
-                  : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", opacity: 0.25 }}>
-                {lvl.emoji}
+
+      {/* Milestone track */}
+      <div className="relative mb-5">
+        {/* Connecting line background */}
+        <div className="absolute top-4 left-[10%] right-[10%] h-0.5 rounded-full"
+          style={{ background: "rgba(255,255,255,0.06)" }} />
+        {/* Progress fill — spans from first milestone to current position */}
+        {streak > 1 && (
+          <div className="absolute top-4 left-[10%] h-0.5 rounded-full transition-all duration-1000"
+            style={{
+              width: `${Math.min(progressPct * 0.8, 80)}%`,
+              background: "linear-gradient(90deg,rgba(212,168,67,0.5),rgba(212,168,67,0.9))",
+            }} />
+        )}
+        {/* Milestone nodes */}
+        <div className="relative flex items-start justify-between">
+          {STREAK_LEVELS.map((lvl) => {
+            const reached = streak >= lvl.days;
+            const isCurrent = current.days === lvl.days;
+            return (
+              <div key={lvl.days} className="flex flex-col items-center gap-1.5 w-1/5">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all relative z-10"
+                  style={reached ? {
+                    background: isCurrent ? "rgba(212,168,67,0.2)" : "rgba(212,168,67,0.1)",
+                    border: `1px solid rgba(212,168,67,${isCurrent ? "0.6" : "0.3"})`,
+                    filter: isCurrent ? "drop-shadow(0 0 8px rgba(212,168,67,0.6))" : "drop-shadow(0 0 4px rgba(212,168,67,0.25))",
+                  } : {
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    opacity: 0.3,
+                    filter: "grayscale(1)",
+                  }}>
+                  {lvl.emoji}
+                </div>
+                <p className="text-[8px] font-bold text-center leading-tight"
+                  style={{ color: reached ? "rgba(212,168,67,0.8)" : "rgba(255,255,255,0.2)" }}>
+                  {lvl.days === 1 ? "Day 1" : `${lvl.days}d`}
+                </p>
               </div>
-              <p className="text-[8px] font-bold text-center leading-tight"
-                style={{ color: reached ? "rgba(212,168,67,0.8)" : "rgba(255,255,255,0.2)" }}>
-                {lvl.days}d
-              </p>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
+
+      {/* Progress message */}
+      <p className="text-white/35 text-xs text-center">
+        {!next
+          ? "You've reached the highest streak level. Vibe Legend. ⭐"
+          : streak <= 1
+          ? `Come back tomorrow — ${daysToNext} more day${daysToNext !== 1 ? "s" : ""} to reach ${next.label}.`
+          : `${daysToNext} more daily check-in${daysToNext !== 1 ? "s" : ""} to reach ${next.label} ${next.emoji}`}
+      </p>
     </SectionCard>
   );
 }
@@ -235,51 +267,68 @@ export function FutureSelfCard({ allCheckIns, rtPrimary, isPlus }) {
 }
 
 // ── Achievement Badges (Plus only) ────────────────────────────────────────────
-const ALL_BADGES = [
-  { id: "first_checkin",    emoji: "🏆", label: "First Check-In",        check: (ci) => ci.length >= 1 },
-  { id: "streak_3",         emoji: "🔥", label: "3-Day Vibe Starter",    check: (ci, s, ls) => ls >= 3 },
-  { id: "streak_7",         emoji: "⚡", label: "7-Day Vibe Builder",    check: (ci, s, ls) => ls >= 7 },
-  { id: "streak_30",        emoji: "💎", label: "30-Day Vibe Locked In", check: (ci, s, ls) => ls >= 30 },
-  { id: "streak_90",        emoji: "👑", label: "90-Day Vibe Master",    check: (ci, s, ls) => ls >= 90 },
-  { id: "gratitude_master", emoji: "🌟", label: "Gratitude Master",      check: (ci) => ci.filter((c) => c.gratitude).length >= 7 },
-  { id: "intention_setter", emoji: "🎯", label: "Intention Setter",      check: (ci) => ci.filter((c) => c.intention).length >= 7 },
-  { id: "future_self",      emoji: "🚀", label: "Future Self Mode",      check: (ci) => ci.length >= 30 },
+const STREAK_BADGES = [
+  { id: "first_checkin", emoji: "🏆", label: "First Check-In",      check: (ci) => ci.length >= 1 },
+  { id: "streak_7",      emoji: "🔥", label: "7-Day Vibe Builder",  check: (ci, s, ls) => ls >= 7 },
+  { id: "streak_14",     emoji: "💎", label: "14-Day Locked In",    check: (ci, s, ls) => ls >= 14 },
+  { id: "streak_30",     emoji: "👑", label: "30-Day Vibe Master",  check: (ci, s, ls) => ls >= 30 },
+  { id: "streak_60",     emoji: "⭐", label: "60-Day Vibe Legend",  check: (ci, s, ls) => ls >= 60 },
 ];
+
+const BEHAVIOR_BADGES = [
+  { id: "intention_setter", emoji: "🎯", label: "Intention Setter",   check: (ci) => ci.filter((c) => c.intention).length >= 7 },
+  { id: "gratitude_builder", emoji: "🙏", label: "Gratitude Builder",  check: (ci) => ci.filter((c) => c.gratitude).length >= 7 },
+  { id: "future_self",      emoji: "🚀", label: "Future Self Mode",   check: (ci) => ci.length >= 30 },
+];
+
+function BadgeTile({ badge, allCheckIns, streak, longestStreak }) {
+  const unlocked = badge.check(allCheckIns, streak, longestStreak);
+  return (
+    <div className="flex flex-col items-center gap-2 text-center">
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all"
+        style={unlocked ? {
+          background: "rgba(212,168,67,0.12)",
+          border: "1px solid rgba(212,168,67,0.35)",
+          boxShadow: "0 0 14px rgba(212,168,67,0.3), inset 0 0 8px rgba(212,168,67,0.08)",
+        } : {
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          opacity: 0.22,
+          filter: "grayscale(1)",
+        }}>
+        {badge.emoji}
+      </div>
+      <p className="text-[9px] font-bold leading-tight w-full"
+        style={{ color: unlocked ? "rgba(212,168,67,0.85)" : "rgba(255,255,255,0.2)" }}>
+        {badge.label}
+      </p>
+    </div>
+  );
+}
 
 export function BadgesCard({ allCheckIns, streak, longestStreak, isPlus, rtPrimary }) {
   return (
     <div className="relative">
       <SectionCard className={!isPlus ? "opacity-60 pointer-events-none select-none" : ""}>
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-5">
           <Trophy className="w-4 h-4 text-yellow-400" />
           <p className="text-xs font-black tracking-widest uppercase text-white/30">Achievement Badges</p>
         </div>
-        <div className="grid grid-cols-4 gap-3">
-          {ALL_BADGES.map((badge) => {
-            const unlocked = badge.check(allCheckIns, streak, longestStreak);
-            return (
-              <div key={badge.id} className="flex flex-col items-center gap-1.5 text-center">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-all"
-                  style={unlocked ? {
-                    background: "rgba(212,168,67,0.1)",
-                    border: "1px solid rgba(212,168,67,0.3)",
-                    filter: "drop-shadow(0 0 8px rgba(212,168,67,0.4))",
-                    opacity: 1,
-                  } : {
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    opacity: 0.2,
-                    filter: "grayscale(1)",
-                  }}>
-                  {badge.emoji}
-                </div>
-                <p className="text-[9px] font-bold leading-tight"
-                  style={{ color: unlocked ? "rgba(212,168,67,0.85)" : "rgba(255,255,255,0.2)" }}>
-                  {badge.label}
-                </p>
-              </div>
-            );
-          })}
+
+        {/* Streak badges row */}
+        <p className="text-[9px] font-black tracking-widest uppercase text-white/20 mb-3">Streak Milestones</p>
+        <div className="grid grid-cols-5 gap-2 mb-5">
+          {STREAK_BADGES.map((badge) => (
+            <BadgeTile key={badge.id} badge={badge} allCheckIns={allCheckIns} streak={streak} longestStreak={longestStreak} />
+          ))}
+        </div>
+
+        {/* Behavior badges row */}
+        <p className="text-[9px] font-black tracking-widest uppercase text-white/20 mb-3">Behavior Badges</p>
+        <div className="grid grid-cols-3 gap-3">
+          {BEHAVIOR_BADGES.map((badge) => (
+            <BadgeTile key={badge.id} badge={badge} allCheckIns={allCheckIns} streak={streak} longestStreak={longestStreak} />
+          ))}
         </div>
       </SectionCard>
       {!isPlus && <PlusGate rtPrimary={rtPrimary} />}
