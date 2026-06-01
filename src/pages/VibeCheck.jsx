@@ -22,11 +22,13 @@ const MOODS = [
 ];
 
 function streakToScore(days) {
-  if (days >= 90) return 100;
-  if (days >= 30) return Math.round(88 + ((days - 30) / 60) * 12);
-  if (days >= 7)  return Math.round(70 + ((days - 7) / 23) * 18);
-  if (days >= 3)  return Math.round(45 + ((days - 3) / 4) * 25);
-  return Math.round(15 + ((Math.max(days, 1) - 1) / 2) * 30);
+  if (days >= 60) return 100;
+  if (days >= 30) return Math.round(80 + ((days - 30) / 30) * 20);
+  if (days >= 14) return Math.round(60 + ((days - 14) / 16) * 20);
+  if (days >= 7)  return Math.round(40 + ((days - 7) / 7) * 20);
+  if (days >= 3)  return Math.round(25 + ((days - 3) / 4) * 15);
+  // Day 1 = 15, Day 2 = 20
+  return Math.round(15 + ((Math.max(days, 1) - 1) * 5));
 }
 
 // 5-factor formula — consistency weighted at 40%
@@ -38,10 +40,11 @@ function calcVibeScore({ moodScore, intentionScore, gratitudeScore, streakScore,
     yesterdayCompletionScore * 0.10 +
     streakScore * 0.40
   );
-  // Score caps based on streak
+  // Score caps: elite scores require earned consistency
+  if (streak < 1)  return Math.min(raw, 75);
   if (streak < 3)  return Math.min(raw, 75);
   if (streak < 7)  return Math.min(raw, 82);
-  if (streak < 30) return Math.min(raw, 89);
+  if (streak < 30) return Math.min(raw, 84);
   return raw;
 }
 
@@ -68,12 +71,12 @@ function calcLongestStreak(dates) {
 
 // ── Motivational streak label ─────────────────────────────────────────────────
 function streakLabel(days) {
-  if (days <= 1)  return "Day 1 of Your Vibe Journey";
-  if (days < 3)   return `Day ${days} — Building Your Vibe`;
-  if (days < 7)   return `${days}-Day Streak — Keep Going`;
-  if (days < 30)  return `${days}-Day Streak — Vibe Builder`;
-  if (days < 90)  return `${days}-Day Streak — Vibe Locked In 💎`;
-  return `${days}-Day Streak — Vibe Legend 🌟`;
+  if (days <= 1)  return "Day 1 — Vibe Starter 🔥";
+  if (days < 7)   return `Day ${days} — Building Consistency`;
+  if (days < 14)  return `${days}-Day Streak — Vibe Builder ⚡`;
+  if (days < 30)  return `${days}-Day Streak — Vibe Locked In 💎`;
+  if (days < 60)  return `${days}-Day Streak — Vibe Master 👑`;
+  return `${days}-Day Streak — Vibe Legend ⭐`;
 }
 
 export default function VibeCheck() {
@@ -346,11 +349,11 @@ export default function VibeCheck() {
                 <SectionCard>
                   <p className="text-xs font-black tracking-widest uppercase text-white/30 mb-3">Score Breakdown</p>
                   <div className="space-y-2.5">
-                    <BreakdownRow label="Consistency" emoji="🔥" value={`${streakScore}`} weight="40%" rtPrimary={rtPrimary} score={streakScore} subtitle={streakLabel(streak)} />
                     <BreakdownRow label="Vibe Check" emoji="😐" value={`${todayCheckIn?.mood_score ?? moodScore}`} weight="20%" rtPrimary={rtPrimary} score={todayCheckIn?.mood_score ?? moodScore} />
                     <BreakdownRow label="Daily Intention" emoji="🎯" value={intention.trim() ? "100" : "0"} weight="15%" rtPrimary={rtPrimary} score={intention.trim() ? 100 : 0} />
                     <BreakdownRow label="Gratitude" emoji="🙏" value={gratitude.trim() ? "100" : "0"} weight="15%" rtPrimary={rtPrimary} score={gratitude.trim() ? 100 : 0} />
-                    <BreakdownRow label="Yesterday's Intention" emoji="✅" value={yesterdayCompletionScore ? "100" : "0"} weight="10%" rtPrimary={rtPrimary} score={yesterdayCompletionScore} subtitle={yesterdayCompletionScore ? "Completed ✓" : "No entry yesterday"} />
+                    <BreakdownRow label="Yesterday Completion" emoji="✅" value={yesterdayCompletionScore ? "100" : "0"} weight="10%" rtPrimary={rtPrimary} score={yesterdayCompletionScore} subtitle={yesterdayCompletionScore ? "Completed ✓" : "No entry yesterday"} />
+                    <BreakdownRow label="Consistency" emoji="🔥" value={`${streakScore}`} weight="40%" rtPrimary={rtPrimary} score={streakScore} subtitle={streakLabel(streak)} />
                   </div>
                 </SectionCard>
 
