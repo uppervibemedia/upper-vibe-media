@@ -166,59 +166,43 @@ export function StreakCard({ streak }) {
   );
 }
 
-// ── Vibe Trend Card (Plus only) ───────────────────────────────────────────────
+// ── Vibe Trend Card (free — above score breakdown) ────────────────────────────
 export function VibeTrendCard({ allCheckIns, todayScore, rtPrimary, isPlus }) {
-  const sorted = [...allCheckIns].sort((a, b) => (a.check_in_date < b.check_in_date ? 1 : -1));
-  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().slice(0, 10);
-  const yesterdayScore = sorted.find((c) => c.check_in_date === yesterdayStr)?.vibe_score ?? null;
-
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekScores = sorted.filter((c) => c.check_in_date >= weekAgo.toISOString().slice(0, 10)).map((c) => c.vibe_score);
-  const weekAvg = weekScores.length > 0 ? Math.round(weekScores.reduce((a, b) => a + b, 0) / weekScores.length) : null;
+  const weekScores = allCheckIns
+    .filter((c) => c.check_in_date >= weekAgo.toISOString().slice(0, 10) && c.vibe_score != null)
+    .map((c) => c.vibe_score);
+  const weekAvg = weekScores.length >= 3
+    ? Math.round(weekScores.reduce((a, b) => a + b, 0) / weekScores.length)
+    : null;
 
-  const diff = yesterdayScore !== null ? todayScore - yesterdayScore : null;
-  const hasData = yesterdayScore !== null || weekAvg !== null;
+  const allScores = allCheckIns.map((c) => c.vibe_score).filter((s) => s != null);
+  const bestScore = allScores.length > 0 ? Math.max(...allScores, todayScore) : todayScore;
 
   return (
-    <div className="relative">
-      <SectionCard className={!isPlus ? "opacity-60 pointer-events-none select-none" : ""}>
-        <p className="text-xs font-black tracking-widest uppercase text-white/30 mb-4">Vibe Trend</p>
-        {!hasData ? (
-          <p className="text-white/35 text-sm">Complete more daily check-ins to unlock your trend.</p>
-        ) : (
-          <>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <TrendStat label="Today" value={todayScore} color={`rgb(${rtPrimary})`} />
-              <TrendStat label="Yesterday" value={yesterdayScore ?? "—"} color="rgba(255,255,255,0.5)" />
-              <TrendStat label="This Week" value={weekAvg ?? "—"} color="rgba(212,168,67,0.9)" />
-            </div>
-            {diff !== null && (
-              <div className="rounded-2xl px-4 py-2.5 text-xs text-center font-bold"
-                style={{
-                  background: diff >= 0 ? "rgba(52,211,153,0.07)" : "rgba(248,113,113,0.07)",
-                  border: `1px solid ${diff >= 0 ? "rgba(52,211,153,0.2)" : "rgba(248,113,113,0.2)"}`,
-                  color: diff >= 0 ? "#34D399" : "#F87171",
-                }}>
-                {diff >= 0
-                  ? `Your vibe increased ${diff} point${diff !== 1 ? "s" : ""} since yesterday. ⬆️`
-                  : `Today is a reset opportunity. One aligned action can shift the day.`}
-              </div>
-            )}
-          </>
-        )}
-      </SectionCard>
-      {!isPlus && <PlusGate rtPrimary={rtPrimary} />}
-    </div>
+    <SectionCard>
+      <p className="text-xs font-black tracking-widest uppercase text-white/30 mb-4">Vibe Progress</p>
+      <div className="grid grid-cols-3 gap-3">
+        <TrendStat label="Today's Score" value={todayScore} color={`rgb(${rtPrimary})`} />
+        <TrendStat
+          label="7-Day Average"
+          value={weekAvg ?? "—"}
+          color="rgba(212,168,67,0.9)"
+          sub={weekAvg == null ? "Need 3+ check-ins" : undefined}
+        />
+        <TrendStat label="Best Score" value={bestScore} color="#4ADE80" />
+      </div>
+    </SectionCard>
   );
 }
 
-function TrendStat({ label, value, color }) {
+function TrendStat({ label, value, color, sub }) {
   return (
-    <div className="text-center rounded-2xl py-3"
+    <div className="text-center rounded-2xl py-3 px-1"
       style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
       <p className="font-heading font-black text-xl" style={{ color }}>{value}</p>
-      <p className="text-[10px] text-white/30 mt-0.5">{label}</p>
+      <p className="text-[10px] text-white/30 mt-0.5 leading-tight">{label}</p>
+      {sub && <p className="text-[9px] mt-0.5 leading-tight" style={{ color: "rgba(255,255,255,0.2)" }}>{sub}</p>}
     </div>
   );
 }

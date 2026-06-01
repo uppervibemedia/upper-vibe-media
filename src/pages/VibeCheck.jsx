@@ -345,6 +345,9 @@ export default function VibeCheck() {
                   </div>
                 </SectionCard>
 
+                {/* Vibe Progress (free) */}
+                <VibeTrendCard allCheckIns={allCheckIns} todayScore={vibeScore} rtPrimary={rtPrimary} isPlus={isPlusUser} />
+
                 {/* Score breakdown (free) */}
                 <SectionCard>
                   <p className="text-xs font-black tracking-widest uppercase text-white/30 mb-3">Score Breakdown</p>
@@ -356,9 +359,6 @@ export default function VibeCheck() {
                     <BreakdownRow label="Consistency" emoji="🔥" value={`${streakScore}`} weight="40%" rtPrimary={rtPrimary} score={streakScore} subtitle={streakLabel(streak)} />
                   </div>
                 </SectionCard>
-
-                {/* Vibe Trend (Plus) */}
-                <VibeTrendCard allCheckIns={allCheckIns} todayScore={vibeScore} rtPrimary={rtPrimary} isPlus={isPlusUser} />
 
                 {/* Daily Streak (free) */}
                 <StreakCard streak={streak} />
