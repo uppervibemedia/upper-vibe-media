@@ -67,7 +67,7 @@ export default function TermsAndConditions() {
           </Section>
 
           <Section title="13. Community Guidelines">
-            <p>All use of the Vibe Room and community features is subject to our Community Guidelines. These include prohibitions on harassment, spam, hate speech, explicit content, impersonation, and sharing private information. Violations may result in content removal, account muting, or a permanent ban. Please review the full Community Guidelines at <a href="/community-guidelines" className="text-cyan-400 hover:underline">uppervibemusic.com/community-guidelines</a>.</p>
+            <p>All use of the Vibe Room and community features is subject to our Community Guidelines. These include prohibitions on harassment, spam, hate speech, explicit content, impersonation, and sharing private information. Violations may result in content removal, account muting, or a permanent ban. Please review the full Community Guidelines at <a href="/community-guidelines" className="text-cyan-400 hover:underline">uppervibemedia.com/community-guidelines</a>.</p>
           </Section>
 
           <Section title="14. Subscription Billing & Auto-Renewal">

@@ -82,8 +82,10 @@ export default function EmailList() {
                 </button>
               </form>
 
-              <p className="text-white/20 text-xs mt-5 text-center">
-                No spam. Unsubscribe anytime. Just high-vibe music updates.
+              <p className="text-white/20 text-xs mt-5 text-center leading-relaxed">
+                By joining, you agree to receive updates from Upper Vibe Media. Unsubscribe anytime.{" "}
+                See our{" "}
+                <a href="/privacy" className="underline underline-offset-2 hover:text-white/50 transition-colors">Privacy Policy</a>.
               </p>
             </>
           ) : (
