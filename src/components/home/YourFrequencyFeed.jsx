@@ -2,8 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, Music4, Heart, Download, Lock,
-  Flame, Zap, TrendingUp, Star, Tv2, GraduationCap,
-  ArrowRight, Waves, Sparkles
+  Tv2, ArrowRight, Waves, Sparkles
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -61,30 +60,28 @@ function computeCommunityScores(tracks, streams, favCounts, dlCounts) {
   });
 }
 
-// ── Build the unified feed ───────────────────────────────────────────────────
-function buildFeed({ allTracks, allViz, academyLessons, streams, favCounts, dlCounts, userFavIds, targetTags, isLoggedIn }) {
+// ── Build the unified feed — 5 tracks + 3 visualizers, no academy ────────────
+function buildFeed({ allTracks, allViz, streams, favCounts, dlCounts, userFavIds, targetTags, isLoggedIn }) {
   const publishedTracks = (allTracks || []).filter(t => t.status === "published" && t.audio_url);
   const scored = computeCommunityScores(publishedTracks, streams, favCounts, dlCounts);
 
-  // Sort by community score desc
   const byCommunity = [...scored].sort((a, b) => b._communityScore - a._communityScore);
   const byFavs = [...scored].sort((a, b) => b._favorites - a._favorites);
   const byDownloads = [...scored].sort((a, b) => b._downloads - a._downloads);
-  // "Rising" = lower ranked but new-ish (recently added, lower play count)
   const byRising = [...scored]
     .filter(t => t._totalPlays < 50)
     .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0));
 
-  const feed = [];
-  const usedIds = new Set();
+  const trackItems = [];
+  const usedTrackIds = new Set();
 
   const addTrack = (track, badgeKey) => {
-    if (!track || usedIds.has(track.id)) return;
-    usedIds.add(track.id);
-    feed.push({ type: "track", data: track, badge: BADGE_DEFS[badgeKey] });
+    if (!track || usedTrackIds.has(track.id) || trackItems.length >= 5) return;
+    usedTrackIds.add(track.id);
+    trackItems.push({ type: "track", data: track, badge: BADGE_DEFS[badgeKey] });
   };
 
-  // 1. Personalized recommendations (if logged in and we have mood data)
+  // 1. Personalized recommendations first
   if (isLoggedIn && targetTags.length) {
     const recommended = [...scored]
       .map(t => ({ ...t, _recScore: scoreTagMatch(t, targetTags) + (userFavIds.has(t.id) ? 3 : 0) }))
@@ -93,60 +90,39 @@ function buildFeed({ allTracks, allViz, academyLessons, streams, favCounts, dlCo
       .slice(0, 3);
     recommended.forEach(t => addTrack(t, "recommended"));
   }
-
-  // 2. Trending (top community score)
+  // 2. Fill remaining track slots with community scores
   byCommunity.slice(0, 3).forEach(t => addTrack(t, "trending"));
-
-  // 3. Community favorite (most saved)
   addTrack(byFavs[0], "communityFav");
-  addTrack(byFavs[1], "mostSaved");
-
-  // 4. Most downloaded
   addTrack(byDownloads[0], "mostDownloaded");
-
-  // 5. Rising
   byRising.slice(0, 2).forEach(t => addTrack(t, "rising"));
-
-  // 6. Interleave visualizers (after slot 3, 7)
-  const vizItems = (allViz || []).filter(v => v.status === "published").slice(0, 2);
-  vizItems.forEach(v => {
-    if (!usedIds.has("viz-" + v.id)) {
-      usedIds.add("viz-" + v.id);
-      feed.push({ type: "visualizer", data: v, badge: BADGE_DEFS.visualizer });
-    }
-  });
-
-  // 7. Academy items
-  (academyLessons || []).slice(0, 2).forEach(l => {
-    if (!usedIds.has("lesson-" + l.id)) {
-      usedIds.add("lesson-" + l.id);
-      feed.push({ type: "academy", data: l, badge: BADGE_DEFS.academy });
-    }
-  });
-
-  // 8. Fill remaining with trending tracks
   byCommunity.forEach(t => addTrack(t, "trending"));
 
-  // Interleave: insert viz at position 4 and lesson at position 8 for natural mixing
-  const reordered = [];
-  const tracks = feed.filter(i => i.type === "track");
-  const visualizers = feed.filter(i => i.type === "visualizer");
-  const lessons = feed.filter(i => i.type === "academy");
+  // 3. Pick 3 visualizers
+  const vizItems = (allViz || [])
+    .filter(v => v.status === "published")
+    .slice(0, 3)
+    .map(v => ({ type: "visualizer", data: v, badge: BADGE_DEFS.visualizer }));
 
-  tracks.forEach((item, i) => {
-    reordered.push(item);
-    if (i === 3 && visualizers[0]) reordered.push(visualizers[0]);
-    if (i === 5 && lessons[0]) reordered.push(lessons[0]);
-    if (i === 8 && visualizers[1]) reordered.push(visualizers[1]);
-    if (i === 10 && lessons[1]) reordered.push(lessons[1]);
-  });
+  // 4. Interleave: tracks at 0,1,2 → viz at 3 → tracks at 4,5 → viz at 6 → track at 7 → viz at 8
+  const result = [];
+  const t = [...trackItems];
+  const v = [...vizItems];
+  // positions: 0=track,1=track,2=track,3=viz,4=track,5=track,6=viz,7=track,8=viz
+  const slots = ["t","t","t","v","t","t","v","t","v"];
+  let ti = 0, vi = 0;
+  for (const slot of slots) {
+    if (slot === "t" && t[ti]) { result.push(t[ti++]); }
+    else if (slot === "v" && v[vi]) { result.push(v[vi++]); }
+  }
+  // fill any remaining slots
+  while (result.length < 8 && ti < t.length) result.push(t[ti++]);
 
-  return reordered.slice(0, 8);
+  return result.slice(0, 8);
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function YourFrequencyFeed({
-  allTracks, allViz, academyLessons,
+  allTracks, allViz,
   currentTrack, isPlaying, handlePlayTrack,
   user, isFaved, onToggleFav, themeColor,
 }) {
@@ -204,11 +180,11 @@ export default function YourFrequencyFeed({
   );
 
   const feed = useMemo(() => buildFeed({
-    allTracks, allViz, academyLessons,
+    allTracks, allViz,
     streams, favCounts, dlCounts,
     userFavIds, targetTags,
     isLoggedIn: !!user,
-  }), [allTracks, allViz, academyLessons, streams, favCounts, dlCounts, userFavIds, targetTags, user]);
+  }), [allTracks, allViz, streams, favCounts, dlCounts, userFavIds, targetTags, user]);
 
   if (loading || !feed.length) return null;
 
@@ -294,20 +270,22 @@ export default function YourFrequencyFeed({
               {item.type === "visualizer" && (
                 <VisualizerCard viz={item.data} badge={item.badge} rtp={rtp} />
               )}
-              {item.type === "academy" && (
-                <AcademyCard lesson={item.data} badge={item.badge} rtp={rtp} />
-              )}
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
 
-      {/* ── See More CTA ── */}
-      <div className="flex justify-center mt-6">
-        <Link to="/music"
+      {/* ── CTAs ── */}
+      <div className="flex flex-wrap gap-3 justify-center mt-6">
+        <Link to="/my-feed"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
           style={{ background: `rgba(${rtp},0.09)`, border: `1px solid rgba(${rtp},0.3)`, color: `rgb(${rtp})`, boxShadow: `0 0 20px rgba(${rtp},0.09)` }}>
-          <ArrowRight className="w-4 h-4" /> See More Personalized Picks
+          <Sparkles className="w-4 h-4" /> See More Personalized Picks
+        </Link>
+        <Link to="/music"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm tracking-wide transition-all hover:brightness-110 active:scale-[0.97]"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.5)" }}>
+          <Waves className="w-4 h-4" /> Browse All Music
         </Link>
       </div>
     </section>
@@ -392,79 +370,49 @@ function TrackCard({ track, badge, index, currentTrack, isPlaying, handlePlayTra
   );
 }
 
-function VisualizerCard({ viz, badge, rtp }) {
+// Visualizer card — taller (uses 4:3-ish thumbnail ratio), deep-links to exact item
+function VisualizerCard({ viz, rtp }) {
+  const dest = `/visualizers?play=${viz.id}`;
   return (
-    <Link to="/visualizers"
-      className="flex items-center gap-3 p-3.5 rounded-2xl group transition-all hover:border-white/15 active:scale-[0.98]"
-      style={{ background: "rgba(0,229,255,0.03)", border: "1px solid rgba(0,229,255,0.12)" }}>
-      <div className="relative flex-shrink-0">
-        {viz.thumbnail_url ? (
-          <img src={viz.thumbnail_url} alt={viz.title} width={48} height={48} loading="lazy"
-            className="w-12 h-12 rounded-xl object-cover" />
-        ) : (
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(0,229,255,0.08)" }}>
-            <Tv2 className="w-5 h-5 text-cyan-400/30" />
+    <Link to={dest}
+      className="block rounded-2xl group transition-all active:scale-[0.98] overflow-hidden"
+      style={{ background: "rgba(0,229,255,0.03)", border: "1px solid rgba(0,229,255,0.15)" }}>
+      {/* Thumbnail — 4:3 ratio → ~25% taller than song card */}
+      <div className="relative overflow-hidden" style={{ paddingBottom: "62%" }}>
+        <div className="absolute inset-0">
+          {viz.thumbnail_url ? (
+            <img src={viz.thumbnail_url} alt={viz.title} loading="lazy"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(0,229,255,0.06)" }}>
+              <Tv2 className="w-8 h-8 text-cyan-400/20" />
+            </div>
+          )}
+          {/* Hover play overlay */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: "rgba(0,0,0,0.45)" }}>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(0,160,220,0.9)", boxShadow: "0 0 20px rgba(0,160,220,0.5)" }}>
+              <Play className="w-4 h-4 text-white ml-0.5" />
+            </div>
           </div>
-        )}
-        <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ background: "rgba(0,0,0,0.6)" }}>
-          <Play className="w-3.5 h-3.5 text-white ml-0.5" />
+          {/* Badge */}
+          <div className="absolute top-2 left-2">
+            <span className="text-[8px] font-black px-2 py-1 rounded-full"
+              style={{ background: "rgba(0,160,220,0.85)", color: "#fff" }}>🎬 Visualizer</span>
+          </div>
         </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-white truncate">{viz.title}</p>
-        <p className="text-[11px] text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
-        {badge && (
-          <span className="inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: badge.bg, border: `1px solid ${badge.border}`, color: badge.color }}>
-            {badge.label}
-          </span>
-        )}
-      </div>
-      <div className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all group-hover:brightness-125"
-        style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.25)", color: "#00E5FF" }}>
-        <Play className="w-3.5 h-3.5 ml-0.5" />
-      </div>
-    </Link>
-  );
-}
-
-function AcademyCard({ lesson, badge, rtp }) {
-  return (
-    <Link to={`/academy/lesson/${lesson.id}`}
-      className="flex items-center gap-3 p-3.5 rounded-2xl group transition-all hover:border-white/15 active:scale-[0.98]"
-      style={{ background: "rgba(168,85,247,0.03)", border: "1px solid rgba(168,85,247,0.12)" }}>
-      <div className="relative flex-shrink-0">
-        {lesson.thumbnail_url ? (
-          <img src={lesson.thumbnail_url} alt={lesson.title} width={48} height={48} loading="lazy"
-            className="w-12 h-12 rounded-xl object-cover" />
-        ) : (
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(168,85,247,0.08)" }}>
-            <GraduationCap className="w-5 h-5 text-purple-400/30" />
-          </div>
-        )}
-        <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ background: "rgba(0,0,0,0.6)" }}>
-          <Play className="w-3.5 h-3.5 text-white ml-0.5" />
+      {/* Info row */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-white truncate">{viz.title}</p>
+          <p className="text-[11px] text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
         </div>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-white truncate leading-snug">{lesson.title}</p>
-        {lesson.description && (
-          <p className="text-[10px] text-white/30 truncate mt-0.5">{lesson.description}</p>
-        )}
-        {badge && (
-          <span className="inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: badge.bg, border: `1px solid ${badge.border}`, color: badge.color }}>
-            {badge.label}
-          </span>
-        )}
-      </div>
-      <div className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all group-hover:brightness-125"
-        style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.28)", color: "#A855F7" }}>
-        <Play className="w-3.5 h-3.5 ml-0.5" />
+        <span className="flex-shrink-0 text-[10px] font-black px-3 py-1.5 rounded-full transition-all group-hover:brightness-125"
+          style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.28)", color: "#00E5FF" }}>
+          Watch
+        </span>
       </div>
     </Link>
   );

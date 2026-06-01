@@ -40,6 +40,7 @@ import Settings from './pages/Settings';
 import FAQ from './pages/FAQ';
 import VibeCheck from './pages/VibeCheck';
 import Start from './pages/Start';
+import PersonalizedFeed from './pages/PersonalizedFeed';
 import { isSafeRoute, defaultRouteForUser } from './lib/safeRedirect';
 
 const LoadingScreen = () => (
@@ -150,6 +151,7 @@ const AuthenticatedApp = () => {
         <Route path="/settings" element={<Settings />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/start" element={<Start />} />
+        <Route path="/my-feed" element={<PersonalizedFeed />} />
         <Route path="/email-list" element={<EmailList />} />
       </Route>
       <Route path="/forgot-password" element={<ForgotPassword />} />

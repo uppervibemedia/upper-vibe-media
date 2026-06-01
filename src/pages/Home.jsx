@@ -536,7 +536,6 @@ export default function Home() {
         <YourFrequencyFeed
           allTracks={allTracks}
           allViz={recentViz}
-          academyLessons={academyLessons}
           currentTrack={currentTrack}
           isPlaying={isPlaying}
           handlePlayTrack={handlePlayTrack}
@@ -592,7 +591,7 @@ export default function Home() {
                   initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
                   className="group rounded-2xl overflow-hidden transition-all"
                   style={{ background: "rgba(0,160,220,0.04)", border: "1px solid rgba(0,160,220,0.15)" }}>
-                  <Link to="/visualizers" className="block relative overflow-hidden" style={{ paddingBottom: "56.25%" }}>
+                  <Link to={`/visualizers?play=${viz.id}`} className="block relative overflow-hidden" style={{ paddingBottom: "56.25%" }}>
                     <div className="absolute inset-0">
                       {viz.thumbnail_url
                         ? <img src={viz.thumbnail_url} alt={viz.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
