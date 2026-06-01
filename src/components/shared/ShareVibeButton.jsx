@@ -73,11 +73,10 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
             ? `${track.title} by ${track.artist_display} | Upper Vibe Media`
             : `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
           text: `🎧⚡ "${track?.title || "this track"}" by ${track?.artist_display || "Upper Vibe Media"} — Stream on Upper Vibe Media. 432 Hz high-vibe music.`,
-          // Native share + Twitter + Copy → clean canonical URL (no redirect)
-          url: canonicalUrl || PROD_ORIGIN,
-          // Facebook → ogMeta URL so crawler gets OG tags
+          // All platforms use ogMeta URL — crawlers get OG tags, browsers get redirected to /song/:id
+          url: ogMetaUrl || PROD_ORIGIN,
           facebookUrl: ogMetaUrl || PROD_ORIGIN,
-          displayUrl: canonicalUrl || PROD_ORIGIN,
+          displayUrl: canonicalUrl || PROD_ORIGIN, // display the clean URL in the UI
         };
       case "radio":
         return {
@@ -115,7 +114,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
     // Try native share sheet first (mobile — best for iOS)
     if (navigator.share) {
       try {
-        await navigator.share({ title: shareData.title, text: shareData.text, url: shareData.url });
+        // Use ogMeta URL for songs so any platform that receives the link gets correct OG tags
+        const shareUrl = type === "song" && ogMetaUrl ? ogMetaUrl : shareData.url;
+        await navigator.share({ title: shareData.title, text: shareData.text, url: shareUrl });
         base44.analytics.track({ eventName: "native_share_completed", properties: { share_type: type } });
         return;
       } catch (e) {
@@ -128,8 +129,10 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
   };
 
   const handleCopy = async () => {
-    // Always copy the clean canonical URL — never the ogMeta redirect URL
-    await navigator.clipboard.writeText(shareData.displayUrl);
+    // Copy the ogMeta URL for songs — it serves OG tags to crawlers AND redirects browsers
+    // For all other types, copy the regular URL
+    const urlToCopy = type === "song" && ogMetaUrl ? ogMetaUrl : shareData.displayUrl;
+    await navigator.clipboard.writeText(urlToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -151,10 +154,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         </svg>
       ),
       action: () => {
-        // Twitter gets the clean canonical URL (not ogMeta) — Twitter's card crawler
-        // will try to fetch it but that's fine; the page still resolves for humans.
+        // Use ogMeta URL for songs — Twitter card crawler gets OG tags, humans get redirected
         const tweetText = encodeURIComponent(shareData.text);
-        const tweetUrl  = encodeURIComponent(shareData.url);
+        const tweetUrl  = encodeURIComponent(type === "song" && ogMetaUrl ? ogMetaUrl : shareData.url);
         window.open(`https://twitter.com/intent/tweet?text=${tweetText}&url=${tweetUrl}`, "_blank");
         base44.analytics.track({ eventName: "share_twitter_clicked", properties: { share_type: type } });
       },
