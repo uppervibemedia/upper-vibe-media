@@ -133,7 +133,7 @@ function SongCard({ track, index, currentTrack, isPlaying, handlePlayTrack, isFa
   );
 }
 
-// ── Visualizer Card ───────────────────────────────────────────────────────────
+// ── Visualizer Card — medium emphasis (2:1 thumbnail) ────────────────────────
 function VisualizerCard({ viz, index }) {
   return (
     <motion.div
@@ -144,60 +144,54 @@ function VisualizerCard({ viz, index }) {
       style={{
         background: "rgba(0,160,220,0.04)",
         border: "1px solid rgba(0,160,220,0.18)",
-        boxShadow: "0 0 24px rgba(0,160,220,0.06)",
+        boxShadow: "0 0 18px rgba(0,160,220,0.06)",
       }}
     >
-      {/* 16:9 Cinematic thumbnail */}
-      <Link to="/visualizers" className="block relative overflow-hidden"
-        style={{ paddingBottom: "56.25%" }}>
-        <div className="absolute inset-0">
+      <div className="flex items-stretch gap-0">
+        {/* 2:1 thumbnail — wider & taller than song art */}
+        <Link to="/visualizers" className="relative flex-shrink-0 overflow-hidden rounded-l-2xl" style={{ width: 104, minHeight: 80 }}>
           {viz.thumbnail_url ? (
             <img src={viz.thumbnail_url} alt={viz.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy"
+              style={{ minHeight: 80 }} />
           ) : (
             <div className="w-full h-full flex items-center justify-center"
-              style={{ background: "rgba(0,160,220,0.08)" }}>
-              <Clapperboard className="w-10 h-10 text-cyan-400/20" />
+              style={{ background: "rgba(0,160,220,0.08)", minHeight: 80 }}>
+              <Clapperboard className="w-7 h-7 text-cyan-400/25" />
             </div>
           )}
-          {/* Cinematic overlay */}
-          <div className="absolute inset-0 flex items-center justify-center"
-            style={{ background: "rgba(0,0,0,0.35)" }}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
-              style={{ background: "rgba(0,160,220,0.85)", boxShadow: "0 0 20px rgba(0,160,220,0.5)" }}>
-              <Play className="w-5 h-5 text-white ml-0.5" />
+          {/* Play overlay */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: "rgba(0,0,0,0.4)" }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(0,160,220,0.9)", boxShadow: "0 0 14px rgba(0,160,220,0.6)" }}>
+              <Play className="w-4 h-4 text-white ml-0.5" />
             </div>
           </div>
-          {/* VISUALIZER badge overlay */}
-          <div className="absolute top-2 left-2">
-            <span className="text-[8px] font-black px-2 py-1 rounded-full tracking-wider"
-              style={{ background: "rgba(0,160,220,0.85)", color: "#fff" }}>
-              🎬 VISUALIZER
-            </span>
-          </div>
-          {/* Glowing frame */}
-          <div className="absolute inset-0 rounded-none pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ boxShadow: "inset 0 0 0 2px rgba(0,160,220,0.5)" }} />
-        </div>
-      </Link>
-
-      {/* Bottom info */}
-      <div className="flex items-center justify-between px-3 py-2.5 gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-white truncate leading-tight">{viz.title}</p>
-          <p className="text-[11px] text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
-        </div>
-        <Link to="/visualizers"
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] tracking-wider transition-all hover:brightness-125 whitespace-nowrap"
-          style={{ background: "rgba(0,160,220,0.15)", border: "1px solid rgba(0,160,220,0.35)", color: "#00C8F0" }}>
-          <Tv2 className="w-3 h-3" /> Watch
         </Link>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0 flex flex-col justify-between px-3 py-2.5">
+          <div>
+            <span className="inline-flex items-center gap-1 text-[8px] font-black px-2 py-0.5 rounded-full mb-1.5 tracking-wider"
+              style={{ background: "rgba(0,160,220,0.12)", border: "1px solid rgba(0,160,220,0.28)", color: "#00C8F0" }}>
+              🎬 Visualizer
+            </span>
+            <p className="text-sm font-bold text-white truncate leading-tight">{viz.title}</p>
+            <p className="text-[11px] text-white/35 truncate mt-0.5">{viz.artist || "Upper Vibe Media"}</p>
+          </div>
+          <Link to="/visualizers"
+            className="mt-2 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] tracking-wider transition-all hover:brightness-125 whitespace-nowrap"
+            style={{ background: "rgba(0,160,220,0.12)", border: "1px solid rgba(0,160,220,0.3)", color: "#00C8F0" }}>
+            <Tv2 className="w-3 h-3" /> Watch
+          </Link>
+        </div>
       </div>
     </motion.div>
   );
 }
 
-// ── Academy Card ──────────────────────────────────────────────────────────────
+// ── Academy Card — medium emphasis (2:1 thumbnail) ────────────────────────────
 function AcademyCard({ lesson, index, rtp }) {
   return (
     <motion.div
@@ -208,54 +202,48 @@ function AcademyCard({ lesson, index, rtp }) {
       style={{
         background: "rgba(155,126,255,0.04)",
         border: "1px solid rgba(155,126,255,0.18)",
-        boxShadow: "0 0 24px rgba(155,126,255,0.05)",
+        boxShadow: "0 0 18px rgba(155,126,255,0.05)",
       }}
     >
-      {/* 16:9 Thumbnail */}
-      <Link to={`/academy/lesson/${lesson.id}`} className="block relative overflow-hidden"
-        style={{ paddingBottom: "56.25%" }}>
-        <div className="absolute inset-0">
+      <div className="flex items-stretch gap-0">
+        {/* 2:1 thumbnail */}
+        <Link to={`/academy/lesson/${lesson.id}`} className="relative flex-shrink-0 overflow-hidden rounded-l-2xl" style={{ width: 104, minHeight: 80 }}>
           {lesson.thumbnail_url ? (
             <img src={lesson.thumbnail_url} alt={lesson.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy"
+              style={{ minHeight: 80 }} />
           ) : (
             <div className="w-full h-full flex items-center justify-center"
-              style={{ background: "rgba(155,126,255,0.08)" }}>
-              <GraduationCap className="w-10 h-10 text-purple-400/20" />
+              style={{ background: "rgba(155,126,255,0.08)", minHeight: 80 }}>
+              <GraduationCap className="w-7 h-7 text-purple-400/25" />
             </div>
           )}
-          {/* Dark overlay */}
-          <div className="absolute inset-0 flex items-center justify-center"
-            style={{ background: "rgba(0,0,0,0.45)" }}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
-              style={{ background: "rgba(155,126,255,0.85)", boxShadow: "0 0 20px rgba(155,126,255,0.5)" }}>
-              <BookOpen className="w-5 h-5 text-white" />
+          {/* Play overlay */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: "rgba(0,0,0,0.4)" }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(155,126,255,0.9)", boxShadow: "0 0 14px rgba(155,126,255,0.6)" }}>
+              <BookOpen className="w-4 h-4 text-white" />
             </div>
           </div>
-          {/* ACADEMY badge */}
-          <div className="absolute top-2 left-2">
-            <span className="text-[8px] font-black px-2 py-1 rounded-full tracking-wider"
-              style={{ background: "rgba(155,126,255,0.9)", color: "#fff" }}>
-              🎓 ACADEMY
-            </span>
-          </div>
-          {/* Glow frame on hover */}
-          <div className="absolute inset-0 rounded-none pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ boxShadow: "inset 0 0 0 2px rgba(155,126,255,0.5)" }} />
-        </div>
-      </Link>
-
-      {/* Bottom info */}
-      <div className="flex items-center justify-between px-3 py-2.5 gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-white truncate leading-tight">{lesson.title}</p>
-          <p className="text-[11px] text-purple-300/50 mt-0.5">Watch Lesson</p>
-        </div>
-        <Link to={`/academy/lesson/${lesson.id}`}
-          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] tracking-wider transition-all hover:brightness-125 whitespace-nowrap"
-          style={{ background: "rgba(155,126,255,0.15)", border: "1px solid rgba(155,126,255,0.35)", color: "#c4aaff" }}>
-          <GraduationCap className="w-3 h-3" /> Learn
         </Link>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0 flex flex-col justify-between px-3 py-2.5">
+          <div>
+            <span className="inline-flex items-center gap-1 text-[8px] font-black px-2 py-0.5 rounded-full mb-1.5 tracking-wider"
+              style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.28)", color: "#c4aaff" }}>
+              🎓 Academy
+            </span>
+            <p className="text-sm font-bold text-white truncate leading-tight">{lesson.title}</p>
+            <p className="text-[11px] text-white/35 truncate mt-0.5">Watch Lesson</p>
+          </div>
+          <Link to={`/academy/lesson/${lesson.id}`}
+            className="mt-2 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] tracking-wider transition-all hover:brightness-125 whitespace-nowrap"
+            style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.3)", color: "#c4aaff" }}>
+            <GraduationCap className="w-3 h-3" /> Learn
+          </Link>
+        </div>
       </div>
     </motion.div>
   );
