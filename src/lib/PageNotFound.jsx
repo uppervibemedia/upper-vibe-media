@@ -11,7 +11,7 @@ export default function PageNotFound() {
         <p className="font-heading font-bold text-lg text-foreground mb-2">Signal Lost</p>
         <p className="text-sm text-muted-foreground mb-8">This frequency doesn't exist. Let's get you back on track.</p>
         <Link
-          to="/"
+          to="/start"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary/10 border border-primary/30 text-primary text-sm font-medium hover:bg-primary/20 transition-all"
         >
           <ArrowLeft className="w-4 h-4" />

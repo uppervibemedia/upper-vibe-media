@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { resolvePostLoginRoute, clearAllStoredRedirects } from '@/lib/safeRedirect';
 
 const AuthContext = createContext();
 
@@ -67,7 +68,10 @@ export const AuthProvider = ({ children }) => {
         
         // If we got the app public settings successfully, check if user is authenticated
         if (appParams.token) {
-          await checkUserAuth();
+          // Detect if the token just arrived in the URL (fresh login)
+          const urlParams = new URLSearchParams(window.location.search);
+          const isFreshLogin = !!urlParams.get("access_token");
+          await checkUserAuth(isFreshLogin);
         } else {
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
@@ -115,15 +119,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const checkUserAuth = async () => {
+  const checkUserAuth = async (isNewLogin = false) => {
     try {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
+
       // Mark that this browser has logged in before (for returning visitor hint)
       try { localStorage.setItem('uvm_has_logged_in', '1'); } catch {}
+
+      // On a fresh login (access_token just arrived in URL), redirect to a safe route
+      if (isNewLogin) {
+        // Read ?next= param if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const nextParam = urlParams.get("next") || urlParams.get("returnUrl") || urlParams.get("redirect");
+        const destination = resolvePostLoginRoute(currentUser, nextParam);
+        clearAllStoredRedirects();
+        // Only navigate if we're not already on that page
+        if (window.location.pathname !== destination) {
+          window.location.replace(destination);
+          return; // don't set loading false — page is navigating
+        }
+      }
+
       setIsLoadingAuth(false);
     } catch (error) {
       console.error('User auth check failed:', error);
