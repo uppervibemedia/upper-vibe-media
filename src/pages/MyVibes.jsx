@@ -10,6 +10,50 @@ import { useFavorites } from "../hooks/useFavorite";
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 
+// Routes that a logged-in user should never be sent back to
+const AUTH_ROUTES = new Set([
+  "/login", "/signin", "/sign-in", "/signup", "/register", "/auth",
+  "/payment-success", "/payment-cancelled",
+]);
+
+function isAuthRoute(path) {
+  if (!path) return true;
+  const lower = path.toLowerCase();
+  if (AUTH_ROUTES.has(lower)) return true;
+  if (lower.startsWith("/auth/") || lower.startsWith("/login/") || lower.startsWith("/signin/")) return true;
+  return false;
+}
+
+function useSafeBack(fallback = "/music") {
+  const navigate = useNavigate();
+  return () => {
+    // document.referrer gives the previous page URL within the same origin
+    try {
+      const ref = document.referrer;
+      if (ref) {
+        const url = new URL(ref);
+        if (url.origin === window.location.origin && !isAuthRoute(url.pathname)) {
+          navigate(-1);
+          return;
+        }
+      }
+    } catch {}
+    // No valid referrer — check if history has a safe previous entry
+    // history.length > 1 means there's something behind us, but we can't
+    // read what it is. If we got here via a fresh login redirect, the
+    // previous entry IS the login page. In that case, replace instead.
+    const isLikelyFreshLoginRedirect =
+      !document.referrer ||
+      isAuthRoute(new URL(document.referrer || window.location.href).pathname);
+
+    if (isLikelyFreshLoginRedirect) {
+      navigate(fallback, { replace: true });
+    } else {
+      navigate(-1);
+    }
+  };
+}
+
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
   const { isFaved, toggle } = useFavorites(user?.email);
@@ -23,6 +67,7 @@ export default function MyVibes() {
   const { accent } = useTheme();
   const rgb = accent.rgb; // e.g. "0,229,255"
   const navigate = useNavigate();
+  const safeBack = useSafeBack("/music");
 
 
   useEffect(() => {
@@ -97,7 +142,7 @@ export default function MyVibes() {
         <div className="max-w-5xl mx-auto relative z-10">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             {/* Back button */}
-            <button onClick={() => navigate(-1)}
+            <button onClick={safeBack}
               className="flex items-center gap-1.5 mb-5 text-xs font-bold tracking-wide transition-all hover:opacity-80"
               style={{ color: "rgba(255,255,255,0.4)" }}>
               <ChevronLeft className="w-4 h-4" /> Back
