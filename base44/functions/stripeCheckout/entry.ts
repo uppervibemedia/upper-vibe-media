@@ -38,7 +38,12 @@ Deno.serve(async (req) => {
         metadata: { base44_user_email: user.email },
       });
       customerId = customer.id;
-      await base44.auth.updateMe({ stripeCustomerId: customerId });
+      // Save for future checkouts — non-fatal if this fails
+      try {
+        await base44.auth.updateMe({ stripeCustomerId: customerId });
+      } catch (saveErr) {
+        console.warn('Could not save stripeCustomerId to user profile:', saveErr.message);
+      }
     }
 
     const session = await stripe.checkout.sessions.create({

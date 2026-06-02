@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, X, Crown, Library, MessageCircle } from "lucide-react";
+import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, Crown, Library, MessageCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { toast } from "sonner";
 
 import YouTubeCTA from "@/components/start/YouTubeCTA";
 import RadioCTA from "@/components/start/RadioCTA";
@@ -106,13 +107,27 @@ export default function Start() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoadingAuth, isPlus, isAdmin, navigateToLogin } = useAuth();
 
+  // Check if returning from login with a checkout intent
+  useEffect(() => {
+    if (isLoadingAuth || !isAuthenticated) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("intent") === "checkout") {
+      // Strip the param from the URL, then trigger checkout
+      window.history.replaceState({}, "", "/start");
+      if (!isPlus && !isAdmin) {
+        triggerCheckout();
+      }
+    }
+  }, [isAuthenticated, isLoadingAuth]);
+
   // Routing: only redirect non-admin free/plus users away from the sales page
   useEffect(() => {
     if (isLoadingAuth) return;
     if (!isAuthenticated) return; // logged-out visitors stay on /start
     if (isAdmin) return; // admins can view /start to preview it
-    if (isPlus) { navigate("/my-vibe-library", { replace: true }); return; } // Plus → library
-    // Free logged-in users → send to music, not the sales page
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("intent") === "checkout") return; // handled above, don't redirect
+    if (isPlus) { navigate("/my-vibe-library", { replace: true }); return; }
     navigate("/music", { replace: true });
   }, [isAuthenticated, isLoadingAuth, isPlus, isAdmin, navigate]);
 
@@ -149,11 +164,7 @@ export default function Start() {
     );
   }
 
-  const handleCheckout = async () => {
-    if (window.self !== window.top) {
-      setCheckoutError("Checkout is only available from the published app. Please open uppervibemedia.com directly.");
-      return;
-    }
+  const triggerCheckout = async () => {
     setCheckoutError("");
     try {
       const res = await base44.functions.invoke("stripeCheckout", {
@@ -162,10 +173,40 @@ export default function Start() {
         successUrl: `${window.location.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${window.location.origin}/start`,
       });
-      if (res.data?.url) window.location.href = res.data.url;
+      if (res.data?.url) {
+        window.location.href = res.data.url;
+      } else {
+        setCheckoutError("Checkout could not start. Please try again or contact support.");
+      }
     } catch (e) {
-      setCheckoutError("Something went wrong. Please try again.");
+      console.error("Checkout error:", e);
+      setCheckoutError("Checkout could not start. Please try again or contact support.");
     }
+  };
+
+  const handleCheckout = () => {
+    // Block checkout inside iframes (TikTok in-app browser workaround)
+    if (window.self !== window.top) {
+      setCheckoutError("Checkout works only from the published app. Please open uppervibemedia.com directly in Safari.");
+      return;
+    }
+
+    // Already Plus
+    if (isPlus) {
+      toast.success("You already have Upper Vibe Plus!");
+      navigate("/my-vibe-library");
+      return;
+    }
+
+    // Not logged in — redirect to login, then return with checkout intent
+    if (!isAuthenticated) {
+      setCheckoutError("");
+      navigateToLogin(`${window.location.origin}/start?intent=checkout`);
+      return;
+    }
+
+    // Logged-in free user — proceed to checkout
+    triggerCheckout();
   };
 
   const handleEmailSubmit = async (e) => {
@@ -249,13 +290,13 @@ export default function Start() {
             {/* Login / Create Account for logged-out visitors */}
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => navigateToLogin(`${window.location.origin}/music`)}
+                onClick={() => navigateToLogin(`${window.location.origin}/start?intent=checkout`)}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold tracking-wide transition-all active:scale-[0.97]"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)" }}>
                 Log In
               </button>
               <button
-                onClick={() => navigateToLogin(`${window.location.origin}/music`)}
+                onClick={() => navigateToLogin(`${window.location.origin}/start?intent=checkout`)}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold tracking-wide transition-all active:scale-[0.97]"
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)" }}>
                 Create Account
