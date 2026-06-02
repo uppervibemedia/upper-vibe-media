@@ -107,29 +107,31 @@ export default function Start() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoadingAuth, isPlus, isAdmin, navigateToLogin } = useAuth();
 
-  // Check if returning from login with a checkout intent
+  // Single effect handles all authenticated routing to avoid race conditions
   useEffect(() => {
     if (isLoadingAuth || !isAuthenticated) return;
+    if (isAdmin) return; // admins stay to preview
+
     const params = new URLSearchParams(window.location.search);
-    if (params.get("intent") === "checkout") {
-      // Strip the param from the URL, then trigger checkout
+    const hasCheckoutIntent = params.get("intent") === "checkout";
+
+    if (hasCheckoutIntent) {
+      // Clear the param from URL
       window.history.replaceState({}, "", "/start");
-      if (!isPlus && !isAdmin) {
+      if (isPlus) {
+        toast.success("You already have Upper Vibe Plus!");
+        navigate("/my-vibe-library", { replace: true });
+      } else {
+        // Free user returning from login — trigger checkout immediately
         triggerCheckout();
       }
+      return;
     }
-  }, [isAuthenticated, isLoadingAuth]);
 
-  // Routing: only redirect non-admin free/plus users away from the sales page
-  useEffect(() => {
-    if (isLoadingAuth) return;
-    if (!isAuthenticated) return; // logged-out visitors stay on /start
-    if (isAdmin) return; // admins can view /start to preview it
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("intent") === "checkout") return; // handled above, don't redirect
+    // No checkout intent — normal redirect
     if (isPlus) { navigate("/my-vibe-library", { replace: true }); return; }
     navigate("/music", { replace: true });
-  }, [isAuthenticated, isLoadingAuth, isPlus, isAdmin, navigate]);
+  }, [isAuthenticated, isLoadingAuth, isPlus, isAdmin]);
 
   // Inject page-specific meta tags for social sharing
   useEffect(() => {
@@ -152,9 +154,10 @@ export default function Start() {
     return () => { document.title = prev; };
   }, []);
 
-  // Show loading while auth resolves, or while redirecting Plus/free logged-in users
-  // Admins are allowed to stay and preview the page, so no spinner for them
-  const isRedirecting = isAuthenticated && !isAdmin;
+  // Show loading while auth resolves, or while a normal redirect is in progress.
+  // If the user has ?intent=checkout, keep the page visible so triggerCheckout can run.
+  const hasCheckoutIntent = new URLSearchParams(window.location.search).get("intent") === "checkout";
+  const isRedirecting = isAuthenticated && !isAdmin && !hasCheckoutIntent;
   if (isLoadingAuth || isRedirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center"
@@ -185,28 +188,24 @@ export default function Start() {
   };
 
   const handleCheckout = () => {
-    // Block checkout inside iframes (TikTok in-app browser workaround)
+    setCheckoutError("");
+
+    // Block checkout inside iframes (TikTok in-app browser)
     if (window.self !== window.top) {
       setCheckoutError("Checkout works only from the published app. Please open uppervibemedia.com directly in Safari.");
       return;
     }
 
-    // Already Plus
+    // Already Plus — don't charge again
     if (isPlus) {
       toast.success("You already have Upper Vibe Plus!");
       navigate("/my-vibe-library");
       return;
     }
 
-    // Not logged in — redirect to login, then return with checkout intent
-    if (!isAuthenticated) {
-      setCheckoutError("");
-      navigateToLogin(`${window.location.origin}/start?intent=checkout`);
-      return;
-    }
-
-    // Logged-in free user — proceed to checkout
-    triggerCheckout();
+    // Logged out — go to login/signup, then come back to trigger checkout
+    // (logged-in free users are redirected away from /start, so they always hit this path first)
+    navigateToLogin(`${window.location.origin}/start?intent=checkout`);
   };
 
   const handleEmailSubmit = async (e) => {
