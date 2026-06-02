@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { X, Heart, Play, Tv2, Headphones, Download, Lock } from "lucide-react";
@@ -25,9 +25,49 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
   const rtp = (RADIO_THEMES[accentId] || RADIO_THEMES.cyan).vars["--rt-primary"];
 
   const embedUrl = toEmbedUrl(viz?.embed_url || viz?.video_url);
-  const related = allVisualizers
-    .filter((v) => v.id !== viz?.id && (v.category === viz?.category || v.artist === viz?.artist))
-    .slice(0, 4);
+
+  // Shuffle helper with a seed so it changes each open but stays stable within a session
+  const shuffleArray = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  const related = useMemo(() => {
+    if (!viz || allVisualizers.length === 0) return [];
+    const others = allVisualizers.filter((v) => v.id !== viz.id);
+
+    // Score each candidate: higher = more related
+    const scored = others.map((v) => {
+      let score = 0;
+      if (v.artist && viz.artist && v.artist.toLowerCase() === viz.artist.toLowerCase()) score += 4;
+      if (v.category && viz.category && v.category === viz.category) score += 3;
+      if (v.detected_category && viz.detected_category && v.detected_category === viz.detected_category) score += 2;
+      // Title word overlap
+      const titleWords = (viz.title || "").toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const vTitleLower = (v.title || "").toLowerCase();
+      titleWords.forEach(w => { if (vTitleLower.includes(w)) score += 1; });
+      return { v, score };
+    });
+
+    // Shuffle before sorting so ties are randomised each open
+    const shuffled = shuffleArray(scored);
+    shuffled.sort((a, b) => b.score - a.score);
+
+    const top = shuffled.filter(({ score }) => score > 0).slice(0, 4).map(({ v }) => v);
+
+    // Fill remaining slots from shuffled fallback (newest/trending)
+    if (top.length < 4) {
+      const topIds = new Set(top.map(v => v.id));
+      const fallback = shuffleArray(others.filter(v => !topIds.has(v.id)));
+      while (top.length < 4 && fallback.length > 0) top.push(fallback.shift());
+    }
+
+    return top;
+  }, [viz?.id, allVisualizers]);
 
   useEffect(() => {
     if (!viz) return;
