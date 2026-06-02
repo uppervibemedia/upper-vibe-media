@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, Crown, Library, MessageCircle } from "lucide-react";
+import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, Crown, Library, MessageCircle, X, UserPlus, LogIn } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "sonner";
@@ -99,11 +99,109 @@ function PremiumWelcome() {
   );
 }
 
+// ── Inline auth-choice modal ───────────────────────────────────────────────
+// Shown when a logged-out user taps the $4.99 CTA so they can choose
+// Create Account vs Log In without seeing a generic error.
+function AuthChoiceModal({ open, onClose, onLogin, onSignup, onListenFree }) {
+  if (!open) return null;
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(4,4,14,0.92)",
+        display: "flex", alignItems: "flex-end", justifyContent: "center",
+        padding: "0 0 env(safe-area-inset-bottom, 16px) 0",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%", maxWidth: 480,
+          background: "linear-gradient(160deg,#0d0d22,#0a0a1a)",
+          border: "1px solid rgba(0,160,220,0.25)",
+          borderRadius: "24px 24px 0 0",
+          padding: "28px 24px 32px",
+        }}
+      >
+        {/* Handle bar */}
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.12)", margin: "0 auto 20px" }} />
+
+        {/* Close */}
+        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", cursor: "pointer", padding: 8 }}>
+          <X style={{ width: 18, height: 18 }} />
+        </button>
+
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(0,160,220,0.1)", border: "1px solid rgba(0,160,220,0.25)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+            <Crown style={{ width: 22, height: 22, color: "#00A0DC" }} />
+          </div>
+          <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 900, fontSize: "1.25rem", color: "#fff", marginBottom: 6 }}>
+            Unlock All Downloads — $4.99/mo
+          </h2>
+          <p style={{ fontSize: "0.825rem", color: "rgba(255,255,255,0.42)", lineHeight: 1.55 }}>
+            Create a free account to get started, then unlock Plus for unlimited downloads.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Primary: Create Account */}
+          <button
+            onClick={onSignup}
+            style={{
+              width: "100%", padding: "15px 20px",
+              borderRadius: 16, border: "none", cursor: "pointer",
+              background: "linear-gradient(135deg,#0090C8,#00A0DC)",
+              color: "#000", fontFamily: "var(--font-heading)", fontWeight: 900,
+              fontSize: "0.9rem", letterSpacing: "0.04em",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              boxShadow: "0 0 28px rgba(0,160,220,0.4)",
+            }}
+          >
+            <UserPlus style={{ width: 17, height: 17 }} />
+            Create Account &amp; Unlock Plus
+          </button>
+
+          {/* Secondary: Log In */}
+          <button
+            onClick={onLogin}
+            style={{
+              width: "100%", padding: "13px 20px",
+              borderRadius: 16, cursor: "pointer",
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.14)",
+              color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: "0.875rem",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+            }}
+          >
+            <LogIn style={{ width: 15, height: 15 }} />
+            I Already Have an Account
+          </button>
+
+          {/* Tertiary: Listen Free */}
+          <button
+            onClick={onListenFree}
+            style={{
+              width: "100%", padding: "11px 20px",
+              borderRadius: 14, cursor: "pointer",
+              background: "none", border: "none",
+              color: "rgba(255,255,255,0.28)", fontSize: "0.8rem", fontWeight: 600,
+            }}
+          >
+            Listen Free — No Account Needed
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Start() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [authModal, setAuthModal] = useState(false); // "plus" | false
   const navigate = useNavigate();
   const { isAuthenticated, isLoadingAuth, isPlus, isAdmin, navigateToLogin } = useAuth();
 
@@ -203,8 +301,25 @@ export default function Start() {
       return;
     }
 
-    // Logged out — go to login/signup, then come back to trigger checkout
-    // (logged-in free users are redirected away from /start, so they always hit this path first)
+    // Logged out — show inline choice modal (Create Account vs Log In)
+    if (!isAuthenticated) {
+      setAuthModal(true);
+      return;
+    }
+
+    // Logged-in free user (reached via ?intent=checkout flow) — proceed to checkout
+    triggerCheckout();
+  };
+
+  // Modal action: Create Account — go to auth in signup mode with checkout intent
+  const handleSignupForPlus = () => {
+    setAuthModal(false);
+    navigateToLogin(`${window.location.origin}/start?intent=checkout`);
+  };
+
+  // Modal action: Log In — go to auth with checkout intent
+  const handleLoginForPlus = () => {
+    setAuthModal(false);
     navigateToLogin(`${window.location.origin}/start?intent=checkout`);
   };
 
@@ -295,9 +410,9 @@ export default function Start() {
                 Log In
               </button>
               <button
-                onClick={() => navigateToLogin(`${window.location.origin}/start?intent=checkout`)}
+                onClick={() => setAuthModal(true)}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold tracking-wide transition-all active:scale-[0.97]"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)" }}>
+                style={{ background: "rgba(0,160,220,0.08)", border: "1px solid rgba(0,160,220,0.28)", color: "#00A0DC" }}>
                 Create Account
               </button>
             </div>
@@ -499,6 +614,15 @@ export default function Start() {
           </p>
         </div>
       </div>
+
+      {/* Auth choice modal — shown when logged-out user taps Plus CTA or Create Account */}
+      <AuthChoiceModal
+        open={authModal}
+        onClose={() => setAuthModal(false)}
+        onSignup={handleSignupForPlus}
+        onLogin={handleLoginForPlus}
+        onListenFree={() => { setAuthModal(false); navigate("/music"); }}
+      />
     </div>
   );
 }
