@@ -109,38 +109,56 @@ function AuthChoiceModal({ open, onClose, onLogin, onSignup, onListenFree }) {
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(4,4,14,0.92)",
-        display: "flex", alignItems: "flex-end", justifyContent: "center",
-        padding: "0 0 env(safe-area-inset-bottom, 16px) 0",
+        background: "rgba(4,4,14,0.88)",
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px)",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: "100%", maxWidth: 480,
+          width: "100%", maxWidth: 420,
           background: "linear-gradient(160deg,#0d0d22,#0a0a1a)",
-          border: "1px solid rgba(0,160,220,0.25)",
-          borderRadius: "24px 24px 0 0",
-          padding: "28px 24px 32px",
+          border: "1px solid rgba(0,160,220,0.28)",
+          borderRadius: 24,
+          padding: "28px 22px 24px",
+          position: "relative",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.7), 0 0 40px rgba(0,160,220,0.08)",
+          maxHeight: "90vh",
+          overflowY: "auto",
         }}
       >
-        {/* Handle bar */}
-        <div style={{ width: 40, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.12)", margin: "0 auto 20px" }} />
-
         {/* Close */}
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "rgba(255,255,255,0.35)", cursor: "pointer", padding: 8 }}>
-          <X style={{ width: 18, height: 18 }} />
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute", top: 14, right: 14,
+            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 10, color: "rgba(255,255,255,0.45)", cursor: "pointer",
+            width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <X style={{ width: 15, height: 15 }} />
         </button>
 
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(0,160,220,0.1)", border: "1px solid rgba(0,160,220,0.25)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
-            <Crown style={{ width: 22, height: 22, color: "#00A0DC" }} />
+        <div style={{ textAlign: "center", marginBottom: 22 }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: 15,
+            background: "rgba(0,160,220,0.1)", border: "1px solid rgba(0,160,220,0.28)",
+            display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 14,
+          }}>
+            <Crown style={{ width: 24, height: 24, color: "#00A0DC" }} />
           </div>
-          <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 900, fontSize: "1.25rem", color: "#fff", marginBottom: 6 }}>
-            Unlock All Downloads — $4.99/mo
+          <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 900, fontSize: "1.2rem", color: "#fff", marginBottom: 8, lineHeight: 1.2 }}>
+            Unlock All Downloads<br />
+            <span style={{ color: "#00A0DC" }}>$4.99/month</span>
           </h2>
-          <p style={{ fontSize: "0.825rem", color: "rgba(255,255,255,0.42)", lineHeight: 1.55 }}>
-            Create a free account to get started, then unlock Plus for unlimited downloads.
+          <p style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.42)", lineHeight: 1.55, maxWidth: 300, margin: "0 auto" }}>
+            Create a free account to get started, then unlock Plus for unlimited 432 Hz downloads.
           </p>
         </div>
 
@@ -149,13 +167,13 @@ function AuthChoiceModal({ open, onClose, onLogin, onSignup, onListenFree }) {
           <button
             onClick={onSignup}
             style={{
-              width: "100%", padding: "15px 20px",
-              borderRadius: 16, border: "none", cursor: "pointer",
+              width: "100%", padding: "14px 20px",
+              borderRadius: 15, border: "none", cursor: "pointer",
               background: "linear-gradient(135deg,#0090C8,#00A0DC)",
               color: "#000", fontFamily: "var(--font-heading)", fontWeight: 900,
               fontSize: "0.9rem", letterSpacing: "0.04em",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-              boxShadow: "0 0 28px rgba(0,160,220,0.4)",
+              boxShadow: "0 0 28px rgba(0,160,220,0.35)",
             }}
           >
             <UserPlus style={{ width: 17, height: 17 }} />
@@ -167,7 +185,7 @@ function AuthChoiceModal({ open, onClose, onLogin, onSignup, onListenFree }) {
             onClick={onLogin}
             style={{
               width: "100%", padding: "13px 20px",
-              borderRadius: 16, cursor: "pointer",
+              borderRadius: 14, cursor: "pointer",
               background: "rgba(255,255,255,0.05)",
               border: "1px solid rgba(255,255,255,0.14)",
               color: "rgba(255,255,255,0.7)", fontWeight: 700, fontSize: "0.875rem",
@@ -182,8 +200,8 @@ function AuthChoiceModal({ open, onClose, onLogin, onSignup, onListenFree }) {
           <button
             onClick={onListenFree}
             style={{
-              width: "100%", padding: "11px 20px",
-              borderRadius: 14, cursor: "pointer",
+              width: "100%", padding: "10px 20px",
+              borderRadius: 12, cursor: "pointer",
               background: "none", border: "none",
               color: "rgba(255,255,255,0.28)", fontSize: "0.8rem", fontWeight: 600,
             }}
