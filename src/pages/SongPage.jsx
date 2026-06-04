@@ -22,7 +22,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import IOSTip from "@/components/shared/iOSTip";
-import { isNewTrack } from "@/lib/isNewTrack";
+import NewBadge from "@/components/shared/NewBadge";
 import ThumbsDownButton from "@/components/shared/ThumbsDownButton";
 
 function toEmbedUrl(url) {
@@ -313,12 +313,7 @@ export default function SongPage() {
                   <span className="text-[9px] font-black px-2.5 py-1 rounded-full"
                     style={{ background: "rgba(212,168,67,0.2)", color: "#D4A843" }}>Featured</span>
                 )}
-                {isNewTrack(track) && (
-                  <span className="text-[9px] font-black px-2.5 py-1 rounded-full"
-                    style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.9),rgba(240,180,50,0.95))", color: "#000", boxShadow: "0 0 10px rgba(212,168,67,0.3)" }}>
-                    NEW
-                  </span>
-                )}
+                <NewBadge track={track} />
               </div>
 
               <h1 className="font-heading font-black text-3xl sm:text-5xl text-white mb-1.5 leading-tight">{track.title}</h1>

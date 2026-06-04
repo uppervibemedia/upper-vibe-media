@@ -6,7 +6,7 @@ import { getAccessBadge, getEffectiveAccess } from "@/lib/tierAccess";
 import DownloadButton from "./DownloadButton";
 import TrackVersionSelector from "./TrackVersionSelector";
 import { useTrackVersions, pickBestVersion, getVersionBadge } from "@/hooks/useTrackVersions";
-import { isNewTrack } from "@/lib/isNewTrack";
+import { NewBadgeOverlay } from "@/components/shared/NewBadge";
 
 export default function TrackCard({ track, locked, onLockedClick, userTier = "free", userEmail, onUpgrade, showVersions = false }) {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
@@ -84,15 +84,8 @@ export default function TrackCard({ track, locked, onLockedClick, userTier = "fr
           )}
         </div>
 
-        {/* NEW badge — auto-shown for tracks uploaded within 7 days */}
-        {isNewTrack(track) && (
-          <div className="absolute top-2 left-2">
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider"
-              style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.9),rgba(240,180,50,0.95))", color: "#000", boxShadow: "0 0 8px rgba(212,168,67,0.4)" }}>
-              NEW
-            </span>
-          </div>
-        )}
+        {/* NEW badge — auto-shown for tracks released within 7 days */}
+        <NewBadgeOverlay track={track} />
 
         {/* Version badge (dynamic, tier-aware) or legacy badge */}
         {hasVersions && versionBadge ? (

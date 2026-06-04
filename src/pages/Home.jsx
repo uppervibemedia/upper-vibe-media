@@ -127,9 +127,14 @@ export default function Home() {
       base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
     ]);
 
-    // Pick 4 truly random featured tracks on every mount — rotates each visit/refresh
-    const featured = pickHomepageTracks(allTracks);
-    setLatestTracks(featured.length > 0 ? featured : allTracks.filter(t => t.audio_url && t.cover_url).slice(0, 4));
+    // Latest Music section: always the 4 newest published+playable tracks, sorted by date
+    const playable = allTracks.filter(t => t.audio_url && t.cover_url && t.status === "published");
+    const sortedNewest = [...playable].sort((a, b) => {
+      const da = new Date(a.release_date || a.created_date || 0).getTime();
+      const db = new Date(b.release_date || b.created_date || 0).getTime();
+      return db - da;
+    });
+    setLatestTracks(sortedNewest.slice(0, 4));
     setAllTracks(allTracks);
 
     const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);

@@ -5,8 +5,8 @@ import FreqBadge from "@/components/shared/FreqBadge";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
-import { isNewTrack } from "@/lib/isNewTrack";
 import { pickFeaturedTrack, pickSmallCards } from "@/lib/featuredTrackPicker";
+import NewBadge, { NewBadgeOverlay } from "@/components/shared/NewBadge";
 
 const BLUE = "0,160,220";
 
@@ -74,11 +74,7 @@ function SmallTrackCard({ track }) {
       {/* Dark gradient overlay */}
       <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 45%)" }} />
 
-      {isNewTrack(track) && (
-        <div className="absolute top-1.5 left-1.5">
-          <span style={{ fontSize: "8px", fontWeight: 900, letterSpacing: "0.08em", padding: "2px 6px", borderRadius: 99, background: "linear-gradient(135deg,rgba(212,168,67,0.9),rgba(240,180,50,0.95))", color: "#000", display: "block" }}>NEW</span>
-        </div>
-      )}
+      <NewBadgeOverlay track={track} />
 
       <p className="absolute bottom-2 left-2 right-2 text-white truncate"
         style={{ fontSize: "10px", fontWeight: 700, lineHeight: 1.2, textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>
@@ -172,9 +168,7 @@ export default function RadioCTA() {
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <FreqBadge label={freqLabel} />
-                    {isNewTrack(featuredTrack) && (
-                      <span style={{ fontSize: "8px", fontWeight: 900, letterSpacing: "0.08em", padding: "2px 7px", borderRadius: 99, background: "linear-gradient(135deg,rgba(212,168,67,0.9),rgba(240,180,50,0.95))", color: "#000" }}>NEW</span>
-                    )}
+                    <NewBadge track={featuredTrack} />
                   </div>
                   <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.95rem", lineHeight: 1.2 }}>
                     {featuredTrack.title}

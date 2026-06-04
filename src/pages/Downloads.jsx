@@ -9,9 +9,12 @@ import Footer from "../components/shared/Footer";
 import { format } from "date-fns";
 import { useTheme } from "../context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
+import NewBadge from "@/components/shared/NewBadge";
+import { getPublishedTracks } from "@/lib/trackCache";
 
 export default function Downloads() {
   const [downloads, setDownloads] = useState([]);
+  const [trackMap, setTrackMap] = useState({});
   const [loading, setLoading] = useState(true);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isAuthenticated, navigateToLogin } = useAuth();
@@ -22,8 +25,16 @@ export default function Downloads() {
 
   useEffect(() => {
     if (!user?.id) return;
-    base44.entities.UserDownload.filter({ user_id: user.id }, "-downloaded_at", 200)
-      .then((res) => { setDownloads(res); setLoading(false); });
+    Promise.all([
+      base44.entities.UserDownload.filter({ user_id: user.id }, "-downloaded_at", 200),
+      getPublishedTracks("-created_date", 500),
+    ]).then(([dls, tracks]) => {
+      const map = {};
+      tracks.forEach(t => { map[t.id] = t; });
+      setDownloads(dls);
+      setTrackMap(map);
+      setLoading(false);
+    });
   }, [user?.id]);
 
   if (!isAuthenticated || !user) {
@@ -143,7 +154,10 @@ export default function Downloads() {
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{dl.song_title || "Unknown Track"}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-white truncate">{dl.song_title || "Unknown Track"}</p>
+                        {trackMap[dl.song_id] && <NewBadge track={trackMap[dl.song_id]} />}
+                      </div>
                       <p className="text-xs text-white/40 truncate">{dl.artist_name || "Upper Vibe Media"}</p>
                       {dl.downloaded_at && (
                         <p className="text-[10px] text-white/20 mt-0.5">

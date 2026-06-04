@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import SectionHeader from "../shared/SectionHeader";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
-import { isNewTrack } from "@/lib/isNewTrack";
+import { NewBadgeOverlay } from "@/components/shared/NewBadge";
 
 export default function LatestMusicSection({ tracks, currentTrack, isPlaying, handlePlayTrack, heartButton, user, themeColor }) {
   const navigate = useNavigate();
@@ -61,12 +61,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                         : <Play className="w-4 h-4 text-white fill-current ml-0.5" />}
                     </div>
                   </div>
-                  {isNewTrack(track) && (
-                    <div className="absolute top-2 left-2">
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-wider"
-                        style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.9),rgba(240,180,50,0.95))", color: "#000", boxShadow: "0 0 8px rgba(212,168,67,0.4)" }}>NEW</span>
-                    </div>
-                  )}
+                  <NewBadgeOverlay track={track} />
                 </div>
                 <div className="p-2.5">
                   <p className="font-heading font-black text-xs text-white truncate">{track.title}</p>
@@ -141,15 +136,8 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     </div>
                   </div>
 
-                  {/* New release badge — auto-shown for tracks uploaded within 7 days */}
-                  {isNewTrack(track) && (
-                    <div className="absolute top-3 left-3">
-                      <span className="px-2.5 py-1 rounded-full text-[9px] font-black tracking-wider"
-                        style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.9),rgba(240,180,50,0.95))", color: "#000", boxShadow: "0 0 10px rgba(212,168,67,0.4)" }}>
-                        NEW
-                      </span>
-                    </div>
-                  )}
+                  {/* New release badge — auto-shown for tracks released within 7 days */}
+                  <NewBadgeOverlay track={track} />
 
                   {/* Currently playing indicator */}
                   {isCurrent && isPlaying && (

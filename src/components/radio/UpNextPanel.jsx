@@ -3,6 +3,7 @@ import { Music4, Waves, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "./RadioThemePicker";
+import NewBadge from "@/components/shared/NewBadge";
 
 export default function UpNextPanel({ upNext, onJump }) {
   const { accentId } = useTheme();
@@ -60,11 +61,14 @@ export default function UpNextPanel({ upNext, onJump }) {
               </p>
             </div>
 
-            {/* 432 tag */}
-            <span className="flex-shrink-0 inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full"
-              style={{ background: `rgba(${rtPrimary},0.1)`, color: `rgb(${rtPrimary})` }}>
-              <Waves className="w-2 h-2" /> 432
-            </span>
+            {/* NEW + 432 tags */}
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+              <NewBadge track={song} />
+              <span className="inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full"
+                style={{ background: `rgba(${rtPrimary},0.1)`, color: `rgb(${rtPrimary})` }}>
+                <Waves className="w-2 h-2" /> 432
+              </span>
+            </div>
           </motion.div>
         ))}
       </div>

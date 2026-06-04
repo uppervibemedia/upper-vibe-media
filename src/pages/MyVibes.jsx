@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { getPublishedTracks } from "@/lib/trackCache";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, Home, Sparkles } from "lucide-react";
+import NewBadge from "@/components/shared/NewBadge";
 import ShareVibeButton from "@/components/shared/ShareVibeButton";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -167,12 +168,7 @@ export default function MyVibes() {
                       <p className="text-sm font-bold text-white truncate">{track.title}</p>
                       <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
                     </Link>
-                    {track.is_new_release && (
-                      <span className="text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0"
-                        style={{ background: `rgba(${rgb},0.12)`, color: `rgb(${rgb})`, border: `1px solid rgba(${rgb},0.25)` }}>
-                        NEW
-                      </span>
-                    )}
+                    <NewBadge track={track} />
                     <button onClick={() => handlePlay(track)}
                       className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:brightness-110"
                       style={{ background: `rgba(${rgb},0.08)`, border: `1px solid rgba(${rgb},0.2)`, color: `rgb(${rgb})` }}>
@@ -246,7 +242,10 @@ export default function MyVibes() {
                           </div>
 
                           <Link to={`/song/${track.id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
-                            <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                              <NewBadge track={track} />
+                            </div>
                             <p className="text-xs text-white/40 truncate">{track.artist_display || "Upper Vibe Media"}</p>
                             <div className="flex items-center gap-1.5 mt-1">
                               <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
