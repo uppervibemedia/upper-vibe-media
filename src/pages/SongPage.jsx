@@ -22,6 +22,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import IOSTip from "@/components/shared/iOSTip";
+import { isNewTrack } from "@/lib/isNewTrack";
 
 function toEmbedUrl(url) {
   if (!url || typeof url !== "string") return null;
@@ -310,6 +311,12 @@ export default function SongPage() {
                 {track.is_featured && (
                   <span className="text-[9px] font-black px-2.5 py-1 rounded-full"
                     style={{ background: "rgba(212,168,67,0.2)", color: "#D4A843" }}>Featured</span>
+                )}
+                {isNewTrack(track) && (
+                  <span className="text-[9px] font-black px-2.5 py-1 rounded-full"
+                    style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.9),rgba(240,180,50,0.95))", color: "#000", boxShadow: "0 0 10px rgba(212,168,67,0.3)" }}>
+                    NEW
+                  </span>
                 )}
               </div>
 
