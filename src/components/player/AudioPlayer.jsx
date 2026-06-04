@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X, Mic2 } from "lucide-react";
 import ShareVibeButton from "../shared/ShareVibeButton";
+import ThumbsDownButton from "../shared/ThumbsDownButton";
 import { Slider } from "@/components/ui/slider";
 import { usePlayer, sharedHiddenRef } from "../../context/PlayerContext";
 import { useTheme } from "../../context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
 import usePageVisible from "@/hooks/usePageVisible";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function AudioPlayer() {
   const {
@@ -20,6 +22,7 @@ export default function AudioPlayer() {
     lastTimeRef,
   } = usePlayer();
 
+  const { user } = useAuth();
   const { accentId } = useTheme();
   const theme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const themeRgb = theme.vars["--rt-primary"];
@@ -303,6 +306,10 @@ export default function AudioPlayer() {
                 track={currentTrack}
                 size="sm"
               />
+
+              {!currentTrack?._isHostDrop && (
+                <ThumbsDownButton track={currentTrack} user={user} size="sm" />
+              )}
 
               <div className="w-px h-4 bg-border mx-1" />
               <button

@@ -1,0 +1,22 @@
+{
+  "name": "SongDislike",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who disliked"
+    },
+    "track_id": {
+      "type": "string",
+      "description": "ID of the disliked track"
+    },
+    "cached_title": {
+      "type": "string",
+      "description": "Cached title for reference"
+    }
+  },
+  "required": [
+    "user_email",
+    "track_id"
+  ]
+}

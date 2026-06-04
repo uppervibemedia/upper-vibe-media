@@ -27,9 +27,11 @@
 
 const LS_KEY     = "uvm_radio_curator";
 const HALF_LIFE  = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
-const MIN_WEIGHT = 0.2;
+const MIN_WEIGHT = 0.1; // disliked songs can drop below 0.2
 const MAX_WEIGHT = 8.0;
 const BASE       = 1.0;
+// Hard floor for disliked songs — still in pool but almost never plays
+const DISLIKE_WEIGHT = 0.1;
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 function load() {
@@ -118,6 +120,32 @@ export function recordComplete(trackId, allTracks) {
 }
 
 /**
+ * Call when the user taps thumbs down.
+ * Sets the weight to DISLIKE_WEIGHT (0.1) — an ~90% reduction in play frequency.
+ * Calling again (undo) restores weight to BASE (1.0).
+ * @param {string}  trackId
+ * @param {boolean} disliked   — true = disliked, false = undo dislike
+ * @param {Array}   allTracks
+ */
+export function recordDislike(trackId, disliked, allTracks) {
+  if (!trackId) return;
+  const data = load();
+  const now  = Date.now();
+  if (disliked) {
+    // Hard-set to near-zero — bypasses decay so it sticks until undone
+    data.weights[trackId]   = DISLIKE_WEIGHT;
+    data.updatedAt[trackId] = now;
+  } else {
+    // Undo: restore to neutral baseline
+    data.weights[trackId]   = BASE;
+    data.updatedAt[trackId] = now;
+  }
+  save(data);
+  console.log("[Curator] dislike recorded — id:", trackId, "| disliked:", disliked,
+    "| weight:", data.weights[trackId]);
+}
+
+/**
  * Call when the user taps the heart button.
  * @param {string}  trackId
  * @param {boolean} liked      — true = liked, false = unliked
@@ -166,17 +194,25 @@ export function getWeight(trackId) {
  * @param {Array}  likedIds       — IDs the user has hearted
  * @returns {Array}               — shuffled array of track objects
  */
-export function buildWeightedQueue(allTracks, excludeId, likedIds = []) {
+export function buildWeightedQueue(allTracks, excludeId, likedIds = [], dislikedIds = []) {
   const pool = [];
 
   allTracks.filter((t) => t.id !== excludeId).forEach((t) => {
     // Base weight: 1.0 for everyone, +2 bonus if liked
     const likedBonus  = likedIds.includes(t.id) ? 2 : 0;
     const curatorW    = getWeight(t.id);
-    const finalWeight = clamp(curatorW + likedBonus);
-    // Convert float weight into integer slot count (round to nearest 0.5, min 1)
-    const slots = Math.max(1, Math.round(finalWeight * 2));
-    for (let i = 0; i < slots; i++) pool.push(t);
+    // Disliked: override to DISLIKE_WEIGHT regardless of curator score
+    const finalWeight = dislikedIds.includes(t.id)
+      ? DISLIKE_WEIGHT
+      : clamp(curatorW + likedBonus);
+    // Convert float weight into integer slot count (min 1 for non-disliked, 0 for disliked → skip entirely back-to-back)
+    const slots = finalWeight <= DISLIKE_WEIGHT ? 0 : Math.max(1, Math.round(finalWeight * 2));
+    // Still put disliked songs in at slot=1 once every ~10 songs via occasional 10% slot
+    if (slots === 0) {
+      if (Math.random() < 0.05) pool.push(t); // ~5% chance to include — nearly never plays
+    } else {
+      for (let i = 0; i < slots; i++) pool.push(t);
+    }
   });
 
   // Fisher-Yates shuffle

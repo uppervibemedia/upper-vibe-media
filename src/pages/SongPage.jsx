@@ -23,6 +23,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import IOSTip from "@/components/shared/iOSTip";
 import { isNewTrack } from "@/lib/isNewTrack";
+import ThumbsDownButton from "@/components/shared/ThumbsDownButton";
 
 function toEmbedUrl(url) {
   if (!url || typeof url !== "string") return null;
@@ -404,6 +405,14 @@ export default function SongPage() {
                     style={{ background: `rgba(${CYAN},0.15)`, border: `1px solid rgba(${CYAN},0.4)`, color: `rgb(${CYAN})`, boxShadow: `0 0 16px rgba(${CYAN},0.12)` }}>
                     <Zap className="w-4 h-4" /> <span>Support</span>
                   </button>
+
+                  {/* Thumbs down — play less often */}
+                  <ThumbsDownButton
+                    track={track}
+                    user={user}
+                    size="md"
+                    onLogin={() => setLoginPrompt(true)}
+                  />
                 </div>
               </div>
 

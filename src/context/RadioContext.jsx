@@ -29,6 +29,7 @@ import {
   recordListen,
   isCuratorActive,
 } from "@/lib/radioCurator";
+import { getDislikedIds } from "@/hooks/useDislike";
 import {
   loadHostDrops,
   pickRandomDrop,
@@ -178,17 +179,18 @@ export function RadioProvider({ children }) {
     let nextSong;
     let newQueue = [...queue];
 
+    const dislikedIds = getDislikedIds();
     if (newQueue.length > 0) {
       nextSong = newQueue.shift();
     } else {
-      const rebuilt = buildWeightedQueue(allT, currentSong?.id, likedIds);
+      const rebuilt = buildWeightedQueue(allT, currentSong?.id, likedIds, dislikedIds);
       nextSong = rebuilt[0];
       newQueue  = rebuilt.slice(1);
     }
     if (!nextSong) return null;
 
     if (newQueue.length < 10) {
-      const extra = buildWeightedQueue(allT, nextSong.id, likedIds)
+      const extra = buildWeightedQueue(allT, nextSong.id, likedIds, dislikedIds)
         .filter((t) => t.id !== nextSong.id && !newQueue.find((q) => q.id === t.id));
       newQueue = [...newQueue, ...extra].slice(0, 50);
     }
@@ -405,7 +407,7 @@ export function RadioProvider({ children }) {
     // so the Radio page shows it as the current track without restarting
     const activeSong = stateRef.current._currentPlayerTrack;
     if (activeSong) {
-      const built = buildWeightedQueue(allTracks, activeSong.id, likedTrackIds);
+      const built = buildWeightedQueue(allTracks, activeSong.id, likedTrackIds, getDislikedIds());
       setCurrentRadioSong(activeSong);
       setRadioHistory([activeSong]);
       setHistoryIndex(0);
@@ -413,7 +415,7 @@ export function RadioProvider({ children }) {
       return activeSong;
     }
 
-    const built = buildWeightedQueue(allTracks, null, likedTrackIds);
+    const built = buildWeightedQueue(allTracks, null, likedTrackIds, getDislikedIds());
     const song  = built[0];
     if (!song) return null;
     setCurrentRadioSong(song);
@@ -427,7 +429,7 @@ export function RadioProvider({ children }) {
     let song  = currentRadioSong;
     let queue = radioQueue;
     if (!song) {
-      const built = buildWeightedQueue(allTracks, null, likedTrackIds);
+      const built = buildWeightedQueue(allTracks, null, likedTrackIds, getDislikedIds());
       song  = built[0];
       queue = built.slice(1);
       if (!song) return;
@@ -475,7 +477,7 @@ export function RadioProvider({ children }) {
     if (!song) return;
     const newQueue = radioQueue.filter((t) => t.id !== song.id);
     const finalQueue = newQueue.length < 10
-      ? [...newQueue, ...buildWeightedQueue(allTracks, song.id, likedTrackIds).filter((t) => !newQueue.find((q) => q.id === t.id))].slice(0, 50)
+      ? [...newQueue, ...buildWeightedQueue(allTracks, song.id, likedTrackIds, getDislikedIds()).filter((t) => !newQueue.find((q) => q.id === t.id))].slice(0, 50)
       : newQueue;
     const newHistory = [...radioHistory.slice(0, historyIndex + 1), song];
     setRadioHistory(newHistory);
