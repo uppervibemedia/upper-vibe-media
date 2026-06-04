@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
 import { isNewTrack } from "@/lib/isNewTrack";
+import { pickFeaturedTrack, pickSmallCards } from "@/lib/featuredTrackPicker";
 
 const BLUE = "0,160,220";
 
@@ -94,26 +95,15 @@ export default function RadioCTA() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-    Promise.all([
-      base44.entities.AppSettings.filter({ key: "start_featured_track_id" }),
-      // Sort by created_date (actual upload order) so newest uploads always surface first
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 20),
-    ]).then(([settings, recent]) => {
-      const featuredId = settings?.[0]?.value;
-      // Only consider tracks with both audio and cover art
-      const eligible = recent.filter((t) => t.audio_url && t.cover_url);
-
-      let featured = null;
-      // Use admin-selected featured song if it exists in our eligible set
-      if (featuredId) featured = eligible.find((t) => t.id === featuredId) || null;
-      // Otherwise fall back to the newest published song with audio + cover
-      if (!featured) featured = eligible[0] || null;
-
-      setFeaturedTrack(featured);
-      // Small cards: next 3 newest songs, excluding the featured song, no duplicates
-      const smallCards = eligible.filter((t) => t.id !== featured?.id).slice(0, 3);
-      setTracks(smallCards);
-    }).catch(() => {});
+      // Fetch more tracks so we have a good pool for new-track rotation
+      base44.entities.Track.filter({ status: "published" }, "-created_date", 50)
+        .then((recent) => {
+          // Only consider tracks with both audio and cover art
+          const eligible = recent.filter((t) => t.audio_url && t.cover_url);
+          const featured = pickFeaturedTrack(eligible);
+          setFeaturedTrack(featured);
+          setTracks(pickSmallCards(eligible, featured?.id, 3));
+        }).catch(() => {});
     }, 300);
     return () => clearTimeout(timer);
   }, []);
