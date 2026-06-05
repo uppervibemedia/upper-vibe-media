@@ -134,7 +134,7 @@ export default function Home() {
       const db = new Date(b.release_date || b.created_date || 0).getTime();
       return db - da;
     });
-    setLatestTracks(sortedNewest.slice(0, 4));
+    setLatestTracks(sortedNewest);
     setAllTracks(allTracks);
 
     const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
