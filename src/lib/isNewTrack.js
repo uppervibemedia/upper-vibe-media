@@ -40,3 +40,43 @@ export function isNewTrack(track) {
 
 // Alias for naming consistency
 export const isNewSong = isNewTrack;
+
+// ── Visualizer helpers ────────────────────────────────────────────────────────
+
+/** Returns the best available date string from a visualizer object. */
+export function getVisualizerDate(viz) {
+  if (!viz) return null;
+  return (
+    viz.release_date ||
+    viz.playlist_added_date ||
+    viz.created_date ||
+    viz.createdAt ||
+    viz.created_at ||
+    null
+  );
+}
+
+/** Returns true if the visualizer was released within the last 7 days. */
+export function isNewVisualizer(viz) {
+  if (!viz) return false;
+  const dateStr = getVisualizerDate(viz);
+  if (!dateStr) return false;
+  const d = new Date(dateStr).getTime();
+  if (isNaN(d)) return false;
+  return Date.now() - d <= SEVEN_DAYS_MS;
+}
+
+/**
+ * Sorts visualizers: new ones (≤7 days) first, then older ones.
+ * Within each group, newest date first.
+ */
+export function sortVisualizersNewestFirst(vizList) {
+  if (!vizList?.length) return [];
+  const getTime = (v) => {
+    const d = getVisualizerDate(v);
+    return d ? new Date(d).getTime() : 0;
+  };
+  const newOnes = vizList.filter(isNewVisualizer).sort((a, b) => getTime(b) - getTime(a));
+  const oldOnes = vizList.filter((v) => !isNewVisualizer(v)).sort((a, b) => getTime(b) - getTime(a));
+  return [...newOnes, ...oldOnes];
+}

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from "react"
 import { motion, useAnimationFrame } from "framer-motion";
 import usePageVisible from "@/hooks/usePageVisible";
 import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
-import { isNewTrack } from "@/lib/isNewTrack";
+import { isNewTrack, isNewVisualizer, sortVisualizersNewestFirst } from "@/lib/isNewTrack";
 import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Heart, Users, Radio, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -139,8 +139,9 @@ export default function Home() {
     setLatestTracks(sortedNewest);
     setAllTracks(allTracks);
 
-    const rotatedViz = seededShuffle(recentVizPool, sessionSeed + "v").slice(0, 6);
-    setRecentViz(rotatedViz);
+    // Sort: new visualizers (≤7 days) first, then older, newest within each group
+    const sortedViz = sortVisualizersNewestFirst(recentVizPool);
+    setRecentViz(sortedViz.slice(0, 6));
     setAllViz(recentVizPool);
 
     // Count tracks per artist from already-fetched data
@@ -616,8 +617,16 @@ export default function Home() {
                           <Play className="w-4 h-4 text-white ml-0.5" />
                         </div>
                       </div>
-                      <div className="absolute top-2 left-2">
+                      <div className="absolute top-2 left-2 flex items-center gap-1.5">
                         <span className="text-[8px] font-black px-2 py-1 rounded-full" style={{ background: "rgba(0,160,220,0.85)", color: "#fff" }}>🎬 Visualizer</span>
+                        {isNewVisualizer(viz) && (
+                          <span style={{
+                            padding: "2px 7px", borderRadius: 99, fontSize: "9px", fontWeight: 900,
+                            letterSpacing: "0.08em", textTransform: "uppercase",
+                            background: "linear-gradient(135deg,rgba(0,160,220,0.92),rgba(0,200,240,0.96))",
+                            color: "#000", boxShadow: "0 0 8px rgba(0,160,220,0.5)", lineHeight: 1.4,
+                          }}>NEW</span>
+                        )}
                       </div>
                     </div>
                   </button>
