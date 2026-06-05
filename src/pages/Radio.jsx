@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipForward, SkipBack,
-  Radio as RadioIcon, Waves, Download, Music4, Crown, Heart, Mic2, Sparkles,
+  Radio as RadioIcon, Waves, Download, Music4, Crown, Heart, Mic2, Sparkles, ThumbsDown,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
@@ -11,6 +12,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "../hooks/useFavorite";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
 import FavLoginModal from "../components/shared/FavLoginModal";
+import { useDislike } from "../hooks/useDislike";
+import { recordDislike } from "../lib/radioCurator";
 import UpNextPanel from "../components/radio/UpNextPanel";
 
 import RadioThemePicker, { useRadioTheme, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
@@ -54,6 +57,8 @@ export default function RadioPage() {
   } = useRadio();
   const { user } = useAuth();
   const { isFaved, toggle: toggleFav, trackFavs } = useFavorites(user?.email);
+  const { isDisliked, toggle: toggleDislike } = useDislike(user?.email);
+  const [dislikeDisabled, setDislikeDisabled] = useState(false);
 
   useEffect(() => {
     const ids = trackFavs.map((f) => f.track_id).filter(Boolean);
@@ -104,6 +109,32 @@ export default function RadioPage() {
     });
     curatorRecordLike(currentRadioSong.id, !wasLiked);
   };
+
+  const handleDislike = useCallback(async () => {
+    if (dislikeDisabled || !currentRadioSong) return;
+    setDislikeDisabled(true);
+    const songId = currentRadioSong.id;
+    const songTitle = currentRadioSong.title;
+    // Save dislike (if logged in → DB; always → localStorage via hook)
+    if (user) {
+      await toggleDislike(songId, { title: songTitle });
+    } else {
+      // Anonymous: just write to localStorage via recordDislike
+      const { getDislikedIds } = await import("../hooks/useDislike");
+      const ids = getDislikedIds();
+      if (!ids.includes(songId)) {
+        try { localStorage.setItem("uvm_disliked_ids", JSON.stringify([...ids, songId])); } catch {}
+      }
+    }
+    // Lower curator weight for this song
+    const { allTracks: aT } = { allTracks: [] };
+    recordDislike(songId, true, []);
+    // Skip to next
+    nextRadioSong();
+    toast("We'll play this song less often", { duration: 2500 });
+    // Re-enable after 3s to prevent double-tap
+    setTimeout(() => setDislikeDisabled(false), 3000);
+  }, [dislikeDisabled, currentRadioSong, user, toggleDislike, nextRadioSong]);
 
   const handleDownload = () => {
     if (!currentRadioSong?.id) return;
@@ -393,7 +424,7 @@ export default function RadioPage() {
                   </button>
                 </div>
 
-                {/* Like + Download + Share */}
+                {/* Like + Dislike + Download + Share */}
                 <div className="flex items-center justify-center gap-3 flex-wrap">
                   <motion.button
                     onClick={handleLike}
@@ -411,6 +442,25 @@ export default function RadioPage() {
                         fill: currentRadioSong && isFaved("track", currentRadioSong.id) ? "#9B7EFF" : "none",
                       }} />
                   </motion.button>
+
+                  {/* Thumbs Down — Radio personalisation only */}
+                  {!isHostDropPlaying && (
+                    <motion.button
+                      onClick={handleDislike}
+                      whileTap={{ scale: 0.88 }}
+                      disabled={dislikeDisabled}
+                      className="w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-40"
+                      style={{
+                        background: currentRadioSong && isDisliked(currentRadioSong.id)
+                          ? `rgba(${theme.vars["--rt-primary"]},0.18)` : `rgba(${theme.vars["--rt-primary"]},0.06)`,
+                        border: currentRadioSong && isDisliked(currentRadioSong.id)
+                          ? `1px solid rgba(${theme.vars["--rt-primary"]},0.55)` : `1px solid rgba(${theme.vars["--rt-primary"]},0.3)`,
+                      }}>
+                      <ThumbsDown className="w-4 h-4 transition-colors"
+                        style={{ color: currentRadioSong && isDisliked(currentRadioSong.id)
+                          ? `rgb(${theme.vars["--rt-primary"]})` : `rgba(${theme.vars["--rt-primary"]},0.55)` }} />
+                    </motion.button>
+                  )}
 
                   <button onClick={handleDownload}
                     className="inline-flex items-center gap-2 px-5 h-11 rounded-full text-xs font-black tracking-wider transition-all hover:brightness-115 active:scale-95"
