@@ -16,7 +16,7 @@ import { recordPlay } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 
-import RecentlyListenedSection from "../components/home/RecentlyListenedSection";
+import RecentlyPlayedRow from "../components/home/RecentlyPlayedRow";
 import LatestMusicSection from "../components/home/LatestMusicSection";
 import YourFrequencyFeed from "../components/home/YourFrequencyFeed";
 import ListenerFrequencyDashboard from "../components/home/ListenerFrequencyDashboard";
@@ -429,6 +429,16 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── RECENTLY PLAYED — only for logged-in users with history ── */}
+      <RecentlyPlayedRow
+        user={user}
+        allTracks={allTracks}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        handlePlayTrack={handlePlayTrack}
+        themeColor={rtPrimary}
+      />
+
       {/* ── RADIO CTA — immersive live section ── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-6 md:py-10">
         <motion.div
@@ -756,19 +766,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
-      {/* ── RECENTLY PLAYED ── */}
-      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
-      <RecentlyListenedSection
-        allTracks={allTracks}
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        handlePlayTrack={handlePlayTrack}
-        heartButton={heartButton}
-        themeColor={rtPrimary}
-        radioThemeColor={rtPrimary}
-      />
-      </motion.div>
 
       {/* ── EMAIL SIGNUP ── */}
       <EmailSignupSection />
