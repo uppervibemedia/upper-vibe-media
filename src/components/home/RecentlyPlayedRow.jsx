@@ -28,16 +28,20 @@ export default function RecentlyPlayedRow({
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Load server-side history for the logged-in user
+  // Deferred by 1.5s to avoid rate-limit collision with Home's parallel loadData() burst
   useEffect(() => {
     if (!user || allTracks.length === 0) return;
 
-    const load = async () => {
+    const timer = setTimeout(load, 1500);
+    return () => clearTimeout(timer);
+
+    async function load() {
       try {
         // Fetch most recent SongStream records for this user
         const streams = await base44.entities.SongStream.filter(
           { user_id: user.id },
           "-created_date",
-          30
+          20
         );
 
         let orderedIds = [];
@@ -81,9 +85,7 @@ export default function RecentlyPlayedRow({
       } finally {
         setLoaded(true);
       }
-    };
-
-    load();
+    }
   }, [user, allTracks]);
 
   // Update scroll arrow visibility
