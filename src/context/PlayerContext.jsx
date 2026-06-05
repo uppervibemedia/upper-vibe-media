@@ -709,7 +709,8 @@ export function PlayerProvider({ children }) {
       const track = currentTrackRef.current;
       if (track) {
         setMediaSessionMetadata(track);
-        try { trackSongPlay(track); streamStart(track); } catch {}
+        const dur = (audio.duration && isFinite(audio.duration)) ? audio.duration : 0;
+        try { trackSongPlay(track); streamStart(track, dur); } catch {}
       }
       // Update lock screen position
       if ("mediaSession" in navigator && "setPositionState" in navigator.mediaSession) {
@@ -731,7 +732,8 @@ export function PlayerProvider({ children }) {
       setMediaSessionState(false);
       stopWatchdog();
       const track = currentTrackRef.current;
-      try { if (track) { trackSongPause(track); streamPause(); } } catch {}
+      // trackSongPause is intentionally a no-op in analytics v3
+      try { if (track) { streamPause(); } } catch {}
     };
 
     const onEnded = () => {
@@ -741,7 +743,9 @@ export function PlayerProvider({ children }) {
       savedTimeRef.current = 0;
       lastTimeRef.current  = 0;
       const track = currentTrackRef.current;
-      try { if (track) { trackSongComplete(track); streamEnd(true); } } catch {}
+      const dur = (audio.duration && isFinite(audio.duration)) ? audio.duration : 0;
+      // streamEnd handles the ≥90% check and fires trackSongComplete internally
+      try { if (track) { streamEnd(true, dur); } } catch {}
       onNextRef.current?.();
     };
 
@@ -755,6 +759,10 @@ export function PlayerProvider({ children }) {
     let lastPositionUpdateTime = 0;
     const onTimeUpdate = () => {
       lastTimeRef.current = audio.currentTime;
+      // Keep stream duration updated so completion % calc is accurate
+      if (audio.duration && isFinite(audio.duration)) {
+        try { streamSetMeta(currentTrackRef.current, audio.duration); } catch {}
+      }
       // Update lock screen progress — throttled to once per second to avoid
       // flooding the MediaSession API on mobile devices.
       const now = Date.now();

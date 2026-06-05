@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Mail, CheckCircle2, Waves } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
+import { trackEmailSignup } from "@/lib/analytics";
 
 export default function EmailList() {
   const [form, setForm] = useState({ name: "", email: "" });
@@ -13,12 +14,17 @@ export default function EmailList() {
     e.preventDefault();
     if (!form.email) return;
     setSaving(true);
-    await base44.entities.ContactMessage.create({
-      name: form.name || "Fan",
-      email: form.email,
-      type: "newsletter",
-      message: "Email list signup from /email-list page",
-    });
+    // Check for duplicate before inserting
+    const existing = await base44.entities.EmailSubscriber.filter({ email: form.email }, "-created_date", 1);
+    if (existing.length === 0) {
+      await base44.entities.EmailSubscriber.create({
+        email: form.email,
+        source_page: "/email-list",
+        referrer:    document.referrer || "",
+        subscribed_status: "active",
+      });
+      trackEmailSignup(); // only fires after confirmed DB write
+    }
     setSaving(false);
     setSubmitted(true);
   };

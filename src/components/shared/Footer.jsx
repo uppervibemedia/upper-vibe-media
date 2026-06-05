@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Waves, Mail, CheckCircle2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { trackEmailSignup } from "@/lib/analytics";
 
 const footerLinks = [
   {
@@ -41,12 +42,17 @@ function FooterEmailSignup() {
     e.preventDefault();
     if (!email) return;
     setSaving(true);
-    await base44.entities.ContactMessage.create({
-      name: "Fan",
-      email,
-      type: "newsletter",
-      message: "Email list signup from footer",
-    });
+    // Check for duplicate before inserting
+    const existing = await base44.entities.EmailSubscriber.filter({ email }, "-created_date", 1);
+    if (existing.length === 0) {
+      await base44.entities.EmailSubscriber.create({
+        email,
+        source_page: "footer",
+        referrer:    document.referrer || "",
+        subscribed_status: "active",
+      });
+      trackEmailSignup(); // only fires after confirmed DB write
+    }
     setSaving(false);
     setSubmitted(true);
   };

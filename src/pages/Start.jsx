@@ -4,6 +4,7 @@ import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, Cr
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "sonner";
+import { trackEmailSignup } from "@/lib/analytics";
 
 import YouTubeCTA from "@/components/start/YouTubeCTA";
 import RadioCTA from "@/components/start/RadioCTA";
@@ -345,12 +346,16 @@ export default function Start() {
     e.preventDefault();
     if (!email) return;
     setSaving(true);
-    await base44.entities.ContactMessage.create({
-      name: "Fan",
-      email,
-      type: "newsletter",
-      message: "Email list signup from /start landing page",
-    });
+    const existing = await base44.entities.EmailSubscriber.filter({ email }, "-created_date", 1);
+    if (existing.length === 0) {
+      await base44.entities.EmailSubscriber.create({
+        email,
+        source_page: "/start",
+        referrer:    document.referrer || "",
+        subscribed_status: "active",
+      });
+      trackEmailSignup();
+    }
     setSaving(false);
     setSubmitted(true);
   };
