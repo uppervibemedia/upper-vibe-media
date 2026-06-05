@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, Crown, Library, X, UserPlus, LogIn } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -100,50 +101,92 @@ function PremiumWelcome() {
   );
 }
 
-// ── Inline auth-choice modal ───────────────────────────────────────────────
-// Shown when a logged-out user taps the $4.99 CTA so they can choose
-// Create Account vs Log In without seeing a generic error.
+// ── Auth-choice modal — rendered via portal directly on document.body ─────────
+// This bypasses framer-motion's transform stacking context so position:fixed
+// works correctly relative to the actual viewport on all mobile browsers.
 function AuthChoiceModal({ open, onClose, onLogin, onSignup, onListenFree }) {
+  const scrollSavedY = useRef(0);
+  const contentRef = useRef(null);
+
+  // Lock background scroll when open, restore on close
+  useEffect(() => {
+    if (open) {
+      // Save current scroll position
+      scrollSavedY.current = window.scrollY || window.pageYOffset;
+      // Lock scroll without jumping to top
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollSavedY.current}px`;
+      document.body.style.width = "100%";
+      document.body.style.overflowY = "scroll";
+      // Reset modal's own scroll to top
+      if (contentRef.current) contentRef.current.scrollTop = 0;
+    } else {
+      // Restore scroll position
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      document.body.style.overflowY = "";
+      window.scrollTo(0, scrollSavedY.current);
+    }
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      document.body.style.overflowY = "";
+    };
+  }, [open]);
+
   if (!open) return null;
-  return (
+
+  return createPortal(
     <div
       onClick={onClose}
       style={{
-        position: "fixed", inset: 0, zIndex: 9999,
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
         background: "rgba(4,4,14,0.88)",
         backdropFilter: "blur(6px)",
         WebkitBackdropFilter: "blur(6px)",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-start",
         justifyContent: "center",
-        padding: "env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px)",
+        overflowY: "auto",
+        paddingTop: "max(env(safe-area-inset-top, 0px), 16px)",
+        paddingLeft: 16,
+        paddingRight: 16,
+        paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
       }}
     >
       <div
+        ref={contentRef}
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: "100%", maxWidth: 420,
+          width: "100%",
+          maxWidth: 420,
           background: "linear-gradient(160deg,#0d0d22,#0a0a1a)",
           border: "1px solid rgba(0,160,220,0.28)",
           borderRadius: 24,
           padding: "28px 22px 24px",
           position: "relative",
           boxShadow: "0 24px 80px rgba(0,0,0,0.7), 0 0 40px rgba(0,160,220,0.08)",
-          maxHeight: "90vh",
-          overflowY: "auto",
+          marginTop: 0,
+          flexShrink: 0,
         }}
       >
-        {/* Close */}
+        {/* Close button — 44px touch target */}
         <button
           onClick={onClose}
           style={{
-            position: "absolute", top: 14, right: 14,
-            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 10, color: "rgba(255,255,255,0.45)", cursor: "pointer",
-            width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
+            position: "absolute", top: 12, right: 12,
+            background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)",
+            borderRadius: 12, color: "rgba(255,255,255,0.6)", cursor: "pointer",
+            width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
           }}
+          aria-label="Close"
         >
-          <X style={{ width: 15, height: 15 }} />
+          <X style={{ width: 18, height: 18 }} />
         </button>
 
         <div style={{ textAlign: "center", marginBottom: 22 }}>
@@ -211,7 +254,8 @@ function AuthChoiceModal({ open, onClose, onLogin, onSignup, onListenFree }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
