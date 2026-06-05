@@ -1,0 +1,56 @@
+{
+  "name": "LivePresence",
+  "type": "object",
+  "properties": {
+    "visitor_id": {
+      "type": "string",
+      "description": "Stable anonymous visitor ID (never resets)"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Current session ID"
+    },
+    "page_path": {
+      "type": "string",
+      "description": "Current page path e.g. /music"
+    },
+    "page_label": {
+      "type": "string",
+      "description": "Human-readable page label e.g. Music Library"
+    },
+    "last_seen": {
+      "type": "string",
+      "description": "ISO timestamp of last heartbeat"
+    },
+    "device_type": {
+      "type": "string",
+      "enum": [
+        "mobile",
+        "tablet",
+        "desktop"
+      ]
+    },
+    "is_admin": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "visitor_id",
+    "last_seen"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": true,
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

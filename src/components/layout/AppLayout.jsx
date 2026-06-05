@@ -10,12 +10,19 @@ import { User } from "lucide-react";
 import EmailCaptureModal from "../shared/EmailCaptureModal";
 import { useEffect } from "react";
 import { trackPageView } from "@/lib/analytics";
+import { useLivePresence } from "@/hooks/useLivePresence";
 
 function PageViewTracker() {
   const location = useLocation();
   useEffect(() => {
     trackPageView();
   }, [location.pathname]);
+  return null;
+}
+
+// Broadcasts a presence heartbeat every 30s for Live Users Now tracking
+function PresenceBeacon() {
+  useLivePresence();
   return null;
 }
 
@@ -85,6 +92,7 @@ function LayoutContent() {
       {!isRadioPage && <AudioPlayer />}
       <ScrollToTop />
       <PageViewTracker />
+      <PresenceBeacon />
       <EmailCaptureModal />
     </div>
   );

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-import { Users, Eye, Music, Download, Mail, Crown, TrendingUp, Play, Bug, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, Eye, Music, Download, Mail, Crown, TrendingUp, Play, Bug, ChevronDown, ChevronUp, Activity } from "lucide-react";
+import LiveUsersCard from "./LiveUsersCard";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Date helpers
@@ -238,6 +239,12 @@ export default function AnalyticsDashboard() {
   const premClicks = useMemo(() => events.filter(e => e.event_type === "premium_click").length, [events]);
   const vizViews   = useMemo(() => events.filter(e => e.event_type === "visualizer_view").length, [events]);
 
+  // ── Qualified Streams: SongStream records with listened_seconds ≥ 30 ──────
+  const qualifiedStreams = useMemo(
+    () => streams.filter(s => (s.listened_seconds || 0) >= 30).length,
+    [streams]
+  );
+
   // ── Email Signups: count from actual EmailSubscriber records ─────────────
   // This ensures the KPI card matches the subscriber table below.
   const emailSignups = subs.length;
@@ -305,6 +312,10 @@ export default function AnalyticsDashboard() {
           if (t) {
             label = `${t.title}${t.artist_display ? " — " + t.artist_display : ""} (${page_url})`;
           }
+        }
+        // Label legacy/removed Vibe Room page clearly
+        if (label.includes("vibe-room") || label.includes("vibe_room") || label.includes("VibeRoom")) {
+          label = `⚠️ Legacy / Removed Page (${page_url})`;
         }
         return { page_url: label, count };
       })
@@ -395,21 +406,29 @@ export default function AnalyticsDashboard() {
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
           Refresh
         </button>
-        <span className="text-[10px] text-white/20 ml-2">Admin activity excluded • Unique visitor IDs are persistent</span>
+        <span className="text-[10px] text-white/20 ml-2">
+          🚫 Admin activity excluded · Unique visitor IDs persistent · Vibe Room excluded from live metrics
+        </span>
+      </div>
+
+      {/* Live Users — always shown, auto-refreshes independently */}
+      <div className="grid grid-cols-1 gap-3">
+        <LiveUsersCard />
       </div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={Eye}        label="Total Pageviews"    value={totalPageviews}  sub="every page load"       color="#00C9E0" />
-        <StatCard icon={Eye}        label="Unique Pageviews"   value={uniquePageviews} sub="one per visitor+page"   color="#38BDF8" />
-        <StatCard icon={Users}      label="Sessions / Visits"  value={totalSessions}   sub="distinct session IDs"  color="#A78BFA" />
-        <StatCard icon={Users}      label="Unique Visitors"    value={uniqueVisitors}  sub="persistent visitor IDs" color="#818CF8" />
-        <StatCard icon={Play}       label="Song Plays"         value={songPlays}       sub="≥10s cooldown dedup"   color="#34D399" />
-        <StatCard icon={Music}      label="Completions"        value={completions}     sub="≥90% of song heard"    color="#60A5FA" />
-        <StatCard icon={Download}   label="Download Clicks"    value={dlClicks}        color="#D4A843" />
-        <StatCard icon={Crown}      label="Plus Clicks"        value={premClicks}      color="#F59E0B" />
-        <StatCard icon={Mail}       label="Email Subscribers"  value={emailSignups}    sub="confirmed DB records"  color="#EC4899" />
-        <StatCard icon={TrendingUp} label="Visualizer Views"   value={vizViews}        color="#00C9E0" />
+        <StatCard icon={Eye}        label="Total Page Visits"   value={totalPageviews}    sub="every page load (raw)"        color="#00C9E0" />
+        <StatCard icon={Eye}        label="Unique Page Views"   value={uniquePageviews}   sub="1 per visitor+page in period" color="#38BDF8" />
+        <StatCard icon={Users}      label="Sessions / Visits"   value={totalSessions}     sub="distinct session IDs"         color="#A78BFA" />
+        <StatCard icon={Users}      label="Unique Visitors"     value={uniqueVisitors}    sub="persistent visitor IDs"       color="#818CF8" />
+        <StatCard icon={Play}       label="Song Plays"          value={songPlays}         sub="audio started · 60s dedup"    color="#34D399" />
+        <StatCard icon={Activity}   label="Qualified Streams"   value={qualifiedStreams}  sub="listened ≥ 30s"               color="#4ADE80" />
+        <StatCard icon={Music}      label="Song Completions"    value={completions}       sub="≥ 90% of song heard"          color="#60A5FA" />
+        <StatCard icon={Download}   label="Download Clicks"     value={dlClicks}          sub="intentional download action"  color="#D4A843" />
+        <StatCard icon={Crown}      label="Plus Clicks"         value={premClicks}        sub="upgrade button clicks"        color="#F59E0B" />
+        <StatCard icon={Mail}       label="Email Subscribers"   value={emailSignups}      sub="confirmed DB records"         color="#EC4899" />
+        <StatCard icon={TrendingUp} label="Visualizer Views"    value={vizViews}          sub="valid visualizer opens"       color="#A78BFA" />
       </div>
 
       {/* Daily traffic chart */}
