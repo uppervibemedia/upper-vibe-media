@@ -1,5 +1,6 @@
 import React from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "./Sidebar";
 import AudioPlayer from "../player/AudioPlayer";
 import { PlayerProvider } from "../../context/PlayerContext";
@@ -64,31 +65,62 @@ function TopRightAuth() {
   );
 }
 
+// Reduced-motion check — disable transitions for users who prefer it or on low-end devices
+const prefersReducedMotion =
+  typeof window !== "undefined" &&
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+const pageVariants = prefersReducedMotion
+  ? { initial: {}, animate: {}, exit: {} }
+  : {
+      initial: { opacity: 0, x: 18 },
+      animate: { opacity: 1, x: 0 },
+      exit:    { opacity: 0, x: -12 },
+    };
+
+const pageTransition = prefersReducedMotion
+  ? { duration: 0 }
+  : { duration: 0.22, ease: [0.25, 0.1, 0.25, 1] };
+
 function LayoutContent() {
   const { currentTrack } = usePlayer();
   const location = useLocation();
   const isRadioPage = location.pathname === "/radio";
   const isStartPage = location.pathname === "/start";
+
+  const mainStyle = {
+    paddingTop: isStartPage ? "0px" : "calc(56px + env(safe-area-inset-top, 0px))",
+    paddingBottom: isStartPage ? "0px" : currentTrack && !isRadioPage
+      ? "calc(56px + 72px + env(safe-area-inset-bottom, 12px))"
+      : "calc(56px + env(safe-area-inset-bottom, 12px))",
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={{ overflowX: "hidden" }}>
+      {/* Persistent — never remounts */}
       <Sidebar />
-      {/* Top-right auth button — desktop only, fixed */}
       <div className="hidden lg:block fixed top-4 right-5 z-40">
         <TopRightAuth />
       </div>
-      {/* Mobile: pt must clear topbar height + safe-area-inset-top (notch/Dynamic Island) */}
-      {/* Bottom: clear bottom nav (56px) + optional mini player (72px) + home indicator */}
-      <main
-        className="lg:ml-[72px] lg:pt-0"
-        style={{
-          paddingTop: isStartPage ? "0px" : "calc(56px + env(safe-area-inset-top, 0px))",
-          paddingBottom: isStartPage ? "0px" : currentTrack && !isRadioPage
-            ? "calc(56px + 72px + env(safe-area-inset-bottom, 12px))"
-            : "calc(56px + env(safe-area-inset-bottom, 12px))",
-        }}
-      >
-        <Outlet />
+
+      {/* Page content — only this animates */}
+      <main className="lg:ml-[72px] lg:pt-0" style={mainStyle}>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location.pathname}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={pageTransition}
+            style={{ width: "100%", willChange: "transform, opacity" }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
+
+      {/* Persistent — never inside the animated key */}
       {!isRadioPage && <AudioPlayer />}
       <ScrollToTop />
       <PageViewTracker />

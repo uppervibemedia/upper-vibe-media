@@ -35,12 +35,30 @@ const mainNavItems = [
 ];
 
 const bottomNavMobile = [
-  { path: "/", icon: Home, label: "Home" },
-  { path: "/music", icon: Music, label: "Music" },
-  { path: "/radio", icon: Radio, label: "Radio" },
-  { path: "/vibe-check", icon: VibeCheckIcon, label: "Vibe Check" },
-  { path: "/account", icon: User, label: "Account" },
+  { path: "/", icon: Home, label: "Home", rootPath: "/" },
+  { path: "/music", icon: Music, label: "Music", rootPath: "/music" },
+  { path: "/radio", icon: Radio, label: "Radio", rootPath: "/radio" },
+  { path: "/vibe-check", icon: VibeCheckIcon, label: "Vibe Check", rootPath: "/vibe-check" },
+  { path: "/account", icon: User, label: "Account", rootPath: "/account" },
 ];
+
+// Routes that "belong" to each tab for active detection
+const TAB_OWNERSHIP = {
+  "/": ["/", "/newest-music", "/my-feed", "/start"],
+  "/music": ["/music", "/song/", "/categories", "/downloads", "/visualizers", "/sessions", "/artists"],
+  "/radio": ["/radio"],
+  "/vibe-check": ["/vibe-check"],
+  "/account": ["/account", "/settings", "/my-vibes", "/my-vibe-library", "/upgrade", "/membership", "/payment-success", "/payment-cancelled"],
+};
+
+function isTabActive(tabRootPath, currentPath) {
+  const owned = TAB_OWNERSHIP[tabRootPath] || [tabRootPath];
+  return owned.some((prefix) =>
+    prefix.endsWith("/") && tabRootPath === "/"
+      ? currentPath === "/"
+      : currentPath === prefix || currentPath.startsWith(prefix + "/") || currentPath.startsWith(prefix)
+  );
+}
 
 export default function Sidebar() {
   const location = useLocation();
@@ -52,11 +70,14 @@ export default function Sidebar() {
   const { accent } = useTheme();
   const radioThemeColor = accent.rgb;
 
-  const handleMobileNavTap = (e, path) => {
-    if (location.pathname === path) {
-      e.preventDefault();
-      navigate(path, { replace: true });
+  const handleMobileNavTap = (e, item) => {
+    e.preventDefault();
+    const target = item.rootPath;
+    // Always navigate to the tab's root; if already there just scroll up
+    if (location.pathname === target) {
       window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      navigate(target);
     }
   };
   const isAdmin = user?.role === "admin";
@@ -165,15 +186,15 @@ export default function Sidebar() {
       >
         <div className="flex items-center justify-around px-1 pt-1.5 pb-1">
           {bottomNavMobile.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = isTabActive(item.rootPath, location.pathname);
             const isRadioItem = item.path === "/radio";
             const glowing = isRadioItem && radioIsLive;
             return (
-              <Link
+              <button
                 key={item.path}
-                to={item.path}
-                onClick={(e) => handleMobileNavTap(e, item.path)}
-                className="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl transition-all"
+                onClick={(e) => handleMobileNavTap(e, item)}
+                className="bottom-nav-link flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl transition-all flex-1"
+                style={{ background: "none", border: "none", cursor: "pointer" }}
               >
                 <div
                   className="p-1.5 rounded-lg transition-all"
@@ -202,7 +223,7 @@ export default function Sidebar() {
                 >
                   {item.label}
                 </span>
-              </Link>
+              </button>
             );
           })}
         </div>

@@ -169,10 +169,44 @@ body {
   scroll-behavior: smooth;
 }
 
-/* Better touch targets on mobile */
-@media (max-width: 1024px) {
-  button, a {
-    min-height: 36px;
+/* ── Touch targets — mobile/tablet only ── */
+/* Applies min 44×44px tappable area without visually enlarging elements.
+   Uses padding-based expansion + flex centering so layout is not disrupted. */
+@media (max-width: 1023px) {
+  /* All buttons and role=button elements */
+  button:not(.no-touch-target),
+  [role="button"]:not(.no-touch-target) {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Bottom nav links — already flex col, just ensure height */
+  .bottom-nav-link {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Inline text links inside paragraphs — do NOT enlarge */
+  p a,
+  li a,
+  span a,
+  label a {
+    min-height: unset;
+    min-width: unset;
+  }
+
+  /* Icon-only buttons — ensure square touch target */
+  button.icon-btn,
+  [role="button"].icon-btn {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
