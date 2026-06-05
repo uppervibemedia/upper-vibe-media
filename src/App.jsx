@@ -36,6 +36,9 @@ import DMCAPolicy from './pages/DMCAPolicy';
 import RefundPolicy from './pages/RefundPolicy';
 import Support from './pages/Support';
 import ForgotPassword from './pages/ForgotPassword';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ResetPassword from './pages/ResetPassword';
 import Settings from './pages/Settings';
 import FAQ from './pages/FAQ';
 import VibeCheck from './pages/VibeCheck';
@@ -155,6 +158,9 @@ const AuthenticatedApp = () => {
         <Route path="/email-list" element={<EmailList />} />
       </Route>
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
