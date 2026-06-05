@@ -38,11 +38,8 @@ export default function RecentlyPlayedRow({
     async function load() {
       try {
         // Fetch most recent SongStream records for this user
-        const streams = await base44.entities.SongStream.filter(
-          { user_id: user.id },
-          "-created_date",
-          20
-        );
+        // RLS scopes to created_by_id automatically — no extra filter needed
+        const streams = await base44.entities.SongStream.list("-created_date", 20);
 
         let orderedIds = [];
 
@@ -56,9 +53,9 @@ export default function RecentlyPlayedRow({
             }
           }
         } else {
-          // Fallback: localStorage history (DiscoverTab format)
+          // Fallback: localStorage history (key must match recordPlay in DiscoverTab)
           try {
-            const raw = localStorage.getItem("uv_play_history");
+            const raw = localStorage.getItem("uvm_play_history");
             if (raw) {
               const parsed = JSON.parse(raw);
               const seen = new Set();
