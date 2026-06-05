@@ -65,23 +65,6 @@ function TopRightAuth() {
   );
 }
 
-// Reduced-motion check — disable transitions for users who prefer it or on low-end devices
-const prefersReducedMotion =
-  typeof window !== "undefined" &&
-  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-const pageVariants = prefersReducedMotion
-  ? { initial: {}, animate: {}, exit: {} }
-  : {
-      initial: { opacity: 0, x: 18 },
-      animate: { opacity: 1, x: 0 },
-      exit:    { opacity: 0, x: -12 },
-    };
-
-const pageTransition = prefersReducedMotion
-  ? { duration: 0 }
-  : { duration: 0.22, ease: [0.25, 0.1, 0.25, 1] };
-
 function LayoutContent() {
   const { currentTrack } = usePlayer();
   const location = useLocation();
@@ -96,31 +79,19 @@ function LayoutContent() {
   };
 
   return (
-    <div className="min-h-screen bg-background" style={{ overflowX: "hidden" }}>
+    <div className="min-h-screen bg-background">
       {/* Persistent — never remounts */}
       <Sidebar />
       <div className="hidden lg:block fixed top-4 right-5 z-40">
         <TopRightAuth />
       </div>
 
-      {/* Page content — only this animates */}
+      {/* Page content — no animation wrapper, no transforms, no stacking context */}
       <main className="lg:ml-[72px] lg:pt-0" style={mainStyle}>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={pageTransition}
-            style={{ width: "100%", willChange: "transform, opacity" }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
+        <Outlet />
       </main>
 
-      {/* Persistent — never inside the animated key */}
+      {/* Persistent */}
       {!isRadioPage && <AudioPlayer />}
       <ScrollToTop />
       <PageViewTracker />
