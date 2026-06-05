@@ -66,7 +66,22 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
     }, 15000);
   };
 
-  if (!tracks || tracks.length === 0) return null;
+  if (!tracks || tracks.length === 0) return (
+    <section className="max-w-7xl mx-auto px-6 pt-4 pb-10">
+      <SectionHeader label="New Releases" title="Latest Music" link="/music" linkLabel="Browse Music" labelColor={`rgb(${color})`} themeColor={color} />
+      <div className="flex items-center gap-4 rounded-2xl px-5 py-6 mt-3"
+        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <Music4 className="w-8 h-8 flex-shrink-0" style={{ color: `rgba(${color},0.35)` }} />
+        <div>
+          <p className="text-sm font-bold text-white/50">No new songs this week — explore the full music library</p>
+          <Link to="/music" className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[11px] font-black tracking-wide transition-all hover:brightness-110"
+            style={{ background: `rgba(${color},0.1)`, border: `1px solid rgba(${color},0.3)`, color: `rgb(${color})` }}>
+            Browse Music →
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
 
   // Touch swipe support
   const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from "react"
 import { motion, useAnimationFrame } from "framer-motion";
 import usePageVisible from "@/hooks/usePageVisible";
 import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
+import { isNewTrack } from "@/lib/isNewTrack";
 import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Heart, Users, Radio, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -127,9 +128,10 @@ export default function Home() {
       base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
     ]);
 
-    // Latest Music section: always the 4 newest published+playable tracks, sorted by date
+    // Latest Music section: only NEW songs (within 7 days) that are published & playable
     const playable = allTracks.filter(t => t.audio_url && t.cover_url && t.status === "published");
-    const sortedNewest = [...playable].sort((a, b) => {
+    const newSongs = playable.filter(t => isNewTrack(t));
+    const sortedNewest = [...newSongs].sort((a, b) => {
       const da = new Date(a.release_date || a.created_date || 0).getTime();
       const db = new Date(b.release_date || b.created_date || 0).getTime();
       return db - da;
