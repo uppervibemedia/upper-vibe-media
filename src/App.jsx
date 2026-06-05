@@ -60,12 +60,17 @@ const AuthenticatedApp = () => {
 
   // Failsafe: once auth resolves, if the current path isn't a known route,
   // redirect to the user's role-appropriate default. Runs once per auth session.
+  // Auth routes — never redirect away from these even if they're not "safe" post-login pages
+  const AUTH_PATHS = new Set(["/login", "/register", "/forgot-password", "/reset-password"]);
+
   const hasRunFallback = React.useRef(false);
   useEffect(() => {
     if (!isAuthenticated || !user || isLoadingAuth) return;
     if (hasRunFallback.current) return;
     hasRunFallback.current = true;
     const path = window.location.pathname;
+    // Don't redirect away from auth pages (e.g. user navigated to /login while logged in — let the page handle it)
+    if (AUTH_PATHS.has(path)) return;
     if (!isSafeRoute(path)) {
       const dest = defaultRouteForUser(user);
       console.log("[App] Fallback redirect — unsafe path:", path, "→", dest);
@@ -80,7 +85,8 @@ const AuthenticatedApp = () => {
 
   // Auth resolved but user is authenticated and on an unknown path —
   // the useEffect above will fire window.location.replace, show loading until it does
-  if (isAuthenticated && user && !isSafeRoute(window.location.pathname)) {
+  // Exception: auth routes are always valid to render
+  if (isAuthenticated && user && !isSafeRoute(window.location.pathname) && !AUTH_PATHS.has(window.location.pathname)) {
     return <LoadingScreen />;
   }
 

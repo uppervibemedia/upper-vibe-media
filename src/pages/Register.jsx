@@ -1,9 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function Register() {
+  // If already authenticated, redirect away
+  useEffect(() => {
+    base44.auth.isAuthenticated().then((authed) => {
+      if (authed) window.location.replace("/music");
+    });
+  }, []);
+
   const [step, setStep] = useState("form"); // "form" | "otp"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

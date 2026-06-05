@@ -135,7 +135,7 @@ export default function Sidebar() {
               <span className="text-[11px] font-semibold">Account</span>
             </Link>
           ) : (
-            <button onClick={navigateToLogin}
+            <button onClick={() => navigateToLogin(window.location.origin + window.location.pathname)}
               className="flex items-center gap-1.5 px-3.5 rounded-lg font-black text-[11px] tracking-wide"
               style={{
                 background: `linear-gradient(135deg,rgba(${radioThemeColor},0.7),rgb(${radioThemeColor}))`,
@@ -319,7 +319,7 @@ export default function Sidebar() {
             </Link>
           ) : (
             <button
-              onClick={navigateToLogin}
+              onClick={() => navigateToLogin(window.location.origin + window.location.pathname)}
               className="w-full flex items-center gap-3 px-2 py-1.5 rounded-xl transition-colors overflow-hidden" style={{ background: `rgba(${radioThemeColor},0.08)`, border: `1px solid rgba(${radioThemeColor},0.2)` }}>
               <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `rgba(${radioThemeColor},0.15)`, border: `1px solid rgba(${radioThemeColor},0.3)`, color: `rgb(${radioThemeColor})` }}>
                 <User className="w-4 h-4" />

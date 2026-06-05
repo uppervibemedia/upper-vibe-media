@@ -6,13 +6,16 @@
  */
 
 const VALID_PREFIXES = [
-  "/start", "/music", "/radio", "/vibe-room", "/account",
+  "/start", "/music", "/radio", "/account",
   "/my-vibe-library", "/my-vibes", "/downloads", "/song/", "/visualizers",
-  "/support", "/community-guidelines", "/categories", "/about", "/artists",
+  "/support", "/categories", "/about", "/artists",
   "/sessions", "/newest-music", "/academy", "/faq", "/settings",
-  "/pricing", "/membership", "/upgrade", "/favorites", "/discover",
-  "/email-list", "/terms", "/privacy", "/dmca", "/refunds", "/contact",
-  "/dashboard", "/vault", "/forgot-password", "/payment-success", "/payment-cancelled",
+  "/membership", "/upgrade",
+  "/email-list", "/my-feed", "/personal-feed",
+  "/terms", "/privacy", "/dmca", "/refunds", "/contact",
+  "/forgot-password", "/login", "/register", "/reset-password",
+  "/payment-success", "/payment-cancelled",
+  "/vibe-check", "/admin",
 ];
 const INVALID = new Set(["undefined", "null", "false", "", "/undefined", "/null", "/false"]);
 

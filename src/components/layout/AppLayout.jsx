@@ -56,7 +56,7 @@ function TopRightAuth() {
 
   return (
     <button
-      onClick={navigateToLogin}
+      onClick={() => navigateToLogin(window.location.origin + window.location.pathname)}
       className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wide transition-all hover:brightness-110"
       style={{ background: "linear-gradient(135deg,#00A8C0,#00D4EE)", color: "#000" }}>
       <User className="w-3.5 h-3.5" /> Log In

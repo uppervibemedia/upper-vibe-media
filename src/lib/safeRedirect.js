@@ -32,6 +32,9 @@ const VALID_ROUTE_PREFIXES = [
   "/personal-feed",
 
   "/forgot-password",
+  "/login",
+  "/register",
+  "/reset-password",
   "/payment-success",
   "/payment-cancelled",
   "/terms",

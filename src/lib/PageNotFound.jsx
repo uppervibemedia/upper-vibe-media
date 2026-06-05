@@ -14,15 +14,14 @@ export default function PageNotFound() {
         localStorage.getItem("token") ||
         localStorage.getItem("base44_token");
       if (token) {
-        // Redirect to music immediately — no 404 flash
         navigate("/music", { replace: true });
         return;
       }
     } catch {}
 
-    // No token — show 404 content after a brief grace period
-    // (avoids flash while SPA router is still hydrating on first load)
-    const timer = setTimeout(() => setShowContent(true), 300);
+    // No token — show 404 content after a longer grace period
+    // (avoids flash while SPA router is hydrating, or during auth handoff)
+    const timer = setTimeout(() => setShowContent(true), 600);
     return () => clearTimeout(timer);
   }, [navigate]);
 
