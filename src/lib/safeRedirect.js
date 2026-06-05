@@ -28,6 +28,8 @@ const VALID_ROUTE_PREFIXES = [
   "/membership",
   "/upgrade",
   "/email-list",
+  "/my-feed",
+  "/personal-feed",
 
   "/forgot-password",
   "/payment-success",

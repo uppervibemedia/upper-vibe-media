@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, Crown, Library, MessageCircle, X, UserPlus, LogIn } from "lucide-react";
+import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, Crown, Library, X, UserPlus, LogIn } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "sonner";
@@ -427,7 +427,7 @@ export default function Start() {
             {/* Login / Create Account for logged-out visitors */}
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => navigateToLogin(`${window.location.origin}/start?intent=checkout`)}
+                onClick={() => navigateToLogin(window.location.origin + "/start")}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold tracking-wide transition-all active:scale-[0.97]"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.6)" }}>
                 Log In
@@ -580,10 +580,10 @@ export default function Start() {
             <Music4 className="w-4 h-4" /> Latest Music
           </Link>
 
-          <Link to="/vibe-room"
+          <Link to="/music"
             className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-sm font-black tracking-wide transition-all active:scale-[0.97]"
             style={{ background: "rgba(155,126,255,0.07)", border: "1px solid rgba(155,126,255,0.22)", color: "#9B7EFF" }}>
-            <MessageCircle className="w-4 h-4" /> Vibe Room — Live Chat
+            <Music4 className="w-4 h-4" /> Explore All Music
           </Link>
 
           <Link to="/visualizers"

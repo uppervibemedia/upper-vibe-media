@@ -72,12 +72,12 @@ export default function MyVibes() {
             Create a free account to save songs and visualizers to your My Vibe Library.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={() => base44.auth.redirectToLogin()}
+            <button onClick={() => base44.auth.redirectToLogin(window.location.origin + "/my-vibes")}
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110"
               style={{ background: `linear-gradient(135deg,rgba(${rgb},0.8),rgba(${rgb},1))`, color: "#fff", boxShadow: `0 0 24px rgba(${rgb},0.3)` }}>
               Create Free Account
             </button>
-            <button onClick={() => base44.auth.redirectToLogin()}
+            <button onClick={() => base44.auth.redirectToLogin(window.location.origin + "/my-vibes")}
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:bg-white/10"
               style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.8)" }}>
               Log In

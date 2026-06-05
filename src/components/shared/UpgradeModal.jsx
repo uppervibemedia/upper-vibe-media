@@ -46,7 +46,7 @@ export default function UpgradeModal({ isOpen, onClose, requiredTier = "supporte
             transition={{ type: "spring", damping: 25 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
           >
-            <div className={`pointer-events-auto w-full max-w-md rounded-2xl bg-card border ${info.border} p-8 shadow-2xl`}>
+            <div className={`pointer-events-auto relative w-full max-w-md rounded-2xl bg-card border ${info.border} p-8 shadow-2xl`}>
               <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors">
                 <X className="w-5 h-5" />
               </button>
@@ -84,7 +84,7 @@ export default function UpgradeModal({ isOpen, onClose, requiredTier = "supporte
 
               <div className="flex flex-col gap-3">
                 <Link
-                  to="/pricing"
+                  to="/membership"
                   onClick={onClose}
                   className={`w-full py-3 rounded-xl font-heading font-bold text-sm tracking-wider uppercase text-center transition-all ${info.bg} border ${info.border} ${info.color} hover:brightness-125`}
                 >
@@ -92,7 +92,7 @@ export default function UpgradeModal({ isOpen, onClose, requiredTier = "supporte
                 </Link>
                 {requiredTier === "premium" && (
                   <Link
-                    to="/pricing"
+                    to="/membership"
                     onClick={onClose}
                     className="w-full py-3 rounded-xl font-heading font-bold text-sm tracking-wider uppercase text-center bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:brightness-125 transition-all"
                   >
