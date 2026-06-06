@@ -74,11 +74,12 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
           title: track?.title && track?.artist_display
             ? `${track.title} by ${track.artist_display} | Upper Vibe Media`
             : `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
-          // URL embedded in text so iOS "Copy" includes it
-          text: `${caption}\n${songUrl}`,
+          // text = caption only (no URL) — iOS appends url field automatically
+          text: caption,
           url: songUrl,
           facebookUrl: ogMetaUrl || PROD_ORIGIN,
           displayUrl: songUrl,
+          // clipboardText = caption + URL for "Copy Caption" action
           clipboardText: `${caption}\n${songUrl}`,
         };
       }
