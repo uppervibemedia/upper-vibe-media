@@ -67,18 +67,21 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
 
   const getShareData = () => {
     switch (type) {
-      case "song":
+      case "song": {
+        const songUrl = canonicalUrl || PROD_ORIGIN;
+        const caption = `🎧⚡ "${track?.title || "this track"}" by ${track?.artist_display || "Upper Vibe Media"} — Stream on Upper Vibe Media. 432 Hz high-vibe music.`;
         return {
           title: track?.title && track?.artist_display
             ? `${track.title} by ${track.artist_display} | Upper Vibe Media`
             : `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
-          text: `🎧⚡ "${track?.title || "this track"}" by ${track?.artist_display || "Upper Vibe Media"} — Stream on Upper Vibe Media. 432 Hz high-vibe music.`,
-          // Users always get the clean canonical URL
-          url: canonicalUrl || PROD_ORIGIN,
-          // Facebook crawler needs ogMeta URL to fetch OG tags before users click through
+          // URL embedded in text so iOS "Copy" includes it
+          text: `${caption}\n${songUrl}`,
+          url: songUrl,
           facebookUrl: ogMetaUrl || PROD_ORIGIN,
-          displayUrl: canonicalUrl || PROD_ORIGIN,
+          displayUrl: songUrl,
+          clipboardText: `${caption}\n${songUrl}`,
         };
+      }
       case "radio":
         return {
           title: "Upper Vibe Radio — Live Now",
@@ -130,9 +133,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
   };
 
   const handleCopy = async () => {
-    // Always copy the clean canonical URL — never expose /functions/ogMeta to users
-    const urlToCopy = shareData.displayUrl;
-    await navigator.clipboard.writeText(urlToCopy);
+    // Copy caption + URL so paste always includes both
+    const textToCopy = shareData.clipboardText || `${shareData.text}\n${shareData.displayUrl}`;
+    await navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -154,8 +157,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         </svg>
       ),
       action: () => {
-        // Use canonical URL for Twitter — clean link for users
-        const tweetText = encodeURIComponent(shareData.text);
+        // Use caption only for tweet text (Twitter appends the url param itself)
+        const captionOnly = shareData.text.split("\n")[0];
+        const tweetText = encodeURIComponent(captionOnly);
         const tweetUrl  = encodeURIComponent(shareData.url);
         window.open(`https://twitter.com/intent/tweet?text=${tweetText}&url=${tweetUrl}`, "_blank");
         base44.analytics.track({ eventName: "share_twitter_clicked", properties: { share_type: type } });
