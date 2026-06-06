@@ -132,12 +132,21 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
     setOpen(true);
   };
 
+  const [copiedCaption, setCopiedCaption] = useState(false);
+
   const handleCopy = async () => {
-    // Copy caption + URL so paste always includes both
-    const textToCopy = shareData.clipboardText || `${shareData.text}\n${shareData.displayUrl}`;
-    await navigator.clipboard.writeText(textToCopy);
+    // Copy Link = clean URL only, so pasting into browser opens it directly
+    await navigator.clipboard.writeText(shareData.displayUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyCaption = async () => {
+    // Copy Caption = caption + URL for social posts
+    const textToCopy = shareData.clipboardText || `${shareData.text}\n${shareData.displayUrl}`;
+    await navigator.clipboard.writeText(textToCopy);
+    setCopiedCaption(true);
+    setTimeout(() => setCopiedCaption(false), 2000);
   };
 
   const SHARE_OPTIONS = [
@@ -148,6 +157,14 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
       color: `rgba(${rtPrimary},0.12)`,
       border: `rgba(${rtPrimary},0.28)`,
       textColor: `rgb(${rtPrimary})`,
+    },
+    {
+      label: "Copy Caption + Link",
+      icon: copiedCaption ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />,
+      action: handleCopyCaption,
+      color: "rgba(255,255,255,0.05)",
+      border: "rgba(255,255,255,0.10)",
+      textColor: "rgba(255,255,255,0.6)",
     },
     {
       label: "Twitter / X",
@@ -336,7 +353,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
                 {SHARE_OPTIONS.map((opt) => (
                   <button
                     key={opt.label}
-                    onClick={() => { opt.action(); if (opt.label !== "Copy Link") setOpen(false); }}
+                    onClick={() => { opt.action(); if (opt.label !== "Copy Link" && opt.label !== "Copy Caption + Link") setOpen(false); }}
                     className="flex items-center gap-3 w-full px-4 rounded-2xl font-bold text-sm transition-all active:scale-[0.98]"
                     style={{
                       background: opt.color,
