@@ -224,7 +224,7 @@ export default function SongPage() {
     imageUrl:    track.cover_url || undefined,
     pageUrl:     `https://uppervibemedia.com/song/${id}`,
     type:        "music.song",
-  } : { title: "Music" });
+  } : null);
 
   const isCurrentTrack = currentTrack?.id === track?.id;
   // Only use visualizer if it's explicitly linked to this exact song

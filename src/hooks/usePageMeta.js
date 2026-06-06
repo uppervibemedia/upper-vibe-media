@@ -28,8 +28,10 @@ function setMeta(property, content) {
   el.setAttribute("content", content);
 }
 
-export function usePageMeta({ title, description, imageUrl, pageUrl, type = "website" }) {
+export function usePageMeta(meta) {
+  const { title, description, imageUrl, pageUrl, type = "website" } = meta || {};
   useEffect(() => {
+    if (!meta) return; // Don't update title while track is still loading
     // For music.song pages use "[Title] by [Artist]" format, else append site name
     // For music.song: title is already formatted as "{Song} by {Artist}" — append site name
     const fullTitle = type === "music.song"
