@@ -7,7 +7,7 @@
 
 const VALID_PREFIXES = [
   "/start", "/music", "/radio", "/account",
-  "/my-vibe-library", "/my-vibes", "/downloads", "/song/", "/visualizers",
+  "/my-vibe-library", "/my-vibes", "/downloads", "/song", "/visualizers",
   "/support", "/categories", "/about", "/artists",
   "/sessions", "/newest-music", "/academy", "/faq", "/settings",
   "/membership", "/upgrade",
