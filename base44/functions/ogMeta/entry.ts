@@ -1,78 +1,27 @@
 /**
  * ogMeta — Dynamic Open Graph meta tag endpoint
- * 
- * Social crawlers (Twitter, Facebook, iMessage, Discord, Slack, etc.) call this
+ *
+ * Handles two use-cases:
+ *  1. /api/ogMeta?type=track&id=<trackId>  — internal app usage
+ *  2. share.uppervibemedia.com/song/<id>   — share subdomain, direct path routing
+ *
+ * Social crawlers (Facebook, iMessage, Twitter/X, Discord, Slack, etc.) call this
  * endpoint to get pre-rendered HTML with correct OG tags.
- * 
- * Usage: /api/og?type=track&id=<trackId>
- *             /api/og?type=viberoom
- * 
- * Returns a minimal HTML shell with all OG/Twitter Card meta tags filled in.
- * Regular browsers never call this — they get the React SPA as normal.
+ * Real browsers are immediately redirected to the canonical SPA URL.
  */
 
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const SITE_NAME    = "Upper Vibe Media";
-const SITE_URL     = "https://uppervibemedia.com";
-const BRAND_COLOR  = "#00E5FF";
-const DEFAULT_IMG  = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png";
+const SITE_NAME   = "Upper Vibe Media";
+const SITE_URL    = "https://uppervibemedia.com";
+const BRAND_COLOR = "#00E5FF";
+const DEFAULT_IMG = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png";
 
-// ── OG image URL resolution ──────────────────────────────────────────────────
-// Facebook requires og:image to be an absolute HTTPS URL. The image must be at
-// least 200x200px; 1200x630 is ideal for the large card format (summary_large_image).
-// We always prefer the track's own cover art, falling back to the branded default.
-function buildOgImageUrl({ coverUrl }) {
-  if (coverUrl && coverUrl.startsWith("https://")) return coverUrl;
-  if (coverUrl && coverUrl.startsWith("http://")) return coverUrl.replace("http://", "https://");
+function buildOgImageUrl(coverUrl) {
+  if (!coverUrl) return DEFAULT_IMG;
+  if (coverUrl.startsWith("https://")) return coverUrl;
+  if (coverUrl.startsWith("http://")) return coverUrl.replace("http://", "https://");
   return DEFAULT_IMG;
-}
-
-// ── HTML shell with OG tags ──────────────────────────────────────────────────
-function buildHtml({ title, description, imageUrl, pageUrl, type }) {
-  const safeTitle  = escapeHtml(title);
-  const safeDesc   = escapeHtml(description);
-  const safeImg    = escapeHtml(imageUrl);
-  const safeUrl    = escapeHtml(pageUrl);
-  // Always use summary_large_image for tracks so Facebook/X shows the big artwork card
-  const twitterCard = type === "track" ? "summary_large_image" : (imageUrl !== DEFAULT_IMG ? "summary_large_image" : "summary");
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${safeTitle}</title>
-  <meta name="description" content="${safeDesc}" />
-
-  <!-- Open Graph -->
-  <meta property="og:type"        content="${type === "track" ? "music.song" : "website"}" />
-  <meta property="og:site_name"   content="${SITE_NAME}" />
-  <meta property="og:title"       content="${safeTitle}" />
-  <meta property="og:description" content="${safeDesc}" />
-  <meta property="og:url"         content="${safeUrl}" />
-  <meta property="og:image"       content="${safeImg}" />
-  <meta property="og:image:width"  content="1200" />
-  <meta property="og:image:height" content="630" />
-
-  <!-- Twitter / X Card -->
-  <meta name="twitter:card"        content="${twitterCard}" />
-  <meta name="twitter:site"        content="@uppervibemedia" />
-  <meta name="twitter:title"       content="${safeTitle}" />
-  <meta name="twitter:description" content="${safeDesc}" />
-  <meta name="twitter:image"       content="${safeImg}" />
-
-  <!-- iMessage / Apple -->
-  <meta property="og:image:secure_url" content="${safeImg}" />
-
-  <!-- Redirect real browsers to the SPA -->
-  <meta http-equiv="refresh" content="0; url=${safeUrl}" />
-  <script>window.location.replace("${safeUrl}")</script>
-</head>
-<body>
-  <p>Redirecting to <a href="${safeUrl}">${safeTitle}</a>…</p>
-</body>
-</html>`;
 }
 
 function escapeHtml(str) {
@@ -85,80 +34,153 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
+function buildHtml({ title, description, imageUrl, pageUrl, type }) {
+  const safeTitle = escapeHtml(title);
+  const safeDesc  = escapeHtml(description);
+  const safeImg   = escapeHtml(imageUrl);
+  const safeUrl   = escapeHtml(pageUrl);
+  const twitterCard = type === "track" ? "summary_large_image" : (imageUrl !== DEFAULT_IMG ? "summary_large_image" : "summary");
+  const ogType    = type === "track" ? "music.song" : "website";
+
+  return `<!DOCTYPE html>
+<html lang="en" prefix="og: https://ogp.me/ns#">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${safeTitle}</title>
+  <meta name="description" content="${safeDesc}" />
+
+  <!-- Open Graph / Facebook / iMessage -->
+  <meta property="og:type"              content="${ogType}" />
+  <meta property="og:site_name"         content="${SITE_NAME}" />
+  <meta property="og:title"             content="${safeTitle}" />
+  <meta property="og:description"       content="${safeDesc}" />
+  <meta property="og:url"               content="${safeUrl}" />
+  <meta property="og:image"             content="${safeImg}" />
+  <meta property="og:image:secure_url"  content="${safeImg}" />
+  <meta property="og:image:width"       content="1200" />
+  <meta property="og:image:height"      content="630" />
+  <meta property="og:image:type"        content="image/jpeg" />
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card"        content="${twitterCard}" />
+  <meta name="twitter:site"        content="@uppervibemedia" />
+  <meta name="twitter:title"       content="${safeTitle}" />
+  <meta name="twitter:description" content="${safeDesc}" />
+  <meta name="twitter:image"       content="${safeImg}" />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="${safeUrl}" />
+
+  <!-- Redirect real browsers immediately to the SPA -->
+  <meta http-equiv="refresh" content="0; url=${safeUrl}" />
+  <script>
+    (function() {
+      try { window.location.replace("${safeUrl}"); } catch(e) {}
+    })();
+  </script>
+</head>
+<body style="margin:0;background:#04040e;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;">
+  <div style="padding:2rem;max-width:480px;">
+    <p style="color:rgba(255,255,255,0.5);font-size:14px;">Redirecting to <a href="${safeUrl}" style="color:#00E5FF;">${safeTitle}</a>…</p>
+  </div>
+</body>
+</html>`;
+}
+
+function buildNotFoundHtml() {
+  const safeUrl = escapeHtml(SITE_URL);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Song Not Found | Upper Vibe Media</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin:0;background:#04040e;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;">
+  <div style="padding:2rem;max-width:400px;">
+    <p style="font-size:2rem;margin-bottom:1rem;">🎵</p>
+    <h1 style="font-size:1.5rem;margin-bottom:0.5rem;">Song Not Found</h1>
+    <p style="color:rgba(255,255,255,0.4);margin-bottom:2rem;">This track may have been removed or the link is incorrect.</p>
+    <a href="${safeUrl}" style="display:inline-block;padding:12px 28px;background:#00A0DC;color:#000;border-radius:8px;font-weight:900;text-decoration:none;">
+      ← Back to Upper Vibe Media
+    </a>
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * Parse the track ID from various URL patterns:
+ *   - /song/6a21ab8709130974a068aff2
+ *   - /api/ogMeta?type=track&id=6a21ab8709130974a068aff2
+ *   - ?type=track&id=6a21ab8709130974a068aff2
+ */
+function parseRequest(url, body) {
+  const params  = url.searchParams;
+  let type = params.get("type") || body?.type || "";
+  let id   = params.get("id")   || body?.id   || "";
+
+  // Path-based: /song/<id>  (share subdomain routes)
+  if (!id) {
+    const m = url.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
+    if (m) { type = "track"; id = m[1]; }
+  }
+  // Path-based: /ogMeta/<id>
+  if (!id) {
+    const m = url.pathname.match(/\/ogMeta\/([a-zA-Z0-9]+)/);
+    if (m) { type = "track"; id = m[1]; }
+  }
+
+  return { type: type || "default", id };
+}
+
 Deno.serve(async (req) => {
-  // CORS for crawler pre-flight
+  // CORS pre-flight
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET",
+        "Access-Control-Allow-Methods": "GET, POST",
       },
     });
   }
 
   try {
-    const url    = new URL(req.url);
-    let type     = url.searchParams.get("type") || "";
-    let id       = url.searchParams.get("id")   || "";
-
-    // Also accept POST body params (used by test runner and some integrations)
+    const url  = new URL(req.url);
+    let body   = null;
     if (req.method === "POST") {
-      try {
-        const body = await req.json();
-        if (!type && body.type) type = body.type;
-        if (!id   && body.id)   id   = body.id;
-      } catch {}
+      try { body = await req.json(); } catch {}
     }
 
-    // Auto-detect /song/:id from the path or Referer header
-    // This handles cases where Facebook scrapes the canonical song URL directly
-    if (!type && !id) {
-      // Check the request path itself
-      const songMatch = url.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
-      if (songMatch) {
-        type = "track";
-        id   = songMatch[1];
-      }
-    }
-    // Also check if the id is passed as the path segment after /ogMeta/
-    if (!type && !id) {
-      const pathSongMatch = url.pathname.match(/\/ogMeta\/([a-zA-Z0-9]+)/);
-      if (pathSongMatch) {
-        type = "track";
-        id   = pathSongMatch[1];
-      }
-    }
+    const { type, id } = parseRequest(url, body);
 
-    type = type || "default";
+    console.log(`[ogMeta] type=${type} id=${id} path=${url.pathname} host=${req.headers.get("host")}`);
 
     const base44 = createClientFromRequest(req);
 
-    // ── Track page ───────────────────────────────────────────────────────────
+    // ── Track / Song ─────────────────────────────────────────────────────────
     if (type === "track" && id) {
       const tracks = await base44.asServiceRole.entities.Track.filter({ id }, "-created_date", 1);
       const track  = tracks[0];
 
       if (!track) {
-        return buildDefaultResponse();
+        console.warn(`[ogMeta] track not found: ${id}`);
+        return new Response(buildNotFoundHtml(), {
+          status: 404,
+          headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+        });
       }
 
       const artist      = track.artist_display || "Upper Vibe Media";
       const pageTitle   = `${track.title} by ${artist} | Upper Vibe Media`;
-      const description = `Stream "${track.title}" on Upper Vibe Media. 432 Hz high-vibe music.`;
+      const description = `🎵 Stream "${track.title}" on Upper Vibe Media. 432 Hz high-vibe music — listen free.`;
+      const imageUrl    = buildOgImageUrl(track.cover_url);
+      const pageUrl     = `${SITE_URL}/song/${id}`;
 
-      const imageUrl = buildOgImageUrl({ coverUrl: track.cover_url });
+      console.log(`[ogMeta] ✓ track | "${track.title}" | img: ${imageUrl.substring(0, 80)}`);
 
-      const html = buildHtml({
-        title:       pageTitle,
-        description,
-        imageUrl,
-        pageUrl:     `${SITE_URL}/song/${id}`,
-        type:        "track",
-      });
-
-      console.log(`[ogMeta] track | id: ${id} | title: ${track.title} | img: ${imageUrl.substring(0, 60)}`);
-
-      return new Response(html, {
+      return new Response(buildHtml({ title: pageTitle, description, imageUrl, pageUrl, type: "track" }), {
         headers: {
           "Content-Type":  "text/html; charset=utf-8",
           "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
@@ -166,76 +188,56 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── /start landing page ──────────────────────────────────────────────────
-    if (type === "start" || url.pathname === "/start") {
-      const html = buildHtml({
-        title:       `Start Listening | Upper Vibe Media`,
+    // ── /start ───────────────────────────────────────────────────────────────
+    if (type === "start") {
+      return new Response(buildHtml({
+        title:       `Start Listening | ${SITE_NAME}`,
         description: "Stream free 432 Hz high-vibe music, visualizers, and live radio on Upper Vibe Media.",
         imageUrl:    DEFAULT_IMG,
         pageUrl:     `${SITE_URL}/start`,
         type:        "website",
-      });
-      return new Response(html, {
-        headers: {
-          "Content-Type":  "text/html; charset=utf-8",
-          "Cache-Control": "public, max-age=3600",
-        },
-      });
+      }), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=3600" } });
     }
 
-    // ── Radio page (generic — no specific song) ──────────────────────────────
+    // ── Radio ────────────────────────────────────────────────────────────────
     if (type === "radio") {
-      const html = buildHtml({
+      return new Response(buildHtml({
         title:       `Upper Vibe Radio — Live Now | ${SITE_NAME}`,
-        description: "432 Hz high-vibe music streaming live. Listening live on Upper Vibe Media.",
+        description: "432 Hz high-vibe music streaming live. Listen on Upper Vibe Media.",
         imageUrl:    DEFAULT_IMG,
         pageUrl:     `${SITE_URL}/radio`,
         type:        "website",
-      });
-      return new Response(html, {
-        headers: {
-          "Content-Type":  "text/html; charset=utf-8",
-          "Cache-Control": "public, max-age=300",
-        },
-      });
+      }), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300" } });
     }
 
-    // ── Vibe Room page ───────────────────────────────────────────────────────
+    // ── Vibe Room ────────────────────────────────────────────────────────────
     if (type === "viberoom") {
-      const html = buildHtml({
+      return new Response(buildHtml({
         title:       `Vibe Room — Live Community Chat | ${SITE_NAME}`,
-        description: "Join the Upper Vibe Media community. Stream music together, share reactions, and raise the frequency in real time.",
+        description: "Join the Upper Vibe Media community. Stream music together and raise the frequency.",
         imageUrl:    DEFAULT_IMG,
         pageUrl:     `${SITE_URL}/vibe-room`,
         type:        "website",
-      });
-
-      return new Response(html, {
-        headers: {
-          "Content-Type":  "text/html; charset=utf-8",
-          "Cache-Control": "public, max-age=1800",
-        },
-      });
+      }), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=1800" } });
     }
 
     // ── Default fallback ─────────────────────────────────────────────────────
     return buildDefaultResponse();
 
   } catch (error) {
-    console.error("[ogMeta] error:", error.message);
+    console.error("[ogMeta] error:", error.message, error.stack);
     return buildDefaultResponse();
   }
 });
 
 function buildDefaultResponse() {
-  const html = buildHtml({
+  return new Response(buildHtml({
     title:       `Upper Vibe Media — Stream the Frequency`,
     description: "Premium high-vibration music. 432 Hz remastered tracks, exclusive drops, and a community built on elevation.",
     imageUrl:    DEFAULT_IMG,
-    pageUrl:     "https://uppervibemedia.com",
+    pageUrl:     SITE_URL,
     type:        "website",
-  });
-  return new Response(html, {
+  }), {
     headers: {
       "Content-Type":  "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=3600",

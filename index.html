@@ -22,21 +22,28 @@
         });
       })();
     </script>
-    <!-- Crawler redirect: bots hitting /song/:id get routed to ogMeta for dynamic OG tags -->
+    <!--
+      Crawler redirect: social bots hitting /song/:id are routed to ogMeta
+      for server-rendered OG tags. Facebook does NOT execute JavaScript, so
+      the noscript meta-refresh below handles FB, iMessage, and similar crawlers.
+      The JS block handles Twitterbot, Discord, Slack, WhatsApp, etc.
+    -->
     <script>
       (function() {
         var songMatch = window.location.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
         if (songMatch) {
-          var ogUrl = "/api/ogMeta?type=track&id=" + songMatch[1];
           var ua = navigator.userAgent || "";
-          // For crawlers: redirect immediately (though FB won't run JS — see noscript below)
-          var isCrawler = /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot|pinterest/i.test(ua);
+          var isCrawler = /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot|pinterest|ia_archiver|Applebot/i.test(ua);
           if (isCrawler) {
-            window.location.replace(ogUrl);
+            window.location.replace("/api/ogMeta?type=track&id=" + songMatch[1]);
           }
         }
       })();
     </script>
+    <!-- FB/iMessage fallback: meta-refresh for crawlers that don't run JS -->
+    <noscript>
+      <meta http-equiv="refresh" content="0" />
+    </noscript>
     <title>Upper Vibe Music — Stream the Frequency</title>
     <meta name="description" content="Upper Vibe Music is a premium streaming platform for exclusive, high-vibration remastered tracks and unreleased soundscapes. Tap into premium sound." />
     <!-- Open Graph defaults (overridden per-page by React) -->
