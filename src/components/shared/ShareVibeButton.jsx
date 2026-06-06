@@ -119,9 +119,10 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
     // Try native share sheet first (mobile — best for iOS)
     if (navigator.share) {
       try {
-        // Always use the clean canonical URL — users should see /song/{id}, not /functions/ogMeta
-        const shareUrl = shareData.url;
-        await navigator.share({ title: shareData.title, text: shareData.text, url: shareUrl });
+        // Pass ONLY title + url (no text) so iOS "Copy" action copies only the clean URL.
+        // iOS concatenates text+url when the user taps Copy in the share sheet — omitting
+        // text prevents the caption from being prepended to the copied link.
+        await navigator.share({ title: shareData.title, url: shareData.url });
         base44.analytics.track({ eventName: "native_share_completed", properties: { share_type: type } });
         return;
       } catch (e) {
@@ -129,7 +130,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
       }
     }
 
-    // Fallback: our custom bottom sheet
+    // Fallback: our custom bottom sheet (has separate Copy Link / Copy Caption buttons)
     setOpen(true);
   };
 
