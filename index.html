@@ -35,7 +35,7 @@
           var ua = navigator.userAgent || "";
           var isCrawler = /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot|pinterest|ia_archiver|Applebot/i.test(ua);
           if (isCrawler) {
-            window.location.replace("/api/ogMeta?type=track&id=" + songMatch[1]);
+            window.location.replace("/functions/ogMeta?type=track&id=" + songMatch[1]);
           }
         }
       })();
