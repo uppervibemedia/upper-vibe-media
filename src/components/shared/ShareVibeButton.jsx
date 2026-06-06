@@ -136,15 +136,15 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
   const [copiedCaption, setCopiedCaption] = useState(false);
 
   const handleCopy = async () => {
-    // Copy Link = clean URL only, so pasting into browser opens it directly
+    // Copy Link = clean URL only — no caption, no duplicates
     await navigator.clipboard.writeText(shareData.displayUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleCopyCaption = async () => {
-    // Copy Caption = caption + URL for social posts
-    const textToCopy = shareData.clipboardText || `${shareData.text}\n${shareData.displayUrl}`;
+    // Copy Caption = URL first, then caption (URL first so it's easy to open when pasted)
+    const textToCopy = `${shareData.displayUrl}\n\n${shareData.text}`;
     await navigator.clipboard.writeText(textToCopy);
     setCopiedCaption(true);
     setTimeout(() => setCopiedCaption(false), 2000);
