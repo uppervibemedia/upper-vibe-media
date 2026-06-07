@@ -78,8 +78,21 @@ export function isSafeRoute(path) {
 export function defaultRouteForUser(user) {
   if (!user) return "/music";
   if (user.role === "admin") return "/admin";
-  // All logged-in members go to the member dashboard on login
-  return "/my-vibes";
+  const isPlus =
+    user.isPlus === true ||
+    user.isPremium === true ||
+    user.is_plus === true ||
+    user.tier === "plus" ||
+    user.tier === "premium" ||
+    user.role === "plus" ||
+    user.role === "premium" ||
+    user.plan === "plus" ||
+    user.plan === "premium" ||
+    user.subscription_status === "active" ||
+    user.subscriptionStatus === "active" ||
+    user.stripe_subscription_status === "active";
+  if (isPlus) return "/my-vibe-library";
+  return "/music";
 }
 
 // All storage keys that may hold a returnUrl / redirect value

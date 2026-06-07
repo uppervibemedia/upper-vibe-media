@@ -1,15 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { getPublishedTracks } from "@/lib/trackCache";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight,
-  Download, Clock, UserCircle2
-} from "lucide-react";
+import { Heart, Music4, Tv2, Play, Pause, Waves, ArrowRight, Download, Home, Sparkles } from "lucide-react";
 import NewBadge from "@/components/shared/NewBadge";
 import ShareVibeButton from "@/components/shared/ShareVibeButton";
-import DashboardHeader from "@/components/myvibes/DashboardHeader";
-import DownloadsTab from "@/components/myvibes/DownloadsTab";
-import RecentActivityTab from "@/components/myvibes/RecentActivityTab";
 import { Link, useNavigate } from "react-router-dom";
 
 import { base44 } from "@/api/base44Client";
@@ -19,47 +13,38 @@ import { useFavorites } from "../hooks/useFavorite";
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 
-const TABS = [
-  { id: "songs",      label: "Saved Songs",    icon: Music4 },
-  { id: "visualizers",label: "Saved Videos",   icon: Tv2 },
-  { id: "downloads",  label: "My Downloads",   icon: Download },
-  { id: "activity",   label: "Recent Activity",icon: Clock },
-];
+
 
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
   const { isFaved, toggle } = useFavorites(user?.email);
   const [tracks, setTracks] = useState([]);
   const [visualizers, setVisualizers] = useState([]);
-  const [downloadCount, setDownloadCount] = useState(0);
+  const [latestTracks, setLatestTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("songs");
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const isPremium = isPlus || isAdmin;
   const { accent } = useTheme();
-  const rgb = accent.rgb;
+  const rgb = accent.rgb; // e.g. "0,229,255"
   const navigate = useNavigate();
+
 
   useEffect(() => {
     if (!user?.email) { setLoading(false); return; }
     Promise.all([
       getPublishedTracks("-created_date", 500),
       base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 500),
-      user?.id ? base44.entities.UserDownload.filter({ user_id: user.id }, "-downloaded_at", 1) : Promise.resolve([]),
-    ]).then(([t, v, d]) => {
+    ]).then(([t, v]) => {
       setTracks(t);
+      // Latest 5 playable tracks derived from the same cached fetch
+      setLatestTracks(t.filter((tr) => tr.audio_url).slice(0, 5));
       setVisualizers(v);
-      setDownloadCount(d.length > 0 ? d[0]?.count ?? d.length : 0);
       setLoading(false);
     });
-    // Get accurate download count
-    if (user?.id) {
-      base44.entities.UserDownload.filter({ user_id: user.id }, "-downloaded_at", 200)
-        .then(d => setDownloadCount(d.length))
-        .catch(() => {});
-    }
   }, [user]);
 
+  // C: memoize — avoid recomputing on every render triggered by playback state
   const savedTracks = useMemo(() => tracks.filter((t) => isFaved("track", t.id)), [tracks, isFaved]);
   const savedVisualizers = useMemo(() => visualizers.filter((v) => isFaved("visualizer", v.id)), [visualizers, isFaved]);
 
@@ -80,24 +65,22 @@ export default function MyVibes() {
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center py-24">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
             style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.25)" }}>
-            <UserCircle2 className="w-8 h-8" style={{ color: "#9B7EFF" }} />
+            <Heart className="w-8 h-8 fill-current" style={{ color: "#9B7EFF" }} />
           </div>
-          <h1 className="font-heading font-black text-3xl md:text-4xl text-white mb-4">Member Dashboard</h1>
+          <h1 className="font-heading font-black text-3xl md:text-4xl text-white mb-4">My Vibe Library</h1>
           <p className="text-white/40 text-sm max-w-md leading-relaxed mb-8">
-            Log in to access your saved songs, downloads, and listening history.
+            Create a free account to save songs and visualizers to your My Vibe Library.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => base44.auth.redirectToLogin(window.location.origin + "/my-vibes")}
+            <button onClick={() => base44.auth.redirectToLogin(window.location.origin + "/my-vibes")}
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110"
               style={{ background: `linear-gradient(135deg,rgba(${rgb},0.8),rgba(${rgb},1))`, color: "#fff", boxShadow: `0 0 24px rgba(${rgb},0.3)` }}>
-              Log In
+              Create Free Account
             </button>
-            <button
-              onClick={() => base44.auth.redirectToLogin(window.location.origin + "/my-vibes")}
+            <button onClick={() => base44.auth.redirectToLogin(window.location.origin + "/my-vibes")}
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:bg-white/10"
               style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.8)" }}>
-              Create Free Account
+              Log In
             </button>
           </div>
           <Link to="/music" className="mt-5 flex items-center gap-1 text-sm text-white/30 hover:text-white/60 transition-colors">
@@ -109,70 +92,129 @@ export default function MyVibes() {
     );
   }
 
-  const tabCounts = {
-    songs: savedTracks.length,
-    visualizers: savedVisualizers.length,
-    downloads: downloadCount,
-    activity: null,
-  };
-
   return (
     <div className="min-h-screen">
-      <DashboardHeader
-        user={user}
-        savedCount={savedTracks.length}
-        downloadCount={downloadCount}
-        isPlus={isPlus}
-        isAdmin={isAdmin}
-      />
+      {/* Hero */}
+      <div className="relative overflow-hidden pt-20 pb-8 px-6"
+        style={{ background: `linear-gradient(180deg,rgba(${rgb},0.06) 0%,transparent 100%)` }}>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] rounded-full opacity-[0.05] blur-[90px] pointer-events-none"
+          style={{ background: `radial-gradient(circle,${accent.hex},transparent)` }} />
+        <div className="max-w-5xl mx-auto relative z-10">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+            {/* Home button */}
+            <Link to="/"
+              className="flex items-center gap-1.5 mb-5 text-xs font-bold tracking-wide transition-all hover:opacity-80"
+              style={{ color: "rgba(255,255,255,0.4)" }}>
+              <Home className="w-4 h-4" /> Home
+            </Link>
+            <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-1">My Vibe Library</h1>
+            <p className="font-heading font-bold mb-2 leading-snug flex items-center gap-2"
+              style={{ fontSize: "clamp(0.85rem, 2.5vw, 1.1rem)", color: `rgb(${rgb})` }}>
+              Your Saved Frequency <Heart className="w-4 h-4 fill-current flex-shrink-0" />
+            </p>
+            <p className="text-white/35 text-sm">
+              {savedTracks.length} song{savedTracks.length !== 1 ? "s" : ""} · {savedVisualizers.length} visualizer{savedVisualizers.length !== 1 ? "s" : ""}
+            </p>
+          </motion.div>
+        </div>
+      </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-24">
-        {/* Tab nav */}
-        <div
-          className="flex gap-1 overflow-x-auto hide-scrollbar border-b mb-8 -mx-4 sm:mx-0 px-4 sm:px-0"
-          style={{ borderColor: "rgba(255,255,255,0.07)" }}
-        >
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className="flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 -mb-px transition-all whitespace-nowrap flex-shrink-0"
+      <div className="max-w-5xl mx-auto px-6 pb-24">
+
+        {/* ── Latest Music For You ── */}
+        {latestTracks.length > 0 && (
+          <div className="mb-8 pt-2">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="w-4 h-4" style={{ color: `rgb(${rgb})` }} />
+                  <h2 className="font-heading font-black text-white text-lg">Latest Music For You</h2>
+                </div>
+                <p className="text-white/35 text-xs">New 432 Hz drops added to Upper Vibe Media.</p>
+              </div>
+              <Link to="/music"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black tracking-wide transition-all hover:brightness-110 flex-shrink-0"
+                style={{ background: `rgba(${rgb},0.1)`, border: `1px solid rgba(${rgb},0.3)`, color: `rgb(${rgb})` }}>
+                Browse Latest Music <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="space-y-2">
+              {latestTracks.map((track, i) => {
+                const isCurrentTrack = currentTrack?.id === track.id;
+                return (
+                  <motion.div key={track.id}
+                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="flex items-center gap-3 p-3 rounded-2xl transition-all"
+                    style={{
+                      background: isCurrentTrack ? `rgba(${rgb},0.06)` : "rgba(255,255,255,0.02)",
+                      border: `1px solid ${isCurrentTrack ? `rgba(${rgb},0.2)` : "rgba(255,255,255,0.05)"}`,
+                    }}>
+                    <button onClick={() => handlePlay(track)} className="flex-shrink-0 relative group">
+                      {track.cover_url ? (
+                        <img src={track.cover_url} alt={track.title} width={44} height={44} loading="lazy" className="w-11 h-11 rounded-xl object-cover" />
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: `rgba(${rgb},0.08)` }}>
+                          <Music4 className="w-4 h-4" style={{ color: `rgba(${rgb},0.4)` }} />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ background: "rgba(0,0,0,0.55)" }}>
+                        {isCurrentTrack && isPlaying ? <Pause className="w-3.5 h-3.5" style={{ color: `rgb(${rgb})` }} /> : <Play className="w-3.5 h-3.5 text-white ml-0.5" />}
+                      </div>
+                    </button>
+                    <Link to={`/song/${track.id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                      <p className="text-sm font-bold text-white truncate">{track.title}</p>
+                      <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                    </Link>
+                    <NewBadge track={track} />
+                    <button onClick={() => handlePlay(track)}
+                      className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:brightness-110"
+                      style={{ background: `rgba(${rgb},0.08)`, border: `1px solid rgba(${rgb},0.2)`, color: `rgb(${rgb})` }}>
+                      {isCurrentTrack && isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+                    </button>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div className="flex gap-1 border-b mb-8" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+          {[
+            { id: "songs", label: "Favorite Songs", icon: Music4, count: savedTracks.length },
+            { id: "visualizers", label: "Favorite Visualizers", icon: Tv2, count: savedVisualizers.length },
+          ].map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className="flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 -mb-px transition-all"
               style={tab === t.id
                 ? { borderColor: `rgb(${rgb})`, color: `rgb(${rgb})` }
-                : { borderColor: "transparent", color: "rgba(255,255,255,0.3)" }}
-            >
+                : { borderColor: "transparent", color: "rgba(255,255,255,0.3)" }}>
               <t.icon className="w-4 h-4" />
-              <span className="hidden sm:inline">{t.label}</span>
-              <span className="sm:hidden">{t.label.split(" ")[t.label.split(" ").length - 1]}</span>
-              {tabCounts[t.id] !== null && tabCounts[t.id] !== undefined && (
-                <span
-                  className="px-1.5 py-0.5 rounded-full text-[9px] font-black"
-                  style={{
-                    background: tab === t.id ? `rgba(${rgb},0.2)` : "rgba(255,255,255,0.07)",
-                    color: tab === t.id ? `rgb(${rgb})` : "rgba(255,255,255,0.3)",
-                  }}
-                >
-                  {tabCounts[t.id]}
-                </span>
-              )}
+              {t.label}
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black"
+                style={{ background: tab === t.id ? `rgba(${rgb},0.2)` : "rgba(255,255,255,0.07)", color: tab === t.id ? `rgb(${rgb})` : "rgba(255,255,255,0.3)" }}>
+                {t.count}
+              </span>
             </button>
           ))}
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <div className="w-6 h-6 rounded-full animate-spin"
-              style={{ border: `2px solid rgba(${rgb},0.2)`, borderTopColor: `rgb(${rgb})` }} />
+            <div className="w-6 h-6 rounded-full animate-spin" style={{ border: `2px solid rgba(155,126,255,0.2)`, borderTopColor: "#9B7EFF" }} />
           </div>
         ) : (
-          <AnimatePresence mode="wait">
-            {/* ── Saved Songs ── */}
+          <>
+            {/* Favorite Songs Tab */}
             {tab === "songs" && (
-              <motion.div key="songs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <AnimatePresence mode="wait">
                 {savedTracks.length === 0 ? (
-                  <EmptyState icon={Music4} message="No saved songs yet." link="/music" linkLabel="Browse Music" rgb={rgb} />
+                  <EmptyState icon={Music4} message="No favorite songs yet." link="/music" linkLabel="Browse Music" />
                 ) : (
-                  <div className="space-y-2">
+                  <motion.div key="songs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
                     {savedTracks.map((track, i) => {
                       const isCurrentTrack = currentTrack?.id === track.id;
                       return (
@@ -188,11 +230,13 @@ export default function MyVibes() {
                             {track.cover_url ? (
                               <img src={track.cover_url} alt={track.title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-xl object-cover" />
                             ) : (
-                              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `rgba(${rgb},0.08)` }}>
+                              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                                style={{ background: `rgba(${rgb},0.08)` }}>
                                 <Music4 className="w-5 h-5" style={{ color: `rgba(${rgb},0.4)` }} />
                               </div>
                             )}
-                            <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.6)" }}>
+                            <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ background: "rgba(0,0,0,0.6)" }}>
                               {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4" style={{ color: `rgb(${rgb})` }} /> : <Play className="w-4 h-4 text-white ml-0.5" />}
                             </div>
                           </div>
@@ -214,41 +258,55 @@ export default function MyVibes() {
                           {track.duration && <p className="text-xs text-white/25 hidden sm:block flex-shrink-0">{track.duration}</p>}
 
                           <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {/* Play Song */}
                             <button onClick={() => handlePlay(track)}
                               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
                               style={{ background: "rgba(0,160,220,0.08)", border: "1px solid rgba(0,160,220,0.3)", color: "#00A0DC" }}>
                               {isCurrentTrack && isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
                               <span className="hidden sm:inline">{isCurrentTrack && isPlaying ? "Pause" : "Play"}</span>
                             </button>
-                            <button onClick={(e) => handleDownload(track, e)}
+
+                            {/* Download MP3 */}
+                            <button
+                              onClick={(e) => handleDownload(track, e)}
                               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                              style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}>
+                              style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
+                              title={isPremium ? "Download MP3" : "Upgrade to Plus to download"}>
                               <Download className="w-3 h-3" />
-                              <span className="hidden sm:inline">Download</span>
+                              <span className="hidden sm:inline">Download MP3</span>
                             </button>
-                            <ShareVibeButton type="song" track={track} size="sm" />
+
+                            {/* Share */}
+                            <ShareVibeButton
+                              type="song"
+                              track={track}
+                              size="sm"
+                            />
+
+                            {/* Remove heart */}
                             <button onClick={() => toggle("track", track.id)}
                               className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
                               style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.3)", color: "#9B7EFF" }}
-                              title="Remove from Saved">
+                              title="Remove from Favorites">
                               <Heart className="w-3.5 h-3.5 fill-current" />
                             </button>
                           </div>
                         </motion.div>
                       );
                     })}
-                  </div>
+                  </motion.div>
                 )}
-              </motion.div>
+              </AnimatePresence>
             )}
 
-            {/* ── Saved Visualizers ── */}
+            {/* Favorite Visualizers Tab */}
             {tab === "visualizers" && (
-              <motion.div key="visualizers" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <AnimatePresence mode="wait">
                 {savedVisualizers.length === 0 ? (
-                  <EmptyState icon={Tv2} message="No saved visualizers yet." link="/visualizers" linkLabel="Browse Visualizers" rgb={rgb} />
+                  <EmptyState icon={Tv2} message="No favorite visualizers yet." link="/visualizers" linkLabel="Browse Visualizers" />
                 ) : (
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <motion.div key="vizs" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     {savedVisualizers.map((viz, i) => (
                       <motion.div key={viz.id}
                         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -259,7 +317,8 @@ export default function MyVibes() {
                           {viz.thumbnail_url ? (
                             <img src={viz.thumbnail_url} alt={viz.title} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(0,229,255,0.05)" }}>
+                            <div className="w-full h-full flex items-center justify-center"
+                              style={{ background: "rgba(0,229,255,0.05)" }}>
                               <Tv2 className="w-8 h-8 text-white/10" />
                             </div>
                           )}
@@ -269,11 +328,15 @@ export default function MyVibes() {
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-white truncate">{viz.title}</p>
                               <p className="text-xs text-white/40">{viz.artist || "Upper Vibe Media"}</p>
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1"
+                                style={{ background: "rgba(0,160,220,0.1)", color: "#00A0DC" }}>
+                                <Waves className="w-2 h-2" /> 432 Hz
+                              </span>
                             </div>
                             <button onClick={() => toggle("visualizer", viz.id)}
                               className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-110"
                               style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.3)", color: "#9B7EFF" }}
-                              title="Remove from Saved">
+                              title="Remove from Favorites">
                               <Heart className="w-3.5 h-3.5 fill-current" />
                             </button>
                           </div>
@@ -290,29 +353,22 @@ export default function MyVibes() {
                                 View Song
                               </Link>
                             )}
+                            {viz.linked_song_id && (
+                              <ShareVibeButton
+                                type="song"
+                                track={{ id: viz.linked_song_id, title: viz.title, artist_display: viz.artist, cover_url: viz.thumbnail_url }}
+                                size="sm"
+                              />
+                            )}
                           </div>
                         </div>
                       </motion.div>
                     ))}
-                  </div>
+                  </motion.div>
                 )}
-              </motion.div>
+              </AnimatePresence>
             )}
-
-            {/* ── Downloads Tab ── */}
-            {tab === "downloads" && (
-              <motion.div key="downloads" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <DownloadsTab user={user} isPlus={isPlus} isAdmin={isAdmin} />
-              </motion.div>
-            )}
-
-            {/* ── Recent Activity Tab ── */}
-            {tab === "activity" && (
-              <motion.div key="activity" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <RecentActivityTab user={user} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          </>
         )}
       </div>
 
@@ -321,7 +377,7 @@ export default function MyVibes() {
   );
 }
 
-function EmptyState({ icon: Icon, message, link, linkLabel, rgb }) {
+function EmptyState({ icon: Icon, message, link, linkLabel }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
       className="flex flex-col items-center justify-center py-20 text-center">
@@ -330,7 +386,7 @@ function EmptyState({ icon: Icon, message, link, linkLabel, rgb }) {
       <p className="text-white/15 text-sm mb-6">Hit the heart icon on any item to save it here.</p>
       <Link to={link}
         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:brightness-110"
-        style={{ background: `rgba(${rgb},0.1)`, border: `1px solid rgba(${rgb},0.2)`, color: `rgb(${rgb})` }}>
+        style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.2)", color: "#9B7EFF" }}>
         {linkLabel} <ArrowRight className="w-4 h-4" />
       </Link>
     </motion.div>
