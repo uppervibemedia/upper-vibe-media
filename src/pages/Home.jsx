@@ -754,7 +754,7 @@ export default function Home() {
                   className="flex flex-col items-center gap-3 p-5 rounded-2xl text-center group transition-all hover:border-white/15 active:scale-[0.98]"
                   style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   {artist.image_url ? (
-                    <img src={artist.image_url} alt={artist.name} className="w-16 h-16 rounded-full object-cover ring-2 ring-white/10 group-hover:ring-cyan-400/30 transition-all" />
+                    <img src={artist.image_url} alt={artist.name} loading="lazy" className="w-16 h-16 rounded-full object-cover ring-2 ring-white/10 group-hover:ring-cyan-400/30 transition-all" />
                   ) : (
                     <div className="w-16 h-16 rounded-full flex items-center justify-center ring-2 ring-white/10"
                       style={{ background: "rgba(0,229,255,0.08)" }}>
