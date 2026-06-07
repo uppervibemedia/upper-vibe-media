@@ -188,9 +188,10 @@ Deno.serve(async (req) => {
       const pageTitle   = `${track.title} by ${artist} | Upper Vibe Media`;
       const description = `Stream "${track.title}" on Upper Vibe Media. 432 Hz high-vibe music — listen free.`;
       const imageUrl    = buildOgImageUrl(track.cover_url);
-      // og:url = share URL (canonical for social sharing); humans redirect to /song/:id
-      const shareRoute  = url.pathname.includes("/share/") ? `${SITE_URL}/share/${id}` : `${SITE_URL}/song/${id}`;
-      const pageUrl     = shareRoute;
+      // og:url = /share/:id (canonical for social sharing — clicking the preview goes here,
+      // which correctly redirects humans to /song/:id via the SPA).
+      // Whether called via /share/:id path or ?type=track&id=... query param, always use /share/:id as og:url.
+      const pageUrl          = `${SITE_URL}/share/${id}`;
       // Human redirect always goes to the SPA song page
       const humanRedirectUrl = `${SITE_URL}/song/${id}`;
 
