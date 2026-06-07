@@ -22,31 +22,8 @@
         });
       })();
     </script>
-    <!--
-      Crawler redirect: social bots hitting /song/:id are routed to ogMeta
-      for server-rendered OG tags. Facebook does NOT execute JavaScript, so
-      the noscript meta-refresh below handles FB, iMessage, and similar crawlers.
-      The JS block handles Twitterbot, Discord, Slack, WhatsApp, etc.
-    -->
-    <script>
-      (function() {
-        var ua = navigator.userAgent || "";
-        var isCrawler = /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot|pinterest|ia_archiver|Applebot/i.test(ua);
-        // /share/:id — primary share URL used in Copy Link / social posts
-        var shareMatch = window.location.pathname.match(/\/share\/([a-zA-Z0-9]+)/);
-        if (shareMatch) {
-          // Always route /share/:id through ogMeta — crawlers get OG tags, humans get redirected
-          window.location.replace("/functions/ogMeta?type=track&id=" + shareMatch[1]);
-          return;
-        }
-        // /song/:id — legacy / direct navigation; only route crawlers
-        var songMatch = window.location.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
-        if (songMatch && isCrawler) {
-          window.location.replace("/functions/ogMeta?type=track&id=" + songMatch[1]);
-        }
-      })();
-    </script>
-    <!-- FB/iMessage: crawlers that don't run JS are handled server-side by ogMeta -->
+    <!-- OG tags for /song/:id are served server-side by the Cloudflare Worker (uppervibemedia-og).
+         The worker intercepts crawler requests before this HTML loads, so no JS redirect needed. -->
     <title>Upper Vibe Media — Stream the Frequency</title>
     <meta name="description" content="Premium 432 Hz high-vibration music. Stream exclusive remastered tracks, visualizers, and live radio on Upper Vibe Media." />
     <!-- Open Graph defaults (overridden per-page by React) -->

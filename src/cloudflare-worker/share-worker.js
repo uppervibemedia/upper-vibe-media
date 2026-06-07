@@ -220,14 +220,13 @@ export default {
     try {
       const track = await fetchTrack(songId);
 
-      const artist      = track.artist_display || SITE_NAME;
-      const title       = `${track.title} by ${artist} | ${SITE_NAME}`;
-      const description = `Stream "${track.title}" on Upper Vibe Media. 432 Hz high-vibe music — listen free.`;
+      const title       = `${track.title} | ${SITE_NAME}`;
+      const description = `Listen to ${track.title} on Upper Vibe Media.`;
       const imageUrl    = (track.cover_url && track.cover_url.startsWith("https://"))
                             ? track.cover_url
                             : DEFAULT_IMG;
 
-      console.log(`[og-worker] ✓ "${track.title}" by ${artist} | img: ${imageUrl.substring(0, 70)}`);
+      console.log(`[og-worker] ✓ "${track.title}" | img: ${imageUrl.substring(0, 70)}`);
 
       return new Response(buildOgHtml({ title, description, imageUrl, pageUrl }), {
         status: 200,
