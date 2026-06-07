@@ -184,16 +184,10 @@ Deno.serve(async (req) => {
         });
       }
 
-      const artist      = track.artist_display || "Upper Vibe Media";
-      const pageTitle   = `${track.title} by ${artist} | Upper Vibe Media`;
-      const description = `Stream "${track.title}" on Upper Vibe Media. 432 Hz high-vibe music — listen free.`;
-      const imageUrl    = buildOgImageUrl(track.cover_url);
-      // og:url = share.uppervibemedia.com/song/:id (canonical for social sharing).
-      // The Cloudflare Worker at share.uppervibemedia.com calls this function to get OG HTML,
-      // then serves it to crawlers. Real humans are redirected to /song/:id on the main site.
-      const SHARE_ORIGIN     = "https://share.uppervibemedia.com";
-      const pageUrl          = `${SHARE_ORIGIN}/song/${id}`;
-      // Human redirect always goes to the SPA song page on the main domain
+      const pageTitle        = `${track.title} | Upper Vibe Media`;
+      const description      = `Listen to ${track.title} on Upper Vibe Media.`;
+      const imageUrl         = buildOgImageUrl(track.cover_url);
+      const pageUrl          = `${SITE_URL}/song/${id}`;
       const humanRedirectUrl = `${SITE_URL}/song/${id}`;
 
       console.log(`[ogMeta] ✓ track | "${track.title}" | img: ${imageUrl.substring(0, 80)}`);

@@ -1,60 +1,29 @@
 /**
- * Cloudflare Worker — uppervibemedia.com
+ * Cloudflare Worker — uppervibemedia-og
  *
- * ═══════════════════════════════════════════════════════════════
- * SETUP INSTRUCTIONS
- * ═══════════════════════════════════════════════════════════════
+ * Route: uppervibemedia.com/song/*
+ *        www.uppervibemedia.com/song/*
  *
- * This worker sits in front of uppervibemedia.com and intercepts
- * crawler requests to /song/:id to serve server-rendered OG meta tags.
- * All other requests (real users, all other pages) pass through to the
- * Base44 SPA unchanged.
+ * HOW IT WORKS:
+ *   Crawlers (Facebook, Twitter/X, Discord, Slack, WhatsApp, iMessage…)
+ *     → Worker fetches real track data from Base44 API
+ *     → Returns server-rendered HTML with song-specific OG + Twitter tags
  *
- * Step 1 — Create the Worker:
- *   1. Go to https://dash.cloudflare.com → Workers & Pages
- *   2. Click "Create" → "Create Worker"
- *   3. Name it: uppervibemedia-og
- *   4. Replace the default code with this entire file
- *   5. Click "Save & Deploy"
+ *   Real human users:
+ *     → Worker passes request straight through to Base44 SPA
+ *     → Zero change to user experience
  *
- * Step 2 — Add a Route (NOT a Custom Domain):
- *   Option A — Via Dashboard:
- *     1. Go to your Cloudflare zone for uppervibemedia.com
- *     2. Workers Routes → Add Route
- *     3. Route: uppervibemedia.com/song/*
- *     4. Worker: uppervibemedia-og
- *     5. Save
+ * DEPLOY:
+ *   1. Cloudflare Dashboard → Workers & Pages → uppervibemedia-og → Edit code
+ *   2. Paste this entire file → Save & Deploy
+ *   3. Confirm routes exist: uppervibemedia.com/song/* and www.uppervibemedia.com/song/*
  *
- *   Option B — Via wrangler.toml (see wrangler.toml):
- *     Run: npx wrangler deploy
+ * TEST (must see og:title with song name, NOT generic):
+ *   curl -sI -A "facebookexternalhit/1.1" https://uppervibemedia.com/song/6a21ab8709130974a068aff2 | grep -i content-type
+ *   curl -s  -A "facebookexternalhit/1.1" https://uppervibemedia.com/song/6a21ab8709130974a068aff2 | grep "og:title"
  *
- * Step 3 — Test:
- *   Real user:  curl https://uppervibemedia.com/song/6a21ab8709130974a068aff2
- *               → Should return normal SPA HTML (pass-through)
- *
- *   Crawler:    curl -A "facebookexternalhit/1.1" https://uppervibemedia.com/song/6a21ab8709130974a068aff2
- *               → Should return OG HTML with Dopamine Dealer cover art
- *
- *   Facebook Sharing Debugger:
- *     https://developers.facebook.com/tools/debug/
- *     Paste: https://uppervibemedia.com/song/6a21ab8709130974a068aff2
- *     Click "Scrape Again"
- *
- * ═══════════════════════════════════════════════════════════════
- * HOW IT WORKS
- * ═══════════════════════════════════════════════════════════════
- *
- * Social crawlers (Facebook, iMessage, X, Discord, Slack, WhatsApp…):
- *   → Worker fetches track data from Base44 REST API
- *   → Returns server-rendered HTML with REAL song OG tags
- *   → Facebook preview card shows actual artwork + song title + artist
- *   → og:url = https://uppervibemedia.com/song/{id}  (canonical, no redirect)
- *
- * Real human users:
- *   → Worker passes the request straight through to the Base44 SPA
- *   → Zero impact on user experience, no redirect, no delay
- *
- * ═══════════════════════════════════════════════════════════════
+ * Then use Facebook Sharing Debugger → Scrape Again:
+ *   https://developers.facebook.com/tools/debug/
  */
 
 const APP_ID      = "69cd68afb7fe90ae92757154";
@@ -62,23 +31,25 @@ const MAIN_SITE   = "https://uppervibemedia.com";
 const SITE_NAME   = "Upper Vibe Media";
 const DEFAULT_IMG = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png";
 
-// Base44 REST API — Track entity has RLS read=true so no auth required
+// Base44 REST API — Track RLS is read=true (public, no auth required)
 const BASE44_API = `https://base44.app/api/apps/${APP_ID}/entities/Track`;
 
-// ─── Crawler Bot Detection ────────────────────────────────────────────────────
-const BOT_PATTERNS = [
+// ─── Crawler detection ────────────────────────────────────────────────────────
+// Covers: Facebook, Twitter/X, LinkedIn, Slack, Discord, Telegram,
+//         WhatsApp, Apple/iMessage, Googlebot, Bingbot, Pinterest, Snapchat
+const BOT_UA_FRAGMENTS = [
   "facebookexternalhit",
   "facebookcatalog",
   "facebot",
-  "linkedinbot",
   "twitterbot",
-  "slackbot-linkexpanding",
+  "linkedinbot",
+  "slackbot",
   "slack-imgproxy",
+  "discordbot",
   "telegrambot",
   "whatsapp",
-  "discordbot",
-  "imessage",
   "applebot",
+  "imessagebotuser",
   "googlebot",
   "bingbot",
   "pinterest",
@@ -88,33 +59,33 @@ const BOT_PATTERNS = [
   "curl/",
   "python-requests",
   "axios/",
-  "okhttp",
   "go-http-client",
+  "okhttp",
 ];
 
 function isCrawler(ua) {
   if (!ua) return false;
   const lower = ua.toLowerCase();
-  return BOT_PATTERNS.some((p) => lower.includes(p));
+  return BOT_UA_FRAGMENTS.some((f) => lower.includes(f));
 }
 
-// ─── Fetch Track from Base44 ──────────────────────────────────────────────────
+// ─── Fetch track from Base44 ──────────────────────────────────────────────────
 async function fetchTrack(songId) {
   const res = await fetch(`${BASE44_API}/${encodeURIComponent(songId)}`, {
     headers: {
-      "Accept": "application/json",
-      "User-Agent": "uppervibemedia.com OG-Worker/2.0",
+      "Accept":     "application/json",
+      "User-Agent": "uppervibemedia-og-worker/3.0",
     },
     signal: AbortSignal.timeout(6000),
   });
   if (res.status === 404) throw new Error("not_found");
-  if (!res.ok) throw new Error(`base44_error_${res.status}`);
+  if (!res.ok) throw new Error(`api_error_${res.status}`);
   const track = await res.json();
   if (!track || !track.id) throw new Error("not_found");
   return track;
 }
 
-// ─── HTML Escape ──────────────────────────────────────────────────────────────
+// ─── HTML escape ──────────────────────────────────────────────────────────────
 function esc(s) {
   if (!s) return "";
   return String(s)
@@ -125,8 +96,8 @@ function esc(s) {
     .replace(/'/g, "&#39;");
 }
 
-// ─── Build OG HTML ────────────────────────────────────────────────────────────
-function buildOgHtml({ title, description, imageUrl, pageUrl }) {
+// ─── Build OG HTML for crawlers ───────────────────────────────────────────────
+function buildOgHtml(title, description, imageUrl, pageUrl) {
   const t = esc(title);
   const d = esc(description);
   const i = esc(imageUrl);
@@ -140,7 +111,7 @@ function buildOgHtml({ title, description, imageUrl, pageUrl }) {
   <title>${t}</title>
   <meta name="description" content="${d}" />
 
-  <!-- Open Graph — Facebook, iMessage, Discord, Slack, LinkedIn -->
+  <!-- Open Graph — Facebook, iMessage, Discord, Slack, LinkedIn, WhatsApp -->
   <meta property="og:type"             content="music.song" />
   <meta property="og:site_name"        content="${esc(SITE_NAME)}" />
   <meta property="og:title"            content="${t}" />
@@ -160,20 +131,11 @@ function buildOgHtml({ title, description, imageUrl, pageUrl }) {
   <meta name="twitter:image"       content="${i}" />
 
   <link rel="canonical" href="${u}" />
-
-  <!-- Redirect crawlers that load this page in a browser to the SPA -->
-  <script>(function(){
-    var ua = navigator.userAgent.toLowerCase();
-    var bots = ["facebookexternalhit","twitterbot","linkedinbot","slackbot","discordbot","googlebot"];
-    var isBot = bots.some(function(b){return ua.indexOf(b)>-1;});
-    if(!isBot) window.location.replace("${u}");
-  })();</script>
 </head>
 <body style="margin:0;background:#04040e;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;">
   <div style="padding:2rem;max-width:480px;">
     <p style="font-size:1.8rem;margin-bottom:1rem;">🎧</p>
     <h1 style="margin:0 0 0.5rem;font-size:1.25rem;font-weight:900;">${t}</h1>
-    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:1.5rem;">${d}</p>
     <a href="${u}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#00B8D4,#00E5FF);color:#000;border-radius:10px;font-weight:900;font-size:15px;text-decoration:none;letter-spacing:0.04em;">
       Listen on Upper Vibe Media →
     </a>
@@ -182,26 +144,14 @@ function buildOgHtml({ title, description, imageUrl, pageUrl }) {
 </html>`;
 }
 
-// ─── Fallback OG HTML (when track fetch fails) ────────────────────────────────
-function buildFallbackOgHtml(songId) {
-  return buildOgHtml({
-    title:       `Upper Vibe Media — Stream the Frequency`,
-    description: `Premium high-vibration music. 432 Hz remastered tracks — listen free.`,
-    imageUrl:    DEFAULT_IMG,
-    pageUrl:     `${MAIN_SITE}/song/${songId}`,
-  });
-}
-
-// ─── Main Handler ─────────────────────────────────────────────────────────────
+// ─── Main handler ─────────────────────────────────────────────────────────────
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const ua  = request.headers.get("User-Agent") || "";
 
-    // Only intercept /song/:id paths
+    // Only act on /song/:id — everything else passes through unchanged
     const match = url.pathname.match(/^\/song\/([a-zA-Z0-9]+)$/);
-
-    // Everything else (all other pages, assets, etc.) → pass through to Base44 SPA
     if (!match) {
       return fetch(request);
     }
@@ -209,13 +159,13 @@ export default {
     const songId  = match[1];
     const pageUrl = `${MAIN_SITE}/song/${songId}`;
 
-    // Real humans → pass through to the SPA (they get the React app normally)
+    // Real humans → pass through to Base44 SPA (no change to their experience)
     if (!isCrawler(ua)) {
       return fetch(request);
     }
 
-    // ── Crawlers → serve server-rendered OG HTML ──────────────────────────────
-    console.log(`[og-worker] crawler: ${ua.substring(0, 80)} | song/${songId}`);
+    // Crawlers → serve server-rendered OG HTML
+    console.log(`[og-worker] crawler detected | UA: ${ua.substring(0, 80)} | song/${songId}`);
 
     try {
       const track = await fetchTrack(songId);
@@ -226,9 +176,9 @@ export default {
                             ? track.cover_url
                             : DEFAULT_IMG;
 
-      console.log(`[og-worker] ✓ "${track.title}" | img: ${imageUrl.substring(0, 70)}`);
+      console.log(`[og-worker] ✓ "${track.title}" | img: ${imageUrl.substring(0, 80)}`);
 
-      return new Response(buildOgHtml({ title, description, imageUrl, pageUrl }), {
+      return new Response(buildOgHtml(title, description, imageUrl, pageUrl), {
         status: 200,
         headers: {
           "Content-Type":  "text/html; charset=utf-8",
@@ -238,14 +188,18 @@ export default {
       });
 
     } catch (err) {
-      console.error(`[og-worker] error for song/${songId}:`, err.message);
-      const status = err.message === "not_found" ? 404 : 200;
-      return new Response(buildFallbackOgHtml(songId), {
-        status,
-        headers: {
-          "Content-Type":  "text/html; charset=utf-8",
-          "Cache-Control": "no-store",
-        },
+      console.error(`[og-worker] fetch failed for song/${songId}:`, err.message);
+
+      // Fallback: still return OG HTML (generic) rather than the SPA
+      const fallback = buildOgHtml(
+        `${SITE_NAME} — Stream the Frequency`,
+        "Premium 432 Hz high-vibration music. Stream free on Upper Vibe Media.",
+        DEFAULT_IMG,
+        pageUrl
+      );
+      return new Response(fallback, {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
       });
     }
   },
