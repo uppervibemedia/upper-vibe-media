@@ -294,15 +294,20 @@ export default function Account() {
             </Link>
           )}
 
+          {/* My Vibe Library — prominent CTA */}
           <Link to="/my-vibes"
             className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all"
-            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", transition: "all 0.2s ease" }}>
-            <Music4 className="w-5 h-5" style={{ color: `rgba(${rtPrimary},0.65)` }} />
+            style={{
+              background: `linear-gradient(135deg,rgba(${rtPrimary},0.08),rgba(${rtPrimary},0.03))`,
+              border: `1px solid rgba(${rtPrimary},0.3)`,
+              transition: "all 0.2s ease",
+            }}>
+            <Music4 className="w-5 h-5" style={{ color: `rgb(${rtPrimary})` }} />
             <div className="flex-1">
               <p className="text-sm font-bold text-white">My Vibe Library</p>
-              <p className="text-xs text-white/35">Your saved songs and favorites</p>
+              <p className="text-xs text-white/35">Recently played, favorites & saved songs</p>
             </div>
-            <ChevronRight className="w-4 h-4 text-white/20" />
+            <ChevronRight className="w-4 h-4" style={{ color: `rgba(${rtPrimary},0.5)` }} />
           </Link>
 
           <Link to="/downloads"
