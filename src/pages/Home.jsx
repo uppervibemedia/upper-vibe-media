@@ -289,10 +289,10 @@ export default function Home() {
             {/* ── Hero media card — always visible on mobile/desktop ── */}
             {/* Priority: active currentTrack > radio song > rotating homepage song */}
             {(() => {
-              const displayTrack = currentTrack || currentRadioSong || latestTracks[0];
+              const displayTrack = currentTrack || currentRadioSong;
               if (!displayTrack) return null;
-              const isActive = !!(currentTrack || currentRadioSong);
-              const label = isPlaying ? "Now Playing" : currentTrack ? "Paused" : currentRadioSong ? "Live on Radio" : "Featured Track";
+              const isActive = true;
+              const label = isPlaying ? "Now Playing" : currentTrack ? "Paused" : "Live on Radio";
               return (
                 <motion.div
                   key={displayTrack.id}

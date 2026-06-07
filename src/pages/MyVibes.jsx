@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { getPublishedTracks } from "@/lib/trackCache";
+import { isNewTrack } from "@/lib/isNewTrack";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Music4, Tv2, Play, Pause, ArrowRight, Download, Home, Sparkles } from "lucide-react";
 import NewBadge from "@/components/shared/NewBadge";
@@ -129,7 +130,11 @@ export default function MyVibes() {
           </div>
           <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1"
             style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch" }}>
-            {tracks.filter(t => t.audio_url).slice(0, 4).map((track, i) => {
+            {[...tracks]
+              .filter(t => t.audio_url && isNewTrack(t))
+              .sort((a, b) => new Date(b.created_date || 0) - new Date(a.created_date || 0))
+              .slice(0, 4)
+              .map((track, i) => {
               const isCurrent = currentTrack?.id === track.id;
               return (
                 <motion.div key={track.id}
