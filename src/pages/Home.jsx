@@ -214,14 +214,16 @@ export default function Home() {
           {/* Subtle scan lines */}
           <div className="absolute inset-0 opacity-[0.014]"
             style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(255,255,255,0.6) 0px, rgba(255,255,255,0.6) 1px, transparent 1px, transparent 80px)" }} />
-          {/* Animated waveform behind logo — pauses when tab hidden (D) */}
+          {/* Static waveform bars — CSS only for perf */}
           <div className="absolute left-0 right-0 bottom-[35%] flex items-end justify-center gap-[2px] opacity-[0.06] pointer-events-none">
-            {Array.from({ length: 60 }).map((_, i) => (
-              <motion.div key={i}
-                animate={{ height: [`${4 + Math.sin(i * 0.4) * 10}px`, `${8 + Math.sin(i * 0.4 + 1.2) * 16}px`, `${4 + Math.sin(i * 0.4) * 10}px`] }}
-                transition={{ duration: 2.2 + (i % 7) * 0.18, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: i * 0.03 }}
+            {Array.from({ length: 40 }).map((_, i) => (
+              <div key={i}
                 className="w-[3px] rounded-full flex-shrink-0"
-                style={{ background: i % 2 === 0 ? "#00C9E0" : "#F5A800" }} />
+                style={{
+                  height: `${4 + Math.abs(Math.sin(i * 0.4)) * 12}px`,
+                  background: i % 2 === 0 ? "#00C9E0" : "#F5A800",
+                  animation: isPageVisible ? `pulse-glow ${2.2 + (i % 7) * 0.18}s ease-in-out infinite ${i * 0.03}s` : "none",
+                }} />
             ))}
           </div>
           {/* Bottom fade */}
@@ -469,9 +471,9 @@ export default function Home() {
             className="absolute -bottom-8 right-8 w-48 h-48 rounded-full blur-[70px] pointer-events-none"
             style={{ background: "#F5A800" }} />
 
-          {/* Full-width waveform strip at bottom — pauses when tab hidden (D) */}
+          {/* Waveform strip — CSS animation only */}
           <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center gap-[1.5px] h-16 opacity-30 pointer-events-none overflow-hidden">
-            {Array.from({ length: 80 }).map((_, i) => {
+            {Array.from({ length: 50 }).map((_, i) => {
               const colorCycle = i % 4;
               const barColor = colorCycle === 0
                 ? `rgb(${rtPrimary})`
@@ -481,11 +483,13 @@ export default function Home() {
                     ? rtAmbient1
                     : "#F5A800";
               return (
-                <motion.div key={i}
-                  animate={{ height: [`${8 + Math.sin(i * 0.35) * 16}px`, `${16 + Math.sin(i * 0.35 + 1.5) * 28}px`, `${8 + Math.sin(i * 0.35) * 16}px`] }}
-                  transition={{ duration: 1.8 + (i % 5) * 0.2, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: i * 0.015 }}
+                <div key={i}
                   className="w-[2px] rounded-full flex-shrink-0"
-                  style={{ background: barColor }} />
+                  style={{
+                    height: `${8 + Math.abs(Math.sin(i * 0.35)) * 20}px`,
+                    background: barColor,
+                    animation: isPageVisible ? `pulse-glow ${1.8 + (i % 5) * 0.2}s ease-in-out infinite ${i * 0.015}s` : "none",
+                  }} />
               );
             })}
           </div>
@@ -524,7 +528,7 @@ export default function Home() {
               </Link>
             </div>
 
-            {/* Right: tall animated waveform — desktop — pauses when tab hidden (D) */}
+            {/* Right: waveform — CSS animation only */}
             <div className="flex-shrink-0 hidden md:flex items-end gap-1 h-28">
               {[5,8,14,22,30,38,28,18,32,40,24,16,34,20,10,26,36,22,12,28].map((h, i) => {
                 const cycle = i % 4;
@@ -536,11 +540,13 @@ export default function Home() {
                       ? `${rtAmbient1}CC`
                       : "rgba(245,158,11,0.7)";
                 return (
-                  <motion.div key={i}
-                    animate={{ height: [`${h * 0.45}px`, `${h}px`, `${h * 0.6}px`, `${h}px`] }}
-                    transition={{ duration: 1.0 + i * 0.06, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: i * 0.04 }}
+                  <div key={i}
                     className="w-1.5 rounded-full flex-shrink-0"
-                    style={{ background: barColor }} />
+                    style={{
+                      height: `${h * 0.7}px`,
+                      background: barColor,
+                      animation: isPageVisible ? `pulse-glow ${1.0 + i * 0.06}s ease-in-out infinite ${i * 0.04}s` : "none",
+                    }} />
                 );
               })}
             </div>
@@ -689,9 +695,8 @@ export default function Home() {
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {academyLessons.map((lesson, i) => (
-                <motion.div key={lesson.id}
-                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
+              {academyLessons.map((lesson) => (
+                <div key={lesson.id}>
                   <Link to={`/academy/lesson/${lesson.id}`}
                     className="group block rounded-2xl overflow-hidden transition-all hover:border-purple-500/30"
                     style={{ background: "rgba(155,126,255,0.04)", border: "1px solid rgba(155,126,255,0.14)", boxShadow: "0 0 20px rgba(155,126,255,0.05)" }}>
@@ -729,7 +734,7 @@ export default function Home() {
                       )}
                     </div>
                   </Link>
-                </motion.div>
+                </div>
               ))}
             </div>
           </section>
@@ -743,9 +748,8 @@ export default function Home() {
         <section className="max-w-7xl mx-auto px-6 py-10">
           <SectionHeader label="The Artists" title="Featured Artists" link="/artists" linkLabel="All Artists" labelColor={`rgb(${rtPrimary})`} themeColor={rtPrimary} />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {artists.map((artist, i) => (
-              <motion.div key={artist.id}
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+            {artists.map((artist) => (
+              <div key={artist.id}>
                 <Link to="/artists"
                   className="flex flex-col items-center gap-3 p-5 rounded-2xl text-center group transition-all hover:border-white/15 active:scale-[0.98]"
                   style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -768,7 +772,7 @@ export default function Home() {
                     View Artist
                   </span>
                 </Link>
-              </motion.div>
+              </div>
             ))}
           </div>
         </section>

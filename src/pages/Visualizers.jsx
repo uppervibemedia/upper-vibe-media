@@ -1,6 +1,17 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { getPublishedTracks } from "@/lib/trackCache";
+
+// Debounce hook
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = React.useState(value);
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
 import { motion } from "framer-motion";
-import { Search, X, Play, Music4, ExternalLink, Tv2, Calendar, Tag, Waves, Edit2, Download, Heart } from "lucide-react";
+import { Search, X, Play, Music4, Tv2, Calendar, Tag, Waves, Edit2, Download, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
@@ -55,13 +66,13 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
   const categoryLabel = CATEGORY_LABELS[viz.category] || viz.category || "";
 
   return (
-    <motion.div layout className="rounded-2xl overflow-hidden flex flex-col"
+    <div className="rounded-2xl overflow-hidden flex flex-col"
       style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
 
       <div className="relative w-full cursor-pointer group" style={{ paddingTop: "56.25%" }} onClick={() => onWatch(viz)}>
         <div className="absolute inset-0">
           {thumb ? (
-            <img src={thumb} alt={viz.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+            <img src={thumb} alt={viz.title} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
           ) : (
             <div className="w-full h-full flex items-center justify-center"
               style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.07),rgba(212,168,67,0.04))" }}>
@@ -170,7 +181,7 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -183,6 +194,7 @@ export default function Visualizers() {
   const [editingViz, setEditingViz] = useState(null);
   const [watchingViz, setWatchingViz] = useState(null);
   const [loginPrompt, setLoginPrompt] = useState(false);
+  const debouncedSearch = useDebounce(search, 200);
   const { playTrack } = usePlayer();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -190,16 +202,16 @@ export default function Visualizers() {
   const { accentId } = useTheme();
   const rgb = (RADIO_THEMES[accentId] || RADIO_THEMES.cyan).vars["--rt-primary"];
 
-  const handleToggleFav = (viz) => {
+  const handleToggleFav = useCallback((viz) => {
     if (!user) { setLoginPrompt(true); return; }
     toggle("visualizer", viz.id, { title: viz.title, artist: viz.artist, cover_url: viz.thumbnail_url });
-  };
+  }, [user, toggle]);
 
-  const load = () =>
+  const load = useCallback(() =>
     Promise.all([
       base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 200),
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 500),
-    ]).then(([v, t]) => { setVisualizers(v); setTracks(t); setLoading(false); });
+      getPublishedTracks("-created_date", 500),
+    ]).then(([v, t]) => { setVisualizers(v); setTracks(t); setLoading(false); }), []);
 
   useEffect(() => { load(); }, []);
 
@@ -207,8 +219,8 @@ export default function Visualizers() {
 
   const filtered = useMemo(() => {
     let r = visualizers;
-    if (search) {
-      const q = search.toLowerCase();
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       r = r.filter((v) =>
         (v.title || "").toLowerCase().includes(q) ||
         (v.artist || "").toLowerCase().includes(q) ||
@@ -280,20 +292,19 @@ export default function Visualizers() {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((viz, i) => (
-              <motion.div key={viz.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <VisualizerCard
-                  viz={viz}
-                  linkedTrack={trackMap[viz.linked_song_id]}
-                  isAdmin={isAdmin}
-                  onEdit={(v) => setEditingViz(v)}
-                  onPlay={playTrack}
-                  isFaved={isFaved("visualizer", viz.id)}
-                  onToggleFav={handleToggleFav}
-                  rgb={rgb}
-                  onWatch={(v) => setWatchingViz(v)}
-                />
-              </motion.div>
+            {filtered.map((viz) => (
+              <VisualizerCard
+                key={viz.id}
+                viz={viz}
+                linkedTrack={trackMap[viz.linked_song_id]}
+                isAdmin={isAdmin}
+                onEdit={(v) => setEditingViz(v)}
+                onPlay={playTrack}
+                isFaved={isFaved("visualizer", viz.id)}
+                onToggleFav={handleToggleFav}
+                rgb={rgb}
+                onWatch={(v) => setWatchingViz(v)}
+              />
             ))}
           </div>
         )}

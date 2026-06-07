@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from "react";
+import { motion } from "framer-motion";
 import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
-import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Play, Pause, Download, Waves, Music4, Heart, ChevronLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -20,7 +20,17 @@ import DownloadToast from "../components/shared/DownloadToast";
 import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 
 const GENRE_TYPES = ["genre", "mood", "editorial", "frequency"];
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 30;
+
+// Debounce helper
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = React.useState(value);
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
 
 // Skeleton loader card
 function SkeletonCard() {
@@ -46,6 +56,7 @@ export default function Music() {
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const debouncedSearch = useDebounce(search, 200);
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
@@ -81,16 +92,16 @@ export default function Music() {
   const prevFilterRef = React.useRef({ search: "", activeFilter: "all" });
   useEffect(() => {
     const prev = prevFilterRef.current;
-    if (prev.search !== search || prev.activeFilter !== activeFilter) {
+    if (prev.search !== debouncedSearch || prev.activeFilter !== activeFilter) {
       setVisibleCount(PAGE_SIZE);
-      prevFilterRef.current = { search, activeFilter };
+      prevFilterRef.current = { search: debouncedSearch, activeFilter };
     }
-  }, [search, activeFilter]);
+  }, [debouncedSearch, activeFilter]);
 
   const filtered = useMemo(() => {
     let result = tracks;
-    if (search) {
-      const q = search.toLowerCase();
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       result = result.filter((t) =>
         (t.title || "").toLowerCase().includes(q) ||
         (t.artist_display || "").toLowerCase().includes(q)
@@ -199,15 +210,15 @@ export default function Music() {
           </div>
 
           {/* Result count when searching */}
-          {search && (
+          {debouncedSearch && (
             <div className="px-6 mb-3">
               <p className="text-sm text-white/30">
                 {filtered.length} result{filtered.length !== 1 ? "s" : ""} for{" "}
-                <span className="text-white/60">"{search}"</span>
+                <span className="text-white/60">"{debouncedSearch}"</span>
               </p>
             </div>
           )}
-          {!search && !loading && (
+          {!debouncedSearch && !loading && (
             <div className="px-6 mb-2">
               <p className="text-xs text-white/20">
                 Showing {Math.min(visibleCount, filtered.length)} of {filtered.length} tracks
@@ -227,13 +238,7 @@ export default function Music() {
                 <p className="text-white/25">No songs found.</p>
               </div>
             ) : (
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeFilter + search}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-2">
+              <div className="space-y-2">
                   {filtered.slice(0, visibleCount).map((track, i) => (
                     <TrackRow
                       key={track.id}
@@ -274,8 +279,7 @@ export default function Music() {
                       </button>
                     </div>
                   )}
-                </motion.div>
-              </AnimatePresence>
+              </div>
             )}
           </div>
         </div>
@@ -318,15 +322,13 @@ function FilterPill({ label, active, onClick, themeColor }) {
 const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user, themeColor, onPlay, onFav, onDownload }) {
   const tc = themeColor || "0,160,220";
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.02, 0.3) }}
-      className="flex items-center gap-3 p-3.5 rounded-2xl transition-all active:scale-[0.99]"
+    <div
+      className="flex items-center gap-3 p-3.5 rounded-2xl transition-colors active:scale-[0.99]"
       style={{
         background: isCurrent ? `rgba(${tc},0.06)` : "rgba(255,255,255,0.025)",
         border: `1px solid ${isCurrent ? `rgba(${tc},0.2)` : "rgba(255,255,255,0.06)"}`,
         boxShadow: isCurrent ? `0 0 20px rgba(${tc},0.06)` : "none",
+        willChange: "auto",
       }}
     >
       {/* Cover art */}
@@ -409,6 +411,6 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
           <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 });
