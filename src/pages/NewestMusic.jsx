@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Play, Pause, Download, Waves, Music4, Heart, Zap, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { isNewTrack } from "@/lib/isNewTrack";
 import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 import { usePlayer } from "../context/PlayerContext";
 import { recordPlay } from "../components/home/DiscoverTab";
@@ -45,8 +46,13 @@ export default function NewestMusic() {
   };
 
   useEffect(() => {
-    base44.entities.Track.filter({ status: "published" }, "-created_date", 10)
-      .then((t) => { setTracks(t); setLoading(false); });
+    base44.entities.Track.filter({ status: "published" }, "-created_date", 200)
+      .then((t) => {
+        // Only show tracks released within the last 7 days — automatically drops out after 7 days
+        const recent = t.filter(isNewTrack);
+        setTracks(recent);
+        setLoading(false);
+      });
   }, []);
 
   const handlePlay = (track) => {
@@ -65,7 +71,7 @@ export default function NewestMusic() {
           </div>
           <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-2">Latest Music</h1>
           <p className="text-white/35 text-sm mb-1">The latest Upper Vibe Media songs and 432 Hz releases.</p>
-          <p className="text-white/20 text-xs">Showing newest {tracks.length} uploads</p>
+          <p className="text-white/20 text-xs">Songs released in the last 7 days · {tracks.length} track{tracks.length !== 1 ? "s" : ""}</p>
         </motion.div>
       </div>
 
