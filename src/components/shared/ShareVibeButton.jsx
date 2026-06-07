@@ -24,18 +24,11 @@ import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
 const PROD_ORIGIN = "https://uppervibemedia.com";
 
-// Returns the clean canonical song URL (for playback / in-app navigation)
-function getCanonicalSongUrl(trackId) {
+// Canonical song URL — the Cloudflare Worker on the main domain intercepts
+// crawler requests here and serves OG HTML; real users get the SPA as normal.
+function getSongUrl(trackId) {
   if (!trackId) return null;
   return `${PROD_ORIGIN}/song/${trackId}`;
-}
-
-// Returns the share subdomain URL — Cloudflare Worker serves OG HTML to crawlers,
-// redirects real humans to the main site's /song/:id
-const SHARE_ORIGIN = "https://share.uppervibemedia.com";
-function getShareUrl(trackId) {
-  if (!trackId) return null;
-  return `${SHARE_ORIGIN}/song/${trackId}`;
 }
 
 // A track ID is valid if it exists and doesn't look like a temp/session identifier
@@ -64,25 +57,23 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
   const trackId = track?.id;
   const hasValidId = type !== "song" || isValidTrackId(trackId);
 
-  const canonicalUrl = type === "song" ? getCanonicalSongUrl(trackId) : null;
-  const shareUrl     = type === "song" ? getShareUrl(trackId)         : null;
+  const songUrl = type === "song" ? getSongUrl(trackId) : null;
 
   const getShareData = () => {
     switch (type) {
       case "song": {
-        // Copy Link uses the clean canonical URL on the main domain
-        const copyUrl = canonicalUrl || PROD_ORIGIN;
-        // Social sharing (Facebook, iMessage, X preview) uses share subdomain
-        // where the Cloudflare Worker serves real server-rendered OG tags to crawlers
-        const socialUrl = shareUrl || copyUrl;
+        // All social sharing uses the canonical main-domain URL.
+        // The Cloudflare Worker on uppervibemedia.com intercepts crawler
+        // requests to /song/:id and returns OG HTML; real users get the SPA.
+        const url = songUrl || PROD_ORIGIN;
         return {
           title: track?.title && track?.artist_display
             ? `${track.title} by ${track.artist_display} | Upper Vibe Media`
             : `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
           text: "",
-          url: socialUrl,
-          facebookUrl: socialUrl,
-          displayUrl: copyUrl,
+          url,
+          facebookUrl: url,
+          displayUrl: url,
         };
       }
       case "radio":

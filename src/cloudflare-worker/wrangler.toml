@@ -1,13 +1,20 @@
-name = "share-uppervibemedia"
+name = "uppervibemedia-og"
 main = "share-worker.js"
 compatibility_date = "2024-01-01"
 
-# Custom domain is configured in Cloudflare dashboard
-# Workers & Pages → your worker → Settings → Triggers → Custom Domains
-# Add: share.uppervibemedia.com
+# This worker intercepts /song/* on the main domain to serve OG meta tags to crawlers.
+# Real users are passed through to the Base44 SPA — zero impact on UX.
+#
+# Deploy with: npx wrangler deploy
+# (Make sure you're logged in: npx wrangler login)
+#
+# The route below attaches the worker to uppervibemedia.com/song/*
+# Replace ZONE_ID with your Cloudflare zone ID for uppervibemedia.com
+# (Found in Cloudflare dashboard → uppervibemedia.com → Overview → right sidebar)
 
-# Optional: use Workers KV or Cloudflare Cache API for caching track data
-# (not required — Cache-Control headers handle Cloudflare's edge caching)
+[[routes]]
+pattern = "uppervibemedia.com/song/*"
+zone_name = "uppervibemedia.com"
 
 [observability]
 enabled = true
