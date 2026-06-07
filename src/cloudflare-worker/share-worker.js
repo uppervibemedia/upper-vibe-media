@@ -4,139 +4,92 @@
  * Route: uppervibemedia.com/song/*
  *        www.uppervibemedia.com/song/*
  *
- * HOW IT WORKS:
- *   Crawlers (Facebook, Twitter/X, Discord, Slack, WhatsApp, iMessage…)
- *     → Worker fetches real track data from Base44 API
- *     → Returns server-rendered HTML with song-specific OG + Twitter tags
+ * Strategy: For ALL requests to /song/:id, fetch the track from Base44 API,
+ * inject correct OG tags into the response HTML, then pass through to the SPA.
  *
- *   Real human users:
- *     → Worker passes request straight through to Base44 SPA
- *     → Zero change to user experience
+ * For crawlers: return a lightweight OG-only HTML page directly (no JS needed).
+ * For humans: fetch the real SPA page, inject OG tags into the <head>, return it.
  *
- * DEPLOY:
- *   1. Cloudflare Dashboard → Workers & Pages → uppervibemedia-og → Edit code
- *   2. Paste this entire file → Save & Deploy
- *   3. Confirm routes exist: uppervibemedia.com/song/* and www.uppervibemedia.com/song/*
+ * This guarantees Facebook/Twitter always see the correct OG tags regardless
+ * of how their crawler identifies itself.
  *
- * TEST (must see og:title with song name, NOT generic):
- *   curl -sI -A "facebookexternalhit/1.1" https://uppervibemedia.com/song/6a21ab8709130974a068aff2 | grep -i content-type
- *   curl -s  -A "facebookexternalhit/1.1" https://uppervibemedia.com/song/6a21ab8709130974a068aff2 | grep "og:title"
+ * DEPLOY: Cloudflare Dashboard → Workers & Pages → uppervibemedia-og → Edit Code
+ *         Select All → Paste → Save & Deploy
  *
- * Then use Facebook Sharing Debugger → Scrape Again:
- *   https://developers.facebook.com/tools/debug/
+ * TEST:
+ *   curl -s -A "facebookexternalhit/1.1" https://uppervibemedia.com/song/6a21ab8709130974a068aff2 | grep og:title
+ *   → should show: Dopamine Dealer | Upper Vibe Media
  */
 
 const APP_ID      = "69cd68afb7fe90ae92757154";
 const MAIN_SITE   = "https://uppervibemedia.com";
 const SITE_NAME   = "Upper Vibe Media";
 const DEFAULT_IMG = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/10c561c0c_ChatGPTImageApr1202611_53_51AM.png";
+// Dopamine Dealer cover (pre-resolved from media.base44.com, avoids redirect)
+const DOPAMINE_DEALER_IMG = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/8dd2a0b82_ChatGPTImageJun3202611_32_40PM.png";
+const BASE44_API  = `https://base44.app/api/apps/${APP_ID}/entities/Track`;
 
-// Base44 REST API — Track RLS is read=true (public, no auth required)
-const BASE44_API = `https://base44.app/api/apps/${APP_ID}/entities/Track`;
-
-// ─── Crawler detection ────────────────────────────────────────────────────────
-// Covers: Facebook, Twitter/X, LinkedIn, Slack, Discord, Telegram,
-//         WhatsApp, Apple/iMessage, Googlebot, Bingbot, Pinterest, Snapchat
-const BOT_UA_FRAGMENTS = [
-  "facebookexternalhit",
-  "facebookcatalog",
-  "facebot",
-  "twitterbot",
-  "linkedinbot",
-  "slackbot",
-  "slack-imgproxy",
-  "discordbot",
-  "telegrambot",
-  "whatsapp",
-  "applebot",
-  "imessagebotuser",
-  "googlebot",
-  "bingbot",
-  "pinterest",
-  "snapchat",
-  "vkshare",
-  "w3c_validator",
-  "curl/",
-  "python-requests",
-  "axios/",
-  "go-http-client",
-  "okhttp",
+// Known social crawlers — we serve them pure OG HTML with no JS redirect
+const BOT_FRAGMENTS = [
+  "facebookexternalhit", "facebot", "facebookcatalog",
+  "twitterbot", "linkedinbot", "slackbot", "discordbot",
+  "telegrambot", "whatsapp", "applebot", "googlebot",
+  "bingbot", "pinterest", "snapchat", "vkshare",
+  "curl/", "python-requests", "go-http-client",
 ];
 
 function isCrawler(ua) {
-  if (!ua) return false;
-  const lower = ua.toLowerCase();
-  return BOT_UA_FRAGMENTS.some((f) => lower.includes(f));
+  const l = (ua || "").toLowerCase();
+  return BOT_FRAGMENTS.some(f => l.includes(f));
 }
 
-// ─── Fetch track from Base44 ──────────────────────────────────────────────────
 async function fetchTrack(songId) {
-  const res = await fetch(`${BASE44_API}/${encodeURIComponent(songId)}`, {
-    headers: {
-      "Accept":     "application/json",
-      "User-Agent": "uppervibemedia-og-worker/3.0",
-    },
-    signal: AbortSignal.timeout(6000),
+  const res = await fetch(`${BASE44_API}/${songId}`, {
+    headers: { "Accept": "application/json", "User-Agent": "uppervibemedia-og-worker/4.0" },
+    signal: AbortSignal.timeout(8000),
   });
-  if (res.status === 404) throw new Error("not_found");
-  if (!res.ok) throw new Error(`api_error_${res.status}`);
-  const track = await res.json();
-  if (!track || !track.id) throw new Error("not_found");
-  return track;
+  if (!res.ok) throw new Error(`api_${res.status}`);
+  const t = await res.json();
+  if (!t?.id) throw new Error("not_found");
+  return t;
 }
 
-// ─── HTML escape ──────────────────────────────────────────────────────────────
 function esc(s) {
-  if (!s) return "";
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-// ─── Build OG HTML for crawlers ───────────────────────────────────────────────
-function buildOgHtml(title, description, imageUrl, pageUrl) {
-  const t = esc(title);
-  const d = esc(description);
-  const i = esc(imageUrl);
-  const u = esc(pageUrl);
-
+// Pure OG HTML page — served to crawlers only
+function buildCrawlerHtml(title, desc, img, pageUrl) {
+  const t = esc(title), d = esc(desc), i = esc(img), u = esc(pageUrl);
   return `<!DOCTYPE html>
 <html lang="en" prefix="og: https://ogp.me/ns#">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
   <title>${t}</title>
-  <meta name="description" content="${d}" />
-
-  <!-- Open Graph — Facebook, iMessage, Discord, Slack, LinkedIn, WhatsApp -->
-  <meta property="og:type"             content="music.song" />
-  <meta property="og:site_name"        content="${esc(SITE_NAME)}" />
-  <meta property="og:title"            content="${t}" />
-  <meta property="og:description"      content="${d}" />
-  <meta property="og:url"              content="${u}" />
-  <meta property="og:image"            content="${i}" />
-  <meta property="og:image:secure_url" content="${i}" />
-  <meta property="og:image:width"      content="1200" />
-  <meta property="og:image:height"     content="630" />
-  <meta property="og:image:type"       content="image/jpeg" />
-
-  <!-- Twitter / X Card -->
-  <meta name="twitter:card"        content="summary_large_image" />
-  <meta name="twitter:site"        content="@uppervibemedia" />
-  <meta name="twitter:title"       content="${t}" />
-  <meta name="twitter:description" content="${d}" />
-  <meta name="twitter:image"       content="${i}" />
-
-  <link rel="canonical" href="${u}" />
+  <meta name="description" content="${d}"/>
+  <meta property="og:type" content="music.song"/>
+  <meta property="og:site_name" content="${esc(SITE_NAME)}"/>
+  <meta property="og:title" content="${t}"/>
+  <meta property="og:description" content="${d}"/>
+  <meta property="og:url" content="${u}"/>
+  <meta property="og:image" content="${i}"/>
+  <meta property="og:image:secure_url" content="${i}"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:type" content="image/jpeg"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:site" content="@uppervibemedia"/>
+  <meta name="twitter:title" content="${t}"/>
+  <meta name="twitter:description" content="${d}"/>
+  <meta name="twitter:image" content="${i}"/>
+  <link rel="canonical" href="${u}"/>
 </head>
 <body style="margin:0;background:#04040e;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;">
   <div style="padding:2rem;max-width:480px;">
     <p style="font-size:1.8rem;margin-bottom:1rem;">🎧</p>
-    <h1 style="margin:0 0 0.5rem;font-size:1.25rem;font-weight:900;">${t}</h1>
-    <a href="${u}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#00B8D4,#00E5FF);color:#000;border-radius:10px;font-weight:900;font-size:15px;text-decoration:none;letter-spacing:0.04em;">
+    <h1 style="font-size:1.25rem;font-weight:900;margin-bottom:0.5rem;">${t}</h1>
+    <p style="color:rgba(255,255,255,0.5);margin-bottom:1.5rem;">${d}</p>
+    <a href="${u}" style="padding:14px 32px;background:linear-gradient(135deg,#00B8D4,#00E5FF);color:#000;border-radius:10px;font-weight:900;font-size:15px;text-decoration:none;">
       Listen on Upper Vibe Media →
     </a>
   </div>
@@ -144,63 +97,108 @@ function buildOgHtml(title, description, imageUrl, pageUrl) {
 </html>`;
 }
 
-// ─── Main handler ─────────────────────────────────────────────────────────────
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    const ua  = request.headers.get("User-Agent") || "";
+// Inject OG tags into a real SPA HTML response — for human users
+function injectOgTags(html, title, desc, img, pageUrl) {
+  const t = esc(title), d = esc(desc), i = esc(img), u = esc(pageUrl);
+  const ogTags = `
+  <meta property="og:type" content="music.song"/>
+  <meta property="og:site_name" content="${esc(SITE_NAME)}"/>
+  <meta property="og:title" content="${t}"/>
+  <meta property="og:description" content="${d}"/>
+  <meta property="og:url" content="${u}"/>
+  <meta property="og:image" content="${i}"/>
+  <meta property="og:image:secure_url" content="${i}"/>
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta property="og:image:type" content="image/jpeg"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:site" content="@uppervibemedia"/>
+  <meta name="twitter:title" content="${t}"/>
+  <meta name="twitter:description" content="${d}"/>
+  <meta name="twitter:image" content="${i}"/>`;
 
-    // Only act on /song/:id — everything else passes through unchanged
+  // Replace the generic title tag
+  let result = html.replace(/<title>[^<]*<\/title>/i, `<title>${t}</title>`);
+  // Inject OG tags right after <head>
+  result = result.replace(/<head>/i, `<head>${ogTags}`);
+  return result;
+}
+
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+
+    // Only intercept /song/:id
     const match = url.pathname.match(/^\/song\/([a-zA-Z0-9]+)$/);
     if (!match) {
       return fetch(request);
     }
 
-    const songId  = match[1];
-    const pageUrl = `${MAIN_SITE}/song/${songId}`;
-
-    // Real humans → pass through to Base44 SPA (no change to their experience)
-    if (!isCrawler(ua)) {
+    // Prevent infinite loop: if the worker already processed this request, pass through
+    if (request.headers.get("X-OG-Worker-Processed")) {
       return fetch(request);
     }
 
-    // Crawlers → serve server-rendered OG HTML
-    console.log(`[og-worker] crawler detected | UA: ${ua.substring(0, 80)} | song/${songId}`);
+    const songId  = match[1];
+    const pageUrl = `${MAIN_SITE}/song/${songId}`;
+    const ua      = request.headers.get("User-Agent") || "";
+    const crawler = isCrawler(ua);
 
+    console.log(`[og] ${crawler ? "CRAWLER" : "human"} | UA: ${ua.slice(0,80)} | song/${songId}`);
+
+    // Fetch track data from Base44 (public endpoint, no auth required)
+    let track = null;
     try {
-      const track = await fetchTrack(songId);
+      track = await fetchTrack(songId);
+      console.log(`[og] track: "${track.title}" | cover: ${(track.cover_url||"").slice(0,80)}`);
+    } catch (e) {
+      console.error(`[og] track fetch failed: ${e.message}`);
+    }
 
-      const title       = `${track.title} | ${SITE_NAME}`;
-      const description = `Listen to ${track.title} on Upper Vibe Media.`;
-      const imageUrl    = (track.cover_url && track.cover_url.startsWith("https://"))
-                            ? track.cover_url
-                            : DEFAULT_IMG;
+    const title = track ? `${track.title} | ${SITE_NAME}` : SITE_NAME;
+    const desc  = track ? `Listen to ${track.title} on Upper Vibe Media.` : "Premium 432 Hz music on Upper Vibe Media.";
+    // Rewrite base44.app file URLs → media.base44.com (avoids a redirect Facebook may not follow)
+    let rawImg = (track?.cover_url?.startsWith("https://")) ? track.cover_url : DEFAULT_IMG;
+    const img = rawImg.replace(
+      "https://base44.app/api/apps/" + APP_ID + "/files/mp/public/" + APP_ID + "/",
+      "https://media.base44.com/images/public/" + APP_ID + "/"
+    );
 
-      console.log(`[og-worker] ✓ "${track.title}" | img: ${imageUrl.substring(0, 80)}`);
-
-      return new Response(buildOgHtml(title, description, imageUrl, pageUrl), {
+    // For crawlers: return pure OG HTML — no JS, no SPA, just what Facebook needs
+    if (crawler) {
+      return new Response(buildCrawlerHtml(title, desc, img, pageUrl), {
         status: 200,
         headers: {
           "Content-Type":  "text/html; charset=utf-8",
           "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
           "Vary":          "User-Agent",
+          "X-OG-Worker":  "crawler",
         },
       });
+    }
 
-    } catch (err) {
-      console.error(`[og-worker] fetch failed for song/${songId}:`, err.message);
-
-      // Fallback: still return OG HTML (generic) rather than the SPA
-      const fallback = buildOgHtml(
-        `${SITE_NAME} — Stream the Frequency`,
-        "Premium 432 Hz high-vibration music. Stream free on Upper Vibe Media.",
-        DEFAULT_IMG,
-        pageUrl
-      );
-      return new Response(fallback, {
-        status: 200,
-        headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+    // For humans: fetch the real SPA, inject OG tags into it so iMessage/iOS share also works
+    try {
+      // Add a header to prevent infinite worker loop
+      const modifiedRequest = new Request(request, {
+        headers: { ...Object.fromEntries(request.headers), "X-OG-Worker-Processed": "1" },
       });
+      const spaResponse = await fetch(modifiedRequest);
+      const spaHtml = await spaResponse.text();
+      const injected = injectOgTags(spaHtml, title, desc, img, pageUrl);
+      return new Response(injected, {
+        status: spaResponse.status,
+        headers: {
+          "Content-Type":  "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=60",
+          "Vary":          "User-Agent",
+          "X-OG-Worker":  "human",
+        },
+      });
+    } catch (e) {
+      // If SPA fetch fails, just pass through normally
+      console.error(`[og] SPA fetch failed: ${e.message}`);
+      return fetch(request);
     }
   },
 };
