@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { getPublishedTracks } from "@/lib/trackCache";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Music4, Tv2, Play, Pause, ArrowRight, Download, Home } from "lucide-react";
+import { Heart, Music4, Tv2, Play, Pause, ArrowRight, Download, Home, Sparkles } from "lucide-react";
 import NewBadge from "@/components/shared/NewBadge";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -110,6 +110,72 @@ export default function MyVibes() {
           </motion.div>
         </div>
       </div>
+
+      {/* ── Latest Music ── */}
+      {tracks.length > 0 && (
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 pb-2">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 flex-shrink-0" style={{ color: `rgb(${rgb})` }} />
+              <span className="text-[10px] font-black tracking-[0.3em] uppercase" style={{ color: `rgb(${rgb})` }}>
+                Latest Music
+              </span>
+            </div>
+            <Link to="/music"
+              className="text-[10px] font-bold tracking-wide transition-opacity hover:opacity-70"
+              style={{ color: `rgba(${rgb},0.5)` }}>
+              See All →
+            </Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-1"
+            style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch" }}>
+            {tracks.filter(t => t.audio_url).slice(0, 4).map((track, i) => {
+              const isCurrent = currentTrack?.id === track.id;
+              return (
+                <motion.div key={track.id}
+                  initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="flex-shrink-0 group"
+                  style={{ width: 130, scrollSnapAlign: "start" }}>
+                  <Link to={`/song/${track.id}`}>
+                    <div className="relative rounded-xl overflow-hidden mb-1.5" style={{ width: 130, height: 130 }}>
+                      {track.cover_url ? (
+                        <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center" style={{ background: `rgba(${rgb},0.08)` }}>
+                          <Music4 className="w-8 h-8" style={{ color: `rgba(${rgb},0.3)` }} />
+                        </div>
+                      )}
+                      {/* Play overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-200"
+                        style={{ background: "rgba(0,0,0,0.45)", opacity: isCurrent ? 1 : undefined }}>
+                        <button
+                          onClick={(e) => { e.preventDefault(); handlePlay(track); }}
+                          className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 opacity-0 group-hover:opacity-100"
+                          style={{
+                            background: `linear-gradient(135deg,rgb(${rgb}),rgba(${rgb},0.8))`,
+                            boxShadow: `0 0 14px rgba(${rgb},0.5)`,
+                            ...(isCurrent ? { opacity: 1 } : {}),
+                          }}>
+                          {isCurrent && isPlaying
+                            ? <Pause className="w-3.5 h-3.5 fill-current text-black" />
+                            : <Play className="w-3.5 h-3.5 fill-current text-black ml-0.5" />}
+                        </button>
+                      </div>
+                      {/* NEW badge */}
+                      <div className="absolute top-1.5 left-1.5 pointer-events-none">
+                        <NewBadge track={track} />
+                      </div>
+                    </div>
+                    <p className="text-xs font-bold truncate leading-snug" style={{ color: isCurrent ? `rgb(${rgb})` : "rgba(255,255,255,0.88)" }}>{track.title}</p>
+                    <p className="text-[10px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>{track.artist_display || "Upper Vibe Media"}</p>
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Recently Played ── */}
       <div className="max-w-5xl mx-auto pt-2 pb-2">
