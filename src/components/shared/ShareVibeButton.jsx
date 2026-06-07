@@ -24,10 +24,16 @@ import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
 const PROD_ORIGIN = "https://uppervibemedia.com";
 
-// Returns the clean canonical song URL for copy/Twitter/native share
+// Returns the clean canonical song URL (for playback / in-app navigation)
 function getCanonicalSongUrl(trackId) {
   if (!trackId) return null;
   return `${PROD_ORIGIN}/song/${trackId}`;
+}
+
+// Returns the share URL — crawlers get server-rendered OG tags here, humans are redirected to /song/:id
+function getShareUrl(trackId) {
+  if (!trackId) return null;
+  return `${PROD_ORIGIN}/share/${trackId}`;
 }
 
 // Returns the ogMeta function URL — crawler gets OG tags, humans get redirected to /song/:id
@@ -63,24 +69,23 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
   const hasValidId = type !== "song" || isValidTrackId(trackId);
 
   const canonicalUrl = type === "song" ? getCanonicalSongUrl(trackId) : null;
+  const shareUrl     = type === "song" ? getShareUrl(trackId)         : null;
   const ogMetaUrl    = type === "song" ? getOgMetaSongUrl(trackId)    : null;
 
   const getShareData = () => {
     switch (type) {
       case "song": {
-        const songUrl = canonicalUrl || PROD_ORIGIN;
-        const caption = `🎧⚡ "${track?.title || "this track"}" by ${track?.artist_display || "Upper Vibe Media"} — Stream on Upper Vibe Media. 432 Hz high-vibe music.`;
+        // shareUrl (/share/:id) is used for copy/social — crawlers get OG tags there,
+        // humans are redirected to /song/:id. canonicalUrl is only for in-app navigation.
+        const copyUrl = shareUrl || canonicalUrl || PROD_ORIGIN;
         return {
           title: track?.title && track?.artist_display
             ? `${track.title} by ${track.artist_display} | Upper Vibe Media`
             : `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
-          // text = caption only (no URL) — iOS appends url field automatically
-          text: caption,
-          url: songUrl,
-          facebookUrl: ogMetaUrl || PROD_ORIGIN,
-          displayUrl: songUrl,
-          // clipboardText = caption + URL for "Copy Caption" action
-          clipboardText: `${caption}\n${songUrl}`,
+          text: "",
+          url: copyUrl,
+          facebookUrl: copyUrl,
+          displayUrl: copyUrl,
         };
       }
       case "radio":

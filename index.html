@@ -30,13 +30,19 @@
     -->
     <script>
       (function() {
+        var ua = navigator.userAgent || "";
+        var isCrawler = /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot|pinterest|ia_archiver|Applebot/i.test(ua);
+        // /share/:id — primary share URL used in Copy Link / social posts
+        var shareMatch = window.location.pathname.match(/\/share\/([a-zA-Z0-9]+)/);
+        if (shareMatch) {
+          // Always route /share/:id through ogMeta — crawlers get OG tags, humans get redirected
+          window.location.replace("/functions/ogMeta?type=track&id=" + shareMatch[1]);
+          return;
+        }
+        // /song/:id — legacy / direct navigation; only route crawlers
         var songMatch = window.location.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
-        if (songMatch) {
-          var ua = navigator.userAgent || "";
-          var isCrawler = /facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot|pinterest|ia_archiver|Applebot/i.test(ua);
-          if (isCrawler) {
-            window.location.replace("/functions/ogMeta?type=track&id=" + songMatch[1]);
-          }
+        if (songMatch && isCrawler) {
+          window.location.replace("/functions/ogMeta?type=track&id=" + songMatch[1]);
         }
       })();
     </script>

@@ -34,13 +34,15 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
-function buildHtml({ title, description, imageUrl, pageUrl, type }) {
-  const safeTitle = escapeHtml(title);
-  const safeDesc  = escapeHtml(description);
-  const safeImg   = escapeHtml(imageUrl);
-  const safeUrl   = escapeHtml(pageUrl);
-  const twitterCard = type === "track" ? "summary_large_image" : (imageUrl !== DEFAULT_IMG ? "summary_large_image" : "summary");
-  const ogType    = type === "track" ? "music.song" : "website";
+function buildHtml({ title, description, imageUrl, pageUrl, type, humanRedirectUrl }) {
+  const safeTitle    = escapeHtml(title);
+  const safeDesc     = escapeHtml(description);
+  const safeImg      = escapeHtml(imageUrl);
+  const safeUrl      = escapeHtml(pageUrl);
+  // Where humans actually go — defaults to pageUrl
+  const safeRedirect = escapeHtml(humanRedirectUrl || pageUrl);
+  const twitterCard  = type === "track" ? "summary_large_image" : (imageUrl !== DEFAULT_IMG ? "summary_large_image" : "summary");
+  const ogType       = type === "track" ? "music.song" : "website";
 
   return `<!DOCTYPE html>
 <html lang="en" prefix="og: https://ogp.me/ns#">
@@ -72,17 +74,22 @@ function buildHtml({ title, description, imageUrl, pageUrl, type }) {
   <!-- Canonical -->
   <link rel="canonical" href="${safeUrl}" />
 
-  <!-- Redirect real browsers immediately to the SPA -->
-  <meta http-equiv="refresh" content="0; url=${safeUrl}" />
+  <!-- Redirect real browsers to the SPA song page -->
+  <meta http-equiv="refresh" content="0; url=${safeRedirect}" />
   <script>
     (function() {
-      try { window.location.replace("${safeUrl}"); } catch(e) {}
+      try { window.location.replace("${safeRedirect}"); } catch(e) {}
     })();
   </script>
 </head>
 <body style="margin:0;background:#04040e;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;">
   <div style="padding:2rem;max-width:480px;">
-    <p style="color:rgba(255,255,255,0.5);font-size:14px;">Redirecting to <a href="${safeUrl}" style="color:#00E5FF;">${safeTitle}</a>…</p>
+    <p style="margin-bottom:1.5rem;font-size:1.8rem;">🎧</p>
+    <h1 style="margin:0 0 0.5rem;font-size:1.25rem;font-weight:900;">${safeTitle}</h1>
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:1.5rem;">${safeDesc}</p>
+    <a href="${safeRedirect}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#00B8D4,#00E5FF);color:#000;border-radius:10px;font-weight:900;font-size:15px;text-decoration:none;letter-spacing:0.04em;">
+      Listen on Upper Vibe Media →
+    </a>
   </div>
 </body>
 </html>`;
@@ -124,6 +131,11 @@ function parseRequest(url, body) {
   // Path-based: /song/<id>  (share subdomain routes)
   if (!id) {
     const m = url.pathname.match(/\/song\/([a-zA-Z0-9]+)/);
+    if (m) { type = "track"; id = m[1]; }
+  }
+  // Path-based: /share/<id>  (canonical share URL)
+  if (!id) {
+    const m = url.pathname.match(/\/share\/([a-zA-Z0-9]+)/);
     if (m) { type = "track"; id = m[1]; }
   }
   // Path-based: /ogMeta/<id>
@@ -174,13 +186,17 @@ Deno.serve(async (req) => {
 
       const artist      = track.artist_display || "Upper Vibe Media";
       const pageTitle   = `${track.title} by ${artist} | Upper Vibe Media`;
-      const description = `🎵 Stream "${track.title}" on Upper Vibe Media. 432 Hz high-vibe music — listen free.`;
+      const description = `Stream "${track.title}" on Upper Vibe Media. 432 Hz high-vibe music — listen free.`;
       const imageUrl    = buildOgImageUrl(track.cover_url);
-      const pageUrl     = `${SITE_URL}/song/${id}`;
+      // og:url = share URL (canonical for social sharing); humans redirect to /song/:id
+      const shareRoute  = url.pathname.includes("/share/") ? `${SITE_URL}/share/${id}` : `${SITE_URL}/song/${id}`;
+      const pageUrl     = shareRoute;
+      // Human redirect always goes to the SPA song page
+      const humanRedirectUrl = `${SITE_URL}/song/${id}`;
 
       console.log(`[ogMeta] ✓ track | "${track.title}" | img: ${imageUrl.substring(0, 80)}`);
 
-      return new Response(buildHtml({ title: pageTitle, description, imageUrl, pageUrl, type: "track" }), {
+      return new Response(buildHtml({ title: pageTitle, description, imageUrl, pageUrl, type: "track", humanRedirectUrl }), {
         headers: {
           "Content-Type":  "text/html; charset=utf-8",
           "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",

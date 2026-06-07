@@ -40,6 +40,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import Settings from './pages/Settings';
+import ShareRedirect from './pages/ShareRedirect';
 import FAQ from './pages/FAQ';
 import VibeCheck from './pages/VibeCheck';
 import Start from './pages/Start';
@@ -135,6 +136,7 @@ const AuthenticatedApp = () => {
         <Route path="/about" element={<About />} />
         <Route path="/visualizers" element={<Visualizers />} />
         <Route path="/song/:id" element={<SongPage />} />
+        <Route path="/share/:id" element={<ShareRedirect />} />
         <Route path="/admin" element={<Admin />} />
         {/* Active routes */}
         <Route path="/contact" element={<Contact />} />
