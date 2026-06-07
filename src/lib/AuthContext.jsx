@@ -146,8 +146,16 @@ export const AuthProvider = ({ children }) => {
           return; // navigating away
         }
 
-        // Current path is safe — stay here (user may have logged in from /music, /vibe-room, etc.)
-        console.log("[AuthContext] Current path is safe — staying on:", currentPath);
+        // If user is on a generic public page (root, /music, /start), redirect to dashboard
+        const PUBLIC_PASSTHROUGH = new Set(["/", "/music", "/start", "/login", "/register"]);
+        if (PUBLIC_PASSTHROUGH.has(currentPath)) {
+          console.log("[AuthContext] On public page after login — redirecting to dashboard:", destination);
+          window.location.replace(destination);
+          return;
+        }
+
+        // Current path is a specific page (song page, radio, etc.) — stay here
+        console.log("[AuthContext] Current path is specific — staying on:", currentPath);
       }
 
       setIsLoadingAuth(false);
