@@ -167,8 +167,19 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         </svg>
       ),
       action: () => {
-        const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareData.facebookUrl)}`;
-        window.open(fbUrl, "_blank", "width=600,height=500,noopener,noreferrer");
+        // Use sharer.php with quote= so the post text is pre-filled with the song info
+        // The OG preview card comes from Facebook scraping the URL — since the platform
+        // serves the SPA for all routes, the card will show site-level OG tags.
+        // The quote parameter ensures the actual post text shows the correct song/artist.
+        let quote = "";
+        if (type === "song" && track?.title) {
+          const artistName = track.artist_display || "Upper Vibe Media";
+          quote = `🎧 "${track.title}" by ${artistName} — streaming free on Upper Vibe Media`;
+        }
+        const params = new URLSearchParams({ u: shareData.facebookUrl });
+        if (quote) params.append("quote", quote);
+        const fbUrl = `https://www.facebook.com/sharer/sharer.php?${params.toString()}`;
+        window.open(fbUrl, "_blank", "width=650,height=550,noopener,noreferrer");
         base44.analytics.track({ eventName: "share_facebook_clicked", properties: { share_type: type } });
       },
       color: "rgba(24,119,242,0.18)",
