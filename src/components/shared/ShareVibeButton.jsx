@@ -75,16 +75,18 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
   const getShareData = () => {
     switch (type) {
       case "song": {
-        // shareUrl (/share/:id) is used for copy/social — crawlers get OG tags there,
-        // humans are redirected to /song/:id. canonicalUrl is only for in-app navigation.
         const copyUrl = shareUrl || canonicalUrl || PROD_ORIGIN;
+        // Facebook doesn't run JS, so it can't be redirected to ogMeta via script.
+        // Point FB directly at the ogMeta function URL — a real server endpoint that
+        // returns proper OG HTML (title, artwork, description) without needing JS.
+        const fbUrl = ogMetaUrl || copyUrl;
         return {
           title: track?.title && track?.artist_display
             ? `${track.title} by ${track.artist_display} | Upper Vibe Media`
             : `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
           text: "",
           url: copyUrl,
-          facebookUrl: copyUrl,
+          facebookUrl: fbUrl,
           displayUrl: copyUrl,
         };
       }
