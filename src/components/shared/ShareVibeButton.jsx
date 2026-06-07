@@ -158,43 +158,50 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
 
   const SHARE_OPTIONS = [
     {
-      label: "Facebook",
+      label: "Share on Facebook",
       icon: (
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
         </svg>
       ),
       action: () => {
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareData.facebookUrl)}`, "_blank");
+        const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareData.facebookUrl)}`;
+        window.open(fbUrl, "_blank", "width=600,height=500,noopener,noreferrer");
         base44.analytics.track({ eventName: "share_facebook_clicked", properties: { share_type: type } });
       },
-      color: "rgba(59,89,152,0.15)",
-      border: "rgba(59,89,152,0.3)",
-      textColor: "#6b9bd2",
+      color: "rgba(24,119,242,0.18)",
+      border: "rgba(24,119,242,0.4)",
+      textColor: "#5b9cf6",
+      prominent: true,
     },
     {
-      label: "Twitter / X",
+      label: "Post on X (Twitter)",
       icon: (
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.741l7.732-8.835L1.254 2.25H8.08l4.253 5.622 5.91-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
         </svg>
       ),
       action: () => {
-        const tweetUrl = encodeURIComponent(shareData.url);
-        window.open(`https://twitter.com/intent/tweet?url=${tweetUrl}`, "_blank");
+        const tweetText = type === "song" && track?.title && track?.artist_display
+          ? `🎧 "${track.title}" by ${track.artist_display} — streaming free on Upper Vibe Media`
+          : "🎧⚡ Check this out on Upper Vibe Media";
+        const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareData.url)}&text=${encodeURIComponent(tweetText)}`;
+        window.open(twitterUrl, "_blank", "width=600,height=500,noopener,noreferrer");
         base44.analytics.track({ eventName: "share_twitter_clicked", properties: { share_type: type } });
       },
-      color: "rgba(255,255,255,0.05)",
-      border: "rgba(255,255,255,0.12)",
-      textColor: "rgba(255,255,255,0.7)",
+      color: "rgba(255,255,255,0.07)",
+      border: "rgba(255,255,255,0.18)",
+      textColor: "rgba(255,255,255,0.85)",
+      prominent: true,
     },
     {
-      label: "Copy Link",
+      label: copied ? "Copied!" : "Copy Link",
       icon: copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />,
       action: handleCopy,
-      color: "rgba(255,255,255,0.04)",
+      color: "rgba(255,255,255,0.03)",
       border: "rgba(255,255,255,0.08)",
-      textColor: "rgba(255,255,255,0.5)",
+      textColor: "rgba(255,255,255,0.4)",
+      prominent: false,
     },
   ];
 
@@ -341,23 +348,23 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
 
               {/* Share options (fixed at bottom with safe area padding) */}
               <div className="flex-shrink-0 px-4 pt-3 pb-4 flex flex-col gap-2.5"
-                style={{
-                  paddingBottom: `calc(env(safe-area-inset-bottom, 16px) + 1rem)`,
-                }}>
+                style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 16px) + 1rem)` }}>
                 {SHARE_OPTIONS.map((opt) => (
                   <button
                     key={opt.label}
-                    onClick={() => { opt.action(); if (opt.label !== "Copy Link" && opt.label !== "Copy Caption + Link") setOpen(false); }}
-                    className="flex items-center gap-3 w-full px-4 rounded-2xl font-bold text-sm transition-all active:scale-[0.98]"
+                    onClick={() => { opt.action(); if (!opt.label.startsWith("Copy")) setOpen(false); }}
+                    className="flex items-center gap-3 w-full px-4 rounded-2xl font-bold transition-all active:scale-[0.98]"
                     style={{
                       background: opt.color,
                       border: `1px solid ${opt.border}`,
                       color: opt.textColor,
-                      minHeight: 48,
+                      minHeight: opt.prominent ? 56 : 44,
+                      fontSize: opt.prominent ? 15 : 13,
+                      fontWeight: opt.prominent ? 800 : 600,
                     }}
                   >
                     {opt.icon}
-                    {opt.label === "Copy Link" && copied ? "Copied!" : opt.label}
+                    {opt.label}
                   </button>
                 ))}
               </div>
