@@ -1,0 +1,13 @@
+name = "share-uppervibemedia"
+main = "share-worker.js"
+compatibility_date = "2024-01-01"
+
+# Custom domain is configured in Cloudflare dashboard
+# Workers & Pages → your worker → Settings → Triggers → Custom Domains
+# Add: share.uppervibemedia.com
+
+# Optional: use Workers KV or Cloudflare Cache API for caching track data
+# (not required — Cache-Control headers handle Cloudflare's edge caching)
+
+[observability]
+enabled = true

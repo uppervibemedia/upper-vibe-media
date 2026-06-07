@@ -30,16 +30,12 @@ function getCanonicalSongUrl(trackId) {
   return `${PROD_ORIGIN}/song/${trackId}`;
 }
 
-// Returns the share URL — crawlers get server-rendered OG tags here, humans are redirected to /song/:id
+// Returns the share subdomain URL — Cloudflare Worker serves OG HTML to crawlers,
+// redirects real humans to the main site's /song/:id
+const SHARE_ORIGIN = "https://share.uppervibemedia.com";
 function getShareUrl(trackId) {
   if (!trackId) return null;
-  return `${PROD_ORIGIN}/share/${trackId}`;
-}
-
-// Returns the ogMeta function URL — crawler gets OG tags, humans get redirected to /song/:id
-function getOgMetaSongUrl(trackId) {
-  if (!trackId) return null;
-  return `${PROD_ORIGIN}/functions/ogMeta?type=track&id=${trackId}`;
+  return `${SHARE_ORIGIN}/song/${trackId}`;
 }
 
 // A track ID is valid if it exists and doesn't look like a temp/session identifier
@@ -70,23 +66,22 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
 
   const canonicalUrl = type === "song" ? getCanonicalSongUrl(trackId) : null;
   const shareUrl     = type === "song" ? getShareUrl(trackId)         : null;
-  const ogMetaUrl    = type === "song" ? getOgMetaSongUrl(trackId)    : null;
 
   const getShareData = () => {
     switch (type) {
       case "song": {
-        const copyUrl = shareUrl || canonicalUrl || PROD_ORIGIN;
-        // Facebook doesn't run JS, so it can't be redirected to ogMeta via script.
-        // Point FB directly at the ogMeta function URL — a real server endpoint that
-        // returns proper OG HTML (title, artwork, description) without needing JS.
-        const fbUrl = ogMetaUrl || copyUrl;
+        // Copy Link uses the clean canonical URL on the main domain
+        const copyUrl = canonicalUrl || PROD_ORIGIN;
+        // Social sharing (Facebook, iMessage, X preview) uses share subdomain
+        // where the Cloudflare Worker serves real server-rendered OG tags to crawlers
+        const socialUrl = shareUrl || copyUrl;
         return {
           title: track?.title && track?.artist_display
             ? `${track.title} by ${track.artist_display} | Upper Vibe Media`
             : `${track?.title || "Upper Vibe Music"} | Upper Vibe Media`,
           text: "",
-          url: copyUrl,
-          facebookUrl: fbUrl,
+          url: socialUrl,
+          facebookUrl: socialUrl,
           displayUrl: copyUrl,
         };
       }
@@ -167,17 +162,9 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         </svg>
       ),
       action: () => {
-        // Use sharer.php with quote= so the post text is pre-filled with the song info
-        // The OG preview card comes from Facebook scraping the URL — since the platform
-        // serves the SPA for all routes, the card will show site-level OG tags.
-        // The quote parameter ensures the actual post text shows the correct song/artist.
-        let quote = "";
-        if (type === "song" && track?.title) {
-          const artistName = track.artist_display || "Upper Vibe Media";
-          quote = `🎧 "${track.title}" by ${artistName} — streaming free on Upper Vibe Media`;
-        }
+        // share.uppervibemedia.com/song/:id — Cloudflare Worker serves OG HTML to crawlers,
+        // so Facebook will get the song artwork, title, and description in the preview card.
         const params = new URLSearchParams({ u: shareData.facebookUrl });
-        if (quote) params.append("quote", quote);
         const fbUrl = `https://www.facebook.com/sharer/sharer.php?${params.toString()}`;
         window.open(fbUrl, "_blank", "width=650,height=550,noopener,noreferrer");
         base44.analytics.track({ eventName: "share_facebook_clicked", properties: { share_type: type } });
