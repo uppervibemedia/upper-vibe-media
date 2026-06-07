@@ -161,9 +161,11 @@ Deno.serve(async (req) => {
   try {
     const url  = new URL(req.url);
     let body   = null;
+    // Support both GET (query params) and POST (JSON body)
     if (req.method === "POST") {
       try { body = await req.json(); } catch {}
     }
+    // For GET requests, params come from URL — no body parsing needed
 
     const { type, id } = parseRequest(url, body);
 
