@@ -183,7 +183,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                       style={{ background: `rgba(${color},0.1)`, border: `1px solid rgba(${color},0.2)`, color: `rgb(${color})` }}>
                       <Waves className="w-2 h-2" /> 432
                     </span>
-                    <div className="flex items-center gap-0.5" onClick={(e) => e.preventDefault()}>
+                    <div className="flex items-center gap-0.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} onTouchEnd={(e) => e.stopPropagation()}>
                       {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
@@ -268,7 +268,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                           style={{ background: `rgba(${color},0.1)`, border: `1px solid rgba(${color},0.2)`, color: `rgb(${color})` }}>
                           <Waves className="w-2 h-2" /> 432
                         </span>
-                        <div className="flex items-center gap-0.5" onClick={(e) => e.preventDefault()}>
+                        <div className="flex items-center gap-0.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} onTouchEnd={(e) => e.stopPropagation()}>
                           {heartButton("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url })}
                           <button
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}

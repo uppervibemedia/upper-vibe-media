@@ -173,11 +173,18 @@ export default function Home() {
   const heartButton = useCallback((type, id, meta) => (
     <button
       onClick={(e) => {
+        e.preventDefault();
         e.stopPropagation();
         if (!user) { setLoginModal(true); return; }
         toggle(type, id, meta);
       }}
-      className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+      onTouchEnd={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!user) { setLoginModal(true); return; }
+        toggle(type, id, meta);
+      }}
+      className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-95"
       style={isFaved(type, id) ? { color: "#9B7EFF" } : { color: "rgba(255,255,255,0.2)" }}>
       <Heart className={`w-3.5 h-3.5 ${isFaved(type, id) ? "fill-current" : ""}`} />
     </button>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Download, Play, Pause, Waves, Lock, Crown, Music4,
   Tv2, ChevronLeft, Tag, User, Heart, Zap
@@ -107,6 +107,7 @@ function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
 
 export default function SongPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [track, setTrack] = useState(null);
   const [allTracks, setAllTracks] = useState([]);
   const [visualizer, setVisualizer] = useState(null);
@@ -263,9 +264,14 @@ export default function SongPage() {
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-8"
           style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 2rem)" }}>
-          <Link to="/music" className="inline-flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors mb-6">
-            <ChevronLeft className="w-3.5 h-3.5" /> Back to Music
-          </Link>
+          <button
+            onClick={() => {
+              if (window.history.length > 1) navigate(-1);
+              else navigate("/music");
+            }}
+            className="inline-flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors mb-6 active:scale-95">
+            <ChevronLeft className="w-3.5 h-3.5" /> Back
+          </button>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-center sm:items-end">
