@@ -173,10 +173,7 @@ export default function ShareVibeButton({ type = "site", track = null, size = "m
         </svg>
       ),
       action: () => {
-        const tweetText = type === "song" && track?.title && track?.artist_display
-          ? `🎧 "${track.title}" by ${track.artist_display} — streaming free on Upper Vibe Media`
-          : "🎧⚡ Check this out on Upper Vibe Media";
-        const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareData.url)}&text=${encodeURIComponent(tweetText)}`;
+        const twitterUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareData.url)}`;
         window.open(twitterUrl, "_blank", "width=600,height=500,noopener,noreferrer");
         base44.analytics.track({ eventName: "share_twitter_clicked", properties: { share_type: type } });
       },
