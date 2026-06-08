@@ -1,26 +1,30 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Heart } from "lucide-react";
 import { useFavoritesContext } from "@/context/FavoritesContext";
 
 /**
- * FavoriteButton — single shared heart button used across all pages.
+ * FavoriteButton — iOS-safe heart toggle.
  *
- * iOS/PWA approach:
- *  - Uses ONLY onClick (no onTouchStart). touch-action:manipulation in CSS
- *    already removes the 300ms delay on iOS, making onClick instant.
- *  - onTouchStart caused double-fire issues and scroll interference on iOS.
- *  - 500ms dedup ref guard as a safety net.
- *  - No `disabled` prop — uses pointerEvents:none instead (disabled blocks iOS touch).
- *  - No framer-motion wrapper (can swallow touch events in scroll containers).
+ * KEY FIX: We track `saved` in LOCAL state (not just reading from context).
+ * This guarantees the heart flips visually on iOS even if React's context
+ * propagation is delayed or batched. We sync with context on mount + when
+ * the context's favorites list changes (e.g. after a reload).
  */
 export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNeedLogin, className = "" }) {
-  const { isFaved, toggle, user, isLoadingAuth } = useFavoritesContext();
+  const { isFaved, toggle, user, isLoadingAuth, favorites } = useFavoritesContext();
+
+  // Local state — source of truth for the visual heart fill.
+  // Synced from context whenever favorites list changes.
+  const [saved, setSaved] = useState(() => isFaved(type, id));
   const [saving, setSaving] = useState(false);
-  const saved = isFaved(type, id);
+
+  // Sync local state from context whenever favorites array changes
+  useEffect(() => {
+    setSaved(isFaved(type, id));
+  }, [favorites, type, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const lastActivatedAt = useRef(0);
   const savingRef = useRef(false);
-  // Keep refs so the callback never has stale closures
   const userRef = useRef(user);
   const isLoadingAuthRef = useRef(isLoadingAuth);
   userRef.current = user;
@@ -32,7 +36,7 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
 
     if (isLoadingAuthRef.current) return;
 
-    // Dedup: ignore if tapped within 500ms
+    // Dedup guard — ignore taps within 500ms
     const now = Date.now();
     if (now - lastActivatedAt.current < 500) return;
     lastActivatedAt.current = now;
@@ -44,14 +48,23 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
       return;
     }
 
+    // Flip local state IMMEDIATELY for instant visual feedback on iOS
+    const nextSaved = !saved;
+    setSaved(nextSaved);
+
     savingRef.current = true;
     setSaving(true);
 
-    await toggle(type, id, meta);
+    const ok = await toggle(type, id, meta);
+
+    // If the toggle failed, revert
+    if (!ok) {
+      setSaved(!nextSaved);
+    }
 
     savingRef.current = false;
     setSaving(false);
-  }, [toggle, type, id, meta, onNeedLogin]);
+  }, [toggle, type, id, meta, onNeedLogin, saved]);
 
   const dim = size === "md" ? "w-9 h-9" : "w-8 h-8";
   const iconDim = size === "md" ? "w-4 h-4" : "w-3.5 h-3.5";
@@ -79,17 +92,15 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
       title={saved ? "Saved to My Vibe Library" : "Save to My Vibe Library"}
       className={`${dim} rounded-xl flex items-center justify-center flex-shrink-0 select-none ${className}`}
       style={{
-        // touch-action:manipulation removes 300ms iOS tap delay without needing onTouchStart
         touchAction: "manipulation",
         WebkitTapHighlightColor: "transparent",
-        // Never use `disabled` — it blocks touch events on iOS
         pointerEvents: saving ? "none" : "auto",
         opacity: saving ? 0.7 : 1,
         cursor: "pointer",
         outline: "none",
         userSelect: "none",
         WebkitUserSelect: "none",
-        // Visual state
+        transition: "all 0.15s ease",
         ...(saved ? {
           background: "rgba(155,126,255,0.18)",
           border: "1px solid rgba(155,126,255,0.45)",
