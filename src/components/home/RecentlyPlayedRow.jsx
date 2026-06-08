@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, ChevronLeft, ChevronRight, History } from "lucide-react";
-import HeartButton from "@/components/shared/HeartButton";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { isNewTrack } from "@/lib/isNewTrack";
 import NewBadge from "@/components/shared/NewBadge";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 
 /**
  * RecentlyPlayedRow
@@ -270,7 +270,7 @@ function TrackCard({ track, isCurrent, isPlaying, isNew, themeColor, onPlay, onN
       </div>
 
       {/* Text info + heart */}
-      <div className="flex items-start justify-between gap-1 min-w-0">
+      <div className="flex items-start justify-between gap-1">
         <Link
           to={`/song/${track.id}`}
           className="block min-w-0 flex-1"
@@ -287,7 +287,13 @@ function TrackCard({ track, isCurrent, isPlaying, isNew, themeColor, onPlay, onN
             {track.artist_display || "Upper Vibe Media"}
           </p>
         </Link>
-        <HeartButton track={track} size="sm" onNeedLogin={onNeedLogin} className="flex-shrink-0 mt-0.5" />
+        <FavoriteButton
+          type="track"
+          id={track.id}
+          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+          size="sm"
+          onNeedLogin={onNeedLogin}
+        />
       </div>
     </motion.div>
   );

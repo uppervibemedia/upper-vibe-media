@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, Music4, TrendingUp, Lock, Download } from "lucide-react";
-import HeartButton from "@/components/shared/HeartButton";
 import FreqBadge from "@/components/shared/FreqBadge";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import SectionHeader from "../shared/SectionHeader";
@@ -175,8 +175,14 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
               <div className="flex items-center gap-0.5 flex-shrink-0">
                 {/* 432 badge — always electric blue */}
                 <FreqBadge label="432" />
-                {/* Heart / Save */}
-                <HeartButton track={track} size="sm" onNeedLogin={onNeedLogin} />
+                {/* Heart — always purple */}
+                <FavoriteButton
+                  type="track"
+                  id={track.id}
+                  meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                  size="md"
+                  onNeedLogin={onNeedLogin}
+                />
                 {/* Download — routes to song page */}
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}

@@ -13,7 +13,7 @@ import FavLoginModal from "../components/shared/FavLoginModal";
 import DownloadToast from "../components/shared/DownloadToast";
 import SupportModal from "../components/shared/SupportModal";
 import { useTheme } from "../context/ThemeContext";
-
+import FavoriteButton from "@/components/shared/FavoriteButton";
 
 export default function NewestMusic() {
   const [tracks, setTracks] = useState([]);
@@ -154,7 +154,14 @@ export default function NewestMusic() {
                       <Download className="w-3.5 h-3.5" />
                     </button>
 
-
+                    {/* Heart — shared FavoriteButton */}
+                    <FavoriteButton
+                      type="track"
+                      id={track.id}
+                      meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                      size="md"
+                      onNeedLogin={() => setLoginModal(true)}
+                    />
                   </div>
                 </motion.div>
               );
