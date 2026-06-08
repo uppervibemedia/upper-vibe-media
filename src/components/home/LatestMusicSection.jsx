@@ -6,7 +6,6 @@ import SectionHeader from "../shared/SectionHeader";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import { NewBadgeOverlay } from "@/components/shared/NewBadge";
-import FavoriteButton from "@/components/shared/FavoriteButton";
 
 const PAGE_SIZE = 4;
 const AUTO_CYCLE_MS = 7000;
@@ -180,25 +179,16 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                   <p className="font-heading font-black text-xs text-white truncate">{track.title}</p>
                   <p className="text-[10px] text-white/40 truncate mt-0.5">{track.artist_display || "Upper Vibe Media"}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full"
-                      style={{ background: `rgba(${color},0.1)`, border: `1px solid rgba(${color},0.2)`, color: `rgb(${color})` }}>
-                      <Waves className="w-2 h-2" /> 432
-                    </span>
-                    <div className="flex items-center gap-0.5">
-                      <FavoriteButton
-                        type="track"
-                        id={track.id}
-                        meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
-                        size="sm"
-                        onNeedLogin={onNeedLogin}
-                      />
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
-                        className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
-                        style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
-                        {isPremium ? <Download className="w-3 h-3 inline" /> : "Plus 🔒"}
-                      </button>
-                    </div>
+                  <span className="inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full"
+                    style={{ background: `rgba(${color},0.1)`, border: `1px solid rgba(${color},0.2)`, color: `rgb(${color})` }}>
+                    <Waves className="w-2 h-2" /> 432
+                  </span>
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
+                    className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
+                    style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
+                    {isPremium ? <Download className="w-3 h-3 inline" /> : "Plus 🔒"}
+                  </button>
                   </div>
                 </div>
               </Link>
@@ -275,21 +265,12 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                          style={{ background: `rgba(${color},0.1)`, border: `1px solid rgba(${color},0.2)`, color: `rgb(${color})` }}>
                          <Waves className="w-2 h-2" /> 432
                        </span>
-                       <div className="flex items-center gap-0.5">
-                         <FavoriteButton
-                           type="track"
-                           id={track.id}
-                           meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
-                           size="sm"
-                           onNeedLogin={onNeedLogin}
-                         />
-                         <button
+                       <button
                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
                            className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
                            style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
                            {isPremium ? <Download className="w-3 h-3 inline" /> : "Plus 🔒"}
                          </button>
-                       </div>
                       </div>
                     </div>
                   </Link>

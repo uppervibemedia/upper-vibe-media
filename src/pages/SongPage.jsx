@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Download, Play, Pause, Waves, Lock, Crown, Music4,
-  Tv2, ChevronLeft, Tag, User, Heart, Zap
+  Tv2, ChevronLeft, Tag, User, Zap
 
 } from "lucide-react";
 import FreqBadge from "@/components/shared/FreqBadge";
@@ -14,7 +14,7 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import SupportModal from "../components/shared/SupportModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
-import FavoriteButton from "@/components/shared/FavoriteButton";
+
 import { recordPlay } from "../components/home/DiscoverTab";
 import { recordUserDownload, triggerBrowserDownload, isRestrictedInAppBrowser, logDownloadEnv } from "@/lib/downloadService";
 import InAppBrowserDownloadModal from "../components/shared/InAppBrowserDownloadModal";
@@ -114,22 +114,20 @@ export default function SongPage() {
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [vizPlaying, setVizPlaying] = useState(false);
-  const [downloadIntent, setDownloadIntent] = useState(false);
+
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus: isAuthPlus, isAdmin: isAuthAdmin } = useAuth();
   const isPlus = isAuthPlus || isAuthAdmin;
-  const [loginPrompt, setLoginPrompt] = useState(false);
+
   const [supportModal, setSupportModal] = useState(false);
   const [showSupportedBanner, setShowSupportedBanner] = useState(false);
   const [inAppBrowserModal, setInAppBrowserModal] = useState(false);
   const [downloadIntentActive, setDownloadIntentActive] = useState(false);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
-  const rtp = radioTheme.vars["--rt-primary"];    // e.g. "0,229,255"
-  const rts = radioTheme.vars["--rt-secondary"];  // e.g. "155,126,255"
+  const rtp = radioTheme.vars["--rt-primary"];
   // Fixed colors (independent of theme)
   const CYAN    = "0,160,220";      // electric blue — Support + Share default
-  const PURPLE  = "91,33,182";      // deep violet — Save/heart
   const AMBER   = "212,168,67";     // midnight amber — music buttons
 
   useEffect(() => {
@@ -379,14 +377,7 @@ export default function SongPage() {
                   {/* Share — small */}
                   <ShareVibeButton type="song" track={track} size="sm" className="sm:flex-none justify-center" />
 
-                  {/* Save — shared FavoriteButton */}
-                  <FavoriteButton
-                    type="track"
-                    id={track.id}
-                    meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
-                    size="md"
-                    onNeedLogin={() => setLoginPrompt(true)}
-                  />
+
 
                   {/* Support — larger/prominent */}
                   <button
@@ -547,34 +538,7 @@ export default function SongPage() {
         )}
       </AnimatePresence>
 
-      {loginPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setLoginPrompt(false)} />
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="relative w-full max-w-sm rounded-2xl p-7 text-center"
-            style={{ background: "#0a0a1e", border: `1px solid rgba(${PURPLE},0.25)` }}>
-            <Heart className="w-8 h-8 fill-current mx-auto mb-3" style={{ color: `rgb(${PURPLE})` }} />
-            <h3 className="font-heading font-black text-lg text-white mb-2">Save Your Favorites</h3>
-            <p className="text-sm text-white/45 leading-relaxed mb-5">
-              Create a free account to save your favorite Upper Vibe Media songs and visualizers.
-            </p>
-            <button onClick={() => base44.auth.redirectToLogin()}
-              className="w-full py-3 rounded-xl font-black text-sm tracking-wider transition-all hover:brightness-110"
-              style={{ background: `linear-gradient(135deg,rgba(${PURPLE},0.7),rgb(${PURPLE}))`, color: "#fff" }}>
-              Create Free Account
-            </button>
-            <button onClick={() => base44.auth.redirectToLogin()}
-              className="mt-2 w-full py-2.5 rounded-xl font-bold text-sm transition-all hover:bg-white/10"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)" }}>
-              Log In
-            </button>
-            <button onClick={() => setLoginPrompt(false)}
-              className="mt-2 w-full py-2 text-sm text-white/30 hover:text-white/60 transition-colors">
-              Not now
-            </button>
-          </motion.div>
-        </div>
-      )}
+
     </div>
   );
 }

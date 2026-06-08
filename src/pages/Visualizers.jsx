@@ -11,7 +11,7 @@ function useDebounce(value, delay) {
   return debounced;
 }
 import { motion } from "framer-motion";
-import { Search, X, Play, Music4, Tv2, Calendar, Tag, Waves, Edit2, Download, Heart } from "lucide-react";
+import { Search, X, Play, Music4, Tv2, Calendar, Tag, Waves, Edit2, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
@@ -19,7 +19,7 @@ import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import VisualizerEditModal from "../components/visualizers/VisualizerEditModal";
 import VisualizerModal from "../components/shared/VisualizerModal";
-import { useFavorites } from "../hooks/useFavorite";
+
 import { useTheme } from "../context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 
@@ -61,7 +61,7 @@ function toWatchUrl(url) {
   return id ? `https://www.youtube.com/watch?v=${id}` : (url || null);
 }
 
-function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, onToggleFav, rgb, onWatch }) {
+function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, rgb, onWatch }) {
   const thumb = viz.thumbnail_url || linkedTrack?.cover_url;
   const categoryLabel = CATEGORY_LABELS[viz.category] || viz.category || "";
 
@@ -167,18 +167,7 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
             </Link>
           )}
 
-          {/* Heart / Favorite */}
-          <button
-            onClick={() => onToggleFav(viz)}
-            title={isFaved ? "Saved to Favorites" : "Save to Favorites"}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 ml-auto flex-shrink-0"
-            style={isFaved ? {
-              background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
-            } : {
-              background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
-            }}>
-            <Heart className={`w-3.5 h-3.5 ${isFaved ? "fill-current" : ""}`} />
-          </button>
+
         </div>
       </div>
     </div>
@@ -193,19 +182,13 @@ export default function Visualizers() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [editingViz, setEditingViz] = useState(null);
   const [watchingViz, setWatchingViz] = useState(null);
-  const [loginPrompt, setLoginPrompt] = useState(false);
+
   const debouncedSearch = useDebounce(search, 200);
   const { playTrack } = usePlayer();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const { isFaved, toggle } = useFavorites(user?.email);
   const { accentId } = useTheme();
   const rgb = (RADIO_THEMES[accentId] || RADIO_THEMES.cyan).vars["--rt-primary"];
-
-  const handleToggleFav = useCallback((viz) => {
-    if (!user) { setLoginPrompt(true); return; }
-    toggle("visualizer", viz.id, { title: viz.title, artist: viz.artist, cover_url: viz.thumbnail_url });
-  }, [user, toggle]);
 
   const load = useCallback(() =>
     Promise.all([
@@ -300,8 +283,6 @@ export default function Visualizers() {
                 isAdmin={isAdmin}
                 onEdit={(v) => setEditingViz(v)}
                 onPlay={playTrack}
-                isFaved={isFaved("visualizer", viz.id)}
-                onToggleFav={handleToggleFav}
                 rgb={rgb}
                 onWatch={(v) => setWatchingViz(v)}
               />
@@ -310,30 +291,7 @@ export default function Visualizers() {
         )}
       </div>
 
-      {/* Login prompt */}
-      {loginPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setLoginPrompt(false)} />
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="relative w-full max-w-sm rounded-2xl p-7 text-center"
-            style={{ background: "#0a0a1e", border: "1px solid rgba(236,72,153,0.25)" }}>
-            <Heart className="w-8 h-8 text-pink-400 fill-current mx-auto mb-3" />
-            <h3 className="font-heading font-black text-lg text-white mb-2">Save Your Favorites</h3>
-            <p className="text-sm text-white/45 leading-relaxed mb-5">
-              Create a free account to save your favorite Upper Vibe Media songs and visualizers.
-            </p>
-            <button onClick={() => base44.auth.redirectToLogin()}
-              className="w-full py-3 rounded-xl font-black text-sm tracking-wider transition-all hover:brightness-110"
-              style={{ background: "linear-gradient(135deg,#be185d,#ec4899)", color: "#fff" }}>
-              Create Free Account
-            </button>
-            <button onClick={() => setLoginPrompt(false)}
-              className="mt-3 w-full py-2 text-sm text-white/30 hover:text-white/60 transition-colors">
-              Not now
-            </button>
-          </motion.div>
-        </div>
-      )}
+
 
       {editingViz && (
         <VisualizerEditModal
@@ -350,8 +308,6 @@ export default function Visualizers() {
           onClose={() => setWatchingViz(null)}
           allVisualizers={visualizers}
           onSwitchViz={(v) => setWatchingViz(v)}
-          isFaved={isFaved("visualizer", watchingViz.id)}
-          onToggleFav={handleToggleFav}
           isPremium={user?.role === "premium" || user?.role === "admin" || user?.tier === "premium" || user?.role === "plus"}
         />
       )}
