@@ -30,8 +30,8 @@ function toEmbedUrl(url) {
   return m ? `https://www.youtube.com/embed/${m[1]}` : null;
 }
 
-function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
-  const { isFaved } = useFavorites(null);
+function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay, userEmail }) {
+  const { isFaved } = useFavorites(userEmail);
   const { accentId: mspAccentId } = useTheme();
   const mspTheme = RADIO_THEMES[mspAccentId] || RADIO_THEMES.cyan;
   const mspRtp = mspTheme.vars["--rt-primary"];
@@ -521,6 +521,7 @@ export default function SongPage() {
               currentTrack={track}
               allTracks={allTracks}
               onPlay={handlePlay}
+              userEmail={user?.email}
             />
           </motion.div>
 
