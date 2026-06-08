@@ -272,13 +272,33 @@ export default function Home() {
               }}>MEDIA</div>
             </motion.div>
 
-            {/* ── Hero media card — always visible on mobile/desktop ── */}
-            {/* Priority: active currentTrack > radio song > rotating homepage song */}
+            {/* ── Hero media card — Play/Pause current track, no navigation ── */}
             {(() => {
-              const displayTrack = currentTrack || currentRadioSong;
+              // Show card if something is playing/paused, or we have a radio song, or latest tracks loaded
+              const displayTrack = currentTrack || currentRadioSong || latestTracks[0];
               if (!displayTrack) return null;
-              const isActive = true;
-              const label = isPlaying ? "Now Playing" : currentTrack ? "Paused" : "Live on Radio";
+
+              const label = isPlaying && currentTrack
+                ? "Now Playing"
+                : currentTrack
+                  ? "Paused"
+                  : currentRadioSong
+                    ? "On Air"
+                    : "Latest Release";
+
+              // Play button action — stays on Home page, never navigates
+              const handleHeroPlay = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentTrack) {
+                  // Toggle the already-loaded track
+                  togglePlay();
+                } else {
+                  // Start the displayed track (radio preview or latest) on the Home page
+                  handlePlayTrack(displayTrack);
+                }
+              };
+
               return (
                 <motion.div
                   key={displayTrack.id}
@@ -291,9 +311,9 @@ export default function Home() {
                     boxShadow: `0 0 40px rgba(${rtPrimary},0.12), inset 0 1px 0 rgba(255,255,255,0.05)`,
                     maxWidth: "min(480px, 92vw)",
                   }}>
-                  {/* Top: cover art + track info */}
+                  {/* Cover art + track info + play button */}
                   <div className="flex items-center gap-4 px-4 pt-4 pb-3">
-                    {/* Cover art — larger */}
+                    {/* Cover art */}
                     <div className="relative flex-shrink-0">
                       <img src={displayTrack.cover_url} alt={displayTrack.title}
                         className="w-16 h-16 rounded-2xl object-cover"
@@ -304,9 +324,11 @@ export default function Home() {
                         className="absolute inset-0 rounded-2xl pointer-events-none"
                         style={{ border: `2px solid rgb(${rtPrimary})` }} />
                     </div>
+
                     {/* Track info */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[9px] font-black tracking-[0.22em] uppercase leading-none mb-1.5" style={{ color: `rgba(${rtPrimary},0.8)` }}>
+                      <p className="text-[9px] font-black tracking-[0.22em] uppercase leading-none mb-1.5"
+                        style={{ color: `rgba(${rtPrimary},0.8)` }}>
                         {label}
                       </p>
                       <p className="text-sm font-bold text-white/95 truncate leading-snug">{displayTrack.title}</p>
@@ -314,30 +336,26 @@ export default function Home() {
                         {displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}
                       </p>
                     </div>
-                    {/* Action button — larger */}
-                    {currentTrack ? (
-                      <button onClick={togglePlay}
-                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
-                        style={{ background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`, boxShadow: `0 0 20px rgba(${rtPrimary},0.4)` }}>
-                        {isPlaying
-                          ? <Pause className="w-5 h-5 text-black fill-current" />
-                          : <Play className="w-5 h-5 text-black fill-current ml-0.5" />}
-                      </button>
-                    ) : currentRadioSong ? (
-                      <button onClick={handleStartRadio}
-                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
-                        style={{ background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`, boxShadow: `0 0 20px rgba(${rtPrimary},0.4)` }}>
-                        <Radio className="w-5 h-5 text-black" />
-                      </button>
-                    ) : (
-                      <button onClick={() => handlePlayTrack(displayTrack)}
-                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
-                        style={{ background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`, boxShadow: `0 0 20px rgba(${rtPrimary},0.4)` }}>
-                        <Play className="w-5 h-5 text-black fill-current ml-0.5" />
-                      </button>
-                    )}
+
+                    {/* Play / Pause button — stays on Home page */}
+                    <button
+                      onClick={handleHeroPlay}
+                      type="button"
+                      aria-label={isPlaying && currentTrack ? "Pause" : "Play"}
+                      className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+                      style={{
+                        touchAction: "manipulation",
+                        WebkitTapHighlightColor: "transparent",
+                        background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`,
+                        boxShadow: `0 0 20px rgba(${rtPrimary},0.4)`,
+                      }}>
+                      {isPlaying && currentTrack
+                        ? <Pause className="w-5 h-5 text-black fill-current" />
+                        : <Play className="w-5 h-5 text-black fill-current ml-0.5" />}
+                    </button>
                   </div>
-                  {/* Bottom: animated equalizer bar strip */}
+
+                  {/* Animated equalizer strip */}
                   <div className="flex items-end gap-[2px] px-4 pb-3" style={{ height: "28px" }}>
                     {[5, 9, 16, 12, 7, 14, 10, 6, 13, 9, 5, 11, 8, 15, 7].map((h, i) => (
                       <motion.div key={i}
