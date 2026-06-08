@@ -382,9 +382,9 @@ export default function SongPage() {
 
                   {/* Save — shared FavoriteButton */}
                   <FavoriteButton
-                    type="track"
+                    type="song"
                     id={track.id}
-                    meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                    meta={{ title: track.title, artist: track.artist_display, coverUrl: track.cover_url, songUrl: track.audio_url }}
                     size="md"
                     onNeedLogin={() => setLoginPrompt(true)}
                   />

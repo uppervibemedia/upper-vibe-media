@@ -19,7 +19,7 @@ import { useAuth } from "@/lib/AuthContext";
 import Footer from "../components/shared/Footer";
 import VisualizerEditModal from "../components/visualizers/VisualizerEditModal";
 import VisualizerModal from "../components/shared/VisualizerModal";
-import { useFavorites } from "../hooks/useFavorite";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 import { useTheme } from "../context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 
@@ -61,7 +61,7 @@ function toWatchUrl(url) {
   return id ? `https://www.youtube.com/watch?v=${id}` : (url || null);
 }
 
-function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, onToggleFav, rgb, onWatch }) {
+function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, rgb, onWatch, onNeedLogin }) {
   const thumb = viz.thumbnail_url || linkedTrack?.cover_url;
   const categoryLabel = CATEGORY_LABELS[viz.category] || viz.category || "";
 
@@ -168,17 +168,14 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, isFaved, on
           )}
 
           {/* Heart / Favorite */}
-          <button
-            onClick={() => onToggleFav(viz)}
-            title={isFaved ? "Saved to Favorites" : "Save to Favorites"}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 ml-auto flex-shrink-0"
-            style={isFaved ? {
-              background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
-            } : {
-              background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
-            }}>
-            <Heart className={`w-3.5 h-3.5 ${isFaved ? "fill-current" : ""}`} />
-          </button>
+          <FavoriteButton
+            itemType="visualizer"
+            item={viz}
+            meta={{ title: viz.title, artist: viz.artist, coverUrl: viz.thumbnail_url }}
+            size="sm"
+            onNeedLogin={onNeedLogin}
+            className="ml-auto"
+          />
         </div>
       </div>
     </div>
@@ -198,14 +195,8 @@ export default function Visualizers() {
   const { playTrack } = usePlayer();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const { isFaved, toggle } = useFavorites(user?.email);
   const { accentId } = useTheme();
   const rgb = (RADIO_THEMES[accentId] || RADIO_THEMES.cyan).vars["--rt-primary"];
-
-  const handleToggleFav = useCallback((viz) => {
-    if (!user) { setLoginPrompt(true); return; }
-    toggle("visualizer", viz.id, { title: viz.title, artist: viz.artist, cover_url: viz.thumbnail_url });
-  }, [user, toggle]);
 
   const load = useCallback(() =>
     Promise.all([
@@ -300,10 +291,9 @@ export default function Visualizers() {
                 isAdmin={isAdmin}
                 onEdit={(v) => setEditingViz(v)}
                 onPlay={playTrack}
-                isFaved={isFaved("visualizer", viz.id)}
-                onToggleFav={handleToggleFav}
                 rgb={rgb}
                 onWatch={(v) => setWatchingViz(v)}
+                onNeedLogin={() => setLoginPrompt(true)}
               />
             ))}
           </div>
@@ -350,8 +340,6 @@ export default function Visualizers() {
           onClose={() => setWatchingViz(null)}
           allVisualizers={visualizers}
           onSwitchViz={(v) => setWatchingViz(v)}
-          isFaved={isFaved("visualizer", watchingViz.id)}
-          onToggleFav={handleToggleFav}
           isPremium={user?.role === "premium" || user?.role === "admin" || user?.tier === "premium" || user?.role === "plus"}
         />
       )}

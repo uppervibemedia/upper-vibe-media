@@ -79,12 +79,12 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
     if (!allTracks || allTracks.length === 0) return;
     Promise.all([
       base44.entities.SongStream.list("-created_date", 500),
-      base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000),
+      base44.entities.UserFavorite.filter({ itemType: "song" }, "-savedAt", 1000),
     ]).then(([streamData, favData]) => {
       setStreams(streamData);
-      // Count favorites per track_id
+      // Count favorites per itemId
       const counts = {};
-      favData.forEach((f) => { if (f.track_id) counts[f.track_id] = (counts[f.track_id] || 0) + 1; });
+      favData.forEach((f) => { if (f.itemId) counts[f.itemId] = (counts[f.itemId] || 0) + 1; });
       setFavCounts(counts);
       setLoading(false);
     });
@@ -177,9 +177,9 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
                 <FreqBadge label="432" />
                 {/* Heart — always purple */}
                 <FavoriteButton
-                  type="track"
-                  id={track.id}
-                  meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                  itemType="song"
+                  item={track}
+                  meta={{ title: track.title, artist: track.artist_display, coverUrl: track.cover_url, songUrl: track.audio_url }}
                   size="md"
                   onNeedLogin={onNeedLogin}
                 />

@@ -11,6 +11,7 @@ import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavoritesContext } from "@/context/FavoritesContext";
 import FavoriteButton from "@/components/shared/FavoriteButton";
+import { normalizeItemId } from "@/hooks/useFavorite";
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 import RecentlyPlayedRow from "@/components/home/RecentlyPlayedRow";
@@ -18,7 +19,7 @@ import DailyRitualBanner from "@/components/home/DailyRitualBanner";
 
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
-  const { isFaved } = useFavoritesContext();
+  const { isFavorite } = useFavoritesContext();
   const [tracks, setTracks] = useState([]);
   const [visualizers, setVisualizers] = useState([]);
   const [userDownloads, setUserDownloads] = useState([]);
@@ -44,8 +45,8 @@ export default function MyVibes() {
     });
   }, [user]);
 
-  const savedTracks = useMemo(() => tracks.filter((t) => isFaved("track", t.id)), [tracks, isFaved]);
-  const savedVisualizers = useMemo(() => visualizers.filter((v) => isFaved("visualizer", v.id)), [visualizers, isFaved]);
+  const savedTracks = useMemo(() => tracks.filter((t) => isFavorite(t, "song")), [tracks, isFavorite]);
+  const savedVisualizers = useMemo(() => visualizers.filter((v) => isFavorite(v, "visualizer")), [visualizers, isFavorite]);
 
   // Downloaded tab: join UserDownload records with full track data, sorted by download date
   const downloadedTracks = useMemo(() => {
@@ -305,9 +306,9 @@ export default function MyVibes() {
 
                             {/* Heart / unfavorite */}
                             <FavoriteButton
-                              type="track"
-                              id={track.id}
-                              meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                              itemType="song"
+                              item={track}
+                              meta={{ title: track.title, artist: track.artist_display, coverUrl: track.cover_url }}
                               size="sm"
                             />
                           </div>
@@ -380,9 +381,9 @@ export default function MyVibes() {
 
                             {/* Heart / favorite */}
                             <FavoriteButton
-                              type="track"
-                              id={track.id}
-                              meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                              itemType="song"
+                              item={track}
+                              meta={{ title: track.title, artist: track.artist_display, coverUrl: track.cover_url }}
                               size="sm"
                             />
                           </div>
@@ -425,9 +426,9 @@ export default function MyVibes() {
                               <p className="text-xs text-white/40">{viz.artist || "Upper Vibe Media"}</p>
                             </div>
                             <FavoriteButton
-                             type="visualizer"
-                             id={viz.id}
-                             meta={{ title: viz.title, artist: viz.artist, cover_url: viz.thumbnail_url }}
+                             itemType="visualizer"
+                             item={viz}
+                             meta={{ title: viz.title, artist: viz.artist, coverUrl: viz.thumbnail_url }}
                              size="sm"
                             />
                           </div>

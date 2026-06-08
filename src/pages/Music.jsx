@@ -394,9 +394,9 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
 
         {/* Favorite — via global FavoriteButton (iOS-safe) */}
         <FavoriteButton
-          type="track"
-          id={track.id}
-          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+          itemType="song"
+          item={track}
+          meta={{ title: track.title, artist: track.artist_display, coverUrl: track.cover_url, songUrl: track.audio_url }}
           size="md"
           onNeedLogin={onNeedLogin}
         />

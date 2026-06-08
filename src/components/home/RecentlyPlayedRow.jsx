@@ -288,9 +288,9 @@ function TrackCard({ track, isCurrent, isPlaying, isNew, themeColor, onPlay, onN
           </p>
         </Link>
         <FavoriteButton
-          type="track"
-          id={track.id}
-          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+          itemType="song"
+          item={track}
+          meta={{ title: track.title, artist: track.artist_display, coverUrl: track.cover_url, songUrl: track.audio_url }}
           size="sm"
           onNeedLogin={onNeedLogin}
         />

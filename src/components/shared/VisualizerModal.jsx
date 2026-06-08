@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { X, Heart, Play, Tv2, Headphones, Download, Lock } from "lucide-react";
+import { X, Play, Tv2, Headphones, Download, Lock } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 
 function extractVideoId(url) {
   if (!url) return null;
@@ -18,7 +19,7 @@ function toEmbedUrl(url) {
   return url;
 }
 
-export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualizers = [], onSwitchViz, isFaved, onToggleFav, isPremium }) {
+export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualizers = [], onSwitchViz, isPremium, onNeedLogin }) {
   const savedScrollY = useRef(0);
   const navigate = useNavigate();
   const { accentId } = useTheme();
@@ -197,17 +198,13 @@ export default function VisualizerModal({ viz, onClose, pauseAudio, allVisualize
               </p>
             )}
           </div>
-          {onToggleFav && (
-            <button onClick={() => onToggleFav(viz)} style={{
-              width: 36, height: 36, borderRadius: 10, cursor: "pointer", flexShrink: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              ...(isFaved
-                ? { background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF" }
-                : { background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.3)", color: "rgba(155,126,255,0.55)" }),
-            }}>
-              <Heart style={{ width: 16, height: 16, fill: isFaved ? "currentColor" : "none" }} />
-            </button>
-          )}
+          <FavoriteButton
+            type="visualizer"
+            id={viz.id}
+            meta={{ title: viz.title, artist: viz.artist, coverUrl: viz.thumbnail_url }}
+            size="sm"
+            onNeedLogin={onNeedLogin}
+          />
         </div>
 
         {/* ── Song CTA buttons ── */}
