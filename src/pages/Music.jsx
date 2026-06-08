@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from "react";
+import { motion } from "framer-motion";
 import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Play, Pause, Download, Waves, Music4, Heart, ChevronLeft } from "lucide-react";
+import { Search, X, Play, Pause, Download, Waves, Music4, ChevronLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
@@ -11,7 +11,7 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import SupportModal from "../components/shared/SupportModal";
-import { useFavorites } from "../hooks/useFavorite";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
@@ -20,7 +20,17 @@ import DownloadToast from "../components/shared/DownloadToast";
 import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 
 const GENRE_TYPES = ["genre", "mood", "editorial", "frequency"];
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 30;
+
+// Debounce helper
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = React.useState(value);
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
 
 // Skeleton loader card
 function SkeletonCard() {
@@ -46,6 +56,7 @@ export default function Music() {
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const debouncedSearch = useDebounce(search, 200);
   const [loading, setLoading] = useState(true);
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [loginModal, setLoginModal] = useState(false);
@@ -57,7 +68,6 @@ export default function Music() {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus, isAdmin } = useAuth();
   const isPremium = isPlus || isAdmin;
-  const { isFaved, toggle } = useFavorites(user?.email);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const themeColor = radioTheme.vars["--rt-primary"]; // e.g. "0,229,255"
@@ -81,16 +91,16 @@ export default function Music() {
   const prevFilterRef = React.useRef({ search: "", activeFilter: "all" });
   useEffect(() => {
     const prev = prevFilterRef.current;
-    if (prev.search !== search || prev.activeFilter !== activeFilter) {
+    if (prev.search !== debouncedSearch || prev.activeFilter !== activeFilter) {
       setVisibleCount(PAGE_SIZE);
-      prevFilterRef.current = { search, activeFilter };
+      prevFilterRef.current = { search: debouncedSearch, activeFilter };
     }
-  }, [search, activeFilter]);
+  }, [debouncedSearch, activeFilter]);
 
   const filtered = useMemo(() => {
     let result = tracks;
-    if (search) {
-      const q = search.toLowerCase();
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       result = result.filter((t) =>
         (t.title || "").toLowerCase().includes(q) ||
         (t.artist_display || "").toLowerCase().includes(q)
@@ -199,15 +209,15 @@ export default function Music() {
           </div>
 
           {/* Result count when searching */}
-          {search && (
+          {debouncedSearch && (
             <div className="px-6 mb-3">
               <p className="text-sm text-white/30">
                 {filtered.length} result{filtered.length !== 1 ? "s" : ""} for{" "}
-                <span className="text-white/60">"{search}"</span>
+                <span className="text-white/60">"{debouncedSearch}"</span>
               </p>
             </div>
           )}
-          {!search && !loading && (
+          {!debouncedSearch && !loading && (
             <div className="px-6 mb-2">
               <p className="text-xs text-white/20">
                 Showing {Math.min(visibleCount, filtered.length)} of {filtered.length} tracks
@@ -227,13 +237,7 @@ export default function Music() {
                 <p className="text-white/25">No songs found.</p>
               </div>
             ) : (
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeFilter + search}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="space-y-2">
+              <div className="space-y-2">
                   {filtered.slice(0, visibleCount).map((track, i) => (
                     <TrackRow
                       key={track.id}
@@ -241,15 +245,10 @@ export default function Music() {
                       index={i}
                       isCurrent={currentTrack?.id === track.id}
                       isPlaying={isPlaying}
-                      isFaved={isFaved}
                       isPremium={isPremium}
-                      user={user}
                       themeColor={themeColor}
                       onPlay={handlePlay}
-                      onFav={(track) => {
-                        if (!user) { setLoginModal(true); return; }
-                        toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-                      }}
+                      onNeedLogin={() => setLoginModal(true)}
                       onDownload={async (track) => {
                         if (!isPremium) { setUpgradeModal(true); return; }
                         if (!track.audio_url) return;
@@ -274,8 +273,7 @@ export default function Music() {
                       </button>
                     </div>
                   )}
-                </motion.div>
-              </AnimatePresence>
+              </div>
             )}
           </div>
         </div>
@@ -315,18 +313,16 @@ function FilterPill({ label, active, onClick, themeColor }) {
 }
 
 // B: React.memo — prevents rerenders when only isPlaying/currentTrack changes on other rows
-const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user, themeColor, onPlay, onFav, onDownload }) {
+const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, isPremium, themeColor, onPlay, onNeedLogin, onDownload }) {
   const tc = themeColor || "0,160,220";
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.02, 0.3) }}
-      className="flex items-center gap-3 p-3.5 rounded-2xl transition-all active:scale-[0.99]"
+    <div
+      className="flex items-center gap-3 p-3.5 rounded-2xl transition-colors active:scale-[0.99]"
       style={{
         background: isCurrent ? `rgba(${tc},0.06)` : "rgba(255,255,255,0.025)",
         border: `1px solid ${isCurrent ? `rgba(${tc},0.2)` : "rgba(255,255,255,0.06)"}`,
         boxShadow: isCurrent ? `0 0 20px rgba(${tc},0.06)` : "none",
+        willChange: "auto",
       }}
     >
       {/* Cover art */}
@@ -396,19 +392,15 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
           <Download className="w-3.5 h-3.5" />
         </button>
 
-        {/* Favorite — violet purple */}
-        <button
-          onClick={() => onFav(track)}
-          title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
-          style={isFaved("track", track.id) ? {
-            background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
-          } : {
-            background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
-          }}>
-          <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-        </button>
+        {/* Favorite — via global FavoriteButton (iOS-safe) */}
+        <FavoriteButton
+          type="track"
+          id={track.id}
+          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+          size="md"
+          onNeedLogin={onNeedLogin}
+        />
       </div>
-    </motion.div>
+    </div>
   );
 });

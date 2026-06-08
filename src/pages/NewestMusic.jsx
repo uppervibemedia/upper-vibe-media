@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Download, Waves, Music4, Heart, Zap, ArrowRight } from "lucide-react";
+import { Play, Pause, Download, Waves, Music4, Zap, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
@@ -12,8 +12,8 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import DownloadToast from "../components/shared/DownloadToast";
 import SupportModal from "../components/shared/SupportModal";
-import { useFavorites } from "../hooks/useFavorite";
 import { useTheme } from "../context/ThemeContext";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 
 export default function NewestMusic() {
   const [tracks, setTracks] = useState([]);
@@ -26,7 +26,6 @@ export default function NewestMusic() {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus, isAdmin } = useAuth();
   const isPremium = isPlus || isAdmin;
-  const { isFaved, toggle } = useFavorites(user?.email);
   const { accent } = useTheme();
   const rgb = accent.rgb;
   const navigate = useNavigate();
@@ -155,21 +154,14 @@ export default function NewestMusic() {
                       <Download className="w-3.5 h-3.5" />
                     </button>
 
-                    {/* Heart — violet purple */}
-                    <button
-                      onClick={() => {
-                        if (!user) { setLoginModal(true); return; }
-                        toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-                      }}
-                      title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
-                      className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                      style={isFaved("track", track.id) ? {
-                        background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
-                      } : {
-                        background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
-                      }}>
-                      <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-                    </button>
+                    {/* Heart — shared FavoriteButton */}
+                    <FavoriteButton
+                      type="track"
+                      id={track.id}
+                      meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                      size="md"
+                      onNeedLogin={() => setLoginModal(true)}
+                    />
                   </div>
                 </motion.div>
               );

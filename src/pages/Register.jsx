@@ -7,7 +7,7 @@ export default function Register() {
   // If already authenticated, redirect away
   useEffect(() => {
     base44.auth.isAuthenticated().then((authed) => {
-      if (authed) window.location.replace("/music");
+      if (authed) window.location.replace("/my-vibes");
     });
   }, []);
 
@@ -52,7 +52,7 @@ export default function Register() {
     try {
       const res = await base44.auth.verifyOtp({ email, otpCode });
       base44.auth.setToken(res.access_token);
-      window.location.href = "/";
+      window.location.href = "/my-vibes";
     } catch (err) {
       setError(err?.message || "Invalid code. Please try again.");
     } finally {
@@ -82,7 +82,7 @@ export default function Register() {
   };
 
   const handleApple = () => {
-    base44.auth.loginWithProvider("apple", window.location.origin + "/");
+    base44.auth.loginWithProvider("apple", window.location.origin + "/my-vibes");
   };
 
   return (

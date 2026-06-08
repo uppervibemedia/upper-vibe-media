@@ -91,8 +91,8 @@ export function defaultRouteForUser(user) {
     user.subscription_status === "active" ||
     user.subscriptionStatus === "active" ||
     user.stripe_subscription_status === "active";
-  if (isPlus) return "/my-vibe-library";
-  return "/music";
+  if (isPlus) return "/my-vibes";
+  return "/my-vibes";
 }
 
 // All storage keys that may hold a returnUrl / redirect value

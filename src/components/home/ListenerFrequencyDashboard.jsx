@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
@@ -68,7 +69,7 @@ const TABS = [
 
 export default function ListenerFrequencyDashboard({
   allTracks, currentTrack, isPlaying, handlePlayTrack,
-  user, onToggleFav, isFaved, themeColor,
+  user, onToggleFav, isFaved, themeColor, onNeedLogin,
 }) {
   const [streams, setStreams]       = useState([]);
   const [favCounts, setFavCounts]   = useState({});
@@ -267,16 +268,12 @@ export default function ListenerFrequencyDashboard({
 
               {/* Actions */}
               <div className="flex items-center gap-1 flex-shrink-0">
-                <button
-                  onClick={(e) => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-                  style={isFaved && isFaved("track", track.id) ? {
-                    background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
-                  } : {
-                    background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.3)", color: "rgba(155,126,255,0.55)"
-                  }}>
-                  <Heart className={`w-3.5 h-3.5 ${isFaved && isFaved("track", track.id) ? "fill-current" : ""}`} />
-                </button>
+                <FavoriteButton
+                  type="track"
+                  id={track.id}
+                  meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                  onNeedLogin={onNeedLogin}
+                />
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
                   className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"

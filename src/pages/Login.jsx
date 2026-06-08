@@ -7,7 +7,7 @@ export default function Login() {
   // If already authenticated, redirect away from login page
   useEffect(() => {
     base44.auth.isAuthenticated().then((authed) => {
-      if (authed) window.location.replace("/music");
+      if (authed) window.location.replace("/my-vibes");
     });
   }, []);
 
@@ -25,7 +25,7 @@ export default function Login() {
       await base44.auth.loginViaEmailPassword(email, password);
       const params = new URLSearchParams(window.location.search);
       const next = params.get("next");
-      window.location.href = next && next.startsWith("/") ? next : "/";
+      window.location.href = next && next.startsWith("/") ? next : "/my-vibes";
     } catch (err) {
       setError(err?.message || "Invalid email or password.");
     } finally {
@@ -34,7 +34,7 @@ export default function Login() {
   };
 
   const handleApple = () => {
-    base44.auth.loginWithProvider("apple", window.location.origin + "/");
+    base44.auth.loginWithProvider("apple", window.location.origin + "/my-vibes");
   };
 
   return (
