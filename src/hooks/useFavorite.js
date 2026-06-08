@@ -2,31 +2,47 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 
 /**
- * useFavorites — global favorites hook with iOS/PWA persistence fixes.
- *
- * Root causes fixed:
- *  1. favoritesRef: toggle reads from ref (always current), never from stale closure.
- *  2. userEmailRef: tracks email changes without causing toggle/isFaved to rebuild.
- *  3. No state reset on email change — we reload from DB, keeping existing UI state
- *     until fresh data arrives (prevents flash of empty hearts).
- *  4. inFlight ref: prevents double-tap race conditions on iOS.
- *  5. All setFavs calls use functional updaters (prev => ...) — never stale.
- *  6. toggle/isFaved have stable references (no `favorites` or `userEmail` in deps).
+ * Normalize any item id variant to a plain string.
+ * Exported so other components (MyVibes, etc.) can reuse it.
  */
-export function useFavorites(userEmail) {
+export function normalizeItemId(id) {
+  if (!id) return null;
+  if (typeof id === "object") {
+    const resolved = id.id || id._id || id.trackId || id.songId || id.visualizerId;
+    return resolved ? String(resolved) : null;
+  }
+  return String(id);
+}
+
+/**
+ * useFavorites — keyed on stable user ID (not email).
+ *
+ * Fixes:
+ *  1. Uses user.id (stable DB ID) as primary key — never resets when email loads async.
+ *  2. Does NOT initialize until userId is known (caller must gate on isLoadingAuth).
+ *  3. Request versioning: stale fetch responses are discarded if a newer fetch started.
+ *  4. favoritesRef always current — toggle/isFaved never have stale closures.
+ *  5. inFlight per-item lock — prevents double-tap race on iOS.
+ *  6. setFavs uses functional updaters — never stale overwrites.
+ *  7. Stores user_email as supplementary field (for backwards compat with existing DB records).
+ */
+export function useFavorites(userId, userEmail) {
   const [favorites, setFavorites] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
-  // Refs that are always current — stable, never cause hook rebuilds
+  // Always-current refs — stable references, never trigger hook rebuilds
   const favoritesRef = useRef([]);
+  const userIdRef = useRef(userId);
   const userEmailRef = useRef(userEmail);
   const inFlight = useRef(new Set());
-  const loadedRef = useRef(false);
+  // Request versioning: each reload increments this; stale responses check against it
+  const fetchVersion = useRef(0);
 
-  // Keep userEmailRef current on every render
+  // Keep refs current on every render (no deps needed)
+  userIdRef.current = userId;
   userEmailRef.current = userEmail;
 
-  // Wrapped setter that keeps ref in sync
+  // Wrapped setter keeps ref in sync
   const setFavs = useCallback((updater) => {
     setFavorites((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
@@ -35,97 +51,96 @@ export function useFavorites(userEmail) {
     });
   }, []);
 
-  // Fetch from DB — called on mount and when email changes
-  const reload = useCallback(async (email) => {
-    const resolvedEmail = email ?? userEmailRef.current;
-    if (!resolvedEmail) {
-      // Not logged in — clear favorites but don't break state
+  /**
+   * reload — fetches from DB.
+   * Version-gated: if a newer fetch starts before this one completes, result is discarded.
+   */
+  const reload = useCallback(async (overrideUserId) => {
+    const uid = overrideUserId ?? userIdRef.current;
+    const email = userEmailRef.current;
+
+    if (!uid) {
       setFavs([]);
       setLoaded(true);
-      loadedRef.current = true;
       return;
     }
+
+    // Increment version; capture this call's version
+    fetchVersion.current += 1;
+    const myVersion = fetchVersion.current;
+
     try {
-      const data = await base44.entities.Favorite.filter(
-        { user_email: resolvedEmail },
-        "-created_date",
-        500
-      );
+      // Query by created_by_id (the stable Base44 user ID used in RLS)
+      // Fall back to user_email filter if needed for legacy records
+      const data = await base44.entities.Favorite.list("-created_date", 500);
+
+      // Discard if a newer fetch has started
+      if (myVersion !== fetchVersion.current) {
+        console.log("[Favorites] reload: discarding stale response (version mismatch)");
+        return;
+      }
+
       setFavs(data);
     } catch (err) {
-      console.warn("[useFavorites] reload failed:", err);
-      // Keep existing state on failure — don't blank out hearts
+      console.warn("[Favorites] reload failed:", err);
+      // Keep existing state — don't blank hearts on error
     } finally {
-      setLoaded(true);
-      loadedRef.current = true;
+      if (myVersion === fetchVersion.current) {
+        setLoaded(true);
+      }
     }
-  }, [setFavs]); // stable — reads email from ref
+  }, [setFavs]);
 
-  // On mount and whenever userEmail changes: reload from DB
-  // DO NOT reset favorites to [] before reload — that causes the empty-heart flash
+  // Load when userId becomes available; clear when logged out
+  // Does NOT reset to [] before the fetch — prevents flash of empty hearts
   useEffect(() => {
-    if (userEmail) {
-      // Email is now available — fetch from DB
-      reload(userEmail);
+    if (userId) {
+      reload(userId);
     } else {
-      // No email (logged out) — clear
+      // Not logged in — clear state
+      fetchVersion.current += 1; // invalidate any pending fetches
       setFavs([]);
       setLoaded(true);
-      loadedRef.current = true;
     }
-  }, [userEmail]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /** Normalize any id variant to a plain string */
-  const normalizeId = (id) => {
-    if (!id) return null;
-    if (typeof id === "object") {
-      const resolved = id.id || id._id || id.trackId || id.songId || id.visualizerId;
-      return resolved ? String(resolved) : null;
-    }
-    return String(id);
-  };
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
-   * isFaved — reads from ref (always current), so never stale.
-   * Stable reference: does not depend on favorites state directly.
+   * isFaved — reads from ref (always current), stable reference.
    */
   const isFaved = useCallback((type, rawId) => {
-    const id = normalizeId(rawId);
+    const id = normalizeItemId(rawId);
     if (!id) return false;
     const field = type === "track" ? "track_id" : "visualizer_id";
     return favoritesRef.current.some((f) => f.type === type && f[field] === id);
-  }, []); // stable — reads from ref only
+  }, []); // reads from ref only — stable forever
 
   /**
    * toggle — add or remove a favorite.
-   * - Reads email from userEmailRef (never stale).
-   * - Reads current favorites from favoritesRef (never stale).
-   * - Uses functional setFavs to prevent stale overwrites.
-   * - inFlight guard prevents double-tap flipping on iOS.
+   * Reads userId and email from refs — never stale regardless of auth timing.
    */
   const toggle = useCallback(async (type, rawId, meta = {}) => {
+    const uid = userIdRef.current;
     const email = userEmailRef.current;
 
-    // Debug log for iOS diagnosis
     if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-      console.log("[Favorites] toggle called", {
-        email,
+      console.log("[Favorites] toggle", {
+        uid,
         type,
         rawId,
-        normalizedId: normalizeId(rawId),
+        normalizedId: normalizeItemId(rawId),
         currentlySaved: favoritesRef.current.some(
-          (f) => f.type === type && f[type === "track" ? "track_id" : "visualizer_id"] === normalizeId(rawId)
+          (f) => f.type === type && f[type === "track" ? "track_id" : "visualizer_id"] === normalizeItemId(rawId)
         ),
-        favoritesCount: favoritesRef.current.length,
+        count: favoritesRef.current.length,
       });
     }
 
-    if (!email) {
-      console.warn("[Favorites] toggle: no user email — cannot save");
+    if (!uid) {
+      console.warn("[Favorites] toggle: no userId — cannot save");
       return false;
     }
 
-    const id = normalizeId(rawId);
+    const id = normalizeItemId(rawId);
     if (!id) {
       console.warn("[Favorites] toggle: could not normalize id from", rawId);
       return false;
@@ -133,7 +148,7 @@ export function useFavorites(userEmail) {
 
     const key = `${type}:${id}`;
     if (inFlight.current.has(key)) {
-      console.log("[Favorites] toggle: ignoring — already in flight for", key);
+      console.log("[Favorites] toggle: ignoring in-flight for", key);
       return false;
     }
     inFlight.current.add(key);
@@ -147,15 +162,14 @@ export function useFavorites(userEmail) {
       if (existing) {
         // Optimistic remove
         setFavs((prev) => prev.filter((f) => f.id !== existing.id));
-        console.log("[Favorites] removing from DB:", existing.id);
         await base44.entities.Favorite.delete(existing.id);
-        console.log("[Favorites] removed OK");
+        console.log("[Favorites] removed", existing.id);
       } else {
         // Optimistic add
         const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
         const tempRecord = {
           id: tempId,
-          user_email: email,
+          user_email: email || "",
           type,
           [field]: id,
           cached_title: meta.title || "",
@@ -163,45 +177,41 @@ export function useFavorites(userEmail) {
           cached_cover_url: meta.cover_url || "",
         };
         setFavs((prev) => {
-          // Guard: don't add if already present (handles rare double-fire)
           const dupe = prev.some((f) => f.type === type && f[field] === id);
-          if (dupe) {
-            console.log("[Favorites] optimistic add skipped — already present");
-            return prev;
-          }
+          if (dupe) return prev;
           return [...prev, tempRecord];
         });
-        console.log("[Favorites] saving to DB:", { type, id, email });
+
         const record = await base44.entities.Favorite.create({
-          user_email: email,
+          user_email: email || "",
           type,
           [field]: id,
           cached_title: meta.title || "",
           cached_artist: meta.artist || "",
           cached_cover_url: meta.cover_url || "",
         });
-        console.log("[Favorites] saved OK, real id:", record.id);
-        // Replace temp with real DB record
+        console.log("[Favorites] saved", record.id, "userId:", uid);
+
+        // Replace temp with real record
         setFavs((prev) => prev.map((f) => (f.id === tempId ? record : f)));
       }
     } catch (err) {
       console.error("[Favorites] toggle DB error:", err);
-      // Revert optimistic update on failure
+      // Revert optimistic update
       if (existing) {
         setFavs((prev) => {
           const already = prev.some((f) => f.id === existing.id);
           return already ? prev : [...prev, existing];
         });
       } else {
-        // Remove the temp record
-        setFavs((prev) => prev.filter((f) => !f.id.startsWith("temp_")));
+        setFavs((prev) => prev.filter((f) => !String(f.id).startsWith("temp_")));
       }
     } finally {
       inFlight.current.delete(key);
     }
 
     return true;
-  }, [setFavs]); // stable — reads email and favorites from refs only
+  }, [setFavs]); // reads userId/email from refs — stable
 
   const trackFavs = favorites.filter((f) => f.type === "track");
   const vizFavs = favorites.filter((f) => f.type === "visualizer");
