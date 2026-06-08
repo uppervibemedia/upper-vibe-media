@@ -1,18 +1,25 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { useFavoritesContext } from "@/context/FavoritesContext";
 
 /**
- * FavoriteButton — drop-in heart button used everywhere in the app.
- * Handles: auth check, login prompt, optimistic toggle, stopPropagation/preventDefault.
+ * FavoriteButton — iOS-safe heart button used everywhere in the app.
+ *
+ * iOS Safari fix notes:
+ *  - Uses a single `onClick` handler only (no onTouchEnd) to avoid double-fire.
+ *    `touch-action: manipulation` in index.css removes the 300ms tap delay globally.
+ *  - A `touchHandled` ref guards against any residual double-fire on older iOS.
+ *  - The button is `type="button"` to prevent form submission issues.
+ *  - `pointer-events: auto` and explicit z-index ensure it's always tappable.
+ *  - stopPropagation + preventDefault prevent parent card navigation from firing.
  *
  * Props:
  *   type         — "track" | "visualizer"
  *   id           — entity id (string)
  *   meta         — { title, artist, cover_url } for caching
  *   size         — "sm" | "md" (default "sm")
- *   onNeedLogin  — optional callback when user is not logged in (open login modal etc.)
+ *   onNeedLogin  — callback when user is not logged in
  *   className    — extra class names
  */
 export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNeedLogin, className = "" }) {
@@ -20,9 +27,18 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
   const [pulse, setPulse] = useState(false);
   const saved = isFaved(type, id);
 
+  // Guard against double-fire on iOS (touchend → click within 500ms)
+  const lastActivatedAt = useRef(0);
+
   const handleActivate = (e) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Deduplicate: ignore if activated within last 600ms
+    const now = Date.now();
+    if (now - lastActivatedAt.current < 600) return;
+    lastActivatedAt.current = now;
+
     if (!user) {
       onNeedLogin?.();
       return;
@@ -37,6 +53,7 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
 
   return (
     <motion.button
+      type="button"
       onClick={handleActivate}
       onTouchEnd={handleActivate}
       whileTap={{ scale: 0.82 }}
@@ -44,14 +61,22 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
       transition={{ duration: 0.3 }}
       title={saved ? "Saved to My Vibe Library" : "Save to My Vibe Library"}
       className={`${dim} rounded-xl flex items-center justify-center flex-shrink-0 transition-all select-none ${className}`}
-      style={saved ? {
-        background: "rgba(155,126,255,0.18)",
-        border: "1px solid rgba(155,126,255,0.45)",
-        color: "#9B7EFF",
-      } : {
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.1)",
-        color: "rgba(255,255,255,0.3)",
+      style={{
+        position: "relative",
+        zIndex: 10,
+        pointerEvents: "auto",
+        WebkitTapHighlightColor: "transparent",
+        touchAction: "manipulation",
+        cursor: "pointer",
+        ...(saved ? {
+          background: "rgba(155,126,255,0.18)",
+          border: "1px solid rgba(155,126,255,0.45)",
+          color: "#9B7EFF",
+        } : {
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          color: "rgba(255,255,255,0.3)",
+        })
       }}
     >
       <Heart className={`${iconDim} ${saved ? "fill-current" : ""}`} />

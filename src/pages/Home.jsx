@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { motion, useAnimationFrame } from "framer-motion";
 import usePageVisible from "@/hooks/usePageVisible";
 import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
 import { isNewTrack, isNewVisualizer, sortVisualizersNewestFirst } from "@/lib/isNewTrack";
-import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Heart, Users, Radio, Zap } from "lucide-react";
+import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Users, Radio, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -11,7 +11,7 @@ import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { useFavorites } from "../hooks/useFavorite";
+import { useFavoritesContext } from "@/context/FavoritesContext";
 import { recordPlay } from "../components/home/DiscoverTab";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
@@ -113,7 +113,7 @@ export default function Home() {
     startRadio();
     navigate("/radio");
   };
-  const { isFaved, toggle } = useFavorites(user?.email);
+  const { isFaved, toggle } = useFavoritesContext();
 
   const handlePlayTrack = (track) => {
     if (currentTrack?.id === track.id) { togglePlay(); return; }
@@ -168,29 +168,6 @@ export default function Home() {
     invalidateTrackCache();
     setRefreshKey((k) => k + 1);
   };
-
-  // H: memoized heartButton — prevents consumer rerenders when playback changes
-  const heartButton = useCallback((type, id, meta) => (
-    <button
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!user) { setLoginModal(true); return; }
-        toggle(type, id, meta);
-      }}
-      onTouchEnd={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!user) { setLoginModal(true); return; }
-        toggle(type, id, meta);
-      }}
-      className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-95"
-      style={isFaved(type, id) ? { color: "#9B7EFF" } : { color: "rgba(255,255,255,0.2)" }}>
-      <Heart className={`w-3.5 h-3.5 ${isFaved(type, id) ? "fill-current" : ""}`} />
-    </button>
-  ), [user, isFaved, toggle, setLoginModal]);
-
-
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
@@ -564,9 +541,9 @@ export default function Home() {
         currentTrack={currentTrack}
         isPlaying={isPlaying}
         handlePlayTrack={handlePlayTrack}
-        heartButton={heartButton}
         user={user}
         themeColor={rtPrimary}
+        onNeedLogin={() => setLoginModal(true)}
       />
       </motion.div>
 

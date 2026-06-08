@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, memo } from "react";
 import { motion } from "framer-motion";
 import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
-import { Search, X, Play, Pause, Download, Waves, Music4, Heart, ChevronLeft } from "lucide-react";
+import { Search, X, Play, Pause, Download, Waves, Music4, ChevronLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
@@ -11,7 +11,7 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import SupportModal from "../components/shared/SupportModal";
-import { useFavorites } from "../hooks/useFavorite";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
@@ -68,7 +68,6 @@ export default function Music() {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus, isAdmin } = useAuth();
   const isPremium = isPlus || isAdmin;
-  const { isFaved, toggle } = useFavorites(user?.email);
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const themeColor = radioTheme.vars["--rt-primary"]; // e.g. "0,229,255"
@@ -246,15 +245,10 @@ export default function Music() {
                       index={i}
                       isCurrent={currentTrack?.id === track.id}
                       isPlaying={isPlaying}
-                      isFaved={isFaved}
                       isPremium={isPremium}
-                      user={user}
                       themeColor={themeColor}
                       onPlay={handlePlay}
-                      onFav={(track) => {
-                        if (!user) { setLoginModal(true); return; }
-                        toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-                      }}
+                      onNeedLogin={() => setLoginModal(true)}
                       onDownload={async (track) => {
                         if (!isPremium) { setUpgradeModal(true); return; }
                         if (!track.audio_url) return;
@@ -319,7 +313,7 @@ function FilterPill({ label, active, onClick, themeColor }) {
 }
 
 // B: React.memo — prevents rerenders when only isPlaying/currentTrack changes on other rows
-const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, isFaved, isPremium, user, themeColor, onPlay, onFav, onDownload }) {
+const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, isPremium, themeColor, onPlay, onNeedLogin, onDownload }) {
   const tc = themeColor || "0,160,220";
   return (
     <div
@@ -398,19 +392,14 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
           <Download className="w-3.5 h-3.5" />
         </button>
 
-        {/* Favorite — violet purple */}
-        <button
-          onClick={() => onFav(track)}
-          onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); onFav(track); }}
-          title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
-          style={isFaved("track", track.id) ? {
-            background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
-          } : {
-            background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
-          }}>
-          <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-        </button>
+        {/* Favorite — via global FavoriteButton (iOS-safe) */}
+        <FavoriteButton
+          type="track"
+          id={track.id}
+          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+          size="md"
+          onNeedLogin={onNeedLogin}
+        />
       </div>
     </div>
   );
