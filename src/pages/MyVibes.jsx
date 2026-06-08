@@ -9,8 +9,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
-import { useFavoritesContext } from "@/context/FavoritesContext";
-import FavoriteButton from "@/components/shared/FavoriteButton";
 import { useSavedItemsContext } from "@/context/SavedItemsContext";
 import SaveHeartButton from "@/components/shared/SaveHeartButton";
 import Footer from "../components/shared/Footer";
@@ -20,7 +18,6 @@ import DailyRitualBanner from "@/components/home/DailyRitualBanner";
 
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
-  const { isFaved } = useFavoritesContext();
   const { savedItems, isSaved } = useSavedItemsContext();
   const [tracks, setTracks] = useState([]);
   const [visualizers, setVisualizers] = useState([]);
