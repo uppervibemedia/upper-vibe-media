@@ -20,6 +20,7 @@ import { recordUserDownload, triggerBrowserDownload, isRestrictedInAppBrowser, l
 import InAppBrowserDownloadModal from "../components/shared/InAppBrowserDownloadModal";
 import { toast } from "sonner";
 import { usePageMeta } from "@/hooks/usePageMeta";
+import { getPublishedTracks } from "@/lib/trackCache";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import IOSTip from "@/components/shared/iOSTip";
@@ -169,7 +170,7 @@ export default function SongPage() {
     setVizPlaying(false);
     Promise.all([
       base44.entities.Track.filter({ id }, "-created_date", 1).then((r) => r[0] || null),
-      base44.entities.Track.filter({ status: "published" }, "-release_date", 50),
+      getPublishedTracks("-release_date", 500),
     ]).then(([t, tracks]) => {
       setTrack(t);
       setAllTracks(tracks);
