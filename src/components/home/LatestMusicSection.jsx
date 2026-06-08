@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Music4, Waves, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import HeartButton from "@/components/shared/HeartButton";
 import { Link, useNavigate } from "react-router-dom";
 import SectionHeader from "../shared/SectionHeader";
 import { useTheme } from "@/context/ThemeContext";
@@ -183,12 +184,15 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     style={{ background: `rgba(${color},0.1)`, border: `1px solid rgba(${color},0.2)`, color: `rgb(${color})` }}>
                     <Waves className="w-2 h-2" /> 432
                   </span>
-                  <button
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
-                    className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
-                    style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
-                    {isPremium ? <Download className="w-3 h-3 inline" /> : "Plus 🔒"}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <HeartButton track={track} size="sm" onNeedLogin={onNeedLogin} />
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
+                      className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
+                      style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
+                      {isPremium ? <Download className="w-3 h-3 inline" /> : "Plus 🔒"}
+                    </button>
+                  </div>
                   </div>
                 </div>
               </Link>
@@ -265,12 +269,15 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                          style={{ background: `rgba(${color},0.1)`, border: `1px solid rgba(${color},0.2)`, color: `rgb(${color})` }}>
                          <Waves className="w-2 h-2" /> 432
                        </span>
-                       <button
-                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
-                           className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
-                           style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
-                           {isPremium ? <Download className="w-3 h-3 inline" /> : "Plus 🔒"}
-                         </button>
+                       <div className="flex items-center gap-1">
+                         <HeartButton track={track} size="sm" onNeedLogin={onNeedLogin} />
+                         <button
+                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
+                             className="text-[8px] font-black px-1.5 py-0.5 rounded-full transition-all hover:brightness-110"
+                             style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.2)", color: "rgba(212,168,67,0.6)" }}>
+                             {isPremium ? <Download className="w-3 h-3 inline" /> : "Plus 🔒"}
+                           </button>
+                       </div>
                       </div>
                     </div>
                   </Link>

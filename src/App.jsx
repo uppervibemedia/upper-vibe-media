@@ -148,6 +148,7 @@ const AuthenticatedApp = () => {
         <Route path="/vibe-check" element={<VibeCheck />} />
         <Route path="/my-vibes" element={<MyVibes />} />
         <Route path="/my-vibe-library" element={<MyVibes />} />
+        <Route path="/vibe-library" element={<MyVibes />} />
         <Route path="/artists" element={<Artists />} />
         <Route path="/sessions" element={<Sessions />} />
         <Route path="/account" element={<Account />} />

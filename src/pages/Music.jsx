@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, memo } from "react";
 import { motion } from "framer-motion";
 import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
 import { Search, X, Play, Pause, Download, Waves, Music4, ChevronLeft } from "lucide-react";
+import HeartButton from "@/components/shared/HeartButton";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
@@ -392,7 +393,8 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
           <Download className="w-3.5 h-3.5" />
         </button>
 
-
+        {/* Heart / Save */}
+        <HeartButton track={track} size="sm" onNeedLogin={onNeedLogin} />
       </div>
     </div>
   );

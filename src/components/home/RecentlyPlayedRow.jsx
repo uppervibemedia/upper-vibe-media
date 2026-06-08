@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, ChevronLeft, ChevronRight, History } from "lucide-react";
+import HeartButton from "@/components/shared/HeartButton";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { isNewTrack } from "@/lib/isNewTrack";
@@ -268,23 +269,26 @@ function TrackCard({ track, isCurrent, isPlaying, isNew, themeColor, onPlay, onN
         )}
       </div>
 
-      {/* Text info */}
-      <Link
-        to={`/song/${track.id}`}
-        className="block min-w-0"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p
-          className="text-xs font-bold leading-tight truncate transition-colors"
-          style={{ color: isCurrent ? `rgb(${themeColor})` : "rgba(255,255,255,0.88)" }}
-          title={track.title}
+      {/* Text info + heart */}
+      <div className="flex items-start justify-between gap-1 min-w-0">
+        <Link
+          to={`/song/${track.id}`}
+          className="block min-w-0 flex-1"
+          onClick={(e) => e.stopPropagation()}
         >
-          {track.title}
-        </p>
-        <p className="text-[10px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>
-          {track.artist_display || "Upper Vibe Media"}
-        </p>
-      </Link>
+          <p
+            className="text-xs font-bold leading-tight truncate transition-colors"
+            style={{ color: isCurrent ? `rgb(${themeColor})` : "rgba(255,255,255,0.88)" }}
+            title={track.title}
+          >
+            {track.title}
+          </p>
+          <p className="text-[10px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>
+            {track.artist_display || "Upper Vibe Media"}
+          </p>
+        </Link>
+        <HeartButton track={track} size="sm" onNeedLogin={onNeedLogin} className="flex-shrink-0 mt-0.5" />
+      </div>
     </motion.div>
   );
 }

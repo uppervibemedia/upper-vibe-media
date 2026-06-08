@@ -24,6 +24,8 @@ import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import IOSTip from "@/components/shared/iOSTip";
 import NewBadge from "@/components/shared/NewBadge";
+import HeartButton from "@/components/shared/HeartButton";
+import FavLoginModal from "@/components/shared/FavLoginModal";
 
 function toEmbedUrl(url) {
   if (!url || typeof url !== "string") return null;
@@ -120,6 +122,7 @@ export default function SongPage() {
   const isPlus = isAuthPlus || isAuthAdmin;
 
   const [supportModal, setSupportModal] = useState(false);
+  const [loginModal, setLoginModal] = useState(false);
   const [showSupportedBanner, setShowSupportedBanner] = useState(false);
   const [inAppBrowserModal, setInAppBrowserModal] = useState(false);
   const [downloadIntentActive, setDownloadIntentActive] = useState(false);
@@ -377,7 +380,8 @@ export default function SongPage() {
                   {/* Share — small */}
                   <ShareVibeButton type="song" track={track} size="sm" className="sm:flex-none justify-center" />
 
-
+                  {/* Heart / Save */}
+                  <HeartButton track={track} size="md" onNeedLogin={() => setLoginModal(true)} />
 
                   {/* Support — larger/prominent */}
                   <button
@@ -511,6 +515,7 @@ export default function SongPage() {
       <Footer />
       <PremiumDownloadModal open={upgradeModal} onClose={() => setUpgradeModal(false)} />
       <SupportModal open={supportModal} onClose={() => setSupportModal(false)} track={track} />
+      <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
       <InAppBrowserDownloadModal
         open={inAppBrowserModal}
         onClose={() => setInAppBrowserModal(false)}
