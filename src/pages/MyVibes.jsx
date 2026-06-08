@@ -11,7 +11,7 @@ import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavoritesContext } from "@/context/FavoritesContext";
 import FavoriteButton from "@/components/shared/FavoriteButton";
-import { normalizeItemId } from "@/hooks/useFavorite";
+
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 import RecentlyPlayedRow from "@/components/home/RecentlyPlayedRow";
