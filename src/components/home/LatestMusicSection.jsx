@@ -186,9 +186,9 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                     </span>
                     <div className="flex items-center gap-0.5">
                       <FavoriteButton
-                        itemType="song"
-                        item={track}
-                        meta={{ title: track.title, artist: track.artist_display, coverUrl: track.cover_url, songUrl: track.audio_url }}
+                        type="track"
+                        id={track.id}
+                        meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
                         size="sm"
                         onNeedLogin={onNeedLogin}
                       />
@@ -277,9 +277,9 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                        </span>
                        <div className="flex items-center gap-0.5">
                          <FavoriteButton
-                           itemType="song"
-                           item={track}
-                           meta={{ title: track.title, artist: track.artist_display, coverUrl: track.cover_url, songUrl: track.audio_url }}
+                           type="track"
+                           id={track.id}
+                           meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
                            size="sm"
                            onNeedLogin={onNeedLogin}
                          />

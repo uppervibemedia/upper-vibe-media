@@ -236,9 +236,9 @@ function TrackCard({ track, badge, currentTrack, isPlaying, handlePlayTrack, nav
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
         <FavoriteButton
-          type="song"
+          type="track"
           id={track.id}
-          meta={{ title: track.title, artist: track.artist_display, coverUrl: track.cover_url, songUrl: track.audio_url }}
+          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
           onNeedLogin={onNeedLogin}
         />
         <button onClick={e => { e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
