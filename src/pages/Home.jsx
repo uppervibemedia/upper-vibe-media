@@ -128,14 +128,14 @@ export default function Home() {
       base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
     ]);
 
-    // Latest Music section: only NEW songs (within 7 days) that are published & playable
+    // Latest Music section: the 8 most recently UPLOADED published & playable songs.
+    // Sort strictly by created_date descending — no manual pins, no is_new_release override.
     const playable = allTracks.filter(t => t.audio_url && t.cover_url && t.status === "published");
-    const newSongs = playable.filter(t => isNewTrack(t));
-    const sortedNewest = [...newSongs].sort((a, b) => {
-      const da = new Date(a.release_date || a.created_date || 0).getTime();
-      const db = new Date(b.release_date || b.created_date || 0).getTime();
+    const sortedNewest = [...playable].sort((a, b) => {
+      const da = new Date(a.created_date || 0).getTime();
+      const db = new Date(b.created_date || 0).getTime();
       return db - da;
-    });
+    }).slice(0, 8);
     setLatestTracks(sortedNewest);
     setAllTracks(allTracks);
 
