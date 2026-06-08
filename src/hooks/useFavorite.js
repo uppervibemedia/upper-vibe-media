@@ -3,7 +3,6 @@ import { base44 } from "@/api/base44Client";
 
 /**
  * Normalize any item id variant to a plain string.
- * Exported so other components (MyVibes, etc.) can reuse it.
  */
 export function normalizeItemId(id) {
   if (!id) return null;
@@ -15,19 +14,14 @@ export function normalizeItemId(id) {
 }
 
 /**
- * useFavorites — keyed on stable user ID (not email).
+ * useFavorites — keyed on stable user ID.
  *
- * THE ROOT BUG THAT WAS CAUSING THE HEART TO FLASH EMPTY:
- *   1. User taps heart → optimistic add fires → favoritesRef has the new item.
- *   2. Simultaneously (or milliseconds later), FavoritesContext re-renders because
- *      stableUserId just changed (isLoadingAuth resolved), triggering reload().
- *   3. reload() calls Favorite.list() — the DB write hasn't landed yet.
- *   4. The list comes back WITHOUT the new record.
- *   5. setFavs(data) OVERWRITES the optimistic state → heart goes empty.
- *
- * FIX: Track a `pendingSaves` counter. reload() will NOT overwrite state when
- * there are pending saves in flight. After the save completes (and we have the
- * real DB record), we do a single reload to confirm the server state.
+ * iOS FIX SUMMARY:
+ *  - After CREATE: do NOT do a confirmatory reload. The optimistic state is the
+ *    source of truth. A reload right after create on iOS often returns stale data
+ *    (the new record hasn't propagated through RLS yet), overwriting the filled heart.
+ *  - After DELETE: do a reload to confirm the record is gone.
+ *  - pendingSaves guard still blocks any concurrent reload() from stomping state.
  */
 export function useFavorites(userId, userEmail) {
   const [favorites, setFavorites] = useState([]);
@@ -36,9 +30,9 @@ export function useFavorites(userId, userEmail) {
   const favoritesRef = useRef([]);
   const userIdRef = useRef(userId);
   const userEmailRef = useRef(userEmail);
-  const inFlight = useRef(new Set());      // per-item toggle lock
-  const pendingSaves = useRef(0);          // how many saves are in-progress
-  const fetchVersion = useRef(0);          // request versioning
+  const inFlight = useRef(new Set());
+  const pendingSaves = useRef(0);
+  const fetchVersion = useRef(0);
 
   userIdRef.current = userId;
   userEmailRef.current = userEmail;
@@ -53,8 +47,7 @@ export function useFavorites(userId, userEmail) {
 
   /**
    * reload — fetches from DB.
-   * CRITICAL: will not overwrite state if there are pending saves in-flight.
-   * Version-gated: stale responses are discarded.
+   * Will not overwrite state if there are pending saves in-flight.
    */
   const reload = useCallback(async (overrideUserId) => {
     const uid = overrideUserId ?? userIdRef.current;
@@ -68,24 +61,15 @@ export function useFavorites(userId, userEmail) {
     fetchVersion.current += 1;
     const myVersion = fetchVersion.current;
 
-    console.log("[Favorites] reload start — version:", myVersion, "pendingSaves:", pendingSaves.current);
-
     try {
       const data = await base44.entities.Favorite.list("-created_date", 500);
 
-      // CRITICAL CHECK: If a save started while we were fetching, discard this result.
-      // It may not include the just-saved record yet.
-      if (myVersion !== fetchVersion.current) {
-        console.log("[Favorites] reload: discarding — newer fetch started (version mismatch)");
-        return;
-      }
+      if (myVersion !== fetchVersion.current) return;
       if (pendingSaves.current > 0) {
-        console.log("[Favorites] reload: discarding — save in progress, won't overwrite optimistic state. pendingSaves:", pendingSaves.current);
+        console.log("[Favorites] reload skipped — save in progress");
         return;
       }
 
-      console.log("[Favorites] reload: applying", data.length, "records");
-      console.log("[Favorites] reload: track_ids =", data.filter(f => f.type === "track").map(f => f.track_id));
       setFavs(data);
     } catch (err) {
       console.warn("[Favorites] reload failed:", err);
@@ -117,13 +101,10 @@ export function useFavorites(userId, userEmail) {
   /**
    * toggle — add or remove a favorite.
    *
-   * Flow:
-   *  1. Increment pendingSaves — blocks reload() from overwriting.
-   *  2. Optimistic state update immediately.
-   *  3. DB write.
-   *  4. Replace temp record with real DB record.
-   *  5. Decrement pendingSaves.
-   *  6. Do a final reload to confirm server state (now safe, pendingSaves=0).
+   * KEY iOS FIX:
+   *  - On CREATE: optimistic add → DB write → replace temp with real record.
+   *    NO confirmatory reload. The optimistic state keeps the heart filled.
+   *  - On DELETE: optimistic remove → DB delete → reload to confirm.
    */
   const toggle = useCallback(async (type, rawId, meta = {}) => {
     const uid = userIdRef.current;
@@ -131,51 +112,38 @@ export function useFavorites(userId, userEmail) {
     const id = normalizeItemId(rawId);
     const field = type === "track" ? "track_id" : "visualizer_id";
 
-    // ── DIAGNOSTIC LOG (always, not just iOS) ──
-    console.log("[Favorites] toggle START", {
-      uid,
-      email,
-      type,
-      rawId,
-      normalizedId: id,
-      currentlySaved: favoritesRef.current.some((f) => f.type === type && f[field] === id),
-      currentFavCount: favoritesRef.current.length,
-      currentTrackIds: favoritesRef.current.filter(f => f.type === "track").map(f => f.track_id),
-    });
-
     if (!uid) {
-      console.warn("[Favorites] toggle BLOCKED — no uid. isLoadingAuth may still be true.");
+      console.warn("[Favorites] toggle blocked — no uid");
       return false;
     }
     if (!id) {
-      console.warn("[Favorites] toggle BLOCKED — could not normalize id from", rawId);
+      console.warn("[Favorites] toggle blocked — bad id:", rawId);
       return false;
     }
 
     const key = `${type}:${id}`;
-    if (inFlight.current.has(key)) {
-      console.log("[Favorites] toggle IGNORED — already in-flight for", key);
-      return false;
-    }
+    if (inFlight.current.has(key)) return false;
     inFlight.current.add(key);
 
     const existing = favoritesRef.current.find(
       (f) => f.type === type && f[field] === id
     );
-    console.log("[Favorites] action:", existing ? "UNSAVE" : "SAVE", "existing record:", existing?.id ?? "none");
 
-    // Block reload() from overwriting optimistic state
     pendingSaves.current += 1;
 
     try {
       if (existing) {
+        // ── UNSAVE ──────────────────────────────────────────────────────────
         // Optimistic remove
         setFavs((prev) => prev.filter((f) => f.id !== existing.id));
-        console.log("[Favorites] DELETE record from DB:", existing.id);
         await base44.entities.Favorite.delete(existing.id);
-        console.log("[Favorites] DELETE OK");
+        // After delete, reload to confirm
+        pendingSaves.current -= 1;
+        inFlight.current.delete(key);
+        if (userIdRef.current) await reload();
+        return true;
       } else {
-        // Optimistic add
+        // ── SAVE ─────────────────────────────────────────────────────────────
         const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
         const tempRecord = {
           id: tempId,
@@ -186,13 +154,10 @@ export function useFavorites(userId, userEmail) {
           cached_artist: meta.artist || "",
           cached_cover_url: meta.cover_url || "",
         };
-        console.log("[Favorites] Optimistic add temp record:", tempRecord);
+
+        // Optimistic add — fills the heart immediately
         setFavs((prev) => {
-          const dupe = prev.some((f) => f.type === type && f[field] === id);
-          if (dupe) {
-            console.log("[Favorites] Optimistic add SKIPPED — dupe already in state");
-            return prev;
-          }
+          if (prev.some((f) => f.type === type && f[field] === id)) return prev;
           return [...prev, tempRecord];
         });
 
@@ -204,25 +169,21 @@ export function useFavorites(userId, userEmail) {
           cached_artist: meta.artist || "",
           cached_cover_url: meta.cover_url || "",
         };
-        console.log("[Favorites] CREATE record in DB:", payload);
-        const record = await base44.entities.Favorite.create(payload);
-        console.log("[Favorites] CREATE OK — real record:", record);
-        console.log("[Favorites] Saved record fields:", {
-          id: record.id,
-          type: record.type,
-          track_id: record.track_id,
-          visualizer_id: record.visualizer_id,
-          user_email: record.user_email,
-          created_by_id: record.created_by_id,
-        });
 
-        // Replace temp with real DB record
+        const record = await base44.entities.Favorite.create(payload);
+
+        // Replace temp with real DB record — heart stays filled
         setFavs((prev) => prev.map((f) => (f.id === tempId ? record : f)));
-        console.log("[Favorites] State after replace — count:", favoritesRef.current.length, "ids:", favoritesRef.current.filter(f=>f.type==="track").map(f=>f.track_id));
+
+        // DO NOT reload here — on iOS the DB hasn't propagated yet and
+        // reload would return stale data and clear the heart.
+        pendingSaves.current -= 1;
+        inFlight.current.delete(key);
+        return true;
       }
     } catch (err) {
-      console.error("[Favorites] toggle DB ERROR:", err);
-      // Revert optimistic update
+      console.error("[Favorites] toggle error:", err);
+      // Revert optimistic update on error
       if (existing) {
         setFavs((prev) => {
           const already = prev.some((f) => f.id === existing.id);
@@ -231,21 +192,10 @@ export function useFavorites(userId, userEmail) {
       } else {
         setFavs((prev) => prev.filter((f) => !String(f.id).startsWith("temp_")));
       }
-    } finally {
       pendingSaves.current -= 1;
       inFlight.current.delete(key);
-      console.log("[Favorites] toggle END — pendingSaves:", pendingSaves.current, "isSaved now:", favoritesRef.current.some((f) => f.type === type && f[field] === id));
-
-      // Now that the save is done, do a confirmatory reload.
-      // pendingSaves is 0 so reload() will apply the result.
-      if (pendingSaves.current === 0 && userIdRef.current) {
-        console.log("[Favorites] Confirmatory reload after save...");
-        await reload();
-        console.log("[Favorites] After confirmatory reload — isSaved:", favoritesRef.current.some((f) => f.type === type && f[field] === id), "all track_ids:", favoritesRef.current.filter(f=>f.type==="track").map(f=>f.track_id));
-      }
+      return false;
     }
-
-    return true;
   }, [setFavs, reload]);
 
   const trackFavs = favorites.filter((f) => f.type === "track");

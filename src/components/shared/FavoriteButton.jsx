@@ -1,43 +1,36 @@
 import React, { useRef, useState, useCallback } from "react";
 import { Heart } from "lucide-react";
-import { motion } from "framer-motion";
 import { useFavoritesContext } from "@/context/FavoritesContext";
 
 /**
  * FavoriteButton — iOS-safe heart button.
  *
- * iOS/PWA fixes:
- *  - Only `onClick` fires — no `onTouchEnd` (eliminates double-fire).
- *  - `touch-action: manipulation` (set globally in index.css) removes 300ms delay.
- *  - `lastActivatedAt` ref: 800ms dedup guard catches any residual double events.
- *  - `saving` state: disables button while DB write is in progress.
- *  - Gates on `user` being present AND `isLoadingAuth` being false.
- *  - Debug logs on iOS for diagnosing production issues.
+ * iOS fixes:
+ *  - Uses onTouchStart for instant response (no 300ms delay on iOS PWA).
+ *  - onTouchStart sets a ref flag; onClick checks the flag to skip if already handled.
+ *  - 600ms dedup guard prevents any double-fire.
+ *  - No framer-motion on the button itself (motion wrappers can swallow iOS touch events).
+ *  - No `disabled` attribute — just pointer-events none while saving (disabled blocks touch).
  */
 export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNeedLogin, className = "" }) {
   const { isFaved, toggle, user, isLoadingAuth } = useFavoritesContext();
-  const [pulse, setPulse] = useState(false);
   const [saving, setSaving] = useState(false);
   const saved = isFaved(type, id);
 
-  // Per-instance dedup guard (800ms window)
   const lastActivatedAt = useRef(0);
-  // Refs so handleActivate never has stale closures
   const savingRef = useRef(false);
   const userRef = useRef(user);
   const isLoadingAuthRef = useRef(isLoadingAuth);
+  const touchHandledRef = useRef(false);
+
   userRef.current = user;
   isLoadingAuthRef.current = isLoadingAuth;
 
-  const handleActivate = useCallback(async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
+  const activate = useCallback(async () => {
     if (isLoadingAuthRef.current) return;
 
-    // Deduplicate within 800ms
     const now = Date.now();
-    if (now - lastActivatedAt.current < 800) return;
+    if (now - lastActivatedAt.current < 600) return;
     lastActivatedAt.current = now;
 
     if (savingRef.current) return;
@@ -49,19 +42,32 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
 
     savingRef.current = true;
     setSaving(true);
-    setPulse(true);
-    setTimeout(() => setPulse(false), 400);
 
     await toggle(type, id, meta);
 
     savingRef.current = false;
     setSaving(false);
-  }, [toggle, type, id, meta, onNeedLogin]); // stable — reads user/saving/isLoadingAuth from refs
+  }, [toggle, type, id, meta, onNeedLogin]);
+
+  const handleTouchStart = useCallback((e) => {
+    touchHandledRef.current = true;
+    e.stopPropagation();
+    activate();
+  }, [activate]);
+
+  const handleClick = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (touchHandledRef.current) {
+      touchHandledRef.current = false;
+      return;
+    }
+    activate();
+  }, [activate]);
 
   const dim = size === "md" ? "w-9 h-9" : "w-8 h-8";
   const iconDim = size === "md" ? "w-4 h-4" : "w-3.5 h-3.5";
 
-  // While auth is loading, render a neutral skeleton-like state
   if (isLoadingAuth) {
     return (
       <div
@@ -73,21 +79,18 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
           pointerEvents: "none",
         }}
       >
-        <Heart className={`${iconDim}`} style={{ color: "rgba(255,255,255,0.2)" }} />
+        <Heart className={iconDim} style={{ color: "rgba(255,255,255,0.2)" }} />
       </div>
     );
   }
 
   return (
-    <motion.button
+    <button
       type="button"
-      onClick={handleActivate}
-      whileTap={{ scale: 0.82 }}
-      animate={pulse ? { scale: [1, 1.35, 1] } : {}}
-      transition={{ duration: 0.3 }}
-      disabled={saving}
+      onTouchStart={handleTouchStart}
+      onClick={handleClick}
       title={saved ? "Saved to My Vibe Library" : "Save to My Vibe Library"}
-      className={`${dim} rounded-xl flex items-center justify-center flex-shrink-0 transition-all select-none ${className}`}
+      className={`${dim} rounded-xl flex items-center justify-center flex-shrink-0 select-none transition-colors ${className}`}
       style={{
         position: "relative",
         zIndex: 10,
@@ -96,6 +99,7 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
         touchAction: "manipulation",
         cursor: saving ? "default" : "pointer",
         opacity: saving ? 0.6 : 1,
+        outline: "none",
         ...(saved ? {
           background: "rgba(155,126,255,0.18)",
           border: "1px solid rgba(155,126,255,0.45)",
@@ -108,6 +112,6 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
       }}
     >
       <Heart className={`${iconDim} ${saved ? "fill-current" : ""}`} />
-    </motion.button>
+    </button>
   );
 }
