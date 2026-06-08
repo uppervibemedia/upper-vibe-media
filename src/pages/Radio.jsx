@@ -2,14 +2,15 @@ import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipForward, SkipBack,
-  Radio as RadioIcon, Waves, Download, Music4, Crown, Heart, Mic2, Sparkles, ThumbsDown,
+  Radio as RadioIcon, Waves, Download, Music4, Crown, Mic2, Sparkles, ThumbsDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
-import { useFavorites } from "../hooks/useFavorite";
+import { useSavedItemsContext } from "@/context/SavedItemsContext";
+import SaveHeartButton from "@/components/shared/SaveHeartButton";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import { useDislike } from "../hooks/useDislike";
@@ -56,15 +57,16 @@ export default function RadioPage() {
     initRadio, startRadio, resumeRadio, nextRadioSong, prevRadioSong, jumpToSong,
   } = useRadio();
   const { user } = useAuth();
-  const { isFaved, toggle: toggleFav, trackFavs } = useFavorites(user?.email);
+  const { savedItems } = useSavedItemsContext();
   const { isDisliked, toggle: toggleDislike } = useDislike(user?.email);
   const [dislikeDisabled, setDislikeDisabled] = useState(false);
 
+  // Keep radio curator aware of liked song IDs using SavedItem system
   useEffect(() => {
-    const ids = trackFavs.map((f) => f.track_id).filter(Boolean);
+    const ids = savedItems.filter((s) => s.itemType === "song").map((s) => s.itemId).filter(Boolean);
     setRadioLikedIds(ids);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trackFavs]);
+  }, [savedItems]);
 
   const isPlus =
     user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" ||
@@ -98,17 +100,7 @@ export default function RadioPage() {
   const handlePrev = () => prevRadioSong();
   const handleJump = (song) => jumpToSong(song);
 
-  const handleLike = async () => {
-    if (!user) { setLoginModal(true); return; }
-    if (!currentRadioSong) return;
-    const wasLiked = isFaved("track", currentRadioSong.id);
-    await toggleFav("track", currentRadioSong.id, {
-      title: currentRadioSong.title,
-      artist: currentRadioSong.artist_display || "Upper Vibe Media",
-      cover_url: currentRadioSong.cover_url || "",
-    });
-    curatorRecordLike(currentRadioSong.id, !wasLiked);
-  };
+
 
   const handleDislike = useCallback(async () => {
     if (dislikeDisabled || !currentRadioSong) return;
@@ -426,22 +418,20 @@ export default function RadioPage() {
 
                 {/* Like + Dislike + Download + Share */}
                 <div className="flex items-center justify-center gap-3 flex-wrap">
-                  <motion.button
-                    onClick={handleLike}
-                    whileTap={{ scale: 0.88 }}
-                    className="w-11 h-11 rounded-full flex items-center justify-center transition-all"
-                    style={{
-                      background: currentRadioSong && isFaved("track", currentRadioSong.id)
-                        ? "rgba(155,126,255,0.22)" : "rgba(155,126,255,0.06)",
-                      border: currentRadioSong && isFaved("track", currentRadioSong.id)
-                        ? "1px solid rgba(155,126,255,0.55)" : "1px solid rgba(155,126,255,0.35)",
-                    }}>
-                    <Heart className="w-4 h-4 transition-colors"
-                      style={{
-                        color: currentRadioSong && isFaved("track", currentRadioSong.id) ? "#9B7EFF" : "rgba(155,126,255,0.6)",
-                        fill: currentRadioSong && isFaved("track", currentRadioSong.id) ? "#9B7EFF" : "none",
-                      }} />
-                  </motion.button>
+                  {currentRadioSong && !isHostDropPlaying && (
+                    <SaveHeartButton
+                      item={currentRadioSong.id}
+                      itemType="song"
+                      meta={{
+                        title: currentRadioSong.title,
+                        artist: currentRadioSong.artist_display || "Upper Vibe Media",
+                        cover_url: currentRadioSong.cover_url || "",
+                        audio_url: currentRadioSong.audio_url || "",
+                      }}
+                      size="md"
+                      onNeedLogin={() => setLoginModal(true)}
+                    />
+                  )}
 
                   {/* Thumbs Down — Radio personalisation only */}
                   {!isHostDropPlaying && (
