@@ -387,6 +387,11 @@ export default function SongPage() {
                       if (!user) { setLoginPrompt(true); return; }
                       toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
                     }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      if (!user) { setLoginPrompt(true); return; }
+                      toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
+                    }}
                     title={isFaved("track", track.id) ? "Saved" : "Save"}
                     className="flex items-center justify-center gap-1.5 flex-1 sm:flex-none sm:px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] active:scale-[0.97]"
                     style={isFaved("track", track.id) ? {

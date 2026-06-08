@@ -269,6 +269,7 @@ export default function ListenerFrequencyDashboard({
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}
+                  onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFav && onToggleFav(track); }}
                   className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
                   style={isFaved && isFaved("track", track.id) ? {
                     background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"

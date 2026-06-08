@@ -401,6 +401,7 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
         {/* Favorite — violet purple */}
         <button
           onClick={() => onFav(track)}
+          onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); onFav(track); }}
           title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
           className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
           style={isFaved("track", track.id) ? {

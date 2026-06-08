@@ -303,7 +303,9 @@ export default function MyVibes() {
                             </button>
 
                             {/* Heart / unfavorite */}
-                            <button onClick={() => toggle("track", track.id)}
+                            <button
+                              onClick={() => toggle("track", track.id)}
+                              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); toggle("track", track.id); }}
                               className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
                               style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.3)", color: "#9B7EFF" }}
                               title="Remove from Favorites">
@@ -378,7 +380,9 @@ export default function MyVibes() {
                             </div>
 
                             {/* Heart / favorite */}
-                            <button onClick={() => toggle("track", track.id)}
+                            <button
+                              onClick={() => toggle("track", track.id)}
+                              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); toggle("track", track.id); }}
                               className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
                               style={isFaved("track", track.id)
                                 ? { background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF" }

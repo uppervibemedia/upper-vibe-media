@@ -161,6 +161,11 @@ export default function NewestMusic() {
                         if (!user) { setLoginModal(true); return; }
                         toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
                       }}
+                      onTouchEnd={(e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        if (!user) { setLoginModal(true); return; }
+                        toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
+                      }}
                       title={isFaved("track", track.id) ? "Saved" : "Save to Favorites"}
                       className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
                       style={isFaved("track", track.id) ? {
