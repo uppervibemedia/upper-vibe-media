@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import { Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { useFavoritesContext } from "@/context/FavoritesContext";
@@ -6,13 +6,15 @@ import { useFavoritesContext } from "@/context/FavoritesContext";
 /**
  * FavoriteButton — iOS-safe heart button used everywhere in the app.
  *
- * iOS Safari fix notes:
- *  - Uses a single `onClick` handler only (no onTouchEnd) to avoid double-fire.
- *    `touch-action: manipulation` in index.css removes the 300ms tap delay globally.
- *  - A `touchHandled` ref guards against any residual double-fire on older iOS.
- *  - The button is `type="button"` to prevent form submission issues.
- *  - `pointer-events: auto` and explicit z-index ensure it's always tappable.
- *  - stopPropagation + preventDefault prevent parent card navigation from firing.
+ * iOS Safari / PWA fix notes:
+ *  - Only `onClick` is used. `touch-action: manipulation` in index.css removes
+ *    the 300ms tap delay globally, so onClick fires fast enough on mobile.
+ *  - Removing `onTouchEnd` eliminates the double-fire (touchend → click) that
+ *    caused heart state to toggle twice, visually resetting to empty.
+ *  - A `lastActivatedAt` ref provides a secondary 600ms dedup guard for safety.
+ *  - `type="button"` prevents any accidental form submission.
+ *  - `pointerEvents: auto` and explicit `zIndex` ensure it's always tappable
+ *    even when inside overflow-hidden containers.
  *
  * Props:
  *   type         — "track" | "visualizer"
@@ -27,10 +29,10 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
   const [pulse, setPulse] = useState(false);
   const saved = isFaved(type, id);
 
-  // Guard against double-fire on iOS (touchend → click within 500ms)
+  // Guard against double-fire on iOS (e.g. touchend → click within 600ms)
   const lastActivatedAt = useRef(0);
 
-  const handleActivate = (e) => {
+  const handleActivate = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -46,7 +48,7 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
     setPulse(true);
     setTimeout(() => setPulse(false), 400);
     toggle(type, id, meta);
-  };
+  }, [user, onNeedLogin, toggle, type, id, meta]);
 
   const dim = size === "md" ? "w-9 h-9" : "w-8 h-8";
   const iconDim = size === "md" ? "w-4 h-4" : "w-3.5 h-3.5";
@@ -55,7 +57,6 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
     <motion.button
       type="button"
       onClick={handleActivate}
-      onTouchEnd={handleActivate}
       whileTap={{ scale: 0.82 }}
       animate={pulse ? { scale: [1, 1.35, 1] } : {}}
       transition={{ duration: 0.3 }}
