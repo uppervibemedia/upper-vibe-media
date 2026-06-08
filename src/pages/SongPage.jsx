@@ -4,6 +4,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Download, Play, Pause, Waves, Lock, Crown, Music4,
   Tv2, ChevronLeft, Tag, User, Heart, Zap
+
 } from "lucide-react";
 import FreqBadge from "@/components/shared/FreqBadge";
 import { base44 } from "@/api/base44Client";
@@ -13,7 +14,7 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import SupportModal from "../components/shared/SupportModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
-import { useFavorites } from "../hooks/useFavorite";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 import { recordPlay } from "../components/home/DiscoverTab";
 import { recordUserDownload, triggerBrowserDownload, isRestrictedInAppBrowser, logDownloadEnv } from "@/lib/downloadService";
 import InAppBrowserDownloadModal from "../components/shared/InAppBrowserDownloadModal";
@@ -30,8 +31,7 @@ function toEmbedUrl(url) {
   return m ? `https://www.youtube.com/embed/${m[1]}` : null;
 }
 
-function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay, userEmail }) {
-  const { isFaved } = useFavorites(userEmail);
+function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
   const { accentId: mspAccentId } = useTheme();
   const mspTheme = RADIO_THEMES[mspAccentId] || RADIO_THEMES.cyan;
   const mspRtp = mspTheme.vars["--rt-primary"];
@@ -156,8 +156,6 @@ export default function SongPage() {
       setTimeout(() => setDownloadIntentActive(false), 5000);
     }
   }, []);
-  const { isFaved, toggle } = useFavorites(user?.email);
-
   // Scroll to top whenever the song changes
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -381,27 +379,14 @@ export default function SongPage() {
                   {/* Share — small */}
                   <ShareVibeButton type="song" track={track} size="sm" className="sm:flex-none justify-center" />
 
-                  {/* Save — medium */}
-                  <button
-                    onClick={() => {
-                      if (!user) { setLoginPrompt(true); return; }
-                      toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-                    }}
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      if (!user) { setLoginPrompt(true); return; }
-                      toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-                    }}
-                    title={isFaved("track", track.id) ? "Saved" : "Save"}
-                    className="flex items-center justify-center gap-1.5 flex-1 sm:flex-none sm:px-4 py-2.5 rounded-xl font-black text-sm tracking-wide transition-all hover:scale-[1.02] active:scale-[0.97]"
-                    style={isFaved("track", track.id) ? {
-                      background: `rgba(${PURPLE},0.22)`, border: `1px solid rgba(${PURPLE},0.55)`, color: `rgb(${PURPLE})`
-                    } : {
-                      background: `rgba(${PURPLE},0.08)`, border: `1px solid rgba(${PURPLE},0.35)`, color: `rgba(${PURPLE},0.8)`
-                    }}>
-                    <Heart className={`w-4 h-4 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-                    <span>{isFaved("track", track.id) ? "Saved" : "Save"}</span>
-                  </button>
+                  {/* Save — shared FavoriteButton */}
+                  <FavoriteButton
+                    type="track"
+                    id={track.id}
+                    meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                    size="md"
+                    onNeedLogin={() => setLoginPrompt(true)}
+                  />
 
                   {/* Support — larger/prominent */}
                   <button
@@ -526,7 +511,6 @@ export default function SongPage() {
               currentTrack={track}
               allTracks={allTracks}
               onPlay={handlePlay}
-              userEmail={user?.email}
             />
           </motion.div>
 
