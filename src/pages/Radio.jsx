@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, SkipForward, SkipBack,
@@ -14,6 +14,7 @@ import SaveHeartButton from "@/components/shared/SaveHeartButton";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import { useDislike } from "../hooks/useDislike";
+// useDislike: toggle records dislikes to DB/localStorage; visual state is local (thumbsDownActive)
 import { recordDislike } from "../lib/radioCurator";
 import UpNextPanel from "../components/radio/UpNextPanel";
 
@@ -58,8 +59,11 @@ export default function RadioPage() {
   } = useRadio();
   const { user } = useAuth();
   const { savedItems } = useSavedItemsContext();
-  const { isDisliked, toggle: toggleDislike } = useDislike(user?.email);
+  const { toggle: toggleDislike } = useDislike(user?.email);
   const [dislikeDisabled, setDislikeDisabled] = useState(false);
+  // Per-song thumbs-down state — resets when track changes
+  const [thumbsDownActive, setThumbsDownActive] = useState(false);
+  const lastDislikedTrackId = useRef(null);
 
   // Keep radio curator aware of liked song IDs using SavedItem system
   useEffect(() => {
@@ -76,7 +80,14 @@ export default function RadioPage() {
     if (tracksLoaded) initRadio();
   }, [tracksLoaded, initRadio]);
 
-
+  // Reset thumbs-down state whenever the current radio song changes
+  useEffect(() => {
+    const trackId = currentRadioSong?.id || currentRadioSong?._id || null;
+    if (trackId && trackId !== lastDislikedTrackId.current) {
+      setThumbsDownActive(false);
+      setDislikeDisabled(false);
+    }
+  }, [currentRadioSong]);
 
   // If the homepage song is currently playing and its ID matches the radio song,
   // treat it as radio playing so we don't show "Resume Radio" or restart anything.
@@ -102,30 +113,36 @@ export default function RadioPage() {
 
 
 
-  const handleDislike = useCallback(async () => {
+  const handleDislike = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (dislikeDisabled || !currentRadioSong) return;
+
+    const songId = currentRadioSong.id || currentRadioSong._id;
+    if (!songId) return;
+
+    // Mark active + disable immediately for this song
+    setThumbsDownActive(true);
     setDislikeDisabled(true);
-    const songId = currentRadioSong.id;
-    const songTitle = currentRadioSong.title;
-    // Save dislike (if logged in → DB; always → localStorage via hook)
-    if (user) {
-      await toggleDislike(songId, { title: songTitle });
-    } else {
-      // Anonymous: just write to localStorage via recordDislike
-      const { getDislikedIds } = await import("../hooks/useDislike");
-      const ids = getDislikedIds();
-      if (!ids.includes(songId)) {
-        try { localStorage.setItem("uvm_disliked_ids", JSON.stringify([...ids, songId])); } catch {}
-      }
-    }
-    // Lower curator weight for this song
-    const { allTracks: aT } = { allTracks: [] };
-    recordDislike(songId, true, []);
-    // Skip to next
+    lastDislikedTrackId.current = songId;
+
+    // Skip to next song immediately
     nextRadioSong();
     toast("We'll play this song less often", { duration: 2500 });
-    // Re-enable after 3s to prevent double-tap
-    setTimeout(() => setDislikeDisabled(false), 3000);
+
+    // Record dislike in background (non-blocking)
+    recordDislike(songId, true, []);
+    if (user) {
+      toggleDislike(songId, { title: currentRadioSong.title }).catch(() => {});
+    } else {
+      try {
+        const raw = localStorage.getItem("uvm_disliked_ids");
+        const ids = raw ? JSON.parse(raw) : [];
+        if (!ids.includes(songId)) {
+          localStorage.setItem("uvm_disliked_ids", JSON.stringify([...ids, songId]));
+        }
+      } catch {}
+    }
   }, [dislikeDisabled, currentRadioSong, user, toggleDislike, nextRadioSong]);
 
   const handleDownload = () => {
@@ -435,21 +452,20 @@ export default function RadioPage() {
 
                   {/* Thumbs Down — Radio personalisation only */}
                   {!isHostDropPlaying && (
-                    <motion.button
+                    <button
+                      type="button"
                       onClick={handleDislike}
-                      whileTap={{ scale: 0.88 }}
                       disabled={dislikeDisabled}
                       className="w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-40"
                       style={{
-                        background: currentRadioSong && isDisliked(currentRadioSong.id)
-                          ? `rgba(${theme.vars["--rt-primary"]},0.18)` : `rgba(${theme.vars["--rt-primary"]},0.06)`,
-                        border: currentRadioSong && isDisliked(currentRadioSong.id)
-                          ? `1px solid rgba(${theme.vars["--rt-primary"]},0.55)` : `1px solid rgba(${theme.vars["--rt-primary"]},0.3)`,
+                        touchAction: "manipulation",
+                        WebkitTapHighlightColor: "transparent",
+                        background: `rgba(${theme.vars["--rt-primary"]},0.06)`,
+                        border: `1px solid rgba(${theme.vars["--rt-primary"]},0.3)`,
                       }}>
                       <ThumbsDown className="w-4 h-4 transition-colors"
-                        style={{ color: currentRadioSong && isDisliked(currentRadioSong.id)
-                          ? `rgb(${theme.vars["--rt-primary"]})` : `rgba(${theme.vars["--rt-primary"]},0.55)` }} />
-                    </motion.button>
+                        style={{ color: `rgba(${theme.vars["--rt-primary"]},0.55)` }} />
+                    </button>
                   )}
 
                   <button onClick={handleDownload}
