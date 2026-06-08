@@ -3,14 +3,15 @@ import { Heart } from "lucide-react";
 import { useFavoritesContext } from "@/context/FavoritesContext";
 
 /**
- * FavoriteButton — iOS-safe heart button.
+ * FavoriteButton — single shared heart button used across all pages.
  *
- * iOS fixes:
- *  - Uses onTouchStart for instant response (no 300ms delay on iOS PWA).
- *  - onTouchStart sets a ref flag; onClick checks the flag to skip if already handled.
- *  - 600ms dedup guard prevents any double-fire.
- *  - No framer-motion on the button itself (motion wrappers can swallow iOS touch events).
- *  - No `disabled` attribute — just pointer-events none while saving (disabled blocks touch).
+ * iOS/PWA approach:
+ *  - Uses ONLY onClick (no onTouchStart). touch-action:manipulation in CSS
+ *    already removes the 300ms delay on iOS, making onClick instant.
+ *  - onTouchStart caused double-fire issues and scroll interference on iOS.
+ *  - 500ms dedup ref guard as a safety net.
+ *  - No `disabled` prop — uses pointerEvents:none instead (disabled blocks iOS touch).
+ *  - No framer-motion wrapper (can swallow touch events in scroll containers).
  */
 export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNeedLogin, className = "" }) {
   const { isFaved, toggle, user, isLoadingAuth } = useFavoritesContext();
@@ -19,18 +20,21 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
 
   const lastActivatedAt = useRef(0);
   const savingRef = useRef(false);
+  // Keep refs so the callback never has stale closures
   const userRef = useRef(user);
   const isLoadingAuthRef = useRef(isLoadingAuth);
-  const touchHandledRef = useRef(false);
-
   userRef.current = user;
   isLoadingAuthRef.current = isLoadingAuth;
 
-  const activate = useCallback(async () => {
+  const handleClick = useCallback(async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     if (isLoadingAuthRef.current) return;
 
+    // Dedup: ignore if tapped within 500ms
     const now = Date.now();
-    if (now - lastActivatedAt.current < 600) return;
+    if (now - lastActivatedAt.current < 500) return;
     lastActivatedAt.current = now;
 
     if (savingRef.current) return;
@@ -48,22 +52,6 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
     savingRef.current = false;
     setSaving(false);
   }, [toggle, type, id, meta, onNeedLogin]);
-
-  const handleTouchStart = useCallback((e) => {
-    touchHandledRef.current = true;
-    e.stopPropagation();
-    activate();
-  }, [activate]);
-
-  const handleClick = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (touchHandledRef.current) {
-      touchHandledRef.current = false;
-      return;
-    }
-    activate();
-  }, [activate]);
 
   const dim = size === "md" ? "w-9 h-9" : "w-8 h-8";
   const iconDim = size === "md" ? "w-4 h-4" : "w-3.5 h-3.5";
@@ -87,19 +75,21 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
   return (
     <button
       type="button"
-      onTouchStart={handleTouchStart}
       onClick={handleClick}
       title={saved ? "Saved to My Vibe Library" : "Save to My Vibe Library"}
-      className={`${dim} rounded-xl flex items-center justify-center flex-shrink-0 select-none transition-colors ${className}`}
+      className={`${dim} rounded-xl flex items-center justify-center flex-shrink-0 select-none ${className}`}
       style={{
-        position: "relative",
-        zIndex: 10,
-        pointerEvents: saving ? "none" : "auto",
-        WebkitTapHighlightColor: "transparent",
+        // touch-action:manipulation removes 300ms iOS tap delay without needing onTouchStart
         touchAction: "manipulation",
-        cursor: saving ? "default" : "pointer",
-        opacity: saving ? 0.6 : 1,
+        WebkitTapHighlightColor: "transparent",
+        // Never use `disabled` — it blocks touch events on iOS
+        pointerEvents: saving ? "none" : "auto",
+        opacity: saving ? 0.7 : 1,
+        cursor: "pointer",
         outline: "none",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        // Visual state
         ...(saved ? {
           background: "rgba(155,126,255,0.18)",
           border: "1px solid rgba(155,126,255,0.45)",

@@ -27,7 +27,6 @@ export function FavoritesProvider({ children }) {
     if (!stableUserId) return;
     const handleVisibility = () => {
       if (document.visibilityState === "visible" && stableUserIdRef.current) {
-        console.log("[FavoritesContext] visibility reload — userId:", stableUserIdRef.current);
         reloadRef.current(stableUserIdRef.current);
       }
     };

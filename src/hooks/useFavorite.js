@@ -175,10 +175,13 @@ export function useFavorites(userId, userEmail) {
         // Replace temp with real DB record — heart stays filled
         setFavs((prev) => prev.map((f) => (f.id === tempId ? record : f)));
 
-        // DO NOT reload here — on iOS the DB hasn't propagated yet and
-        // reload would return stale data and clear the heart.
-        pendingSaves.current -= 1;
-        inFlight.current.delete(key);
+        // Keep pendingSaves elevated for 3s after CREATE so any visibility-change
+        // reload that fires on iOS PWA tab-resume doesn't overwrite the new record
+        // with stale data before it propagates through the DB/RLS layer.
+        setTimeout(() => {
+          pendingSaves.current -= 1;
+          inFlight.current.delete(key);
+        }, 3000);
         return true;
       }
     } catch (err) {
