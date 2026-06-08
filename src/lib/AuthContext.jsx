@@ -119,12 +119,6 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
-      console.log("[AuthContext] me() resolved", {
-        domain: window.location.hostname,
-        userId: currentUser?.id,
-        email: currentUser?.email,
-        role: currentUser?.role,
-      });
       setUser(currentUser);
       setIsAuthenticated(true);
 
@@ -163,7 +157,7 @@ export const AuthProvider = ({ children }) => {
 
       setIsLoadingAuth(false);
     } catch (error) {
-      console.error('[AuthContext] me() failed', { domain: window.location.hostname, error: error?.message, status: error?.status });
+      console.error('[AuthContext] auth check failed:', error?.message);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       if (error.status === 401 || error.status === 403) {

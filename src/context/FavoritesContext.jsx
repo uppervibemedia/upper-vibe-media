@@ -14,19 +14,21 @@ export function FavoritesProvider({ children }) {
 
   const favoritesHook = useFavorites(stableUserId, userEmail);
 
-  console.log("[FavoritesContext]", { isLoadingAuth, stableUserId, userEmail, favLoaded: favoritesHook.loaded, favCount: favoritesHook.favorites.length });
-
   // On iOS/PWA: re-fetch when tab becomes visible again (handles PWA resume / tab switch)
-  // Use a ref to keep the reload reference stable
+  // Debounced to 30s to avoid rate limiting from frequent iOS app-switches/screen locks
   const reloadRef = useRef(favoritesHook.reload);
   reloadRef.current = favoritesHook.reload;
   const stableUserIdRef = useRef(stableUserId);
   stableUserIdRef.current = stableUserId;
+  const lastVisibilityReload = useRef(0);
 
   useEffect(() => {
     if (!stableUserId) return;
     const handleVisibility = () => {
       if (document.visibilityState === "visible" && stableUserIdRef.current) {
+        const now = Date.now();
+        if (now - lastVisibilityReload.current < 30_000) return; // debounce 30s
+        lastVisibilityReload.current = now;
         reloadRef.current(stableUserIdRef.current);
       }
     };

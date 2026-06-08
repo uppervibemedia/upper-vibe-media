@@ -112,15 +112,6 @@ export function useFavorites(userId, userEmail) {
     const id = normalizeItemId(rawId);
     const field = type === "track" ? "track_id" : "visualizer_id";
 
-    console.log("[Favorites] toggle called", {
-      domain: window.location.hostname,
-      uid,
-      email,
-      type,
-      id,
-      rawId,
-    });
-
     if (!uid) {
       console.warn("[Favorites] toggle blocked — no uid");
       return false;
@@ -180,7 +171,6 @@ export function useFavorites(userId, userEmail) {
         };
 
         const record = await base44.entities.Favorite.create(payload);
-        console.log("[Favorites] create response:", record);
 
         // Replace temp with real DB record — heart stays filled
         setFavs((prev) => prev.map((f) => (f.id === tempId ? record : f)));
