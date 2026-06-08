@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { isNewTrack } from "@/lib/isNewTrack";
 import NewBadge from "@/components/shared/NewBadge";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 
 /**
  * RecentlyPlayedRow
@@ -20,6 +21,7 @@ export default function RecentlyPlayedRow({
   isPlaying,
   handlePlayTrack,
   themeColor = "0,160,220",
+  onNeedLogin,
 }) {
   const [recentTracks, setRecentTracks] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -177,6 +179,7 @@ export default function RecentlyPlayedRow({
                 isNew={isNew}
                 themeColor={themeColor}
                 onPlay={() => handlePlayTrack(track)}
+                onNeedLogin={onNeedLogin}
                 index={i}
               />
             );
@@ -187,7 +190,7 @@ export default function RecentlyPlayedRow({
   );
 }
 
-function TrackCard({ track, isCurrent, isPlaying, isNew, themeColor, onPlay, index }) {
+function TrackCard({ track, isCurrent, isPlaying, isNew, themeColor, onPlay, onNeedLogin, index }) {
   return (
     <motion.div
       initial={{ opacity: 0, x: 10 }}
@@ -266,23 +269,32 @@ function TrackCard({ track, isCurrent, isPlaying, isNew, themeColor, onPlay, ind
         )}
       </div>
 
-      {/* Text info */}
-      <Link
-        to={`/song/${track.id}`}
-        className="block"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p
-          className="text-xs font-bold leading-tight truncate transition-colors"
-          style={{ color: isCurrent ? `rgb(${themeColor})` : "rgba(255,255,255,0.88)" }}
-          title={track.title}
+      {/* Text info + heart */}
+      <div className="flex items-start justify-between gap-1">
+        <Link
+          to={`/song/${track.id}`}
+          className="block min-w-0 flex-1"
+          onClick={(e) => e.stopPropagation()}
         >
-          {track.title}
-        </p>
-        <p className="text-[10px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>
-          {track.artist_display || "Upper Vibe Media"}
-        </p>
-      </Link>
+          <p
+            className="text-xs font-bold leading-tight truncate transition-colors"
+            style={{ color: isCurrent ? `rgb(${themeColor})` : "rgba(255,255,255,0.88)" }}
+            title={track.title}
+          >
+            {track.title}
+          </p>
+          <p className="text-[10px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>
+            {track.artist_display || "Upper Vibe Media"}
+          </p>
+        </Link>
+        <FavoriteButton
+          type="track"
+          id={track.id}
+          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+          size="sm"
+          onNeedLogin={onNeedLogin}
+        />
+      </div>
     </motion.div>
   );
 }

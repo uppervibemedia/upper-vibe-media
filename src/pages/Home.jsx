@@ -446,6 +446,7 @@ export default function Home() {
         isPlaying={isPlaying}
         handlePlayTrack={handlePlayTrack}
         themeColor={rtPrimary}
+        onNeedLogin={() => setLoginModal(true)}
       />
 
       {/* ── RADIO CTA — immersive live section ── */}
@@ -578,13 +579,9 @@ export default function Home() {
           isPlaying={isPlaying}
           handlePlayTrack={handlePlayTrack}
           user={user}
-          isFaved={isFaved}
           themeColor={rtPrimary}
           onOpenViz={(viz) => { if (isPlaying) togglePlay(); setVizModal(viz); }}
-          onToggleFav={(track) => {
-            if (!user) { setLoginModal(true); return; }
-            toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-          }}
+          onNeedLogin={() => setLoginModal(true)}
         />
       </motion.div>
 
@@ -596,12 +593,8 @@ export default function Home() {
           isPlaying={isPlaying}
           handlePlayTrack={handlePlayTrack}
           user={user}
-          isFaved={isFaved}
           themeColor={rtPrimary}
-          onToggleFav={(track) => {
-            if (!user) { setLoginModal(true); return; }
-            toggle("track", track.id, { title: track.title, artist: track.artist_display, cover_url: track.cover_url });
-          }}
+          onNeedLogin={() => setLoginModal(true)}
         />
       </motion.div>
 

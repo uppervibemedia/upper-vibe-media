@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Music4, Heart, Download, Lock, Tv2, ArrowRight, Waves, Sparkles } from "lucide-react";
+import { Play, Pause, Music4, Download, Lock, Tv2, ArrowRight, Waves, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import {
@@ -78,7 +79,7 @@ export default function YourFrequencyFeed({
   const rightViz = vizItems[0] || null;
   const rightTracks = tracks.slice(4, 6);
 
-  const trackCardProps = { currentTrack, isPlaying, handlePlayTrack, isFaved, onToggleFav, navigate, isPremium, rtp };
+  const trackCardProps = { currentTrack, isPlaying, handlePlayTrack, navigate, isPremium, rtp };
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
@@ -202,7 +203,7 @@ export default function YourFrequencyFeed({
 }
 
 // ── TrackCard ─────────────────────────────────────────────────────────────────
-function TrackCard({ track, badge, currentTrack, isPlaying, handlePlayTrack, isFaved, onToggleFav, navigate, isPremium, rtp }) {
+function TrackCard({ track, badge, currentTrack, isPlaying, handlePlayTrack, navigate, isPremium, rtp, onNeedLogin }) {
   const isCurrent = currentTrack?.id === track.id;
   return (
     <div
@@ -234,15 +235,12 @@ function TrackCard({ track, badge, currentTrack, isPlaying, handlePlayTrack, isF
         )}
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          onClick={e => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}
-          onTouchEnd={e => { e.preventDefault(); e.stopPropagation(); onToggleFav && onToggleFav(track); }}
-          className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-          style={isFaved && isFaved("track", track.id)
-            ? { background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF" }
-            : { background: "rgba(155,126,255,0.05)", border: "1px solid rgba(155,126,255,0.22)", color: "rgba(155,126,255,0.5)" }}>
-          <Heart className={`w-3.5 h-3.5 ${isFaved && isFaved("track", track.id) ? "fill-current" : ""}`} />
-        </button>
+        <FavoriteButton
+          type="track"
+          id={track.id}
+          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+          onNeedLogin={onNeedLogin}
+        />
         <button onClick={e => { e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
           className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
           style={{
