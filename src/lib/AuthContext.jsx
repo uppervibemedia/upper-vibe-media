@@ -84,12 +84,10 @@ export const AuthProvider = ({ children }) => {
         const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
         setAppPublicSettings(publicSettings);
 
-        if (appParams.token) {
-          await checkUserAuth();
-        } else {
-          setIsLoadingAuth(false);
-          setIsAuthenticated(false);
-        }
+        // Always check for an existing session — not just when a token is in the URL.
+        // On iOS live site, the token lives in localStorage (set by the SDK on prior login),
+        // so appParams.token may be absent even for a fully logged-in user.
+        await checkUserAuth();
         setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', appError);
@@ -114,6 +112,12 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
+      console.log("[AuthContext] me() resolved", {
+        domain: window.location.hostname,
+        userId: currentUser?.id,
+        email: currentUser?.email,
+        role: currentUser?.role,
+      });
       setUser(currentUser);
       setIsAuthenticated(true);
 
@@ -152,7 +156,7 @@ export const AuthProvider = ({ children }) => {
 
       setIsLoadingAuth(false);
     } catch (error) {
-      console.error('User auth check failed:', error);
+      console.error('[AuthContext] me() failed', { domain: window.location.hostname, error: error?.message, status: error?.status });
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       if (error.status === 401 || error.status === 403) {
