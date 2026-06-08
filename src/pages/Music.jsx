@@ -12,6 +12,7 @@ import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import FavLoginModal from "../components/shared/FavLoginModal";
 import SupportModal from "../components/shared/SupportModal";
 import FavoriteButton from "@/components/shared/FavoriteButton";
+import SaveHeartButton from "@/components/shared/SaveHeartButton";
 import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
@@ -392,11 +393,11 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
           <Download className="w-3.5 h-3.5" />
         </button>
 
-        {/* Favorite — via global FavoriteButton (iOS-safe) */}
-        <FavoriteButton
-          type="track"
-          id={track.id}
-          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+        {/* Heart — new SaveHeartButton */}
+        <SaveHeartButton
+          item={track.id}
+          itemType="song"
+          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url, audio_url: track.audio_url }}
           size="md"
           onNeedLogin={onNeedLogin}
         />

@@ -6,7 +6,7 @@ import SectionHeader from "../shared/SectionHeader";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import { NewBadgeOverlay } from "@/components/shared/NewBadge";
-import FavoriteButton from "@/components/shared/FavoriteButton";
+import SaveHeartButton from "@/components/shared/SaveHeartButton";
 
 const PAGE_SIZE = 4;
 const AUTO_CYCLE_MS = 7000;
@@ -185,10 +185,10 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                       <Waves className="w-2 h-2" /> 432
                     </span>
                     <div className="flex items-center gap-0.5">
-                      <FavoriteButton
-                        type="track"
-                        id={track.id}
-                        meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                      <SaveHeartButton
+                        item={track.id}
+                        itemType="song"
+                        meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url, audio_url: track.audio_url }}
                         size="sm"
                         onNeedLogin={onNeedLogin}
                       />
@@ -276,10 +276,10 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                          <Waves className="w-2 h-2" /> 432
                        </span>
                        <div className="flex items-center gap-0.5">
-                         <FavoriteButton
-                           type="track"
-                           id={track.id}
-                           meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                         <SaveHeartButton
+                           item={track.id}
+                           itemType="song"
+                           meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url, audio_url: track.audio_url }}
                            size="sm"
                            onNeedLogin={onNeedLogin}
                          />

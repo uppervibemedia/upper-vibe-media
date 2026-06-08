@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { isNewTrack } from "@/lib/isNewTrack";
 import NewBadge from "@/components/shared/NewBadge";
-import FavoriteButton from "@/components/shared/FavoriteButton";
+import SaveHeartButton from "@/components/shared/SaveHeartButton";
 
 /**
  * RecentlyPlayedRow
@@ -287,10 +287,10 @@ function TrackCard({ track, isCurrent, isPlaying, isNew, themeColor, onPlay, onN
             {track.artist_display || "Upper Vibe Media"}
           </p>
         </Link>
-        <FavoriteButton
-          type="track"
-          id={track.id}
-          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+        <SaveHeartButton
+          item={track.id}
+          itemType="song"
+          meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url, audio_url: track.audio_url }}
           size="sm"
           onNeedLogin={onNeedLogin}
         />

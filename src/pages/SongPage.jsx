@@ -14,7 +14,7 @@ import Footer from "../components/shared/Footer";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 import SupportModal from "../components/shared/SupportModal";
 import ShareVibeButton from "../components/shared/ShareVibeButton";
-import FavoriteButton from "@/components/shared/FavoriteButton";
+import SaveHeartButton from "@/components/shared/SaveHeartButton";
 import { recordPlay } from "../components/home/DiscoverTab";
 import { recordUserDownload, triggerBrowserDownload, isRestrictedInAppBrowser, logDownloadEnv } from "@/lib/downloadService";
 import InAppBrowserDownloadModal from "../components/shared/InAppBrowserDownloadModal";
@@ -380,11 +380,11 @@ export default function SongPage() {
                   {/* Share — small */}
                   <ShareVibeButton type="song" track={track} size="sm" className="sm:flex-none justify-center" />
 
-                  {/* Save — shared FavoriteButton */}
-                  <FavoriteButton
-                    type="track"
-                    id={track.id}
-                    meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                  {/* Save — new SaveHeartButton */}
+                  <SaveHeartButton
+                    item={track.id}
+                    itemType="song"
+                    meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url, audio_url: track.audio_url }}
                     size="md"
                     onNeedLogin={() => setLoginPrompt(true)}
                   />

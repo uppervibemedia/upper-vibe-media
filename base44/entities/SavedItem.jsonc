@@ -1,0 +1,92 @@
+{
+  "name": "SavedItem",
+  "type": "object",
+  "properties": {
+    "userId": {
+      "type": "string",
+      "description": "Stable authenticated user ID \u2014 never email, never null"
+    },
+    "itemId": {
+      "type": "string",
+      "description": "Normalized item ID \u2014 always String(record.id)"
+    },
+    "itemType": {
+      "type": "string",
+      "enum": [
+        "song",
+        "visualizer"
+      ],
+      "description": "Type of saved item"
+    },
+    "title": {
+      "type": "string",
+      "description": "Cached display title"
+    },
+    "artist": {
+      "type": "string",
+      "description": "Cached artist name"
+    },
+    "coverUrl": {
+      "type": "string",
+      "description": "Cached cover image URL"
+    },
+    "songUrl": {
+      "type": "string",
+      "description": "Audio URL if available"
+    },
+    "pageUrl": {
+      "type": "string",
+      "description": "App page URL for this item"
+    },
+    "savedAt": {
+      "type": "string",
+      "description": "ISO timestamp when saved"
+    }
+  },
+  "required": [
+    "userId",
+    "itemId",
+    "itemType"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

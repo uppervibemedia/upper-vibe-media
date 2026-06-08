@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
+import { SavedItemsProvider } from '@/context/SavedItemsContext';
 
 import AppLayout from './components/layout/AppLayout';
 import Home from './pages/Home';
@@ -182,10 +183,12 @@ function App() {
       <AuthProvider>
         <QueryClientProvider client={queryClientInstance}>
           <FavoritesProvider>
-            <Router>
-              <AuthenticatedApp />
-            </Router>
-            <Toaster />
+            <SavedItemsProvider>
+              <Router>
+                <AuthenticatedApp />
+              </Router>
+              <Toaster />
+            </SavedItemsProvider>
           </FavoritesProvider>
         </QueryClientProvider>
       </AuthProvider>

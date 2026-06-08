@@ -1,0 +1,90 @@
+{
+  "name": "UserFavorite",
+  "type": "object",
+  "properties": {
+    "userId": {
+      "type": "string",
+      "description": "Stable authenticated user ID (never null, never email)"
+    },
+    "userEmail": {
+      "type": "string",
+      "description": "Optional backup/debug email \u2014 not used for lookup"
+    },
+    "itemId": {
+      "type": "string",
+      "description": "Normalized item ID \u2014 always String(record.id)"
+    },
+    "itemType": {
+      "type": "string",
+      "enum": [
+        "song",
+        "visualizer"
+      ],
+      "description": "song or visualizer \u2014 never track"
+    },
+    "title": {
+      "type": "string",
+      "description": "Cached title for display"
+    },
+    "artist": {
+      "type": "string",
+      "description": "Cached artist name"
+    },
+    "coverUrl": {
+      "type": "string",
+      "description": "Cached cover image URL"
+    },
+    "songUrl": {
+      "type": "string",
+      "description": "Audio URL if applicable"
+    },
+    "pageUrl": {
+      "type": "string",
+      "description": "App page URL for this item"
+    },
+    "savedAt": {
+      "type": "string",
+      "description": "ISO timestamp when saved"
+    }
+  },
+  "required": [
+    "userId",
+    "itemId",
+    "itemType"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "created_by_id": "{{user.id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
