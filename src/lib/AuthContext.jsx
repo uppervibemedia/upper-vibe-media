@@ -84,10 +84,17 @@ export const AuthProvider = ({ children }) => {
         const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
         setAppPublicSettings(publicSettings);
 
-        // Always check for an existing session — not just when a token is in the URL.
-        // On iOS live site, the token lives in localStorage (set by the SDK on prior login),
-        // so appParams.token may be absent even for a fully logged-in user.
-        await checkUserAuth();
+        // Check if a stored token exists (from localStorage, where the SDK persists it).
+        // appParams.token already reads from localStorage via getAppParamValue, so if it's
+        // present the user is logged in (or was on a previous visit). Only call me() when
+        // there's a token to avoid unnecessary API calls for anonymous visitors.
+        const storedToken = (() => { try { return localStorage.getItem('base44_access_token'); } catch { return null; } })();
+        if (appParams.token || storedToken) {
+          await checkUserAuth();
+        } else {
+          setIsLoadingAuth(false);
+          setIsAuthenticated(false);
+        }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', appError);
