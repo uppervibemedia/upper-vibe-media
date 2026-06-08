@@ -13,6 +13,7 @@ import { useFavorites } from "../hooks/useFavorite";
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 import RecentlyPlayedRow from "@/components/home/RecentlyPlayedRow";
+import DailyRitualBanner from "@/components/home/DailyRitualBanner";
 
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
@@ -123,6 +124,9 @@ export default function MyVibes() {
           </motion.div>
         </div>
       </div>
+
+      {/* ── Daily Ritual Banner ── */}
+      <DailyRitualBanner user={user} />
 
       {/* ── Latest Music ── */}
       {tracks.length > 0 && (
