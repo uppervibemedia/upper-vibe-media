@@ -16,12 +16,22 @@ export function normalizeItemId(id) {
 /**
  * useFavorites — keyed on stable user ID.
  *
- * iOS FIX SUMMARY:
- *  - After CREATE: do NOT do a confirmatory reload. The optimistic state is the
- *    source of truth. A reload right after create on iOS often returns stale data
- *    (the new record hasn't propagated through RLS yet), overwriting the filled heart.
- *  - After DELETE: do a reload to confirm the record is gone.
- *  - pendingSaves guard still blocks any concurrent reload() from stomping state.
+ * iOS FIX APPROACH (definitive):
+ *
+ * SAVE flow:
+ *   optimistic add (temp record) → DB create → replace temp with real record
+ *   NO reload after save. The optimistic record IS the truth.
+ *   pendingSaves stays elevated for 4s to block any visibility-reload from stomping it.
+ *
+ * UNSAVE flow:
+ *   optimistic remove → DB delete
+ *   NO reload after delete either. Trust optimistic state.
+ *   A scheduled soft-reload happens 2s later ONLY if pendingSaves is 0, as a cleanup.
+ *
+ * WHY NO RELOAD AFTER DELETE:
+ *   On iOS PWA, calling reload() after delete triggers another Favorite.list() which
+ *   can return stale data (RLS cache) OR trigger rate-limit errors.
+ *   The optimistic remove is sufficient — if the user force-refreshes they'll get fresh data.
  */
 export function useFavorites(userId, userEmail) {
   const [favorites, setFavorites] = useState([]);
@@ -47,7 +57,7 @@ export function useFavorites(userId, userEmail) {
 
   /**
    * reload — fetches from DB.
-   * Will not overwrite state if there are pending saves in-flight.
+   * Skipped entirely if any pending saves are in-flight.
    */
   const reload = useCallback(async (overrideUserId) => {
     const uid = overrideUserId ?? userIdRef.current;
@@ -58,6 +68,11 @@ export function useFavorites(userId, userEmail) {
       return;
     }
 
+    // Hard block — never reload while saves are pending
+    if (pendingSaves.current > 0) {
+      return;
+    }
+
     fetchVersion.current += 1;
     const myVersion = fetchVersion.current;
 
@@ -65,14 +80,12 @@ export function useFavorites(userId, userEmail) {
       const data = await base44.entities.Favorite.list("-created_date", 500);
 
       if (myVersion !== fetchVersion.current) return;
-      if (pendingSaves.current > 0) {
-        console.log("[Favorites] reload skipped — save in progress");
-        return;
-      }
+      // Double-check after the await
+      if (pendingSaves.current > 0) return;
 
       setFavs(data);
     } catch (err) {
-      console.warn("[Favorites] reload failed:", err);
+      console.warn("[Favorites] reload failed:", err?.message);
     } finally {
       if (myVersion === fetchVersion.current) {
         setLoaded(true);
@@ -100,11 +113,7 @@ export function useFavorites(userId, userEmail) {
 
   /**
    * toggle — add or remove a favorite.
-   *
-   * KEY iOS FIX:
-   *  - On CREATE: optimistic add → DB write → replace temp with real record.
-   *    NO confirmatory reload. The optimistic state keeps the heart filled.
-   *  - On DELETE: optimistic remove → DB delete → reload to confirm.
+   * Returns true on success, false on failure.
    */
   const toggle = useCallback(async (type, rawId, meta = {}) => {
     const uid = userIdRef.current;
@@ -134,13 +143,22 @@ export function useFavorites(userId, userEmail) {
     try {
       if (existing) {
         // ── UNSAVE ──────────────────────────────────────────────────────────
-        // Optimistic remove
+        // Optimistic remove immediately
         setFavs((prev) => prev.filter((f) => f.id !== existing.id));
+
         await base44.entities.Favorite.delete(existing.id);
-        // After delete, reload to confirm
+
+        // Done — decrement and clear inflight
         pendingSaves.current -= 1;
         inFlight.current.delete(key);
-        if (userIdRef.current) await reload();
+
+        // Soft cleanup reload after 2s — only if no other saves pending
+        setTimeout(() => {
+          if (pendingSaves.current === 0 && userIdRef.current) {
+            reload();
+          }
+        }, 2000);
+
         return true;
       } else {
         // ── SAVE ─────────────────────────────────────────────────────────────
@@ -175,17 +193,18 @@ export function useFavorites(userId, userEmail) {
         // Replace temp with real DB record — heart stays filled
         setFavs((prev) => prev.map((f) => (f.id === tempId ? record : f)));
 
-        // Keep pendingSaves elevated for 3s after CREATE so any visibility-change
-        // reload that fires on iOS PWA tab-resume doesn't overwrite the new record
-        // with stale data before it propagates through the DB/RLS layer.
+        // Hold pendingSaves elevated for 4s — blocks any visibility-change reload
+        // from overwriting the new record with stale pre-save data on iOS PWA.
         setTimeout(() => {
           pendingSaves.current -= 1;
           inFlight.current.delete(key);
-        }, 3000);
+        }, 4000);
+
         return true;
       }
     } catch (err) {
-      console.error("[Favorites] toggle error:", err);
+      console.error("[Favorites] toggle error:", err?.message);
+
       // Revert optimistic update on error
       if (existing) {
         setFavs((prev) => {

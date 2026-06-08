@@ -27,7 +27,7 @@ export function FavoritesProvider({ children }) {
     const handleVisibility = () => {
       if (document.visibilityState === "visible" && stableUserIdRef.current) {
         const now = Date.now();
-        if (now - lastVisibilityReload.current < 30_000) return; // debounce 30s
+        if (now - lastVisibilityReload.current < 60_000) return; // debounce 60s — iOS PWA switches frequently
         lastVisibilityReload.current = now;
         reloadRef.current(stableUserIdRef.current);
       }

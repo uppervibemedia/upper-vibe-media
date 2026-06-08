@@ -10,6 +10,7 @@ import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavoritesContext } from "@/context/FavoritesContext";
+import FavoriteButton from "@/components/shared/FavoriteButton";
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 import RecentlyPlayedRow from "@/components/home/RecentlyPlayedRow";
@@ -17,7 +18,7 @@ import DailyRitualBanner from "@/components/home/DailyRitualBanner";
 
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
-  const { isFaved, toggle } = useFavoritesContext();
+  const { isFaved } = useFavoritesContext();
   const [tracks, setTracks] = useState([]);
   const [visualizers, setVisualizers] = useState([]);
   const [userDownloads, setUserDownloads] = useState([]);
@@ -303,14 +304,12 @@ export default function MyVibes() {
                             </button>
 
                             {/* Heart / unfavorite */}
-                            <button
-                              type="button"
-                              onClick={() => toggle("track", track.id)}
-                              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-                              style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.3)", color: "#9B7EFF", touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                              title="Remove from Favorites">
-                              <Heart className="w-3.5 h-3.5 fill-current" />
-                            </button>
+                            <FavoriteButton
+                              type="track"
+                              id={track.id}
+                              meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                              size="sm"
+                            />
                           </div>
                         </motion.div>
                       );
@@ -380,16 +379,12 @@ export default function MyVibes() {
                             </div>
 
                             {/* Heart / favorite */}
-                            <button
-                              type="button"
-                              onClick={() => toggle("track", track.id)}
-                              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-                              style={isFaved("track", track.id)
-                                ? { background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF" }
-                                : { background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.3)", color: "rgba(155,126,255,0.5)" }}
-                              title={isFaved("track", track.id) ? "Remove from Favorites" : "Add to Favorites"}>
-                              <Heart className={`w-3.5 h-3.5 ${isFaved("track", track.id) ? "fill-current" : ""}`} />
-                            </button>
+                            <FavoriteButton
+                              type="track"
+                              id={track.id}
+                              meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                              size="sm"
+                            />
                           </div>
                         </motion.div>
                       );
@@ -429,12 +424,12 @@ export default function MyVibes() {
                               <p className="text-sm font-bold text-white truncate">{viz.title}</p>
                               <p className="text-xs text-white/40">{viz.artist || "Upper Vibe Media"}</p>
                             </div>
-                            <button onClick={() => toggle("visualizer", viz.id)}
-                              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all hover:scale-110"
-                              style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.3)", color: "#9B7EFF" }}
-                              title="Remove from Favorites">
-                              <Heart className="w-3.5 h-3.5 fill-current" />
-                            </button>
+                            <FavoriteButton
+                             type="visualizer"
+                             id={viz.id}
+                             meta={{ title: viz.title, artist: viz.artist, cover_url: viz.thumbnail_url }}
+                             size="sm"
+                            />
                           </div>
                           <div className="flex gap-2">
                             <Link to="/visualizers"
