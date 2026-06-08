@@ -9,7 +9,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
-import { useFavorites } from "../hooks/useFavorite";
+import { useFavoritesContext } from "@/context/FavoritesContext";
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 import RecentlyPlayedRow from "@/components/home/RecentlyPlayedRow";
@@ -17,7 +17,7 @@ import DailyRitualBanner from "@/components/home/DailyRitualBanner";
 
 export default function MyVibes() {
   const { user, isPlus, isAdmin } = useAuth();
-  const { isFaved, toggle } = useFavorites(user?.email);
+  const { isFaved, toggle } = useFavoritesContext();
   const [tracks, setTracks] = useState([]);
   const [visualizers, setVisualizers] = useState([]);
   const [userDownloads, setUserDownloads] = useState([]);
@@ -304,10 +304,10 @@ export default function MyVibes() {
 
                             {/* Heart / unfavorite */}
                             <button
+                              type="button"
                               onClick={() => toggle("track", track.id)}
-                              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); toggle("track", track.id); }}
                               className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-                              style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.3)", color: "#9B7EFF" }}
+                              style={{ background: "rgba(155,126,255,0.12)", border: "1px solid rgba(155,126,255,0.3)", color: "#9B7EFF", touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                               title="Remove from Favorites">
                               <Heart className="w-3.5 h-3.5 fill-current" />
                             </button>
@@ -381,8 +381,8 @@ export default function MyVibes() {
 
                             {/* Heart / favorite */}
                             <button
+                              type="button"
                               onClick={() => toggle("track", track.id)}
-                              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); toggle("track", track.id); }}
                               className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
                               style={isFaved("track", track.id)
                                 ? { background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF" }

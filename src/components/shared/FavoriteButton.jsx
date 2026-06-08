@@ -22,45 +22,41 @@ export default function FavoriteButton({ type, id, meta = {}, size = "sm", onNee
 
   // Per-instance dedup guard (800ms window)
   const lastActivatedAt = useRef(0);
+  // Refs so handleActivate never has stale closures
+  const savingRef = useRef(false);
+  const userRef = useRef(user);
+  const isLoadingAuthRef = useRef(isLoadingAuth);
+  userRef.current = user;
+  isLoadingAuthRef.current = isLoadingAuth;
 
   const handleActivate = useCallback(async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // Ignore while auth is still loading
-    if (isLoadingAuth) return;
+    if (isLoadingAuthRef.current) return;
 
-    // Deduplicate within 800ms (covers touchend → click double-fire on iOS)
+    // Deduplicate within 800ms
     const now = Date.now();
     if (now - lastActivatedAt.current < 800) return;
     lastActivatedAt.current = now;
 
-    // Ignore while a save is already in progress for this item
-    if (saving) return;
+    if (savingRef.current) return;
 
-    if (!user) {
+    if (!userRef.current) {
       onNeedLogin?.();
       return;
     }
 
-    // iOS debug
-    if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-      console.log("[FavoriteButton] tap", {
-        type,
-        id,
-        user: user?.email,
-        currentlySaved: saved,
-        action: saved ? "unsave" : "save",
-      });
-    }
-
+    savingRef.current = true;
     setSaving(true);
     setPulse(true);
     setTimeout(() => setPulse(false), 400);
 
     await toggle(type, id, meta);
+
+    savingRef.current = false;
     setSaving(false);
-  }, [isLoadingAuth, saving, user, type, id, meta, saved, toggle, onNeedLogin]);
+  }, [toggle, type, id, meta, onNeedLogin]); // stable — reads user/saving/isLoadingAuth from refs
 
   const dim = size === "md" ? "w-9 h-9" : "w-8 h-8";
   const iconDim = size === "md" ? "w-4 h-4" : "w-3.5 h-3.5";
