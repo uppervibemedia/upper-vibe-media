@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, CreditCard, Trash2, AlertTriangle, HelpCircle, Palette, ChevronLeft } from "lucide-react";
+import { Crown, Settings, LogOut, User, Check, Lock, Music4, ChevronRight, Download, CreditCard, Trash2, AlertTriangle, HelpCircle, Palette, ChevronLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -305,9 +305,20 @@ export default function Account() {
             <Music4 className="w-5 h-5" style={{ color: `rgb(${rtPrimary})` }} />
             <div className="flex-1">
               <p className="text-sm font-bold text-white">My Vibe Library</p>
-              <p className="text-xs text-white/35">Favorites, downloads & recently played</p>
+              <p className="text-xs text-white/35">Recently played, favorites & saved songs</p>
             </div>
             <ChevronRight className="w-4 h-4" style={{ color: `rgba(${rtPrimary},0.5)` }} />
+          </Link>
+
+          <Link to="/downloads"
+            className="flex items-center gap-3 px-5 py-4 rounded-2xl transition-all"
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", transition: "all 0.2s ease" }}>
+            <Download className="w-5 h-5" style={{ color: `rgba(${rtPrimary},0.55)` }} />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-white">My Downloads</p>
+              <p className="text-xs text-white/35">Your downloaded tracks</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/20" />
           </Link>
 
           {/* Theme Picker */}

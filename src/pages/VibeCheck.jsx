@@ -1,32 +1,51 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Check, Flame, TrendingUp, Target, Heart, Lock, Sparkles, ArrowLeft } from "lucide-react";
+import { Zap, ChevronRight, Check, Flame, TrendingUp, Target, Heart, Lock, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
-import { usePlayer } from "@/context/PlayerContext";
 import Footer from "@/components/shared/Footer";
 import {
   SectionCard, BreakdownRow, AffirmationCard, ManifestModeCTA,
   StreakCard, VibeTrendCard, FutureSelfCard, BadgesCard, VibeHistoryCard,
+  scoreLabel,
 } from "@/components/vibecheck/ResultCards";
-import VibeFrequencyRecs from "@/components/vibecheck/VibeFrequencyRecs";
-import {
-  getTodaysQuestions,
-  calcVibeScoreFromAnswers,
-  vibeCategory,
-  vibeMessage,
-} from "@/lib/vibeCheckQuestions";
 
-// ── Streak helpers ────────────────────────────────────────────────────────────
+// ── Mood options ──────────────────────────────────────────────────────────────
+const MOODS = [
+  { id: "scattered",   label: "Scattered",   emoji: "😵‍💫", desc: "Distracted, not centered",      score: 10  },
+  { id: "low_energy",  label: "Low Energy",  emoji: "😶",  desc: "Moving through the motions",    score: 25  },
+  { id: "neutral",     label: "Neutral",     emoji: "😐",  desc: "Present but not activated",     score: 50  },
+  { id: "intentional", label: "Intentional", emoji: "🎯",  desc: "Focused and clear",             score: 75  },
+  { id: "high_vibe",   label: "High Vibe",   emoji: "⚡",  desc: "Aligned, energized, locked in", score: 100 },
+];
+
 function streakToScore(days) {
   if (days >= 60) return 100;
   if (days >= 30) return Math.round(80 + ((days - 30) / 30) * 20);
   if (days >= 14) return Math.round(60 + ((days - 14) / 16) * 20);
   if (days >= 7)  return Math.round(40 + ((days - 7) / 7) * 20);
   if (days >= 3)  return Math.round(25 + ((days - 3) / 4) * 15);
+  // Day 1 = 15, Day 2 = 20
   return Math.round(15 + ((Math.max(days, 1) - 1) * 5));
+}
+
+// 5-factor formula — consistency weighted at 40%
+function calcVibeScore({ moodScore, intentionScore, gratitudeScore, streakScore, yesterdayCompletionScore, streak }) {
+  const raw = Math.round(
+    moodScore * 0.20 +
+    intentionScore * 0.15 +
+    gratitudeScore * 0.15 +
+    yesterdayCompletionScore * 0.10 +
+    streakScore * 0.40
+  );
+  // Score caps: elite scores require earned consistency
+  if (streak < 1)  return Math.min(raw, 75);
+  if (streak < 3)  return Math.min(raw, 75);
+  if (streak < 7)  return Math.min(raw, 82);
+  if (streak < 30) return Math.min(raw, 84);
+  return raw;
 }
 
 function todayStr() {
@@ -50,6 +69,7 @@ function calcLongestStreak(dates) {
   return longest;
 }
 
+// ── Motivational streak label ─────────────────────────────────────────────────
 function streakLabel(days) {
   if (days <= 1)  return "Day 1 — Vibe Starter 🔥";
   if (days < 7)   return `Day ${days} — Building Consistency`;
@@ -68,26 +88,18 @@ export default function VibeCheck() {
   const rtAmbient1 = radioTheme.vars["--rt-ambient1"];
   const rtAmbient2 = radioTheme.vars["--rt-ambient2"];
 
-  // Player context for music recs
-  const playerCtx = usePlayer();
-  const currentTrack = playerCtx?.currentTrack;
-  const isPlaying    = playerCtx?.isPlaying;
-  const handlePlay   = (track) => playerCtx?.playTrack(track);
+  const [step, setStep]           = useState("mood");
+  const [mood, setMood]           = useState(null);
+  const [intention, setIntention] = useState("");
+  const [gratitude, setGratitude] = useState("");
+  const [saving, setSaving]       = useState(false);
 
-  // ── Assessment state ──────────────────────────────────────────────────────
-  const questions    = useMemo(() => getTodaysQuestions(), []);
-  const [qIndex, setQIndex]   = useState(0);      // current question index
-  const [answers, setAnswers] = useState([]);      // [{ id, score }]
-  const [phase, setPhase]     = useState("check"); // "check" | "result"
-  const [saving, setSaving]   = useState(false);
-
-  // ── Historical data ───────────────────────────────────────────────────────
-  const [todayCheckIn, setTodayCheckIn]         = useState(null);
-  const [allCheckIns, setAllCheckIns]           = useState([]);
-  const [streak, setStreak]                     = useState(1);
-  const [longestStreak, setLongestStreak]       = useState(1);
-  const [yesterdayCompleted, setYesterdayCompleted] = useState(false);
-  const [loading, setLoading]                   = useState(true);
+  const [todayCheckIn, setTodayCheckIn]   = useState(null);
+  const [allCheckIns, setAllCheckIns]     = useState([]);
+  const [streak, setStreak]               = useState(1);
+  const [longestStreak, setLongestStreak] = useState(1);
+  const [yesterdayHadIntention, setYesterdayHadIntention] = useState(false);
+  const [loading, setLoading]             = useState(true);
 
   const [waitlistEmail, setWaitlistEmail] = useState("");
   const [waitlistDone, setWaitlistDone]   = useState(false);
@@ -103,11 +115,15 @@ export default function VibeCheck() {
         const today = all.find((c) => c.check_in_date === todayStr());
         if (today) {
           setTodayCheckIn(today);
-          setPhase("result");
+          setMood(today.mood);
+          setIntention(today.intention || "");
+          setGratitude(today.gratitude || "");
+          setStep("result");
         }
 
+        // Yesterday's check-in — did they set an intention?
         const yest = all.find((c) => c.check_in_date === yesterdayDateStr());
-        setYesterdayCompleted(!!yest);
+        setYesterdayHadIntention(!!(yest?.intention));
 
         const dates = [...new Set(all.map((c) => c.check_in_date))].sort().reverse();
         let s = 0;
@@ -124,69 +140,46 @@ export default function VibeCheck() {
     load();
   }, [user]);
 
-  // ── Derived score values (used in result screen) ──────────────────────────
-  const streakScore = streakToScore(streak);
-  const vibeScore = todayCheckIn?.vibe_score ?? calcVibeScoreFromAnswers(answers, streakScore, yesterdayCompleted);
-  const cat = vibeCategory(vibeScore);
-  const msg = vibeMessage(vibeScore);
+  // ── Score factors ────────────────────────────────────────────────────────────
+  const moodScore      = MOODS.find((m) => m.id === mood)?.score ?? 0;
+  const intentionScore = intention.trim() ? 100 : 0;
+  const gratitudeScore = gratitude.trim() ? 100 : 0;
+  const streakScore    = streakToScore(streak);
+  // Yesterday completion: 100 if yesterday had an intention (assumed completed today by checking in)
+  const yesterdayCompletionScore = yesterdayHadIntention ? 100 : 0;
 
-  // Change from yesterday
-  const yesterdayCheckIn = allCheckIns.find((c) => c.check_in_date === yesterdayDateStr());
-  const scoreChange = yesterdayCheckIn?.vibe_score != null
-    ? vibeScore - yesterdayCheckIn.vibe_score
-    : null;
+  const vibeScore = todayCheckIn?.vibe_score ?? calcVibeScore({
+    moodScore, intentionScore, gratitudeScore, streakScore, yesterdayCompletionScore, streak,
+  });
+  const si = scoreLabel(vibeScore);
 
-  // Weekly average
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekScores = allCheckIns
-    .filter((c) => c.check_in_date >= weekAgo.toISOString().slice(0, 10) && c.vibe_score != null)
-    .map((c) => c.vibe_score);
-  const weekAvg = weekScores.length >= 3
-    ? Math.round(weekScores.reduce((a, b) => a + b, 0) / weekScores.length)
-    : null;
+  // Fix label for "Protect the frequency" → "Protect your vibe"
+  const siMsg = si.label === "Locked In"
+    ? "You're in a strong state today. Protect your vibe and move with purpose."
+    : si.label === "Aligned"
+    ? "You're moving with intention. Keep your energy clean and your actions focused."
+    : si.label === "Stabilizing"
+    ? "You're not off track. You're recalibrating. Choose one clear move today."
+    : "Your energy may need a reset today. Start small, breathe, and choose one aligned action.";
 
-  // ── Answer a question ─────────────────────────────────────────────────────
-  const handleAnswer = (optionScore) => {
-    const q = questions[qIndex];
-    const newAnswers = [...answers.filter((a) => a.id !== q.id), { id: q.id, score: optionScore }];
-    setAnswers(newAnswers);
-
-    if (qIndex < questions.length - 1) {
-      setTimeout(() => setQIndex(qIndex + 1), 220);
-    } else {
-      // All questions answered — save
-      submitCheckIn(newAnswers);
-    }
-  };
-
-  const handleBack = () => {
-    if (qIndex > 0) setQIndex(qIndex - 1);
-  };
-
-  const submitCheckIn = async (finalAnswers) => {
-    if (!user || saving) return;
+  const handleSubmit = async () => {
+    if (!mood || !user || saving) return;
     setSaving(true);
-    const ss = streakToScore(streak);
-    const score = calcVibeScoreFromAnswers(finalAnswers, ss, yesterdayCompleted);
+    const score = calcVibeScore({ moodScore, intentionScore, gratitudeScore, streakScore, yesterdayCompletionScore, streak });
     const newStreak = streak + 1;
-    // Derive overall mood from score
-    const moodId = score <= 34 ? "low_energy" : score <= 59 ? "neutral" : score <= 79 ? "intentional" : "high_vibe";
     try {
       const record = await base44.entities.VibeCheckIn.create({
-        user_id: user.id,
-        user_email: user.email,
-        check_in_date: todayStr(),
-        mood: moodId,
-        mood_score: score,
-        streak_days: newStreak,
-        vibe_score: score,
+        user_id: user.id, user_email: user.email,
+        check_in_date: todayStr(), mood, mood_score: moodScore,
+        intention: intention.trim() || null, gratitude: gratitude.trim() || null,
+        streak_days: newStreak, vibe_score: score,
       });
       setTodayCheckIn(record);
       setAllCheckIns((prev) => [record, ...prev]);
       setStreak(newStreak);
       setLongestStreak((prev) => Math.max(prev, newStreak));
-      base44.analytics.track({ eventName: "vibe_check_submitted", properties: { vibe_score: score, mood: moodId } });
-      setPhase("result");
+      base44.analytics.track({ eventName: "vibe_check_submitted", properties: { vibe_score: score, mood } });
+      setStep("result");
     } catch (e) { console.error(e); }
     setSaving(false);
   };
@@ -205,10 +198,10 @@ export default function VibeCheck() {
     } catch (e) { console.error(e); }
   };
 
-  // ── Unauthenticated preview ───────────────────────────────────────────────
   if (!loading && !user) {
     return (
       <div className="min-h-screen flex flex-col" style={{ background: "hsl(240 50% 2%)" }}>
+        {/* Ambient glows */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full opacity-[0.07] blur-[130px]"
             style={{ background: rtAmbient1 }} />
@@ -219,6 +212,7 @@ export default function VibeCheck() {
         </div>
 
         <div className="relative z-10 flex-1 max-w-lg mx-auto w-full px-5 pb-24">
+          {/* Header */}
           <div className="pt-16 pb-8 text-center">
             <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-5"
@@ -230,46 +224,51 @@ export default function VibeCheck() {
                 Check your vibe.<br />Build your streak.<br />Track your growth.
               </h1>
               <p className="text-white/40 text-sm max-w-xs mx-auto leading-relaxed">
-                A daily ritual to measure your energy, focus, and alignment — then reveal your Vibe Score.
+                Create a free account to unlock your daily Vibe Score, streaks, gratitude, intentions, and vibe history.
               </p>
             </motion.div>
           </div>
 
+          {/* Hero Score Mockup */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="relative mb-5 rounded-3xl p-6 text-center overflow-hidden"
             style={{ background: "rgba(8,8,24,0.85)", border: `1px solid rgba(${rtPrimary},0.2)`, backdropFilter: "blur(20px)" }}>
+            {/* Glow behind circle */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 rounded-full blur-[50px] pointer-events-none"
               style={{ background: `rgba(${rtPrimary},0.18)` }} />
             <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-4 relative z-10"
               style={{ color: `rgba(${rtPrimary},0.7)` }}>Daily Vibe Score</p>
+            {/* Static score ring */}
             <div className="relative inline-flex items-center justify-center mb-4" style={{ width: 144, height: 144 }}>
               <svg width="144" height="144" style={{ transform: "rotate(-90deg)" }}>
                 <circle cx="72" cy="72" r="56" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
                 <circle cx="72" cy="72" r="56" fill="none" stroke={`rgb(${rtPrimary})`} strokeWidth="10"
                   strokeLinecap="round"
                   strokeDasharray={`${2 * Math.PI * 56}`}
-                  strokeDashoffset={`${2 * Math.PI * 56 * (1 - 0.75)}`}
+                  strokeDashoffset={`${2 * Math.PI * 56 * (1 - 0.82)}`}
                   style={{ filter: `drop-shadow(0 0 10px rgb(${rtPrimary}))`, opacity: 0.8 }} />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="font-heading font-black text-4xl text-white leading-none" style={{ filter: "blur(4px)", opacity: 0.5 }}>??</span>
+                <span className="font-heading font-black text-4xl text-white leading-none" style={{ filter: "blur(3px)", opacity: 0.6 }}>82</span>
                 <span className="text-[9px] font-black text-white/30 tracking-widest uppercase mt-0.5">VIBE SCORE</span>
               </div>
             </div>
             <p className="text-white/40 text-xs relative z-10 max-w-[220px] mx-auto leading-relaxed">
-              Answer 8 daily questions — your score is revealed at the end.
+              Get a daily score based on your mood, intention, gratitude, and consistency.
             </p>
+            {/* Blur overlay hint */}
             <div className="absolute inset-0 rounded-3xl pointer-events-none"
               style={{ background: "linear-gradient(180deg,transparent 40%,rgba(8,8,24,0.4) 100%)" }} />
           </motion.div>
 
+          {/* Feature preview grid */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             className="grid grid-cols-2 gap-3 mb-5">
             {[
-              { icon: Flame,      color: "#FB923C", label: "Vibe Streak",     desc: "Build levels like Vibe Starter, Builder & Vibe Master." },
-              { icon: TrendingUp, color: `rgb(${rtPrimary})`, label: "Score History", desc: "Track progress over time and see your weekly average." },
-              { icon: Target,     color: "#9B7EFF", label: "8 Questions",     desc: "Core + rotating questions for consistent daily tracking." },
-              { icon: Heart,      color: "#D4A843", label: "Music Recs",      desc: "Get song recommendations matched to your vibe." },
+              { icon: Flame,      color: "#FB923C", label: "Vibe Streak",        desc: "Build levels like Vibe Starter, Builder & Vibe Master." },
+              { icon: TrendingUp, color: `rgb(${rtPrimary})`, label: "Vibe Trend", desc: "Track progress over time and see your best score." },
+              { icon: Target,     color: "#9B7EFF", label: "Daily Intention",    desc: "Set one aligned action for the day." },
+              { icon: Heart,      color: "#D4A843", label: "Gratitude Check",    desc: "Train your mind to focus on what's good." },
             ].map(({ icon: Icon, color, label, desc }) => (
               <div key={label} className="rounded-2xl p-4"
                 style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -283,6 +282,7 @@ export default function VibeCheck() {
             ))}
           </motion.div>
 
+          {/* Coming Soon: Manifest Mode */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
             className="rounded-2xl p-4 mb-7 flex items-start gap-3"
             style={{ background: "linear-gradient(135deg,rgba(124,58,237,0.1),rgba(155,126,255,0.06))", border: "1px solid rgba(155,126,255,0.2)" }}>
@@ -300,25 +300,21 @@ export default function VibeCheck() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="text-center">
+          {/* CTA */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+            className="text-center">
             <button onClick={() => base44.auth.redirectToLogin()}
               className="w-full py-4 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110 mb-3"
               style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.85),rgb(${rtPrimary}))`, color: "#000", boxShadow: `0 0 30px rgba(${rtPrimary},0.25)` }}>
               Get Started Free
             </button>
-            <p className="text-white/25 text-xs">Takes less than 2 minutes.</p>
+            <p className="text-white/25 text-xs">Takes less than 30 seconds.</p>
           </motion.div>
         </div>
         <Footer />
       </div>
     );
   }
-
-  // ── Current question ──────────────────────────────────────────────────────
-  const currentQ   = questions[qIndex];
-  const totalQ     = questions.length;
-  const progressPct = Math.round(((qIndex) / totalQ) * 100);
-  const selectedScore = answers.find((a) => a.id === currentQ?.id)?.score;
 
   return (
     <div className="min-h-screen flex flex-col" style={{ WebkitOverflowScrolling: "touch" }}>
@@ -340,9 +336,7 @@ export default function VibeCheck() {
               <span className="text-[9px] font-black tracking-[0.3em] uppercase" style={{ color: `rgb(${rtPrimary})` }}>Daily</span>
             </div>
             <h1 className="font-heading font-black text-4xl md:text-5xl text-white mb-2">Vibe Check</h1>
-            <p className="text-white/40 text-sm">
-              {phase === "check" ? "Answer honestly. Your score is revealed at the end." : "Today's results"}
-            </p>
+            <p className="text-white/40 text-sm">What vibe are you moving in today?</p>
           </motion.div>
         </div>
 
@@ -354,158 +348,137 @@ export default function VibeCheck() {
         ) : (
           <AnimatePresence mode="wait">
 
-            {/* ── ASSESSMENT PHASE ── */}
-            {phase === "check" && currentQ && (
-              <motion.div key={`q-${qIndex}`}
-                initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
-                transition={{ duration: 0.22 }}>
+            {/* ── MOOD ── */}
+            {step === "mood" && (
+              <motion.div key="mood" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
                 <SectionCard>
-                  {/* Progress header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      {qIndex > 0 && (
-                        <button onClick={handleBack}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-70"
-                          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }}>
-                          <ArrowLeft className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      <span className="text-xs font-black tracking-widest uppercase" style={{ color: `rgba(${rtPrimary},0.7)` }}>
-                        Question {qIndex + 1} of {totalQ}
-                      </span>
-                    </div>
-                    <span className="text-xs font-black" style={{ color: `rgba(${rtPrimary},0.6)` }}>
-                      {progressPct}%
-                    </span>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="h-1 rounded-full mb-5 overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                    <motion.div className="h-full rounded-full"
-                      animate={{ width: `${progressPct}%` }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                      style={{ background: `linear-gradient(90deg,rgba(${rtPrimary},0.5),rgb(${rtPrimary}))` }} />
-                  </div>
-
-                  {/* Question */}
-                  <div className="flex items-start gap-3 mb-5">
-                    <span className="text-2xl flex-shrink-0 mt-0.5">{currentQ.emoji}</span>
-                    <h2 className="font-heading font-black text-white text-lg leading-snug">{currentQ.question}</h2>
-                  </div>
-
-                  {/* Answer options */}
+                  <p className="text-xs font-black tracking-widest uppercase mb-1" style={{ color: `rgba(${rtPrimary},0.7)` }}>Step 1 of 3 — Vibe Check · 20%</p>
+                  <h2 className="font-heading font-black text-white text-xl mb-4">How are you feeling today?</h2>
                   <div className="space-y-2.5">
-                    {currentQ.options.map((opt, i) => {
-                      const isSelected = selectedScore === opt.score;
-                      return (
-                        <motion.button key={i}
-                          initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.04 }}
-                          onClick={() => handleAnswer(opt.score)}
-                          disabled={saving}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left"
-                          style={{
-                            background: isSelected ? `rgba(${rtPrimary},0.1)` : "rgba(255,255,255,0.03)",
-                            border: `1px solid ${isSelected ? `rgba(${rtPrimary},0.4)` : "rgba(255,255,255,0.07)"}`,
-                            boxShadow: isSelected ? `0 0 20px rgba(${rtPrimary},0.1)` : "none",
-                          }}>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white/85">{opt.label}</p>
+                    {MOODS.map((m) => (
+                      <button key={m.id} onClick={() => setMood(m.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left"
+                        style={{
+                          background: mood === m.id ? `rgba(${rtPrimary},0.1)` : "rgba(255,255,255,0.03)",
+                          border: `1px solid ${mood === m.id ? `rgba(${rtPrimary},0.4)` : "rgba(255,255,255,0.07)"}`,
+                          boxShadow: mood === m.id ? `0 0 20px rgba(${rtPrimary},0.1)` : "none",
+                        }}>
+                        <span className="text-2xl flex-shrink-0">{m.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-white">{m.label}</p>
+                          <p className="text-[11px] text-white/35">{m.desc}</p>
+                        </div>
+                        {mood === m.id && (
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: `rgb(${rtPrimary})` }}>
+                            <Check className="w-3 h-3 text-black" />
                           </div>
-                          {isSelected && (
-                            <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                              style={{ background: `rgb(${rtPrimary})` }}>
-                              <Check className="w-3 h-3 text-black" />
-                            </div>
-                          )}
-                        </motion.button>
-                      );
-                    })}
+                        )}
+                      </button>
+                    ))}
                   </div>
-
-                  {/* Last question saving indicator */}
-                  {saving && (
-                    <div className="mt-5 flex items-center justify-center gap-2 text-xs text-white/40">
-                      <div className="w-4 h-4 rounded-full animate-spin" style={{ border: `2px solid rgba(${rtPrimary},0.3)`, borderTopColor: `rgb(${rtPrimary})` }} />
-                      Calculating your vibe…
-                    </div>
-                  )}
+                  <button onClick={() => mood && setStep("intention")} disabled={!mood}
+                    className="mt-5 w-full py-3.5 rounded-2xl font-black text-sm tracking-wide transition-all disabled:opacity-30"
+                    style={{ background: mood ? `linear-gradient(135deg,rgba(${rtPrimary},0.7),rgb(${rtPrimary}))` : "rgba(255,255,255,0.05)", color: mood ? "#000" : "rgba(255,255,255,0.3)" }}>
+                    Next <ChevronRight className="inline w-4 h-4 ml-1" />
+                  </button>
                 </SectionCard>
               </motion.div>
             )}
 
-            {/* ── RESULT PHASE ── */}
-            {phase === "result" && (
+            {/* ── INTENTION ── */}
+            {step === "intention" && (
+              <motion.div key="intention" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
+                <SectionCard>
+                  <p className="text-xs font-black tracking-widest uppercase mb-1" style={{ color: `rgba(${rtPrimary},0.7)` }}>Step 2 of 3 — Daily Intention · 15%</p>
+                  <h2 className="font-heading font-black text-white text-xl mb-1">What one action would make today feel aligned?</h2>
+                  <p className="text-white/35 text-xs mb-4">Optional — adds 15 points to your Vibe Score.</p>
+                  <textarea value={intention} onChange={(e) => setIntention(e.target.value)}
+                    placeholder="Today I will…" maxLength={200} rows={3}
+                    className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 resize-none focus:outline-none"
+                    style={{ background: "rgba(255,255,255,0.04)", border: `1px solid rgba(${rtPrimary},0.18)` }} />
+                  <button onClick={() => setStep("gratitude")}
+                    className="mt-4 w-full py-3.5 rounded-2xl font-black text-sm tracking-wide transition-all"
+                    style={{ background: `linear-gradient(135deg,rgba(${rtPrimary},0.7),rgb(${rtPrimary}))`, color: "#000" }}>
+                    {intention.trim() ? "Next" : "Skip"} <ChevronRight className="inline w-4 h-4 ml-1" />
+                  </button>
+                </SectionCard>
+              </motion.div>
+            )}
+
+            {/* ── GRATITUDE ── */}
+            {step === "gratitude" && (
+              <motion.div key="gratitude" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
+                <SectionCard>
+                  <p className="text-xs font-black tracking-widest uppercase mb-1" style={{ color: "rgba(212,168,67,0.8)" }}>Step 3 of 3 — Gratitude · 15%</p>
+                  <h2 className="font-heading font-black text-white text-xl mb-1">Name one thing you are grateful for today.</h2>
+                  <p className="text-white/35 text-xs mb-4">Optional — adds 15 points to your Vibe Score.</p>
+                  <textarea value={gratitude} onChange={(e) => setGratitude(e.target.value)}
+                    placeholder="I am grateful for…" maxLength={200} rows={3}
+                    className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 resize-none focus:outline-none"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(212,168,67,0.18)" }} />
+                  <button onClick={handleSubmit} disabled={saving}
+                    className="mt-4 w-full py-3.5 rounded-2xl font-black text-sm tracking-wide transition-all disabled:opacity-50"
+                    style={{ background: "linear-gradient(135deg,rgba(212,168,67,0.8),#D4A843)", color: "#000" }}>
+                    {saving ? "Calculating…" : "See My Vibe Score ⚡"}
+                  </button>
+                </SectionCard>
+              </motion.div>
+            )}
+
+            {/* ── RESULT ── */}
+            {step === "result" && (
               <motion.div key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
 
-                {/* ── Score Reveal Card ── */}
+                {/* Score Meter */}
                 <SectionCard centered>
-                  <p className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40 mb-4">Today's Vibe Score</p>
-
-                  {/* Score ring */}
-                  <ScoreMeter score={vibeScore} color={cat.color} />
-
-                  {/* Category label */}
-                  <div className="flex items-center justify-center gap-2 mt-4 mb-2">
-                    <span className="text-2xl">{cat.emoji}</span>
-                    <p className="font-heading font-black text-xl" style={{ color: cat.color }}>{cat.label}</p>
-                  </div>
-
-                  {/* Personalized message */}
-                  <p className="text-white/55 text-sm leading-relaxed max-w-xs mx-auto">{msg}</p>
-
-                  {/* Change from yesterday + weekly avg */}
-                  <div className="flex items-center justify-center gap-5 mt-5">
-                    {scoreChange !== null && (
-                      <div className="text-center">
-                        <p className="font-heading font-black text-lg"
-                          style={{ color: scoreChange >= 0 ? "#4ADE80" : "#F87171" }}>
-                          {scoreChange >= 0 ? "+" : ""}{scoreChange}
-                        </p>
-                        <p className="text-[10px] text-white/30">vs Yesterday</p>
-                      </div>
-                    )}
-                    {weekAvg !== null && (
-                      <div className="text-center">
-                        <p className="font-heading font-black text-lg" style={{ color: "rgba(212,168,67,0.9)" }}>{weekAvg}</p>
-                        <p className="text-[10px] text-white/30">7-Day Avg</p>
-                      </div>
-                    )}
-                    <div className="text-center">
-                      <p className="font-heading font-black text-lg text-yellow-400">{streak}</p>
-                      <p className="text-[10px] text-white/30">Day Streak 🔥</p>
-                    </div>
+                  <p className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40 mb-4">Today's Vibe</p>
+                  <div className="flex flex-col items-center w-full">
+                    <ScoreMeter score={vibeScore} color={si.color} />
+                    <p className="font-heading font-black text-xl mt-4 text-center w-full" style={{ color: si.color }}>{si.label}</p>
+                    <p className="text-white/50 text-sm mt-2 text-center leading-relaxed w-full max-w-xs mx-auto">{siMsg}</p>
                   </div>
                 </SectionCard>
 
-                {/* ── Music Recommendations ── */}
-                <VibeFrequencyRecs
-                  moodTag={cat.moodTag}
-                  rtPrimary={rtPrimary}
-                  currentTrack={currentTrack}
-                  isPlaying={isPlaying}
-                  onPlay={handlePlay}
-                />
-
-                {/* ── Vibe Progress (free) ── */}
+                {/* Vibe Progress (free) */}
                 <VibeTrendCard allCheckIns={allCheckIns} todayScore={vibeScore} rtPrimary={rtPrimary} isPlus={isPlusUser} />
 
-                {/* ── Daily Streak ── */}
+                {/* Score breakdown (free) */}
+                <SectionCard>
+                  <p className="text-xs font-black tracking-widest uppercase text-white/30 mb-3">Score Breakdown</p>
+                  <div className="space-y-2.5">
+                    <BreakdownRow label="Vibe Check" emoji="😐" value={`${todayCheckIn?.mood_score ?? moodScore}`} weight="20%" rtPrimary={rtPrimary} score={todayCheckIn?.mood_score ?? moodScore} />
+                    <BreakdownRow label="Daily Intention" emoji="🎯" value={intention.trim() ? "100" : "0"} weight="15%" rtPrimary={rtPrimary} score={intention.trim() ? 100 : 0} />
+                    <BreakdownRow label="Gratitude" emoji="🙏" value={gratitude.trim() ? "100" : "0"} weight="15%" rtPrimary={rtPrimary} score={gratitude.trim() ? 100 : 0} />
+                    <BreakdownRow label="Yesterday Completion" emoji="✅" value={yesterdayCompletionScore ? "100" : "0"} weight="10%" rtPrimary={rtPrimary} score={yesterdayCompletionScore} subtitle={yesterdayCompletionScore ? "Completed ✓" : "No entry yesterday"} />
+                    <BreakdownRow label="Consistency" emoji="🔥" value={`${streakScore}`} weight="40%" rtPrimary={rtPrimary} score={streakScore} subtitle={streakLabel(streak)} />
+                  </div>
+                </SectionCard>
+
+                {/* Daily Streak (free) */}
                 <StreakCard streak={streak} />
 
-                {/* ── Future Self Progress (Plus) ── */}
+                {/* Future Self Progress (Plus) */}
                 <FutureSelfCard allCheckIns={allCheckIns} rtPrimary={rtPrimary} isPlus={isPlusUser} />
 
-                {/* ── Achievement Badges (Plus) ── */}
+                {/* Achievement Badges (Plus) */}
                 <BadgesCard allCheckIns={allCheckIns} streak={streak} longestStreak={longestStreak} isPlus={isPlusUser} rtPrimary={rtPrimary} />
 
-                {/* ── Vibe History (Plus) ── */}
+                {/* Vibe History (Plus) */}
                 <VibeHistoryCard allCheckIns={allCheckIns} streak={streak} longestStreak={longestStreak} rtPrimary={rtPrimary} isPlus={isPlusUser} />
 
-                {/* ── Affirmation ── */}
+                {/* Affirmation (free) */}
                 <AffirmationCard rtPrimary={rtPrimary} />
 
-                {/* ── Manifest Mode CTA ── */}
+                {/* Gratitude display (free) */}
+                {(gratitude || todayCheckIn?.gratitude) && (
+                  <SectionCard>
+                    <p className="text-xs font-black tracking-widest uppercase text-white/30 mb-2">Today's Gratitude</p>
+                    <p className="text-white/70 text-sm italic leading-relaxed">"{gratitude || todayCheckIn?.gratitude}"</p>
+                  </SectionCard>
+                )}
+
+                {/* Manifest Mode CTA (free) */}
                 <ManifestModeCTA
                   rtPrimary={rtPrimary}
                   email={waitlistEmail}
@@ -540,13 +513,13 @@ function ScoreMeter({ score, color }) {
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: circumference - progress }}
-          transition={{ duration: 1.4, ease: "easeOut" }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
           style={{ filter: `drop-shadow(0 0 8px ${color})` }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <motion.span className="font-heading font-black text-4xl text-white leading-none"
-          initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.8, duration: 0.4 }}>
+          initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.6, duration: 0.4 }}>
           {score}
         </motion.span>
         <span className="text-[9px] font-black text-white/30 tracking-widest uppercase mt-0.5">VIBE SCORE</span>

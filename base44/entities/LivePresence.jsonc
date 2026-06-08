@@ -46,16 +46,7 @@
         "role": "admin"
       }
     },
-    "update": {
-      "id": "{{_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
+    "update": true,
     "delete": {
       "user_condition": {
         "role": "admin"

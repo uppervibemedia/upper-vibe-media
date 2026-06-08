@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Music4, TrendingUp, Lock, Download } from "lucide-react";
+import { Play, Pause, Music4, TrendingUp, Lock, Heart, Download } from "lucide-react";
 import FreqBadge from "@/components/shared/FreqBadge";
-import FavoriteButton from "@/components/shared/FavoriteButton";
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import SectionHeader from "../shared/SectionHeader";
@@ -67,7 +66,7 @@ const INSIGHT_COLORS = [
   { color: "212,168,67",  label: "Trending" },                // amber
 ];
 
-export default function TrendingTracksSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, user, onToggleFav, isFaved, themeColor, onNeedLogin }) {
+export default function TrendingTracksSection({ allTracks, currentTrack, isPlaying, handlePlayTrack, user, onToggleFav, isFaved, themeColor }) {
   const [streams, setStreams]     = useState([]);
   const [favCounts, setFavCounts] = useState({});
   const [loading, setLoading]     = useState(true);
@@ -176,13 +175,16 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
                 {/* 432 badge — always electric blue */}
                 <FreqBadge label="432" />
                 {/* Heart — always purple */}
-                <FavoriteButton
-                  type="track"
-                  id={track.id}
-                  meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
-                  size="md"
-                  onNeedLogin={onNeedLogin}
-                />
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleFav && onToggleFav(track); }}
+                  className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                  style={isFaved && isFaved("track", track.id) ? {
+                    background: "rgba(155,126,255,0.22)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF"
+                  } : {
+                    background: "rgba(155,126,255,0.06)", border: "1px solid rgba(155,126,255,0.35)", color: "rgba(155,126,255,0.6)"
+                  }}>
+                  <Heart className={`w-3.5 h-3.5 ${isFaved && isFaved("track", track.id) ? "fill-current" : ""}`} />
+                </button>
                 {/* Download — routes to song page */}
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate(`/song/${track.id}?downloadIntent=true`); }}
