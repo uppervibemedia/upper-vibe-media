@@ -26,6 +26,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import IOSTip from "../components/shared/iOSTip";
 import VisualizerModal from "../components/shared/VisualizerModal";
+import DailyRitualBanner from "../components/home/DailyRitualBanner";
 
 // ── Session-stable shuffle ──────────────────────────────────────────────────
 // Same order within a session, different on every new tab/refresh
@@ -437,6 +438,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ── DAILY RITUAL BANNER ── */}
+      <DailyRitualBanner user={user} />
 
       {/* ── RECENTLY PLAYED — only for logged-in users with history ── */}
       <RecentlyPlayedRow
