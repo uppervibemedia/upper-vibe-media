@@ -128,7 +128,7 @@ export default function SongPage() {
   const rts = radioTheme.vars["--rt-secondary"];  // e.g. "155,126,255"
   // Fixed colors (independent of theme)
   const CYAN    = "0,160,220";      // electric blue — Support + Share default
-  const PURPLE  = "91,33,182";      // deep violet — Save/heart
+  const PURPLE  = "155,126,255";     // violet — Save/heart
   const AMBER   = "212,168,67";     // midnight amber — music buttons
 
   useEffect(() => {
