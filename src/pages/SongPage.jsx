@@ -421,21 +421,21 @@ export default function SongPage() {
 
       {/* Main content + sidebar */}
       <div className="max-w-6xl mx-auto px-6 pb-20 pt-6">
-        <div className="grid lg:grid-cols-[1fr_320px] gap-8">
 
-          {/* ── Left: main content ── */}
-          <div>
+        {/* ── Description, Visualizer, Lyrics (full-width above grid) ── */}
+        {(track.description || linkedVisualizer || track.lyrics) && (
+          <div className="mb-6">
             {track.description && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-                className="mb-8 p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                className="mb-6 p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <p className="text-sm text-white/50 leading-relaxed">{track.description}</p>
               </motion.div>
             )}
 
-            {/* Linked Visualizer — only shown if explicitly linked to this song */}
+            {/* Linked Visualizer */}
             {linkedVisualizer && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-                className="mb-8">
+                className="mb-6">
                 <h2 className="font-heading font-bold text-lg text-white mb-4 flex items-center gap-2">
                   <Tv2 className="w-4 h-4 text-primary" /> Music Visualizer
                 </h2>
@@ -484,41 +484,43 @@ export default function SongPage() {
             {/* Lyrics */}
             {track.lyrics && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                className="mb-8">
+                className="mb-6">
                 <h2 className="font-heading font-bold text-lg text-white mb-4">Lyrics</h2>
                 <div className="p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <pre className="text-sm text-white/50 leading-relaxed whitespace-pre-wrap font-body">{track.lyrics}</pre>
                 </div>
               </motion.div>
             )}
-
-            <StreamingPlatformLinks track={track} mode="song" />
-
-            <div className="flex gap-3 flex-wrap mt-6">
-              <Link to="/visualizers"
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                style={{ background: `rgba(${rtp},0.08)`, border: `1px solid rgba(${rtp},0.2)`, color: `rgb(${rtp})` }}>
-                <Tv2 className="w-3.5 h-3.5" /> All Visualizers
-              </Link>
-              <Link to="/music"
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                style={{ background: `rgba(${AMBER},0.08)`, border: `1px solid rgba(${AMBER},0.25)`, color: `rgb(${AMBER})` }}>
-                <Music4 className="w-3.5 h-3.5" /> All Music
-              </Link>
-            </div>
           </div>
+        )}
 
-          {/* ── Right: More Songs sidebar ── */}
-          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
-            <MoreSongsPanel
-              currentTrackId={id}
-              currentTrack={track}
-              allTracks={allTracks}
-              onPlay={handlePlay}
-            />
-          </motion.div>
+        {/* ── Also Available On — above More Songs on all screen sizes ── */}
+        <StreamingPlatformLinks track={track} mode="song" />
 
+        {/* ── Nav links: All Visualizers / All Music ── */}
+        <div className="flex gap-3 flex-wrap mt-5 mb-8">
+          <Link to="/visualizers"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+            style={{ background: `rgba(${rtp},0.08)`, border: `1px solid rgba(${rtp},0.2)`, color: `rgb(${rtp})` }}>
+            <Tv2 className="w-3.5 h-3.5" /> All Visualizers
+          </Link>
+          <Link to="/music"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+            style={{ background: `rgba(${AMBER},0.08)`, border: `1px solid rgba(${AMBER},0.25)`, color: `rgb(${AMBER})` }}>
+            <Music4 className="w-3.5 h-3.5" /> All Music
+          </Link>
         </div>
+
+        {/* ── More Songs ── */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <MoreSongsPanel
+            currentTrackId={id}
+            currentTrack={track}
+            allTracks={allTracks}
+            onPlay={handlePlay}
+          />
+        </motion.div>
+
       </div>
 
       <Footer />
