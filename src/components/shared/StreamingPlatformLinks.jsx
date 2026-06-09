@@ -118,7 +118,7 @@ export default function StreamingPlatformLinks({ track = {}, mode = "song" }) {
         Also Available On
       </p>
       <p style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", marginBottom: 12 }}>
-        Stream this track on major platforms.
+        Also streaming on major platforms.
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {platforms.map((p) => (

@@ -27,6 +27,7 @@ import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import IOSTip from "../components/shared/iOSTip";
 import VisualizerModal from "../components/shared/VisualizerModal";
 import EmailCaptureModal from "../components/shared/EmailCaptureModal";
+import StreamingPlatformLinks from "../components/shared/StreamingPlatformLinks";
 
 // ── Session-stable shuffle ──────────────────────────────────────────────────
 // Same order within a session, different on every new tab/refresh
@@ -766,6 +767,22 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* ── ALSO STREAMING ON ── credibility section, lower page ── */}
+      <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.5 }}>
+        <section className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex flex-col items-center gap-3 text-center py-6 px-4 rounded-2xl"
+            style={{ background: "rgba(255,255,255,0.018)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.3em", textTransform: "uppercase", color: "rgba(255,255,255,0.2)" }}>
+              Also Streaming On
+            </p>
+            <StreamingPlatformLinks track={{}} mode="compact" />
+            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.15)" }}>
+              Also streaming on major platforms — the full experience lives here.
+            </p>
+          </div>
+        </section>
+      </motion.div>
 
       {/* ── EMAIL SIGNUP ── */}
       <EmailSignupSection />
