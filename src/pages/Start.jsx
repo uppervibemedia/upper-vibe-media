@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import EmailCaptureModal from "@/components/shared/EmailCaptureModal";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, Crown, Library, X, UserPlus, LogIn } from "lucide-react";
@@ -265,6 +266,7 @@ export default function Start() {
   const [saving, setSaving] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [authModal, setAuthModal] = useState(false); // "plus" | false
+  const [startInteracted, setStartInteracted] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated, isLoadingAuth, isPlus, isAdmin, navigateToLogin } = useAuth();
 
@@ -314,6 +316,14 @@ export default function Start() {
 
     return () => { document.title = prev; };
   }, []);
+
+  // Track any meaningful interaction (click) for email popup trigger — must be before early returns
+  useEffect(() => {
+    if (startInteracted) return;
+    const mark = () => setStartInteracted(true);
+    window.addEventListener("click", mark, { once: true, passive: true });
+    return () => window.removeEventListener("click", mark);
+  }, [startInteracted]);
 
   // Show loading while auth resolves, or while a normal redirect is in progress.
   // If the user has ?intent=checkout, keep the page visible so triggerCheckout can run.
@@ -681,6 +691,8 @@ export default function Start() {
           </p>
         </div>
       </div>
+
+      <EmailCaptureModal page="start" hasInteracted={startInteracted} />
 
       {/* Auth choice modal — shown when logged-out user taps Plus CTA or Create Account */}
       <AuthChoiceModal

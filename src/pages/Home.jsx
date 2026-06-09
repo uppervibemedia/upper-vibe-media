@@ -26,6 +26,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import IOSTip from "../components/shared/iOSTip";
 import VisualizerModal from "../components/shared/VisualizerModal";
+import EmailCaptureModal from "../components/shared/EmailCaptureModal";
 
 // ── Session-stable shuffle ──────────────────────────────────────────────────
 // Same order within a session, different on every new tab/refresh
@@ -774,6 +775,7 @@ export default function Home() {
       <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
       <PremiumDownloadModal open={premiumModal} onClose={() => setPremiumModal(false)} />
       <IOSTip trigger="on-play" isPlaying={isPlaying} />
+      <EmailCaptureModal page="home" isPlaying={isPlaying} />
       {vizModal && (
         <VisualizerModal
           viz={vizModal}
