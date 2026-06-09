@@ -125,6 +125,22 @@
     "release_date": {
       "type": "string",
       "format": "date"
+    },
+    "spotify_url": {
+      "type": "string",
+      "description": "Spotify track URL"
+    },
+    "apple_music_url": {
+      "type": "string",
+      "description": "Apple Music track URL"
+    },
+    "youtube_url": {
+      "type": "string",
+      "description": "YouTube video/music URL"
+    },
+    "youtube_music_url": {
+      "type": "string",
+      "description": "YouTube Music track URL"
     }
   },
   "required": [

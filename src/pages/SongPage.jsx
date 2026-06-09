@@ -25,6 +25,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import IOSTip from "@/components/shared/iOSTip";
 import NewBadge from "@/components/shared/NewBadge";
+import StreamingPlatformLinks from "@/components/shared/StreamingPlatformLinks";
 
 function toEmbedUrl(url) {
   if (!url || typeof url !== "string") return null;
@@ -491,7 +492,9 @@ export default function SongPage() {
               </motion.div>
             )}
 
-            <div className="flex gap-3 flex-wrap">
+            <StreamingPlatformLinks track={track} mode="song" />
+
+            <div className="flex gap-3 flex-wrap mt-6">
               <Link to="/visualizers"
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:brightness-110"
                 style={{ background: `rgba(${rtp},0.08)`, border: `1px solid rgba(${rtp},0.2)`, color: `rgb(${rtp})` }}>
