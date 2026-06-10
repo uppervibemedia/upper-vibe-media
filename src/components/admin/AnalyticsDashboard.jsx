@@ -5,21 +5,59 @@ import { Users, Eye, Music, Download, Mail, Crown, TrendingUp, Play, Bug, Chevro
 import LiveUsersCard from "./LiveUsersCard";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Date helpers
+// Date helpers — all boundaries in LOCAL timezone
 // ─────────────────────────────────────────────────────────────────────────────
+const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 const DATE_FILTERS = [
-  { label: "Today",   days: 1 },
-  { label: "7 Days",  days: 7 },
-  { label: "30 Days", days: 30 },
+  { label: "Today",    days: 1 },
+  { label: "7 Days",   days: 7 },
+  { label: "30 Days",  days: 30 },
   { label: "All Time", days: 0 },
 ];
 
-function daysAgo(n) {
+// Returns start-of-day (local) n days ago as a Date object, or null for "all time"
+function startOfDayNDaysAgo(n) {
   if (n === 0) return null;
   const d = new Date();
-  d.setDate(d.getDate() - n);
+  d.setDate(d.getDate() - (n - 1));
   d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+  return d;
+}
+
+// Returns the local YYYY-MM-DD string for any Date
+function localDateStr(dateInput) {
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  const year  = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day   = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unified Song Play dedup
+// "Song Play" = audio started by a non-admin visitor,
+// deduped by (visitorId + trackId) within a 60-second window.
+// Returns an array of qualifying events (one per play after dedup).
+// ─────────────────────────────────────────────────────────────────────────────
+function dedupSongPlays(songPlayEvents) {
+  // Sort ascending so earlier events win the dedup window
+  const sorted = [...songPlayEvents].sort((a, b) =>
+    new Date(a.created_date) - new Date(b.created_date)
+  );
+  const lastSeen = {}; // key → timestamp ms
+  const result = [];
+  for (const e of sorted) {
+    const visitor = e.user_id || e.anonymous_session_id || "unknown";
+    const track   = e.song_id || e.song_title || "unknown";
+    const key     = `${visitor}|${track}`;
+    const ts      = new Date(e.created_date).getTime();
+    if (!lastSeen[key] || ts - lastSeen[key] > 60_000) {
+      lastSeen[key] = ts;
+      result.push(e);
+    }
+  }
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -72,9 +110,15 @@ function TopList({ title, items, keyField, valueField, valueLabel }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Debug Panel
 // ─────────────────────────────────────────────────────────────────────────────
-function DebugPanel({ events }) {
+function DebugPanel({ events, rawAudioStarts, dedupedPlays, qualifiedStreams, completions, filterDays, sinceDate }) {
   const [open, setOpen] = useState(false);
-  const recent = events.slice(0, 50);
+
+  const dateRangeLabel = filterDays === 0
+    ? "All Time"
+    : filterDays === 1
+      ? `Today (${localDateStr(new Date())})`
+      : `Last ${filterDays} days (from ${localDateStr(sinceDate)} → ${localDateStr(new Date())})`;
+
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,100,100,0.2)" }}>
       <button
@@ -84,51 +128,75 @@ function DebugPanel({ events }) {
       >
         <div className="flex items-center gap-2">
           <Bug className="w-4 h-4 text-red-400/60" />
-          <p className="text-sm font-bold text-white/60">Analytics Debug — Last 50 Raw Events</p>
+          <p className="text-sm font-bold text-white/60">Analytics Debug Panel</p>
         </div>
         {open ? <ChevronUp className="w-4 h-4 text-white/30" /> : <ChevronDown className="w-4 h-4 text-white/30" />}
       </button>
 
       {open && (
-        <div className="overflow-x-auto">
-          {recent.length === 0 ? (
-            <p className="px-5 py-4 text-xs text-white/30">No events in current filter window.</p>
-          ) : (
-            <table className="w-full text-[10px] text-white/60" style={{ minWidth: 900 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  {["Type","Date/Time","Visitor ID","Session ID","Page","Song","Source","Device","is_admin"].map(h => (
-                    <th key={h} className="px-3 py-2 text-left font-bold text-white/30 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((e, i) => (
-                  <tr key={e.id || i} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}
-                    className="hover:bg-white/[0.02]">
-                    <td className="px-3 py-1.5 font-bold whitespace-nowrap"
-                      style={{ color: e.event_type.includes("song") ? "#34D399" : e.event_type === "page_view" ? "#60A5FA" : "#D4A843" }}>
-                      {e.event_type}
-                    </td>
-                    <td className="px-3 py-1.5 whitespace-nowrap text-white/40">
-                      {e.created_date ? new Date(e.created_date).toLocaleString() : "—"}
-                    </td>
-                    <td className="px-3 py-1.5 font-mono max-w-[100px] truncate" title={e.user_id}>{e.user_id || "—"}</td>
-                    <td className="px-3 py-1.5 font-mono max-w-[100px] truncate" title={e.anonymous_session_id}>{e.anonymous_session_id || "—"}</td>
-                    <td className="px-3 py-1.5 max-w-[120px] truncate" title={e.page_url}>{e.page_url || "—"}</td>
-                    <td className="px-3 py-1.5 max-w-[120px] truncate" title={e.song_title || e.song_id}>{e.song_title || e.song_id || "—"}</td>
-                    <td className="px-3 py-1.5 whitespace-nowrap">{e.traffic_source || "—"}</td>
-                    <td className="px-3 py-1.5 whitespace-nowrap">{e.device_type || "—"}</td>
-                    <td className="px-3 py-1.5">
-                      {e.is_admin === true
-                        ? <span className="text-red-400 font-bold">ADMIN</span>
-                        : <span className="text-green-400/60">no</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div className="p-5 space-y-5" style={{ background: "rgba(255,30,30,0.02)" }}>
+          {/* Summary counts */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {[
+              { label: "Raw audio_start events",  value: rawAudioStarts,   color: "#F87171" },
+              { label: "Deduped song plays",       value: dedupedPlays,     color: "#34D399" },
+              { label: "Qualified streams (≥30s)", value: qualifiedStreams, color: "#4ADE80" },
+              { label: "Song completions (≥90%)",  value: completions,      color: "#60A5FA" },
+              { label: "Date range",               value: dateRangeLabel,   color: "#D4A843", wide: true },
+              { label: "Timezone",                 value: TZ,               color: "#A78BFA", wide: true },
+            ].map(({ label, value, color, wide }) => (
+              <div key={label}
+                className={`p-3 rounded-xl ${wide ? "md:col-span-1" : ""}`}
+                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${color}22` }}>
+                <p className="text-[10px] font-bold mb-1" style={{ color: `${color}99` }}>{label}</p>
+                <p className="text-sm font-black" style={{ color }}>{value ?? "—"}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Raw event table */}
+          <div>
+            <p className="text-xs font-bold text-white/40 mb-2">Last 50 events in window (non-admin)</p>
+            <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+              {events.length === 0 ? (
+                <p className="px-5 py-4 text-xs text-white/30">No events in current filter window.</p>
+              ) : (
+                <table className="w-full text-[10px] text-white/60" style={{ minWidth: 900 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      {["Type","Local Date/Time","Visitor ID","Session ID","Song ID","Song Title","Device","is_admin"].map(h => (
+                        <th key={h} className="px-3 py-2 text-left font-bold text-white/30 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {events.slice(0, 50).map((e, i) => (
+                      <tr key={e.id || i} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}
+                        className="hover:bg-white/[0.02]">
+                        <td className="px-3 py-1.5 font-bold whitespace-nowrap"
+                          style={{ color: e.event_type === "song_play" ? "#34D399" : e.event_type === "song_complete" ? "#60A5FA" : e.event_type === "page_view" ? "#60A5FA" : "#D4A843" }}>
+                          {e.event_type}
+                        </td>
+                        <td className="px-3 py-1.5 whitespace-nowrap text-white/40">
+                          {e.created_date ? new Date(e.created_date).toLocaleString() : "—"}
+                        </td>
+                        <td className="px-3 py-1.5 font-mono max-w-[90px] truncate" title={e.user_id}>{e.user_id || "—"}</td>
+                        <td className="px-3 py-1.5 font-mono max-w-[90px] truncate" title={e.anonymous_session_id}>{e.anonymous_session_id || "—"}</td>
+                        <td className="px-3 py-1.5 font-mono max-w-[80px] truncate" title={e.song_id}>{e.song_id || "—"}</td>
+                        <td className="px-3 py-1.5 max-w-[120px] truncate" title={e.song_title}>{e.song_title || "—"}</td>
+                        <td className="px-3 py-1.5 whitespace-nowrap">{e.device_type || "—"}</td>
+                        <td className="px-3 py-1.5">
+                          {e.is_admin === true
+                            ? <span className="text-red-400 font-bold">ADMIN</span>
+                            : <span className="text-green-400/60">no</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -171,25 +239,25 @@ export default function AnalyticsDashboard() {
   useEffect(() => { load(); }, [load]);
 
   // ── Apply date filter + exclude admins ────────────────────────────────────
-  const since = daysAgo(filterDays);
+  // sinceDate is the LOCAL start-of-day boundary (or null for all-time)
+  const sinceDate = useMemo(() => startOfDayNDaysAgo(filterDays), [filterDays]);
 
   const events = useMemo(() => {
     let arr = allEvents.filter(r => r.is_admin !== true);
-    if (since) arr = arr.filter(r => r.created_date >= since);
+    if (sinceDate) arr = arr.filter(r => new Date(r.created_date) >= sinceDate);
     return arr;
-  }, [allEvents, since]);
+  }, [allEvents, sinceDate]);
 
   const streams = useMemo(() => {
-    let arr = allStreams; // SongStream has no is_admin flag; filtered via user context
-    if (since) arr = arr.filter(r => r.created_date >= since);
+    let arr = allStreams;
+    if (sinceDate) arr = arr.filter(r => new Date(r.created_date) >= sinceDate);
     return arr;
-  }, [allStreams, since]);
+  }, [allStreams, sinceDate]);
 
   const subs = useMemo(() => {
-    // Email subscribers: show those who signed up in the selected window
-    if (!since) return allSubs.filter(s => s.subscribed_status !== "unsubscribed");
-    return allSubs.filter(s => s.subscribed_status !== "unsubscribed" && s.created_date >= since);
-  }, [allSubs, since]);
+    if (!sinceDate) return allSubs.filter(s => s.subscribed_status !== "unsubscribed");
+    return allSubs.filter(s => s.subscribed_status !== "unsubscribed" && new Date(s.created_date) >= sinceDate);
+  }, [allSubs, sinceDate]);
 
   // ── Visitor ID helper (stable across events) ──────────────────────────────
   // user_id field holds the stable visitor ID written by analytics.js v3.
@@ -228,8 +296,19 @@ export default function AnalyticsDashboard() {
     return ids.size;
   }, [pageViewEvents]);
 
-  // ── Song Plays: raw song_play count (already deduplicated at write time) ──
-  const songPlays = useMemo(() => events.filter(e => e.event_type === "song_play").length, [events]);
+  // ── Raw audio starts (all song_play events in window, before dedup) ───────
+  const rawAudioStartEvents = useMemo(
+    () => events.filter(e => e.event_type === "song_play"),
+    [events]
+  );
+
+  // ── Deduped Song Plays — unified function used by BOTH stat card AND chart ─
+  // One play per (visitor + track) within 60 seconds.
+  const dedupedSongPlayEvents = useMemo(
+    () => dedupSongPlays(rawAudioStartEvents),
+    [rawAudioStartEvents]
+  );
+  const songPlays = dedupedSongPlayEvents.length;
 
   // ── Completions ───────────────────────────────────────────────────────────
   const completions = useMemo(() => events.filter(e => e.event_type === "song_complete").length, [events]);
@@ -338,37 +417,42 @@ export default function AnalyticsDashboard() {
   }, [pageViewEvents]);
 
   // ── Daily Traffic Chart ───────────────────────────────────────────────────
-  // Number of days to show depends on the filter
-  const chartDays = filterDays === 1 ? 1 : filterDays === 7 ? 7 : filterDays === 30 ? 30 : 30;
+  // For "All Time" show last 30 days in the chart (keep it readable).
+  const chartDays = filterDays === 0 ? 30 : filterDays;
 
   const dailyData = useMemo(() => {
     const now = new Date();
     const buckets = {};
 
+    // Build buckets keyed by LOCAL date string
     for (let i = chartDays - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const dayStr = d.toISOString().slice(0, 10);
+      d.setHours(0, 0, 0, 0);
+      const dayStr = localDateStr(d);
       const label  = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       buckets[dayStr] = { date: label, views: 0, plays: 0, visitors: new Set() };
     }
 
+    // Page views — unique per visitor+page+day (local timezone)
     const pageSeenInDay = new Set();
     events.forEach(e => {
-      const dayStr = e.created_date?.slice(0, 10);
-      if (!dayStr || !buckets[dayStr]) return;
+      if (e.event_type !== "page_view") return;
+      const dayStr = localDateStr(e.created_date);
+      if (!buckets[dayStr]) return;
+      const dedupKey = `${visitorOf(e)}|${e.page_url || "/"}|${dayStr}`;
+      if (!pageSeenInDay.has(dedupKey)) {
+        pageSeenInDay.add(dedupKey);
+        buckets[dayStr].views++;
+      }
+      buckets[dayStr].visitors.add(visitorOf(e));
+    });
 
-      if (e.event_type === "page_view") {
-        const dedupKey = `${visitorOf(e)}|${e.page_url || "/"}|${dayStr}`;
-        if (!pageSeenInDay.has(dedupKey)) {
-          pageSeenInDay.add(dedupKey);
-          buckets[dayStr].views++;
-        }
-        buckets[dayStr].visitors.add(visitorOf(e));
-      }
-      if (e.event_type === "song_play") {
-        buckets[dayStr].plays++;
-      }
+    // Song plays — use the SAME deduped events as the stat card
+    dedupedSongPlayEvents.forEach(e => {
+      const dayStr = localDateStr(e.created_date);
+      if (!buckets[dayStr]) return;
+      buckets[dayStr].plays++;
     });
 
     return Object.values(buckets).map(b => ({
@@ -377,7 +461,7 @@ export default function AnalyticsDashboard() {
       plays:    b.plays,
       visitors: b.visitors.size,
     }));
-  }, [events, chartDays]);
+  }, [events, dedupedSongPlayEvents, chartDays]);
 
   if (loading) {
     return (
@@ -504,7 +588,15 @@ export default function AnalyticsDashboard() {
       </div>
 
       {/* Debug panel */}
-      <DebugPanel events={events} />
+      <DebugPanel
+        events={events}
+        rawAudioStarts={rawAudioStartEvents.length}
+        dedupedPlays={songPlays}
+        qualifiedStreams={qualifiedStreams}
+        completions={completions}
+        filterDays={filterDays}
+        sinceDate={sinceDate}
+      />
     </div>
   );
 }
