@@ -13,7 +13,7 @@ import { useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { getVisitorId, getSessionId } from "@/lib/analytics";
 
-const HEARTBEAT_INTERVAL = 30_000; // 30 seconds
+const HEARTBEAT_INTERVAL = 10_000; // 10 seconds
 const PRESENCE_RECORD_KEY = "uvm_presence_id"; // localStorage: ID of our LivePresence record
 
 // Page path → human label mapping
