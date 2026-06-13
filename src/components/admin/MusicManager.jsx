@@ -2,10 +2,11 @@ import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckSquare, Square, Trash2, Download, Lock, Unlock, Tag, Users, Waves,
-  Edit2, Search, X, Star, Eye, EyeOff, Music4, Brain, Loader2, Shield, ShieldOff
+  Edit2, Search, X, Star, Eye, EyeOff, Music4, Brain, Loader2, Shield, ShieldOff, AlertTriangle
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import CoverImage from "@/components/shared/CoverImage";
 
 const MOOD_OPTIONS = ["motivation", "focus", "healing", "confidence", "money", "night", "driving", "meditation", "love", "spiritual"];
 const TIER_OPTIONS = ["free", "supporter", "premium"];
@@ -185,6 +186,12 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
     setSelected(new Set());
     onRefresh();
   };
+
+  // Count tracks missing cover art — admin-only debug warning
+  const tracksMissingCovers = useMemo(
+    () => tracks.filter((t) => !t.cover_url || t.cover_url.trim() === ""),
+    [tracks]
+  );
 
   return (
     <div>
@@ -376,13 +383,17 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        {track.cover_url ? (
-                          <img src={track.cover_url} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
-                        ) : (
-                          <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0">
-                            <Music4 className="w-4 h-4 text-muted-foreground/40" />
-                          </div>
-                        )}
+                        <CoverImage
+                          src={track.cover_url}
+                          alt={track.title}
+                          width={36}
+                          height={36}
+                          className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0"
+                          eager={false}
+                          iconClassName="w-4 h-4"
+                          fallbackOpacityClass="text-muted-foreground/40"
+                          fallbackBgClass="bg-muted/50"
+                        />
                         <div className="min-w-0">
                           <p className="font-medium text-foreground truncate max-w-[140px]">{track.title}</p>
                           {track.duration && <p className="text-[10px] text-muted-foreground">{track.duration}</p>}
@@ -461,6 +472,21 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
           </table>
           {filtered.length === 0 && (
             <div className="py-12 text-center text-muted-foreground text-sm">No tracks found</div>
+          )}
+          {tracksMissingCovers.length > 0 && (
+            <div className="px-4 py-3 mb-2 rounded-xl flex items-center gap-3"
+              style={{ background: "rgba(255,180,0,0.06)", border: "1px solid rgba(255,180,0,0.18)" }}>
+              <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+              <div>
+                <span className="text-xs font-bold text-yellow-400">
+                  {tracksMissingCovers.length} track{tracksMissingCovers.length !== 1 ? "s" : ""} missing cover art
+                </span>
+                <p className="text-[10px] text-yellow-400/50 mt-0.5">
+                  {tracksMissingCovers.slice(0, 5).map((t) => t.title).join(", ")}
+                  {tracksMissingCovers.length > 5 ? ` +${tracksMissingCovers.length - 5} more` : ""}
+                </p>
+              </div>
+            </div>
           )}
         </div>
       </div>

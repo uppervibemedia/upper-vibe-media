@@ -7,6 +7,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import { NewBadgeOverlay } from "@/components/shared/NewBadge";
 import SaveHeartButton from "@/components/shared/SaveHeartButton";
+import CoverImage from "@/components/shared/CoverImage";
 
 const PAGE_SIZE = 4;
 const AUTO_CYCLE_MS = 7000;
@@ -155,14 +156,14 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                   border: `1px solid ${isCurrent ? `rgba(${color},0.25)` : "rgba(255,255,255,0.07)"}`,
                 }}>
                 <div className="relative w-full aspect-square overflow-hidden">
-                  {track.cover_url ? (
-                    <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center"
-                      style={{ background: "linear-gradient(135deg,rgba(0,160,220,0.1),rgba(0,130,200,0.04))" }}>
-                      <Music4 className="w-10 h-10 text-cyan-400/15" />
-                    </div>
-                  )}
+                  <CoverImage
+                    src={track.cover_url}
+                    alt={track.title}
+                    className="w-full h-full"
+                    iconClassName="w-10 h-10"
+                    fallbackOpacityClass="text-cyan-400/15"
+                    fallbackBgClass="bg-gradient-to-br from-cyan-400/10 to-cyan-400/[0.04]"
+                  />
                   <div
                     className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     style={{ background: "rgba(0,0,0,0.45)" }}
@@ -232,18 +233,14 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                       boxShadow: isCurrent ? `0 0 30px rgba(${color},0.1)` : "none",
                     }}>
                     <div className="relative w-full aspect-square overflow-hidden">
-                      {track.cover_url ? (
-                        <img
-                          src={track.cover_url}
-                          alt={track.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center"
-                          style={{ background: "linear-gradient(135deg,rgba(0,160,220,0.1),rgba(0,130,200,0.04))" }}>
-                          <Music4 className="w-16 h-16 text-cyan-400/15" />
-                        </div>
-                      )}
+                      <CoverImage
+                        src={track.cover_url}
+                        alt={track.title}
+                        className="w-full h-full group-hover:scale-105 transition-transform duration-500"
+                        iconClassName="w-16 h-16"
+                        fallbackOpacityClass="text-cyan-400/15"
+                        fallbackBgClass="bg-gradient-to-br from-cyan-400/10 to-cyan-400/[0.04]"
+                      />
                       <div
                         className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
                         style={{ background: "rgba(0,0,0,0.45)" }}

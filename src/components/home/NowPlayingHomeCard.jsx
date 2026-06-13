@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Waves, Radio, Music4 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
+import CoverImage from "@/components/shared/CoverImage";
 import { useRadio } from "@/context/RadioContext";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
@@ -38,19 +39,14 @@ export default function NowPlayingHomeCard() {
           >
             {/* Cover art */}
             <div className="relative flex-shrink-0">
-              {(currentTrack.cover_url || currentRadioSong?.cover_url) ? (
-                <img
-                  src={currentTrack.cover_url || currentRadioSong?.cover_url}
-                  alt={currentTrack.title}
-                  className="w-[110px] h-[110px] rounded-2xl object-cover ring-1 ring-white/10"
-                  style={{ boxShadow: `0 6px 28px rgba(${rtPrimary},0.3)` }}
-                />
-              ) : (
-                <div className="w-[110px] h-[110px] rounded-2xl flex items-center justify-center"
-                  style={{ background: `rgba(${rtPrimary},0.1)` }}>
-                  <Music4 className="w-10 h-10" style={{ color: `rgba(${rtPrimary},0.5)` }} />
-                </div>
-              )}
+              <CoverImage
+                src={currentTrack.cover_url || currentRadioSong?.cover_url}
+                alt={currentTrack.title}
+                className="w-[110px] h-[110px] rounded-2xl overflow-hidden ring-1 ring-white/10"
+                eager
+                iconClassName="w-10 h-10"
+                fallbackOpacityClass="text-white/50"
+              />
               {/* Pulsing ring when playing */}
               {isPlaying && (
                 <motion.div
@@ -124,11 +120,12 @@ export default function NowPlayingHomeCard() {
           >
             {/* Real cover art */}
             <div className="relative flex-shrink-0">
-              <img
+              <CoverImage
                 src={displayTrack.cover_url}
                 alt={displayTrack.title}
-                className="w-[110px] h-[110px] rounded-2xl object-cover ring-1 ring-white/10"
-                style={{ boxShadow: `0 6px 28px rgba(${rtPrimary},0.25)` }}
+                className="w-[110px] h-[110px] rounded-2xl overflow-hidden ring-1 ring-white/10"
+                eager
+                iconClassName="w-10 h-10"
               />
               <motion.div
                 animate={{ scale: [1, 1.14, 1], opacity: [0.25, 0, 0.25] }}

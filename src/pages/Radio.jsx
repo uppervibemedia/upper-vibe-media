@@ -22,6 +22,7 @@ import RadioThemePicker, { useRadioTheme, getPulseEnabled, setPulseEnabled } fro
 import RadioVisualizer, { MODES } from "../components/radio/RadioVisualizer";
 import usePageVisible from "../hooks/usePageVisible";
 import IOSTip from "../components/shared/iOSTip";
+import CoverImage from "@/components/shared/CoverImage";
 
 // Breathing glow animation — injected once
 const GLOW_STYLE_ID = "radio-breathe-style";
@@ -327,19 +328,14 @@ export default function RadioPage() {
                     </div>
                   ) : (
                     <div className="relative w-36 h-36">
-                      {currentRadioSong.cover_url ? (
-                        <img src={currentRadioSong.cover_url} alt={currentRadioSong.title}
-                          className="w-full h-full rounded-2xl object-cover"
-                          style={{ boxShadow: playingThisRadioSong
-                            ? `0 8px 48px rgba(${theme.vars["--rt-primary"]},0.25), 0 4px 20px rgba(0,0,0,0.5)`
-                            : "0 8px 32px rgba(0,0,0,0.5)"
-                          }} />
-                      ) : (
-                        <div className="w-full h-full rounded-2xl flex items-center justify-center"
-                          style={{ background: `rgba(${theme.vars["--rt-primary"]},0.08)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.15)` }}>
-                          <Music4 className="w-12 h-12 opacity-20" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
-                        </div>
-                      )}
+                      <CoverImage
+                        src={currentRadioSong?.cover_url}
+                        alt={currentRadioSong?.title}
+                        className="w-full h-full rounded-2xl overflow-hidden"
+                        eager
+                        iconClassName="w-12 h-12"
+                        fallbackOpacityClass="opacity-20"
+                      />
                       {playingThisRadioSong && (
                         <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center"
                           style={{ background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${theme.vars["--rt-primary"]}))` }}>

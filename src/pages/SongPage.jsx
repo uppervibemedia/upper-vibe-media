@@ -26,6 +26,7 @@ import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import IOSTip from "@/components/shared/iOSTip";
 import NewBadge from "@/components/shared/NewBadge";
 import StreamingPlatformLinks from "@/components/shared/StreamingPlatformLinks";
+import CoverImage from "@/components/shared/CoverImage";
 
 function toEmbedUrl(url) {
   if (!url || typeof url !== "string") return null;
@@ -72,16 +73,14 @@ function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
             style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
             onClick={() => onPlay(song)}>
             {/* Thumbnail */}
-            <div className="relative flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-black">
-              {song.cover_url ? (
-                <img src={song.cover_url} alt={song.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center"
-                  style={{ background: `rgba(${mspRtp},0.06)` }}>
-                  <Music4 className="w-5 h-5 text-white/20" />
-                </div>
-              )}
+            <div className="relative flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden">
+              <CoverImage
+                src={song.cover_url}
+                alt={song.title}
+                className="w-full h-full group-hover:scale-105 transition-transform duration-300"
+                iconClassName="w-5 h-5"
+                fallbackOpacityClass="text-white/20"
+              />
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ background: "rgba(0,0,0,0.55)" }}>
                 <Play className="w-4 h-4 text-white ml-0.5" />
@@ -285,16 +284,15 @@ export default function SongPage() {
                 className="absolute inset-0 rounded-2xl pointer-events-none"
                 style={{ border: `2px solid rgb(${rtp})`, boxShadow: `0 0 30px rgba(${rtp},0.5)` }}
               />
-              {track.cover_url ? (
-                <img src={track.cover_url} alt={track.title}
-                  className="relative z-10 w-44 h-44 sm:w-64 sm:h-64 rounded-2xl object-cover mx-auto"
-                  style={{ boxShadow: `0 8px 60px rgba(0,0,0,0.7), 0 0 40px rgba(${rtp},0.15)` }} />
-              ) : (
-                <div className="relative z-10 w-44 h-44 sm:w-64 sm:h-64 rounded-2xl mx-auto flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.1),rgba(212,168,67,0.06))", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <Music4 className="w-16 h-16 text-white/10" />
-                </div>
-              )}
+              <CoverImage
+                src={track.cover_url}
+                alt={track.title}
+                className="relative z-10 w-44 h-44 sm:w-64 sm:h-64 rounded-2xl overflow-hidden mx-auto"
+                eager
+                iconClassName="w-16 h-16"
+                fallbackOpacityClass="text-white/10"
+                fallbackBgClass="bg-gradient-to-br from-cyan-400/10 to-amber-400/6 border border-white/10"
+              />
             </div>
 
             {/* Info */}

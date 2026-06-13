@@ -20,6 +20,7 @@ import Footer from "../components/shared/Footer";
 import VisualizerEditModal from "../components/visualizers/VisualizerEditModal";
 import VisualizerModal from "../components/shared/VisualizerModal";
 import SaveHeartButton from "@/components/shared/SaveHeartButton";
+import CoverImage from "@/components/shared/CoverImage";
 import { useTheme } from "../context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 
@@ -71,14 +72,15 @@ function VisualizerCard({ viz, linkedTrack, isAdmin, onEdit, onPlay, rgb, onWatc
 
       <div className="relative w-full cursor-pointer group" style={{ paddingTop: "56.25%" }} onClick={() => onWatch(viz)}>
         <div className="absolute inset-0">
-          {thumb ? (
-            <img src={thumb} alt={viz.title} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg,rgba(0,229,255,0.07),rgba(212,168,67,0.04))" }}>
-              <Tv2 className="w-10 h-10 text-white/10" />
-            </div>
-          )}
+          <CoverImage
+            src={thumb}
+            alt={viz.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            eager={false}
+            iconClassName="w-10 h-10"
+            fallbackOpacityClass="text-white/10"
+            fallbackBgClass="bg-gradient-to-br from-cyan-400/[0.07] to-amber-400/[0.04]"
+          />
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.35)" }}>
             <div className="w-14 h-14 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
               style={{ background: `linear-gradient(135deg,rgb(${rgb}),rgb(${rgb}))`, boxShadow: `0 0 32px rgba(${rgb},0.4)` }}>

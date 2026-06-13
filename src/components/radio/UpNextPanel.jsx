@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "./RadioThemePicker";
 import NewBadge from "@/components/shared/NewBadge";
+import CoverImage from "@/components/shared/CoverImage";
 
 export default function UpNextPanel({ upNext, onJump }) {
   const { accentId } = useTheme();
@@ -36,15 +37,14 @@ export default function UpNextPanel({ upNext, onJump }) {
 
             {/* Cover */}
             <div className="relative flex-shrink-0 w-10 h-10 rounded-xl overflow-hidden">
-              {song.cover_url ? (
-                <img src={song.cover_url} alt={song.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center"
-                  style={{ background: "rgba(0,200,220,0.06)" }}>
-                  <Music4 className="w-3.5 h-3.5 text-white/20" />
-                </div>
-              )}
+              <CoverImage
+                src={song.cover_url}
+                alt={song.title}
+                className="w-full h-full group-hover:scale-105 transition-transform duration-300"
+                iconClassName="w-3.5 h-3.5"
+                fallbackOpacityClass="text-white/20"
+                fallbackBgClass="bg-cyan-400/[0.06]"
+              />
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ background: "rgba(0,0,0,0.55)" }}>
                 <Play className="w-3 h-3 text-white ml-0.5" />

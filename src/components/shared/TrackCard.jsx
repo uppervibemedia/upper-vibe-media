@@ -7,6 +7,7 @@ import DownloadButton from "./DownloadButton";
 import TrackVersionSelector from "./TrackVersionSelector";
 import { useTrackVersions, pickBestVersion, getVersionBadge } from "@/hooks/useTrackVersions";
 import { NewBadgeOverlay } from "@/components/shared/NewBadge";
+import CoverImage from "@/components/shared/CoverImage";
 
 export default function TrackCard({ track, locked, onLockedClick, userTier = "free", userEmail, onUpgrade, showVersions = false }) {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
@@ -64,11 +65,16 @@ export default function TrackCard({ track, locked, onLockedClick, userTier = "fr
     >
       {/* Cover art */}
       <div className="relative aspect-square overflow-hidden">
-        <img
-          src={track.cover_url || ""}
-          alt={track.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
+        <div className="w-full h-full transition-transform duration-500 group-hover:scale-110">
+          <CoverImage
+            src={track.cover_url}
+            alt={track.title}
+            className="w-full h-full"
+            eager={false}
+            iconClassName="w-8 h-8"
+            fallbackOpacityClass="text-white/10"
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
 
         {/* Play button overlay */}

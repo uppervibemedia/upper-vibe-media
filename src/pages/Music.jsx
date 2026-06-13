@@ -13,7 +13,9 @@ import FavLoginModal from "../components/shared/FavLoginModal";
 import SupportModal from "../components/shared/SupportModal";
 import FavoriteButton from "@/components/shared/FavoriteButton";
 import SaveHeartButton from "@/components/shared/SaveHeartButton";
+import CoverImage from "@/components/shared/CoverImage";
 import PullToRefresh from "../components/shared/PullToRefresh";
+import { useImagePreloader } from "@/hooks/useImagePreloader";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import IOSTip from "../components/shared/iOSTip";
@@ -87,6 +89,10 @@ export default function Music() {
   }, [refreshKey]);
 
   const handleRefresh = async () => { invalidateTrackCache(); setRefreshKey((k) => k + 1); };
+
+  // Preload first 12 cover images for instant rendering
+  const firstCoverUrls = useMemo(() => filtered.slice(0, 12).map((t) => t.cover_url).filter(Boolean), [filtered]);
+  useImagePreloader(firstCoverUrls);
 
   // Reset visible count when search/filter changes
   const prevFilterRef = React.useRef({ search: "", activeFilter: "all" });
@@ -328,14 +334,17 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
     >
       {/* Cover art */}
       <Link to={`/song/${track.id}`} className="relative flex-shrink-0 block" onClick={(e) => e.stopPropagation()}>
-        {track.cover_url ? (
-          <img src={track.cover_url} alt={track.title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-xl object-cover" />
-        ) : (
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(0,160,220,0.08)" }}>
-            <Music4 className="w-5 h-5 text-cyan-400/30" />
-          </div>
-        )}
+        <CoverImage
+          src={track.cover_url}
+          alt={track.title}
+          width={48}
+          height={48}
+          className="w-12 h-12 rounded-xl overflow-hidden"
+          eager={false}
+          iconClassName="w-5 h-5"
+          fallbackOpacityClass="text-cyan-400/30"
+          fallbackBgClass="bg-cyan-400/[0.08]"
+        />
         {/* Playing indicator overlay */}
         {isCurrent && isPlaying && (
           <div className="absolute inset-0 rounded-xl flex items-center justify-center"

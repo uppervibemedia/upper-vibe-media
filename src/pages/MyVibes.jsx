@@ -11,6 +11,8 @@ import { usePlayer } from "../context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useSavedItemsContext } from "@/context/SavedItemsContext";
 import SaveHeartButton from "@/components/shared/SaveHeartButton";
+import CoverImage from "@/components/shared/CoverImage";
+import { useImagePreloader } from "@/hooks/useImagePreloader";
 import Footer from "../components/shared/Footer";
 import { useTheme } from "../context/ThemeContext";
 import RecentlyPlayedRow from "@/components/home/RecentlyPlayedRow";
@@ -62,6 +64,10 @@ export default function MyVibes() {
       .filter(({ track }) => !!track)
       .map(({ dl, track }) => ({ ...track, _downloaded_at: dl.downloaded_at }));
   }, [userDownloads, tracks]);
+
+  // Preload first 10 cover images for instant rendering
+  const firstTrackCovers = useMemo(() => tracks.slice(0, 10).map((t) => t.cover_url).filter(Boolean), [tracks]);
+  useImagePreloader(firstTrackCovers);
 
   const handlePlay = (track) => {
     if (currentTrack?.id === track.id) togglePlay();
@@ -168,13 +174,15 @@ export default function MyVibes() {
                   style={{ width: 130, scrollSnapAlign: "start" }}>
                   <Link to={`/song/${track.id}`}>
                     <div className="relative rounded-xl overflow-hidden mb-1.5" style={{ width: 130, height: 130 }}>
-                      {track.cover_url ? (
-                        <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center" style={{ background: `rgba(${rgb},0.08)` }}>
-                          <Music4 className="w-8 h-8" style={{ color: `rgba(${rgb},0.3)` }} />
-                        </div>
-                      )}
+                      <CoverImage
+                        src={track.cover_url}
+                        alt={track.title}
+                        className="w-full h-full group-hover:scale-105 transition-transform duration-300"
+                        eager={false}
+                        iconClassName="w-8 h-8"
+                        fallbackOpacityClass="text-white/30"
+                        fallbackBgClass="bg-white/[0.04]"
+                      />
                       {/* Play overlay */}
                       <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-200"
                         style={{ background: "rgba(0,0,0,0.45)", opacity: isCurrent ? 1 : undefined }}>
@@ -270,14 +278,16 @@ export default function MyVibes() {
                           }}>
                           {/* Cover art */}
                           <div className="relative flex-shrink-0 cursor-pointer" onClick={() => handlePlay(track)}>
-                            {track.cover_url ? (
-                              <img src={track.cover_url} alt={track.title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-xl object-cover" />
-                            ) : (
-                              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                                style={{ background: `rgba(${rgb},0.08)` }}>
-                                <Music4 className="w-5 h-5" style={{ color: `rgba(${rgb},0.4)` }} />
-                              </div>
-                            )}
+                            <CoverImage
+                              src={track.cover_url}
+                              alt={track.title}
+                              width={48}
+                              height={48}
+                              className="w-12 h-12 rounded-xl overflow-hidden"
+                              eager={false}
+                              iconClassName="w-5 h-5"
+                              fallbackOpacityClass="text-white/40"
+                            />
                             <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                               style={{ background: "rgba(0,0,0,0.6)" }}>
                               {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4" style={{ color: `rgb(${rgb})` }} /> : <Play className="w-4 h-4 text-white ml-0.5" />}
@@ -346,14 +356,16 @@ export default function MyVibes() {
                           }}>
                           {/* Cover art */}
                           <div className="relative flex-shrink-0 cursor-pointer" onClick={() => handlePlay(track)}>
-                            {track.cover_url ? (
-                              <img src={track.cover_url} alt={track.title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-xl object-cover" />
-                            ) : (
-                              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                                style={{ background: `rgba(${rgb},0.08)` }}>
-                                <Music4 className="w-5 h-5" style={{ color: `rgba(${rgb},0.4)` }} />
-                              </div>
-                            )}
+                            <CoverImage
+                              src={track.cover_url}
+                              alt={track.title}
+                              width={48}
+                              height={48}
+                              className="w-12 h-12 rounded-xl overflow-hidden"
+                              eager={false}
+                              iconClassName="w-5 h-5"
+                              fallbackOpacityClass="text-white/40"
+                            />
                             <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                               style={{ background: "rgba(0,0,0,0.6)" }}>
                               {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4" style={{ color: `rgb(${rgb})` }} /> : <Play className="w-4 h-4 text-white ml-0.5" />}

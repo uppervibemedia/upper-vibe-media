@@ -6,6 +6,7 @@ import { base44 } from "@/api/base44Client";
 import { isNewTrack } from "@/lib/isNewTrack";
 import NewBadge from "@/components/shared/NewBadge";
 import SaveHeartButton from "@/components/shared/SaveHeartButton";
+import CoverImage from "@/components/shared/CoverImage";
 
 /**
  * RecentlyPlayedRow
@@ -201,24 +202,14 @@ function TrackCard({ track, isCurrent, isPlaying, isNew, themeColor, onPlay, onN
     >
       {/* Cover art + play overlay */}
       <div className="relative rounded-xl overflow-hidden mb-2" style={{ width: 140, height: 140 }}>
-        {track.cover_url ? (
-          <img
-            src={track.cover_url}
-            alt={track.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400"
-            loading="lazy"
-          />
-        ) : (
-          <div
-            className="w-full h-full flex items-center justify-center"
-            style={{ background: `rgba(${themeColor},0.08)` }}
-          >
-            <div className="w-10 h-10 rounded-full flex items-center justify-center"
-              style={{ background: `rgba(${themeColor},0.15)`, color: `rgb(${themeColor})` }}>
-              <Play className="w-5 h-5 fill-current ml-0.5" />
-            </div>
-          </div>
-        )}
+        <CoverImage
+          src={track.cover_url}
+          alt={track.title}
+          className="w-full h-full group-hover:scale-105 transition-transform duration-400"
+          iconClassName="w-8 h-8"
+          fallbackOpacityClass="text-white/30"
+          fallbackBgClass="bg-white/[0.04]"
+        />
 
         {/* Hover / active play overlay */}
         <div
