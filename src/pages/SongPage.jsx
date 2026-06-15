@@ -268,7 +268,8 @@ function SongPageInner() {
         </button>
       </div>
 
-      {/* ── Two-column layout: streaming-platform style ── */}
+      {/* Two-column layout: streaming-platform style */}
+      {/* v4 — compact above-the-fold, desktop side-by-side */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
