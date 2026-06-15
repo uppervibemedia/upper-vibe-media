@@ -276,9 +276,9 @@ function SongPageInner() {
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-col md:flex-row gap-5 md:gap-8">
 
-          {/* ── Left: Cover Art ── */}
-          <div className="flex-shrink-0 mx-auto md:mx-0">
-            <div className="relative">
+          {/* ── Left: Cover Art (fixed square ratio) ── */}
+          <div className="flex-shrink-0 mx-auto md:mx-0 w-[180px] sm:w-[240px] md:w-[280px] lg:w-[320px]">
+            <div className="relative aspect-square">
               <motion.div
                 animate={{ scale: [1, 1.02, 1], opacity: [0.25, 0.75, 0.25] }}
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -288,7 +288,7 @@ function SongPageInner() {
               <CoverImage
                 src={track.cover_url}
                 alt={track.title}
-                className="relative z-10 rounded-2xl overflow-hidden w-52 h-52 sm:w-64 sm:h-64 md:w-72 md:h-72 lg:w-80 lg:h-80"
+                className="relative z-10 rounded-2xl overflow-hidden w-full h-full"
                 eager
                 iconClassName="w-14 h-14"
                 fallbackOpacityClass="text-white/10"
