@@ -19,6 +19,7 @@ import { useImagePreloader } from "@/hooks/useImagePreloader";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../components/radio/RadioThemePicker";
 import IOSTip from "../components/shared/iOSTip";
+import PageErrorBoundary from "@/components/shared/PageErrorBoundary";
 import DownloadToast from "../components/shared/DownloadToast";
 import { recordUserDownload, triggerBrowserDownload } from "@/lib/downloadService";
 
@@ -54,7 +55,7 @@ function SkeletonCard() {
   );
 }
 
-export default function Music() {
+function MusicInner() {
   const [tracks, setTracks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
@@ -320,6 +321,14 @@ function FilterPill({ label, active, onClick, themeColor }) {
 }
 
 // B: React.memo — prevents rerenders when only isPlaying/currentTrack changes on other rows
+export default function Music() {
+  return (
+    <PageErrorBoundary>
+      <MusicInner />
+    </PageErrorBoundary>
+  );
+}
+
 const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, isPremium, themeColor, onPlay, onNeedLogin, onDownload }) {
   const tc = themeColor || "0,160,220";
   return (

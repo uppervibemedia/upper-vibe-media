@@ -27,6 +27,7 @@ import IOSTip from "@/components/shared/iOSTip";
 import NewBadge from "@/components/shared/NewBadge";
 import StreamingPlatformLinks from "@/components/shared/StreamingPlatformLinks";
 import CoverImage from "@/components/shared/CoverImage";
+import PageErrorBoundary from "@/components/shared/PageErrorBoundary";
 
 function toEmbedUrl(url) {
   if (!url || typeof url !== "string") return null;
@@ -106,7 +107,7 @@ function MoreSongsPanel({ currentTrackId, currentTrack, allTracks, onPlay }) {
   );
 }
 
-export default function SongPage() {
+function SongPageInner() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [track, setTrack] = useState(null);
@@ -580,5 +581,13 @@ export default function SongPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SongPage() {
+  return (
+    <PageErrorBoundary>
+      <SongPageInner />
+    </PageErrorBoundary>
   );
 }

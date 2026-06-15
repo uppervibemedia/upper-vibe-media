@@ -315,29 +315,31 @@ export default function Home() {
                   }}>
                   {/* Cover art + track info + play button */}
                   <div className="flex items-center gap-4 px-4 pt-4 pb-3">
-                    {/* Cover art */}
-                    <div className="relative flex-shrink-0">
-                      <img src={displayTrack.cover_url} alt={displayTrack.title}
-                        className="w-16 h-16 rounded-2xl object-cover"
-                        style={{ boxShadow: `0 0 20px rgba(${rtPrimary},0.25)` }} />
-                      <motion.div
-                        animate={{ scale: [1, 1.2, 1], opacity: [0.35, 0, 0.35] }}
-                        transition={{ duration: isPlaying ? 1.6 : 3.5, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute inset-0 rounded-2xl pointer-events-none"
-                        style={{ border: `2px solid rgb(${rtPrimary})` }} />
-                    </div>
+                    {/* Cover art + track info — links to song page */}
+                    <Link to={`/song/${displayTrack.id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="relative flex-shrink-0">
+                        <img src={displayTrack.cover_url} alt={displayTrack.title}
+                          className="w-16 h-16 rounded-2xl object-cover"
+                          style={{ boxShadow: `0 0 20px rgba(${rtPrimary},0.25)` }} />
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1], opacity: [0.35, 0, 0.35] }}
+                          transition={{ duration: isPlaying ? 1.6 : 3.5, repeat: Infinity, ease: "easeInOut" }}
+                          className="absolute inset-0 rounded-2xl pointer-events-none"
+                          style={{ border: `2px solid rgb(${rtPrimary})` }} />
+                      </div>
 
-                    {/* Track info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[9px] font-black tracking-[0.22em] uppercase leading-none mb-1.5"
-                        style={{ color: `rgba(${rtPrimary},0.8)` }}>
-                        {label}
-                      </p>
-                      <p className="text-sm font-bold text-white/95 truncate leading-snug">{displayTrack.title}</p>
-                      <p className="text-xs text-white/45 truncate mt-0.5">
-                        {displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}
-                      </p>
-                    </div>
+                      {/* Track info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[9px] font-black tracking-[0.22em] uppercase leading-none mb-1.5"
+                          style={{ color: `rgba(${rtPrimary},0.8)` }}>
+                          {label}
+                        </p>
+                        <p className="text-sm font-bold text-white/95 truncate leading-snug">{displayTrack.title}</p>
+                        <p className="text-xs text-white/45 truncate mt-0.5">
+                          {displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}
+                        </p>
+                      </div>
+                    </Link>
 
                     {/* Play / Pause button — stays on Home page */}
                     <button
