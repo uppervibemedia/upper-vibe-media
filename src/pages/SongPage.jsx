@@ -399,22 +399,33 @@ function SongPageInner() {
                 </p>
               </div>
             )}
+
+            {/* Streaming links — in-column on desktop, below on mobile */}
+            <div className="mt-3">
+              <StreamingPlatformLinks track={track} mode="song" />
+            </div>
+
+            {/* Short description — in-column when available */}
+            {track.description && (
+              <p className="mt-3 text-xs text-white/35 leading-relaxed line-clamp-3">{track.description}</p>
+            )}
           </div>
         </motion.div>
       </div>
 
-      {/* ── Description, Visualizer, Lyrics, Streaming Links ── */}
+      {/* ── Visualizer, Lyrics, Full Description (below fold) ── */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-20">
 
-        {/* ── Description, Visualizer, Lyrics (full-width above grid) ── */}
-        {(track.description || linkedVisualizer || track.lyrics) && (
+        {/* ── Full description (if truncated above) ── */}
+        {track.description && track.description.length > 200 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+            className="mb-6 p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-sm text-white/50 leading-relaxed">{track.description}</p>
+          </motion.div>
+        )}
+
+        {(linkedVisualizer || track.lyrics) && (
           <div className="mb-6">
-            {track.description && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-                className="mb-6 p-5 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-sm text-white/50 leading-relaxed">{track.description}</p>
-              </motion.div>
-            )}
 
             {/* Linked Visualizer */}
             {linkedVisualizer && (
@@ -477,9 +488,6 @@ function SongPageInner() {
             )}
           </div>
         )}
-
-        {/* ── Also Available On — above More Songs on all screen sizes ── */}
-        <StreamingPlatformLinks track={track} mode="song" />
 
         {/* ── Nav links: All Visualizers / All Music ── */}
         <div className="flex gap-3 flex-wrap mt-5 mb-8">
