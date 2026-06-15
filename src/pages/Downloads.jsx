@@ -153,7 +153,7 @@ export default function Downloads() {
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0">
+                    <Link to={dl.song_id ? `/song/${dl.song_id}` : "#"} className="flex-1 min-w-0 hover:opacity-80 transition-opacity" onClick={(e) => !dl.song_id && e.preventDefault()}>
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-bold text-white truncate">{dl.song_title || "Unknown Track"}</p>
                         {trackMap[dl.song_id] && <NewBadge track={trackMap[dl.song_id]} />}
@@ -164,7 +164,7 @@ export default function Downloads() {
                           {format(new Date(dl.downloaded_at), "MMM d, yyyy")}
                         </p>
                       )}
-                    </div>
+                    </Link>
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">

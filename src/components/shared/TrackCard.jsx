@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Play, Lock, Waves } from "lucide-react";
+import { Link } from "react-router-dom";
 import { usePlayer } from "../../context/PlayerContext";
 import { getAccessBadge, getEffectiveAccess } from "@/lib/tierAccess";
 import DownloadButton from "./DownloadButton";
@@ -124,8 +125,10 @@ export default function TrackCard({ track, locked, onLockedClick, userTier = "fr
       <div className="p-3" onClick={(e) => hasVersions && e.stopPropagation()}>
         <div className="flex items-start justify-between gap-1">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{track.title}</p>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">{track.artist_display || track.artist}</p>
+            <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()} className="block">
+              <p className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors">{track.title}</p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{track.artist_display || track.artist}</p>
+            </Link>
             {track.duration && (
               <p className="text-[10px] text-muted-foreground/60 mt-1">{track.duration}</p>
             )}

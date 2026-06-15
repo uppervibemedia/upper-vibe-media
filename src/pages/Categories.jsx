@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Play, Pause, Download, Music4, Waves } from "lucide-react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "../context/PlayerContext";
 import Footer from "../components/shared/Footer";
@@ -160,7 +161,7 @@ export default function Categories() {
                             {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4 text-cyan-400" /> : <Play className="w-4 h-4 text-white ml-0.5" />}
                           </div>
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <Link to={`/song/${track.id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
                           <p className="text-sm font-bold text-white truncate">{track.title}</p>
                           <p className="text-xs text-white/35 truncate">{track.artist_display || "Upper Vibe Media"}</p>
                           {track.frequency_type && track.frequency_type !== "standard" && (
@@ -169,7 +170,7 @@ export default function Categories() {
                               <Waves className="w-2.5 h-2.5" /> {track.frequency_type.toUpperCase()}
                             </span>
                           )}
-                        </div>
+                        </Link>
                         {track.duration && <p className="text-xs text-white/25 hidden sm:block">{track.duration}</p>}
                         <div className="flex items-center gap-1.5">
                           <button
