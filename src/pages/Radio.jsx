@@ -5,7 +5,7 @@ import {
   Radio as RadioIcon, Waves, Download, Music4, Crown, Mic2, Sparkles, ThumbsDown,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -327,7 +327,7 @@ export default function RadioPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="relative w-36 h-36">
+                    <Link to={`/song/${currentRadioSong?.id}`} className="block relative w-36 h-36 mx-auto">
                       <CoverImage
                         src={currentRadioSong?.cover_url}
                         alt={currentRadioSong?.title}
@@ -337,12 +337,12 @@ export default function RadioPage() {
                         fallbackOpacityClass="opacity-20"
                       />
                       {playingThisRadioSong && (
-                        <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center"
+                        <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center pointer-events-none"
                           style={{ background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${theme.vars["--rt-primary"]}))` }}>
                           <Waves className="w-3.5 h-3.5 text-black animate-pulse" />
                         </div>
                       )}
-                    </div>
+                    </Link>
                   )}
                 </div>
 
@@ -360,19 +360,21 @@ export default function RadioPage() {
                       </span>
                     </>
                   ) : (
-                    <>
-                      <h2 className="font-heading font-black text-white mb-1 leading-snug"
+                    <Link to={`/song/${currentRadioSong?.id}`}>
+                      <h2 className="font-heading font-black text-white mb-1 leading-snug hover:underline decoration-white/20 underline-offset-4"
                         style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)", wordBreak: "break-word" }}>
                         {currentRadioSong.title}
                       </h2>
                       <p className="text-white/40 text-sm mb-3 truncate max-w-[260px] mx-auto">
                         {currentRadioSong.artist_display || "Upper Vibe Media"}
                       </p>
-                      <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full"
+                    </Link>
+                  )}
+                  {!isHostDropPlaying && (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full"
                       style={{ background: `rgba(${theme.vars["--rt-primary"]},0.1)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.2)`, color: `rgb(${theme.vars["--rt-primary"]})` }}>
                       <Waves className="w-2.5 h-2.5" /> 432 Hz
-                      </span>
-                    </>
+                    </span>
                   )}
                 </div>
 
