@@ -27,6 +27,7 @@ import { useTheme } from "@/context/ThemeContext";
 
 const mainNavItems = [
   { path: "/", icon: Home, label: "Home" },
+  { path: "/music", icon: Music, label: "Music Library" },
   { path: "/radio", icon: Radio, label: "Radio" },
   { path: "/vibe-check", icon: VibeCheckIcon, label: "Vibe Check" },
   { path: "/academy", icon: GraduationCap, label: "Academy" },

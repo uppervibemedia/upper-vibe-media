@@ -91,20 +91,6 @@ function MusicInner() {
 
   const handleRefresh = async () => { invalidateTrackCache(); setRefreshKey((k) => k + 1); };
 
-  // Preload first 12 cover images for instant rendering
-  const firstCoverUrls = useMemo(() => filtered.slice(0, 12).map((t) => t.cover_url).filter(Boolean), [filtered]);
-  useImagePreloader(firstCoverUrls);
-
-  // Reset visible count when search/filter changes
-  const prevFilterRef = React.useRef({ search: "", activeFilter: "all" });
-  useEffect(() => {
-    const prev = prevFilterRef.current;
-    if (prev.search !== debouncedSearch || prev.activeFilter !== activeFilter) {
-      setVisibleCount(PAGE_SIZE);
-      prevFilterRef.current = { search: debouncedSearch, activeFilter };
-    }
-  }, [debouncedSearch, activeFilter]);
-
   const filtered = useMemo(() => {
     let result = tracks;
     if (debouncedSearch) {
@@ -120,6 +106,20 @@ function MusicInner() {
     }
     return result;
   }, [tracks, search, activeFilter]);
+
+  // Preload first 12 cover images for instant rendering
+  const firstCoverUrls = useMemo(() => filtered.slice(0, 12).map((t) => t.cover_url).filter(Boolean), [filtered]);
+  useImagePreloader(firstCoverUrls);
+
+  // Reset visible count when search/filter changes
+  const prevFilterRef = React.useRef({ search: "", activeFilter: "all" });
+  useEffect(() => {
+    const prev = prevFilterRef.current;
+    if (prev.search !== debouncedSearch || prev.activeFilter !== activeFilter) {
+      setVisibleCount(PAGE_SIZE);
+      prevFilterRef.current = { search: debouncedSearch, activeFilter };
+    }
+  }, [debouncedSearch, activeFilter]);
 
   const handlePlay = (track) => {
     if (currentTrack?.id === track.id) togglePlay();
