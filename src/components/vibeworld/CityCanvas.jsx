@@ -258,25 +258,12 @@ function buildPark(scene) {
 const SKY_IMAGE_URL = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/6f210e15a_60F3176E-2655-48B3-8762-6DDE68A4D207.jpg";
 
 // ═══════════════════════════════════════════════════════════════
-// COSMIC SKY — sky dome using uploaded reference image
+// COSMIC SKY — uploaded reference image as scene background
 // ═══════════════════════════════════════════════════════════════
 function createCosmicSky(scene) {
-  // ─── Sky Dome — large inverted sphere with the cosmic image ───
-  const skyGeo = new SphereGeometry(35, 64, 32);
   const texture = new THREE.TextureLoader().load(SKY_IMAGE_URL);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.ClampToEdgeWrapping;
-  texture.wrapT = THREE.ClampToEdgeWrapping;
-
-  const skyMat = new MeshBasicMaterial({
-    map: texture,
-    side: THREE.BackSide,
-    depthWrite: false,
-  });
-  const skyDome = new Mesh(skyGeo, skyMat);
-  skyDome.name = "skyDome";
-  scene.add(skyDome);
-
+  scene.background = texture;
   scene.fog = new Fog("#050510", 30, 55);
 }
 
@@ -657,10 +644,8 @@ export default function CityCanvas({ onLoaded }) {
       const renderer = new WebGLRenderer({
         canvas,
         antialias: true,
-        alpha: true,        // Transparent so nebula canvas shows through
-        premultipliedAlpha: false,
       });
-      renderer.setClearColor(0x000000, 0); // Fully transparent clear
+      renderer.setClearColor(0x050510); // Deep void — matches sky reference
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       // Use window dimensions on mobile for reliable viewport sizing
       const rw = isMobileRef.current ? window.innerWidth : canvas.clientWidth;
