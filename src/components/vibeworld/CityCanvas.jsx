@@ -235,10 +235,11 @@ function buildPark(scene) {
 
   // ─── BEACH & OCEAN (South side) ──────────────────────────────
   const SHORELINE_Z = -19;
+  const OCEAN_DEPTH = 35;
 
-  // Sand layer — soft golden sand for the beach zone
-  const sandGeo = new PlaneGeometry(40, 10);
-  const sandMat = mat("#E0CDA8", { roughness: 0.72 });
+  // Dry sand — warm golden beach
+  const sandGeo = new PlaneGeometry(38, 8);
+  const sandMat = mat("#D4B896", { roughness: 0.68 });
   const sand = new Mesh(sandGeo, sandMat);
   sand.rotation.x = -Math.PI / 2;
   sand.position.set(0, 0.002, -15);
@@ -246,57 +247,66 @@ function buildPark(scene) {
   sand.name = "sand";
   scene.add(sand);
 
-  // Wet sand near shoreline (darker, smoother)
-  const wetSandGeo = new PlaneGeometry(40, 6);
-  const wetSandMat = mat("#B8A07A", { roughness: 0.55 });
+  // Mid sand — slightly darker for depth
+  const midSandGeo = new PlaneGeometry(38, 5);
+  const midSandMat = mat("#C4A882", { roughness: 0.62 });
+  const midSand = new Mesh(midSandGeo, midSandMat);
+  midSand.rotation.x = -Math.PI / 2;
+  midSand.position.set(0, 0.003, -16.8);
+  midSand.receiveShadow = true;
+  scene.add(midSand);
+
+  // Wet sand near shoreline — darker where water laps
+  const wetSandGeo = new PlaneGeometry(38, 3.5);
+  const wetSandMat = mat("#A89070", { roughness: 0.45, metalness: 0.08 });
   const wetSand = new Mesh(wetSandGeo, wetSandMat);
   wetSand.rotation.x = -Math.PI / 2;
-  wetSand.position.set(0, 0.003, SHORELINE_Z - 2);
+  wetSand.position.set(0, 0.004, SHORELINE_Z - 0.8);
   wetSand.receiveShadow = true;
-  sand.add(wetSand);
+  scene.add(wetSand);
 
-  // Sand patches for natural grass→sand transition
-  for (let i = 0; i < 12; i++) {
-    const px = (Math.random() - 0.5) * 36;
-    const pz = -12.5 - Math.random() * 5;
-    const r = 0.4 + Math.random() * 1.2;
+  // Scattered sand patches — natural grass-to-sand transition
+  for (let i = 0; i < 14; i++) {
+    const px = (Math.random() - 0.5) * 34;
+    const pz = -12 - Math.random() * 4;
+    const r = 0.3 + Math.random() * 1.3;
     const patchGeo = new CircleGeometry(r, 12);
-    const shade = Math.random() > 0.5 ? "#E8D5B7" : "#D4C4A8";
-    const patchMat = mat(shade, { roughness: 0.7 });
+    const shade = Math.random() > 0.5 ? "#DEC8A8" : "#C8B090";
+    const patchMat = mat(shade, { roughness: 0.68 });
     const patch = new Mesh(patchGeo, patchMat);
     patch.rotation.x = -Math.PI / 2;
-    patch.position.set(px, 0.004, pz);
+    patch.position.set(px, 0.005, pz);
     patch.receiveShadow = true;
     scene.add(patch);
   }
 
-  // ─── OCEAN ──────────────────────────────────────────────────
-  const oceanGeo = new PlaneGeometry(55, 35, 35, 16);
+  // ─── OCEAN — dark violet-blue water ─────────────────────────
+  const oceanGeo = new PlaneGeometry(50, OCEAN_DEPTH, 40, 18);
   const oceanMat = new MeshStandardMaterial();
-  oceanMat.color = new Color("#0D2B45");
-  oceanMat.roughness = 0.15;
-  oceanMat.metalness = 0.7;
+  oceanMat.color = new Color("#0A1D3A");
+  oceanMat.roughness = 0.1;
+  oceanMat.metalness = 0.78;
   oceanMat.transparent = true;
-  oceanMat.opacity = 0.8;
+  oceanMat.opacity = 0.88;
   oceanMat.depthWrite = true;
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
-  ocean.position.set(0, -0.2, SHORELINE_Z - 17);
+  ocean.position.set(0, -0.06, SHORELINE_Z - OCEAN_DEPTH / 2);
   ocean.receiveShadow = true;
   ocean.name = "ocean";
   scene.add(ocean);
   scene.userData.ocean = ocean;
 
-  // Subtle foam edge along shoreline
-  const foamGeo = new PlaneGeometry(42, 1.8);
+  // Foam edge — soft pale blue at shoreline
+  const foamGeo = new PlaneGeometry(40, 1.5);
   const foamMat = new MeshBasicMaterial();
-  foamMat.color = new Color("#8EB8D8");
+  foamMat.color = new Color("#6E9EC8");
   foamMat.transparent = true;
-  foamMat.opacity = 0.35;
+  foamMat.opacity = 0.28;
   foamMat.depthWrite = false;
   const foam = new Mesh(foamGeo, foamMat);
   foam.rotation.x = -Math.PI / 2;
-  foam.position.set(0, 0.006, SHORELINE_Z);
+  foam.position.set(0, 0.006, SHORELINE_Z - 0.2);
   foam.name = "foam";
   scene.add(foam);
   scene.userData.foam = foam;
@@ -392,7 +402,7 @@ function createCosmicSky(scene) {
   skybox.renderOrder = -1; // Always render behind everything
   scene.add(skybox);
 
-  scene.fog = new Fog("#050510", 40, 60);
+  scene.fog = new Fog("#0A1525", 35, 58);
 }
 
 // ═══════════════════════════════════════════════════════════════
