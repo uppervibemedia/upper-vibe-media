@@ -253,65 +253,64 @@ function buildPark(scene) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// DIRECTIONAL SKY IMAGES — four unique cosmic ocean views
+// DIRECTIONAL SKY IMAGES — four unique deep-space cosmic views
 // ═══════════════════════════════════════════════════════════════
 const BASE = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
-const SKY_FORWARD = `${BASE}/2b5f36024_ChatGPTImageJun19202611_33_56AM.png`;   // No planet — main nebula
-const SKY_LEFT    = `${BASE}/018a2b8a8_ChatGPTImageJun19202611_33_43AM.png`;   // No planet — alt nebula
-const SKY_RIGHT   = `${BASE}/ca6edd6b5_ChatGPTImageJun19202611_34_04AM.png`;   // Close planet
-const SKY_BACK    = `${BASE}/d90e22d68_ChatGPTImageJun19202611_33_49AM.png`;   // Nebula + planet
+const SKY_FORWARD = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;   // No planet — main nebula
+const SKY_RIGHT   = `${BASE}/8f6a7ee38_ChatGPTImageJun19202611_55_23AM.png`;   // Large planet upper right
+const SKY_BACK    = `${BASE}/caf25bf82_ChatGPTImageJun19202611_55_33AM.png`;   // Planet + nebula
+const SKY_LEFT    = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`;   // No planet — bright core nebula
 
 // ═══════════════════════════════════════════════════════════════
-// COSMIC SKYBOX — four inward-facing planes, one per direction
+// COSMIC SKYBOX — cube with BackSide texture on each face
+// BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
 // ═══════════════════════════════════════════════════════════════
 function createCosmicSky(scene) {
   const loader = new THREE.TextureLoader();
-  const PLANE_SIZE = 40;
-  const DIST = 28;
-  const BOTTOM_Y = 0;        // ground level — images have beach/ocean at bottom
-  const CENTER_Y = PLANE_SIZE / 2;
+  const SKYBOX_SIZE = 55;
 
-  // Each side: [url, x, z, yaw rotation to face center]
-  // PlaneGeometry default normal points +Z. Y-rotation orients it inward.
-  const sides = [
-    // Forward  (+Z wall)  — faces -Z  → yaw PI
-    { url: SKY_FORWARD, x: 0,        z:  DIST, yaw: Math.PI },
-    // Back     (-Z wall)  — faces +Z  → yaw 0 (default)
-    { url: SKY_BACK,    x: 0,        z: -DIST, yaw: 0 },
-    // Left     (-X wall)  — faces +X  → yaw -PI/2
-    { url: SKY_LEFT,    x: -DIST,    z: 0,      yaw: -Math.PI / 2 },
-    // Right    (+X wall)  — faces -X  → yaw PI/2
-    { url: SKY_RIGHT,   x:  DIST,    z: 0,      yaw: Math.PI / 2 },
+  const loadTex = (url) => {
+    const tex = loader.load(url);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+  };
+
+  // Load all four directional textures
+  const texForward = loadTex(SKY_FORWARD);  // +Z = North / Forward
+  const texRight   = loadTex(SKY_RIGHT);    // +X = East  / Right
+  const texBack    = loadTex(SKY_BACK);     // -Z = South / Back
+  const texLeft    = loadTex(SKY_LEFT);     // -X = West  / Left
+
+  // Top face: dark void with subtle star color (no image — keeps it clean)
+  const topMat = new MeshBasicMaterial();
+  topMat.color = new Color("#0a0a1e");
+  topMat.side = THREE.BackSide;
+  topMat.depthWrite = false;
+
+  // Bottom face: deep void (underground, rarely visible)
+  const bottomMat = new MeshBasicMaterial();
+  bottomMat.color = new Color("#050510");
+  bottomMat.side = THREE.BackSide;
+  bottomMat.depthWrite = false;
+
+  // Materials array in BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
+  const materials = [
+    new MeshBasicMaterial({ map: texRight,   side: THREE.BackSide, depthWrite: false }), // +X = Right/East
+    new MeshBasicMaterial({ map: texLeft,    side: THREE.BackSide, depthWrite: false }), // -X = Left/West
+    topMat,                                                                             // +Y = Top
+    bottomMat,                                                                          // -Y = Bottom
+    new MeshBasicMaterial({ map: texForward, side: THREE.BackSide, depthWrite: false }), // +Z = Forward/North
+    new MeshBasicMaterial({ map: texBack,    side: THREE.BackSide, depthWrite: false }), // -Z = Back/South
   ];
 
-  sides.forEach(({ url, x, z, yaw }) => {
-    const texture = loader.load(url);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.wrapS = THREE.ClampToEdgeWrapping;
-    texture.wrapT = THREE.ClampToEdgeWrapping;
+  const skybox = new Mesh(new BoxGeometry(SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE), materials);
+  skybox.name = "skybox";
+  skybox.renderOrder = -1; // Always render behind everything
+  scene.add(skybox);
 
-    const mat = new MeshBasicMaterial({
-      map: texture,
-      side: THREE.FrontSide,
-      depthWrite: false,
-    });
-
-    const plane = new Mesh(new PlaneGeometry(PLANE_SIZE, PLANE_SIZE), mat);
-    plane.position.set(x, CENTER_Y, z);
-    plane.rotation.y = yaw;
-    scene.add(plane);
-  });
-
-  // Dark ceiling to prevent open sky gap when looking up
-  const ceilingMat = new MeshBasicMaterial();
-  ceilingMat.color = new Color("#0a0a1e");
-  ceilingMat.depthWrite = false;
-  const ceiling = new Mesh(new PlaneGeometry(PLANE_SIZE * 1.5, PLANE_SIZE * 1.5), ceilingMat);
-  ceiling.position.y = PLANE_SIZE - 1;
-  ceiling.rotation.x = -Math.PI / 2; // horizontal, facing down
-  scene.add(ceiling);
-
-  scene.fog = new Fog("#050510", 35, 55);
+  scene.fog = new Fog("#050510", 40, 60);
 }
 
 // ═══════════════════════════════════════════════════════════════

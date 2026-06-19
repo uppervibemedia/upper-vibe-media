@@ -33,7 +33,7 @@ export default function UpperVibeCity({ onExit }) {
   }, [tracksLoaded, loading, currentTrack, allTracks, playTrack]);
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-hidden" style={{ background: "#87CEEB" }}>
+    <div className="fixed inset-0 z-[60] overflow-hidden" style={{ background: "#050510" }}>
       {/* 3D Park */}
       <div className="absolute inset-0">
         <CityCanvas onLoaded={() => setLoading(false)} />
@@ -41,10 +41,10 @@ export default function UpperVibeCity({ onExit }) {
 
       {/* Loading overlay */}
       {loading && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-sky-200/50">
+        <div className="absolute inset-0 z-30 flex items-center justify-center" style={{ background: "rgba(5,5,16,0.85)" }}>
           <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-2 border-green-500/30 border-t-green-600 rounded-full animate-spin" />
-            <p className="text-xs text-green-800 font-medium tracking-wider">Entering the park...</p>
+            <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-400 rounded-full animate-spin" />
+            <p className="text-xs text-purple-200/70 font-medium tracking-wider">Entering the cosmos...</p>
           </div>
         </div>
       )}
