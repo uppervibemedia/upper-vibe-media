@@ -1077,7 +1077,7 @@ export default function CityCanvas({ onLoaded }) {
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
-        // ─── TRAVELING WAVES — bands roll from deep ocean toward shore ───
+        // ─── OCEAN WAVES — forward/backward motion only ──────────
         const oceanMesh = scene.userData.ocean;
         const origArr = scene.userData._oceanOrig;
         const oceanCenterZ = scene.userData._oceanCenterZ || 47;
@@ -1086,41 +1086,45 @@ export default function CityCanvas({ onLoaded }) {
         if (oceanMesh && origArr) {
           const pos = oceanMesh.geometry.attributes.position;
           const arr = pos.array;
-          const waveSpeed = t * 0.75; // travel speed toward shore
+          const waveT = t * 0.55; // main wave cycle
 
           for (let i = 0; i < arr.length; i += 3) {
+            // Restore base position
             arr[i] = origArr[i];
             arr[i + 1] = origArr[i + 1];
             arr[i + 2] = origArr[i + 2];
 
+            // World Z of this vertex
             const worldZ = oceanCenterZ + origArr[i + 2];
-            const dist = worldZ - SLZ; // 0 at shore, up to 54 far out
+            const dist = worldZ - SLZ; // 0 at shore, positive into ocean
 
-            if (dist >= 0 && dist < 40) {
-              const fade = 1 - dist / 40;
+            // Only animate water near shoreline (first 10 units)
+            if (dist < 10 && dist >= 0) {
+              const fade = 1 - dist / 10; // 1 at shore, 0 at 10 units out
 
-              // Traveling wave: -dist so deeper water leads, +waveSpeed makes crests roll shoreward
-              const phase = -dist * 0.32 + waveSpeed * 3.2;
-              const wave = Math.sin(phase); // -1..1
+              // Wave swell: rises near shore, creates rolling crest
+              const wavePhase = dist * 0.6 - waveT * 4.0;
+              const swell = Math.sin(wavePhase) * 0.5 + 0.5; // 0..1
+              const crest = Math.sin(wavePhase * 1.5) * 0.5 + 0.5;
 
-              // Height: wave rises where crest passes
-              arr[i + 1] = wave * fade * 0.22;
+              // Height: taller near shore
+              arr[i + 1] = swell * fade * 0.2;
 
-              // Surge: water pushes forward toward shore on rising wave face
-              const surge = Math.cos(phase) * fade * 0.22;
+              // Forward surge during high tide
+              const tide = Math.sin(waveT) * 0.5 + 0.5; // 0..1 tide cycle
+              const surge = tide * fade * 0.18;
               arr[i + 2] = origArr[i + 2] + surge;
             }
           }
           pos.needsUpdate = true;
         }
 
-        // ─── FOAM — intensifies when wave crest hits shore ──────
+        // ─── FOAM STRIP — pulses with tide ───────────────────
         const foamMesh = scene.userData.foam;
         if (foamMesh && foamMesh.material) {
-          // Match wave rhythm: foam peaks when shore-edge wave is at crest
-          const foamPulse = Math.sin(t * 0.75 * 3.2) * 0.5 + 0.5; // synced with shore arrival
-          foamMesh.material.opacity = 0.15 + foamPulse * 0.6;
-          foamMesh.position.z = scene.userData._foamBaseZ + foamPulse * 0.8;
+          const tide = Math.sin(t * 0.55) * 0.5 + 0.5;
+          foamMesh.material.opacity = 0.18 + tide * 0.55;
+          foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.7;
         }
 
         // ─── STARS TWINKLE ─────────────────────────────────────
