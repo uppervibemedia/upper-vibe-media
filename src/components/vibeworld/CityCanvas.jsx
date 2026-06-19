@@ -1,5 +1,9 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import {
+import * as THREE from "three";
+import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
+
+// Destructure immediately after namespace import to ensure full module load
+const {
   WebGLRenderer,
   Scene,
   PerspectiveCamera,
@@ -20,8 +24,7 @@ import {
   AmbientLight,
   HemisphereLight,
   PCFSoftShadowMap,
-} from "three";
-import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
+} = THREE;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
 const MOVE_SPEED = 3.0;
@@ -61,17 +64,17 @@ function resolveCollisions(px, pz, r, boxes) {
 }
 
 // ─── COLORS ───────────────────────────────────────────────────
-function mat(color, opts = {}) {
-  // Only pass valid MeshStandardMaterial properties — spreading arbitrary opts
-  // can introduce properties that confuse Three.js internal setters.
-  return new MeshStandardMaterial({
-    color,
-    roughness: opts.roughness ?? 0.5,
-    metalness: opts.metalness ?? 0.05,
-    transparent: opts.transparent ?? false,
-    opacity: opts.opacity ?? 1,
-    depthWrite: opts.depthWrite ?? true,
-  });
+function mat(hexColor, opts = {}) {
+  const m = new MeshStandardMaterial();
+  m.color = new Color(hexColor);
+  m.roughness = opts.roughness ?? 0.5;
+  m.metalness = opts.metalness ?? 0.05;
+  if (opts.transparent) {
+    m.transparent = true;
+    m.opacity = opts.opacity ?? 1;
+    m.depthWrite = opts.depthWrite ?? true;
+  }
+  return m;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -84,15 +87,17 @@ function buildPark(scene) {
 
   // ─── GRASS GROUND ───────────────────────────────────────────
   const groundGeo = new PlaneGeometry(80, 80);
-  const ground = new Mesh(groundGeo, mat("#4CAF50", { roughness: 0.85 }));
+  const groundMat = mat("#4CAF50", { roughness: 0.85 });
+  const ground = new Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.01;
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Inner walking area — slightly different green
+  // Inner walking area
   const innerGeo = new PlaneGeometry(PARK_RADIUS * 2, PARK_RADIUS * 2);
-  const inner = new Mesh(innerGeo, mat("#5CB860", { roughness: 0.75 }));
+  const innerMat = mat("#5CB860", { roughness: 0.75 });
+  const inner = new Mesh(innerGeo, innerMat);
   inner.rotation.x = -Math.PI / 2;
   inner.position.y = -0.005;
   inner.receiveShadow = true;
@@ -100,7 +105,8 @@ function buildPark(scene) {
 
   // Dirt path circle
   const pathRing = new RingGeometry(12, 12.6, 64);
-  const path = new Mesh(pathRing, mat("#C8A96E", { roughness: 0.9 }));
+  const pathMat = mat("#C8A96E", { roughness: 0.9 });
+  const path = new Mesh(pathRing, pathMat);
   path.rotation.x = -Math.PI / 2;
   path.position.y = 0.001;
   path.receiveShadow = true;
@@ -108,7 +114,8 @@ function buildPark(scene) {
 
   // Central dirt patch
   const centerGeo = new CircleGeometry(3, 32);
-  const center = new Mesh(centerGeo, mat("#C8A96E", { roughness: 0.9 }));
+  const centerMat = mat("#C8A96E", { roughness: 0.9 });
+  const center = new Mesh(centerGeo, centerMat);
   center.rotation.x = -Math.PI / 2;
   center.position.y = 0.002;
   center.receiveShadow = true;
@@ -118,19 +125,19 @@ function buildPark(scene) {
   TREE_POSITIONS.forEach(([tx, tz, scale]) => {
     const tree = new Group();
 
-    // Trunk
     const trunkGeo = new CylinderGeometry(0.08 * scale, 0.12 * scale, 2 * scale, 8);
-    const trunk = new Mesh(trunkGeo, mat("#6D4C41", { roughness: 0.7 }));
+    const trunkMat = mat("#6D4C41", { roughness: 0.7 });
+    const trunk = new Mesh(trunkGeo, trunkMat);
     trunk.position.y = 1 * scale;
     trunk.castShadow = true;
     trunk.receiveShadow = true;
     tree.add(trunk);
 
-    // Canopy layers — simple spheres for a leafy look
     const canopyColors = ["#388E3C", "#43A047", "#2E7D32"];
     for (let i = 0; i < 3; i++) {
       const canopyGeo = new SphereGeometry(0.6 * scale - i * 0.08, 8, 6);
-      const canopy = new Mesh(canopyGeo, mat(canopyColors[i], { roughness: 0.6 }));
+      const canopyMat = mat(canopyColors[i], { roughness: 0.6 });
+      const canopy = new Mesh(canopyGeo, canopyMat);
       canopy.position.y = 1.6 * scale + i * 0.35 * scale;
       canopy.position.x = (i - 1) * 0.15 * scale;
       canopy.castShadow = true;
@@ -150,7 +157,8 @@ function buildPark(scene) {
     const bx = Math.cos(angle) * radius;
     const bz = Math.sin(angle) * radius;
     const bushGeo = new SphereGeometry(0.2 + Math.random() * 0.25, 6, 5);
-    const bush = new Mesh(bushGeo, mat("#388E3C", { roughness: 0.55 }));
+    const bushMat = mat("#388E3C", { roughness: 0.55 });
+    const bush = new Mesh(bushGeo, bushMat);
     bush.position.set(bx, 0.15, bz);
     bush.scale.set(1, 0.7, 1);
     bush.castShadow = true;
@@ -166,15 +174,15 @@ function buildPark(scene) {
     const fx = Math.cos(angle) * radius;
     const fz = Math.sin(angle) * radius;
 
-    // Stem
     const stemGeo = new CylinderGeometry(0.01, 0.01, 0.25, 4);
-    const stem = new Mesh(stemGeo, mat("#388E3C"));
+    const stemMat = mat("#388E3C");
+    const stem = new Mesh(stemGeo, stemMat);
     stem.position.set(fx, 0.12, fz);
     scene.add(stem);
 
-    // Petal
     const petalGeo = new SphereGeometry(0.03, 4, 4);
-    const petal = new Mesh(petalGeo, mat(flowerColors[i % flowerColors.length]));
+    const petalMat = mat(flowerColors[i % flowerColors.length]);
+    const petal = new Mesh(petalGeo, petalMat);
     petal.position.set(fx, 0.26, fz);
     scene.add(petal);
   }
@@ -186,23 +194,24 @@ function buildPark(scene) {
   benchPositions.forEach(([bx, bz, rot]) => {
     const bench = new Group();
     const seatGeo = new BoxGeometry(2, 0.06, 0.5);
-    const seat = new Mesh(seatGeo, mat("#8D6E63", { roughness: 0.5 }));
+    const seatMat = mat("#8D6E63", { roughness: 0.5 });
+    const seat = new Mesh(seatGeo, seatMat);
     seat.position.y = 0.45;
     seat.castShadow = true;
     bench.add(seat);
-    // Legs
     for (let lx = -0.8; lx <= 0.8; lx += 1.6) {
       for (let lz = -0.15; lz <= 0.15; lz += 0.3) {
         const legGeo = new BoxGeometry(0.06, 0.42, 0.06);
-        const leg = new Mesh(legGeo, mat("#5D4037", { roughness: 0.4 }));
+        const legMat = mat("#5D4037", { roughness: 0.4 });
+        const leg = new Mesh(legGeo, legMat);
         leg.position.set(lx, 0.21, lz);
         leg.castShadow = true;
         bench.add(leg);
       }
     }
-    // Backrest
     const backGeo = new BoxGeometry(2, 0.35, 0.05);
-    const back = new Mesh(backGeo, mat("#8D6E63", { roughness: 0.5 }));
+    const backMat = mat("#8D6E63", { roughness: 0.5 });
+    const back = new Mesh(backGeo, backMat);
     back.position.set(0, 0.65, -0.22);
     back.castShadow = true;
     bench.add(back);
@@ -212,8 +221,9 @@ function buildPark(scene) {
   });
 
   // ─── LIGHTING ───────────────────────────────────────────────
-  // Sun (directional)
-  const sun = new DirectionalLight("#FFF8E1", 1.2);
+  const sun = new DirectionalLight();
+  sun.color = new Color("#FFF8E1");
+  sun.intensity = 1.2;
   sun.position.set(10, 18, -5);
   sun.castShadow = true;
   sun.shadow.mapSize.width = 2048;
@@ -227,11 +237,16 @@ function buildPark(scene) {
   sun.shadow.bias = -0.0003;
   scene.add(sun);
 
-  // Sky / ambient
-  scene.add(new AmbientLight("#BBDEFB", 0.55));
+  const ambLight = new AmbientLight();
+  ambLight.color = new Color("#BBDEFB");
+  ambLight.intensity = 0.55;
+  scene.add(ambLight);
 
-  // Subtle fill light from below (bounce from grass)
-  scene.add(new HemisphereLight("#87CEEB", "#388E3C", 0.3));
+  const hemiLight = new HemisphereLight();
+  hemiLight.color = new Color("#87CEEB");
+  hemiLight.groundColor = new Color("#388E3C");
+  hemiLight.intensity = 0.3;
+  scene.add(hemiLight);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -250,8 +265,8 @@ function createAvatar(scene) {
   const eyeMat = () => mat("#111111", { roughness: 0.1 });
   const darkShoe = () => mat("#1A1A1A", { roughness: 0.35 });
 
-  function addMesh(group, geo, materialFn, pos, casts = true) {
-    const m = new Mesh(geo, materialFn());
+  function addMesh(group, geo, materialOrFn, pos, casts = true) {
+    const m = new Mesh(geo, typeof materialOrFn === "function" ? materialOrFn() : materialOrFn);
     m.position.copy(pos);
     m.castShadow = casts;
     m.receiveShadow = casts;
@@ -369,7 +384,10 @@ function createAvatar(scene) {
     headGroup.add(eye);
     // Pupil highlight
     const pupilGeo = new SphereGeometry(0.005, 4, 3);
-    const pupil = new Mesh(pupilGeo, new MeshStandardMaterial({ color: "#FFFFFF", roughness: 0.1 }));
+    const pupilMat = new MeshStandardMaterial();
+    pupilMat.color = new Color("#FFFFFF");
+    pupilMat.roughness = 0.1;
+    const pupil = new Mesh(pupilGeo, pupilMat);
     pupil.position.set(ex, 0.122, 0.098);
     headGroup.add(pupil);
   }
@@ -429,9 +447,12 @@ function createAvatar(scene) {
 
   // ─── SHADOW DISC ────────────────────────────────────────────
   const shadowGeo = new CircleGeometry(0.18, 16);
-  const shadowDisc = new Mesh(shadowGeo, new MeshBasicMaterial({
-    color: "#000000", transparent: true, opacity: 0.22, depthWrite: false,
-  }));
+  const shadowDiscMat = new MeshBasicMaterial();
+  shadowDiscMat.color = new Color("#000000");
+  shadowDiscMat.transparent = true;
+  shadowDiscMat.opacity = 0.22;
+  shadowDiscMat.depthWrite = false;
+  const shadowDisc = new Mesh(shadowGeo, shadowDiscMat);
   shadowDisc.rotation.x = -Math.PI / 2;
   shadowDisc.position.y = -0.88;
   shadowDisc.name = "shadow";
