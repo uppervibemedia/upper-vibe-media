@@ -122,18 +122,17 @@ function buildPark(scene) {
   inner.name = "innerGrass";
   scene.add(inner);
 
-  // ─── SEA BED — ocean-colored base under water to prevent dark spots ──
-  const seaBedGeo = new PlaneGeometry(52, OCEAN_DEPTH + 8);
-  const seaBedMat = new MeshBasicMaterial();
-  seaBedMat.color = new Color("#1B5E8A");
-  seaBedMat.depthWrite = false;
-  const seaBed = new Mesh(seaBedGeo, seaBedMat);
-  seaBed.rotation.x = -Math.PI / 2;
-  seaBed.position.set(0, -0.015, SHORELINE_Z + 4 + OCEAN_DEPTH / 2);
-  seaBed.receiveShadow = false;
-  seaBed.renderOrder = -2;
-  seaBed.name = "seaBed";
-  scene.add(seaBed);
+  // ─── OCEAN FLOOR — visible through translucent shallow water ──
+  const oceanFloorGeo = new PlaneGeometry(56, OCEAN_DEPTH + 8, 1, 1);
+  const oceanFloorMat = new MeshBasicMaterial();
+  oceanFloorMat.color = new Color("#1B5E8A");
+  oceanFloorMat.side = THREE.BackSide;
+  const oceanFloor = new Mesh(oceanFloorGeo, oceanFloorMat);
+  oceanFloor.rotation.x = -Math.PI / 2;
+  oceanFloor.position.set(0, -0.20, SHORELINE_Z + 5 + OCEAN_DEPTH / 2);
+  oceanFloor.renderOrder = -1;
+  oceanFloor.name = "oceanFloor";
+  scene.add(oceanFloor);
 
   // Dirt path circle (in park zone, behind player)
   const pathRing = new RingGeometry(14, 14.7, 64);
@@ -276,7 +275,7 @@ function buildPark(scene) {
 
   // Dry sand — warm golden, from grass toward shoreline
   const drySandGeo = new PlaneGeometry(56, 4);
-  const drySandMat = mat("#E5A870", { roughness: 0.5 });
+  const drySandMat = mat("#E8B47E", { roughness: 0.5 });
   const drySand = new Mesh(drySandGeo, drySandMat);
   drySand.rotation.x = -Math.PI / 2;
   drySand.position.set(0, 0.002, 15);
@@ -286,7 +285,7 @@ function buildPark(scene) {
 
   // Mid sand — richer golden-brown tone
   const midSandGeo = new PlaneGeometry(56, 3);
-  const midSandMat = mat("#D4955B", { roughness: 0.45 });
+  const midSandMat = mat("#D8A76B", { roughness: 0.45 });
   const midSand = new Mesh(midSandGeo, midSandMat);
   midSand.rotation.x = -Math.PI / 2;
   midSand.position.set(0, 0.003, 17);
@@ -318,14 +317,13 @@ function buildPark(scene) {
     scene.add(patch);
   }
 
-  // ─── SHALLOW WATER — bright cyan near shore (matches ref #38D3E6) ─
-  const shallowGeo = new PlaneGeometry(56, 5, 28, 8);
+  // ─── SHALLOW WATER — bright turquoise near shore (ref #00E5FF) ─
+  const shallowGeo = new PlaneGeometry(56, 5);
   const shallowMat = new MeshBasicMaterial();
-  shallowMat.color = new Color("#34D3EB");
+  shallowMat.color = new Color("#00E5FF");
   shallowMat.transparent = true;
-  shallowMat.opacity = 0.95;
+  shallowMat.opacity = 0.70;
   shallowMat.depthWrite = false;
-  shallowMat.side = THREE.DoubleSide;
   const shallow = new Mesh(shallowGeo, shallowMat);
   shallow.rotation.x = -Math.PI / 2;
   shallow.position.set(0, -0.004, SHORELINE_Z + 2.5);
@@ -336,14 +334,10 @@ function buildPark(scene) {
   scene.userData.shallow = shallow;
   scene.userData._shallowBaseZ = SHORELINE_Z + 2.5;
 
-  // ─── DEEP OCEAN — sapphire blue fading to horizon (ref #1D78C1) ─
-  const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 56, 24);
+  // ─── DEEP OCEAN — azure blue (ref #2D8BCC) ─
+  const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 1, 1);
   const oceanMat = new MeshBasicMaterial();
-  oceanMat.color = new Color("#1E6FAF");
-  oceanMat.transparent = true;
-  oceanMat.opacity = 1.0;
-  oceanMat.depthWrite = false;
-  oceanMat.side = THREE.DoubleSide;
+  oceanMat.color = new Color("#2D8BCC");
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, -0.006, SHORELINE_Z + 5 + OCEAN_DEPTH / 2);
@@ -357,59 +351,52 @@ function buildPark(scene) {
   // ─── LAYERED SHORELINE TRANSITION ────────────────────────────
 
   // Layer 1: Wet-sand edge — thin dark rim at waterline
-  const sandEdgeGeo = new PlaneGeometry(56, 0.3);
-  const sandEdgeMat = new MeshBasicMaterial();
-  sandEdgeMat.color = new Color("#5C4033");
-  sandEdgeMat.transparent = true;
-  sandEdgeMat.opacity = 0.45;
-  sandEdgeMat.depthWrite = false;
-  const sandEdge = new Mesh(sandEdgeGeo, sandEdgeMat);
-  sandEdge.rotation.x = -Math.PI / 2;
-  sandEdge.position.set(0, 0.005, SHORELINE_Z);
-  sandEdge.name = "sandEdge";
-  scene.add(sandEdge);
+  // Layer 1: Wet-sand edge — removed, replaced by foam directly
 
-  // Layer 2: Foam edge — bright white foam line (matching reference)
-  const foamGeo = new PlaneGeometry(56, 0.9);
+  // Foam edge — bright white shoreline foam (ref #FFFFFF)
+  const foamGeo = new PlaneGeometry(56, 1.2);
   const foamMat = new MeshBasicMaterial();
   foamMat.color = new Color("#FFFFFF");
   foamMat.transparent = true;
-  foamMat.opacity = 0.55;
+  foamMat.opacity = 0.65;
   foamMat.depthWrite = false;
   const foam = new Mesh(foamGeo, foamMat);
   foam.rotation.x = -Math.PI / 2;
   foam.position.set(0, 0.006, SHORELINE_Z + 0.15);
   foam.name = "foam";
+  foam.renderOrder = 2;
   scene.add(foam);
   scene.userData.foam = foam;
   scene.userData._foamBaseZ = SHORELINE_Z + 0.15;
 
-  // Layer 3: Shorebreak — crisp white water-edge line
-  const shorebreakGeo = new PlaneGeometry(56, 0.3);
+  // Shorebreak — crisp water-edge line
+  const shorebreakGeo = new PlaneGeometry(56, 0.2);
   const shorebreakMat = new MeshBasicMaterial();
-  shorebreakMat.color = new Color("#F0F8FF");
+  shorebreakMat.color = new Color("#FFFFFF");
   shorebreakMat.transparent = true;
-  shorebreakMat.opacity = 0.6;
+  shorebreakMat.opacity = 0.7;
   shorebreakMat.depthWrite = false;
   const shorebreak = new Mesh(shorebreakGeo, shorebreakMat);
   shorebreak.rotation.x = -Math.PI / 2;
-  shorebreak.position.set(0, 0.007, SHORELINE_Z + 0.25);
+  shorebreak.position.set(0, 0.007, SHORELINE_Z + 0.05);
   shorebreak.name = "shorebreak";
+  shorebreak.renderOrder = 3;
   scene.add(shorebreak);
   scene.userData.shorebreak = shorebreak;
-  scene.userData._shorebreakBaseZ = SHORELINE_Z + 0.25;
+  scene.userData._shorebreakBaseZ = SHORELINE_Z + 0.05;
 
-  // Layer 4: Wave wash — gentle lapping water on wet sand (animated)
-  const waveWashGeo = new PlaneGeometry(56, 0.5);
+  // Wave wash — gentle lapping water on sand (animated)
+  const waveWashGeo = new PlaneGeometry(56, 0.8);
   const waveWashMat = new MeshBasicMaterial();
-  waveWashMat.color = new Color("#D0F0FF");
+  waveWashMat.color = new Color("#FFFFFF");
   waveWashMat.transparent = true;
   waveWashMat.opacity = 0.3;
   waveWashMat.depthWrite = false;
   const waveWash = new Mesh(waveWashGeo, waveWashMat);
   waveWash.rotation.x = -Math.PI / 2;
-  waveWash.position.set(0, 0.005, SHORELINE_Z + 0.08);
+  waveWash.position.set(0, 0.006, SHORELINE_Z - 0.1);
   waveWash.name = "waveWash";
+  waveWash.renderOrder = 4;
   scene.add(waveWash);
   scene.userData.waveWash = waveWash;
 
@@ -1199,43 +1186,18 @@ export default function CityCanvas({ onLoaded }) {
         }
 
         // ─── TIDE — forward/backward motion only ────────────────────
-        const tidePhase = Math.sin(t * 0.45) * 0.5; // Gentle tide: push in, pull out
+        const tidePhase = Math.sin(t * 0.45) * 0.4; // Gentle tide push/pull
 
         // Ocean tide: shift entire mesh forward/backward only
         const oceanMesh = scene.userData.ocean;
         if (oceanMesh) {
           oceanMesh.position.z = scene.userData._oceanBaseZ + tidePhase;
-          // Gentle swell height (Y-axis) based on depth distance (Z-axis)
-          const pos = oceanMesh.geometry.attributes.position;
-          if (pos) {
-            const arr = pos.array;
-            for (let i = 0; i < arr.length; i += 3) {
-              const depth = arr[i + 2]; // Z varies from -27 to 27 (distance from mesh center)
-              // Wave height rises near shore, flattens far out
-              const shoreFactor = 1 - Math.abs(depth) / 27; // 1 near shore, 0 far out
-              arr[i + 1] = Math.sin(depth * 0.4 + t * 0.7) * 0.06 * shoreFactor
-                         + Math.sin(depth * 0.25 + t * 0.4) * 0.04 * shoreFactor;
-            }
-            pos.needsUpdate = true;
-          }
         }
 
         // Shallow water tide — same phase, sync with ocean
         const shallowMesh = scene.userData.shallow;
         if (shallowMesh) {
-          shallowMesh.position.z = scene.userData._shallowBaseZ + tidePhase;
-          const pos = shallowMesh.geometry.attributes.position;
-          if (pos) {
-            const arr = pos.array;
-            for (let i = 0; i < arr.length; i += 3) {
-              const depth = arr[i + 2]; // Z varies from -2.5 to 2.5
-              // Ripples near shore — larger amplitude, faster frequency
-              const shoreFactor = 1 - Math.abs(depth) / 2.5;
-              arr[i + 1] = Math.sin(depth * 0.7 + t * 1.0) * 0.035 * shoreFactor
-                         + Math.sin(depth * 0.5 + t * 0.6) * 0.025 * shoreFactor;
-            }
-            pos.needsUpdate = true;
-          }
+          shallowMesh.position.z = scene.userData._shallowBaseZ + tidePhase * 0.8;
         }
 
         // ─── SHORELINE ANIMATION — synced with tide ──────────────
