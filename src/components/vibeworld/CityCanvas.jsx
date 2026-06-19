@@ -100,23 +100,24 @@ function buildPark(scene) {
 
   // ─── LAYOUT CONSTANTS ────────────────────────────────────────
   const SHORELINE_Z = 7;
-  const OCEAN_DEPTH = 48;
-  const GRASS_START_Z = -12;
-  const grassGeo = new PlaneGeometry(50, 16);
+  const OCEAN_DEPTH = 54;
+
+  // Large park ground — spans z=-22 to z=6 (28 units deep, 60 wide)
+  const grassGeo = new PlaneGeometry(60, 28);
   const grassMat = mat("#4CAF50", { roughness: 0.85 });
   const grassMesh = new Mesh(grassGeo, grassMat);
   grassMesh.rotation.x = -Math.PI / 2;
-  grassMesh.position.set(0, -0.01, -4);
+  grassMesh.position.set(0, -0.01, -8);
   grassMesh.receiveShadow = true;
   grassMesh.name = "grassGround";
   scene.add(grassMesh);
 
-  // Inner walking area (park only)
-  const innerGeo = new PlaneGeometry(44, 12);
+  // Inner walking area
+  const innerGeo = new PlaneGeometry(54, 20);
   const innerMat = mat("#5CB860", { roughness: 0.75 });
   const inner = new Mesh(innerGeo, innerMat);
   inner.rotation.x = -Math.PI / 2;
-  inner.position.set(0, -0.005, -5);
+  inner.position.set(0, -0.005, -9);
   inner.receiveShadow = true;
   inner.name = "innerGrass";
   scene.add(inner);
@@ -135,20 +136,20 @@ function buildPark(scene) {
   scene.add(seaBed);
 
   // Dirt path circle (in park zone, behind player)
-  const pathRing = new RingGeometry(12, 12.6, 64);
+  const pathRing = new RingGeometry(14, 14.7, 64);
   const pathMat = mat("#C8A96E", { roughness: 0.9 });
   const path = new Mesh(pathRing, pathMat);
   path.rotation.x = -Math.PI / 2;
-  path.position.set(0, 0.001, -2);
+  path.position.set(0, 0.001, -5);
   path.receiveShadow = true;
   scene.add(path);
 
   // Central dirt patch
-  const centerGeo = new CircleGeometry(3, 32);
+  const centerGeo = new CircleGeometry(3.5, 32);
   const centerMat = mat("#C8A96E", { roughness: 0.9 });
   const center = new Mesh(centerGeo, centerMat);
   center.rotation.x = -Math.PI / 2;
-  center.position.set(0, 0.002, -2);
+  center.position.set(0, 0.002, -5);
   center.receiveShadow = true;
   scene.add(center);
 
@@ -182,14 +183,14 @@ function buildPark(scene) {
   });
 
   // ─── BUSHES (grass side only) ────────────────────────────────
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 30; i++) {
     let bx, bz;
     do {
       const angle = Math.random() * Math.PI * 2;
-      const radius = 4 + Math.random() * 10;
+      const radius = 5 + Math.random() * 16;
       bx = Math.cos(angle) * radius;
       bz = Math.sin(angle) * radius;
-    } while (bz > 4 || bz < -12);
+    } while (bz > 4 || bz < -18);
     const bushGeo = new SphereGeometry(0.2 + Math.random() * 0.25, 6, 5);
     const bushMat = mat("#388E3C", { roughness: 0.55 });
     const bush = new Mesh(bushGeo, bushMat);
@@ -202,14 +203,14 @@ function buildPark(scene) {
 
   // ─── SMALL FLOWERS (grass side only) ─────────────────────────
   const flowerColors = ["#FFEB3B", "#FF9800", "#E91E63", "#9C27B0", "#FFFFFF"];
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 60; i++) {
     let fx, fz;
     do {
       const angle = Math.random() * Math.PI * 2;
-      const radius = 3 + Math.random() * 14;
+      const radius = 4 + Math.random() * 20;
       fx = Math.cos(angle) * radius;
       fz = Math.sin(angle) * radius;
-    } while (fz > 4 || fz < -12);
+    } while (fz > 4 || fz < -18);
 
     const stemGeo = new CylinderGeometry(0.01, 0.01, 0.25, 4);
     const stemMat = mat("#388E3C");
@@ -226,7 +227,8 @@ function buildPark(scene) {
 
   // ─── BENCHES (park zone only) ────────────────────────────────
   const benchPositions = [
-    [0, 1, 0], [5.5, -3, Math.PI / 2], [-5.5, -3, -Math.PI / 2],
+    [0, -3, 0], [7, -8, Math.PI / 2], [-7, -8, -Math.PI / 2],
+    [10, -2, Math.PI / 3], [-10, -2, -Math.PI / 3],
   ];
   benchPositions.forEach(([bx, bz, rot]) => {
     const bench = new Group();
@@ -409,11 +411,11 @@ function buildPark(scene) {
   moon.shadow.mapSize.width = 2048;
   moon.shadow.mapSize.height = 2048;
   moon.shadow.camera.near = 0.5;
-  moon.shadow.camera.far = 60;
-  moon.shadow.camera.left = -20;
-  moon.shadow.camera.right = 20;
-  moon.shadow.camera.top = 20;
-  moon.shadow.camera.bottom = -20;
+  moon.shadow.camera.far = 80;
+  moon.shadow.camera.left = -30;
+  moon.shadow.camera.right = 30;
+  moon.shadow.camera.top = 30;
+  moon.shadow.camera.bottom = -30;
   moon.shadow.bias = -0.0003;
   scene.add(moon);
 
@@ -551,7 +553,7 @@ function createCosmicSky(scene) {
   skybox.renderOrder = -1; // Always render behind everything
   scene.add(skybox);
 
-  scene.fog = new Fog("#0A1525", 18, 48);
+  scene.fog = new Fog("#0A1525", 22, 55);
 }
 
 // ═══════════════════════════════════════════════════════════════
