@@ -98,6 +98,9 @@ function buildPark(scene) {
   // ─── SKY ────────────────────────────────────────────────────
   createCosmicSky(scene);
 
+  // ─── SKYLINE BACKDROP ────────────────────────────────────────
+  createSkylinePanels(scene);
+
   // ─── LAYOUT CONSTANTS ────────────────────────────────────────
   const SHORELINE_Z = 20;
   const OCEAN_DEPTH = 54;
@@ -414,6 +417,74 @@ const SKY_LEFT    = `${BASE}/e7caceb54_ChatGPTImageJun19202612_41_07PM.png`;   /
 // Direction order (planets separated by non-planet views):
 //   Forward (+Z) = no planet  →  Right (+X) = planet
 //   Back    (-Z) = no planet  →  Left  (-X) = planet
+// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// SKYLINE BACKDROP PANELS — 2D city fence around the perimeter
+// ═══════════════════════════════════════════════════════════════
+function createSkylinePanels(scene) {
+  const loader = new THREE.TextureLoader();
+  const BASE_URL = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
+
+  const loadTex = (filename) => {
+    const tex = loader.load(`${BASE_URL}/${filename}`);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+  };
+
+  const tex1 = loadTex("98eed5b3f_ChatGPTImageJun19202604_48_22PM1.png");
+  const tex2 = loadTex("69c8ef985_ChatGPTImageJun19202604_48_23PM2.png");
+  const tex3 = loadTex("80dd19b49_ChatGPTImageJun19202604_48_23PM3.png");
+
+  const PANEL_W = 35;
+  const PANEL_H = 10;
+  const DISTANCE = 33;
+
+  function makePanel(tex) {
+    const mat = new MeshBasicMaterial({
+      map: tex,
+      side: THREE.DoubleSide,
+      transparent: true,
+      depthWrite: false,
+    });
+    const geo = new PlaneGeometry(PANEL_W, PANEL_H);
+    const mesh = new Mesh(geo, mat);
+    mesh.renderOrder = 1;
+    return mesh;
+  }
+
+  // North — Image 1
+  const northPanel = makePanel(tex1);
+  northPanel.name = "skylineNorth";
+  scene.add(northPanel);
+
+  // East — Image 2
+  const eastPanel = makePanel(tex2);
+  eastPanel.rotation.y = -Math.PI / 2;
+  eastPanel.name = "skylineEast";
+  scene.add(eastPanel);
+
+  // South — Image 3
+  const southPanel = makePanel(tex3);
+  southPanel.name = "skylineSouth";
+  scene.add(southPanel);
+
+  // West — Image 1 (reused)
+  const westPanel = makePanel(tex1);
+  westPanel.rotation.y = Math.PI / 2;
+  westPanel.name = "skylineWest";
+  scene.add(westPanel);
+
+  scene.userData.skylinePanels = {
+    northPanel, eastPanel, southPanel, westPanel,
+    distance: DISTANCE,
+    halfH: PANEL_H / 2,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COSMIC SKYBOX — camera-centered cube, BackSide textures
 // ═══════════════════════════════════════════════════════════════
 function createCosmicSky(scene) {
   const loader = new THREE.TextureLoader();
@@ -1157,6 +1228,20 @@ export default function CityCanvas({ onLoaded }) {
           skybox.position.copy(camera.position);
           skybox.rotation.y += dt * 0.015; // Very slow Y-axis drift
           skybox.rotation.x += dt * 0.003; // Tiny tilt for depth
+        }
+
+        // ─── SKYLINE PANELS — follow camera at fixed perimeter ──
+        const skyline = scene.userData.skylinePanels;
+        if (skyline) {
+          const cx = camera.position.x;
+          const cz = camera.position.z;
+          const d = skyline.distance;
+          const h = skyline.halfH;
+
+          skyline.northPanel.position.set(cx, h, cz + d);
+          skyline.eastPanel.position.set(cx + d, h, cz);
+          skyline.southPanel.position.set(cx, h, cz - d);
+          skyline.westPanel.position.set(cx - d, h, cz);
         }
 
         renderer.render(scene, camera);
