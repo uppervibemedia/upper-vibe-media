@@ -24,6 +24,10 @@ const {
   AmbientLight,
   HemisphereLight,
   PCFSoftShadowMap,
+  BufferGeometry,
+  BufferAttribute,
+  PointsMaterial,
+  Points,
 } = THREE;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
@@ -82,8 +86,7 @@ function mat(hexColor, opts = {}) {
 // ═══════════════════════════════════════════════════════════════
 function buildPark(scene) {
   // ─── SKY ────────────────────────────────────────────────────
-  scene.background = new Color("#87CEEB");
-  scene.fog = new Fog("#C8E6C9", 25, 55);
+  createCosmicSky(scene);
 
   // ─── GRASS GROUND ───────────────────────────────────────────
   const groundGeo = new PlaneGeometry(80, 80);
@@ -223,7 +226,7 @@ function buildPark(scene) {
   // ─── LIGHTING ───────────────────────────────────────────────
   const sun = new DirectionalLight();
   sun.color = new Color("#FFF8E1");
-  sun.intensity = 1.2;
+  sun.intensity = 1.0;
   sun.position.set(10, 18, -5);
   sun.castShadow = true;
   sun.shadow.mapSize.width = 2048;
@@ -238,15 +241,171 @@ function buildPark(scene) {
   scene.add(sun);
 
   const ambLight = new AmbientLight();
-  ambLight.color = new Color("#BBDEFB");
-  ambLight.intensity = 0.55;
+  ambLight.color = new Color("#2a2a5a");
+  ambLight.intensity = 0.45;
   scene.add(ambLight);
 
   const hemiLight = new HemisphereLight();
-  hemiLight.color = new Color("#87CEEB");
-  hemiLight.groundColor = new Color("#388E3C");
-  hemiLight.intensity = 0.3;
+  hemiLight.color = new Color("#3a3090");
+  hemiLight.groundColor = new Color("#1a3020");
+  hemiLight.intensity = 0.25;
   scene.add(hemiLight);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COSMIC SKY — nebula dome, stars, aurora, moon
+// ═══════════════════════════════════════════════════════════════
+function createCosmicSky(scene) {
+  // ─── Canvas-generated nebula texture ─────────────────────────
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+
+  // Deep space gradient base
+  const base = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  base.addColorStop(0, "#080838");
+  base.addColorStop(0.12, "#180050");
+  base.addColorStop(0.28, "#102050");
+  base.addColorStop(0.45, "#101840");
+  base.addColorStop(0.6, "#180840");
+  base.addColorStop(0.78, "#0a1830");
+  base.addColorStop(1, "#050518");
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Soft nebula blobs
+  function nebula(cx, cy, rx, ry, color, alpha) {
+    ctx.globalAlpha = alpha;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rx);
+    g.addColorStop(0, color);
+    g.addColorStop(0.5, color);
+    g.addColorStop(1, "transparent");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  nebula(260, 100, 240, 90, "rgba(180, 40, 240, 0.85)", 0.55);
+  nebula(680, 140, 210, 80, "rgba(40, 100, 240, 0.85)", 0.5);
+  nebula(480, 70, 300, 120, "rgba(180, 40, 220, 0.7)", 0.4);
+  nebula(180, 210, 200, 75, "rgba(60, 110, 240, 0.8)", 0.45);
+  nebula(750, 260, 180, 65, "rgba(120, 30, 200, 0.75)", 0.38);
+  // Pink/cyan accents
+  nebula(380, 130, 160, 55, "rgba(255, 60, 160, 0.6)", 0.22);
+  nebula(560, 170, 140, 50, "rgba(50, 210, 255, 0.65)", 0.25);
+  nebula(700, 90, 110, 45, "rgba(220, 70, 255, 0.7)", 0.28);
+  ctx.globalAlpha = 1;
+
+  const domeTex = new THREE.CanvasTexture(canvas);
+  domeTex.colorSpace = THREE.SRGBColorSpace;
+
+  // Use canvas texture as scene background directly
+  scene.background = domeTex;
+  scene.fog = new Fog("#050518", 18, 48);
+
+  // ─── Stars ───────────────────────────────────────────────────
+  const starCount = 900;
+  const starPositions = new Float32Array(starCount * 3);
+  const starSizes = new Float32Array(starCount);
+
+  for (let i = 0; i < starCount; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = 32 + Math.random() * 2;
+
+    starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    starPositions[i * 3 + 1] = Math.abs(r * Math.cos(phi));
+    starPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    starSizes[i] = 0.3 + Math.random() * 2.2;
+  }
+
+  const starsGeo = new BufferGeometry();
+  starsGeo.setAttribute("position", new BufferAttribute(starPositions, 3));
+  starsGeo.setAttribute("size", new BufferAttribute(starSizes, 1));
+
+  const starsMat = new PointsMaterial({
+    color: "#ffffff",
+    size: 0.07,
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+  });
+
+  const stars = new Points(starsGeo, starsMat);
+  stars.name = "stars";
+  scene.add(stars);
+
+  // ─── Moon ────────────────────────────────────────────────────
+  const moonGroup = new Group();
+  moonGroup.name = "moonGroup";
+  moonGroup.position.set(-8, 10, 18);
+
+  const moonGeo = new SphereGeometry(1.5, 32, 32);
+  const moonMat = new MeshBasicMaterial({ color: "#f5edd8" });
+  const moon = new Mesh(moonGeo, moonMat);
+  moon.name = "moon";
+  moonGroup.add(moon);
+
+  // Moon glow halo
+  const glowGeo = new SphereGeometry(2.2, 32, 32);
+  const glowMat = new MeshBasicMaterial({
+    color: "#f5edd8",
+    transparent: true,
+    opacity: 0.15,
+    depthWrite: false,
+  });
+  const glow = new Mesh(glowGeo, glowMat);
+  glow.name = "moonGlow";
+  moonGroup.add(glow);
+
+  scene.add(moonGroup);
+
+  // ─── Aurora waves ────────────────────────────────────────────
+  const auroraGroup = new Group();
+  auroraGroup.name = "auroraGroup";
+
+  const auroraColors = [
+    { hex: "#30ff70", opacity: 0.04 },
+    { hex: "#7030ff", opacity: 0.035 },
+    { hex: "#30a0ff", opacity: 0.04 },
+    { hex: "#ff40a0", opacity: 0.025 },
+  ];
+
+  auroraColors.forEach(({ hex, opacity }, i) => {
+    const auroraGeo = new PlaneGeometry(24, 3, 40, 1);
+    const auroraMat = new MeshBasicMaterial({
+      color: hex,
+      transparent: true,
+      opacity,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const wave = new Mesh(auroraGeo, auroraMat);
+    wave.rotation.x = Math.PI / 2;
+    wave.position.set(0, 9 + i * 2.2, 0);
+    wave.name = "aurora" + i;
+    auroraGroup.add(wave);
+  });
+
+  scene.add(auroraGroup);
+
+  // ─── Atmosphere rim glow ─────────────────────────────────────
+  const atmoGeo = new SphereGeometry(30, 32, 16);
+  const atmoMat = new MeshBasicMaterial({
+    color: "#3040ff",
+    transparent: true,
+    opacity: 0.025,
+    side: THREE.BackSide,
+    depthWrite: false,
+  });
+  const atmo = new Mesh(atmoGeo, atmoMat);
+  atmo.name = "atmosphereGlow";
+  scene.add(atmo);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -871,6 +1030,24 @@ export default function CityCanvas({ onLoaded }) {
           // Reset shoulder Z during walk
           if (animParts.leftShoulder) animParts.leftShoulder.rotation.z += (0 - animParts.leftShoulder.rotation.z) * dt * 5;
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
+        }
+
+        // ─── SKY ANIMATIONS ────────────────────────────────────
+        const auroraGroup = scene.getObjectByName("auroraGroup");
+        if (auroraGroup) {
+          auroraGroup.children.forEach((wave, i) => {
+            const off = i * 2.5;
+            wave.position.z = Math.sin(t * 0.25 + off) * 4;
+            wave.material.opacity = (wave.material.opacity > 0.03 ? wave.material.opacity : 0.04)
+              + Math.sin(t * 0.4 + off * 1.3) * 0.015;
+          });
+        }
+
+        // Subtle moon wobble
+        const moonGrp = scene.getObjectByName("moonGroup");
+        if (moonGrp) {
+          moonGrp.position.y = 10 + Math.sin(t * 0.15) * 0.5;
+          moonGrp.position.x = 10 + Math.cos(t * 0.12) * 0.8;
         }
 
         renderer.render(scene, camera);
