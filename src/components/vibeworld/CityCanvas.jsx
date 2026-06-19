@@ -253,18 +253,65 @@ function buildPark(scene) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// SKY IMAGE — cosmic sky reference uploaded by user
+// DIRECTIONAL SKY IMAGES — four unique cosmic ocean views
 // ═══════════════════════════════════════════════════════════════
-const SKY_IMAGE_URL = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/6f210e15a_60F3176E-2655-48B3-8762-6DDE68A4D207.jpg";
+const BASE = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
+const SKY_FORWARD = `${BASE}/2b5f36024_ChatGPTImageJun19202611_33_56AM.png`;   // No planet — main nebula
+const SKY_LEFT    = `${BASE}/018a2b8a8_ChatGPTImageJun19202611_33_43AM.png`;   // No planet — alt nebula
+const SKY_RIGHT   = `${BASE}/ca6edd6b5_ChatGPTImageJun19202611_34_04AM.png`;   // Close planet
+const SKY_BACK    = `${BASE}/d90e22d68_ChatGPTImageJun19202611_33_49AM.png`;   // Nebula + planet
 
 // ═══════════════════════════════════════════════════════════════
-// COSMIC SKY — uploaded reference image as scene background
+// COSMIC SKYBOX — four inward-facing planes, one per direction
 // ═══════════════════════════════════════════════════════════════
 function createCosmicSky(scene) {
-  const texture = new THREE.TextureLoader().load(SKY_IMAGE_URL);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  scene.background = texture;
-  scene.fog = new Fog("#050510", 30, 55);
+  const loader = new THREE.TextureLoader();
+  const PLANE_SIZE = 40;
+  const DIST = 28;
+  const BOTTOM_Y = 0;        // ground level — images have beach/ocean at bottom
+  const CENTER_Y = PLANE_SIZE / 2;
+
+  // Each side: [url, x, z, yaw rotation to face center]
+  // PlaneGeometry default normal points +Z. Y-rotation orients it inward.
+  const sides = [
+    // Forward  (+Z wall)  — faces -Z  → yaw PI
+    { url: SKY_FORWARD, x: 0,        z:  DIST, yaw: Math.PI },
+    // Back     (-Z wall)  — faces +Z  → yaw 0 (default)
+    { url: SKY_BACK,    x: 0,        z: -DIST, yaw: 0 },
+    // Left     (-X wall)  — faces +X  → yaw -PI/2
+    { url: SKY_LEFT,    x: -DIST,    z: 0,      yaw: -Math.PI / 2 },
+    // Right    (+X wall)  — faces -X  → yaw PI/2
+    { url: SKY_RIGHT,   x:  DIST,    z: 0,      yaw: Math.PI / 2 },
+  ];
+
+  sides.forEach(({ url, x, z, yaw }) => {
+    const texture = loader.load(url);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+
+    const mat = new MeshBasicMaterial({
+      map: texture,
+      side: THREE.FrontSide,
+      depthWrite: false,
+    });
+
+    const plane = new Mesh(new PlaneGeometry(PLANE_SIZE, PLANE_SIZE), mat);
+    plane.position.set(x, CENTER_Y, z);
+    plane.rotation.y = yaw;
+    scene.add(plane);
+  });
+
+  // Dark ceiling to prevent open sky gap when looking up
+  const ceilingMat = new MeshBasicMaterial();
+  ceilingMat.color = new Color("#0a0a1e");
+  ceilingMat.depthWrite = false;
+  const ceiling = new Mesh(new PlaneGeometry(PLANE_SIZE * 1.5, PLANE_SIZE * 1.5), ceilingMat);
+  ceiling.position.y = PLANE_SIZE - 1;
+  ceiling.rotation.x = -Math.PI / 2; // horizontal, facing down
+  scene.add(ceiling);
+
+  scene.fog = new Fog("#050510", 35, 55);
 }
 
 // ═══════════════════════════════════════════════════════════════
