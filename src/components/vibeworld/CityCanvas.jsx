@@ -276,7 +276,7 @@ function buildPark(scene) {
 
   // Dry sand — warm golden, from grass toward shoreline
   const drySandGeo = new PlaneGeometry(56, 4);
-  const drySandMat = mat("#E8A873", { roughness: 0.5 });
+  const drySandMat = mat("#E5A870", { roughness: 0.5 });
   const drySand = new Mesh(drySandGeo, drySandMat);
   drySand.rotation.x = -Math.PI / 2;
   drySand.position.set(0, 0.002, 15);
@@ -286,7 +286,7 @@ function buildPark(scene) {
 
   // Mid sand — richer golden-brown tone
   const midSandGeo = new PlaneGeometry(56, 3);
-  const midSandMat = mat("#D99665", { roughness: 0.45 });
+  const midSandMat = mat("#D4955B", { roughness: 0.45 });
   const midSand = new Mesh(midSandGeo, midSandMat);
   midSand.rotation.x = -Math.PI / 2;
   midSand.position.set(0, 0.003, 17);
@@ -295,7 +295,7 @@ function buildPark(scene) {
 
   // Wet sand — darker damp sand at shoreline
   const wetSandGeo = new PlaneGeometry(56, 2);
-  const wetSandMat = mat("#C08860", { roughness: 0.28, metalness: 0.1 });
+  const wetSandMat = mat("#B07048", { roughness: 0.28, metalness: 0.1 });
   const wetSand = new Mesh(wetSandGeo, wetSandMat);
   wetSand.rotation.x = -Math.PI / 2;
   wetSand.position.set(0, 0.004, 19.5);
@@ -309,7 +309,7 @@ function buildPark(scene) {
     const pz = 13 + Math.random() * 3;
     const r = 0.3 + Math.random() * 0.7;
     const patchGeo = new CircleGeometry(r, 12);
-    const shade = Math.random() > 0.5 ? "#ECB080" : "#DE9868";
+    const shade = Math.random() > 0.5 ? "#EAA878" : "#D89A62";
     const patchMat = mat(shade, { roughness: 0.55 });
     const patch = new Mesh(patchGeo, patchMat);
     patch.rotation.x = -Math.PI / 2;
@@ -321,7 +321,7 @@ function buildPark(scene) {
   // ─── SHALLOW WATER — bright cyan near shore (matches ref #38D3E6) ─
   const shallowGeo = new PlaneGeometry(56, 5, 28, 8);
   const shallowMat = new MeshStandardMaterial();
-  shallowMat.color = new Color("#38C8E0");
+  shallowMat.color = new Color("#34D3EB");
   shallowMat.roughness = 0.03;
   shallowMat.metalness = 0.35;
   shallowMat.transparent = true;
@@ -338,7 +338,7 @@ function buildPark(scene) {
   // ─── DEEP OCEAN — sapphire blue fading to horizon (ref #1D78C1) ─
   const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 56, 24);
   const oceanMat = new MeshStandardMaterial();
-  oceanMat.color = new Color("#1D78C1");
+  oceanMat.color = new Color("#1E6FAF");
   oceanMat.roughness = 0.04;
   oceanMat.metalness = 0.5;
   oceanMat.transparent = true;
