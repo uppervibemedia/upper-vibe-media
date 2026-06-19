@@ -185,7 +185,7 @@ function buildPark(scene) {
       const radius = 4 + Math.random() * 10;
       bx = Math.cos(angle) * radius;
       bz = Math.sin(angle) * radius;
-    } while (bz < 1);
+    } while (bz < 3);
     const bushGeo = new SphereGeometry(0.2 + Math.random() * 0.25, 6, 5);
     const bushMat = mat("#388E3C", { roughness: 0.55 });
     const bush = new Mesh(bushGeo, bushMat);
@@ -205,7 +205,7 @@ function buildPark(scene) {
       const radius = 3 + Math.random() * 14;
       fx = Math.cos(angle) * radius;
       fz = Math.sin(angle) * radius;
-    } while (fz < 1);
+    } while (fz < 3);
 
     const stemGeo = new CylinderGeometry(0.01, 0.01, 0.25, 4);
     const stemMat = mat("#388E3C");
@@ -289,11 +289,11 @@ function buildPark(scene) {
   wetSand.name = "wetSand";
   scene.add(wetSand);
 
-  // Scattered sand patches — natural grass transition
-  for (let i = 0; i < 16; i++) {
-    const px = (Math.random() - 0.5) * 36;
-    const pz = 2.5 + Math.random() * 3;
-    const r = 0.3 + Math.random() * 1.2;
+  // Scattered sand patches — natural grass transition (grass side only)
+  for (let i = 0; i < 12; i++) {
+    const px = (Math.random() - 0.5) * 28;
+    const pz = 4.5 + Math.random() * 4;
+    const r = 0.4 + Math.random() * 1.0;
     const patchGeo = new CircleGeometry(r, 12);
     const shade = Math.random() > 0.5 ? "#DEC8A8" : "#C8B090";
     const patchMat = mat(shade, { roughness: 0.64 });
@@ -340,25 +340,25 @@ function buildPark(scene) {
 
   // ─── LAYERED SHORELINE TRANSITION ────────────────────────────
 
-  // Layer 1: Wet-sand edge glow (dark rim where sand meets water)
-  const sandEdgeGeo = new PlaneGeometry(40, 0.6);
+  // Layer 1: Wet-sand edge — thin dark rim at waterline
+  const sandEdgeGeo = new PlaneGeometry(40, 0.35);
   const sandEdgeMat = new MeshBasicMaterial();
-  sandEdgeMat.color = new Color("#7A6858");
+  sandEdgeMat.color = new Color("#6B5A4A");
   sandEdgeMat.transparent = true;
-  sandEdgeMat.opacity = 0.4;
+  sandEdgeMat.opacity = 0.55;
   sandEdgeMat.depthWrite = false;
   const sandEdge = new Mesh(sandEdgeGeo, sandEdgeMat);
   sandEdge.rotation.x = -Math.PI / 2;
-  sandEdge.position.set(0, 0.005, SHORELINE_Z + 0.3);
+  sandEdge.position.set(0, 0.005, SHORELINE_Z + 0.15);
   sandEdge.name = "sandEdge";
   scene.add(sandEdge);
 
-  // Layer 2: Foam edge — pale blue-white, main shoreline marker
-  const foamGeo = new PlaneGeometry(40, 1.4);
+  // Layer 2: Foam edge — crisp white-blue shoreline marker
+  const foamGeo = new PlaneGeometry(40, 0.9);
   const foamMat = new MeshBasicMaterial();
-  foamMat.color = new Color("#9EC8E4");
+  foamMat.color = new Color("#B8DCF0");
   foamMat.transparent = true;
-  foamMat.opacity = 0.38;
+  foamMat.opacity = 0.55;
   foamMat.depthWrite = false;
   const foam = new Mesh(foamGeo, foamMat);
   foam.rotation.x = -Math.PI / 2;
@@ -367,30 +367,30 @@ function buildPark(scene) {
   scene.add(foam);
   scene.userData.foam = foam;
 
-  // Layer 3: Shorebreak foam — thinner, brighter, slightly into water
-  const shorebreakGeo = new PlaneGeometry(38, 0.5);
+  // Layer 3: Shorebreak — a single crisp water-edge line
+  const shorebreakGeo = new PlaneGeometry(40, 0.25);
   const shorebreakMat = new MeshBasicMaterial();
-  shorebreakMat.color = new Color("#C4E0F0");
+  shorebreakMat.color = new Color("#D0E8F8");
   shorebreakMat.transparent = true;
-  shorebreakMat.opacity = 0.3;
+  shorebreakMat.opacity = 0.6;
   shorebreakMat.depthWrite = false;
   const shorebreak = new Mesh(shorebreakGeo, shorebreakMat);
   shorebreak.rotation.x = -Math.PI / 2;
-  shorebreak.position.set(0, 0.007, SHORELINE_Z - 0.3);
+  shorebreak.position.set(0, 0.007, SHORELINE_Z - 0.05);
   shorebreak.name = "shorebreak";
   scene.add(shorebreak);
   scene.userData.shorebreak = shorebreak;
 
-  // Layer 4: Wave wash — semi-transparent water overlapping wet sand (animated)
-  const waveWashGeo = new PlaneGeometry(40, 0.9);
+  // Layer 4: Wave wash — gentle lapping water on wet sand (animated)
+  const waveWashGeo = new PlaneGeometry(40, 0.6);
   const waveWashMat = new MeshBasicMaterial();
-  waveWashMat.color = new Color("#88C0D8");
+  waveWashMat.color = new Color("#A0D4EC");
   waveWashMat.transparent = true;
-  waveWashMat.opacity = 0.22;
+  waveWashMat.opacity = 0.28;
   waveWashMat.depthWrite = false;
   const waveWash = new Mesh(waveWashGeo, waveWashMat);
   waveWash.rotation.x = -Math.PI / 2;
-  waveWash.position.set(0, 0.005, SHORELINE_Z + 0.15);
+  waveWash.position.set(0, 0.005, SHORELINE_Z + 0.05);
   waveWash.name = "waveWash";
   scene.add(waveWash);
   scene.userData.waveWash = waveWash;
