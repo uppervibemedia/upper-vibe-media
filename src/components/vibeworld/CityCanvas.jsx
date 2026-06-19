@@ -644,7 +644,7 @@ export default function CityCanvas({ onLoaded }) {
       // Start camera behind avatar, not above it
       const initCamDist = isMobileRef.current ? 4 : 5;
       const initCamHeight = isMobileRef.current ? 2.2 : 3.8;
-      camera.position.set(SPAWN[0], SPAWN[1] + initCamHeight, SPAWN[2] + initCamDist);
+      camera.position.set(SPAWN[0], SPAWN[1] + initCamHeight, SPAWN[2] - initCamDist);
       camera.lookAt(SPAWN[0], SPAWN[1] + 0.6, SPAWN[2]);
 
       buildPark(scene);
