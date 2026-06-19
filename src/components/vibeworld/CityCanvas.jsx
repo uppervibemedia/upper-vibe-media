@@ -258,20 +258,58 @@ function buildPark(scene) {
 const SKY_CANVAS_W = 1024;
 const SKY_CANVAS_H = 512;
 
+// Darker base gradient — mostly deep space with very subtle color shifts
 const GRADIENT_STOPS = [
-  [0, "#080838"], [0.12, "#180050"], [0.28, "#102050"],
-  [0.45, "#101840"], [0.6, "#180840"], [0.78, "#0a1830"], [1, "#050518"],
+  [0, "#060620"], [0.15, "#090830"], [0.3, "#0a0a28"],
+  [0.5, "#080822"], [0.72, "#070a24"], [1, "#040418"],
 ];
 
-const NEBULA_BLOBS = [
-  { cx: 260, cy: 100, rx: 240, ry: 90, r: "180", g: "40", b: "240", alpha: 0.55 },
-  { cx: 680, cy: 140, rx: 210, ry: 80, r: "40", g: "100", b: "240", alpha: 0.5 },
-  { cx: 480, cy: 70, rx: 300, ry: 120, r: "180", g: "40", b: "220", alpha: 0.4 },
-  { cx: 180, cy: 210, rx: 200, ry: 75, r: "60", g: "110", b: "240", alpha: 0.45 },
-  { cx: 750, cy: 260, rx: 180, ry: 65, r: "120", g: "30", b: "200", alpha: 0.38 },
-  { cx: 380, cy: 130, rx: 160, ry: 55, r: "255", g: "60", b: "160", alpha: 0.22 },
-  { cx: 560, cy: 170, rx: 140, ry: 50, r: "50", g: "210", b: "255", alpha: 0.25 },
-  { cx: 700, cy: 90, rx: 110, ry: 45, r: "220", g: "70", b: "255", alpha: 0.28 },
+// Wispy cloud clusters — unevenly spread, leaving large dark gaps
+// Each stroke: [offsetX, offsetY, angle, length, width, alphaScale]
+const NEBULA_CLUSTERS = [
+  { // Top-left — faint purple wisps
+    cx: 150, cy: 85,
+    r: "140", g: "45", b: "200",
+    strokes: [
+      [0, 0, -0.3, 190, 12, 0.9],
+      [30, -15, 0.1, 150, 10, 0.7],
+      [-25, 10, 0.5, 110, 8, 0.5],
+      [10, -25, -0.6, 130, 9, 0.45],
+    ],
+  },
+  { // Right edge — blue streak
+    cx: 850, cy: 140,
+    r: "35", g: "90", b: "230",
+    strokes: [
+      [0, 0, 0.4, 210, 11, 0.85],
+      [-20, 15, 0.7, 160, 9, 0.65],
+      [15, -10, 0.1, 120, 7, 0.45],
+    ],
+  },
+  { // Mid-lower left — very faint pink
+    cx: 240, cy: 340,
+    r: "200", g: "55", b: "155",
+    strokes: [
+      [0, 0, -0.2, 130, 10, 0.6],
+      [20, -8, 0.3, 90, 7, 0.4],
+    ],
+  },
+  { // Upper-middle — subtle cyan trail
+    cx: 520, cy: 60,
+    r: "45", g: "150", b: "210",
+    strokes: [
+      [0, 0, 0.15, 170, 9, 0.55],
+      [-15, 12, -0.35, 110, 7, 0.4],
+    ],
+  },
+  { // Far right lower — deep purple whisper
+    cx: 720, cy: 290,
+    r: "110", g: "35", b: "190",
+    strokes: [
+      [0, 0, 0.55, 100, 8, 0.5],
+      [-10, -10, 0.2, 80, 6, 0.35],
+    ],
+  },
 ];
 
 // Shared mutable state for nebula animation
@@ -287,32 +325,43 @@ function drawNebulaCanvas(time) {
   // Clear
   ctx.clearRect(0, 0, W, H);
 
-  // Gradient base
+  // Gradient base — deep space
   const base = ctx.createLinearGradient(0, 0, 0, H);
   GRADIENT_STOPS.forEach(([stop, color]) => base.addColorStop(stop, color));
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, W, H);
 
-  // Nebula blobs with subtle position shift over time
-  NEBULA_BLOBS.forEach((b) => {
-    const phase = (b.cx + b.cy) * 0.01;
-    const drift = Math.sin(time * 0.15 + phase) * 15;
-    const breathe = 1 + Math.sin(time * 0.25 + phase * 2.3) * 0.06;
-    const cyShift = Math.cos(time * 0.18 + phase * 1.7) * 8;
+  // Each cluster: draw thin overlapping gas wisps
+  NEBULA_CLUSTERS.forEach((cluster) => {
+    // Very slow gas-like drift
+    const phase = (cluster.cx * 0.7 + cluster.cy * 1.3) * 0.01;
+    const driftX = Math.sin(time * 0.08 + phase) * 18;
+    const driftY = Math.cos(time * 0.06 + phase * 1.4) * 10;
 
-    ctx.globalAlpha = b.alpha + Math.sin(time * 0.22 + phase) * 0.04;
-    const g = ctx.createRadialGradient(
-      b.cx + drift, b.cy + cyShift, 0,
-      b.cx + drift, b.cy + cyShift, b.rx * breathe,
-    );
-    const color = `rgba(${b.r},${b.g},${b.b},0.85)`;
-    g.addColorStop(0, color);
-    g.addColorStop(0.5, color);
-    g.addColorStop(1, "transparent");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(b.cx + drift, b.cy + cyShift, b.rx * breathe, b.ry * breathe, 0, 0, Math.PI * 2);
-    ctx.fill();
+    cluster.strokes.forEach(([offX, offY, angle, length, width, alphaScale]) => {
+      // Subtle background — stars are the main detail
+      const baseAlpha = 0.12 * alphaScale;
+      ctx.globalAlpha = baseAlpha + Math.sin(time * 0.10 + phase + angle) * 0.02;
+
+      const sx = cluster.cx + driftX + offX;
+      const sy = cluster.cy + driftY + offY;
+
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(angle);
+
+      // Soft radial gradient for feathered edges
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, length);
+      const color = `rgba(${cluster.r},${cluster.g},${cluster.b},0.85)`;
+      g.addColorStop(0, color);
+      g.addColorStop(0.35, color);
+      g.addColorStop(1, "transparent");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, length, width, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
   });
 
   ctx.globalAlpha = 1;
@@ -339,7 +388,7 @@ function createCosmicSky(scene) {
   scene.fog = new Fog("#050518", 18, 48);
 
   // ─── Stars ───────────────────────────────────────────────────
-  const starCount = 900;
+  const starCount = 1400;
   const starPositions = new Float32Array(starCount * 3);
   const starSizes = new Float32Array(starCount);
 
@@ -360,9 +409,9 @@ function createCosmicSky(scene) {
 
   const starsMat = new PointsMaterial({
     color: "#ffffff",
-    size: 0.07,
+    size: 0.09,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.92,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     sizeAttenuation: true,
@@ -402,10 +451,10 @@ function createCosmicSky(scene) {
   auroraGroup.name = "auroraGroup";
 
   const auroraColors = [
-    { hex: "#30ff70", opacity: 0.04 },
-    { hex: "#7030ff", opacity: 0.035 },
-    { hex: "#30a0ff", opacity: 0.04 },
-    { hex: "#ff40a0", opacity: 0.025 },
+    { hex: "#30ff70", opacity: 0.02 },
+    { hex: "#7030ff", opacity: 0.018 },
+    { hex: "#30a0ff", opacity: 0.02 },
+    { hex: "#ff40a0", opacity: 0.012 },
   ];
 
   auroraColors.forEach(({ hex, opacity }, i) => {
@@ -432,7 +481,7 @@ function createCosmicSky(scene) {
   const atmoMat = new MeshBasicMaterial({
     color: "#3040ff",
     transparent: true,
-    opacity: 0.025,
+    opacity: 0.012,
     side: THREE.BackSide,
     depthWrite: false,
   });
@@ -1067,8 +1116,8 @@ export default function CityCanvas({ onLoaded }) {
 
         // ─── SKY ANIMATIONS ────────────────────────────────────
 
-        // Redraw nebula canvas every ~1.5s for living drift/breathing/color-shift
-        if (frameRef.current % 90 === 0) {
+        // Redraw nebula canvas at ~2fps for smooth drift
+        if (frameRef.current % 30 === 0) {
           drawNebulaCanvas(t);
         }
 
@@ -1078,7 +1127,7 @@ export default function CityCanvas({ onLoaded }) {
           auroraGroup.children.forEach((wave, i) => {
             const off = i * 2.5;
             wave.position.z = Math.sin(t * 0.22 + off) * 3.5;
-            wave.material.opacity = 0.025 + Math.sin(t * 0.35 + off * 1.3) * 0.02;
+            wave.material.opacity = 0.012 + Math.sin(t * 0.35 + off * 1.3) * 0.008;
           });
         }
 
