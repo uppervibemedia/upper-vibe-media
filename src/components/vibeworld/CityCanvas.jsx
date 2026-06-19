@@ -122,16 +122,16 @@ function buildPark(scene) {
   inner.name = "innerGrass";
   scene.add(inner);
 
-  // ─── SEA BED — dark base under entire beach/ocean zone ───────
+  // ─── SEA BED — ocean-colored base under water to prevent dark spots ──
   const seaBedGeo = new PlaneGeometry(52, OCEAN_DEPTH + 8);
-  const seaBedMat = new MeshStandardMaterial();
-  seaBedMat.color = new Color("#0A1020");
-  seaBedMat.roughness = 0.95;
-  seaBedMat.metalness = 0.0;
+  const seaBedMat = new MeshBasicMaterial();
+  seaBedMat.color = new Color("#1B5E8A");
+  seaBedMat.depthWrite = false;
   const seaBed = new Mesh(seaBedGeo, seaBedMat);
   seaBed.rotation.x = -Math.PI / 2;
-  seaBed.position.set(0, -0.008, SHORELINE_Z + 4 + OCEAN_DEPTH / 2);
+  seaBed.position.set(0, -0.015, SHORELINE_Z + 4 + OCEAN_DEPTH / 2);
   seaBed.receiveShadow = false;
+  seaBed.renderOrder = -2;
   seaBed.name = "seaBed";
   scene.add(seaBed);
 
@@ -323,8 +323,9 @@ function buildPark(scene) {
   const shallowMat = new MeshBasicMaterial();
   shallowMat.color = new Color("#34D3EB");
   shallowMat.transparent = true;
-  shallowMat.opacity = 0.92;
+  shallowMat.opacity = 0.95;
   shallowMat.depthWrite = false;
+  shallowMat.side = THREE.DoubleSide;
   const shallow = new Mesh(shallowGeo, shallowMat);
   shallow.rotation.x = -Math.PI / 2;
   shallow.position.set(0, -0.004, SHORELINE_Z + 2.5);
@@ -340,8 +341,9 @@ function buildPark(scene) {
   const oceanMat = new MeshBasicMaterial();
   oceanMat.color = new Color("#1E6FAF");
   oceanMat.transparent = true;
-  oceanMat.opacity = 0.95;
+  oceanMat.opacity = 1.0;
   oceanMat.depthWrite = false;
+  oceanMat.side = THREE.DoubleSide;
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, -0.006, SHORELINE_Z + 5 + OCEAN_DEPTH / 2);
@@ -566,7 +568,7 @@ function createCosmicSky(scene) {
   skybox.renderOrder = -1; // Always render behind everything
   scene.add(skybox);
 
-  scene.fog = new Fog("#0A1525", 22, 55);
+  scene.fog = new Fog("#0A1525", 48, 60);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1197,21 +1199,22 @@ export default function CityCanvas({ onLoaded }) {
         }
 
         // ─── TIDE — forward/backward motion only ────────────────────
-        const tidePhase = Math.sin(t * 0.55) * 0.35; // Gentle tide cycle
+        const tidePhase = Math.sin(t * 0.45) * 0.5; // Gentle tide: push in, pull out
 
-        // Ocean tide: shift entire mesh forward/backward (no side-to-side)
+        // Ocean tide: shift entire mesh forward/backward only
         const oceanMesh = scene.userData.ocean;
         if (oceanMesh) {
           oceanMesh.position.z = scene.userData._oceanBaseZ + tidePhase;
-          // Gentle swell height displacement
+          // Gentle swell height (Y-axis) based on depth distance (Z-axis)
           const pos = oceanMesh.geometry.attributes.position;
           if (pos) {
             const arr = pos.array;
             for (let i = 0; i < arr.length; i += 3) {
-              const gz = arr[i]; // Geometry-space Z (varies from -depth/2 to +depth/2)
-              // Subtle rolling swells — height based on Z only (no X component)
-              arr[i + 2] = Math.sin(gz * 0.25 + t * 0.5) * 0.05
-                         + Math.sin(gz * 0.15 + t * 0.3) * 0.03;
+              const depth = arr[i + 2]; // Z varies from -27 to 27 (distance from mesh center)
+              // Wave height rises near shore, flattens far out
+              const shoreFactor = 1 - Math.abs(depth) / 27; // 1 near shore, 0 far out
+              arr[i + 1] = Math.sin(depth * 0.4 + t * 0.7) * 0.06 * shoreFactor
+                         + Math.sin(depth * 0.25 + t * 0.4) * 0.04 * shoreFactor;
             }
             pos.needsUpdate = true;
           }
@@ -1225,10 +1228,11 @@ export default function CityCanvas({ onLoaded }) {
           if (pos) {
             const arr = pos.array;
             for (let i = 0; i < arr.length; i += 3) {
-              const gz = arr[i];
-              // Quicker, smaller ripples near shore
-              arr[i + 2] = Math.sin(gz * 0.5 + t * 0.7) * 0.025
-                         + Math.sin(gz * 0.35 + t * 0.45) * 0.015;
+              const depth = arr[i + 2]; // Z varies from -2.5 to 2.5
+              // Ripples near shore — larger amplitude, faster frequency
+              const shoreFactor = 1 - Math.abs(depth) / 2.5;
+              arr[i + 1] = Math.sin(depth * 0.7 + t * 1.0) * 0.035 * shoreFactor
+                         + Math.sin(depth * 0.5 + t * 0.6) * 0.025 * shoreFactor;
             }
             pos.needsUpdate = true;
           }
