@@ -256,10 +256,10 @@ function buildPark(scene) {
 // DIRECTIONAL SKY IMAGES — four unique deep-space cosmic views
 // ═══════════════════════════════════════════════════════════════
 const BASE = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
-const SKY_FORWARD = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;   // No planet — main nebula
-const SKY_RIGHT   = `${BASE}/8f6a7ee38_ChatGPTImageJun19202611_55_23AM.png`;   // Planet — East/Right
+const SKY_FORWARD = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;   // No planet — North/Forward
+const SKY_RIGHT   = `${BASE}/df9a0847f_ChatGPTImageJun19202612_41_21PM.png`;   // Full planet (centered) — East/Right
 const SKY_BACK    = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`;   // No planet — South/Back
-const SKY_LEFT    = `${BASE}/caf25bf82_ChatGPTImageJun19202611_55_33AM.png`;   // Planet — West/Left
+const SKY_LEFT    = `${BASE}/e7caceb54_ChatGPTImageJun19202612_41_07PM.png`;   // Ringed planet + moon — West/Left
 
 // ═══════════════════════════════════════════════════════════════
 // COSMIC SKYBOX — camera-centered cube, BackSide textures
