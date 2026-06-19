@@ -642,9 +642,9 @@ export default function CityCanvas({ onLoaded }) {
       const asp = rw / Math.max(rh, 1);
       const camera = new PerspectiveCamera(55, asp, 0.1, 80);
       // Start camera behind avatar (same as animation loop will use)
-      const initCamDist = isMobileRef.current ? 5 : 5;   // mobile: 5, desktop: 5
-      const initCamHeight = isMobileRef.current ? 2.5 : 3.8;
-      const initLookY = isMobileRef.current ? 1.5 : 1.5;
+      const initCamDist = 5;
+      const initCamHeight = 2.5;
+      const initLookY = 1.5;
       camera.position.set(SPAWN[0], SPAWN[1] + initCamHeight, SPAWN[2] - initCamDist);
       camera.lookAt(SPAWN[0], SPAWN[1] + initLookY, SPAWN[2]);
 
@@ -777,9 +777,9 @@ export default function CityCanvas({ onLoaded }) {
         avatar.rotation.y = rot;
 
         // ─── CAMERA (third-person, locked to avatar every frame) ──
-        const camDist = isMobileRef.current ? 5 : 5;
-        const camHeight = isMobileRef.current ? 2.5 : 3.8;
-        const lookY = isMobileRef.current ? 1.5 : 1.5;
+        const camDist = 5;
+        const camHeight = 2.5;
+        const lookY = 1.5;
         // cameraPosition = avatar.position - avatar.forward * camDist + (0, camHeight, 0)
         camera.position.set(
           px - Math.sin(rot) * camDist,

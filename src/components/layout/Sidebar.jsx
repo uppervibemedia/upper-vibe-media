@@ -32,6 +32,7 @@ const bottomNavMobile = [
   { path: "/", icon: Home, label: "Home", rootPath: "/" },
   { path: "/music", icon: Music, label: "Music", rootPath: "/music" },
   { path: "/radio", icon: Radio, label: "Radio", rootPath: "/radio" },
+  { path: "/vibe-world", icon: Compass, label: "Vibe World", rootPath: "/vibe-world" },
   { path: "/account", icon: User, label: "Account", rootPath: "/account" },
 ];
 
@@ -40,6 +41,7 @@ const TAB_OWNERSHIP = {
   "/": ["/", "/newest-music", "/my-feed", "/start"],
   "/music": ["/music", "/song/", "/categories", "/downloads", "/visualizers", "/sessions", "/artists"],
   "/radio": ["/radio"],
+  "/vibe-world": ["/vibe-world"],
   "/account": ["/account", "/settings", "/my-vibes", "/my-vibe-library", "/upgrade", "/membership", "/payment-success", "/payment-cancelled"],
 };
 
