@@ -91,7 +91,7 @@ export default function UpperVibeCity({ onExit }) {
               color: "rgba(0,0,0,0.4)",
             }}
           >
-            WASD to walk &middot; Mouse to look
+            W/S walk &middot; A/D turn &middot; Mouse look
           </p>
         </motion.div>
       )}

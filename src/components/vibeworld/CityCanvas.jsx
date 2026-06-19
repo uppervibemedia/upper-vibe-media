@@ -644,13 +644,19 @@ export default function CityCanvas({ onLoaded }) {
 
         // ─── INPUT ──────────────────────────────────────────────
         let inputX = 0, inputZ = 0;
+        let turnInput = 0;
+
+        // Forward / Backward — relative to facing direction
         if (keys.w || keys.arrowup) { inputX += Math.sin(rot); inputZ += Math.cos(rot); }
         if (keys.s || keys.arrowdown) { inputX -= Math.sin(rot); inputZ -= Math.cos(rot); }
-        if (keys.a || keys.arrowleft) { inputX -= Math.cos(rot); inputZ += Math.sin(rot); }
-        if (keys.d || keys.arrowright) { inputX += Math.cos(rot); inputZ -= Math.sin(rot); }
+
+        // Rotate left / right — affects rotation only, not position
+        if (keys.a || keys.arrowleft) turnInput = -1;
+        if (keys.d || keys.arrowright) turnInput = 1;
 
         const inputMag = Math.sqrt(inputX * inputX + inputZ * inputZ);
         const isMoving = inputMag > 0.1;
+        const isTurning = Math.abs(turnInput) > 0.01;
 
         // ─── MOUSE LOOK ─────────────────────────────────────────
         if (mouse.down) {
@@ -659,14 +665,24 @@ export default function CityCanvas({ onLoaded }) {
           mouse.dx = 0;
         }
 
+        // ─── TURNING (A/D keys) ─────────────────────────────────
+        if (isTurning) {
+          rot += turnInput * TURN_SPEED * dt;
+          targetRotRef.current = rot;
+        }
+
         // ─── VELOCITY WITH SMOOTH ACCEL/DECEL ──────────────────
         if (isMoving) {
           inputX /= inputMag;
           inputZ /= inputMag;
 
-          // Smooth rotation toward movement direction
-          const moveAngle = Math.atan2(inputX, inputZ);
-          targetRotRef.current = moveAngle;
+          // Only auto-face toward movement when moving forward
+          // (don't rotate when moving backward or while manually turning)
+          const moveDot = inputX * Math.sin(rot) + inputZ * Math.cos(rot);
+          if (!isTurning && moveDot > -0.3) {
+            const moveAngle = Math.atan2(inputX, inputZ);
+            targetRotRef.current = moveAngle;
+          }
 
           // Accelerate
           vel.x += (inputX * MOVE_SPEED - vel.x) * Math.min(1, ACCELERATION * dt);
@@ -715,14 +731,19 @@ export default function CityCanvas({ onLoaded }) {
         const anim = animRef.current;
         anim.isMoving = speed > 0.1;
 
+        // Detect backward movement for walk cycle direction reversal
+        const facingDot = vel.x * Math.sin(rot) + vel.z * Math.cos(rot);
+        const isBackward = facingDot < -0.15;
+        const walkDir = isBackward ? -1 : 1;
+
         if (anim.isMoving) {
-          anim.walkTime += speed * WALK_CYCLE_SPEED * dt;
+          anim.walkTime += speed * WALK_CYCLE_SPEED * walkDir * dt;
           anim.speed = Math.min(1, anim.speed + dt * 6);
         } else {
           anim.walkTime += anim.prevWalkTime * 0.3 * dt;
           anim.speed = Math.max(0, anim.speed - dt * 4);
         }
-        anim.prevWalkTime = anim.isMoving ? speed * WALK_CYCLE_SPEED : 0;
+        anim.prevWalkTime = anim.isMoving ? speed * WALK_CYCLE_SPEED * walkDir : 0;
 
         const wt = anim.walkTime;
         const s = anim.speed;
