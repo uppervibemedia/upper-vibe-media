@@ -402,8 +402,7 @@ function createCosmicSky(scene) {
   _nebulaTex.colorSpace = THREE.SRGBColorSpace;
   _nebulaTex.needsUpdate = true; // Force initial upload
 
-  // Use solid background color for now, nebula canvas rendered as overlay
-  scene.background = new Color("#0a0a1e");
+  // No scene.background — let the nebula overlay canvas show through the transparent renderer
   scene.fog = new Fog("#07071a", 20, 50);
 
   // ─── Stars — upper hemisphere only, dense high, sparse at horizon ──
@@ -1151,6 +1150,17 @@ export default function CityCanvas({ onLoaded }) {
           drawNebulaCanvas(t);
         }
 
+        // Copy nebula to overlay canvas every frame
+        if (_nebulaCanvas && nebulaOverlayRef.current) {
+          const ovCtx = nebulaOverlayRef.current.getContext("2d");
+          if (ovCtx) {
+            const dpr = Math.min(window.devicePixelRatio, 2);
+            nebulaOverlayRef.current.width = nebulaOverlayRef.current.clientWidth * dpr;
+            nebulaOverlayRef.current.height = nebulaOverlayRef.current.clientHeight * dpr;
+            ovCtx.drawImage(_nebulaCanvas, 0, 0, nebulaOverlayRef.current.width, nebulaOverlayRef.current.height);
+          }
+        }
+
         // Aurora waves — gentle floating movement
         const auroraGroup = scene.getObjectByName("auroraGroup");
         if (auroraGroup) {
@@ -1189,6 +1199,19 @@ export default function CityCanvas({ onLoaded }) {
         renderer.setSize(w, Math.max(h, 1));
         camera.aspect = w / Math.max(h, 1);
         camera.updateProjectionMatrix();
+
+        // Resize nebula overlay
+        if (nebulaOverlayRef.current) {
+          const dpr = Math.min(window.devicePixelRatio, 2);
+          nebulaOverlayRef.current.width = nebulaOverlayRef.current.clientWidth * dpr;
+          nebulaOverlayRef.current.height = nebulaOverlayRef.current.clientHeight * dpr;
+          // Redraw nebula to fill the new size
+          drawNebulaCanvas(performance.now() * 0.001);
+          const ovCtx = nebulaOverlayRef.current.getContext("2d");
+          if (ovCtx && _nebulaCanvas) {
+            ovCtx.drawImage(_nebulaCanvas, 0, 0, nebulaOverlayRef.current.width, nebulaOverlayRef.current.height);
+          }
+        }
       };
       window.addEventListener("resize", onResize);
 
@@ -1211,6 +1234,11 @@ export default function CityCanvas({ onLoaded }) {
         _nebulaCanvas = null;
         _nebulaCtx = null;
         _nebulaTex = null;
+        // Clear nebula overlay canvas
+        if (nebulaOverlayRef.current) {
+          const oc = nebulaOverlayRef.current.getContext("2d");
+          if (oc) oc.clearRect(0, 0, nebulaOverlayRef.current.width, nebulaOverlayRef.current.height);
+        }
         // skyDome disposed by scene.traverse above
       };
     } catch (e) {
