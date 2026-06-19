@@ -3,7 +3,7 @@ import EmailCaptureModal from "@/components/shared/EmailCaptureModal";
 import StreamingPlatformLinks from "@/components/shared/StreamingPlatformLinks";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
-import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, Crown, Library, X, UserPlus, LogIn } from "lucide-react";
+import { Radio, Music4, Tv2, Mail, CheckCircle2, Download, Heart, Zap, Check, Crown, Library, X, UserPlus, LogIn, Compass } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { toast } from "sonner";
@@ -502,6 +502,26 @@ export default function Start() {
             </Link>
           </div>
         </section>
+
+        {/* ── VIBE WORLD FEATURED CARD ── */}
+        <Link to="/vibe-world"
+          className="relative w-full flex items-center gap-4 p-5 rounded-3xl overflow-hidden transition-all active:scale-[0.98]"
+          style={{ background: "linear-gradient(135deg,rgba(0,160,220,0.1),rgba(155,126,255,0.1))", border: "1px solid rgba(155,126,255,0.28)", boxShadow: "0 0 32px rgba(155,126,255,0.1)" }}>
+          <div className="absolute top-0 right-0 w-28 h-28 rounded-full blur-[50px] pointer-events-none"
+            style={{ background: "rgba(155,126,255,0.2)" }} />
+          <div className="relative z-10 flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center"
+            style={{ background: "rgba(155,126,255,0.15)", border: "1px solid rgba(155,126,255,0.35)" }}>
+            <Compass className="w-6 h-6" style={{ color: "#9B7EFF" }} />
+          </div>
+          <div className="relative z-10 flex-1 text-left">
+            <p className="text-base font-black text-white mb-0.5" style={{ fontFamily: "var(--font-heading)" }}>
+              Step Inside Upper Vibe World
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+              Explore music rooms, portals, radio, and 432 Hz visual spaces.
+            </p>
+          </div>
+        </Link>
 
         {/* ── YOUTUBE CTA ── */}
         <YouTubeCTA />

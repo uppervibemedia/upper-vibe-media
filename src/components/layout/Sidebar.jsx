@@ -11,6 +11,7 @@ import {
   Heart,
   GraduationCap,
   Tv2,
+  Compass,
 } from "lucide-react";
 
 // Custom Vibe Check icon: pulse ring + checkmark
@@ -32,6 +33,7 @@ const mainNavItems = [
   { path: "/vibe-check", icon: VibeCheckIcon, label: "Vibe Check" },
   { path: "/academy", icon: GraduationCap, label: "Academy" },
   { path: "/visualizers", icon: Tv2, label: "Visualizers" },
+  { path: "/vibe-world", icon: Compass, label: "Vibe World" },
   { path: "/my-vibes", icon: Heart, label: "My Vibe Library" },
 ];
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Play, GraduationCap, UserPlus } from "lucide-react";
+import { Play, GraduationCap, UserPlus, Compass } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function HeroSection() {
@@ -78,6 +78,11 @@ export default function HeroSection() {
               className="flex items-center gap-2.5 px-7 py-4 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.03]"
               style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff" }}>
               <GraduationCap className="w-4 h-4" /> Watch Free Training
+            </Link>
+            <Link to="/vibe-world"
+              className="flex items-center gap-2.5 px-7 py-4 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 hover:scale-[1.03]"
+              style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.3)", color: "#9B7EFF" }}>
+              <Compass className="w-4 h-4" /> Enter Upper Vibe World
             </Link>
           </motion.div>
 
