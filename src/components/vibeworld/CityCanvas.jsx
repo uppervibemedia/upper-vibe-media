@@ -1045,9 +1045,11 @@ export default function CityCanvas({ onLoaded }) {
           foamMesh.material.opacity = 0.28 + Math.sin(t * 0.7) * 0.1;
         }
 
-        // ─── SKYBOX — follows camera so sky stays infinitely distant ──
+        // ─── SKYBOX — follows camera + slow drift rotation ─────────
         if (skybox) {
           skybox.position.copy(camera.position);
+          skybox.rotation.y += dt * 0.015; // Very slow Y-axis drift
+          skybox.rotation.x += dt * 0.003; // Tiny tilt for depth
         }
 
         renderer.render(scene, camera);
