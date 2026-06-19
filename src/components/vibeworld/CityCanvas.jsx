@@ -41,11 +41,15 @@ function resolveCollisions(px, pz, r, boxes) {
 
 // ─── COLORS ───────────────────────────────────────────────────
 function mat(color, opts = {}) {
+  // Only pass valid MeshStandardMaterial properties — spreading arbitrary opts
+  // can introduce properties that confuse Three.js internal setters.
   return new THREE.MeshStandardMaterial({
     color,
     roughness: opts.roughness ?? 0.5,
     metalness: opts.metalness ?? 0.05,
-    ...opts,
+    transparent: opts.transparent ?? false,
+    opacity: opts.opacity ?? 1,
+    depthWrite: opts.depthWrite ?? true,
   });
 }
 
@@ -499,6 +503,8 @@ export default function CityCanvas({ onLoaded }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+  const onLoadedRef = useRef(onLoaded);
+  onLoadedRef.current = onLoaded;
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -519,13 +525,22 @@ export default function CityCanvas({ onLoaded }) {
   });
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
+  const initializedRef = useRef(false);
 
-  // Init scene
+  // Init scene — runs once only
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     try {
+      // Sanity-check that THREE loaded properly
+      if (typeof THREE.MeshStandardMaterial !== "function") {
+        throw new Error("Three.js MeshStandardMaterial unavailable — check your bundle");
+      }
+
       const renderer = new THREE.WebGLRenderer({
         canvas,
         antialias: true,
@@ -735,7 +750,7 @@ export default function CityCanvas({ onLoaded }) {
         renderer.render(scene, camera);
         frameRef.current++;
 
-        if (frameRef.current === 3) onLoaded?.();
+        if (frameRef.current === 3) onLoadedRef.current?.();
       };
 
       animate();
@@ -763,9 +778,10 @@ export default function CityCanvas({ onLoaded }) {
         });
       };
     } catch (e) {
+      console.error("[CityCanvas] init error:", e);
       setError(e.message || String(e));
     }
-  }, [onLoaded]);
+  }, []);
 
   // Keyboard
   useEffect(() => {
