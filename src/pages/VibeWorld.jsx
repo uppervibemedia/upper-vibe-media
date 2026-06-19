@@ -29,25 +29,25 @@ function VibeWorldHub() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-5 py-16 md:py-20"
-      style={{ background: "linear-gradient(160deg,#05050f 0%,#080818 55%,#050510 100%)" }}>
+      style={{ background: "linear-gradient(160deg,#08081A 0%,#0A0A20 55%,#060618 100%)" }}>
 
       {/* ── Lightweight animated background ── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <motion.div
           className="absolute top-[-120px] left-[10%] w-[420px] h-[420px] rounded-full blur-[120px]"
-          style={{ background: "radial-gradient(circle,#00A0DC,transparent 70%)", opacity: 0.12 }}
+          style={{ background: "radial-gradient(circle,#7C3AED,transparent 70%)", opacity: 0.14 }}
           animate={{ scale: [1, 1.15, 1], opacity: [0.1, 0.16, 0.1] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
           className="absolute bottom-[-120px] right-[5%] w-[480px] h-[480px] rounded-full blur-[130px]"
-          style={{ background: "radial-gradient(circle,#9B7EFF,transparent 70%)", opacity: 0.12 }}
+          style={{ background: "radial-gradient(circle,#06B6D4,transparent 70%)", opacity: 0.12 }}
           animate={{ scale: [1, 1.2, 1], opacity: [0.08, 0.15, 0.08] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
         />
         <motion.div
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[360px] h-[360px] rounded-full blur-[90px]"
-          style={{ background: "radial-gradient(circle,#EC4899,transparent 70%)", opacity: 0.07 }}
+          style={{ background: "radial-gradient(circle,#A855F7,transparent 70%)", opacity: 0.08 }}
           animate={{ scale: [1, 1.1, 1] }}
           transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 2 }}
         />
@@ -62,7 +62,7 @@ function VibeWorldHub() {
         {/* Animated orb icon */}
         <motion.div
           className="relative w-24 h-24 rounded-full flex items-center justify-center"
-          style={{ background: "radial-gradient(circle at 30% 30%,rgba(0,160,220,0.4),rgba(155,126,255,0.25))", border: "1px solid rgba(155,126,255,0.4)", boxShadow: "0 0 60px rgba(0,160,220,0.4)" }}
+          style={{ background: "radial-gradient(circle at 30% 30%,rgba(124,58,237,0.4),rgba(6,182,212,0.25))", border: "1px solid rgba(167,139,250,0.4)", boxShadow: "0 0 60px rgba(124,58,237,0.4)" }}
           animate={{ scale: [1, 1.06, 1] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
         >
@@ -74,17 +74,17 @@ function VibeWorldHub() {
           style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.25)" }}>
           <Sparkles className="w-3 h-3" style={{ color: "#9B7EFF" }} />
           <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>
-            Explorable 3D City
+            Cosmic 3D Beach
           </span>
         </div>
 
         {/* Headline */}
         <div>
           <h1 className="font-heading font-black text-4xl md:text-5xl leading-[0.95] mb-4 text-white">
-            Upper Vibe <span style={{ color: "#00A0DC", textShadow: "0 0 50px rgba(0,160,220,0.5)" }}>City</span>
+            Upper Vibe <span style={{ color: "#A78BFA", textShadow: "0 0 50px rgba(167,139,250,0.5)" }}>Cosmic Beach</span>
           </h1>
           <p className="text-sm md:text-base text-white/45 leading-relaxed max-w-md mx-auto">
-            Roam a living 3D city and step into its districts — the Music District, Radio Tower, Vibe Check Temple, Manifestation Gardens, and Concert Arena. Browse music, save favorites, and keep the vibe playing without ever leaving the world.
+            Walk through a cosmic beach under nebula skies — crystal palm trees, a glowing ocean, the Upper Vibe Lounge, and a 432 Hz fountain. Browse music, save favorites, and keep the vibe playing without ever leaving the world.
           </p>
         </div>
 
@@ -94,7 +94,7 @@ function VibeWorldHub() {
             onClick={() => setLaunched(true)}
             whileTap={{ scale: 0.96 }}
             className="flex items-center gap-3 px-9 py-4 rounded-full font-black text-base tracking-wider transition-all hover:brightness-110"
-            style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff", boxShadow: "0 0 40px rgba(0,160,220,0.45)" }}
+            style={{ background: "linear-gradient(135deg,#7C3AED,#A78BFA)", color: "#fff", boxShadow: "0 0 40px rgba(124,58,237,0.45)" }}
           >
             <Rocket className="w-5 h-5" /> Launch World
           </motion.button>
