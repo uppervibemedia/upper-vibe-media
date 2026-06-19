@@ -1,0 +1,139 @@
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { ChevronLeft, Compass, Music4, Radio, Sparkles, Flower2, Mic2, Play, Pause, Loader2 } from "lucide-react";
+import CityCanvas from "@/components/vibeworld/CityCanvas";
+import HoloPanel from "@/components/vibeworld/HoloPanel";
+import PlazaPanel from "@/components/vibeworld/panels/PlazaPanel";
+import MusicPanel from "@/components/vibeworld/panels/MusicPanel";
+import RadioPanel from "@/components/vibeworld/panels/RadioPanel";
+import TemplePanel from "@/components/vibeworld/panels/TemplePanel";
+import GardensPanel from "@/components/vibeworld/panels/GardensPanel";
+import ArenaPanel from "@/components/vibeworld/panels/ArenaPanel";
+import CoverImage from "@/components/shared/CoverImage";
+import { usePlayer } from "@/context/PlayerContext";
+import { useLivePresence } from "@/hooks/useLivePresence";
+import { base44 } from "@/api/base44Client";
+
+const DISTRICT_META = {
+  plaza:   { title: "Central Plaza",          icon: <Compass className="w-4 h-4" />,  accent: "0,160,220" },
+  music:   { title: "Music District",         icon: <Music4 className="w-4 h-4" />,   accent: "0,160,220" },
+  radio:   { title: "Radio Tower",            icon: <Radio className="w-4 h-4" />,    accent: "155,126,255" },
+  temple:  { title: "Vibe Check Temple",      icon: <Sparkles className="w-4 h-4" />, accent: "236,72,153" },
+  gardens: { title: "Manifestation Gardens",  icon: <Flower2 className="w-4 h-4" />,  accent: "52,211,153" },
+  arena:   { title: "Concert Arena",          icon: <Mic2 className="w-4 h-4" />,     accent: "245,168,0" },
+};
+
+export default function UpperVibeCity({ onExit }) {
+  const [loading, setLoading] = useState(true);
+  const [active, setActive] = useState(null); // district id
+  const { currentTrack, isPlaying, togglePlay } = usePlayer();
+
+  // Keep the live-listeners heartbeat alive while in the city
+  useLivePresence();
+
+  const onNeedLogin = () => base44.auth.redirectToLogin(window.location.href);
+  const meta = active ? DISTRICT_META[active] : null;
+
+  const renderPanel = () => {
+    switch (active) {
+      case "plaza":   return <PlazaPanel onNavigate={(id) => setActive(id)} />;
+      case "music":   return <MusicPanel onNeedLogin={onNeedLogin} />;
+      case "radio":   return <RadioPanel />;
+      case "temple":  return <TemplePanel />;
+      case "gardens": return <GardensPanel />;
+      case "arena":   return <ArenaPanel onNeedLogin={onNeedLogin} />;
+      default:        return null;
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] overflow-hidden bg-[#05050f]">
+      {/* Loading */}
+      {loading && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[#05050f]">
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#00A0DC" }} />
+          <p className="font-heading font-black text-sm tracking-widest uppercase" style={{ color: "#9B7EFF" }}>
+            Building Upper Vibe City...
+          </p>
+        </div>
+      )}
+
+      {/* 3D City */}
+      <div className="absolute inset-0" style={loading ? { opacity: 0 } : undefined}>
+        <CityCanvas
+          onLoaded={() => setLoading(false)}
+          onEnterDistrict={(id) => setActive(id)}
+          interactionLocked={!!active}
+        />
+      </div>
+
+      {/* Top HUD */}
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: loading ? 0 : 1 }} transition={{ delay: 0.4 }}
+        className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 pointer-events-none"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+      >
+        <button onClick={onExit}
+          className="pointer-events-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/5"
+          style={{ background: "rgba(10,10,30,0.7)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)", backdropFilter: "blur(12px)" }}>
+          <ChevronLeft className="w-3.5 h-3.5" /> Exit City
+        </button>
+        <div className="flex items-center gap-2 pointer-events-auto px-3 py-2 rounded-xl"
+          style={{ background: "rgba(10,10,30,0.7)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}>
+          <Compass className="w-3.5 h-3.5" style={{ color: "#00A0DC" }} />
+          <span className="font-heading font-black text-[10px] tracking-[0.2em] text-white/70">UPPER VIBE CITY</span>
+        </div>
+      </motion.div>
+
+      {/* Bottom mini now-playing bar (only when no panel open) */}
+      {!active && currentTrack && (
+        <motion.div
+          initial={{ opacity: 0, y: 30 }} animate={{ opacity: loading ? 0 : 1, y: loading ? 30 : 0 }} transition={{ delay: 0.6 }}
+          className="absolute bottom-0 left-0 right-0 z-20 flex justify-center px-4"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+        >
+          <div className="flex items-center gap-3 px-3 py-2 rounded-2xl max-w-md w-full"
+            style={{ background: "rgba(10,10,28,0.8)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(16px)" }}>
+            <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
+              <CoverImage src={currentTrack.cover_url} alt={currentTrack.title} className="w-full h-full" iconClassName="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-white truncate">{currentTrack.title}</p>
+              <p className="text-[10px] text-white/40 truncate">{currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}</p>
+            </div>
+            <button onClick={togglePlay}
+              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: "#00A0DC", color: "#000" }}>
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Hint */}
+      {!active && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: loading ? 0 : 1 }} transition={{ delay: 1.2 }}
+          className="absolute z-10 left-0 right-0 flex justify-center pointer-events-none"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.6rem)" }}
+        >
+          <p className="text-[10px] tracking-wider text-white/25 px-3 py-1.5 rounded-full"
+            style={{ background: "rgba(10,10,30,0.4)" }}>
+            Tap a district to enter &nbsp;·&nbsp; Drag to explore the city
+          </p>
+        </motion.div>
+      )}
+
+      {/* District holo panel */}
+      <HoloPanel
+        open={!!active}
+        onClose={() => setActive(null)}
+        title={meta?.title}
+        accent={meta?.accent}
+        icon={meta?.icon}
+      >
+        {renderPanel()}
+      </HoloPanel>
+    </div>
+  );
+}
