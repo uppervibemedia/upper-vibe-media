@@ -257,13 +257,17 @@ function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 const BASE = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
 const SKY_FORWARD = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;   // No planet — main nebula
-const SKY_RIGHT   = `${BASE}/8f6a7ee38_ChatGPTImageJun19202611_55_23AM.png`;   // Large planet upper right
-const SKY_BACK    = `${BASE}/caf25bf82_ChatGPTImageJun19202611_55_33AM.png`;   // Planet + nebula
-const SKY_LEFT    = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`;   // No planet — bright core nebula
+const SKY_RIGHT   = `${BASE}/8f6a7ee38_ChatGPTImageJun19202611_55_23AM.png`;   // Planet — East/Right
+const SKY_BACK    = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`;   // No planet — South/Back
+const SKY_LEFT    = `${BASE}/caf25bf82_ChatGPTImageJun19202611_55_33AM.png`;   // Planet — West/Left
 
 // ═══════════════════════════════════════════════════════════════
-// COSMIC SKYBOX — cube with BackSide texture on each face
+// COSMIC SKYBOX — camera-centered cube, BackSide textures
 // BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
+//
+// Direction order (planets separated by non-planet views):
+//   Forward (+Z) = no planet  →  Right (+X) = planet
+//   Back    (-Z) = no planet  →  Left  (-X) = planet
 // ═══════════════════════════════════════════════════════════════
 function createCosmicSky(scene) {
   const loader = new THREE.TextureLoader();
@@ -277,13 +281,13 @@ function createCosmicSky(scene) {
     return tex;
   };
 
-  // Load all four directional textures
-  const texForward = loadTex(SKY_FORWARD);  // +Z = North / Forward
-  const texRight   = loadTex(SKY_RIGHT);    // +X = East  / Right
-  const texBack    = loadTex(SKY_BACK);     // -Z = South / Back
-  const texLeft    = loadTex(SKY_LEFT);     // -X = West  / Left
+  // Four directional textures — planets only on East (+X) and West (-X)
+  const texForward = loadTex(SKY_FORWARD);  // +Z = North / Forward — no planet
+  const texRight   = loadTex(SKY_RIGHT);    // +X = East  / Right   — planet
+  const texBack    = loadTex(SKY_BACK);     // -Z = South / Back    — no planet
+  const texLeft    = loadTex(SKY_LEFT);     // -X = West  / Left    — planet
 
-  // Top face: dark void with subtle star color (no image — keeps it clean)
+  // Top face: dark void (no image — keeps it clean)
   const topMat = new MeshBasicMaterial();
   topMat.color = new Color("#0a0a1e");
   topMat.side = THREE.BackSide;
@@ -297,12 +301,12 @@ function createCosmicSky(scene) {
 
   // Materials array in BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
   const materials = [
-    new MeshBasicMaterial({ map: texRight,   side: THREE.BackSide, depthWrite: false }), // +X = Right/East
-    new MeshBasicMaterial({ map: texLeft,    side: THREE.BackSide, depthWrite: false }), // -X = Left/West
+    new MeshBasicMaterial({ map: texRight,   side: THREE.BackSide, depthWrite: false }), // +X = Right/East  (planet)
+    new MeshBasicMaterial({ map: texLeft,    side: THREE.BackSide, depthWrite: false }), // -X = Left/West   (planet)
     topMat,                                                                             // +Y = Top
     bottomMat,                                                                          // -Y = Bottom
-    new MeshBasicMaterial({ map: texForward, side: THREE.BackSide, depthWrite: false }), // +Z = Forward/North
-    new MeshBasicMaterial({ map: texBack,    side: THREE.BackSide, depthWrite: false }), // -Z = Back/South
+    new MeshBasicMaterial({ map: texForward, side: THREE.BackSide, depthWrite: false }), // +Z = Forward/North (no planet)
+    new MeshBasicMaterial({ map: texBack,    side: THREE.BackSide, depthWrite: false }), // -Z = Back/South    (no planet)
   ];
 
   const skybox = new Mesh(new BoxGeometry(SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE), materials);
@@ -731,6 +735,9 @@ export default function CityCanvas({ onLoaded }) {
 
       const animParts = { torso, leftShoulder, rightShoulder, leftHip, rightHip };
 
+      // Skybox — must follow camera so sky always feels infinitely far away
+      const skybox = scene.getObjectByName("skybox");
+
       let animId;
       const animate = () => {
         animId = requestAnimationFrame(animate);
@@ -937,7 +944,10 @@ export default function CityCanvas({ onLoaded }) {
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
-        // ─── SKY ANIMATIONS — none (sky dome is static) ────────────
+        // ─── SKYBOX — follows camera so sky stays infinitely distant ──
+        if (skybox) {
+          skybox.position.copy(camera.position);
+        }
 
         renderer.render(scene, camera);
         frameRef.current++;
