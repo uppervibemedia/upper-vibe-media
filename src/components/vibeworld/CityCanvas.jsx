@@ -262,28 +262,38 @@ function buildPark(scene) {
 
   // ─── SAND ZONES — warm, walkable beach ───────────────────────
 
-  // Dry sand — warm golden, from grass edge toward shoreline
-  const drySandGeo = new PlaneGeometry(52, 3);
-  const drySandMat = mat("#E8C9A0", { roughness: 0.55 });
+  // ── Stone paving edge — dark purple-gray transition from grass ─
+  const patioGeo = new PlaneGeometry(52, 2.5);
+  const patioMat = mat("#6B5D70", { roughness: 0.35, metalness: 0.08 });
+  const patio = new Mesh(patioGeo, patioMat);
+  patio.rotation.x = -Math.PI / 2;
+  patio.position.set(0, 0.001, 3.5);
+  patio.receiveShadow = true;
+  patio.name = "patio";
+  scene.add(patio);
+
+  // Dry sand — warm golden, from patio toward shoreline
+  const drySandGeo = new PlaneGeometry(52, 2.5);
+  const drySandMat = mat("#E8A873", { roughness: 0.5 });
   const drySand = new Mesh(drySandGeo, drySandMat);
   drySand.rotation.x = -Math.PI / 2;
-  drySand.position.set(0, 0.002, 5);
+  drySand.position.set(0, 0.002, 5.5);
   drySand.receiveShadow = true;
   drySand.name = "drySand";
   scene.add(drySand);
 
-  // Mid sand — deeper golden tone
-  const midSandGeo = new PlaneGeometry(52, 2);
-  const midSandMat = mat("#D4B48C", { roughness: 0.48 });
+  // Mid sand — richer golden-brown tone
+  const midSandGeo = new PlaneGeometry(52, 1.8);
+  const midSandMat = mat("#D99665", { roughness: 0.45 });
   const midSand = new Mesh(midSandGeo, midSandMat);
   midSand.rotation.x = -Math.PI / 2;
-  midSand.position.set(0, 0.003, 6);
+  midSand.position.set(0, 0.003, 6.3);
   midSand.receiveShadow = true;
   scene.add(midSand);
 
-  // Wet sand — darker, damp at shoreline
-  const wetSandGeo = new PlaneGeometry(52, 1.5);
-  const wetSandMat = mat("#B89878", { roughness: 0.3, metalness: 0.12 });
+  // Wet sand — darker damp sand at shoreline
+  const wetSandGeo = new PlaneGeometry(52, 1.2);
+  const wetSandMat = mat("#C08860", { roughness: 0.28, metalness: 0.1 });
   const wetSand = new Mesh(wetSandGeo, wetSandMat);
   wetSand.rotation.x = -Math.PI / 2;
   wetSand.position.set(0, 0.004, 6.8);
@@ -291,14 +301,14 @@ function buildPark(scene) {
   wetSand.name = "wetSand";
   scene.add(wetSand);
 
-  // Sand patches — transition from grass to dry sand
-  for (let i = 0; i < 10; i++) {
+  // Sand patches — subtle variation in dry sand zone
+  for (let i = 0; i < 8; i++) {
     const px = (Math.random() - 0.5) * 44;
-    const pz = 3.5 + Math.random() * 2;
-    const r = 0.3 + Math.random() * 0.8;
+    const pz = 4.5 + Math.random() * 2.5;
+    const r = 0.25 + Math.random() * 0.6;
     const patchGeo = new CircleGeometry(r, 12);
-    const shade = Math.random() > 0.5 ? "#E8C9A0" : "#D4B48C";
-    const patchMat = mat(shade, { roughness: 0.6 });
+    const shade = Math.random() > 0.5 ? "#ECB080" : "#DE9868";
+    const patchMat = mat(shade, { roughness: 0.55 });
     const patch = new Mesh(patchGeo, patchMat);
     patch.rotation.x = -Math.PI / 2;
     patch.position.set(px, 0.006, pz);
@@ -306,35 +316,35 @@ function buildPark(scene) {
     scene.add(patch);
   }
 
-  // ─── SHALLOW WATER — bright blue-cyan near shore ────────────
-  const shallowGeo = new PlaneGeometry(52, 4, 28, 8);
+  // ─── SHALLOW WATER — bright cyan near shore (matches ref #38D3E6) ─
+  const shallowGeo = new PlaneGeometry(52, 5, 28, 8);
   const shallowMat = new MeshStandardMaterial();
-  shallowMat.color = new Color("#5BA8D8");
-  shallowMat.roughness = 0.04;
-  shallowMat.metalness = 0.4;
+  shallowMat.color = new Color("#38C8E0");
+  shallowMat.roughness = 0.03;
+  shallowMat.metalness = 0.35;
   shallowMat.transparent = true;
-  shallowMat.opacity = 0.9;
+  shallowMat.opacity = 0.88;
   shallowMat.depthWrite = true;
   const shallow = new Mesh(shallowGeo, shallowMat);
   shallow.rotation.x = -Math.PI / 2;
-  shallow.position.set(0, -0.003, SHORELINE_Z + 2);
+  shallow.position.set(0, -0.004, SHORELINE_Z + 2.5);
   shallow.receiveShadow = true;
   shallow.name = "shallow";
   scene.add(shallow);
   scene.userData.shallow = shallow;
 
-  // ─── DEEP OCEAN — visible blue stretching outward to horizon ─
+  // ─── DEEP OCEAN — sapphire blue fading to horizon (ref #1D78C1) ─
   const oceanGeo = new PlaneGeometry(52, OCEAN_DEPTH, 52, 24);
   const oceanMat = new MeshStandardMaterial();
-  oceanMat.color = new Color("#3A88C8");
+  oceanMat.color = new Color("#1D78C1");
   oceanMat.roughness = 0.04;
-  oceanMat.metalness = 0.55;
+  oceanMat.metalness = 0.5;
   oceanMat.transparent = true;
-  oceanMat.opacity = 0.93;
+  oceanMat.opacity = 0.92;
   oceanMat.depthWrite = true;
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
-  ocean.position.set(0, -0.006, SHORELINE_Z + 4 + OCEAN_DEPTH / 2);
+  ocean.position.set(0, -0.006, SHORELINE_Z + 5 + OCEAN_DEPTH / 2);
   ocean.receiveShadow = true;
   ocean.name = "ocean";
   scene.add(ocean);
@@ -343,11 +353,11 @@ function buildPark(scene) {
   // ─── LAYERED SHORELINE TRANSITION ────────────────────────────
 
   // Layer 1: Wet-sand edge — thin dark rim at waterline
-  const sandEdgeGeo = new PlaneGeometry(52, 0.35);
+  const sandEdgeGeo = new PlaneGeometry(52, 0.3);
   const sandEdgeMat = new MeshBasicMaterial();
-  sandEdgeMat.color = new Color("#6B5A4A");
+  sandEdgeMat.color = new Color("#5C4033");
   sandEdgeMat.transparent = true;
-  sandEdgeMat.opacity = 0.5;
+  sandEdgeMat.opacity = 0.45;
   sandEdgeMat.depthWrite = false;
   const sandEdge = new Mesh(sandEdgeGeo, sandEdgeMat);
   sandEdge.rotation.x = -Math.PI / 2;
@@ -355,44 +365,44 @@ function buildPark(scene) {
   sandEdge.name = "sandEdge";
   scene.add(sandEdge);
 
-  // Layer 2: Foam edge — crisp white-blue shoreline marker
-  const foamGeo = new PlaneGeometry(52, 0.8);
+  // Layer 2: Foam edge — bright white foam line (matching reference)
+  const foamGeo = new PlaneGeometry(52, 0.9);
   const foamMat = new MeshBasicMaterial();
-  foamMat.color = new Color("#C8E8F8");
+  foamMat.color = new Color("#FFFFFF");
   foamMat.transparent = true;
-  foamMat.opacity = 0.5;
+  foamMat.opacity = 0.55;
   foamMat.depthWrite = false;
   const foam = new Mesh(foamGeo, foamMat);
   foam.rotation.x = -Math.PI / 2;
-  foam.position.set(0, 0.006, SHORELINE_Z + 0.1);
+  foam.position.set(0, 0.006, SHORELINE_Z + 0.15);
   foam.name = "foam";
   scene.add(foam);
   scene.userData.foam = foam;
 
-  // Layer 3: Shorebreak — a crisp water-edge line
-  const shorebreakGeo = new PlaneGeometry(52, 0.25);
+  // Layer 3: Shorebreak — crisp white water-edge line
+  const shorebreakGeo = new PlaneGeometry(52, 0.3);
   const shorebreakMat = new MeshBasicMaterial();
-  shorebreakMat.color = new Color("#D8EEFA");
+  shorebreakMat.color = new Color("#F0F8FF");
   shorebreakMat.transparent = true;
-  shorebreakMat.opacity = 0.55;
+  shorebreakMat.opacity = 0.6;
   shorebreakMat.depthWrite = false;
   const shorebreak = new Mesh(shorebreakGeo, shorebreakMat);
   shorebreak.rotation.x = -Math.PI / 2;
-  shorebreak.position.set(0, 0.007, SHORELINE_Z + 0.2);
+  shorebreak.position.set(0, 0.007, SHORELINE_Z + 0.25);
   shorebreak.name = "shorebreak";
   scene.add(shorebreak);
   scene.userData.shorebreak = shorebreak;
 
   // Layer 4: Wave wash — gentle lapping water on wet sand (animated)
-  const waveWashGeo = new PlaneGeometry(52, 0.6);
+  const waveWashGeo = new PlaneGeometry(52, 0.5);
   const waveWashMat = new MeshBasicMaterial();
-  waveWashMat.color = new Color("#B0DCF0");
+  waveWashMat.color = new Color("#D0F0FF");
   waveWashMat.transparent = true;
-  waveWashMat.opacity = 0.25;
+  waveWashMat.opacity = 0.3;
   waveWashMat.depthWrite = false;
   const waveWash = new Mesh(waveWashGeo, waveWashMat);
   waveWash.rotation.x = -Math.PI / 2;
-  waveWash.position.set(0, 0.005, SHORELINE_Z + 0.05);
+  waveWash.position.set(0, 0.005, SHORELINE_Z + 0.08);
   waveWash.name = "waveWash";
   scene.add(waveWash);
   scene.userData.waveWash = waveWash;
@@ -418,8 +428,8 @@ function buildPark(scene) {
   scene.add(moon);
 
   const ambLight = new AmbientLight();
-  ambLight.color = new Color("#3D2E6E"); // Deep nebula purple
-  ambLight.intensity = 0.55;
+  ambLight.color = new Color("#2A1B5E"); // Deep space purple (matches ref sky)
+  ambLight.intensity = 0.5;
   scene.add(ambLight);
 
   const hemiLight = new HemisphereLight();
@@ -430,10 +440,10 @@ function buildPark(scene) {
 
   // ─── BEACH SHIMMER — subtle blue point light over water ──────
   const beachLight = new PointLight();
-  beachLight.color = new Color("#6A80B8");
-  beachLight.intensity = 1.5;
-  beachLight.distance = 16;
-  beachLight.position.set(0, 2.5, SHORELINE_Z + 3);
+  beachLight.color = new Color("#5599CC");
+  beachLight.intensity = 2.0;
+  beachLight.distance = 20;
+  beachLight.position.set(0, 3, SHORELINE_Z + 6);
   scene.add(beachLight);
 
   // ─── TWINKLING STARS ─────────────────────────────────────
