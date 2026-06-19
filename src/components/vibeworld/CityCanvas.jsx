@@ -629,21 +629,23 @@ export default function CityCanvas({ onLoaded }) {
         alpha: false,
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+      // Use window dimensions on mobile for reliable viewport sizing
+      const rw = isMobileRef.current ? window.innerWidth : canvas.clientWidth;
+      const rh = isMobileRef.current ? window.innerHeight : canvas.clientHeight;
+      renderer.setSize(rw, Math.max(rh, 1));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = PCFSoftShadowMap;
 
       const scene = new Scene();
       sceneRef.current = scene;
 
-      const camera = new PerspectiveCamera(
-        55,
-        canvas.clientWidth / canvas.clientHeight,
-        0.1,
-        80
-      );
-      camera.position.set(0, 4, 8);
-      camera.lookAt(0, 0.7, 0);
+      const asp = rw / Math.max(rh, 1);
+      const camera = new PerspectiveCamera(55, asp, 0.1, 80);
+      // Start camera behind avatar, not above it
+      const initCamDist = isMobileRef.current ? 4 : 5;
+      const initCamHeight = isMobileRef.current ? 2.2 : 3.8;
+      camera.position.set(SPAWN[0], SPAWN[1] + initCamHeight, SPAWN[2] + initCamDist);
+      camera.lookAt(SPAWN[0], SPAWN[1] + 0.6, SPAWN[2]);
 
       buildPark(scene);
       const avatar = createAvatar(scene);
@@ -774,13 +776,13 @@ export default function CityCanvas({ onLoaded }) {
         avatar.rotation.y = rot;
 
         // ─── CAMERA ─────────────────────────────────────────────
-        const camDist = 5;
-        const camHeight = 3.8;
+        const camDist = isMobileRef.current ? 4 : 5;
+        const camHeight = isMobileRef.current ? 2.2 : 3.8;
         const behindX = px - Math.sin(rot) * camDist;
         const behindZ = pz - Math.cos(rot) * camDist;
         const camTarget = new Vector3(behindX, py + camHeight, behindZ);
         camera.position.lerp(camTarget, 1 - Math.exp(-4 * dt));
-        camera.lookAt(px, py + 0.65, pz);
+        camera.lookAt(px, py + 0.6, pz);
 
         // ═════════════════════════════════════════════════════════
         // ANIMATION SYSTEM
@@ -877,10 +879,10 @@ export default function CityCanvas({ onLoaded }) {
 
       const onResize = () => {
         if (!canvas) return;
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
-        renderer.setSize(w, h);
-        camera.aspect = w / h;
+        const w = isMobileRef.current ? window.innerWidth : canvas.clientWidth;
+        const h = isMobileRef.current ? window.innerHeight : canvas.clientHeight;
+        renderer.setSize(w, Math.max(h, 1));
+        camera.aspect = w / Math.max(h, 1);
         camera.updateProjectionMatrix();
       };
       window.addEventListener("resize", onResize);
