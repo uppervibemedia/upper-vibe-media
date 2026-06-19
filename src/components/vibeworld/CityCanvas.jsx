@@ -651,8 +651,9 @@ export default function CityCanvas({ onLoaded }) {
         if (keys.s || keys.arrowdown) { inputX -= Math.sin(rot); inputZ -= Math.cos(rot); }
 
         // Rotate left / right — affects rotation only, not position
-        if (keys.a || keys.arrowleft) turnInput = -1;
-        if (keys.d || keys.arrowright) turnInput = 1;
+        // Three.js Y-axis: positive = counterclockwise (left turn)
+        if (keys.a || keys.arrowleft) turnInput = 1;
+        if (keys.d || keys.arrowright) turnInput = -1;
 
         const inputMag = Math.sqrt(inputX * inputX + inputZ * inputZ);
         const isMoving = inputMag > 0.1;
