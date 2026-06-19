@@ -9,6 +9,11 @@ import { useLivePresence } from "@/hooks/useLivePresence";
 
 export default function UpperVibeCity({ onExit }) {
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  }, []);
 
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
@@ -91,7 +96,7 @@ export default function UpperVibeCity({ onExit }) {
               color: "rgba(0,0,0,0.4)",
             }}
           >
-            W/S walk &middot; A/D turn &middot; Mouse look
+            {isMobile ? "Joystick to walk \u2022 Swipe to look" : "W/S walk \u2022 A/D turn \u2022 Mouse look"}
           </p>
         </motion.div>
       )}
@@ -103,7 +108,7 @@ export default function UpperVibeCity({ onExit }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
           className="absolute bottom-0 left-0 right-0 z-20 flex justify-center px-4"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
         >
           <div
             className="flex items-center gap-3 px-3 py-2 rounded-2xl max-w-md w-full"

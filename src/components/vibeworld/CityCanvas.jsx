@@ -466,75 +466,107 @@ function createAvatar(scene) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MOBILE VIRTUAL JOYSTICK
+// MOBILE VIRTUAL JOYSTICK — visible dual-touch controls
 // ═══════════════════════════════════════════════════════════════
 function VirtualJoystick({ onMove, onCameraDelta }) {
-  const containerRef = useRef(null);
-  const joystickRef = useRef(null);
-  const activeRef = useRef(false);
-  const baseRef = useRef({ x: 0, y: 0 });
-  const camActiveRef = useRef(false);
+  const MAX_R = 45;
+  const JOY_BASE_X = 75;
+  const JOY_BASE_Y_OFFSET = 200;
+
+  const [thumbX, setThumbX] = useState(0);
+  const [thumbY, setThumbY] = useState(0);
+  const [joyActive, setJoyActive] = useState(false);
+
+  const joyTouchId = useRef(null);
+  const camTouchId = useRef(null);
   const camBaseRef = useRef({ x: 0, y: 0 });
 
-  const getPos = useCallback((e) => {
-    const t = e.touches?.[0] ?? e;
-    return { x: t.clientX, y: t.clientY };
+  const findJoyY = useCallback(() => window.innerHeight - JOY_BASE_Y_OFFSET, []);
+
+  const handleTouchStart = useCallback((e) => {
+    e.preventDefault();
+    for (const t of [...e.changedTouches]) {
+      if (t.clientX < window.innerWidth / 2 && joyTouchId.current === null) {
+        joyTouchId.current = t.identifier;
+      } else if (t.clientX >= window.innerWidth / 2 && camTouchId.current === null) {
+        camTouchId.current = t.identifier;
+        camBaseRef.current = { x: t.clientX, y: t.clientY };
+      }
+    }
   }, []);
 
-  const handleDown = useCallback((e) => {
+  const handleTouchMove = useCallback((e) => {
     e.preventDefault();
-    const pos = getPos(e);
-    const rect = e.currentTarget.getBoundingClientRect();
-    const relX = pos.x - rect.left, relY = pos.y - rect.top;
-
-    // Left side = joystick, right side = camera
-    if (relX < rect.width * 0.45) {
-      activeRef.current = true;
-      baseRef.current = { x: pos.x, y: pos.y };
-    } else {
-      camActiveRef.current = true;
-      camBaseRef.current = { x: pos.x, y: pos.y };
+    const baseY = findJoyY();
+    for (const t of [...e.touches]) {
+      if (t.identifier === joyTouchId.current) {
+        let dx = t.clientX - JOY_BASE_X;
+        let dy = baseY - t.clientY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > MAX_R) { dx = (dx / dist) * MAX_R; dy = (dy / dist) * MAX_R; }
+        setThumbX(dx);
+        setThumbY(dy);
+        setJoyActive(dist > 8);
+        onMove?.(dx / MAX_R, dy / MAX_R);
+      }
+      if (t.identifier === camTouchId.current) {
+        const dx = t.clientX - camBaseRef.current.x;
+        onCameraDelta?.(dx);
+        camBaseRef.current = { x: t.clientX, y: t.clientY };
+      }
     }
-  }, [getPos]);
+  }, [onMove, onCameraDelta, findJoyY]);
 
-  const handleMove = useCallback((e) => {
+  const handleTouchEnd = useCallback((e) => {
     e.preventDefault();
-    const pos = getPos(e);
-
-    if (activeRef.current) {
-      const dx = pos.x - baseRef.current.x;
-      const dy = pos.y - baseRef.current.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxR = 70;
-      const clamped = dist > maxR ? { x: (dx / dist) * maxR, y: (dy / dist) * maxR } : { x: dx, y: dy };
-      onMove?.(clamped.x / maxR, -clamped.y / maxR);
+    for (const t of [...e.changedTouches]) {
+      if (t.identifier === joyTouchId.current) {
+        joyTouchId.current = null;
+        setJoyActive(false);
+        setThumbX(0);
+        setThumbY(0);
+        onMove?.(0, 0);
+      }
+      if (t.identifier === camTouchId.current) {
+        camTouchId.current = null;
+      }
     }
-
-    if (camActiveRef.current) {
-      const dx = pos.x - camBaseRef.current.x;
-      onCameraDelta?.(dx);
-      camBaseRef.current = { x: pos.x, y: pos.y };
-    }
-  }, [onMove, onCameraDelta, getPos]);
-
-  const handleUp = useCallback((e) => {
-    e.preventDefault();
-    activeRef.current = false;
-    camActiveRef.current = false;
-    onMove?.(0, 0);
   }, [onMove]);
 
   return (
-    <div
-      ref={containerRef}
-      onTouchStart={handleDown}
-      onTouchMove={handleMove}
-      onTouchEnd={handleUp}
-      className="absolute inset-0 z-50"
-      style={{ touchAction: "none" }}
-    >
-      {/* Visual indicators removed — keep it invisible and functional */}
-    </div>
+    <>
+      {/* Touch capture layer */}
+      <div
+        className="absolute inset-0 z-50"
+        style={{ touchAction: "none" }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      />
+      {/* Joystick visual — bottom-left */}
+      <div
+        className="absolute z-40 rounded-full flex items-center justify-center pointer-events-none"
+        style={{
+          width: 100, height: 100,
+          left: JOY_BASE_X - 50,
+          top: findJoyY() - 50,
+          background: joyActive ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.05)",
+          border: `2px solid ${joyActive ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.12)"}`,
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+        }}
+      >
+        <div
+          className="rounded-full"
+          style={{
+            width: 52, height: 52,
+            background: joyActive ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.12)",
+            border: "1.5px solid rgba(255,255,255,0.25)",
+            transform: `translate(${thumbX}px, ${-thumbY}px)`,
+          }}
+        />
+      </div>
+    </>
   );
 }
 
@@ -549,7 +581,13 @@ export default function CityCanvas({ onLoaded }) {
   onLoadedRef.current = onLoaded;
 
   useEffect(() => {
-    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    setIsMobile(mobile);
+    isMobileRef.current = mobile;
+    if (mobile) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
   }, []);
 
   const sceneRef = useRef(null);
@@ -565,6 +603,8 @@ export default function CityCanvas({ onLoaded }) {
     speed: 0,
     prevWalkTime: 0,
   });
+  const isMobileRef = useRef(false);
+  const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
@@ -646,14 +686,30 @@ export default function CityCanvas({ onLoaded }) {
         let inputX = 0, inputZ = 0;
         let turnInput = 0;
 
-        // Forward / Backward — relative to facing direction
-        if (keys.w || keys.arrowup) { inputX += Math.sin(rot); inputZ += Math.cos(rot); }
-        if (keys.s || keys.arrowdown) { inputX -= Math.sin(rot); inputZ -= Math.cos(rot); }
-
-        // Rotate left / right — affects rotation only, not position
-        // Three.js Y-axis: positive = counterclockwise (left turn)
-        if (keys.a || keys.arrowleft) turnInput = 1;
-        if (keys.d || keys.arrowright) turnInput = -1;
+        if (isMobileRef.current) {
+          const joy = mobileInputRef.current;
+          // Joystick Y = forward/backward (up=forward, down=backward)
+          if (Math.abs(joy.y) > 0.08) {
+            inputX += Math.sin(rot) * joy.y;
+            inputZ += Math.cos(rot) * joy.y;
+          }
+          // Joystick X = rotation (left=turn left, right=turn right)
+          turnInput = -joy.x;
+          // Camera swipe on right side
+          if (Math.abs(joy.camDx) > 0.0005) {
+            rot += joy.camDx;
+            targetRotRef.current = rot;
+            joy.camDx *= 0.85;
+          }
+        } else {
+          // Forward / Backward — relative to facing direction
+          if (keys.w || keys.arrowup) { inputX += Math.sin(rot); inputZ += Math.cos(rot); }
+          if (keys.s || keys.arrowdown) { inputX -= Math.sin(rot); inputZ -= Math.cos(rot); }
+          // Rotate left / right — affects rotation only, not position
+          // Three.js Y-axis: positive = counterclockwise (left turn)
+          if (keys.a || keys.arrowleft) turnInput = 1;
+          if (keys.d || keys.arrowright) turnInput = -1;
+        }
 
         const inputMag = Math.sqrt(inputX * inputX + inputZ * inputZ);
         const isMoving = inputMag > 0.1;
@@ -882,22 +938,14 @@ export default function CityCanvas({ onLoaded }) {
     };
   }, []);
 
-  // Mobile joystick handlers
+  // Mobile joystick handlers — store analog values for the animation loop
   const handleJoystickMove = useCallback((jx, jy) => {
-    keysRef.current.w = jy > 0.15;
-    keysRef.current.s = jy < -0.15;
-    keysRef.current.a = jx < -0.15;
-    keysRef.current.d = jx > 0.15;
-
-    if (Math.abs(jx) > 0.15 || Math.abs(jy) > 0.15) {
-      // Smooth face-direction from joystick
-      targetRotRef.current = Math.atan2(jx, jy);
-    }
+    mobileInputRef.current.x = jx;
+    mobileInputRef.current.y = jy;
   }, []);
 
   const handleCameraDelta = useCallback((dx) => {
-    avatarPosRef.current[3] += dx * 0.004;
-    targetRotRef.current = avatarPosRef.current[3];
+    mobileInputRef.current.camDx += dx * 0.005;
   }, []);
 
   if (error) {
