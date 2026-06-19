@@ -131,7 +131,7 @@ function buildPark(scene) {
   const seaBed = new Mesh(seaBedGeo, seaBedMat);
   seaBed.rotation.x = -Math.PI / 2;
   seaBed.position.set(0, -0.008, SHORELINE_Z + 4 + OCEAN_DEPTH / 2);
-  seaBed.receiveShadow = true;
+  seaBed.receiveShadow = false;
   seaBed.name = "seaBed";
   scene.add(seaBed);
 
@@ -328,11 +328,12 @@ function buildPark(scene) {
   const shallow = new Mesh(shallowGeo, shallowMat);
   shallow.rotation.x = -Math.PI / 2;
   shallow.position.set(0, -0.004, SHORELINE_Z + 2.5);
-  shallow.receiveShadow = true;
+  shallow.receiveShadow = false;
   shallow.name = "shallow";
   shallow.renderOrder = 1;
   scene.add(shallow);
   scene.userData.shallow = shallow;
+  scene.userData._shallowBaseZ = SHORELINE_Z + 2.5;
 
   // ─── DEEP OCEAN — sapphire blue fading to horizon (ref #1D78C1) ─
   const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 56, 24);
@@ -344,11 +345,12 @@ function buildPark(scene) {
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, -0.006, SHORELINE_Z + 5 + OCEAN_DEPTH / 2);
-  ocean.receiveShadow = true;
+  ocean.receiveShadow = false;
   ocean.name = "ocean";
   ocean.renderOrder = 0;
   scene.add(ocean);
   scene.userData.ocean = ocean;
+  scene.userData._oceanBaseZ = SHORELINE_Z + 5 + OCEAN_DEPTH / 2;
 
   // ─── LAYERED SHORELINE TRANSITION ────────────────────────────
 
@@ -378,6 +380,7 @@ function buildPark(scene) {
   foam.name = "foam";
   scene.add(foam);
   scene.userData.foam = foam;
+  scene.userData._foamBaseZ = SHORELINE_Z + 0.15;
 
   // Layer 3: Shorebreak — crisp white water-edge line
   const shorebreakGeo = new PlaneGeometry(56, 0.3);
@@ -392,6 +395,7 @@ function buildPark(scene) {
   shorebreak.name = "shorebreak";
   scene.add(shorebreak);
   scene.userData.shorebreak = shorebreak;
+  scene.userData._shorebreakBaseZ = SHORELINE_Z + 0.25;
 
   // Layer 4: Wave wash — gentle lapping water on wet sand (animated)
   const waveWashGeo = new PlaneGeometry(56, 0.5);
@@ -1192,57 +1196,67 @@ export default function CityCanvas({ onLoaded }) {
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
-        // ─── OCEAN WAVES — gentle ripple animation ──────────────────
+        // ─── TIDE — forward/backward motion only ────────────────────
+        const tidePhase = Math.sin(t * 0.55) * 0.35; // Gentle tide cycle
+
+        // Ocean tide: shift entire mesh forward/backward (no side-to-side)
         const oceanMesh = scene.userData.ocean;
-        if (oceanMesh && oceanMesh.geometry) {
+        if (oceanMesh) {
+          oceanMesh.position.z = scene.userData._oceanBaseZ + tidePhase;
+          // Gentle swell height displacement
           const pos = oceanMesh.geometry.attributes.position;
           if (pos) {
             const arr = pos.array;
             for (let i = 0; i < arr.length; i += 3) {
-              const gx = arr[i];      // world X
-              const gz = arr[i + 1];  // world Z (geometry Y, rotated)
-              arr[i + 2] = Math.sin(gx * 0.3 + t * 0.9) * 0.07
-                         + Math.cos(gz * 0.35 + t * 0.65) * 0.05
-                         + Math.sin((gx + gz) * 0.22 + t * 1.2) * 0.04;
+              const gz = arr[i]; // Geometry-space Z (varies from -depth/2 to +depth/2)
+              // Subtle rolling swells — height based on Z only (no X component)
+              arr[i + 2] = Math.sin(gz * 0.25 + t * 0.5) * 0.05
+                         + Math.sin(gz * 0.15 + t * 0.3) * 0.03;
             }
             pos.needsUpdate = true;
           }
         }
 
-        // Shallow water — softer, quicker ripples
+        // Shallow water tide — same phase, sync with ocean
         const shallowMesh = scene.userData.shallow;
-        if (shallowMesh && shallowMesh.geometry) {
+        if (shallowMesh) {
+          shallowMesh.position.z = scene.userData._shallowBaseZ + tidePhase;
           const pos = shallowMesh.geometry.attributes.position;
           if (pos) {
             const arr = pos.array;
             for (let i = 0; i < arr.length; i += 3) {
-              const gx = arr[i];
-              const gz = arr[i + 1];
-              arr[i + 2] = Math.sin(gx * 0.45 + t * 1.1) * 0.04
-                         + Math.cos(gz * 0.5 + t * 0.8) * 0.03;
+              const gz = arr[i];
+              // Quicker, smaller ripples near shore
+              arr[i + 2] = Math.sin(gz * 0.5 + t * 0.7) * 0.025
+                         + Math.sin(gz * 0.35 + t * 0.45) * 0.015;
             }
             pos.needsUpdate = true;
           }
         }
 
-        // ─── SHORELINE ANIMATION — foam pulse + wave wash ────────
+        // ─── SHORELINE ANIMATION — synced with tide ──────────────
         const foamMesh = scene.userData.foam;
         if (foamMesh && foamMesh.material) {
-          foamMesh.material.opacity = 0.3 + Math.sin(t * 0.7) * 0.1;
+          // Foam brightens as tide pushes in, fades as it pulls back
+          const foamBrightness = 0.4 + (tidePhase / 0.35) * 0.3;
+          foamMesh.material.opacity = Math.max(0.15, Math.min(0.7, foamBrightness));
+          foamMesh.position.z = scene.userData._foamBaseZ + tidePhase * 0.7;
         }
 
         const shorebreakMesh = scene.userData.shorebreak;
         if (shorebreakMesh && shorebreakMesh.material) {
-          shorebreakMesh.material.opacity = 0.22 + Math.sin(t * 0.8 + 1.2) * 0.1;
+          shorebreakMesh.material.opacity = 0.25 + (tidePhase / 0.35) * 0.25;
+          shorebreakMesh.position.z = scene.userData._shorebreakBaseZ + tidePhase * 0.6;
         }
 
         const waveWashMesh = scene.userData.waveWash;
-        if (waveWashMesh && waveWashMesh.geometry) {
-          // Wave wash laps onto sand — shift z position slightly with tide
-          const washOffset = Math.sin(t * 1.2) * 0.2;
-          const slz = scene.userData.shorelineZ || 7;
-          waveWashMesh.position.z = slz + 0.15 + washOffset;
-          waveWashMesh.material.opacity = 0.16 + Math.abs(Math.sin(t * 1.2)) * 0.1;
+        if (waveWashMesh) {
+          const slz = scene.userData.shorelineZ || 20;
+          // Wave wash advances up the sand with tide, recedes with ebb
+          const washZ = slz + 0.15 + tidePhase * 0.45;
+          waveWashMesh.position.z = washZ;
+          const washStrength = 0.15 + (tidePhase / 0.35) * 0.2;
+          waveWashMesh.material.opacity = Math.max(0.05, Math.min(0.4, washStrength));
         }
 
         // ─── STARS TWINKLE ─────────────────────────────────────
