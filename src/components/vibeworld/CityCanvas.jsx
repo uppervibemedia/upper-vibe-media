@@ -3,8 +3,12 @@ import * as THREE from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 
 // ─── CONSTANTS ────────────────────────────────────────────────
-const MOVE_SPEED = 2.8;
-const TURN_SPEED = 1.8;
+const MOVE_SPEED = 3.0;
+const ACCELERATION = 10.0;
+const DECELERATION = 8.0;
+const TURN_SPEED = 8.0;
+const ROTATION_SMOOTH = 6.0;
+const WALK_CYCLE_SPEED = 7.0;
 
 // Tree collisions — radius 0.6 per tree
 const TREE_R = 0.5;
@@ -509,13 +513,17 @@ export default function CityCanvas({ onLoaded }) {
   const sceneRef = useRef(null);
   const avatarRef = useRef(null);
   const avatarPosRef = useRef([...SPAWN, 0]); // [x, y, z, rotY]
+  const velocityRef = useRef({ x: 0, z: 0 });
+  const targetRotRef = useRef(0);
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0 });
   const animRef = useRef({
     walkTime: 0,
     isMoving: false,
     speed: 0,
+    prevWalkTime: 0,
   });
+  const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
 
   // Init scene
@@ -568,110 +576,166 @@ export default function CityCanvas({ onLoaded }) {
       let animId;
       const animate = () => {
         animId = requestAnimationFrame(animate);
-        const dt = Math.min(0.05, 0.016);
-        const t = Date.now() * 0.001;
 
+        // Real delta time
+        const now = performance.now() * 0.001;
+        if (lastTimeRef.current === 0) lastTimeRef.current = now;
+        let dt = now - lastTimeRef.current;
+        lastTimeRef.current = now;
+        if (dt > 0.1) dt = 0.1; // Clamp large gaps
+        if (dt <= 0) dt = 0.016;
+
+        const t = now;
         const keys = keysRef.current;
         const mouse = mouseRef.current;
         let [px, py, pz, rot] = avatarPosRef.current;
+        const vel = velocityRef.current;
 
-        // Mouse camera rotation
+        // ─── INPUT ──────────────────────────────────────────────
+        let inputX = 0, inputZ = 0;
+        if (keys.w || keys.arrowup) { inputX += Math.sin(rot); inputZ += Math.cos(rot); }
+        if (keys.s || keys.arrowdown) { inputX -= Math.sin(rot); inputZ -= Math.cos(rot); }
+        if (keys.a || keys.arrowleft) { inputX -= Math.cos(rot); inputZ += Math.sin(rot); }
+        if (keys.d || keys.arrowright) { inputX += Math.cos(rot); inputZ -= Math.sin(rot); }
+
+        const inputMag = Math.sqrt(inputX * inputX + inputZ * inputZ);
+        const isMoving = inputMag > 0.1;
+
+        // ─── MOUSE LOOK ─────────────────────────────────────────
         if (mouse.down) {
           rot += mouse.dx * 0.004;
+          targetRotRef.current = rot;
           mouse.dx = 0;
         }
 
-        // WASD movement
-        let mx = 0, mz = 0;
-        if (keys.w || keys.arrowup) { mx += Math.sin(rot); mz += Math.cos(rot); }
-        if (keys.s || keys.arrowdown) { mx -= Math.sin(rot); mz -= Math.cos(rot); }
-        if (keys.a || keys.arrowleft) { mx -= Math.cos(rot); mz += Math.sin(rot); }
-        if (keys.d || keys.arrowright) { mx += Math.cos(rot); mz -= Math.sin(rot); }
-
-        const mag = Math.sqrt(mx * mx + mz * mz);
-        const isMoving = mag > 0.01;
+        // ─── VELOCITY WITH SMOOTH ACCEL/DECEL ──────────────────
         if (isMoving) {
-          mx = (mx / mag) * MOVE_SPEED * dt;
-          mz = (mz / mag) * MOVE_SPEED * dt;
+          inputX /= inputMag;
+          inputZ /= inputMag;
+
+          // Smooth rotation toward movement direction
+          const moveAngle = Math.atan2(inputX, inputZ);
+          targetRotRef.current = moveAngle;
+
+          // Accelerate
+          vel.x += (inputX * MOVE_SPEED - vel.x) * Math.min(1, ACCELERATION * dt);
+          vel.z += (inputZ * MOVE_SPEED - vel.z) * Math.min(1, ACCELERATION * dt);
+        } else {
+          // Decelerate
+          vel.x += (0 - vel.x) * Math.min(1, DECELERATION * dt);
+          vel.z += (0 - vel.z) * Math.min(1, DECELERATION * dt);
         }
 
-        px += mx;
-        pz += mz;
+        // Smoother rotation lerp
+        let targetRot = targetRotRef.current;
+        // Wrap angle difference
+        let diff = targetRot - rot;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        rot += diff * Math.min(1, ROTATION_SMOOTH * dt);
+
+        // Apply velocity
+        const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+        px += vel.x * dt;
+        pz += vel.z * dt;
 
         // Collisions
         [px, pz] = resolveCollisions(px, pz, 0.3, COLLISION_BOXES);
+
+        // Ground clamp
+        py = SPAWN[1];
 
         avatarPosRef.current = [px, py, pz, rot];
         avatar.position.set(px, py, pz);
         avatar.rotation.y = rot + Math.PI;
 
-        // Camera follows behind avatar
+        // ─── CAMERA ─────────────────────────────────────────────
         const camDist = 5;
         const camHeight = 3.8;
         const behindX = px - Math.sin(rot) * camDist;
         const behindZ = pz - Math.cos(rot) * camDist;
-        camera.position.lerp(
-          new THREE.Vector3(behindX, py + camHeight, behindZ),
-          0.06
-        );
-        camera.lookAt(px, py + 0.6, pz);
+        const camTarget = new THREE.Vector3(behindX, py + camHeight, behindZ);
+        camera.position.lerp(camTarget, 1 - Math.exp(-4 * dt));
+        camera.lookAt(px, py + 0.65, pz);
 
-        // ─── WALK / IDLE ANIMATION ──────────────────────────────
+        // ═════════════════════════════════════════════════════════
+        // ANIMATION SYSTEM
+        // ═════════════════════════════════════════════════════════
         const anim = animRef.current;
-        anim.isMoving = isMoving;
+        anim.isMoving = speed > 0.1;
 
-        if (isMoving) {
-          anim.walkTime += dt * (mag / (MOVE_SPEED * dt)) * 8;
-          anim.speed = Math.min(1, anim.speed + dt * 8);
+        if (anim.isMoving) {
+          anim.walkTime += speed * WALK_CYCLE_SPEED * dt;
+          anim.speed = Math.min(1, anim.speed + dt * 6);
         } else {
-          anim.walkTime *= 0.9;
-          anim.speed = Math.max(0, anim.speed - dt * 5);
+          anim.walkTime += anim.prevWalkTime * 0.3 * dt;
+          anim.speed = Math.max(0, anim.speed - dt * 4);
         }
+        anim.prevWalkTime = anim.isMoving ? speed * WALK_CYCLE_SPEED : 0;
 
         const wt = anim.walkTime;
         const s = anim.speed;
 
-        // Body bob
-        const bobAmount = Math.abs(Math.sin(wt * 2)) * 0.04 * s;
+        // ─── TORSO ──────────────────────────────────────────────
         if (animParts.torso) {
-          animParts.torso.position.y = bobAmount;
+          const bob = Math.abs(Math.sin(wt * 2)) * 0.035 * s;
+          const lean = vel.x * 0.015;
+          const leanZ = vel.z * 0.015;
+          animParts.torso.position.y = bob;
+          animParts.torso.rotation.x = leanZ;
+          animParts.torso.rotation.z = lean;
         }
 
-        // Leg swing (±0.6 rad forward/back)
-        const legSwing = Math.sin(wt) * 0.55 * s;
-        if (animParts.leftHip) animParts.leftHip.rotation.x = legSwing;
-        if (animParts.rightHip) animParts.rightHip.rotation.x = -legSwing;
+        // ─── LEGS ───────────────────────────────────────────────
+        // Hip rotation: smooth sine wave, opposing legs
+        const hipAngle = Math.sin(wt) * 0.5 * s;
 
-        // Knee bend at peak
-        if (animParts.leftHip?.userData?.leg?.userData?.lowerLeg) {
-          animParts.leftHip.userData.leg.userData.lowerLeg.rotation.x = Math.abs(Math.sin(wt)) * 0.35 * s;
-        }
-        if (animParts.rightHip?.userData?.leg?.userData?.lowerLeg) {
-          animParts.rightHip.userData.leg.userData.lowerLeg.rotation.x = Math.abs(Math.sin(wt)) * 0.35 * s;
-        }
+        if (animParts.leftHip) animParts.leftHip.rotation.x = hipAngle;
+        if (animParts.rightHip) animParts.rightHip.rotation.x = -hipAngle;
 
-        // Arm swing (opposite to legs)
-        const armSwing = Math.sin(wt + Math.PI) * 0.5 * s;
-        if (animParts.leftShoulder) animParts.leftShoulder.rotation.x = armSwing;
-        if (animParts.rightShoulder) animParts.rightShoulder.rotation.x = -armSwing;
+        // Knee bend: bend when leg is forward (lifting foot), straight when planted
+        // Left knee bends when left hip is forward (wt: π/2 → 3π/2, sin > 0 means forward)
+        const lkneeAngle = Math.max(0, Math.sin(wt)) * 0.6 * s;
+        const rkneeAngle = Math.max(0, -Math.sin(wt)) * 0.6 * s;
 
-        // Idle: slight breathing
-        if (!isMoving) {
-          const breathe = Math.sin(t * 1.5) * 0.015;
+        const llLeg = animParts.leftHip?.userData?.leg?.userData?.lowerLeg;
+        const rlLeg = animParts.rightHip?.userData?.leg?.userData?.lowerLeg;
+        if (llLeg) llLeg.rotation.x = lkneeAngle;
+        if (rlLeg) rlLeg.rotation.x = rkneeAngle;
+
+        // ─── ARMS ───────────────────────────────────────────────
+        // Shoulder swing: opposite to same-side leg (right arm with left leg)
+        const shoulderAngle = Math.sin(wt) * 0.45 * s;
+
+        if (animParts.leftShoulder) animParts.leftShoulder.rotation.x = -shoulderAngle;
+        if (animParts.rightShoulder) animParts.rightShoulder.rotation.x = shoulderAngle;
+
+        // Forearm bend: slight bend when arm swings back
+        const larmForearm = animParts.leftShoulder?.userData?.arm?.userData?.forearm;
+        const rarmForearm = animParts.rightShoulder?.userData?.arm?.userData?.forearm;
+        const forearmBend = Math.max(0, Math.sin(wt)) * 0.35 * s;
+        const forearmBendR = Math.max(0, -Math.sin(wt)) * 0.35 * s;
+        if (larmForearm) larmForearm.rotation.x = forearmBendR;
+        if (rarmForearm) rarmForearm.rotation.x = forearmBend;
+
+        // Torso breathing when idle
+        if (!anim.isMoving) {
+          const breathe = Math.sin(t * 1.8) * 0.012;
           if (animParts.torso) animParts.torso.scale.y = 1 + breathe;
-          // Arms rest slightly at sides
+          // Gentle arm sway at rest
+          const idleSway = Math.sin(t * 0.8) * 0.04;
           if (animParts.leftShoulder) {
-            animParts.leftShoulder.rotation.x += (-0.15 - animParts.leftShoulder.rotation.x) * 0.1;
-            animParts.leftShoulder.rotation.z += (-0.1 - animParts.leftShoulder.rotation.z) * 0.1;
+            animParts.leftShoulder.rotation.x += (-0.12 - animParts.leftShoulder.rotation.x) * dt * 3;
+            animParts.leftShoulder.rotation.z += (idleSway - animParts.leftShoulder.rotation.z) * dt * 3;
           }
           if (animParts.rightShoulder) {
-            animParts.rightShoulder.rotation.x += (-0.15 - animParts.rightShoulder.rotation.x) * 0.1;
-            animParts.rightShoulder.rotation.z += (0.1 - animParts.rightShoulder.rotation.z) * 0.1;
+            animParts.rightShoulder.rotation.x += (-0.12 - animParts.rightShoulder.rotation.x) * dt * 3;
+            animParts.rightShoulder.rotation.z += (-idleSway - animParts.rightShoulder.rotation.z) * dt * 3;
           }
         } else {
           // Reset shoulder Z during walk
-          if (animParts.leftShoulder) animParts.leftShoulder.rotation.z += (0 - animParts.leftShoulder.rotation.z) * 0.2;
-          if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * 0.2;
+          if (animParts.leftShoulder) animParts.leftShoulder.rotation.z += (0 - animParts.leftShoulder.rotation.z) * dt * 5;
+          if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
         renderer.render(scene, camera);
@@ -751,14 +815,15 @@ export default function CityCanvas({ onLoaded }) {
     keysRef.current.a = jx < -0.15;
     keysRef.current.d = jx > 0.15;
 
-    if (jy > 0.15 || jy < -0.15 || jx > 0.15 || jx < -0.15) {
-      // Override with proportional movement for smoother feel
-      avatarPosRef.current[3] = Math.atan2(jx, jy);
+    if (Math.abs(jx) > 0.15 || Math.abs(jy) > 0.15) {
+      // Smooth face-direction from joystick
+      targetRotRef.current = Math.atan2(jx, jy);
     }
   }, []);
 
   const handleCameraDelta = useCallback((dx) => {
-    avatarPosRef.current[3] += dx * 0.005;
+    avatarPosRef.current[3] += dx * 0.004;
+    targetRotRef.current = avatarPosRef.current[3];
   }, []);
 
   if (error) {
