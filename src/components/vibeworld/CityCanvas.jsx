@@ -257,81 +257,101 @@ function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 const SKY_CANVAS_W = 1024;
 const SKY_CANVAS_H = 512;
-const NEBULA_BASE_ALPHA = 0.55;
-
-// Deep space gradient — stays dark at the horizon, subtly lighter overhead
-const GRADIENT_STOPS = [
-  [0, "#07071a"], [0.12, "#0a0a24"], [0.3, "#0c0c2e"],
-  [0.5, "#0b0b2a"], [0.7, "#090922"], [1, "#050514"],
-];
-
-// Soft irregular cloud clusters — each is a group of overlapping circles
-// with varying radii, offsets, and per-circle alpha weights.
-// Fields: cx, cy (centre), r/g/b (color), circles: [[offX, offY, radius, alphaWeight], ...]
-const NEBULA_CLUSTERS = [
-  { // Upper-left — purple cloud
-    cx: 180, cy: 100, r: 140, g: 35, b: 200,
-    circles: [
-      [0, 0, 55, 1.0], [-35, -15, 42, 0.85], [30, 10, 48, 0.75],
-      [-15, 25, 36, 0.65], [40, -20, 32, 0.55], [-50, 5, 28, 0.45],
-      [10, -35, 30, 0.5], [55, 8, 22, 0.4],
-    ],
-  },
-  { // Upper-right — blue/cyan cloud
-    cx: 800, cy: 130, r: 40, g: 110, b: 230,
-    circles: [
-      [0, 0, 50, 1.0], [-28, -10, 40, 0.8], [25, 12, 44, 0.7],
-      [-10, -28, 34, 0.6], [35, -8, 30, 0.55], [-45, 5, 26, 0.45],
-      [15, 22, 24, 0.4],
-    ],
-  },
-  { // Mid-left — soft pink cloud
-    cx: 200, cy: 300, r: 180, g: 45, b: 140,
-    circles: [
-      [0, 0, 48, 0.85], [-25, 10, 36, 0.7], [20, -12, 40, 0.65],
-      [-15, -25, 30, 0.5], [30, 15, 28, 0.45], [-40, -5, 22, 0.38],
-    ],
-  },
-  { // Top-center — subtle cyan whisper
-    cx: 520, cy: 55, r: 30, g: 130, b: 200,
-    circles: [
-      [0, 0, 45, 0.7], [-20, -8, 34, 0.55], [18, 10, 38, 0.5],
-      [-12, 18, 26, 0.4], [28, -14, 24, 0.38],
-    ],
-  },
-  { // Right area — dark purple patch
-    cx: 700, cy: 280, r: 120, g: 30, b: 180,
-    circles: [
-      [0, 0, 42, 0.75], [-22, 8, 32, 0.6], [18, -10, 36, 0.55],
-      [-8, -22, 26, 0.45], [30, 5, 24, 0.4],
-    ],
-  },
-  { // Far left mid — deep blue wisp
-    cx: 50, cy: 200, r: 40, g: 60, b: 200,
-    circles: [
-      [0, 0, 38, 0.8], [-15, -10, 28, 0.65], [12, 8, 30, 0.55],
-      [-8, 18, 22, 0.45],
-    ],
-  },
-  { // Right edge upper — cyan splotch
-    cx: 950, cy: 190, r: 20, g: 100, b: 220,
-    circles: [
-      [0, 0, 40, 0.7], [-18, -6, 30, 0.55], [15, 8, 32, 0.5],
-    ],
-  },
-  { // Upper center-left — bright purple accent
-    cx: 380, cy: 70, r: 100, g: 25, b: 210,
-    circles: [
-      [0, 0, 44, 0.65], [-20, -12, 32, 0.5], [18, 10, 34, 0.48],
-      [-10, 20, 24, 0.4], [28, -8, 22, 0.35],
-    ],
-  },
-];
 
 // Shared mutable state for nebula animation
 let _nebulaCanvas = null;
 let _nebulaCtx = null;
 let _nebulaTex = null;
+
+// ─── Reference palette ────────────────────────────────────────
+// #050510 — near black (void)
+// #2A0545 — deep purple
+// #8A2BE2 — vibrant violet
+// #00CED1 — bright cyan/turquoise
+// #0A0A15 — horizon silhouette
+
+// Wispy gas "strokes" — each is a chain of overlapping radial-gradient blobs
+// that together form an irregular, trailing gas shape.
+// A stroke has: baseColor {r,g,b}, centre anchor (cx,cy), and a list of blobs
+// where each blob = [relX, relY, radius, alphaWeight]
+const NEBULA_STROKES = [
+  // ── CYAN CORE — bright hot centre (upper-left to mid) ──
+  {
+    baseColor: { r: 0, g: 206, b: 209 }, // #00CED1
+    cx: 280, cy: 140,
+    blobs: [
+      [0, 0, 42, 0.95], [-18, -8, 32, 0.80], [20, -5, 38, 0.75],
+      [-30, 12, 28, 0.65], [35, -15, 22, 0.55], [-12, -22, 26, 0.60],
+      [8, 18, 24, 0.50], [-42, -4, 18, 0.40], [45, 6, 16, 0.35],
+    ],
+  },
+  // ── CYAN TAIL — wispy trail extending right/down ──
+  {
+    baseColor: { r: 0, g: 170, b: 180 },
+    cx: 500, cy: 200,
+    blobs: [
+      [0, 0, 35, 0.70], [-15, -6, 28, 0.58], [15, 4, 30, 0.52],
+      [-30, 10, 22, 0.45], [28, 15, 20, 0.38], [-40, -8, 16, 0.30],
+      [10, -16, 18, 0.33],
+    ],
+  },
+  // ── VIOLET WING — upper-left purple/violet sweep ──
+  {
+    baseColor: { r: 138, g: 43, b: 226 }, // #8A2BE2
+    cx: 200, cy: 85,
+    blobs: [
+      [0, 0, 38, 0.72], [-22, -10, 30, 0.58], [18, -6, 34, 0.52],
+      [-35, 8, 24, 0.42], [10, -22, 26, 0.48], [-15, 18, 20, 0.35],
+      [28, 10, 18, 0.32], [-45, -14, 15, 0.28],
+    ],
+  },
+  // ── DEEP INDIGO — dark purple fade at edges ──
+  {
+    baseColor: { r: 42, g: 5, b: 69 }, // #2A0545
+    cx: 350, cy: 170,
+    blobs: [
+      [0, 0, 55, 0.60], [-25, -12, 42, 0.48], [22, 8, 48, 0.42],
+      [-40, 15, 36, 0.35], [30, -20, 32, 0.30], [-15, 25, 28, 0.28],
+      [48, -6, 24, 0.25], [-50, -18, 20, 0.22], [15, -30, 26, 0.26],
+    ],
+  },
+  // ── UPPER CYAN WHISPER — secondary bright streak ──
+  {
+    baseColor: { r: 30, g: 160, b: 210 },
+    cx: 420, cy: 110,
+    blobs: [
+      [0, 0, 28, 0.55], [-12, -6, 22, 0.42], [14, 4, 24, 0.38],
+      [-25, 10, 16, 0.30], [20, -12, 18, 0.32],
+    ],
+  },
+  // ── FAR PURPLE EDGE — top-right fade ──
+  {
+    baseColor: { r: 60, g: 10, b: 100 },
+    cx: 650, cy: 150,
+    blobs: [
+      [0, 0, 34, 0.40], [-18, -8, 26, 0.32], [16, 6, 28, 0.28],
+      [-30, 12, 20, 0.22], [28, -14, 18, 0.20],
+    ],
+  },
+  // ── DEEP PURPLE TAIL — far right ──
+  {
+    baseColor: { r: 35, g: 5, b: 55 },
+    cx: 780, cy: 200,
+    blobs: [
+      [0, 0, 30, 0.36], [-15, -6, 22, 0.28], [14, 5, 24, 0.24],
+      [-28, 10, 16, 0.18], [22, -12, 14, 0.16],
+    ],
+  },
+  // ── LEFT EDGE INDIGO FADE ──
+  {
+    baseColor: { r: 20, g: 3, b: 55 },
+    cx: 80, cy: 180,
+    blobs: [
+      [0, 0, 32, 0.42], [-12, -8, 24, 0.32], [14, 6, 26, 0.28],
+      [-24, 10, 18, 0.22], [10, -16, 16, 0.18],
+    ],
+  },
+];
 
 function drawNebulaCanvas(time) {
   if (!_nebulaCtx) return;
@@ -341,47 +361,56 @@ function drawNebulaCanvas(time) {
   // Clear
   ctx.clearRect(0, 0, W, H);
 
-  // Fill with a visible deep space color as the base
-  ctx.fillStyle = "#0a0a20";
+  // ── Base: deep space void (#050510 near-black) ──
+  ctx.fillStyle = "#050510";
   ctx.fillRect(0, 0, W, H);
 
-  // Gradient overlay — deep space
-  const base = ctx.createLinearGradient(0, 0, 0, H);
-  GRADIENT_STOPS.forEach(([stop, color]) => base.addColorStop(stop, color));
-  ctx.fillStyle = base;
+  // ── Vertical gradient — pitch black at top, subtly lighter mid-sky, dark horizon ──
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, "#030308");
+  skyGrad.addColorStop(0.25, "#050510");
+  skyGrad.addColorStop(0.5, "#060615");
+  skyGrad.addColorStop(0.75, "#0a0a1a");
+  skyGrad.addColorStop(0.95, "#0a0a15"); // horizon silhouette
+  skyGrad.addColorStop(1, "#080810");
+  ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // Each cluster: draw overlapping soft circles to form irregular cloud shapes
-  NEBULA_CLUSTERS.forEach((cluster) => {
-    // Very slow gas-like drift
-    const phase = (cluster.cx * 0.7 + cluster.cy * 1.3) * 0.01;
-    const driftX = Math.sin(time * 0.08 + phase) * 14;
-    const driftY = Math.cos(time * 0.06 + phase * 1.4) * 8;
+  // ── Draw each wispy gas stroke ──
+  NEBULA_STROKES.forEach((stroke) => {
+    const phase = (stroke.cx * 0.7 + stroke.cy * 1.3) * 0.01;
+    const driftX = Math.sin(time * 0.06 + phase) * 10;
+    const driftY = Math.cos(time * 0.05 + phase * 1.4) * 6;
+    const breathe = 1 + Math.sin(time * 0.10 + phase) * 0.05;
+    const { r, g, b } = stroke.baseColor;
 
-    // Breathe the whole cluster subtly
-    const breathe = 1 + Math.sin(time * 0.12 + phase) * 0.06;
+    stroke.blobs.forEach(([offX, offY, radius, alphaWeight]) => {
+      const a = Math.min(1, alphaWeight * breathe);
+      const sx = stroke.cx + driftX + offX;
+      const sy = stroke.cy + driftY + offY;
 
-    cluster.circles.forEach(([offX, offY, radius, alphaWeight]) => {
-      const a = Math.min(1, NEBULA_BASE_ALPHA * alphaWeight * breathe);
-      const r = radius * 1.6; // Scale up for visibility
+      // Offset focus for directional, asymmetric wisps
+      const focusAngle = (offX * 0.4 + offY * 0.35) % (Math.PI * 2);
+      const focusX = sx + Math.cos(focusAngle) * radius * 0.18;
+      const focusY = sy + Math.sin(focusAngle) * radius * 0.18;
 
-      const sx = cluster.cx + driftX + offX;
-      const sy = cluster.cy + driftY + offY;
+      const grad = ctx.createRadialGradient(focusX, focusY, radius * 0.04, sx, sy, radius);
+      grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+      grad.addColorStop(0.35, `rgba(${r},${g},${b},${a * 0.82})`);
+      grad.addColorStop(0.6, `rgba(${r},${g},${b},${a * 0.38})`);
+      grad.addColorStop(0.82, `rgba(${r},${g},${b},${a * 0.08})`);
+      grad.addColorStop(1, "transparent");
 
-      // Radial gradient with alpha baked into colors, no globalAlpha needed
-      const g = ctx.createRadialGradient(0, 0, r * 0.12, 0, 0, r);
-      const { r: cr, g: cg, b: cb } = cluster;
-      g.addColorStop(0, `rgba(${cr},${cg},${cb},${a})`);
-      g.addColorStop(0.45, `rgba(${cr},${cg},${cb},${a * 0.85})`);
-      g.addColorStop(0.7, `rgba(${cr},${cg},${cb},${a * 0.25})`);
-      g.addColorStop(1, "transparent");
-
-      ctx.fillStyle = g;
+      ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      // Slightly oval shapes for irregularity
+      const rX = radius * (0.82 + Math.sin(offX * 0.4 + offY * 0.3) * 0.18);
+      const rY = radius * (0.82 + Math.cos(offX * 0.35 - offY * 0.45) * 0.18);
+      ctx.ellipse(sx, sy, rX, rY, focusAngle, 0, Math.PI * 2);
       ctx.fill();
     });
   });
+
   if (_nebulaTex) _nebulaTex.needsUpdate = true;
 }
 
