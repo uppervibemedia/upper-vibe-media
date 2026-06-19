@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, Compass, Music4, Radio, Flower2, Play, Pause, Zap } from "lucide-react";
+import { ChevronLeft, Compass, Music4, Radio, Flower2, Play, Pause } from "lucide-react";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import HoloPanel from "@/components/vibeworld/HoloPanel";
 import MusicPanel from "@/components/vibeworld/panels/MusicPanel";
@@ -16,7 +16,6 @@ const DISTRICT_META = {
   music:        { title: "Music District",         icon: <Music4 className="w-4 h-4" />,   accent: "0,160,220" },
   radio:        { title: "Radio Tower",            icon: <Radio className="w-4 h-4" />,    accent: "155,126,255" },
   gardens:      { title: "Manifestation Gardens",  icon: <Flower2 className="w-4 h-4" />,  accent: "52,211,153" },
-  frequencies:  { title: "Hall of Frequencies",    icon: <Zap className="w-4 h-4" />,      accent: "236,72,153" },
 };
 
 export default function UpperVibeCity({ onExit }) {
@@ -54,7 +53,6 @@ export default function UpperVibeCity({ onExit }) {
       case "music":       return <MusicPanel onNeedLogin={onNeedLogin} />;
       case "radio":       return <RadioPanel />;
       case "gardens":     return <GardensPanel />;
-      case "frequencies": return <FrequencyDoorsPanel onNeedLogin={onNeedLogin} />;
       default:            return null;
     }
   };
@@ -140,67 +138,4 @@ export default function UpperVibeCity({ onExit }) {
       </HoloPanel>
     </div>
   );
-}
-
-// ─── Hall of Frequencies Door Panel ───
-function FrequencyDoorsPanel({ onNeedLogin }) {
-  const { allTracks, tracksLoaded, playTrack } = usePlayer();
-  const { jumpToSong } = useRadio();
-
-  const DOORS = [
-    { id: "focus",       label: "Focus",       color: "#3B82F6", icon: "🎯" },
-    { id: "motivation",  label: "Motivation",   color: "#F59E0B", icon: "🔥" },
-    { id: "wealth",      label: "Wealth",       color: "#10B981", icon: "💎" },
-    { id: "confidence",  label: "Confidence",   color: "#EC4899", icon: "🦁" },
-    { id: "relaxation",  label: "Relaxation",   color: "#8B5CF6", icon: "🧘" },
-    { id: "sleep",       label: "Sleep",        color: "#6366F1", icon: "🌙" },
-  ];
-
-  const handleDoor = (doorId) => {
-    if (!tracksLoaded || allTracks.length === 0) return;
-    // Find tracks matching this mood/frequency category
-    const keyword = doorId.toLowerCase();
-    const matching = allTracks.filter((t) => {
-      const moods = (t.mood_tags || []).map((m) => m.toLowerCase());
-      const cats = ((t.category_ids || [])).join(" ").toLowerCase();
-      return moods.some((m) => m.includes(keyword)) || cats.includes(keyword);
-    });
-
-    if (matching.length > 0) {
-      const pick = matching[Math.floor(Math.random() * matching.length)];
-      playTrack(pick, "song");
-    } else {
-      // Fallback: play any random track
-      const pick = allTracks[Math.floor(Math.random() * allTracks.length)];
-      if (pick) playTrack(pick, "song");
-    }
-  };
-
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      {DOORS.map((door) => (
-        <button
-          key={door.id}
-          onClick={() => handleDoor(door.id)}
-          className="flex flex-col items-center gap-2 p-4 rounded-2xl transition-all active:scale-95 hover:brightness-110"
-          style={{
-            background: `rgba(${hexToRgb(door.color)},0.08)`,
-            border: `1px solid rgba(${hexToRgb(door.color)},0.25)`,
-          }}
-        >
-          <span className="text-2xl">{door.icon}</span>
-          <span className="font-heading font-black text-sm tracking-wide" style={{ color: door.color }}>
-            {door.label}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function hexToRgb(hex) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `${r},${g},${b}`;
 }

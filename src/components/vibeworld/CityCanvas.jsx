@@ -2,15 +2,15 @@ import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { DISTRICTS, COLLISION_BOXES, SPAWN } from "./cityData";
 
-const PLAYER_R = 0.4;
-const PLAYER_SPEED = 4;
+const PLAYER_R = 0.35;
+const PLAYER_SPEED = 3.5;
 
 // ─── Helpers ─────────────────────────────────────────────────
 function circleVsAABB(cx, cz, r, bx, bz, hw, hd) {
   const closestX = Math.max(bx - hw, Math.min(cx, bx + hw));
   const closestZ = Math.max(bz - hd, Math.min(cz, bz + hd));
   const dx = cx - closestX, dz = cz - closestZ;
-  return (dx * dx + dz * dz) < (r * r);
+  return dx * dx + dz * dz < r * r;
 }
 
 function resolveCollisions(x, z, r, boxes) {
@@ -25,526 +25,662 @@ function resolveCollisions(x, z, r, boxes) {
   return [px, pz];
 }
 
-// simple hex → rgb string helper
-function hexToRgb(hex) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `${r},${g},${b}`;
-}
-
-// ─── Material factory ──────────────────────────────────────
-const cosmicMat = (color) => new THREE.MeshStandardMaterial({
-  color, roughness: 0.25, metalness: 0.85
+// ─── Material shortcuts ──────────────────────────────────────
+const buildMat = (color, opts = {}) => new THREE.MeshStandardMaterial({
+  color, roughness: opts.roughness ?? 0.5, metalness: opts.metalness ?? 0.1, ...opts,
 });
-const glowMat = (color, opacity = 0.7) => new THREE.MeshBasicMaterial({
-  color, transparent: true, opacity, depthWrite: false
+const neonMat = (color, opacity = 0.8) => new THREE.MeshBasicMaterial({
+  color, transparent: true, opacity, depthWrite: false,
 });
-const emissiveMat = (color, emissive, intensity = 0.4) => new THREE.MeshStandardMaterial({
-  color, roughness: 0.3, metalness: 0.8, emissive, emissiveIntensity: intensity
+const glowMat = (color, intensity = 0.3) => new THREE.MeshStandardMaterial({
+  color, roughness: 0.1, metalness: 0.9, emissive: color, emissiveIntensity: intensity,
 });
 
 // ═══════════════════════════════════════════════════════════════
-// BUILD URBAN FUTURE CITY
+// UPPER VIBE PLAZA — One Detailed City Block
 // ═══════════════════════════════════════════════════════════════
-function buildCity(scene) {
-  // ─── Cosmic Ground Platform ───
-  const gridHelper = new THREE.PolarGridHelper(30, 48, 32, 256, "#1a1a3a", "#0d0d20");
-  gridHelper.position.y = 0.01;
+function buildPlaza(scene) {
+  const t = 0; // ground level offset
+
+  // ─── GROUND LAYERS ──────────────────────────────────────────
+
+  // Base asphalt — the greater block
+  const asphaltGeo = new THREE.PlaneGeometry(40, 40);
+  const asphalt = new THREE.Mesh(asphaltGeo, buildMat("#1a1a1e", { roughness: 0.9, metalness: 0 }));
+  asphalt.rotation.x = -Math.PI / 2;
+  asphalt.position.y = -0.06;
+  asphalt.receiveShadow = true;
+  scene.add(asphalt);
+
+  // Road around the plaza
+  const roadNSgeo = new THREE.PlaneGeometry(28, 3);
+  const roadEWgeo = new THREE.PlaneGeometry(3, 28);
+  const roadMat = buildMat("#2a2a30", { roughness: 0.85, metalness: 0.05 });
+  const roadN = new THREE.Mesh(roadNSgeo, roadMat);
+  roadN.rotation.x = -Math.PI / 2; roadN.position.set(0, -0.05, -9.5); roadN.receiveShadow = true; scene.add(roadN);
+  const roadS = new THREE.Mesh(roadNSgeo, roadMat);
+  roadS.rotation.x = -Math.PI / 2; roadS.position.set(0, -0.05, 9.5); roadS.receiveShadow = true; scene.add(roadS);
+  const roadE = new THREE.Mesh(roadEWgeo, roadMat);
+  roadE.rotation.x = -Math.PI / 2; roadE.position.set(9.5, -0.05, 0); roadE.receiveShadow = true; scene.add(roadE);
+  const roadW = new THREE.Mesh(roadEWgeo, roadMat);
+  roadW.rotation.x = -Math.PI / 2; roadW.position.set(-9.5, -0.05, 0); roadW.receiveShadow = true; scene.add(roadW);
+
+  // Road lane markings (dashed white lines)
+  function addLaneMarkings(roadX, roadZ, length, horizontal) {
+    for (let i = -length / 2 + 1; i < length / 2; i += 2.5) {
+      const markGeo = new THREE.PlaneGeometry(horizontal ? 1.2 : 0.15, horizontal ? 0.15 : 1.2);
+      const mark = new THREE.Mesh(markGeo, buildMat("#555560", { roughness: 0.4 }));
+      mark.rotation.x = -Math.PI / 2;
+      mark.position.set(
+        roadX + (horizontal ? i : 0),
+        -0.04,
+        roadZ + (horizontal ? 0 : i)
+      );
+      mark.receiveShadow = true;
+      scene.add(mark);
+    }
+  }
+  addLaneMarkings(0, -9.5, 26, true);
+  addLaneMarkings(0, 9.5, 26, true);
+  addLaneMarkings(9.5, 0, 26, false);
+  addLaneMarkings(-9.5, 0, 26, false);
+
+  // ─── SIDEWALKS ──────────────────────────────────────────────
+  function addSidewalk(x, z, w, d) {
+    const geo = new THREE.PlaneGeometry(w, d);
+    const sidewalk = new THREE.Mesh(geo, buildMat("#3a3a42", { roughness: 0.55 }));
+    sidewalk.rotation.x = -Math.PI / 2;
+    sidewalk.position.set(x, -0.03, z);
+    sidewalk.receiveShadow = true;
+    scene.add(sidewalk);
+  }
+  // Plaza perimeter sidewalks
+  addSidewalk(0, -7.5, 18, 1.5);   // north
+  addSidewalk(0, 7.5, 18, 1.5);    // south
+  addSidewalk(7.5, 0, 1.5, 18);    // east
+  addSidewalk(-7.5, 0, 1.5, 18);   // west
+
+  // Curbs
+  function addCurb(x, z, len, horiz) {
+    const geo = new THREE.BoxGeometry(horiz ? len : 0.2, 0.1, horiz ? 0.2 : len);
+    const curb = new THREE.Mesh(geo, buildMat("#555558", { roughness: 0.3 }));
+    curb.position.set(x, 0.02, z);
+    curb.castShadow = true;
+    curb.receiveShadow = true;
+    scene.add(curb);
+  }
+  addCurb(0, -8.25, 18, true);
+  addCurb(0, 8.25, 18, true);
+  addCurb(8.25, 0, 18, false);
+  addCurb(-8.25, 0, 18, false);
+
+  // ─── PLAZA FLOOR (decorative tile pattern) ──────────────────
+  const plazaFloorGeo = new THREE.PlaneGeometry(14, 14);
+  const plazaFloor = new THREE.Mesh(plazaFloorGeo, buildMat("#252530", { roughness: 0.35, metalness: 0.15 }));
+  plazaFloor.rotation.x = -Math.PI / 2;
+  plazaFloor.position.y = -0.015;
+  plazaFloor.receiveShadow = true;
+  scene.add(plazaFloor);
+
+  // Decorative grid lines on plaza
+  const gridHelper = new THREE.PolarGridHelper(7, 32, 24, 128, "#3a3a48", "#2a2a35");
+  gridHelper.position.y = -0.01;
   scene.add(gridHelper);
 
-  const groundGeo = new THREE.PlaneGeometry(100, 100);
-  const groundMat = new THREE.MeshStandardMaterial({ color: "#080818", roughness: 0.5, metalness: 0.9 });
-  const ground = new THREE.Mesh(groundGeo, groundMat);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.05;
-  ground.receiveShadow = true;
-  scene.add(ground);
-
-  // ─── Energy Conduits (roads connecting districts) ───
-  const conduits = [
-    { from: [0, 0], to: [18, 0], color: 0x00A0DC },
-    { from: [0, 0], to: [-18, 0], color: 0x34D399 },
-    { from: [0, 0], to: [0, -18], color: 0x9B7EFF },
-    { from: [0, 0], to: [0, 18], color: 0xEC4899 },
-  ];
-  conduits.forEach((c) => {
-    const [fx, fz] = c.from, [tx, tz] = c.to;
-    const dx = tx - fx, dz = tz - fz;
-    const len = Math.sqrt(dx * dx + dz * dz);
-    const angle = Math.atan2(dx, dz);
-
-    // Road base
-    const roadGeo = new THREE.PlaneGeometry(2.0, len);
-    const road = new THREE.Mesh(roadGeo, new THREE.MeshStandardMaterial({ color: "#0c0c28", roughness: 0.3, metalness: 0.9 }));
-    road.rotation.x = -Math.PI / 2;
-    road.rotation.z = angle;
-    road.position.set((fx + tx) / 2, 0.005, (fz + tz) / 2);
-    road.receiveShadow = true;
-    scene.add(road);
-
-    // Center glow line
-    const lineGeo = new THREE.PlaneGeometry(0.15, len);
-    const line = new THREE.Mesh(lineGeo, glowMat(new THREE.Color(c.color), 0.35));
-    line.rotation.x = -Math.PI / 2;
-    line.rotation.z = angle;
-    line.position.set((fx + tx) / 2, 0.015, (fz + tz) / 2);
-    scene.add(line);
-
-    // Edge markers (pulsing dots along the road)
-    for (let i = 0; i < 6; i++) {
-      const t = (i + 1) / 7;
-      const px = fx + dx * t, pz = fz + dz * t;
-      const dotGeo = new THREE.SphereGeometry(0.08, 8, 8);
-      const dot = new THREE.Mesh(dotGeo, glowMat(new THREE.Color(c.color), 0.6));
-      dot.position.set(px + Math.cos(angle) * 0.6, 0.04, pz - Math.sin(angle) * 0.6);
-      dot.name = "conduitDot";
-      scene.add(dot);
-      const dot2 = dot.clone();
-      dot2.position.set(px - Math.cos(angle) * 0.6, 0.04, pz + Math.sin(angle) * 0.6);
-      scene.add(dot2);
-    }
-  });
-
-  // ─── CENTRAL PLAZA ───
-  const plazaGroup = new THREE.Group();
-  plazaGroup.name = "plaza";
-
-  // Plaza floor
-  const plazaGeo = new THREE.CircleGeometry(8, 48);
-  const plaza = new THREE.Mesh(plazaGeo, new THREE.MeshStandardMaterial({ color: "#0c0c2a", roughness: 0.2, metalness: 0.9 }));
-  plaza.rotation.x = -Math.PI / 2;
-  plaza.position.y = 0.015;
-  plaza.receiveShadow = true;
-  plazaGroup.add(plaza);
-
-  // Outer ring
-  const ringGeo = new THREE.TorusGeometry(7.5, 0.08, 16, 64);
-  const ring = new THREE.Mesh(ringGeo, emissiveMat("#00A0DC", "#0066aa", 0.6));
-  ring.rotation.x = Math.PI / 2;
-  ring.position.y = 0.04;
-  ring.name = "plazaRing";
-  plazaGroup.add(ring);
-
-  // Central Hologram Pillar
-  const pillarGroup = new THREE.Group();
-  const pillarGeo = new THREE.CylinderGeometry(0.15, 0.25, 3.5, 16);
-  const pillar = new THREE.Mesh(pillarGeo, emissiveMat("#1a1a4a", "#003388", 0.5));
-  pillar.position.y = 1.75;
-  pillarGroup.add(pillar);
-
-  // Floating holographic rings around pillar
-  for (let i = 0; i < 3; i++) {
-    const hrGeo = new THREE.TorusGeometry(0.8 + i * 0.3, 0.04, 16, 32);
-    const hr = new THREE.Mesh(hrGeo, glowMat("#00C8FF", 0.6 - i * 0.15));
-    hr.position.y = 1.0 + i * 1.0;
-    hr.name = `holoRing_${i}`;
-    pillarGroup.add(hr);
-  }
-
-  // Floating diamond at top
-  const crystalGeo = new THREE.OctahedronGeometry(0.25, 0);
-  const crystal = new THREE.Mesh(crystalGeo, emissiveMat("#FFFFFF", "#00C8FF", 1.0));
-  crystal.position.y = 3.8;
-  crystal.name = "plazaCrystal";
-  pillarGroup.add(crystal);
-  const crystalLight = new THREE.PointLight("#00C8FF", 4, 10);
-  crystalLight.position.y = 3.8;
-  pillarGroup.add(crystalLight);
-
-  plazaGroup.add(pillarGroup);
-
-  // Fountain — cosmic energy pool
+  // ─── CENTRAL FOUNTAIN ───────────────────────────────────────
   const fountain = new THREE.Group();
   fountain.name = "fountain";
-  const poolGeo = new THREE.CylinderGeometry(1.5, 1.7, 0.3, 32);
-  const pool = new THREE.Mesh(poolGeo, emissiveMat("#0d0d3a", "#001166", 0.3));
-  pool.position.y = 0.1;
-  fountain.add(pool);
-  // Glowing water surface
-  const waterGeo = new THREE.CylinderGeometry(1.45, 1.45, 0.05, 32);
-  const water = new THREE.Mesh(waterGeo, glowMat("#00A0DC", 0.5));
-  water.position.y = 0.25;
+
+  // Base tier
+  const baseGeo = new THREE.CylinderGeometry(1.6, 1.8, 0.35, 32);
+  const baseTier = new THREE.Mesh(baseGeo, buildMat("#282838", { roughness: 0.2, metalness: 0.7 }));
+  baseTier.position.y = 0.15;
+  baseTier.castShadow = true;
+  baseTier.receiveShadow = true;
+  fountain.add(baseTier);
+
+  // Middle tier
+  const midGeo = new THREE.CylinderGeometry(1.0, 1.2, 0.3, 32);
+  const midTier = new THREE.Mesh(midGeo, buildMat("#2a2a42", { roughness: 0.2, metalness: 0.75 }));
+  midTier.position.y = 0.5;
+  midTier.castShadow = true;
+  fountain.add(midTier);
+
+  // Top tier
+  const topGeo = new THREE.CylinderGeometry(0.4, 0.55, 0.25, 24);
+  const topTier = new THREE.Mesh(topGeo, buildMat("#2c2c48", { roughness: 0.2, metalness: 0.8 }));
+  topTier.position.y = 0.8;
+  topTier.castShadow = true;
+  fountain.add(topTier);
+
+  // Water pool (glowing disc)
+  const waterGeo = new THREE.CylinderGeometry(1.55, 1.55, 0.02, 32);
+  const water = new THREE.Mesh(waterGeo, glowMat("#00A0DC", 0.4));
+  water.position.y = 0.33;
   water.name = "fountainWater";
   fountain.add(water);
-  // Energy orbs floating above
-  for (let i = 0; i < 5; i++) {
-    const orbGeo = new THREE.SphereGeometry(0.08, 8, 8);
-    const orb = new THREE.Mesh(orbGeo, glowMat("#00E5FF", 0.8));
-    orb.position.set(
-      Math.cos(i * 1.3) * 0.7,
-      0.5 + Math.sin(i * 0.7) * 0.3,
-      Math.sin(i * 1.3) * 0.7
+
+  // Water spray particles
+  const sprayGroup = new THREE.Group();
+  sprayGroup.name = "spray";
+  for (let i = 0; i < 20; i++) {
+    const dropGeo = new THREE.SphereGeometry(0.03, 4, 4);
+    const drop = new THREE.Mesh(dropGeo, neonMat("#88DDFF", 0.7));
+    drop.position.set(
+      (Math.random() - 0.5) * 0.6,
+      1.1 + Math.random() * 1.2,
+      (Math.random() - 0.5) * 0.6
     );
-    orb.name = `fountainOrb_${i}`;
-    fountain.add(orb);
+    drop.userData = { baseY: drop.position.y, speed: 0.8 + Math.random() * 1.5, offset: Math.random() * Math.PI * 2 };
+    sprayGroup.add(drop);
   }
-  fountain.position.set(2, 0, 2);
-  plazaGroup.add(fountain);
+  fountain.add(sprayGroup);
 
-  scene.add(plazaGroup);
+  // Fountain glow light
+  const fountainLight = new THREE.PointLight("#00A0DC", 3, 8);
+  fountainLight.position.y = 0.7;
+  fountain.add(fountainLight);
 
-  // ─── Plaza Billboard (holographic display) ───
-  const billboard = new THREE.Group();
-  billboard.position.set(-2, 3, 6);
-  const bFrameGeo = new THREE.BoxGeometry(4, 2, 0.08);
-  const bFrame = new THREE.Mesh(bFrameGeo, emissiveMat("#0a0a2a", "#003366", 0.4));
-  billboard.add(bFrame);
-  // Screen glow
-  const screenGeo = new THREE.PlaneGeometry(3.6, 1.6);
-  const screen = new THREE.Mesh(screenGeo, glowMat("#00A0DC", 0.25));
-  screen.position.z = 0.05;
-  billboard.add(screen);
-  // Frame border
-  const borderGeo = new THREE.BoxGeometry(4, 2, 0.02);
-  const border = new THREE.Mesh(borderGeo, glowMat("#00C8FF", 0.4));
-  border.position.z = 0.06;
-  billboard.add(border);
-  // Support struts
-  const strutGeo = new THREE.CylinderGeometry(0.06, 0.06, 2.5, 8);
-  const strutMat = emissiveMat("#001122", "#004488", 0.5);
-  const leftStrut = new THREE.Mesh(strutGeo, strutMat);
-  leftStrut.position.set(-1.8, -1.5, 0);
-  billboard.add(leftStrut);
-  const rightStrut = new THREE.Mesh(strutGeo, strutMat);
-  rightStrut.position.set(1.8, -1.5, 0);
-  billboard.add(rightStrut);
-  billboard.name = "billboard";
-  scene.add(billboard);
+  scene.add(fountain);
 
-  // ─── MUSIC DISTRICT (sleek angular building) ───
-  const mdPos = DISTRICTS.music.position;
-  const musicDistrict = new THREE.Group();
-  // Main building — angled futuristic shape
-  const mdBodyGeo = new THREE.BoxGeometry(5, 4, 4);
-  const mdBody = new THREE.Mesh(mdBodyGeo, emissiveMat("#0d0d2a", "#002244", 0.3));
-  mdBody.position.y = 2;
-  mdBody.castShadow = true;
-  mdBody.receiveShadow = true;
-  musicDistrict.add(mdBody);
-
-  // Glass facade strips
-  for (let i = 0; i < 4; i++) {
-    const stripGeo = new THREE.BoxGeometry(0.3, 3.2, 4.05);
-    const strip = new THREE.Mesh(stripGeo, glowMat("#00A0DC", 0.3));
-    strip.position.set(-1.5 + i * 1, 2.2, 0.03);
-    musicDistrict.add(strip);
-  }
-
-  // Angled roof
-  const roofGeo = new THREE.ConeGeometry(3.5, 0.8, 4);
-  const roof = new THREE.Mesh(roofGeo, emissiveMat("#00A0DC", "#005599", 0.5));
-  roof.position.y = 4.4;
-  roof.rotation.y = Math.PI / 4;
-  musicDistrict.add(roof);
-
-  // Entry door — glowing portal
-  const doorFrameGeo = new THREE.BoxGeometry(1.6, 2.2, 0.15);
-  const doorFrame = new THREE.Mesh(doorFrameGeo, emissiveMat("#0a0a2a", "#003366", 0.4));
-  doorFrame.position.set(0, 1.1, 2.05);
-  musicDistrict.add(doorFrame);
-  const doorGlowGeo = new THREE.PlaneGeometry(1.3, 1.8);
-  const doorGlow = new THREE.Mesh(doorGlowGeo, glowMat("#00E5FF", 0.35));
-  doorGlow.position.set(0, 1.1, 2.13);
-  musicDistrict.add(doorGlow);
-
-  // Equalizer bars on the front
-  for (let i = 0; i < 5; i++) {
-    const h = 0.4 + Math.sin(i * 0.8) * 0.6;
-    const barGeo = new THREE.BoxGeometry(0.2, Math.abs(h), 0.2);
-    const bar = new THREE.Mesh(barGeo, glowMat("#00C8FF", 0.5));
-    bar.position.set(-1 + i * 0.5, 0.5 + Math.abs(h) / 2, 2.15);
-    bar.name = `eqBar_${i}`;
-    musicDistrict.add(bar);
-  }
-
-  musicDistrict.position.set(mdPos[0], 0, mdPos[2]);
-  scene.add(musicDistrict);
-
-  // ─── RADIO TOWER (tall crystalline spire) ───
-  const rtPos = DISTRICTS.radio.position;
-  const towerH = DISTRICTS.radio.towerHeight;
-  const radioTower = new THREE.Group();
-
-  // Crystalline base
-  const baseGeo = new THREE.CylinderGeometry(1.8, 2.2, 1.5, 8);
-  const base = new THREE.Mesh(baseGeo, emissiveMat("#1a1035", "#4a1a88", 0.4));
-  base.position.y = 0.75;
-  base.castShadow = true;
-  radioTower.add(base);
-
-  // Main spire — octagonal for crystalline look
-  const spireGeo = new THREE.CylinderGeometry(0.3, 0.5, towerH, 8);
-  const spire = new THREE.Mesh(spireGeo, emissiveMat("#2a1a55", "#6D28D9", 0.5));
-  spire.position.y = towerH / 2 + 1.5;
-  radioTower.add(spire);
-
-  // Orbiting energy rings
-  for (let i = 0; i < 4; i++) {
-    const r = 1.2 - i * 0.15;
-    const y = 2.5 + i * (towerH / 4);
-    const orbRingGeo = new THREE.TorusGeometry(r, 0.05, 16, 32);
-    const orbRing = new THREE.Mesh(orbRingGeo, glowMat("#9B7EFF", 0.5 - i * 0.08));
-    orbRing.position.y = y;
-    orbRing.name = `towerRing_${i}`;
-    radioTower.add(orbRing);
-  }
-
-  // Beacon at top
-  const beaconGeo = new THREE.IcosahedronGeometry(0.4, 0);
-  const beacon = new THREE.Mesh(beaconGeo, glowMat("#C4AAFF", 0.8));
-  beacon.position.y = towerH + 2.0;
-  beacon.name = "beacon";
-  radioTower.add(beacon);
-  const beaconLight = new THREE.PointLight("#9B7EFF", 5, 18);
-  beaconLight.position.y = towerH + 2.0;
-  radioTower.add(beaconLight);
-
-  // Side antenna dishes
-  for (let side = -1; side <= 1; side += 2) {
-    const dishGroup = new THREE.Group();
-    const armGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8);
-    const arm = new THREE.Mesh(armGeo, emissiveMat("#1a1a3a", "#3a1a77", 0.3));
-    arm.rotation.z = Math.PI / 2;
-    dishGroup.add(arm);
-    const dishGeo = new THREE.SphereGeometry(0.4, 16, 16, 0, Math.PI * 2, 0, Math.PI / 3);
-    const dish = new THREE.Mesh(dishGeo, emissiveMat("#2a2a4a", "#6D28D9", 0.3));
-    dish.position.x = side * 1.6;
-    dish.rotation.z = -side * 0.3;
-    dishGroup.add(dish);
-    dishGroup.position.y = towerH * 0.7;
-    radioTower.add(dishGroup);
-  }
-
-  radioTower.position.set(rtPos[0], 0, rtPos[2]);
-  scene.add(radioTower);
-
-  // ─── MANIFESTATION GARDENS (floating bioluminescent sanctuary) ───
-  const gPos = DISTRICTS.gardens.position;
-  const gardens = new THREE.Group();
-
-  // Reflecting pool
-  const pondGeo = new THREE.CylinderGeometry(2.5, 2.5, 0.06, 32);
-  const pond = new THREE.Mesh(pondGeo, emissiveMat("#0a2a1a", "#1a6644", 0.5));
-  pond.position.y = 0.05;
-  gardens.add(pond);
-
-  // Crystal trees (geometric, floating)
-  for (let i = 0; i < 8; i++) {
-    const angle = (i / 8) * Math.PI * 2;
-    const r = 3 + Math.random() * 3;
-    const tx = Math.cos(angle) * r;
-    const tz = Math.sin(angle) * r;
-    const th = 1.5 + Math.random() * 2;
-
-    // Trunk — dark crystal
-    const trunkGeo = new THREE.CylinderGeometry(0.06, 0.1, th, 6);
-    const trunk = new THREE.Mesh(trunkGeo, emissiveMat("#0d3322", "#0a4422", 0.2));
-    trunk.position.set(tx, th / 2, tz);
-    trunk.castShadow = true;
-    gardens.add(trunk);
-
-    // Canopy — floating geometric clusters
-    for (let j = 0; j < 3; j++) {
-      const leafGeo = new THREE.IcosahedronGeometry(0.3 + Math.random() * 0.2, 0);
-      const leaf = new THREE.Mesh(leafGeo, glowMat("#34D399", 0.45));
-      leaf.position.set(
-        tx + (Math.random() - 0.5) * 0.8,
-        th + 0.5 + Math.random() * 0.6,
-        tz + (Math.random() - 0.5) * 0.8
-      );
-      leaf.name = "gardenLeaf";
-      gardens.add(leaf);
+  // ─── BENCHES ────────────────────────────────────────────────
+  function addBench(x, z, rotY = 0) {
+    const bench = new THREE.Group();
+    // Seat
+    const seatGeo = new THREE.BoxGeometry(1.6, 0.08, 0.4);
+    const seat = new THREE.Mesh(seatGeo, buildMat("#3a3040", { roughness: 0.3, metalness: 0.5 }));
+    seat.position.y = 0.45;
+    seat.castShadow = true;
+    bench.add(seat);
+    // Legs
+    for (let lx = -0.6; lx <= 0.6; lx += 1.2) {
+      for (let lz = -0.12; lz <= 0.12; lz += 0.24) {
+        const legGeo = new THREE.BoxGeometry(0.06, 0.42, 0.06);
+        const leg = new THREE.Mesh(legGeo, buildMat("#222228", { roughness: 0.3, metalness: 0.7 }));
+        leg.position.set(lx, 0.21, lz);
+        leg.castShadow = true;
+        bench.add(leg);
+      }
     }
+    // Backrest
+    const backGeo = new THREE.BoxGeometry(1.6, 0.35, 0.06);
+    const back = new THREE.Mesh(backGeo, buildMat("#3a3040", { roughness: 0.3, metalness: 0.5 }));
+    back.position.set(0, 0.65, -0.17);
+    back.castShadow = true;
+    bench.add(back);
+    bench.position.set(x, 0, z);
+    bench.rotation.y = rotY;
+    scene.add(bench);
+  }
+  addBench(2.5, -2.5, Math.PI / 4);
+  addBench(-2.5, 2.5, Math.PI / 4 + Math.PI);
+  addBench(2.5, 2.5, -Math.PI / 4 + Math.PI);
+  addBench(-2.5, -2.5, -Math.PI / 4);
 
-    // Bioluminescent glow orb
-    const glowOrbGeo = new THREE.SphereGeometry(0.1, 8, 8);
-    const glowOrb = new THREE.Mesh(glowOrbGeo, glowMat("#34D399", 0.7));
-    glowOrb.position.set(tx, th + 0.8, tz);
-    gardens.add(glowOrb);
+  // ─── TREES / PLANTERS ───────────────────────────────────────
+  function addTree(x, z, scale = 1) {
+    const tree = new THREE.Group();
+    // Planter box
+    const planterGeo = new THREE.BoxGeometry(0.6, 0.35, 0.6);
+    const planter = new THREE.Mesh(planterGeo, buildMat("#2a2a38", { roughness: 0.3, metalness: 0.6 }));
+    planter.position.y = 0.17;
+    planter.castShadow = true;
+    planter.receiveShadow = true;
+    tree.add(planter);
+    // Trunk
+    const trunkGeo = new THREE.CylinderGeometry(0.06 * scale, 0.08 * scale, 1.8 * scale, 8);
+    const trunk = new THREE.Mesh(trunkGeo, buildMat("#1a1a22", { roughness: 0.6 }));
+    trunk.position.y = 1.25 * scale;
+    trunk.castShadow = true;
+    tree.add(trunk);
+    // Canopy — layered cones for a natural tree shape
+    for (let i = 0; i < 3; i++) {
+      const canopyGeo = new THREE.ConeGeometry(0.6 * scale - i * 0.1, 0.7 * scale, 10);
+      const canopy = new THREE.Mesh(canopyGeo, buildMat("#1a3a2a", { roughness: 0.5 }));
+      canopy.position.y = 1.5 * scale + i * 0.4 * scale;
+      canopy.castShadow = true;
+      canopy.name = "treeCanopy";
+      tree.add(canopy);
+    }
+    // Small glow orb in canopy
+    const glowGeo = new THREE.SphereGeometry(0.06, 6, 6);
+    const glow = new THREE.Mesh(glowGeo, neonMat("#34D399", 0.35));
+    glow.position.y = 2.3 * scale;
+    tree.add(glow);
+    tree.position.set(x, 0, z);
+    scene.add(tree);
+  }
+  addTree(-4.5, 4.5, 0.8);
+  addTree(4.5, -4.5, 0.7);
+  addTree(-4, -4, 0.9);
+  addTree(4, 4, 0.75);
+  addTree(-2.5, -4.5, 0.6);
+  addTree(2.5, 4.5, 0.65);
+
+  // Small shrubs/plants around plaza edge
+  function addShrub(x, z) {
+    const shrub = new THREE.Group();
+    const potGeo = new THREE.CylinderGeometry(0.2, 0.18, 0.3, 8);
+    const pot = new THREE.Mesh(potGeo, buildMat("#2a2a3a", { roughness: 0.3, metalness: 0.5 }));
+    pot.position.y = 0.15;
+    pot.castShadow = true;
+    shrub.add(pot);
+    const foliageGeo = new THREE.SphereGeometry(0.25, 8, 6);
+    const foliage = new THREE.Mesh(foliageGeo, buildMat("#1a402a", { roughness: 0.6 }));
+    foliage.position.y = 0.45;
+    foliage.scale.set(1, 0.7, 1);
+    shrub.add(foliage);
+    shrub.position.set(x, 0, z);
+    scene.add(shrub);
+  }
+  const shrubSpots = [
+    [-5.5, -5.5], [5.5, -5.5], [-5.5, 5.5], [5.5, 5.5],
+    [-3, -5.8], [3, -5.8], [-3, 5.8], [3, 5.8],
+    [-5.8, -3], [-5.8, 3], [5.8, -3], [5.8, 3],
+  ];
+  shrubSpots.forEach(([sx, sz]) => addShrub(sx, sz));
+
+  // ─── LAMP POSTS ─────────────────────────────────────────────
+  function addLampPost(x, z) {
+    const lamp = new THREE.Group();
+    // Post
+    const postGeo = new THREE.CylinderGeometry(0.05, 0.06, 2.5, 8);
+    const post = new THREE.Mesh(postGeo, buildMat("#1a1a28", { roughness: 0.3, metalness: 0.8 }));
+    post.position.y = 1.25;
+    post.castShadow = true;
+    lamp.add(post);
+    // Arm
+    const armGeo = new THREE.BoxGeometry(0.6, 0.05, 0.05);
+    const arm = new THREE.Mesh(armGeo, buildMat("#1a1a28", { roughness: 0.3, metalness: 0.8 }));
+    arm.position.set(0.3, 2.45, 0);
+    lamp.add(arm);
+    // Light housing
+    const housingGeo = new THREE.BoxGeometry(0.25, 0.12, 0.2);
+    const housing = new THREE.Mesh(housingGeo, buildMat("#282838", { roughness: 0.2, metalness: 0.9 }));
+    housing.position.set(0.55, 2.4, 0);
+    lamp.add(housing);
+    // Glow panel
+    const panelGeo = new THREE.PlaneGeometry(0.18, 0.06);
+    const panel = new THREE.Mesh(panelGeo, neonMat("#CCDDFF", 0.6));
+    panel.rotation.x = -Math.PI / 2;
+    panel.position.set(0.55, 2.35, 0);
+    lamp.add(panel);
+    // Point light
+    const ptLight = new THREE.PointLight("#CCDDFF", 1.5, 6);
+    ptLight.position.set(0.55, 2.35, 0);
+    lamp.add(ptLight);
+    lamp.position.set(x, 0, z);
+    scene.add(lamp);
+  }
+  addLampPost(-5, -6.5);
+  addLampPost(5, -6.5);
+  addLampPost(-5, 6.5);
+  addLampPost(5, 6.5);
+  addLampPost(-6.5, -5);
+  addLampPost(6.5, -5);
+  addLampPost(-6.5, 5);
+  addLampPost(6.5, 5);
+
+  // ═══════════════════════════════════════════════════════════
+  // BUILDINGS
+  // ═══════════════════════════════════════════════════════════
+
+  // ─── MUSIC STORE (north side) ──────────────────────────────
+  const musicStore = new THREE.Group();
+  musicStore.name = "musicStore";
+
+  // Main structure — two sections
+  const msBodyGeo = new THREE.BoxGeometry(10, 4.5, 5);
+  const msBody = new THREE.Mesh(msBodyGeo, buildMat("#1a1a2a", { roughness: 0.25, metalness: 0.6 }));
+  msBody.position.y = 2.25;
+  msBody.castShadow = true;
+  msBody.receiveShadow = true;
+  musicStore.add(msBody);
+
+  // Second floor offset
+  const msUpperGeo = new THREE.BoxGeometry(10, 1.8, 3.5);
+  const msUpper = new THREE.Mesh(msUpperGeo, buildMat("#1e1e32", { roughness: 0.2, metalness: 0.7 }));
+  msUpper.position.set(0, 5.4, -0.7);
+  msUpper.castShadow = true;
+  musicStore.add(msUpper);
+
+  // Glass storefront (ground floor)
+  const glassGeo = new THREE.PlaneGeometry(7, 2.2);
+  const glassFront = new THREE.Mesh(glassGeo, glowMat("#00A0DC", 0.2));
+  glassFront.position.set(0, 1.3, 2.55);
+  musicStore.add(glassFront);
+
+  // Window frames (vertical dividers)
+  for (let i = -3; i <= 3; i += 1.5) {
+    const frameGeo = new THREE.BoxGeometry(0.06, 2.2, 0.06);
+    const frame = new THREE.Mesh(frameGeo, buildMat("#333348", { roughness: 0.2, metalness: 0.9 }));
+    frame.position.set(i, 1.3, 2.55);
+    musicStore.add(frame);
+  }
+  // Horizontal divider
+  const hFrameGeo = new THREE.BoxGeometry(7, 0.06, 0.06);
+  const hFrame = new THREE.Mesh(hFrameGeo, buildMat("#333348", { roughness: 0.2, metalness: 0.9 }));
+  hFrame.position.set(0, 2.4, 2.55);
+  musicStore.add(hFrame);
+
+  // Entrance door
+  const doorGeo = new THREE.BoxGeometry(1.2, 2.2, 0.1);
+  const door = new THREE.Mesh(doorGeo, buildMat("#1a1a30", { roughness: 0.15, metalness: 0.9 }));
+  door.position.set(0, 1.1, 2.7);
+  musicStore.add(door);
+  // Door handle
+  const handleGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8);
+  const handle = new THREE.Mesh(handleGeo, buildMat("#888899", { roughness: 0.1, metalness: 1 }));
+  handle.rotation.x = Math.PI / 2;
+  handle.position.set(0.35, 1.3, 2.78);
+  musicStore.add(handle);
+
+  // Upper floor windows
+  for (let i = -3.5; i <= 3.5; i += 1.75) {
+    const winGeo = new THREE.PlaneGeometry(0.8, 0.8);
+    const win = new THREE.Mesh(winGeo, glowMat("#00A0DC", 0.15));
+    win.position.set(i, 5.2, 1.1);
+    musicStore.add(win);
   }
 
-  // Floating affirmation crystals (small floating diamonds)
-  for (let i = 0; i < 12; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const r = 4 + Math.random() * 3;
-    const affGeo = new THREE.OctahedronGeometry(0.08, 0);
-    const aff = new THREE.Mesh(affGeo, glowMat("#A7F3D0", 0.5));
-    aff.position.set(Math.cos(angle) * r, 1.5 + Math.random() * 2, Math.sin(angle) * r);
-    aff.name = "affirmation";
-    gardens.add(aff);
+  // Roof edge lighting
+  const roofEdgeGeo = new THREE.BoxGeometry(10.2, 0.1, 5.2);
+  const roofEdge = new THREE.Mesh(roofEdgeGeo, neonMat("#00C8FF", 0.5));
+  roofEdge.position.y = 4.6;
+  roofEdge.name = "msRoofEdge";
+  musicStore.add(roofEdge);
+
+  // Store signage — "UPPER VIBE MUSIC"
+  const signGeo = new THREE.BoxGeometry(5, 0.5, 0.1);
+  const sign = new THREE.Mesh(signGeo, neonMat("#00E5FF", 0.7));
+  sign.position.set(0, 3.2, 2.65);
+  sign.name = "msSign";
+  musicStore.add(sign);
+
+  // Billboard screens on the facade
+  function addBillboard(gx, gy, gz, gw, gh) {
+    const bg = new THREE.Group();
+    const frameGeo = new THREE.BoxGeometry(gw + 0.2, gh + 0.2, 0.08);
+    const frame = new THREE.Mesh(frameGeo, buildMat("#1a1a2a", { roughness: 0.2, metalness: 0.9 }));
+    bg.add(frame);
+    const screenGeo = new THREE.PlaneGeometry(gw, gh);
+    const screen = new THREE.Mesh(screenGeo, glowMat("#00A0DC", 0.3));
+    screen.position.z = 0.05;
+    screen.name = "billboardScreen";
+    bg.add(screen);
+    // Glow border
+    const borderGeo = new THREE.BoxGeometry(gw + 0.05, gh + 0.05, 0.01);
+    const border = new THREE.Mesh(borderGeo, neonMat("#00C8FF", 0.35));
+    border.position.z = 0.06;
+    bg.add(border);
+    bg.position.set(gx, gy, gz);
+    return bg;
+  }
+  musicStore.add(addBillboard(-3, 1.8, 2.6, 1.8, 0.9));
+  musicStore.add(addBillboard(3, 1.8, 2.6, 1.8, 0.9));
+
+  musicStore.position.set(0, 0, -7);
+  scene.add(musicStore);
+
+  // ─── RADIO STATION (east side) ──────────────────────────────
+  const radioStation = new THREE.Group();
+  radioStation.name = "radioStation";
+
+  // Main building
+  const rsBodyGeo = new THREE.BoxGeometry(4, 6, 7);
+  const rsBody = new THREE.Mesh(rsBodyGeo, buildMat("#15152a", { roughness: 0.2, metalness: 0.7 }));
+  rsBody.position.y = 3;
+  rsBody.castShadow = true;
+  rsBody.receiveShadow = true;
+  radioStation.add(rsBody);
+
+  // Glass front facing plaza
+  const rsGlassGeo = new THREE.PlaneGeometry(3, 4);
+  const rsGlass = new THREE.Mesh(rsGlassGeo, glowMat("#9B7EFF", 0.18));
+  rsGlass.position.set(-2.05, 3, 0);
+  radioStation.add(rsGlass);
+
+  // Window frames
+  for (let i = -1; i <= 1; i++) {
+    const vfGeo = new THREE.BoxGeometry(0.05, 4, 0.05);
+    const vf = new THREE.Mesh(vfGeo, buildMat("#2a2a4a", { roughness: 0.2, metalness: 0.9 }));
+    vf.position.set(-2.05, 3, i * 1.3);
+    radioStation.add(vf);
   }
 
-  gardens.position.set(gPos[0], 0, gPos[2]);
-  scene.add(gardens);
+  // Radio antenna spire
+  const spireGeo = new THREE.CylinderGeometry(0.08, 0.1, 4, 8);
+  const spire = new THREE.Mesh(spireGeo, buildMat("#2a2a48", { roughness: 0.2, metalness: 0.9 }));
+  spire.position.set(0, 8, -1);
+  spire.castShadow = true;
+  radioStation.add(spire);
 
-  // ─── HALL OF FREQUENCIES (geometric dome structure) ───
-  const fPos = DISTRICTS.frequencies.position;
-  const hall = new THREE.Group();
-  const fSize = DISTRICTS.frequencies.buildingSize;
+  // Antenna crossbars
+  for (let i = 0; i < 3; i++) {
+    const crossGeo = new THREE.BoxGeometry(1.2 - i * 0.2, 0.05, 0.05);
+    const cross = new THREE.Mesh(crossGeo, buildMat("#3a3a5a", { roughness: 0.2, metalness: 0.9 }));
+    cross.position.set(0, 7 + i * 1.2, -1);
+    radioStation.add(cross);
+  }
 
-  // Dome base
-  const domeBaseGeo = new THREE.CylinderGeometry(fSize[0], fSize[0] * 1.1, fSize[1], 16);
-  const domeBase = new THREE.Mesh(domeBaseGeo, emissiveMat("#1a0a20", "#330044", 0.3));
-  domeBase.position.y = fSize[1] / 2;
-  domeBase.castShadow = true;
-  hall.add(domeBase);
+  // Beacon light
+  const beaconGeo = new THREE.SphereGeometry(0.15, 8, 8);
+  const beacon = new THREE.Mesh(beaconGeo, neonMat("#C4AAFF", 0.8));
+  beacon.position.set(0, 10.2, -1);
+  beacon.name = "beacon";
+  radioStation.add(beacon);
+  const beaconLight = new THREE.PointLight("#9B7EFF", 3, 10);
+  beaconLight.position.set(0, 10.2, -1);
+  radioStation.add(beaconLight);
 
-  // Geodesic dome on top
-  const domeGeo = new THREE.SphereGeometry(fSize[0] * 0.7, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-  const dome = new THREE.Mesh(domeGeo, emissiveMat("#1a0a20", "#440066", 0.4));
-  dome.position.y = fSize[1];
-  hall.add(dome);
+  // Station signage
+  const rsSignGeo = new THREE.BoxGeometry(3, 0.4, 0.1);
+  const rsSign = new THREE.Mesh(rsSignGeo, neonMat("#C4AAFF", 0.6));
+  rsSign.position.set(-2.1, 5.5, 0);
+  radioStation.add(rsSign);
 
-  // Dome edge ring
-  const domeRingGeo = new THREE.TorusGeometry(fSize[0] * 0.7, 0.06, 16, 32);
-  const domeRing = new THREE.Mesh(domeRingGeo, glowMat("#EC4899", 0.5));
-  domeRing.position.y = fSize[1];
-  domeRing.rotation.x = Math.PI / 2;
-  hall.add(domeRing);
+  // Satellite dish on roof
+  const dishGroup = new THREE.Group();
+  const dishArmGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8, 8);
+  const dishArm = new THREE.Mesh(dishArmGeo, buildMat("#2a2a3a", { roughness: 0.2, metalness: 0.9 }));
+  dishArm.position.y = 0.4;
+  dishGroup.add(dishArm);
+  const dishGeo = new THREE.SphereGeometry(0.5, 16, 8, 0, Math.PI * 2, 0, Math.PI / 3);
+  const dish = new THREE.Mesh(dishGeo, buildMat("#3a3a5a", { roughness: 0.15, metalness: 0.95 }));
+  dish.position.y = 0.65;
+  dish.rotation.x = 0.5;
+  dishGroup.add(dish);
+  dishGroup.position.set(1, 6.2, 2);
+  radioStation.add(dishGroup);
 
-  // Frequency doors — colored portals
-  const doorData = [
-    { offset: [-1.5, 0.8, 1.55], color: "#3B82F6" },
-    { offset: [-0.5, 0.8, 1.55], color: "#F59E0B" },
-    { offset: [0.5, 0.8, 1.55], color: "#EC4899" },
-    { offset: [1.5, 0.8, 1.55], color: "#8B5CF6" },
-    { offset: [-0.75, 0.8, -1.55], color: "#10B981" },
-    { offset: [0.75, 0.8, -1.55], color: "#6366F1" },
-  ];
-  doorData.forEach((d) => {
-    const doorGeo = new THREE.BoxGeometry(0.6, 1.8, 0.08);
-    const door = new THREE.Mesh(doorGeo, glowMat(d.color, 0.5));
-    door.position.set(...d.offset);
-    hall.add(door);
-    // Door glow aura
-    const auraGeo = new THREE.BoxGeometry(0.7, 1.9, 0.02);
-    const aura = new THREE.Mesh(auraGeo, glowMat(d.color, 0.15));
-    aura.position.set(d.offset[0], d.offset[1], d.offset[2] + 0.02);
-    hall.add(aura);
-  });
+  radioStation.position.set(7, 0, 0);
+  scene.add(radioStation);
 
-  hall.position.set(fPos[0], 0, fPos[2]);
-  scene.add(hall);
+  // ─── MANIFESTATION GARDEN ENTRANCE (west side) ──────────────
+  const gardenEntrance = new THREE.Group();
+  gardenEntrance.name = "gardenEntrance";
 
-  // ─── Street Lamps (energy pillars along conduits) ───
-  const lampPositions = [
-    [6, 0], [12, 0], [18, 0],
-    [-6, 0], [-12, 0], [-18, 0],
-    [0, -6], [0, -12], [0, -18],
-    [0, 6], [0, 12], [0, 18],
-  ];
-  lampPositions.forEach(([lx, lz]) => {
-    const lampGroup = new THREE.Group();
-    const postGeo = new THREE.CylinderGeometry(0.04, 0.05, 2, 8);
-    const post = new THREE.Mesh(postGeo, emissiveMat("#0a0a2a", "#003366", 0.3));
-    post.position.y = 1;
-    lampGroup.add(post);
-    const lightGeo = new THREE.SphereGeometry(0.12, 8, 8);
-    const light = new THREE.Mesh(lightGeo, glowMat("#00C8FF", 0.5));
-    light.position.y = 2.1;
-    lampGroup.add(light);
-    lampGroup.position.set(lx, 0, lz);
-    scene.add(lampGroup);
-  });
+  // Archway structure
+  const archPillarGeo = new THREE.BoxGeometry(0.5, 5, 0.5);
+  const leftPillar = new THREE.Mesh(archPillarGeo, buildMat("#1a2a1a", { roughness: 0.3, metalness: 0.5 }));
+  leftPillar.position.set(-2.5, 2.5, 0);
+  leftPillar.castShadow = true;
+  gardenEntrance.add(leftPillar);
+  const rightPillar = new THREE.Mesh(archPillarGeo, buildMat("#1a2a1a", { roughness: 0.3, metalness: 0.5 }));
+  rightPillar.position.set(2.5, 2.5, 0);
+  rightPillar.castShadow = true;
+  gardenEntrance.add(rightPillar);
 
-  // ─── Cosmic Particles (stars) ───
-  const particleCount = 400;
+  // Arch top
+  const archTopGeo = new THREE.BoxGeometry(5.5, 0.3, 0.5);
+  const archTop = new THREE.Mesh(archTopGeo, buildMat("#1a2a1a", { roughness: 0.3, metalness: 0.5 }));
+  archTop.position.set(0, 5.2, 0);
+  archTop.castShadow = true;
+  gardenEntrance.add(archTop);
+
+  // Curved arch detail
+  const archCurveGeo = new THREE.TorusGeometry(2.6, 0.1, 8, 16, Math.PI);
+  const archCurve = new THREE.Mesh(archCurveGeo, glowMat("#34D399", 0.45));
+  archCurve.position.set(0, 4.8, 0.26);
+  archCurve.rotation.y = Math.PI;
+  gardenEntrance.add(archCurve);
+
+  // Wall segments flanking the arch
+  for (let side = -1; side <= 1; side += 2) {
+    const wallGeo = new THREE.BoxGeometry(2.5, 2.5, 2);
+    const wall = new THREE.Mesh(wallGeo, buildMat("#1a2220", { roughness: 0.35, metalness: 0.4 }));
+    wall.position.set(side * 4.5, 1.25, 0);
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    gardenEntrance.add(wall);
+
+    // Vines on wall
+    for (let i = 0; i < 4; i++) {
+      const vineGeo = new THREE.SphereGeometry(0.15, 6, 6);
+      const vine = new THREE.Mesh(vineGeo, buildMat("#1a3a2a", { roughness: 0.5 }));
+      vine.position.set(side * 4.5 + (Math.random() - 0.5) * 1.5, 0.5 + Math.random() * 2, 1.05);
+      vine.scale.set(0.7, 1.3, 0.7);
+      vine.name = "vine";
+      gardenEntrance.add(vine);
+    }
+  }
+
+  // Garden sign
+  const gardenSignGeo = new THREE.BoxGeometry(4, 0.4, 0.08);
+  const gardenSign = new THREE.Mesh(gardenSignGeo, neonMat("#34D399", 0.6));
+  gardenSign.position.set(0, 5.7, 0.3);
+  gardenEntrance.add(gardenSign);
+
+  // Pathway leading into garden (glowing tiles)
+  for (let i = 0; i < 5; i++) {
+    const tileGeo = new THREE.PlaneGeometry(0.5, 0.5);
+    const tile = new THREE.Mesh(tileGeo, glowMat("#34D399", 0.2));
+    tile.rotation.x = -Math.PI / 2;
+    tile.position.set(0, 0.02, 1.5 + i * 0.7);
+    gardenEntrance.add(tile);
+  }
+
+  // Trees flanking entrance
+  const entranceTree1 = new THREE.Group();
+  const etTrunkGeo = new THREE.CylinderGeometry(0.08, 0.1, 2, 8);
+  const etTrunk = new THREE.Mesh(etTrunkGeo, buildMat("#1a1a22", { roughness: 0.6 }));
+  etTrunk.position.y = 1;
+  etTrunk.castShadow = true;
+  entranceTree1.add(etTrunk);
+  const etCanGeo = new THREE.ConeGeometry(0.8, 1.2, 10);
+  const etCan = new THREE.Mesh(etCanGeo, buildMat("#1a3a2a", { roughness: 0.5 }));
+  etCan.position.y = 2.2;
+  etCan.name = "treeCanopy";
+  entranceTree1.add(etCan);
+  entranceTree1.position.set(-3.5, 0, 2.5);
+  gardenEntrance.add(entranceTree1);
+
+  const entranceTree2 = entranceTree1.clone();
+  entranceTree2.position.set(3.5, 0, 2.5);
+  gardenEntrance.add(entranceTree2);
+
+  gardenEntrance.position.set(-7, 0, 0);
+  scene.add(gardenEntrance);
+
+  // ═══════════════════════════════════════════════════════════
+  // AMBIENT DETAILS
+  // ═══════════════════════════════════════════════════════════
+
+  // "UPPER VIBE MEDIA" holographic branding text plane above plaza
+  const brandPillarGeo = new THREE.CylinderGeometry(0.08, 0.1, 2.5, 8);
+  const brandPillar = new THREE.Mesh(brandPillarGeo, buildMat("#1a1a2a", { roughness: 0.2, metalness: 0.8 }));
+  brandPillar.position.set(0, 1.25, 3.5);
+  brandPillar.castShadow = true;
+  scene.add(brandPillar);
+
+  const brandBoardGeo = new THREE.BoxGeometry(3, 0.6, 0.08);
+  const brandBoard = new THREE.Mesh(brandBoardGeo, neonMat("#00E5FF", 0.5));
+  brandBoard.position.set(0, 2.7, 3.5);
+  brandBoard.name = "brandBoard";
+  scene.add(brandBoard);
+
+  // Trash bins
+  function addTrashBin(x, z) {
+    const bin = new THREE.Group();
+    const bodyGeo = new THREE.CylinderGeometry(0.15, 0.13, 0.6, 12);
+    const body = new THREE.Mesh(bodyGeo, buildMat("#2a2a38", { roughness: 0.3, metalness: 0.6 }));
+    body.position.y = 0.3;
+    body.castShadow = true;
+    bin.add(body);
+    bin.position.set(x, 0, z);
+    scene.add(bin);
+  }
+  addTrashBin(6.5, 6.5);
+  addTrashBin(-6.5, -6.5);
+  addTrashBin(6.5, -5);
+  addTrashBin(-5, 6.5);
+
+  // ─── AMBIENT PARTICLES (subtle floating motes) ──────────────
+  const particleCount = 150;
   const positions = new Float32Array(particleCount * 3);
-  const colors = new Float32Array(particleCount * 3);
   for (let i = 0; i < particleCount * 3; i += 3) {
-    positions[i] = (Math.random() - 0.5) * 50;
-    positions[i + 1] = Math.random() * 12 + 0.5;
-    positions[i + 2] = (Math.random() - 0.5) * 50;
-    // Mix of blue, purple, and white stars
-    const colorChoice = Math.random();
-    if (colorChoice < 0.5) { colors[i] = 0.3; colors[i + 1] = 0.6; colors[i + 2] = 1.0; }       // blue
-    else if (colorChoice < 0.8) { colors[i] = 0.7; colors[i + 1] = 0.4; colors[i + 2] = 1.0; }  // purple
-    else { colors[i] = 1.0; colors[i + 1] = 1.0; colors[i + 2] = 1.0; }                          // white
+    positions[i] = (Math.random() - 0.5) * 22;
+    positions[i + 1] = Math.random() * 5 + 0.5;
+    positions[i + 2] = (Math.random() - 0.5) * 22;
   }
   const particleGeo = new THREE.BufferGeometry();
   particleGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  particleGeo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   const particleMat = new THREE.PointsMaterial({
-    size: 0.06,
-    vertexColors: true,
+    size: 0.04,
+    color: "#88CCFF",
     transparent: true,
-    opacity: 0.6,
+    opacity: 0.4,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
-  const particleSystem = new THREE.Points(particleGeo, particleMat);
-  particleSystem.name = "particles";
-  scene.add(particleSystem);
+  const particles = new THREE.Points(particleGeo, particleMat);
+  particles.name = "particles";
+  scene.add(particles);
 
-  // ─── Lighting (cosmic atmosphere) ───
-  scene.add(new THREE.AmbientLight("#1a1a3a", 0.3));
+  // ─── LIGHTING ────────────────────────────────────────────────
+  scene.add(new THREE.AmbientLight("#1a1a3a", 0.4));
 
-  const dirLight = new THREE.DirectionalLight("#446688", 0.5);
-  dirLight.position.set(10, 25, 5);
-  dirLight.castShadow = true;
-  dirLight.shadow.mapSize.width = 1024;
-  dirLight.shadow.mapSize.height = 1024;
-  dirLight.shadow.camera.near = 0.5;
-  dirLight.shadow.camera.far = 60;
-  dirLight.shadow.camera.left = -30;
-  dirLight.shadow.camera.right = 30;
-  dirLight.shadow.camera.top = 30;
-  dirLight.shadow.camera.bottom = -30;
-  scene.add(dirLight);
-
-  // Point lights for district accents
-  const plazaGlow = new THREE.PointLight("#00A0DC", 4, 15);
-  plazaGlow.position.set(0, 3, 0);
-  scene.add(plazaGlow);
-
-  const gardenGlow = new THREE.PointLight("#34D399", 3, 12);
-  gardenGlow.position.set(gPos[0], 2, gPos[2]);
-  scene.add(gardenGlow);
-
-  const freqGlow = new THREE.PointLight("#EC4899", 3, 12);
-  freqGlow.position.set(fPos[0], 2, fPos[2]);
-  scene.add(freqGlow);
-
-  const musicGlow = new THREE.PointLight("#00A0DC", 3, 12);
-  musicGlow.position.set(mdPos[0], 3, mdPos[2]);
-  scene.add(musicGlow);
+  const moonLight = new THREE.DirectionalLight("#334466", 0.5);
+  moonLight.position.set(5, 15, -3);
+  moonLight.castShadow = true;
+  moonLight.shadow.mapSize.width = 2048;
+  moonLight.shadow.mapSize.height = 2048;
+  moonLight.shadow.camera.near = 0.5;
+  moonLight.shadow.camera.far = 40;
+  moonLight.shadow.camera.left = -15;
+  moonLight.shadow.camera.right = 15;
+  moonLight.shadow.camera.top = 15;
+  moonLight.shadow.camera.bottom = -15;
+  moonLight.shadow.bias = -0.0001;
+  scene.add(moonLight);
 }
 
 // ═══════════════════════════════════════════════════════════════
-// PLAYER CHARACTER (cosmic avatar)
+// PLAYER CHARACTER
 // ═══════════════════════════════════════════════════════════════
 function createPlayer(scene) {
   const player = new THREE.Group();
   player.name = "player";
 
-  // Hover ring
-  const ringGeo = new THREE.TorusGeometry(0.3, 0.04, 16, 32);
-  const ring = new THREE.Mesh(ringGeo, glowMat("#00E5FF", 0.5));
+  // Base glow ring
+  const ringGeo = new THREE.TorusGeometry(0.28, 0.03, 16, 32);
+  const ring = new THREE.Mesh(ringGeo, neonMat("#00E5FF", 0.4));
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.02;
   player.add(ring);
 
-  // Body — glowing crystalline
-  const bodyGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.6, 6);
-  const body = new THREE.Mesh(bodyGeo, emissiveMat("#00A0DC", "#004488", 0.5));
-  body.position.y = 0.5;
+  // Body
+  const bodyGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.55, 6);
+  const body = new THREE.Mesh(bodyGeo, glowMat("#00A0DC", 0.3));
+  body.position.y = 0.48;
   body.castShadow = true;
   player.add(body);
 
-  // Head — glowing orb
-  const headGeo = new THREE.SphereGeometry(0.2, 8, 8);
-  const head = new THREE.Mesh(headGeo, emissiveMat("#00C8FF", "#005599", 0.6));
-  head.position.y = 1.1;
+  // Head
+  const headGeo = new THREE.SphereGeometry(0.18, 8, 8);
+  const head = new THREE.Mesh(headGeo, glowMat("#00C8FF", 0.4));
+  head.position.y = 1.05;
   player.add(head);
-
-  // Shoulder pads — small crystals
-  for (let side = -1; side <= 1; side += 2) {
-    const padGeo = new THREE.OctahedronGeometry(0.08, 0);
-    const pad = new THREE.Mesh(padGeo, glowMat("#00E5FF", 0.5));
-    pad.position.set(side * 0.25, 0.85, 0);
-    player.add(pad);
-  }
 
   player.position.set(SPAWN[0], SPAWN[1], SPAWN[2]);
   scene.add(player);
@@ -564,13 +700,7 @@ export default function CityCanvas({ onLoaded, onZoneChange, onEnterCurrentZone 
   const mouseRef = useRef({ down: false, dx: 0, dy: 0 });
   const frameRef = useRef(0);
   const zoneRef = useRef(null);
-  const animDataRef = useRef({
-    fountainOrbs: [],
-    eqBars: [],
-    gardenLeaves: [],
-    affirmations: [],
-    conduitDots: [],
-  });
+  const animDataRef = useRef({ spray: [], billboards: [], canopies: [], vines: [] });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -584,13 +714,13 @@ export default function CityCanvas({ onLoaded, onZoneChange, onEnterCurrentZone 
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color("#05050f");
-      scene.fog = new THREE.FogExp2("#05050f", 0.0008);
-      const camera = new THREE.PerspectiveCamera(55, canvas.clientWidth / canvas.clientHeight, 0.1, 80);
-      camera.position.set(0, 6, 10);
+      scene.background = new THREE.Color("#0a0a18");
+      scene.fog = new THREE.Fog("#0a0a18", 12, 35);
+      const camera = new THREE.PerspectiveCamera(55, canvas.clientWidth / canvas.clientHeight, 0.1, 50);
+      camera.position.set(0, 5, 10);
       sceneRef.current = scene;
 
-      buildCity(scene);
+      buildPlaza(scene);
 
       const player = createPlayer(scene);
       playerRef.current = player;
@@ -598,11 +728,12 @@ export default function CityCanvas({ onLoaded, onZoneChange, onEnterCurrentZone 
       // Collect animated objects
       const animData = animDataRef.current;
       scene.traverse((obj) => {
-        if (obj.name?.startsWith("fountainOrb_")) animData.fountainOrbs.push(obj);
-        if (obj.name?.startsWith("eqBar_")) animData.eqBars.push(obj);
-        if (obj.name === "gardenLeaf") animData.gardenLeaves.push(obj);
-        if (obj.name === "affirmation") animData.affirmations.push(obj);
-        if (obj.name === "conduitDot") animData.conduitDots.push(obj);
+        if (obj.name === "spray" && obj.isGroup) {
+          obj.children.forEach((c) => animData.spray.push(c));
+        }
+        if (obj.name === "billboardScreen") animData.billboards.push(obj);
+        if (obj.name === "treeCanopy") animData.canopies.push(obj);
+        if (obj.name === "vine") animData.vines.push(obj);
       });
 
       let animId;
@@ -618,8 +749,7 @@ export default function CityCanvas({ onLoaded, onZoneChange, onEnterCurrentZone 
 
         if (mouse.down) {
           rot += mouse.dx * 0.01;
-          mouse.dx = 0;
-          mouse.dy = 0;
+          mouse.dx = 0; mouse.dy = 0;
         }
 
         let mx = 0, mz = 0;
@@ -641,12 +771,12 @@ export default function CityCanvas({ onLoaded, onZoneChange, onEnterCurrentZone 
         player.position.set(x, y, z);
         player.rotation.y = rot + Math.PI;
 
-        const camDist = 6;
-        const camHeight = 4.5;
+        const camDist = 5;
+        const camHeight = 3.5;
         const behindX = x - Math.sin(rot) * camDist;
         const behindZ = z - Math.cos(rot) * camDist;
         camera.position.lerp(new THREE.Vector3(behindX, y + camHeight, behindZ), 0.08);
-        camera.lookAt(x, y + 0.8, z);
+        camera.lookAt(x, y + 0.7, z);
 
         // Zone detection
         let nearest = null, nearestDist = Infinity;
@@ -654,7 +784,10 @@ export default function CityCanvas({ onLoaded, onZoneChange, onEnterCurrentZone 
           const dx = x - d.position[0];
           const dz = z - d.position[2];
           const dist = Math.sqrt(dx * dx + dz * dz);
-          if (dist < d.zoneRadius && dist < nearestDist) { nearest = d.id; nearestDist = dist; }
+          if (dist < d.zoneRadius && dist < nearestDist) {
+            nearest = d.id;
+            nearestDist = dist;
+          }
         }
         if (nearest !== zoneRef.current) {
           zoneRef.current = nearest;
@@ -662,86 +795,51 @@ export default function CityCanvas({ onLoaded, onZoneChange, onEnterCurrentZone 
         }
 
         // ─── ANIMATIONS ───
-        // Plaza ring rotation
-        const plazaRing = scene.getObjectByName("plazaRing");
-        if (plazaRing) plazaRing.rotation.z += dt * 0.3;
 
-        // Hologram rings
-        for (let i = 0; i < 3; i++) {
-          const hr = scene.getObjectByName(`holoRing_${i}`);
-          if (hr) {
-            hr.rotation.x += dt * 0.5;
-            hr.rotation.y += dt * 0.3;
-            hr.position.y = 1.0 + i * 1.0 + Math.sin(t * 1.5 + i) * 0.15;
-          }
-        }
-
-        // Plaza crystal
-        const crystal = scene.getObjectByName("plazaCrystal");
-        if (crystal) crystal.rotation.y += dt * 1.2;
-
-        // Fountain orbs
-        animData.fountainOrbs.forEach((orb, i) => {
-          orb.position.y = 0.5 + Math.sin(t * 2 + i) * 0.2;
-        });
-        const fountainWater = scene.getObjectByName("fountainWater");
-        if (fountainWater) {
-          fountainWater.material.opacity = 0.4 + Math.sin(t * 2.5) * 0.2;
-        }
-
-        // Equalizer bars
-        animData.eqBars.forEach((bar, i) => {
-          const scale = 0.3 + Math.abs(Math.sin(t * 3 + i * 0.7)) * 0.7;
-          bar.scale.y = scale;
-          bar.position.y = 0.2 + scale * 0.5;
+        // Fountain spray
+        animData.spray.forEach((drop) => {
+          drop.position.y = drop.userData.baseY + Math.sin(t * drop.userData.speed + drop.userData.offset) * 0.4;
+          drop.material.opacity = 0.4 + Math.sin(t * 2 + drop.userData.offset) * 0.3;
         });
 
-        // Billboard pulse
-        const billboard = scene.getObjectByName("billboard");
-        if (billboard) {
-          billboard.children.forEach((child) => {
-            if (child.material && child.material.emissiveIntensity !== undefined) {
-              child.material.emissiveIntensity = 0.3 + Math.sin(t * 1.5) * 0.15;
-            }
-          });
-        }
+        // Fountain water glow
+        const fw = scene.getObjectByName("fountainWater");
+        if (fw) fw.material.emissiveIntensity = 0.3 + Math.sin(t * 2) * 0.15;
 
-        // Tower rings
-        for (let i = 0; i < 4; i++) {
-          const tr = scene.getObjectByName(`towerRing_${i}`);
-          if (tr) {
-            tr.rotation.z += dt * 0.2;
-            tr.position.y = 2.5 + i * 2.5 + Math.sin(t * 1.3 + i) * 0.15;
-          }
-        }
+        // Billboard screens subtle pulse
+        animData.billboards.forEach((bb, i) => {
+          bb.material.opacity = 0.25 + Math.sin(t * 1.5 + i) * 0.1;
+        });
+
+        // Tree canopies gentle sway
+        animData.canopies.forEach((can, i) => {
+          can.rotation.y += dt * 0.15;
+        });
+
+        // Vines gentle sway
+        animData.vines.forEach((v, i) => {
+          v.position.x += Math.sin(t * 1.5 + i) * dt * 0.05;
+        });
+
+        // Music store roof edge pulse
+        const msEdge = scene.getObjectByName("msRoofEdge");
+        if (msEdge) msEdge.material.opacity = 0.4 + Math.sin(t * 2) * 0.2;
+
+        // Music store sign
+        const msSign = scene.getObjectByName("msSign");
+        if (msSign) msSign.material.opacity = 0.6 + Math.sin(t * 1.5) * 0.2;
+
+        // Brand board
+        const brandBoard = scene.getObjectByName("brandBoard");
+        if (brandBoard) brandBoard.material.opacity = 0.4 + Math.sin(t * 1.8) * 0.2;
 
         // Beacon
         const beacon = scene.getObjectByName("beacon");
-        if (beacon) {
-          beacon.scale.setScalar(0.9 + Math.sin(t * 2.5) * 0.1);
-        }
+        if (beacon) beacon.material.opacity = 0.7 + Math.sin(t * 3) * 0.2;
 
-        // Garden leaves
-        animData.gardenLeaves.forEach((leaf, i) => {
-          leaf.rotation.y += dt * 0.4;
-          leaf.position.y += Math.sin(t * 1.8 + i) * dt * 0.3;
-        });
-
-        // Affirmations
-        animData.affirmations.forEach((aff, i) => {
-          aff.rotation.y += dt * 0.6;
-          aff.position.y += Math.sin(t * 1.2 + i) * dt * 0.2;
-        });
-
-        // Conduit dots pulse
-        animData.conduitDots.forEach((dot, i) => {
-          const base = 0.5 + Math.sin(t * 2 + i * 0.3) * 0.3;
-          dot.material.opacity = Math.max(0.2, Math.min(0.8, base));
-        });
-
-        // Particles
-        const particles = scene.getObjectByName("particles");
-        if (particles) particles.rotation.y += dt * 0.03;
+        // Particles drift
+        const pts = scene.getObjectByName("particles");
+        if (pts) pts.rotation.y += dt * 0.04;
 
         renderer.render(scene, camera);
         frameRef.current++;
@@ -777,7 +875,7 @@ export default function CityCanvas({ onLoaded, onZoneChange, onEnterCurrentZone 
     }
   }, []);
 
-  // ─── Keyboard input ───
+  // Keyboard input
   useEffect(() => {
     const onDown = (e) => {
       keysRef.current[e.key.toLowerCase()] = true;
@@ -787,7 +885,7 @@ export default function CityCanvas({ onLoaded, onZoneChange, onEnterCurrentZone 
       }
     };
     const onUp = (e) => { keysRef.current[e.key.toLowerCase()] = false; };
-    const onMouseDown = (e) => { mouseRef.current.down = true; };
+    const onMouseDown = () => { mouseRef.current.down = true; };
     const onMouseUp = () => { mouseRef.current.down = false; };
     const onMouseMove = (e) => {
       if (!mouseRef.current.down) return;
@@ -812,7 +910,7 @@ export default function CityCanvas({ onLoaded, onZoneChange, onEnterCurrentZone 
 
   if (error) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-[#05050f]">
+      <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a18]">
         <div className="text-center px-6">
           <p className="text-red-400 font-bold text-sm mb-2">3D Error</p>
           <p className="text-xs text-white/40 mb-4 max-w-md">{error}</p>
