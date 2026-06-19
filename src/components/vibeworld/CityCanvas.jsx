@@ -258,11 +258,26 @@ function buildPark(scene) {
   wetSand.receiveShadow = true;
   scene.add(wetSand);
 
-  // ─── OCEAN — one continuous body of water (shore to horizon) ──
+  // ─── OCEAN — continuous water with cyan→deep-blue gradient ──
   const oceanSegments = 54;
   const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 56, oceanSegments);
+
+  // Vertex colors: bright cyan near shore → deep azure far out
+  const vertCount = oceanGeo.attributes.position.count;
+  const colors = new Float32Array(vertCount * 3);
+  const vPosArr = oceanGeo.attributes.position.array;
+  for (let i = 0; i < vPosArr.length; i += 3) {
+    const localY = vPosArr[i + 1];  // -27 (far) → +27 (shore)
+    const dist = 27 - localY;       // 0 at shore, 54 far out
+    const t = dist / 54;
+    colors[i]     = 0.30 * (1 - t) + 0.07 * t;
+    colors[i + 1] = 0.82 * (1 - t) + 0.32 * t;
+    colors[i + 2] = 0.96 * (1 - t) + 0.52 * t;
+  }
+  oceanGeo.setAttribute('color', new BufferAttribute(colors, 3));
+
   const oceanMat = new MeshBasicMaterial();
-  oceanMat.color = new Color("#2098CC");
+  oceanMat.vertexColors = true;
   oceanMat.side = THREE.DoubleSide;
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
@@ -271,12 +286,10 @@ function buildPark(scene) {
   ocean.name = "ocean";
   scene.add(ocean);
 
-  // Store original vertex positions for wave animation
   const origArr = new Float32Array(oceanGeo.attributes.position.array.length);
   origArr.set(oceanGeo.attributes.position.array);
   scene.userData.ocean = ocean;
   scene.userData._oceanOrig = origArr;
-  scene.userData._oceanCenterZ = SHORELINE_Z + OCEAN_DEPTH / 2;
 
   // ─── FOAM STRIP — white edge at shoreline ────────────────────
   const foamGeo = new PlaneGeometry(56, 1.5);
@@ -1077,48 +1090,58 @@ export default function CityCanvas({ onLoaded }) {
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
-        // ─── OCEAN WAVES — rolling from deep water toward shore ──
+        // ─── OCEAN WAVES — multi-layer rolling toward shore ────
         const oceanMesh = scene.userData.ocean;
         const origArr = scene.userData._oceanOrig;
-        const oceanCenterZ = scene.userData._oceanCenterZ || 47;
-        const SLZ = scene.userData.shorelineZ || 20;
 
         if (oceanMesh && origArr) {
           const pos = oceanMesh.geometry.attributes.position;
           const arr = pos.array;
-          const waveT = t * 0.55; // main wave cycle
+          const cycle = t * 0.5;
 
           for (let i = 0; i < arr.length; i += 3) {
-            const worldZ = oceanCenterZ + origArr[i + 2];
-            const distFromShore = worldZ - SLZ; // 0 at shore, positive going out to sea
+            // Restore base position
+            arr[i] = origArr[i];
+            arr[i + 1] = origArr[i + 1];
+            arr[i + 2] = origArr[i + 2];
 
-            if (distFromShore < 0) continue; // skip sand side
+            // Distance from shore: pre-rotation localY maps to world Z depth
+            const localY = origArr[i + 1]; // -27 (far) → +27 (shore)
+            const dist = 27 - localY;       // 0 at shore, 54 far out
+            if (dist < 0) continue;
 
-            // Phase: deeper water leads, shore water lags → waves travel toward shore
-            // distFromShore * N means vertices further out are at an earlier phase
-            const phase = distFromShore * 0.3 - waveT * 3.0;
-            const wave = Math.sin(phase) * 0.5 + 0.5; // 0..1 smooth wave
+            // Build factor: waves grow taller as they approach shore
+            const build = 1 - Math.max(0, 1 - dist / 28);
 
-            // Height: waves get taller as they approach shore
-            const buildFactor = 1 - Math.max(0, 1 - distFromShore / 20); // 0 far out → 1 near shore
-            const height = wave * buildFactor * 0.18;
+            // Layer 1 — slow large swell
+            const s1 = Math.sin(dist * 0.12 - cycle * 1.4) * 0.5 + 0.5;
+            // Layer 2 — visible wave bands
+            const s2 = Math.sin(dist * 0.32 - cycle * 3.8) * 0.5 + 0.5;
+            // Layer 3 — fast surface ripples
+            const s3 = Math.sin(dist * 1.1 - cycle * 8.0) * 0.5 + 0.5;
+            // Layer 4 — subtle cross shimmer (barely visible)
+            const s4 = Math.sin(Math.abs(origArr[i]) * 0.5 + dist * 0.22 - cycle * 3.0) * 0.5 + 0.5;
 
-            // Forward surge: water pushes toward shore during wave crest
-            const surge = wave * buildFactor * 0.12;
+            // Combined wave height (local Z = world -Y, negative = up)
+            const height = (s1 * 0.11 + s2 * 0.07 + s3 * 0.03 + s4 * 0.02) * build;
+            // Surge toward shore: decrease localY (which maps to world Z toward shore)
+            const surge = (s1 * 0.10 + s2 * 0.06) * build;
 
-            arr[i] = origArr[i]; // X stays
-            arr[i + 1] = origArr[i + 1] + height; // Y rises with wave
-            arr[i + 2] = origArr[i + 2] + surge; // Z surges forward
+            arr[i + 1] = localY - surge;     // toward shore
+            arr[i + 2] = origArr[i + 2] - height; // upward
           }
           pos.needsUpdate = true;
         }
 
-        // ─── FOAM STRIP — pulses with tide ───────────────────
+        // ─── FOAM — surges forward with wave crests ──────────
         const foamMesh = scene.userData.foam;
         if (foamMesh && foamMesh.material) {
-          const tide = Math.sin(t * 0.55) * 0.5 + 0.5;
-          foamMesh.material.opacity = 0.18 + tide * 0.55;
-          foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.7;
+          const tide = Math.sin(t * 0.5) * 0.5 + 0.5;
+          const crest = Math.sin(t * 0.5 * 3.8) * 0.5 + 0.5; // matches wave band layer
+          // Foam builds when waves crest at shoreline
+          foamMesh.material.opacity = 0.15 + tide * 0.25 + crest * 0.30;
+          // Surge forward during wave crest
+          foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.4 + crest * 0.6;
         }
 
         // ─── STARS TWINKLE ─────────────────────────────────────
