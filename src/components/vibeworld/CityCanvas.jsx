@@ -210,211 +210,205 @@ function buildPark(scene) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// BUILD HUMAN AVATAR from box geometries
+// BUILD LOW-POLY HUMANOID AVATAR (spheres, capsules — no boxes)
 // ═══════════════════════════════════════════════════════════════
 function createAvatar(scene) {
   const avatar = new THREE.Group();
   avatar.name = "avatar";
 
-  // ─── BODY PARTS (build bottom-up so pivots chain correctly) ──
+  // Material helpers
+  const skinMat = () => mat("#FFD5C2", { roughness: 0.45 });
+  const shirtMat = () => mat("#1565C0", { roughness: 0.3 });
+  const pantsMat = () => mat("#1B5E20", { roughness: 0.35 });
+  const shoeMat = () => mat("#3E2723", { roughness: 0.4 });
+  const hairMat = () => mat("#3E2723", { roughness: 0.55 });
+  const eyeMat = () => mat("#111111", { roughness: 0.1 });
+  const darkShoe = () => mat("#1A1A1A", { roughness: 0.35 });
 
-  // === FEET ===
+  function addMesh(group, geo, materialFn, pos, casts = true) {
+    const m = new THREE.Mesh(geo, materialFn());
+    m.position.copy(pos);
+    m.castShadow = casts;
+    m.receiveShadow = casts;
+    group.add(m);
+    return m;
+  }
+
+  // ─── FEET ────────────────────────────────────────────────────
   function createFoot() {
     const foot = new THREE.Group();
     foot.name = "foot";
-    const geo = new THREE.BoxGeometry(0.14, 0.08, 0.22);
-    const mesh = new THREE.Mesh(geo, mat("#1A1A1A", { roughness: 0.3 }));
-    mesh.position.set(0, 0.04, 0.05);
-    mesh.castShadow = true;
-    foot.add(mesh);
+    // Shoe body (capsule for rounded shoe shape)
+    addMesh(foot, new THREE.CapsuleGeometry(0.05, 0.1, 4, 8), darkShoe, new THREE.Vector3(0, 0.03, 0.05));
+    // Sole (flat box)
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.025, 0.16), shoeMat());
+    sole.position.set(0, -0.02, 0.05);
+    sole.castShadow = true;
+    sole.receiveShadow = true;
+    foot.add(sole);
     return foot;
   }
 
-  // === LOWER LEG ===
+  // ─── LOWER LEG (knee to ankle) ──────────────────────────────
   function createLowerLeg() {
     const leg = new THREE.Group();
     leg.name = "lowerLeg";
-    const geo = new THREE.BoxGeometry(0.11, 0.42, 0.11);
-    const mesh = new THREE.Mesh(geo, mat("#1565C0", { roughness: 0.3 }));
-    mesh.position.y = 0.21;
-    mesh.castShadow = true;
-    leg.add(mesh);
-    // Knee cap
-    const kneeGeo = new THREE.BoxGeometry(0.13, 0.03, 0.13);
-    const knee = new THREE.Mesh(kneeGeo, mat("#0D47A1", { roughness: 0.2 }));
-    knee.position.y = 0.42;
-    leg.add(knee);
+    const len = 0.36;
+    addMesh(leg, new THREE.CapsuleGeometry(0.06, len, 4, 8), pantsMat, new THREE.Vector3(0, -len / 2, 0));
 
     const foot = createFoot();
-    foot.position.set(0, -0.02, 0);
+    foot.position.set(0, -len - 0.01, 0);
     leg.add(foot);
     leg.userData.foot = foot;
     return leg;
   }
 
-  // === UPPER LEG ===
+  // ─── UPPER LEG (hip to knee) ────────────────────────────────
   function createUpperLeg() {
     const leg = new THREE.Group();
     leg.name = "upperLeg";
-    const geo = new THREE.BoxGeometry(0.12, 0.44, 0.12);
-    const mesh = new THREE.Mesh(geo, mat("#1565C0", { roughness: 0.3 }));
-    mesh.position.y = 0.22;
-    mesh.castShadow = true;
-    leg.add(mesh);
+    const len = 0.4;
+    addMesh(leg, new THREE.CapsuleGeometry(0.07, len, 4, 8), pantsMat, new THREE.Vector3(0, -len / 2, 0));
 
     const lowerLeg = createLowerLeg();
-    lowerLeg.position.set(0, -0.42, 0);
+    lowerLeg.position.set(0, -len, 0);
     leg.add(lowerLeg);
     leg.userData.lowerLeg = lowerLeg;
     return leg;
   }
 
-  // === HAND ===
+  // ─── HAND ────────────────────────────────────────────────────
   function createHand() {
     const hand = new THREE.Group();
     hand.name = "hand";
-    const geo = new THREE.BoxGeometry(0.07, 0.08, 0.07);
-    const mesh = new THREE.Mesh(geo, mat("#FFCCBC", { roughness: 0.4 }));
-    mesh.castShadow = true;
-    hand.add(mesh);
+    addMesh(hand, new THREE.SphereGeometry(0.045, 6, 4), skinMat, new THREE.Vector3(0, 0, 0));
     return hand;
   }
 
-  // === FOREARM ===
+  // ─── FOREARM (elbow to wrist) ───────────────────────────────
   function createForearm() {
     const arm = new THREE.Group();
     arm.name = "forearm";
-    const geo = new THREE.BoxGeometry(0.09, 0.32, 0.09);
-    const mesh = new THREE.Mesh(geo, mat("#FFCCBC", { roughness: 0.4 }));
-    mesh.position.y = 0.16;
-    mesh.castShadow = true;
-    arm.add(mesh);
+    const len = 0.26;
+    addMesh(arm, new THREE.CapsuleGeometry(0.045, len, 4, 8), skinMat, new THREE.Vector3(0, -len / 2, 0));
 
     const hand = createHand();
-    hand.position.set(0, -0.32, 0);
+    hand.position.set(0, -len, 0);
     arm.add(hand);
     arm.userData.hand = hand;
     return arm;
   }
 
-  // === UPPER ARM ===
+  // ─── UPPER ARM (shoulder to elbow) ──────────────────────────
   function createUpperArm() {
     const arm = new THREE.Group();
     arm.name = "upperArm";
-    const geo = new THREE.BoxGeometry(0.10, 0.36, 0.10);
-    const mesh = new THREE.Mesh(geo, mat("#FFCCBC", { roughness: 0.4 }));
-    mesh.position.y = 0.18;
-    mesh.castShadow = true;
-    arm.add(mesh);
+    const len = 0.3;
+    addMesh(arm, new THREE.CapsuleGeometry(0.05, len, 4, 8), skinMat, new THREE.Vector3(0, -len / 2, 0));
 
     const forearm = createForearm();
-    forearm.position.set(0, -0.36, 0);
+    forearm.position.set(0, -len, 0);
     arm.add(forearm);
     arm.userData.forearm = forearm;
     return arm;
   }
 
-  // === TORSO ===
+  // ─── TORSO (pelvis to shoulders) ────────────────────────────
   const torsoGroup = new THREE.Group();
   torsoGroup.name = "torso";
-  const torsoGeo = new THREE.BoxGeometry(0.38, 0.55, 0.22);
-  const torsoMesh = new THREE.Mesh(torsoGeo, mat("#1565C0", { roughness: 0.25 }));
-  torsoMesh.position.y = 0.275;
-  torsoMesh.castShadow = true;
-  torsoGroup.add(torsoMesh);
+  // Use a tapered shape: wider at top, narrower at waist
+  // Main torso capsule
+  addMesh(torsoGroup, new THREE.CapsuleGeometry(0.16, 0.34, 5, 10), shirtMat, new THREE.Vector3(0, 0.22, 0));
+  // Slightly wider chest
+  addMesh(torsoGroup, new THREE.CapsuleGeometry(0.17, 0.08, 5, 10), shirtMat, new THREE.Vector3(0, 0.42, 0));
 
-  // Shirt detail (collar)
-  const collarGeo = new THREE.BoxGeometry(0.2, 0.04, 0.16);
-  const collar = new THREE.Mesh(collarGeo, mat("#FFFFFF", { roughness: 0.3 }));
-  collar.position.set(0, 0.57, 0.04);
-  torsoGroup.add(collar);
+  // ─── NECK ───────────────────────────────────────────────────
+  const neckGroup = new THREE.Group();
+  neckGroup.name = "neck";
+  neckGroup.position.set(0, 0.5, 0);
+  addMesh(neckGroup, new THREE.CylinderGeometry(0.04, 0.05, 0.1, 8), skinMat, new THREE.Vector3(0, 0.05, 0));
 
-  // === HEAD ===
+  // ─── HEAD (sphere, eyes, hair) ──────────────────────────────
   const headGroup = new THREE.Group();
   headGroup.name = "head";
-  headGroup.position.y = 0.58;
+  headGroup.position.y = 0.1;
 
-  const headGeo = new THREE.BoxGeometry(0.2, 0.22, 0.2);
-  const headMesh = new THREE.Mesh(headGeo, mat("#FFCCBC", { roughness: 0.4 }));
-  headMesh.position.y = 0.11;
-  headMesh.castShadow = true;
-  headGroup.add(headMesh);
+  // Head sphere
+  addMesh(headGroup, new THREE.SphereGeometry(0.1, 12, 10), skinMat, new THREE.Vector3(0, 0.1, 0), true);
 
-  // Eyes
-  for (let ex = -0.05; ex <= 0.05; ex += 0.1) {
-    const eyeGeo = new THREE.BoxGeometry(0.03, 0.03, 0.01);
-    const eye = new THREE.Mesh(eyeGeo, mat("#000000"));
-    eye.position.set(ex, 0.14, 0.105);
+  // Eyes (positioned at front = +Z)
+  for (let ex = -0.04; ex <= 0.04; ex += 0.08) {
+    const eyeGeo = new THREE.SphereGeometry(0.015, 6, 4);
+    const eye = new THREE.Mesh(eyeGeo, eyeMat());
+    eye.position.set(ex, 0.12, 0.088);
     headGroup.add(eye);
+    // Pupil highlight
+    const pupilGeo = new THREE.SphereGeometry(0.005, 4, 3);
+    const pupil = new THREE.Mesh(pupilGeo, new THREE.MeshStandardMaterial({ color: "#FFFFFF", roughness: 0.1 }));
+    pupil.position.set(ex, 0.122, 0.098);
+    headGroup.add(pupil);
   }
 
-  // Hair
-  const hairGeo = new THREE.BoxGeometry(0.22, 0.06, 0.22);
-  const hair = new THREE.Mesh(hairGeo, mat("#3E2723", { roughness: 0.5 }));
-  hair.position.set(0, 0.23, 0);
-  headGroup.add(hair);
+  // Nose (tiny bump)
+  addMesh(headGroup, new THREE.SphereGeometry(0.012, 4, 3), mat("#FFC0A8", { roughness: 0.5 }), new THREE.Vector3(0, 0.11, 0.1), false);
 
-  // Cap/hat
-  const capGeo = new THREE.BoxGeometry(0.18, 0.04, 0.22);
-  const cap = new THREE.Mesh(capGeo, mat("#1A1A1A", { roughness: 0.3 }));
-  cap.position.set(0, 0.26, 0.02);
-  headGroup.add(cap);
+  // Hair on top
+  addMesh(headGroup, new THREE.SphereGeometry(0.105, 8, 6), hairMat, new THREE.Vector3(0, 0.135, 0), false);
 
-  const capBrimGeo = new THREE.BoxGeometry(0.2, 0.02, 0.06);
-  const capBrim = new THREE.Mesh(capBrimGeo, mat("#1A1A1A", { roughness: 0.3 }));
-  capBrim.position.set(0, 0.24, 0.12);
-  headGroup.add(capBrim);
+  // Cap
+  addMesh(headGroup, new THREE.CylinderGeometry(0.07, 0.09, 0.06, 8), darkShoe, new THREE.Vector3(0, 0.17, 0.02), false);
+  addMesh(headGroup, new THREE.BoxGeometry(0.14, 0.015, 0.07), darkShoe, new THREE.Vector3(0, 0.17, 0.08), false);
 
-  torsoGroup.add(headGroup);
+  neckGroup.add(headGroup);
+  torsoGroup.add(neckGroup);
 
-  // === SHOULDER JOINTS ===
+  // ─── SHOULDERS ──────────────────────────────────────────────
   const leftShoulder = new THREE.Group();
   leftShoulder.name = "leftShoulder";
-  leftShoulder.position.set(-0.22, 0.5, 0);
+  leftShoulder.position.set(-0.19, 0.48, 0);
   const leftArm = createUpperArm();
-  leftArm.position.set(0, -0.02, 0);
+  leftArm.position.set(0, 0, 0);
   leftShoulder.add(leftArm);
   leftShoulder.userData.arm = leftArm;
   torsoGroup.add(leftShoulder);
 
   const rightShoulder = new THREE.Group();
   rightShoulder.name = "rightShoulder";
-  rightShoulder.position.set(0.22, 0.5, 0);
+  rightShoulder.position.set(0.19, 0.48, 0);
   const rightArm = createUpperArm();
-  rightArm.position.set(0, -0.02, 0);
+  rightArm.position.set(0, 0, 0);
   rightShoulder.add(rightArm);
   rightShoulder.userData.arm = rightArm;
   torsoGroup.add(rightShoulder);
 
-  // === HIP JOINTS ===
+  // ─── HIPS ───────────────────────────────────────────────────
+  const PELVIS_Y = 0.0; // hips pivot at pelvis level
+
   const leftHip = new THREE.Group();
   leftHip.name = "leftHip";
-  leftHip.position.set(-0.09, 0.02, 0);
+  leftHip.position.set(-0.08, PELVIS_Y, 0);
   const leftLeg = createUpperLeg();
-  leftLeg.position.set(0, -0.02, 0);
+  leftLeg.position.set(0, 0, 0);
   leftHip.add(leftLeg);
   leftHip.userData.leg = leftLeg;
   torsoGroup.add(leftHip);
 
   const rightHip = new THREE.Group();
   rightHip.name = "rightHip";
-  rightHip.position.set(0.09, 0.02, 0);
+  rightHip.position.set(0.08, PELVIS_Y, 0);
   const rightLeg = createUpperLeg();
-  rightLeg.position.set(0, -0.02, 0);
+  rightLeg.position.set(0, 0, 0);
   rightHip.add(rightLeg);
   rightHip.userData.leg = rightLeg;
   torsoGroup.add(rightHip);
 
-  // Shadow disc at feet
-  const shadowGeo = new THREE.CircleGeometry(0.2, 16);
+  // ─── SHADOW DISC ────────────────────────────────────────────
+  const shadowGeo = new THREE.CircleGeometry(0.18, 16);
   const shadowDisc = new THREE.Mesh(shadowGeo, new THREE.MeshBasicMaterial({
-    color: "#000000",
-    transparent: true,
-    opacity: 0.25,
-    depthWrite: false,
+    color: "#000000", transparent: true, opacity: 0.22, depthWrite: false,
   }));
   shadowDisc.rotation.x = -Math.PI / 2;
-  shadowDisc.position.y = -0.75;
+  shadowDisc.position.y = -0.88;
   shadowDisc.name = "shadow";
   torsoGroup.add(shadowDisc);
 
@@ -647,7 +641,7 @@ export default function CityCanvas({ onLoaded }) {
 
         avatarPosRef.current = [px, py, pz, rot];
         avatar.position.set(px, py, pz);
-        avatar.rotation.y = rot + Math.PI;
+        avatar.rotation.y = rot;
 
         // ─── CAMERA ─────────────────────────────────────────────
         const camDist = 5;
