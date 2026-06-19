@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, Compass, Music4, Radio, Sparkles, Flower2, Play, Pause, Loader2, Zap } from "lucide-react";
-import CityGame from "@/components/vibeworld/CityGame";
+import { ChevronLeft, Compass, Music4, Radio, Flower2, Play, Pause, Zap } from "lucide-react";
+import CityCanvas from "@/components/vibeworld/CityCanvas";
 import HoloPanel from "@/components/vibeworld/HoloPanel";
 import MusicPanel from "@/components/vibeworld/panels/MusicPanel";
 import RadioPanel from "@/components/vibeworld/panels/RadioPanel";
@@ -20,36 +20,16 @@ const DISTRICT_META = {
 };
 
 export default function UpperVibeCity({ onExit }) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [active, setActive] = useState(null);
   const [currentZone, setCurrentZone] = useState(null);
-  const [fatalError, setFatalError] = useState(null);
 
-  // Wrap potentially-throwing hooks
-  let playerCtx, radioCtx;
-  try {
-    playerCtx = usePlayer();
-    radioCtx = useRadio();
-  } catch (e) {
-    if (!fatalError) setFatalError(e.message);
-  }
-
-  const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
-  const { allTracks, tracksLoaded, startRadio, resumeRadio } = radioCtx || {};
-
+  const playerCtx = usePlayer();
+  const radioCtx = useRadio();
   useLivePresence();
 
-  if (fatalError) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[#05050f] z-50">
-        <div className="text-center px-6">
-          <p className="text-red-400 font-bold mb-2">City Load Error</p>
-          <p className="text-xs text-white/40 max-w-md mb-4">{fatalError}</p>
-          <button onClick={onExit} className="px-4 py-2 rounded-lg bg-cyan-500 text-black text-xs font-bold">Go Back</button>
-        </div>
-      </div>
-    );
-  }
+  const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
+  const { allTracks, tracksLoaded, startRadio } = radioCtx || {};
 
   const onNeedLogin = () => base44.auth.redirectToLogin(window.location.href);
   const meta = active ? DISTRICT_META[active] : null;
@@ -58,21 +38,15 @@ export default function UpperVibeCity({ onExit }) {
   useEffect(() => {
     if (!tracksLoaded || loading) return;
     if (!currentTrack && allTracks?.length > 0 && playTrack) {
-      try {
-        const first = allTracks[0];
-        if (first) playTrack(first, "song");
-      } catch {}
+      const first = allTracks[0];
+      if (first) playTrack(first, "song");
     }
   }, [tracksLoaded, loading, currentTrack, allTracks, playTrack]);
 
   const handleEnterZone = useCallback((zoneId) => {
     if (!zoneId || active) return;
     setActive(zoneId);
-
-    // Auto-start radio when entering radio tower
-    if (zoneId === "radio") {
-      try { startRadio(); } catch {}
-    }
+    if (zoneId === "radio") startRadio?.();
   }, [active, startRadio]);
 
   const renderPanel = () => {
@@ -90,17 +64,12 @@ export default function UpperVibeCity({ onExit }) {
 
 
       {/* 3D Walkable City */}
-      <div className="absolute inset-0 bg-[#05050f] flex items-center justify-center">
-        <div className="text-center px-6">
-          <p className="text-cyan-400 font-heading font-black text-lg mb-2">Upper Vibe City</p>
-          <p className="text-white/40 text-xs mb-4">3D engine initializing...</p>
-        </div>
-        {/* <CityGame
+      <div className="absolute inset-0">
+        <CityCanvas
           onLoaded={() => setLoading(false)}
-          interactionLocked={!!active}
           onZoneChange={setCurrentZone}
           onEnterCurrentZone={handleEnterZone}
-        /> */}
+        />
       </div>
 
       {/* Top HUD */}
