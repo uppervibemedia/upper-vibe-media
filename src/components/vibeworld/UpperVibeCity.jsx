@@ -33,7 +33,7 @@ export default function UpperVibeCity({ onExit }) {
   }, [tracksLoaded, loading, currentTrack, allTracks, playTrack]);
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-hidden" style={{ background: "#0A0A1E" }}>
+    <div className="fixed inset-0 z-[60] overflow-hidden" style={{ background: "#87CEEB" }}>
       {/* 3D Park */}
       <div className="absolute inset-0">
         <CityCanvas onLoaded={() => setLoading(false)} />
@@ -41,10 +41,10 @@ export default function UpperVibeCity({ onExit }) {
 
       {/* Loading overlay */}
       {loading && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center" style={{ background: "rgba(10,10,30,0.6)" }}>
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-sky-200/50">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-400 rounded-full animate-spin" />
-            <p className="text-xs font-medium tracking-wider" style={{ color: "#C4B5FD" }}>Entering the cosmic beach...</p>
+            <div className="w-8 h-8 border-2 border-green-500/30 border-t-green-600 rounded-full animate-spin" />
+            <p className="text-xs text-green-800 font-medium tracking-wider">Entering the park...</p>
           </div>
         </div>
       )}
@@ -61,12 +61,12 @@ export default function UpperVibeCity({ onExit }) {
           onClick={onExit}
           className="pointer-events-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/20"
           style={{
-            background: "rgba(124,58,237,0.25)",
+            background: "rgba(255,255,255,0.3)",
             backdropFilter: "blur(12px)",
-            color: "#C4B5FD",
+            color: "#2E7D32",
           }}
         >
-          <ChevronLeft className="w-3.5 h-3.5" /> Exit Beach
+          <ChevronLeft className="w-3.5 h-3.5" /> Exit Park
         </button>
 
         <div
@@ -76,8 +76,8 @@ export default function UpperVibeCity({ onExit }) {
             backdropFilter: "blur(12px)",
           }}
         >
-          <span className="font-heading font-black text-[10px] tracking-[0.2em]" style={{ color: "#C4B5FD" }}>
-            COSMIC BEACH
+          <span className="font-heading font-black text-[10px] tracking-[0.2em] text-green-800">
+            PARK PROTOTYPE
           </span>
         </div>
       </motion.div>
@@ -93,8 +93,8 @@ export default function UpperVibeCity({ onExit }) {
           <p
             className="text-[10px] tracking-wider px-3 py-1.5 rounded-full"
             style={{
-              background: "rgba(124,58,237,0.2)",
-              color: "rgba(255,255,255,0.5)",
+              background: "rgba(255,255,255,0.25)",
+              color: "rgba(0,0,0,0.4)",
             }}
           >
             {isMobile ? "Joystick to walk \u2022 Swipe to look" : "W/S walk \u2022 A/D turn \u2022 Mouse look"}
@@ -114,22 +114,22 @@ export default function UpperVibeCity({ onExit }) {
           <div
             className="flex items-center justify-around gap-1 px-2 py-2 rounded-2xl max-w-sm w-full"
             style={{
-              background: "rgba(30,15,60,0.5)",
-              border: "1px solid rgba(124,58,237,0.2)",
+              background: "rgba(255,255,255,0.35)",
+              border: "1px solid rgba(255,255,255,0.3)",
               backdropFilter: "blur(16px)",
             }}
           >
             {[
               { to: "/", icon: Home, label: "Home" },
               { to: "/music", icon: Music4, label: "Music" },
-              { to: "/vibe-world", icon: Compass, label: "Beach", active: true },
+              { to: "/vibe-world", icon: Compass, label: "Park", active: true },
               { to: "/radio", icon: Radio, label: "Radio" },
             ].map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
                 className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all hover:bg-white/20"
-                style={{ color: item.active ? "#A78BFA" : "rgba(255,255,255,0.5)" }}
+                style={{ color: item.active ? "#2E7D32" : "rgba(0,0,0,0.5)" }}
               >
                 <item.icon className="w-4 h-4" />
                 <span className="text-[8px] font-bold tracking-wide uppercase">{item.label}</span>
@@ -151,8 +151,8 @@ export default function UpperVibeCity({ onExit }) {
           <div
             className="flex items-center gap-3 px-3 py-2 rounded-2xl max-w-md w-full"
             style={{
-              background: "rgba(30,15,60,0.5)",
-              border: "1px solid rgba(124,58,237,0.2)",
+              background: "rgba(255,255,255,0.4)",
+              border: "1px solid rgba(255,255,255,0.3)",
               backdropFilter: "blur(16px)",
             }}
           >
@@ -165,15 +165,15 @@ export default function UpperVibeCity({ onExit }) {
               />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-white truncate">{currentTrack.title}</p>
-              <p className="text-[10px] text-white/60 truncate">
+              <p className="text-xs font-bold text-gray-800 truncate">{currentTrack.title}</p>
+              <p className="text-[10px] text-gray-500 truncate">
                 {currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}
               </p>
             </div>
             <button
               onClick={togglePlay}
               className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: "#7C3AED", color: "#fff" }}
+              style={{ background: "#2E7D32", color: "#fff" }}
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
             </button>

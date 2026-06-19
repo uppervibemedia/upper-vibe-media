@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
-import { SPAWN, PARK_RADIUS } from "./cityData";
-import { buildBeach, updateBeachAnims, PALM_COLLISION_BOXES } from "./beachScene";
+import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -11,12 +10,19 @@ const {
   MeshStandardMaterial,
   MeshBasicMaterial,
   Color,
+  Fog,
+  PlaneGeometry,
+  RingGeometry,
+  CircleGeometry,
   CylinderGeometry,
   SphereGeometry,
   BoxGeometry,
   Vector3,
   Mesh,
   Group,
+  DirectionalLight,
+  AmbientLight,
+  HemisphereLight,
   PCFSoftShadowMap,
 } = THREE;
 
@@ -28,8 +34,9 @@ const TURN_SPEED = 8.0;
 const ROTATION_SMOOTH = 6.0;
 const WALK_CYCLE_SPEED = 7.0;
 
-// Palm tree collisions
-const COLLISION_BOXES = PALM_COLLISION_BOXES;
+// Tree collisions — radius 0.6 per tree
+const TREE_R = 0.5;
+const COLLISION_BOXES = TREE_POSITIONS.map(([tx, tz]) => [tx, tz, TREE_R, TREE_R]);
 
 // ─── UTILITIES ────────────────────────────────────────────────
 function circleVsCircle(x1, z1, r1, x2, z2, r2) {
@@ -68,6 +75,178 @@ function mat(hexColor, opts = {}) {
     m.depthWrite = opts.depthWrite ?? true;
   }
   return m;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD SCENE: Simple outdoor park
+// ═══════════════════════════════════════════════════════════════
+function buildPark(scene) {
+  // ─── SKY ────────────────────────────────────────────────────
+  scene.background = new Color("#87CEEB");
+  scene.fog = new Fog("#C8E6C9", 25, 55);
+
+  // ─── GRASS GROUND ───────────────────────────────────────────
+  const groundGeo = new PlaneGeometry(80, 80);
+  const groundMat = mat("#4CAF50", { roughness: 0.85 });
+  const ground = new Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.01;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Inner walking area
+  const innerGeo = new PlaneGeometry(PARK_RADIUS * 2, PARK_RADIUS * 2);
+  const innerMat = mat("#5CB860", { roughness: 0.75 });
+  const inner = new Mesh(innerGeo, innerMat);
+  inner.rotation.x = -Math.PI / 2;
+  inner.position.y = -0.005;
+  inner.receiveShadow = true;
+  scene.add(inner);
+
+  // Dirt path circle
+  const pathRing = new RingGeometry(12, 12.6, 64);
+  const pathMat = mat("#C8A96E", { roughness: 0.9 });
+  const path = new Mesh(pathRing, pathMat);
+  path.rotation.x = -Math.PI / 2;
+  path.position.y = 0.001;
+  path.receiveShadow = true;
+  scene.add(path);
+
+  // Central dirt patch
+  const centerGeo = new CircleGeometry(3, 32);
+  const centerMat = mat("#C8A96E", { roughness: 0.9 });
+  const center = new Mesh(centerGeo, centerMat);
+  center.rotation.x = -Math.PI / 2;
+  center.position.y = 0.002;
+  center.receiveShadow = true;
+  scene.add(center);
+
+  // ─── TREES ──────────────────────────────────────────────────
+  TREE_POSITIONS.forEach(([tx, tz, scale]) => {
+    const tree = new Group();
+
+    const trunkGeo = new CylinderGeometry(0.08 * scale, 0.12 * scale, 2 * scale, 8);
+    const trunkMat = mat("#6D4C41", { roughness: 0.7 });
+    const trunk = new Mesh(trunkGeo, trunkMat);
+    trunk.position.y = 1 * scale;
+    trunk.castShadow = true;
+    trunk.receiveShadow = true;
+    tree.add(trunk);
+
+    const canopyColors = ["#388E3C", "#43A047", "#2E7D32"];
+    for (let i = 0; i < 3; i++) {
+      const canopyGeo = new SphereGeometry(0.6 * scale - i * 0.08, 8, 6);
+      const canopyMat = mat(canopyColors[i], { roughness: 0.6 });
+      const canopy = new Mesh(canopyGeo, canopyMat);
+      canopy.position.y = 1.6 * scale + i * 0.35 * scale;
+      canopy.position.x = (i - 1) * 0.15 * scale;
+      canopy.castShadow = true;
+      canopy.receiveShadow = true;
+      tree.add(canopy);
+    }
+
+    tree.position.set(tx, 0, tz);
+    tree.rotation.y = Math.random() * Math.PI;
+    scene.add(tree);
+  });
+
+  // ─── BUSHES ─────────────────────────────────────────────────
+  for (let i = 0; i < 30; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 4 + Math.random() * 10;
+    const bx = Math.cos(angle) * radius;
+    const bz = Math.sin(angle) * radius;
+    const bushGeo = new SphereGeometry(0.2 + Math.random() * 0.25, 6, 5);
+    const bushMat = mat("#388E3C", { roughness: 0.55 });
+    const bush = new Mesh(bushGeo, bushMat);
+    bush.position.set(bx, 0.15, bz);
+    bush.scale.set(1, 0.7, 1);
+    bush.castShadow = true;
+    bush.receiveShadow = true;
+    scene.add(bush);
+  }
+
+  // ─── SMALL FLOWERS ──────────────────────────────────────────
+  const flowerColors = ["#FFEB3B", "#FF9800", "#E91E63", "#9C27B0", "#FFFFFF"];
+  for (let i = 0; i < 60; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 3 + Math.random() * 14;
+    const fx = Math.cos(angle) * radius;
+    const fz = Math.sin(angle) * radius;
+
+    const stemGeo = new CylinderGeometry(0.01, 0.01, 0.25, 4);
+    const stemMat = mat("#388E3C");
+    const stem = new Mesh(stemGeo, stemMat);
+    stem.position.set(fx, 0.12, fz);
+    scene.add(stem);
+
+    const petalGeo = new SphereGeometry(0.03, 4, 4);
+    const petalMat = mat(flowerColors[i % flowerColors.length]);
+    const petal = new Mesh(petalGeo, petalMat);
+    petal.position.set(fx, 0.26, fz);
+    scene.add(petal);
+  }
+
+  // ─── BENCHES ────────────────────────────────────────────────
+  const benchPositions = [
+    [0, 5.5, 0], [0, -5.5, Math.PI], [5.5, 0, Math.PI / 2], [-5.5, 0, -Math.PI / 2],
+  ];
+  benchPositions.forEach(([bx, bz, rot]) => {
+    const bench = new Group();
+    const seatGeo = new BoxGeometry(2, 0.06, 0.5);
+    const seatMat = mat("#8D6E63", { roughness: 0.5 });
+    const seat = new Mesh(seatGeo, seatMat);
+    seat.position.y = 0.45;
+    seat.castShadow = true;
+    bench.add(seat);
+    for (let lx = -0.8; lx <= 0.8; lx += 1.6) {
+      for (let lz = -0.15; lz <= 0.15; lz += 0.3) {
+        const legGeo = new BoxGeometry(0.06, 0.42, 0.06);
+        const legMat = mat("#5D4037", { roughness: 0.4 });
+        const leg = new Mesh(legGeo, legMat);
+        leg.position.set(lx, 0.21, lz);
+        leg.castShadow = true;
+        bench.add(leg);
+      }
+    }
+    const backGeo = new BoxGeometry(2, 0.35, 0.05);
+    const backMat = mat("#8D6E63", { roughness: 0.5 });
+    const back = new Mesh(backGeo, backMat);
+    back.position.set(0, 0.65, -0.22);
+    back.castShadow = true;
+    bench.add(back);
+    bench.position.set(bx, 0, bz);
+    bench.rotation.y = rot;
+    scene.add(bench);
+  });
+
+  // ─── LIGHTING ───────────────────────────────────────────────
+  const sun = new DirectionalLight();
+  sun.color = new Color("#FFF8E1");
+  sun.intensity = 1.2;
+  sun.position.set(10, 18, -5);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width = 2048;
+  sun.shadow.mapSize.height = 2048;
+  sun.shadow.camera.near = 0.5;
+  sun.shadow.camera.far = 60;
+  sun.shadow.camera.left = -20;
+  sun.shadow.camera.right = 20;
+  sun.shadow.camera.top = 20;
+  sun.shadow.camera.bottom = -20;
+  sun.shadow.bias = -0.0003;
+  scene.add(sun);
+
+  const ambLight = new AmbientLight();
+  ambLight.color = new Color("#BBDEFB");
+  ambLight.intensity = 0.55;
+  scene.add(ambLight);
+
+  const hemiLight = new HemisphereLight();
+  hemiLight.color = new Color("#87CEEB");
+  hemiLight.groundColor = new Color("#388E3C");
+  hemiLight.intensity = 0.3;
+  scene.add(hemiLight);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -413,9 +592,9 @@ export default function CityCanvas({ onLoaded }) {
 
   const sceneRef = useRef(null);
   const avatarRef = useRef(null);
-  const avatarPosRef = useRef([...SPAWN, Math.PI]); // [x, y, z, rotY] — face north toward ocean
+  const avatarPosRef = useRef([...SPAWN, 0]); // [x, y, z, rotY]
   const velocityRef = useRef({ x: 0, z: 0 });
-  const targetRotRef = useRef(Math.PI);
+  const targetRotRef = useRef(0);
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0 });
   const animRef = useRef({
@@ -466,15 +645,10 @@ export default function CityCanvas({ onLoaded }) {
       const initCamDist = 5;
       const initCamHeight = 2.5;
       const initLookY = 1.5;
-      const initRot = Math.PI;
-      camera.position.set(
-        SPAWN[0] - Math.sin(initRot) * initCamDist,
-        SPAWN[1] + initCamHeight,
-        SPAWN[2] - Math.cos(initRot) * initCamDist,
-      );
+      camera.position.set(SPAWN[0], SPAWN[1] + initCamHeight, SPAWN[2] - initCamDist);
       camera.lookAt(SPAWN[0], SPAWN[1] + initLookY, SPAWN[2]);
 
-      buildBeach(scene);
+      buildPark(scene);
       const avatar = createAvatar(scene);
       avatarRef.current = avatar;
 
@@ -699,9 +873,6 @@ export default function CityCanvas({ onLoaded }) {
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
-        // Update beach scene animations
-        updateBeachAnims(scene, t, dt);
-
         renderer.render(scene, camera);
         frameRef.current++;
 
@@ -790,7 +961,7 @@ export default function CityCanvas({ onLoaded }) {
 
   if (error) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center" style={{ background: "#0A0A1E" }}>
+      <div className="absolute inset-0 flex items-center justify-center bg-sky-200">
         <div className="text-center px-6">
           <p className="text-red-600 font-bold text-sm mb-2">3D Error</p>
           <p className="text-xs text-gray-500 mb-4 max-w-md">{error}</p>
