@@ -46,6 +46,7 @@ import ShareRedirect from './pages/ShareRedirect';
 import FAQ from './pages/FAQ';
 import VibeCheck from './pages/VibeCheck';
 import Start from './pages/Start';
+import VibeWorld from './pages/VibeWorld';
 import PersonalizedFeed from './pages/PersonalizedFeed';
 import { isSafeRoute, defaultRouteForUser } from './lib/safeRedirect';
 
@@ -164,6 +165,7 @@ const AuthenticatedApp = () => {
         <Route path="/settings" element={<Settings />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/start" element={<Start />} />
+        <Route path="/vibe-world" element={<VibeWorld />} />
         <Route path="/my-feed" element={<PersonalizedFeed />} />
         <Route path="/email-list" element={<EmailList />} />
       </Route>
