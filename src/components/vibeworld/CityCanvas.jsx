@@ -262,37 +262,27 @@ function buildPark(scene) {
 
   // ─── SAND ZONES — warm, walkable beach ───────────────────────
 
-  // ── Stone paving edge — dark purple-gray transition from grass ─
-  const patioGeo = new PlaneGeometry(52, 2.5);
-  const patioMat = mat("#6B5D70", { roughness: 0.35, metalness: 0.08 });
-  const patio = new Mesh(patioGeo, patioMat);
-  patio.rotation.x = -Math.PI / 2;
-  patio.position.set(0, 0.001, 3.5);
-  patio.receiveShadow = true;
-  patio.name = "patio";
-  scene.add(patio);
-
-  // Dry sand — warm golden, from patio toward shoreline
-  const drySandGeo = new PlaneGeometry(52, 2.5);
+  // Dry sand — warm golden, from grass edge toward shoreline
+  const drySandGeo = new PlaneGeometry(52, 3);
   const drySandMat = mat("#E8A873", { roughness: 0.5 });
   const drySand = new Mesh(drySandGeo, drySandMat);
   drySand.rotation.x = -Math.PI / 2;
-  drySand.position.set(0, 0.002, 5.5);
+  drySand.position.set(0, 0.002, 5);
   drySand.receiveShadow = true;
   drySand.name = "drySand";
   scene.add(drySand);
 
   // Mid sand — richer golden-brown tone
-  const midSandGeo = new PlaneGeometry(52, 1.8);
+  const midSandGeo = new PlaneGeometry(52, 2);
   const midSandMat = mat("#D99665", { roughness: 0.45 });
   const midSand = new Mesh(midSandGeo, midSandMat);
   midSand.rotation.x = -Math.PI / 2;
-  midSand.position.set(0, 0.003, 6.3);
+  midSand.position.set(0, 0.003, 6);
   midSand.receiveShadow = true;
   scene.add(midSand);
 
   // Wet sand — darker damp sand at shoreline
-  const wetSandGeo = new PlaneGeometry(52, 1.2);
+  const wetSandGeo = new PlaneGeometry(52, 1.5);
   const wetSandMat = mat("#C08860", { roughness: 0.28, metalness: 0.1 });
   const wetSand = new Mesh(wetSandGeo, wetSandMat);
   wetSand.rotation.x = -Math.PI / 2;
@@ -302,9 +292,9 @@ function buildPark(scene) {
   scene.add(wetSand);
 
   // Sand patches — subtle variation in dry sand zone
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 10; i++) {
     const px = (Math.random() - 0.5) * 44;
-    const pz = 4.5 + Math.random() * 2.5;
+    const pz = 3.5 + Math.random() * 2;
     const r = 0.25 + Math.random() * 0.6;
     const patchGeo = new CircleGeometry(r, 12);
     const shade = Math.random() > 0.5 ? "#ECB080" : "#DE9868";
