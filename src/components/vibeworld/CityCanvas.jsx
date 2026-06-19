@@ -238,8 +238,8 @@ function createAvatar(scene) {
   function createFoot() {
     const foot = new THREE.Group();
     foot.name = "foot";
-    // Shoe body (capsule for rounded shoe shape)
-    addMesh(foot, new THREE.CapsuleGeometry(0.05, 0.1, 4, 8), darkShoe, new THREE.Vector3(0, 0.03, 0.05));
+    // Shoe body (rounded cylinder for shoe shape)
+    addMesh(foot, new THREE.CylinderGeometry(0.04, 0.05, 0.12, 8), darkShoe, new THREE.Vector3(0, 0.03, 0.05));
     // Sole (flat box)
     const sole = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.025, 0.16), shoeMat());
     sole.position.set(0, -0.02, 0.05);
@@ -254,7 +254,7 @@ function createAvatar(scene) {
     const leg = new THREE.Group();
     leg.name = "lowerLeg";
     const len = 0.36;
-    addMesh(leg, new THREE.CapsuleGeometry(0.06, len, 4, 8), pantsMat, new THREE.Vector3(0, -len / 2, 0));
+    addMesh(leg, new THREE.CylinderGeometry(0.055, 0.065, len, 8), pantsMat, new THREE.Vector3(0, -len / 2, 0));
 
     const foot = createFoot();
     foot.position.set(0, -len - 0.01, 0);
@@ -268,7 +268,7 @@ function createAvatar(scene) {
     const leg = new THREE.Group();
     leg.name = "upperLeg";
     const len = 0.4;
-    addMesh(leg, new THREE.CapsuleGeometry(0.07, len, 4, 8), pantsMat, new THREE.Vector3(0, -len / 2, 0));
+    addMesh(leg, new THREE.CylinderGeometry(0.065, 0.075, len, 8), pantsMat, new THREE.Vector3(0, -len / 2, 0));
 
     const lowerLeg = createLowerLeg();
     lowerLeg.position.set(0, -len, 0);
@@ -290,7 +290,7 @@ function createAvatar(scene) {
     const arm = new THREE.Group();
     arm.name = "forearm";
     const len = 0.26;
-    addMesh(arm, new THREE.CapsuleGeometry(0.045, len, 4, 8), skinMat, new THREE.Vector3(0, -len / 2, 0));
+    addMesh(arm, new THREE.CylinderGeometry(0.04, 0.05, len, 8), skinMat, new THREE.Vector3(0, -len / 2, 0));
 
     const hand = createHand();
     hand.position.set(0, -len, 0);
@@ -304,7 +304,7 @@ function createAvatar(scene) {
     const arm = new THREE.Group();
     arm.name = "upperArm";
     const len = 0.3;
-    addMesh(arm, new THREE.CapsuleGeometry(0.05, len, 4, 8), skinMat, new THREE.Vector3(0, -len / 2, 0));
+    addMesh(arm, new THREE.CylinderGeometry(0.045, 0.055, len, 8), skinMat, new THREE.Vector3(0, -len / 2, 0));
 
     const forearm = createForearm();
     forearm.position.set(0, -len, 0);
@@ -317,10 +317,10 @@ function createAvatar(scene) {
   const torsoGroup = new THREE.Group();
   torsoGroup.name = "torso";
   // Use a tapered shape: wider at top, narrower at waist
-  // Main torso capsule
-  addMesh(torsoGroup, new THREE.CapsuleGeometry(0.16, 0.34, 5, 10), shirtMat, new THREE.Vector3(0, 0.22, 0));
+  // Main torso (wider at top, narrower at waist)
+  addMesh(torsoGroup, new THREE.CylinderGeometry(0.13, 0.16, 0.38, 8), shirtMat, new THREE.Vector3(0, 0.22, 0));
   // Slightly wider chest
-  addMesh(torsoGroup, new THREE.CapsuleGeometry(0.17, 0.08, 5, 10), shirtMat, new THREE.Vector3(0, 0.42, 0));
+  addMesh(torsoGroup, new THREE.CylinderGeometry(0.16, 0.17, 0.1, 8), shirtMat, new THREE.Vector3(0, 0.44, 0));
 
   // ─── NECK ───────────────────────────────────────────────────
   const neckGroup = new THREE.Group();
