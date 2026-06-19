@@ -164,12 +164,15 @@ function buildPark(scene) {
     scene.add(tree);
   });
 
-  // ─── BUSHES ─────────────────────────────────────────────────
-  for (let i = 0; i < 30; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 4 + Math.random() * 10;
-    const bx = Math.cos(angle) * radius;
-    const bz = Math.sin(angle) * radius;
+  // ─── BUSHES (grass side only, z >= 1) ────────────────────────
+  for (let i = 0; i < 20; i++) {
+    let bx, bz;
+    do {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 4 + Math.random() * 10;
+      bx = Math.cos(angle) * radius;
+      bz = Math.sin(angle) * radius;
+    } while (bz < 1);
     const bushGeo = new SphereGeometry(0.2 + Math.random() * 0.25, 6, 5);
     const bushMat = mat("#388E3C", { roughness: 0.55 });
     const bush = new Mesh(bushGeo, bushMat);
@@ -180,13 +183,16 @@ function buildPark(scene) {
     scene.add(bush);
   }
 
-  // ─── SMALL FLOWERS ──────────────────────────────────────────
+  // ─── SMALL FLOWERS (grass side only, z >= 1) ────────────────
   const flowerColors = ["#FFEB3B", "#FF9800", "#E91E63", "#9C27B0", "#FFFFFF"];
-  for (let i = 0; i < 60; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 3 + Math.random() * 14;
-    const fx = Math.cos(angle) * radius;
-    const fz = Math.sin(angle) * radius;
+  for (let i = 0; i < 40; i++) {
+    let fx, fz;
+    do {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 3 + Math.random() * 14;
+      fx = Math.cos(angle) * radius;
+      fz = Math.sin(angle) * radius;
+    } while (fz < 1);
 
     const stemGeo = new CylinderGeometry(0.01, 0.01, 0.25, 4);
     const stemMat = mat("#388E3C");
@@ -202,8 +208,9 @@ function buildPark(scene) {
   }
 
   // ─── BENCHES ────────────────────────────────────────────────
+  // Benches — only on grass side, none on beach
   const benchPositions = [
-    [0, 5.5, 0], [0, -5.5, Math.PI], [5.5, 0, Math.PI / 2], [-5.5, 0, -Math.PI / 2],
+    [0, 5.5, 0], [5.5, 2, Math.PI / 2], [-5.5, 2, -Math.PI / 2],
   ];
   benchPositions.forEach(([bx, bz, rot]) => {
     const bench = new Group();
@@ -318,12 +325,27 @@ function buildPark(scene) {
   scene.add(ocean);
   scene.userData.ocean = ocean;
 
-  // Foam edge — soft pale blue-white at shoreline
-  const foamGeo = new PlaneGeometry(46, 1.2);
+  // ─── LAYERED SHORELINE TRANSITION ────────────────────────────
+
+  // Layer 1: Wet-sand edge glow (dark rim where sand meets water)
+  const sandEdgeGeo = new PlaneGeometry(46, 0.6);
+  const sandEdgeMat = new MeshBasicMaterial();
+  sandEdgeMat.color = new Color("#7A6858");
+  sandEdgeMat.transparent = true;
+  sandEdgeMat.opacity = 0.4;
+  sandEdgeMat.depthWrite = false;
+  const sandEdge = new Mesh(sandEdgeGeo, sandEdgeMat);
+  sandEdge.rotation.x = -Math.PI / 2;
+  sandEdge.position.set(0, 0.005, SHORELINE_Z + 0.3);
+  sandEdge.name = "sandEdge";
+  scene.add(sandEdge);
+
+  // Layer 2: Foam edge — pale blue-white, main shoreline marker
+  const foamGeo = new PlaneGeometry(46, 1.4);
   const foamMat = new MeshBasicMaterial();
-  foamMat.color = new Color("#8EB8D8");
+  foamMat.color = new Color("#9EC8E4");
   foamMat.transparent = true;
-  foamMat.opacity = 0.35;
+  foamMat.opacity = 0.38;
   foamMat.depthWrite = false;
   const foam = new Mesh(foamGeo, foamMat);
   foam.rotation.x = -Math.PI / 2;
@@ -331,6 +353,34 @@ function buildPark(scene) {
   foam.name = "foam";
   scene.add(foam);
   scene.userData.foam = foam;
+
+  // Layer 3: Shorebreak foam — thinner, brighter, slightly into water
+  const shorebreakGeo = new PlaneGeometry(44, 0.5);
+  const shorebreakMat = new MeshBasicMaterial();
+  shorebreakMat.color = new Color("#C4E0F0");
+  shorebreakMat.transparent = true;
+  shorebreakMat.opacity = 0.3;
+  shorebreakMat.depthWrite = false;
+  const shorebreak = new Mesh(shorebreakGeo, shorebreakMat);
+  shorebreak.rotation.x = -Math.PI / 2;
+  shorebreak.position.set(0, 0.007, SHORELINE_Z - 0.3);
+  shorebreak.name = "shorebreak";
+  scene.add(shorebreak);
+  scene.userData.shorebreak = shorebreak;
+
+  // Layer 4: Wave wash — semi-transparent water overlapping wet sand (animated)
+  const waveWashGeo = new PlaneGeometry(46, 0.9);
+  const waveWashMat = new MeshBasicMaterial();
+  waveWashMat.color = new Color("#88C0D8");
+  waveWashMat.transparent = true;
+  waveWashMat.opacity = 0.22;
+  waveWashMat.depthWrite = false;
+  const waveWash = new Mesh(waveWashGeo, waveWashMat);
+  waveWash.rotation.x = -Math.PI / 2;
+  waveWash.position.set(0, 0.005, SHORELINE_Z + 0.15);
+  waveWash.name = "waveWash";
+  scene.add(waveWash);
+  scene.userData.waveWash = waveWash;
 
   // ─── LIGHTING (cosmic night — nebula purple/blue mood) ─────────
   const moon = new DirectionalLight();
@@ -1146,10 +1196,23 @@ export default function CityCanvas({ onLoaded }) {
           }
         }
 
-        // Foam edge pulse
+        // ─── SHORELINE ANIMATION — foam pulse + wave wash ────────
         const foamMesh = scene.userData.foam;
         if (foamMesh && foamMesh.material) {
-          foamMesh.material.opacity = 0.28 + Math.sin(t * 0.7) * 0.1;
+          foamMesh.material.opacity = 0.3 + Math.sin(t * 0.7) * 0.1;
+        }
+
+        const shorebreakMesh = scene.userData.shorebreak;
+        if (shorebreakMesh && shorebreakMesh.material) {
+          shorebreakMesh.material.opacity = 0.22 + Math.sin(t * 0.8 + 1.2) * 0.1;
+        }
+
+        const waveWashMesh = scene.userData.waveWash;
+        if (waveWashMesh && waveWashMesh.geometry) {
+          // Wave wash laps onto sand — shift z position slightly with tide
+          const washOffset = Math.sin(t * 1.2) * 0.2;
+          waveWashMesh.position.z = -4 + 0.15 + washOffset;
+          waveWashMesh.material.opacity = 0.16 + Math.abs(Math.sin(t * 1.2)) * 0.1;
         }
 
         // ─── STARS TWINKLE ─────────────────────────────────────
