@@ -257,57 +257,73 @@ function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 const SKY_CANVAS_W = 1024;
 const SKY_CANVAS_H = 512;
+const NEBULA_BASE_ALPHA = 0.55;
 
-// Darker base gradient — mostly deep space with very subtle color shifts
+// Deep space gradient — stays dark at the horizon, subtly lighter overhead
 const GRADIENT_STOPS = [
-  [0, "#060620"], [0.15, "#090830"], [0.3, "#0a0a28"],
-  [0.5, "#080822"], [0.72, "#070a24"], [1, "#040418"],
+  [0, "#07071a"], [0.12, "#0a0a24"], [0.3, "#0c0c2e"],
+  [0.5, "#0b0b2a"], [0.7, "#090922"], [1, "#050514"],
 ];
 
-// Wispy cloud clusters — unevenly spread, leaving large dark gaps
-// Each stroke: [offsetX, offsetY, angle, length, width, alphaScale]
+// Soft irregular cloud clusters — each is a group of overlapping circles
+// with varying radii, offsets, and per-circle alpha weights.
+// Fields: cx, cy (centre), r/g/b (color), circles: [[offX, offY, radius, alphaWeight], ...]
 const NEBULA_CLUSTERS = [
-  { // Top-left — faint purple wisps
-    cx: 150, cy: 85,
-    r: "140", g: "45", b: "200",
-    strokes: [
-      [0, 0, -0.3, 190, 12, 0.9],
-      [30, -15, 0.1, 150, 10, 0.7],
-      [-25, 10, 0.5, 110, 8, 0.5],
-      [10, -25, -0.6, 130, 9, 0.45],
+  { // Upper-left — purple cloud
+    cx: 180, cy: 100, r: 140, g: 35, b: 200,
+    circles: [
+      [0, 0, 55, 1.0], [-35, -15, 42, 0.85], [30, 10, 48, 0.75],
+      [-15, 25, 36, 0.65], [40, -20, 32, 0.55], [-50, 5, 28, 0.45],
+      [10, -35, 30, 0.5], [55, 8, 22, 0.4],
     ],
   },
-  { // Right edge — blue streak
-    cx: 850, cy: 140,
-    r: "35", g: "90", b: "230",
-    strokes: [
-      [0, 0, 0.4, 210, 11, 0.85],
-      [-20, 15, 0.7, 160, 9, 0.65],
-      [15, -10, 0.1, 120, 7, 0.45],
+  { // Upper-right — blue/cyan cloud
+    cx: 800, cy: 130, r: 40, g: 110, b: 230,
+    circles: [
+      [0, 0, 50, 1.0], [-28, -10, 40, 0.8], [25, 12, 44, 0.7],
+      [-10, -28, 34, 0.6], [35, -8, 30, 0.55], [-45, 5, 26, 0.45],
+      [15, 22, 24, 0.4],
     ],
   },
-  { // Mid-lower left — very faint pink
-    cx: 240, cy: 340,
-    r: "200", g: "55", b: "155",
-    strokes: [
-      [0, 0, -0.2, 130, 10, 0.6],
-      [20, -8, 0.3, 90, 7, 0.4],
+  { // Mid-left — soft pink cloud
+    cx: 200, cy: 300, r: 180, g: 45, b: 140,
+    circles: [
+      [0, 0, 48, 0.85], [-25, 10, 36, 0.7], [20, -12, 40, 0.65],
+      [-15, -25, 30, 0.5], [30, 15, 28, 0.45], [-40, -5, 22, 0.38],
     ],
   },
-  { // Upper-middle — subtle cyan trail
-    cx: 520, cy: 60,
-    r: "45", g: "150", b: "210",
-    strokes: [
-      [0, 0, 0.15, 170, 9, 0.55],
-      [-15, 12, -0.35, 110, 7, 0.4],
+  { // Top-center — subtle cyan whisper
+    cx: 520, cy: 55, r: 30, g: 130, b: 200,
+    circles: [
+      [0, 0, 45, 0.7], [-20, -8, 34, 0.55], [18, 10, 38, 0.5],
+      [-12, 18, 26, 0.4], [28, -14, 24, 0.38],
     ],
   },
-  { // Far right lower — deep purple whisper
-    cx: 720, cy: 290,
-    r: "110", g: "35", b: "190",
-    strokes: [
-      [0, 0, 0.55, 100, 8, 0.5],
-      [-10, -10, 0.2, 80, 6, 0.35],
+  { // Right area — dark purple patch
+    cx: 700, cy: 280, r: 120, g: 30, b: 180,
+    circles: [
+      [0, 0, 42, 0.75], [-22, 8, 32, 0.6], [18, -10, 36, 0.55],
+      [-8, -22, 26, 0.45], [30, 5, 24, 0.4],
+    ],
+  },
+  { // Far left mid — deep blue wisp
+    cx: 50, cy: 200, r: 40, g: 60, b: 200,
+    circles: [
+      [0, 0, 38, 0.8], [-15, -10, 28, 0.65], [12, 8, 30, 0.55],
+      [-8, 18, 22, 0.45],
+    ],
+  },
+  { // Right edge upper — cyan splotch
+    cx: 950, cy: 190, r: 20, g: 100, b: 220,
+    circles: [
+      [0, 0, 40, 0.7], [-18, -6, 30, 0.55], [15, 8, 32, 0.5],
+    ],
+  },
+  { // Upper center-left — bright purple accent
+    cx: 380, cy: 70, r: 100, g: 25, b: 210,
+    circles: [
+      [0, 0, 44, 0.65], [-20, -12, 32, 0.5], [18, 10, 34, 0.48],
+      [-10, 20, 24, 0.4], [28, -8, 22, 0.35],
     ],
   },
 ];
@@ -325,46 +341,47 @@ function drawNebulaCanvas(time) {
   // Clear
   ctx.clearRect(0, 0, W, H);
 
-  // Gradient base — deep space
+  // Fill with a visible deep space color as the base
+  ctx.fillStyle = "#0a0a20";
+  ctx.fillRect(0, 0, W, H);
+
+  // Gradient overlay — deep space
   const base = ctx.createLinearGradient(0, 0, 0, H);
   GRADIENT_STOPS.forEach(([stop, color]) => base.addColorStop(stop, color));
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, W, H);
 
-  // Each cluster: draw thin overlapping gas wisps
+  // Each cluster: draw overlapping soft circles to form irregular cloud shapes
   NEBULA_CLUSTERS.forEach((cluster) => {
     // Very slow gas-like drift
     const phase = (cluster.cx * 0.7 + cluster.cy * 1.3) * 0.01;
-    const driftX = Math.sin(time * 0.08 + phase) * 18;
-    const driftY = Math.cos(time * 0.06 + phase * 1.4) * 10;
+    const driftX = Math.sin(time * 0.08 + phase) * 14;
+    const driftY = Math.cos(time * 0.06 + phase * 1.4) * 8;
 
-    cluster.strokes.forEach(([offX, offY, angle, length, width, alphaScale]) => {
-      // Subtle background — stars are the main detail
-      const baseAlpha = 0.12 * alphaScale;
-      ctx.globalAlpha = baseAlpha + Math.sin(time * 0.10 + phase + angle) * 0.02;
+    // Breathe the whole cluster subtly
+    const breathe = 1 + Math.sin(time * 0.12 + phase) * 0.06;
+
+    cluster.circles.forEach(([offX, offY, radius, alphaWeight]) => {
+      const a = Math.min(1, NEBULA_BASE_ALPHA * alphaWeight * breathe);
+      const r = radius * 1.6; // Scale up for visibility
 
       const sx = cluster.cx + driftX + offX;
       const sy = cluster.cy + driftY + offY;
 
-      ctx.save();
-      ctx.translate(sx, sy);
-      ctx.rotate(angle);
-
-      // Soft radial gradient for feathered edges
-      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, length);
-      const color = `rgba(${cluster.r},${cluster.g},${cluster.b},0.85)`;
-      g.addColorStop(0, color);
-      g.addColorStop(0.35, color);
+      // Radial gradient with alpha baked into colors, no globalAlpha needed
+      const g = ctx.createRadialGradient(0, 0, r * 0.12, 0, 0, r);
+      const { r: cr, g: cg, b: cb } = cluster;
+      g.addColorStop(0, `rgba(${cr},${cg},${cb},${a})`);
+      g.addColorStop(0.45, `rgba(${cr},${cg},${cb},${a * 0.85})`);
+      g.addColorStop(0.7, `rgba(${cr},${cg},${cb},${a * 0.25})`);
       g.addColorStop(1, "transparent");
+
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.ellipse(0, 0, length, width, 0, 0, Math.PI * 2);
+      ctx.arc(sx, sy, r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
     });
   });
-
-  ctx.globalAlpha = 1;
   if (_nebulaTex) _nebulaTex.needsUpdate = true;
 }
 
@@ -383,24 +400,33 @@ function createCosmicSky(scene) {
 
   _nebulaTex = new THREE.CanvasTexture(_nebulaCanvas);
   _nebulaTex.colorSpace = THREE.SRGBColorSpace;
+  _nebulaTex.needsUpdate = true; // Force initial upload
 
-  scene.background = _nebulaTex;
-  scene.fog = new Fog("#050518", 18, 48);
+  // Use solid background color for now, nebula canvas rendered as overlay
+  scene.background = new Color("#0a0a1e");
+  scene.fog = new Fog("#07071a", 20, 50);
 
-  // ─── Stars ───────────────────────────────────────────────────
-  const starCount = 1400;
+  // ─── Stars — upper hemisphere only, dense high, sparse at horizon ──
+  const starCount = 1600;
   const starPositions = new Float32Array(starCount * 3);
   const starSizes = new Float32Array(starCount);
 
   for (let i = 0; i < starCount; i++) {
     const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(2 * Math.random() - 1);
-    const r = 32 + Math.random() * 2;
+    // Bias toward zenith: use phi in [0, π/2] weighted upward
+    // Square root bias pushes more stars toward the top
+    const u = Math.random();
+    const phi = Math.asin(Math.sqrt(u)) * (Math.PI / 2); // 0 at horizon, π/2 at zenith
+
+    const r = 32 + Math.random() * 1.5;
 
     starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    starPositions[i * 3 + 1] = Math.abs(r * Math.cos(phi));
+    starPositions[i * 3 + 1] = r * Math.cos(phi); // cos(phi) > 0 always, since phi ∈ [0, π/2]
     starPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-    starSizes[i] = 0.3 + Math.random() * 2.2;
+
+    // Stars near zenith get slightly larger sizes
+    const heightFactor = Math.cos(phi); // 0 at zenith, 1 at horizon
+    starSizes[i] = 0.25 + Math.random() * 2.4 + (1 - heightFactor) * 0.8;
   }
 
   const starsGeo = new BufferGeometry();
@@ -409,9 +435,9 @@ function createCosmicSky(scene) {
 
   const starsMat = new PointsMaterial({
     color: "#ffffff",
-    size: 0.09,
+    size: 0.085,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.88,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     sizeAttenuation: true,
@@ -419,6 +445,7 @@ function createCosmicSky(scene) {
 
   const stars = new Points(starsGeo, starsMat);
   stars.name = "stars";
+  stars.position.y = -8; // Shift hemisphere higher so horizon is mostly dark
   scene.add(stars);
 
   // ─── Moon ────────────────────────────────────────────────────
@@ -816,6 +843,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 // ═══════════════════════════════════════════════════════════════
 export default function CityCanvas({ onLoaded }) {
   const canvasRef = useRef(null);
+  const nebulaOverlayRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const onLoadedRef = useRef(onLoaded);
@@ -867,8 +895,10 @@ export default function CityCanvas({ onLoaded }) {
       const renderer = new WebGLRenderer({
         canvas,
         antialias: true,
-        alpha: false,
+        alpha: true,        // Transparent so nebula canvas shows through
+        premultipliedAlpha: false,
       });
+      renderer.setClearColor(0x000000, 0); // Fully transparent clear
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       // Use window dimensions on mobile for reliable viewport sizing
       const rw = isMobileRef.current ? window.innerWidth : canvas.clientWidth;
@@ -1181,6 +1211,7 @@ export default function CityCanvas({ onLoaded }) {
         _nebulaCanvas = null;
         _nebulaCtx = null;
         _nebulaTex = null;
+        // skyDome disposed by scene.traverse above
       };
     } catch (e) {
       console.error("[CityCanvas] init error:", e);
@@ -1258,10 +1289,16 @@ export default function CityCanvas({ onLoaded }) {
         height: isMobile ? "100dvh" : "100%",
       }}
     >
+      {/* Nebula background canvas — renders behind the 3D canvas */}
+      <canvas
+        ref={nebulaOverlayRef}
+        className="absolute inset-0 w-full h-full block"
+        style={{ pointerEvents: "none", zIndex: 0 }}
+      />
       <canvas
         ref={canvasRef}
-        className="w-full h-full block"
-        style={{ touchAction: "none" }}
+        className="w-full h-full block relative"
+        style={{ touchAction: "none", zIndex: 1 }}
       />
       {isMobile && (
         <VirtualJoystick
