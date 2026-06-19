@@ -318,11 +318,13 @@ function buildPark(scene) {
   }
 
   // ─── SHALLOW WATER — bright turquoise near shore (ref #00E5FF) ─
-  const shallowGeo = new PlaneGeometry(56, 5);
+  const SHALLOW_SEGMENTS_X = 56;
+  const SHALLOW_SEGMENTS_Z = 16;
+  const shallowGeo = new PlaneGeometry(56, 5, SHALLOW_SEGMENTS_X, SHALLOW_SEGMENTS_Z);
   const shallowMat = new MeshBasicMaterial();
   shallowMat.color = new Color("#00E5FF");
   shallowMat.transparent = true;
-  shallowMat.opacity = 0.70;
+  shallowMat.opacity = 0.72;
   shallowMat.depthWrite = false;
   const shallow = new Mesh(shallowGeo, shallowMat);
   shallow.rotation.x = -Math.PI / 2;
@@ -333,6 +335,13 @@ function buildPark(scene) {
   scene.add(shallow);
   scene.userData.shallow = shallow;
   scene.userData._shallowBaseZ = SHORELINE_Z + 2.5;
+  // Store original Z positions for wave animation
+  const shallowOrigZ = new Float32Array(shallowGeo.attributes.position.array.length / 3);
+  const shallowArr = shallowGeo.attributes.position.array;
+  for (let i = 0; i < shallowArr.length; i += 3) {
+    shallowOrigZ[i / 3] = shallowArr[i + 2]; // Z after rotation (-PI/2 about X): arr[i+2] = -originalY
+  }
+  scene.userData._shallowOrigZ = shallowOrigZ;
 
   // ─── DEEP OCEAN — azure blue (ref #2D8BCC) ─
   const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 1, 1);
@@ -354,11 +363,11 @@ function buildPark(scene) {
   // Layer 1: Wet-sand edge — removed, replaced by foam directly
 
   // Foam edge — bright white shoreline foam (ref #FFFFFF)
-  const foamGeo = new PlaneGeometry(56, 1.2);
+  const foamGeo = new PlaneGeometry(56, 2.0);
   const foamMat = new MeshBasicMaterial();
   foamMat.color = new Color("#FFFFFF");
   foamMat.transparent = true;
-  foamMat.opacity = 0.65;
+  foamMat.opacity = 0.55;
   foamMat.depthWrite = false;
   const foam = new Mesh(foamGeo, foamMat);
   foam.rotation.x = -Math.PI / 2;
@@ -385,16 +394,16 @@ function buildPark(scene) {
   scene.userData.shorebreak = shorebreak;
   scene.userData._shorebreakBaseZ = SHORELINE_Z + 0.05;
 
-  // Wave wash — gentle lapping water on sand (animated)
-  const waveWashGeo = new PlaneGeometry(56, 0.8);
+  // Wave wash — surging white foam that crashes onto sand (animated)
+  const waveWashGeo = new PlaneGeometry(56, 2.5);
   const waveWashMat = new MeshBasicMaterial();
   waveWashMat.color = new Color("#FFFFFF");
   waveWashMat.transparent = true;
-  waveWashMat.opacity = 0.3;
+  waveWashMat.opacity = 0.15;
   waveWashMat.depthWrite = false;
   const waveWash = new Mesh(waveWashGeo, waveWashMat);
   waveWash.rotation.x = -Math.PI / 2;
-  waveWash.position.set(0, 0.006, SHORELINE_Z - 0.1);
+  waveWash.position.set(0, 0.006, SHORELINE_Z - 0.4);
   waveWash.name = "waveWash";
   waveWash.renderOrder = 4;
   scene.add(waveWash);
@@ -1185,44 +1194,75 @@ export default function CityCanvas({ onLoaded }) {
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
-        // ─── TIDE — forward/backward motion only ────────────────────
-        const tidePhase = Math.sin(t * 0.45) * 0.4; // Gentle tide push/pull
+        // ─── CRASHING WAVES ────────────────────────────────────────
+        const waveCycle = t * 0.5;                   // slow overall rhythm
+        const tideBase = Math.sin(waveCycle);         // -1 → 1: main tide position
+        const crashPulse = Math.sin(waveCycle * 3.0); // faster wave pulse for crash
 
-        // Ocean tide: shift entire mesh forward/backward only
+        // Ocean: gentle tide shift only
         const oceanMesh = scene.userData.ocean;
         if (oceanMesh) {
-          oceanMesh.position.z = scene.userData._oceanBaseZ + tidePhase;
+          oceanMesh.position.z = scene.userData._oceanBaseZ + tideBase * 0.25;
         }
 
-        // Shallow water tide — same phase, sync with ocean
+        // Shallow water: deforming wave that builds up and surges onto sand
         const shallowMesh = scene.userData.shallow;
-        if (shallowMesh) {
-          shallowMesh.position.z = scene.userData._shallowBaseZ + tidePhase * 0.8;
+        const origZ = scene.userData._shallowOrigZ;
+        if (shallowMesh && origZ) {
+          const pos = shallowMesh.geometry.attributes.position;
+          const arr = pos.array;
+          // Overall mesh shift with tide
+          shallowMesh.position.z = scene.userData._shallowBaseZ + tideBase * 0.3;
+
+          for (let i = 0; i < arr.length; i += 3) {
+            const idx = i / 3;
+            const z = origZ[idx]; // -2.5 (shore side) to 2.5 (deep side)
+
+            // Convert to distance from shore: 0 = at shore, 5 = far edge
+            const distFromShore = z + 2.5;
+
+            // Wave builds up near shore, rolls forward, then crashes
+            const waveRise = Math.max(0, tideBase) * Math.max(0, crashPulse);
+            const swellHeight = Math.sin(distFromShore * 0.9 - waveCycle * 2.0 + Math.PI * 0.5) * 0.5 + 0.5;
+
+            // Wave crest near the shore edge (distance 0-2.5 units)
+            const crestFactor = Math.max(0, 1 - distFromShore / 3.0);
+            const crestHeight = swellHeight * crestFactor * 0.25;
+
+            // Surge forward when wave crashes
+            const surgeForce = waveRise * (1 - distFromShore / 5) * 0.5;
+            const surgeZ = z + surgeForce;
+
+            arr[i + 1] = crestHeight;
+            arr[i + 2] = surgeZ;
+          }
+          pos.needsUpdate = true;
         }
 
-        // ─── SHORELINE ANIMATION — synced with tide ──────────────
+        // ─── SHORELINE ANIMATION — foam and wash follow the wave ──
+        const slz = scene.userData.shorelineZ || 20;
+
+        // Foam: brightens and moves with tide
         const foamMesh = scene.userData.foam;
         if (foamMesh && foamMesh.material) {
-          // Foam brightens as tide pushes in, fades as it pulls back
-          const foamBrightness = 0.4 + (tidePhase / 0.35) * 0.3;
-          foamMesh.material.opacity = Math.max(0.15, Math.min(0.7, foamBrightness));
-          foamMesh.position.z = scene.userData._foamBaseZ + tidePhase * 0.7;
+          const foamPulse = 0.5 + crashPulse * 0.5;
+          foamMesh.material.opacity = Math.max(0.1, foamPulse * 0.7);
+          foamMesh.position.z = scene.userData._foamBaseZ + tideBase * 0.4 + Math.max(0, crashPulse) * 0.4;
         }
 
+        // Shorebreak: thin white line at water's edge
         const shorebreakMesh = scene.userData.shorebreak;
         if (shorebreakMesh && shorebreakMesh.material) {
-          shorebreakMesh.material.opacity = 0.25 + (tidePhase / 0.35) * 0.25;
-          shorebreakMesh.position.z = scene.userData._shorebreakBaseZ + tidePhase * 0.6;
+          shorebreakMesh.material.opacity = 0.3 + Math.abs(crashPulse) * 0.5;
+          shorebreakMesh.position.z = scene.userData._shorebreakBaseZ + tideBase * 0.3;
         }
 
+        // Wave wash: surges up onto the sand when wave crashes
         const waveWashMesh = scene.userData.waveWash;
-        if (waveWashMesh) {
-          const slz = scene.userData.shorelineZ || 20;
-          // Wave wash advances up the sand with tide, recedes with ebb
-          const washZ = slz + 0.15 + tidePhase * 0.45;
-          waveWashMesh.position.z = washZ;
-          const washStrength = 0.15 + (tidePhase / 0.35) * 0.2;
-          waveWashMesh.material.opacity = Math.max(0.05, Math.min(0.4, washStrength));
+        if (waveWashMesh && waveWashMesh.material) {
+          const surgeDist = Math.max(0, tideBase) * Math.max(0, crashPulse) * 1.5;
+          waveWashMesh.position.z = slz - 0.4 - surgeDist;
+          waveWashMesh.material.opacity = 0.05 + Math.max(0, crashPulse) * Math.max(0, tideBase) * 0.7;
         }
 
         // ─── STARS TWINKLE ─────────────────────────────────────
