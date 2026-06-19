@@ -1077,7 +1077,7 @@ export default function CityCanvas({ onLoaded }) {
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
-        // ─── OCEAN WAVES — forward/backward motion only ──────────
+        // ─── OCEAN WAVES — rolling from deep water toward shore ──
         const oceanMesh = scene.userData.ocean;
         const origArr = scene.userData._oceanOrig;
         const oceanCenterZ = scene.userData._oceanCenterZ || 47;
@@ -1089,32 +1089,26 @@ export default function CityCanvas({ onLoaded }) {
           const waveT = t * 0.55; // main wave cycle
 
           for (let i = 0; i < arr.length; i += 3) {
-            // Restore base position
-            arr[i] = origArr[i];
-            arr[i + 1] = origArr[i + 1];
-            arr[i + 2] = origArr[i + 2];
-
-            // World Z of this vertex
             const worldZ = oceanCenterZ + origArr[i + 2];
-            const dist = worldZ - SLZ; // 0 at shore, positive into ocean
+            const distFromShore = worldZ - SLZ; // 0 at shore, positive going out to sea
 
-            // Only animate water near shoreline (first 10 units)
-            if (dist < 10 && dist >= 0) {
-              const fade = 1 - dist / 10; // 1 at shore, 0 at 10 units out
+            if (distFromShore < 0) continue; // skip sand side
 
-              // Wave swell: rises near shore, creates rolling crest
-              const wavePhase = dist * 0.6 - waveT * 4.0;
-              const swell = Math.sin(wavePhase) * 0.5 + 0.5; // 0..1
-              const crest = Math.sin(wavePhase * 1.5) * 0.5 + 0.5;
+            // Phase: deeper water leads, shore water lags → waves travel toward shore
+            // distFromShore * N means vertices further out are at an earlier phase
+            const phase = distFromShore * 0.3 - waveT * 3.0;
+            const wave = Math.sin(phase) * 0.5 + 0.5; // 0..1 smooth wave
 
-              // Height: taller near shore
-              arr[i + 1] = swell * fade * 0.2;
+            // Height: waves get taller as they approach shore
+            const buildFactor = 1 - Math.max(0, 1 - distFromShore / 20); // 0 far out → 1 near shore
+            const height = wave * buildFactor * 0.18;
 
-              // Forward surge during high tide
-              const tide = Math.sin(waveT) * 0.5 + 0.5; // 0..1 tide cycle
-              const surge = tide * fade * 0.18;
-              arr[i + 2] = origArr[i + 2] + surge;
-            }
+            // Forward surge: water pushes toward shore during wave crest
+            const surge = wave * buildFactor * 0.12;
+
+            arr[i] = origArr[i]; // X stays
+            arr[i + 1] = origArr[i + 1] + height; // Y rises with wave
+            arr[i + 2] = origArr[i + 2] + surge; // Z surges forward
           }
           pos.needsUpdate = true;
         }
