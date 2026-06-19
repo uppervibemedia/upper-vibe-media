@@ -291,35 +291,35 @@ function buildPark(scene) {
     scene.add(patch);
   }
 
-  // ─── SHALLOW WATER — bright cosmic cyan-blue, highly visible ──
+  // ─── SHALLOW WATER — above grass, below sand, highly visible ──
   const shallowGeo = new PlaneGeometry(48, 4, 28, 8);
   const shallowMat = new MeshStandardMaterial();
   shallowMat.color = new Color("#1E3C72");
   shallowMat.roughness = 0.05;
   shallowMat.metalness = 0.55;
   shallowMat.transparent = true;
-  shallowMat.opacity = 0.85;
+  shallowMat.opacity = 0.9;
   shallowMat.depthWrite = true;
   const shallow = new Mesh(shallowGeo, shallowMat);
   shallow.rotation.x = -Math.PI / 2;
-  shallow.position.set(0, -0.07, SHORELINE_Z - 2);
+  shallow.position.set(0, -0.003, SHORELINE_Z - 2);
   shallow.receiveShadow = true;
   shallow.name = "shallow";
   scene.add(shallow);
   scene.userData.shallow = shallow;
 
-  // ─── DEEP OCEAN — rich violet-blue, high metalness for sky reflection ──
+  // ─── DEEP OCEAN — above grass, below sand, high metalness ──
   const oceanGeo = new PlaneGeometry(54, OCEAN_DEPTH, 44, 20);
   const oceanMat = new MeshStandardMaterial();
   oceanMat.color = new Color("#0C2048");
   oceanMat.roughness = 0.04;
   oceanMat.metalness = 0.9;
   oceanMat.transparent = true;
-  oceanMat.opacity = 0.94;
+  oceanMat.opacity = 0.96;
   oceanMat.depthWrite = true;
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
-  ocean.position.set(0, -0.14, SHORELINE_Z - 2 - OCEAN_DEPTH / 2);
+  ocean.position.set(0, -0.006, SHORELINE_Z - 2 - OCEAN_DEPTH / 2);
   ocean.receiveShadow = true;
   ocean.name = "ocean";
   scene.add(ocean);
