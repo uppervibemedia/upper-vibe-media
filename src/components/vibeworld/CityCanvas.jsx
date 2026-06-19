@@ -58,7 +58,17 @@ function resolveCollisions(px, pz, r, boxes) {
     x += (dx / dist) * overlap;
     z += (dz / dist) * overlap;
   }
-  // Park boundary
+
+  // Beach shoreline boundary (south side corridor)
+  const SHORELINE_Z = -19;
+  const BEACH_MAX_X = 17;
+  if (z < -12) {
+    if (z < SHORELINE_Z) z = SHORELINE_Z;
+    if (x < -BEACH_MAX_X) x = -BEACH_MAX_X;
+    if (x > BEACH_MAX_X) x = BEACH_MAX_X;
+  }
+
+  // Circular boundary for rest of the park
   const d = Math.sqrt(x * x + z * z);
   if (d > PARK_RADIUS - r) {
     x = (x / d) * (PARK_RADIUS - r);
@@ -222,6 +232,74 @@ function buildPark(scene) {
     bench.rotation.y = rot;
     scene.add(bench);
   });
+
+  // ─── BEACH & OCEAN (South side) ──────────────────────────────
+  const SHORELINE_Z = -19;
+
+  // Sand layer — soft golden sand for the beach zone
+  const sandGeo = new PlaneGeometry(40, 10);
+  const sandMat = mat("#E0CDA8", { roughness: 0.72 });
+  const sand = new Mesh(sandGeo, sandMat);
+  sand.rotation.x = -Math.PI / 2;
+  sand.position.set(0, 0.002, -15);
+  sand.receiveShadow = true;
+  sand.name = "sand";
+  scene.add(sand);
+
+  // Wet sand near shoreline (darker, smoother)
+  const wetSandGeo = new PlaneGeometry(40, 6);
+  const wetSandMat = mat("#B8A07A", { roughness: 0.55 });
+  const wetSand = new Mesh(wetSandGeo, wetSandMat);
+  wetSand.rotation.x = -Math.PI / 2;
+  wetSand.position.set(0, 0.003, SHORELINE_Z - 2);
+  wetSand.receiveShadow = true;
+  sand.add(wetSand);
+
+  // Sand patches for natural grass→sand transition
+  for (let i = 0; i < 12; i++) {
+    const px = (Math.random() - 0.5) * 36;
+    const pz = -12.5 - Math.random() * 5;
+    const r = 0.4 + Math.random() * 1.2;
+    const patchGeo = new CircleGeometry(r, 12);
+    const shade = Math.random() > 0.5 ? "#E8D5B7" : "#D4C4A8";
+    const patchMat = mat(shade, { roughness: 0.7 });
+    const patch = new Mesh(patchGeo, patchMat);
+    patch.rotation.x = -Math.PI / 2;
+    patch.position.set(px, 0.004, pz);
+    patch.receiveShadow = true;
+    scene.add(patch);
+  }
+
+  // ─── OCEAN ──────────────────────────────────────────────────
+  const oceanGeo = new PlaneGeometry(55, 35, 35, 16);
+  const oceanMat = new MeshStandardMaterial();
+  oceanMat.color = new Color("#0D2B45");
+  oceanMat.roughness = 0.15;
+  oceanMat.metalness = 0.7;
+  oceanMat.transparent = true;
+  oceanMat.opacity = 0.8;
+  oceanMat.depthWrite = true;
+  const ocean = new Mesh(oceanGeo, oceanMat);
+  ocean.rotation.x = -Math.PI / 2;
+  ocean.position.set(0, -0.2, SHORELINE_Z - 17);
+  ocean.receiveShadow = true;
+  ocean.name = "ocean";
+  scene.add(ocean);
+  scene.userData.ocean = ocean;
+
+  // Subtle foam edge along shoreline
+  const foamGeo = new PlaneGeometry(42, 1.8);
+  const foamMat = new MeshBasicMaterial();
+  foamMat.color = new Color("#8EB8D8");
+  foamMat.transparent = true;
+  foamMat.opacity = 0.35;
+  foamMat.depthWrite = false;
+  const foam = new Mesh(foamGeo, foamMat);
+  foam.rotation.x = -Math.PI / 2;
+  foam.position.set(0, 0.006, SHORELINE_Z);
+  foam.name = "foam";
+  scene.add(foam);
+  scene.userData.foam = foam;
 
   // ─── LIGHTING (cosmic night — nebula purple/blue mood) ─────────
   const moon = new DirectionalLight();
@@ -942,6 +1020,29 @@ export default function CityCanvas({ onLoaded }) {
           // Reset shoulder Z during walk
           if (animParts.leftShoulder) animParts.leftShoulder.rotation.z += (0 - animParts.leftShoulder.rotation.z) * dt * 5;
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
+        }
+
+        // ─── OCEAN WAVES — gentle ripple animation ──────────────────
+        const oceanMesh = scene.userData.ocean;
+        if (oceanMesh && oceanMesh.geometry) {
+          const pos = oceanMesh.geometry.attributes.position;
+          if (pos) {
+            const arr = pos.array;
+            for (let i = 0; i < arr.length; i += 3) {
+              const gx = arr[i];      // world X
+              const gz = arr[i + 1];  // world Z (geometry Y, rotated)
+              arr[i + 2] = Math.sin(gx * 0.3 + t * 0.9) * 0.07
+                         + Math.cos(gz * 0.35 + t * 0.65) * 0.05
+                         + Math.sin((gx + gz) * 0.22 + t * 1.2) * 0.04;
+            }
+            pos.needsUpdate = true;
+          }
+        }
+
+        // Foam edge pulse
+        const foamMesh = scene.userData.foam;
+        if (foamMesh && foamMesh.material) {
+          foamMesh.material.opacity = 0.28 + Math.sin(t * 0.7) * 0.1;
         }
 
         // ─── SKYBOX — follows camera so sky stays infinitely distant ──
