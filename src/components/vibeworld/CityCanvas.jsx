@@ -338,6 +338,58 @@ function buildPark(scene) {
   hemiLight.groundColor = new Color("#1A2430"); // Cool dark blue ground bounce
   hemiLight.intensity = 0.35;
   scene.add(hemiLight);
+
+  // ─── TWINKLING STARS ─────────────────────────────────────
+  createStarField(scene);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TWINKLING STAR FIELD — small lights over the sky
+// ═══════════════════════════════════════════════════════════════
+function createStarField(scene) {
+  const starCanvas = document.createElement("canvas");
+  starCanvas.width = 32;
+  starCanvas.height = 32;
+  const ctx = starCanvas.getContext("2d");
+  const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.08, "rgba(255,255,255,0.85)");
+  gradient.addColorStop(0.3, "rgba(200,215,255,0.35)");
+  gradient.addColorStop(0.6, "rgba(140,160,255,0.06)");
+  gradient.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 32, 32);
+  const starTex = new THREE.CanvasTexture(starCanvas);
+
+  const starCount = 180;
+  const starGeo = new BufferGeometry();
+  const positions = new Float32Array(starCount * 3);
+  const phases = new Float32Array(starCount); // per-star twinkle phase
+  for (let i = 0; i < starCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 14 + Math.random() * 24;
+    positions[i * 3] = Math.cos(angle) * radius;
+    positions[i * 3 + 1] = 7 + Math.random() * 18;
+    positions[i * 3 + 2] = Math.sin(angle) * radius;
+    phases[i] = Math.random() * Math.PI * 2;
+  }
+  starGeo.setAttribute("position", new BufferAttribute(positions, 3));
+  starGeo.userData = { phases };
+
+  const starMat = new PointsMaterial();
+  starMat.map = starTex;
+  starMat.color = new Color("#DDE4FF");
+  starMat.size = 0.35;
+  starMat.transparent = true;
+  starMat.opacity = 0.55;
+  starMat.depthWrite = false;
+  starMat.blending = THREE.AdditiveBlending;
+
+  const stars = new Points(starGeo, starMat);
+  stars.name = "stars";
+  stars.renderOrder = 0;
+  scene.add(stars);
+  scene.userData.stars = stars;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1053,6 +1105,14 @@ export default function CityCanvas({ onLoaded }) {
         const foamMesh = scene.userData.foam;
         if (foamMesh && foamMesh.material) {
           foamMesh.material.opacity = 0.28 + Math.sin(t * 0.7) * 0.1;
+        }
+
+        // ─── STARS TWINKLE ─────────────────────────────────────
+        const starsMesh = scene.userData.stars;
+        if (starsMesh && starsMesh.material) {
+          starsMesh.material.opacity = 0.45 + Math.sin(t * 0.9) * 0.08 + Math.cos(t * 0.6) * 0.07;
+          // Vary star size slightly too
+          starsMesh.material.size = 0.32 + Math.sin(t * 1.2) * 0.04;
         }
 
         // ─── SKYBOX — follows camera + slow drift rotation ─────────
