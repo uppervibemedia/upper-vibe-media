@@ -641,11 +641,12 @@ export default function CityCanvas({ onLoaded }) {
 
       const asp = rw / Math.max(rh, 1);
       const camera = new PerspectiveCamera(55, asp, 0.1, 80);
-      // Start camera behind avatar, not above it
-      const initCamDist = isMobileRef.current ? 4 : 5;
-      const initCamHeight = isMobileRef.current ? 2.2 : 3.8;
+      // Start camera behind avatar (same as animation loop will use)
+      const initCamDist = isMobileRef.current ? 5 : 5;   // mobile: 5, desktop: 5
+      const initCamHeight = isMobileRef.current ? 2.5 : 3.8;
+      const initLookY = isMobileRef.current ? 1.5 : 1.5;
       camera.position.set(SPAWN[0], SPAWN[1] + initCamHeight, SPAWN[2] - initCamDist);
-      camera.lookAt(SPAWN[0], SPAWN[1] + 0.6, SPAWN[2]);
+      camera.lookAt(SPAWN[0], SPAWN[1] + initLookY, SPAWN[2]);
 
       buildPark(scene);
       const avatar = createAvatar(scene);
@@ -775,14 +776,17 @@ export default function CityCanvas({ onLoaded }) {
         avatar.position.set(px, py, pz);
         avatar.rotation.y = rot;
 
-        // ─── CAMERA ─────────────────────────────────────────────
-        const camDist = isMobileRef.current ? 4 : 5;
-        const camHeight = isMobileRef.current ? 2.2 : 3.8;
-        const behindX = px - Math.sin(rot) * camDist;
-        const behindZ = pz - Math.cos(rot) * camDist;
-        const camTarget = new Vector3(behindX, py + camHeight, behindZ);
-        camera.position.lerp(camTarget, 1 - Math.exp(-4 * dt));
-        camera.lookAt(px, py + 0.6, pz);
+        // ─── CAMERA (third-person, locked to avatar every frame) ──
+        const camDist = isMobileRef.current ? 5 : 5;
+        const camHeight = isMobileRef.current ? 2.5 : 3.8;
+        const lookY = isMobileRef.current ? 1.5 : 1.5;
+        // cameraPosition = avatar.position - avatar.forward * camDist + (0, camHeight, 0)
+        camera.position.set(
+          px - Math.sin(rot) * camDist,
+          py + camHeight,
+          pz - Math.cos(rot) * camDist,
+        );
+        camera.lookAt(px, py + lookY, pz);
 
         // ═════════════════════════════════════════════════════════
         // ANIMATION SYSTEM
@@ -968,7 +972,13 @@ export default function CityCanvas({ onLoaded }) {
   }
 
   return (
-    <div className="relative w-full h-full" style={{ position: "relative" }}>
+    <div
+      style={{
+        position: "relative",
+        width: isMobile ? "100vw" : "100%",
+        height: isMobile ? "100dvh" : "100%",
+      }}
+    >
       <canvas
         ref={canvasRef}
         className="w-full h-full block"
