@@ -44,7 +44,7 @@ import ResetPassword from './pages/ResetPassword';
 import Settings from './pages/Settings';
 import ShareRedirect from './pages/ShareRedirect';
 import FAQ from './pages/FAQ';
-import VibeCheck from './pages/VibeCheck';
+{/* VibeCheck removed — user requested */}
 import Start from './pages/Start';
 import VibeWorld from './pages/VibeWorld';
 import PersonalizedFeed from './pages/PersonalizedFeed';
@@ -147,7 +147,7 @@ const AuthenticatedApp = () => {
         <Route path="/academy/lesson/:id" element={<AcademyLessonPage />} />
         <Route path="/newest-music" element={<NewestMusic />} />
         <Route path="/radio" element={<RadioPage />} />
-        <Route path="/vibe-check" element={<VibeCheck />} />
+{/* /vibe-check route removed — user requested */}
         <Route path="/my-vibes" element={<MyVibes />} />
         <Route path="/my-vibe-library" element={<MyVibes />} />
         <Route path="/artists" element={<Artists />} />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, Play, Pause } from "lucide-react";
+import { ChevronLeft, Play, Pause, Home, Music4, Radio, Compass } from "lucide-react";
+import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
@@ -98,6 +99,43 @@ export default function UpperVibeCity({ onExit }) {
           >
             {isMobile ? "Joystick to walk \u2022 Swipe to look" : "W/S walk \u2022 A/D turn \u2022 Mouse look"}
           </p>
+        </motion.div>
+      )}
+
+      {/* Bottom navigation bar */}
+      {!loading && (
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="absolute bottom-0 left-0 right-0 z-20 flex justify-center px-4"
+          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)" : "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+        >
+          <div
+            className="flex items-center justify-around gap-1 px-2 py-2 rounded-2xl max-w-sm w-full"
+            style={{
+              background: "rgba(255,255,255,0.35)",
+              border: "1px solid rgba(255,255,255,0.3)",
+              backdropFilter: "blur(16px)",
+            }}
+          >
+            {[
+              { to: "/", icon: Home, label: "Home" },
+              { to: "/music", icon: Music4, label: "Music" },
+              { to: "/vibe-world", icon: Compass, label: "Park", active: true },
+              { to: "/radio", icon: Radio, label: "Radio" },
+            ].map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all hover:bg-white/20"
+                style={{ color: item.active ? "#2E7D32" : "rgba(0,0,0,0.5)" }}
+              >
+                <item.icon className="w-4 h-4" />
+                <span className="text-[8px] font-bold tracking-wide uppercase">{item.label}</span>
+              </Link>
+            ))}
+          </div>
         </motion.div>
       )}
 

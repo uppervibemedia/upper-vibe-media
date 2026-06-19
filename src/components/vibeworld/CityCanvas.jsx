@@ -902,6 +902,11 @@ export default function CityCanvas({ onLoaded }) {
             else obj.material.dispose();
           }
         });
+        initializedRef.current = false; // Allow re-init on React Strict Mode remount
+        lastTimeRef.current = 0;
+        frameRef.current = 0;
+        avatarRef.current = null;
+        sceneRef.current = null;
       };
     } catch (e) {
       console.error("[CityCanvas] init error:", e);
