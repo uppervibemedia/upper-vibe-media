@@ -1,70 +1,106 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, Compass, Music4, Radio, Sparkles, Flower2, Mic2, Play, Pause, Loader2 } from "lucide-react";
-import CityCanvas from "@/components/vibeworld/CityCanvas";
+import { ChevronLeft, Compass, Music4, Radio, Sparkles, Flower2, Play, Pause, Loader2, Zap } from "lucide-react";
+import CityGame from "@/components/vibeworld/CityGame";
 import HoloPanel from "@/components/vibeworld/HoloPanel";
-import PlazaPanel from "@/components/vibeworld/panels/PlazaPanel";
 import MusicPanel from "@/components/vibeworld/panels/MusicPanel";
 import RadioPanel from "@/components/vibeworld/panels/RadioPanel";
-import TemplePanel from "@/components/vibeworld/panels/TemplePanel";
 import GardensPanel from "@/components/vibeworld/panels/GardensPanel";
-import ArenaPanel from "@/components/vibeworld/panels/ArenaPanel";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
+import { useRadio } from "@/context/RadioContext";
 import { useLivePresence } from "@/hooks/useLivePresence";
 import { base44 } from "@/api/base44Client";
 
 const DISTRICT_META = {
-  plaza:   { title: "Central Plaza",          icon: <Compass className="w-4 h-4" />,  accent: "0,160,220" },
-  music:   { title: "Music District",         icon: <Music4 className="w-4 h-4" />,   accent: "0,160,220" },
-  radio:   { title: "Radio Tower",            icon: <Radio className="w-4 h-4" />,    accent: "155,126,255" },
-  temple:  { title: "Vibe Check Temple",      icon: <Sparkles className="w-4 h-4" />, accent: "236,72,153" },
-  gardens: { title: "Manifestation Gardens",  icon: <Flower2 className="w-4 h-4" />,  accent: "52,211,153" },
-  arena:   { title: "Concert Arena",          icon: <Mic2 className="w-4 h-4" />,     accent: "245,168,0" },
+  music:        { title: "Music District",         icon: <Music4 className="w-4 h-4" />,   accent: "0,160,220" },
+  radio:        { title: "Radio Tower",            icon: <Radio className="w-4 h-4" />,    accent: "155,126,255" },
+  gardens:      { title: "Manifestation Gardens",  icon: <Flower2 className="w-4 h-4" />,  accent: "52,211,153" },
+  frequencies:  { title: "Hall of Frequencies",    icon: <Zap className="w-4 h-4" />,      accent: "236,72,153" },
 };
 
 export default function UpperVibeCity({ onExit }) {
-  const [loading, setLoading] = useState(true);
-  const [active, setActive] = useState(null); // district id
-  const { currentTrack, isPlaying, togglePlay } = usePlayer();
+  const [loading, setLoading] = useState(false);
+  const [active, setActive] = useState(null);
+  const [currentZone, setCurrentZone] = useState(null);
+  const [fatalError, setFatalError] = useState(null);
 
-  // Keep the live-listeners heartbeat alive while in the city
+  // Wrap potentially-throwing hooks
+  let playerCtx, radioCtx;
+  try {
+    playerCtx = usePlayer();
+    radioCtx = useRadio();
+  } catch (e) {
+    if (!fatalError) setFatalError(e.message);
+  }
+
+  const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
+  const { allTracks, tracksLoaded, startRadio, resumeRadio } = radioCtx || {};
+
   useLivePresence();
+
+  if (fatalError) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-[#05050f] z-50">
+        <div className="text-center px-6">
+          <p className="text-red-400 font-bold mb-2">City Load Error</p>
+          <p className="text-xs text-white/40 max-w-md mb-4">{fatalError}</p>
+          <button onClick={onExit} className="px-4 py-2 rounded-lg bg-cyan-500 text-black text-xs font-bold">Go Back</button>
+        </div>
+      </div>
+    );
+  }
 
   const onNeedLogin = () => base44.auth.redirectToLogin(window.location.href);
   const meta = active ? DISTRICT_META[active] : null;
 
+  // Auto-start music when city loads
+  useEffect(() => {
+    if (!tracksLoaded || loading) return;
+    if (!currentTrack && allTracks?.length > 0 && playTrack) {
+      try {
+        const first = allTracks[0];
+        if (first) playTrack(first, "song");
+      } catch {}
+    }
+  }, [tracksLoaded, loading, currentTrack, allTracks, playTrack]);
+
+  const handleEnterZone = useCallback((zoneId) => {
+    if (!zoneId || active) return;
+    setActive(zoneId);
+
+    // Auto-start radio when entering radio tower
+    if (zoneId === "radio") {
+      try { startRadio(); } catch {}
+    }
+  }, [active, startRadio]);
+
   const renderPanel = () => {
     switch (active) {
-      case "plaza":   return <PlazaPanel onNavigate={(id) => setActive(id)} />;
-      case "music":   return <MusicPanel onNeedLogin={onNeedLogin} />;
-      case "radio":   return <RadioPanel />;
-      case "temple":  return <TemplePanel />;
-      case "gardens": return <GardensPanel />;
-      case "arena":   return <ArenaPanel onNeedLogin={onNeedLogin} />;
-      default:        return null;
+      case "music":       return <MusicPanel onNeedLogin={onNeedLogin} />;
+      case "radio":       return <RadioPanel />;
+      case "gardens":     return <GardensPanel />;
+      case "frequencies": return <FrequencyDoorsPanel onNeedLogin={onNeedLogin} />;
+      default:            return null;
     }
   };
 
   return (
     <div className="fixed inset-0 z-[60] overflow-hidden bg-[#05050f]">
-      {/* Loading */}
-      {loading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[#05050f]">
-          <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#00A0DC" }} />
-          <p className="font-heading font-black text-sm tracking-widest uppercase" style={{ color: "#9B7EFF" }}>
-            Building Upper Vibe City...
-          </p>
-        </div>
-      )}
 
-      {/* 3D City */}
-      <div className="absolute inset-0" style={loading ? { opacity: 0 } : undefined}>
-        <CityCanvas
+
+      {/* 3D Walkable City */}
+      <div className="absolute inset-0 bg-[#05050f] flex items-center justify-center">
+        <div className="text-center px-6">
+          <p className="text-cyan-400 font-heading font-black text-lg mb-2">Upper Vibe City</p>
+          <p className="text-white/40 text-xs mb-4">3D engine initializing...</p>
+        </div>
+        {/* <CityGame
           onLoaded={() => setLoading(false)}
-          onEnterDistrict={(id) => setActive(id)}
           interactionLocked={!!active}
-        />
+          onZoneChange={setCurrentZone}
+          onEnterCurrentZone={handleEnterZone}
+        /> */}
       </div>
 
       {/* Top HUD */}
@@ -85,7 +121,7 @@ export default function UpperVibeCity({ onExit }) {
         </div>
       </motion.div>
 
-      {/* Bottom mini now-playing bar (only when no panel open) */}
+      {/* Bottom mini now-playing bar */}
       {!active && currentTrack && (
         <motion.div
           initial={{ opacity: 0, y: 30 }} animate={{ opacity: loading ? 0 : 1, y: loading ? 30 : 0 }} transition={{ delay: 0.6 }}
@@ -110,16 +146,15 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Hint */}
-      {!active && (
+      {/* Proximity hint */}
+      {!active && currentZone && (
         <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: loading ? 0 : 1 }} transition={{ delay: 1.2 }}
-          className="absolute z-10 left-0 right-0 flex justify-center pointer-events-none"
-          style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.6rem)" }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          className="absolute top-1/2 left-0 right-0 z-10 flex justify-center pointer-events-none"
         >
           <p className="text-[10px] tracking-wider text-white/25 px-3 py-1.5 rounded-full"
             style={{ background: "rgba(10,10,30,0.4)" }}>
-            Tap a district to enter &nbsp;·&nbsp; Drag to explore the city
+            Press E or tap to enter &nbsp;·&nbsp; WASD to walk
           </p>
         </motion.div>
       )}
@@ -136,4 +171,67 @@ export default function UpperVibeCity({ onExit }) {
       </HoloPanel>
     </div>
   );
+}
+
+// ─── Hall of Frequencies Door Panel ───
+function FrequencyDoorsPanel({ onNeedLogin }) {
+  const { allTracks, tracksLoaded, playTrack } = usePlayer();
+  const { jumpToSong } = useRadio();
+
+  const DOORS = [
+    { id: "focus",       label: "Focus",       color: "#3B82F6", icon: "🎯" },
+    { id: "motivation",  label: "Motivation",   color: "#F59E0B", icon: "🔥" },
+    { id: "wealth",      label: "Wealth",       color: "#10B981", icon: "💎" },
+    { id: "confidence",  label: "Confidence",   color: "#EC4899", icon: "🦁" },
+    { id: "relaxation",  label: "Relaxation",   color: "#8B5CF6", icon: "🧘" },
+    { id: "sleep",       label: "Sleep",        color: "#6366F1", icon: "🌙" },
+  ];
+
+  const handleDoor = (doorId) => {
+    if (!tracksLoaded || allTracks.length === 0) return;
+    // Find tracks matching this mood/frequency category
+    const keyword = doorId.toLowerCase();
+    const matching = allTracks.filter((t) => {
+      const moods = (t.mood_tags || []).map((m) => m.toLowerCase());
+      const cats = ((t.category_ids || [])).join(" ").toLowerCase();
+      return moods.some((m) => m.includes(keyword)) || cats.includes(keyword);
+    });
+
+    if (matching.length > 0) {
+      const pick = matching[Math.floor(Math.random() * matching.length)];
+      playTrack(pick, "song");
+    } else {
+      // Fallback: play any random track
+      const pick = allTracks[Math.floor(Math.random() * allTracks.length)];
+      if (pick) playTrack(pick, "song");
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {DOORS.map((door) => (
+        <button
+          key={door.id}
+          onClick={() => handleDoor(door.id)}
+          className="flex flex-col items-center gap-2 p-4 rounded-2xl transition-all active:scale-95 hover:brightness-110"
+          style={{
+            background: `rgba(${hexToRgb(door.color)},0.08)`,
+            border: `1px solid rgba(${hexToRgb(door.color)},0.25)`,
+          }}
+        >
+          <span className="text-2xl">{door.icon}</span>
+          <span className="font-heading font-black text-sm tracking-wide" style={{ color: door.color }}>
+            {door.label}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r},${g},${b}`;
 }

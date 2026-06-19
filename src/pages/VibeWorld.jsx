@@ -17,7 +17,10 @@ function isWebGLAvailable() {
 
 // ── The hub / landing page — lightweight, no 3D loaded ──
 function VibeWorldHub() {
-  const [launched, setLaunched] = useState(false);
+  // Auto-launch via URL param for testing: ?launch=1
+  const [launched, setLaunched] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("launch") === "1"; } catch { return false; }
+  });
   const [webglOk] = useState(() => isWebGLAvailable());
 
   if (launched) {
