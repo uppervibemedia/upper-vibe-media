@@ -253,296 +253,31 @@ function buildPark(scene) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// NEBULA BLUEPRINT — shared data for drawing/redrawing
+// SKY IMAGE — cosmic sky reference uploaded by user
 // ═══════════════════════════════════════════════════════════════
-const SKY_CANVAS_W = 1024;
-const SKY_CANVAS_H = 512;
-
-// Shared mutable state for nebula animation
-let _nebulaCanvas = null;
-let _nebulaCtx = null;
-let _nebulaTex = null;
-
-// ─── Reference palette ────────────────────────────────────────
-// #050510 — near black (void)
-// #2A0545 — deep purple
-// #8A2BE2 — vibrant violet
-// #00CED1 — bright cyan/turquoise
-// #0A0A15 — horizon silhouette
-
-// Wispy gas "strokes" — each is a chain of overlapping radial-gradient blobs
-// that together form an irregular, trailing gas shape.
-// A stroke has: baseColor {r,g,b}, centre anchor (cx,cy), and a list of blobs
-// where each blob = [relX, relY, radius, alphaWeight]
-const NEBULA_STROKES = [
-  // ── CYAN CORE — bright hot centre (upper-left to mid) ──
-  {
-    baseColor: { r: 0, g: 206, b: 209 }, // #00CED1
-    cx: 280, cy: 140,
-    blobs: [
-      [0, 0, 42, 0.95], [-18, -8, 32, 0.80], [20, -5, 38, 0.75],
-      [-30, 12, 28, 0.65], [35, -15, 22, 0.55], [-12, -22, 26, 0.60],
-      [8, 18, 24, 0.50], [-42, -4, 18, 0.40], [45, 6, 16, 0.35],
-    ],
-  },
-  // ── CYAN TAIL — wispy trail extending right/down ──
-  {
-    baseColor: { r: 0, g: 170, b: 180 },
-    cx: 500, cy: 200,
-    blobs: [
-      [0, 0, 35, 0.70], [-15, -6, 28, 0.58], [15, 4, 30, 0.52],
-      [-30, 10, 22, 0.45], [28, 15, 20, 0.38], [-40, -8, 16, 0.30],
-      [10, -16, 18, 0.33],
-    ],
-  },
-  // ── VIOLET WING — upper-left purple/violet sweep ──
-  {
-    baseColor: { r: 138, g: 43, b: 226 }, // #8A2BE2
-    cx: 200, cy: 85,
-    blobs: [
-      [0, 0, 38, 0.72], [-22, -10, 30, 0.58], [18, -6, 34, 0.52],
-      [-35, 8, 24, 0.42], [10, -22, 26, 0.48], [-15, 18, 20, 0.35],
-      [28, 10, 18, 0.32], [-45, -14, 15, 0.28],
-    ],
-  },
-  // ── DEEP INDIGO — dark purple fade at edges ──
-  {
-    baseColor: { r: 42, g: 5, b: 69 }, // #2A0545
-    cx: 350, cy: 170,
-    blobs: [
-      [0, 0, 55, 0.60], [-25, -12, 42, 0.48], [22, 8, 48, 0.42],
-      [-40, 15, 36, 0.35], [30, -20, 32, 0.30], [-15, 25, 28, 0.28],
-      [48, -6, 24, 0.25], [-50, -18, 20, 0.22], [15, -30, 26, 0.26],
-    ],
-  },
-  // ── UPPER CYAN WHISPER — secondary bright streak ──
-  {
-    baseColor: { r: 30, g: 160, b: 210 },
-    cx: 420, cy: 110,
-    blobs: [
-      [0, 0, 28, 0.55], [-12, -6, 22, 0.42], [14, 4, 24, 0.38],
-      [-25, 10, 16, 0.30], [20, -12, 18, 0.32],
-    ],
-  },
-  // ── FAR PURPLE EDGE — top-right fade ──
-  {
-    baseColor: { r: 60, g: 10, b: 100 },
-    cx: 650, cy: 150,
-    blobs: [
-      [0, 0, 34, 0.40], [-18, -8, 26, 0.32], [16, 6, 28, 0.28],
-      [-30, 12, 20, 0.22], [28, -14, 18, 0.20],
-    ],
-  },
-  // ── DEEP PURPLE TAIL — far right ──
-  {
-    baseColor: { r: 35, g: 5, b: 55 },
-    cx: 780, cy: 200,
-    blobs: [
-      [0, 0, 30, 0.36], [-15, -6, 22, 0.28], [14, 5, 24, 0.24],
-      [-28, 10, 16, 0.18], [22, -12, 14, 0.16],
-    ],
-  },
-  // ── LEFT EDGE INDIGO FADE ──
-  {
-    baseColor: { r: 20, g: 3, b: 55 },
-    cx: 80, cy: 180,
-    blobs: [
-      [0, 0, 32, 0.42], [-12, -8, 24, 0.32], [14, 6, 26, 0.28],
-      [-24, 10, 18, 0.22], [10, -16, 16, 0.18],
-    ],
-  },
-];
-
-function drawNebulaCanvas(time) {
-  if (!_nebulaCtx) return;
-  const ctx = _nebulaCtx;
-  const W = SKY_CANVAS_W, H = SKY_CANVAS_H;
-
-  // Clear
-  ctx.clearRect(0, 0, W, H);
-
-  // ── Base: deep space void (#050510 near-black) ──
-  ctx.fillStyle = "#050510";
-  ctx.fillRect(0, 0, W, H);
-
-  // ── Vertical gradient — pitch black at top, subtly lighter mid-sky, dark horizon ──
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
-  skyGrad.addColorStop(0, "#030308");
-  skyGrad.addColorStop(0.25, "#050510");
-  skyGrad.addColorStop(0.5, "#060615");
-  skyGrad.addColorStop(0.75, "#0a0a1a");
-  skyGrad.addColorStop(0.95, "#0a0a15"); // horizon silhouette
-  skyGrad.addColorStop(1, "#080810");
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0, 0, W, H);
-
-  // ── Draw each wispy gas stroke ──
-  NEBULA_STROKES.forEach((stroke) => {
-    const phase = (stroke.cx * 0.7 + stroke.cy * 1.3) * 0.01;
-    const driftX = Math.sin(time * 0.06 + phase) * 10;
-    const driftY = Math.cos(time * 0.05 + phase * 1.4) * 6;
-    const breathe = 1 + Math.sin(time * 0.10 + phase) * 0.05;
-    const { r, g, b } = stroke.baseColor;
-
-    stroke.blobs.forEach(([offX, offY, radius, alphaWeight]) => {
-      const a = Math.min(1, alphaWeight * breathe);
-      const sx = stroke.cx + driftX + offX;
-      const sy = stroke.cy + driftY + offY;
-
-      // Offset focus for directional, asymmetric wisps
-      const focusAngle = (offX * 0.4 + offY * 0.35) % (Math.PI * 2);
-      const focusX = sx + Math.cos(focusAngle) * radius * 0.18;
-      const focusY = sy + Math.sin(focusAngle) * radius * 0.18;
-
-      const grad = ctx.createRadialGradient(focusX, focusY, radius * 0.04, sx, sy, radius);
-      grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
-      grad.addColorStop(0.35, `rgba(${r},${g},${b},${a * 0.82})`);
-      grad.addColorStop(0.6, `rgba(${r},${g},${b},${a * 0.38})`);
-      grad.addColorStop(0.82, `rgba(${r},${g},${b},${a * 0.08})`);
-      grad.addColorStop(1, "transparent");
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      // Slightly oval shapes for irregularity
-      const rX = radius * (0.82 + Math.sin(offX * 0.4 + offY * 0.3) * 0.18);
-      const rY = radius * (0.82 + Math.cos(offX * 0.35 - offY * 0.45) * 0.18);
-      ctx.ellipse(sx, sy, rX, rY, focusAngle, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  });
-
-  if (_nebulaTex) _nebulaTex.needsUpdate = true;
-}
+const SKY_IMAGE_URL = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/6f210e15a_60F3176E-2655-48B3-8762-6DDE68A4D207.jpg";
 
 // ═══════════════════════════════════════════════════════════════
-// COSMIC SKY — stars, aurora, moon (nebula canvas drawn separately)
+// COSMIC SKY — sky dome using uploaded reference image
 // ═══════════════════════════════════════════════════════════════
 function createCosmicSky(scene) {
-  // ─── Nebula background texture ───────────────────────────────
-  _nebulaCanvas = document.createElement("canvas");
-  _nebulaCanvas.width = SKY_CANVAS_W;
-  _nebulaCanvas.height = SKY_CANVAS_H;
-  _nebulaCtx = _nebulaCanvas.getContext("2d");
+  // ─── Sky Dome — large inverted sphere with the cosmic image ───
+  const skyGeo = new SphereGeometry(35, 64, 32);
+  const texture = new THREE.TextureLoader().load(SKY_IMAGE_URL);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
 
-  // Initial draw
-  drawNebulaCanvas(0);
-
-  _nebulaTex = new THREE.CanvasTexture(_nebulaCanvas);
-  _nebulaTex.colorSpace = THREE.SRGBColorSpace;
-  _nebulaTex.needsUpdate = true; // Force initial upload
-
-  // No scene.background — let the nebula overlay canvas show through the transparent renderer
-  scene.fog = new Fog("#07071a", 20, 50);
-
-  // ─── Stars — upper hemisphere only, dense high, sparse at horizon ──
-  const starCount = 1600;
-  const starPositions = new Float32Array(starCount * 3);
-  const starSizes = new Float32Array(starCount);
-
-  for (let i = 0; i < starCount; i++) {
-    const theta = Math.random() * Math.PI * 2;
-    // Bias toward zenith: use phi in [0, π/2] weighted upward
-    // Square root bias pushes more stars toward the top
-    const u = Math.random();
-    const phi = Math.asin(Math.sqrt(u)) * (Math.PI / 2); // 0 at horizon, π/2 at zenith
-
-    const r = 32 + Math.random() * 1.5;
-
-    starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    starPositions[i * 3 + 1] = r * Math.cos(phi); // cos(phi) > 0 always, since phi ∈ [0, π/2]
-    starPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-
-    // Stars near zenith get slightly larger sizes
-    const heightFactor = Math.cos(phi); // 0 at zenith, 1 at horizon
-    starSizes[i] = 0.25 + Math.random() * 2.4 + (1 - heightFactor) * 0.8;
-  }
-
-  const starsGeo = new BufferGeometry();
-  starsGeo.setAttribute("position", new BufferAttribute(starPositions, 3));
-  starsGeo.setAttribute("size", new BufferAttribute(starSizes, 1));
-
-  const starsMat = new PointsMaterial({
-    color: "#ffffff",
-    size: 0.085,
-    transparent: true,
-    opacity: 0.88,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    sizeAttenuation: true,
-  });
-
-  const stars = new Points(starsGeo, starsMat);
-  stars.name = "stars";
-  stars.position.y = -8; // Shift hemisphere higher so horizon is mostly dark
-  scene.add(stars);
-
-  // ─── Moon ────────────────────────────────────────────────────
-  const moonGroup = new Group();
-  moonGroup.name = "moonGroup";
-  moonGroup.position.set(-8, 10, 18);
-
-  const moonGeo = new SphereGeometry(1.5, 32, 32);
-  const moonMat = new MeshBasicMaterial({ color: "#f5edd8" });
-  const moon = new Mesh(moonGeo, moonMat);
-  moon.name = "moon";
-  moonGroup.add(moon);
-
-  // Moon glow halo
-  const glowGeo = new SphereGeometry(2.2, 32, 32);
-  const glowMat = new MeshBasicMaterial({
-    color: "#f5edd8",
-    transparent: true,
-    opacity: 0.15,
-    depthWrite: false,
-  });
-  const glow = new Mesh(glowGeo, glowMat);
-  glow.name = "moonGlow";
-  moonGroup.add(glow);
-
-  scene.add(moonGroup);
-
-  // ─── Aurora waves ────────────────────────────────────────────
-  const auroraGroup = new Group();
-  auroraGroup.name = "auroraGroup";
-
-  const auroraColors = [
-    { hex: "#30ff70", opacity: 0.02 },
-    { hex: "#7030ff", opacity: 0.018 },
-    { hex: "#30a0ff", opacity: 0.02 },
-    { hex: "#ff40a0", opacity: 0.012 },
-  ];
-
-  auroraColors.forEach(({ hex, opacity }, i) => {
-    const auroraGeo = new PlaneGeometry(24, 3, 40, 1);
-    const auroraMat = new MeshBasicMaterial({
-      color: hex,
-      transparent: true,
-      opacity,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-    const wave = new Mesh(auroraGeo, auroraMat);
-    wave.rotation.x = Math.PI / 2;
-    wave.position.set(0, 9 + i * 2.2, 0);
-    wave.name = "aurora" + i;
-    auroraGroup.add(wave);
-  });
-
-  scene.add(auroraGroup);
-
-  // ─── Atmosphere rim glow ─────────────────────────────────────
-  const atmoGeo = new SphereGeometry(30, 32, 16);
-  const atmoMat = new MeshBasicMaterial({
-    color: "#3040ff",
-    transparent: true,
-    opacity: 0.012,
+  const skyMat = new MeshBasicMaterial({
+    map: texture,
     side: THREE.BackSide,
     depthWrite: false,
   });
-  const atmo = new Mesh(atmoGeo, atmoMat);
-  atmo.name = "atmosphereGlow";
-  scene.add(atmo);
+  const skyDome = new Mesh(skyGeo, skyMat);
+  skyDome.name = "skyDome";
+  scene.add(skyDome);
+
+  scene.fog = new Fog("#050510", 30, 55);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -871,7 +606,6 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 // ═══════════════════════════════════════════════════════════════
 export default function CityCanvas({ onLoaded }) {
   const canvasRef = useRef(null);
-  const nebulaOverlayRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const onLoadedRef = useRef(onLoaded);
@@ -1172,46 +906,7 @@ export default function CityCanvas({ onLoaded }) {
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
-        // ─── SKY ANIMATIONS ────────────────────────────────────
-
-        // Redraw nebula canvas at ~2fps for smooth drift
-        if (frameRef.current % 30 === 0) {
-          drawNebulaCanvas(t);
-        }
-
-        // Copy nebula to overlay canvas every frame
-        if (_nebulaCanvas && nebulaOverlayRef.current) {
-          const ovCtx = nebulaOverlayRef.current.getContext("2d");
-          if (ovCtx) {
-            const dpr = Math.min(window.devicePixelRatio, 2);
-            nebulaOverlayRef.current.width = nebulaOverlayRef.current.clientWidth * dpr;
-            nebulaOverlayRef.current.height = nebulaOverlayRef.current.clientHeight * dpr;
-            ovCtx.drawImage(_nebulaCanvas, 0, 0, nebulaOverlayRef.current.width, nebulaOverlayRef.current.height);
-          }
-        }
-
-        // Aurora waves — gentle floating movement
-        const auroraGroup = scene.getObjectByName("auroraGroup");
-        if (auroraGroup) {
-          auroraGroup.children.forEach((wave, i) => {
-            const off = i * 2.5;
-            wave.position.z = Math.sin(t * 0.22 + off) * 3.5;
-            wave.material.opacity = 0.012 + Math.sin(t * 0.35 + off * 1.3) * 0.008;
-          });
-        }
-
-        // Stars twinkle — soft opacity oscillation
-        const starsObj = scene.getObjectByName("stars");
-        if (starsObj && starsObj.material) {
-          starsObj.material.opacity = 0.72 + Math.sin(t * 1.3) * 0.1 + Math.sin(t * 2.7 + 0.8) * 0.05;
-        }
-
-        // Subtle moon wobble
-        const moonGrp = scene.getObjectByName("moonGroup");
-        if (moonGrp) {
-          moonGrp.position.y = 10 + Math.sin(t * 0.15) * 0.5;
-          moonGrp.position.x = -8 + Math.cos(t * 0.12) * 0.8;
-        }
+        // ─── SKY ANIMATIONS — none (sky dome is static) ────────────
 
         renderer.render(scene, camera);
         frameRef.current++;
@@ -1228,19 +923,6 @@ export default function CityCanvas({ onLoaded }) {
         renderer.setSize(w, Math.max(h, 1));
         camera.aspect = w / Math.max(h, 1);
         camera.updateProjectionMatrix();
-
-        // Resize nebula overlay
-        if (nebulaOverlayRef.current) {
-          const dpr = Math.min(window.devicePixelRatio, 2);
-          nebulaOverlayRef.current.width = nebulaOverlayRef.current.clientWidth * dpr;
-          nebulaOverlayRef.current.height = nebulaOverlayRef.current.clientHeight * dpr;
-          // Redraw nebula to fill the new size
-          drawNebulaCanvas(performance.now() * 0.001);
-          const ovCtx = nebulaOverlayRef.current.getContext("2d");
-          if (ovCtx && _nebulaCanvas) {
-            ovCtx.drawImage(_nebulaCanvas, 0, 0, nebulaOverlayRef.current.width, nebulaOverlayRef.current.height);
-          }
-        }
       };
       window.addEventListener("resize", onResize);
 
@@ -1260,15 +942,6 @@ export default function CityCanvas({ onLoaded }) {
         frameRef.current = 0;
         avatarRef.current = null;
         sceneRef.current = null;
-        _nebulaCanvas = null;
-        _nebulaCtx = null;
-        _nebulaTex = null;
-        // Clear nebula overlay canvas
-        if (nebulaOverlayRef.current) {
-          const oc = nebulaOverlayRef.current.getContext("2d");
-          if (oc) oc.clearRect(0, 0, nebulaOverlayRef.current.width, nebulaOverlayRef.current.height);
-        }
-        // skyDome disposed by scene.traverse above
       };
     } catch (e) {
       console.error("[CityCanvas] init error:", e);
@@ -1346,16 +1019,10 @@ export default function CityCanvas({ onLoaded }) {
         height: isMobile ? "100dvh" : "100%",
       }}
     >
-      {/* Nebula background canvas — renders behind the 3D canvas */}
-      <canvas
-        ref={nebulaOverlayRef}
-        className="absolute inset-0 w-full h-full block"
-        style={{ pointerEvents: "none", zIndex: 0 }}
-      />
       <canvas
         ref={canvasRef}
-        className="w-full h-full block relative"
-        style={{ touchAction: "none", zIndex: 1 }}
+        className="w-full h-full block"
+        style={{ touchAction: "none" }}
       />
       {isMobile && (
         <VirtualJoystick
