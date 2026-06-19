@@ -223,32 +223,32 @@ function buildPark(scene) {
     scene.add(bench);
   });
 
-  // ─── LIGHTING ───────────────────────────────────────────────
-  const sun = new DirectionalLight();
-  sun.color = new Color("#FFF8E1");
-  sun.intensity = 1.0;
-  sun.position.set(10, 18, -5);
-  sun.castShadow = true;
-  sun.shadow.mapSize.width = 2048;
-  sun.shadow.mapSize.height = 2048;
-  sun.shadow.camera.near = 0.5;
-  sun.shadow.camera.far = 60;
-  sun.shadow.camera.left = -20;
-  sun.shadow.camera.right = 20;
-  sun.shadow.camera.top = 20;
-  sun.shadow.camera.bottom = -20;
-  sun.shadow.bias = -0.0003;
-  scene.add(sun);
+  // ─── LIGHTING (cosmic night — nebula purple/blue mood) ─────────
+  const moon = new DirectionalLight();
+  moon.color = new Color("#7B9EC7"); // Cool pale blue moonlight
+  moon.intensity = 0.55;
+  moon.position.set(15, 22, -8);
+  moon.castShadow = true;
+  moon.shadow.mapSize.width = 2048;
+  moon.shadow.mapSize.height = 2048;
+  moon.shadow.camera.near = 0.5;
+  moon.shadow.camera.far = 60;
+  moon.shadow.camera.left = -20;
+  moon.shadow.camera.right = 20;
+  moon.shadow.camera.top = 20;
+  moon.shadow.camera.bottom = -20;
+  moon.shadow.bias = -0.0003;
+  scene.add(moon);
 
   const ambLight = new AmbientLight();
-  ambLight.color = new Color("#2a2a5a");
-  ambLight.intensity = 0.45;
+  ambLight.color = new Color("#3D2E6E"); // Deep nebula purple
+  ambLight.intensity = 0.55;
   scene.add(ambLight);
 
   const hemiLight = new HemisphereLight();
-  hemiLight.color = new Color("#3a3090");
-  hemiLight.groundColor = new Color("#1a3020");
-  hemiLight.intensity = 0.25;
+  hemiLight.color = new Color("#6B5CAA");     // Vivid purple-blue nebula sky
+  hemiLight.groundColor = new Color("#1A2430"); // Cool dark blue ground bounce
+  hemiLight.intensity = 0.35;
   scene.add(hemiLight);
 }
 
