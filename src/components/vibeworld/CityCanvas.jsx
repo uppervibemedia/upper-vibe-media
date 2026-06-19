@@ -320,35 +320,33 @@ function buildPark(scene) {
 
   // ─── SHALLOW WATER — bright cyan near shore (matches ref #38D3E6) ─
   const shallowGeo = new PlaneGeometry(56, 5, 28, 8);
-  const shallowMat = new MeshStandardMaterial();
+  const shallowMat = new MeshBasicMaterial();
   shallowMat.color = new Color("#34D3EB");
-  shallowMat.roughness = 0.03;
-  shallowMat.metalness = 0.35;
   shallowMat.transparent = true;
-  shallowMat.opacity = 0.88;
-  shallowMat.depthWrite = true;
+  shallowMat.opacity = 0.92;
+  shallowMat.depthWrite = false;
   const shallow = new Mesh(shallowGeo, shallowMat);
   shallow.rotation.x = -Math.PI / 2;
   shallow.position.set(0, -0.004, SHORELINE_Z + 2.5);
   shallow.receiveShadow = true;
   shallow.name = "shallow";
+  shallow.renderOrder = 1;
   scene.add(shallow);
   scene.userData.shallow = shallow;
 
   // ─── DEEP OCEAN — sapphire blue fading to horizon (ref #1D78C1) ─
   const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 56, 24);
-  const oceanMat = new MeshStandardMaterial();
+  const oceanMat = new MeshBasicMaterial();
   oceanMat.color = new Color("#1E6FAF");
-  oceanMat.roughness = 0.04;
-  oceanMat.metalness = 0.5;
   oceanMat.transparent = true;
-  oceanMat.opacity = 0.92;
-  oceanMat.depthWrite = true;
+  oceanMat.opacity = 0.95;
+  oceanMat.depthWrite = false;
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, -0.006, SHORELINE_Z + 5 + OCEAN_DEPTH / 2);
   ocean.receiveShadow = true;
   ocean.name = "ocean";
+  ocean.renderOrder = 0;
   scene.add(ocean);
   scene.userData.ocean = ocean;
 
