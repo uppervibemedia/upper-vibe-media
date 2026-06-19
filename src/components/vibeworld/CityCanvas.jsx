@@ -1,5 +1,26 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import * as THREE from "three";
+import {
+  WebGLRenderer,
+  Scene,
+  PerspectiveCamera,
+  MeshStandardMaterial,
+  MeshBasicMaterial,
+  Color,
+  Fog,
+  PlaneGeometry,
+  RingGeometry,
+  CircleGeometry,
+  CylinderGeometry,
+  SphereGeometry,
+  BoxGeometry,
+  Vector3,
+  Mesh,
+  Group,
+  DirectionalLight,
+  AmbientLight,
+  HemisphereLight,
+  PCFSoftShadowMap,
+} from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 
 // ─── CONSTANTS ────────────────────────────────────────────────
@@ -43,7 +64,7 @@ function resolveCollisions(px, pz, r, boxes) {
 function mat(color, opts = {}) {
   // Only pass valid MeshStandardMaterial properties — spreading arbitrary opts
   // can introduce properties that confuse Three.js internal setters.
-  return new THREE.MeshStandardMaterial({
+  return new MeshStandardMaterial({
     color,
     roughness: opts.roughness ?? 0.5,
     metalness: opts.metalness ?? 0.05,
@@ -58,36 +79,36 @@ function mat(color, opts = {}) {
 // ═══════════════════════════════════════════════════════════════
 function buildPark(scene) {
   // ─── SKY ────────────────────────────────────────────────────
-  scene.background = new THREE.Color("#87CEEB");
-  scene.fog = new THREE.Fog("#C8E6C9", 25, 55);
+  scene.background = new Color("#87CEEB");
+  scene.fog = new Fog("#C8E6C9", 25, 55);
 
   // ─── GRASS GROUND ───────────────────────────────────────────
-  const groundGeo = new THREE.PlaneGeometry(80, 80);
-  const ground = new THREE.Mesh(groundGeo, mat("#4CAF50", { roughness: 0.85 }));
+  const groundGeo = new PlaneGeometry(80, 80);
+  const ground = new Mesh(groundGeo, mat("#4CAF50", { roughness: 0.85 }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.01;
   ground.receiveShadow = true;
   scene.add(ground);
 
   // Inner walking area — slightly different green
-  const innerGeo = new THREE.PlaneGeometry(PARK_RADIUS * 2, PARK_RADIUS * 2);
-  const inner = new THREE.Mesh(innerGeo, mat("#5CB860", { roughness: 0.75 }));
+  const innerGeo = new PlaneGeometry(PARK_RADIUS * 2, PARK_RADIUS * 2);
+  const inner = new Mesh(innerGeo, mat("#5CB860", { roughness: 0.75 }));
   inner.rotation.x = -Math.PI / 2;
   inner.position.y = -0.005;
   inner.receiveShadow = true;
   scene.add(inner);
 
   // Dirt path circle
-  const pathRing = new THREE.RingGeometry(12, 12.6, 64);
-  const path = new THREE.Mesh(pathRing, mat("#C8A96E", { roughness: 0.9 }));
+  const pathRing = new RingGeometry(12, 12.6, 64);
+  const path = new Mesh(pathRing, mat("#C8A96E", { roughness: 0.9 }));
   path.rotation.x = -Math.PI / 2;
   path.position.y = 0.001;
   path.receiveShadow = true;
   scene.add(path);
 
   // Central dirt patch
-  const centerGeo = new THREE.CircleGeometry(3, 32);
-  const center = new THREE.Mesh(centerGeo, mat("#C8A96E", { roughness: 0.9 }));
+  const centerGeo = new CircleGeometry(3, 32);
+  const center = new Mesh(centerGeo, mat("#C8A96E", { roughness: 0.9 }));
   center.rotation.x = -Math.PI / 2;
   center.position.y = 0.002;
   center.receiveShadow = true;
@@ -95,11 +116,11 @@ function buildPark(scene) {
 
   // ─── TREES ──────────────────────────────────────────────────
   TREE_POSITIONS.forEach(([tx, tz, scale]) => {
-    const tree = new THREE.Group();
+    const tree = new Group();
 
     // Trunk
-    const trunkGeo = new THREE.CylinderGeometry(0.08 * scale, 0.12 * scale, 2 * scale, 8);
-    const trunk = new THREE.Mesh(trunkGeo, mat("#6D4C41", { roughness: 0.7 }));
+    const trunkGeo = new CylinderGeometry(0.08 * scale, 0.12 * scale, 2 * scale, 8);
+    const trunk = new Mesh(trunkGeo, mat("#6D4C41", { roughness: 0.7 }));
     trunk.position.y = 1 * scale;
     trunk.castShadow = true;
     trunk.receiveShadow = true;
@@ -108,8 +129,8 @@ function buildPark(scene) {
     // Canopy layers — simple spheres for a leafy look
     const canopyColors = ["#388E3C", "#43A047", "#2E7D32"];
     for (let i = 0; i < 3; i++) {
-      const canopyGeo = new THREE.SphereGeometry(0.6 * scale - i * 0.08, 8, 6);
-      const canopy = new THREE.Mesh(canopyGeo, mat(canopyColors[i], { roughness: 0.6 }));
+      const canopyGeo = new SphereGeometry(0.6 * scale - i * 0.08, 8, 6);
+      const canopy = new Mesh(canopyGeo, mat(canopyColors[i], { roughness: 0.6 }));
       canopy.position.y = 1.6 * scale + i * 0.35 * scale;
       canopy.position.x = (i - 1) * 0.15 * scale;
       canopy.castShadow = true;
@@ -128,8 +149,8 @@ function buildPark(scene) {
     const radius = 4 + Math.random() * 10;
     const bx = Math.cos(angle) * radius;
     const bz = Math.sin(angle) * radius;
-    const bushGeo = new THREE.SphereGeometry(0.2 + Math.random() * 0.25, 6, 5);
-    const bush = new THREE.Mesh(bushGeo, mat("#388E3C", { roughness: 0.55 }));
+    const bushGeo = new SphereGeometry(0.2 + Math.random() * 0.25, 6, 5);
+    const bush = new Mesh(bushGeo, mat("#388E3C", { roughness: 0.55 }));
     bush.position.set(bx, 0.15, bz);
     bush.scale.set(1, 0.7, 1);
     bush.castShadow = true;
@@ -146,14 +167,14 @@ function buildPark(scene) {
     const fz = Math.sin(angle) * radius;
 
     // Stem
-    const stemGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.25, 4);
-    const stem = new THREE.Mesh(stemGeo, mat("#388E3C"));
+    const stemGeo = new CylinderGeometry(0.01, 0.01, 0.25, 4);
+    const stem = new Mesh(stemGeo, mat("#388E3C"));
     stem.position.set(fx, 0.12, fz);
     scene.add(stem);
 
     // Petal
-    const petalGeo = new THREE.SphereGeometry(0.03, 4, 4);
-    const petal = new THREE.Mesh(petalGeo, mat(flowerColors[i % flowerColors.length]));
+    const petalGeo = new SphereGeometry(0.03, 4, 4);
+    const petal = new Mesh(petalGeo, mat(flowerColors[i % flowerColors.length]));
     petal.position.set(fx, 0.26, fz);
     scene.add(petal);
   }
@@ -163,25 +184,25 @@ function buildPark(scene) {
     [0, 5.5, 0], [0, -5.5, Math.PI], [5.5, 0, Math.PI / 2], [-5.5, 0, -Math.PI / 2],
   ];
   benchPositions.forEach(([bx, bz, rot]) => {
-    const bench = new THREE.Group();
-    const seatGeo = new THREE.BoxGeometry(2, 0.06, 0.5);
-    const seat = new THREE.Mesh(seatGeo, mat("#8D6E63", { roughness: 0.5 }));
+    const bench = new Group();
+    const seatGeo = new BoxGeometry(2, 0.06, 0.5);
+    const seat = new Mesh(seatGeo, mat("#8D6E63", { roughness: 0.5 }));
     seat.position.y = 0.45;
     seat.castShadow = true;
     bench.add(seat);
     // Legs
     for (let lx = -0.8; lx <= 0.8; lx += 1.6) {
       for (let lz = -0.15; lz <= 0.15; lz += 0.3) {
-        const legGeo = new THREE.BoxGeometry(0.06, 0.42, 0.06);
-        const leg = new THREE.Mesh(legGeo, mat("#5D4037", { roughness: 0.4 }));
+        const legGeo = new BoxGeometry(0.06, 0.42, 0.06);
+        const leg = new Mesh(legGeo, mat("#5D4037", { roughness: 0.4 }));
         leg.position.set(lx, 0.21, lz);
         leg.castShadow = true;
         bench.add(leg);
       }
     }
     // Backrest
-    const backGeo = new THREE.BoxGeometry(2, 0.35, 0.05);
-    const back = new THREE.Mesh(backGeo, mat("#8D6E63", { roughness: 0.5 }));
+    const backGeo = new BoxGeometry(2, 0.35, 0.05);
+    const back = new Mesh(backGeo, mat("#8D6E63", { roughness: 0.5 }));
     back.position.set(0, 0.65, -0.22);
     back.castShadow = true;
     bench.add(back);
@@ -192,7 +213,7 @@ function buildPark(scene) {
 
   // ─── LIGHTING ───────────────────────────────────────────────
   // Sun (directional)
-  const sun = new THREE.DirectionalLight("#FFF8E1", 1.2);
+  const sun = new DirectionalLight("#FFF8E1", 1.2);
   sun.position.set(10, 18, -5);
   sun.castShadow = true;
   sun.shadow.mapSize.width = 2048;
@@ -207,17 +228,17 @@ function buildPark(scene) {
   scene.add(sun);
 
   // Sky / ambient
-  scene.add(new THREE.AmbientLight("#BBDEFB", 0.55));
+  scene.add(new AmbientLight("#BBDEFB", 0.55));
 
   // Subtle fill light from below (bounce from grass)
-  scene.add(new THREE.HemisphereLight("#87CEEB", "#388E3C", 0.3));
+  scene.add(new HemisphereLight("#87CEEB", "#388E3C", 0.3));
 }
 
 // ═══════════════════════════════════════════════════════════════
 // BUILD LOW-POLY HUMANOID AVATAR (spheres, capsules — no boxes)
 // ═══════════════════════════════════════════════════════════════
 function createAvatar(scene) {
-  const avatar = new THREE.Group();
+  const avatar = new Group();
   avatar.name = "avatar";
 
   // Material helpers
@@ -230,7 +251,7 @@ function createAvatar(scene) {
   const darkShoe = () => mat("#1A1A1A", { roughness: 0.35 });
 
   function addMesh(group, geo, materialFn, pos, casts = true) {
-    const m = new THREE.Mesh(geo, materialFn());
+    const m = new Mesh(geo, materialFn());
     m.position.copy(pos);
     m.castShadow = casts;
     m.receiveShadow = casts;
@@ -240,12 +261,12 @@ function createAvatar(scene) {
 
   // ─── FEET ────────────────────────────────────────────────────
   function createFoot() {
-    const foot = new THREE.Group();
+    const foot = new Group();
     foot.name = "foot";
     // Shoe body (rounded cylinder for shoe shape)
-    addMesh(foot, new THREE.CylinderGeometry(0.04, 0.05, 0.12, 8), darkShoe, new THREE.Vector3(0, 0.03, 0.05));
+    addMesh(foot, new CylinderGeometry(0.04, 0.05, 0.12, 8), darkShoe, new Vector3(0, 0.03, 0.05));
     // Sole (flat box)
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.025, 0.16), shoeMat());
+    const sole = new Mesh(new BoxGeometry(0.11, 0.025, 0.16), shoeMat());
     sole.position.set(0, -0.02, 0.05);
     sole.castShadow = true;
     sole.receiveShadow = true;
@@ -255,10 +276,10 @@ function createAvatar(scene) {
 
   // ─── LOWER LEG (knee to ankle) ──────────────────────────────
   function createLowerLeg() {
-    const leg = new THREE.Group();
+    const leg = new Group();
     leg.name = "lowerLeg";
     const len = 0.36;
-    addMesh(leg, new THREE.CylinderGeometry(0.055, 0.065, len, 8), pantsMat, new THREE.Vector3(0, -len / 2, 0));
+    addMesh(leg, new CylinderGeometry(0.055, 0.065, len, 8), pantsMat, new Vector3(0, -len / 2, 0));
 
     const foot = createFoot();
     foot.position.set(0, -len - 0.01, 0);
@@ -269,10 +290,10 @@ function createAvatar(scene) {
 
   // ─── UPPER LEG (hip to knee) ────────────────────────────────
   function createUpperLeg() {
-    const leg = new THREE.Group();
+    const leg = new Group();
     leg.name = "upperLeg";
     const len = 0.4;
-    addMesh(leg, new THREE.CylinderGeometry(0.065, 0.075, len, 8), pantsMat, new THREE.Vector3(0, -len / 2, 0));
+    addMesh(leg, new CylinderGeometry(0.065, 0.075, len, 8), pantsMat, new Vector3(0, -len / 2, 0));
 
     const lowerLeg = createLowerLeg();
     lowerLeg.position.set(0, -len, 0);
@@ -283,18 +304,18 @@ function createAvatar(scene) {
 
   // ─── HAND ────────────────────────────────────────────────────
   function createHand() {
-    const hand = new THREE.Group();
+    const hand = new Group();
     hand.name = "hand";
-    addMesh(hand, new THREE.SphereGeometry(0.045, 6, 4), skinMat, new THREE.Vector3(0, 0, 0));
+    addMesh(hand, new SphereGeometry(0.045, 6, 4), skinMat, new Vector3(0, 0, 0));
     return hand;
   }
 
   // ─── FOREARM (elbow to wrist) ───────────────────────────────
   function createForearm() {
-    const arm = new THREE.Group();
+    const arm = new Group();
     arm.name = "forearm";
     const len = 0.26;
-    addMesh(arm, new THREE.CylinderGeometry(0.04, 0.05, len, 8), skinMat, new THREE.Vector3(0, -len / 2, 0));
+    addMesh(arm, new CylinderGeometry(0.04, 0.05, len, 8), skinMat, new Vector3(0, -len / 2, 0));
 
     const hand = createHand();
     hand.position.set(0, -len, 0);
@@ -305,10 +326,10 @@ function createAvatar(scene) {
 
   // ─── UPPER ARM (shoulder to elbow) ──────────────────────────
   function createUpperArm() {
-    const arm = new THREE.Group();
+    const arm = new Group();
     arm.name = "upperArm";
     const len = 0.3;
-    addMesh(arm, new THREE.CylinderGeometry(0.045, 0.055, len, 8), skinMat, new THREE.Vector3(0, -len / 2, 0));
+    addMesh(arm, new CylinderGeometry(0.045, 0.055, len, 8), skinMat, new Vector3(0, -len / 2, 0));
 
     const forearm = createForearm();
     forearm.position.set(0, -len, 0);
@@ -318,56 +339,56 @@ function createAvatar(scene) {
   }
 
   // ─── TORSO (pelvis to shoulders) ────────────────────────────
-  const torsoGroup = new THREE.Group();
+  const torsoGroup = new Group();
   torsoGroup.name = "torso";
   // Use a tapered shape: wider at top, narrower at waist
   // Main torso (wider at top, narrower at waist)
-  addMesh(torsoGroup, new THREE.CylinderGeometry(0.13, 0.16, 0.38, 8), shirtMat, new THREE.Vector3(0, 0.22, 0));
+  addMesh(torsoGroup, new CylinderGeometry(0.13, 0.16, 0.38, 8), shirtMat, new Vector3(0, 0.22, 0));
   // Slightly wider chest
-  addMesh(torsoGroup, new THREE.CylinderGeometry(0.16, 0.17, 0.1, 8), shirtMat, new THREE.Vector3(0, 0.44, 0));
+  addMesh(torsoGroup, new CylinderGeometry(0.16, 0.17, 0.1, 8), shirtMat, new Vector3(0, 0.44, 0));
 
   // ─── NECK ───────────────────────────────────────────────────
-  const neckGroup = new THREE.Group();
+  const neckGroup = new Group();
   neckGroup.name = "neck";
   neckGroup.position.set(0, 0.5, 0);
-  addMesh(neckGroup, new THREE.CylinderGeometry(0.04, 0.05, 0.1, 8), skinMat, new THREE.Vector3(0, 0.05, 0));
+  addMesh(neckGroup, new CylinderGeometry(0.04, 0.05, 0.1, 8), skinMat, new Vector3(0, 0.05, 0));
 
   // ─── HEAD (sphere, eyes, hair) ──────────────────────────────
-  const headGroup = new THREE.Group();
+  const headGroup = new Group();
   headGroup.name = "head";
   headGroup.position.y = 0.1;
 
   // Head sphere
-  addMesh(headGroup, new THREE.SphereGeometry(0.1, 12, 10), skinMat, new THREE.Vector3(0, 0.1, 0), true);
+  addMesh(headGroup, new SphereGeometry(0.1, 12, 10), skinMat, new Vector3(0, 0.1, 0), true);
 
   // Eyes (positioned at front = +Z)
   for (let ex = -0.04; ex <= 0.04; ex += 0.08) {
-    const eyeGeo = new THREE.SphereGeometry(0.015, 6, 4);
-    const eye = new THREE.Mesh(eyeGeo, eyeMat());
+    const eyeGeo = new SphereGeometry(0.015, 6, 4);
+    const eye = new Mesh(eyeGeo, eyeMat());
     eye.position.set(ex, 0.12, 0.088);
     headGroup.add(eye);
     // Pupil highlight
-    const pupilGeo = new THREE.SphereGeometry(0.005, 4, 3);
-    const pupil = new THREE.Mesh(pupilGeo, new THREE.MeshStandardMaterial({ color: "#FFFFFF", roughness: 0.1 }));
+    const pupilGeo = new SphereGeometry(0.005, 4, 3);
+    const pupil = new Mesh(pupilGeo, new MeshStandardMaterial({ color: "#FFFFFF", roughness: 0.1 }));
     pupil.position.set(ex, 0.122, 0.098);
     headGroup.add(pupil);
   }
 
   // Nose (tiny bump)
-  addMesh(headGroup, new THREE.SphereGeometry(0.012, 4, 3), mat("#FFC0A8", { roughness: 0.5 }), new THREE.Vector3(0, 0.11, 0.1), false);
+  addMesh(headGroup, new SphereGeometry(0.012, 4, 3), mat("#FFC0A8", { roughness: 0.5 }), new Vector3(0, 0.11, 0.1), false);
 
   // Hair on top
-  addMesh(headGroup, new THREE.SphereGeometry(0.105, 8, 6), hairMat, new THREE.Vector3(0, 0.135, 0), false);
+  addMesh(headGroup, new SphereGeometry(0.105, 8, 6), hairMat, new Vector3(0, 0.135, 0), false);
 
   // Cap
-  addMesh(headGroup, new THREE.CylinderGeometry(0.07, 0.09, 0.06, 8), darkShoe, new THREE.Vector3(0, 0.17, 0.02), false);
-  addMesh(headGroup, new THREE.BoxGeometry(0.14, 0.015, 0.07), darkShoe, new THREE.Vector3(0, 0.17, 0.08), false);
+  addMesh(headGroup, new CylinderGeometry(0.07, 0.09, 0.06, 8), darkShoe, new Vector3(0, 0.17, 0.02), false);
+  addMesh(headGroup, new BoxGeometry(0.14, 0.015, 0.07), darkShoe, new Vector3(0, 0.17, 0.08), false);
 
   neckGroup.add(headGroup);
   torsoGroup.add(neckGroup);
 
   // ─── SHOULDERS ──────────────────────────────────────────────
-  const leftShoulder = new THREE.Group();
+  const leftShoulder = new Group();
   leftShoulder.name = "leftShoulder";
   leftShoulder.position.set(-0.19, 0.48, 0);
   const leftArm = createUpperArm();
@@ -376,7 +397,7 @@ function createAvatar(scene) {
   leftShoulder.userData.arm = leftArm;
   torsoGroup.add(leftShoulder);
 
-  const rightShoulder = new THREE.Group();
+  const rightShoulder = new Group();
   rightShoulder.name = "rightShoulder";
   rightShoulder.position.set(0.19, 0.48, 0);
   const rightArm = createUpperArm();
@@ -388,7 +409,7 @@ function createAvatar(scene) {
   // ─── HIPS ───────────────────────────────────────────────────
   const PELVIS_Y = 0.0; // hips pivot at pelvis level
 
-  const leftHip = new THREE.Group();
+  const leftHip = new Group();
   leftHip.name = "leftHip";
   leftHip.position.set(-0.08, PELVIS_Y, 0);
   const leftLeg = createUpperLeg();
@@ -397,7 +418,7 @@ function createAvatar(scene) {
   leftHip.userData.leg = leftLeg;
   torsoGroup.add(leftHip);
 
-  const rightHip = new THREE.Group();
+  const rightHip = new Group();
   rightHip.name = "rightHip";
   rightHip.position.set(0.08, PELVIS_Y, 0);
   const rightLeg = createUpperLeg();
@@ -407,8 +428,8 @@ function createAvatar(scene) {
   torsoGroup.add(rightHip);
 
   // ─── SHADOW DISC ────────────────────────────────────────────
-  const shadowGeo = new THREE.CircleGeometry(0.18, 16);
-  const shadowDisc = new THREE.Mesh(shadowGeo, new THREE.MeshBasicMaterial({
+  const shadowGeo = new CircleGeometry(0.18, 16);
+  const shadowDisc = new Mesh(shadowGeo, new MeshBasicMaterial({
     color: "#000000", transparent: true, opacity: 0.22, depthWrite: false,
   }));
   shadowDisc.rotation.x = -Math.PI / 2;
@@ -537,11 +558,11 @@ export default function CityCanvas({ onLoaded }) {
 
     try {
       // Sanity-check that THREE loaded properly
-      if (typeof THREE.MeshStandardMaterial !== "function") {
+      if (typeof MeshStandardMaterial !== "function") {
         throw new Error("Three.js MeshStandardMaterial unavailable — check your bundle");
       }
 
-      const renderer = new THREE.WebGLRenderer({
+      const renderer = new WebGLRenderer({
         canvas,
         antialias: true,
         alpha: false,
@@ -549,12 +570,12 @@ export default function CityCanvas({ onLoaded }) {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(canvas.clientWidth, canvas.clientHeight);
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.type = PCFSoftShadowMap;
 
-      const scene = new THREE.Scene();
+      const scene = new Scene();
       sceneRef.current = scene;
 
-      const camera = new THREE.PerspectiveCamera(
+      const camera = new PerspectiveCamera(
         55,
         canvas.clientWidth / canvas.clientHeight,
         0.1,
@@ -663,7 +684,7 @@ export default function CityCanvas({ onLoaded }) {
         const camHeight = 3.8;
         const behindX = px - Math.sin(rot) * camDist;
         const behindZ = pz - Math.cos(rot) * camDist;
-        const camTarget = new THREE.Vector3(behindX, py + camHeight, behindZ);
+        const camTarget = new Vector3(behindX, py + camHeight, behindZ);
         camera.position.lerp(camTarget, 1 - Math.exp(-4 * dt));
         camera.lookAt(px, py + 0.65, pz);
 
