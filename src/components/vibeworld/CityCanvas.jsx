@@ -122,19 +122,7 @@ function buildPark(scene) {
   inner.name = "innerGrass";
   scene.add(inner);
 
-  // ─── OCEAN FLOOR — visible through translucent shallow water ──
-  const oceanFloorGeo = new PlaneGeometry(56, OCEAN_DEPTH + 8, 1, 1);
-  const oceanFloorMat = new MeshBasicMaterial();
-  oceanFloorMat.color = new Color("#1B5E8A");
-  oceanFloorMat.side = THREE.BackSide;
-  const oceanFloor = new Mesh(oceanFloorGeo, oceanFloorMat);
-  oceanFloor.rotation.x = -Math.PI / 2;
-  oceanFloor.position.set(0, -0.20, SHORELINE_Z + 5 + OCEAN_DEPTH / 2);
-  oceanFloor.renderOrder = -1;
-  oceanFloor.name = "oceanFloor";
-  scene.add(oceanFloor);
-
-  // Dirt path circle (in park zone, behind player)
+  // ─── DIRT PATH ──────────────────────────────────────────────
   const pathRing = new RingGeometry(14, 14.7, 64);
   const pathMat = mat("#C8A96E", { roughness: 0.9 });
   const path = new Mesh(pathRing, pathMat);
@@ -155,7 +143,6 @@ function buildPark(scene) {
   // ─── TREES ──────────────────────────────────────────────────
   TREE_POSITIONS.forEach(([tx, tz, scale]) => {
     const tree = new Group();
-
     const trunkGeo = new CylinderGeometry(0.08 * scale, 0.12 * scale, 2 * scale, 8);
     const trunkMat = mat("#6D4C41", { roughness: 0.7 });
     const trunk = new Mesh(trunkGeo, trunkMat);
@@ -163,7 +150,6 @@ function buildPark(scene) {
     trunk.castShadow = true;
     trunk.receiveShadow = true;
     tree.add(trunk);
-
     const canopyColors = ["#388E3C", "#43A047", "#2E7D32"];
     for (let i = 0; i < 3; i++) {
       const canopyGeo = new SphereGeometry(0.6 * scale - i * 0.08, 8, 6);
@@ -175,13 +161,12 @@ function buildPark(scene) {
       canopy.receiveShadow = true;
       tree.add(canopy);
     }
-
     tree.position.set(tx, 0, tz);
     tree.rotation.y = Math.random() * Math.PI;
     scene.add(tree);
   });
 
-  // ─── BUSHES (grass side only) ────────────────────────────────
+  // ─── BUSHES ──────────────────────────────────────────────────
   for (let i = 0; i < 30; i++) {
     let bx, bz;
     do {
@@ -200,7 +185,7 @@ function buildPark(scene) {
     scene.add(bush);
   }
 
-  // ─── SMALL FLOWERS (grass side only) ─────────────────────────
+  // ─── FLOWERS ─────────────────────────────────────────────────
   const flowerColors = ["#FFEB3B", "#FF9800", "#E91E63", "#9C27B0", "#FFFFFF"];
   for (let i = 0; i < 60; i++) {
     let fx, fz;
@@ -210,46 +195,35 @@ function buildPark(scene) {
       fx = Math.cos(angle) * radius;
       fz = Math.sin(angle) * radius;
     } while (fz > 4 || fz < -18);
-
     const stemGeo = new CylinderGeometry(0.01, 0.01, 0.25, 4);
-    const stemMat = mat("#388E3C");
-    const stem = new Mesh(stemGeo, stemMat);
+    const stem = new Mesh(stemGeo, mat("#388E3C"));
     stem.position.set(fx, 0.12, fz);
     scene.add(stem);
-
-    const petalGeo = new SphereGeometry(0.03, 4, 4);
-    const petalMat = mat(flowerColors[i % flowerColors.length]);
-    const petal = new Mesh(petalGeo, petalMat);
+    const petal = new Mesh(new SphereGeometry(0.03, 4, 4), mat(flowerColors[i % flowerColors.length]));
     petal.position.set(fx, 0.26, fz);
     scene.add(petal);
   }
 
-  // ─── BENCHES (park zone only) ────────────────────────────────
+  // ─── BENCHES ─────────────────────────────────────────────────
   const benchPositions = [
     [0, -3, 0], [7, -8, Math.PI / 2], [-7, -8, -Math.PI / 2],
     [10, -2, Math.PI / 3], [-10, -2, -Math.PI / 3],
   ];
   benchPositions.forEach(([bx, bz, rot]) => {
     const bench = new Group();
-    const seatGeo = new BoxGeometry(2, 0.06, 0.5);
-    const seatMat = mat("#8D6E63", { roughness: 0.5 });
-    const seat = new Mesh(seatGeo, seatMat);
+    const seat = new Mesh(new BoxGeometry(2, 0.06, 0.5), mat("#8D6E63", { roughness: 0.5 }));
     seat.position.y = 0.45;
     seat.castShadow = true;
     bench.add(seat);
     for (let lx = -0.8; lx <= 0.8; lx += 1.6) {
       for (let lz = -0.15; lz <= 0.15; lz += 0.3) {
-        const legGeo = new BoxGeometry(0.06, 0.42, 0.06);
-        const legMat = mat("#5D4037", { roughness: 0.4 });
-        const leg = new Mesh(legGeo, legMat);
+        const leg = new Mesh(new BoxGeometry(0.06, 0.42, 0.06), mat("#5D4037", { roughness: 0.4 }));
         leg.position.set(lx, 0.21, lz);
         leg.castShadow = true;
         bench.add(leg);
       }
     }
-    const backGeo = new BoxGeometry(2, 0.35, 0.05);
-    const backMat = mat("#8D6E63", { roughness: 0.5 });
-    const back = new Mesh(backGeo, backMat);
+    const back = new Mesh(new BoxGeometry(2, 0.35, 0.05), mat("#8D6E63", { roughness: 0.5 }));
     back.position.set(0, 0.65, -0.22);
     back.castShadow = true;
     bench.add(back);
@@ -258,159 +232,68 @@ function buildPark(scene) {
     scene.add(bench);
   });
 
-  // ─── BEACH & OCEAN (forward from player — cosmic shoreline) ──
-  // Player at z=5, faces +Z. Grass z=-22..6, open park z=6..14, sand z=14..20, water z=20+
-
-  // ─── OPEN PARK EXTENSION — extra grass before beach begins ─────
+  // ─── BEACH — warm sand zones before water ────────────────────
   const bufferGeo = new PlaneGeometry(60, 8);
-  const bufferMat = mat("#5CB860", { roughness: 0.78 });
-  const buffer = new Mesh(bufferGeo, bufferMat);
+  const buffer = new Mesh(bufferGeo, mat("#5CB860", { roughness: 0.78 }));
   buffer.rotation.x = -Math.PI / 2;
   buffer.position.set(0, -0.002, 10);
   buffer.receiveShadow = true;
-  buffer.name = "bufferGrass";
   scene.add(buffer);
 
-  // ─── SAND ZONES — warm, walkable beach ───────────────────────
-
-  // Dry sand — warm golden, from grass toward shoreline
-  const drySandGeo = new PlaneGeometry(56, 4);
-  const drySandMat = mat("#E8B47E", { roughness: 0.5 });
-  const drySand = new Mesh(drySandGeo, drySandMat);
+  const drySand = new Mesh(new PlaneGeometry(56, 4), mat("#E8B47E", { roughness: 0.5 }));
   drySand.rotation.x = -Math.PI / 2;
   drySand.position.set(0, 0.002, 15);
   drySand.receiveShadow = true;
-  drySand.name = "drySand";
   scene.add(drySand);
 
-  // Mid sand — richer golden-brown tone
-  const midSandGeo = new PlaneGeometry(56, 3);
-  const midSandMat = mat("#D8A76B", { roughness: 0.45 });
-  const midSand = new Mesh(midSandGeo, midSandMat);
+  const midSand = new Mesh(new PlaneGeometry(56, 3), mat("#D8A76B", { roughness: 0.45 }));
   midSand.rotation.x = -Math.PI / 2;
   midSand.position.set(0, 0.003, 17);
   midSand.receiveShadow = true;
   scene.add(midSand);
 
-  // Wet sand — darker damp sand at shoreline
-  const wetSandGeo = new PlaneGeometry(56, 2);
-  const wetSandMat = mat("#B07048", { roughness: 0.28, metalness: 0.1 });
-  const wetSand = new Mesh(wetSandGeo, wetSandMat);
+  const wetSand = new Mesh(new PlaneGeometry(56, 2), mat("#B07048", { roughness: 0.28, metalness: 0.1 }));
   wetSand.rotation.x = -Math.PI / 2;
   wetSand.position.set(0, 0.004, 19.5);
   wetSand.receiveShadow = true;
-  wetSand.name = "wetSand";
   scene.add(wetSand);
 
-  // Sand patches — subtle variation in dry sand zone
-  for (let i = 0; i < 12; i++) {
-    const px = (Math.random() - 0.5) * 50;
-    const pz = 13 + Math.random() * 3;
-    const r = 0.3 + Math.random() * 0.7;
-    const patchGeo = new CircleGeometry(r, 12);
-    const shade = Math.random() > 0.5 ? "#EAA878" : "#D89A62";
-    const patchMat = mat(shade, { roughness: 0.55 });
-    const patch = new Mesh(patchGeo, patchMat);
-    patch.rotation.x = -Math.PI / 2;
-    patch.position.set(px, 0.006, pz);
-    patch.receiveShadow = true;
-    scene.add(patch);
-  }
-
-  // ─── SHALLOW WATER — bright turquoise near shore (ref #00E5FF) ─
-  const SHALLOW_SEGMENTS_X = 56;
-  const SHALLOW_SEGMENTS_Z = 16;
-  const shallowGeo = new PlaneGeometry(56, 5, SHALLOW_SEGMENTS_X, SHALLOW_SEGMENTS_Z);
-  const shallowMat = new MeshBasicMaterial();
-  shallowMat.color = new Color("#00E5FF");
-  shallowMat.transparent = true;
-  shallowMat.opacity = 0.72;
-  shallowMat.depthWrite = false;
-  const shallow = new Mesh(shallowGeo, shallowMat);
-  shallow.rotation.x = -Math.PI / 2;
-  shallow.position.set(0, -0.004, SHORELINE_Z + 2.5);
-  shallow.receiveShadow = false;
-  shallow.name = "shallow";
-  shallow.renderOrder = 1;
-  scene.add(shallow);
-  scene.userData.shallow = shallow;
-  scene.userData._shallowBaseZ = SHORELINE_Z + 2.5;
-  // Store original Z positions for wave animation
-  const shallowOrigZ = new Float32Array(shallowGeo.attributes.position.array.length / 3);
-  const shallowArr = shallowGeo.attributes.position.array;
-  for (let i = 0; i < shallowArr.length; i += 3) {
-    shallowOrigZ[i / 3] = shallowArr[i + 2]; // Z after rotation (-PI/2 about X): arr[i+2] = -originalY
-  }
-  scene.userData._shallowOrigZ = shallowOrigZ;
-
-  // ─── DEEP OCEAN — azure blue (ref #2D8BCC) ─
-  const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 1, 1);
+  // ─── OCEAN — one continuous body of water (shore to horizon) ──
+  const oceanSegments = 54;
+  const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 56, oceanSegments);
   const oceanMat = new MeshBasicMaterial();
-  oceanMat.color = new Color("#2D8BCC");
+  oceanMat.color = new Color("#2098CC");
+  oceanMat.side = THREE.DoubleSide;
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
-  ocean.position.set(0, -0.006, SHORELINE_Z + 5 + OCEAN_DEPTH / 2);
-  ocean.receiveShadow = false;
-  ocean.name = "ocean";
+  ocean.position.set(0, 0, SHORELINE_Z + OCEAN_DEPTH / 2);
   ocean.renderOrder = 0;
+  ocean.name = "ocean";
   scene.add(ocean);
+
+  // Store original vertex positions for wave animation
+  const origArr = new Float32Array(oceanGeo.attributes.position.array.length);
+  origArr.set(oceanGeo.attributes.position.array);
   scene.userData.ocean = ocean;
-  scene.userData._oceanBaseZ = SHORELINE_Z + 5 + OCEAN_DEPTH / 2;
+  scene.userData._oceanOrig = origArr;
+  scene.userData._oceanCenterZ = SHORELINE_Z + OCEAN_DEPTH / 2;
 
-  // ─── LAYERED SHORELINE TRANSITION ────────────────────────────
-
-  // Layer 1: Wet-sand edge — thin dark rim at waterline
-  // Layer 1: Wet-sand edge — removed, replaced by foam directly
-
-  // Foam edge — bright white shoreline foam (ref #FFFFFF)
-  const foamGeo = new PlaneGeometry(56, 2.0);
+  // ─── FOAM STRIP — white edge at shoreline ────────────────────
+  const foamGeo = new PlaneGeometry(56, 1.5);
   const foamMat = new MeshBasicMaterial();
   foamMat.color = new Color("#FFFFFF");
   foamMat.transparent = true;
-  foamMat.opacity = 0.55;
+  foamMat.opacity = 0.35;
   foamMat.depthWrite = false;
   const foam = new Mesh(foamGeo, foamMat);
   foam.rotation.x = -Math.PI / 2;
-  foam.position.set(0, 0.006, SHORELINE_Z + 0.15);
-  foam.name = "foam";
+  foam.position.set(0, 0.005, SHORELINE_Z + 0.3);
   foam.renderOrder = 2;
+  foam.name = "foam";
   scene.add(foam);
   scene.userData.foam = foam;
-  scene.userData._foamBaseZ = SHORELINE_Z + 0.15;
+  scene.userData._foamBaseZ = SHORELINE_Z + 0.3;
 
-  // Shorebreak — crisp water-edge line
-  const shorebreakGeo = new PlaneGeometry(56, 0.2);
-  const shorebreakMat = new MeshBasicMaterial();
-  shorebreakMat.color = new Color("#FFFFFF");
-  shorebreakMat.transparent = true;
-  shorebreakMat.opacity = 0.7;
-  shorebreakMat.depthWrite = false;
-  const shorebreak = new Mesh(shorebreakGeo, shorebreakMat);
-  shorebreak.rotation.x = -Math.PI / 2;
-  shorebreak.position.set(0, 0.007, SHORELINE_Z + 0.05);
-  shorebreak.name = "shorebreak";
-  shorebreak.renderOrder = 3;
-  scene.add(shorebreak);
-  scene.userData.shorebreak = shorebreak;
-  scene.userData._shorebreakBaseZ = SHORELINE_Z + 0.05;
-
-  // Wave wash — surging white foam that crashes onto sand (animated)
-  const waveWashGeo = new PlaneGeometry(56, 2.5);
-  const waveWashMat = new MeshBasicMaterial();
-  waveWashMat.color = new Color("#FFFFFF");
-  waveWashMat.transparent = true;
-  waveWashMat.opacity = 0.15;
-  waveWashMat.depthWrite = false;
-  const waveWash = new Mesh(waveWashGeo, waveWashMat);
-  waveWash.rotation.x = -Math.PI / 2;
-  waveWash.position.set(0, 0.006, SHORELINE_Z - 0.4);
-  waveWash.name = "waveWash";
-  waveWash.renderOrder = 4;
-  scene.add(waveWash);
-  scene.userData.waveWash = waveWash;
-
-  // Store for animation reference
-  // Store for animation reference
   scene.userData.shorelineZ = SHORELINE_Z;
 
   // ─── LIGHTING (cosmic night — nebula purple/blue mood) ─────────
@@ -1194,75 +1077,54 @@ export default function CityCanvas({ onLoaded }) {
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
-        // ─── CRASHING WAVES ────────────────────────────────────────
-        const waveCycle = t * 0.5;                   // slow overall rhythm
-        const tideBase = Math.sin(waveCycle);         // -1 → 1: main tide position
-        const crashPulse = Math.sin(waveCycle * 3.0); // faster wave pulse for crash
-
-        // Ocean: gentle tide shift only
+        // ─── OCEAN WAVES — forward/backward motion only ──────────
         const oceanMesh = scene.userData.ocean;
-        if (oceanMesh) {
-          oceanMesh.position.z = scene.userData._oceanBaseZ + tideBase * 0.25;
-        }
+        const origArr = scene.userData._oceanOrig;
+        const oceanCenterZ = scene.userData._oceanCenterZ || 47;
+        const SLZ = scene.userData.shorelineZ || 20;
 
-        // Shallow water: deforming wave that builds up and surges onto sand
-        const shallowMesh = scene.userData.shallow;
-        const origZ = scene.userData._shallowOrigZ;
-        if (shallowMesh && origZ) {
-          const pos = shallowMesh.geometry.attributes.position;
+        if (oceanMesh && origArr) {
+          const pos = oceanMesh.geometry.attributes.position;
           const arr = pos.array;
-          // Overall mesh shift with tide
-          shallowMesh.position.z = scene.userData._shallowBaseZ + tideBase * 0.3;
+          const waveT = t * 0.55; // main wave cycle
 
           for (let i = 0; i < arr.length; i += 3) {
-            const idx = i / 3;
-            const z = origZ[idx]; // -2.5 (shore side) to 2.5 (deep side)
+            // Restore base position
+            arr[i] = origArr[i];
+            arr[i + 1] = origArr[i + 1];
+            arr[i + 2] = origArr[i + 2];
 
-            // Convert to distance from shore: 0 = at shore, 5 = far edge
-            const distFromShore = z + 2.5;
+            // World Z of this vertex
+            const worldZ = oceanCenterZ + origArr[i + 2];
+            const dist = worldZ - SLZ; // 0 at shore, positive into ocean
 
-            // Wave builds up near shore, rolls forward, then crashes
-            const waveRise = Math.max(0, tideBase) * Math.max(0, crashPulse);
-            const swellHeight = Math.sin(distFromShore * 0.9 - waveCycle * 2.0 + Math.PI * 0.5) * 0.5 + 0.5;
+            // Only animate water near shoreline (first 10 units)
+            if (dist < 10 && dist >= 0) {
+              const fade = 1 - dist / 10; // 1 at shore, 0 at 10 units out
 
-            // Wave crest near the shore edge (distance 0-2.5 units)
-            const crestFactor = Math.max(0, 1 - distFromShore / 3.0);
-            const crestHeight = swellHeight * crestFactor * 0.25;
+              // Wave swell: rises near shore, creates rolling crest
+              const wavePhase = dist * 0.6 - waveT * 4.0;
+              const swell = Math.sin(wavePhase) * 0.5 + 0.5; // 0..1
+              const crest = Math.sin(wavePhase * 1.5) * 0.5 + 0.5;
 
-            // Surge forward when wave crashes
-            const surgeForce = waveRise * (1 - distFromShore / 5) * 0.5;
-            const surgeZ = z + surgeForce;
+              // Height: taller near shore
+              arr[i + 1] = swell * fade * 0.2;
 
-            arr[i + 1] = crestHeight;
-            arr[i + 2] = surgeZ;
+              // Forward surge during high tide
+              const tide = Math.sin(waveT) * 0.5 + 0.5; // 0..1 tide cycle
+              const surge = tide * fade * 0.18;
+              arr[i + 2] = origArr[i + 2] + surge;
+            }
           }
           pos.needsUpdate = true;
         }
 
-        // ─── SHORELINE ANIMATION — foam and wash follow the wave ──
-        const slz = scene.userData.shorelineZ || 20;
-
-        // Foam: brightens and moves with tide
+        // ─── FOAM STRIP — pulses with tide ───────────────────
         const foamMesh = scene.userData.foam;
         if (foamMesh && foamMesh.material) {
-          const foamPulse = 0.5 + crashPulse * 0.5;
-          foamMesh.material.opacity = Math.max(0.1, foamPulse * 0.7);
-          foamMesh.position.z = scene.userData._foamBaseZ + tideBase * 0.4 + Math.max(0, crashPulse) * 0.4;
-        }
-
-        // Shorebreak: thin white line at water's edge
-        const shorebreakMesh = scene.userData.shorebreak;
-        if (shorebreakMesh && shorebreakMesh.material) {
-          shorebreakMesh.material.opacity = 0.3 + Math.abs(crashPulse) * 0.5;
-          shorebreakMesh.position.z = scene.userData._shorebreakBaseZ + tideBase * 0.3;
-        }
-
-        // Wave wash: surges up onto the sand when wave crashes
-        const waveWashMesh = scene.userData.waveWash;
-        if (waveWashMesh && waveWashMesh.material) {
-          const surgeDist = Math.max(0, tideBase) * Math.max(0, crashPulse) * 1.5;
-          waveWashMesh.position.z = slz - 0.4 - surgeDist;
-          waveWashMesh.material.opacity = 0.05 + Math.max(0, crashPulse) * Math.max(0, tideBase) * 0.7;
+          const tide = Math.sin(t * 0.55) * 0.5 + 0.5;
+          foamMesh.material.opacity = 0.18 + tide * 0.55;
+          foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.7;
         }
 
         // ─── STARS TWINKLE ─────────────────────────────────────
