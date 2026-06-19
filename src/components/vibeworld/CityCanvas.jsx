@@ -99,23 +99,36 @@ function buildPark(scene) {
   // ─── SKY ────────────────────────────────────────────────────
   createCosmicSky(scene);
 
-  // ─── GRASS GROUND ───────────────────────────────────────────
+  // ─── GRASS GROUND (only park/grass side, shifted north) ─────
   const groundGeo = new PlaneGeometry(80, 80);
   const groundMat = mat("#4CAF50", { roughness: 0.85 });
   const ground = new Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.01;
+  ground.position.set(0, -0.01, 15);
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Inner walking area
+  // Inner walking area (centered on park)
   const innerGeo = new PlaneGeometry(PARK_RADIUS * 2, PARK_RADIUS * 2);
   const innerMat = mat("#5CB860", { roughness: 0.75 });
   const inner = new Mesh(innerGeo, innerMat);
   inner.rotation.x = -Math.PI / 2;
-  inner.position.y = -0.005;
+  inner.position.set(0, -0.005, 5);
   inner.receiveShadow = true;
   scene.add(inner);
+
+  // ─── SEA BED — opaque base under ocean, blocks grass ────────
+  const seaBedGeo = new PlaneGeometry(48, 48);
+  const seaBedMat = new MeshStandardMaterial();
+  seaBedMat.color = new Color("#0A1020");
+  seaBedMat.roughness = 0.9;
+  seaBedMat.metalness = 0.0;
+  const seaBed = new Mesh(seaBedGeo, seaBedMat);
+  seaBed.rotation.x = -Math.PI / 2;
+  seaBed.position.set(0, -0.008, -22);
+  seaBed.receiveShadow = true;
+  seaBed.name = "seaBed";
+  scene.add(seaBed);
 
   // Dirt path circle
   const pathRing = new RingGeometry(12, 12.6, 64);
@@ -248,7 +261,7 @@ function buildPark(scene) {
   // ─── SAND ZONES — wide, walkable, warm natural tones ─────────
 
   // Dry sand — warm golden, wide and spacious
-  const drySandGeo = new PlaneGeometry(46, 5);
+  const drySandGeo = new PlaneGeometry(40, 5);
   const drySandMat = mat("#DDBE98", { roughness: 0.6 });
   const drySand = new Mesh(drySandGeo, drySandMat);
   drySand.rotation.x = -Math.PI / 2;
@@ -258,7 +271,7 @@ function buildPark(scene) {
   scene.add(drySand);
 
   // Mid sand — slightly deeper tone
-  const midSandGeo = new PlaneGeometry(46, 3);
+  const midSandGeo = new PlaneGeometry(40, 3);
   const midSandMat = mat("#C8AE88", { roughness: 0.52 });
   const midSand = new Mesh(midSandGeo, midSandMat);
   midSand.rotation.x = -Math.PI / 2;
@@ -267,7 +280,7 @@ function buildPark(scene) {
   scene.add(midSand);
 
   // Wet sand — darker, metallic shimmer from cosmic light
-  const wetSandGeo = new PlaneGeometry(46, 2.5);
+  const wetSandGeo = new PlaneGeometry(40, 2.5);
   const wetSandMat = mat("#A89078", { roughness: 0.28, metalness: 0.18 });
   const wetSand = new Mesh(wetSandGeo, wetSandMat);
   wetSand.rotation.x = -Math.PI / 2;
@@ -278,7 +291,7 @@ function buildPark(scene) {
 
   // Scattered sand patches — natural grass transition
   for (let i = 0; i < 16; i++) {
-    const px = (Math.random() - 0.5) * 42;
+    const px = (Math.random() - 0.5) * 36;
     const pz = 2.5 + Math.random() * 3;
     const r = 0.3 + Math.random() * 1.2;
     const patchGeo = new CircleGeometry(r, 12);
@@ -291,12 +304,12 @@ function buildPark(scene) {
     scene.add(patch);
   }
 
-  // ─── SHALLOW WATER — above grass, below sand, highly visible ──
-  const shallowGeo = new PlaneGeometry(48, 4, 28, 8);
+  // ─── SHALLOW WATER — light blue-cyan, highly visible ────────
+  const shallowGeo = new PlaneGeometry(40, 4, 28, 8);
   const shallowMat = new MeshStandardMaterial();
-  shallowMat.color = new Color("#1E3C72");
-  shallowMat.roughness = 0.05;
-  shallowMat.metalness = 0.55;
+  shallowMat.color = new Color("#306898");
+  shallowMat.roughness = 0.04;
+  shallowMat.metalness = 0.6;
   shallowMat.transparent = true;
   shallowMat.opacity = 0.9;
   shallowMat.depthWrite = true;
@@ -308,14 +321,14 @@ function buildPark(scene) {
   scene.add(shallow);
   scene.userData.shallow = shallow;
 
-  // ─── DEEP OCEAN — above grass, below sand, high metalness ──
-  const oceanGeo = new PlaneGeometry(54, OCEAN_DEPTH, 44, 20);
+  // ─── DEEP OCEAN — medium blue with cosmic shimmer ───────────
+  const oceanGeo = new PlaneGeometry(44, OCEAN_DEPTH, 44, 20);
   const oceanMat = new MeshStandardMaterial();
-  oceanMat.color = new Color("#0C2048");
-  oceanMat.roughness = 0.04;
-  oceanMat.metalness = 0.9;
+  oceanMat.color = new Color("#1A3868");
+  oceanMat.roughness = 0.03;
+  oceanMat.metalness = 0.85;
   oceanMat.transparent = true;
-  oceanMat.opacity = 0.96;
+  oceanMat.opacity = 0.95;
   oceanMat.depthWrite = true;
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
@@ -328,7 +341,7 @@ function buildPark(scene) {
   // ─── LAYERED SHORELINE TRANSITION ────────────────────────────
 
   // Layer 1: Wet-sand edge glow (dark rim where sand meets water)
-  const sandEdgeGeo = new PlaneGeometry(46, 0.6);
+  const sandEdgeGeo = new PlaneGeometry(40, 0.6);
   const sandEdgeMat = new MeshBasicMaterial();
   sandEdgeMat.color = new Color("#7A6858");
   sandEdgeMat.transparent = true;
@@ -341,7 +354,7 @@ function buildPark(scene) {
   scene.add(sandEdge);
 
   // Layer 2: Foam edge — pale blue-white, main shoreline marker
-  const foamGeo = new PlaneGeometry(46, 1.4);
+  const foamGeo = new PlaneGeometry(40, 1.4);
   const foamMat = new MeshBasicMaterial();
   foamMat.color = new Color("#9EC8E4");
   foamMat.transparent = true;
@@ -355,7 +368,7 @@ function buildPark(scene) {
   scene.userData.foam = foam;
 
   // Layer 3: Shorebreak foam — thinner, brighter, slightly into water
-  const shorebreakGeo = new PlaneGeometry(44, 0.5);
+  const shorebreakGeo = new PlaneGeometry(38, 0.5);
   const shorebreakMat = new MeshBasicMaterial();
   shorebreakMat.color = new Color("#C4E0F0");
   shorebreakMat.transparent = true;
@@ -369,7 +382,7 @@ function buildPark(scene) {
   scene.userData.shorebreak = shorebreak;
 
   // Layer 4: Wave wash — semi-transparent water overlapping wet sand (animated)
-  const waveWashGeo = new PlaneGeometry(46, 0.9);
+  const waveWashGeo = new PlaneGeometry(40, 0.9);
   const waveWashMat = new MeshBasicMaterial();
   waveWashMat.color = new Color("#88C0D8");
   waveWashMat.transparent = true;
