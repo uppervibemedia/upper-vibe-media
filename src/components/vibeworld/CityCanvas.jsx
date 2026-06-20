@@ -95,8 +95,9 @@ function mat(hexColor, opts = {}) {
 // BUILD SCENE: Simple outdoor park
 // ═══════════════════════════════════════════════════════════════
 function buildPark(scene) {
-  // ─── SKY ────────────────────────────────────────────────────
+  // ─── SKY & SKYLINE ───────────────────────────────────────────
   createCosmicSky(scene);
+  createSkylineBackdrops(scene);
 
   // ─── LAYOUT CONSTANTS ────────────────────────────────────────
   const SHORELINE_Z = 20;
@@ -386,26 +387,50 @@ function createStarField(scene) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// DIRECTIONAL SKY IMAGES — four unique deep-space cosmic views
+// DIRECTIONAL SKYLINE IMAGES — four unique deep-space cosmic views
 // ═══════════════════════════════════════════════════════════════
 const BASE = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
-const SKY_FORWARD = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;   // No planet — North/Forward
-const SKY_RIGHT   = `${BASE}/df9a0847f_ChatGPTImageJun19202612_41_21PM.png`;   // Full planet (centered) — East/Right
-const SKY_BACK    = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`;   // No planet — South/Back
-const SKY_LEFT    = `${BASE}/e7caceb54_ChatGPTImageJun19202612_41_07PM.png`;   // Ringed planet + moon — West/Left
+const SKY_FORWARD = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;
+const SKY_RIGHT   = `${BASE}/df9a0847f_ChatGPTImageJun19202612_41_21PM.png`;
+const SKY_BACK    = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`;
+const SKY_LEFT    = `${BASE}/e7caceb54_ChatGPTImageJun19202612_41_07PM.png`;
 
 // ═══════════════════════════════════════════════════════════════
-// COSMIC SKYBOX — camera-centered cube, BackSide textures
-// BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
-//
-// Direction order (planets separated by non-planet views):
-//   Forward (+Z) = no planet  →  Right (+X) = planet
-//   Back    (-Z) = no planet  →  Left  (-X) = planet
+// COSMIC SKY — deep void behind everything (no planet images)
 // ═══════════════════════════════════════════════════════════════
 function createCosmicSky(scene) {
-  const loader = new THREE.TextureLoader();
   const SKYBOX_SIZE = 55;
 
+  const voidMat = new MeshBasicMaterial();
+  voidMat.color = new Color("#0a0a1e");
+  voidMat.side = THREE.BackSide;
+  voidMat.depthWrite = false;
+
+  const topMat = new MeshBasicMaterial();
+  topMat.color = new Color("#0a0a1e");
+  topMat.side = THREE.BackSide;
+  topMat.depthWrite = false;
+
+  const bottomMat = new MeshBasicMaterial();
+  bottomMat.color = new Color("#050510");
+  bottomMat.side = THREE.BackSide;
+  bottomMat.depthWrite = false;
+
+  const materials = [voidMat, voidMat, topMat, bottomMat, voidMat, voidMat];
+
+  const skybox = new Mesh(new BoxGeometry(SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE), materials);
+  skybox.name = "skybox";
+  skybox.renderOrder = -2; // Behind skyline
+  scene.add(skybox);
+
+  scene.fog = new Fog("#0A1525", 48, 60);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SKYLINE BACKDROPS — 8 directional billboards at fixed radius
+// ═══════════════════════════════════════════════════════════════
+function createSkylineBackdrops(scene) {
+  const loader = new THREE.TextureLoader();
   const loadTex = (url) => {
     const tex = loader.load(url);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -414,40 +439,44 @@ function createCosmicSky(scene) {
     return tex;
   };
 
-  // Four directional textures — planets only on East (+X) and West (-X)
-  const texForward = loadTex(SKY_FORWARD);  // +Z = North / Forward — no planet
-  const texRight   = loadTex(SKY_RIGHT);    // +X = East  / Right   — planet
-  const texBack    = loadTex(SKY_BACK);     // -Z = South / Back    — no planet
-  const texLeft    = loadTex(SKY_LEFT);     // -X = West  / Left    — planet
+  const texN  = loadTex(SKY_FORWARD);
+  const texE  = loadTex(SKY_RIGHT);
+  const texS  = loadTex(SKY_BACK);
+  const texW  = loadTex(SKY_LEFT);
 
-  // Top face: dark void (no image — keeps it clean)
-  const topMat = new MeshBasicMaterial();
-  topMat.color = new Color("#0a0a1e");
-  topMat.side = THREE.BackSide;
-  topMat.depthWrite = false;
-
-  // Bottom face: deep void (underground, rarely visible)
-  const bottomMat = new MeshBasicMaterial();
-  bottomMat.color = new Color("#050510");
-  bottomMat.side = THREE.BackSide;
-  bottomMat.depthWrite = false;
-
-  // Materials array in BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
-  const materials = [
-    new MeshBasicMaterial({ map: texRight,   side: THREE.BackSide, depthWrite: false }), // +X = Right/East  (planet)
-    new MeshBasicMaterial({ map: texLeft,    side: THREE.BackSide, depthWrite: false }), // -X = Left/West   (planet)
-    topMat,                                                                             // +Y = Top
-    bottomMat,                                                                          // -Y = Bottom
-    new MeshBasicMaterial({ map: texForward, side: THREE.BackSide, depthWrite: false }), // +Z = Forward/North (no planet)
-    new MeshBasicMaterial({ map: texBack,    side: THREE.BackSide, depthWrite: false }), // -Z = Back/South    (no planet)
+  // 8 directions — 4 images repeated for full coverage
+  const dirs = [
+    { angle: 0,           tex: texN },  // North (+Z)
+    { angle: Math.PI/4,   tex: texE },  // NE
+    { angle: Math.PI/2,   tex: texE },  // East (+X)
+    { angle: 3*Math.PI/4, tex: texS },  // SE
+    { angle: Math.PI,     tex: texS },  // South (-Z)
+    { angle: 5*Math.PI/4, tex: texW },  // SW
+    { angle: 3*Math.PI/2, tex: texW },  // West (-X)
+    { angle: 7*Math.PI/4, tex: texN },  // NW
   ];
 
-  const skybox = new Mesh(new BoxGeometry(SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE), materials);
-  skybox.name = "skybox";
-  skybox.renderOrder = -1; // Always render behind everything
-  scene.add(skybox);
+  const W = 50;
+  const H = 18;
+  const backdrops = [];
 
-  scene.fog = new Fog("#0A1525", 48, 60);
+  dirs.forEach(({ angle, tex }) => {
+    const geo = new PlaneGeometry(W, H);
+    const mat = new MeshBasicMaterial({
+      map: tex,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.92,
+      depthWrite: false,
+    });
+    const plane = new Mesh(geo, mat);
+    plane.renderOrder = -1;
+    plane.name = "skylineBackdrop";
+    backdrops.push({ mesh: plane, angle });
+    scene.add(plane);
+  });
+
+  scene.userData.skylineBackdrops = backdrops;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1132,8 +1161,24 @@ export default function CityCanvas({ onLoaded }) {
         // ─── SKYBOX — follows camera + slow drift rotation ─────────
         if (skybox) {
           skybox.position.copy(camera.position);
-          skybox.rotation.y += dt * 0.015; // Very slow Y-axis drift
-          skybox.rotation.x += dt * 0.003; // Tiny tilt for depth
+          skybox.rotation.y += dt * 0.015;
+          skybox.rotation.x += dt * 0.003;
+        }
+
+        // ─── SKYLINE BACKDROPS — fixed distance from camera ──────
+        const backdrops = scene.userData.skylineBackdrops;
+        if (backdrops) {
+          const DIST = 50;
+          const HL = 9; // horizon line height
+          const cx = camera.position.x;
+          const cz = camera.position.z;
+
+          backdrops.forEach(({ mesh, angle }) => {
+            const px = cx + Math.sin(angle) * DIST;
+            const pz = cz + Math.cos(angle) * DIST;
+            mesh.position.set(px, HL, pz);
+            mesh.lookAt(cx, HL, cz);
+          });
         }
 
         renderer.render(scene, camera);
