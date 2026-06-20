@@ -26,10 +26,22 @@ export default function StageVideoPlayer({
   const { isPlaying, togglePlay, currentTrack } = usePlayer() || {};
   const wasPlayingRef = useRef(false);
   const [embedFailed, setEmbedFailed] = useState(false);
+  const embedTimeoutRef = useRef(null);
 
   // Reset embed state when video changes
   useEffect(() => {
     setEmbedFailed(false);
+    // Clear any pending timeout
+    if (embedTimeoutRef.current) clearTimeout(embedTimeoutRef.current);
+    // Auto-fallback if iframe doesn't signal success within 8 seconds
+    if (video?.youtube_video_id) {
+      embedTimeoutRef.current = setTimeout(() => {
+        setEmbedFailed(true);
+      }, 8000);
+    }
+    return () => {
+      if (embedTimeoutRef.current) clearTimeout(embedTimeoutRef.current);
+    };
   }, [video?.youtube_video_id]);
 
   // When unmuting, pause global player
@@ -66,7 +78,7 @@ export default function StageVideoPlayer({
   }, []);
 
   const embedUrl = video?.youtube_video_id
-    ? `https://www.youtube.com/embed/${video.youtube_video_id}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&iv_load_policy=3&cc_load_policy=0&origin=${encodeURIComponent(window.location.origin)}`
+    ? `https://www.youtube.com/embed/${video.youtube_video_id}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&iv_load_policy=3&origin=${encodeURIComponent(window.location.origin)}`
     : null;
 
   const showFallback = embedFailed || !embedUrl;
