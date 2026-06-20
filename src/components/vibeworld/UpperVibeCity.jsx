@@ -280,18 +280,20 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Bottom player toggle: simple, instant, no stage side-effects ──
   const handleGlobalPlayToggle = useCallback(() => {
     // If paused but no track yet, start feed
-    if (!isPlaying && !currentTrack && sortedTracks?.length > 0 && playTrack) {
-      const pool = sortedTracks.slice(0, Math.min(5, sortedTracks.length));
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      if (pick) {
+    if (!isPlaying && !currentTrack && playTrack) {
+      const pool = sortedTracks?.length > 0
+        ? sortedTracks.slice(0, Math.min(5, sortedTracks.length))
+        : allTracks?.length > 0 ? allTracks : [];
+      if (pool.length > 0) {
+        const pick = pool[Math.floor(Math.random() * pool.length)];
         feedActiveRef.current = true;
-        feedIndexRef.current = sortedTracks.indexOf(pick);
+        feedIndexRef.current = (sortedTracks?.length > 0 ? sortedTracks : allTracks).indexOf(pick);
         playTrack(pick, "song");
+        return;
       }
-      return;
     }
     togglePlay?.();
-  }, [isPlaying, currentTrack, togglePlay, sortedTracks, playTrack]);
+  }, [isPlaying, currentTrack, togglePlay, sortedTracks, allTracks, playTrack]);
 
   // ── Stage proximity: resume global player when walking away from stage ──
   useEffect(() => {
