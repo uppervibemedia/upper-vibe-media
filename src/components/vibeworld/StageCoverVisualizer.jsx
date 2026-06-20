@@ -1,20 +1,27 @@
 import React, { useEffect, useRef } from "react";
 
 /**
- * StageCoverVisualizer — stable 16:9 stage screen with:
- *  - No flashing, no flickering, no rapid brightness changes
- *  - Subtle blurred backdrop (mostly static)
- *  - Sharp centered artwork filling most of the screen
- *  - Slow neon glow aura (gentle pulse only)
- *  - Tall audio-reactive equalizer bars as the main dynamic element
- *  - Organic bar movement — varied heights, natural feel
+ * StageCoverVisualizer — completely static 16:9 stage screen with:
+ *  - NO time-based animation on cover/backdrop/borders/glow (zero flicker)
+ *  - Sharp centered 16:9 artwork that never moves
+ *  - Only the equalizer bars animate — each bar moves independently
+ *    with incommensurable frequencies so they never loop identically
  *  - Renders to offscreen canvas for Three.js texture
  */
 
 const W = 1024;
 const H = 576; // 16:9
+const BAR_COUNT = 60;
 
 export { W as CANVAS_W, H as CANVAS_H };
+
+// ── Incommensurable base frequencies — these never sync up ─────────────
+// Using irrational-like ratios so the bar pattern doesn't repeat
+const F = [
+  0.73, 1.17, 1.63, 2.09, 2.51, 3.07, 3.43,
+  0.89, 1.31, 1.79, 2.23, 2.71, 3.19, 3.59,
+  0.97, 1.43, 1.91, 2.47, 2.89, 3.37,
+];
 
 function drawFrame(ctx, video, imgCache, t, audioBeat) {
   const coverUrl = video?.thumbnail_url
@@ -23,12 +30,10 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
       : null);
   const title = video?.title || "";
 
-  // ── Stable audio-reactive beat (clamped, no wild swings) ──────────────
   const rawBeat = audioBeat > 0.01 ? audioBeat : 0;
-  // Smooth the beat — cap at 0.35 to prevent flashes
   const beat = Math.min(0.35, rawBeat);
 
-  // ── Static dark cinematic background ───────────────────────────────────
+  // ── Static dark cinematic background (never changes) ──────────────────
   const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
   bgGrad.addColorStop(0, "#060612");
   bgGrad.addColorStop(0.4, "#0a0a20");
@@ -37,14 +42,12 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // ── Subtle blurred backdrop (low alpha, almost static) ─────────────────
+  // ── Static blurred backdrop (fixed alpha, no pulse) ──────────────────
   if (coverUrl) {
     const cached = imgCache[coverUrl];
     if (cached?.complete && cached.naturalWidth > 0) {
-      // Very subtle pulse — alpha stays between 0.14-0.18
-      const alpha = 0.15 + Math.sin(t * 0.5) * 0.02;
       ctx.save();
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = 0.15;
       ctx.filter = "blur(24px) brightness(0.3)";
       ctx.drawImage(cached, 0, 0, W, H);
       ctx.filter = "none";
@@ -67,16 +70,15 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
   const frameCX = W / 2;
   const frameCY = frameY + frameH / 2;
 
-  // ── Soft, slow glow aura behind art ───────────────────────────────────
-  const auraPulse = 1 + Math.sin(t * 0.6) * 0.08; // very slow, tiny variation
+  // ── Static glow aura behind art (fixed alpha, no pulse) ──────────────
   const glowGrad = ctx.createRadialGradient(frameCX, frameCY, frameH * 0.15, frameCX, frameCY, frameH * 0.7);
-  glowGrad.addColorStop(0, `rgba(155,126,255,${0.04 * auraPulse})`);
-  glowGrad.addColorStop(0.5, `rgba(0,180,220,${0.02})`);
+  glowGrad.addColorStop(0, "rgba(155,126,255,0.04)");
+  glowGrad.addColorStop(0.5, "rgba(0,180,220,0.02)");
   glowGrad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = glowGrad;
   ctx.fillRect(frameX - 30, frameY - 30, frameW + 60, frameH + 60);
 
-  // ── Cover art — drawn once, no brightness animation ────────────────────
+  // ── Cover art — drawn once, never animated ────────────────────────────
   if (coverUrl) {
     const cached = imgCache[coverUrl];
     if (cached?.complete && cached.naturalWidth > 0) {
@@ -115,33 +117,32 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
     ctx.fillText("\u266B", frameCX, frameCY);
   }
 
-  // ── Static vignette over art ──────────────────────────────────────────
+  // ── Static vignette over art (never changes) ─────────────────────────
   const vigGrad = ctx.createRadialGradient(frameCX, frameCY, frameW * 0.32, frameCX, frameCY, frameW * 0.7);
   vigGrad.addColorStop(0, "rgba(0,0,0,0)");
   vigGrad.addColorStop(1, "rgba(0,0,0,0.25)");
   ctx.fillStyle = vigGrad;
   ctx.fillRect(frameX, frameY, frameW, frameH);
 
-  // ── Neon border — subtle, slow pulse only ─────────────────────────────
-  const borderPulse = 1 + Math.sin(t * 0.7) * 0.06;
-  ctx.strokeStyle = `rgba(155,126,255,${0.16 * borderPulse})`;
+  // ── Static neon border (fixed alpha, no pulse) ────────────────────────
+  ctx.strokeStyle = "rgba(155,126,255,0.16)";
   ctx.lineWidth = 2;
   roundRect(ctx, frameX - 2, frameY - 2, frameW + 4, frameH + 4, 12);
   ctx.stroke();
 
-  ctx.strokeStyle = `rgba(0,190,220,${0.08})`;
+  ctx.strokeStyle = "rgba(0,190,220,0.08)";
   ctx.lineWidth = 1;
   roundRect(ctx, frameX - 10, frameY - 10, frameW + 20, frameH + 20, 16);
   ctx.stroke();
 
-  // ── "NOW SHOWING" badge — stable text ─────────────────────────────────
+  // ── "NOW SHOWING" badge — static text ─────────────────────────────────
   const badgeY = frameY + frameH + 12;
   ctx.font = "bold 9px 'Inter', sans-serif";
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(0,220,255,0.35)";
   ctx.fillText("NOW SHOWING", frameCX, badgeY);
 
-  // ── Song title — stable text ──────────────────────────────────────────
+  // ── Song title — static text ──────────────────────────────────────────
   if (title) {
     const maxLen = 48;
     const displayTitle = title.length > maxLen ? title.slice(0, maxLen) + "\u2026" : title;
@@ -156,21 +157,34 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // EQUALIZER BARS — main dynamic element, tall, varied, smooth
+  // EQUALIZER BARS — each bar moves independently with unique rhythm
+  // Uses incommensurable frequencies so the pattern never loops
   // ════════════════════════════════════════════════════════════════════════
   const eqBottom = H - 10;
   const eqH = H * 0.5;
-  const barCount = 60;
   const barGap = 2;
-  const barW = (W - 32) / barCount - barGap;
+  const barW = (W - 32) / BAR_COUNT - barGap;
   const barX0 = 16;
 
-  for (let i = 0; i < barCount; i++) {
-    const ratio = i / (barCount - 1);
+  for (let i = 0; i < BAR_COUNT; i++) {
+    const ratio = i / (BAR_COUNT - 1);
 
-    // Per-bar unique timing offset — each bar has its own rhythm
-    const barPhase = i * 0.13;
-    const barFrequency = 2.0 + (i % 7) * 0.35; // different speeds per bar
+    // Each bar picks 3 incommensurable frequencies from the pool
+    const fi = i % F.length;
+    const f1 = F[fi];
+    const f2 = F[(fi + 7) % F.length];
+    const f3 = F[(fi + 13) % F.length];
+
+    // Per-bar phase offset — makes every bar unique
+    const phi = i * 0.173 * Math.PI;
+
+    // Three independent oscillators at different speeds
+    const w1 = Math.sin(t * f1 + phi) * 0.5 + 0.5;
+    const w2 = Math.sin(t * f2 + phi * 3.7) * 0.5 + 0.5;
+    const w3 = Math.cos(t * f3 + phi * 7.1) * 0.5 + 0.5;
+
+    // Blend oscillators for rich, non-repeating movement
+    const simulated = w1 * 0.4 + w2 * 0.28 + w3 * 0.17;
 
     // Frequency zones for realistic EQ shape
     const bass = ratio < 0.25 ? Math.pow(1 - ratio / 0.25, 1.8) : 0;
@@ -182,24 +196,15 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
       : 0;
     const zoneBoost = Math.max(0.05, bass * 0.8 + mid * 0.6 + treble * 0.45);
 
-    // Natural wave oscillation — multiple sine waves at different speeds
-    const w1 = Math.sin(t * barFrequency + barPhase) * 0.5 + 0.5;
-    const w2 = Math.sin(t * 1.8 + barPhase * 1.7) * 0.5 + 0.5;
-    const w3 = Math.cos(t * 2.7 + barPhase * 2.3) * 0.5 + 0.5;
-
-    // Combine real audio with simulated waves
-    const simulated = w1 * 0.3 + w2 * 0.18 + w3 * 0.12;
     const audioDriven = beat * zoneBoost * 0.9;
 
-    // When audio is playing, blend real audio with simulated waves
-    // When silent, bars are nearly static (0.04 multiplier eliminates flicker)
+    // When audio is playing: blend real audio with simulated waves
+    // When silent: very subtle breathing (0.03 — barely visible, no flicker)
     const energy = rawBeat > 0.01
       ? audioDriven * 0.75 + simulated * 0.25
-      : simulated * 0.04;
+      : simulated * 0.03;
 
-    // Some bars naturally taller via zone boost
     const finalEnergy = energy * (0.55 + zoneBoost * 0.45);
-
     const bh = Math.max(3, finalEnergy * eqH);
     const by = eqBottom - bh;
     const bx = barX0 + i * (barW + barGap);
@@ -217,7 +222,6 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
 
     const baseAlpha = 0.3 + finalEnergy * 0.35;
 
-    // Bar gradient — bright at top, fading down
     const barGrad = ctx.createLinearGradient(0, by, 0, eqBottom);
     barGrad.addColorStop(0, `rgba(${r},${g},${b},${baseAlpha})`);
     barGrad.addColorStop(0.3, `rgba(${r},${g},${b},${0.08 + finalEnergy * 0.18})`);
@@ -226,24 +230,24 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
     ctx.fillStyle = barGrad;
     ctx.fillRect(bx, by, Math.max(2, barW), bh);
 
-    // Soft glow on taller bars (only when bar is above 30% of max height)
+    // Soft glow on taller bars
     if (bh > eqH * 0.3) {
       const glowStrength = Math.min(1, (bh / eqH - 0.3) / 0.7);
-      ctx.shadowColor = `rgba(${r},${g},${b},${0.15 * glowStrength})`;
-      ctx.shadowBlur = 4 + glowStrength * 6;
-      ctx.fillStyle = `rgba(${r},${g},${b},${0.03 * glowStrength})`;
-      ctx.fillRect(bx - 1, by, Math.max(2, barW) + 2, 3);
+      ctx.shadowColor = `rgba(${r},${g},${b},${0.12 * glowStrength})`;
+      ctx.shadowBlur = 3 + glowStrength * 4;
+      ctx.fillStyle = `rgba(${r},${g},${b},${0.02 * glowStrength})`;
+      ctx.fillRect(bx - 1, by, Math.max(2, barW) + 2, 2);
       ctx.shadowBlur = 0;
     }
   }
 
-  // ── Bottom accent line — subtle glow ──────────────────────────────────
+  // ── Bottom accent line ─────────────────────────────────────────────────
   const accentY = eqBottom + 4;
   const lg = ctx.createLinearGradient(0, accentY, W, accentY);
   lg.addColorStop(0, "transparent");
-  lg.addColorStop(0.25, `rgba(155,126,255,0.08)`);
-  lg.addColorStop(0.5, `rgba(0,220,255,0.12)`);
-  lg.addColorStop(0.75, `rgba(155,126,255,0.08)`);
+  lg.addColorStop(0.25, "rgba(155,126,255,0.08)");
+  lg.addColorStop(0.5, "rgba(0,220,255,0.12)");
+  lg.addColorStop(0.75, "rgba(155,126,255,0.08)");
   lg.addColorStop(1, "transparent");
   ctx.fillStyle = lg;
   ctx.fillRect(0, accentY, W, 2);
