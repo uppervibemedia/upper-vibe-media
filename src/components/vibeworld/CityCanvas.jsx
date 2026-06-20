@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
+import createCitySkyline from "./CitySkyline";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -92,174 +93,409 @@ function mat(hexColor, opts = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// BUILD SCENE: Simple outdoor park
+// BUILD SCENE — Upper Vibe City: 6-zone social hub
 // ═══════════════════════════════════════════════════════════════
 function buildPark(scene) {
-  // ─── SKY ────────────────────────────────────────────────────
   createCosmicSky(scene);
   createCitySkyline(scene);
 
-  // ─── LAYOUT CONSTANTS ────────────────────────────────────────
   const SHORELINE_Z = 20;
   const OCEAN_DEPTH = 54;
 
-  // Large park ground — spans z=-22 to z=6 (28 units deep, 60 wide)
-  const grassGeo = new PlaneGeometry(60, 28);
-  const grassMat = mat("#4CAF50", { roughness: 0.85 });
-  const grassMesh = new Mesh(grassGeo, grassMat);
-  grassMesh.rotation.x = -Math.PI / 2;
-  grassMesh.position.set(0, -0.01, -8);
-  grassMesh.receiveShadow = true;
-  grassMesh.name = "grassGround";
-  scene.add(grassMesh);
+  // ═════════════════════════════════════════════════════════════
+  // 1. GROUND — dark urban plaza floor covering the playable area
+  // ═════════════════════════════════════════════════════════════
+  const groundGeo = new PlaneGeometry(56, 42);
+  const groundMat = mat("#1A1A2E", { roughness: 0.85 });
+  const ground = new Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(0, -0.01, -10);
+  ground.receiveShadow = true;
+  ground.name = "plazaGround";
+  scene.add(ground);
 
-  // Inner walking area
-  const innerGeo = new PlaneGeometry(54, 20);
-  const innerMat = mat("#5CB860", { roughness: 0.75 });
-  const inner = new Mesh(innerGeo, innerMat);
-  inner.rotation.x = -Math.PI / 2;
-  inner.position.set(0, -0.005, -9);
-  inner.receiveShadow = true;
-  inner.name = "innerGrass";
-  scene.add(inner);
+  // ═════════════════════════════════════════════════════════════
+  // 2. UVC CENTRAL PLAZA — large circular hub at center
+  // ═════════════════════════════════════════════════════════════
+  const PLAZA_X = 0, PLAZA_Z = -4, PLAZA_R = 7;
 
-  // ─── DIRT PATH ──────────────────────────────────────────────
-  const pathRing = new RingGeometry(14, 14.7, 64);
-  const pathMat = mat("#C8A96E", { roughness: 0.9 });
-  const path = new Mesh(pathRing, pathMat);
-  path.rotation.x = -Math.PI / 2;
-  path.position.set(0, 0.001, -5);
-  path.receiveShadow = true;
-  scene.add(path);
+  // Main plaza disc
+  const plazaDisc = new Mesh(
+    new CircleGeometry(PLAZA_R, 64),
+    mat("#1E1E36", { roughness: 0.6, metalness: 0.2 })
+  );
+  plazaDisc.rotation.x = -Math.PI / 2;
+  plazaDisc.position.set(PLAZA_X, 0.001, PLAZA_Z);
+  plazaDisc.receiveShadow = true;
+  plazaDisc.name = "plazaDisc";
+  scene.add(plazaDisc);
 
-  // Central dirt patch
-  const centerGeo = new CircleGeometry(3.5, 32);
-  const centerMat = mat("#C8A96E", { roughness: 0.9 });
-  const center = new Mesh(centerGeo, centerMat);
-  center.rotation.x = -Math.PI / 2;
-  center.position.set(0, 0.002, -5);
-  center.receiveShadow = true;
-  scene.add(center);
+  // Glowing center ring
+  const ringInner = new Mesh(
+    new RingGeometry(2.0, 2.3, 64),
+    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide })
+  );
+  ringInner.rotation.x = -Math.PI / 2;
+  ringInner.position.set(PLAZA_X, 0.005, PLAZA_Z);
+  ringInner.renderOrder = 1;
+  scene.add(ringInner);
 
-  // ─── TREES ──────────────────────────────────────────────────
-  TREE_POSITIONS.forEach(([tx, tz, scale]) => {
-    const tree = new Group();
-    const trunkGeo = new CylinderGeometry(0.08 * scale, 0.12 * scale, 2 * scale, 8);
-    const trunkMat = mat("#6D4C41", { roughness: 0.7 });
-    const trunk = new Mesh(trunkGeo, trunkMat);
-    trunk.position.y = 1 * scale;
-    trunk.castShadow = true;
-    trunk.receiveShadow = true;
-    tree.add(trunk);
-    const canopyColors = ["#388E3C", "#43A047", "#2E7D32"];
-    for (let i = 0; i < 3; i++) {
-      const canopyGeo = new SphereGeometry(0.6 * scale - i * 0.08, 8, 6);
-      const canopyMat = mat(canopyColors[i], { roughness: 0.6 });
-      const canopy = new Mesh(canopyGeo, canopyMat);
-      canopy.position.y = 1.6 * scale + i * 0.35 * scale;
-      canopy.position.x = (i - 1) * 0.15 * scale;
-      canopy.castShadow = true;
-      canopy.receiveShadow = true;
-      tree.add(canopy);
+  // Outer ring (purple)
+  const ringOuter = new Mesh(
+    new RingGeometry(PLAZA_R - 0.5, PLAZA_R - 0.2, 64),
+    new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, side: THREE.DoubleSide })
+  );
+  ringOuter.rotation.x = -Math.PI / 2;
+  ringOuter.position.set(PLAZA_X, 0.005, PLAZA_Z);
+  ringOuter.renderOrder = 1;
+  scene.add(ringOuter);
+
+  // ═════════════════════════════════════════════════════════════
+  // 3. GLOWING PATHS — from plaza to each zone
+  // ═════════════════════════════════════════════════════════════
+  const pathGlow = new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.35 });
+
+  function createPath(fromX, fromZ, toX, toZ) {
+    const dx = toX - fromX, dz = toZ - fromZ;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    const midX = (fromX + toX) / 2, midZ = (fromZ + toZ) / 2;
+    const angle = Math.atan2(dx, dz);
+
+    const pathStrip = new Mesh(new PlaneGeometry(0.8, len), pathGlow);
+    pathStrip.rotation.x = -Math.PI / 2;
+    pathStrip.position.set(midX, 0.003, midZ);
+    pathStrip.rotation.z = -angle;
+    scene.add(pathStrip);
+
+    // Edge lines
+    const halfW = 0.4;
+    for (const side of [-1, 1]) {
+      const lx = side * halfW * Math.cos(angle);
+      const lz = side * -halfW * Math.sin(angle);
+      const edge = new Mesh(
+        new PlaneGeometry(0.04, len),
+        new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false })
+      );
+      edge.rotation.x = -Math.PI / 2;
+      edge.position.set(midX + lx, 0.004, midZ + lz);
+      edge.rotation.z = -angle;
+      scene.add(edge);
     }
-    tree.position.set(tx, 0, tz);
-    tree.rotation.y = Math.random() * Math.PI;
-    scene.add(tree);
-  });
-
-  // ─── BUSHES ──────────────────────────────────────────────────
-  for (let i = 0; i < 30; i++) {
-    let bx, bz;
-    do {
-      const angle = Math.random() * Math.PI * 2;
-      const radius = 5 + Math.random() * 16;
-      bx = Math.cos(angle) * radius;
-      bz = Math.sin(angle) * radius;
-    } while (bz > 4 || bz < -18);
-    const bushGeo = new SphereGeometry(0.2 + Math.random() * 0.25, 6, 5);
-    const bushMat = mat("#388E3C", { roughness: 0.55 });
-    const bush = new Mesh(bushGeo, bushMat);
-    bush.position.set(bx, 0.15, bz);
-    bush.scale.set(1, 0.7, 1);
-    bush.castShadow = true;
-    bush.receiveShadow = true;
-    scene.add(bush);
   }
 
-  // ─── FLOWERS ─────────────────────────────────────────────────
-  const flowerColors = ["#FFEB3B", "#FF9800", "#E91E63", "#9C27B0", "#FFFFFF"];
-  for (let i = 0; i < 60; i++) {
-    let fx, fz;
-    do {
-      const angle = Math.random() * Math.PI * 2;
-      const radius = 4 + Math.random() * 20;
-      fx = Math.cos(angle) * radius;
-      fz = Math.sin(angle) * radius;
-    } while (fz > 4 || fz < -18);
-    const stemGeo = new CylinderGeometry(0.01, 0.01, 0.25, 4);
-    const stem = new Mesh(stemGeo, mat("#388E3C"));
-    stem.position.set(fx, 0.12, fz);
-    scene.add(stem);
-    const petal = new Mesh(new SphereGeometry(0.03, 4, 4), mat(flowerColors[i % flowerColors.length]));
-    petal.position.set(fx, 0.26, fz);
-    scene.add(petal);
+  // Paths: plaza center to each zone
+  createPath(PLAZA_X, PLAZA_Z, 0, -14);       // North → Stage
+  createPath(PLAZA_X, PLAZA_Z, PLAZA_X, SHORELINE_Z + 2); // South → Beach
+  createPath(PLAZA_X, PLAZA_Z, -14, -3);       // West → Dome
+  createPath(PLAZA_X, PLAZA_Z, 12, -2);        // East → Lounge
+  createPath(PLAZA_X, PLAZA_Z, 16, -8);        // SE → Shops
+
+  // ═════════════════════════════════════════════════════════════
+  // 4. MAIN MUSIC STAGE — north of plaza
+  // ═════════════════════════════════════════════════════════════
+  const stage = new Group();
+  stage.name = "musicStage";
+
+  // Stage platform
+  const stagePlat = new Mesh(new BoxGeometry(8, 0.5, 5), mat("#2A2A4A", { roughness: 0.3, metalness: 0.5 }));
+  stagePlat.position.set(0, 0.25, -14);
+  stagePlat.castShadow = true;
+  stagePlat.receiveShadow = true;
+  stage.add(stagePlat);
+
+  // Stage front edge glow
+  const stageEdge = new Mesh(
+    new BoxGeometry(8.1, 0.08, 0.1),
+    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
+  );
+  stageEdge.position.set(0, 0.52, -11.45);
+  stage.add(stageEdge);
+
+  // Backdrop screen (glowing curved wall)
+  const screen = new Mesh(new BoxGeometry(7, 4, 0.2), mat("#1A1A3A", { roughness: 0.2, metalness: 0.7 }));
+  screen.position.set(0, 2.5, -16.4);
+  screen.castShadow = true;
+  stage.add(screen);
+
+  // Screen glow frame
+  const screenGlow = new Mesh(
+    new BoxGeometry(7.2, 4.2, 0.05),
+    new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
+  );
+  screenGlow.position.set(0, 2.5, -16.4);
+  stage.add(screenGlow);
+
+  // Stage spotlights (point lights)
+  const spotL = new PointLight();
+  spotL.color = new Color("#A078FF");
+  spotL.intensity = 4;
+  spotL.distance = 12;
+  spotL.position.set(-3, 3.5, -14);
+  stage.add(spotL);
+
+  const spotR = new PointLight();
+  spotR.color = new Color("#00D4F0");
+  spotR.intensity = 4;
+  spotR.distance = 12;
+  spotR.position.set(3, 3.5, -14);
+  stage.add(spotR);
+
+  // Vertical stage pillars
+  for (const sx of [-3.5, 3.5]) {
+    const pillar = new Mesh(
+      new CylinderGeometry(0.12, 0.15, 4, 8),
+      mat("#555588", { roughness: 0.3, metalness: 0.7 })
+    );
+    pillar.position.set(sx, 2.2, -11.5);
+    pillar.castShadow = true;
+    stage.add(pillar);
+
+    const pillarGlow = new Mesh(
+      new CylinderGeometry(0.14, 0.17, 0.3, 8),
+      new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
+    );
+    pillarGlow.position.set(sx, 4.2, -11.5);
+    stage.add(pillarGlow);
   }
 
-  // ─── BENCHES ─────────────────────────────────────────────────
-  const benchPositions = [
-    [0, -3, 0], [7, -8, Math.PI / 2], [-7, -8, -Math.PI / 2],
-    [10, -2, Math.PI / 3], [-10, -2, -Math.PI / 3],
-  ];
-  benchPositions.forEach(([bx, bz, rot]) => {
-    const bench = new Group();
-    const seat = new Mesh(new BoxGeometry(2, 0.06, 0.5), mat("#8D6E63", { roughness: 0.5 }));
-    seat.position.y = 0.45;
+  scene.add(stage);
+
+  // ═════════════════════════════════════════════════════════════
+  // 5. VISUALIZER DOME — west/left side
+  // ═════════════════════════════════════════════════════════════
+  const dome = new Group();
+  dome.name = "visualizerDome";
+
+  // Dome hemisphere
+  const domeGeo = new SphereGeometry(3.5, 32, 20, 0, Math.PI * 2, 0, Math.PI / 2);
+  const domeMesh = new Mesh(
+    domeGeo,
+    mat("#1E2A3E", { roughness: 0.25, metalness: 0.6, transparent: true, opacity: 0.7, depthWrite: true })
+  );
+  domeMesh.position.set(-12, 0.05, -3);
+  domeMesh.castShadow = true;
+  dome.add(domeMesh);
+
+  // Dome ring at base
+  const domeRing = new Mesh(
+    new RingGeometry(3.2, 3.5, 64),
+    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide })
+  );
+  domeRing.rotation.x = -Math.PI / 2;
+  domeRing.position.set(-12, 0.06, -3);
+  domeRing.renderOrder = 1;
+  dome.add(domeRing);
+
+  // Dome entrance (glowing arched doorway)
+  const entrance = new Mesh(
+    new BoxGeometry(2, 3, 0.1),
+    new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.6 })
+  );
+  entrance.position.set(-12, 1.5, -3 + 3.4);
+  dome.add(entrance);
+
+  // Ground light under dome
+  const domeFloor = new Mesh(
+    new CircleGeometry(3, 32),
+    new MeshBasicMaterial({ color: new Color("#1E2A4E"), depthWrite: false, transparent: true, opacity: 0.3 })
+  );
+  domeFloor.rotation.x = -Math.PI / 2;
+  domeFloor.position.set(-12, 0.003, -3);
+  dome.add(domeFloor);
+
+  scene.add(dome);
+
+  // ═════════════════════════════════════════════════════════════
+  // 6. VIBE LOUNGE — east/right side, circular seating
+  // ═════════════════════════════════════════════════════════════
+  const lounge = new Group();
+  lounge.name = "vibeLounge";
+
+  // Lounge base platform
+  const loungePlat = new Mesh(
+    new CircleGeometry(4, 32),
+    mat("#1E1E3A", { roughness: 0.5, metalness: 0.3 })
+  );
+  loungePlat.rotation.x = -Math.PI / 2;
+  loungePlat.position.set(12, 0.002, -3);
+  loungePlat.receiveShadow = true;
+  lounge.add(loungePlat);
+
+  // Circular seating — ring of cushioned blocks
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const sx = 12 + Math.cos(angle) * 2.5;
+    const sz = -3 + Math.sin(angle) * 2.5;
+
+    // Seat cushion
+    const seat = new Mesh(
+      new BoxGeometry(1.0, 0.25, 0.6),
+      mat("#4A3A6A", { roughness: 0.4, metalness: 0.15 })
+    );
+    seat.position.set(sx, 0.15, sz);
+    seat.rotation.y = -angle;
     seat.castShadow = true;
-    bench.add(seat);
-    for (let lx = -0.8; lx <= 0.8; lx += 1.6) {
-      for (let lz = -0.15; lz <= 0.15; lz += 0.3) {
-        const leg = new Mesh(new BoxGeometry(0.06, 0.42, 0.06), mat("#5D4037", { roughness: 0.4 }));
-        leg.position.set(lx, 0.21, lz);
-        leg.castShadow = true;
-        bench.add(leg);
-      }
-    }
-    const back = new Mesh(new BoxGeometry(2, 0.35, 0.05), mat("#8D6E63", { roughness: 0.5 }));
-    back.position.set(0, 0.65, -0.22);
-    back.castShadow = true;
-    bench.add(back);
-    bench.position.set(bx, 0, bz);
-    bench.rotation.y = rot;
-    scene.add(bench);
-  });
+    seat.receiveShadow = true;
+    lounge.add(seat);
 
-  // ─── BEACH — warm sand zones before water ────────────────────
-  const bufferGeo = new PlaneGeometry(60, 8);
-  const buffer = new Mesh(bufferGeo, mat("#5CB860", { roughness: 0.78 }));
+    // Glow under seat
+    const seatGlow = new Mesh(
+      new BoxGeometry(0.95, 0.03, 0.55),
+      new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
+    );
+    seatGlow.position.set(sx, 0.03, sz);
+    seatGlow.rotation.y = -angle;
+    lounge.add(seatGlow);
+  }
+
+  // Central table
+  const table = new Mesh(
+    new CylinderGeometry(1.2, 1.2, 0.3, 16),
+    mat("#555588", { roughness: 0.3, metalness: 0.6 })
+  );
+  table.position.set(12, 0.3, -3);
+  table.castShadow = true;
+  lounge.add(table);
+
+  const tableGlow = new Mesh(
+    new CylinderGeometry(1.25, 1.25, 0.04, 16),
+    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
+  );
+  tableGlow.position.set(12, 0.47, -3);
+  lounge.add(tableGlow);
+
+  scene.add(lounge);
+
+  // ═════════════════════════════════════════════════════════════
+  // 7. SHOP / HANGOUT DISTRICT — southeast area
+  // ═════════════════════════════════════════════════════════════
+  const shopGroup = new Group();
+  shopGroup.name = "shopDistrict";
+
+  const shopLabels = ["UVC WEAR", "BEAT HUB", "CAFE VIBE"];
+  for (let i = 0; i < 3; i++) {
+    const sx = 12 + i * 3.5;
+    const sz = -11;
+
+    // Shop building box
+    const shop = new Mesh(new BoxGeometry(2.5, 3.5, 2.5), mat("#2A2A44", { roughness: 0.3, metalness: 0.4 }));
+    shop.position.set(sx, 1.75, sz);
+    shop.castShadow = true;
+    shop.receiveShadow = true;
+    shopGroup.add(shop);
+
+    // Neon edge strips
+    for (const ey of [0.05, 3.3]) {
+      const edgeStrip = new Mesh(
+        new BoxGeometry(2.55, 0.06, 0.06),
+        new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false })
+      );
+      edgeStrip.position.set(sx, ey, sz - 1.25);
+      shopGroup.add(edgeStrip);
+    }
+
+    // Glowing storefront window
+    const frontWin = new Mesh(
+      new PlaneGeometry(1.8, 1.5),
+      new MeshBasicMaterial({ color: new Color("#FFE0A0"), depthWrite: false, transparent: true, opacity: 0.6 })
+    );
+    frontWin.position.set(sx, 1.8, sz - 1.26);
+    shopGroup.add(frontWin);
+
+    // Awning
+    const awning = new Mesh(
+      new BoxGeometry(2.3, 0.08, 0.25),
+      new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
+    );
+    awning.position.set(sx, 2.65, sz - 1.15);
+    shopGroup.add(awning);
+  }
+
+  scene.add(shopGroup);
+
+  // ═════════════════════════════════════════════════════════════
+  // 8. BEACH WALK — front edge
+  // ═════════════════════════════════════════════════════════════
+  const bufferGeo = new PlaneGeometry(56, 6);
+  const buffer = new Mesh(bufferGeo, mat("#2A2A40", { roughness: 0.7 }));
   buffer.rotation.x = -Math.PI / 2;
-  buffer.position.set(0, -0.002, 10);
+  buffer.position.set(0, -0.002, 12);
   buffer.receiveShadow = true;
   scene.add(buffer);
 
-  const drySand = new Mesh(new PlaneGeometry(56, 4), mat("#E8B47E", { roughness: 0.5 }));
+  const drySand = new Mesh(new PlaneGeometry(52, 4), mat("#D8B47E", { roughness: 0.5 }));
   drySand.rotation.x = -Math.PI / 2;
-  drySand.position.set(0, 0.002, 15);
+  drySand.position.set(0, 0.002, 16);
   drySand.receiveShadow = true;
   scene.add(drySand);
 
-  const midSand = new Mesh(new PlaneGeometry(56, 3), mat("#D8A76B", { roughness: 0.45 }));
-  midSand.rotation.x = -Math.PI / 2;
-  midSand.position.set(0, 0.003, 17);
-  midSand.receiveShadow = true;
-  scene.add(midSand);
-
-  const wetSand = new Mesh(new PlaneGeometry(56, 2), mat("#B07048", { roughness: 0.28, metalness: 0.1 }));
+  const wetSand = new Mesh(new PlaneGeometry(52, 2), mat("#A07048", { roughness: 0.28, metalness: 0.1 }));
   wetSand.rotation.x = -Math.PI / 2;
-  wetSand.position.set(0, 0.004, 19.5);
+  wetSand.position.set(0, 0.003, 19.5);
   wetSand.receiveShadow = true;
   scene.add(wetSand);
 
-  // ─── OCEAN — one continuous body of water (shore to horizon) ──
+  // Boardwalk railing
+  const railGroup = new Group();
+  railGroup.name = "boardwalkRail";
+  for (let rx = -24; rx <= 24; rx += 3) {
+    // Post
+    const post = new Mesh(new CylinderGeometry(0.06, 0.08, 1.5, 6), mat("#777799", { roughness: 0.3, metalness: 0.6 }));
+    post.position.set(rx, 0.75, 9.5);
+    post.castShadow = true;
+    railGroup.add(post);
+
+    // Post glow cap
+    const cap = new Mesh(
+      new CylinderGeometry(0.07, 0.09, 0.1, 6),
+      new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false })
+    );
+    cap.position.set(rx, 1.5, 9.5);
+    railGroup.add(cap);
+  }
+  // Top rail bar
+  const railBar = new Mesh(new BoxGeometry(50, 0.06, 0.1), mat("#8888AA", { roughness: 0.3, metalness: 0.5 }));
+  railBar.position.set(0, 1.25, 9.5);
+  railBar.castShadow = true;
+  railGroup.add(railBar);
+  scene.add(railGroup);
+
+  // Beach lounge chairs
+  const chairGroup = new Group();
+  chairGroup.name = "beachChairs";
+  const umbColors = ["#9B7EFF", "#00D4F0", "#A078FF"];
+  for (let u = 0; u < 6; u++) {
+    const ux = -14 + u * 5.5;
+    const uz = 17.5;
+
+    // Umbrella pole
+    const pole = new Mesh(new CylinderGeometry(0.04, 0.04, 2, 6), mat("#CCCCDD", { roughness: 0.3, metalness: 0.3 }));
+    pole.position.set(ux, 1.0, uz);
+    pole.castShadow = true;
+    chairGroup.add(pole);
+
+    // Umbrella canopy (wide cone)
+    const canopy = new Mesh(
+      new CylinderGeometry(0.05, 0.8, 0.6, 12),
+      mat(umbColors[u % 3], { roughness: 0.4, metalness: 0.1 })
+    );
+    canopy.position.set(ux, 2.2, uz);
+    canopy.castShadow = true;
+    chairGroup.add(canopy);
+
+    // Lounge chair (simple box)
+    const chair = new Mesh(new BoxGeometry(0.5, 0.08, 1.4), mat("#555566", { roughness: 0.4, metalness: 0.3 }));
+    chair.position.set(ux + 0.6, 0.06, uz);
+    chair.rotation.x = -0.2;
+    chair.castShadow = true;
+    chair.receiveShadow = true;
+    chairGroup.add(chair);
+  }
+  scene.add(chairGroup);
+
+  // ═════════════════════════════════════════════════════════════
+  // 9. OCEAN — waves from shore to horizon
+  // ═════════════════════════════════════════════════════════════
   const oceanSegments = 54;
   const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 56, oceanSegments);
   const oceanMat = new MeshBasicMaterial();
@@ -272,21 +508,19 @@ function buildPark(scene) {
   ocean.name = "ocean";
   scene.add(ocean);
 
-  // Store original vertex positions for wave animation
   const origArr = new Float32Array(oceanGeo.attributes.position.array.length);
   origArr.set(oceanGeo.attributes.position.array);
   scene.userData.ocean = ocean;
   scene.userData._oceanOrig = origArr;
   scene.userData._oceanCenterZ = SHORELINE_Z + OCEAN_DEPTH / 2;
 
-  // ─── FOAM STRIP — white edge at shoreline ────────────────────
   const foamGeo = new PlaneGeometry(56, 1.5);
-  const foamMat = new MeshBasicMaterial();
-  foamMat.color = new Color("#FFFFFF");
-  foamMat.transparent = true;
-  foamMat.opacity = 0.35;
-  foamMat.depthWrite = false;
-  const foam = new Mesh(foamGeo, foamMat);
+  const foamMeshMat = new MeshBasicMaterial();
+  foamMeshMat.color = new Color("#FFFFFF");
+  foamMeshMat.transparent = true;
+  foamMeshMat.opacity = 0.35;
+  foamMeshMat.depthWrite = false;
+  const foam = new Mesh(foamGeo, foamMeshMat);
   foam.rotation.x = -Math.PI / 2;
   foam.position.set(0, 0.005, SHORELINE_Z + 0.3);
   foam.renderOrder = 2;
@@ -294,12 +528,13 @@ function buildPark(scene) {
   scene.add(foam);
   scene.userData.foam = foam;
   scene.userData._foamBaseZ = SHORELINE_Z + 0.3;
-
   scene.userData.shorelineZ = SHORELINE_Z;
 
-  // ─── LIGHTING (cosmic night — nebula purple/blue mood) ─────────
+  // ═════════════════════════════════════════════════════════════
+  // 10. LIGHTING — night ambiance
+  // ═════════════════════════════════════════════════════════════
   const moon = new DirectionalLight();
-  moon.color = new Color("#7B9EC7"); // Cool pale blue moonlight
+  moon.color = new Color("#7B9EC7");
   moon.intensity = 0.55;
   moon.position.set(15, 22, SHORELINE_Z + 10);
   moon.castShadow = true;
@@ -315,17 +550,16 @@ function buildPark(scene) {
   scene.add(moon);
 
   const ambLight = new AmbientLight();
-  ambLight.color = new Color("#2A1B5E"); // Deep space purple (matches ref sky)
+  ambLight.color = new Color("#2A1B5E");
   ambLight.intensity = 0.5;
   scene.add(ambLight);
 
   const hemiLight = new HemisphereLight();
-  hemiLight.color = new Color("#6B5CAA");     // Vivid purple-blue nebula sky
-  hemiLight.groundColor = new Color("#1A2430"); // Cool dark blue ground bounce
+  hemiLight.color = new Color("#6B5CAA");
+  hemiLight.groundColor = new Color("#1A2430");
   hemiLight.intensity = 0.35;
   scene.add(hemiLight);
 
-  // ─── BEACH SHIMMER — subtle blue point light over water ──────
   const beachLight = new PointLight();
   beachLight.color = new Color("#5599CC");
   beachLight.intensity = 2.0;
@@ -333,8 +567,41 @@ function buildPark(scene) {
   beachLight.position.set(0, 3, SHORELINE_Z + 6);
   scene.add(beachLight);
 
-  // ─── TWINKLING STARS ─────────────────────────────────────
+  // ═════════════════════════════════════════════════════════════
+  // 11. TWINKLING STARS + PALM TREES
+  // ═════════════════════════════════════════════════════════════
   createStarField(scene);
+
+  // Palm trees around plaza
+  const palmPositions = [
+    [-5, -8], [5, -8], [-8, -2], [8, -2], [-4, 2], [4, 2],
+    [-15, -8], [15, -8], [-10, -12], [10, -12],
+  ];
+  palmPositions.forEach(([px, pz]) => {
+    const palm = new Group();
+    const trunkGeo = new CylinderGeometry(0.06, 0.1, 3, 8);
+    const trunk = new Mesh(trunkGeo, mat("#6D4C41", { roughness: 0.6 }));
+    trunk.position.y = 1.5;
+    trunk.castShadow = true;
+    palm.add(trunk);
+
+    // Palm fronds (simple radiating planes)
+    for (let f = 0; f < 5; f++) {
+      const angle = (f / 5) * Math.PI * 2;
+      const frond = new Mesh(
+        new PlaneGeometry(0.15, 0.8),
+        mat("#2E7D32", { roughness: 0.5 })
+      );
+      frond.position.set(Math.cos(angle) * 0.3, 2.8, Math.sin(angle) * 0.3);
+      frond.rotation.x = Math.cos(angle) * 0.6;
+      frond.rotation.z = Math.sin(angle) * 0.5;
+      frond.castShadow = true;
+      palm.add(frond);
+    }
+
+    palm.position.set(px, 0, pz);
+    scene.add(palm);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -452,354 +719,7 @@ function createCosmicSky(scene) {
   scene.fog = new Fog("#0A1525", 48, 60);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// DOWNTOWN SKYLINE — realistic glass & steel waterfront district
-// North wall + east/west wings. Beach stays completely open.
-// ═══════════════════════════════════════════════════════════════
-function createCitySkyline(scene) {
-  const buildings = new Group();
-  buildings.name = "cityBuildings";
-
-  // ── Realistic architectural materials ──────────────────────────
-  const glassBody = mat("#B0C5D8", { roughness: 0.2, metalness: 0.35 });
-  const steelBody = mat("#C8D4E0", { roughness: 0.25, metalness: 0.65 });
-  const silverBody = mat("#D4DBE4", { roughness: 0.3, metalness: 0.55 });
-  const whiteBody = mat("#E0E5EC", { roughness: 0.3, metalness: 0.2 });
-  const darkSteel = mat("#8898AA", { roughness: 0.3, metalness: 0.7 });
-  const warmTile = mat("#C0C8D4", { roughness: 0.4, metalness: 0.15 });
-
-  // Storefront warm glow
-  const storeGlow = new MeshBasicMaterial();
-  storeGlow.color = new Color("#FFE0A0");
-  storeGlow.depthWrite = false;
-
-  const storeGlowPurple = new MeshBasicMaterial();
-  storeGlowPurple.color = new Color("#D0B8FF");
-  storeGlowPurple.depthWrite = false;
-
-  // Neon accent edges
-  const neonCyan = new MeshBasicMaterial();
-  neonCyan.color = new Color("#00D4F0");
-  neonCyan.depthWrite = false;
-
-  const neonPurple = new MeshBasicMaterial();
-  neonPurple.color = new Color("#A078FF");
-  neonPurple.depthWrite = false;
-
-  const neonBlue = new MeshBasicMaterial();
-  neonBlue.color = new Color("#3088CC");
-  neonBlue.depthWrite = false;
-
-  // Floor separator band
-  const floorBand = new MeshBasicMaterial();
-  floorBand.color = new Color("#5588AA");
-  floorBand.depthWrite = false;
-  floorBand.transparent = true;
-  floorBand.opacity = 0.4;
-
-  /**
-   * Modern glass skyscraper with storefront base.
-   * w runs along X axis (wide face), d along Z (depth/thin side toward player).
-   */
-  function addSkyscraper(x, z, w, d, h, bodyMat, accentMat) {
-    const g = new Group();
-
-    // ── Main tower body ─────────────────────────────────────────
-    const body = new Mesh(new BoxGeometry(w, h, d), bodyMat);
-    body.position.y = h / 2;
-    body.castShadow = true;
-    body.receiveShadow = true;
-    g.add(body);
-
-    // Vertical structural columns — one per bay
-    const colCount = Math.max(2, Math.floor(w / 0.55));
-    for (let col = 0; col < colCount; col++) {
-      const cx = -w * 0.42 + col * (w * 0.84 / (colCount - 1));
-      // Front pillar
-      const pillar = new Mesh(new BoxGeometry(0.04, h, 0.06), whiteBody);
-      pillar.position.set(cx, h / 2, d / 2 + 0.02);
-      g.add(pillar);
-      // Back pillar
-      const pillarB = new Mesh(new BoxGeometry(0.04, h, 0.06), whiteBody);
-      pillarB.position.set(cx, h / 2, -d / 2 - 0.02);
-      g.add(pillarB);
-    }
-
-    // Horizontal floor bands
-    const bandCount = Math.floor(h / 2.0);
-    for (let b = 1; b <= bandCount; b++) {
-      const by = b * 2.0;
-      if (by > h - 0.6) continue;
-      const band = new Mesh(new BoxGeometry(w + 0.02, 0.06, d + 0.02), floorBand);
-      band.position.y = by;
-      g.add(band);
-    }
-
-    // Crown / top rim
-    const crown = new Mesh(new BoxGeometry(w + 0.1, 0.15, d + 0.1), accentMat);
-    crown.position.y = h + 0.07;
-    g.add(crown);
-
-    // Spire on towers >10 units
-    if (h > 10) {
-      const spire = new Mesh(new CylinderGeometry(0.03, 0.06, 1.5, 8), accentMat);
-      spire.position.y = h + 0.85;
-      g.add(spire);
-      const tip = new Mesh(new SphereGeometry(0.08, 8, 6), accentMat);
-      tip.position.y = h + 1.65;
-      g.add(tip);
-    }
-
-    // ── STOREFRONT BASE (ground level, h=2.0) ───────────────────
-    const storeH = 2.0;
-    const storeBody = new Mesh(new BoxGeometry(w - 0.04, storeH, d + 0.15), silverBody);
-    storeBody.position.y = storeH / 2;
-    storeBody.castShadow = true;
-    storeBody.receiveShadow = true;
-    g.add(storeBody);
-
-    // Storefront awning / canopy
-    const awningGeo = new BoxGeometry(w - 0.1, 0.1, d + 0.25);
-    const awning = new Mesh(awningGeo, accentMat);
-    awning.position.y = storeH + 0.05;
-    g.add(awning);
-
-    // Glowing storefront windows — panels along the wide face
-    const winCount = Math.max(1, Math.floor(w / 1.2));
-    for (let ww = 0; ww < winCount; ww++) {
-      const wx = -w * 0.38 + ww * (w * 0.76 / (winCount - 1));
-      const glowColor = ww % 2 === 0 ? storeGlow : storeGlowPurple;
-      const storeWin = new Mesh(new PlaneGeometry(0.55, 1.0), glowColor);
-      storeWin.position.set(wx, 1.0, d / 2 + 0.08);
-      g.add(storeWin);
-      const storeWinB = new Mesh(new PlaneGeometry(0.55, 1.0), glowColor);
-      storeWinB.position.set(wx, 1.0, -d / 2 - 0.08);
-      storeWinB.rotation.y = Math.PI;
-      g.add(storeWinB);
-    }
-
-    // Storefront door / entrance
-    const door = new Mesh(new PlaneGeometry(0.5, 1.5), storeGlow);
-    door.position.set(0, 0.85, d / 2 + 0.1);
-    g.add(door);
-
-    // Side walkway / base platform
-    const sidewalk = new Mesh(new BoxGeometry(w + 0.3, 0.04, d + 0.3), whiteBody);
-    sidewalk.position.y = 0.02;
-    g.add(sidewalk);
-
-    g.position.set(x, 0, z);
-    buildings.add(g);
-  }
-
-  /**
-   * Distinctive stepped/setback tower (like a modern high-rise).
-   */
-  function addSetbackTower(x, z, baseW, baseD, sections, accentMat) {
-    const g = new Group();
-    let y = 0;
-    let w = baseW;
-    let d = baseD;
-    const hPer = 3.5;
-
-    for (let s = 0; s < sections; s++) {
-      // Section body
-      const body = new Mesh(new BoxGeometry(w, hPer, d), s % 2 === 0 ? glassBody : steelBody);
-      body.position.y = y + hPer / 2;
-      body.castShadow = true;
-      body.receiveShadow = true;
-      g.add(body);
-
-      // Vertical pillars
-      for (const [px, pz] of [[-w/2.2, d/2.2], [w/2.2, d/2.2], [-w/2.2, -d/2.2], [w/2.2, -d/2.2]]) {
-        const pillar = new Mesh(new BoxGeometry(0.05, hPer, 0.05), whiteBody);
-        pillar.position.set(px, y + hPer / 2, pz);
-        g.add(pillar);
-      }
-
-      // Floor band between sections
-      const band = new Mesh(new BoxGeometry(w + 0.06, 0.12, d + 0.06), accentMat);
-      band.position.y = y + hPer + 0.06;
-      g.add(band);
-
-      y += hPer + 0.12;
-      w *= 0.75;
-      d *= 0.75;
-    }
-
-    // Spire cap
-    const spire = new Mesh(new CylinderGeometry(0.02, 0.05, 1.8, 8), accentMat);
-    spire.position.y = y + 0.9;
-    g.add(spire);
-
-    // Storefront base
-    const storeH = 2.2;
-    const storeFloor = new Mesh(new BoxGeometry(baseW, storeH, baseD + 0.2), silverBody);
-    storeFloor.position.y = storeH / 2;
-    storeFloor.castShadow = true;
-    storeFloor.receiveShadow = true;
-    g.add(storeFloor);
-
-    // Multiple storefront bays
-    const bays = Math.floor(baseW / 1.3);
-    for (let b = 0; b < bays; b++) {
-      const bx = -baseW * 0.38 + b * (baseW * 0.76 / (bays - 1));
-      const glow = b % 3 === 0 ? storeGlow : (b % 3 === 1 ? storeGlowPurple : storeGlow);
-      const sw = new Mesh(new PlaneGeometry(0.6, 1.1), glow);
-      sw.position.set(bx, 1.1, baseD / 2 + 0.12);
-      g.add(sw);
-    }
-
-    // Entrance
-    const entrance = new Mesh(new PlaneGeometry(0.6, 1.6), storeGlow);
-    entrance.position.set(0, 0.9, baseD / 2 + 0.14);
-    g.add(entrance);
-
-    g.position.set(x, 0, z);
-    buildings.add(g);
-  }
-
-  /**
-   * Twin tower — two connected towers with a skybridge.
-   */
-  function addTwinTower(x, z, gap, w, d, h, accentMat) {
-    const g = new Group();
-
-    for (const side of [-1, 1]) {
-      const offsetX = side * (w / 2 + gap / 2);
-      // Tower body
-      const body = new Mesh(new BoxGeometry(w, h, d), glassBody);
-      body.position.set(offsetX, h / 2, 0);
-      body.castShadow = true;
-      body.receiveShadow = true;
-      g.add(body);
-
-      // Pillars
-      for (const px of [-w / 2.2, w / 2.2]) {
-        const pillar = new Mesh(new BoxGeometry(0.04, h, 0.06), whiteBody);
-        pillar.position.set(offsetX + px, h / 2, d / 2 + 0.02);
-        g.add(pillar);
-      }
-
-      // Floor bands
-      const bands = Math.floor(h / 2.2);
-      for (let fb = 1; fb <= bands; fb++) {
-        const fy = fb * 2.2;
-        if (fy > h - 0.5) continue;
-        const band = new Mesh(new BoxGeometry(w + 0.02, 0.05, d + 0.02), floorBand);
-        band.position.set(offsetX, fy, 0);
-        g.add(band);
-      }
-
-      // Crown
-      const crown = new Mesh(new BoxGeometry(w + 0.08, 0.12, d + 0.08), accentMat);
-      crown.position.set(offsetX, h + 0.06, 0);
-      g.add(crown);
-
-      // Spire
-      if (h > 8) {
-        const spire = new Mesh(new CylinderGeometry(0.02, 0.05, 1.2, 8), accentMat);
-        spire.position.set(offsetX, h + 0.66, 0);
-        g.add(spire);
-      }
-    }
-
-    // Skybridge (mid-level)
-    const bridgeY = h * 0.45;
-    const bridge = new Mesh(new BoxGeometry(gap + 0.1, 0.4, d * 0.6), whiteBody);
-    bridge.position.set(0, bridgeY, 0);
-    bridge.castShadow = true;
-    g.add(bridge);
-
-    // Storefront level (unified base)
-    const storeH = 2.0;
-    const baseW = w * 2 + gap;
-    const storeBase = new Mesh(new BoxGeometry(baseW, storeH, d + 0.2), silverBody);
-    storeBase.position.y = storeH / 2;
-    storeBase.castShadow = true;
-    g.add(storeBase);
-
-    // Storefront bays across both towers
-    const tBays = Math.floor(baseW / 1.2);
-    for (let b = 0; b < tBays; b++) {
-      const bx = -baseW * 0.42 + b * (baseW * 0.84 / (tBays - 1));
-      const glow = b % 3 === 0 ? storeGlowPurple : storeGlow;
-      const sw = new Mesh(new PlaneGeometry(0.5, 0.95), glow);
-      sw.position.set(bx, 1.0, d / 2 + 0.12);
-      g.add(sw);
-    }
-
-    g.position.set(x, 0, z);
-    buildings.add(g);
-  }
-
-  // ═════════════════════════════════════════════════════════════
-  // NORTH WALL — full skyline behind player (Z = -21)
-  // ═════════════════════════════════════════════════════════════
-  const northTowers = [
-    [-26, -21, 2.0, 1.6, 12, glassBody, neonCyan],
-    [-23, -21, 2.4, 1.5, 15, steelBody, neonPurple],
-    [-20, -21, 2.2, 1.7, 18, silverBody, neonBlue],
-    [-16.5, -21, 1.8, 1.4, 10, glassBody, neonCyan],
-    [-13, -21, 2.6, 1.6, 14, steelBody, neonPurple],
-    [-9, -21, 2.0, 1.5, 20, glassBody, neonBlue],
-    [-4, -21, 2.8, 1.8, 22, silverBody, neonCyan],
-    [0.5, -21, 2.4, 1.6, 16, steelBody, neonPurple],
-    [4, -21, 2.2, 1.5, 13, glassBody, neonBlue],
-    [8, -21, 2.6, 1.7, 19, silverBody, neonCyan],
-    [12, -21, 2.0, 1.4, 11, glassBody, neonPurple],
-    [16, -21, 2.8, 1.8, 21, steelBody, neonBlue],
-    [20, -21, 2.2, 1.6, 15, silverBody, neonCyan],
-    [23, -21, 2.4, 1.5, 17, glassBody, neonPurple],
-    [26, -21, 2.0, 1.7, 13, steelBody, neonBlue],
-  ];
-  northTowers.forEach(([x, z, w, d, h, bm, am]) => addSkyscraper(x, z, w, d, h, bm, am));
-
-  // Landmark setback towers on north
-  addSetbackTower(-10, -21, 3.2, 2.0, 3, neonPurple);
-  addSetbackTower(6, -21, 3.0, 1.8, 4, neonCyan);
-  addSetbackTower(-22, -21, 2.6, 1.7, 3, neonBlue);
-  addSetbackTower(18, -21, 2.8, 1.9, 3, neonBlue);
-
-  // Twin tower landmark on north
-  addTwinTower(-5, -21, 1.2, 1.8, 1.6, 22, neonCyan);
-  addTwinTower(13, -21, 1.0, 1.6, 1.5, 18, neonPurple);
-
-  // ═════════════════════════════════════════════════════════════
-  // EAST WING — runs south from Z=-19 to Z=-2 (before beach zone)
-  // ═════════════════════════════════════════════════════════════
-  const eastTowers = [
-    [27, -18, 2.0, 1.9, 14, glassBody, neonCyan],
-    [27, -15, 2.4, 1.6, 11, steelBody, neonPurple],
-    [27, -12, 1.8, 1.5, 17, silverBody, neonBlue],
-    [27, -9, 2.2, 1.7, 10, glassBody, neonCyan],
-    [27, -6, 2.6, 1.8, 16, steelBody, neonPurple],
-    [27, -3, 2.0, 1.5, 12, silverBody, neonBlue],
-    [27, 0, 1.8, 1.4, 9, glassBody, neonCyan],
-  ];
-  eastTowers.forEach(([x, z, w, d, h, bm, am]) => addSkyscraper(x, z, d, w, h, bm, am));
-
-  addSetbackTower(27, -4, 2.4, 2.2, 3, neonCyan);
-
-  // ═════════════════════════════════════════════════════════════
-  // WEST WING — runs south from Z=-19 to Z=-2 (before beach zone)
-  // ═════════════════════════════════════════════════════════════
-  const westTowers = [
-    [-27, -18, 2.2, 1.8, 13, steelBody, neonPurple],
-    [-27, -15, 1.8, 1.5, 16, glassBody, neonBlue],
-    [-27, -12, 2.4, 1.7, 10, silverBody, neonCyan],
-    [-27, -9, 2.0, 1.6, 18, glassBody, neonPurple],
-    [-27, -6, 2.6, 1.8, 14, steelBody, neonBlue],
-    [-27, -3, 1.8, 1.4, 11, silverBody, neonCyan],
-    [-27, 0, 2.2, 1.6, 9, glassBody, neonPurple],
-  ];
-  westTowers.forEach(([x, z, w, d, h, bm, am]) => addSkyscraper(x, z, d, w, h, bm, am));
-
-  addSetbackTower(-27, -5, 2.6, 2.0, 3, neonPurple);
-  addTwinTower(-27, -10, 1.0, 1.5, 1.8, 16, neonCyan);
-
-  scene.add(buildings);
-}
+// createCitySkyline now lives in ./CitySkyline.jsx (imported at top of file)
 
 // ═══════════════════════════════════════════════════════════════
 // BUILD LOW-POLY HUMANOID AVATAR (spheres, capsules — no boxes)
