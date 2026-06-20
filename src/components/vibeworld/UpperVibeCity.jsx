@@ -58,6 +58,11 @@ export default function UpperVibeCity({ onExit }) {
   }, [stageVideos.length]);
 
   // ── Stage video controls ───────────────────────────────────────────────
+  const playerCtx = usePlayer();
+  const radioCtx = useRadio();
+  const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
+  const { allTracks, tracksLoaded } = radioCtx || {};
+
   const handleStageWatchVideo = () => {
     userDismissedVideoRef.current = false;
     wasAutoOpenedRef.current = false;
@@ -107,8 +112,6 @@ export default function UpperVibeCity({ onExit }) {
     if (match) playTrack(match, "song");
   };
 
-  const playerCtx = usePlayer();
-  const radioCtx = useRadio();
   useLivePresence();
 
   // ── Distance to stage center (for proximity audio prompt) ──────────────────
@@ -147,9 +150,6 @@ export default function UpperVibeCity({ onExit }) {
       if (!isPlaying && togglePlay) togglePlay();
     }
   }, [stageDistance, stageVideoMuted, stageVideoPlayerOpen, isPlaying, togglePlay]);
-
-  const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
-  const { allTracks, tracksLoaded } = radioCtx || {};
 
   // ── Read analyser frequency data for wave sync ────────────────────────
   useEffect(() => {
