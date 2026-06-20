@@ -1,18 +1,69 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 
 /**
  * StageVideoEmbed — YouTube iframe positioned to overlay the 3D stage screen.
- * Renders at the projected screen-space coordinates from CityCanvas.
+ * Handles both video display AND audio. Mute/unmute via postMessage.
  */
-export default function StageVideoEmbed({ open, video, screenPosRef, onClose }) {
+const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, screenPosRef }, ref) {
   const iframeRef = useRef(null);
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
   const [pos, setPos] = useState({ x: -9999, y: -9999, w: 0, h: 0 });
   const animRef = useRef(null);
   const lastVideoIdRef = useRef(null);
+  const mutedRef = useRef(true);
+  const playQueuedRef = useRef(false);
 
   const ytId = video?.youtube_video_id || "";
+
+  // ── Expose mute / unmute / play for parent ──────────────────
+  useImperativeHandle(ref, () => ({
+    mute() {
+      mutedRef.current = true;
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: "command", func: "mute", args: [] }),
+          "*"
+        );
+      }
+    },
+    unmute() {
+      mutedRef.current = false;
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: "command", func: "unMute", args: [] }),
+          "*"
+        );
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: "command", func: "setVolume", args: [80] }),
+          "*"
+        );
+      } else {
+        playQueuedRef.current = true;
+      }
+    },
+    play() {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: "command", func: "playVideo", args: [] }),
+          "*"
+        );
+      } else {
+        playQueuedRef.current = true;
+      }
+    },
+    pause() {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: "command", func: "pauseVideo", args: [] }),
+          "*"
+        );
+      }
+    },
+    isMuted() {
+      return mutedRef.current;
+    },
+  }));
 
   // Poll screen position from ref each frame
   useEffect(() => {
@@ -28,21 +79,24 @@ export default function StageVideoEmbed({ open, video, screenPosRef, onClose }) 
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [open, screenPosRef]);
 
-  // Reset on open
+  // Reset on open/close
   useEffect(() => {
     if (open) {
       setError(false);
       setReady(false);
+      mutedRef.current = true;
+      playQueuedRef.current = false;
     }
   }, [open]);
 
-  // Rebuild iframe when video changes
+  // Rebuild iframe when video changes (key forces remount)
   useEffect(() => {
     if (!open || !ytId) return;
     if (ytId === lastVideoIdRef.current) return;
     lastVideoIdRef.current = ytId;
     setError(false);
     setReady(false);
+    mutedRef.current = true;
   }, [open, ytId]);
 
   const embedUrl = ytId
@@ -52,10 +106,27 @@ export default function StageVideoEmbed({ open, video, screenPosRef, onClose }) 
   const handleIframeLoad = useCallback(() => {
     setReady(true);
     if (iframeRef.current?.contentWindow) {
+      // Start playback
       iframeRef.current.contentWindow.postMessage(
         JSON.stringify({ event: "command", func: "playVideo", args: [] }),
         "*"
       );
+      // Apply queued unmute if requested before iframe was ready
+      if (playQueuedRef.current) {
+        playQueuedRef.current = false;
+        if (!mutedRef.current) {
+          setTimeout(() => {
+            iframeRef.current?.contentWindow?.postMessage(
+              JSON.stringify({ event: "command", func: "unMute", args: [] }),
+              "*"
+            );
+            iframeRef.current?.contentWindow?.postMessage(
+              JSON.stringify({ event: "command", func: "setVolume", args: [80] }),
+              "*"
+            );
+          }, 300);
+        }
+      }
     }
   }, []);
 
@@ -63,7 +134,7 @@ export default function StageVideoEmbed({ open, video, screenPosRef, onClose }) 
 
   return (
     <div
-      className="fixed z-[70] pointer-events-auto"
+      className="fixed z-[70] pointer-events-none overflow-hidden"
       style={{
         left: pos.x,
         top: pos.y,
@@ -73,15 +144,16 @@ export default function StageVideoEmbed({ open, video, screenPosRef, onClose }) 
     >
       {/* Neon frame glow */}
       <div
-        className="absolute -inset-1 rounded-md pointer-events-none"
+        className="absolute -inset-0.5 pointer-events-none"
         style={{
-          boxShadow: "0 0 30px rgba(155,126,255,0.3), 0 0 60px rgba(0,160,220,0.12)",
-          border: "1px solid rgba(155,126,255,0.18)",
+          boxShadow: "0 0 30px rgba(155,126,255,0.25), 0 0 60px rgba(0,160,220,0.1), 0 0 4px rgba(155,126,255,0.15) inset",
+          border: "1px solid rgba(155,126,255,0.15)",
         }}
       />
 
       {!error ? (
         <iframe
+          key={ytId}
           ref={iframeRef}
           src={embedUrl}
           title={video?.title || "Stage Video"}
@@ -103,4 +175,6 @@ export default function StageVideoEmbed({ open, video, screenPosRef, onClose }) 
       )}
     </div>
   );
-}
+});
+
+export default StageVideoEmbed;

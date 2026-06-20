@@ -6,7 +6,6 @@ import CityCanvas from "@/components/vibeworld/CityCanvas";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
 import StageVideoEmbed from "@/components/vibeworld/StageVideoEmbed";
-import StageAudioPlayer from "@/components/vibeworld/StageAudioPlayer";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
@@ -31,7 +30,7 @@ export default function UpperVibeCity({ onExit }) {
   const stageIsPlayingRef = useRef(false);
   const stageTogglePlayRef = useRef(null);
   const stagePausedPlayerRef = useRef(false);
-  const stageAudioRef = useRef(null); // YouTube audio player ref
+  const stageEmbedRef = useRef(null); // StageVideoEmbed ref (handles video + audio)
   const stageScreenPosRef = useRef({ x: -9999, y: -9999, w: 0, h: 0 });
   stageMutedRef.current = stageVideoMuted;
 
@@ -58,12 +57,13 @@ export default function UpperVibeCity({ onExit }) {
   const handleWatchOnStage = useCallback(() => {
     setStageWatching(true);
     setStageVideoMuted(false);
-    if (stageAudioRef.current) {
-      // Unmute first so playVideo produces audible sound
-      stageAudioRef.current.unmute();
-      // Small delay lets YouTube process the unmute before play
-      setTimeout(() => stageAudioRef.current?.play?.(), 50);
-    }
+    // Unmute + play via stage embed (single YouTube player for video+audio)
+    setTimeout(() => {
+      if (stageEmbedRef.current) {
+        stageEmbedRef.current.unmute();
+        stageEmbedRef.current.play();
+      }
+    }, 300);
     if (isPlaying && togglePlay) {
       togglePlay();
       stagePausedPlayerRef.current = true;
@@ -71,12 +71,12 @@ export default function UpperVibeCity({ onExit }) {
   }, [isPlaying, togglePlay]);
 
   const handleExitWatchMode = useCallback(() => {
-    // Exit stage watching mode: stop YouTube audio, resume global player
+    // Exit stage watching mode: mute + pause embed, resume global player
     setStageWatching(false);
     setStageVideoMuted(true);
-    // Pause YouTube audio
-    if (stageAudioRef.current) {
-      stageAudioRef.current.pause();
+    if (stageEmbedRef.current) {
+      stageEmbedRef.current.mute();
+      stageEmbedRef.current.pause();
     }
     // Resume global player if stage had paused it
     if (stagePausedPlayerRef.current && !isPlaying && togglePlay) {
@@ -104,21 +104,24 @@ export default function UpperVibeCity({ onExit }) {
     setStageVideoMuted((m) => {
       const next = !m;
       if (!next) {
-        // Unmuting stage — enter watch mode, start YouTube, pause global player
+        // Unmuting — enter watch mode, unmute embed, pause global player
         setStageWatching(true);
-        if (stageAudioRef.current) {
-          stageAudioRef.current.unmute();
-          setTimeout(() => stageAudioRef.current?.play?.(), 50);
-        }
+        setTimeout(() => {
+          if (stageEmbedRef.current) {
+            stageEmbedRef.current.unmute();
+            stageEmbedRef.current.play();
+          }
+        }, 300);
         if (isPlaying && !stagePausedPlayerRef.current && togglePlay) {
           togglePlay();
           stagePausedPlayerRef.current = true;
         }
       } else {
-        // Muting stage — exit watch mode, pause YouTube, resume global player
+        // Muting — exit watch mode, mute embed, resume global player
         setStageWatching(false);
-        if (stageAudioRef.current) {
-          stageAudioRef.current.pause();
+        if (stageEmbedRef.current) {
+          stageEmbedRef.current.mute();
+          stageEmbedRef.current.pause();
         }
         if (stagePausedPlayerRef.current && !isPlaying && togglePlay) {
           togglePlay();
@@ -140,11 +143,12 @@ export default function UpperVibeCity({ onExit }) {
       (t) => t.title && t.title.toLowerCase().includes(titleLower.split(" - ")[0]?.split(" | ")[0] || "")
     );
     if (match) {
-      // Exit watch mode, stop YouTube audio, mute stage
+      // Exit watch mode, mute stage embed
       setStageWatching(false);
       setStageVideoMuted(true);
-      if (stageAudioRef.current) {
-        stageAudioRef.current.pause();
+      if (stageEmbedRef.current) {
+        stageEmbedRef.current.mute();
+        stageEmbedRef.current.pause();
       }
       // Resume global player if stage had paused it
       if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && togglePlay) {
@@ -338,12 +342,6 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Hidden YouTube audio player — provides audio sync for stage */}
-      <StageAudioPlayer
-        ref={stageAudioRef}
-        video={stageVideos[stageVideoIdx] || null}
-      />
-
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
       {!stageWatching && (
         <StageCoverVisualizer
@@ -353,8 +351,9 @@ export default function UpperVibeCity({ onExit }) {
         />
       )}
 
-      {/* YouTube video embed on stage screen (Watch on Stage mode) */}
+      {/* YouTube video + audio embed on stage screen (Watch on Stage mode) */}
       <StageVideoEmbed
+        ref={stageEmbedRef}
         open={stageWatching}
         video={stageVideos[stageVideoIdx] || null}
         screenPosRef={stageScreenPosRef}
