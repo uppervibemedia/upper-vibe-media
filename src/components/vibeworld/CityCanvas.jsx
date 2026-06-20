@@ -136,26 +136,25 @@ function buildPark(scene) {
   const OCEAN_DEPTH = 54;
 
   // ═════════════════════════════════════════════════════════════
-  // 1. GROUND — dark urban plaza floor covering the playable area
+  // 1. GROUND — dark urban plaza floor
   // ═════════════════════════════════════════════════════════════
-  const groundGeo = new PlaneGeometry(56, 42);
+  const groundGeo = new PlaneGeometry(56, 44);
   const groundMat = mat("#1A1A2E", { roughness: 0.85 });
   const ground = new Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(0, -0.01, -10);
+  ground.position.set(0, -0.01, -9);
   ground.receiveShadow = true;
   ground.name = "plazaGround";
   scene.add(ground);
 
   // ═════════════════════════════════════════════════════════════
-  // 2. UVC CENTRAL PLAZA — large circular hub at center
+  // 2. UVC CENTRAL PLAZA — circular hub at center
   // ═════════════════════════════════════════════════════════════
   const PLAZA_X = 0, PLAZA_Z = -4, PLAZA_R = 7;
 
-  // Main plaza disc
   const plazaDisc = new Mesh(
     new CircleGeometry(PLAZA_R, 64),
-    mat("#1E1E36", { roughness: 0.6, metalness: 0.2 })
+    mat("#1E1E36", { roughness: 0.5, metalness: 0.25 })
   );
   plazaDisc.rotation.x = -Math.PI / 2;
   plazaDisc.position.set(PLAZA_X, 0.001, PLAZA_Z);
@@ -163,9 +162,9 @@ function buildPark(scene) {
   plazaDisc.name = "plazaDisc";
   scene.add(plazaDisc);
 
-  // Glowing center ring
+  // UVC center branding ring
   const ringInner = new Mesh(
-    new RingGeometry(2.0, 2.3, 64),
+    new RingGeometry(1.8, 2.1, 64),
     new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide })
   );
   ringInner.rotation.x = -Math.PI / 2;
@@ -173,7 +172,26 @@ function buildPark(scene) {
   ringInner.renderOrder = 1;
   scene.add(ringInner);
 
-  // Outer ring (purple)
+  // UVC center text disc
+  const uvcCanvas = document.createElement("canvas");
+  uvcCanvas.width = 128; uvcCanvas.height = 128;
+  const uCtx = uvcCanvas.getContext("2d");
+  uCtx.fillStyle = "#00D4F0"; uCtx.font = "bold 36px 'Syne','Inter',sans-serif";
+  uCtx.textAlign = "center"; uCtx.textBaseline = "middle";
+  uCtx.fillText("UVC", 64, 64);
+  const uvcTex = new THREE.CanvasTexture(uvcCanvas);
+  uvcTex.minFilter = THREE.LinearFilter;
+  uvcTex.colorSpace = THREE.SRGBColorSpace;
+  const uvcDisc = new Mesh(
+    new CircleGeometry(1.5, 32),
+    new MeshBasicMaterial({ map: uvcTex, depthWrite: false, side: THREE.DoubleSide })
+  );
+  uvcDisc.rotation.x = -Math.PI / 2;
+  uvcDisc.position.set(PLAZA_X, 0.006, PLAZA_Z);
+  uvcDisc.renderOrder = 1;
+  scene.add(uvcDisc);
+
+  // Outer purple ring
   const ringOuter = new Mesh(
     new RingGeometry(PLAZA_R - 0.5, PLAZA_R - 0.2, 64),
     new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, side: THREE.DoubleSide })
@@ -184,7 +202,7 @@ function buildPark(scene) {
   scene.add(ringOuter);
 
   // ═════════════════════════════════════════════════════════════
-  // 3. GLOWING PATHS — wide neon-lit walkways to every zone
+  // 3. GLOWING PATHS — neon walkways to every zone
   // ═════════════════════════════════════════════════════════════
   const pathGlow = new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.18 });
   const pathFill = new MeshBasicMaterial({ color: new Color("#1A1A32"), depthWrite: false, transparent: true, opacity: 0.4 });
@@ -195,7 +213,6 @@ function buildPark(scene) {
     const midX = (fromX + toX) / 2, midZ = (fromZ + toZ) / 2;
     const angle = Math.atan2(dx, dz);
 
-    // Wide base path (1.6 wide — easy to walk)
     const pathStrip = new Mesh(new PlaneGeometry(1.6, len), pathFill);
     pathStrip.rotation.x = -Math.PI / 2;
     pathStrip.position.set(midX, 0.002, midZ);
@@ -203,14 +220,12 @@ function buildPark(scene) {
     pathStrip.receiveShadow = true;
     scene.add(pathStrip);
 
-    // Cyan inner glow strip
     const innerStrip = new Mesh(new PlaneGeometry(1.2, len), pathGlow);
     innerStrip.rotation.x = -Math.PI / 2;
     innerStrip.position.set(midX, 0.003, midZ);
     innerStrip.rotation.z = -angle;
     scene.add(innerStrip);
 
-    // Purple neon edge lines (both sides)
     const halfW = 0.8;
     for (const side of [-1, 1]) {
       const lx = side * halfW * Math.cos(angle);
@@ -225,7 +240,6 @@ function buildPark(scene) {
       scene.add(edge);
     }
 
-    // Center glow line (cyan pulse)
     const centerGlow = new Mesh(
       new PlaneGeometry(0.08, len),
       new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.5 })
@@ -236,31 +250,26 @@ function buildPark(scene) {
     scene.add(centerGlow);
   }
 
-  // Paths: plaza center to each zone
-  createPath(PLAZA_X, PLAZA_Z, 0, -14);       // North → Stage
-  createPath(PLAZA_X, PLAZA_Z, PLAZA_X, SHORELINE_Z + 2); // South → Beach
-  createPath(PLAZA_X, PLAZA_Z, -14, -3);       // West → Dome
-  createPath(PLAZA_X, PLAZA_Z, 12, -2);        // East → Lounge
-  createPath(PLAZA_X, PLAZA_Z, 16, -8);        // SE → Shops
+  // Six paths radiating from Central Plaza
+  createPath(PLAZA_X, PLAZA_Z, 0, -15);        // North → Stage
+  createPath(PLAZA_X, PLAZA_Z, -12, -3);       // West → Lounge
+  createPath(PLAZA_X, PLAZA_Z, 12, -3);        // East → Music Library
+  createPath(PLAZA_X, PLAZA_Z, 16, -7);        // Southeast → Visualizer Dome
+  createPath(PLAZA_X, PLAZA_Z, 8, -12);        // Northeast → Daily Vibe Check
+  createPath(PLAZA_X, PLAZA_Z, 0, SHORELINE_Z + 1); // South → Beach
 
-  // ── Beach boardwalk — transition from plaza path into the sand ──
+  // ── Beach boardwalk ────────────────────────────────────────
   const boardwalkLen = 8;
-  const boardwalkZ = 15;
-  const boardwalkMat = new MeshBasicMaterial({ color: new Color("#6B5AA0"), depthWrite: false, transparent: true, opacity: 0.25 });
-  const boardwalkG = new PlaneGeometry(3, boardwalkLen);
-
-  // Boardwalk planks (wider at beach to accommodate lounging)
+  const boardwalkStartZ = 15;
   const plankCount = 7;
   for (let p = 0; p < plankCount; p++) {
-    const pz = boardwalkZ + p * (boardwalkLen / plankCount);
-    const plankW = 2.6 + p * 0.1; // Slightly wider toward shore
+    const pz = boardwalkStartZ + p * (boardwalkLen / plankCount);
+    const plankW = 2.6 + p * 0.1;
     const plank = new Mesh(
       new PlaneGeometry(plankW, boardwalkLen / plankCount - 0.1),
       new MeshBasicMaterial({
         color: new Color(p % 2 === 0 ? "#5C4A90" : "#4A3A78"),
-        depthWrite: false,
-        transparent: true,
-        opacity: 0.35,
+        depthWrite: false, transparent: true, opacity: 0.35,
       })
     );
     plank.rotation.x = -Math.PI / 2;
@@ -268,24 +277,18 @@ function buildPark(scene) {
     plank.receiveShadow = true;
     scene.add(plank);
 
-    // Neon rail glow at boardwalk edges
     for (const side of [-1, 1]) {
       const rx = side * (plankW / 2 - 0.15);
       const post = new Mesh(
         new CylinderGeometry(0.04, 0.04, 0.5, 6),
-        new MeshBasicMaterial({
-          color: new Color("#A078FF"),
-          depthWrite: false,
-          transparent: true,
-          opacity: 0.5,
-        })
+        new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
       );
       post.position.set(rx, 0.25, pz);
       scene.add(post);
     }
   }
 
-  // Boardwalk entrance glow (where path meets boardwalk)
+  // Boardwalk entrance glow
   const entranceGlow = new Mesh(
     new PlaneGeometry(2.8, 0.15),
     new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.7 })
@@ -295,258 +298,396 @@ function buildPark(scene) {
   scene.add(entranceGlow);
 
   // ═════════════════════════════════════════════════════════════
-  // 4. MAIN MUSIC STAGE — north of plaza
+  // 4. MAIN MUSIC STAGE — north (top) of map
   // ═════════════════════════════════════════════════════════════
   const stage = new Group();
   stage.name = "musicStage";
 
-  // Stage platform
   const stagePlat = new Mesh(new BoxGeometry(8, 0.5, 5), mat("#2A2A4A", { roughness: 0.3, metalness: 0.5 }));
-  stagePlat.position.set(0, 0.25, -14);
-  stagePlat.castShadow = true;
-  stagePlat.receiveShadow = true;
+  stagePlat.position.set(0, 0.25, -15);
+  stagePlat.castShadow = true; stagePlat.receiveShadow = true;
   stage.add(stagePlat);
 
-  // Stage front edge glow
   const stageEdge = new Mesh(
     new BoxGeometry(8.1, 0.08, 0.1),
     new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
   );
-  stageEdge.position.set(0, 0.52, -11.45);
+  stageEdge.position.set(0, 0.52, -12.45);
   stage.add(stageEdge);
 
-  // Backdrop screen (glowing curved wall)
-  // Material is replaced at runtime with stage canvas texture if available
   const screenMat = mat("#1A1A3A", { roughness: 0.2, metalness: 0.7 });
   const screen = new Mesh(new BoxGeometry(7, 4, 0.2), screenMat);
-  screen.position.set(0, 2.5, -16.4);
+  screen.position.set(0, 2.5, -17.4);
   screen.castShadow = true;
   screen.name = "stageScreen";
   stage.add(screen);
   scene.userData.stageScreen = screen;
   scene.userData._stageCanvasApplied = false;
 
-  // Screen glow frame — pulses with music beat
   const screenGlow = new Mesh(
     new BoxGeometry(7.2, 4.2, 0.05),
     new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
   );
-  screenGlow.position.set(0, 2.5, -16.4);
+  screenGlow.position.set(0, 2.5, -17.4);
   screenGlow.name = "stageScreenGlow";
   stage.add(screenGlow);
 
-  // Stage spotlights (point lights)
+  // Stage arch — curved neon frame above screen
+  for (let a = 0; a < 8; a++) {
+    const archAngle = -Math.PI / 2 + (a / 7) * Math.PI;
+    const ax = Math.cos(archAngle) * 3.6;
+    const ay = 2.5 + Math.sin(archAngle) * 3.6;
+    const archSeg = new Mesh(
+      new BoxGeometry(0.08, 0.08, 0.15),
+      new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, transparent: true, opacity: 0.8 })
+    );
+    archSeg.position.set(ax, ay, -17.3);
+    stage.add(archSeg);
+  }
+
   const spotL = new PointLight();
-  spotL.color = new Color("#A078FF");
-  spotL.intensity = 4;
-  spotL.distance = 12;
-  spotL.position.set(-3, 3.5, -14);
-  stage.add(spotL);
+  spotL.color = new Color("#A078FF"); spotL.intensity = 4; spotL.distance = 12;
+  spotL.position.set(-3, 3.5, -15); stage.add(spotL);
 
   const spotR = new PointLight();
-  spotR.color = new Color("#00D4F0");
-  spotR.intensity = 4;
-  spotR.distance = 12;
-  spotR.position.set(3, 3.5, -14);
-  stage.add(spotR);
+  spotR.color = new Color("#00D4F0"); spotR.intensity = 4; spotR.distance = 12;
+  spotR.position.set(3, 3.5, -15); stage.add(spotR);
 
-  // Vertical stage pillars
   for (const sx of [-3.5, 3.5]) {
     const pillar = new Mesh(
       new CylinderGeometry(0.12, 0.15, 4, 8),
       mat("#555588", { roughness: 0.3, metalness: 0.7 })
     );
-    pillar.position.set(sx, 2.2, -11.5);
-    pillar.castShadow = true;
+    pillar.position.set(sx, 2.2, -12.5); pillar.castShadow = true;
     stage.add(pillar);
 
     const pillarGlow = new Mesh(
       new CylinderGeometry(0.14, 0.17, 0.3, 8),
       new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
     );
-    pillarGlow.position.set(sx, 4.2, -11.5);
+    pillarGlow.position.set(sx, 4.2, -12.5);
     stage.add(pillarGlow);
   }
 
   scene.add(stage);
-
-  // ── Stage label ───────────────────────────────────────────
-  createZoneLabel(scene, 0, 5.2, -14, "MUSIC  STAGE", "#00D4F0");
+  createZoneLabel(scene, 0, 5.5, -15, "MUSIC  STAGE", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
-  // 5. VISUALIZER DOME — west/left side
-  // ═════════════════════════════════════════════════════════════
-  const dome = new Group();
-  dome.name = "visualizerDome";
-
-  // Dome hemisphere
-  const domeGeo = new SphereGeometry(3.5, 32, 20, 0, Math.PI * 2, 0, Math.PI / 2);
-  const domeMesh = new Mesh(
-    domeGeo,
-    mat("#1E2A3E", { roughness: 0.25, metalness: 0.6, transparent: true, opacity: 0.7, depthWrite: true })
-  );
-  domeMesh.position.set(-12, 0.05, -3);
-  domeMesh.castShadow = true;
-  dome.add(domeMesh);
-
-  // Dome ring at base
-  const domeRing = new Mesh(
-    new RingGeometry(3.2, 3.5, 64),
-    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide })
-  );
-  domeRing.rotation.x = -Math.PI / 2;
-  domeRing.position.set(-12, 0.06, -3);
-  domeRing.renderOrder = 1;
-  dome.add(domeRing);
-
-  // Dome entrance (glowing arched doorway)
-  const entrance = new Mesh(
-    new BoxGeometry(2.5, 3.5, 0.1),
-    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.7 })
-  );
-  entrance.position.set(-12, 1.75, -3 + 3.35);
-  entrance.name = "domeEntrance";
-  dome.add(entrance);
-
-  // Exit glow ring around entrance
-  const exitRing = new Mesh(
-    new RingGeometry(1.35, 1.55, 32),
-    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
-  );
-  exitRing.position.set(-12, 1.75, -3 + 3.4);
-  exitRing.name = "domeExitRing";
-  dome.add(exitRing);
-
-  // Ground light under dome
-  const domeFloor = new Mesh(
-    new CircleGeometry(3, 32),
-    new MeshBasicMaterial({ color: new Color("#1E2A4E"), depthWrite: false, transparent: true, opacity: 0.3 })
-  );
-  domeFloor.rotation.x = -Math.PI / 2;
-  domeFloor.position.set(-12, 0.003, -3);
-  dome.add(domeFloor);
-
-  scene.add(dome);
-
-  // ── Dome label ────────────────────────────────────────────
-  createZoneLabel(scene, -12, 4.2, -3, "VISUALIZER  DOME", "#A078FF");
-
-  // ═════════════════════════════════════════════════════════════
-  // 6. VIBE LOUNGE — east/right side, circular seating
+  // 5. VIBE LOUNGE — west/left side
   // ═════════════════════════════════════════════════════════════
   const lounge = new Group();
   lounge.name = "vibeLounge";
 
-  // Lounge base platform
   const loungePlat = new Mesh(
     new CircleGeometry(4, 32),
     mat("#1E1E3A", { roughness: 0.5, metalness: 0.3 })
   );
   loungePlat.rotation.x = -Math.PI / 2;
-  loungePlat.position.set(12, 0.002, -3);
+  loungePlat.position.set(-12, 0.002, -3);
   loungePlat.receiveShadow = true;
   lounge.add(loungePlat);
 
-  // Circular seating — ring of cushioned blocks
-  for (let i = 0; i < 8; i++) {
-    const angle = (i / 8) * Math.PI * 2;
-    const sx = 12 + Math.cos(angle) * 2.5;
-    const sz = -3 + Math.sin(angle) * 2.5;
+  // Curved lounge wall (half circle opening toward plaza)
+  for (let i = 0; i < 12; i++) {
+    const ang = Math.PI / 2 + (i / 11) * Math.PI;
+    const wx = -12 + Math.cos(ang) * 3.5;
+    const wz = -3 + Math.sin(ang) * 3.5;
+    const wallCol = new Mesh(
+      new BoxGeometry(0.4, 2.5, 0.3),
+      mat("#3A2A5A", { roughness: 0.3, metalness: 0.2 })
+    );
+    wallCol.position.set(wx, 1.25, wz);
+    wallCol.castShadow = true;
+    lounge.add(wallCol);
 
-    // Seat cushion
+    if (i % 3 === 0) {
+      const neonStrip = new Mesh(
+        new BoxGeometry(0.35, 0.05, 0.25),
+        new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false })
+      );
+      neonStrip.position.set(wx, 2.4, wz);
+      lounge.add(neonStrip);
+    }
+  }
+
+  // Seating inside
+  for (let i = 0; i < 6; i++) {
+    const ang = Math.PI + (i / 5) * Math.PI;
+    const sx = -12 + Math.cos(ang) * 2;
+    const sz = -3 + Math.sin(ang) * 2;
     const seat = new Mesh(
-      new BoxGeometry(1.0, 0.25, 0.6),
+      new BoxGeometry(0.9, 0.2, 0.5),
       mat("#4A3A6A", { roughness: 0.4, metalness: 0.15 })
     );
-    seat.position.set(sx, 0.15, sz);
-    seat.rotation.y = -angle;
-    seat.castShadow = true;
-    seat.receiveShadow = true;
+    seat.position.set(sx, 0.12, sz);
+    seat.rotation.y = -ang;
+    seat.castShadow = true; seat.receiveShadow = true;
     lounge.add(seat);
 
-    // Glow under seat
     const seatGlow = new Mesh(
-      new BoxGeometry(0.95, 0.03, 0.55),
+      new BoxGeometry(0.85, 0.03, 0.45),
       new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
     );
     seatGlow.position.set(sx, 0.03, sz);
-    seatGlow.rotation.y = -angle;
+    seatGlow.rotation.y = -ang;
     lounge.add(seatGlow);
   }
 
-  // Central table
-  const table = new Mesh(
-    new CylinderGeometry(1.2, 1.2, 0.3, 16),
+  // Central fire pit
+  const firePit = new Mesh(
+    new CylinderGeometry(0.7, 0.8, 0.3, 16),
     mat("#555588", { roughness: 0.3, metalness: 0.6 })
   );
-  table.position.set(12, 0.3, -3);
-  table.castShadow = true;
-  lounge.add(table);
+  firePit.position.set(-12, 0.15, -3);
+  firePit.castShadow = true;
+  lounge.add(firePit);
 
-  const tableGlow = new Mesh(
-    new CylinderGeometry(1.25, 1.25, 0.04, 16),
-    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
+  const fireGlow = new Mesh(
+    new CylinderGeometry(0.75, 0.85, 0.04, 16),
+    new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false })
   );
-  tableGlow.position.set(12, 0.47, -3);
-  lounge.add(tableGlow);
+  fireGlow.position.set(-12, 0.32, -3);
+  lounge.add(fireGlow);
 
   scene.add(lounge);
-
-  // ── Lounge label ─────────────────────────────────────────
-  createZoneLabel(scene, 12, 4.2, -3, "VIBE  LOUNGE", "#A078FF");
+  createZoneLabel(scene, -12, 4.2, -3, "VIBE  LOUNGE", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
-  // 7. SHOP / HANGOUT DISTRICT — southeast area, storefronts face beach
+  // 6. MUSIC LIBRARY — east/right side
   // ═════════════════════════════════════════════════════════════
-  const shopGroup = new Group();
-  shopGroup.name = "shopDistrict";
+  const library = new Group();
+  library.name = "musicLibrary";
 
-  const shopLabels = ["UVC WEAR", "BEAT HUB", "CAFE VIBE"];
-  for (let i = 0; i < 3; i++) {
-    const sx = 12 + i * 3.5;
-    const sz = -11;
+  const libPlat = new Mesh(
+    new CircleGeometry(4, 32),
+    mat("#1A2A3E", { roughness: 0.5, metalness: 0.3 })
+  );
+  libPlat.rotation.x = -Math.PI / 2;
+  libPlat.position.set(12, 0.002, -3);
+  libPlat.receiveShadow = true;
+  library.add(libPlat);
 
-    // Shop building box
-    const shop = new Mesh(new BoxGeometry(2.5, 3.5, 2.5), mat("#2A2A44", { roughness: 0.3, metalness: 0.4 }));
-    shop.position.set(sx, 1.75, sz);
-    shop.castShadow = true;
-    shop.receiveShadow = true;
-    shopGroup.add(shop);
+  // Main building cylinder
+  const libBldg = new Mesh(
+    new CylinderGeometry(2.8, 3, 3.2, 16),
+    mat("#1E2E4A", { roughness: 0.3, metalness: 0.35, transparent: true, opacity: 0.85, depthWrite: true })
+  );
+  libBldg.position.set(12, 1.6, -3);
+  libBldg.castShadow = true;
+  library.add(libBldg);
 
-    // Neon edge strips on south/front face
-    for (const ey of [0.05, 3.3]) {
-      const edgeStrip = new Mesh(
-        new BoxGeometry(2.55, 0.06, 0.06),
-        new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false })
-      );
-      edgeStrip.position.set(sx, ey, sz + 1.25);
-      shopGroup.add(edgeStrip);
-    }
-
-    // Glowing storefront window — facing south toward beach
-    const frontWin = new Mesh(
-      new PlaneGeometry(1.8, 1.5),
-      new MeshBasicMaterial({ color: new Color("#FFE0A0"), depthWrite: false, transparent: true, opacity: 0.6 })
+  // Cyan ring lights around building
+  for (const ry of [0.3, 1.8, 3.0]) {
+    const libRing = new Mesh(
+      new RingGeometry(2.85, 3.05, 32),
+      new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide })
     );
-    frontWin.position.set(sx, 1.8, sz + 1.26);
-    shopGroup.add(frontWin);
-
-    // Awning — south side
-    const awning = new Mesh(
-      new BoxGeometry(2.3, 0.08, 0.25),
-      new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
-    );
-    awning.position.set(sx, 2.65, sz + 1.15);
-    shopGroup.add(awning);
+    libRing.rotation.x = -Math.PI / 2;
+    libRing.position.set(12, ry, -3);
+    libRing.renderOrder = 1;
+    library.add(libRing);
   }
 
-  scene.add(shopGroup);
+  // Headphone icon on top
+  const iconCanvas = document.createElement("canvas");
+  iconCanvas.width = 64; iconCanvas.height = 64;
+  const iCtx = iconCanvas.getContext("2d");
+  iCtx.fillStyle = "#00D4F0"; iCtx.font = "bold 40px sans-serif";
+  iCtx.textAlign = "center"; iCtx.textBaseline = "middle";
+  iCtx.fillText("🎧", 32, 32);
+  const iconTex = new THREE.CanvasTexture(iconCanvas);
+  iconTex.minFilter = THREE.LinearFilter;
+  iconTex.colorSpace = THREE.SRGBColorSpace;
+  const iconDisc = new Mesh(
+    new CircleGeometry(1.2, 16),
+    new MeshBasicMaterial({ map: iconTex, depthWrite: false, side: THREE.DoubleSide })
+  );
+  iconDisc.rotation.x = -Math.PI / 2;
+  iconDisc.position.set(12, 3.25, -3);
+  iconDisc.renderOrder = 1;
+  library.add(iconDisc);
 
-  // ── Shop label ───────────────────────────────────────────
-  createZoneLabel(scene, 18, 3.8, -11, "SHOP  DISTRICT", "#FFE0A0");
+  // Entrance glow (facing plaza)
+  const libEntrance = new Mesh(
+    new BoxGeometry(2.2, 3.0, 0.08),
+    new MeshBasicMaterial({ color: new Color("#0080B8"), depthWrite: false, transparent: true, opacity: 0.65 })
+  );
+  libEntrance.position.set(12, 1.5, -3 + 2.8);
+  library.add(libEntrance);
+
+  scene.add(library);
+  createZoneLabel(scene, 12, 4.2, -3, "MUSIC  LIBRARY", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
-  // 8. BEACH WALK — front edge
+  // 7. VISUALIZER DOME — southeast
+  // ═════════════════════════════════════════════════════════════
+  const dome = new Group();
+  dome.name = "visualizerDome";
+
+  const domeGeo2 = new SphereGeometry(3.5, 32, 20, 0, Math.PI * 2, 0, Math.PI / 2);
+  const domeMesh2 = new Mesh(
+    domeGeo2,
+    mat("#1E2A3E", { roughness: 0.25, metalness: 0.6, transparent: true, opacity: 0.7, depthWrite: true })
+  );
+  domeMesh2.position.set(16, 0.05, -7);
+  domeMesh2.castShadow = true;
+  dome.add(domeMesh2);
+
+  const domeRing = new Mesh(
+    new RingGeometry(3.2, 3.5, 64),
+    new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, side: THREE.DoubleSide })
+  );
+  domeRing.rotation.x = -Math.PI / 2;
+  domeRing.position.set(16, 0.06, -7);
+  domeRing.renderOrder = 1;
+  dome.add(domeRing);
+
+  // Pulsing LED dots on dome surface
+  for (let d = 0; d < 20; d++) {
+    const dAng = (d / 20) * Math.PI * 2;
+    const dot = new Mesh(
+      new SphereGeometry(0.08, 4, 3),
+      new MeshBasicMaterial({ color: new Color(["#C43BFF", "#00D4F0", "#FF00FF"][d % 3]), depthWrite: false })
+    );
+    dot.position.set(16 + Math.cos(dAng) * 3.2, 1.5 + (d % 3) * 0.8, -7 + Math.sin(dAng) * 3.2);
+    dome.add(dot);
+  }
+
+  const domeEntrance = new Mesh(
+    new BoxGeometry(2.5, 3.5, 0.1),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.7 })
+  );
+  domeEntrance.position.set(16, 1.75, -7 + 3.35);
+  domeEntrance.name = "domeEntrance";
+  dome.add(domeEntrance);
+
+  const domeFloor = new Mesh(
+    new CircleGeometry(3, 32),
+    new MeshBasicMaterial({ color: new Color("#1E2A4E"), depthWrite: false, transparent: true, opacity: 0.3 })
+  );
+  domeFloor.rotation.x = -Math.PI / 2;
+  domeFloor.position.set(16, 0.003, -7);
+  dome.add(domeFloor);
+
+  scene.add(dome);
+  createZoneLabel(scene, 16, 4.2, -7, "VISUALIZER  DOME", "#C43BFF");
+
+  // ═════════════════════════════════════════════════════════════
+  // 8. DAILY VIBE CHECK — northeast kiosk
+  // ═════════════════════════════════════════════════════════════
+  const vibeCheck = new Group();
+  vibeCheck.name = "dailyVibeCheck";
+
+  const vcPlat = new Mesh(
+    new CircleGeometry(2.5, 32),
+    mat("#1A2E3E", { roughness: 0.5, metalness: 0.3 })
+  );
+  vcPlat.rotation.x = -Math.PI / 2;
+  vcPlat.position.set(8, 0.002, -12);
+  vcPlat.receiveShadow = true;
+  vibeCheck.add(vcPlat);
+
+  // Central pillar/portal
+  const vcPillar = new Mesh(
+    new CylinderGeometry(0.8, 1.0, 2.5, 16),
+    mat("#1E3E4E", { roughness: 0.25, metalness: 0.5, transparent: true, opacity: 0.8, depthWrite: true })
+  );
+  vcPillar.position.set(8, 1.25, -12);
+  vcPillar.castShadow = true;
+  vibeCheck.add(vcPillar);
+
+  // Cyan glow ring around pillar
+  for (const ry of [0.15, 1.8, 2.4]) {
+    const vcRing = new Mesh(
+      new RingGeometry(0.85, 1.05, 32),
+      new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide })
+    );
+    vcRing.rotation.x = -Math.PI / 2;
+    vcRing.position.set(8, ry, -12);
+    vcRing.renderOrder = 1;
+    vibeCheck.add(vcRing);
+  }
+
+  // Sparkle icon on top
+  const sparkCanvas = document.createElement("canvas");
+  sparkCanvas.width = 48; sparkCanvas.height = 48;
+  const sCtx = sparkCanvas.getContext("2d");
+  sCtx.fillStyle = "#00E5FF"; sCtx.font = "bold 30px sans-serif";
+  sCtx.textAlign = "center"; sCtx.textBaseline = "middle";
+  sCtx.fillText("✨", 24, 24);
+  const sparkTex = new THREE.CanvasTexture(sparkCanvas);
+  sparkTex.minFilter = THREE.LinearFilter;
+  sparkTex.colorSpace = THREE.SRGBColorSpace;
+  const sparkDisc = new Mesh(
+    new CircleGeometry(0.7, 16),
+    new MeshBasicMaterial({ map: sparkTex, depthWrite: false, side: THREE.DoubleSide })
+  );
+  sparkDisc.rotation.x = -Math.PI / 2;
+  sparkDisc.position.set(8, 2.55, -12);
+  sparkDisc.renderOrder = 1;
+  vibeCheck.add(sparkDisc);
+
+  scene.add(vibeCheck);
+  createZoneLabel(scene, 8, 3.8, -12, "DAILY  VIBE  CHECK", "#00E5FF");
+
+  // ═════════════════════════════════════════════════════════════
+  // 9. CITY EDGE BUILDINGS — framing the perimeter
+  // ═════════════════════════════════════════════════════════════
+  const edgeBuildings = new Group();
+  edgeBuildings.name = "edgeBuildings";
+
+  const bldgDefs = [
+    { x: -20, z: -18, w: 3, h: 5, d: 3, color: "#2A2A44", label: "BEATS", labelColor: "#C43BFF" },
+    { x: -16, z: -22, w: 2.5, h: 4, d: 2.5, color: "#252540", label: "VIBE CO.", labelColor: "#00D4F0" },
+    { x: 16, z: -22, w: 3, h: 5.5, d: 3, color: "#2A2A44", label: "UVC FASHION", labelColor: "#C43BFF" },
+    { x: 20, z: -18, w: 2.5, h: 4.5, d: 2.5, color: "#252540", label: "SOUNDWAVE", labelColor: "#00D4F0" },
+    { x: -22, z: -8, w: 2, h: 4, d: 2, color: "#282840", label: "CAFÉ VIBE", labelColor: "#FFE0A0" },
+    { x: 22, z: -8, w: 2, h: 3.5, d: 2, color: "#282840", label: "LOUNGE", labelColor: "#A078FF" },
+    { x: -18, z: -2, w: 2, h: 3, d: 2, color: "#26263E", label: undefined, labelColor: undefined },
+    { x: 18, z: -2, w: 2, h: 3, d: 2, color: "#26263E", label: undefined, labelColor: undefined },
+  ];
+
+  for (const b of bldgDefs) {
+    const bldg = new Mesh(
+      new BoxGeometry(b.w, b.h, b.d),
+      mat(b.color, { roughness: 0.35, metalness: 0.4 })
+    );
+    bldg.position.set(b.x, b.h / 2, b.z);
+    bldg.castShadow = true; bldg.receiveShadow = true;
+    edgeBuildings.add(bldg);
+
+    // Window glow strip on inner face (facing plaza)
+    const winFace = b.x < 0 ? b.w / 2 + 0.02 : -b.w / 2 - 0.02;
+    for (let wy = 0.5; wy < b.h - 0.5; wy += 1.2) {
+      const win = new Mesh(
+        new PlaneGeometry(b.w * 0.5, 0.6),
+        new MeshBasicMaterial({ color: new Color(b.labelColor || "#FFE0A0"), depthWrite: false, transparent: true, opacity: 0.5 })
+      );
+      if (b.x < 0) {
+        win.position.set(b.x + winFace, wy, b.z);
+        win.rotation.y = Math.PI / 2;
+      } else {
+        win.position.set(b.x + winFace, wy, b.z);
+        win.rotation.y = -Math.PI / 2;
+      }
+      edgeBuildings.add(win);
+    }
+
+    // Neon edge strips at top
+    for (const side of [-1, 1]) {
+      const topEdge = new Mesh(
+        new BoxGeometry(side > 0 ? b.w + 0.1 : 0.06, 0.06, side > 0 ? 0.06 : b.d + 0.1),
+        new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, transparent: true, opacity: 0.7 })
+      );
+      topEdge.position.set(b.x, b.h + 0.03, b.z);
+      edgeBuildings.add(topEdge);
+    }
+  }
+
+  scene.add(edgeBuildings);
+
+  // ═════════════════════════════════════════════════════════════
+  // 10. BEACH WALK — south edge
   // ═════════════════════════════════════════════════════════════
   const bufferGeo = new PlaneGeometry(56, 6);
   const buffer = new Mesh(bufferGeo, mat("#2A2A40", { roughness: 0.7 }));
@@ -571,13 +712,10 @@ function buildPark(scene) {
   const railGroup = new Group();
   railGroup.name = "boardwalkRail";
   for (let rx = -24; rx <= 24; rx += 3) {
-    // Post
     const post = new Mesh(new CylinderGeometry(0.06, 0.08, 1.5, 6), mat("#777799", { roughness: 0.3, metalness: 0.6 }));
-    post.position.set(rx, 0.75, 9.5);
-    post.castShadow = true;
+    post.position.set(rx, 0.75, 9.5); post.castShadow = true;
     railGroup.add(post);
 
-    // Post glow cap
     const cap = new Mesh(
       new CylinderGeometry(0.07, 0.09, 0.1, 6),
       new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false })
@@ -585,48 +723,38 @@ function buildPark(scene) {
     cap.position.set(rx, 1.5, 9.5);
     railGroup.add(cap);
   }
-  // Top rail bar
   const railBar = new Mesh(new BoxGeometry(50, 0.06, 0.1), mat("#8888AA", { roughness: 0.3, metalness: 0.5 }));
-  railBar.position.set(0, 1.25, 9.5);
-  railBar.castShadow = true;
+  railBar.position.set(0, 1.25, 9.5); railBar.castShadow = true;
   railGroup.add(railBar);
   scene.add(railGroup);
 
   // Beach lounge chairs
   const chairGroup = new Group();
   chairGroup.name = "beachChairs";
-  const umbColors = ["#9B7EFF", "#00D4F0", "#A078FF"];
+  const umbColors = ["#9B7EFF", "#00D4F0", "#C43BFF"];
   for (let u = 0; u < 6; u++) {
     const ux = -14 + u * 5.5;
     const uz = 17.5;
-
-    // Umbrella pole
     const pole = new Mesh(new CylinderGeometry(0.04, 0.04, 2, 6), mat("#CCCCDD", { roughness: 0.3, metalness: 0.3 }));
-    pole.position.set(ux, 1.0, uz);
-    pole.castShadow = true;
+    pole.position.set(ux, 1.0, uz); pole.castShadow = true;
     chairGroup.add(pole);
 
-    // Umbrella canopy (wide cone)
     const canopy = new Mesh(
       new CylinderGeometry(0.05, 0.8, 0.6, 12),
       mat(umbColors[u % 3], { roughness: 0.4, metalness: 0.1 })
     );
-    canopy.position.set(ux, 2.2, uz);
-    canopy.castShadow = true;
+    canopy.position.set(ux, 2.2, uz); canopy.castShadow = true;
     chairGroup.add(canopy);
 
-    // Lounge chair (simple box)
     const chair = new Mesh(new BoxGeometry(0.5, 0.08, 1.4), mat("#555566", { roughness: 0.4, metalness: 0.3 }));
-    chair.position.set(ux + 0.6, 0.06, uz);
-    chair.rotation.x = -0.2;
-    chair.castShadow = true;
-    chair.receiveShadow = true;
+    chair.position.set(ux + 0.6, 0.06, uz); chair.rotation.x = -0.2;
+    chair.castShadow = true; chair.receiveShadow = true;
     chairGroup.add(chair);
   }
   scene.add(chairGroup);
 
   // ═════════════════════════════════════════════════════════════
-  // 9. OCEAN — waves from shore to horizon
+  // 11. OCEAN — waves from shore to horizon
   // ═════════════════════════════════════════════════════════════
   const oceanSegments = 54;
   const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 56, oceanSegments);
@@ -663,7 +791,7 @@ function buildPark(scene) {
   scene.userData.shorelineZ = SHORELINE_Z;
 
   // ═════════════════════════════════════════════════════════════
-  // 10. LIGHTING — night ambiance
+  // 12. LIGHTING — night ambiance
   // ═════════════════════════════════════════════════════════════
   const moon = new DirectionalLight();
   moon.color = new Color("#7B9EC7");
@@ -699,15 +827,36 @@ function buildPark(scene) {
   beachLight.position.set(0, 3, SHORELINE_Z + 6);
   scene.add(beachLight);
 
+  // Additional zone point lights
+  const loungeLight = new PointLight();
+  loungeLight.color = new Color("#A078FF");
+  loungeLight.intensity = 1.5; loungeLight.distance = 10;
+  loungeLight.position.set(-12, 2, -3);
+  scene.add(loungeLight);
+
+  const libraryLight = new PointLight();
+  libraryLight.color = new Color("#00D4F0");
+  libraryLight.intensity = 1.5; libraryLight.distance = 10;
+  libraryLight.position.set(12, 2, -3);
+  scene.add(libraryLight);
+
+  const vibeCheckLight = new PointLight();
+  vibeCheckLight.color = new Color("#00E5FF");
+  vibeCheckLight.intensity = 1.5; vibeCheckLight.distance = 8;
+  vibeCheckLight.position.set(8, 2, -12);
+  scene.add(vibeCheckLight);
+
   // ═════════════════════════════════════════════════════════════
-  // 11. TWINKLING STARS + PALM TREES
+  // 13. TWINKLING STARS + PALM TREES
   // ═════════════════════════════════════════════════════════════
   createStarField(scene);
 
-  // Palm trees around plaza
+  // Palm trees decorating pathways
   const palmPositions = [
-    [-5, -8], [5, -8], [-8, -2], [8, -2], [-4, 2], [4, 2],
-    [-15, -8], [15, -8], [-10, -12], [10, -12],
+    [-4, -10], [4, -10], [-3, 2], [3, 2],
+    [-8, -6], [8, -6], [-10, -12], [10, -12],
+    [-15, -6], [15, -6], [-6, 10], [6, 10],
+    [-18, -12], [18, -12],
   ];
   palmPositions.forEach(([px, pz]) => {
     const palm = new Group();
@@ -717,7 +866,6 @@ function buildPark(scene) {
     trunk.castShadow = true;
     palm.add(trunk);
 
-    // Palm fronds (simple radiating planes)
     for (let f = 0; f < 5; f++) {
       const angle = (f / 5) * Math.PI * 2;
       const frond = new Mesh(
@@ -1521,15 +1669,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
         // (attribute pixels are scaled by devicePixelRatio on retina/mobile)
         if (stageScreenPosRef) {
-          const ss = new Vector3(0, 2.5, -16.4);
+          const ss = new Vector3(0, 2.5, -17.4);
           const proj = ss.clone().project(camera);
           const rw = renderer.domElement.clientWidth || renderer.domElement.width;
           const rh = renderer.domElement.clientHeight || renderer.domElement.height;
           const cx = (proj.x * 0.5 + 0.5) * rw;
           const cy = (-proj.y * 0.5 + 0.5) * rh;
           // Project corners for size
-          const tl = new Vector3(-3.5, 4.5, -16.4).project(camera);
-          const br = new Vector3(3.5, 0.5, -16.4).project(camera);
+          const tl = new Vector3(-3.5, 4.5, -17.4).project(camera);
+          const br = new Vector3(3.5, 0.5, -17.4).project(camera);
           const sw = Math.abs((br.x - tl.x) * 0.5 * rw);
           const sh = Math.abs((-br.y + tl.y) * 0.5 * rh);
           stageScreenPosRef.current = { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh };

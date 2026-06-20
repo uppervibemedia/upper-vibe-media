@@ -258,7 +258,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── Stage proximity: resume global player when walking away from stage ──
   useEffect(() => {
-    const STAGE_X = 0, STAGE_Z = -14;
+    const STAGE_X = 0, STAGE_Z = -15;
     const dx = playerPos.x - STAGE_X;
     const dz = playerPos.z - STAGE_Z;
     const dist = Math.sqrt(dx * dx + dz * dz);
@@ -306,7 +306,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     const timer = setInterval(() => {
       if (stageWatching || stageFullScreen) return; // User is actively using stage
       // Don't rotate if user is near the stage (looking at it)
-      const STAGE_X = 0, STAGE_Z = -14;
+      const STAGE_X = 0, STAGE_Z = -15;
       const dx = playerPos.x - STAGE_X;
       const dz = playerPos.z - STAGE_Z;
       const dist = Math.sqrt(dx * dx + dz * dz);

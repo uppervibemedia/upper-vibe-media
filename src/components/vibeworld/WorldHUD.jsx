@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Music4, Tv2, MessageCircle, Store, Sun,
+  Music4, Tv2, MessageCircle, Sun,
   Compass, Sparkles, Library, SkipForward,
-  Volume2, VolumeX,
+  Volume2, VolumeX, BookOpen,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
@@ -18,7 +18,8 @@ const ZONE_ICONS = {
   stage: Music4,
   dome: Tv2,
   lounge: MessageCircle,
-  shop: Store,
+  library: Library,
+  vibecheck: Sparkles,
   beach: Sun,
 };
 
@@ -331,6 +332,71 @@ export default function WorldHUD({
           </motion.div>
         )}
 
+        {zone?.id === "library" && (
+          <motion.div
+            key="library-actions"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
+            style={{
+              paddingBottom: isMobile
+                ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
+                : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+              pointerEvents: "auto",
+            }}
+          >
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={handleOpenMusicLibrary}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#0080B8,#00A0DC)",
+                color: "#fff",
+                boxShadow: "0 0 20px rgba(0,160,220,0.4)",
+                minHeight: "44px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
+              }}
+            >
+              <Library className="w-3.5 h-3.5" />
+              Browse Music Library
+            </button>
+          </motion.div>
+        )}
+
+        {zone?.id === "vibecheck" && (
+          <motion.div
+            key="vibecheck-actions"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
+            style={{
+              paddingBottom: isMobile
+                ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
+                : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+              pointerEvents: "auto",
+            }}
+          >
+            <Link
+              to="/my-vibes"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#00D4F0,#00E5FF)",
+                color: "#000",
+                boxShadow: "0 0 20px rgba(0,229,255,0.4)",
+                minHeight: "44px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
+              }}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Daily Vibe Check
+            </Link>
+          </motion.div>
+        )}
+
         {zone?.id === "lounge" && (
           <motion.div
             key="lounge-actions"
@@ -388,55 +454,6 @@ export default function WorldHUD({
             >
               Waves sync to your music
             </span>
-          </motion.div>
-        )}
-
-        {zone?.id === "shop" && (
-          <motion.div
-            key="shop-actions"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={{
-              paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
-              pointerEvents: "auto",
-            }}
-          >
-            <div className="flex flex-wrap gap-2 justify-center">
-              <span
-                className="px-3 py-1.5 rounded-full text-[10px] font-black tracking-wider"
-                style={{
-                  background: "rgba(255,255,255,0.12)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  color: "rgba(255,255,255,0.5)",
-                }}
-              >
-                Merch Coming Soon
-              </span>
-              <span
-                className="px-3 py-1.5 rounded-full text-[10px] font-black tracking-wider"
-                style={{
-                  background: "rgba(155,126,255,0.12)",
-                  border: "1px solid rgba(155,126,255,0.25)",
-                  color: "#c4aaff",
-                }}
-              >
-                Artist Features Soon
-              </span>
-              <Link
-                to="/membership"
-                className="px-3 py-1.5 rounded-full text-[10px] font-black tracking-wider transition-all hover:brightness-110"
-                style={{
-                  background: "linear-gradient(135deg,#D4A843,#F0C860)",
-                  color: "#000",
-                }}
-              >
-                Join Plus
-              </Link>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>

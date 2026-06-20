@@ -13,32 +13,38 @@ const ZONES = {
   stage: {
     name: "Main Music Stage",
     id: "stage",
-    cx: 0, cz: -14, radius: 5,
+    cx: 0, cz: -15, radius: 5,
     icon: "Music4",
-  },
-  dome: {
-    name: "Visualizer Dome",
-    id: "dome",
-    cx: -12, cz: -3, radius: 4.5,
-    icon: "Tv2",
   },
   lounge: {
     name: "Vibe Lounge",
     id: "lounge",
-    cx: 12, cz: -3, radius: 5,
+    cx: -12, cz: -3, radius: 5,
     icon: "MessageCircle",
   },
-  shop: {
-    name: "Shop District",
-    id: "shop",
-    cx: 16, cz: -11, radius: 6,
-    icon: "Store",
+  library: {
+    name: "Music Library",
+    id: "library",
+    cx: 12, cz: -3, radius: 5,
+    icon: "Library",
+  },
+  dome: {
+    name: "Visualizer Dome",
+    id: "dome",
+    cx: 16, cz: -7, radius: 4.5,
+    icon: "Tv2",
+  },
+  vibecheck: {
+    name: "Daily Vibe Check",
+    id: "vibecheck",
+    cx: 8, cz: -12, radius: 3,
+    icon: "Sparkles",
   },
   beach: {
     name: "Beach Walk",
     id: "beach",
     cx: 0, cz: 18, radius: 20,
-    icon: "Waves",
+    icon: "Sun",
   },
 };
 
