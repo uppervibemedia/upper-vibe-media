@@ -1100,7 +1100,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, locked }) {
+export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, locked, stageScreenPosRef }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1517,6 +1517,22 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
           skybox.position.copy(camera.position);
           skybox.rotation.y += dt * 0.015; // Very slow Y-axis drift
           skybox.rotation.x += dt * 0.003; // Tiny tilt for depth
+        }
+
+        // ─── Stage screen projection (for YouTube iframe overlay) ──────────
+        if (stageScreenPosRef) {
+          const ss = new Vector3(0, 2.5, -16.4);
+          const proj = ss.clone().project(camera);
+          const rw = renderer.domElement.width;
+          const rh = renderer.domElement.height;
+          const cx = (proj.x * 0.5 + 0.5) * rw;
+          const cy = (-proj.y * 0.5 + 0.5) * rh;
+          // Project corners for size
+          const tl = new Vector3(-3.5, 4.5, -16.4).project(camera);
+          const br = new Vector3(3.5, 0.5, -16.4).project(camera);
+          const sw = Math.abs((br.x - tl.x) * 0.5 * rw);
+          const sh = Math.abs((-br.y + tl.y) * 0.5 * rh);
+          stageScreenPosRef.current = { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh };
         }
 
         renderer.render(scene, camera);

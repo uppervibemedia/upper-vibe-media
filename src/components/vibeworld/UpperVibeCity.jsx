@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
+import StageVideoEmbed from "@/components/vibeworld/StageVideoEmbed";
 import StageAudioPlayer from "@/components/vibeworld/StageAudioPlayer";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
@@ -31,6 +32,7 @@ export default function UpperVibeCity({ onExit }) {
   const stageTogglePlayRef = useRef(null);
   const stagePausedPlayerRef = useRef(false);
   const stageAudioRef = useRef(null); // YouTube audio player ref
+  const stageScreenPosRef = useRef({ x: -9999, y: -9999, w: 0, h: 0 });
   stageMutedRef.current = stageVideoMuted;
 
   useEffect(() => {
@@ -212,6 +214,7 @@ export default function UpperVibeCity({ onExit }) {
           stageCanvas={stageCanvas}
           audioIntensityRef={audioIntensityRef}
           locked={movementLocked}
+          stageScreenPosRef={stageScreenPosRef}
         />
       </div>
 
@@ -335,17 +338,26 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Hidden YouTube audio player — provides audio for Watch on Stage */}
+      {/* Hidden YouTube audio player — provides audio sync for stage */}
       <StageAudioPlayer
         ref={stageAudioRef}
         video={stageVideos[stageVideoIdx] || null}
       />
 
-      {/* Stage cover visualizer */}
-      <StageCoverVisualizer
-        onReady={(c) => setStageCanvas(c)}
+      {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
+      {!stageWatching && (
+        <StageCoverVisualizer
+          onReady={(c) => setStageCanvas(c)}
+          video={stageVideos[stageVideoIdx] || null}
+          audioIntensityRef={audioIntensityRef}
+        />
+      )}
+
+      {/* YouTube video embed on stage screen (Watch on Stage mode) */}
+      <StageVideoEmbed
+        open={stageWatching}
         video={stageVideos[stageVideoIdx] || null}
-        audioIntensityRef={audioIntensityRef}
+        screenPosRef={stageScreenPosRef}
       />
 
       {/* Full-screen stage overlay */}
