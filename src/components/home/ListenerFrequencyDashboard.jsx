@@ -86,11 +86,13 @@ export default function ListenerFrequencyDashboard({
 
   useEffect(() => {
     if (!allTracks?.length) return;
-    Promise.all([
-      base44.entities.SongStream.list("-created_date", 500),
-      base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000),
-      base44.entities.Download.filter({ content_type: "track" }, "-created_date", 1000),
-    ]).then(([streamData, favData, dlData]) => {
+    // Sequenced to avoid rate limiting
+    (async () => {
+      const streamData = await base44.entities.SongStream.list("-created_date", 500);
+      const favData = await base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000);
+      const dlData = await base44.entities.Download.filter({ content_type: "track" }, "-created_date", 1000);
+      return [streamData, favData, dlData];
+    })().then(([streamData, favData, dlData]) => {
       setStreams(streamData);
       const fc = {};
       favData.forEach((f) => { if (f.track_id) fc[f.track_id] = (fc[f.track_id] || 0) + 1; });

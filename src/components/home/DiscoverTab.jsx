@@ -184,10 +184,12 @@ export default function DiscoverTab() {
   const history = useMemo(() => getHistory(), []);
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 300),
-      base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 200),
-    ]).then(([t, v]) => { setAllTracks(t); setAllViz(v); setLoading(false); });
+    // Sequenced to avoid rate limiting
+    (async () => {
+      const t = await base44.entities.Track.filter({ status: "published" }, "-created_date", 300);
+      const v = await base44.entities.Visualizer.filter({ status: "published" }, "-release_date", 200);
+      return [t, v];
+    })().then(([t, v]) => { setAllTracks(t); setAllViz(v); setLoading(false); });
   }, []);
 
   const { suggestedTracks, suggestedViz, becauseOf, hasSignals } = useMemo(

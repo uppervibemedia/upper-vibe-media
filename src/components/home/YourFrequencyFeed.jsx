@@ -32,20 +32,20 @@ export default function YourFrequencyFeed({
 
   useEffect(() => {
     if (!allTracks?.length) return;
-    const communityQueries = [
-      base44.entities.SongStream.list("-created_date", 500),
-      base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000),
-      base44.entities.Download.filter({ content_type: "track" }, "-created_date", 1000),
-    ];
-    const userQueries = user?.id ? [
-      base44.entities.SongStream.filter({ user_id: user.id }, "-created_date", 300),
-      base44.entities.Favorite.filter({ user_email: user.email, type: "track" }, "-created_date", 200),
-      base44.entities.UserDownload.filter({ user_id: user.id }, "-created_date", 200),
-      base44.entities.VibeCheckIn.filter({ user_id: user.id }, "-check_in_date", 7),
-    ] : [
-      Promise.resolve([]), Promise.resolve([]), Promise.resolve([]), Promise.resolve([]),
-    ];
-    Promise.all([...communityQueries, ...userQueries]).then(([
+    // Sequenced to avoid rate limiting
+    (async () => {
+      const allStreams = await base44.entities.SongStream.list("-created_date", 500);
+      const allFavs = await base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000);
+      const allDls = await base44.entities.Download.filter({ content_type: "track" }, "-created_date", 1000);
+      let myStreams=[], myFavs=[], myDls=[], myCheckIns=[];
+      if (user?.id) {
+        myStreams = await base44.entities.SongStream.filter({ user_id: user.id }, "-created_date", 300);
+        myFavs = await base44.entities.Favorite.filter({ user_email: user.email, type: "track" }, "-created_date", 200);
+        myDls = await base44.entities.UserDownload.filter({ user_id: user.id }, "-created_date", 200);
+        myCheckIns = await base44.entities.VibeCheckIn.filter({ user_id: user.id }, "-check_in_date", 7);
+      }
+      return [allStreams, allFavs, allDls, myStreams, myFavs, myDls, myCheckIns];
+    })().then(([
       allStreams, allFavs, allDls, myStreams, myFavs, myDls, myCheckIns,
     ]) => {
       setCommunityIdx(buildCommunityIndex(allStreams, allFavs, allDls));

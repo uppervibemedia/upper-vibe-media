@@ -124,11 +124,9 @@ export default function Home() {
   };
 
   const loadData = async () => {
-    // Batch 1: most critical above-the-fold data
-    const [allTracks, recentVizPool] = await Promise.all([
-      getPublishedTracks("-created_date", 200),
-      base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30),
-    ]);
+    // Sequenced to avoid rate limiting — no Promise.all
+    const allTracks = await getPublishedTracks("-created_date", 200);
+    const recentVizPool = await base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30);
 
     // Latest Music section: the 8 most recently UPLOADED published & playable songs.
     // Sort strictly by created_date descending — no manual pins, no is_new_release override.
@@ -153,11 +151,9 @@ export default function Home() {
     });
     setTrackCounts(counts);
 
-    // Batch 2: secondary data (below the fold)
-    const [featuredArtists, lessons] = await Promise.all([
-      base44.entities.Artist.filter({ is_active: true, is_featured: true }, "-created_date", 8),
-      base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3),
-    ]);
+    // Secondary data — sequenced to avoid rate limiting
+    const featuredArtists = await base44.entities.Artist.filter({ is_active: true, is_featured: true }, "-created_date", 8);
+    const lessons = await base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3);
     setArtists(featuredArtists);
     setAcademyLessons(lessons);
   };
