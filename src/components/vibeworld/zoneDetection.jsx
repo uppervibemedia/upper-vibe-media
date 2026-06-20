@@ -25,19 +25,19 @@ const ZONES = {
   library: {
     name: "Music Library",
     id: "library",
-    cx: 14, cz: -4, radius: 5,
+    cx: 14, cz: -8, radius: 5,
     icon: "Library",
   },
   dome: {
     name: "Visualizer Dome",
     id: "dome",
-    cx: 18, cz: -9, radius: 5,
+    cx: -14, cz: 6, radius: 5,
     icon: "Tv2",
   },
   vibecheck: {
     name: "Daily Vibe Check",
     id: "vibecheck",
-    cx: 6, cz: -13, radius: 3.5,
+    cx: 12, cz: 4, radius: 4,
     icon: "Sparkles",
   },
   beach: {
