@@ -1362,11 +1362,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
             }
           }
           if (!allBehindCamera && maxX > minX && maxY > minY) {
-            onStageScreenRef.current({
-              left: minX, top: minY,
-              width: maxX - minX, height: maxY - minY,
-              visible: true,
-            });
+            // Round to half-pixels to eliminate sub-pixel jitter when stationary
+            const left = Math.round(minX * 2) / 2;
+            const top = Math.round(minY * 2) / 2;
+            const width = Math.round((maxX - minX) * 2) / 2;
+            const height = Math.round((maxY - minY) * 2) / 2;
+            onStageScreenRef.current({ left, top, width, height, visible: true });
           } else {
             onStageScreenRef.current({ visible: false });
           }
