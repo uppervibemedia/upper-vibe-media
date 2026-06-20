@@ -194,32 +194,62 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
     ctx.fillText("Upper Vibe Media", frameCX, titleY + 18);
   }
 
-  // ── Audio wave equalizer — bottom overlay ─────────────────────────────
-  const eqH = 32;
-  const eqY = H - eqH - 8;
-  const barCount = 56;
-  const barW = (W - 24) / barCount - 1.5;
-  const barX0 = 12;
+  // ── Audio-reactive equalizer — bottom overlay ─────────────────────────
+  const eqH = 38;
+  const eqY = H - eqH - 6;
+  const barCount = 64;
+  const barW = (W - 20) / barCount - 1.5;
+  const barX0 = 10;
 
   for (let i = 0; i < barCount; i++) {
-    const freq = Math.sin(t * 3.5 + i * 0.22) * 0.5 + 0.5;
-    const bh = Math.max(2, (freq * 0.4 + beat * 0.6) * eqH);
+    // Each bar gets its own frequency-like value that scales with audioBeat
+    // Lower bars (bass) on left, higher bars (treble) on right
+    const ratio = i / (barCount - 1);
+
+    // Simulated frequency distribution — bass on left, mids in middle, treble on right
+    const bassZone = ratio < 0.2 ? (1 - ratio / 0.2) : 0;
+    const midZone = ratio >= 0.15 && ratio < 0.65
+      ? 1 - Math.abs(ratio - 0.4) / 0.3
+      : 0;
+    const trebleZone = ratio >= 0.6
+      ? (ratio - 0.6) / 0.4
+      : 0;
+    const zoneBoost = Math.max(0, bassZone * 0.9 + midZone * 0.75 + trebleZone * 0.55);
+
+    // Dynamic per-bar oscillation with phase offset for wave effect
+    const wavePhase = t * 2.8 + i * 0.18;
+    const wave = Math.sin(wavePhase) * 0.5 + 0.5;
+
+    // Second wave for complexity
+    const wave2 = Math.sin(t * 5.1 + i * 0.31) * 0.5 + 0.5;
+
+    // Combine audio beat with per-bar variation
+    const audioDriven = beat * (0.55 + zoneBoost * 0.45);
+    const simulated = wave * 0.25 + wave2 * 0.15;
+
+    // Blend audio-driven and simulated — audio dominates when music plays
+    const energy = audioBeat > 0.02
+      ? audioDriven * 0.75 + simulated * 0.25
+      : simulated * 0.3;
+
+    const bh = Math.max(2.5, energy * eqH);
 
     const bx = barX0 + i * (barW + 1.5);
     const by = eqY + eqH - bh;
 
-    const ratio = i / (barCount - 1);
-    const r = Math.round(155 - ratio * 155);
-    const g = Math.round(126 + ratio * 94);
-    const b = Math.round(255 - ratio * 35);
-    const ba = 0.28 + freq * 0.45;
+    // Color gradient: purple on left → cyan/blue in middle → purple on right
+    const r = Math.round(ratio < 0.5 ? 155 - ratio * 155 * 2 : 0);
+    const g = Math.round(ratio < 0.5 ? 126 - ratio * 26 : 180 - (1 - ratio) * 180);
+    const b2 = Math.round(ratio < 0.5 ? 255 - ratio * 35 : 200 + (1 - ratio) * 55);
+    const ba = 0.32 + energy * 0.5;
 
     const barGrad = ctx.createLinearGradient(0, by, 0, eqY + eqH);
-    barGrad.addColorStop(0, `rgba(${r},${g},${b},${ba})`);
-    barGrad.addColorStop(1, `rgba(${r},${g},${b},0.05)`);
+    barGrad.addColorStop(0, `rgba(${r},${g},${b2},${ba})`);
+    barGrad.addColorStop(0.6, `rgba(${r},${g},${b2},${0.12 + energy * 0.25})`);
+    barGrad.addColorStop(1, `rgba(${r},${g},${b2},0.03)`);
 
     ctx.fillStyle = barGrad;
-    ctx.fillRect(bx, by, Math.max(1.5, barW), bh);
+    ctx.fillRect(bx, by, Math.max(1.8, barW), bh);
   }
 
   // ── Bottom accent line ────────────────────────────────────────────────

@@ -66,7 +66,7 @@ export default function StageVideoPlayer({
   }, [muted, isPlaying, togglePlay, onClose, onToggleMute]);
 
   const embedUrl = video?.youtube_video_id
-    ? `https://www.youtube-nocookie.com/embed/${video.youtube_video_id}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`
+    ? `https://www.youtube.com/embed/${video.youtube_video_id}?autoplay=1&mute=1`
     : null;
 
   const thumbnailUrl = video?.thumbnail_url || (
@@ -138,7 +138,8 @@ export default function StageVideoPlayer({
                 key={iframeKey}
                 src={embedUrl}
                 className="w-full h-full"
-                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
                 title={video.title || "Upper Vibe Media"}
                 onLoad={handleIframeLoad}
