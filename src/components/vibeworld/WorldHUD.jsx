@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Music4, Tv2, MessageCircle, Store, Waves,
+  Music4, Tv2, MessageCircle, Store, Sun,
   Compass, Sparkles, Library, Video, SkipForward,
   Volume2, VolumeX,
 } from "lucide-react";
@@ -33,8 +33,6 @@ export default function WorldHUD({
   onStagePlaySong,
   onStageListenAudio,
   stageDistance,
-  oceanSoundsOn,
-  onToggleOceanSounds,
 }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const zone = detectZone(playerX, playerZ);
@@ -294,21 +292,16 @@ export default function WorldHUD({
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
             }}
           >
-            <button
-              onClick={onToggleOceanSounds}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+            <span
+              className="px-3 py-1.5 rounded-full text-[10px] font-black tracking-wider"
               style={{
-                background: oceanSoundsOn
-                  ? "rgba(0,229,255,0.25)"
-                  : "rgba(255,255,255,0.15)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                color: oceanSoundsOn ? "#00E5FF" : "rgba(255,255,255,0.8)",
-                boxShadow: oceanSoundsOn ? "0 0 20px rgba(0,229,255,0.3)" : "none",
+                background: "rgba(255,255,255,0.1)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                color: "rgba(255,255,255,0.5)",
               }}
             >
-              <Waves className="w-3.5 h-3.5" />
-              {oceanSoundsOn ? "Ocean Sounds On" : "Ocean Sounds"}
-            </button>
+              Waves sync to your music
+            </span>
           </motion.div>
         )}
 

@@ -17,11 +17,8 @@ export default function UpperVibeCity({ onExit }) {
   const [isMobile, setIsMobile] = useState(false);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0 });
   const [stageCanvas, setStageCanvas] = useState(null);
-  const [oceanSoundsOn, setOceanSoundsOn] = useState(true);
-
   // ── Audio intensity ref — shared with CityCanvas for wave sync ─────────
   const audioIntensityRef = useRef(0);
-  const oceanGainRef = useRef(null);
 
   // ── Stage video state ──────────────────────────────────────────────────
   const [stageVideos, setStageVideos] = useState([]);
@@ -109,56 +106,6 @@ export default function UpperVibeCity({ onExit }) {
 
   const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
   const { allTracks, tracksLoaded } = radioCtx || {};
-
-  const toggleOceanSounds = () => setOceanSoundsOn((v) => !v);
-
-  // Ocean wave ambient audio — brown noise through low-pass filter
-  useEffect(() => {
-    let ctx = null;
-    let source = null;
-
-    try {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const len = ctx.sampleRate * 3;
-      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      let last = 0;
-      for (let i = 0; i < len; i++) {
-        last = (last + (Math.random() * 2 - 1) * 0.015) / 1.015;
-        d[i] = last * 2.5;
-      }
-      source = ctx.createBufferSource();
-      source.buffer = buf;
-      source.loop = true;
-
-      const lp = ctx.createBiquadFilter();
-      lp.type = "lowpass";
-      lp.frequency.value = 320;
-
-      const gain = ctx.createGain();
-      gain.gain.value = 0.04;
-      oceanGainRef.current = gain;
-
-      source.connect(lp);
-      lp.connect(gain);
-      gain.connect(ctx.destination);
-      source.start();
-    } catch {
-      // Audio not supported — silently skip
-    }
-
-    return () => {
-      if (source) try { source.stop(); } catch {}
-      if (ctx) try { ctx.close(); } catch {}
-    };
-  }, []);
-
-  // ── Control ocean sound gain based on toggle ──────────────────────────
-  useEffect(() => {
-    if (oceanGainRef.current) {
-      oceanGainRef.current.gain.value = oceanSoundsOn ? 0.04 : 0;
-    }
-  }, [oceanSoundsOn]);
 
   // ── Read analyser frequency data for wave sync ────────────────────────
   useEffect(() => {
@@ -276,8 +223,6 @@ export default function UpperVibeCity({ onExit }) {
         onStagePlaySong={handleStagePlaySong}
         onStageListenAudio={handleStageListenAudio}
         stageDistance={stageDistance}
-        oceanSoundsOn={oceanSoundsOn}
-        onToggleOceanSounds={toggleOceanSounds}
       />
 
       {/* Bottom navigation bar */}

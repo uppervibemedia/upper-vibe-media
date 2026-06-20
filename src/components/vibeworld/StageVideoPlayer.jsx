@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Volume2, VolumeX, Play, Music4, AlertTriangle } from "lucide-react";
+import { X, Volume2, VolumeX, Play, Music4 } from "lucide-react";
 import { usePlayer } from "@/context/PlayerContext";
 
 /**
@@ -26,12 +26,10 @@ export default function StageVideoPlayer({
   const { isPlaying, togglePlay, currentTrack } = usePlayer() || {};
   const wasPlayingRef = useRef(false);
   const [embedFailed, setEmbedFailed] = useState(false);
-  const [userStarted, setUserStarted] = useState(false);
 
   // Reset embed state when video changes
   useEffect(() => {
     setEmbedFailed(false);
-    setUserStarted(false);
   }, [video?.youtube_video_id]);
 
   // When unmuting, pause global player
@@ -60,7 +58,7 @@ export default function StageVideoPlayer({
   }, [muted, isPlaying, togglePlay, onClose, onToggleMute]);
 
   const handleStartVideo = useCallback(() => {
-    setUserStarted(true);
+    setEmbedFailed(false);
   }, []);
 
   const handleEmbedError = useCallback(() => {
@@ -68,10 +66,8 @@ export default function StageVideoPlayer({
   }, []);
 
   const embedUrl = video?.youtube_video_id
-    ? `https://www.youtube.com/embed/${video.youtube_video_id}?autoplay=1&mute=${muted ? 1 : 0}&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&fs=0&iv_load_policy=3&cc_load_policy=0`
-    : video?.embed_url
-      ? `${video.embed_url}?autoplay=1&mute=${muted ? 1 : 0}&controls=1&modestbranding=1&rel=0&playsinline=1`
-      : null;
+    ? `https://www.youtube.com/embed/${video.youtube_video_id}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&iv_load_policy=3&cc_load_policy=0&origin=${encodeURIComponent(window.location.origin)}`
+    : null;
 
   const showFallback = embedFailed || !embedUrl;
   const thumbnailUrl = video?.thumbnail_url || (
@@ -125,48 +121,8 @@ export default function StageVideoPlayer({
                   />
                 )}
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                  <AlertTriangle className="w-8 h-8 text-white/30" />
-                  <p className="text-white/40 text-sm">{embedFailed ? "Video failed to load" : "Tap to start video"}</p>
-                  <button
-                    onClick={handleStartVideo}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-                    style={{
-                      background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
-                      color: "#fff",
-                    }}
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                    Start Stage Video
-                  </button>
-                </div>
-              </div>
-            ) : userStarted ? (
-              /* ── YouTube iframe — sandboxed to block external navigation ── */
-              <iframe
-                ref={iframeRef}
-                src={embedUrl}
-                className="w-full h-full"
-                allow="autoplay; encrypted-media"
-                allowFullScreen
-                title={video.title || "Upper Vibe Media Video"}
-                sandbox="allow-scripts allow-same-origin allow-presentation"
-                onError={handleEmbedError}
-              />
-            ) : (
-              /* ── Thumbnail with start prompt ── */
-              <div
-                className="w-full h-full flex items-center justify-center relative"
-                style={{ background: "#0a0a1e" }}
-              >
-                {thumbnailUrl && (
-                  <img
-                    src={thumbnailUrl}
-                    alt={video.title || "Stage video"}
-                    className="w-full h-full object-cover opacity-50"
-                  />
-                )}
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                  <Play className="w-10 h-10 text-white/40" />
+                  <Play className="w-10 h-10 text-white/20" />
+                  <p className="text-white/40 text-sm">Stage video loading — tap to start</p>
                   <button
                     onClick={handleStartVideo}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
@@ -181,6 +137,18 @@ export default function StageVideoPlayer({
                   </button>
                 </div>
               </div>
+            ) : (
+              /* ── YouTube iframe — always show when URL is available ── */
+              <iframe
+                ref={iframeRef}
+                src={embedUrl}
+                className="w-full h-full"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                title={video.title || "Upper Vibe Media Video"}
+                onError={handleEmbedError}
+                style={{ pointerEvents: "auto" }}
+              />
             )}
 
             {/* Glow border */}
