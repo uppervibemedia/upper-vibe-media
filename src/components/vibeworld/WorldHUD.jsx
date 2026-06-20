@@ -47,15 +47,18 @@ export default function WorldHUD({
   const [loungePanelOpen, setLoungePanelOpen] = useState(false);
   const [visualizerOpen, setVisualizerOpen] = useState(false);
 
+  const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
+
   const handleOpenMusicLibrary = useCallback(() => {
+    hapticTap();
     setMusicPanelOpen(true);
   }, []);
 
   const handleOpenLounge = useCallback(() => {
+    hapticTap();
     setLoungePanelOpen(true);
     if (chatAgeConfirmed) {
       setChatWarningVisible(true);
-      // Auto-dismiss warning after 5 seconds
       setTimeout(() => setChatWarningVisible(false), 5000);
     }
   }, [chatAgeConfirmed]);
@@ -161,9 +164,9 @@ export default function WorldHUD({
             <div className="flex flex-wrap gap-1.5 justify-center">
               {/* Watch Stage / Exit */}
               {stageWatching ? (
-                <button
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onClick={onStageExitWatchMode}
+              <button
+                onTouchStart={(e) => e.stopPropagation()}
+                onClick={() => { hapticTap(); onStageExitWatchMode(); }}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
@@ -180,7 +183,7 @@ export default function WorldHUD({
               ) : (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
-                  onClick={onStageWatchVideo}
+                  onClick={() => { hapticTap(); onStageWatchVideo(); }}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
@@ -200,7 +203,7 @@ export default function WorldHUD({
               {onStageFullScreen && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
-                  onClick={onStageFullScreen}
+                  onClick={() => { hapticTap(); onStageFullScreen(); }}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#0080B8,#00A0DC)",
@@ -219,7 +222,7 @@ export default function WorldHUD({
               {/* Next */}
               <button
                 onTouchStart={(e) => e.stopPropagation()}
-                onClick={onStageNextVideo}
+                onClick={() => { hapticTap(); onStageNextVideo(); }}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                 style={{
                   background: "rgba(255,255,255,0.08)",
@@ -240,7 +243,7 @@ export default function WorldHUD({
               {onStagePlaySong && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
-                  onClick={onStagePlaySong}
+                  onClick={() => { hapticTap(); onStagePlaySong(); }}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#0080B8,#00A0DC)",
@@ -259,7 +262,7 @@ export default function WorldHUD({
               {onStageToggleMute && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
-                  onClick={onStageToggleMute}
+                  onClick={() => { hapticTap(); onStageToggleMute(); }}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: stageVideoMuted
@@ -296,7 +299,7 @@ export default function WorldHUD({
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => setVisualizerOpen(true)}
+              onClick={() => { hapticTap(); setVisualizerOpen(true); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
                 background: "linear-gradient(135deg,#7C3AED,#A078FF)",

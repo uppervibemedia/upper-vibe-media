@@ -1109,6 +1109,11 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
     return false;
   }, []);
 
+  // ── Haptic feedback helper ─────────────────────────────────
+  const hapticTap = useCallback(() => {
+    try { navigator?.vibrate?.(10); } catch {}
+  }, []);
+
   // ── Joystick touch handlers (directly on joystick visual) ──
   const handleJoyStart = useCallback((e) => {
     if (joyTouchId.current !== null) return;
@@ -1116,7 +1121,8 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
     e.preventDefault();
     e.stopPropagation();
     joyTouchId.current = t.identifier;
-  }, []);
+    hapticTap();
+  }, [hapticTap]);
 
   // ── Camera touch handlers (right-side zone, top portion only) ──
   const handleCamStart = useCallback((e) => {
@@ -1139,6 +1145,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
         if (dist > MAX_R) { dx = (dx / dist) * MAX_R; dy = (dy / dist) * MAX_R; }
         setThumbX(dx);
         setThumbY(dy);
+        if (dist > 8 && !joyActive) hapticTap();
         setJoyActive(dist > 8);
         onMove?.(dx / MAX_R, dy / MAX_R);
       }

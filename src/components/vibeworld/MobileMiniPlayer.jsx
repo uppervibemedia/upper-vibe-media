@@ -11,9 +11,10 @@ export default function MobileMiniPlayer({
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  // iOS touch handler — stops propagation to prevent canvas/camera capture
+  // iOS touch handler — stops propagation + haptic feedback
   const blockTouch = useCallback((e) => {
     e.stopPropagation();
+    try { navigator?.vibrate?.(10); } catch {}
   }, []);
 
   if (!currentTrack) return null;
@@ -53,7 +54,7 @@ export default function MobileMiniPlayer({
           </div>
           <button
             onTouchStart={blockTouch}
-            onClick={(e) => { e.stopPropagation(); onTogglePlay?.(); }}
+            onClick={(e) => { e.stopPropagation(); try { navigator?.vibrate?.(12); } catch {} onTogglePlay?.(); }}
             className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:brightness-110 active:scale-90"
             style={{
               background: "#2E7D32", color: "#fff",
@@ -65,7 +66,7 @@ export default function MobileMiniPlayer({
           </button>
           <button
             onTouchStart={blockTouch}
-            onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+            onClick={(e) => { e.stopPropagation(); try { navigator?.vibrate?.(10); } catch {} setExpanded(true); }}
             className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/10"
             style={{
               color: "rgba(255,255,255,0.5)",
@@ -136,7 +137,7 @@ export default function MobileMiniPlayer({
           <div className="flex items-center justify-center gap-5">
             <button
               onTouchStart={blockTouch}
-              onClick={(e) => { e.stopPropagation(); onTogglePlay?.(); }}
+              onClick={(e) => { e.stopPropagation(); try { navigator?.vibrate?.(12); } catch {} onTogglePlay?.(); }}
               className="w-12 h-12 rounded-full flex items-center justify-center transition-all hover:brightness-110 active:scale-90"
               style={{
                 background: "#2E7D32", color: "#fff",
@@ -148,7 +149,7 @@ export default function MobileMiniPlayer({
             </button>
             <button
               onTouchStart={blockTouch}
-              onClick={(e) => { e.stopPropagation(); onSkip?.(); }}
+              onClick={(e) => { e.stopPropagation(); try { navigator?.vibrate?.(10); } catch {} onSkip?.(); }}
               className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
               style={{
                 color: "rgba(255,255,255,0.5)",
