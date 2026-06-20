@@ -32,6 +32,8 @@ export default function UpperVibeCity({ onExit }) {
   const stagePausedPlayerRef = useRef(false);
   const stageEmbedRef = useRef(null); // StageVideoEmbed ref (handles video + audio)
   const stageScreenPosRef = useRef({ x: -9999, y: -9999, w: 0, h: 0 });
+  const preFullscreenWasWatchingRef = useRef(false); // was stage active before fullscreen?
+  const fullscreenPausedPlayerRef = useRef(false); // was global playing before fullscreen?
   stageMutedRef.current = stageVideoMuted;
 
   useEffect(() => {
@@ -54,44 +56,99 @@ export default function UpperVibeCity({ onExit }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
   const { allTracks, tracksLoaded } = radioCtx || {};
 
-  const handleWatchOnStage = useCallback(() => {
-    setStageWatching(true);
-    setStageVideoMuted(false);
-    // Unmute + play via stage embed (single YouTube player for video+audio)
-    setTimeout(() => {
-      if (stageEmbedRef.current) {
-        stageEmbedRef.current.unmute();
-        stageEmbedRef.current.play();
-      }
-    }, 300);
-    if (isPlaying && togglePlay) {
-      togglePlay();
-      stagePausedPlayerRef.current = true;
-    }
-  }, [isPlaying, togglePlay]);
+  // ═══════════════════════════════════════════════════════════════
+  // AUDIO COORDINATION — only one source plays at a time
+  // ═══════════════════════════════════════════════════════════════
 
-  const handleExitWatchMode = useCallback(() => {
-    // Exit stage watching mode: mute + pause embed, resume global player
+  /** Mute stage embed + exit watch state. Safe to call anytime. */
+  const muteStage = useCallback(() => {
     setStageWatching(false);
     setStageVideoMuted(true);
     if (stageEmbedRef.current) {
       stageEmbedRef.current.mute();
       stageEmbedRef.current.pause();
     }
-    // Resume global player if stage had paused it
-    if (stagePausedPlayerRef.current && !isPlaying && togglePlay) {
+  }, []);
+
+  /** Pause global player if currently playing. Returns true if it was playing. */
+  const pauseGlobal = useCallback(() => {
+    if (isPlaying && togglePlay) {
       togglePlay();
-      stagePausedPlayerRef.current = false;
+      return true;
     }
+    return false;
   }, [isPlaying, togglePlay]);
 
+  /** Resume global player if it was paused by us and isn't already playing. */
+  const resumeGlobalIfNeeded = useCallback((wasPlayingRef) => {
+    if (wasPlayingRef.current && !isPlaying && togglePlay) {
+      togglePlay();
+    }
+    wasPlayingRef.current = false;
+  }, [isPlaying, togglePlay]);
+
+  const handleWatchOnStage = useCallback(() => {
+    // 1) Close fullscreen if it's open (mute its audio via unmount)
+    if (stageFullScreen) setStageFullScreen(false);
+
+    // 2) Mute all other sources
+    pauseGlobal();
+    stagePausedPlayerRef.current = true;
+
+    // 3) Start stage audio
+    setStageWatching(true);
+    setStageVideoMuted(false);
+    setTimeout(() => {
+      if (stageEmbedRef.current) {
+        stageEmbedRef.current.unmute();
+        stageEmbedRef.current.play();
+      }
+    }, 300);
+  }, [stageFullScreen, pauseGlobal]);
+
+  const handleExitWatchMode = useCallback(() => {
+    muteStage();
+    // Resume global player ONLY if fullscreen is not open
+    if (!stageFullScreen) {
+      resumeGlobalIfNeeded(stagePausedPlayerRef);
+    }
+  }, [muteStage, stageFullScreen, resumeGlobalIfNeeded]);
+
   const handleStageFullScreen = useCallback(() => {
+    // Remember whether stage was watching before opening fullscreen
+    preFullscreenWasWatchingRef.current = stageWatching;
+
+    // 1) Mute stage audio
+    muteStage();
+
+    // 2) Pause global player
+    if (pauseGlobal()) {
+      fullscreenPausedPlayerRef.current = true;
+    }
+
+    // 3) Open fullscreen (iframe starts muted; user unmutes via button)
     setStageFullScreen(true);
-  }, []);
+  }, [stageWatching, muteStage, pauseGlobal]);
 
   const handleExitFullScreen = useCallback(() => {
     setStageFullScreen(false);
-  }, []);
+
+    // Restore previous audio state
+    if (preFullscreenWasWatchingRef.current) {
+      // Resume stage watching
+      setStageWatching(true);
+      setStageVideoMuted(false);
+      setTimeout(() => {
+        if (stageEmbedRef.current) {
+          stageEmbedRef.current.unmute();
+          stageEmbedRef.current.play();
+        }
+      }, 300);
+    } else {
+      // Resume global player if fullscreen had paused it
+      resumeGlobalIfNeeded(fullscreenPausedPlayerRef);
+    }
+  }, [resumeGlobalIfNeeded]);
 
   // ── Movement locked when watching stage or in full-screen ─
   const movementLocked = stageWatching || stageFullScreen;
@@ -104,7 +161,10 @@ export default function UpperVibeCity({ onExit }) {
     setStageVideoMuted((m) => {
       const next = !m;
       if (!next) {
-        // Unmuting — enter watch mode, unmute embed, pause global player
+        // Unmuting — same coordination as Watch on Stage
+        if (stageFullScreen) setStageFullScreen(false);
+        pauseGlobal();
+        stagePausedPlayerRef.current = true;
         setStageWatching(true);
         setTimeout(() => {
           if (stageEmbedRef.current) {
@@ -112,25 +172,17 @@ export default function UpperVibeCity({ onExit }) {
             stageEmbedRef.current.play();
           }
         }, 300);
-        if (isPlaying && !stagePausedPlayerRef.current && togglePlay) {
-          togglePlay();
-          stagePausedPlayerRef.current = true;
-        }
       } else {
-        // Muting — exit watch mode, mute embed, resume global player
-        setStageWatching(false);
-        if (stageEmbedRef.current) {
-          stageEmbedRef.current.mute();
-          stageEmbedRef.current.pause();
-        }
-        if (stagePausedPlayerRef.current && !isPlaying && togglePlay) {
-          togglePlay();
-          stagePausedPlayerRef.current = false;
+        // Muting — same as exit watch mode
+        muteStage();
+        if (!stageFullScreen) {
+          resumeGlobalIfNeeded(stagePausedPlayerRef);
         }
       }
       return next;
     });
   };
+
   const handleStagePlaySong = () => {
     const video = stageVideos[stageVideoIdx];
     if (!video?.title || !allTracks?.length || !playTrack) return;
@@ -143,18 +195,12 @@ export default function UpperVibeCity({ onExit }) {
       (t) => t.title && t.title.toLowerCase().includes(titleLower.split(" - ")[0]?.split(" | ")[0] || "")
     );
     if (match) {
-      // Exit watch mode, mute stage embed
-      setStageWatching(false);
-      setStageVideoMuted(true);
-      if (stageEmbedRef.current) {
-        stageEmbedRef.current.mute();
-        stageEmbedRef.current.pause();
-      }
-      // Resume global player if stage had paused it
-      if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && togglePlay) {
-        togglePlay();
-      }
+      // Mute all other audio sources
+      muteStage();
+      if (stageFullScreen) setStageFullScreen(false);
+      // Clear "was paused" flags — we're explicitly switching to global
       stagePausedPlayerRef.current = false;
+      fullscreenPausedPlayerRef.current = false;
       playTrack(match, "song");
     }
   };
@@ -165,6 +211,21 @@ export default function UpperVibeCity({ onExit }) {
   stageIsPlayingRef.current = isPlaying;
   stageTogglePlayRef.current = togglePlay;
 
+  // ── Bottom player toggle: mute all other sources first ────────
+  const handleGlobalPlayToggle = useCallback(() => {
+    if (isPlaying) {
+      // Pausing is always safe
+      togglePlay?.();
+      return;
+    }
+    // Starting global player — mute stage + fullscreen first
+    muteStage();
+    if (stageFullScreen) setStageFullScreen(false);
+    stagePausedPlayerRef.current = false;
+    fullscreenPausedPlayerRef.current = false;
+    togglePlay?.();
+  }, [isPlaying, togglePlay, muteStage, stageFullScreen]);
+
   // ── Stage proximity: resume global player when walking away from stage ──
   useEffect(() => {
     const STAGE_X = 0, STAGE_Z = -14;
@@ -174,14 +235,12 @@ export default function UpperVibeCity({ onExit }) {
 
     const OUTER = 18;
 
-    if (dist > OUTER) {
-      // Resume global player if stage had paused it and user walked far away
-      if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && stageTogglePlayRef.current) {
-        stageTogglePlayRef.current();
-        stagePausedPlayerRef.current = false;
-      }
+    // Only auto-exit stage audio when stageWatchMode is the active source
+    if (dist > OUTER && stageWatching && !stageFullScreen) {
+      muteStage();
+      resumeGlobalIfNeeded(stagePausedPlayerRef);
     }
-  }, [playerPos.x, playerPos.z]);
+  }, [playerPos.x, playerPos.z, stageWatching, stageFullScreen, muteStage, resumeGlobalIfNeeded]);
 
   // ── Read analyser frequency data for wave sync ────────────────────────
   useEffect(() => {
@@ -398,7 +457,7 @@ export default function UpperVibeCity({ onExit }) {
               </p>
             </div>
             <button
-              onClick={togglePlay}
+              onClick={handleGlobalPlayToggle}
               className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
               style={{ background: "#2E7D32", color: "#fff" }}
             >
