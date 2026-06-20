@@ -4,21 +4,27 @@ import { Compass, Sparkles, Check, AlertCircle, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
-const OFFENSIVE_PATTERNS = /fuck|shit|ass|bitch|dick|cock|pussy|cunt|nigger|fag|retard|kike|spic|chink|whore|slut|pedo/i;
-const IMPERSONATION_PATTERNS = /upper.?vibe|admin|mod|moderator|support|staff|system|official|team/i;
+// Only block obviously offensive words — do NOT block normal words like manifest, king, vibe, etc.
+const OFFENSIVE_PATTERNS = /^(fuck|shit|ass|bitch|dick|cock|pussy|cunt|nigg([ae]r)?|fag(got)?|retard|kike|spic|chink|whore|slut|pedo(phile)?)$/i;
+const IMPERSONATION_PATTERNS = /^(upper.?vibe|admin|mod|moderator|support|staff|system|official|team)$/i;
 
 export default function UsernameSetup({ onComplete }) {
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
 
-  const validate = (val) => {
+  const validateLocal = (val) => {
     if (!val) return "";
     if (val.length < 3) return "Username must be at least 3 characters.";
     if (val.length > 20) return "Username must be 20 characters or less.";
-    if (!USERNAME_REGEX.test(val)) return "Only letters, numbers, and underscores.";
-    if (OFFENSIVE_PATTERNS.test(val)) return "This username contains offensive language.";
-    if (IMPERSONATION_PATTERNS.test(val)) return "Cannot impersonate Upper Vibe Media, admins, or artists.";
+    if (!USERNAME_REGEX.test(val)) return "Use only letters, numbers, and underscores.";
+    // Check each word in the username individually against offensive list
+    const words = val.toLowerCase().split("_");
+    for (const word of words) {
+      if (word.length < 2) continue;
+      if (OFFENSIVE_PATTERNS.test(word)) return "This username contains offensive language.";
+      if (IMPERSONATION_PATTERNS.test(word)) return "Cannot impersonate Upper Vibe Media, admins, or artists.";
+    }
     // Check if it looks like an email
     if (/@/.test(val)) return "Usernames cannot contain email addresses.";
     // Check if it looks like a phone number
@@ -29,7 +35,7 @@ export default function UsernameSetup({ onComplete }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmed = username.trim();
-    const validationError = validate(trimmed);
+    const validationError = validateLocal(trimmed);
     if (validationError) {
       setError(validationError);
       return;
@@ -38,24 +44,40 @@ export default function UsernameSetup({ onComplete }) {
     setChecking(true);
 
     try {
-      // Check uniqueness
-      const existing = await base44.entities.User.filter({ world_username: trimmed });
-      if (existing.length > 0) {
-        setError("This username is already taken. Please choose another.");
+      // Step 1: Check uniqueness via backend (uses service role to bypass RLS)
+      const checkRes = await base44.functions.invoke("checkUsername", {
+        username: trimmed,
+      });
+      const checkData = checkRes.data;
+
+      if (!checkData.available) {
+        setError(checkData.error || "That username is already taken. Try another one.");
         setChecking(false);
         return;
       }
 
-      // Save username
-      await base44.auth.updateMe({ world_username: trimmed });
-      onComplete(trimmed);
+      // Step 2: Save username (display + lowercase for uniqueness)
+      await base44.auth.updateMe({
+        world_username: trimmed,
+        world_username_lower: trimmed.toLowerCase(),
+      });
+
+      onComplete();
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      const msg = err?.response?.data?.error || err?.message || "";
+      if (msg.toLowerCase().includes("logged in") || msg.toLowerCase().includes("log in")) {
+        setError("Please log in to create your Vibe World username.");
+      } else if (err?.response?.status === 401) {
+        setError("Please log in to create your Vibe World username.");
+      } else {
+        setError("We could not save your username. Please try again.");
+      }
       setChecking(false);
     }
   };
 
-  const currentError = error || validate(username);
+  const validationMsg = validateLocal(username);
+  const displayError = error || (!checking && validationMsg ? validationMsg : "");
 
   return (
     <div
@@ -116,32 +138,32 @@ export default function UsernameSetup({ onComplete }) {
               className="w-full px-4 py-3.5 rounded-xl text-white text-sm font-medium text-center placeholder-white/20 outline-none transition-all"
               style={{
                 background: "rgba(255,255,255,0.05)",
-                border: error
+                border: displayError
                   ? "1px solid rgba(239,68,68,0.5)"
-                  : username && !currentError
+                  : username && !validationMsg
                     ? "1px solid rgba(34,197,94,0.4)"
                     : "1px solid rgba(255,255,255,0.1)",
               }}
             />
-            {username && !currentError && (
+            {username && !validationMsg && !checking && (
               <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-400" />
             )}
           </div>
 
-          {currentError && (
+          {displayError && (
             <motion.p
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex items-center gap-1.5 text-xs text-red-400 px-2"
             >
               <AlertCircle className="w-3 h-3 flex-shrink-0" />
-              {currentError}
+              {displayError}
             </motion.p>
           )}
 
           <button
             type="submit"
-            disabled={!username || !!currentError || checking}
+            disabled={!username || !!validationMsg || checking}
             className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               background: "linear-gradient(135deg,#9B7EFF,#A078FF)",
