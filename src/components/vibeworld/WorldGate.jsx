@@ -23,40 +23,34 @@ const STEP = {
 export default function WorldGate({ children }) {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   const [step, setStep] = useState(STEP.LOADING);
-  const [userData, setUserData] = useState(null);
   const [chatAgeConfirmed, setChatAgeConfirmed] = useState(false);
 
   // ── Check user state ──────────────────────────────────────────
   useEffect(() => {
     if (isLoadingAuth) return;
 
+    // NOT authenticated → show login (WorldAccessScreen)
     if (!isAuthenticated || !user) {
       setStep(STEP.NOT_AUTHED);
       return;
     }
 
-    // Fetch user data
-    base44.entities.User.filter({ id: user.id })
-      .then((results) => {
-        const data = results[0] || {};
-        setUserData(data);
-
-        if (!data.world_username) {
-          setStep(STEP.SETUP_USERNAME);
-        } else if (!data.world_avatar) {
-          setStep(STEP.SETUP_AVATAR);
-        } else if (
-          !data.uvc_rules_accepted ||
-          !data.uvc_agreement_accepted ||
-          data.uvc_agreement_version !== UVC_AGREEMENT_VERSION
-        ) {
-          setStep(STEP.SHOW_RULES);
-        } else {
-          setChatAgeConfirmed(!!data.uvc_chat_age_confirmed);
-          setStep(STEP.READY);
-        }
-      })
-      .catch(() => setStep(STEP.NOT_AUTHED));
+    // User IS authenticated — use their profile data directly from auth.me()
+    // (includes custom fields like world_username, uvc_rules_accepted, etc.)
+    if (!user.world_username) {
+      setStep(STEP.SETUP_USERNAME);
+    } else if (!user.world_avatar) {
+      setStep(STEP.SETUP_AVATAR);
+    } else if (
+      !user.uvc_rules_accepted ||
+      !user.uvc_agreement_accepted ||
+      user.uvc_agreement_version !== UVC_AGREEMENT_VERSION
+    ) {
+      setStep(STEP.SHOW_RULES);
+    } else {
+      setChatAgeConfirmed(!!user.uvc_chat_age_confirmed);
+      setStep(STEP.READY);
+    }
   }, [isAuthenticated, user, isLoadingAuth]);
 
   // ── Callbacks ──────────────────────────────────────────────────
