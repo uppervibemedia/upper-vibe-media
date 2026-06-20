@@ -1,0 +1,76 @@
+{
+  "name": "VoiceSignal",
+  "type": "object",
+  "properties": {
+    "from_user_id": {
+      "type": "string",
+      "description": "User ID of the sender"
+    },
+    "to_user_id": {
+      "type": "string",
+      "description": "User ID of the intended recipient"
+    },
+    "signal_type": {
+      "type": "string",
+      "enum": [
+        "offer",
+        "answer",
+        "ice_candidate"
+      ],
+      "description": "WebRTC signaling message type"
+    },
+    "signal_data": {
+      "type": "string",
+      "description": "JSON-encoded SDP or ICE candidate data"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processed",
+        "expired"
+      ],
+      "default": "pending"
+    },
+    "expires_at": {
+      "type": "string",
+      "description": "ISO timestamp when this signal expires"
+    }
+  },
+  "required": [
+    "from_user_id",
+    "to_user_id",
+    "signal_type",
+    "signal_data"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": true,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

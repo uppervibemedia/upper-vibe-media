@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, Sun,
   Compass, Sparkles, Library, SkipForward,
-  Volume2, VolumeX, BookOpen,
+  Volume2, VolumeX, BookOpen, Mic, MicOff,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
@@ -44,6 +44,10 @@ export default function WorldHUD({
   activeUsers = [],
   userCount = 0,
   isBroadcasting = false,
+  isMicEnabled = false,
+  onToggleMic,
+  voicePeers = [],
+  voiceConnected = false,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
@@ -124,11 +128,47 @@ export default function WorldHUD({
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="absolute top-0 right-4 z-[55]"
+        className="absolute top-0 right-4 z-[55] flex items-center gap-2"
         style={{
           paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 5rem)" : "4rem",
         }}
       >
+        {/* ── Mic Toggle ──────────────────────────────────────── */}
+        {onToggleMic && (
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={() => { try { navigator?.vibrate?.(10); } catch {} onToggleMic(); }}
+            className="flex items-center justify-center w-9 h-9 rounded-full transition-all active:scale-95"
+            style={{
+              background: isMicEnabled
+                ? "linear-gradient(135deg,#00C853,#00E676)"
+                : "rgba(255,255,255,0.08)",
+              border: isMicEnabled
+                ? "1px solid rgba(0,200,83,0.4)"
+                : "1px solid rgba(255,255,255,0.15)",
+              minWidth: "44px",
+              minHeight: "44px",
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
+            title={isMicEnabled ? "Mute Mic" : "Unmute Mic"}
+          >
+            {isMicEnabled ? (
+              <Mic className="w-4 h-4 text-white" />
+            ) : (
+              <MicOff className="w-4 h-4 text-white/40" />
+            )}
+          </button>
+        )}
+
+        {/* Voice indicator dot */}
+        {voiceConnected && (
+          <span
+            className="w-2 h-2 rounded-full animate-pulse"
+            style={{ background: "#00E676", boxShadow: "0 0 8px rgba(0,230,118,0.6)" }}
+          />
+        )}
+
         <div className="relative">
           <LiveUsersBadge
             activeUsers={activeUsers}
