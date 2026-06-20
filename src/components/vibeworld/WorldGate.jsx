@@ -3,6 +3,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import WorldAccessScreen from "@/components/vibeworld/WorldAccessScreen";
 import UsernameSetup from "@/components/vibeworld/UsernameSetup";
+import AvatarSetup from "@/components/vibeworld/AvatarSetup";
 import CommunityRulesModal from "@/components/vibeworld/CommunityRulesModal";
 import UserAgreementModal from "@/components/vibeworld/UserAgreementModal";
 
@@ -13,6 +14,7 @@ const STEP = {
   LOADING: "loading",
   NOT_AUTHED: "not_authed",
   SETUP_USERNAME: "setup_username",
+  SETUP_AVATAR: "setup_avatar",
   SHOW_RULES: "show_rules",
   SHOW_AGREEMENT: "show_agreement",
   READY: "ready",
@@ -41,6 +43,8 @@ export default function WorldGate({ children }) {
 
         if (!data.world_username) {
           setStep(STEP.SETUP_USERNAME);
+        } else if (!data.world_avatar) {
+          setStep(STEP.SETUP_AVATAR);
         } else if (
           !data.uvc_rules_accepted ||
           !data.uvc_agreement_accepted ||
@@ -57,6 +61,10 @@ export default function WorldGate({ children }) {
 
   // ── Callbacks ──────────────────────────────────────────────────
   const handleUsernameComplete = useCallback(() => {
+    setStep(STEP.SETUP_AVATAR);
+  }, []);
+
+  const handleAvatarComplete = useCallback(() => {
     setStep(STEP.SHOW_RULES);
   }, []);
 
@@ -105,6 +113,10 @@ export default function WorldGate({ children }) {
 
   if (step === STEP.SETUP_USERNAME) {
     return <UsernameSetup onComplete={handleUsernameComplete} />;
+  }
+
+  if (step === STEP.SETUP_AVATAR) {
+    return <AvatarSetup onComplete={handleAvatarComplete} />;
   }
 
   if (step === STEP.SHOW_RULES) {

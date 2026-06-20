@@ -94,6 +94,14 @@
       "type": "string",
       "description": "Public display username in Upper Vibe City"
     },
+    "world_avatar": {
+      "type": "string",
+      "enum": [
+        "male",
+        "female"
+      ],
+      "description": "Avatar type for Upper Vibe City"
+    },
     "uvc_rules_accepted": {
       "type": "boolean",
       "default": false,

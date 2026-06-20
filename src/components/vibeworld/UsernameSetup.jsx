@@ -88,7 +88,7 @@ export default function UsernameSetup({ onComplete }) {
           style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.25)" }}>
           <Sparkles className="w-3 h-3" style={{ color: "#9B7EFF" }} />
           <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>
-            Step 1 of 3
+            Step 1 of 4
           </span>
         </div>
 

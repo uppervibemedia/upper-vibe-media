@@ -72,7 +72,7 @@ export default function UserAgreementModal({ open, onAccept, onDecline, chatAgeC
                 style={{ background: "rgba(0,160,220,0.08)", border: "1px solid rgba(0,160,220,0.2)" }}>
                 <Sparkles className="w-3 h-3" style={{ color: "#00A0DC" }} />
                 <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#00A0DC" }}>
-                  Step 3 of 3
+                  Step 4 of 4
                 </span>
               </div>
 

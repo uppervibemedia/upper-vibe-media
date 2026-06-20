@@ -59,7 +59,7 @@ export default function CommunityRulesModal({ open, onAccept, onDecline }) {
                 style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.2)" }}>
                 <Sparkles className="w-3 h-3" style={{ color: "#9B7EFF" }} />
                 <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>
-                  Step 2 of 3
+                  Step 3 of 4
                 </span>
               </div>
 
