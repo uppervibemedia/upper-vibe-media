@@ -215,7 +215,7 @@ export default function UpperVibeCity({ onExit }) {
         <CityCanvas
           onLoaded={() => setLoading(false)}
           onPositionChange={(x, z, rot) => setPlayerPos({ x, z, rot })}
-          stageCanvas={stageCanvas}
+          stageCanvas={stageWatching ? null : stageCanvas}
           audioIntensityRef={audioIntensityRef}
           locked={movementLocked}
           stageScreenPosRef={stageScreenPosRef}

@@ -1314,17 +1314,29 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
           try { onPosCbRef.current(px, pz, rot); } catch {}
         }
 
-        // ─── CAMERA (third-person, locked to avatar every frame) ──
+        // ─── CAMERA (third-person, or stage-facing when locked) ──
         const camDist = 5;
         const camHeight = 2.5;
         const lookY = 1.5;
-        // cameraPosition = avatar.position - avatar.forward * camDist + (0, camHeight, 0)
-        camera.position.set(
-          px - Math.sin(rot) * camDist,
-          py + camHeight,
-          pz - Math.cos(rot) * camDist,
-        );
-        camera.lookAt(px, py + lookY, pz);
+
+        // When locked (stage watching), smoothly face the stage screen head-on
+        const STAGE_LOOK_AT = new Vector3(0, 2.2, -16.4);
+        const STAGE_CAM_POS = new Vector3(0, 3.5, -6);
+        const CAM_LERP = 3.0;
+
+        if (lockedRef.current) {
+          // Lerp camera toward stage-facing position
+          camera.position.lerp(STAGE_CAM_POS, Math.min(1, CAM_LERP * dt));
+          camera.lookAt(STAGE_LOOK_AT);
+        } else {
+          // Normal third-person camera behind avatar
+          camera.position.set(
+            px - Math.sin(rot) * camDist,
+            py + camHeight,
+            pz - Math.cos(rot) * camDist,
+          );
+          camera.lookAt(px, py + lookY, pz);
+        }
 
         // ═════════════════════════════════════════════════════════
         // ANIMATION SYSTEM
@@ -1414,10 +1426,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
         const audioBeat = audioIntensityRef?.current ?? 0;
 
-        // ─── STAGE SCREEN — visualizer canvas texture (throttled to avoid GPU flicker) ──
+        // ─── STAGE SCREEN — visualizer canvas texture or hide when watching ──
         const stageCanvasVal = stageCanvasRef.current;
+        const stageScreen = scene.userData.stageScreen;
         if (stageCanvasVal) {
-          const stageScreen = scene.userData.stageScreen;
           if (stageScreen && !scene.userData._stageCanvasApplied) {
             const tex = new THREE.CanvasTexture(stageCanvasVal);
             tex.colorSpace = THREE.SRGBColorSpace;
@@ -1438,6 +1450,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
               scene.userData._lastStageTexTime = stageTexNow;
             }
           }
+        } else if (stageScreen && scene.userData._stageCanvasApplied) {
+          // No canvas — hide the stage screen (prevents duplicate cover art behind embed)
+          stageScreen.material = new MeshBasicMaterial({ color: new Color("#0a0a1e"), depthWrite: true, transparent: true, opacity: 0.15 });
+          scene.userData._stageCanvasApplied = false;
+          scene.userData._stageTex = null;
         }
 
         // ─── OCEAN WAVES — rolling from deep water toward shore ──

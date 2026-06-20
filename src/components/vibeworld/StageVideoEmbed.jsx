@@ -2,67 +2,66 @@ import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, f
 
 /**
  * StageVideoEmbed — YouTube iframe positioned to overlay the 3D stage screen.
- * Handles both video display AND audio. Mute/unmute via postMessage.
+ * Single YouTube player handles both video + audio. autoplay muted (browser req),
+ * then unmute via user-gesture-triggered postMessage once iframe is loaded.
  */
 const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, screenPosRef }, ref) {
   const iframeRef = useRef(null);
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
   const [pos, setPos] = useState({ x: -9999, y: -9999, w: 0, h: 0 });
+  const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const animRef = useRef(null);
   const lastVideoIdRef = useRef(null);
   const mutedRef = useRef(true);
-  const playQueuedRef = useRef(false);
+  const pendingUnmuteRef = useRef(false);
 
   const ytId = video?.youtube_video_id || "";
 
-  // ── Expose mute / unmute / play for parent ──────────────────
+  // ── Expose mute / unmute / play / pause for parent ───────────
   useImperativeHandle(ref, () => ({
     mute() {
       mutedRef.current = true;
+      pendingUnmuteRef.current = false;
+      setShowUnmuteHint(false);
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: "command", func: "mute", args: [] }),
-          "*"
+          JSON.stringify({ event: "command", func: "mute", args: [] }), "*"
         );
       }
     },
     unmute() {
       mutedRef.current = false;
-      if (iframeRef.current?.contentWindow) {
+      if (iframeRef.current?.contentWindow && ready) {
+        // Iframe is loaded — send unmute immediately
+        pendingUnmuteRef.current = false;
+        setShowUnmuteHint(false);
         iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: "command", func: "unMute", args: [] }),
-          "*"
+          JSON.stringify({ event: "command", func: "unMute", args: [] }), "*"
         );
         iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: "command", func: "setVolume", args: [80] }),
-          "*"
+          JSON.stringify({ event: "command", func: "setVolume", args: [80] }), "*"
         );
       } else {
-        playQueuedRef.current = true;
+        // Iframe not ready yet — queue for handleIframeLoad
+        pendingUnmuteRef.current = true;
       }
     },
     play() {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: "command", func: "playVideo", args: [] }),
-          "*"
+          JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*"
         );
-      } else {
-        playQueuedRef.current = true;
       }
     },
     pause() {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage(
-          JSON.stringify({ event: "command", func: "pauseVideo", args: [] }),
-          "*"
+          JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), "*"
         );
       }
     },
-    isMuted() {
-      return mutedRef.current;
-    },
+    isMuted() { return mutedRef.current; },
   }));
 
   // Poll screen position from ref each frame
@@ -70,26 +69,28 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
     if (!open) return;
     const loop = () => {
       const p = screenPosRef?.current;
-      if (p && p.w > 0 && p.h > 0) {
-        setPos(p);
-      }
+      if (p && p.w > 0 && p.h > 0) setPos(p);
       animRef.current = requestAnimationFrame(loop);
     };
     animRef.current = requestAnimationFrame(loop);
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [open, screenPosRef]);
 
-  // Reset on open/close
+  // When opening, queue unmute (the Watch on Stage click is the user gesture)
   useEffect(() => {
     if (open) {
       setError(false);
       setReady(false);
+      setShowUnmuteHint(false);
       mutedRef.current = true;
-      playQueuedRef.current = false;
+      pendingUnmuteRef.current = true; // Will be consumed by handleIframeLoad
+    } else {
+      pendingUnmuteRef.current = false;
+      setShowUnmuteHint(false);
     }
   }, [open]);
 
-  // Rebuild iframe when video changes (key forces remount)
+  // Rebuild iframe when video changes while open
   useEffect(() => {
     if (!open || !ytId) return;
     if (ytId === lastVideoIdRef.current) return;
@@ -97,6 +98,7 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
     setError(false);
     setReady(false);
     mutedRef.current = true;
+    pendingUnmuteRef.current = true;
   }, [open, ytId]);
 
   const embedUrl = ytId
@@ -105,28 +107,27 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
 
   const handleIframeLoad = useCallback(() => {
     setReady(true);
-    if (iframeRef.current?.contentWindow) {
-      // Start playback
-      iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: "command", func: "playVideo", args: [] }),
-        "*"
-      );
-      // Apply queued unmute if requested before iframe was ready
-      if (playQueuedRef.current) {
-        playQueuedRef.current = false;
-        if (!mutedRef.current) {
-          setTimeout(() => {
-            iframeRef.current?.contentWindow?.postMessage(
-              JSON.stringify({ event: "command", func: "unMute", args: [] }),
-              "*"
-            );
-            iframeRef.current?.contentWindow?.postMessage(
-              JSON.stringify({ event: "command", func: "setVolume", args: [80] }),
-              "*"
-            );
-          }, 300);
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+
+    // Start playback (muted — required by browser autoplay policy)
+    win.postMessage(JSON.stringify({ event: "command", func: "playVideo", args: [] }), "*");
+
+    // Apply pending unmute
+    if (pendingUnmuteRef.current) {
+      pendingUnmuteRef.current = false;
+      // Small delay to let the player fully initialize
+      setTimeout(() => {
+        const w = iframeRef.current?.contentWindow;
+        if (w) {
+          w.postMessage(JSON.stringify({ event: "command", func: "unMute", args: [] }), "*");
+          w.postMessage(JSON.stringify({ event: "command", func: "setVolume", args: [80] }), "*");
         }
-      }
+        mutedRef.current = false;
+        // Show hint if audio still blocked by browser
+        setShowUnmuteHint(true);
+        setTimeout(() => setShowUnmuteHint(false), 4000);
+      }, 600);
     }
   }, []);
 
@@ -144,7 +145,7 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
     >
       {/* Neon frame glow */}
       <div
-        className="absolute -inset-0.5 pointer-events-none"
+        className="absolute -inset-0.5 pointer-events-none rounded-sm"
         style={{
           boxShadow: "0 0 30px rgba(155,126,255,0.25), 0 0 60px rgba(0,160,220,0.1), 0 0 4px rgba(155,126,255,0.15) inset",
           border: "1px solid rgba(155,126,255,0.15)",
@@ -171,6 +172,24 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
           style={{ background: "linear-gradient(135deg, #0a0a1e, #12122e)" }}
         >
           <p className="text-white/15 text-xs font-heading">Upper Vibe Media</p>
+        </div>
+      )}
+
+      {/* Tap to unmute hint */}
+      {showUnmuteHint && ready && (
+        <div
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-none z-[71]"
+          style={{
+            background: "rgba(0,0,0,0.7)",
+            color: "#fff",
+            fontSize: 10,
+            fontWeight: 700,
+            padding: "4px 10px",
+            borderRadius: 8,
+            letterSpacing: "0.05em",
+          }}
+        >
+          Tap Unmute Below
         </div>
       )}
     </div>
