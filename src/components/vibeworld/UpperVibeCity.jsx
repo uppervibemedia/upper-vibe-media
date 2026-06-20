@@ -82,10 +82,33 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Stage video controls ───────────────────────────────────────────────
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
-  const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack } = playerCtx || {};
+  const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack, registerNextHandler, clearPosition } = playerCtx || {};
   const { allTracks, tracksLoaded } = radioCtx || {};
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
+
+  // ── Personalized feed continuous playback ──────────────────────────────
+  const feedActiveRef = useRef(false);
+  const feedIndexRef = useRef(0);
+  const sortedTracksRef = useRef([]);
+  sortedTracksRef.current = sortedTracks;
+
+  // Register feed next handler: when a feed track ends, play the next one
+  useEffect(() => {
+    if (!registerNextHandler) return;
+    const handleFeedNext = (fromSkip) => {
+      if (!feedActiveRef.current) return; // Not in feed mode
+      const tracks = sortedTracksRef.current;
+      if (!tracks?.length) return;
+      const nextIdx = (feedIndexRef.current + 1) % tracks.length;
+      feedIndexRef.current = nextIdx;
+      const next = tracks[nextIdx];
+      if (next && playTrack) {
+        playTrack(next, "song");
+      }
+    };
+    registerNextHandler(handleFeedNext);
+  }, [registerNextHandler, playTrack]);
 
   // ═══════════════════════════════════════════════════════════════
   // AUDIO COORDINATION — only one source plays at a time
@@ -244,20 +267,21 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const handleGlobalSkip = useCallback(() => { skipTrack?.(); }, [skipTrack]);
 
-  // ── Bottom player toggle: mute all other sources first ────────
+  // ── Bottom player toggle: simple, instant, no stage side-effects ──
   const handleGlobalPlayToggle = useCallback(() => {
-    if (isPlaying) {
-      // Pausing is always safe
-      togglePlay?.();
+    // If paused but no track yet, start feed
+    if (!isPlaying && !currentTrack && sortedTracks?.length > 0 && playTrack) {
+      const pool = sortedTracks.slice(0, Math.min(5, sortedTracks.length));
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      if (pick) {
+        feedActiveRef.current = true;
+        feedIndexRef.current = sortedTracks.indexOf(pick);
+        playTrack(pick, "song");
+      }
       return;
     }
-    // Starting global player — mute stage + fullscreen first
-    muteStage();
-    if (stageFullScreen) setStageFullScreen(false);
-    stagePausedPlayerRef.current = false;
-    fullscreenPausedPlayerRef.current = false;
     togglePlay?.();
-  }, [isPlaying, togglePlay, muteStage, stageFullScreen]);
+  }, [isPlaying, currentTrack, togglePlay, sortedTracks, playTrack]);
 
   // ── Stage proximity: resume global player when walking away from stage ──
   useEffect(() => {
@@ -291,21 +315,32 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return () => cancelAnimationFrame(raf);
   }, [playerCtx?.analyserNode]);
 
-  // Auto-start personalized top song when entering world (only if silent)
+  // Auto-start personalized feed when entering world (only if silent)
   useEffect(() => {
-    if (feedLoading || loading) return;
-    if (currentTrack || isPlaying) return; // Already has music — don't interrupt
-    if (sortedTracks?.length > 0 && playTrack) {
-      // Pick from top 5 personalized tracks for variety
+    if (feedLoading || loading || !playTrack) return;
+    // If something is already playing, adopt it into feed mode
+    if (currentTrack && isPlaying) {
+      feedActiveRef.current = true;
+      feedIndexRef.current = sortedTracks?.findIndex(t => t.id === currentTrack.id) ?? 0;
+      return;
+    }
+    // Start feed
+    if (sortedTracks?.length > 0) {
       const pool = sortedTracks.slice(0, Math.min(5, sortedTracks.length));
       const pick = pool[Math.floor(Math.random() * pool.length)];
-      if (pick) playTrack(pick, "song");
-    } else if (!feedLoading && allTracks?.length > 0 && playTrack) {
-      // Fallback: no personalization data yet, pick a featured track
+      if (pick) {
+        feedActiveRef.current = true;
+        feedIndexRef.current = sortedTracks.indexOf(pick);
+        playTrack(pick, "song");
+      }
+    } else if (!feedLoading && allTracks?.length > 0) {
       const featured = allTracks.filter((t) => t.is_featured);
       const pool = featured.length > 0 ? featured : allTracks;
       const pick = pool[Math.floor(Math.random() * pool.length)];
-      if (pick) playTrack(pick, "song");
+      if (pick) {
+        feedActiveRef.current = false; // Don't auto-advance featured tracks
+        playTrack(pick, "song");
+      }
     }
   }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
 
