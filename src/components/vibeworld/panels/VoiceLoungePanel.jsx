@@ -425,7 +425,7 @@ export default function VoiceLoungePanel({ open, onClose, isMobile }) {
                       {peerCount} {peerCount === 1 ? "person" : "people"}
                     </span>
                   )}
-                  <span className="text-[10px] text-white/30">
+                  <span className="text-[10px]" style={{ color: isMuted ? "#EF4444" : "#00E676" }}>
                     {isMuted ? "Mic Off" : "Mic On"}
                   </span>
                 </div>
@@ -457,21 +457,21 @@ export default function VoiceLoungePanel({ open, onClose, isMobile }) {
                   className="flex flex-col items-center gap-1.5 py-4 rounded-2xl transition-all active:scale-95"
                   style={{
                     background: isMuted
-                      ? "rgba(255,255,255,0.06)"
+                      ? "rgba(239,68,68,0.12)"
                       : "rgba(0,230,118,0.12)",
-                    border: `1px solid ${isMuted ? "rgba(255,255,255,0.1)" : "rgba(0,230,118,0.3)"}`,
+                    border: `1px solid ${isMuted ? "rgba(239,68,68,0.3)" : "rgba(0,230,118,0.3)"}`,
                     minHeight: 72,
                     touchAction: "manipulation",
                     pointerEvents: "auto",
                   }}
                 >
                   {isMuted ? (
-                    <MicOff className="w-5 h-5 text-white/40" />
+                    <MicOff className="w-5 h-5 text-red-400" />
                   ) : (
                     <Mic className="w-5 h-5 text-green-400" />
                   )}
                   <span className="text-[10px] font-black tracking-wider"
-                    style={{ color: isMuted ? "rgba(255,255,255,0.4)" : "#00E676" }}>
+                    style={{ color: isMuted ? "#EF4444" : "#00E676" }}>
                     {isMuted ? "Unmute" : "Mute"}
                   </span>
                 </button>
