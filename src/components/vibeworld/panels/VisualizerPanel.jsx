@@ -285,11 +285,14 @@ export default function VisualizerPanel({ open, onClose }) {
       exit={{ opacity: 0 }}
       className="absolute inset-0 z-[65] flex items-center justify-center"
       style={{ background: "rgba(0,0,0,0.92)", pointerEvents: "auto" }}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
     >
-      {/* Canvas */}
+      {/* Canvas — non-interactive, visual only */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"
+        style={{ pointerEvents: "none" }}
       />
 
       {/* Top controls */}
