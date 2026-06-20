@@ -1067,22 +1067,25 @@ function createAvatar(scene) {
 // MOBILE VIRTUAL JOYSTICK — visible dual-touch controls
 // ═══════════════════════════════════════════════════════════════
 function VirtualJoystick({ onMove, onCameraDelta }) {
-  const MAX_R = 45;
-  const JOY_BASE_X = 75;
-  const JOY_BASE_Y_OFFSET = 130;
+  const MAX_R = 38;
+  const JOY_BASE_Y_OFFSET = 110;
 
   const [thumbX, setThumbX] = useState(0);
   const [thumbY, setThumbY] = useState(0);
   const [joyActive, setJoyActive] = useState(false);
   const [joyBaseY, setJoyBaseY] = useState(() => window.innerHeight - JOY_BASE_Y_OFFSET);
+  const [joyBaseX, setJoyBaseX] = useState(() => Math.max(56, (parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-left)").trim()) || 0) + 40));
 
   const joyTouchId = useRef(null);
   const camTouchId = useRef(null);
   const camBaseRef = useRef({ x: 0, y: 0 });
 
-  // Keep joyBaseY current on resize/orientation change
+  // Keep position current on resize/orientation change
   useEffect(() => {
-    const update = () => setJoyBaseY(window.innerHeight - JOY_BASE_Y_OFFSET);
+    const update = () => {
+      setJoyBaseY(window.innerHeight - JOY_BASE_Y_OFFSET);
+      setJoyBaseX(Math.max(56, (parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-left)").trim()) || 0) + 40));
+    };
     window.addEventListener("resize", update);
     window.addEventListener("orientationchange", update);
     return () => {
@@ -1130,7 +1133,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
     for (const t of [...e.touches]) {
       if (t.identifier === joyTouchId.current) {
         consumed = true;
-        let dx = t.clientX - JOY_BASE_X;
+        let dx = t.clientX - joyBaseX;
         let dy = joyBaseY - t.clientY;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > MAX_R) { dx = (dx / dist) * MAX_R; dy = (dy / dist) * MAX_R; }
@@ -1147,7 +1150,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
       }
     }
     if (consumed) e.preventDefault();
-  }, [onMove, onCameraDelta, joyBaseY]);
+  }, [onMove, onCameraDelta, joyBaseY, joyBaseX]);
 
   const handleTouchEnd = useCallback((e) => {
     let consumed = false;
@@ -1188,18 +1191,18 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       />
-      {/* Joystick visual — now directly touchable (not pointer-events-none anymore) */}
+      {/* Joystick visual — smaller, moved inward from left edge, safe-area aware */}
       <div
         className="absolute z-40 rounded-full flex items-center justify-center"
         style={{
-          width: 100, height: 100,
-          left: JOY_BASE_X - 50,
-          top: joyBaseY - 50,
+          width: 80, height: 80,
+          left: joyBaseX - 40,
+          top: joyBaseY - 40,
           background: joyActive ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)",
-          border: `2.5px solid ${joyActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)"}`,
+          border: `2px solid ${joyActive ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.15)"}`,
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
-          boxShadow: joyActive ? "0 0 20px rgba(0,180,220,0.2)" : "none",
+          boxShadow: joyActive ? "0 0 16px rgba(0,180,220,0.2)" : "none",
           pointerEvents: "auto",
           touchAction: "none",
         }}
@@ -1210,7 +1213,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
         <div
           className="rounded-full pointer-events-none"
           style={{
-            width: 52, height: 52,
+            width: 38, height: 38,
             background: joyActive
               ? "linear-gradient(135deg,rgba(0,180,220,0.5),rgba(155,126,255,0.4))"
               : "rgba(255,255,255,0.18)",

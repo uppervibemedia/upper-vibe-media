@@ -25,22 +25,22 @@ export default function MobileMiniPlayer({
         animate={{ opacity: 1, y: 0 }}
         className="absolute z-[56]"
         style={{
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)",
-          right: "0.75rem",
+          bottom: "max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))",
+          right: "max(24px, calc(env(safe-area-inset-right, 0px) + 24px))",
           pointerEvents: "auto",
         }}
       >
         <div
-          className="flex items-center gap-2 px-2 py-1.5 rounded-full shadow-lg"
+          className="flex items-center gap-2 px-2.5 py-2 rounded-full shadow-lg"
           style={{
             background: "rgba(0,0,0,0.7)",
             backdropFilter: "blur(14px)",
             border: "1px solid rgba(255,255,255,0.15)",
-            maxWidth: "70vw",
-            touchAction: "manipulation",
+            maxWidth: "68vw",
+            pointerEvents: "none",
           }}
         >
-          <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 pointer-events-none" style={{ minWidth: "36px", minHeight: "36px" }}>
+          <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 pointer-events-none" style={{ minWidth: "32px", minHeight: "32px" }}>
             <CoverImage
               src={currentTrack.cover_url}
               alt={currentTrack.title}
@@ -49,15 +49,15 @@ export default function MobileMiniPlayer({
             />
           </div>
           <div className="flex-1 min-w-0 pr-1 pointer-events-none">
-            <p className="text-[10px] font-bold text-white/90 truncate max-w-[120px]">{currentTrack.title}</p>
+            <p className="text-[10px] font-bold text-white/90 truncate max-w-[100px]">{currentTrack.title}</p>
           </div>
           <button
             onTouchStart={blockTouch}
             onClick={(e) => { e.stopPropagation(); onTogglePlay?.(); }}
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:brightness-110 active:scale-90"
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:brightness-110 active:scale-90"
             style={{
               background: "#2E7D32", color: "#fff",
-              minWidth: "36px", minHeight: "36px",
+              minWidth: "44px", minHeight: "44px",
               touchAction: "manipulation", pointerEvents: "auto",
             }}
           >
@@ -66,14 +66,14 @@ export default function MobileMiniPlayer({
           <button
             onTouchStart={blockTouch}
             onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
-            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/10"
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/10"
             style={{
               color: "rgba(255,255,255,0.5)",
-              minWidth: "28px", minHeight: "28px",
+              minWidth: "44px", minHeight: "44px",
               touchAction: "manipulation", pointerEvents: "auto",
             }}
           >
-            <ChevronUp className="w-3 h-3" />
+            <ChevronUp className="w-3.5 h-3.5" />
           </button>
         </div>
       </motion.div>
@@ -89,7 +89,7 @@ export default function MobileMiniPlayer({
         exit={{ opacity: 0, y: 30 }}
         className="absolute inset-x-0 bottom-0 z-[58] flex justify-center px-3"
         style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)",
+          paddingBottom: "max(20px, calc(env(safe-area-inset-bottom, 0px) + 20px))",
           pointerEvents: "auto",
         }}
       >
@@ -99,7 +99,7 @@ export default function MobileMiniPlayer({
             background: "rgba(0,0,0,0.78)",
             backdropFilter: "blur(20px)",
             border: "1px solid rgba(255,255,255,0.12)",
-            touchAction: "manipulation",
+            pointerEvents: "none",
           }}
         >
           <div className="flex items-center justify-between mb-2">
@@ -107,10 +107,10 @@ export default function MobileMiniPlayer({
             <button
               onTouchStart={blockTouch}
               onClick={() => setExpanded(false)}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
+              className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
               style={{
                 color: "rgba(255,255,255,0.5)",
-                minWidth: "32px", minHeight: "32px",
+                minWidth: "44px", minHeight: "44px",
                 touchAction: "manipulation", pointerEvents: "auto",
               }}
             >
@@ -149,10 +149,10 @@ export default function MobileMiniPlayer({
             <button
               onTouchStart={blockTouch}
               onClick={(e) => { e.stopPropagation(); onSkip?.(); }}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
+              className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
               style={{
                 color: "rgba(255,255,255,0.5)",
-                minWidth: "40px", minHeight: "40px",
+                minWidth: "44px", minHeight: "44px",
                 touchAction: "manipulation", pointerEvents: "auto",
               }}
             >
