@@ -31,14 +31,17 @@ const STUN_SERVERS = {
 export default function useProximityVoice(user, playerPos, remoteUsers) {
   const [isMicEnabled, setIsMicEnabled] = useState(false);
   const [voicePeers, setVoicePeers] = useState([]); // nearby user_ids with active connections
+  const [isSpeaking, setIsSpeaking] = useState(false); // local mic audio activity
   const localStreamRef = useRef(null);
   const peerConnectionsRef = useRef({});      // userId → RTCPeerConnection
   const remoteStreamsRef = useRef({});         // userId → MediaStream
   const gainNodesRef = useRef({});             // userId → GainNode
   const audioCtxRef = useRef(null);
+  const analyserRef = useRef(null);            // AnalyserNode for local mic level
   const signalSubRef = useRef(null);
   const pendingSignalsRef = useRef(new Set()); // Track signal IDs being processed
   const cleanupTimerRef = useRef(null);
+  const speakingTimerRef = useRef(null);
 
   const playerPosRef = useRef(playerPos);
   playerPosRef.current = playerPos;
@@ -62,6 +65,15 @@ export default function useProximityVoice(user, playerPos, remoteUsers) {
         localStreamRef.current.getTracks().forEach((t) => t.stop());
         localStreamRef.current = null;
       }
+      if (analyserRef.current) {
+        analyserRef.current.disconnect();
+        analyserRef.current = null;
+      }
+      if (speakingTimerRef.current) {
+        clearInterval(speakingTimerRef.current);
+        speakingTimerRef.current = null;
+      }
+      setIsSpeaking(false);
       // Close all peer connections
       Object.values(peerConnectionsRef.current).forEach((pc) => pc.close());
       peerConnectionsRef.current = {};
@@ -74,6 +86,16 @@ export default function useProximityVoice(user, playerPos, remoteUsers) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         localStreamRef.current = stream;
+
+        // Set up mic level analyser
+        const ctx = getAudioCtx();
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.3;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+
         setIsMicEnabled(true);
       } catch (err) {
         console.warn("[ProximityVoice] Mic access denied:", err.message);
@@ -313,6 +335,36 @@ export default function useProximityVoice(user, playerPos, remoteUsers) {
     };
   }, [user?.id]);
 
+  // ── Mic audio activity detection ─────────────────────────────────────────
+  useEffect(() => {
+    if (!isMicEnabled || !analyserRef.current) {
+      setIsSpeaking(false);
+      return;
+    }
+
+    const analyser = analyserRef.current;
+    const buffer = new Uint8Array(analyser.frequencyBinCount);
+
+    const checkLevel = () => {
+      analyser.getByteFrequencyData(buffer);
+      const avg = buffer.reduce((a, b) => a + b, 0) / buffer.length;
+      const active = avg > 12; // threshold: low enough to catch quiet speech
+
+      setIsSpeaking((prev) => {
+        if (active === prev) return prev;
+        return active;
+      });
+    };
+
+    speakingTimerRef.current = setInterval(checkLevel, 120);
+    return () => {
+      if (speakingTimerRef.current) {
+        clearInterval(speakingTimerRef.current);
+        speakingTimerRef.current = null;
+      }
+    };
+  }, [isMicEnabled]);
+
   // ── Proximity check loop — manage connections based on distance ─────────
   useEffect(() => {
     if (!isMicEnabled || !user?.id) return;
@@ -367,6 +419,7 @@ export default function useProximityVoice(user, playerPos, remoteUsers) {
 
   return {
     isMicEnabled,
+    isSpeaking,
     toggleMic,
     voicePeers,
     isConnected: voicePeers.length > 0,

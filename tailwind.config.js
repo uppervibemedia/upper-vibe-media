@@ -78,6 +78,10 @@ module.exports = {
           '0%, 100%': { opacity: '0.4' },
           '50%': { opacity: '1' }
         },
+        'mic-pulse': {
+          '0%, 100%': { boxShadow: '0 0 8px rgba(0,230,118,0.4), 0 0 20px rgba(0,230,118,0.2)' },
+          '50%': { boxShadow: '0 0 18px rgba(0,230,118,0.7), 0 0 40px rgba(0,230,118,0.4)' },
+        },
         'shimmer': {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' }
@@ -87,7 +91,8 @@ module.exports = {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
         'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
-        'shimmer': 'shimmer 3s ease-in-out infinite'
+        'shimmer': 'shimmer 3s ease-in-out infinite',
+        'mic-pulse': 'mic-pulse 1s ease-in-out infinite'
   		}
   	}
   },

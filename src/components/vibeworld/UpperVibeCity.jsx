@@ -275,7 +275,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName, playerPos);
 
   // ── Proximity voice — Phase 4: WebRTC-based proximity voice chat ──────
-  const { isMicEnabled, toggleMic, voicePeers, isConnected: voiceConnected } = useProximityVoice(user, playerPos, activeUsers);
+  const { isMicEnabled, isSpeaking, toggleMic, voicePeers, isConnected: voiceConnected } = useProximityVoice(user, playerPos, activeUsers);
 
   // Keep player refs in sync without adding them as effect deps
   stageIsPlayingRef.current = isPlaying;
@@ -511,6 +511,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         userCount={userCount}
         isBroadcasting={isBroadcasting}
         isMicEnabled={isMicEnabled}
+        isSpeaking={isSpeaking}
         onToggleMic={toggleMic}
         voicePeers={voicePeers}
         voiceConnected={voiceConnected}

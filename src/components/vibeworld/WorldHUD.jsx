@@ -45,6 +45,7 @@ export default function WorldHUD({
   userCount = 0,
   isBroadcasting = false,
   isMicEnabled = false,
+  isSpeaking = false,
   onToggleMic,
   voicePeers = [],
   voiceConnected = false,
@@ -154,11 +155,13 @@ export default function WorldHUD({
           <button
             onTouchStart={(e) => e.stopPropagation()}
             onClick={() => { try { navigator?.vibrate?.(10); } catch {} onToggleMic(); }}
-            className="flex items-center justify-center rounded-full transition-all active:scale-95"
+            className={`flex items-center justify-center rounded-full transition-all active:scale-95 ${isSpeaking ? "animate-mic-pulse" : ""}`}
             style={{
-              background: isMicEnabled
-                ? "linear-gradient(135deg,#00C853,#00E676)"
-                : "rgba(255,255,255,0.08)",
+              background: isSpeaking
+                ? "linear-gradient(135deg,#00E676,#69F0AE)"
+                : isMicEnabled
+                  ? "linear-gradient(135deg,#00C853,#00E676)"
+                  : "rgba(255,255,255,0.08)",
               border: isMicEnabled
                 ? "1px solid rgba(0,200,83,0.4)"
                 : "1px solid rgba(255,255,255,0.12)",
