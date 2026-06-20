@@ -5,12 +5,13 @@ import {
   Compass, Sparkles, Library, SkipForward,
   Volume2, VolumeX, BookOpen,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
 import { detectZone, ZONES } from "./zoneDetection";
 import MusicLibraryPanel from "./panels/MusicLibraryPanel";
 import LoungePanel from "./panels/LoungePanel";
 import VisualizerPanel from "./panels/VisualizerPanel";
+import VibeCheckPanel from "./panels/VibeCheckPanel";
 import ChatWarning from "@/components/vibeworld/ChatWarning";
 
 const ZONE_ICONS = {
@@ -44,10 +45,13 @@ export default function WorldHUD({
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const zone = detectZone(playerX, playerZ);
 
+  const navigate = useNavigate();
+
   // Panel states
   const [musicPanelOpen, setMusicPanelOpen] = useState(false);
   const [loungePanelOpen, setLoungePanelOpen] = useState(false);
   const [visualizerOpen, setVisualizerOpen] = useState(false);
+  const [vibeCheckOpen, setVibeCheckOpen] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -379,8 +383,9 @@ export default function WorldHUD({
               pointerEvents: "auto",
             }}
           >
-            <Link
-              to="/my-vibes"
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => { hapticTap(); setVibeCheckOpen(true); onMobileModalChange?.(true); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
                 background: "linear-gradient(135deg,#00D4F0,#00E5FF)",
@@ -392,8 +397,8 @@ export default function WorldHUD({
               }}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Daily Vibe Check
-            </Link>
+              Check Your Vibe
+            </button>
           </motion.div>
         )}
 
@@ -477,6 +482,17 @@ export default function WorldHUD({
         onClose={handleCloseLounge}
         isMobile={isMobile}
         chatAgeConfirmed={chatAgeConfirmed}
+      />
+
+      {/* ── Vibe Check Panel (slide-up) ────────────────────────── */}
+      <VibeCheckPanel
+        open={vibeCheckOpen}
+        onClose={() => { setVibeCheckOpen(false); onMobileModalChange?.(false); }}
+        isMobile={isMobile}
+        onViewFullProgress={() => {
+          setVibeCheckOpen(false);
+          navigate("/my-vibes");
+        }}
       />
     </>
   );

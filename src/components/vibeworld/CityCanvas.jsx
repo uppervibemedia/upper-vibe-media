@@ -442,74 +442,100 @@ function buildPark(scene) {
   createNeonSign(scene, 0, 5.5, -15, "MUSIC  STAGE", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
-  // 5. VIBE LOUNGE — left, directly across from Music Library
+  // 5. VIBE LOUNGE — futuristic social hangout, semi-circle seating
   // ═════════════════════════════════════════════════════════════
   const lounge = new Group();
   lounge.name = "vibeLounge";
 
+  // Platform — larger, darker metallic
   const loungePlat = new Mesh(
-    new CircleGeometry(4, 32),
-    mat("#1E1E3A", { roughness: 0.5, metalness: 0.3 })
+    new CircleGeometry(4.5, 48),
+    mat("#151528", { roughness: 0.4, metalness: 0.5 })
   );
   loungePlat.rotation.x = -Math.PI / 2;
-  loungePlat.position.set(-16, 0.002, -10);
+  loungePlat.position.set(-16, 0.003, -10);
   loungePlat.receiveShadow = true;
   lounge.add(loungePlat);
 
-  // Low curved perimeter glow — clean open-air lounge, no poles
-  for (let i = 0; i < 16; i++) {
-    const ang = Math.PI / 2 + (i / 15) * Math.PI;
-    const gx = -16 + Math.cos(ang) * 3.6;
-    const gz = -10 + Math.sin(ang) * 3.6;
-    const groundGlow = new Mesh(
-      new BoxGeometry(0.15, 0.03, 0.15),
-      new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.6 })
-    );
-    groundGlow.position.set(gx, 0.015, gz);
-    lounge.add(groundGlow);
-  }
-
-  // Seating inside
-  for (let i = 0; i < 6; i++) {
-    const ang = Math.PI + (i / 5) * Math.PI;
-    const sx = -16 + Math.cos(ang) * 2;
-    const sz = -10 + Math.sin(ang) * 2;
-    const seat = new Mesh(
-      new BoxGeometry(0.9, 0.2, 0.5),
-      mat("#4A3A6A", { roughness: 0.4, metalness: 0.15 })
-    );
-    seat.position.set(sx, 0.12, sz);
-    seat.rotation.y = -ang;
-    seat.castShadow = true; seat.receiveShadow = true;
-    lounge.add(seat);
-
-    const seatGlow = new Mesh(
-      new BoxGeometry(0.85, 0.03, 0.45),
-      new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
-    );
-    seatGlow.position.set(sx, 0.03, sz);
-    seatGlow.rotation.y = -ang;
-    lounge.add(seatGlow);
-  }
-
-  // Central fire pit
-  const firePit = new Mesh(
-    new CylinderGeometry(0.7, 0.8, 0.3, 16),
-    mat("#555588", { roughness: 0.3, metalness: 0.6 })
+  // Outer glow ring — pink/purple
+  const loungeOuterRing = new Mesh(
+    new RingGeometry(4.2, 4.5, 64),
+    new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
   );
-  firePit.position.set(-16, 0.15, -10);
+  loungeOuterRing.rotation.x = -Math.PI / 2;
+  loungeOuterRing.position.set(-16, 0.006, -10);
+  loungeOuterRing.renderOrder = 1;
+  lounge.add(loungeOuterRing);
+
+  // Curved neon lounge seating — 5 seats in a semi-circle facing inward
+  for (let i = 0; i < 5; i++) {
+    const ang = Math.PI + (i / 4) * Math.PI * 0.65; // ~117° arc for openness
+    const radius = 2.8;
+    const sx = -16 + Math.cos(ang) * radius;
+    const sz = -10 + Math.sin(ang) * radius;
+
+    // Curved seat body (3 box segments for a gentle curve effect)
+    const seatBase = new Mesh(
+      new BoxGeometry(0.75, 0.18, 0.55),
+      mat("#2E1E4A", { roughness: 0.3, metalness: 0.3 })
+    );
+    seatBase.position.set(sx, 0.15, sz);
+    seatBase.rotation.y = -ang + Math.PI;
+    seatBase.castShadow = true; seatBase.receiveShadow = true;
+    lounge.add(seatBase);
+
+    // Glowing seat cushion strip
+    const cushionGlow = new Mesh(
+      new BoxGeometry(0.7, 0.04, 0.48),
+      new MeshBasicMaterial({ color: new Color(i % 2 === 0 ? "#C43BFF" : "#A078FF"), depthWrite: false, transparent: true, opacity: 0.55 })
+    );
+    cushionGlow.position.set(sx, 0.26, sz);
+    cushionGlow.rotation.y = -ang + Math.PI;
+    lounge.add(cushionGlow);
+
+    // Small side table between every other seat
+    if (i < 4) {
+      const nextAng = Math.PI + ((i + 0.5) / 4) * Math.PI * 0.65;
+      const tx = -16 + Math.cos(nextAng) * (radius - 0.15);
+      const tz = -10 + Math.sin(nextAng) * (radius - 0.15);
+      const table = new Mesh(
+        new CylinderGeometry(0.22, 0.25, 0.12, 8),
+        mat("#3A2A5A", { roughness: 0.25, metalness: 0.5 })
+      );
+      table.position.set(tx, 0.08, tz);
+      table.castShadow = true;
+      lounge.add(table);
+
+      const tableGlow = new Mesh(
+        new CylinderGeometry(0.24, 0.27, 0.03, 8),
+        new MeshBasicMaterial({ color: new Color("#E040FB"), depthWrite: false, transparent: true, opacity: 0.5 })
+      );
+      tableGlow.position.set(tx, 0.15, tz);
+      lounge.add(tableGlow);
+    }
+  }
+
+  // Central fire pit — modernized
+  const firePit = new Mesh(
+    new CylinderGeometry(0.5, 0.65, 0.25, 24),
+    mat("#3A2A5A", { roughness: 0.2, metalness: 0.6 })
+  );
+  firePit.position.set(-16, 0.14, -10);
   firePit.castShadow = true;
   lounge.add(firePit);
 
-  const fireGlow = new Mesh(
-    new CylinderGeometry(0.75, 0.85, 0.04, 16),
-    new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false })
-  );
-  fireGlow.position.set(-16, 0.32, -10);
-  lounge.add(fireGlow);
+  // Fire glow layers (pink → purple gradient)
+  for (const [radius, opacity] of [[0.55, 0.7], [0.6, 0.4], [0.7, 0.2]]) {
+    const fGlow = new Mesh(
+      new CylinderGeometry(radius, radius + 0.05, 0.05, 24),
+      new MeshBasicMaterial({ color: new Color(radius > 0.55 ? "#C43BFF" : "#E040FB"), depthWrite: false, transparent: true, opacity })
+    );
+    fGlow.position.set(-16, 0.32 + (radius - 0.5) * 0.5, -10);
+    lounge.add(fGlow);
+  }
 
   scene.add(lounge);
-  createNeonSign(scene, -16, 4.2, -10, "VIBE  LOUNGE", "#C43BFF");
+  createNeonSign(scene, -16, 4.5, -10, "VIBE  LOUNGE", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 6. MUSIC LIBRARY — right-back, entrance faces plaza
@@ -625,34 +651,92 @@ function buildPark(scene) {
   createNeonSign(scene, -10, 4.2, 8, "VISUALIZER  DOME", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
-  // 8. DAILY VIBE CHECK — lower-right, open space
+  // 8. DAILY VIBE CHECK — Vibe Mirror reflection zone
   // ═════════════════════════════════════════════════════════════
   const vibeCheck = new Group();
   vibeCheck.name = "dailyVibeCheck";
 
+  // Base platform — slightly larger for check-in feel
   const vcPlat = new Mesh(
-    new CircleGeometry(2.5, 32),
-    mat("#1A2E3E", { roughness: 0.5, metalness: 0.3 })
+    new CircleGeometry(3, 48),
+    mat("#151E2A", { roughness: 0.4, metalness: 0.5 })
   );
   vcPlat.rotation.x = -Math.PI / 2;
-  vcPlat.position.set(10, 0.002, 4);
+  vcPlat.position.set(10, 0.003, 4);
   vcPlat.receiveShadow = true;
   vibeCheck.add(vcPlat);
 
-  // Central pillar/portal
-  const vcPillar = new Mesh(
-    new CylinderGeometry(0.8, 1.0, 2.5, 16),
-    mat("#1E3E4E", { roughness: 0.25, metalness: 0.5, transparent: true, opacity: 0.8, depthWrite: true })
+  // Outer cyan ring
+  const vcOuterRing = new Mesh(
+    new RingGeometry(2.85, 3.0, 64),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
   );
-  vcPillar.position.set(10, 1.25, 4);
-  vcPillar.castShadow = true;
-  vibeCheck.add(vcPillar);
+  vcOuterRing.rotation.x = -Math.PI / 2;
+  vcOuterRing.position.set(10, 0.006, 4);
+  vcOuterRing.renderOrder = 1;
+  vibeCheck.add(vcOuterRing);
 
-  // Cyan glow ring around pillar
-  for (const ry of [0.15, 1.8, 2.4]) {
+  // Check-in step platform (circular, raised slightly)
+  const vcStep = new Mesh(
+    new CircleGeometry(1.2, 32),
+    mat("#1E2E3E", { roughness: 0.3, metalness: 0.6, transparent: true, opacity: 0.7, depthWrite: true })
+  );
+  vcStep.rotation.x = -Math.PI / 2;
+  vcStep.position.set(10, 0.06, 4);
+  vcStep.receiveShadow = true;
+  vibeCheck.add(vcStep);
+
+  // Step edge glow ring
+  const vcStepRing = new Mesh(
+    new RingGeometry(1.15, 1.25, 48),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
+  );
+  vcStepRing.rotation.x = -Math.PI / 2;
+  vcStepRing.position.set(10, 0.07, 4);
+  vcStepRing.renderOrder = 1;
+  vibeCheck.add(vcStepRing);
+
+  // Vibe Mirror — tall glowing vertical panel
+  const mirrorMat = mat("#0A1525", { roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.85, depthWrite: true });
+  const mirror = new Mesh(new BoxGeometry(1.6, 3.5, 0.15), mirrorMat);
+  mirror.position.set(10, 1.85, 4);
+  mirror.castShadow = true;
+  mirror.name = "vibeMirror";
+  vibeCheck.add(mirror);
+
+  // Mirror face glow (the "screen" — cyan inner panel)
+  const mirrorFace = new Mesh(
+    new PlaneGeometry(1.35, 3.1),
+    new MeshBasicMaterial({ color: new Color("#0A2030"), depthWrite: false, side: THREE.DoubleSide })
+  );
+  mirrorFace.position.set(10 + 0.08, 1.85, 4);
+  mirrorFace.rotation.y = Math.PI / 2;
+  mirrorFace.renderOrder = 1;
+  mirrorFace.name = "vibeMirrorFace";
+  vibeCheck.add(mirrorFace);
+
+  // Mirror frame — cyan neon border
+  for (const side of [-1, 1]) {
+    const frameVert = new Mesh(
+      new BoxGeometry(0.04, 3.6, 0.18),
+      new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.7 })
+    );
+    frameVert.position.set(10 + side * 0.82, 1.85, 4);
+    vibeCheck.add(frameVert);
+
+    const frameHoriz = new Mesh(
+      new BoxGeometry(1.68, 0.04, 0.18),
+      new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.7 })
+    );
+    frameHoriz.position.set(10, 1.85 + side * 1.78, 4);
+    vibeCheck.add(frameHoriz);
+  }
+
+  // Energy accent rings floating around the mirror
+  for (const ry of [0.4, 2.2, 3.4]) {
     const vcRing = new Mesh(
-      new RingGeometry(0.85, 1.05, 32),
-      new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide })
+      new RingGeometry(0.8, 0.95, 48),
+      new MeshBasicMaterial({ color: new Color(ry === 2.2 ? "#00E5FF" : "#20A0CC"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.35 })
     );
     vcRing.rotation.x = -Math.PI / 2;
     vcRing.position.set(10, ry, 4);
@@ -660,27 +744,16 @@ function buildPark(scene) {
     vibeCheck.add(vcRing);
   }
 
-  // Sparkle icon on top
-  const sparkCanvas = document.createElement("canvas");
-  sparkCanvas.width = 48; sparkCanvas.height = 48;
-  const sCtx = sparkCanvas.getContext("2d");
-  sCtx.fillStyle = "#00E5FF"; sCtx.font = "bold 30px sans-serif";
-  sCtx.textAlign = "center"; sCtx.textBaseline = "middle";
-  sCtx.fillText("✨", 24, 24);
-  const sparkTex = new THREE.CanvasTexture(sparkCanvas);
-  sparkTex.minFilter = THREE.LinearFilter;
-  sparkTex.colorSpace = THREE.SRGBColorSpace;
-  const sparkDisc = new Mesh(
-    new CircleGeometry(0.7, 16),
-    new MeshBasicMaterial({ map: sparkTex, depthWrite: false, side: THREE.DoubleSide })
+  // Pulse dot on top of mirror
+  const mirrorDot = new Mesh(
+    new SphereGeometry(0.1, 8, 6),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false })
   );
-  sparkDisc.rotation.x = -Math.PI / 2;
-  sparkDisc.position.set(10, 2.55, 4);
-  sparkDisc.renderOrder = 1;
-  vibeCheck.add(sparkDisc);
+  mirrorDot.position.set(10, 3.7, 4);
+  vibeCheck.add(mirrorDot);
 
   scene.add(vibeCheck);
-  createNeonSign(scene, 10, 3.8, 4, "DAILY  VIBE  CHECK", "#00E5FF");
+  createNeonSign(scene, 10, 4.4, 4, "DAILY  VIBE  CHECK", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 9. CITY EDGE BUILDINGS — framing the perimeter
