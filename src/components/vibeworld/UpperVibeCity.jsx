@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageVideoPlayer from "@/components/vibeworld/StageVideoPlayer";
-import StageNowPlayingCard from "@/components/vibeworld/StageNowPlayingCard";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
@@ -26,6 +25,7 @@ export default function UpperVibeCity({ onExit }) {
   const [stageVideoMuted, setStageVideoMuted] = useState(true);
   const [stageVideoPlayerOpen, setStageVideoPlayerOpen] = useState(false);
   const [stageScreenYouTube, setStageScreenYouTube] = useState(false);
+  const [stageProximityScreen, setStageProximityScreen] = useState(false);
   const [stageScreenBounds, setStageScreenBounds] = useState({ visible: false, left: 0, top: 0, width: 0, height: 0 });
   const [stageScreenIframeKey, setStageScreenIframeKey] = useState(0);
   const [stageExplicitlyMuted, setStageExplicitlyMuted] = useState(false);
@@ -33,14 +33,16 @@ export default function UpperVibeCity({ onExit }) {
   const stageMutedRef = useRef(true);
   const stageExplicitMuteRef = useRef(false);
   const stageScreenYouTubeRef = useRef(false);
+  const stageProximityRef = useRef(false);
   const stageIsPlayingRef = useRef(false);
   const stageTogglePlayRef = useRef(null);
   stageMutedRef.current = stageVideoMuted;
   stageExplicitMuteRef.current = stageExplicitlyMuted;
   stageScreenYouTubeRef.current = stageScreenYouTube;
+  stageProximityRef.current = stageProximityScreen;
 
-  // iframe only shows when user clicks "Watch on Stage" — fixed to the stage, not a portable player
-  const stageScreenActive = stageScreenYouTube;
+  // Combined: iframe shows when either explicit or proximity-activated
+  const stageScreenActive = stageScreenYouTube || stageProximityScreen;
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -102,6 +104,8 @@ export default function UpperVibeCity({ onExit }) {
     });
   };
   const handleStageWatchOnScreen = () => {
+    // Explicit mode overrides proximity — clear proximity so exit works cleanly
+    setStageProximityScreen(false);
     setStageScreenYouTube(true);
     setStageScreenIframeKey((k) => k + 1);
   };
@@ -120,6 +124,7 @@ export default function UpperVibeCity({ onExit }) {
       }
     }
     setStageScreenYouTube(false);
+    setStageProximityScreen(false);
   };
   const handleStagePlaySong = () => {
     const video = stageVideos[stageVideoIdx];
@@ -148,16 +153,6 @@ export default function UpperVibeCity({ onExit }) {
       playTrack(match, "song");
     }
   };
-  const handleGoToStage = () => {
-    // Activate explicit stage screen view
-    handleStageWatchOnScreen();
-  };
-
-  // ── Distance to stage (for mini card visibility) ────────────────────────
-  const stageDist = Math.sqrt(
-    Math.pow(playerPos.x - 0, 2) + Math.pow(playerPos.z - (-14), 2)
-  );
-  const showMiniCard = stageVideos.length > 0 && stageDist <= 18 && !stageScreenActive;
 
   useLivePresence();
 
@@ -165,8 +160,7 @@ export default function UpperVibeCity({ onExit }) {
   stageIsPlayingRef.current = isPlaying;
   stageTogglePlayRef.current = togglePlay;
 
-  // ── Stage proximity: audio fade only (no screen auto-activation) ──
-  // The stage screen is fixed to the stage — users must walk to it or click "Watch on Stage"
+  // ── Stage proximity: auto-activate screen + auto-unmute on approach ──
   useEffect(() => {
     const STAGE_X = 0, STAGE_Z = -14;
     const dx = playerPos.x - STAGE_X;
@@ -176,8 +170,17 @@ export default function UpperVibeCity({ onExit }) {
     const INNER = 5;
     const OUTER = 14;
 
+    // Auto-activate the in-world YouTube screen when close (no movement lock)
+    if (dist <= INNER && !stageScreenYouTubeRef.current && !stageProximityRef.current) {
+      setStageProximityScreen(true);
+      setStageScreenIframeKey((k) => k + 1);
+    } else if (dist > OUTER && !stageScreenYouTubeRef.current && stageProximityRef.current) {
+      setStageProximityScreen(false);
+    }
+
     const iframe = stageIframeRef.current;
-    if (!stageScreenYouTubeRef.current || !iframe?.contentWindow) return;
+    const screenOn = stageScreenYouTubeRef.current || stageProximityRef.current;
+    if (!screenOn || !iframe?.contentWindow) return;
 
     if (dist > OUTER) {
       // Walked away — mute stage audio
@@ -186,6 +189,9 @@ export default function UpperVibeCity({ onExit }) {
         iframe.contentWindow.postMessage(
           JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
         );
+        if (!stageIsPlayingRef.current && stageTogglePlayRef.current) {
+          stageTogglePlayRef.current();
+        }
       }
     } else if (dist <= INNER && stageMutedRef.current && !stageExplicitMuteRef.current) {
       // Entered inner zone — auto-unmute (unless user explicitly muted)
@@ -196,6 +202,9 @@ export default function UpperVibeCity({ onExit }) {
       iframe.contentWindow.postMessage(
         JSON.stringify({ event: "command", func: "unMute", args: "" }), "*"
       );
+      if (stageIsPlayingRef.current && stageTogglePlayRef.current) {
+        stageTogglePlayRef.current();
+      }
     } else if (dist > INNER && dist <= OUTER && !stageMutedRef.current) {
       // Fade zone — smooth ease-out volume curve
       const t = (dist - INNER) / (OUTER - INNER);
@@ -383,19 +392,6 @@ export default function UpperVibeCity({ onExit }) {
         onStageToggleMute={handleStageToggleMute}
         onStagePlaySong={handleStagePlaySong}
       />
-
-      {/* Mini Now Playing Card — follows user, no full video, just small controls */}
-      {!loading && (
-        <StageNowPlayingCard
-          visible={showMiniCard}
-          stageVideo={stageVideos[stageVideoIdx] || null}
-          stageVideoMuted={stageVideoMuted}
-          isPlaying={isPlaying}
-          onPlaySong={handleStagePlaySong}
-          onGoToStage={handleGoToStage}
-          onToggleMute={handleStageToggleMute}
-        />
-      )}
 
       {/* Bottom navigation bar */}
       {!loading && (
