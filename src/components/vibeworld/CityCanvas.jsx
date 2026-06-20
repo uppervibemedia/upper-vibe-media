@@ -1100,7 +1100,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef }) {
+export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, locked }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1136,6 +1136,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   });
   const isMobileRef = useRef(false);
   const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
+  const lockedRef = useRef(false);
+  lockedRef.current = locked;
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
@@ -1219,11 +1221,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         let [px, py, pz, rot] = avatarPosRef.current;
         const vel = velocityRef.current;
 
-        // ─── INPUT ────────────────────
+        // ─── INPUT (skipped when locked) ────────────────────
         let inputX = 0, inputZ = 0;
         let turnInput = 0;
 
-        if (isMobileRef.current) {
+        if (lockedRef.current) {
+          // Movement locked — skip all input processing
+        } else if (isMobileRef.current) {
           const joy = mobileInputRef.current;
           if (Math.abs(joy.y) > 0.08) {
             inputX += Math.sin(rot) * joy.y;
@@ -1247,7 +1251,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         const isTurning = Math.abs(turnInput) > 0.01;
 
         // ─── MOUSE LOOK ─────────────────────────────────────────
-        if (mouse.down) {
+        if (mouse.down && !lockedRef.current) {
           rot += mouse.dx * 0.004;
           targetRotRef.current = rot;
           mouse.dx = 0;
@@ -1275,6 +1279,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         } else {
           vel.x += (0 - vel.x) * Math.min(1, DECELERATION * dt);
           vel.z += (0 - vel.z) * Math.min(1, DECELERATION * dt);
+        }
+
+        // Force zero velocity when locked
+        if (lockedRef.current) {
+          vel.x = 0;
+          vel.z = 0;
         }
 
         // Smoother rotation lerp

@@ -4,6 +4,7 @@ import { ChevronLeft, Play, Pause, Home, Music4, Radio, Compass } from "lucide-r
 import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
+import StageFullScreen from "@/components/vibeworld/StageFullScreen";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
@@ -23,6 +24,7 @@ export default function UpperVibeCity({ onExit }) {
   const [stageVideoIdx, setStageVideoIdx] = useState(0);
   const [stageVideoMuted, setStageVideoMuted] = useState(true);
   const [stageWatching, setStageWatching] = useState(false);
+  const [stageFullScreen, setStageFullScreen] = useState(false);
   const stageMutedRef = useRef(true);
   const stageIsPlayingRef = useRef(false);
   const stageTogglePlayRef = useRef(null);
@@ -72,6 +74,17 @@ export default function UpperVibeCity({ onExit }) {
       }
     }
   }, [stageVideoMuted, isPlaying, togglePlay]);
+
+  const handleStageFullScreen = useCallback(() => {
+    setStageFullScreen(true);
+  }, []);
+
+  const handleExitFullScreen = useCallback(() => {
+    setStageFullScreen(false);
+  }, []);
+
+  // ── Movement locked when watching stage or in full-screen ─
+  const movementLocked = stageWatching || stageFullScreen;
 
   const handleStageNextVideo = () => {
     if (stageVideos.length <= 1) return;
@@ -186,6 +199,7 @@ export default function UpperVibeCity({ onExit }) {
           onPositionChange={(x, z, rot) => setPlayerPos({ x, z, rot })}
           stageCanvas={stageCanvas}
           audioIntensityRef={audioIntensityRef}
+          locked={movementLocked}
         />
       </div>
 
@@ -268,6 +282,8 @@ export default function UpperVibeCity({ onExit }) {
         onStageNextVideo={handleStageNextVideo}
         onStageToggleMute={handleStageToggleMute}
         onStagePlaySong={handleStagePlaySong}
+        onStageFullScreen={handleStageFullScreen}
+        onStageExitFullScreen={handleExitFullScreen}
       />
 
       {/* Bottom navigation bar */}
@@ -312,6 +328,13 @@ export default function UpperVibeCity({ onExit }) {
         onReady={(c) => setStageCanvas(c)}
         video={stageVideos[stageVideoIdx] || null}
         audioIntensityRef={audioIntensityRef}
+      />
+
+      {/* Full-screen stage overlay */}
+      <StageFullScreen
+        open={stageFullScreen}
+        video={stageVideos[stageVideoIdx] || null}
+        onClose={handleExitFullScreen}
       />
 
       {/* Bottom now-playing bar */}

@@ -33,6 +33,8 @@ export default function WorldHUD({
   onStageNextVideo,
   onStageToggleMute,
   onStagePlaySong,
+  onStageFullScreen,
+  onStageExitFullScreen,
 }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const zone = detectZone(playerX, playerZ);
@@ -162,7 +164,23 @@ export default function WorldHUD({
                   }}
                 >
                   <Music4 className="w-3.5 h-3.5" />
-                  Watch Visualizer on Stage
+                  Watch on Stage
+                </button>
+              )}
+
+              {/* Watch Full Screen */}
+              {onStageFullScreen && (
+                <button
+                  onClick={onStageFullScreen}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg,#0080B8,#00A0DC)",
+                    color: "#fff",
+                    boxShadow: "0 0 20px rgba(0,160,220,0.4)",
+                  }}
+                >
+                  <Music4 className="w-3 h-3" />
+                  Watch Full Screen
                 </button>
               )}
 
