@@ -54,14 +54,14 @@ export default function UpperVibeCity({ onExit }) {
   const { allTracks, tracksLoaded } = radioCtx || {};
 
   const handleWatchOnStage = useCallback(() => {
-    // Enter stage watching mode: start YouTube audio, pause global player
     setStageWatching(true);
     setStageVideoMuted(false);
-    // Start YouTube audio player
     if (stageAudioRef.current) {
-      stageAudioRef.current.play();
+      // Unmute first so playVideo produces audible sound
+      stageAudioRef.current.unmute();
+      // Small delay lets YouTube process the unmute before play
+      setTimeout(() => stageAudioRef.current?.play?.(), 50);
     }
-    // Pause global player so two songs don't overlap
     if (isPlaying && togglePlay) {
       togglePlay();
       stagePausedPlayerRef.current = true;
@@ -105,7 +105,8 @@ export default function UpperVibeCity({ onExit }) {
         // Unmuting stage — enter watch mode, start YouTube, pause global player
         setStageWatching(true);
         if (stageAudioRef.current) {
-          stageAudioRef.current.play();
+          stageAudioRef.current.unmute();
+          setTimeout(() => stageAudioRef.current?.play?.(), 50);
         }
         if (isPlaying && !stagePausedPlayerRef.current && togglePlay) {
           togglePlay();

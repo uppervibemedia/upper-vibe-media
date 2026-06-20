@@ -196,7 +196,8 @@ function drawEqualizerBars(ctx, t, audioBeat, cachedCover) {
     const zoneBoost = Math.max(0.05, bass * 0.8 + mid * 0.6 + treble * 0.45);
 
     const audioDriven = beat * zoneBoost * 0.9;
-    const energy = rawBeat > 0.01 ? audioDriven * 0.75 + simulated * 0.25 : simulated * 0.10;
+    // Higher baseline when no audio — bars always have visible motion
+    const energy = rawBeat > 0.01 ? audioDriven * 0.75 + simulated * 0.25 : simulated * 0.45;
     const finalEnergy = energy * (0.55 + zoneBoost * 0.45);
     const bh = Math.max(3, finalEnergy * eqH);
     const by = eqBottom - bh;

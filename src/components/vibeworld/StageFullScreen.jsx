@@ -21,17 +21,6 @@ export default function StageFullScreen({ open, video, onClose }) {
     ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&controls=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`
     : "";
 
-  const handleToggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      if (playerRef.current) {
-        if (next) playerRef.current.mute();
-        else playerRef.current.unMute();
-      }
-      return next;
-    });
-  }, []);
-
   // Reset state when opening/closing
   useEffect(() => {
     if (open) {
@@ -48,21 +37,28 @@ export default function StageFullScreen({ open, video, onClose }) {
     setError(false);
   }, [open, ytId]);
 
-  const handleIframeLoad = useCallback(() => {
-    setReady(true);
-    // Try to post play message
+  const toggleMuteViaPost = useCallback((shouldMute) => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: "command", func: "playVideo", args: [] }),
+        JSON.stringify({ event: "command", func: shouldMute ? "mute" : "unMute", args: [] }),
         "*"
       );
     }
   }, []);
 
-  const toggleMuteViaPost = useCallback((shouldMute) => {
+  const handleToggleMute = useCallback(() => {
+    setMuted((m) => {
+      const next = !m;
+      toggleMuteViaPost(next);
+      return next;
+    });
+  }, [toggleMuteViaPost]);
+
+  const handleIframeLoad = useCallback(() => {
+    setReady(true);
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: "command", func: shouldMute ? "mute" : "unMute", args: [] }),
+        JSON.stringify({ event: "command", func: "playVideo", args: [] }),
         "*"
       );
     }
