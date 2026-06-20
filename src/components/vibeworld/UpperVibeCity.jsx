@@ -389,14 +389,14 @@ export default function UpperVibeCity({ onExit }) {
         onStageExitFullScreen={handleExitFullScreen}
       />
 
-      {/* Bottom navigation bar */}
+      {/* Bottom navigation bar — sits closest to screen edge */}
       {!loading && (
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
           className="absolute bottom-0 left-0 right-0 z-20 flex justify-center px-4"
-          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)" : "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
         >
           <div
             className="flex items-center justify-around gap-1 px-2 py-2 rounded-2xl max-w-sm w-full"
@@ -450,14 +450,14 @@ export default function UpperVibeCity({ onExit }) {
         onClose={handleExitFullScreen}
       />
 
-      {/* Bottom now-playing bar */}
+      {/* Bottom now-playing bar — sits above the nav bar on mobile */}
       {!loading && currentTrack && (
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
           className="absolute bottom-0 left-0 right-0 z-20 flex justify-center px-4"
-          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 10rem)" : "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
         >
           <div
             className="flex items-center gap-3 px-3 py-2 rounded-2xl max-w-md w-full"

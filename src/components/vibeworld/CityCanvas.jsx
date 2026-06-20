@@ -1608,11 +1608,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         }
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
+        // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
+        // (attribute pixels are scaled by devicePixelRatio on retina/mobile)
         if (stageScreenPosRef) {
           const ss = new Vector3(0, 2.5, -16.4);
           const proj = ss.clone().project(camera);
-          const rw = renderer.domElement.width;
-          const rh = renderer.domElement.height;
+          const rw = renderer.domElement.clientWidth || renderer.domElement.width;
+          const rh = renderer.domElement.clientHeight || renderer.domElement.height;
           const cx = (proj.x * 0.5 + 0.5) * rw;
           const cy = (-proj.y * 0.5 + 0.5) * rh;
           // Project corners for size

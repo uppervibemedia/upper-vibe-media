@@ -98,7 +98,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 14rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
             }}
           >
@@ -127,7 +127,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-1.5 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 14rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
             }}
           >
@@ -246,7 +246,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 14rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
             }}
           >
@@ -274,7 +274,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 14rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
             }}
           >
@@ -302,7 +302,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 14rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
             }}
           >
@@ -328,7 +328,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 14rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
             }}
           >
