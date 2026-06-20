@@ -12,22 +12,10 @@ const BAR_COUNT = 60;
 
 export { W as CANVAS_W, H as CANVAS_H };
 
-// Very slow frequencies (0.016-0.08 Hz) = 12-60s cycles — no short repeating loops
 const F = [
-  0.022, 0.031, 0.040, 0.048, 0.055, 0.067, 0.076,
-  0.018, 0.028, 0.036, 0.044, 0.052, 0.062, 0.070,
-  0.020, 0.025, 0.033, 0.042, 0.050, 0.058, 0.064,
-  0.016, 0.023, 0.035, 0.046, 0.053, 0.060, 0.073,
-  0.019, 0.027, 0.038, 0.047, 0.056, 0.065, 0.078,
-  0.021, 0.030, 0.041, 0.049, 0.057, 0.068, 0.080,
-];
-
-// Micro-variation frequencies — tiny faster ripples riding the slow waves
-const MICRO_F = [
-  0.21, 0.27, 0.24, 0.31, 0.18, 0.33, 0.22,
-  0.25, 0.29, 0.20, 0.34, 0.19, 0.30, 0.23,
-  0.28, 0.17, 0.32, 0.26, 0.22, 0.35, 0.24,
-  0.19, 0.31, 0.21, 0.27, 0.33, 0.18, 0.29,
+  0.73, 1.17, 1.63, 2.09, 2.51, 3.07, 3.43,
+  0.89, 1.31, 1.79, 2.23, 2.71, 3.19, 3.59,
+  0.97, 1.43, 1.91, 2.47, 2.89, 3.37,
 ];
 
 // ── Offscreen cache for the static cover layer ────────────────────
@@ -200,9 +188,7 @@ function drawEqualizerBars(ctx, t, audioBeat, cachedCover) {
     const w1 = Math.sin(t * f1 + phi) * 0.5 + 0.5;
     const w2 = Math.sin(t * f2 + phi * 3.7) * 0.5 + 0.5;
     const w3 = Math.cos(t * f3 + phi * 7.1) * 0.5 + 0.5;
-    const mf = MICRO_F[fi % MICRO_F.length];
-    const ripple = Math.sin(t * mf + phi * 2.3) * 0.15 + 0.5; // fast subtle shimmer
-    const simulated = (w1 * 0.4 + w2 * 0.28 + w3 * 0.17) * (0.85 + ripple * 0.15);
+    const simulated = w1 * 0.4 + w2 * 0.28 + w3 * 0.17;
 
     const bass = ratio < 0.25 ? Math.pow(1 - ratio / 0.25, 1.8) : 0;
     const mid = ratio >= 0.18 && ratio < 0.65 ? 1 - Math.abs(ratio - 0.4) / 0.28 : 0;

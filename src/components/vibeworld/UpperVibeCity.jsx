@@ -57,9 +57,10 @@ export default function UpperVibeCity({ onExit }) {
     setStageWatching(true);
     setStageVideoMuted(false);
     if (stageAudioRef.current) {
-      // Must call playVideo() synchronously during click for YouTube user-gesture
-      stageAudioRef.current.play();
+      // Unmute first so playVideo produces audible sound
       stageAudioRef.current.unmute();
+      // Small delay lets YouTube process the unmute before play
+      setTimeout(() => stageAudioRef.current?.play?.(), 50);
     }
     if (isPlaying && togglePlay) {
       togglePlay();
@@ -104,8 +105,8 @@ export default function UpperVibeCity({ onExit }) {
         // Unmuting stage — enter watch mode, start YouTube, pause global player
         setStageWatching(true);
         if (stageAudioRef.current) {
-          stageAudioRef.current.play();
           stageAudioRef.current.unmute();
+          setTimeout(() => stageAudioRef.current?.play?.(), 50);
         }
         if (isPlaying && !stagePausedPlayerRef.current && togglePlay) {
           togglePlay();
