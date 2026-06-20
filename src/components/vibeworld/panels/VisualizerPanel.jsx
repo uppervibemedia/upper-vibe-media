@@ -296,9 +296,9 @@ export default function VisualizerPanel({ open, onClose }) {
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}>
         <button
-          onClick={onClose}
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
           onTouchStart={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/15"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/15 active:bg-white/25"
           style={{
             background: "rgba(255,255,255,0.1)",
             color: "rgba(255,255,255,0.7)",
@@ -308,7 +308,7 @@ export default function VisualizerPanel({ open, onClose }) {
             pointerEvents: "auto",
           }}
         >
-          <X className="w-3.5 h-3.5" /> Exit
+          <X className="w-3.5 h-3.5" /> Leave Dome
         </button>
 
         <div className="flex items-center gap-2">
