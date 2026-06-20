@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { X, MessageCircle, Disc3, Play, Pause, ThumbsUp, Sparkles } from "lucide-react";
+import { X, MessageCircle, Disc3, Play, Pause, ThumbsUp, Sparkles, Radio } from "lucide-react";
 import { usePlayer } from "@/context/PlayerContext";
 import CoverImage from "@/components/shared/CoverImage";
+import VoiceLoungePanel from "@/components/vibeworld/panels/VoiceLoungePanel";
 
 const MOODS = [
   { key: "vibing", label: "Vibing", emoji: "🎵" },
@@ -19,6 +20,7 @@ export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed 
     { id: 1, user: "UV Radio", text: "Welcome to the Vibe Lounge! Tap a mood to share how you're feeling.", isBot: true },
   ]);
   const [input, setInput] = useState("");
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -72,21 +74,42 @@ export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed 
           <MessageCircle className="w-5 h-5 text-purple-400" />
           <h3 className="font-heading font-black text-lg text-white">Vibe Lounge</h3>
         </div>
-        <button
-          onTouchStart={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onClose(); }}
-          className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:bg-white/20"
-          style={{
-            color: "rgba(255,255,255,0.6)",
-            minWidth: 44,
-            minHeight: 44,
-            touchAction: "manipulation",
-            pointerEvents: "auto",
-          }}
-          aria-label="Close lounge"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Voice Lounge button — only for 18+ users */}
+          {chatAgeConfirmed && (
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setVoiceOpen(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: "rgba(0,230,118,0.1)",
+                border: "1px solid rgba(0,230,118,0.2)",
+                color: "#00E676",
+                minHeight: 36,
+                touchAction: "manipulation",
+                pointerEvents: "auto",
+              }}
+            >
+              <Radio className="w-3 h-3" />
+              Voice
+            </button>
+          )}
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:bg-white/20"
+            style={{
+              color: "rgba(255,255,255,0.6)",
+              minWidth: 44,
+              minHeight: 44,
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
+            aria-label="Close lounge"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Now Playing */}
@@ -221,6 +244,13 @@ export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed 
           </div>
         )}
       </div>
+
+      {/* Voice Lounge overlay */}
+      <VoiceLoungePanel
+        open={voiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        isMobile={isMobile}
+      />
     </motion.div>
   );
 }

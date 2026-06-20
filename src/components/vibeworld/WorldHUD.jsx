@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, Sun,
   Compass, Sparkles, Library, SkipForward,
-  Volume2, VolumeX, BookOpen, Mic, MicOff,
+  Volume2, VolumeX, BookOpen,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
@@ -44,11 +44,6 @@ export default function WorldHUD({
   activeUsers = [],
   userCount = 0,
   isBroadcasting = false,
-  isMicEnabled = false,
-  isSpeaking = false,
-  onToggleMic,
-  voicePeers = [],
-  voiceConnected = false,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -142,7 +137,7 @@ export default function WorldHUD({
         </motion.div>
       )}
 
-      {/* ── Mic + Online count (second row, right-aligned) ───── */}
+      {/* ── Online count (second row, right-aligned) ───── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -151,47 +146,6 @@ export default function WorldHUD({
           paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 3.4rem)" : "4.5rem",
         }}
       >
-        {onToggleMic && (
-          <button
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={() => { try { navigator?.vibrate?.(10); } catch {} onToggleMic(); }}
-            className={`flex items-center justify-center rounded-full transition-all active:scale-95 ${isSpeaking ? "animate-mic-pulse" : ""}`}
-            style={{
-              background: isSpeaking
-                ? "linear-gradient(135deg,#00E676,#69F0AE)"
-                : isMicEnabled
-                  ? "linear-gradient(135deg,#00C853,#00E676)"
-                  : "rgba(255,255,255,0.08)",
-              border: isMicEnabled
-                ? "1px solid rgba(0,200,83,0.4)"
-                : "1px solid rgba(255,255,255,0.12)",
-              width: isMobile ? "26px" : "36px",
-              height: isMobile ? "26px" : "36px",
-              minWidth: isMobile ? "26px" : "44px",
-              minHeight: isMobile ? "26px" : "44px",
-              touchAction: "manipulation",
-              pointerEvents: "auto",
-            }}
-            title={isMicEnabled ? "Mute Mic" : "Unmute Mic"}
-          >
-            {isMicEnabled ? (
-              <Mic style={{ width: isMobile ? "10px" : "14px", height: isMobile ? "10px" : "14px" }} className="text-white" />
-            ) : (
-              <MicOff style={{ width: isMobile ? "10px" : "14px", height: isMobile ? "10px" : "14px" }} className="text-white/40" />
-            )}
-          </button>
-        )}
-        {voiceConnected && (
-          <span
-            className="rounded-full animate-pulse flex-shrink-0"
-            style={{
-              width: "5px",
-              height: "5px",
-              background: "#00E676",
-              boxShadow: "0 0 4px rgba(0,230,118,0.5)",
-            }}
-          />
-        )}
         <LiveUsersBadge
           activeUsers={activeUsers}
           userCount={userCount}

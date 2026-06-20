@@ -13,7 +13,6 @@ import { useRadio } from "@/context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
 import usePersonalizedFeed from "@/hooks/usePersonalizedFeed";
 import useVibeWorldPresence from "@/hooks/useVibeWorldPresence";
-import useProximityVoice from "@/hooks/useProximityVoice";
 import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
@@ -274,8 +273,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const currentZoneName = detectZone(playerPos.x, playerPos.z)?.name || "Plaza";
   const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName, playerPos);
 
-  // ── Proximity voice — Phase 4: WebRTC-based proximity voice chat ──────
-  const { isMicEnabled, isSpeaking, toggleMic, voicePeers, isConnected: voiceConnected } = useProximityVoice(user, playerPos, activeUsers);
 
   // Keep player refs in sync without adding them as effect deps
   stageIsPlayingRef.current = isPlaying;
@@ -510,11 +507,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         activeUsers={activeUsers}
         userCount={userCount}
         isBroadcasting={isBroadcasting}
-        isMicEnabled={isMicEnabled}
-        isSpeaking={isSpeaking}
-        onToggleMic={toggleMic}
-        voicePeers={voicePeers}
-        voiceConnected={voiceConnected}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
