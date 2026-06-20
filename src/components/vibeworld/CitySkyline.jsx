@@ -408,4 +408,12 @@ export default function createCitySkyline(scene) {
   addTwinTower(-27, -10, 1.0, 1.5, 1.8, 16, neonCyan, "West Twin Towers");
 
   scene.add(buildings);
+
+  // ── Expose neon materials for audio-reactive pulsing ───────────────────
+  scene.userData.neonMats = [neonCyan, neonPurple, neonBlue];
+  scene.userData._neonBaseOpacities = {
+    neonCyan: 1,
+    neonPurple: 1,
+    neonBlue: 1,
+  };
 }

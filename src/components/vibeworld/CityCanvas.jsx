@@ -255,12 +255,13 @@ function buildPark(scene) {
   scene.userData.stageScreen = screen;
   scene.userData._stageCanvasApplied = false;
 
-  // Screen glow frame
+  // Screen glow frame — pulses with music beat
   const screenGlow = new Mesh(
     new BoxGeometry(7.2, 4.2, 0.05),
     new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
   );
   screenGlow.position.set(0, 2.5, -16.4);
+  screenGlow.name = "stageScreenGlow";
   stage.add(screenGlow);
 
   // Stage spotlights (point lights)
@@ -1485,6 +1486,23 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
           const foamBoost = 1 + audioBeat;
           foamMesh.material.opacity = (0.18 + tide * 0.55) * foamBoost;
           foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.7;
+        }
+
+        // ─── STAGE SCREEN GLOW — pulse screen frame with music ──────
+        const screenGlowMesh = scene.getObjectByName("stageScreenGlow");
+        if (screenGlowMesh?.material) {
+          screenGlowMesh.material.opacity = 0.25 + audioBeat * 0.5;
+        }
+
+        // ─── NEON SKYLINE PULSE — buildings breathe with the beat ──
+        const neonMats = scene.userData.neonMats;
+        if (neonMats) {
+          const pulse = 0.55 + audioBeat * 0.45 + Math.sin(t * 1.7) * 0.1;
+          for (const mat of neonMats) {
+            if (mat?.opacity !== undefined) {
+              mat.opacity = pulse;
+            }
+          }
         }
 
         // ─── STARS TWINKLE ─────────────────────────────────────
