@@ -936,10 +936,19 @@ export function PlayerProvider({ children }) {
     resumeAudioContext().catch(() => {});
 
     if (!audio.paused && !audio.ended) {
-      // Currently playing — pause it
+      // Currently playing — pause it synchronously.
+      // Must NOT defer through opQueue: if the track is near its end,
+      // the native "ended" event can fire before safePause executes,
+      // causing onEnded → onNextRef → auto-advance to the next song.
       setIsPlaying(false);
       setMediaSessionState(false);
-      safePause(audio, "toggle-pause");
+      stopWatchdog();
+      if (audio.currentTime > 0) {
+        savedTimeRef.current = audio.currentTime;
+        lastTimeRef.current  = audio.currentTime;
+      }
+      suspendAudioContext();
+      audio.pause();
       return;
     }
 
