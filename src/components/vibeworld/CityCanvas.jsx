@@ -484,15 +484,15 @@ function buildPark(scene) {
   buffer.receiveShadow = true;
   scene.add(buffer);
 
-  const drySand = new Mesh(new PlaneGeometry(52, 4), mat("#D8B47E", { roughness: 0.5 }));
+  const drySand = new Mesh(new PlaneGeometry(56, 5), mat("#D8B47E", { roughness: 0.5 }));
   drySand.rotation.x = -Math.PI / 2;
-  drySand.position.set(0, 0.002, 16);
+  drySand.position.set(0, 0.002, 15.5);
   drySand.receiveShadow = true;
   scene.add(drySand);
 
-  const wetSand = new Mesh(new PlaneGeometry(52, 2), mat("#A07048", { roughness: 0.28, metalness: 0.1 }));
+  const wetSand = new Mesh(new PlaneGeometry(56, 3), mat("#A07048", { roughness: 0.28, metalness: 0.1 }));
   wetSand.rotation.x = -Math.PI / 2;
-  wetSand.position.set(0, 0.003, 19.5);
+  wetSand.position.set(0, 0.003, 19);
   wetSand.receiveShadow = true;
   scene.add(wetSand);
 
@@ -749,12 +749,6 @@ function createCosmicSky(scene) {
   const texBack    = loadTex(SKY_BACK);     // -Z = South / Back    — no planet
   const texLeft    = loadTex(SKY_LEFT);     // -X = West  / Left    — planet
 
-  // Top face: dark void (no image — keeps it clean)
-  const topMat = new MeshBasicMaterial();
-  topMat.color = new Color("#0a0a1e");
-  topMat.side = THREE.BackSide;
-  topMat.depthWrite = false;
-
   // Bottom face: deep void (underground, rarely visible)
   const bottomMat = new MeshBasicMaterial();
   bottomMat.color = new Color("#050510");
@@ -762,14 +756,14 @@ function createCosmicSky(scene) {
   bottomMat.depthWrite = false;
 
   // Materials array in BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
-  // North and South use the same galaxy-rich planet textures so all sides show cosmic sky
+  // All sides use cosmic textures — top reuses texForward for a seamless overhead sky
   const materials = [
-    new MeshBasicMaterial({ map: texRight, side: THREE.BackSide, depthWrite: false }), // +X = Right/East  (planet)
-    new MeshBasicMaterial({ map: texLeft,  side: THREE.BackSide, depthWrite: false }), // -X = Left/West   (planet)
-    topMat,                                                                           // +Y = Top
-    bottomMat,                                                                        // -Y = Bottom
-    new MeshBasicMaterial({ map: texRight, side: THREE.BackSide, depthWrite: false }), // +Z = North (galaxy)
-    new MeshBasicMaterial({ map: texLeft,  side: THREE.BackSide, depthWrite: false }), // -Z = South (galaxy)
+    new MeshBasicMaterial({ map: texRight,   side: THREE.BackSide, depthWrite: false }), // +X = Right/East  (planet)
+    new MeshBasicMaterial({ map: texLeft,    side: THREE.BackSide, depthWrite: false }), // -X = Left/West   (planet)
+    new MeshBasicMaterial({ map: texForward, side: THREE.BackSide, depthWrite: false }), // +Y = Top (cosmic, no planet)
+    bottomMat,                                                                           // -Y = Bottom
+    new MeshBasicMaterial({ map: texRight,   side: THREE.BackSide, depthWrite: false }), // +Z = North (galaxy)
+    new MeshBasicMaterial({ map: texLeft,    side: THREE.BackSide, depthWrite: false }), // -Z = South (galaxy)
   ];
 
   const skybox = new Mesh(new BoxGeometry(SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE), materials);
