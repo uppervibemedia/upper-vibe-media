@@ -696,24 +696,31 @@ function buildPark(scene) {
   vcStepRing.renderOrder = 1;
   vibeCheck.add(vcStepRing);
 
+  // Mirror assembly sub-group — rotated to face Central Plaza + Vibe Lounge
+  const mirrorGroup = new Group();
+  mirrorGroup.name = "vibeMirrorGroup";
+  // Rotate to face the Central Plaza (0,-4) from mirror position (10,4)
+  // Direction vector: dx=-10, dz=-8, angle = atan2(-10,-8) in Three.js
+  mirrorGroup.rotation.y = Math.atan2(-10, -8);
+
   // Vibe Mirror — tall glowing vertical panel
   const mirrorMat = mat("#0A1525", { roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.85, depthWrite: true });
   const mirror = new Mesh(new BoxGeometry(1.6, 3.5, 0.15), mirrorMat);
-  mirror.position.set(10, 1.85, 4);
+  mirror.position.set(0, 1.85, 0);
   mirror.castShadow = true;
   mirror.name = "vibeMirror";
-  vibeCheck.add(mirror);
+  mirrorGroup.add(mirror);
 
   // Mirror face glow (the "screen" — cyan inner panel)
   const mirrorFace = new Mesh(
     new PlaneGeometry(1.35, 3.1),
     new MeshBasicMaterial({ color: new Color("#0A2030"), depthWrite: false, side: THREE.DoubleSide })
   );
-  mirrorFace.position.set(10 + 0.08, 1.85, 4);
+  mirrorFace.position.set(0.08, 1.85, 0);
   mirrorFace.rotation.y = Math.PI / 2;
   mirrorFace.renderOrder = 1;
   mirrorFace.name = "vibeMirrorFace";
-  vibeCheck.add(mirrorFace);
+  mirrorGroup.add(mirrorFace);
 
   // Mirror frame — cyan neon border
   for (const side of [-1, 1]) {
@@ -721,15 +728,15 @@ function buildPark(scene) {
       new BoxGeometry(0.04, 3.6, 0.18),
       new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.7 })
     );
-    frameVert.position.set(10 + side * 0.82, 1.85, 4);
-    vibeCheck.add(frameVert);
+    frameVert.position.set(side * 0.82, 1.85, 0);
+    mirrorGroup.add(frameVert);
 
     const frameHoriz = new Mesh(
       new BoxGeometry(1.68, 0.04, 0.18),
       new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.7 })
     );
-    frameHoriz.position.set(10, 1.85 + side * 1.78, 4);
-    vibeCheck.add(frameHoriz);
+    frameHoriz.position.set(0, 1.85 + side * 1.78, 0);
+    mirrorGroup.add(frameHoriz);
   }
 
   // Energy accent rings floating around the mirror
@@ -739,9 +746,9 @@ function buildPark(scene) {
       new MeshBasicMaterial({ color: new Color(ry === 2.2 ? "#00E5FF" : "#20A0CC"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.35 })
     );
     vcRing.rotation.x = -Math.PI / 2;
-    vcRing.position.set(10, ry, 4);
+    vcRing.position.set(0, ry, 0);
     vcRing.renderOrder = 1;
-    vibeCheck.add(vcRing);
+    mirrorGroup.add(vcRing);
   }
 
   // Pulse dot on top of mirror
@@ -749,8 +756,12 @@ function buildPark(scene) {
     new SphereGeometry(0.1, 8, 6),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false })
   );
-  mirrorDot.position.set(10, 3.7, 4);
-  vibeCheck.add(mirrorDot);
+  mirrorDot.position.set(0, 3.7, 0);
+  mirrorGroup.add(mirrorDot);
+
+  // Place mirror group at the zone center
+  mirrorGroup.position.set(10, 0, 4);
+  vibeCheck.add(mirrorGroup);
 
   scene.add(vibeCheck);
   createNeonSign(scene, 10, 4.4, 4, "DAILY  VIBE  CHECK", "#00E5FF");
