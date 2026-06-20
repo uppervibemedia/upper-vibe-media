@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, Play, Pause, Home, Music4, Radio, Compass } from "lucide-react";
+import { ChevronLeft, Play, Pause, SkipForward } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import MobileMusicHUD from "@/components/vibeworld/MobileMusicHUD";
-import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
@@ -419,44 +418,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onMobileModalChange={setMobileModalOpen}
       />
 
-      {/* Bottom navigation bar — DESKTOP ONLY, removed entirely on mobile */}
-      {!loading && !isMobile && (
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="absolute bottom-0 left-0 right-0 z-[55] flex justify-center px-2"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
-        >
-          <div
-            className="flex items-center justify-around gap-0.5 px-1 py-1.5 rounded-2xl max-w-sm w-full"
-            style={{
-              background: "rgba(255,255,255,0.35)",
-              border: "1px solid rgba(255,255,255,0.3)",
-              backdropFilter: "blur(16px)",
-              minHeight: "44px",
-            }}
-          >
-            {[
-              { to: "/", icon: Home, label: "Home" },
-              { to: "/music", icon: Music4, label: "Music" },
-              { to: "/vibe-world", icon: Compass, label: "Vibe World", active: true },
-              { to: "/radio", icon: Radio, label: "Radio" },
-            ].map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all hover:bg-white/20"
-                style={{ color: item.active ? "#2E7D32" : "rgba(0,0,0,0.5)", minWidth: "44px", minHeight: "44px", justifyContent: "center" }}
-              >
-                <item.icon className="w-4 h-4" />
-                <span className="text-[8px] font-bold tracking-wide uppercase">{item.label}</span>
-              </Link>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
       {!stageWatching && (
         <StageCoverVisualizer
@@ -577,13 +538,22 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                 {currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}
               </p>
             </div>
-            <button
-              onClick={handleGlobalPlayToggle}
-              className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: "#2E7D32", color: "#fff", minWidth: "44px", minHeight: "44px" }}
-            >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-            </button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={handleGlobalSkip}
+                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/30"
+                style={{ background: "rgba(0,0,0,0.08)", color: "rgba(0,0,0,0.5)", minWidth: "44px", minHeight: "44px" }}
+              >
+                <SkipForward className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleGlobalPlayToggle}
+                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: "#2E7D32", color: "#fff", minWidth: "44px", minHeight: "44px" }}
+              >
+                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+              </button>
+            </div>
           </div>
         </motion.div>
       )}

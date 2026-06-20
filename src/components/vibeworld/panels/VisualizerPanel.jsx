@@ -179,7 +179,7 @@ const DRAW_FNS = {
 };
 
 export default function VisualizerPanel({ open, onClose }) {
-  const { currentTrack, isPlaying, playTrack, togglePlay, handleNext: playerNext } = usePlayer() || {};
+  const { currentTrack, isPlaying, playTrack, togglePlay, handleNext: playerNext, audioRef } = usePlayer() || {};
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const styleIdx = useRef(0);
@@ -473,7 +473,18 @@ export default function VisualizerPanel({ open, onClose }) {
                 {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-[1px]" />}
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); playerNext?.(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Try radio skip first (works for radio mode)
+                  playerNext?.();
+                  // Fallback for song mode: seek forward 15s
+                  setTimeout(() => {
+                    const a = audioRef?.current;
+                    if (a && a.duration && a.currentTime < a.duration - 2) {
+                      a.currentTime = Math.min(a.currentTime + 15, a.duration - 1);
+                    }
+                  }, 50);
+                }}
                 onTouchStart={(e) => e.stopPropagation()}
                 className="flex items-center justify-center rounded-full transition-all hover:bg-white/15 active:bg-white/25"
                 style={{
