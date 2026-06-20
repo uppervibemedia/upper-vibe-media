@@ -62,7 +62,7 @@ export default function WorldHUD({
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="absolute top-0 left-1/2 z-20 pointer-events-none"
+        className="absolute top-0 left-1/2 z-[55] pointer-events-none"
         style={{
           transform: "translateX(-50%)",
           paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 5rem)" : "4rem",
@@ -95,7 +95,7 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
@@ -124,7 +124,7 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-1.5 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-1.5 px-4"
             style={{
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
@@ -243,7 +243,7 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
@@ -271,7 +271,7 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
@@ -299,7 +299,7 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
@@ -325,7 +325,7 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"

@@ -16,6 +16,7 @@ import WorldHUD from "@/components/vibeworld/WorldHUD";
 export default function UpperVibeCity({ onExit }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [showControlsHint, setShowControlsHint] = useState(true);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0 });
   const [stageCanvas, setStageCanvas] = useState(null);
   const audioIntensityRef = useRef(0);
@@ -39,6 +40,13 @@ export default function UpperVibeCity({ onExit }) {
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
+
+  // Auto-hide controls hint after 7 seconds
+  useEffect(() => {
+    if (loading) return;
+    const timer = setTimeout(() => setShowControlsHint(false), 7000);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   // ── Fetch YouTube playlist videos + randomize starting video ──────────
   useEffect(() => {
@@ -321,7 +329,7 @@ export default function UpperVibeCity({ onExit }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: loading ? 0 : 1 }}
         transition={{ delay: 0.4 }}
-        className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3"
+        className="absolute top-0 left-0 right-0 z-[55] flex items-center justify-between px-4 py-3"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
       >
         <button
@@ -344,18 +352,19 @@ export default function UpperVibeCity({ onExit }) {
           }}
         >
           <span className="font-heading font-black text-[10px] tracking-[0.2em] text-green-800">
-            PARK PROTOTYPE
+            UPPER VIBE CITY
           </span>
         </div>
       </motion.div>
 
-      {/* Controls hint */}
-      {!loading && (
+      {/* Controls hint — auto-hides after 7 seconds */}
+      {!loading && showControlsHint && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="absolute top-1/2 left-0 right-0 z-10 flex justify-center pointer-events-none"
+          exit={{ opacity: 0 }}
+          transition={{ delay: 0.4 }}
+          className="absolute top-1/2 left-0 right-0 z-[55] flex justify-center pointer-events-none"
         >
           <p
             className="text-[10px] tracking-wider px-3 py-1.5 rounded-full"
@@ -395,7 +404,7 @@ export default function UpperVibeCity({ onExit }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="absolute bottom-0 left-0 right-0 z-20 flex justify-center px-4"
+          className="absolute bottom-0 left-0 right-0 z-[55] flex justify-center px-4"
           style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
         >
           <div
@@ -456,7 +465,7 @@ export default function UpperVibeCity({ onExit }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="absolute bottom-0 left-0 right-0 z-20 flex justify-center px-4"
+          className="absolute bottom-0 left-0 right-0 z-[55] flex justify-center px-4"
           style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 10rem)" : "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
         >
           <div

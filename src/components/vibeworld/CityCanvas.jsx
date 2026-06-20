@@ -496,7 +496,7 @@ function buildPark(scene) {
   createZoneLabel(scene, 12, 4.2, -3, "VIBE  LOUNGE", "#A078FF");
 
   // ═════════════════════════════════════════════════════════════
-  // 7. SHOP / HANGOUT DISTRICT — southeast area
+  // 7. SHOP / HANGOUT DISTRICT — southeast area, storefronts face beach
   // ═════════════════════════════════════════════════════════════
   const shopGroup = new Group();
   shopGroup.name = "shopDistrict";
@@ -513,30 +513,30 @@ function buildPark(scene) {
     shop.receiveShadow = true;
     shopGroup.add(shop);
 
-    // Neon edge strips
+    // Neon edge strips on south/front face
     for (const ey of [0.05, 3.3]) {
       const edgeStrip = new Mesh(
         new BoxGeometry(2.55, 0.06, 0.06),
         new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false })
       );
-      edgeStrip.position.set(sx, ey, sz - 1.25);
+      edgeStrip.position.set(sx, ey, sz + 1.25);
       shopGroup.add(edgeStrip);
     }
 
-    // Glowing storefront window
+    // Glowing storefront window — facing south toward beach
     const frontWin = new Mesh(
       new PlaneGeometry(1.8, 1.5),
       new MeshBasicMaterial({ color: new Color("#FFE0A0"), depthWrite: false, transparent: true, opacity: 0.6 })
     );
-    frontWin.position.set(sx, 1.8, sz - 1.26);
+    frontWin.position.set(sx, 1.8, sz + 1.26);
     shopGroup.add(frontWin);
 
-    // Awning
+    // Awning — south side
     const awning = new Mesh(
       new BoxGeometry(2.3, 0.08, 0.25),
       new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
     );
-    awning.position.set(sx, 2.65, sz - 1.15);
+    awning.position.set(sx, 2.65, sz + 1.15);
     shopGroup.add(awning);
   }
 
@@ -1133,9 +1133,9 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 
   return (
     <>
-      {/* Touch capture layer */}
+      {/* Touch capture layer — lower z-index so UI buttons above can receive taps */}
       <div
-        className="absolute inset-0 z-50"
+        className="absolute inset-0 z-30"
         style={{ touchAction: "none" }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
