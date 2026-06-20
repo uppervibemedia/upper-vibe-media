@@ -18,7 +18,7 @@ const ZONE_ICONS = {
   dome: Tv2,
   lounge: MessageCircle,
   shop: Store,
-  beach: Waves,
+  beach: Sun,
 };
 
 export default function WorldHUD({
