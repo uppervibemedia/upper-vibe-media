@@ -260,11 +260,10 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Stage cover visualizer — animated song cover on 3D stage screen */}
+      {/* Stage cover visualizer — animated video thumbnail on 3D stage screen, independent from user's player */}
       <StageCoverVisualizer
         onReady={(c) => setStageCanvas(c)}
-        currentTrack={currentTrack}
-        audioIntensityRef={audioIntensityRef}
+        video={stageVideos[stageVideoIdx] || null}
       />
 
       {/* Fullscreen stage video player overlay — opens when user chooses Watch Full Video */}

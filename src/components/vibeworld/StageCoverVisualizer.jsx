@@ -1,16 +1,18 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 /**
- * StageCoverVisualizer — animated looping song cover art for the 3D stage screen.
+ * StageCoverVisualizer — animated looping video thumbnail for the 3D stage screen.
+ * Shows YouTube playlist video covers, independent from the user's global player.
  *
  * Draws:
- *  - Zooming/pulsing cover art
+ *  - Zooming/pulsing video thumbnail
  *  - Neon purple/cyan frame
- *  - Glow pulse (synced to audio intensity if available)
+ *  - Simulated beat pulse (no audio dependency)
  *  - Light ray particles behind cover
  *  - Equalizer waveform bars
- *  - Song title + artist name
+ *  - Video title
  *  - "NOW SHOWING" badge
+ *  - Crossfade animation when video changes
  */
 
 const CANVAS_W = 1024;
@@ -54,7 +56,7 @@ function drawPlaceholderCover(ctx, x, y, size) {
 // ═══════════════════════════════════════════════════════════════════════════
 // Single frame render
 // ═══════════════════════════════════════════════════════════════════════════
-function drawFrame(ctx, w, h, track, imgCache, t, audioBeat) {
+function drawFrame(ctx, w, h, video, imgCache, t, fadeProgress) {
   // ── Background ──────────────────────────────────────────────────────────
   const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
   bgGrad.addColorStop(0, "#06061a");
@@ -63,12 +65,12 @@ function drawFrame(ctx, w, h, track, imgCache, t, audioBeat) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
-  const coverUrl = track?.cover_url || null;
-  const title = track?.title || "Upper Vibe Media";
-  const artist = track?.artist_display || track?.artist || "";
+  const coverUrl = video?.thumbnail_url
+    || (video?.youtube_video_id ? `https://img.youtube.com/vi/${video.youtube_video_id}/hqdefault.jpg` : null);
+  const title = video?.title || "Upper Vibe Media";
 
-  // Beat pulse (0.15 - 0.7 range) — audio-driven or simulated
-  const beat = Math.max(0.12, audioBeat || (0.15 + Math.sin(t * 2.5) * 0.08));
+  // Simulated beat pulse (always simulated, no audio dependency)
+  const beat = 0.15 + Math.sin(t * 2.5) * 0.08 + Math.sin(t * 3.7) * 0.04;
 
   // ── Cover dimensions (left side) ────────────────────────────────────────
   const coverSize = 280;
@@ -84,6 +86,7 @@ function drawFrame(ctx, w, h, track, imgCache, t, audioBeat) {
   const zy = coverY - (zs - coverSize) / 2;
 
   // ── Light ray particles behind cover ────────────────────────────────────
+  const fp = fadeProgress ?? 1;
   const rayCount = 16;
   for (let i = 0; i < rayCount; i++) {
     const angle = (i / rayCount) * Math.PI * 2 + t * 0.3;
@@ -92,7 +95,7 @@ function drawFrame(ctx, w, h, track, imgCache, t, audioBeat) {
     const ry = coverCY + Math.sin(angle) * dist;
     const particleSize = 2 + Math.sin(t * 2 + i) * 1.5;
 
-    const alpha = 0.15 + beat * 0.2 + Math.sin(t * 1.5 + i) * 0.08;
+    const alpha = (0.15 + beat * 0.2 + Math.sin(t * 1.5 + i) * 0.08) * fp;
     const hue = i % 3 === 0 ? "155,126,255" : "0,200,220";
 
     ctx.beginPath();
@@ -102,7 +105,7 @@ function drawFrame(ctx, w, h, track, imgCache, t, audioBeat) {
   }
 
   // ── Glow behind cover ───────────────────────────────────────────────────
-  const glowAlpha = 0.12 + beat * 0.28;
+  const glowAlpha = (0.12 + beat * 0.28) * fp;
   const glowGrad = ctx.createRadialGradient(
     coverCX, coverCY, coverSize * 0.3,
     coverCX, coverCY, coverSize * 0.8,
@@ -113,7 +116,8 @@ function drawFrame(ctx, w, h, track, imgCache, t, audioBeat) {
   ctx.fillStyle = glowGrad;
   ctx.fillRect(coverX - 100, coverY - 100, coverSize + 200, coverSize + 200);
 
-  // ── Cover image ─────────────────────────────────────────────────────────
+  // ── Cover image (with crossfade opacity) ────────────────────────────────
+  ctx.globalAlpha = fp;
   if (coverUrl) {
     const cached = imgCache[coverUrl];
     if (cached && cached.complete && cached.naturalWidth > 0) {
@@ -135,14 +139,16 @@ function drawFrame(ctx, w, h, track, imgCache, t, audioBeat) {
     drawPlaceholderCover(ctx, zx, zy, zs);
   }
 
+  ctx.globalAlpha = 1;
+
   // ── Neon frame (inner) ──────────────────────────────────────────────────
-  ctx.strokeStyle = `rgba(155,126,255,${0.45 + beat * 0.4})`;
+  ctx.strokeStyle = `rgba(155,126,255,${(0.45 + beat * 0.4) * fp})`;
   ctx.lineWidth = 3;
   roundedRect(ctx, zx - 2, zy - 2, zs + 4, zs + 4, 14);
   ctx.stroke();
 
   // ── Outer glow ring ─────────────────────────────────────────────────────
-  ctx.strokeStyle = `rgba(0,200,220,${0.25 + beat * 0.35})`;
+  ctx.strokeStyle = `rgba(0,200,220,${(0.25 + beat * 0.35) * fp})`;
   ctx.lineWidth = 1.5;
   roundedRect(ctx, zx - 8, zy - 8, zs + 16, zs + 16, 18);
   ctx.stroke();
@@ -151,24 +157,24 @@ function drawFrame(ctx, w, h, track, imgCache, t, audioBeat) {
   const textX = w / 2 + 30;
 
   // "NOW SHOWING" badge
+  ctx.globalAlpha = fp;
   ctx.font = "bold 13px 'Inter', sans-serif";
   ctx.textAlign = "left";
   ctx.fillStyle = "#00E5FF";
   ctx.fillText("NOW SHOWING", textX, h / 2 - 55);
 
-  // Song title (truncate if too long)
+  // Video title (truncate if too long)
   const maxTitleLen = 28;
   const displayTitle = title.length > maxTitleLen ? title.slice(0, maxTitleLen) + "…" : title;
   ctx.font = "bold 22px 'Syne', sans-serif";
   ctx.fillStyle = "#FFFFFF";
   ctx.fillText(displayTitle, textX, h / 2 - 15);
 
-  // Artist name
-  if (artist) {
-    ctx.font = "15px 'Inter', sans-serif";
-    ctx.fillStyle = "rgba(200,180,255,0.8)";
-    ctx.fillText(artist, textX, h / 2 + 15);
-  }
+  // Subtitle label
+  ctx.font = "15px 'Inter', sans-serif";
+  ctx.fillStyle = "rgba(200,180,255,0.8)";
+  ctx.fillText("Upper Vibe Media", textX, h / 2 + 15);
+  ctx.globalAlpha = 1;
 
   // ── Equalizer / waveform bars ───────────────────────────────────────────
   const barCount = 24;
@@ -230,23 +236,43 @@ function drawFrame(ctx, w, h, track, imgCache, t, audioBeat) {
 // Component
 // ═══════════════════════════════════════════════════════════════════════════
 
-export default function StageCoverVisualizer({ onReady, currentTrack, audioIntensityRef }) {
+export default function StageCoverVisualizer({ onReady, video }) {
   const canvasRef = useRef(null);
-  const startedRef = useRef(false);
   const animRef = useRef(null);
   const imgCacheRef = useRef({});
   const startTimeRef = useRef(0);
+  const [fadeProgress, setFadeProgress] = useState(1);
+  const prevVideoIdRef = useRef(null);
+  const fadeAnimRef = useRef(null);
 
-  // Live refs so animation loop reads latest prop values
-  const trackRef = useRef(currentTrack);
-  trackRef.current = currentTrack;
-  const audioRef = useRef(audioIntensityRef);
-  audioRef.current = audioIntensityRef;
+  // Live ref so animation loop reads latest video
+  const videoRef = useRef(video);
+  videoRef.current = video;
+
+  // Crossfade when video changes
+  useEffect(() => {
+    const newId = video?.youtube_video_id || video?.title || null;
+    if (newId && prevVideoIdRef.current && newId !== prevVideoIdRef.current) {
+      // Start crossfade
+      if (fadeAnimRef.current) cancelAnimationFrame(fadeAnimRef.current);
+      const startT = performance.now();
+      const duration = 800; // 800ms crossfade
+      const doFade = () => {
+        const elapsed = performance.now() - startT;
+        const progress = Math.min(1, elapsed / duration);
+        setFadeProgress(progress);
+        if (progress < 1) {
+          fadeAnimRef.current = requestAnimationFrame(doFade);
+        }
+      };
+      fadeAnimRef.current = requestAnimationFrame(doFade);
+    } else if (newId) {
+      setFadeProgress(1);
+    }
+    prevVideoIdRef.current = newId;
+  }, [video?.youtube_video_id, video?.title]);
 
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -261,10 +287,9 @@ export default function StageCoverVisualizer({ onReady, currentTrack, audioInten
 
     const animate = () => {
       const t = (performance.now() * 0.001) - startTimeRef.current;
-      const track = trackRef.current || {};
-      const audioBeat = audioRef.current?.current ?? 0;
+      const currentVideo = videoRef.current || {};
 
-      drawFrame(ctx, CANVAS_W, CANVAS_H, track, imgCacheRef.current, t, audioBeat);
+      drawFrame(ctx, CANVAS_W, CANVAS_H, currentVideo, imgCacheRef.current, t, fadeProgress);
       animRef.current = requestAnimationFrame(animate);
     };
 
@@ -272,9 +297,9 @@ export default function StageCoverVisualizer({ onReady, currentTrack, audioInten
 
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current);
-      startedRef.current = false;
+      if (fadeAnimRef.current) cancelAnimationFrame(fadeAnimRef.current);
     };
-  }, [onReady]);
+  }, [onReady, fadeProgress]);
 
   return (
     <canvas
