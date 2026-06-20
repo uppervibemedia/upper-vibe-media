@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { ChevronLeft, Play, Pause, Home, Music4, Radio, Compass } from "lucide-react";
 import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
-import StageScreenVisualizer from "@/components/vibeworld/StageScreenVisualizer";
+import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageVideoPlayer from "@/components/vibeworld/StageVideoPlayer";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
@@ -26,10 +26,7 @@ export default function UpperVibeCity({ onExit }) {
   const [stageVideoMuted, setStageVideoMuted] = useState(true);
   const [stageVideoPlayerOpen, setStageVideoPlayerOpen] = useState(false);
   const stageVideoTimerRef = useRef(null);
-  // Track whether user manually dismissed the video — don't re-open if they did
-  const userDismissedVideoRef = useRef(false);
-  // Track whether user is within auto-open range
-  const wasAutoOpenedRef = useRef(false);
+
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -64,8 +61,6 @@ export default function UpperVibeCity({ onExit }) {
   const { allTracks, tracksLoaded } = radioCtx || {};
 
   const handleStageWatchVideo = () => {
-    userDismissedVideoRef.current = false;
-    wasAutoOpenedRef.current = false;
     setStageVideoPlayerOpen(true);
   };
   const handleStageNextVideo = () => {
@@ -91,12 +86,6 @@ export default function UpperVibeCity({ onExit }) {
       return next;
     });
   };
-  const handleStageListenAudio = () => {
-    setStageVideoMuted(false);
-    // Pause global player when stage audio is activated
-    if (isPlaying && togglePlay) togglePlay();
-  };
-
   const handleStagePlaySong = () => {
     const video = stageVideos[stageVideoIdx];
     if (!video?.title || !allTracks?.length || !playTrack) return;
@@ -114,42 +103,9 @@ export default function UpperVibeCity({ onExit }) {
 
   useLivePresence();
 
-  // ── Distance to stage center (for proximity audio prompt) ──────────────────
-  const STAGE_CENTER_X = 0, STAGE_CENTER_Z = -14;
-  const stageDistance = Math.sqrt(
-    (playerPos.x - STAGE_CENTER_X) ** 2 + (playerPos.z - STAGE_CENTER_Z) ** 2
-  );
 
-  // ── Proximity: auto-open StageVideoPlayer when near, auto-close when far ──
-  useEffect(() => {
-    if (loading || stageVideos.length === 0) return;
-    const NEAR_THRESHOLD = 8;
-    const FAR_THRESHOLD = 13;
 
-    if (stageDistance < NEAR_THRESHOLD && !stageVideoPlayerOpen && !userDismissedVideoRef.current) {
-      setStageVideoPlayerOpen(true);
-      setStageVideoMuted(true);
-      wasAutoOpenedRef.current = true;
-    } else if (stageDistance > FAR_THRESHOLD && stageVideoPlayerOpen && wasAutoOpenedRef.current) {
-      // User walked away — close overlay and restore music
-      setStageVideoPlayerOpen(false);
-      if (!stageVideoMuted) {
-        setStageVideoMuted(true);
-        // Resume global player if it was paused
-        if (!isPlaying && togglePlay) togglePlay();
-      }
-      wasAutoOpenedRef.current = false;
-      userDismissedVideoRef.current = false; // Reset so it re-opens next time
-    }
-  }, [stageDistance, loading, stageVideos.length, stageVideoPlayerOpen]);
 
-  // Auto-mute stage when walking away but still in range (audio fade)
-  useEffect(() => {
-    if (stageDistance > 10 && !stageVideoMuted && stageVideoPlayerOpen) {
-      setStageVideoMuted(true);
-      if (!isPlaying && togglePlay) togglePlay();
-    }
-  }, [stageDistance, stageVideoMuted, stageVideoPlayerOpen, isPlaying, togglePlay]);
 
   // ── Read analyser frequency data for wave sync ────────────────────────
   useEffect(() => {
@@ -265,8 +221,6 @@ export default function UpperVibeCity({ onExit }) {
         onStageNextVideo={handleStageNextVideo}
         onStageToggleMute={handleStageToggleMute}
         onStagePlaySong={handleStagePlaySong}
-        onStageListenAudio={handleStageListenAudio}
-        stageDistance={stageDistance}
       />
 
       {/* Bottom navigation bar */}
@@ -306,19 +260,21 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Stage screen visualizer — animated neon visuals for the 3D stage screen */}
-      <StageScreenVisualizer onReady={(c) => setStageCanvas(c)} />
+      {/* Stage cover visualizer — animated song cover on 3D stage screen */}
+      <StageCoverVisualizer
+        onReady={(c) => setStageCanvas(c)}
+        currentTrack={currentTrack}
+        audioIntensityRef={audioIntensityRef}
+      />
 
-      {/* Fullscreen stage video player overlay — auto-opens when user approaches */}
+      {/* Fullscreen stage video player overlay — opens when user chooses Watch Full Video */}
       <StageVideoPlayer
         open={stageVideoPlayerOpen}
         video={stageVideos[stageVideoIdx] || null}
         muted={stageVideoMuted}
         onClose={() => {
           setStageVideoPlayerOpen(false);
-          userDismissedVideoRef.current = true;
-          wasAutoOpenedRef.current = false;
-          // If stage audio was live, mute it to restore user's music
+          // If stage audio was live, mute and restore user's music
           if (!stageVideoMuted) {
             setStageVideoMuted(true);
             if (!isPlaying && togglePlay) togglePlay();

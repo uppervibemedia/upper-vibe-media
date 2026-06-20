@@ -31,8 +31,6 @@ export default function WorldHUD({
   onStageNextVideo,
   onStageToggleMute,
   onStagePlaySong,
-  onStageListenAudio,
-  stageDistance,
 }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const zone = detectZone(playerX, playerZ);
@@ -136,27 +134,8 @@ export default function WorldHUD({
               </p>
             )}
 
-            {/* Distance-based stage audio prompt */}
-            {stageVideoMuted && stageDistance != null && stageDistance < 10 && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                onClick={onStageListenAudio}
-                className="flex items-center gap-2 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95 mb-1"
-                style={{
-                  background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
-                  color: "#000",
-                  boxShadow: "0 0 24px rgba(0,229,255,0.5)",
-                }}
-              >
-                <Volume2 className="w-3.5 h-3.5" />
-                Listen to Stage Audio?
-              </motion.button>
-            )}
-
             <div className="flex flex-wrap gap-2 justify-center">
-              {/* Watch Featured Video */}
+              {/* Watch Full Video */}
               <button
                 onClick={onStageWatchVideo}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
@@ -167,7 +146,7 @@ export default function WorldHUD({
                 }}
               >
                 <Video className="w-3.5 h-3.5" />
-                Watch Featured Video
+                Watch Full Video
               </button>
 
               {/* Next Video */}
