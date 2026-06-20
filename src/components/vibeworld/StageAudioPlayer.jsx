@@ -27,11 +27,17 @@ const StageAudioPlayer = forwardRef(function StageAudioPlayer({ video, onReady, 
     },
     mute() {
       mutedRef.current = true;
-      playerRef.current?.mute?.();
+      playerRef.current?.setVolume?.(0);
+      if (typeof playerRef.current?.mute === "function") {
+        playerRef.current.mute();
+      }
     },
     unmute() {
       mutedRef.current = false;
-      playerRef.current?.unMute?.();
+      if (typeof playerRef.current?.unMute === "function") {
+        playerRef.current.unMute();
+      }
+      playerRef.current?.setVolume?.(60);
     },
     setVideo(videoId) {
       if (videoId && videoId !== lastVideoIdRef.current) {
@@ -42,7 +48,10 @@ const StageAudioPlayer = forwardRef(function StageAudioPlayer({ video, onReady, 
           setTimeout(() => {
             playerRef.current?.playVideo?.();
             if (!mutedRef.current) {
-              playerRef.current?.unMute?.();
+              if (typeof playerRef.current?.unMute === "function") {
+                playerRef.current.unMute();
+              }
+              playerRef.current?.setVolume?.(60);
             }
           }, 400);
         }
@@ -63,16 +72,24 @@ const StageAudioPlayer = forwardRef(function StageAudioPlayer({ video, onReady, 
       events: {
         onReady: () => {
           onReady?.();
-          const vid = video?.youtube_video_id;
-          if (vid) {
-            playerRef.current.loadVideoById(vid);
-            lastVideoIdRef.current = vid;
-          }
-          playerRef.current.mute();
-          mutedRef.current = true;
-          if (queuedPlayRef.current) {
-            playerRef.current.playVideo();
-            queuedPlayRef.current = false;
+          try {
+            const vid = video?.youtube_video_id;
+            if (vid) {
+              playerRef.current?.loadVideoById?.(vid);
+              lastVideoIdRef.current = vid;
+            }
+            // Set volume to 0 first as fallback, then attempt mute API
+            playerRef.current?.setVolume?.(0);
+            if (typeof playerRef.current?.mute === "function") {
+              playerRef.current.mute();
+            }
+            mutedRef.current = true;
+            if (queuedPlayRef.current) {
+              playerRef.current?.playVideo?.();
+              queuedPlayRef.current = false;
+            }
+          } catch (e) {
+            // Player method not available yet — ignore
           }
         },
         onError: (e) => {
@@ -117,7 +134,12 @@ const StageAudioPlayer = forwardRef(function StageAudioPlayer({ video, onReady, 
     lastVideoIdRef.current = vid;
     playerRef.current.loadVideoById(vid);
     if (!mutedRef.current) {
-      setTimeout(() => playerRef.current?.unMute?.(), 500);
+      setTimeout(() => {
+        if (typeof playerRef.current?.unMute === "function") {
+          playerRef.current.unMute();
+        }
+        playerRef.current?.setVolume?.(60);
+      }, 500);
     }
   }, [video?.youtube_video_id]);
 
