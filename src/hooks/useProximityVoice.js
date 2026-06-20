@@ -98,8 +98,10 @@ export default function useProximityVoice(user, playerPos, remoteUsers) {
   }, []);
 
   // ── Create a peer connection to a specific user ─────────────────────────
+  // isOfferer=true  → create and send offer (proximity discovery)
+  // isOfferer=false → just set up PC, caller will apply remote desc and answer
   const createPeerConnection = useCallback(
-    async (remoteUserId) => {
+    async (remoteUserId, isOfferer = true) => {
       if (!localStreamRef.current || peerConnectionsRef.current[remoteUserId]) return;
 
       const ctx = getAudioCtx();
@@ -141,14 +143,16 @@ export default function useProximityVoice(user, playerPos, remoteUsers) {
 
       peerConnectionsRef.current[remoteUserId] = pc;
 
-      // Create and send offer
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await sendSignal(remoteUserId, "offer", JSON.stringify(offer));
+      if (isOfferer) {
+        // Initiate: create and send offer
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await sendSignal(remoteUserId, "offer", JSON.stringify(offer));
+      }
 
       return pc;
     },
-    [getAudioCtx]
+    [getAudioCtx, sendSignal]
   );
 
   // ── Close a specific peer connection ────────────────────────────────────
@@ -209,17 +213,20 @@ export default function useProximityVoice(user, playerPos, remoteUsers) {
         const signalData = JSON.parse(signal.signal_data);
 
         if (signal.signal_type === "offer") {
-          // Someone wants to connect — create peer connection and answer
+          // Someone wants to connect — create peer connection (as answerer, not offerer)
           let pc = peerConnectionsRef.current[remoteUserId];
           if (!pc) {
-            pc = await createPeerConnection(remoteUserId);
+            pc = await createPeerConnection(remoteUserId, false);
           }
           if (!pc) return;
 
-          await pc.setRemoteDescription(new RTCSessionDescription(signalData));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          await sendSignal(remoteUserId, "answer", JSON.stringify(answer));
+          // Only process if we haven't already set a remote description
+          if (pc.signalingState === "stable" || pc.signalingState === "have-local-offer") {
+            await pc.setRemoteDescription(new RTCSessionDescription(signalData));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await sendSignal(remoteUserId, "answer", JSON.stringify(answer));
+          }
         } else if (signal.signal_type === "answer") {
           // Our offer was accepted
           const pc = peerConnectionsRef.current[remoteUserId];
@@ -227,13 +234,17 @@ export default function useProximityVoice(user, playerPos, remoteUsers) {
             await pc.setRemoteDescription(new RTCSessionDescription(signalData));
           }
         } else if (signal.signal_type === "ice_candidate") {
-          // ICE candidate from remote peer
+          // ICE candidate from remote peer — add when remote desc is ready
           const pc = peerConnectionsRef.current[remoteUserId];
           if (pc) {
             try {
-              await pc.addIceCandidate(new RTCIceCandidate(signalData));
+              const candidate = new RTCIceCandidate(signalData);
+              if (pc.remoteDescription) {
+                await pc.addIceCandidate(candidate);
+              }
+              // If no remote desc yet, browser ignores candidate — fine
             } catch {
-              // Candidate may arrive before remote description — ignore
+              // Candidate may be malformed — ignore safely
             }
           }
         }
