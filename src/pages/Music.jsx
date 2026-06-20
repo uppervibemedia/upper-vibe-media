@@ -39,16 +39,16 @@ function useDebounce(value, delay) {
 // Skeleton loader card
 function SkeletonCard() {
   return (
-    <div className="flex items-center gap-4 p-4 rounded-2xl"
+    <div className="flex items-center gap-2 p-1.5 rounded-xl"
       style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-      <div className="w-12 h-12 rounded-xl flex-shrink-0 animate-pulse" style={{ background: "rgba(255,255,255,0.06)" }} />
-      <div className="flex-1 min-w-0 space-y-2">
-        <div className="h-3.5 rounded-full animate-pulse w-3/4" style={{ background: "rgba(255,255,255,0.07)" }} />
-        <div className="h-2.5 rounded-full animate-pulse w-1/2" style={{ background: "rgba(255,255,255,0.04)" }} />
+      <div className="w-7 h-7 rounded-lg flex-shrink-0 animate-pulse" style={{ background: "rgba(255,255,255,0.06)" }} />
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="h-2.5 rounded-full animate-pulse w-3/4" style={{ background: "rgba(255,255,255,0.07)" }} />
+        <div className="h-2 rounded-full animate-pulse w-1/2" style={{ background: "rgba(255,255,255,0.04)" }} />
       </div>
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      <div className="flex items-center gap-1 flex-shrink-0">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="w-9 h-9 rounded-xl animate-pulse" style={{ background: "rgba(255,255,255,0.05)" }} />
+          <div key={i} className="w-7 h-7 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.05)" }} />
         ))}
       </div>
     </div>
@@ -236,16 +236,16 @@ function MusicInner() {
           {/* Track list — extra bottom clearance for mini player + bottom nav + safe area */}
           <div className="px-4 sm:px-6" style={{ paddingBottom: "calc(11rem + env(safe-area-inset-bottom, 20px))" }}>
             {loading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
-              </div>
+              <div className="space-y-1">
+                            {Array.from({ length: 10 }).map((_, i) => <SkeletonCard key={i} />)}
+                          </div>
             ) : filtered.length === 0 ? (
               <div className="text-center py-20">
                 <Music4 className="w-10 h-10 text-white/10 mx-auto mb-3" />
                 <p className="text-white/25">No songs found.</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                   {filtered.slice(0, visibleCount).map((track, i) => (
                     <TrackRow
                       key={track.id}
@@ -333,7 +333,7 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
   const tc = themeColor || "0,160,220";
   return (
     <div
-      className="flex items-center gap-3 p-3.5 rounded-2xl transition-colors active:scale-[0.99]"
+      className="flex items-center gap-1.5 p-1.5 rounded-xl transition-colors active:scale-[0.99]"
       style={{
         background: isCurrent ? `rgba(${tc},0.06)` : "rgba(255,255,255,0.025)",
         border: `1px solid ${isCurrent ? `rgba(${tc},0.2)` : "rgba(255,255,255,0.06)"}`,
@@ -346,19 +346,19 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
         <CoverImage
           src={track.cover_url}
           alt={track.title}
-          width={48}
-          height={48}
-          className="w-12 h-12 rounded-xl overflow-hidden"
+          width={28}
+          height={28}
+          className="w-7 h-7 rounded-lg overflow-hidden"
           eager={false}
-          iconClassName="w-5 h-5"
+          iconClassName="w-3 h-3"
           fallbackOpacityClass="text-cyan-400/30"
           fallbackBgClass="bg-cyan-400/[0.08]"
         />
         {/* Playing indicator overlay */}
         {isCurrent && isPlaying && (
-          <div className="absolute inset-0 rounded-xl flex items-center justify-center"
+          <div className="absolute inset-0 rounded-lg flex items-center justify-center"
             style={{ background: "rgba(0,0,0,0.45)" }}>
-            <Waves className="w-4 h-4 text-cyan-400 animate-pulse" />
+            <Waves className="w-2.5 h-2.5 text-cyan-400 animate-pulse" />
           </div>
         )}
       </Link>
@@ -366,49 +366,39 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
       {/* Track info */}
       <div className="flex-1 min-w-0">
         <Link to={`/song/${track.id}`} onClick={(e) => e.stopPropagation()} className="block">
-          <p className="text-sm font-bold text-white truncate leading-snug"
+          <p className="text-[11px] font-bold text-white truncate leading-tight"
             style={{ color: isCurrent ? `rgb(${tc})` : "#fff" }}>
             {track.title}
           </p>
-          <p className="text-xs text-white/40 truncate mt-0.5">
+          <p className="text-[9px] text-white/40 truncate">
             {track.artist_display || "Upper Vibe Media"}
           </p>
         </Link>
-        <div className="flex items-center gap-1.5 mt-1.5">
-          <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ background: "rgba(0,160,220,0.1)", border: "1px solid rgba(0,160,220,0.18)", color: "#00A0DC" }}>
-            <Waves className="w-2 h-2" /> 432 Hz
-          </span>
-          {track.is_new_release && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-              style={{ background: "rgba(212,168,67,0.12)", color: "#D4A843" }}>NEW</span>
-          )}
-        </div>
       </div>
 
       {/* Action buttons — Play → Download → Heart */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-0.5 flex-shrink-0">
         {/* Play/Pause — electric blue */}
         <button
           onClick={() => onPlay(track)}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-95"
           style={{
             background: isCurrent ? "rgba(0,160,220,0.18)" : "rgba(0,160,220,0.08)",
             border: "1px solid rgba(0,160,220,0.35)",
             color: "#00A0DC"
           }}>
           {isCurrent && isPlaying
-            ? <Pause className="w-3.5 h-3.5" />
-            : <Play className="w-3.5 h-3.5 ml-0.5" />}
+            ? <Pause className="w-2.5 h-2.5" />
+            : <Play className="w-2.5 h-2.5 ml-px" />}
         </button>
 
         {/* Download — midnight amber */}
         <button
           onClick={() => onDownload(track)}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-95"
           style={{ background: "rgba(212,168,67,0.1)", border: "1px solid rgba(212,168,67,0.25)", color: "#D4A843" }}
           title={isPremium ? "Download" : "Upgrade to Plus to download"}>
-          <Download className="w-3.5 h-3.5" />
+          <Download className="w-2.5 h-2.5" />
         </button>
 
         {/* Heart — new SaveHeartButton */}
@@ -416,7 +406,7 @@ const TrackRow = memo(function TrackRow({ track, index, isCurrent, isPlaying, is
           item={track.id}
           itemType="song"
           meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url, audio_url: track.audio_url }}
-          size="md"
+          size="sm"
           onNeedLogin={onNeedLogin}
         />
       </div>
