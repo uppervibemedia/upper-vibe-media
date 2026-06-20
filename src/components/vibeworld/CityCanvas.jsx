@@ -1096,20 +1096,23 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
     return false;
   }, []);
 
-  const handleTouchStart = useCallback((e) => {
-    for (const t of [...e.changedTouches]) {
-      // Skip if the touch landed on a button/link/input — let the browser handle it
-      if (isInteractiveTarget(t.target)) continue;
+  // ── Joystick touch handlers (directly on joystick visual) ──
+  const handleJoyStart = useCallback((e) => {
+    if (joyTouchId.current !== null) return;
+    const t = e.changedTouches[0];
+    e.preventDefault();
+    e.stopPropagation();
+    joyTouchId.current = t.identifier;
+  }, []);
 
-      if (t.clientX < window.innerWidth / 2 && joyTouchId.current === null) {
-        e.preventDefault();
-        joyTouchId.current = t.identifier;
-      } else if (t.clientX >= window.innerWidth / 2 && camTouchId.current === null) {
-        e.preventDefault();
-        camTouchId.current = t.identifier;
-        camBaseRef.current = { x: t.clientX, y: t.clientY };
-      }
-    }
+  // ── Camera touch handlers (right-side zone, top portion only) ──
+  const handleCamStart = useCallback((e) => {
+    if (camTouchId.current !== null) return;
+    const t = e.changedTouches[0];
+    if (isInteractiveTarget(t.target)) return;
+    e.preventDefault();
+    camTouchId.current = t.identifier;
+    camBaseRef.current = { x: t.clientX, y: t.clientY };
   }, [isInteractiveTarget]);
 
   const handleTouchMove = useCallback((e) => {
@@ -1158,24 +1161,27 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 
   return (
     <>
-      {/* Touch capture layer — captures non-interactive touches, skips buttons */}
+      {/* Camera look zone — right half, top 70% only (leaves bottom area free for player + HUD) */}
       <div
-        className="absolute inset-0 z-30"
-        data-touch-layer="true"
+        className="absolute z-30"
+        data-zone="camera"
         style={{
+          top: 0,
+          right: 0,
+          width: "50%",
+          height: "70%",
           touchAction: "none",
           userSelect: "none",
           WebkitUserSelect: "none",
-          WebkitTouchCallout: "none",
           pointerEvents: "auto",
         }}
-        onTouchStart={handleTouchStart}
+        onTouchStart={handleCamStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       />
-      {/* Joystick visual — bottom-left, higher contrast */}
+      {/* Joystick visual — now directly touchable (not pointer-events-none anymore) */}
       <div
-        className="absolute z-40 rounded-full flex items-center justify-center pointer-events-none"
+        className="absolute z-40 rounded-full flex items-center justify-center"
         style={{
           width: 100, height: 100,
           left: JOY_BASE_X - 50,
@@ -1185,10 +1191,15 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
           boxShadow: joyActive ? "0 0 20px rgba(0,180,220,0.2)" : "none",
+          pointerEvents: "auto",
+          touchAction: "none",
         }}
+        onTouchStart={handleJoyStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <div
-          className="rounded-full"
+          className="rounded-full pointer-events-none"
           style={{
             width: 52, height: 52,
             background: joyActive

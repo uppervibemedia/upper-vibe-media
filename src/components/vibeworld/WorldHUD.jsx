@@ -119,6 +119,7 @@ export default function WorldHUD({
           >
             {/* Music Library button */}
             <button
+              onTouchStart={(e) => e.stopPropagation()}
               onClick={handleOpenMusicLibrary}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
@@ -161,6 +162,7 @@ export default function WorldHUD({
               {/* Watch Visualizer on Stage / Exit Watch Mode */}
               {stageWatching ? (
                 <button
+                  onTouchStart={(e) => e.stopPropagation()}
                   onClick={onStageExitWatchMode}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
@@ -177,6 +179,7 @@ export default function WorldHUD({
                 </button>
               ) : (
                 <button
+                  onTouchStart={(e) => e.stopPropagation()}
                   onClick={onStageWatchVideo}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
@@ -196,6 +199,7 @@ export default function WorldHUD({
               {/* Watch Full Screen */}
               {onStageFullScreen && (
                 <button
+                  onTouchStart={(e) => e.stopPropagation()}
                   onClick={onStageFullScreen}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
@@ -214,6 +218,7 @@ export default function WorldHUD({
 
               {/* Next Video */}
               <button
+                onTouchStart={(e) => e.stopPropagation()}
                 onClick={onStageNextVideo}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
                 style={{
@@ -235,6 +240,7 @@ export default function WorldHUD({
               {/* Play This Song */}
               {onStagePlaySong && (
                 <button
+                  onTouchStart={(e) => e.stopPropagation()}
                   onClick={onStagePlaySong}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
@@ -253,6 +259,7 @@ export default function WorldHUD({
               {/* Mute / Unmute Stage */}
               {onStageToggleMute && (
                 <button
+                  onTouchStart={(e) => e.stopPropagation()}
                   onClick={onStageToggleMute}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
@@ -289,6 +296,7 @@ export default function WorldHUD({
             }}
           >
             <button
+              onTouchStart={(e) => e.stopPropagation()}
               onClick={() => setVisualizerOpen(true)}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
@@ -321,6 +329,7 @@ export default function WorldHUD({
             }}
           >
             <button
+              onTouchStart={(e) => e.stopPropagation()}
               onClick={handleOpenLounge}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
