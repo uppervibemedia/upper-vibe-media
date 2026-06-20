@@ -10,7 +10,9 @@ import StageVideoEmbed from "@/components/vibeworld/StageVideoEmbed";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
+import { useAuth } from "@/lib/AuthContext";
 import { useLivePresence } from "@/hooks/useLivePresence";
+import usePersonalizedFeed from "@/hooks/usePersonalizedFeed";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
 
@@ -82,6 +84,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const radioCtx = useRadio();
   const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack } = playerCtx || {};
   const { allTracks, tracksLoaded } = radioCtx || {};
+  const { user } = useAuth();
+  const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
 
   // ═══════════════════════════════════════════════════════════════
   // AUDIO COORDINATION — only one source plays at a time
@@ -287,17 +291,23 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return () => cancelAnimationFrame(raf);
   }, [playerCtx?.analyserNode]);
 
-  // Auto-start a random/featured song when entering world (only if silent)
+  // Auto-start personalized top song when entering world (only if silent)
   useEffect(() => {
-    if (!tracksLoaded || loading) return;
+    if (feedLoading || loading) return;
     if (currentTrack || isPlaying) return; // Already has music — don't interrupt
-    if (allTracks?.length > 0 && playTrack) {
+    if (sortedTracks?.length > 0 && playTrack) {
+      // Pick from top 5 personalized tracks for variety
+      const pool = sortedTracks.slice(0, Math.min(5, sortedTracks.length));
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      if (pick) playTrack(pick, "song");
+    } else if (!feedLoading && allTracks?.length > 0 && playTrack) {
+      // Fallback: no personalization data yet, pick a featured track
       const featured = allTracks.filter((t) => t.is_featured);
       const pool = featured.length > 0 ? featured : allTracks;
       const pick = pool[Math.floor(Math.random() * pool.length)];
       if (pick) playTrack(pick, "song");
     }
-  }, [tracksLoaded, loading, currentTrack, isPlaying, allTracks, playTrack]);
+  }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
 
   // ── Auto-rotate stage video every 60s when user isn't interacting ──
   useEffect(() => {
