@@ -31,14 +31,21 @@ export default function MobileMiniPlayer({
           pointerEvents: "auto",
         }}
       >
+        {/* Glass background — non-interactive */}
         <div
-          className="flex items-center gap-2 px-2.5 py-2 rounded-full shadow-lg"
+          className="absolute inset-0 rounded-full shadow-lg pointer-events-none"
           style={{
             background: "rgba(0,0,0,0.7)",
             backdropFilter: "blur(14px)",
             border: "1px solid rgba(255,255,255,0.15)",
+          }}
+        />
+        {/* Interactive content layer */}
+        <div
+          className="flex items-center gap-2 px-2.5 py-2 rounded-full relative"
+          style={{
             maxWidth: "68vw",
-            pointerEvents: "none",
+            pointerEvents: "auto",
           }}
         >
           <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 pointer-events-none" style={{ minWidth: "32px", minHeight: "32px" }}>
@@ -49,7 +56,7 @@ export default function MobileMiniPlayer({
               iconClassName="w-3 h-3"
             />
           </div>
-          <div className="flex-1 min-w-0 pr-1 pointer-events-none">
+          <div className="flex-1 min-w-0 pr-1" style={{ pointerEvents: "none" }}>
             <p className="text-[10px] font-bold text-white/90 truncate max-w-[100px]">{currentTrack.title}</p>
           </div>
           <button
@@ -94,20 +101,25 @@ export default function MobileMiniPlayer({
           pointerEvents: "auto",
         }}
       >
+        {/* Glass background layer — non-interactive */}
         <div
-          className="w-full max-w-sm rounded-2xl p-3 shadow-xl"
+          className="absolute inset-0 rounded-2xl shadow-xl pointer-events-none"
           style={{
             background: "rgba(0,0,0,0.78)",
             backdropFilter: "blur(20px)",
             border: "1px solid rgba(255,255,255,0.12)",
-            pointerEvents: "none",
           }}
+        />
+        {/* Interactive content layer */}
+        <div
+          className="w-full max-w-sm rounded-2xl p-3 shadow-xl relative"
+          style={{ pointerEvents: "auto" }}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold tracking-wider text-white/40 uppercase pointer-events-none">Now Playing</span>
+            <span className="text-[10px] font-bold tracking-wider text-white/40 uppercase" style={{ pointerEvents: "none" }}>Now Playing</span>
             <button
               onTouchStart={blockTouch}
-              onClick={() => setExpanded(false)}
+              onClick={() => { try { navigator?.vibrate?.(10); } catch {} setExpanded(false); }}
               className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
               style={{
                 color: "rgba(255,255,255,0.5)",
@@ -119,7 +131,7 @@ export default function MobileMiniPlayer({
             </button>
           </div>
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-md pointer-events-none">
+            <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 shadow-md" style={{ pointerEvents: "none" }}>
               <CoverImage
                 src={currentTrack.cover_url}
                 alt={currentTrack.title}
@@ -127,7 +139,7 @@ export default function MobileMiniPlayer({
                 iconClassName="w-5 h-5"
               />
             </div>
-            <div className="flex-1 min-w-0 pointer-events-none">
+            <div className="flex-1 min-w-0" style={{ pointerEvents: "none" }}>
               <p className="text-sm font-bold text-white truncate">{currentTrack.title}</p>
               <p className="text-[11px] text-white/50 truncate">
                 {currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}

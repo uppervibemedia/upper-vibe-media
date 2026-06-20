@@ -132,12 +132,34 @@ function VibeWorldHub({ chatAgeConfirmed }) {
   );
 }
 
+// TEMPORARY TEST MODE: remove before production launch.
+// ?bypass=1 skips auth, username, rules, and agreement gates.
+// Provides a guest profile (chat disabled) so mobile controls can be tested.
+function isBypassMode() {
+  try { return new URLSearchParams(window.location.search).get("bypass") === "1"; } catch { return false; }
+}
+
+function BypassWrapper({ children }) {
+  // Guest test profile — chatAgeConfirmed=false keeps chat disabled
+  const guestChatAgeConfirmed = false;
+  return React.cloneElement(children, { chatAgeConfirmed: guestChatAgeConfirmed });
+}
+
 export default function VibeWorld() {
+  // TEMPORARY TEST MODE: skip WorldGate when ?bypass=1 is in the URL
+  const bypass = isBypassMode();
+
   return (
     <PageErrorBoundary>
-      <WorldGate>
-        <VibeWorldHub />
-      </WorldGate>
+      {bypass ? (
+        <BypassWrapper>
+          <VibeWorldHub />
+        </BypassWrapper>
+      ) : (
+        <WorldGate>
+          <VibeWorldHub />
+        </WorldGate>
+      )}
     </PageErrorBoundary>
   );
 }
