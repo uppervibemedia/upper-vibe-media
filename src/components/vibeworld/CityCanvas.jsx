@@ -1136,7 +1136,12 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
       {/* Touch capture layer — lower z-index so UI buttons above can receive taps */}
       <div
         className="absolute inset-0 z-30"
-        style={{ touchAction: "none" }}
+        style={{
+          touchAction: "none",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          WebkitTouchCallout: "none",
+        }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -1201,8 +1206,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
     setIsMobile(mobile);
     isMobileRef.current = mobile;
     if (mobile) {
+      const prevBodyOverflow = document.body.style.overflow;
+      const prevBodyOverscroll = document.body.style.overscrollBehavior;
       document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = ""; };
+      document.body.style.overscrollBehavior = "none";
+      return () => {
+        document.body.style.overflow = prevBodyOverflow;
+        document.body.style.overscrollBehavior = prevBodyOverscroll;
+      };
     }
   }, []);
 

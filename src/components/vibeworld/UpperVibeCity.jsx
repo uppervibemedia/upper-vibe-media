@@ -41,10 +41,28 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
 
-  // Auto-hide controls hint after 12 seconds — gives mobile users time to read
+  // iOS Safari: prevent pull-to-refresh and rubber-banding inside the 3D world
+  useEffect(() => {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isIOS) return;
+    const el = document.documentElement;
+    const prevOverflow = el.style.overflow;
+    el.style.overflow = "hidden";
+    el.style.position = "fixed";
+    el.style.width = "100%";
+    el.style.overscrollBehavior = "none";
+    return () => {
+      el.style.overflow = prevOverflow;
+      el.style.position = "";
+      el.style.width = "";
+      el.style.overscrollBehavior = "";
+    };
+  }, []);
+
+  // Auto-hide controls hint after 7 seconds
   useEffect(() => {
     if (loading) return;
-    const timer = setTimeout(() => setShowControlsHint(false), 12000);
+    const timer = setTimeout(() => setShowControlsHint(false), 7000);
     return () => clearTimeout(timer);
   }, [loading]);
 
@@ -377,10 +395,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             {isMobile ? (
               <>
                 <p className="text-[11px] font-bold tracking-wider text-white">
-                  Left side <span className="text-cyan-400">= Walk</span> &bull; Right side <span className="text-purple-400">= Look</span>
+                  <span className="text-cyan-400">Left joystick</span> to move &bull; <span className="text-purple-400">Swipe right</span> to look
                 </p>
                 <p className="text-[9px] text-white/40 tracking-wide">
-                  Drag joystick to move &bull; Swipe right side to turn camera
+                  Tap buttons to interact
                 </p>
               </>
             ) : (
