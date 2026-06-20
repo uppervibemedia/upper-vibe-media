@@ -32,29 +32,39 @@ export default function YourFrequencyFeed({
 
   useEffect(() => {
     if (!allTracks?.length) return;
-    // Sequenced to avoid rate limiting
-    (async () => {
-      const allStreams = await base44.entities.SongStream.list("-created_date", 500);
-      const allFavs = await base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000);
-      const allDls = await base44.entities.Download.filter({ content_type: "track" }, "-created_date", 1000);
-      let myStreams=[], myFavs=[], myDls=[], myCheckIns=[];
-      if (user?.id) {
-        myStreams = await base44.entities.SongStream.filter({ user_id: user.id }, "-created_date", 300);
-        myFavs = await base44.entities.Favorite.filter({ user_email: user.email, type: "track" }, "-created_date", 200);
-        myDls = await base44.entities.UserDownload.filter({ user_id: user.id }, "-created_date", 200);
-        myCheckIns = await base44.entities.VibeCheckIn.filter({ user_id: user.id }, "-check_in_date", 7);
-      }
-      return [allStreams, allFavs, allDls, myStreams, myFavs, myDls, myCheckIns];
-    })().then(([
-      allStreams, allFavs, allDls, myStreams, myFavs, myDls, myCheckIns,
-    ]) => {
-      setCommunityIdx(buildCommunityIndex(allStreams, allFavs, allDls));
-      setUserStreams(myStreams);
-      setUserFavs(myFavs);
-      setUserDownloads(myDls);
-      setCheckIns(myCheckIns);
-      setLoading(false);
-    });
+    // Deferred + sequenced with delays to avoid rate limiting
+    const delay = 2500; // stagger from Home's loadData
+    const timer = setTimeout(() => {
+      (async () => {
+        const allStreams = await base44.entities.SongStream.list("-created_date", 500).catch(() => []);
+        await new Promise(r => setTimeout(r, 300));
+        const allFavs = await base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000).catch(() => []);
+        await new Promise(r => setTimeout(r, 300));
+        const allDls = await base44.entities.Download.filter({ content_type: "track" }, "-created_date", 1000).catch(() => []);
+        let myStreams=[], myFavs=[], myDls=[], myCheckIns=[];
+        if (user?.id) {
+          await new Promise(r => setTimeout(r, 300));
+          myStreams = await base44.entities.SongStream.filter({ user_id: user.id }, "-created_date", 300).catch(() => []);
+          await new Promise(r => setTimeout(r, 300));
+          myFavs = await base44.entities.Favorite.filter({ user_email: user.email, type: "track" }, "-created_date", 200).catch(() => []);
+          await new Promise(r => setTimeout(r, 300));
+          myDls = await base44.entities.UserDownload.filter({ user_id: user.id }, "-created_date", 200).catch(() => []);
+          await new Promise(r => setTimeout(r, 300));
+          myCheckIns = await base44.entities.VibeCheckIn.filter({ user_id: user.id }, "-check_in_date", 7).catch(() => []);
+        }
+        return [allStreams, allFavs, allDls, myStreams, myFavs, myDls, myCheckIns];
+      })().then(([
+        allStreams, allFavs, allDls, myStreams, myFavs, myDls, myCheckIns,
+      ]) => {
+        setCommunityIdx(buildCommunityIndex(allStreams, allFavs, allDls));
+        setUserStreams(myStreams);
+        setUserFavs(myFavs);
+        setUserDownloads(myDls);
+        setCheckIns(myCheckIns);
+        setLoading(false);
+      });
+    }, delay);
+    return () => clearTimeout(timer);
   }, [allTracks?.length, user?.id]);
 
   const profile = useMemo(() => buildUserProfile({

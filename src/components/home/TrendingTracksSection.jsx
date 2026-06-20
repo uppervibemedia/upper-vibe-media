@@ -77,17 +77,24 @@ export default function TrendingTracksSection({ allTracks, currentTrack, isPlayi
 
   useEffect(() => {
     if (!allTracks || allTracks.length === 0) return;
-    Promise.all([
-      base44.entities.SongStream.list("-created_date", 500),
-      base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000),
-    ]).then(([streamData, favData]) => {
-      setStreams(streamData);
-      // Count favorites per track_id
-      const counts = {};
-      favData.forEach((f) => { if (f.track_id) counts[f.track_id] = (counts[f.track_id] || 0) + 1; });
-      setFavCounts(counts);
-      setLoading(false);
-    });
+    // Deferred + sequential with delays to avoid rate limiting
+    const delay = 3500; // stagger after Home/Radio loadData completes
+    const timer = setTimeout(() => {
+      (async () => {
+        const streamData = await base44.entities.SongStream.list("-created_date", 500).catch(() => []);
+        await new Promise(r => setTimeout(r, 300));
+        const favData = await base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000).catch(() => []);
+        return [streamData, favData];
+      })().then(([streamData, favData]) => {
+        setStreams(streamData);
+        // Count favorites per track_id
+        const counts = {};
+        favData.forEach((f) => { if (f.track_id) counts[f.track_id] = (counts[f.track_id] || 0) + 1; });
+        setFavCounts(counts);
+        setLoading(false);
+      });
+    }, delay);
+    return () => clearTimeout(timer);
   }, [allTracks?.length]);
 
   const trendingTracks = useMemo(

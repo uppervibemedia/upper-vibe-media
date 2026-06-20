@@ -86,22 +86,28 @@ export default function ListenerFrequencyDashboard({
 
   useEffect(() => {
     if (!allTracks?.length) return;
-    // Sequenced to avoid rate limiting
-    (async () => {
-      const streamData = await base44.entities.SongStream.list("-created_date", 500);
-      const favData = await base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000);
-      const dlData = await base44.entities.Download.filter({ content_type: "track" }, "-created_date", 1000);
-      return [streamData, favData, dlData];
-    })().then(([streamData, favData, dlData]) => {
-      setStreams(streamData);
-      const fc = {};
-      favData.forEach((f) => { if (f.track_id) fc[f.track_id] = (fc[f.track_id] || 0) + 1; });
-      setFavCounts(fc);
-      const dc = {};
-      dlData.forEach((d) => { if (d.content_id) dc[d.content_id] = (dc[d.content_id] || 0) + 1; });
-      setDlCounts(dc);
-      setLoading(false);
-    });
+    // Deferred + sequenced with delays to avoid rate limiting
+    const delay = 3000; // stagger well after Home's loadData and YourFrequencyFeed
+    const timer = setTimeout(() => {
+      (async () => {
+        const streamData = await base44.entities.SongStream.list("-created_date", 500).catch(() => []);
+        await new Promise(r => setTimeout(r, 300));
+        const favData = await base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000).catch(() => []);
+        await new Promise(r => setTimeout(r, 300));
+        const dlData = await base44.entities.Download.filter({ content_type: "track" }, "-created_date", 1000).catch(() => []);
+        return [streamData, favData, dlData];
+      })().then(([streamData, favData, dlData]) => {
+        setStreams(streamData);
+        const fc = {};
+        favData.forEach((f) => { if (f.track_id) fc[f.track_id] = (fc[f.track_id] || 0) + 1; });
+        setFavCounts(fc);
+        const dc = {};
+        dlData.forEach((d) => { if (d.content_id) dc[d.content_id] = (dc[d.content_id] || 0) + 1; });
+        setDlCounts(dc);
+        setLoading(false);
+      });
+    }, delay);
+    return () => clearTimeout(timer);
   }, [allTracks?.length]);
 
   const scored = useMemo(
