@@ -1106,7 +1106,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, onStageScreenBounds }) {
+export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, onStageScreenBounds, movementLocked }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1131,8 +1131,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   const avatarRef = useRef(null);
   const avatarPosRef = useRef([...SPAWN, 0]); // [x, y, z, rotY]
   const stageCanvasRef = useRef(null);
-  // Keep ref in sync with prop so animation loop reads latest value
   stageCanvasRef.current = stageCanvas;
+  const movementLockedRef = useRef(false);
+  movementLockedRef.current = movementLocked;
   const velocityRef = useRef({ x: 0, z: 0 });
   const targetRotRef = useRef(0);
   const keysRef = useRef({});
@@ -1228,41 +1229,38 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         let [px, py, pz, rot] = avatarPosRef.current;
         const vel = velocityRef.current;
 
-        // ─── INPUT ──────────────────────────────────────────────
+        // ─── INPUT (skip if movement is locked) ────────────────────
         let inputX = 0, inputZ = 0;
         let turnInput = 0;
+        const locked = movementLockedRef.current;
 
-        if (isMobileRef.current) {
-          const joy = mobileInputRef.current;
-          // Joystick Y = forward/backward (up=forward, down=backward)
-          if (Math.abs(joy.y) > 0.08) {
-            inputX += Math.sin(rot) * joy.y;
-            inputZ += Math.cos(rot) * joy.y;
+        if (!locked) {
+          if (isMobileRef.current) {
+            const joy = mobileInputRef.current;
+            if (Math.abs(joy.y) > 0.08) {
+              inputX += Math.sin(rot) * joy.y;
+              inputZ += Math.cos(rot) * joy.y;
+            }
+            turnInput = -joy.x;
+            if (Math.abs(joy.camDx) > 0.0005) {
+              rot += joy.camDx;
+              targetRotRef.current = rot;
+              joy.camDx *= 0.85;
+            }
+          } else {
+            if (keys.w || keys.arrowup) { inputX += Math.sin(rot); inputZ += Math.cos(rot); }
+            if (keys.s || keys.arrowdown) { inputX -= Math.sin(rot); inputZ -= Math.cos(rot); }
+            if (keys.a || keys.arrowleft) turnInput = 1;
+            if (keys.d || keys.arrowright) turnInput = -1;
           }
-          // Joystick X = rotation (left=turn left, right=turn right)
-          turnInput = -joy.x;
-          // Camera swipe on right side
-          if (Math.abs(joy.camDx) > 0.0005) {
-            rot += joy.camDx;
-            targetRotRef.current = rot;
-            joy.camDx *= 0.85;
-          }
-        } else {
-          // Forward / Backward — relative to facing direction
-          if (keys.w || keys.arrowup) { inputX += Math.sin(rot); inputZ += Math.cos(rot); }
-          if (keys.s || keys.arrowdown) { inputX -= Math.sin(rot); inputZ -= Math.cos(rot); }
-          // Rotate left / right — affects rotation only, not position
-          // Three.js Y-axis: positive = counterclockwise (left turn)
-          if (keys.a || keys.arrowleft) turnInput = 1;
-          if (keys.d || keys.arrowright) turnInput = -1;
         }
 
         const inputMag = Math.sqrt(inputX * inputX + inputZ * inputZ);
-        const isMoving = inputMag > 0.1;
-        const isTurning = Math.abs(turnInput) > 0.01;
+        const isMoving = inputMag > 0.1 && !locked;
+        const isTurning = Math.abs(turnInput) > 0.01 && !locked;
 
         // ─── MOUSE LOOK ─────────────────────────────────────────
-        if (mouse.down) {
+        if (mouse.down && !locked) {
           rot += mouse.dx * 0.004;
           targetRotRef.current = rot;
           mouse.dx = 0;
@@ -1279,30 +1277,32 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
           inputX /= inputMag;
           inputZ /= inputMag;
 
-          // Only auto-face toward movement when moving forward
-          // (don't rotate when moving backward or while manually turning)
           const moveDot = inputX * Math.sin(rot) + inputZ * Math.cos(rot);
           if (!isTurning && moveDot > -0.3) {
             const moveAngle = Math.atan2(inputX, inputZ);
             targetRotRef.current = moveAngle;
           }
 
-          // Accelerate
           vel.x += (inputX * MOVE_SPEED - vel.x) * Math.min(1, ACCELERATION * dt);
           vel.z += (inputZ * MOVE_SPEED - vel.z) * Math.min(1, ACCELERATION * dt);
         } else {
-          // Decelerate
           vel.x += (0 - vel.x) * Math.min(1, DECELERATION * dt);
           vel.z += (0 - vel.z) * Math.min(1, DECELERATION * dt);
+          if (locked) {
+            // Force zero velocity when locked
+            vel.x = 0;
+            vel.z = 0;
+          }
         }
 
         // Smoother rotation lerp
-        let targetRot = targetRotRef.current;
-        // Wrap angle difference
-        let diff = targetRot - rot;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        rot += diff * Math.min(1, ROTATION_SMOOTH * dt);
+        let targetRot = locked ? rot : targetRotRef.current;
+        if (!locked) {
+          let diff = targetRot - rot;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          rot += diff * Math.min(1, ROTATION_SMOOTH * dt);
+        }
 
         // Apply velocity
         const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);

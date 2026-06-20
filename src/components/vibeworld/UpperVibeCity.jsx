@@ -17,7 +17,6 @@ export default function UpperVibeCity({ onExit }) {
   const [isMobile, setIsMobile] = useState(false);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0 });
   const [stageCanvas, setStageCanvas] = useState(null);
-  // ── Audio intensity ref — shared with CityCanvas for wave sync ─────────
   const audioIntensityRef = useRef(0);
 
   // ── Stage video state ──────────────────────────────────────────────────
@@ -28,8 +27,7 @@ export default function UpperVibeCity({ onExit }) {
   const [stageScreenYouTube, setStageScreenYouTube] = useState(false);
   const [stageScreenBounds, setStageScreenBounds] = useState({ visible: false, left: 0, top: 0, width: 0, height: 0 });
   const [stageScreenIframeKey, setStageScreenIframeKey] = useState(0);
-  const stageVideoTimerRef = useRef(null);
-
+  const stageIframeRef = useRef(null);
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -40,22 +38,10 @@ export default function UpperVibeCity({ onExit }) {
     base44.functions.invoke("getPlaylistVideos", {})
       .then((res) => {
         const videos = res?.data?.videos;
-        if (videos?.length > 0) {
-          setStageVideos(videos);
-        }
+        if (videos?.length > 0) setStageVideos(videos);
       })
       .catch(() => {});
   }, []);
-
-  // ── Auto-rotate stage video every 60 seconds ───────────────────────────
-  useEffect(() => {
-    if (stageVideos.length <= 1) return;
-    const timer = setInterval(() => {
-      setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
-    }, 60000);
-    stageVideoTimerRef.current = timer;
-    return () => clearInterval(timer);
-  }, [stageVideos.length]);
 
   // ── Stage video controls ───────────────────────────────────────────────
   const playerCtx = usePlayer();
@@ -69,21 +55,23 @@ export default function UpperVibeCity({ onExit }) {
   const handleStageNextVideo = () => {
     if (stageVideos.length <= 1) return;
     setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
-    // Reset rotation timer
-    if (stageVideoTimerRef.current) clearInterval(stageVideoTimerRef.current);
-    const timer = setInterval(() => {
-      setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
-    }, 60000);
-    stageVideoTimerRef.current = timer;
+    setStageScreenIframeKey((k) => k + 1);
   };
   const handleStageToggleMute = () => {
     setStageVideoMuted((m) => {
       const next = !m;
+      // Send postMessage to iframe without reloading
+      const iframe = stageIframeRef.current;
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage(
+          JSON.stringify({ event: "command", func: next ? "mute" : "unMute", args: "" }),
+          "*"
+        );
+      }
+      // Resume/pause global player
       if (next) {
-        // Muting — restore global player if it was paused
         if (!isPlaying && togglePlay) togglePlay();
       } else {
-        // Unmuting stage — pause global player
         if (isPlaying && togglePlay) togglePlay();
       }
       return next;
@@ -111,10 +99,6 @@ export default function UpperVibeCity({ onExit }) {
   };
 
   useLivePresence();
-
-
-
-
 
   // ── Read analyser frequency data for wave sync ────────────────────────
   useEffect(() => {
@@ -151,6 +135,7 @@ export default function UpperVibeCity({ onExit }) {
           stageCanvas={!stageScreenYouTube ? stageCanvas : null}
           audioIntensityRef={audioIntensityRef}
           onStageScreenBounds={setStageScreenBounds}
+          movementLocked={stageScreenYouTube}
         />
       </div>
 
@@ -169,12 +154,12 @@ export default function UpperVibeCity({ onExit }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: loading ? 0 : 1 }}
         transition={{ delay: 0.4 }}
-        className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 pointer-events-none"
+        className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
       >
         <button
           onClick={onExit}
-          className="pointer-events-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/20"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/20"
           style={{
             background: "rgba(255,255,255,0.3)",
             backdropFilter: "blur(12px)",
@@ -185,7 +170,7 @@ export default function UpperVibeCity({ onExit }) {
         </button>
 
         <div
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl pointer-events-auto"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
           style={{
             background: "rgba(255,255,255,0.3)",
             backdropFilter: "blur(12px)",
@@ -198,7 +183,7 @@ export default function UpperVibeCity({ onExit }) {
       </motion.div>
 
       {/* Controls hint */}
-      {!loading && (
+      {!loading && !stageScreenYouTube && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -217,7 +202,25 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* In-world YouTube iframe — plays on the physical stage screen */}
+      {/* Watch on Stage mode banner */}
+      {stageScreenYouTube && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute top-20 left-0 right-0 z-30 flex justify-center pointer-events-none"
+        >
+          <div
+            className="px-4 py-1.5 rounded-full flex items-center gap-2"
+            style={{ background: "rgba(124,58,237,0.25)", border: "1px solid rgba(155,126,255,0.3)" }}
+          >
+            <span className="text-[10px] text-purple-200 font-medium tracking-wider">
+              Press Exit Stage View to walk away
+            </span>
+          </div>
+        </motion.div>
+      )}
+
+      {/* In-world YouTube iframe — on the physical stage screen, mute controlled via postMessage */}
       {stageScreenYouTube && stageScreenBounds.visible && stageVideos[stageVideoIdx]?.youtube_video_id && (
         <div
           className="absolute z-50 pointer-events-none"
@@ -229,15 +232,15 @@ export default function UpperVibeCity({ onExit }) {
           }}
         >
           <iframe
-            key={`${stageScreenIframeKey}-${stageVideoMuted ? 'm' : 'u'}`}
-            src={`https://www.youtube.com/embed/${stageVideos[stageVideoIdx].youtube_video_id}?autoplay=1&mute=${stageVideoMuted ? '1' : '0'}&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=${stageVideos[stageVideoIdx].youtube_video_id}`}
+            ref={stageIframeRef}
+            key={stageScreenIframeKey}
+            src={`https://www.youtube.com/embed/${stageVideos[stageVideoIdx].youtube_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=${stageVideos[stageVideoIdx].youtube_video_id}&enablejsapi=1`}
             className="w-full h-full pointer-events-none"
             allow="autoplay; encrypted-media"
             referrerPolicy="strict-origin-when-cross-origin"
             title={stageVideos[stageVideoIdx].title || "Stage video"}
             style={{ border: "none" }}
           />
-          {/* Subtle glow frame matching the 3D screen */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
@@ -248,7 +251,7 @@ export default function UpperVibeCity({ onExit }) {
         </div>
       )}
 
-      {/* World HUD — zone-specific interactions */}
+      {/* World HUD */}
       <WorldHUD
         playerX={playerPos.x}
         playerZ={playerPos.z}
@@ -304,21 +307,20 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Stage cover visualizer — cover art + tall equalizer bars */}
+      {/* Stage cover visualizer */}
       <StageCoverVisualizer
         onReady={(c) => setStageCanvas(c)}
         video={stageVideos[stageVideoIdx] || null}
         audioIntensityRef={audioIntensityRef}
       />
 
-      {/* Fullscreen stage video player overlay — opens when user chooses Watch Full Video */}
+      {/* Fullscreen stage video player overlay */}
       <StageVideoPlayer
         open={stageVideoPlayerOpen}
         video={stageVideos[stageVideoIdx] || null}
         muted={stageVideoMuted}
         onClose={() => {
           setStageVideoPlayerOpen(false);
-          // If stage audio was live, mute and restore user's music
           if (!stageVideoMuted) {
             setStageVideoMuted(true);
             if (!isPlaying && togglePlay) togglePlay();

@@ -2,10 +2,11 @@ import React, { useEffect, useRef } from "react";
 
 /**
  * StageCoverVisualizer — 16:9 stage screen with:
- *  - Blurred cover art backdrop (never stretched)
- *  - Centered cover art in 16:9 frame
+ *  - Full blurred cover art backdrop
+ *  - Sharp centered artwork filling most of the screen (not a tiny thumbnail)
  *  - Song title + "NOW SHOWING" badge
- *  - Tall audio-reactive equalizer bars spanning most of the screen
+ *  - Tall audio-reactive equalizer bars rising halfway up
+ *  - Dark purple/blue gradient + music video style frame
  *  - Renders to offscreen canvas for Three.js texture
  */
 
@@ -35,13 +36,13 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // ── Blurred backdrop from cover art ──────────────────────────────────────
+  // ── Blurred backdrop from cover art (fills entire canvas) ──────────────
   if (coverUrl) {
     const cached = imgCache[coverUrl];
     if (cached?.complete && cached.naturalWidth > 0) {
       ctx.save();
-      ctx.globalAlpha = 0.15 + beat * 0.06;
-      ctx.filter = "blur(36px) brightness(0.35)";
+      ctx.globalAlpha = 0.22 + beat * 0.06;
+      ctx.filter = "blur(30px) brightness(0.3)";
       ctx.drawImage(cached, 0, 0, W, H);
       ctx.filter = "none";
       ctx.restore();
@@ -53,77 +54,125 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
     }
   }
 
-  // ── Center glow ──────────────────────────────────────────────────────────
-  const glowGrad = ctx.createRadialGradient(W / 2, H * 0.4, H * 0.04, W / 2, H * 0.55, H * 0.75);
-  glowGrad.addColorStop(0, `rgba(155,126,255,${0.04 + beat * 0.1})`);
-  glowGrad.addColorStop(0.5, `rgba(0,180,220,${0.02 + beat * 0.06})`);
+  // ── Main artwork — fills most of the screen in a 16:9 filmic frame ────
+  const framePadX = 50;
+  const framePadY = 90;
+  const frameW = W - framePadX * 2;
+  const frameH = H - framePadY * 2 + 50; // slightly taller to leave room for bars overlay
+  const frameX = framePadX;
+  const frameY = 40;
+  const frameCX = W / 2;
+  const frameCY = frameY + frameH / 2;
+
+  // Glow aura behind art
+  const glowGrad = ctx.createRadialGradient(frameCX, frameCY, frameH * 0.12, frameCX, frameCY, frameH * 0.7);
+  glowGrad.addColorStop(0, `rgba(155,126,255,${0.05 + beat * 0.12})`);
+  glowGrad.addColorStop(0.5, `rgba(0,180,220,${0.03 + beat * 0.06})`);
   glowGrad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = glowGrad;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(frameX - 30, frameY - 30, frameW + 60, frameH + 60);
 
-  // ── Cover art in a small centered frame at top ──────────────────────────
-  const artSize = 140;
-  const artX = (W - artSize) / 2;
-  const artY = 30;
+  // Floating particles
+  for (let i = 0; i < 25; i++) {
+    const a = (i / 25) * Math.PI * 2 + t * 0.15;
+    const r = frameW * 0.48 + Math.sin(t * 1.1 + i * 0.5) * 30;
+    const px = frameCX + Math.cos(a) * r;
+    const py = frameCY + Math.sin(a) * r * 0.55;
+    const ps = 0.8 + Math.sin(t * 2.0 + i) * 0.6;
+    const pa = 0.06 + beat * 0.1 + Math.sin(t * 1.3 + i * 0.7) * 0.03;
+    ctx.beginPath();
+    ctx.arc(px, py, ps, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(155,126,255,${pa})`;
+    ctx.fill();
+  }
 
+  // Draw cover art inside the frame
   if (coverUrl) {
     const cached = imgCache[coverUrl];
     if (cached?.complete && cached.naturalWidth > 0) {
-      // Rounded rect clip
-      roundRect(ctx, artX, artY, artSize, artSize, 10);
-      ctx.save();
-      ctx.clip();
-      ctx.drawImage(cached, artX, artY, artSize, artSize);
-      ctx.restore();
+      const imgW = cached.naturalWidth;
+      const imgH = cached.naturalHeight;
+      const frameRatio = frameW / frameH;
 
-      // Neon border around art
-      ctx.strokeStyle = `rgba(155,126,255,${0.2 + beat * 0.3})`;
-      ctx.lineWidth = 2;
-      roundRect(ctx, artX, artY, artSize, artSize, 10);
-      ctx.stroke();
+      ctx.save();
+      roundRect(ctx, frameX, frameY, frameW, frameH, 10);
+      ctx.clip();
+
+      // Scale to fit with aspect ratio preserved, crop excess
+      const imgRatio = imgW / imgH;
+      let sx = 0, sy = 0, sw = imgW, sh = imgH;
+      if (imgRatio > frameRatio) {
+        sw = imgH * frameRatio;
+        sx = (imgW - sw) / 2;
+      } else {
+        sh = imgW / frameRatio;
+        sy = (imgH - sh) / 2;
+      }
+      ctx.globalAlpha = 0.88;
+      ctx.drawImage(cached, sx, sy, sw, sh, frameX, frameY, frameW, frameH);
+      ctx.globalAlpha = 1;
+      ctx.restore();
     } else {
-      // Placeholder square
       ctx.fillStyle = "#1a1a38";
-      roundRect(ctx, artX, artY, artSize, artSize, 10);
+      roundRect(ctx, frameX, frameY, frameW, frameH, 10);
       ctx.fill();
     }
   } else {
     ctx.fillStyle = "#1a1a38";
-    roundRect(ctx, artX, artY, artSize, artSize, 10);
+    roundRect(ctx, frameX, frameY, frameW, frameH, 10);
     ctx.fill();
-    ctx.fillStyle = "rgba(180,160,255,0.12)";
-    ctx.font = "32px sans-serif";
+    ctx.fillStyle = "rgba(180,160,255,0.1)";
+    ctx.font = "48px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("♫", artX + artSize / 2, artY + artSize / 2);
+    ctx.fillText("♫", frameCX, frameCY);
   }
 
-  // ── "NOW SHOWING" badge above title ─────────────────────────────────────
+  // Subtle vignette over art
+  const vigGrad = ctx.createRadialGradient(frameCX, frameCY, frameW * 0.32, frameCX, frameCY, frameW * 0.7);
+  vigGrad.addColorStop(0, "rgba(0,0,0,0)");
+  vigGrad.addColorStop(1, "rgba(0,0,0,0.3)");
+  ctx.fillStyle = vigGrad;
+  ctx.fillRect(frameX, frameY, frameW, frameH);
+
+  // Neon frame border
+  ctx.strokeStyle = `rgba(155,126,255,${0.2 + beat * 0.35})`;
+  ctx.lineWidth = 2;
+  roundRect(ctx, frameX - 2, frameY - 2, frameW + 4, frameH + 4, 12);
+  ctx.stroke();
+
+  ctx.strokeStyle = `rgba(0,190,220,${0.1 + beat * 0.18})`;
+  ctx.lineWidth = 1;
+  roundRect(ctx, frameX - 10, frameY - 10, frameW + 20, frameH + 20, 16);
+  ctx.stroke();
+
+  // ── "NOW SHOWING" badge ────────────────────────────────────────────────
+  const badgeY = frameY + frameH + 12;
   ctx.font = "bold 9px 'Inter', sans-serif";
   ctx.textAlign = "center";
   ctx.fillStyle = `rgba(0,220,255,${0.35 + beat * 0.3})`;
-  ctx.fillText("NOW SHOWING", W / 2, artY + artSize + 24);
+  ctx.fillText("NOW SHOWING", frameCX, badgeY);
 
-  // ── Song title ──────────────────────────────────────────────────────────
+  // ── Song title ─────────────────────────────────────────────────────────
   if (title) {
     const maxLen = 48;
     const displayTitle = title.length > maxLen ? title.slice(0, maxLen) + "…" : title;
     ctx.font = "bold 14px 'Syne', sans-serif";
     ctx.textAlign = "center";
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText(displayTitle, W / 2, artY + artSize + 44);
+    ctx.fillText(displayTitle, frameCX, badgeY + 18);
 
     ctx.font = "9px 'Inter', sans-serif";
     ctx.fillStyle = "rgba(180,160,240,0.5)";
-    ctx.fillText("Upper Vibe Media", W / 2, artY + artSize + 60);
+    ctx.fillText("Upper Vibe Media", frameCX, badgeY + 34);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // AUDIO EQUALIZER BARS — big, spanning most of the lower screen
+  // AUDIO EQUALIZER BARS — large overlay at the bottom, rising halfway up
   // ═══════════════════════════════════════════════════════════════════════════
-  const eqTop = artY + artSize + 80;
-  const eqBottom = H - 16;
-  const eqH = eqBottom - eqTop;
+  const eqBottom = H - 12;
+  const eqH = H * 0.52; // bars can reach halfway up the screen
+  const eqTop = eqBottom - eqH;
   const barCount = 64;
   const barGap = 2;
   const barW = (W - 32) / barCount - barGap;
@@ -132,58 +181,65 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
   for (let i = 0; i < barCount; i++) {
     const ratio = i / (barCount - 1);
 
-    // Frequency zones
     const bass = ratio < 0.22 ? Math.pow(1 - ratio / 0.22, 1.5) : 0;
-    const mid = ratio >= 0.15 && ratio < 0.70
-      ? 1 - Math.abs(ratio - 0.4) / 0.3
-      : 0;
-    const treble = ratio >= 0.60
-      ? Math.pow((ratio - 0.6) / 0.4, 0.7)
-      : 0;
+    const mid = ratio >= 0.15 && ratio < 0.70 ? 1 - Math.abs(ratio - 0.4) / 0.3 : 0;
+    const treble = ratio >= 0.60 ? Math.pow((ratio - 0.6) / 0.4, 0.7) : 0;
     const zoneBoost = Math.max(0, bass * 0.85 + mid * 0.65 + treble * 0.5);
 
-    // Wave oscillation
     const wave1 = Math.sin(t * 3.0 + i * 0.16) * 0.5 + 0.5;
     const wave2 = Math.sin(t * 5.5 + i * 0.28) * 0.5 + 0.5;
+    const wave3 = Math.sin(t * 2.2 + i * 0.1) * 0.5 + 0.5;
 
     const audioDriven = beat * (0.5 + zoneBoost * 0.5);
-    const simulated = wave1 * 0.22 + wave2 * 0.12;
+    const simulated = wave1 * 0.25 + wave2 * 0.14 + wave3 * 0.08;
     const energy = audioBeat > 0.02
-      ? audioDriven * 0.78 + simulated * 0.22
-      : simulated * 0.4;
+      ? audioDriven * 0.8 + simulated * 0.2
+      : simulated * 0.45;
 
     const bh = Math.max(4, energy * eqH);
-    const bx = barX0 + i * (barW + barGap);
     const by = eqBottom - bh;
+    const bx = barX0 + i * (barW + barGap);
 
-    const r = Math.round(ratio < 0.5 ? 155 - ratio * 155 : 0);
-    const g = Math.round(ratio < 0.5 ? 126 + ratio * 64 : 190 - (ratio - 0.5) * 190);
-    const b2 = Math.round(ratio < 0.5 ? 255 - ratio * 35 : 220 + (ratio - 0.5) * 35);
-    const ba = 0.35 + energy * 0.4;
+    // Color: purple → cyan → magenta blend
+    const r = Math.round(ratio < 0.5 ? 155 - ratio * 100 : ratio * 180);
+    const g = Math.round(ratio < 0.5 ? 126 + ratio * 80 : 190 - (ratio - 0.5) * 170);
+    const b2 = Math.round(ratio < 0.5 ? 255 - ratio * 20 : 220 + (ratio - 0.5) * 60);
+    const ba = 0.35 + energy * 0.45;
 
+    // Bar gradient
     const barGrad = ctx.createLinearGradient(0, by, 0, eqBottom);
     barGrad.addColorStop(0, `rgba(${r},${g},${b2},${ba})`);
-    barGrad.addColorStop(0.4, `rgba(${r},${g},${b2},${0.1 + energy * 0.18})`);
+    barGrad.addColorStop(0.35, `rgba(${r},${g},${b2},${0.12 + energy * 0.22})`);
     barGrad.addColorStop(1, `rgba(${r},${g},${b2},0.02)`);
 
     ctx.fillStyle = barGrad;
     ctx.fillRect(bx, by, Math.max(2, barW), bh);
+
+    // Soft glow on taller bars
+    if (bh > eqH * 0.35) {
+      ctx.shadowColor = `rgba(${r},${g},${b2},0.3)`;
+      ctx.shadowBlur = 6 + bh / eqH * 8;
+      ctx.fillStyle = `rgba(${r},${g},${b2},${0.06 + energy * 0.08})`;
+      ctx.fillRect(bx - 1, by, Math.max(2, barW) + 2, bh);
+      ctx.shadowBlur = 0;
+    }
   }
 
-  // ── Bottom accent line ─────────────────────────────────────────────────────
+  // ── Bottom accent line ─────────────────────────────────────────────────
   const accentY = eqBottom + 4;
   const lg = ctx.createLinearGradient(0, accentY, W, accentY);
   lg.addColorStop(0, "transparent");
-  lg.addColorStop(0.25, `rgba(155,126,255,${0.1 + beat * 0.12})`);
-  lg.addColorStop(0.5, `rgba(0,220,255,${0.15 + beat * 0.15})`);
-  lg.addColorStop(0.75, `rgba(155,126,255,${0.1 + beat * 0.12})`);
+  lg.addColorStop(0.25, `rgba(155,126,255,${0.1 + beat * 0.15})`);
+  lg.addColorStop(0.5, `rgba(0,220,255,${0.18 + beat * 0.18})`);
+  lg.addColorStop(0.75, `rgba(224,100,255,${0.1 + beat * 0.12})`);
   lg.addColorStop(1, "transparent");
   ctx.fillStyle = lg;
   ctx.fillRect(0, accentY, W, 2);
 
-  // ── Watermark ──────────────────────────────────────────────────────────────
+  // ── Watermark ──────────────────────────────────────────────────────────
   ctx.font = "8px 'Inter', sans-serif";
   ctx.textAlign = "right";
+  ctx.shadowBlur = 0;
   ctx.fillStyle = "rgba(255,255,255,0.03)";
   ctx.fillText("UPPER VIBE MEDIA", W - 14, H - 4);
 }
@@ -214,7 +270,6 @@ export default function StageCoverVisualizer({ onReady, video, audioIntensityRef
   const videoRef = useRef(video);
   videoRef.current = video;
 
-  // Preload next thumbnail
   useEffect(() => {
     const id = video?.youtube_video_id || video?.title || null;
     if (id && id !== prevVideoIdRef.current) {
