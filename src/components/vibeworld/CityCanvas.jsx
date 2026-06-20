@@ -1469,12 +1469,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
         }
 
-        // ─── STAGE SCREEN — public rotating visualizer texture ───
+        // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
+        const audioBeat = audioIntensityRef?.current ?? 0;
+
+        // ─── STAGE SCREEN — visualizer canvas texture (only update when meaningful) ──
         const stageCanvasVal = stageCanvasRef.current;
         if (stageCanvasVal) {
           const stageScreen = scene.userData.stageScreen;
           if (stageScreen && !scene.userData._stageCanvasApplied) {
-            // Create canvas texture once
             const tex = new THREE.CanvasTexture(stageCanvasVal);
             tex.colorSpace = THREE.SRGBColorSpace;
             tex.minFilter = THREE.LinearFilter;
@@ -1483,15 +1485,18 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
             stageScreen.material.needsUpdate = true;
             scene.userData._stageCanvasApplied = true;
             scene.userData._stageTex = tex;
+            scene.userData._lastStageTexBeat = -1;
           }
-          // Mark texture dirty each frame so Three.js repaints from canvas
-          const stageTex = scene.userData._stageTex;
-          if (stageTex) stageTex.needsUpdate = true;
+          // Only re-upload texture when audio changes meaningfully — eliminates flicker
+          const lastBeat = scene.userData._lastStageTexBeat ?? -1;
+          if (Math.abs(audioBeat - lastBeat) > 0.002) {
+            const stageTex = scene.userData._stageTex;
+            if (stageTex) stageTex.needsUpdate = true;
+            scene.userData._lastStageTexBeat = audioBeat;
+          }
         }
 
         // ─── OCEAN WAVES — rolling from deep water toward shore ──
-        // Audio intensity modulates wave height for music-synced movement
-        const audioBeat = audioIntensityRef?.current ?? 0;
 
         const oceanMesh = scene.userData.ocean;
         const origArr = scene.userData._oceanOrig;
