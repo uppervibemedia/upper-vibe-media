@@ -245,10 +245,15 @@ function buildPark(scene) {
   stage.add(stageEdge);
 
   // Backdrop screen (glowing curved wall)
-  const screen = new Mesh(new BoxGeometry(7, 4, 0.2), mat("#1A1A3A", { roughness: 0.2, metalness: 0.7 }));
+  // Material is replaced at runtime with stage canvas texture if available
+  const screenMat = mat("#1A1A3A", { roughness: 0.2, metalness: 0.7 });
+  const screen = new Mesh(new BoxGeometry(7, 4, 0.2), screenMat);
   screen.position.set(0, 2.5, -16.4);
   screen.castShadow = true;
+  screen.name = "stageScreen";
   stage.add(screen);
+  scene.userData.stageScreen = screen;
+  scene.userData._stageCanvasApplied = false;
 
   // Screen glow frame
   const screenGlow = new Mesh(
@@ -1090,7 +1095,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange }) {
+export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1398,6 +1403,25 @@ export default function CityCanvas({ onLoaded, onPositionChange }) {
           // Reset shoulder Z during walk
           if (animParts.leftShoulder) animParts.leftShoulder.rotation.z += (0 - animParts.leftShoulder.rotation.z) * dt * 5;
           if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
+        }
+
+        // ─── STAGE SCREEN — public rotating visualizer texture ───
+        if (stageCanvas) {
+          const stageScreen = scene.userData.stageScreen;
+          if (stageScreen && !scene.userData._stageCanvasApplied) {
+            // Create canvas texture once
+            const tex = new THREE.CanvasTexture(stageCanvas);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            stageScreen.material = new MeshBasicMaterial({ map: tex, depthWrite: true });
+            stageScreen.material.needsUpdate = true;
+            scene.userData._stageCanvasApplied = true;
+            scene.userData._stageTex = tex;
+          }
+          // Mark texture dirty each frame so Three.js repaints from canvas
+          const stageTex = scene.userData._stageTex;
+          if (stageTex) stageTex.needsUpdate = true;
         }
 
         // ─── OCEAN WAVES — rolling from deep water toward shore ──

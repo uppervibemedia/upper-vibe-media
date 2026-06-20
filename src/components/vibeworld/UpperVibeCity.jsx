@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, Play, Pause, Home, Music4, Radio, Compass } from "lucide-react";
 import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
+import StageScreenVisualizer from "@/components/vibeworld/StageScreenVisualizer";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
@@ -13,10 +14,24 @@ export default function UpperVibeCity({ onExit }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0 });
+  const stageVisualizerRef = useRef(null);
+  const [stageCanvas, setStageCanvas] = useState(null);
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
+
+  // Grab canvas from StageScreenVisualizer once mounted
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const canvas = stageVisualizerRef.current?.getCanvas?.();
+      if (canvas && !stageCanvas) {
+        setStageCanvas(canvas);
+        clearInterval(timer);
+      }
+    }, 200);
+    return () => clearInterval(timer);
+  }, [stageCanvas]);
 
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
@@ -81,6 +96,7 @@ export default function UpperVibeCity({ onExit }) {
         <CityCanvas
           onLoaded={() => setLoading(false)}
           onPositionChange={(x, z, rot) => setPlayerPos({ x, z, rot })}
+          stageCanvas={stageCanvas}
         />
       </div>
 
@@ -192,6 +208,9 @@ export default function UpperVibeCity({ onExit }) {
           </div>
         </motion.div>
       )}
+
+      {/* Hidden — Stage screen visualizer canvas (shared public visuals) */}
+      <StageScreenVisualizer ref={stageVisualizerRef} />
 
       {/* Bottom now-playing bar */}
       {!loading && currentTrack && (
