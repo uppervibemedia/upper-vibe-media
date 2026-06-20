@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronLeft, ChevronRight, Sparkles, Disc3, Music4, Search } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Sparkles, Disc3, Music4, Search, Play, Pause, SkipForward } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer, requestAnalyser } from "@/context/PlayerContext";
 import CoverImage from "@/components/shared/CoverImage";
@@ -179,7 +179,7 @@ const DRAW_FNS = {
 };
 
 export default function VisualizerPanel({ open, onClose }) {
-  const { currentTrack, isPlaying, playTrack } = usePlayer() || {};
+  const { currentTrack, isPlaying, playTrack, togglePlay, handleNext: playerNext } = usePlayer() || {};
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const styleIdx = useRef(0);
@@ -437,19 +437,55 @@ export default function VisualizerPanel({ open, onClose }) {
         <div className="absolute bottom-0 left-0 right-0 z-10 flex justify-center px-4"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}>
           <div
-            className="flex items-center gap-3 px-4 py-2.5 rounded-2xl max-w-sm w-full"
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl"
             style={{
               background: "rgba(255,255,255,0.08)",
               border: "1px solid rgba(255,255,255,0.1)",
               backdropFilter: "blur(12px)",
             }}
           >
-            <Disc3 className="w-4 h-4 text-cyan-400" />
-            <div className="flex-1 min-w-0">
+            <Disc3 className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0 max-w-[140px] sm:max-w-[200px]">
               <p className="text-xs font-bold text-white truncate">{currentTrack.title}</p>
               <p className="text-[10px] text-white/35 truncate">
                 {currentTrack.artist_display || "Upper Vibe Media"}
               </p>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={(e) => { e.stopPropagation(); togglePlay?.(); }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="flex items-center justify-center rounded-full transition-all hover:bg-white/15 active:bg-white/25"
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  color: "rgba(255,255,255,0.8)",
+                  width: "40px",
+                  height: "40px",
+                  minWidth: "40px",
+                  minHeight: "40px",
+                  touchAction: "manipulation",
+                  pointerEvents: "auto",
+                }}
+              >
+                {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-[1px]" />}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); playerNext?.(); }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="flex items-center justify-center rounded-full transition-all hover:bg-white/15 active:bg-white/25"
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  color: "rgba(255,255,255,0.5)",
+                  width: "40px",
+                  height: "40px",
+                  minWidth: "40px",
+                  minHeight: "40px",
+                  touchAction: "manipulation",
+                  pointerEvents: "auto",
+                }}
+              >
+                <SkipForward className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </div>
