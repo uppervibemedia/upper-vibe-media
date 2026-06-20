@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Flag, UserX, AlertTriangle, Shield, Check } from "lucide-react";
+import { X, Send, Flag, UserX, AlertTriangle, Shield, Check, Mic, MicOff } from "lucide-react";
 
 export default function PrivateChatPanel({
   open,
@@ -16,6 +16,7 @@ export default function PrivateChatPanel({
   isMobile,
 }) {
   const [draft, setDraft] = useState("");
+  const [isMicMuted, setIsMicMuted] = useState(true);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -116,6 +117,24 @@ export default function PrivateChatPanel({
         </div>
 
         <div className="flex items-center gap-1">
+          {/* Mic toggle — circle, green when unmuted, red when muted */}
+          <button
+            onClick={() => setIsMicMuted((m) => !m)}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
+            style={{
+              background: isMicMuted ? "rgba(239,68,68,0.15)" : "rgba(0,230,118,0.15)",
+              border: `1.5px solid ${isMicMuted ? "rgba(239,68,68,0.5)" : "rgba(0,230,118,0.5)"}`,
+              minWidth: 36, minHeight: 36,
+              touchAction: "manipulation",
+            }}
+            title={isMicMuted ? "Mic Off" : "Mic On"}
+          >
+            {isMicMuted ? (
+              <MicOff className="w-4 h-4" style={{ color: "#EF4444" }} />
+            ) : (
+              <Mic className="w-4 h-4" style={{ color: "#00E676" }} />
+            )}
+          </button>{" "}
           <button
             onClick={onReport}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10"

@@ -450,46 +450,71 @@ export default function VoiceLoungePanel({ open, onClose, isMobile }) {
               )}
 
               {/* Controls */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center justify-center gap-5">
+                {/* Mic toggle — circle, red when muted, green when unmuted */}
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={toggleMute}
-                  className="flex flex-col items-center gap-1.5 py-4 rounded-2xl transition-all active:scale-95"
+                  className="flex flex-col items-center gap-1.5 transition-all active:scale-90"
                   style={{
-                    background: isMuted
-                      ? "rgba(239,68,68,0.12)"
-                      : "rgba(0,230,118,0.12)",
-                    border: `1px solid ${isMuted ? "rgba(239,68,68,0.3)" : "rgba(0,230,118,0.3)"}`,
-                    minHeight: 72,
                     touchAction: "manipulation",
                     pointerEvents: "auto",
                   }}
                 >
-                  {isMuted ? (
-                    <MicOff className="w-5 h-5 text-red-400" />
-                  ) : (
-                    <Mic className="w-5 h-5 text-green-400" />
-                  )}
+                  <div
+                    className="rounded-full flex items-center justify-center transition-all"
+                    style={{
+                      width: 64,
+                      height: 64,
+                      minWidth: 64,
+                      minHeight: 64,
+                      background: isMuted
+                        ? "rgba(239,68,68,0.15)"
+                        : "rgba(0,230,118,0.15)",
+                      border: `2px solid ${isMuted ? "rgba(239,68,68,0.5)" : "rgba(0,230,118,0.5)"}`,
+                      boxShadow: isMuted
+                        ? "0 0 16px rgba(239,68,68,0.25)"
+                        : "0 0 16px rgba(0,230,118,0.35)",
+                    }}
+                  >
+                    {isMuted ? (
+                      <MicOff className="w-6 h-6" style={{ color: "#EF4444" }} />
+                    ) : (
+                      <Mic className="w-6 h-6" style={{ color: "#00E676" }} />
+                    )}
+                  </div>
                   <span className="text-[10px] font-black tracking-wider"
                     style={{ color: isMuted ? "#EF4444" : "#00E676" }}>
-                    {isMuted ? "Unmute" : "Mute"}
+                    {isMuted ? "Mic Off" : "Mic On"}
                   </span>
                 </button>
 
+                {/* Leave button */}
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={leaveVoiceRoom}
-                  className="flex flex-col items-center gap-1.5 py-4 rounded-2xl transition-all active:scale-95"
+                  className="flex flex-col items-center gap-1.5 transition-all active:scale-90"
                   style={{
-                    background: "rgba(239,68,68,0.08)",
-                    border: "1px solid rgba(239,68,68,0.2)",
-                    minHeight: 72,
                     touchAction: "manipulation",
                     pointerEvents: "auto",
                   }}
                 >
-                  <PhoneOff className="w-5 h-5 text-red-400" />
-                  <span className="text-[10px] font-black tracking-wider text-red-400">Leave Voice</span>
+                  <div
+                    className="rounded-full flex items-center justify-center transition-all"
+                    style={{
+                      width: 56,
+                      height: 56,
+                      minWidth: 56,
+                      minHeight: 56,
+                      background: "rgba(239,68,68,0.1)",
+                      border: "1.5px solid rgba(239,68,68,0.3)",
+                    }}
+                  >
+                    <PhoneOff className="w-5 h-5" style={{ color: "#EF4444" }} />
+                  </div>
+                  <span className="text-[10px] font-black tracking-wider" style={{ color: "#EF4444" }}>
+                    Leave
+                  </span>
                 </button>
               </div>
 
