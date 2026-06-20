@@ -28,6 +28,10 @@ export default function UpperVibeCity({ onExit }) {
   const [stageScreenBounds, setStageScreenBounds] = useState({ visible: false, left: 0, top: 0, width: 0, height: 0 });
   const [stageScreenIframeKey, setStageScreenIframeKey] = useState(0);
   const stageIframeRef = useRef(null);
+  const stageMutedRef = useRef(true);
+  const stageScreenYouTubeRef = useRef(false);
+  stageMutedRef.current = stageVideoMuted;
+  stageScreenYouTubeRef.current = stageScreenYouTube;
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -60,19 +64,24 @@ export default function UpperVibeCity({ onExit }) {
   const handleStageToggleMute = () => {
     setStageVideoMuted((m) => {
       const next = !m;
-      // Send postMessage to iframe without reloading
       const iframe = stageIframeRef.current;
       if (iframe?.contentWindow) {
-        iframe.contentWindow.postMessage(
-          JSON.stringify({ event: "command", func: next ? "mute" : "unMute", args: "" }),
-          "*"
-        );
-      }
-      // Resume/pause global player
-      if (next) {
-        if (!isPlaying && togglePlay) togglePlay();
-      } else {
-        if (isPlaying && togglePlay) togglePlay();
+        if (next) {
+          // Muting
+          iframe.contentWindow.postMessage(
+            JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
+          );
+          if (!isPlaying && togglePlay) togglePlay();
+        } else {
+          // Unmuting — set full volume first, then unmute
+          iframe.contentWindow.postMessage(
+            JSON.stringify({ event: "command", func: "setVolume", args: [100] }), "*"
+          );
+          iframe.contentWindow.postMessage(
+            JSON.stringify({ event: "command", func: "unMute", args: "" }), "*"
+          );
+          if (isPlaying && togglePlay) togglePlay();
+        }
       }
       return next;
     });
@@ -82,6 +91,17 @@ export default function UpperVibeCity({ onExit }) {
     setStageScreenIframeKey((k) => k + 1);
   };
   const handleStageExitScreen = () => {
+    // Mute stage audio when exiting screen
+    if (!stageMutedRef.current) {
+      setStageVideoMuted(true);
+      const iframe = stageIframeRef.current;
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage(
+          JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
+        );
+      }
+      if (!isPlaying && togglePlay) togglePlay();
+    }
     setStageScreenYouTube(false);
   };
   const handleStagePlaySong = () => {
@@ -99,6 +119,41 @@ export default function UpperVibeCity({ onExit }) {
   };
 
   useLivePresence();
+
+  // ── Stage proximity: fade volume as user walks away ───────────────────
+  useEffect(() => {
+    const iframe = stageIframeRef.current;
+    if (!stageScreenYouTubeRef.current || !iframe?.contentWindow) return;
+
+    const STAGE_X = 0, STAGE_Z = -14;
+    const dx = playerPos.x - STAGE_X;
+    const dz = playerPos.z - STAGE_Z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    const INNER = 7;
+    const OUTER = 13;
+
+    if (dist > OUTER && !stageMutedRef.current) {
+      // Walked away — force mute
+      setStageVideoMuted(true);
+      iframe.contentWindow.postMessage(
+        JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
+      );
+      if (!isPlaying && togglePlay) togglePlay();
+    } else if (dist > INNER && !stageMutedRef.current) {
+      // Fade zone — volume drops with distance
+      const t = (dist - INNER) / (OUTER - INNER);
+      const vol = Math.round(Math.max(5, (1 - t) * 100));
+      iframe.contentWindow.postMessage(
+        JSON.stringify({ event: "command", func: "setVolume", args: [vol] }), "*"
+      );
+    } else if (dist <= INNER && !stageMutedRef.current) {
+      // Full volume near the stage
+      iframe.contentWindow.postMessage(
+        JSON.stringify({ event: "command", func: "setVolume", args: [100] }), "*"
+      );
+    }
+  }, [playerPos.x, playerPos.z, isPlaying, togglePlay]);
 
   // ── Read analyser frequency data for wave sync ────────────────────────
   useEffect(() => {
