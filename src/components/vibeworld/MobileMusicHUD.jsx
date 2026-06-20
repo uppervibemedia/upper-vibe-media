@@ -16,9 +16,9 @@ function getLayout() {
   const saBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-bottom)").trim()) || 0;
 
   return {
-    right: Math.max(16, saRight + 16),
-    bottom: Math.max(88, saBottom + 88),
-    maxWidth: isLandscape ? "min(240px, 40vw)" : "min(280px, 68vw)",
+    right: Math.max(8, saRight + 8),
+    bottom: Math.max(96, saBottom + 96),
+    maxWidth: isLandscape ? "min(200px, 36vw)" : "min(220px, 58vw)",
   };
 }
 
@@ -73,14 +73,14 @@ export default function MobileMusicHUD({ currentTrack, isPlaying, onTogglePlay, 
           right: pillRight,
           bottom: pillBottom,
           pointerEvents: "auto",
-          background: "rgba(0,0,0,0.72)",
-          backdropFilter: "blur(14px)",
-          WebkitBackdropFilter: "blur(14px)",
-          border: "1px solid rgba(255,255,255,0.12)",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
-          padding: compact ? "4px" : "8px 10px",
-          gap: compact ? "4px" : "8px",
-          maxWidth: compact ? "116px" : L.maxWidth,
+          background: "rgba(0,0,0,0.6)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 2px 16px rgba(0,0,0,0.35)",
+          padding: compact ? "3px" : "6px 8px",
+          gap: compact ? "3px" : "6px",
+          maxWidth: compact ? "100px" : L.maxWidth,
         }}
       >
         {/* Cover */}

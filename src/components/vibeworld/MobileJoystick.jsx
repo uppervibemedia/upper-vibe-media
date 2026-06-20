@@ -16,19 +16,19 @@ function getLayout() {
 
   if (isLandscape) {
     return {
-      joySize: 90,
-      knobSize: 34,
-      maxR: 37,
-      left: Math.max(52, saLeft + 52),
-      bottom: Math.max(52, saBottom + 52),
+      joySize: 76,
+      knobSize: 30,
+      maxR: 30,
+      left: Math.max(44, saLeft + 44),
+      bottom: Math.max(44, saBottom + 44),
     };
   }
   return {
-    joySize: 104,
-    knobSize: 42,
-    maxR: 42,
-    left: Math.max(28, saLeft + 28),
-    bottom: Math.max(104, saBottom + 104),
+    joySize: 82,
+    knobSize: 36,
+    maxR: 32,
+    left: Math.max(20, saLeft + 20),
+    bottom: Math.max(100, saBottom + 100),
   };
 }
 
@@ -169,11 +169,11 @@ export default function MobileJoystick({ onMove }) {
         alignItems: "center",
         justifyContent: "center",
         background: active
-          ? "rgba(255,255,255,0.16)"
-          : "rgba(255,255,255,0.06)",
-        border: `2px solid ${active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.12)"}`,
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
+          ? "rgba(255,255,255,0.12)"
+          : "rgba(255,255,255,0.04)",
+        border: `1.5px solid ${active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)"}`,
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
         boxShadow: active ? "0 0 18px rgba(0,180,220,0.25)" : "none",
         pointerEvents: "auto",
         touchAction: "none",
