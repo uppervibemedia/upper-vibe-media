@@ -97,7 +97,7 @@ function mat(hexColor, opts = {}) {
 function buildPark(scene) {
   // ─── SKY ────────────────────────────────────────────────────
   createCosmicSky(scene);
-  createSkyline(scene);
+  createCitySkyline(scene);
 
   // ─── LAYOUT CONSTANTS ────────────────────────────────────────
   const SHORELINE_Z = 20;
@@ -394,7 +394,6 @@ const SKY_FORWARD = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;   /
 const SKY_RIGHT   = `${BASE}/df9a0847f_ChatGPTImageJun19202612_41_21PM.png`;   // Full planet (centered) — East/Right
 const SKY_BACK    = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`;   // No planet — South/Back
 const SKY_LEFT    = `${BASE}/e7caceb54_ChatGPTImageJun19202612_41_07PM.png`;   // Ringed planet + moon — West/Left
-const SKYLINE_BUILDINGS = `${BASE}/69c8ef985_ChatGPTImageJun19202604_48_23PM2.png`;  // Downtown skyline backdrop
 
 // ═══════════════════════════════════════════════════════════════
 // COSMIC SKYBOX — camera-centered cube, BackSide textures
@@ -435,13 +434,14 @@ function createCosmicSky(scene) {
   bottomMat.depthWrite = false;
 
   // Materials array in BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
+  // North and South use the same galaxy-rich planet textures so all sides show cosmic sky
   const materials = [
-    new MeshBasicMaterial({ map: texRight,   side: THREE.BackSide, depthWrite: false }), // +X = Right/East  (planet)
-    new MeshBasicMaterial({ map: texLeft,    side: THREE.BackSide, depthWrite: false }), // -X = Left/West   (planet)
-    topMat,                                                                             // +Y = Top
-    bottomMat,                                                                          // -Y = Bottom
-    new MeshBasicMaterial({ map: texForward, side: THREE.BackSide, depthWrite: false }), // +Z = Forward/North (no planet)
-    new MeshBasicMaterial({ map: texBack,    side: THREE.BackSide, depthWrite: false }), // -Z = Back/South    (no planet)
+    new MeshBasicMaterial({ map: texRight, side: THREE.BackSide, depthWrite: false }), // +X = Right/East  (planet)
+    new MeshBasicMaterial({ map: texLeft,  side: THREE.BackSide, depthWrite: false }), // -X = Left/West   (planet)
+    topMat,                                                                           // +Y = Top
+    bottomMat,                                                                        // -Y = Bottom
+    new MeshBasicMaterial({ map: texRight, side: THREE.BackSide, depthWrite: false }), // +Z = North (galaxy)
+    new MeshBasicMaterial({ map: texLeft,  side: THREE.BackSide, depthWrite: false }), // -Z = South (galaxy)
   ];
 
   const skybox = new Mesh(new BoxGeometry(SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE), materials);
@@ -453,58 +453,117 @@ function createCosmicSky(scene) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// SKYLINE BACKDROP — 2D building border rim around playable area
+// DOWNTOWN SKYLINE — 3D buildings on outer park perimeter
 // ═══════════════════════════════════════════════════════════════
-function createSkyline(scene) {
-  const loader = new THREE.TextureLoader();
-  const tex = loader.load(SKYLINE_BUILDINGS);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = THREE.ClampToEdgeWrapping;
-  tex.wrapT = THREE.ClampToEdgeWrapping;
+function createCitySkyline(scene) {
+  const buildings = new Group();
+  buildings.name = "cityBuildings";
 
-  const skylineGroup = new Group();
-  skylineGroup.name = "skyline";
-  skylineGroup.renderOrder = 0;
+  // Building generator
+  function addBuilding(x, z, w, d, h, neonColor) {
+    const group = new Group();
 
-  const DIST = 27; // just inside skybox edge
-  const PLANE_W = 56;
-  const PLANE_H = 7;
+    // Main body — deep dark blue/purple
+    const bodyGeo = new BoxGeometry(w, h, d);
+    const bodyMat = mat("#0d0b30", { roughness: 0.6 });
+    const body = new Mesh(bodyGeo, bodyMat);
+    body.position.y = h / 2;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    group.add(body);
 
-  function makePlane(flip) {
-    const geo = new PlaneGeometry(PLANE_W, PLANE_H);
-    const mat = new MeshBasicMaterial();
-    mat.map = tex;
-    mat.transparent = true;
-    mat.opacity = 0.92;
-    mat.depthWrite = false;
-    mat.side = THREE.DoubleSide;
-    return new Mesh(geo, mat);
+    // Window rows — thin glowing strips
+    const neonBasic = new MeshBasicMaterial();
+    neonBasic.color = new Color(neonColor);
+    neonBasic.depthWrite = false;
+
+    const windowRows = Math.floor(h / 1.2);
+    for (let row = 1; row <= windowRows; row++) {
+      const wy = row * 1.2;
+      if (wy > h - 0.4) continue;
+
+      // Front face
+      const winGeo = new PlaneGeometry(w * 0.7, 0.08);
+      const winFront = new Mesh(winGeo, neonBasic);
+      winFront.position.set(0, wy, d / 2 + 0.01);
+      group.add(winFront);
+
+      // Back face
+      const winBack = new Mesh(winGeo, neonBasic);
+      winBack.position.set(0, wy, -d / 2 - 0.01);
+      winBack.rotation.y = Math.PI;
+      group.add(winBack);
+    }
+
+    // Top accent strip
+    const topGeo = new BoxGeometry(w + 0.05, 0.06, d + 0.05);
+    const top = new Mesh(topGeo, neonBasic);
+    top.position.y = h + 0.03;
+    group.add(top);
+
+    // Antenna/spire on taller buildings
+    if (h > 5) {
+      const spireGeo = new CylinderGeometry(0.02, 0.04, 0.8, 6);
+      const spire = new Mesh(spireGeo, neonBasic);
+      spire.position.y = h + 0.45;
+      group.add(spire);
+    }
+
+    group.position.set(x, 0, z);
+    buildings.add(group);
   }
 
-  // North — behind park
-  const north = makePlane();
-  north.position.set(0, PLANE_H / 2, -DIST);
-  skylineGroup.add(north);
+  // ─── NORTH ROW (behind player, Z = -22) ─────────────────────
+  const northBuildings = [
+    [-24, -21, 1.8, 1.4, 6.5, "#00E5FF"],
+    [-21, -21.5, 1.4, 1.2, 4.8, "#9B7EFF"],
+    [-18, -21, 1.6, 1.3, 7.2, "#00E5FF"],
+    [-15, -21.5, 1.2, 1.0, 3.5, "#A855F7"],
+    [-12, -21, 1.8, 1.4, 8.0, "#00E5FF"],
+    [-9, -21.5, 1.3, 1.1, 5.5, "#9B7EFF"],
+    [-6, -21, 1.5, 1.3, 6.0, "#00E5FF"],
+    [-3, -21.5, 1.4, 1.2, 4.2, "#A855F7"],
+    [0, -21, 2.0, 1.5, 9.0, "#00E5FF"],
+    [3, -21.5, 1.3, 1.1, 5.8, "#9B7EFF"],
+    [6, -21, 1.6, 1.4, 6.5, "#00E5FF"],
+    [9, -21.5, 1.4, 1.2, 4.5, "#A855F7"],
+    [12, -21, 1.7, 1.3, 7.0, "#00E5FF"],
+    [15, -21.5, 1.3, 1.0, 3.8, "#9B7EFF"],
+    [18, -21, 1.5, 1.4, 6.8, "#00E5FF"],
+    [21, -21.5, 1.4, 1.2, 5.0, "#A855F7"],
+    [24, -21, 1.8, 1.3, 7.5, "#00E5FF"],
+  ];
+  northBuildings.forEach(([x, z, w, d, h, c]) => addBuilding(x, z, w, d, h, c));
 
-  // South — behind ocean horizon
-  const south = makePlane();
-  south.position.set(0, PLANE_H / 2, DIST);
-  south.rotation.y = Math.PI;
-  skylineGroup.add(south);
+  // ─── WEST ROW (left side, X = -27) ──────────────────────────
+  const westBuildings = [
+    [-27, -19, 1.3, 1.5, 5.5, "#9B7EFF"],
+    [-27, -16, 1.3, 1.8, 8.0, "#00E5FF"],
+    [-27, -13, 1.3, 1.4, 4.2, "#A855F7"],
+    [-27, -10, 1.3, 1.6, 7.0, "#00E5FF"],
+    [-27, -7, 1.3, 1.3, 5.8, "#9B7EFF"],
+    [-27, -4, 1.3, 1.7, 6.5, "#00E5FF"],
+    [-27, -1, 1.3, 1.5, 4.5, "#A855F7"],
+    [-27, 2, 1.3, 1.8, 9.0, "#00E5FF"],
+    [-27, 5, 1.3, 1.4, 5.0, "#9B7EFF"],
+  ];
+  westBuildings.forEach(([x, z, w, d, h, c]) => addBuilding(x, z, w, d, h, c));
 
-  // West — left side
-  const west = makePlane();
-  west.position.set(-DIST, PLANE_H / 2, 0);
-  west.rotation.y = Math.PI / 2;
-  skylineGroup.add(west);
+  // ─── EAST ROW (right side, X = 27) ──────────────────────────
+  const eastBuildings = [
+    [27, -19, 1.3, 1.6, 7.0, "#00E5FF"],
+    [27, -16, 1.3, 1.3, 4.8, "#9B7EFF"],
+    [27, -13, 1.3, 1.7, 8.5, "#00E5FF"],
+    [27, -10, 1.3, 1.5, 5.5, "#A855F7"],
+    [27, -7, 1.3, 1.8, 6.8, "#00E5FF"],
+    [27, -4, 1.3, 1.4, 4.0, "#9B7EFF"],
+    [27, -1, 1.3, 1.6, 7.5, "#00E5FF"],
+    [27, 2, 1.3, 1.5, 5.2, "#A855F7"],
+    [27, 5, 1.3, 1.7, 8.0, "#00E5FF"],
+  ];
+  eastBuildings.forEach(([x, z, w, d, h, c]) => addBuilding(x, z, w, d, h, c));
 
-  // East — right side
-  const east = makePlane();
-  east.position.set(DIST, PLANE_H / 2, 0);
-  east.rotation.y = -Math.PI / 2;
-  skylineGroup.add(east);
-
-  scene.add(skylineGroup);
+  scene.add(buildings);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -927,7 +986,6 @@ export default function CityCanvas({ onLoaded }) {
 
       // Skybox — must follow camera so sky always feels infinitely far away
       const skybox = scene.getObjectByName("skybox");
-      const skylineGroup = scene.getObjectByName("skyline");
 
       let animId;
       const animate = () => {
@@ -1192,11 +1250,6 @@ export default function CityCanvas({ onLoaded }) {
           skybox.position.copy(camera.position);
           skybox.rotation.y += dt * 0.015; // Very slow Y-axis drift
           skybox.rotation.x += dt * 0.003; // Tiny tilt for depth
-        }
-
-        // ─── SKYLINE — follows camera, sits behind playable land ──
-        if (skylineGroup) {
-          skylineGroup.position.copy(camera.position);
         }
 
         renderer.render(scene, camera);
