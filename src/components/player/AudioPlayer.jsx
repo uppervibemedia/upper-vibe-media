@@ -20,6 +20,7 @@ export default function AudioPlayer() {
     handleNext,
     handlePrev,
     lastTimeRef,
+    sourceType,
   } = usePlayer();
 
   const { user } = useAuth();
@@ -259,24 +260,51 @@ export default function AudioPlayer() {
 
             {/* Controls */}
             <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-              <button onClick={handlePrev} className="text-muted-foreground/40 hover:text-foreground/70 transition-colors hidden md:flex">
-                <SkipBack className="w-4 h-4" />
+              <button
+                onClick={() => {
+                  handlePrev();
+                  // Fallback for non-radio: restart current track
+                  if (sourceType !== "radio") {
+                    const a = audioRef.current;
+                    if (a && a.currentTime > 3) a.currentTime = 0;
+                  }
+                }}
+                className="text-muted-foreground/40 hover:text-foreground/70 transition-colors flex"
+                style={{ minWidth: "44px", minHeight: "44px", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <SkipBack className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={togglePlay}
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-105"
+                className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95"
                 style={{
                   background: `linear-gradient(135deg, rgba(${themeRgb},0.9), rgb(${themeRgb}))`,
-                  boxShadow: `0 0 20px rgba(${themeRgb},0.45)`
+                  boxShadow: `0 0 20px rgba(${themeRgb},0.45)`,
+                  minWidth: "44px",
+                  minHeight: "44px",
+                  touchAction: "manipulation",
                 }}
               >
                 {isPlaying
-                  ? <Pause className="w-4 h-4 text-black" />
-                  : <Play  className="w-4 h-4 text-black ml-0.5" />
+                  ? <Pause className="w-3.5 h-3.5 md:w-4 md:h-4 text-black" />
+                  : <Play  className="w-3.5 h-3.5 md:w-4 md:h-4 text-black ml-0.5" />
                 }
               </button>
-              <button onClick={handleNext} className="text-muted-foreground/40 hover:text-foreground/70 transition-colors hidden md:flex">
-                <SkipForward className="w-4 h-4" />
+              <button
+                onClick={() => {
+                  handleNext();
+                  // Fallback for non-radio: seek forward 15s
+                  if (sourceType !== "radio") {
+                    const a = audioRef.current;
+                    if (a && a.duration && a.currentTime < a.duration - 2) {
+                      a.currentTime = Math.min(a.currentTime + 15, a.duration - 1);
+                    }
+                  }
+                }}
+                className="text-muted-foreground/40 hover:text-foreground/70 transition-colors flex"
+                style={{ minWidth: "44px", minHeight: "44px", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <SkipForward className="w-3.5 h-3.5" />
               </button>
             </div>
 

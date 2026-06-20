@@ -937,6 +937,8 @@ export function PlayerProvider({ children }) {
 
     if (!audio.paused && !audio.ended) {
       // Currently playing — pause it
+      setIsPlaying(false);
+      setMediaSessionState(false);
       safePause(audio, "toggle-pause");
       return;
     }
@@ -951,21 +953,24 @@ export function PlayerProvider({ children }) {
       audio.load();
     }
 
+    // Instant UI feedback — set playing state immediately
+    setIsPlaying(true);
+    setMediaSessionState(true);
+
     // iOS: call play() synchronously within gesture
     const playPromise = audio.play();
     if (playPromise && typeof playPromise.then === "function") {
       playPromise.then(() => {
         enforceRate(audio);
         // Belt-and-suspenders: resume AudioContext after play() resolves.
-        // On iOS Safari, suspendAudioContext() on pause can leave the context
-        // suspended; play() on the audio element succeeds but the context may
-        // still be suspended for 50-100ms causing an audible glitch on resume.
         resumeAudioContext().catch(() => {});
         startWatchdog(audio);
         console.log("[Player] togglePlay resumed | rate:", audio.playbackRate, "| ctxState:", _audioCtx?.state ?? "none");
       }).catch((e) => {
         if (e.name !== "AbortError") {
           console.warn("[Player] togglePlay play() error:", e.name, e.message);
+          setIsPlaying(false);
+          setMediaSessionState(false);
           // Fall back to safePlay which handles buffer-evicted state
           safePlay(audio, "toggle-play-fallback");
         }
