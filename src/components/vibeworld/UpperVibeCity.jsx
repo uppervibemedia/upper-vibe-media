@@ -429,21 +429,21 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         <button
           onClick={onExit}
           onTouchStart={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 rounded-lg font-bold transition-all hover:brightness-110 active:scale-95"
+          className="inline-flex items-center gap-0.5 rounded-full font-bold transition-all hover:brightness-110 active:scale-95"
           style={{
-            background: "rgba(255,255,255,0.15)",
+            background: "rgba(255,255,255,0.12)",
             backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            color: "#fff",
-            padding: isMobile ? "4px 8px" : "6px 12px",
-            fontSize: isMobile ? "10px" : "12px",
-            minWidth: isMobile ? "36px" : "44px",
-            minHeight: isMobile ? "36px" : "44px",
+            border: "1px solid rgba(255,255,255,0.15)",
+            color: "rgba(255,255,255,0.8)",
+            padding: isMobile ? "3px 6px" : "6px 12px",
+            fontSize: isMobile ? "9px" : "12px",
+            minWidth: isMobile ? "28px" : "44px",
+            minHeight: isMobile ? "28px" : "44px",
             touchAction: "manipulation",
           }}
         >
-          <ChevronLeft style={{ width: isMobile ? "12px" : "14px", height: isMobile ? "12px" : "14px" }} />
-          {isMobile ? "Exit" : "Exit Upper Vibe City"}
+          <ChevronLeft style={{ width: isMobile ? "10px" : "14px", height: isMobile ? "10px" : "14px" }} />
+          {isMobile ? "" : "Exit Upper Vibe City"}
         </button>
 
         {/* Exit Watch Mode — persistent when watching stage on mobile */}
@@ -467,18 +467,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         )}
 
         <div
-          className="flex items-center rounded-lg"
+          className="flex items-center rounded-full"
           style={{
-            background: "rgba(255,255,255,0.15)",
+            background: "rgba(255,255,255,0.08)",
             backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            padding: isMobile ? "4px 8px" : "6px 12px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            padding: isMobile ? "3px 6px" : "6px 12px",
           }}
         >
-          <span className="font-heading font-black text-white/80"
+          <span className="font-heading font-black text-white/50"
             style={{
-              fontSize: isMobile ? "8px" : "10px",
-              letterSpacing: isMobile ? "0.15em" : "0.2em",
+              fontSize: isMobile ? "7px" : "10px",
+              letterSpacing: isMobile ? "0.12em" : "0.2em",
             }}
           >
             {isMobile ? "UVC" : "UPPER VIBE CITY"}

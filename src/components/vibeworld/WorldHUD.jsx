@@ -97,33 +97,34 @@ export default function WorldHUD({
 
   return (
     <>
-      {/* ── Zone indicator (top-center) ───────────────────────── */}
+      {/* ── Zone indicator — left on mobile, centered on desktop ── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="absolute top-0 left-1/2 z-[52] pointer-events-none"
+        className="absolute top-0 z-[50] pointer-events-none"
         style={{
-          transform: "translateX(-50%)",
-          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 4.5rem)" : "4rem",
-          maxWidth: isMobile ? "60vw" : "none",
+          left: isMobile ? "4px" : "50%",
+          transform: isMobile ? "none" : "translateX(-50%)",
+          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 4.6rem)" : "4rem",
+          maxWidth: isMobile ? "36vw" : "none",
           overflow: "hidden",
         }}
       >
         {zone && (
           <div
-            className="flex items-center gap-1.5 rounded-full"
+            className="flex items-center gap-1 rounded-full"
             style={{
-              background: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              padding: isMobile ? "3px 8px" : "6px 16px",
+              background: "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              padding: isMobile ? "2px 6px" : "6px 16px",
             }}
           >
-            {ZoneIcon && <ZoneIcon style={{ width: "12px", height: "12px" }} className="text-cyan-400 flex-shrink-0" />}
-            <span className="font-black tracking-wider text-white/80 truncate"
-              style={{ fontSize: isMobile ? "9px" : "11px" }}
+            {ZoneIcon && <ZoneIcon style={{ width: isMobile ? "10px" : "14px", height: isMobile ? "10px" : "14px" }} className="text-cyan-400 flex-shrink-0" />}
+            <span className="font-black tracking-wider text-white/60 truncate"
+              style={{ fontSize: isMobile ? "8px" : "11px" }}
             >
-              {isMobile ? (zone.name.length > 12 ? zone.name.substring(0, 12) + "..." : zone.name) : zone.name}
+              {isMobile ? (zone.name.length > 8 ? zone.name.substring(0, 8) + "…" : zone.name) : zone.name}
             </span>
           </div>
         )}
