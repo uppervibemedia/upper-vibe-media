@@ -1,14 +1,13 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Pause, Music4, Tv2, MessageCircle, Store, Waves,
-  Compass, X, Disc3, Sparkles, Library,
+  Music4, Tv2, MessageCircle, Store, Waves,
+  Compass, Sparkles, Library, Video, SkipForward,
+  ExternalLink, Volume2, VolumeX,
 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
 import { detectZone, ZONES } from "./zoneDetection";
-import CoverImage from "@/components/shared/CoverImage";
 import MusicLibraryPanel from "./panels/MusicLibraryPanel";
 import LoungePanel from "./panels/LoungePanel";
 import VisualizerPanel from "./panels/VisualizerPanel";
@@ -25,6 +24,14 @@ const ZONE_ICONS = {
 export default function WorldHUD({
   playerX, playerZ, playerRot,
   isMobile, loading,
+  stageVideoTitle,
+  stageVideoMuted,
+  stageVideosCount,
+  onStageWatchVideo,
+  onStageNextVideo,
+  onStageOpenFull,
+  onStageToggleMute,
+  onStagePlaySong,
 }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const zone = detectZone(playerX, playerZ);
@@ -34,36 +41,6 @@ export default function WorldHUD({
   const [loungePanelOpen, setLoungePanelOpen] = useState(false);
   const [visualizerOpen, setVisualizerOpen] = useState(false);
   const [chillMode, setChillMode] = useState(false);
-
-  // Featured tracks for stage
-  const [featuredTracks, setFeaturedTracks] = useState([]);
-  const featuredIdxRef = useRef(0);
-
-  useEffect(() => {
-    // Load featured tracks once
-    base44.entities.Track.filter({ status: "published", is_featured: true }, "-created_date", 20)
-      .then(setFeaturedTracks)
-      .catch(() => {});
-  }, []);
-
-  const handleStagePlayFeatured = useCallback(() => {
-    if (featuredTracks.length === 0) return;
-    const idx = featuredIdxRef.current % featuredTracks.length;
-    const track = featuredTracks[idx];
-    if (track && playTrack) {
-      playTrack(track, "song");
-    }
-  }, [featuredTracks, playTrack]);
-
-  const handleStageNext = useCallback(() => {
-    featuredIdxRef.current += 1;
-    if (featuredTracks.length === 0) return;
-    const idx = featuredIdxRef.current % featuredTracks.length;
-    const track = featuredTracks[idx];
-    if (track && playTrack) {
-      playTrack(track, "song");
-    }
-  }, [featuredTracks, playTrack]);
 
   const handleOpenMusicLibrary = useCallback(() => {
     setMusicPanelOpen(true);
@@ -145,36 +122,98 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-1.5 px-4"
             style={{
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 14rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
             }}
           >
-            <button
-              onClick={handleStagePlayFeatured}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
-                color: "#fff",
-                boxShadow: "0 0 20px rgba(155,126,255,0.4)",
-              }}
-            >
-              <Disc3 className="w-3.5 h-3.5" />
-              Play Featured Track
-            </button>
-            <button
-              onClick={handleStageNext}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.15)",
-                color: "rgba(255,255,255,0.6)",
-              }}
-            >
-              Next Featured Song →
-            </button>
+            {/* Now showing label */}
+            {stageVideoTitle && (
+              <p className="text-[10px] text-white/50 font-medium tracking-wider mb-1 truncate max-w-[80vw]">
+                Now Showing: {stageVideoTitle}
+              </p>
+            )}
+
+            <div className="flex flex-wrap gap-2 justify-center">
+              {/* Watch Featured Video */}
+              <button
+                onClick={onStageWatchVideo}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
+                  color: "#fff",
+                  boxShadow: "0 0 20px rgba(155,126,255,0.4)",
+                }}
+              >
+                <Video className="w-3.5 h-3.5" />
+                Watch Featured Video
+              </button>
+
+              {/* Next Video */}
+              <button
+                onClick={onStageNextVideo}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "rgba(255,255,255,0.6)",
+                }}
+              >
+                <SkipForward className="w-3 h-3" />
+                Next Video
+              </button>
+
+              {/* Open Full Video */}
+              <button
+                onClick={onStageOpenFull}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "rgba(255,255,255,0.6)",
+                }}
+              >
+                <ExternalLink className="w-3 h-3" />
+                YouTube
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-center mt-1">
+              {/* Play This Song */}
+              {onStagePlaySong && (
+                <button
+                  onClick={onStagePlaySong}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg,#0080B8,#00A0DC)",
+                    color: "#fff",
+                  }}
+                >
+                  <Music4 className="w-3 h-3" />
+                  Play This Song
+                </button>
+              )}
+
+              {/* Mute / Unmute Stage */}
+              {onStageToggleMute && (
+                <button
+                  onClick={onStageToggleMute}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  style={{
+                    background: stageVideoMuted
+                      ? "rgba(255,255,255,0.08)"
+                      : "rgba(124,58,237,0.3)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: stageVideoMuted ? "rgba(255,255,255,0.6)" : "#fff",
+                  }}
+                >
+                  {stageVideoMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                  {stageVideoMuted ? "Stage Muted" : "Stage Live"}
+                </button>
+              )}
+            </div>
           </motion.div>
         )}
 

@@ -3,11 +3,13 @@ import { motion } from "framer-motion";
 import { ChevronLeft, Play, Pause, Home, Music4, Radio, Compass } from "lucide-react";
 import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
-import StageScreenVisualizer from "@/components/vibeworld/StageScreenVisualizer";
+import StageVideoScreen from "@/components/vibeworld/StageVideoScreen";
+import StageVideoPlayer from "@/components/vibeworld/StageVideoPlayer";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
 import { useLivePresence } from "@/hooks/useLivePresence";
+import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
 
 export default function UpperVibeCity({ onExit }) {
@@ -16,14 +18,88 @@ export default function UpperVibeCity({ onExit }) {
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0 });
   const [stageCanvas, setStageCanvas] = useState(null);
 
+  // ── Stage video state ──────────────────────────────────────────────────
+  const [stageVideos, setStageVideos] = useState([]);
+  const [stageVideoIdx, setStageVideoIdx] = useState(0);
+  const [stageVideoMuted, setStageVideoMuted] = useState(true);
+  const [stageVideoPlayerOpen, setStageVideoPlayerOpen] = useState(false);
+  const stageVideoTimerRef = useRef(null);
+
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
 
-  // Called by StageScreenVisualizer once the canvas is mounted and animating
-  const handleStageCanvasReady = useRef((canvas) => {
-    if (canvas && !stageCanvas) setStageCanvas(canvas);
-  });
+  // ── Fetch Academy videos for the stage ─────────────────────────────────
+  useEffect(() => {
+    base44.entities.AcademyLesson.filter(
+      { status: "published", is_featured: true },
+      "-display_order",
+      20
+    )
+      .then((lessons) => {
+        if (lessons?.length > 0) {
+          setStageVideos(lessons);
+        } else {
+          // Fallback: fetch any published lessons
+          base44.entities.AcademyLesson.filter(
+            { status: "published" },
+            "-display_order",
+            20
+          ).then(setStageVideos).catch(() => {});
+        }
+      })
+      .catch(() => {
+        // Fallback
+        base44.entities.AcademyLesson.filter(
+          { status: "published" },
+          "-display_order",
+          20
+        ).then(setStageVideos).catch(() => {});
+      });
+  }, []);
+
+  // ── Auto-rotate stage video every 60 seconds ───────────────────────────
+  useEffect(() => {
+    if (stageVideos.length <= 1) return;
+    const timer = setInterval(() => {
+      setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
+    }, 60000);
+    stageVideoTimerRef.current = timer;
+    return () => clearInterval(timer);
+  }, [stageVideos.length]);
+
+  // ── Stage video controls ───────────────────────────────────────────────
+  const handleStageWatchVideo = () => setStageVideoPlayerOpen(true);
+  const handleStageNextVideo = () => {
+    if (stageVideos.length <= 1) return;
+    setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
+    // Reset rotation timer
+    if (stageVideoTimerRef.current) clearInterval(stageVideoTimerRef.current);
+    const timer = setInterval(() => {
+      setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
+    }, 60000);
+    stageVideoTimerRef.current = timer;
+  };
+  const handleStageToggleMute = () => setStageVideoMuted((m) => !m);
+  const handleStageOpenFull = () => {
+    const video = stageVideos[stageVideoIdx];
+    if (video?.video_url) window.open(video.video_url, "_blank", "noopener");
+  };
+
+  const handleStagePlaySong = () => {
+    const video = stageVideos[stageVideoIdx];
+    if (!video?.title || !allTracks?.length || !playTrack) return;
+    // Try to find a matching track by title
+    const titleLower = video.title.toLowerCase();
+    const match = allTracks.find(
+      (t) => t.title && t.title.toLowerCase() === titleLower
+    ) || allTracks.find(
+      (t) => t.title && titleLower.includes(t.title.toLowerCase())
+    ) || allTracks.find(
+      (t) => t.title && t.title.toLowerCase().includes(titleLower.split(" - ")[0]?.split(" | ")[0] || "")
+    );
+    if (match) playTrack(match, "song");
+  };
 
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
@@ -162,6 +238,14 @@ export default function UpperVibeCity({ onExit }) {
         playerRot={playerPos.rot}
         isMobile={isMobile}
         loading={loading}
+        stageVideoTitle={stageVideos[stageVideoIdx]?.title || null}
+        stageVideoMuted={stageVideoMuted}
+        stageVideosCount={stageVideos.length}
+        onStageWatchVideo={handleStageWatchVideo}
+        onStageNextVideo={handleStageNextVideo}
+        onStageOpenFull={handleStageOpenFull}
+        onStageToggleMute={handleStageToggleMute}
+        onStagePlaySong={handleStagePlaySong}
       />
 
       {/* Bottom navigation bar */}
@@ -201,8 +285,22 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Stage screen visualizer — feeds canvas to CityCanvas for the public stage display */}
-      <StageScreenVisualizer onReady={(c) => setStageCanvas(c)} />
+      {/* Stage video screen — feeds canvas to CityCanvas for the public stage display */}
+      <StageVideoScreen
+        videos={stageVideos}
+        currentIndex={stageVideoIdx}
+        onReady={(c) => setStageCanvas(c)}
+      />
+
+      {/* Fullscreen stage video player overlay */}
+      <StageVideoPlayer
+        open={stageVideoPlayerOpen}
+        video={stageVideos[stageVideoIdx] || null}
+        muted={stageVideoMuted}
+        onClose={() => setStageVideoPlayerOpen(false)}
+        onToggleMute={handleStageToggleMute}
+        onPlaySong={null}
+      />
 
       {/* Bottom now-playing bar */}
       {!loading && currentTrack && (
