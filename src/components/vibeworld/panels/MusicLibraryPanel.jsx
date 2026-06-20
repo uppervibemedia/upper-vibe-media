@@ -56,7 +56,8 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="absolute inset-x-0 bottom-0 z-30 rounded-t-3xl overflow-hidden"
+      className="absolute inset-x-0 bottom-0 rounded-t-3xl overflow-hidden"
+      style={{ zIndex: 65 }}
       style={{
         height: isMobile ? "85dvh" : "75vh",
         background: "rgba(8,8,24,0.97)",

@@ -280,7 +280,14 @@ export default function VisualizerPanel({ open, onClose }) {
         <button
           onClick={onClose}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/15"
-          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)" }}
+          style={{
+            background: "rgba(255,255,255,0.1)",
+            color: "rgba(255,255,255,0.7)",
+            minWidth: "44px",
+            minHeight: "44px",
+            touchAction: "manipulation",
+            pointerEvents: "auto",
+          }}
         >
           <X className="w-3.5 h-3.5" /> Exit
         </button>

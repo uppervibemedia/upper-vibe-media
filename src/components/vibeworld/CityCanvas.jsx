@@ -1081,23 +1081,43 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 
   const findJoyY = useCallback(() => window.innerHeight - JOY_BASE_Y_OFFSET, []);
 
+  const isInteractiveTarget = useCallback((el) => {
+    while (el && el !== document.body) {
+      const tag = el.tagName?.toLowerCase();
+      const role = el.getAttribute?.("role");
+      // Skip touch capture for buttons, links, inputs, and interactive elements
+      if (tag === "button" || tag === "a" || tag === "input" || tag === "textarea" || tag === "select") return true;
+      if (role === "button" || role === "link" || role === "tab") return true;
+      if (el.classList?.contains("pointer-events-auto")) return true;
+      // Stop at the canvas or touch layer — don't walk into unrelated DOM
+      if (el.dataset?.touchLayer === "true") break;
+      el = el.parentElement;
+    }
+    return false;
+  }, []);
+
   const handleTouchStart = useCallback((e) => {
-    e.preventDefault();
     for (const t of [...e.changedTouches]) {
+      // Skip if the touch landed on a button/link/input — let the browser handle it
+      if (isInteractiveTarget(t.target)) continue;
+
       if (t.clientX < window.innerWidth / 2 && joyTouchId.current === null) {
+        e.preventDefault();
         joyTouchId.current = t.identifier;
       } else if (t.clientX >= window.innerWidth / 2 && camTouchId.current === null) {
+        e.preventDefault();
         camTouchId.current = t.identifier;
         camBaseRef.current = { x: t.clientX, y: t.clientY };
       }
     }
-  }, []);
+  }, [isInteractiveTarget]);
 
   const handleTouchMove = useCallback((e) => {
-    e.preventDefault();
     const baseY = findJoyY();
+    let consumed = false;
     for (const t of [...e.touches]) {
       if (t.identifier === joyTouchId.current) {
+        consumed = true;
         let dx = t.clientX - JOY_BASE_X;
         let dy = baseY - t.clientY;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -1108,15 +1128,17 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
         onMove?.(dx / MAX_R, dy / MAX_R);
       }
       if (t.identifier === camTouchId.current) {
+        consumed = true;
         const dx = t.clientX - camBaseRef.current.x;
         onCameraDelta?.(dx);
         camBaseRef.current = { x: t.clientX, y: t.clientY };
       }
     }
+    if (consumed) e.preventDefault();
   }, [onMove, onCameraDelta, findJoyY]);
 
   const handleTouchEnd = useCallback((e) => {
-    e.preventDefault();
+    let consumed = false;
     for (const t of [...e.changedTouches]) {
       if (t.identifier === joyTouchId.current) {
         joyTouchId.current = null;
@@ -1124,18 +1146,22 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
         setThumbX(0);
         setThumbY(0);
         onMove?.(0, 0);
+        consumed = true;
       }
       if (t.identifier === camTouchId.current) {
         camTouchId.current = null;
+        consumed = true;
       }
     }
+    if (consumed) e.preventDefault();
   }, [onMove]);
 
   return (
     <>
-      {/* Touch capture layer — lower z-index so UI buttons above can receive taps */}
+      {/* Touch capture layer — only captures non-interactive touches (buttons/links pass through) */}
       <div
-        className="absolute inset-0 z-30"
+        className="absolute inset-0 z-30 pointer-events-none"
+        data-touch-layer="true"
         style={{
           touchAction: "none",
           userSelect: "none",

@@ -357,6 +357,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             background: "rgba(255,255,255,0.3)",
             backdropFilter: "blur(12px)",
             color: "#2E7D32",
+            minWidth: "44px",
+            minHeight: "44px",
+            touchAction: "manipulation",
           }}
         >
           <ChevronLeft className="w-3.5 h-3.5" /> Exit Park
@@ -375,7 +378,28 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </div>
       </motion.div>
 
-      {/* Controls hint — auto-hides after 12 seconds */}
+      {/* Portrait orientation hint — small, non-blocking, auto-hides */}
+      {!loading && isMobile && showControlsHint && !stageWatching && !stageFullScreen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute top-1/3 left-0 right-0 z-[54] flex justify-center pointer-events-none"
+        >
+          <div
+            className="px-3 py-1 rounded-full"
+            style={{
+              background: "rgba(0,0,0,0.45)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <p className="text-[9px] font-medium tracking-wide text-white/35">Rotate for a wider view</p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Controls hint — auto-hides after 7 seconds */}
       {!loading && showControlsHint && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -436,21 +460,22 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         chatAgeConfirmed={chatAgeConfirmed}
       />
 
-      {/* Bottom navigation bar — sits closest to screen edge */}
+      {/* Bottom navigation bar — compact on mobile */}
       {!loading && (
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="absolute bottom-0 left-0 right-0 z-[55] flex justify-center px-4"
-          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" : "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+          className="absolute bottom-0 left-0 right-0 z-[55] flex justify-center px-2"
+          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 4rem)" : "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
         >
           <div
-            className="flex items-center justify-around gap-1 px-2 py-2 rounded-2xl max-w-sm w-full"
+            className="flex items-center justify-around gap-0.5 px-1 py-1.5 rounded-2xl max-w-sm w-full"
             style={{
               background: "rgba(255,255,255,0.35)",
               border: "1px solid rgba(255,255,255,0.3)",
               backdropFilter: "blur(16px)",
+              minHeight: "44px",
             }}
           >
             {[
@@ -462,8 +487,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
               <Link
                 key={item.to}
                 to={item.to}
-                className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-all hover:bg-white/20"
-                style={{ color: item.active ? "#2E7D32" : "rgba(0,0,0,0.5)" }}
+                className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all hover:bg-white/20"
+                style={{ color: item.active ? "#2E7D32" : "rgba(0,0,0,0.5)", minWidth: "44px", minHeight: "44px", justifyContent: "center" }}
               >
                 <item.icon className="w-4 h-4" />
                 <span className="text-[8px] font-bold tracking-wide uppercase">{item.label}</span>
@@ -503,8 +528,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="absolute bottom-0 left-0 right-0 z-[55] flex justify-center px-4"
-          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 10rem)" : "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+          className="absolute bottom-0 left-0 right-0 z-[56] flex justify-center px-4"
+          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)" : "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
         >
           <div
             className="flex items-center gap-3 px-3 py-2 rounded-2xl max-w-md w-full"
@@ -530,8 +555,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             </div>
             <button
               onClick={handleGlobalPlayToggle}
-              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: "#2E7D32", color: "#fff" }}
+              className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: "#2E7D32", color: "#fff", minWidth: "44px", minHeight: "44px" }}
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
             </button>

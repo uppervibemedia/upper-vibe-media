@@ -54,7 +54,8 @@ export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed 
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="absolute inset-x-0 bottom-0 z-30 rounded-t-3xl overflow-hidden flex flex-col"
+      className="absolute inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
+      style={{ zIndex: 65 }}
       style={{
         height: isMobile ? "80dvh" : "65vh",
         background: "rgba(12,10,24,0.97)",

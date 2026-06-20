@@ -109,11 +109,12 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 13rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+              pointerEvents: "auto",
             }}
           >
             {/* Music Library button */}
@@ -124,6 +125,9 @@ export default function WorldHUD({
                 background: "linear-gradient(135deg,#0080B8,#00A0DC)",
                 color: "#fff",
                 boxShadow: "0 0 20px rgba(0,160,220,0.4)",
+                minHeight: "44px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
               }}
             >
               <Library className="w-3.5 h-3.5" />
@@ -138,11 +142,12 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-1.5 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-1.5 px-2"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 13rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+              pointerEvents: "auto",
             }}
           >
             {/* Now showing label */}
@@ -162,6 +167,9 @@ export default function WorldHUD({
                     background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
                     color: "#fff",
                     boxShadow: "0 0 20px rgba(155,126,255,0.4)",
+                    minHeight: "44px",
+                    touchAction: "manipulation",
+                    pointerEvents: "auto",
                   }}
                 >
                   <Music4 className="w-3.5 h-3.5" />
@@ -175,6 +183,9 @@ export default function WorldHUD({
                     background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
                     color: "#fff",
                     boxShadow: "0 0 20px rgba(155,126,255,0.4)",
+                    minHeight: "44px",
+                    touchAction: "manipulation",
+                    pointerEvents: "auto",
                   }}
                 >
                   <Music4 className="w-3.5 h-3.5" />
@@ -191,6 +202,9 @@ export default function WorldHUD({
                     background: "linear-gradient(135deg,#0080B8,#00A0DC)",
                     color: "#fff",
                     boxShadow: "0 0 20px rgba(0,160,220,0.4)",
+                    minHeight: "44px",
+                    touchAction: "manipulation",
+                    pointerEvents: "auto",
                   }}
                 >
                   <Music4 className="w-3 h-3" />
@@ -206,6 +220,9 @@ export default function WorldHUD({
                   background: "rgba(255,255,255,0.08)",
                   border: "1px solid rgba(255,255,255,0.15)",
                   color: "rgba(255,255,255,0.6)",
+                  minHeight: "44px",
+                  touchAction: "manipulation",
+                  pointerEvents: "auto",
                 }}
               >
                 <SkipForward className="w-3 h-3" />
@@ -223,6 +240,9 @@ export default function WorldHUD({
                   style={{
                     background: "linear-gradient(135deg,#0080B8,#00A0DC)",
                     color: "#fff",
+                    minHeight: "44px",
+                    touchAction: "manipulation",
+                    pointerEvents: "auto",
                   }}
                 >
                   <Music4 className="w-3 h-3" />
@@ -241,6 +261,9 @@ export default function WorldHUD({
                       : "rgba(124,58,237,0.3)",
                     border: "1px solid rgba(255,255,255,0.15)",
                     color: stageVideoMuted ? "rgba(255,255,255,0.6)" : "#fff",
+                    minHeight: "44px",
+                    touchAction: "manipulation",
+                    pointerEvents: "auto",
                   }}
                 >
                   {stageVideoMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
@@ -257,11 +280,12 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 13rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+              pointerEvents: "auto",
             }}
           >
             <button
@@ -271,6 +295,9 @@ export default function WorldHUD({
                 background: "linear-gradient(135deg,#7C3AED,#A078FF)",
                 color: "#fff",
                 boxShadow: "0 0 20px rgba(160,120,255,0.4)",
+                minHeight: "44px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
               }}
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -285,11 +312,12 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 13rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+              pointerEvents: "auto",
             }}
           >
             <button
@@ -299,6 +327,9 @@ export default function WorldHUD({
                 background: "linear-gradient(135deg,#A078FF,#C4A0FF)",
                 color: "#fff",
                 boxShadow: "0 0 20px rgba(160,120,255,0.4)",
+                minHeight: "44px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
               }}
             >
               <MessageCircle className="w-3.5 h-3.5" />
@@ -313,11 +344,12 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 13rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+              pointerEvents: "auto",
             }}
           >
             <span
@@ -339,11 +371,12 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[55] flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 18rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 13rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+              pointerEvents: "auto",
             }}
           >
             <div className="flex flex-wrap gap-2 justify-center">

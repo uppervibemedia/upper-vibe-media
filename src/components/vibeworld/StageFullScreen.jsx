@@ -80,11 +80,16 @@ export default function StageFullScreen({ open, video, onClose }) {
           {/* Exit button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all hover:bg-white/10"
+            className="absolute z-10 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all hover:bg-white/10"
             style={{
+              top: "calc(env(safe-area-inset-top, 0px) + 1rem)",
+              right: "1rem",
               background: "rgba(255,255,255,0.08)",
               border: "1px solid rgba(255,255,255,0.15)",
               color: "rgba(255,255,255,0.7)",
+              minWidth: "44px",
+              minHeight: "44px",
+              pointerEvents: "auto",
             }}
           >
             <X className="w-3.5 h-3.5" />
@@ -92,7 +97,8 @@ export default function StageFullScreen({ open, video, onClose }) {
           </button>
 
           {/* Title */}
-          <div className="absolute top-4 left-4 z-10 max-w-[60vw]">
+          <div className="absolute z-10 max-w-[50vw]"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)", left: "1rem" }}>
             <p className="text-white/80 text-sm font-bold truncate">{title || "Upper Vibe Media"}</p>
             <p className="text-white/35 text-[10px]">Main Music Stage</p>
           </div>
@@ -145,11 +151,15 @@ export default function StageFullScreen({ open, video, onClose }) {
           {ready && ytId && (
             <button
               onClick={handleToggleMute}
-              className="mt-4 flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-xs tracking-wide transition-all hover:brightness-110"
+              className="mt-4 flex items-center gap-1.5 px-4 py-3 rounded-full font-bold text-xs tracking-wide transition-all hover:brightness-110"
               style={{
                 background: muted ? "rgba(255,255,255,0.08)" : "rgba(124,58,237,0.3)",
                 border: "1px solid rgba(255,255,255,0.15)",
                 color: muted ? "rgba(255,255,255,0.6)" : "#fff",
+                minWidth: "44px",
+                minHeight: "44px",
+                pointerEvents: "auto",
+                touchAction: "manipulation",
               }}
             >
               {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
