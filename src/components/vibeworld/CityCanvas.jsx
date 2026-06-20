@@ -897,7 +897,11 @@ function buildPark(scene) {
   createStarField(scene);
 
   // Trees removed — layout cleanup, decoration will be added later
-  const palmPositions = [];
+  // Beach palm row — spaced like umbrellas, lining the back of the beach
+  const palmPositions = [
+    [-22, 14], [-16.5, 14], [-11, 14], [-5.5, 14],
+    [0, 14], [5.5, 14], [11, 14], [16.5, 14], [22, 14],
+  ];
   palmPositions.forEach(([px, pz]) => {
     const palm = new Group();
     const trunkGeo = new CylinderGeometry(0.06, 0.1, 3, 8);
