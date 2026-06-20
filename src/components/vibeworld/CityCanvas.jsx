@@ -996,34 +996,37 @@ function buildPark(scene) {
     trunk.castShadow = true;
     palm.add(trunk);
 
-    // Cross-shaped fronds — visible from all camera angles
+    // DoubleSide fronds — four planes per position for omni-directional visibility
+    const frondGeoGreen = new PlaneGeometry(0.2, 0.7);
+    const frondMatGreen = new MeshStandardMaterial({
+      color: new Color("#2E7D32"),
+      roughness: 0.5,
+      side: THREE.DoubleSide,
+    });
+    const frondMatLighter = new MeshStandardMaterial({
+      color: new Color("#3A8F3E"),
+      roughness: 0.5,
+      side: THREE.DoubleSide,
+    });
+
     for (let f = 0; f < 6; f++) {
       const angle = (f / 6) * Math.PI * 2;
       const fx = Math.cos(angle) * 0.3;
       const fz = Math.sin(angle) * 0.3;
 
-      // Primary frond
-      const frond1 = new Mesh(
-        new PlaneGeometry(0.12, 0.7),
-        mat("#2E7D32", { roughness: 0.5 })
-      );
-      frond1.position.set(fx, 2.7, fz);
-      frond1.rotation.x = Math.cos(angle) * 0.5;
-      frond1.rotation.z = Math.sin(angle) * 0.5;
-      frond1.castShadow = true;
-      palm.add(frond1);
-
-      // Cross frond (90° rotated) for visibility from all sides
-      const frond2 = new Mesh(
-        new PlaneGeometry(0.12, 0.7),
-        mat("#3A8F3E", { roughness: 0.5 })
-      );
-      frond2.position.set(fx, 2.7, fz);
-      frond2.rotation.x = Math.cos(angle) * 0.5;
-      frond2.rotation.z = Math.sin(angle) * 0.5;
-      frond2.rotation.y = Math.PI / 2;
-      frond2.castShadow = true;
-      palm.add(frond2);
+      // Four crossing fronds at each position — visible from every angle
+      for (let cr = 0; cr < 4; cr++) {
+        const frond = new Mesh(
+          frondGeoGreen,
+          cr % 2 === 0 ? frondMatGreen : frondMatLighter,
+        );
+        frond.position.set(fx, 2.7, fz);
+        frond.rotation.x = Math.cos(angle) * 0.5;
+        frond.rotation.z = Math.sin(angle) * 0.5;
+        frond.rotation.y = (cr / 4) * Math.PI;
+        frond.castShadow = true;
+        palm.add(frond);
+      }
     }
 
     palm.position.set(px, 0, pz);
