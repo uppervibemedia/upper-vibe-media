@@ -13,6 +13,7 @@ import LoungePanel from "./panels/LoungePanel";
 import VisualizerPanel from "./panels/VisualizerPanel";
 import VibeCheckPanel from "./panels/VibeCheckPanel";
 import ChatWarning from "@/components/vibeworld/ChatWarning";
+import LiveUsersBadge from "@/components/vibeworld/LiveUsersBadge";
 
 const ZONE_ICONS = {
   plaza: Compass,
@@ -40,6 +41,9 @@ export default function WorldHUD({
   onStageExitFullScreen,
   chatAgeConfirmed = false,
   onMobileModalChange,
+  activeUsers = [],
+  userCount = 0,
+  isBroadcasting = false,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
@@ -114,6 +118,25 @@ export default function WorldHUD({
             </span>
           </div>
         )}
+      </motion.div>
+
+      {/* ── Live Users Badge (top-right) ──────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="absolute top-0 right-4 z-[55]"
+        style={{
+          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 5rem)" : "4rem",
+        }}
+      >
+        <div className="relative">
+          <LiveUsersBadge
+            activeUsers={activeUsers}
+            userCount={userCount}
+            isBroadcasting={isBroadcasting}
+            isMobile={isMobile}
+          />
+        </div>
       </motion.div>
 
       {/* ── Chat Warning Banner ──────────────────────────────── */}

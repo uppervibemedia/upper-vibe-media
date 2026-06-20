@@ -11,8 +11,9 @@ import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
-import { useLivePresence } from "@/hooks/useLivePresence";
 import usePersonalizedFeed from "@/hooks/usePersonalizedFeed";
+import useVibeWorldPresence from "@/hooks/useVibeWorldPresence";
+import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
 
@@ -259,7 +260,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
   };
 
-  useLivePresence();
+  // ── Presence — Phase 1: track zone + heartbeat ────────────────────────
+  const currentZoneName = detectZone(playerPos.x, playerPos.z)?.name || "Plaza";
+  const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName);
 
   // Keep player refs in sync without adding them as effect deps
   stageIsPlayingRef.current = isPlaying;
@@ -461,6 +464,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onStageExitFullScreen={handleExitFullScreen}
         chatAgeConfirmed={chatAgeConfirmed}
         onMobileModalChange={setMobileModalOpen}
+        activeUsers={activeUsers}
+        userCount={userCount}
+        isBroadcasting={isBroadcasting}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}

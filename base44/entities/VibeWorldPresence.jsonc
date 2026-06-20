@@ -1,0 +1,56 @@
+{
+  "name": "VibeWorldPresence",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated user ID"
+    },
+    "username": {
+      "type": "string",
+      "description": "Display name shown to other users"
+    },
+    "avatar_type": {
+      "type": "string",
+      "enum": [
+        "default",
+        "cyber",
+        "cosmic",
+        "neon"
+      ],
+      "default": "default"
+    },
+    "current_zone": {
+      "type": "string",
+      "description": "Current zone in Vibe World e.g. plaza, lounge, stage"
+    },
+    "is_online": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_heartbeat": {
+      "type": "string",
+      "description": "ISO timestamp of last heartbeat"
+    },
+    "joined_at": {
+      "type": "string",
+      "description": "ISO timestamp when user entered Vibe World"
+    }
+  },
+  "required": [
+    "user_id",
+    "username"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": true,
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
