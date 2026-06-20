@@ -14,24 +14,16 @@ export default function UpperVibeCity({ onExit }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0 });
-  const stageVisualizerRef = useRef(null);
   const [stageCanvas, setStageCanvas] = useState(null);
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
 
-  // Grab canvas from StageScreenVisualizer once mounted
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const canvas = stageVisualizerRef.current?.getCanvas?.();
-      if (canvas && !stageCanvas) {
-        setStageCanvas(canvas);
-        clearInterval(timer);
-      }
-    }, 200);
-    return () => clearInterval(timer);
-  }, [stageCanvas]);
+  // Called by StageScreenVisualizer once the canvas is mounted and animating
+  const handleStageCanvasReady = useRef((canvas) => {
+    if (canvas && !stageCanvas) setStageCanvas(canvas);
+  });
 
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
@@ -209,8 +201,8 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Hidden — Stage screen visualizer canvas (shared public visuals) */}
-      <StageScreenVisualizer ref={stageVisualizerRef} />
+      {/* Stage screen visualizer — feeds canvas to CityCanvas for the public stage display */}
+      <StageScreenVisualizer onReady={(c) => setStageCanvas(c)} />
 
       {/* Bottom now-playing bar */}
       {!loading && currentTrack && (

@@ -1,32 +1,32 @@
-import React, { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 
 /**
- * StageScreenVisualizer — a shared/public rotating visualizer for the Main Music Stage.
+ * StageScreenVisualizer — shared/public rotating visualizer for the Main Music Stage.
  *
  * Rules:
- *  - Renders brand-safe abstract visuals on an offscreen canvas
- *  - Rotates through 5 modes every ~3 minutes
+ *  - Always-on, non-stop — renders every frame regardless of user state
+ *  - Rotates through 5 modes every ~90 seconds
+ *  - Bold, bright, concert-stage aesthetic
+ *  - Dark background + vibrant neon visuals
  *  - Uses procedurally generated frequency data (not user-specific audio)
- *  - Canvas is exported via ref so CityCanvas can use it as a Three.js texture
  */
 
-const MODES = ["cosmicTunnel", "spectrumBars", "energyRings", "waveformGlow", "pulseParticles"];
-const MODE_DURATION = 180; // seconds per mode (3 minutes)
+const MODES = ["spectrumBars", "energyRings", "cosmicTunnel", "waveformGlow", "pulseParticles"];
+const MODE_DURATION = 90; // seconds per mode
 
-const CANVAS_W = 512;
-const CANVAS_H = 256;
+const CANVAS_W = 1024;
+const CANVAS_H = 512;
 
-// ── Procedural "frequency-like" data — creates nice visuals without real audio ──
+// ── Procedural "frequency-like" data ──
 function generateFreqData(t) {
   const count = 64;
   const arr = new Uint8Array(count);
   for (let i = 0; i < count; i++) {
     const norm = i / count;
-    // Low-end emphasis with rhythmic pulse
     const bass = (1 - norm) * (Math.sin(t * 1.4) * 0.4 + 0.6);
     const mid = Math.sin(norm * 6 + t * 0.7) * 0.3 * (1 - Math.abs(norm - 0.5) * 2);
     const high = Math.sin(norm * 14 + t * 1.1) * 0.15 * norm;
-    const beat = Math.abs(Math.sin(t * 2.1)) * 0.25;
+    const beat = Math.pow(Math.abs(Math.sin(t * 2.1)), 3) * 0.35;
     arr[i] = Math.max(0, Math.min(255, (bass + mid + high + beat) * 255));
   }
   return arr;
@@ -34,25 +34,126 @@ function generateFreqData(t) {
 
 // ── DRAWING MODES ──────────────────────────────────────────────────────────
 
-function drawCosmicTunnel(ctx, w, h, t, freq) {
-  ctx.fillStyle = "rgba(10,10,30,0.15)";
+function drawSolidBg(ctx, w, h) {
+  ctx.fillStyle = "#080818";
   ctx.fillRect(0, 0, w, h);
+}
 
+function drawSpectrumBars(ctx, w, h, t, freq) {
+  drawSolidBg(ctx, w, h);
+  const barCount = 64;
+  const barW = w / barCount;
+  const baseY = h * 0.88;
+
+  // Mirror bars: center out
+  const halfCount = barCount / 2;
+
+  for (let i = 0; i < halfCount; i++) {
+    const fi = Math.floor((i / halfCount) * 63);
+    const val = freq[fi] / 255;
+    const barH = val * h * 0.7;
+
+    // Left side
+    const xL = (halfCount - 1 - i) * barW;
+    const hue = 260 + (i / halfCount) * 40;
+    const gradL = ctx.createLinearGradient(xL, baseY - barH, xL, baseY);
+    gradL.addColorStop(0, `hsl(${hue}, 90%, 65%)`);
+    gradL.addColorStop(0.4, `hsl(${hue}, 80%, 50%)`);
+    gradL.addColorStop(1, `hsla(${hue}, 60%, 25%, 0.4)`);
+    ctx.fillStyle = gradL;
+    ctx.fillRect(xL + 1, baseY - barH, barW - 2, barH);
+
+    // Right side (mirrored)
+    const xR = (halfCount + i) * barW;
+    const gradR = ctx.createLinearGradient(xR, baseY - barH, xR, baseY);
+    gradR.addColorStop(0, `hsl(${hue}, 90%, 65%)`);
+    gradR.addColorStop(0.4, `hsl(${hue}, 80%, 50%)`);
+    gradR.addColorStop(1, `hsla(${hue}, 60%, 25%, 0.4)`);
+    ctx.fillStyle = gradR;
+    ctx.fillRect(xR + 1, baseY - barH, barW - 2, barH);
+
+    // Top glow dot
+    const topGlow = ctx.createRadialGradient(xL + barW / 2, baseY - barH, 0, xL + barW / 2, baseY - barH, barW);
+    topGlow.addColorStop(0, `hsla(${hue}, 100%, 80%, 0.7)`);
+    topGlow.addColorStop(1, "transparent");
+    ctx.fillStyle = topGlow;
+    ctx.fillRect(xL - barW / 2, baseY - barH - barW, barW * 2, barW * 2);
+  }
+
+  // Beats: flash overlay on strong beats
+  const beatVal = freq[0] / 255;
+  if (beatVal > 0.7) {
+    ctx.fillStyle = `rgba(155, 126, 255, ${(beatVal - 0.7) * 0.15})`;
+    ctx.fillRect(0, 0, w, h);
+  }
+}
+
+function drawEnergyRings(ctx, w, h, t, freq) {
+  drawSolidBg(ctx, w, h);
   const cx = w / 2, cy = h / 2;
-  const maxR = Math.min(w, h) * 0.7;
 
-  for (let i = 12; i >= 0; i--) {
-    const ratio = i / 12;
-    const r = maxR * (1 - ratio * 0.85);
-    const pulse = Math.sin(t * 1.5 + i * 0.5) * 0.15 + 0.85;
-    const spin = t * 0.3 + i * 0.4;
-    const segments = 64;
-    const freqIdx = Math.floor((i / 12) * 63);
+  for (let ring = 5; ring >= 0; ring--) {
+    const baseR = 40 + ring * 70;
+    const bassVal = freq[ring * 10] / 255;
+    const r = baseR + bassVal * 40;
+    const spin = t * (0.5 + ring * 0.2);
+
+    // Glow ring (outer)
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `hsla(${280 - ring * 20}, 70%, 55%, ${0.08 + bassVal * 0.1})`;
+    ctx.lineWidth = 12 + bassVal * 6;
+    ctx.stroke();
+
+    // Main ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `hsla(${280 - ring * 20}, 80%, 60%, ${0.55 + bassVal * 0.3})`;
+    ctx.lineWidth = 2 + bassVal * 3;
+    ctx.stroke();
+
+    // Orbiting light
+    const dotX = cx + Math.cos(spin) * r;
+    const dotY = cy + Math.sin(spin) * r;
+    const dotGrad = ctx.createRadialGradient(dotX, dotY, 0, dotX, dotY, 8 + bassVal * 6);
+    dotGrad.addColorStop(0, `rgba(200, 170, 255, ${0.8 + bassVal * 0.2})`);
+    dotGrad.addColorStop(0.3, `rgba(155, 126, 255, 0.4)`);
+    dotGrad.addColorStop(1, "transparent");
+    ctx.fillStyle = dotGrad;
+    ctx.beginPath();
+    ctx.arc(dotX, dotY, 8 + bassVal * 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Center pulse
+  const bassAvg = freq.slice(0, 6).reduce((a, b) => a + b, 0) / (6 * 255);
+  const pulseR = 20 + bassAvg * 40;
+  const centerGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pulseR);
+  centerGrad.addColorStop(0, "rgba(180, 150, 255, 0.4)");
+  centerGrad.addColorStop(0.5, "rgba(120, 90, 220, 0.15)");
+  centerGrad.addColorStop(1, "transparent");
+  ctx.fillStyle = centerGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, pulseR, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawCosmicTunnel(ctx, w, h, t, freq) {
+  drawSolidBg(ctx, w, h);
+  const cx = w / 2, cy = h / 2;
+
+  for (let i = 14; i >= 0; i--) {
+    const ratio = i / 14;
+    const r = Math.min(w, h) * 0.65 * (1 - ratio * 0.8);
+    const pulse = Math.sin(t * 1.5 + i * 0.45) * 0.15 + 0.85;
+    const spin = t * 0.35 + i * 0.35;
+    const segments = 80;
+    const freqIdx = Math.floor((i / 14) * 63);
 
     ctx.beginPath();
     for (let s = 0; s <= segments; s++) {
       const a = (s / segments) * Math.PI * 2 + spin;
-      const rr = r * pulse + (freq[freqIdx] / 255) * r * 0.3;
+      const rr = r * pulse + (freq[freqIdx] / 255) * r * 0.22;
       const sx = cx + Math.cos(a) * rr;
       const sy = cy + Math.sin(a) * rr * 0.5;
       if (s === 0) ctx.moveTo(sx, sy);
@@ -60,185 +161,134 @@ function drawCosmicTunnel(ctx, w, h, t, freq) {
     }
     ctx.closePath();
 
-    const hue = 260 + i * 15;
-    const alpha = 0.12 + ratio * 0.5;
-    ctx.strokeStyle = `hsla(${hue}, 70%, ${50 + ratio * 25}%, ${alpha})`;
-    ctx.lineWidth = 1.5 + ratio * 2;
+    const hue = 250 + i * 18;
+    ctx.strokeStyle = `hsla(${hue}, 75%, ${45 + ratio * 30}%, ${0.4 + ratio * 0.4})`;
+    ctx.lineWidth = 2 + ratio * 2.5;
     ctx.stroke();
-  }
-}
-
-function drawSpectrumBars(ctx, w, h, t, freq) {
-  ctx.fillStyle = "rgba(8,8,22,0.2)";
-  ctx.fillRect(0, 0, w, h);
-
-  const barCount = 48;
-  const barW = (w / barCount) * 0.7;
-  const gap = (w / barCount) * 0.3;
-  const baseY = h * 0.85;
-
-  for (let i = 0; i < barCount; i++) {
-    const fi = Math.floor((i / barCount) * 63);
-    const val = freq[fi] / 255;
-    const barH = val * h * 0.75;
-    const x = i * (barW + gap) + gap / 2;
-
-    const hue = 260 + (i / barCount) * 40;
-    const grad = ctx.createLinearGradient(x, baseY - barH, x, baseY);
-    grad.addColorStop(0, `hsla(${hue}, 80%, 60%, 0.9)`);
-    grad.addColorStop(1, `hsla(${hue}, 60%, 30%, 0.3)`);
-    ctx.fillStyle = grad;
-
-    // Rounded top
-    const r = barW * 0.3;
-    ctx.beginPath();
-    ctx.moveTo(x, baseY);
-    ctx.lineTo(x, baseY - barH + r);
-    ctx.quadraticCurveTo(x, baseY - barH - r, x + r, baseY - barH);
-    ctx.lineTo(x + barW - r, baseY - barH);
-    ctx.quadraticCurveTo(x + barW, baseY - barH - r, x + barW, baseY - barH + r);
-    ctx.lineTo(x + barW, baseY);
-    ctx.closePath();
-    ctx.fill();
-  }
-}
-
-function drawEnergyRings(ctx, w, h, t, freq) {
-  ctx.fillStyle = "rgba(6,6,20,0.18)";
-  ctx.fillRect(0, 0, w, h);
-
-  const cx = w / 2, cy = h / 2;
-
-  for (let ring = 0; ring < 5; ring++) {
-    const baseR = 30 + ring * 45;
-    const bassVal = freq[ring * 12] / 255;
-    const r = baseR + bassVal * 35;
-    const spin = t * (0.4 + ring * 0.15);
-
-    // Main ring
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = `hsla(${270 - ring * 15}, 70%, ${55 + ring * 8}%, 0.5)`;
-    ctx.lineWidth = 2.5 + bassVal * 3;
-    ctx.stroke();
-
-    // Glow ring
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = `hsla(${270 - ring * 15}, 80%, 65%, 0.15)`;
-    ctx.lineWidth = 8 + bassVal * 5;
-    ctx.stroke();
-
-    // Orbiting dot
-    const dotX = cx + Math.cos(spin) * r;
-    const dotY = cy + Math.sin(spin) * r;
-    ctx.beginPath();
-    ctx.arc(dotX, dotY, 2 + bassVal * 2, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${270 - ring * 15}, 90%, 75%, ${0.6 + bassVal * 0.4})`;
-    ctx.fill();
   }
 }
 
 function drawWaveformGlow(ctx, w, h, t, freq) {
-  ctx.fillStyle = "rgba(5,5,18,0.15)";
-  ctx.fillRect(0, 0, w, h);
-
+  drawSolidBg(ctx, w, h);
   const cy = h / 2;
 
-  // Multiple layered waveforms
-  for (let layer = 0; layer < 3; layer++) {
-    const amp = h * (0.15 + layer * 0.1);
-    const speed = 0.6 + layer * 0.2;
+  // 4 layered waveforms with glow
+  for (let layer = 0; layer < 4; layer++) {
+    const amp = h * (0.18 + layer * 0.12);
+    const speed = 0.5 + layer * 0.25;
     const phase = t * speed;
 
+    // Glow layer (wider, more transparent)
     ctx.beginPath();
-    for (let x = 0; x <= w; x += 2) {
+    for (let x = 0; x <= w; x += 3) {
       const norm = x / w;
       const fi = Math.floor(norm * 63);
       const freqVal = freq[fi] / 255;
-      const wave1 = Math.sin(norm * 8 + phase) * amp * freqVal;
-      const wave2 = Math.sin(norm * 3 + phase * 0.7) * amp * 0.6;
-      const wave3 = Math.sin(norm * 15 + phase * 1.3) * amp * 0.25 * freqVal;
+      const wave1 = Math.sin(norm * 6 + phase) * amp * freqVal;
+      const wave2 = Math.sin(norm * 2.5 + phase * 0.6) * amp * 0.5;
+      const wave3 = Math.sin(norm * 12 + phase * 1.2) * amp * 0.2 * freqVal;
       const y = cy + wave1 + wave2 + wave3;
-
       if (x === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
+    const hue = 240 + layer * 22;
+    ctx.strokeStyle = `hsla(${hue}, 70%, 55%, 0.12)`;
+    ctx.lineWidth = 6 + layer;
+    ctx.stroke();
 
-    const hue = 250 + layer * 20;
-    ctx.strokeStyle = `hsla(${hue}, 70%, ${55 + layer * 12}%, ${0.5 + layer * 0.15})`;
-    ctx.lineWidth = 1.5 + layer;
+    // Main line layer
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 3) {
+      const norm = x / w;
+      const fi = Math.floor(norm * 63);
+      const freqVal = freq[fi] / 255;
+      const wave1 = Math.sin(norm * 6 + phase) * amp * freqVal;
+      const wave2 = Math.sin(norm * 2.5 + phase * 0.6) * amp * 0.5;
+      const y = cy + wave1 + wave2;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = `hsla(${hue}, 85%, ${60 + layer * 8}%, 0.7)`;
+    ctx.lineWidth = 1.5 + layer * 0.3;
     ctx.stroke();
   }
 }
 
 function drawPulseParticles(ctx, w, h, t, freq) {
-  ctx.fillStyle = "rgba(4,4,16,0.12)";
-  ctx.fillRect(0, 0, w, h);
-
+  drawSolidBg(ctx, w, h);
   const cx = w / 2, cy = h / 2;
 
-  for (let i = 0; i < 40; i++) {
-    const angle = (i / 40) * Math.PI * 2 + t * 0.15;
-    const fi = Math.floor((i / 40) * 63);
+  // Stars/particles orbiting center
+  for (let i = 0; i < 50; i++) {
+    const angle = (i / 50) * Math.PI * 2 + t * 0.2;
+    const fi = Math.floor((i / 50) * 63);
     const val = freq[fi] / 255;
-    const dist = 60 + val * 80 + Math.sin(t * 0.8 + i * 0.5) * 20;
+    const dist = 70 + val * 100 + Math.sin(t * 0.9 + i * 0.4) * 25;
     const px = cx + Math.cos(angle) * dist;
-    const py = cy + Math.sin(angle) * dist * 0.6;
+    const py = cy + Math.sin(angle) * dist * 0.55;
 
-    // Particle
-    const hue = 260 + i * 2;
-    const size = 1.5 + val * 3;
+    const hue = 260 + i * 3;
+    const size = 2 + val * 4;
+    const dotGrad = ctx.createRadialGradient(px, py, 0, px, py, size + 3);
+    dotGrad.addColorStop(0, `hsla(${hue}, 100%, 80%, 0.9)`);
+    dotGrad.addColorStop(0.5, `hsla(${hue}, 80%, 60%, 0.3)`);
+    dotGrad.addColorStop(1, "transparent");
+    ctx.fillStyle = dotGrad;
     ctx.beginPath();
-    ctx.arc(px, py, size, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${hue}, 80%, ${60 + val * 20}%, ${0.4 + val * 0.5})`;
+    ctx.arc(px, py, size + 3, 0, Math.PI * 2);
     ctx.fill();
-
-    // Trail line to center
-    ctx.beginPath();
-    ctx.moveTo(px, py);
-    ctx.lineTo(cx + (px - cx) * 0.3, cy + (py - cy) * 0.3);
-    ctx.strokeStyle = `hsla(${hue}, 60%, 50%, 0.08)`;
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
   }
 
-  // Center pulse
-  const bassAvg = freq.slice(0, 8).reduce((a, b) => a + b, 0) / (8 * 255);
-  const pulseR = 15 + bassAvg * 30;
-  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pulseR);
-  grad.addColorStop(0, "rgba(155, 126, 255, 0.3)");
-  grad.addColorStop(0.5, "rgba(100, 80, 220, 0.1)");
-  grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = grad;
+  // Center pulsing orb
+  const bassAvg = freq.slice(0, 6).reduce((a, b) => a + b, 0) / (6 * 255);
+  const orbR = 25 + bassAvg * 35;
+  const orbGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, orbR);
+  orbGrad.addColorStop(0, "rgba(200, 170, 255, 0.5)");
+  orbGrad.addColorStop(0.3, "rgba(140, 110, 240, 0.25)");
+  orbGrad.addColorStop(0.7, "rgba(80, 60, 180, 0.05)");
+  orbGrad.addColorStop(1, "transparent");
+  ctx.fillStyle = orbGrad;
   ctx.beginPath();
-  ctx.arc(cx, cy, pulseR, 0, Math.PI * 2);
+  ctx.arc(cx, cy, orbR, 0, Math.PI * 2);
   ctx.fill();
+
+  // Beat flash
+  const beatVal = freq[0] / 255;
+  if (beatVal > 0.75) {
+    ctx.fillStyle = `rgba(180, 150, 255, ${(beatVal - 0.75) * 0.2})`;
+    ctx.fillRect(0, 0, w, h);
+  }
 }
 
 const DRAW_FNS = {
-  cosmicTunnel: drawCosmicTunnel,
   spectrumBars: drawSpectrumBars,
   energyRings: drawEnergyRings,
+  cosmicTunnel: drawCosmicTunnel,
   waveformGlow: drawWaveformGlow,
   pulseParticles: drawPulseParticles,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Component
+// Component — owns a persistent canvas and animation loop
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const StageScreenVisualizer = forwardRef(function StageScreenVisualizer(_props, ref) {
+const StageScreenVisualizer = forwardRef(function StageScreenVisualizer({ onReady }, ref) {
   const canvasRef = useRef(null);
   const modeIdxRef = useRef(0);
   const modeTimerRef = useRef(0);
   const animRef = useRef(null);
+  const startedRef = useRef(false);
 
+  // Expose the canvas to parent for Three.js texture creation
   useImperativeHandle(ref, () => ({
     getCanvas: () => canvasRef.current,
-  }));
+  }), []);
 
   useEffect(() => {
+    // Prevent double-init in Strict Mode
+    if (startedRef.current) return;
+    startedRef.current = true;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -247,13 +297,19 @@ const StageScreenVisualizer = forwardRef(function StageScreenVisualizer(_props, 
     canvas.width = CANVAS_W;
     canvas.height = CANVAS_H;
 
+    // Draw initial frame immediately (solid bg + first mode)
+    drawSolidBg(ctx, CANVAS_W, CANVAS_H);
+
+    // Notify parent that canvas is ready for Three.js texture
+    if (onReady) onReady(canvas);
+
     const startTime = performance.now() * 0.001;
+    let frameCount = 0;
 
     const animate = () => {
       const t = (performance.now() * 0.001) - startTime;
       const modeDuration = t - modeTimerRef.current;
 
-      // Rotate mode every MODE_DURATION seconds
       if (modeDuration >= MODE_DURATION) {
         modeIdxRef.current = (modeIdxRef.current + 1) % MODES.length;
         modeTimerRef.current = t;
@@ -264,10 +320,16 @@ const StageScreenVisualizer = forwardRef(function StageScreenVisualizer(_props, 
       const drawFn = DRAW_FNS[mode];
 
       if (drawFn) {
-        // Don't fully clear — let trails build up slightly
         drawFn(ctx, CANVAS_W, CANVAS_H, t, freq);
       }
 
+      // Mode label in corner (subtle)
+      ctx.font = "12px 'Inter', sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.15)";
+      ctx.textAlign = "right";
+      ctx.fillText(`UPPER VIBE MEDIA`, CANVAS_W - 20, 30);
+
+      frameCount++;
       animRef.current = requestAnimationFrame(animate);
     };
 
@@ -275,15 +337,23 @@ const StageScreenVisualizer = forwardRef(function StageScreenVisualizer(_props, 
 
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current);
+      startedRef.current = false;
     };
   }, []);
 
+  // Keep canvas off-screen but in DOM — browsers render to it fine
   return (
     <canvas
       ref={canvasRef}
       width={CANVAS_W}
       height={CANVAS_H}
-      style={{ display: "none" }}
+      style={{
+        position: "fixed",
+        left: "-9999px",
+        top: 0,
+        pointerEvents: "none",
+        opacity: 0,
+      }}
     />
   );
 });

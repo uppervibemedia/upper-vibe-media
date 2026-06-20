@@ -1117,6 +1117,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas }) 
   const sceneRef = useRef(null);
   const avatarRef = useRef(null);
   const avatarPosRef = useRef([...SPAWN, 0]); // [x, y, z, rotY]
+  const stageCanvasRef = useRef(null);
+  // Keep ref in sync with prop so animation loop reads latest value
+  stageCanvasRef.current = stageCanvas;
   const velocityRef = useRef({ x: 0, z: 0 });
   const targetRotRef = useRef(0);
   const keysRef = useRef({});
@@ -1406,11 +1409,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas }) 
         }
 
         // ─── STAGE SCREEN — public rotating visualizer texture ───
-        if (stageCanvas) {
+        const stageCanvasVal = stageCanvasRef.current;
+        if (stageCanvasVal) {
           const stageScreen = scene.userData.stageScreen;
           if (stageScreen && !scene.userData._stageCanvasApplied) {
             // Create canvas texture once
-            const tex = new THREE.CanvasTexture(stageCanvas);
+            const tex = new THREE.CanvasTexture(stageCanvasVal);
             tex.colorSpace = THREE.SRGBColorSpace;
             tex.minFilter = THREE.LinearFilter;
             tex.magFilter = THREE.LinearFilter;
