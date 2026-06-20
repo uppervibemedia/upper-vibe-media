@@ -1429,13 +1429,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
             scene.userData._stageTex = tex;
             scene.userData._lastStageTexBeat = -1;
           }
-          // Only re-upload texture when audio changes meaningfully — eliminates flicker
-          const lastBeat = scene.userData._lastStageTexBeat ?? -1;
-          if (Math.abs(audioBeat - lastBeat) > 0.002) {
-            const stageTex = scene.userData._stageTex;
-            if (stageTex) stageTex.needsUpdate = true;
-            scene.userData._lastStageTexBeat = audioBeat;
-          }
+          // Always re-upload texture each frame so Next-video changes appear instantly
+          const stageTex = scene.userData._stageTex;
+          if (stageTex) stageTex.needsUpdate = true;
         }
 
         // ─── OCEAN WAVES — rolling from deep water toward shore ──

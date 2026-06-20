@@ -285,7 +285,7 @@ export default function StageCoverVisualizer({ onReady, video, audioIntensityRef
   const videoRef = useRef(video);
   videoRef.current = video;
 
-  // Preload next thumbnail when video changes
+  // Force-reload next thumbnail when video changes (Next button support)
   useEffect(() => {
     const id = video?.youtube_video_id || video?.title || null;
     if (id && id !== prevVideoIdRef.current) {
@@ -294,11 +294,16 @@ export default function StageCoverVisualizer({ onReady, video, audioIntensityRef
         || (video?.youtube_video_id
           ? `https://img.youtube.com/vi/${video.youtube_video_id}/maxresdefault.jpg`
           : null);
-      if (url && !imgCacheRef.current[url]) {
+      if (url) {
+        // Always reload the image fresh to guarantee the new cover appears
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = url;
         imgCacheRef.current[url] = img;
+        // Clear old cache entry so old video never lingers
+        for (const [k] of Object.entries(imgCacheRef.current)) {
+          if (k !== url) delete imgCacheRef.current[k];
+        }
       }
     }
   }, [video?.youtube_video_id, video?.title, video?.thumbnail_url]);
