@@ -101,24 +101,29 @@ export default function WorldHUD({
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="absolute top-0 left-1/2 z-[55] pointer-events-none"
+        className="absolute top-0 left-1/2 z-[52] pointer-events-none"
         style={{
           transform: "translateX(-50%)",
-          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 5rem)" : "4rem",
+          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 4.5rem)" : "4rem",
+          maxWidth: isMobile ? "60vw" : "none",
+          overflow: "hidden",
         }}
       >
         {zone && (
           <div
-            className="flex items-center gap-2 px-4 py-2 rounded-full"
+            className="flex items-center gap-1.5 rounded-full"
             style={{
-              background: "rgba(0,0,0,0.5)",
+              background: "rgba(0,0,0,0.45)",
               backdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.15)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              padding: isMobile ? "3px 8px" : "6px 16px",
             }}
           >
-            {ZoneIcon && <ZoneIcon className="w-3.5 h-3.5 text-cyan-400" />}
-            <span className="text-[11px] font-black tracking-wider text-white/80">
-              {zone.name}
+            {ZoneIcon && <ZoneIcon style={{ width: "12px", height: "12px" }} className="text-cyan-400 flex-shrink-0" />}
+            <span className="font-black tracking-wider text-white/80 truncate"
+              style={{ fontSize: isMobile ? "9px" : "11px" }}
+            >
+              {isMobile ? (zone.name.length > 12 ? zone.name.substring(0, 12) + "..." : zone.name) : zone.name}
             </span>
           </div>
         )}
@@ -128,9 +133,9 @@ export default function WorldHUD({
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="absolute top-0 right-4 z-[55] flex items-center gap-2"
+        className="absolute top-0 right-2 z-[56] flex items-center gap-1.5"
         style={{
-          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 5rem)" : "4rem",
+          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 4.5rem)" : "4rem",
         }}
       >
         {/* ── Mic Toggle ──────────────────────────────────────── */}

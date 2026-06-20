@@ -92,6 +92,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── Personalized feed continuous playback ──────────────────────────────
   const feedActiveRef = useRef(false);
+  const feedStartedRef = useRef(false); // prevent auto-start from re-triggering on pause
   const feedIndexRef = useRef(0);
   const sortedTracksRef = useRef([]);
   sortedTracksRef.current = sortedTracks;
@@ -332,12 +333,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return () => cancelAnimationFrame(raf);
   }, [playerCtx?.analyserNode]);
 
-  // Auto-start personalized feed when entering world (only if silent)
+  // Auto-start personalized feed when entering world (only if silent).
+  // Uses feedStartedRef to prevent re-triggering when user pauses playback.
   useEffect(() => {
     if (feedLoading || loading || !playTrack) return;
+    if (feedStartedRef.current) return; // already initialized — don't restart on state changes
     // If something is already playing, adopt it into feed mode
     if (currentTrack && isPlaying) {
       feedActiveRef.current = true;
+      feedStartedRef.current = true;
       feedIndexRef.current = sortedTracks?.findIndex(t => t.id === currentTrack.id) ?? 0;
       return;
     }
@@ -347,6 +351,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       const pick = pool[Math.floor(Math.random() * pool.length)];
       if (pick) {
         feedActiveRef.current = true;
+        feedStartedRef.current = true;
         feedIndexRef.current = sortedTracks.indexOf(pick);
         playTrack(pick, "song");
       }
@@ -356,6 +361,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       const pick = pool[Math.floor(Math.random() * pool.length)];
       if (pick) {
         feedActiveRef.current = true;
+        feedStartedRef.current = true;
         feedIndexRef.current = allTracks.indexOf(pick);
         playTrack(pick, "song");
       }
@@ -422,17 +428,22 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       >
         <button
           onClick={onExit}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/20"
+          onTouchStart={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 rounded-lg font-bold transition-all hover:brightness-110 active:scale-95"
           style={{
-            background: "rgba(255,255,255,0.3)",
+            background: "rgba(255,255,255,0.15)",
             backdropFilter: "blur(12px)",
-            color: "#2E7D32",
-            minWidth: "44px",
-            minHeight: "44px",
+            border: "1px solid rgba(255,255,255,0.2)",
+            color: "#fff",
+            padding: isMobile ? "4px 8px" : "6px 12px",
+            fontSize: isMobile ? "10px" : "12px",
+            minWidth: isMobile ? "36px" : "44px",
+            minHeight: isMobile ? "36px" : "44px",
             touchAction: "manipulation",
           }}
         >
-          <ChevronLeft className="w-3.5 h-3.5" /> {isMobile ? "Exit City" : "Exit Upper Vibe City"}
+          <ChevronLeft style={{ width: isMobile ? "12px" : "14px", height: isMobile ? "12px" : "14px" }} />
+          {isMobile ? "Exit" : "Exit Upper Vibe City"}
         </button>
 
         {/* Exit Watch Mode — persistent when watching stage on mobile */}
@@ -456,14 +467,21 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         )}
 
         <div
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
+          className="flex items-center rounded-lg"
           style={{
-            background: "rgba(255,255,255,0.3)",
+            background: "rgba(255,255,255,0.15)",
             backdropFilter: "blur(12px)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            padding: isMobile ? "4px 8px" : "6px 12px",
           }}
         >
-          <span className="font-heading font-black text-[10px] tracking-[0.2em] text-green-800">
-            UPPER VIBE CITY
+          <span className="font-heading font-black text-white/80"
+            style={{
+              fontSize: isMobile ? "8px" : "10px",
+              letterSpacing: isMobile ? "0.15em" : "0.2em",
+            }}
+          >
+            {isMobile ? "UVC" : "UPPER VIBE CITY"}
           </span>
         </div>
       </motion.div>
