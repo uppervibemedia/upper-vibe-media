@@ -33,6 +33,8 @@ export default function WorldHUD({
   onStagePlaySong,
   onStageListenAudio,
   stageDistance,
+  oceanSoundsOn,
+  onToggleOceanSounds,
 }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const zone = detectZone(playerX, playerZ);
@@ -41,7 +43,6 @@ export default function WorldHUD({
   const [musicPanelOpen, setMusicPanelOpen] = useState(false);
   const [loungePanelOpen, setLoungePanelOpen] = useState(false);
   const [visualizerOpen, setVisualizerOpen] = useState(false);
-  const [chillMode, setChillMode] = useState(false);
 
   const handleOpenMusicLibrary = useCallback(() => {
     setMusicPanelOpen(true);
@@ -294,19 +295,19 @@ export default function WorldHUD({
             }}
           >
             <button
-              onClick={() => setChillMode(!chillMode)}
+              onClick={onToggleOceanSounds}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
-                background: chillMode
-                  ? "rgba(0,229,255,0.3)"
+                background: oceanSoundsOn
+                  ? "rgba(0,229,255,0.25)"
                   : "rgba(255,255,255,0.15)",
                 border: "1px solid rgba(255,255,255,0.2)",
-                color: chillMode ? "#00E5FF" : "rgba(255,255,255,0.8)",
-                boxShadow: chillMode ? "0 0 20px rgba(0,229,255,0.3)" : "none",
+                color: oceanSoundsOn ? "#00E5FF" : "rgba(255,255,255,0.8)",
+                boxShadow: oceanSoundsOn ? "0 0 20px rgba(0,229,255,0.3)" : "none",
               }}
             >
               <Waves className="w-3.5 h-3.5" />
-              {chillMode ? "Chill Mode On" : "Chill Mode"}
+              {oceanSoundsOn ? "Ocean Sounds On" : "Ocean Sounds"}
             </button>
           </motion.div>
         )}
@@ -357,22 +358,6 @@ export default function WorldHUD({
               </Link>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Chill mode overlay ────────────────────────────────── */}
-      <AnimatePresence>
-        {chillMode && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-15 pointer-events-none"
-            style={{
-              background: "rgba(0,20,40,0.25)",
-              backdropFilter: "blur(1px)",
-            }}
-          />
         )}
       </AnimatePresence>
 

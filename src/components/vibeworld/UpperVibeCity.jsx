@@ -17,6 +17,11 @@ export default function UpperVibeCity({ onExit }) {
   const [isMobile, setIsMobile] = useState(false);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0 });
   const [stageCanvas, setStageCanvas] = useState(null);
+  const [oceanSoundsOn, setOceanSoundsOn] = useState(true);
+
+  // ── Audio intensity ref — shared with CityCanvas for wave sync ─────────
+  const audioIntensityRef = useRef(0);
+  const oceanGainRef = useRef(null);
 
   // ── Stage video state ──────────────────────────────────────────────────
   const [stageVideos, setStageVideos] = useState([]);
@@ -105,6 +110,8 @@ export default function UpperVibeCity({ onExit }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
   const { allTracks, tracksLoaded } = radioCtx || {};
 
+  const toggleOceanSounds = () => setOceanSoundsOn((v) => !v);
+
   // Ocean wave ambient audio — brown noise through low-pass filter
   useEffect(() => {
     let ctx = null;
@@ -130,6 +137,7 @@ export default function UpperVibeCity({ onExit }) {
 
       const gain = ctx.createGain();
       gain.gain.value = 0.04;
+      oceanGainRef.current = gain;
 
       source.connect(lp);
       lp.connect(gain);
@@ -144,6 +152,29 @@ export default function UpperVibeCity({ onExit }) {
       if (ctx) try { ctx.close(); } catch {}
     };
   }, []);
+
+  // ── Control ocean sound gain based on toggle ──────────────────────────
+  useEffect(() => {
+    if (oceanGainRef.current) {
+      oceanGainRef.current.gain.value = oceanSoundsOn ? 0.04 : 0;
+    }
+  }, [oceanSoundsOn]);
+
+  // ── Read analyser frequency data for wave sync ────────────────────────
+  useEffect(() => {
+    if (!playerCtx?.analyserNode) return;
+    let raf;
+    const analyser = playerCtx.analyserNode;
+    const freqData = new Uint8Array(analyser.frequencyBinCount);
+    const loop = () => {
+      analyser.getByteFrequencyData(freqData);
+      const sum = freqData.reduce((a, b) => a + b, 0);
+      audioIntensityRef.current = sum / (freqData.length * 255);
+      raf = requestAnimationFrame(loop);
+    };
+    loop();
+    return () => cancelAnimationFrame(raf);
+  }, [playerCtx?.analyserNode]);
 
   // Auto-start music when park loads
   useEffect(() => {
@@ -162,6 +193,7 @@ export default function UpperVibeCity({ onExit }) {
           onLoaded={() => setLoading(false)}
           onPositionChange={(x, z, rot) => setPlayerPos({ x, z, rot })}
           stageCanvas={stageCanvas}
+          audioIntensityRef={audioIntensityRef}
         />
       </div>
 
@@ -244,6 +276,8 @@ export default function UpperVibeCity({ onExit }) {
         onStagePlaySong={handleStagePlaySong}
         onStageListenAudio={handleStageListenAudio}
         stageDistance={stageDistance}
+        oceanSoundsOn={oceanSoundsOn}
+        onToggleOceanSounds={toggleOceanSounds}
       />
 
       {/* Bottom navigation bar */}

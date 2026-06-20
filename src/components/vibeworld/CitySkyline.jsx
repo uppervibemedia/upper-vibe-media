@@ -352,11 +352,6 @@ export default function createCitySkyline(scene) {
     buildings.add(g);
   }
 
-  // Helper: compute rotation so building faces center (0, -4)
-  function faceCenter(x, z) {
-    return Math.atan2(CENTER_X - x, CENTER_Z - z);
-  }
-
   // ── NORTH WALL ────────────────────────────────────────────────
   const northTowers = [
     [-26, -21, 2.0, 1.6, 12, glassBody, neonCyan],
@@ -375,15 +370,15 @@ export default function createCitySkyline(scene) {
     [23, -21, 2.4, 1.5, 17, glassBody, neonPurple],
     [26, -21, 2.0, 1.7, 13, steelBody, neonBlue],
   ];
-  northTowers.forEach(([x, z, ...rest]) => addSkyscraper(x, z, ...rest, undefined, faceCenter(x, z)));
+  northTowers.forEach((a) => addSkyscraper(...a));
 
-  addSetbackTower(-10, -21, 3.2, 2.0, 3, neonPurple, "Vibe Tower North", faceCenter(-10, -21));
-  addSetbackTower(6, -21, 3.0, 1.8, 4, neonCyan, "Aurora Spire", faceCenter(6, -21));
-  addSetbackTower(-22, -21, 2.6, 1.7, 3, neonBlue, "Neon Heights", faceCenter(-22, -21));
-  addSetbackTower(18, -21, 2.8, 1.9, 3, neonBlue, "Skyline Peak", faceCenter(18, -21));
+  addSetbackTower(-10, -21, 3.2, 2.0, 3, neonPurple, "Vibe Tower North");
+  addSetbackTower(6, -21, 3.0, 1.8, 4, neonCyan, "Aurora Spire");
+  addSetbackTower(-22, -21, 2.6, 1.7, 3, neonBlue, "Neon Heights");
+  addSetbackTower(18, -21, 2.8, 1.9, 3, neonBlue, "Skyline Peak");
 
-  addTwinTower(-5, -21, 1.2, 1.8, 1.6, 22, neonCyan, "Twin Towers West", faceCenter(-5, -21));
-  addTwinTower(13, -21, 1.0, 1.6, 1.5, 18, neonPurple, "Twin Towers East", faceCenter(13, -21));
+  addTwinTower(-5, -21, 1.2, 1.8, 1.6, 22, neonCyan, "Twin Towers West");
+  addTwinTower(13, -21, 1.0, 1.6, 1.5, 18, neonPurple, "Twin Towers East");
 
   // ── EAST WING ─────────────────────────────────────────────────
   const eastTowers = [
@@ -395,8 +390,8 @@ export default function createCitySkyline(scene) {
     [27, -3, 2.0, 1.5, 12, silverBody, neonBlue],
     [27, 0, 1.8, 1.4, 9, glassBody, neonCyan],
   ];
-  eastTowers.forEach(([x, z, ...rest]) => addSkyscraper(x, z, ...rest, undefined, faceCenter(x, z)));
-  addSetbackTower(27, -4, 2.4, 2.2, 3, neonCyan, "East Gate Tower", faceCenter(27, -4));
+  eastTowers.forEach((a) => addSkyscraper(...a));
+  addSetbackTower(27, -4, 2.4, 2.2, 3, neonCyan, "East Gate Tower");
 
   // ── WEST WING ─────────────────────────────────────────────────
   const westTowers = [
@@ -408,9 +403,9 @@ export default function createCitySkyline(scene) {
     [-27, -3, 1.8, 1.4, 11, silverBody, neonCyan],
     [-27, 0, 2.2, 1.6, 9, glassBody, neonPurple],
   ];
-  westTowers.forEach(([x, z, ...rest]) => addSkyscraper(x, z, ...rest, undefined, faceCenter(x, z)));
-  addSetbackTower(-27, -5, 2.6, 2.0, 3, neonPurple, "West Gate Tower", faceCenter(-27, -5));
-  addTwinTower(-27, -10, 1.0, 1.5, 1.8, 16, neonCyan, "West Twin Towers", faceCenter(-27, -10));
+  westTowers.forEach((a) => addSkyscraper(...a));
+  addSetbackTower(-27, -5, 2.6, 2.0, 3, neonPurple, "West Gate Tower");
+  addTwinTower(-27, -10, 1.0, 1.5, 1.8, 16, neonCyan, "West Twin Towers");
 
   scene.add(buildings);
 }

@@ -1105,7 +1105,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas }) {
+export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1439,6 +1439,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas }) 
         }
 
         // ─── OCEAN WAVES — rolling from deep water toward shore ──
+        // Audio intensity modulates wave height for music-synced movement
+        const audioBeat = audioIntensityRef?.current ?? 0;
+
         const oceanMesh = scene.userData.ocean;
         const origArr = scene.userData._oceanOrig;
         const oceanCenterZ = scene.userData._oceanCenterZ || 47;
@@ -1456,16 +1459,17 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas }) 
             if (distFromShore < 0) continue; // skip sand side
 
             // Phase: deeper water leads, shore water lags → waves travel toward shore
-            // distFromShore * N means vertices further out are at an earlier phase
             const phase = distFromShore * 0.3 - waveT * 3.0;
             const wave = Math.sin(phase) * 0.5 + 0.5; // 0..1 smooth wave
 
             // Height: waves get taller as they approach shore
             const buildFactor = 1 - Math.max(0, 1 - distFromShore / 20); // 0 far out → 1 near shore
-            const height = wave * buildFactor * 0.18;
+            // Music intensity boosts wave height (0.18 base + up to 0.12 from audio)
+            const musicBoost = 1 + audioBeat * 0.8;
+            const height = wave * buildFactor * 0.18 * musicBoost;
 
             // Forward surge: water pushes toward shore during wave crest
-            const surge = wave * buildFactor * 0.12;
+            const surge = wave * buildFactor * 0.12 * musicBoost;
 
             arr[i] = origArr[i]; // X stays
             arr[i + 1] = origArr[i + 1] + height; // Y rises with wave
@@ -1474,11 +1478,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas }) 
           pos.needsUpdate = true;
         }
 
-        // ─── FOAM STRIP — pulses with tide ───────────────────
+        // ─── FOAM STRIP — pulses with tide + music ───────────────────
         const foamMesh = scene.userData.foam;
         if (foamMesh && foamMesh.material) {
           const tide = Math.sin(t * 0.55) * 0.5 + 0.5;
-          foamMesh.material.opacity = 0.18 + tide * 0.55;
+          const foamBoost = 1 + audioBeat;
+          foamMesh.material.opacity = (0.18 + tide * 0.55) * foamBoost;
           foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.7;
         }
 
