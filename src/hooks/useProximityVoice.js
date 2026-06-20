@@ -97,6 +97,44 @@ export default function useProximityVoice(user, playerPos, remoteUsers) {
     };
   }, []);
 
+  // ── Close a specific peer connection ────────────────────────────────────
+  const closePeerConnection = useCallback((remoteUserId) => {
+    const pc = peerConnectionsRef.current[remoteUserId];
+    if (pc) {
+      pc.close();
+      delete peerConnectionsRef.current[remoteUserId];
+    }
+    const stream = remoteStreamsRef.current[remoteUserId];
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop());
+      delete remoteStreamsRef.current[remoteUserId];
+    }
+    const gain = gainNodesRef.current[remoteUserId];
+    if (gain) {
+      gain.disconnect();
+      delete gainNodesRef.current[remoteUserId];
+    }
+    setVoicePeers((prev) => prev.filter((id) => id !== remoteUserId));
+  }, []);
+
+  // ── Send a WebRTC signal via VoiceSignal entity ─────────────────────────
+  const sendSignal = useCallback(async (toUserId, signalType, signalData) => {
+    if (!user?.id) return;
+    try {
+      const expiresAt = new Date(Date.now() + SIGNAL_EXPIRY_MS).toISOString();
+      await base44.entities.VoiceSignal.create({
+        from_user_id: user.id,
+        to_user_id: toUserId,
+        signal_type: signalType,
+        signal_data: signalData,
+        status: "pending",
+        expires_at: expiresAt,
+      });
+    } catch {
+      // Silently skip
+    }
+  }, [user]);
+
   // ── Create a peer connection to a specific user ─────────────────────────
   // isOfferer=true  → create and send offer (proximity discovery)
   // isOfferer=false → just set up PC, caller will apply remote desc and answer
@@ -154,44 +192,6 @@ export default function useProximityVoice(user, playerPos, remoteUsers) {
     },
     [getAudioCtx, sendSignal]
   );
-
-  // ── Close a specific peer connection ────────────────────────────────────
-  const closePeerConnection = useCallback((remoteUserId) => {
-    const pc = peerConnectionsRef.current[remoteUserId];
-    if (pc) {
-      pc.close();
-      delete peerConnectionsRef.current[remoteUserId];
-    }
-    const stream = remoteStreamsRef.current[remoteUserId];
-    if (stream) {
-      stream.getTracks().forEach((t) => t.stop());
-      delete remoteStreamsRef.current[remoteUserId];
-    }
-    const gain = gainNodesRef.current[remoteUserId];
-    if (gain) {
-      gain.disconnect();
-      delete gainNodesRef.current[remoteUserId];
-    }
-    setVoicePeers((prev) => prev.filter((id) => id !== remoteUserId));
-  }, []);
-
-  // ── Send a WebRTC signal via VoiceSignal entity ─────────────────────────
-  const sendSignal = useCallback(async (toUserId, signalType, signalData) => {
-    if (!user?.id) return;
-    try {
-      const expiresAt = new Date(Date.now() + SIGNAL_EXPIRY_MS).toISOString();
-      await base44.entities.VoiceSignal.create({
-        from_user_id: user.id,
-        to_user_id: toUserId,
-        signal_type: signalType,
-        signal_data: signalData,
-        status: "pending",
-        expires_at: expiresAt,
-      });
-    } catch {
-      // Silently skip
-    }
-  }, [user]);
 
   // ── Process an incoming signal ──────────────────────────────────────────
   const handleIncomingSignal = useCallback(
