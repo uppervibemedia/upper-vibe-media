@@ -160,7 +160,7 @@ export default function WorldHUD({
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
-              pointerEvents: "auto",
+              pointerEvents: "none",
             }}
           >
             {/* Music Library button */}
@@ -194,7 +194,7 @@ export default function WorldHUD({
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
-              pointerEvents: "auto",
+              pointerEvents: "none",
             }}
           >
             {/* Now showing label — compact on mobile */}
@@ -337,7 +337,7 @@ export default function WorldHUD({
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
-              pointerEvents: "auto",
+              pointerEvents: "none",
             }}
           >
             <button
@@ -370,7 +370,7 @@ export default function WorldHUD({
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
-              pointerEvents: "auto",
+              pointerEvents: "none",
             }}
           >
             <button
@@ -403,7 +403,7 @@ export default function WorldHUD({
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
-              pointerEvents: "auto",
+              pointerEvents: "none",
             }}
           >
             <button
@@ -436,7 +436,7 @@ export default function WorldHUD({
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
-              pointerEvents: "auto",
+              pointerEvents: "none",
             }}
           >
             <button
@@ -469,7 +469,7 @@ export default function WorldHUD({
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
-              pointerEvents: "auto",
+              pointerEvents: "none",
             }}
           >
             <span

@@ -93,22 +93,29 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const feedIndexRef = useRef(0);
   const sortedTracksRef = useRef([]);
   sortedTracksRef.current = sortedTracks;
+  const allTracksRef = useRef([]);
+  allTracksRef.current = allTracks;
 
   // Register feed next handler: when a feed track ends, play the next one
   useEffect(() => {
-    if (!registerNextHandler) return;
-    const handleFeedNext = (fromSkip) => {
-      if (!feedActiveRef.current) return; // Not in feed mode
-      const tracks = sortedTracksRef.current;
-      if (!tracks?.length) return;
-      const nextIdx = (feedIndexRef.current + 1) % tracks.length;
-      feedIndexRef.current = nextIdx;
-      const next = tracks[nextIdx];
-      if (next && playTrack) {
-        playTrack(next, "song");
-      }
-    };
-    registerNextHandler(handleFeedNext);
+  if (!registerNextHandler) return;
+  const handleFeedNext = (fromSkip) => {
+    if (!feedActiveRef.current) return; // Not in feed mode
+    const sorted = sortedTracksRef.current;
+    const all = allTracksRef.current;
+    // Use personalized feed if loaded, otherwise fall back to allTracks
+    const tracks = sorted?.length > 0 ? sorted : (all?.length > 0 ? all : []);
+    if (!tracks?.length) return;
+    const nextIdx = sorted?.length > 0
+      ? (feedIndexRef.current + 1) % tracks.length
+      : Math.floor(Math.random() * tracks.length);
+    feedIndexRef.current = nextIdx;
+    const next = tracks[nextIdx];
+    if (next && playTrack) {
+      playTrack(next, "song");
+    }
+  };
+  registerNextHandler(handleFeedNext);
   }, [registerNextHandler, playTrack]);
 
   // ═══════════════════════════════════════════════════════════════
@@ -341,7 +348,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       const pool = featured.length > 0 ? featured : allTracks;
       const pick = pool[Math.floor(Math.random() * pool.length)];
       if (pick) {
-        feedActiveRef.current = false; // Don't auto-advance featured tracks
+        feedActiveRef.current = true;
+        feedIndexRef.current = allTracks.indexOf(pick);
         playTrack(pick, "song");
       }
     }
