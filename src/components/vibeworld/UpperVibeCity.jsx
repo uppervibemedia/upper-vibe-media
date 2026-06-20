@@ -229,8 +229,8 @@ export default function UpperVibeCity({ onExit }) {
           }}
         >
           <iframe
-            key={stageScreenIframeKey}
-            src={`https://www.youtube.com/embed/${stageVideos[stageVideoIdx].youtube_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=${stageVideos[stageVideoIdx].youtube_video_id}`}
+            key={`${stageScreenIframeKey}-${stageVideoMuted ? 'm' : 'u'}`}
+            src={`https://www.youtube.com/embed/${stageVideos[stageVideoIdx].youtube_video_id}?autoplay=1&mute=${stageVideoMuted ? '1' : '0'}&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=${stageVideos[stageVideoIdx].youtube_video_id}`}
             className="w-full h-full pointer-events-none"
             allow="autoplay; encrypted-media"
             referrerPolicy="strict-origin-when-cross-origin"
@@ -304,10 +304,9 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Stage cover visualizer — large centered cover art with glow, waveform, particles */}
+      {/* Stage cover visualizer — audio-reactive equalizer bars */}
       <StageCoverVisualizer
         onReady={(c) => setStageCanvas(c)}
-        video={stageVideos[stageVideoIdx] || null}
         audioIntensityRef={audioIntensityRef}
       />
 
