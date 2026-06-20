@@ -453,115 +453,198 @@ function createCosmicSky(scene) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// DOWNTOWN SKYLINE — 3D buildings on outer park perimeter
+// DOWNTOWN SKYLINE — tall 3D buildings on north & south borders only
+// Grass area: Z=-22 to Z=6. Beach/sand starts Z=8+. Buildings stay on grass.
 // ═══════════════════════════════════════════════════════════════
 function createCitySkyline(scene) {
   const buildings = new Group();
   buildings.name = "cityBuildings";
 
-  // Building generator
-  function addBuilding(x, z, w, d, h, neonColor) {
-    const group = new Group();
+  const neonCyan = new MeshBasicMaterial();
+  neonCyan.color = new Color("#00E5FF");
+  neonCyan.depthWrite = false;
 
-    // Main body — deep dark blue/purple
-    const bodyGeo = new BoxGeometry(w, h, d);
-    const bodyMat = mat("#0d0b30", { roughness: 0.6 });
-    const body = new Mesh(bodyGeo, bodyMat);
+  const neonPurple = new MeshBasicMaterial();
+  neonPurple.color = new Color("#9B7EFF");
+  neonPurple.depthWrite = false;
+
+  const neonPink = new MeshBasicMaterial();
+  neonPink.color = new Color("#E040FB");
+  neonPink.depthWrite = false;
+
+  const bodyMat = mat("#0a0828", { roughness: 0.55 });
+
+  /**
+   * Add a tall skyscraper with window grid columns.
+   * Facing north/south so the wide side runs along X axis.
+   */
+  function addTower(x, z, w, d, h, neonMat) {
+    const g = new Group();
+
+    // Main body
+    const body = new Mesh(new BoxGeometry(w, h, d), bodyMat);
     body.position.y = h / 2;
     body.castShadow = true;
     body.receiveShadow = true;
-    group.add(body);
+    g.add(body);
 
-    // Window rows — thin glowing strips
-    const neonBasic = new MeshBasicMaterial();
-    neonBasic.color = new Color(neonColor);
-    neonBasic.depthWrite = false;
+    // Vertical neon edge strips — 4 corners
+    const edgeGeo = new BoxGeometry(0.04, h, 0.04);
+    for (const [ex, ez] of [[-w/2, d/2], [w/2, d/2], [-w/2, -d/2], [w/2, -d/2]]) {
+      const edge = new Mesh(edgeGeo, neonMat);
+      edge.position.set(ex, h / 2, ez);
+      g.add(edge);
+    }
 
-    const windowRows = Math.floor(h / 1.2);
-    for (let row = 1; row <= windowRows; row++) {
-      const wy = row * 1.2;
-      if (wy > h - 0.4) continue;
-
+    // Window columns — multiple vertical strips across the wide face
+    const colCount = Math.max(2, Math.floor(w / 0.5));
+    for (let col = 0; col < colCount; col++) {
+      const cx = -w * 0.4 + (col / (colCount - 1)) * w * 0.8;
       // Front face
-      const winGeo = new PlaneGeometry(w * 0.7, 0.08);
-      const winFront = new Mesh(winGeo, neonBasic);
-      winFront.position.set(0, wy, d / 2 + 0.01);
-      group.add(winFront);
-
+      const winFront = new Mesh(new PlaneGeometry(0.06, h * 0.88), neonMat);
+      winFront.position.set(cx, h / 2, d / 2 + 0.01);
+      g.add(winFront);
       // Back face
-      const winBack = new Mesh(winGeo, neonBasic);
-      winBack.position.set(0, wy, -d / 2 - 0.01);
+      const winBack = new Mesh(new PlaneGeometry(0.06, h * 0.88), neonMat);
+      winBack.position.set(cx, h / 2, -d / 2 - 0.01);
       winBack.rotation.y = Math.PI;
-      group.add(winBack);
+      g.add(winBack);
     }
 
-    // Top accent strip
-    const topGeo = new BoxGeometry(w + 0.05, 0.06, d + 0.05);
-    const top = new Mesh(topGeo, neonBasic);
-    top.position.y = h + 0.03;
-    group.add(top);
-
-    // Antenna/spire on taller buildings
-    if (h > 5) {
-      const spireGeo = new CylinderGeometry(0.02, 0.04, 0.8, 6);
-      const spire = new Mesh(spireGeo, neonBasic);
-      spire.position.y = h + 0.45;
-      group.add(spire);
+    // Horizontal window bands
+    const bandCount = Math.floor(h / 1.8);
+    for (let b = 1; b <= bandCount; b++) {
+      const by = b * 1.8;
+      if (by > h - 0.3) continue;
+      const bandGeo = new PlaneGeometry(w * 0.75, 0.05);
+      const bf = new Mesh(bandGeo, neonMat);
+      bf.position.set(0, by, d / 2 + 0.01);
+      g.add(bf);
+      const bb = new Mesh(bandGeo, neonMat);
+      bb.position.set(0, by, -d / 2 - 0.01);
+      bb.rotation.y = Math.PI;
+      g.add(bb);
     }
 
-    group.position.set(x, 0, z);
-    buildings.add(group);
+    // Crown — glowing top rim
+    const crown = new Mesh(new BoxGeometry(w + 0.08, 0.1, d + 0.08), neonMat);
+    crown.position.y = h + 0.05;
+    g.add(crown);
+
+    // Tall spire on the tallest buildings
+    if (h > 8) {
+      const spire = new Mesh(new CylinderGeometry(0.03, 0.06, 1.2, 8), neonMat);
+      spire.position.y = h + 0.65;
+      g.add(spire);
+      // Glow ball at tip
+      const tip = new Mesh(new SphereGeometry(0.07, 8, 6), neonMat);
+      tip.position.y = h + 1.3;
+      g.add(tip);
+    }
+
+    g.position.set(x, 0, z);
+    buildings.add(g);
   }
 
-  // ─── NORTH ROW (behind player, Z = -22) ─────────────────────
-  const northBuildings = [
-    [-24, -21, 1.8, 1.4, 6.5, "#00E5FF"],
-    [-21, -21.5, 1.4, 1.2, 4.8, "#9B7EFF"],
-    [-18, -21, 1.6, 1.3, 7.2, "#00E5FF"],
-    [-15, -21.5, 1.2, 1.0, 3.5, "#A855F7"],
-    [-12, -21, 1.8, 1.4, 8.0, "#00E5FF"],
-    [-9, -21.5, 1.3, 1.1, 5.5, "#9B7EFF"],
-    [-6, -21, 1.5, 1.3, 6.0, "#00E5FF"],
-    [-3, -21.5, 1.4, 1.2, 4.2, "#A855F7"],
-    [0, -21, 2.0, 1.5, 9.0, "#00E5FF"],
-    [3, -21.5, 1.3, 1.1, 5.8, "#9B7EFF"],
-    [6, -21, 1.6, 1.4, 6.5, "#00E5FF"],
-    [9, -21.5, 1.4, 1.2, 4.5, "#A855F7"],
-    [12, -21, 1.7, 1.3, 7.0, "#00E5FF"],
-    [15, -21.5, 1.3, 1.0, 3.8, "#9B7EFF"],
-    [18, -21, 1.5, 1.4, 6.8, "#00E5FF"],
-    [21, -21.5, 1.4, 1.2, 5.0, "#A855F7"],
-    [24, -21, 1.8, 1.3, 7.5, "#00E5FF"],
-  ];
-  northBuildings.forEach(([x, z, w, d, h, c]) => addBuilding(x, z, w, d, h, c));
+  /**
+   * Stepped/pyramid tower — gets narrower toward top
+   */
+  function addSteppedTower(x, z, baseW, baseD, sections, neonMat) {
+    const g = new Group();
+    let y = 0;
+    let w = baseW;
+    let d = baseD;
+    const sectionH = 4.0;
 
-  // ─── WEST ROW (left side, X = -27) ──────────────────────────
-  const westBuildings = [
-    [-27, -19, 1.3, 1.5, 5.5, "#9B7EFF"],
-    [-27, -16, 1.3, 1.8, 8.0, "#00E5FF"],
-    [-27, -13, 1.3, 1.4, 4.2, "#A855F7"],
-    [-27, -10, 1.3, 1.6, 7.0, "#00E5FF"],
-    [-27, -7, 1.3, 1.3, 5.8, "#9B7EFF"],
-    [-27, -4, 1.3, 1.7, 6.5, "#00E5FF"],
-    [-27, -1, 1.3, 1.5, 4.5, "#A855F7"],
-    [-27, 2, 1.3, 1.8, 9.0, "#00E5FF"],
-    [-27, 5, 1.3, 1.4, 5.0, "#9B7EFF"],
-  ];
-  westBuildings.forEach(([x, z, w, d, h, c]) => addBuilding(x, z, w, d, h, c));
+    for (let s = 0; s < sections; s++) {
+      const body = new Mesh(new BoxGeometry(w, sectionH, d), bodyMat);
+      body.position.y = y + sectionH / 2;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      g.add(body);
 
-  // ─── EAST ROW (right side, X = 27) ──────────────────────────
-  const eastBuildings = [
-    [27, -19, 1.3, 1.6, 7.0, "#00E5FF"],
-    [27, -16, 1.3, 1.3, 4.8, "#9B7EFF"],
-    [27, -13, 1.3, 1.7, 8.5, "#00E5FF"],
-    [27, -10, 1.3, 1.5, 5.5, "#A855F7"],
-    [27, -7, 1.3, 1.8, 6.8, "#00E5FF"],
-    [27, -4, 1.3, 1.4, 4.0, "#9B7EFF"],
-    [27, -1, 1.3, 1.6, 7.5, "#00E5FF"],
-    [27, 2, 1.3, 1.5, 5.2, "#A855F7"],
-    [27, 5, 1.3, 1.7, 8.0, "#00E5FF"],
+      // Edge neon for this section
+      const edgeGeo = new BoxGeometry(0.04, sectionH, 0.04);
+      for (const [ex, ez] of [[-w/2, d/2], [w/2, d/2], [-w/2, -d/2], [w/2, -d/2]]) {
+        const edge = new Mesh(edgeGeo, neonMat);
+        edge.position.set(ex, y + sectionH / 2, ez);
+        g.add(edge);
+      }
+
+      // Section top band
+      const band = new Mesh(new BoxGeometry(w + 0.06, 0.08, d + 0.06), neonMat);
+      band.position.y = y + sectionH + 0.04;
+      g.add(band);
+
+      y += sectionH;
+      w *= 0.78;
+      d *= 0.78;
+    }
+
+    // Spire
+    const spire = new Mesh(new CylinderGeometry(0.02, 0.05, 1.5, 8), neonMat);
+    spire.position.y = y + 0.75;
+    g.add(spire);
+
+    g.position.set(x, 0, z);
+    buildings.add(g);
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  // NORTH ROW — behind player at Z = -21 (far edge of grass)
+  // Wide buildings that face south (toward the player)
+  // ═════════════════════════════════════════════════════════════
+  const northData = [
+    [-25, -21, 2.2, 1.5, 12, neonCyan],
+    [-22, -21.3, 1.8, 1.3, 9, neonPurple],
+    [-19, -21, 2.4, 1.6, 14, neonPink],
+    [-15.5, -21.2, 1.6, 1.2, 8, neonCyan],
+    [-12, -21, 2.0, 1.4, 11, neonPurple],
+    [-8, -21.3, 2.6, 1.7, 16, neonCyan],
+    [-3, -21, 3.0, 1.8, 18, neonPink],
+    [2, -21.2, 2.2, 1.5, 13, neonCyan],
+    [6, -21, 1.8, 1.4, 10, neonPurple],
+    [10, -21.3, 2.8, 1.7, 15, neonCyan],
+    [14, -21, 2.0, 1.4, 12, neonPink],
+    [18, -21.2, 2.4, 1.6, 17, neonCyan],
+    [22, -21, 1.6, 1.2, 8, neonPurple],
+    [25, -21.3, 2.2, 1.5, 14, neonCyan],
   ];
-  eastBuildings.forEach(([x, z, w, d, h, c]) => addBuilding(x, z, w, d, h, c));
+  northData.forEach(([x, z, w, d, h, nm]) => addTower(x, z, w, d, h, nm));
+
+  // Stepped towers as landmarks on north side
+  addSteppedTower(-7, -21, 2.8, 1.8, 3, neonPurple);
+  addSteppedTower(7, -21, 2.6, 1.7, 3, neonCyan);
+  addSteppedTower(-18, -21.3, 2.4, 1.6, 2, neonPink);
+  addSteppedTower(19, -21.2, 2.5, 1.6, 2, neonPink);
+
+  // ═════════════════════════════════════════════════════════════
+  // SOUTH ROW — at Z = 6 (far end of grass, before sand starts)
+  // Wide buildings that face north (toward the player)
+  // ═════════════════════════════════════════════════════════════
+  const southData = [
+    [-25, 6, 2.0, 1.4, 11, neonPurple],
+    [-22, 6.3, 2.4, 1.5, 14, neonCyan],
+    [-19, 6, 1.8, 1.3, 10, neonPink],
+    [-15.5, 6.2, 2.6, 1.7, 16, neonPurple],
+    [-12, 6, 2.0, 1.4, 12, neonCyan],
+    [-8, 6.3, 2.8, 1.8, 17, neonPink],
+    [-3, 6, 3.0, 1.8, 19, neonCyan],
+    [2, 6.2, 2.2, 1.5, 13, neonPurple],
+    [6, 6, 1.8, 1.3, 9, neonCyan],
+    [10, 6.3, 2.6, 1.7, 15, neonPink],
+    [14, 6, 2.2, 1.5, 14, neonPurple],
+    [18, 6.2, 2.8, 1.7, 18, neonCyan],
+    [22, 6, 1.8, 1.3, 10, neonPink],
+    [25, 6.3, 2.0, 1.4, 12, neonPurple],
+  ];
+  southData.forEach(([x, z, w, d, h, nm]) => addTower(x, z, w, d, h, nm));
+
+  // Stepped landmark towers on south side
+  addSteppedTower(-8, 6, 2.8, 1.8, 3, neonCyan);
+  addSteppedTower(8, 6, 2.6, 1.7, 3, neonPink);
+  addSteppedTower(-19, 6.2, 2.4, 1.6, 2, neonCyan);
+  addSteppedTower(20, 6.2, 2.5, 1.7, 2, neonPurple);
 
   scene.add(buildings);
 }
