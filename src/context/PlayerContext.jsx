@@ -1097,6 +1097,7 @@ export function PlayerProvider({ children }) {
   const registerPrevHandler = useCallback((fn) => { onPrevRef.current = fn; }, []);
   const handleNext          = useCallback(() => { onNextRef.current?.(); }, []);
   const handlePrev          = useCallback(() => { onPrevRef.current?.(); }, []);
+  const skipTrack           = useCallback(() => { onNextRef.current?.(true); }, []);
   const clearPosition       = useCallback(() => { savedTimeRef.current = 0; }, []);
   const savePosition        = useCallback((t) => { savedTimeRef.current = t; }, []);
 
@@ -1119,6 +1120,7 @@ export function PlayerProvider({ children }) {
       registerPrevHandler,
       handleNext,
       handlePrev,
+      skipTrack,
       savedTimeRef,
       playLockRef: { current: opQueueRef.current.isRunning }, // compat shim
       clearPosition,

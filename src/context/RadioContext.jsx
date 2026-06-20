@@ -292,7 +292,7 @@ export function RadioProvider({ children }) {
   //   (c) lock screen next                                         [fromSkip=true via op-queue]
   const handleNext = useCallback((fromSkip = false) => {
     const { sourceType, currentRadioSong: cs, allTracks: aT } = stateRef.current;
-    if (sourceType !== "radio") return;
+    if (sourceType !== "radio" && !fromSkip) return;
 
     // Case 1: Host drop just ended (natural end) or skipped (user)
     if (isHostDropRef.current) {

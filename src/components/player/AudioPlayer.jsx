@@ -19,6 +19,7 @@ export default function AudioPlayer() {
     audioRef,
     handleNext,
     handlePrev,
+    skipTrack,
     lastTimeRef,
     sourceType,
   } = usePlayer();
@@ -291,16 +292,7 @@ export default function AudioPlayer() {
                 }
               </button>
               <button
-                onClick={() => {
-                  handleNext();
-                  // Fallback for non-radio: seek forward 15s
-                  if (sourceType !== "radio") {
-                    const a = audioRef.current;
-                    if (a && a.duration && a.currentTime < a.duration - 2) {
-                      a.currentTime = Math.min(a.currentTime + 15, a.duration - 1);
-                    }
-                  }
-                }}
+                onClick={() => { skipTrack?.(); }}
                 className="text-muted-foreground/40 hover:text-foreground/70 transition-colors flex"
                 style={{ minWidth: "44px", minHeight: "44px", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
