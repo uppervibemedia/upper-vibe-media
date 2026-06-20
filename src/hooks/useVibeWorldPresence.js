@@ -16,15 +16,17 @@ const HEARTBEAT_MS = 10_000; // 10s — send position/zone
 const POLL_MS = 6_000;       // 6s — read other users
 const STALE_MS = 25_000;     // 25s — mark as offline if no heartbeat
 
-export default function useVibeWorldPresence(user, currentZone) {
+export default function useVibeWorldPresence(user, currentZone, position) {
   const [activeUsers, setActiveUsers] = useState([]);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const recordIdRef = useRef(null);
   const zoneRef = useRef("");
+  const posRef = useRef({ x: 0, z: 0, rot: 0 });
   const mountedRef = useRef(true);
 
-  // Keep zone ref current
+  // Keep refs current
   zoneRef.current = currentZone || "";
+  posRef.current = position || { x: 0, z: 0, rot: 0 };
 
   // ── Create or update own presence record ─────────────────────────────────
   const heartbeat = useCallback(async () => {
@@ -36,6 +38,9 @@ export default function useVibeWorldPresence(user, currentZone) {
       username: user.full_name || user.email?.split("@")[0] || "Vibe Citizen",
       avatar_type: user.avatar_type || "default",
       current_zone: zoneRef.current,
+      pos_x: posRef.current.x,
+      pos_z: posRef.current.z,
+      rotation: posRef.current.rot,
       is_online: true,
       last_heartbeat: now,
       joined_at: now,

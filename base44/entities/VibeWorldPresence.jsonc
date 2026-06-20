@@ -24,6 +24,21 @@
       "type": "string",
       "description": "Current zone in Vibe World e.g. plaza, lounge, stage"
     },
+    "pos_x": {
+      "type": "number",
+      "default": 0,
+      "description": "World X position"
+    },
+    "pos_z": {
+      "type": "number",
+      "default": 0,
+      "description": "World Z position"
+    },
+    "rotation": {
+      "type": "number",
+      "default": 0,
+      "description": "World Y rotation in radians"
+    },
     "is_online": {
       "type": "boolean",
       "default": true

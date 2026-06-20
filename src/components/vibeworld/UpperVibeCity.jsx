@@ -267,9 +267,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
   };
 
-  // ── Presence — Phase 1: track zone + heartbeat ────────────────────────
+  // ── Presence — Phase 2: track zone + position + heartbeat ─────────────
   const currentZoneName = detectZone(playerPos.x, playerPos.z)?.name || "Plaza";
-  const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName);
+  const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName, playerPos);
 
   // Keep player refs in sync without adding them as effect deps
   stageIsPlayingRef.current = isPlaying;
@@ -385,6 +385,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           locked={movementLocked}
           stageScreenPosRef={stageScreenPosRef}
           mobileInputRef={mobileInputRef}
+          remoteUsers={activeUsers}
         />
       </div>
 

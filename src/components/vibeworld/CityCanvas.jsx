@@ -18,6 +18,7 @@ const {
   CylinderGeometry,
   SphereGeometry,
   BoxGeometry,
+  TorusGeometry,
   Vector3,
   Mesh,
   Group,
@@ -1436,9 +1437,85 @@ function createAvatar(scene) {
 // Mobile joystick now lives in ./MobileJoystick.jsx (imported by UpperVibeCity)
 
 // ═══════════════════════════════════════════════════════════════
+// REMOTE AVATAR — Phase 2: render other users in the world
+// ═══════════════════════════════════════════════════════════════
+function createRemoteAvatar(scene, userId, username, avatarType) {
+  const group = new Group();
+  group.name = `remote_${userId}`;
+  group.userData = { userId, lastPos: { x: 0, z: 0 }, velocity: 0, walkTime: 0 };
+
+  // ── Avatar type colors ───────────────────────────────────────
+  const typeColors = {
+    default:  { body: "#1565C0", head: "#1976D2", accent: "#42A5F5" },
+    cyber:    { body: "#1B5E20", head: "#2E7D32", accent: "#00E676" },
+    cosmic:   { body: "#4A148C", head: "#6A1B9A", accent: "#CE93D8" },
+    neon:     { body: "#880E4F", head: "#AD1457", accent: "#FF4081" },
+  };
+  const colors = typeColors[avatarType] || typeColors.default;
+  const bodyMat = () => new MeshStandardMaterial({ color: new Color(colors.body), roughness: 0.35, metalness: 0.2 });
+  const headMat = () => new MeshStandardMaterial({ color: new Color(colors.head), roughness: 0.35 });
+  const accentMat = () => new MeshBasicMaterial({ color: new Color(colors.accent), depthWrite: false });
+
+  // ── Body (cylinder torso) ────────────────────────────────────
+  const torso = new Mesh(new CylinderGeometry(0.12, 0.14, 0.38, 8), bodyMat());
+  torso.position.y = 0.55;
+  torso.castShadow = true;
+  group.add(torso);
+
+  // ── Head (sphere) ────────────────────────────────────────────
+  const head = new Mesh(new SphereGeometry(0.09, 8, 6), headMat());
+  head.position.y = 0.85;
+  head.castShadow = true;
+  group.add(head);
+
+  // ── Accent ring around neck ──────────────────────────────────
+  const ring = new Mesh(new TorusGeometry(0.09, 0.015, 8, 16), accentMat());
+  ring.position.y = 0.78;
+  ring.rotation.x = Math.PI / 2;
+  group.add(ring);
+
+  // ── Legs ─────────────────────────────────────────────────────
+  const legGeo = new CylinderGeometry(0.04, 0.05, 0.35, 6);
+  for (const side of [-1, 1]) {
+    const leg = new Mesh(legGeo, bodyMat());
+    leg.position.set(side * 0.07, 0.18, 0);
+    leg.castShadow = true;
+    leg.name = side > 0 ? "rightLeg" : "leftLeg";
+    group.add(leg);
+  }
+
+  // ── Username sprite ──────────────────────────────────────────
+  const nameCanvas = document.createElement("canvas");
+  nameCanvas.width = 256;
+  nameCanvas.height = 64;
+  const ctx = nameCanvas.getContext("2d");
+  ctx.font = "bold 20px 'Inter', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  const displayName = (username || "User").substring(0, 16);
+  ctx.fillText(displayName, 128, 32);
+
+  const nameTex = new THREE.CanvasTexture(nameCanvas);
+  nameTex.minFilter = THREE.LinearFilter;
+  nameTex.colorSpace = THREE.SRGBColorSpace;
+
+  const nameSprite = new Sprite(new SpriteMaterial({
+    map: nameTex, transparent: true, depthWrite: false, depthTest: false,
+  }));
+  nameSprite.scale.set(1.2, 0.3, 1);
+  nameSprite.position.y = 1.05;
+  nameSprite.renderOrder = 999;
+  group.add(nameSprite);
+
+  scene.add(group);
+  return group;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, locked, stageScreenPosRef, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, locked, stageScreenPosRef, remoteUsers, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1473,6 +1550,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   const targetRotRef = useRef(0);
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0 });
+  const remoteAvatarsRef = useRef({}); // userId → { group, prevPos }
+  const remoteUsersRef = useRef([]);
+  remoteUsersRef.current = remoteUsers || [];
   const animRef = useRef({
     walkTime: 0,
     isMoving: false,
@@ -1945,6 +2025,79 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
           stageScreenPosRef.current = { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh };
         }
 
+        // ─── REMOTE AVATARS — Phase 2: sync, spawn, despawn, animate ──
+        const remoteMap = remoteAvatarsRef.current;
+        const activeIds = new Set();
+
+        for (const remote of remoteUsersRef.current) {
+          if (!remote?.user_id) continue;
+          activeIds.add(remote.user_id);
+
+          let entry = remoteMap[remote.user_id];
+          if (!entry) {
+            // Spawn new remote avatar
+            const group = createRemoteAvatar(
+              scene, remote.user_id,
+              remote.username || "User",
+              remote.avatar_type || "default"
+            );
+            entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 } };
+            remoteMap[remote.user_id] = entry;
+          }
+
+          const g = entry.group;
+          const targetX = remote.pos_x || 0;
+          const targetZ = remote.pos_z || 0;
+          const targetRot = remote.rotation || 0;
+
+          // Smooth position lerp
+          g.position.x += (targetX - g.position.x) * Math.min(1, 8 * dt);
+          g.position.y = SPAWN[1];
+          g.position.z += (targetZ - g.position.z) * Math.min(1, 8 * dt);
+
+          // Smooth rotation
+          let rotDiff = targetRot - g.rotation.y;
+          while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
+          while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
+          g.rotation.y += rotDiff * Math.min(1, 6 * dt);
+
+          // Calculate velocity for walk animation
+          const dx = g.position.x - entry.prevPos.x;
+          const dz = g.position.z - entry.prevPos.z;
+          const vel = Math.sqrt(dx * dx + dz * dz);
+          entry.prevPos = { x: g.position.x, z: g.position.z };
+
+          // Walk animation on legs
+          const walkTime = g.userData.walkTime || 0;
+          const newWalkTime = walkTime + vel * 7 * dt;
+          g.userData.walkTime = newWalkTime;
+          g.userData.velocity = vel;
+
+          const legAngle = Math.sin(newWalkTime) * 0.35 * Math.min(1, vel * 30);
+          g.children.forEach((child) => {
+            if (child.name === "leftLeg") child.rotation.x = legAngle;
+            if (child.name === "rightLeg") child.rotation.x = -legAngle;
+          });
+        }
+
+        // Despawn avatars that are no longer present
+        for (const id in remoteMap) {
+          if (!activeIds.has(id)) {
+            const entry = remoteMap[id];
+            if (entry.group) {
+              scene.remove(entry.group);
+              entry.group.traverse((obj) => {
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) {
+                  if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+                  else obj.material.dispose();
+                }
+              });
+            }
+            delete remoteMap[id];
+          }
+        }
+
         renderer.render(scene, camera);
         frameRef.current++;
 
@@ -1982,6 +2135,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         frameRef.current = 0;
         avatarRef.current = null;
         sceneRef.current = null;
+        remoteAvatarsRef.current = {};
       };
     } catch (e) {
       console.error("[CityCanvas] init error:", e);
