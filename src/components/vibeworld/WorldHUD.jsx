@@ -27,6 +27,9 @@ export default function WorldHUD({
   stageVideoTitle,
   stageVideoMuted,
   stageVideosCount,
+  stageScreenYouTube,
+  onStageWatchOnScreen,
+  onStageExitScreen,
   onStageWatchVideo,
   onStageNextVideo,
   onStageToggleMute,
@@ -135,18 +138,50 @@ export default function WorldHUD({
             )}
 
             <div className="flex flex-wrap gap-2 justify-center">
+              {/* Watch on Stage Screen / Exit Stage View */}
+              {stageScreenYouTube ? (
+                <button
+                  onClick={onStageExitScreen}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  style={{
+                    background: "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    color: "rgba(255,255,255,0.6)",
+                  }}
+                >
+                  <Tv2 className="w-3.5 h-3.5" />
+                  Exit Stage View
+                </button>
+              ) : (
+                <button
+                  onClick={onStageWatchOnScreen}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
+                    color: "#fff",
+                    boxShadow: "0 0 20px rgba(155,126,255,0.4)",
+                  }}
+                >
+                  <Tv2 className="w-3.5 h-3.5" />
+                  Watch on Stage Screen
+                </button>
+              )}
+
               {/* Watch Full Video */}
               <button
                 onClick={onStageWatchVideo}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
                 style={{
-                  background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
-                  color: "#fff",
-                  boxShadow: "0 0 20px rgba(155,126,255,0.4)",
+                  background: stageScreenYouTube
+                    ? "rgba(255,255,255,0.08)"
+                    : "linear-gradient(135deg,#0080B8,#00A0DC)",
+                  border: stageScreenYouTube ? "1px solid rgba(255,255,255,0.15)" : "none",
+                  color: stageScreenYouTube ? "rgba(255,255,255,0.6)" : "#fff",
+                  boxShadow: stageScreenYouTube ? "none" : "0 0 20px rgba(0,160,220,0.4)",
                 }}
               >
                 <Video className="w-3.5 h-3.5" />
-                Watch Full Video
+                Watch Full Screen
               </button>
 
               {/* Next Video */}

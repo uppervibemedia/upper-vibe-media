@@ -1106,7 +1106,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef }) {
+export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, onStageScreenBounds }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1114,6 +1114,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   onLoadedRef.current = onLoaded;
   const onPosCbRef = useRef(onPositionChange);
   onPosCbRef.current = onPositionChange;
+  const onStageScreenRef = useRef(onStageScreenBounds);
+  onStageScreenRef.current = onStageScreenBounds;
 
   useEffect(() => {
     const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -1333,6 +1335,42 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
           pz - Math.cos(rot) * camDist,
         );
         camera.lookAt(px, py + lookY, pz);
+
+        // ─── STAGE SCREEN 2D PROJECTION — for HTML overlay ───────────
+        if (onStageScreenRef.current && frameRef.current % 4 === 0) {
+          const stageW = 3.5, stageH = 2.0, stageZ = -16.3;
+          const corners = [
+            new Vector3(-stageW, 4.5, stageZ),
+            new Vector3(stageW, 4.5, stageZ),
+            new Vector3(stageW, 0.5, stageZ),
+            new Vector3(-stageW, 0.5, stageZ),
+          ];
+          const canvasW = renderer.domElement.clientWidth;
+          const canvasH = renderer.domElement.clientHeight;
+          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+          let allBehindCamera = true;
+          for (const corner of corners) {
+            const projected = corner.clone().project(camera);
+            if (projected.z < 1) {
+              const sx = (projected.x * 0.5 + 0.5) * canvasW;
+              const sy = (-projected.y * 0.5 + 0.5) * canvasH;
+              minX = Math.min(minX, sx);
+              maxX = Math.max(maxX, sx);
+              minY = Math.min(minY, sy);
+              maxY = Math.max(maxY, sy);
+              allBehindCamera = false;
+            }
+          }
+          if (!allBehindCamera && maxX > minX && maxY > minY) {
+            onStageScreenRef.current({
+              left: minX, top: minY,
+              width: maxX - minX, height: maxY - minY,
+              visible: true,
+            });
+          } else {
+            onStageScreenRef.current({ visible: false });
+          }
+        }
 
         // ═════════════════════════════════════════════════════════
         // ANIMATION SYSTEM

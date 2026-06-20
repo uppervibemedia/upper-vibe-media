@@ -25,6 +25,9 @@ export default function UpperVibeCity({ onExit }) {
   const [stageVideoIdx, setStageVideoIdx] = useState(0);
   const [stageVideoMuted, setStageVideoMuted] = useState(true);
   const [stageVideoPlayerOpen, setStageVideoPlayerOpen] = useState(false);
+  const [stageScreenYouTube, setStageScreenYouTube] = useState(false);
+  const [stageScreenBounds, setStageScreenBounds] = useState({ visible: false, left: 0, top: 0, width: 0, height: 0 });
+  const [stageScreenIframeKey, setStageScreenIframeKey] = useState(0);
   const stageVideoTimerRef = useRef(null);
 
 
@@ -86,10 +89,16 @@ export default function UpperVibeCity({ onExit }) {
       return next;
     });
   };
+  const handleStageWatchOnScreen = () => {
+    setStageScreenYouTube(true);
+    setStageScreenIframeKey((k) => k + 1);
+  };
+  const handleStageExitScreen = () => {
+    setStageScreenYouTube(false);
+  };
   const handleStagePlaySong = () => {
     const video = stageVideos[stageVideoIdx];
     if (!video?.title || !allTracks?.length || !playTrack) return;
-    // Try to find a matching track by title
     const titleLower = video.title.toLowerCase();
     const match = allTracks.find(
       (t) => t.title && t.title.toLowerCase() === titleLower
@@ -139,8 +148,9 @@ export default function UpperVibeCity({ onExit }) {
         <CityCanvas
           onLoaded={() => setLoading(false)}
           onPositionChange={(x, z, rot) => setPlayerPos({ x, z, rot })}
-          stageCanvas={stageCanvas}
+          stageCanvas={!stageScreenYouTube ? stageCanvas : null}
           audioIntensityRef={audioIntensityRef}
+          onStageScreenBounds={setStageScreenBounds}
         />
       </div>
 
@@ -207,6 +217,37 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
+      {/* In-world YouTube iframe — plays on the physical stage screen */}
+      {stageScreenYouTube && stageScreenBounds.visible && stageVideos[stageVideoIdx]?.youtube_video_id && (
+        <div
+          className="absolute z-50 pointer-events-none"
+          style={{
+            left: stageScreenBounds.left,
+            top: stageScreenBounds.top,
+            width: stageScreenBounds.width,
+            height: stageScreenBounds.height,
+          }}
+        >
+          <iframe
+            key={stageScreenIframeKey}
+            src={`https://www.youtube.com/embed/${stageVideos[stageVideoIdx].youtube_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=${stageVideos[stageVideoIdx].youtube_video_id}`}
+            className="w-full h-full pointer-events-none"
+            allow="autoplay; encrypted-media"
+            referrerPolicy="strict-origin-when-cross-origin"
+            title={stageVideos[stageVideoIdx].title || "Stage video"}
+            style={{ border: "none" }}
+          />
+          {/* Subtle glow frame matching the 3D screen */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              border: "2px solid rgba(155,126,255,0.25)",
+              boxShadow: "inset 0 0 20px rgba(0,160,220,0.08)",
+            }}
+          />
+        </div>
+      )}
+
       {/* World HUD — zone-specific interactions */}
       <WorldHUD
         playerX={playerPos.x}
@@ -217,6 +258,9 @@ export default function UpperVibeCity({ onExit }) {
         stageVideoTitle={stageVideos[stageVideoIdx]?.title || null}
         stageVideoMuted={stageVideoMuted}
         stageVideosCount={stageVideos.length}
+        stageScreenYouTube={stageScreenYouTube}
+        onStageWatchOnScreen={handleStageWatchOnScreen}
+        onStageExitScreen={handleStageExitScreen}
         onStageWatchVideo={handleStageWatchVideo}
         onStageNextVideo={handleStageNextVideo}
         onStageToggleMute={handleStageToggleMute}
