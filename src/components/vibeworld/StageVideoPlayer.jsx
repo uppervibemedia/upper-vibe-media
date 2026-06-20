@@ -66,7 +66,7 @@ export default function StageVideoPlayer({
   }, [muted, isPlaying, togglePlay, onClose, onToggleMute]);
 
   const embedUrl = video?.youtube_video_id
-    ? `https://www.youtube.com/embed/${video.youtube_video_id}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&iv_load_policy=3&origin=${encodeURIComponent(window.location.origin)}&enablejsapi=1`
+    ? `https://www.youtube-nocookie.com/embed/${video.youtube_video_id}?autoplay=1&mute=1&controls=1&modestbranding=1&rel=0&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`
     : null;
 
   const thumbnailUrl = video?.thumbnail_url || (
