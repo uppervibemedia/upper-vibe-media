@@ -418,33 +418,33 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </div>
       )}
 
-      {/* Top HUD — compact mobile layout */}
+      {/* ── Top HUD row: Exit (left) | UVC (right) ── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: loading ? 0 : 1 }}
         transition={{ delay: 0.4 }}
-        className="absolute top-0 left-0 right-0 z-[55] flex items-start justify-between px-2 pt-2"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 6px)" }}
+        className="absolute top-0 left-0 right-0 z-[55] flex items-center justify-between px-1.5"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 4px)" }}
       >
-        {/* Left: Exit button */}
+        {/* Left: icon-only Exit */}
         <button
           onClick={onExit}
           onTouchStart={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-1 rounded-full font-bold transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
+          className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
           style={{
-            background: "rgba(255,255,255,0.12)",
-            backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            color: "rgba(255,255,255,0.75)",
-            padding: isMobile ? "3px 10px" : "6px 14px",
-            fontSize: isMobile ? "9px" : "12px",
-            minHeight: isMobile ? "26px" : "44px",
+            background: "rgba(255,255,255,0.1)",
+            backdropFilter: "blur(10px)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: "rgba(255,255,255,0.65)",
+            width: "44px",
+            height: "44px",
+            minWidth: "44px",
+            minHeight: "44px",
             touchAction: "manipulation",
-            whiteSpace: "nowrap",
           }}
+          aria-label="Exit Vibe City"
         >
-          <ChevronLeft style={{ width: isMobile ? "10px" : "14px", height: isMobile ? "10px" : "14px" }} />
-          {isMobile ? "Exit City" : "Exit Upper Vibe City"}
+          <ChevronLeft style={{ width: "16px", height: "16px" }} />
         </button>
 
         {/* Exit Watch Mode — persistent when watching stage on mobile */}
@@ -466,20 +466,20 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           </button>
         )}
 
-        {/* Right: UVC badge */}
+        {/* Right: tiny UVC badge */}
         <div
           className="flex items-center rounded-full flex-shrink-0"
           style={{
-            background: "rgba(255,255,255,0.06)",
-            backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            padding: isMobile ? "3px 8px" : "6px 12px",
+            background: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(10px)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            padding: isMobile ? "2px 5px" : "6px 12px",
           }}
         >
-          <span className="font-heading font-black text-white/35"
+          <span className="font-heading font-black text-white/25"
             style={{
-              fontSize: isMobile ? "7px" : "10px",
-              letterSpacing: isMobile ? "0.1em" : "0.2em",
+              fontSize: isMobile ? "6px" : "10px",
+              letterSpacing: isMobile ? "0.08em" : "0.2em",
             }}
           >
             {isMobile ? "UVC" : "UPPER VIBE CITY"}
