@@ -250,12 +250,12 @@ function buildPark(scene) {
     scene.add(centerGlow);
   }
 
-  // Six paths radiating from Central Plaza — balanced radial layout
+  // Six paths radiating from Central Plaza — balanced left/right layout
   createPath(PLAZA_X, PLAZA_Z, 0, -15);        // North → Main Music Stage
-  createPath(PLAZA_X, PLAZA_Z, -12, -3);       // Northwest → Vibe Lounge
-  createPath(PLAZA_X, PLAZA_Z, 14, -8);        // Northeast → Music Library
-  createPath(PLAZA_X, PLAZA_Z, -14, 6);        // Southwest → Visualizer Dome
-  createPath(PLAZA_X, PLAZA_Z, 12, 4);         // Southeast → Daily Vibe Check
+  createPath(PLAZA_X, PLAZA_Z, -14, -5);       // Left → Vibe Lounge
+  createPath(PLAZA_X, PLAZA_Z, 14, -5);        // Right → Music Library
+  createPath(PLAZA_X, PLAZA_Z, -10, 8);        // Lower-left → Visualizer Dome
+  createPath(PLAZA_X, PLAZA_Z, 10, 4);         // Lower-right → Daily Vibe Check
   createPath(PLAZA_X, PLAZA_Z, 0, SHORELINE_Z + 1); // South → Beach
 
   // ── Beach boardwalk ────────────────────────────────────────
@@ -373,7 +373,7 @@ function buildPark(scene) {
   createZoneLabel(scene, 0, 5.5, -15, "MUSIC  STAGE", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
-  // 5. VIBE LOUNGE — west/left side
+  // 5. VIBE LOUNGE — left, directly across from Music Library
   // ═════════════════════════════════════════════════════════════
   const lounge = new Group();
   lounge.name = "vibeLounge";
@@ -383,15 +383,15 @@ function buildPark(scene) {
     mat("#1E1E3A", { roughness: 0.5, metalness: 0.3 })
   );
   loungePlat.rotation.x = -Math.PI / 2;
-  loungePlat.position.set(-12, 0.002, -3);
+  loungePlat.position.set(-14, 0.002, -5);
   loungePlat.receiveShadow = true;
   lounge.add(loungePlat);
 
   // Low curved perimeter glow — clean open-air lounge, no poles
   for (let i = 0; i < 16; i++) {
     const ang = Math.PI / 2 + (i / 15) * Math.PI;
-    const gx = -12 + Math.cos(ang) * 3.6;
-    const gz = -3 + Math.sin(ang) * 3.6;
+    const gx = -14 + Math.cos(ang) * 3.6;
+    const gz = -5 + Math.sin(ang) * 3.6;
     const groundGlow = new Mesh(
       new BoxGeometry(0.15, 0.03, 0.15),
       new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.6 })
@@ -403,8 +403,8 @@ function buildPark(scene) {
   // Seating inside
   for (let i = 0; i < 6; i++) {
     const ang = Math.PI + (i / 5) * Math.PI;
-    const sx = -12 + Math.cos(ang) * 2;
-    const sz = -3 + Math.sin(ang) * 2;
+    const sx = -14 + Math.cos(ang) * 2;
+    const sz = -5 + Math.sin(ang) * 2;
     const seat = new Mesh(
       new BoxGeometry(0.9, 0.2, 0.5),
       mat("#4A3A6A", { roughness: 0.4, metalness: 0.15 })
@@ -428,7 +428,7 @@ function buildPark(scene) {
     new CylinderGeometry(0.7, 0.8, 0.3, 16),
     mat("#555588", { roughness: 0.3, metalness: 0.6 })
   );
-  firePit.position.set(-12, 0.15, -3);
+  firePit.position.set(-14, 0.15, -5);
   firePit.castShadow = true;
   lounge.add(firePit);
 
@@ -436,14 +436,14 @@ function buildPark(scene) {
     new CylinderGeometry(0.75, 0.85, 0.04, 16),
     new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false })
   );
-  fireGlow.position.set(-12, 0.32, -3);
+  fireGlow.position.set(-14, 0.32, -5);
   lounge.add(fireGlow);
 
   scene.add(lounge);
-  createZoneLabel(scene, -12, 4.2, -3, "VIBE  LOUNGE", "#C43BFF");
+  createZoneLabel(scene, -14, 4.2, -5, "VIBE  LOUNGE", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
-  // 6. MUSIC LIBRARY — northeast, near beach corner
+  // 6. MUSIC LIBRARY — right, directly across from Vibe Lounge
   // ═════════════════════════════════════════════════════════════
   const library = new Group();
   library.name = "musicLibrary";
@@ -453,7 +453,7 @@ function buildPark(scene) {
     mat("#1A2A3E", { roughness: 0.5, metalness: 0.3 })
   );
   libPlat.rotation.x = -Math.PI / 2;
-  libPlat.position.set(14, 0.002, -8);
+  libPlat.position.set(14, 0.002, -5);
   libPlat.receiveShadow = true;
   library.add(libPlat);
 
@@ -462,7 +462,7 @@ function buildPark(scene) {
     new CylinderGeometry(2.8, 3, 3.2, 16),
     mat("#1E2E4A", { roughness: 0.3, metalness: 0.35, transparent: true, opacity: 0.85, depthWrite: true })
   );
-  libBldg.position.set(14, 1.6, -8);
+  libBldg.position.set(14, 1.6, -5);
   libBldg.castShadow = true;
   library.add(libBldg);
 
@@ -473,7 +473,7 @@ function buildPark(scene) {
       new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide })
     );
     libRing.rotation.x = -Math.PI / 2;
-    libRing.position.set(14, ry, -8);
+    libRing.position.set(14, ry, -5);
     libRing.renderOrder = 1;
     library.add(libRing);
   }
@@ -493,7 +493,7 @@ function buildPark(scene) {
     new MeshBasicMaterial({ map: iconTex, depthWrite: false, side: THREE.DoubleSide })
   );
   iconDisc.rotation.x = -Math.PI / 2;
-  iconDisc.position.set(14, 3.25, -8);
+  iconDisc.position.set(14, 3.25, -5);
   iconDisc.renderOrder = 1;
   library.add(iconDisc);
 
@@ -502,14 +502,14 @@ function buildPark(scene) {
     new BoxGeometry(2.2, 3.0, 0.08),
     new MeshBasicMaterial({ color: new Color("#0080B8"), depthWrite: false, transparent: true, opacity: 0.65 })
   );
-  libEntrance.position.set(14, 1.5, -8 + 2.8);
+  libEntrance.position.set(14, 1.5, -5 + 2.8);
   library.add(libEntrance);
 
   scene.add(library);
-  createZoneLabel(scene, 14, 4.2, -8, "MUSIC  LIBRARY", "#00D4F0");
+  createZoneLabel(scene, 14, 4.2, -5, "MUSIC  LIBRARY", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
-  // 7. VISUALIZER DOME — southwest, open and distinct
+  // 7. VISUALIZER DOME — lower-left, entrance facing Central Plaza
   // ═════════════════════════════════════════════════════════════
   const dome = new Group();
   dome.name = "visualizerDome";
@@ -519,18 +519,9 @@ function buildPark(scene) {
     domeGeo2,
     mat("#1E2A3E", { roughness: 0.25, metalness: 0.6, transparent: true, opacity: 0.7, depthWrite: true })
   );
-  domeMesh2.position.set(-14, 0.05, 6);
+  domeMesh2.position.set(-10, 0.05, 8);
   domeMesh2.castShadow = true;
   dome.add(domeMesh2);
-
-  const domeRing = new Mesh(
-    new RingGeometry(3.2, 3.5, 64),
-    new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, side: THREE.DoubleSide })
-  );
-  domeRing.rotation.x = -Math.PI / 2;
-  domeRing.position.set(-14, 0.06, 6);
-  domeRing.renderOrder = 1;
-  dome.add(domeRing);
 
   // Pulsing LED dots on dome surface
   for (let d = 0; d < 20; d++) {
@@ -539,15 +530,16 @@ function buildPark(scene) {
       new SphereGeometry(0.08, 4, 3),
       new MeshBasicMaterial({ color: new Color(["#C43BFF", "#00D4F0", "#FF00FF"][d % 3]), depthWrite: false })
     );
-    dot.position.set(-14 + Math.cos(dAng) * 3.2, 1.5 + (d % 3) * 0.8, 6 + Math.sin(dAng) * 3.2);
+    dot.position.set(-10 + Math.cos(dAng) * 3.2, 1.5 + (d % 3) * 0.8, 8 + Math.sin(dAng) * 3.2);
     dome.add(dot);
   }
 
+  // Entrance faces Central Plaza (northeast from dome at -10,8 toward 0,-4)
   const domeEntrance = new Mesh(
     new BoxGeometry(2.5, 3.5, 0.1),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.7 })
   );
-  domeEntrance.position.set(-14, 1.75, 6 + 3.35);
+  domeEntrance.position.set(-10, 1.75, 8 - 3.35);
   domeEntrance.name = "domeEntrance";
   dome.add(domeEntrance);
 
@@ -556,14 +548,14 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#1E2A4E"), depthWrite: false, transparent: true, opacity: 0.3 })
   );
   domeFloor.rotation.x = -Math.PI / 2;
-  domeFloor.position.set(-14, 0.003, 6);
+  domeFloor.position.set(-10, 0.003, 8);
   dome.add(domeFloor);
 
   scene.add(dome);
-  createZoneLabel(scene, -14, 4.2, 6, "VISUALIZER  DOME", "#C43BFF");
+  createZoneLabel(scene, -10, 4.2, 8, "VISUALIZER  DOME", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
-  // 8. DAILY VIBE CHECK — southeast, clearly visible
+  // 8. DAILY VIBE CHECK — lower-right, open space
   // ═════════════════════════════════════════════════════════════
   const vibeCheck = new Group();
   vibeCheck.name = "dailyVibeCheck";
@@ -573,7 +565,7 @@ function buildPark(scene) {
     mat("#1A2E3E", { roughness: 0.5, metalness: 0.3 })
   );
   vcPlat.rotation.x = -Math.PI / 2;
-  vcPlat.position.set(12, 0.002, 4);
+  vcPlat.position.set(10, 0.002, 4);
   vcPlat.receiveShadow = true;
   vibeCheck.add(vcPlat);
 
@@ -582,7 +574,7 @@ function buildPark(scene) {
     new CylinderGeometry(0.8, 1.0, 2.5, 16),
     mat("#1E3E4E", { roughness: 0.25, metalness: 0.5, transparent: true, opacity: 0.8, depthWrite: true })
   );
-  vcPillar.position.set(12, 1.25, 4);
+  vcPillar.position.set(10, 1.25, 4);
   vcPillar.castShadow = true;
   vibeCheck.add(vcPillar);
 
@@ -593,7 +585,7 @@ function buildPark(scene) {
       new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide })
     );
     vcRing.rotation.x = -Math.PI / 2;
-    vcRing.position.set(12, ry, 4);
+    vcRing.position.set(10, ry, 4);
     vcRing.renderOrder = 1;
     vibeCheck.add(vcRing);
   }
@@ -613,12 +605,12 @@ function buildPark(scene) {
     new MeshBasicMaterial({ map: sparkTex, depthWrite: false, side: THREE.DoubleSide })
   );
   sparkDisc.rotation.x = -Math.PI / 2;
-  sparkDisc.position.set(12, 2.55, 4);
+  sparkDisc.position.set(10, 2.55, 4);
   sparkDisc.renderOrder = 1;
   vibeCheck.add(sparkDisc);
 
   scene.add(vibeCheck);
-  createZoneLabel(scene, 12, 3.8, 4, "DAILY  VIBE  CHECK", "#00E5FF");
+  createZoneLabel(scene, 10, 3.8, 4, "DAILY  VIBE  CHECK", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 9. CITY EDGE BUILDINGS — framing the perimeter
@@ -627,19 +619,13 @@ function buildPark(scene) {
   edgeBuildings.name = "edgeBuildings";
 
   const bldgDefs = [
-    // Background framing only — outer edges, facing inward toward plaza
-    // Left edge
-    { x: -22, z: -18, w: 3, h: 5, d: 3, color: "#2A2A44", label: "BEATS", labelColor: "#C43BFF" },
-    { x: -18, z: -22, w: 2.5, h: 4, d: 2.5, color: "#252540", label: "VIBE CO.", labelColor: "#00D4F0" },
-    { x: -24, z: -6, w: 2, h: 4, d: 2, color: "#282840", label: undefined, labelColor: undefined },
-    // Right edge — decorative only, far from zones
-    { x: 22, z: -22, w: 2.5, h: 4.5, d: 2.5, color: "#252540", label: undefined, labelColor: undefined },
-    { x: 24, z: -14, w: 2, h: 3.5, d: 2, color: "#282840", label: undefined, labelColor: undefined },
-    // Far background fill
-    { x: -20, z: 2, w: 2, h: 3, d: 2, color: "#26263E", label: undefined, labelColor: undefined },
-    { x: 22, z: 2, w: 2, h: 3, d: 2, color: "#26263E", label: undefined, labelColor: undefined },
-    { x: -22, z: 12, w: 2, h: 3, d: 2, color: "#26263E", label: undefined, labelColor: undefined },
-    { x: 22, z: 12, w: 2, h: 3, d: 2, color: "#26263E", label: undefined, labelColor: undefined },
+    // Outer frame only — buildings at very edges, facing inward
+    { x: -22, z: -20, w: 3, h: 5, d: 3, color: "#2A2A44", label: "BEATS", labelColor: "#C43BFF" },
+    { x: -20, z: -24, w: 2.5, h: 4, d: 2.5, color: "#252540", label: "VIBE CO.", labelColor: "#00D4F0" },
+    { x: 22, z: -20, w: 3, h: 5, d: 3, color: "#2A2A44", label: undefined, labelColor: undefined },
+    { x: 20, z: -24, w: 2.5, h: 4, d: 2.5, color: "#252540", label: undefined, labelColor: undefined },
+    { x: -24, z: 14, w: 2.5, h: 3.5, d: 2.5, color: "#26263E", label: undefined, labelColor: undefined },
+    { x: 24, z: 14, w: 2.5, h: 3.5, d: 2.5, color: "#26263E", label: undefined, labelColor: undefined },
   ];
 
   for (const b of bldgDefs) {
@@ -840,25 +826,25 @@ function buildPark(scene) {
   const loungeLight = new PointLight();
   loungeLight.color = new Color("#A078FF");
   loungeLight.intensity = 1.5; loungeLight.distance = 10;
-  loungeLight.position.set(-12, 2, -3);
+  loungeLight.position.set(-14, 2, -5);
   scene.add(loungeLight);
 
   const libraryLight = new PointLight();
   libraryLight.color = new Color("#00D4F0");
   libraryLight.intensity = 1.5; libraryLight.distance = 10;
-  libraryLight.position.set(14, 2, -8);
+  libraryLight.position.set(14, 2, -5);
   scene.add(libraryLight);
 
   const domeLight = new PointLight();
   domeLight.color = new Color("#C43BFF");
   domeLight.intensity = 1.5; domeLight.distance = 10;
-  domeLight.position.set(-14, 2, 6);
+  domeLight.position.set(-10, 2, 8);
   scene.add(domeLight);
 
   const vibeCheckLight = new PointLight();
   vibeCheckLight.color = new Color("#00E5FF");
   vibeCheckLight.intensity = 1.5; vibeCheckLight.distance = 8;
-  vibeCheckLight.position.set(12, 2, 4);
+  vibeCheckLight.position.set(10, 2, 4);
   scene.add(vibeCheckLight);
 
   // ═════════════════════════════════════════════════════════════
