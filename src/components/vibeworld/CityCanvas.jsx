@@ -1149,6 +1149,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
+  const lastStageBoundsRef = useRef({ left: -9999, top: -9999, width: -1, height: -1, visible: false });
 
   // Init scene — runs once only
   useEffect(() => {
@@ -1362,13 +1363,23 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
             }
           }
           if (!allBehindCamera && maxX > minX && maxY > minY) {
-            // Round to half-pixels to eliminate sub-pixel jitter when stationary
-            const left = Math.round(minX * 2) / 2;
-            const top = Math.round(minY * 2) / 2;
-            const width = Math.round((maxX - minX) * 2) / 2;
-            const height = Math.round((maxY - minY) * 2) / 2;
-            onStageScreenRef.current({ left, top, width, height, visible: true });
-          } else {
+            // Round to whole pixels and skip updates smaller than 1px
+            const left = Math.round(minX);
+            const top = Math.round(minY);
+            const width = Math.round(maxX - minX);
+            const height = Math.round(maxY - minY);
+            const prev = lastStageBoundsRef.current;
+            const changed = Math.abs(prev.left - left) >= 1
+              || Math.abs(prev.top - top) >= 1
+              || Math.abs(prev.width - width) >= 1
+              || Math.abs(prev.height - height) >= 1
+              || !prev.visible;
+            if (changed) {
+              lastStageBoundsRef.current = { left, top, width, height, visible: true };
+              onStageScreenRef.current({ left, top, width, height, visible: true });
+            }
+          } else if (lastStageBoundsRef.current.visible) {
+            lastStageBoundsRef.current.visible = false;
             onStageScreenRef.current({ visible: false });
           }
         }

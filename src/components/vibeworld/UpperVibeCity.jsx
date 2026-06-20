@@ -25,6 +25,7 @@ export default function UpperVibeCity({ onExit }) {
   const [stageVideoMuted, setStageVideoMuted] = useState(true);
   const [stageVideoPlayerOpen, setStageVideoPlayerOpen] = useState(false);
   const [stageScreenYouTube, setStageScreenYouTube] = useState(false);
+  const [stageProximityScreen, setStageProximityScreen] = useState(false);
   const [stageScreenBounds, setStageScreenBounds] = useState({ visible: false, left: 0, top: 0, width: 0, height: 0 });
   const [stageScreenIframeKey, setStageScreenIframeKey] = useState(0);
   const [stageExplicitlyMuted, setStageExplicitlyMuted] = useState(false);
@@ -32,11 +33,16 @@ export default function UpperVibeCity({ onExit }) {
   const stageMutedRef = useRef(true);
   const stageExplicitMuteRef = useRef(false);
   const stageScreenYouTubeRef = useRef(false);
+  const stageProximityRef = useRef(false);
   const stageIsPlayingRef = useRef(false);
   const stageTogglePlayRef = useRef(null);
   stageMutedRef.current = stageVideoMuted;
   stageExplicitMuteRef.current = stageExplicitlyMuted;
   stageScreenYouTubeRef.current = stageScreenYouTube;
+  stageProximityRef.current = stageProximityScreen;
+
+  // Combined: iframe shows when either explicit or proximity-activated
+  const stageScreenActive = stageScreenYouTube || stageProximityScreen;
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -98,6 +104,8 @@ export default function UpperVibeCity({ onExit }) {
     });
   };
   const handleStageWatchOnScreen = () => {
+    // Explicit mode overrides proximity — clear proximity so exit works cleanly
+    setStageProximityScreen(false);
     setStageScreenYouTube(true);
     setStageScreenIframeKey((k) => k + 1);
   };
@@ -116,6 +124,7 @@ export default function UpperVibeCity({ onExit }) {
       }
     }
     setStageScreenYouTube(false);
+    setStageProximityScreen(false);
   };
   const handleStagePlaySong = () => {
     const video = stageVideos[stageVideoIdx];
@@ -151,11 +160,8 @@ export default function UpperVibeCity({ onExit }) {
   stageIsPlayingRef.current = isPlaying;
   stageTogglePlayRef.current = togglePlay;
 
-  // ── Stage proximity: auto-unmute on approach, auto-mute on leave ────
+  // ── Stage proximity: auto-activate screen + auto-unmute on approach ──
   useEffect(() => {
-    const iframe = stageIframeRef.current;
-    if (!stageScreenYouTubeRef.current || !iframe?.contentWindow) return;
-
     const STAGE_X = 0, STAGE_Z = -14;
     const dx = playerPos.x - STAGE_X;
     const dz = playerPos.z - STAGE_Z;
@@ -163,6 +169,18 @@ export default function UpperVibeCity({ onExit }) {
 
     const INNER = 5;
     const OUTER = 14;
+
+    // Auto-activate the in-world YouTube screen when close (no movement lock)
+    if (dist <= INNER && !stageScreenYouTubeRef.current && !stageProximityRef.current) {
+      setStageProximityScreen(true);
+      setStageScreenIframeKey((k) => k + 1);
+    } else if (dist > OUTER && !stageScreenYouTubeRef.current && stageProximityRef.current) {
+      setStageProximityScreen(false);
+    }
+
+    const iframe = stageIframeRef.current;
+    const screenOn = stageScreenYouTubeRef.current || stageProximityRef.current;
+    if (!screenOn || !iframe?.contentWindow) return;
 
     if (dist > OUTER) {
       // Walked away — mute stage audio
@@ -237,7 +255,7 @@ export default function UpperVibeCity({ onExit }) {
         <CityCanvas
           onLoaded={() => setLoading(false)}
           onPositionChange={(x, z, rot) => setPlayerPos({ x, z, rot })}
-          stageCanvas={!stageScreenYouTube ? stageCanvas : null}
+          stageCanvas={!stageScreenActive ? stageCanvas : null}
           audioIntensityRef={audioIntensityRef}
           onStageScreenBounds={setStageScreenBounds}
           movementLocked={stageScreenYouTube}
@@ -287,8 +305,8 @@ export default function UpperVibeCity({ onExit }) {
         </div>
       </motion.div>
 
-      {/* Controls hint */}
-      {!loading && !stageScreenYouTube && (
+      {/* Controls hint — only show when not in an active screen mode */}
+      {!loading && !stageScreenActive && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -325,8 +343,8 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* In-world YouTube iframe — on the physical stage screen, mute controlled via postMessage */}
-      {stageScreenYouTube && stageScreenBounds.visible && stageVideos[stageVideoIdx]?.youtube_video_id && (
+      {/* In-world YouTube iframe — auto-activated by proximity or manual Watch on Stage */}
+      {stageScreenActive && stageScreenBounds.visible && stageVideos[stageVideoIdx]?.youtube_video_id && (
         <div
           className="absolute z-50 pointer-events-none"
           style={{

@@ -191,9 +191,11 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
     const simulated = w1 * 0.3 + w2 * 0.18 + w3 * 0.12;
     const audioDriven = beat * zoneBoost * 0.9;
 
+    // When audio is playing, blend real audio with simulated waves
+    // When silent, bars are nearly static (0.04 multiplier eliminates flicker)
     const energy = rawBeat > 0.01
       ? audioDriven * 0.75 + simulated * 0.25
-      : simulated * 0.45;
+      : simulated * 0.04;
 
     // Some bars naturally taller via zone boost
     const finalEnergy = energy * (0.55 + zoneBoost * 0.45);
