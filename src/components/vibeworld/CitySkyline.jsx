@@ -65,13 +65,56 @@ export default function createCitySkyline(scene) {
   floorBand.transparent = true;
   floorBand.opacity = 0.4;
 
-  function addSkyscraper(x, z, w, d, h, bodyMat, accentMat) {
+  function addSkyscraper(x, z, w, d, h, bodyMat, accentMat, name) {
     const g = new Group();
+    if (name) g.name = name;
     const body = new Mesh(new BoxGeometry(w, h, d), bodyMat);
     body.position.y = h / 2;
     body.castShadow = true;
     body.receiveShadow = true;
     g.add(body);
+
+    // ── Vertical neon corner strips ──────────────────────────
+    for (const [cx, cz] of [[-w/2, d/2], [w/2, d/2], [-w/2, -d/2], [w/2, -d/2]]) {
+      const strip = new Mesh(new BoxGeometry(0.04, h - 0.3, 0.04), accentMat);
+      strip.position.set(cx, h / 2, cz);
+      g.add(strip);
+    }
+
+    // ── Glowing office windows (scattered grid on wide faces) ─
+    const winMat = new MeshBasicMaterial();
+    winMat.color = new Color("#FFE8C0");
+    winMat.depthWrite = false;
+    winMat.transparent = true;
+    winMat.opacity = 0.6;
+
+    const winPurple = new MeshBasicMaterial();
+    winPurple.color = new Color("#D8C4FF");
+    winPurple.depthWrite = false;
+    winPurple.transparent = true;
+    winPurple.opacity = 0.4;
+
+    const winRows = Math.floor((h - 2.5) / 1.4);
+    const winCols = Math.max(1, Math.floor(w / 0.9));
+    if (winRows > 0 && winCols > 0) {
+      for (let row = 0; row < winRows; row++) {
+        const wy = 2.8 + row * 1.4;
+        for (let col = 0; col < winCols; col++) {
+          // Random occupancy — ~65% of windows lit
+          if (Math.random() > 0.65) continue;
+          const wx = -w * 0.4 + col * (w * 0.8 / (winCols - 1));
+          const wmat = Math.random() > 0.7 ? winPurple : winMat;
+          const sw = new Mesh(new PlaneGeometry(0.3, 0.5), wmat);
+          sw.position.set(wx, wy, d / 2 + 0.03);
+          g.add(sw);
+          // Back face too
+          const swb = new Mesh(new PlaneGeometry(0.3, 0.5), wmat);
+          swb.position.set(wx, wy, -d / 2 - 0.03);
+          swb.rotation.y = Math.PI;
+          g.add(swb);
+        }
+      }
+    }
 
     const colCount = Math.max(2, Math.floor(w / 0.55));
     for (let col = 0; col < colCount; col++) {
@@ -143,8 +186,9 @@ export default function createCitySkyline(scene) {
     buildings.add(g);
   }
 
-  function addSetbackTower(x, z, baseW, baseD, sections, accentMat) {
+  function addSetbackTower(x, z, baseW, baseD, sections, accentMat, name) {
     const g = new Group();
+    if (name) g.name = name;
     let y = 0;
     let w = baseW;
     let d = baseD;
@@ -156,6 +200,24 @@ export default function createCitySkyline(scene) {
       body.castShadow = true;
       body.receiveShadow = true;
       g.add(body);
+
+      // Neon corners
+      for (const [cx, cz] of [[-w/2, d/2], [w/2, d/2], [-w/2, -d/2], [w/2, -d/2]]) {
+        const strip = new Mesh(new BoxGeometry(0.04, hPer - 0.2, 0.04), accentMat);
+        strip.position.set(cx, y + hPer / 2, cz);
+        g.add(strip);
+      }
+
+      // Glowing windows
+      const winMat = new MeshBasicMaterial({ color: new Color("#FFE8C0"), depthWrite: false, transparent: true, opacity: 0.55 });
+      const winCols = Math.max(1, Math.floor(w / 0.8));
+      for (let col = 0; col < winCols; col++) {
+        if (Math.random() > 0.55) continue;
+        const wx = -w * 0.38 + col * (w * 0.76 / (winCols - 1));
+        const sw = new Mesh(new PlaneGeometry(0.25, 0.45), winMat);
+        sw.position.set(wx, y + hPer / 2, d / 2 + 0.03);
+        g.add(sw);
+      }
 
       for (const [px, pz] of [[-w/2.2, d/2.2], [w/2.2, d/2.2], [-w/2.2, -d/2.2], [w/2.2, -d/2.2]]) {
         const pillar = new Mesh(new BoxGeometry(0.05, hPer, 0.05), whiteBody);
@@ -199,8 +261,9 @@ export default function createCitySkyline(scene) {
     buildings.add(g);
   }
 
-  function addTwinTower(x, z, gap, w, d, h, accentMat) {
+  function addTwinTower(x, z, gap, w, d, h, accentMat, name) {
     const g = new Group();
+    if (name) g.name = name;
     for (const side of [-1, 1]) {
       const ox = side * (w / 2 + gap / 2);
       const body = new Mesh(new BoxGeometry(w, h, d), glassBody);
@@ -208,6 +271,28 @@ export default function createCitySkyline(scene) {
       body.castShadow = true;
       body.receiveShadow = true;
       g.add(body);
+
+      // Neon corners
+      for (const [cx, cz] of [[-w/2, d/2], [w/2, d/2], [-w/2, -d/2], [w/2, -d/2]]) {
+        const strip = new Mesh(new BoxGeometry(0.04, h - 0.3, 0.04), accentMat);
+        strip.position.set(ox + cx, h / 2, cz);
+        g.add(strip);
+      }
+
+      // Glowing windows
+      const winMat = new MeshBasicMaterial({ color: new Color("#FFE8C0"), depthWrite: false, transparent: true, opacity: 0.55 });
+      const winCols = Math.max(1, Math.floor(w / 0.8));
+      const winRows = Math.floor((h - 2.5) / 1.3);
+      for (let row = 0; row < winRows; row++) {
+        const wy = 2.8 + row * 1.3;
+        for (let col = 0; col < winCols; col++) {
+          if (Math.random() > 0.6) continue;
+          const wx = -w * 0.38 + col * (w * 0.76 / (winCols - 1));
+          const sw = new Mesh(new PlaneGeometry(0.25, 0.45), winMat);
+          sw.position.set(ox + wx, wy, d / 2 + 0.03);
+          g.add(sw);
+        }
+      }
 
       for (const px of [-w / 2.2, w / 2.2]) {
         const pillar = new Mesh(new BoxGeometry(0.04, h, 0.06), whiteBody);
@@ -281,13 +366,13 @@ export default function createCitySkyline(scene) {
   ];
   northTowers.forEach((a) => addSkyscraper(...a));
 
-  addSetbackTower(-10, -21, 3.2, 2.0, 3, neonPurple);
-  addSetbackTower(6, -21, 3.0, 1.8, 4, neonCyan);
-  addSetbackTower(-22, -21, 2.6, 1.7, 3, neonBlue);
-  addSetbackTower(18, -21, 2.8, 1.9, 3, neonBlue);
+  addSetbackTower(-10, -21, 3.2, 2.0, 3, neonPurple, "Vibe Tower North");
+  addSetbackTower(6, -21, 3.0, 1.8, 4, neonCyan, "Aurora Spire");
+  addSetbackTower(-22, -21, 2.6, 1.7, 3, neonBlue, "Neon Heights");
+  addSetbackTower(18, -21, 2.8, 1.9, 3, neonBlue, "Skyline Peak");
 
-  addTwinTower(-5, -21, 1.2, 1.8, 1.6, 22, neonCyan);
-  addTwinTower(13, -21, 1.0, 1.6, 1.5, 18, neonPurple);
+  addTwinTower(-5, -21, 1.2, 1.8, 1.6, 22, neonCyan, "Twin Towers West");
+  addTwinTower(13, -21, 1.0, 1.6, 1.5, 18, neonPurple, "Twin Towers East");
 
   // ── EAST WING ─────────────────────────────────────────────────
   const eastTowers = [
@@ -300,7 +385,7 @@ export default function createCitySkyline(scene) {
     [27, 0, 1.8, 1.4, 9, glassBody, neonCyan],
   ];
   eastTowers.forEach((a) => addSkyscraper(...a));
-  addSetbackTower(27, -4, 2.4, 2.2, 3, neonCyan);
+  addSetbackTower(27, -4, 2.4, 2.2, 3, neonCyan, "East Gate Tower");
 
   // ── WEST WING ─────────────────────────────────────────────────
   const westTowers = [
@@ -313,8 +398,8 @@ export default function createCitySkyline(scene) {
     [-27, 0, 2.2, 1.6, 9, glassBody, neonPurple],
   ];
   westTowers.forEach((a) => addSkyscraper(...a));
-  addSetbackTower(-27, -5, 2.6, 2.0, 3, neonPurple);
-  addTwinTower(-27, -10, 1.0, 1.5, 1.8, 16, neonCyan);
+  addSetbackTower(-27, -5, 2.6, 2.0, 3, neonPurple, "West Gate Tower");
+  addTwinTower(-27, -10, 1.0, 1.5, 1.8, 16, neonCyan, "West Twin Towers");
 
   scene.add(buildings);
 }

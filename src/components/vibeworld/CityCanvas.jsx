@@ -30,6 +30,10 @@ const {
   BufferAttribute,
   PointsMaterial,
   Points,
+  SpriteMaterial,
+  Sprite,
+  CanvasTexture,
+  LinearFilter,
 } = THREE;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
@@ -95,6 +99,35 @@ function mat(hexColor, opts = {}) {
 // ═══════════════════════════════════════════════════════════════
 // BUILD SCENE — Upper Vibe City: 6-zone social hub
 // ═══════════════════════════════════════════════════════════════
+// ─── Floating zone label sprite ────────────────────────────────
+function createZoneLabel(scene, x, y, z, text, colorHex) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  ctx.font = "bold 22px 'Syne', 'Inter', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = colorHex;
+  ctx.fillText(text, 128, 32);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+
+  const spriteMat = new THREE.SpriteMaterial({
+    map: tex,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+  });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.position.set(x, y, z);
+  sprite.scale.set(6, 1.5, 1);
+  sprite.name = "label_" + text.replace(/\s+/g, "");
+  scene.add(sprite);
+}
+
 function buildPark(scene) {
   createCosmicSky(scene);
   createCitySkyline(scene);
@@ -260,6 +293,9 @@ function buildPark(scene) {
 
   scene.add(stage);
 
+  // ── Stage label ───────────────────────────────────────────
+  createZoneLabel(scene, 0, 5.2, -14, "MUSIC  STAGE", "#00D4F0");
+
   // ═════════════════════════════════════════════════════════════
   // 5. VISUALIZER DOME — west/left side
   // ═════════════════════════════════════════════════════════════
@@ -304,6 +340,9 @@ function buildPark(scene) {
   dome.add(domeFloor);
 
   scene.add(dome);
+
+  // ── Dome label ────────────────────────────────────────────
+  createZoneLabel(scene, -12, 4.2, -3, "VISUALIZER  DOME", "#A078FF");
 
   // ═════════════════════════════════════════════════════════════
   // 6. VIBE LOUNGE — east/right side, circular seating
@@ -366,6 +405,9 @@ function buildPark(scene) {
 
   scene.add(lounge);
 
+  // ── Lounge label ─────────────────────────────────────────
+  createZoneLabel(scene, 12, 4.2, -3, "VIBE  LOUNGE", "#A078FF");
+
   // ═════════════════════════════════════════════════════════════
   // 7. SHOP / HANGOUT DISTRICT — southeast area
   // ═════════════════════════════════════════════════════════════
@@ -412,6 +454,9 @@ function buildPark(scene) {
   }
 
   scene.add(shopGroup);
+
+  // ── Shop label ───────────────────────────────────────────
+  createZoneLabel(scene, 18, 3.8, -11, "SHOP  DISTRICT", "#FFE0A0");
 
   // ═════════════════════════════════════════════════════════════
   // 8. BEACH WALK — front edge
