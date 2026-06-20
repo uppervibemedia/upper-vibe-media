@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
+import StageAudioPlayer from "@/components/vibeworld/StageAudioPlayer";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
@@ -29,6 +30,7 @@ export default function UpperVibeCity({ onExit }) {
   const stageIsPlayingRef = useRef(false);
   const stageTogglePlayRef = useRef(null);
   const stagePausedPlayerRef = useRef(false);
+  const stageAudioRef = useRef(null); // YouTube audio player ref
   stageMutedRef.current = stageVideoMuted;
 
   useEffect(() => {
@@ -52,28 +54,34 @@ export default function UpperVibeCity({ onExit }) {
   const { allTracks, tracksLoaded } = radioCtx || {};
 
   const handleWatchOnStage = useCallback(() => {
-    // Enter stage watching mode: unmute stage, pause global player
+    // Enter stage watching mode: start YouTube audio, pause global player
     setStageWatching(true);
-    if (stageVideoMuted) {
-      setStageVideoMuted(false);
-      if (isPlaying && togglePlay) {
-        togglePlay();
-        stagePausedPlayerRef.current = true;
-      }
+    setStageVideoMuted(false);
+    // Start YouTube audio player
+    if (stageAudioRef.current) {
+      stageAudioRef.current.play();
     }
-  }, [stageVideoMuted, isPlaying, togglePlay]);
+    // Pause global player so two songs don't overlap
+    if (isPlaying && togglePlay) {
+      togglePlay();
+      stagePausedPlayerRef.current = true;
+    }
+  }, [isPlaying, togglePlay]);
 
   const handleExitWatchMode = useCallback(() => {
-    // Exit stage watching mode: mute stage, resume global player
+    // Exit stage watching mode: stop YouTube audio, resume global player
     setStageWatching(false);
-    if (!stageVideoMuted) {
-      setStageVideoMuted(true);
-      if (stagePausedPlayerRef.current && !isPlaying && togglePlay) {
-        togglePlay();
-        stagePausedPlayerRef.current = false;
-      }
+    setStageVideoMuted(true);
+    // Pause YouTube audio
+    if (stageAudioRef.current) {
+      stageAudioRef.current.pause();
     }
-  }, [stageVideoMuted, isPlaying, togglePlay]);
+    // Resume global player if stage had paused it
+    if (stagePausedPlayerRef.current && !isPlaying && togglePlay) {
+      togglePlay();
+      stagePausedPlayerRef.current = false;
+    }
+  }, [isPlaying, togglePlay]);
 
   const handleStageFullScreen = useCallback(() => {
     setStageFullScreen(true);
@@ -94,15 +102,21 @@ export default function UpperVibeCity({ onExit }) {
     setStageVideoMuted((m) => {
       const next = !m;
       if (!next) {
-        // Unmuting stage — enter watch mode, pause global player
+        // Unmuting stage — enter watch mode, start YouTube, pause global player
         setStageWatching(true);
+        if (stageAudioRef.current) {
+          stageAudioRef.current.play();
+        }
         if (isPlaying && !stagePausedPlayerRef.current && togglePlay) {
           togglePlay();
           stagePausedPlayerRef.current = true;
         }
       } else {
-        // Muting stage — exit watch mode, resume global player
+        // Muting stage — exit watch mode, pause YouTube, resume global player
         setStageWatching(false);
+        if (stageAudioRef.current) {
+          stageAudioRef.current.pause();
+        }
         if (stagePausedPlayerRef.current && !isPlaying && togglePlay) {
           togglePlay();
           stagePausedPlayerRef.current = false;
@@ -123,10 +137,11 @@ export default function UpperVibeCity({ onExit }) {
       (t) => t.title && t.title.toLowerCase().includes(titleLower.split(" - ")[0]?.split(" | ")[0] || "")
     );
     if (match) {
-      // Exit watch mode and mute stage so only global player is active
+      // Exit watch mode, stop YouTube audio, mute stage
       setStageWatching(false);
-      if (!stageMutedRef.current) {
-        setStageVideoMuted(true);
+      setStageVideoMuted(true);
+      if (stageAudioRef.current) {
+        stageAudioRef.current.pause();
       }
       // Resume global player if stage had paused it
       if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && togglePlay) {
@@ -153,10 +168,13 @@ export default function UpperVibeCity({ onExit }) {
     const OUTER = 14;
 
     if (dist > OUTER) {
-      // Walked away — exit watch mode and resume global player if stage paused it
+      // Walked away — exit watch mode, stop YouTube, resume global player
       if (stageWatching) {
         setStageWatching(false);
         setStageVideoMuted(true);
+        if (stageAudioRef.current) {
+          stageAudioRef.current.pause();
+        }
       }
       if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && stageTogglePlayRef.current) {
         stageTogglePlayRef.current();
@@ -322,6 +340,12 @@ export default function UpperVibeCity({ onExit }) {
           </div>
         </motion.div>
       )}
+
+      {/* Hidden YouTube audio player — provides audio for Watch on Stage */}
+      <StageAudioPlayer
+        ref={stageAudioRef}
+        video={stageVideos[stageVideoIdx] || null}
+      />
 
       {/* Stage cover visualizer */}
       <StageCoverVisualizer

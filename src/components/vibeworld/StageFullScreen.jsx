@@ -1,16 +1,75 @@
-import React from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Volume2, VolumeX } from "lucide-react";
 
 /**
- * StageFullScreen — clean full-screen overlay showing the stage visual.
- * No YouTube iframe — just the cover art and title.
+ * StageFullScreen — full-screen overlay with embedded YouTube video.
+ * Starts playback immediately on open via the user's click gesture.
  */
 export default function StageFullScreen({ open, video, onClose }) {
+  const iframeRef = useRef(null);
+  const playerRef = useRef(null);
+  const [error, setError] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const lastVideoIdRef = useRef(null);
+
+  const ytId = video?.youtube_video_id || "";
+
+  // Build embed URL with autoplay + mute for reliable start
+  const embedUrl = ytId
+    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&controls=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`
+    : "";
+
+  const handleToggleMute = useCallback(() => {
+    setMuted((m) => {
+      const next = !m;
+      if (playerRef.current) {
+        if (next) playerRef.current.mute();
+        else playerRef.current.unMute();
+      }
+      return next;
+    });
+  }, []);
+
+  // Reset state when opening/closing
+  useEffect(() => {
+    if (open) {
+      setError(false);
+      setReady(false);
+      setMuted(true);
+    }
+  }, [open]);
+
+  // PostMessage to iframe to control playback
+  useEffect(() => {
+    if (!open || !ytId) return;
+    lastVideoIdRef.current = ytId;
+    setError(false);
+  }, [open, ytId]);
+
+  const handleIframeLoad = useCallback(() => {
+    setReady(true);
+    // Try to post play message
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: "command", func: "playVideo", args: [] }),
+        "*"
+      );
+    }
+  }, []);
+
+  const toggleMuteViaPost = useCallback((shouldMute) => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: "command", func: shouldMute ? "mute" : "unMute", args: [] }),
+        "*"
+      );
+    }
+  }, []);
+
   const thumbnailUrl = video?.thumbnail_url
-    || (video?.youtube_video_id
-      ? `https://img.youtube.com/vi/${video.youtube_video_id}/maxresdefault.jpg`
-      : null);
+    || (ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null);
   const title = video?.title || "";
 
   return (
@@ -20,8 +79,8 @@ export default function StageFullScreen({ open, video, onClose }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.3 } }}
-          className="fixed inset-0 z-[75] flex items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.94)", backdropFilter: "blur(12px)" }}
+          className="fixed inset-0 z-[75] flex flex-col items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.95)", backdropFilter: "blur(12px)" }}
         >
           {/* Exit button */}
           <button
@@ -39,31 +98,41 @@ export default function StageFullScreen({ open, video, onClose }) {
 
           {/* Title */}
           <div className="absolute top-4 left-4 z-10 max-w-[60vw]">
-            <p className="text-white/80 text-sm font-bold truncate">
-              {title || "Upper Vibe Media"}
-            </p>
+            <p className="text-white/80 text-sm font-bold truncate">{title || "Upper Vibe Media"}</p>
             <p className="text-white/35 text-[10px]">Main Music Stage</p>
           </div>
 
-          {/* Video display area — 16:9 container */}
+          {/* Video container — 16:9 */}
           <div
             className="relative w-full max-w-4xl aspect-video mx-4 rounded-xl overflow-hidden"
             style={{
               boxShadow: "0 0 60px rgba(155,126,255,0.3), 0 0 120px rgba(0,160,220,0.15)",
+              background: "#000",
             }}
           >
-            {thumbnailUrl ? (
-              <img
-                src={thumbnailUrl}
-                alt={title || "Stage video"}
-                className="w-full h-full object-cover"
+            {ytId && !error ? (
+              <iframe
+                ref={iframeRef}
+                src={embedUrl}
+                title={title || "Stage Video"}
+                className="w-full h-full"
+                style={{ border: "none" }}
+                allow="autoplay; encrypted-media; picture-in-picture"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+                onLoad={handleIframeLoad}
+                onError={() => setError(true)}
               />
             ) : (
               <div
                 className="w-full h-full flex items-center justify-center"
                 style={{ background: "linear-gradient(135deg, #0a0a1e, #12122e)" }}
               >
-                <p className="text-white/20 text-lg font-heading">Upper Vibe Media</p>
+                {thumbnailUrl ? (
+                  <img src={thumbnailUrl} alt={title || "Stage"} className="w-full h-full object-cover" />
+                ) : (
+                  <p className="text-white/20 text-lg font-heading">Upper Vibe Media</p>
+                )}
               </div>
             )}
 
@@ -76,6 +145,22 @@ export default function StageFullScreen({ open, video, onClose }) {
               }}
             />
           </div>
+
+          {/* Mute/Unmute toggle */}
+          {ready && ytId && (
+            <button
+              onClick={handleToggleMute}
+              className="mt-4 flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-xs tracking-wide transition-all hover:brightness-110"
+              style={{
+                background: muted ? "rgba(255,255,255,0.08)" : "rgba(124,58,237,0.3)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                color: muted ? "rgba(255,255,255,0.6)" : "#fff",
+              }}
+            >
+              {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+              {muted ? "Muted" : "Audio On"}
+            </button>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
