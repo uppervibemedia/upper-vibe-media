@@ -149,20 +149,20 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
         ) : filtered.length === 0 ? (
           <p className="text-center py-12 text-white/25 text-sm">No songs found</p>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-0.5">
             {filtered.map((track) => {
               const isCurrent = currentTrack?.id === track.id;
               return (
                 <div
                   key={track.id}
-                  className="flex items-center gap-2.5 p-2 rounded-xl group cursor-pointer transition-all active:scale-[0.98]"
+                  className="flex items-center gap-2 py-1.5 px-2 rounded-lg group cursor-pointer transition-all active:scale-[0.98]"
                   style={{
                     background: isCurrent
                       ? "rgba(0,229,255,0.06)"
-                      : "rgba(255,255,255,0.02)",
+                      : "rgba(255,255,255,0.01)",
                     border: `1px solid ${isCurrent
                       ? "rgba(0,229,255,0.2)"
-                      : "rgba(255,255,255,0.04)"}`,
+                      : "rgba(255,255,255,0.03)"}`,
                   }}
                   onClick={() => handlePlay(track)}
                 >
@@ -170,28 +170,28 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
                     <CoverImage
                       src={track.cover_url}
                       alt={track.title}
-                      className="w-8 h-8 rounded-md"
-                      iconClassName="w-3 h-3"
+                      className="w-7 h-7 rounded"
+                      iconClassName="w-2.5 h-2.5"
                     />
                     <div
-                      className="absolute inset-0 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute inset-0 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       style={{ background: "rgba(0,0,0,0.6)" }}
                     >
                       {isCurrent && isPlaying
-                        ? <Pause className="w-2.5 h-2.5 text-cyan-400" />
-                        : <Play className="w-2.5 h-2.5 text-white ml-0.5" />}
+                        ? <Pause className="w-2 h-2 text-cyan-400" />
+                        : <Play className="w-2 h-2 text-white ml-[1px]" />}
                     </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{track.title}</p>
-                    <p className="text-[10px] text-white/35 truncate">
+                  <div className="flex-1 min-w-0 leading-tight">
+                    <p className="text-[12px] font-bold text-white truncate">{track.title}</p>
+                    <p className="text-[9px] text-white/35 truncate">
                       {track.artist_display || "Upper Vibe Media"}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {track.frequency_type === "432hz" && (
                       <span
-                        className="flex items-center gap-0.5 text-[8px] font-bold px-1 py-0.5 rounded"
+                        className="flex items-center gap-0.5 text-[7px] font-bold px-1 rounded"
                         style={{ background: "rgba(0,160,220,0.1)", color: "#00A0DC" }}
                       >
                         <Waves className="w-1.5 h-1.5" /> 432
