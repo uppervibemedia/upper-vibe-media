@@ -41,10 +41,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
 
-  // Auto-hide controls hint after 7 seconds
+  // Auto-hide controls hint after 12 seconds — gives mobile users time to read
   useEffect(() => {
     if (loading) return;
-    const timer = setTimeout(() => setShowControlsHint(false), 7000);
+    const timer = setTimeout(() => setShowControlsHint(false), 12000);
     return () => clearTimeout(timer);
   }, [loading]);
 
@@ -357,7 +357,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </div>
       </motion.div>
 
-      {/* Controls hint — auto-hides after 7 seconds */}
+      {/* Controls hint — auto-hides after 12 seconds */}
       {!loading && showControlsHint && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -366,15 +366,34 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           transition={{ delay: 0.4 }}
           className="absolute top-1/2 left-0 right-0 z-[55] flex justify-center pointer-events-none"
         >
-          <p
-            className="text-[10px] tracking-wider px-3 py-1.5 rounded-full"
+          <div
+            className="flex flex-col items-center gap-1.5 px-4 py-2.5 rounded-2xl"
             style={{
-              background: "rgba(255,255,255,0.25)",
-              color: "rgba(0,0,0,0.4)",
+              background: "rgba(0,0,0,0.65)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.12)",
             }}
           >
-            {isMobile ? "Joystick to walk \u2022 Swipe to look" : "W/S walk \u2022 A/D turn \u2022 Mouse look"}
-          </p>
+            {isMobile ? (
+              <>
+                <p className="text-[11px] font-bold tracking-wider text-white">
+                  Left side <span className="text-cyan-400">= Walk</span> &bull; Right side <span className="text-purple-400">= Look</span>
+                </p>
+                <p className="text-[9px] text-white/40 tracking-wide">
+                  Drag joystick to move &bull; Swipe right side to turn camera
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[11px] font-bold tracking-wider text-white">
+                  W/S <span className="text-cyan-400">Walk</span> &bull; A/D <span className="text-purple-400">Turn</span> &bull; Mouse <span className="text-amber-400">Look</span>
+                </p>
+                <p className="text-[9px] text-white/40 tracking-wide">
+                  Walk into zones to discover actions
+                </p>
+              </>
+            )}
+          </div>
         </motion.div>
       )}
 

@@ -1141,25 +1141,41 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       />
-      {/* Joystick visual — bottom-left */}
+      {/* Touch zone labels — left = Walk, right = Look */}
+      <div
+        className="absolute top-1/3 left-2 z-35 pointer-events-none select-none"
+        style={{ color: "rgba(255,255,255,0.18)", fontSize: 11, fontWeight: 700, letterSpacing: "0.2em" }}
+      >
+        WALK
+      </div>
+      <div
+        className="absolute top-1/3 right-2 z-35 pointer-events-none select-none"
+        style={{ color: "rgba(255,255,255,0.18)", fontSize: 11, fontWeight: 700, letterSpacing: "0.2em" }}
+      >
+        LOOK
+      </div>
+      {/* Joystick visual — bottom-left, higher contrast */}
       <div
         className="absolute z-40 rounded-full flex items-center justify-center pointer-events-none"
         style={{
           width: 100, height: 100,
           left: JOY_BASE_X - 50,
           top: findJoyY() - 50,
-          background: joyActive ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.05)",
-          border: `2px solid ${joyActive ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.12)"}`,
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
+          background: joyActive ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)",
+          border: `2.5px solid ${joyActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)"}`,
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          boxShadow: joyActive ? "0 0 20px rgba(0,180,220,0.2)" : "none",
         }}
       >
         <div
           className="rounded-full"
           style={{
             width: 52, height: 52,
-            background: joyActive ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.12)",
-            border: "1.5px solid rgba(255,255,255,0.25)",
+            background: joyActive
+              ? "linear-gradient(135deg,rgba(0,180,220,0.5),rgba(155,126,255,0.4))"
+              : "rgba(255,255,255,0.18)",
+            border: "2px solid rgba(255,255,255,0.35)",
             transform: `translate(${thumbX}px, ${-thumbY}px)`,
           }}
         />
