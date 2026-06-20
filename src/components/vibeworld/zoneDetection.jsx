@@ -19,13 +19,13 @@ const ZONES = {
   lounge: {
     name: "Vibe Lounge",
     id: "lounge",
-    cx: -14, cz: -5, radius: 5,
+    cx: -16, cz: -10, radius: 5,
     icon: "MessageCircle",
   },
   library: {
     name: "Music Library",
     id: "library",
-    cx: 14, cz: -5, radius: 5,
+    cx: 16, cz: -10, radius: 5,
     icon: "Library",
   },
   dome: {

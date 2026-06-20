@@ -250,10 +250,10 @@ function buildPark(scene) {
     scene.add(centerGlow);
   }
 
-  // Six paths radiating from Central Plaza — balanced left/right layout
+  // Six paths radiating from Central Plaza — all entrances face the plaza
   createPath(PLAZA_X, PLAZA_Z, 0, -15);        // North → Main Music Stage
-  createPath(PLAZA_X, PLAZA_Z, -14, -5);       // Left → Vibe Lounge
-  createPath(PLAZA_X, PLAZA_Z, 14, -5);        // Right → Music Library
+  createPath(PLAZA_X, PLAZA_Z, -16, -10);      // Left-back → Vibe Lounge
+  createPath(PLAZA_X, PLAZA_Z, 16, -10);       // Right-back → Music Library
   createPath(PLAZA_X, PLAZA_Z, -10, 8);        // Lower-left → Visualizer Dome
   createPath(PLAZA_X, PLAZA_Z, 10, 4);         // Lower-right → Daily Vibe Check
   createPath(PLAZA_X, PLAZA_Z, 0, SHORELINE_Z + 1); // South → Beach
@@ -383,15 +383,15 @@ function buildPark(scene) {
     mat("#1E1E3A", { roughness: 0.5, metalness: 0.3 })
   );
   loungePlat.rotation.x = -Math.PI / 2;
-  loungePlat.position.set(-14, 0.002, -5);
+  loungePlat.position.set(-16, 0.002, -10);
   loungePlat.receiveShadow = true;
   lounge.add(loungePlat);
 
   // Low curved perimeter glow — clean open-air lounge, no poles
   for (let i = 0; i < 16; i++) {
     const ang = Math.PI / 2 + (i / 15) * Math.PI;
-    const gx = -14 + Math.cos(ang) * 3.6;
-    const gz = -5 + Math.sin(ang) * 3.6;
+    const gx = -16 + Math.cos(ang) * 3.6;
+    const gz = -10 + Math.sin(ang) * 3.6;
     const groundGlow = new Mesh(
       new BoxGeometry(0.15, 0.03, 0.15),
       new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.6 })
@@ -403,8 +403,8 @@ function buildPark(scene) {
   // Seating inside
   for (let i = 0; i < 6; i++) {
     const ang = Math.PI + (i / 5) * Math.PI;
-    const sx = -14 + Math.cos(ang) * 2;
-    const sz = -5 + Math.sin(ang) * 2;
+    const sx = -16 + Math.cos(ang) * 2;
+    const sz = -10 + Math.sin(ang) * 2;
     const seat = new Mesh(
       new BoxGeometry(0.9, 0.2, 0.5),
       mat("#4A3A6A", { roughness: 0.4, metalness: 0.15 })
@@ -428,7 +428,7 @@ function buildPark(scene) {
     new CylinderGeometry(0.7, 0.8, 0.3, 16),
     mat("#555588", { roughness: 0.3, metalness: 0.6 })
   );
-  firePit.position.set(-14, 0.15, -5);
+  firePit.position.set(-16, 0.15, -10);
   firePit.castShadow = true;
   lounge.add(firePit);
 
@@ -436,14 +436,14 @@ function buildPark(scene) {
     new CylinderGeometry(0.75, 0.85, 0.04, 16),
     new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false })
   );
-  fireGlow.position.set(-14, 0.32, -5);
+  fireGlow.position.set(-16, 0.32, -10);
   lounge.add(fireGlow);
 
   scene.add(lounge);
-  createZoneLabel(scene, -14, 4.2, -5, "VIBE  LOUNGE", "#C43BFF");
+  createZoneLabel(scene, -16, 4.2, -10, "VIBE  LOUNGE", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
-  // 6. MUSIC LIBRARY — right, directly across from Vibe Lounge
+  // 6. MUSIC LIBRARY — right-back, entrance faces plaza
   // ═════════════════════════════════════════════════════════════
   const library = new Group();
   library.name = "musicLibrary";
@@ -453,7 +453,7 @@ function buildPark(scene) {
     mat("#1A2A3E", { roughness: 0.5, metalness: 0.3 })
   );
   libPlat.rotation.x = -Math.PI / 2;
-  libPlat.position.set(14, 0.002, -5);
+  libPlat.position.set(16, 0.002, -10);
   libPlat.receiveShadow = true;
   library.add(libPlat);
 
@@ -462,7 +462,7 @@ function buildPark(scene) {
     new CylinderGeometry(2.8, 3, 3.2, 16),
     mat("#1E2E4A", { roughness: 0.3, metalness: 0.35, transparent: true, opacity: 0.85, depthWrite: true })
   );
-  libBldg.position.set(14, 1.6, -5);
+  libBldg.position.set(16, 1.6, -10);
   libBldg.castShadow = true;
   library.add(libBldg);
 
@@ -473,7 +473,7 @@ function buildPark(scene) {
       new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide })
     );
     libRing.rotation.x = -Math.PI / 2;
-    libRing.position.set(14, ry, -5);
+    libRing.position.set(16, ry, -10);
     libRing.renderOrder = 1;
     library.add(libRing);
   }
@@ -493,20 +493,21 @@ function buildPark(scene) {
     new MeshBasicMaterial({ map: iconTex, depthWrite: false, side: THREE.DoubleSide })
   );
   iconDisc.rotation.x = -Math.PI / 2;
-  iconDisc.position.set(14, 3.25, -5);
+  iconDisc.position.set(16, 3.25, -10);
   iconDisc.renderOrder = 1;
   library.add(iconDisc);
 
-  // Entrance glow (facing plaza)
+  // Entrance faces Central Plaza (west, toward 0,-4 from 16,-10)
   const libEntrance = new Mesh(
     new BoxGeometry(2.2, 3.0, 0.08),
     new MeshBasicMaterial({ color: new Color("#0080B8"), depthWrite: false, transparent: true, opacity: 0.65 })
   );
-  libEntrance.position.set(14, 1.5, -5 + 2.8);
+  libEntrance.position.set(16 - 2.8, 1.5, -10);
+  libEntrance.rotation.y = Math.PI / 2;
   library.add(libEntrance);
 
   scene.add(library);
-  createZoneLabel(scene, 14, 4.2, -5, "MUSIC  LIBRARY", "#00D4F0");
+  createZoneLabel(scene, 16, 4.2, -10, "MUSIC  LIBRARY", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
   // 7. VISUALIZER DOME — lower-left, entrance facing Central Plaza
@@ -618,15 +619,7 @@ function buildPark(scene) {
   const edgeBuildings = new Group();
   edgeBuildings.name = "edgeBuildings";
 
-  const bldgDefs = [
-    // Outer frame only — buildings at very edges, facing inward
-    { x: -22, z: -20, w: 3, h: 5, d: 3, color: "#2A2A44", label: "BEATS", labelColor: "#C43BFF" },
-    { x: -20, z: -24, w: 2.5, h: 4, d: 2.5, color: "#252540", label: "VIBE CO.", labelColor: "#00D4F0" },
-    { x: 22, z: -20, w: 3, h: 5, d: 3, color: "#2A2A44", label: undefined, labelColor: undefined },
-    { x: 20, z: -24, w: 2.5, h: 4, d: 2.5, color: "#252540", label: undefined, labelColor: undefined },
-    { x: -24, z: 14, w: 2.5, h: 3.5, d: 2.5, color: "#26263E", label: undefined, labelColor: undefined },
-    { x: 24, z: 14, w: 2.5, h: 3.5, d: 2.5, color: "#26263E", label: undefined, labelColor: undefined },
-  ];
+  const bldgDefs = [];
 
   for (const b of bldgDefs) {
     const bldg = new Mesh(
@@ -703,25 +696,7 @@ function buildPark(scene) {
   wetSand.receiveShadow = true;
   scene.add(wetSand);
 
-  // Boardwalk railing
-  const railGroup = new Group();
-  railGroup.name = "boardwalkRail";
-  for (let rx = -24; rx <= 24; rx += 3) {
-    const post = new Mesh(new CylinderGeometry(0.06, 0.08, 1.5, 6), mat("#777799", { roughness: 0.3, metalness: 0.6 }));
-    post.position.set(rx, 0.75, 9.5); post.castShadow = true;
-    railGroup.add(post);
-
-    const cap = new Mesh(
-      new CylinderGeometry(0.07, 0.09, 0.1, 6),
-      new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false })
-    );
-    cap.position.set(rx, 1.5, 9.5);
-    railGroup.add(cap);
-  }
-  const railBar = new Mesh(new BoxGeometry(50, 0.06, 0.1), mat("#8888AA", { roughness: 0.3, metalness: 0.5 }));
-  railBar.position.set(0, 1.25, 9.5); railBar.castShadow = true;
-  railGroup.add(railBar);
-  scene.add(railGroup);
+  // Boardwalk railing removed — open beach access
 
   // Beach lounge chairs
   const chairGroup = new Group();
@@ -826,13 +801,13 @@ function buildPark(scene) {
   const loungeLight = new PointLight();
   loungeLight.color = new Color("#A078FF");
   loungeLight.intensity = 1.5; loungeLight.distance = 10;
-  loungeLight.position.set(-14, 2, -5);
+  loungeLight.position.set(-16, 2, -10);
   scene.add(loungeLight);
 
   const libraryLight = new PointLight();
   libraryLight.color = new Color("#00D4F0");
   libraryLight.intensity = 1.5; libraryLight.distance = 10;
-  libraryLight.position.set(14, 2, -5);
+  libraryLight.position.set(16, 2, -10);
   scene.add(libraryLight);
 
   const domeLight = new PointLight();
