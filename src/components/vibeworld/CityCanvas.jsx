@@ -99,17 +99,44 @@ function mat(hexColor, opts = {}) {
 // ═══════════════════════════════════════════════════════════════
 // BUILD SCENE — Upper Vibe City: 6-zone social hub
 // ═══════════════════════════════════════════════════════════════
-// ─── Floating zone label sprite ────────────────────────────────
-function createZoneLabel(scene, x, y, z, text, colorHex) {
+// ─── Neon zone sign — glowing border + floating text ───────────
+function createNeonSign(scene, x, y, z, text, colorHex) {
+  const group = new Group();
+  group.name = "neonSign_" + text.replace(/\s+/g, "");
+
+  // Glowing backing plate
+  const backGeo = new PlaneGeometry(7, 2);
+  const backMat = new MeshBasicMaterial({
+    color: new Color(colorHex),
+    transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const back = new Mesh(backGeo, backMat);
+  back.name = "neonBack";
+  group.add(back);
+
+  // Neon border frame
+  const borderGeo = new PlaneGeometry(7.1, 2.1);
+  const borderMat = new MeshBasicMaterial({
+    color: new Color(colorHex),
+    transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const borderFrame = new Mesh(borderGeo, borderMat);
+  borderFrame.renderOrder = 1;
+  group.add(borderFrame);
+
+  // Text sprite
   const canvas = document.createElement("canvas");
   canvas.width = 256;
   canvas.height = 64;
   const ctx = canvas.getContext("2d");
+  ctx.shadowColor = colorHex;
+  ctx.shadowBlur = 12;
   ctx.font = "bold 22px 'Syne', 'Inter', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = colorHex;
+  ctx.fillStyle = "#FFFFFF";
   ctx.fillText(text, 128, 32);
+  ctx.fillText(text, 128, 32); // double-draw for glow intensity
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.minFilter = THREE.LinearFilter;
@@ -117,15 +144,49 @@ function createZoneLabel(scene, x, y, z, text, colorHex) {
 
   const spriteMat = new THREE.SpriteMaterial({
     map: tex,
-    transparent: true,
-    depthWrite: false,
-    depthTest: false,
+    transparent: true, depthWrite: false, depthTest: false,
   });
   const sprite = new THREE.Sprite(spriteMat);
-  sprite.position.set(x, y, z);
   sprite.scale.set(6, 1.5, 1);
-  sprite.name = "label_" + text.replace(/\s+/g, "");
-  scene.add(sprite);
+  sprite.renderOrder = 2;
+  group.add(sprite);
+
+  // Small top accent dot
+  const dot = new Mesh(
+    new SphereGeometry(0.12, 8, 6),
+    new MeshBasicMaterial({ color: new Color("#FFFFFF"), depthWrite: false })
+  );
+  dot.position.set(0, 1.2, 0);
+  group.add(dot);
+
+  group.position.set(x, y, z);
+  // Billboard toward camera — sprite handles this but we parent the group to scene
+  // Each sign should always face the camera, so we'll make the whole group a billboard
+  // Using Object3D.lookAt in render loop — store ref for animation
+  group.userData = { isNeonSign: true, baseOpacity: 0.35, colorHex };
+  scene.add(group);
+}
+
+// ─── Path accent lights — small glowing dots along paths ───────
+function addPathLights(scene, fromX, fromZ, toX, toZ, colorHex) {
+  const dx = toX - fromX, dz = toZ - fromZ;
+  const len = Math.sqrt(dx * dx + dz * dz);
+  const step = 1.8;
+  const count = Math.floor(len / step);
+
+  for (let i = 1; i <= count; i++) {
+    const t = i / (count + 1);
+    const px = fromX + dx * t;
+    const pz = fromZ + dz * t;
+
+    const dot = new Mesh(
+      new SphereGeometry(0.06, 6, 4),
+      new MeshBasicMaterial({ color: new Color(colorHex), depthWrite: false, transparent: true, opacity: 0.6 })
+    );
+    dot.position.set(px, 0.06, pz);
+    dot.userData = { isPathDot: true, baseColor: colorHex, phase: t * Math.PI * 2 };
+    scene.add(dot);
+  }
 }
 
 function buildPark(scene) {
@@ -258,6 +319,14 @@ function buildPark(scene) {
   createPath(PLAZA_X, PLAZA_Z, 10, 4);         // Lower-right → Daily Vibe Check
   createPath(PLAZA_X, PLAZA_Z, 0, SHORELINE_Z + 1); // South → Beach
 
+  // Path accent lights — subtle color-shifting dots along walkways
+  addPathLights(scene, PLAZA_X, PLAZA_Z, 0, -15, "#00D4F0");
+  addPathLights(scene, PLAZA_X, PLAZA_Z, -16, -10, "#C43BFF");
+  addPathLights(scene, PLAZA_X, PLAZA_Z, 16, -10, "#00D4F0");
+  addPathLights(scene, PLAZA_X, PLAZA_Z, -10, 8, "#C43BFF");
+  addPathLights(scene, PLAZA_X, PLAZA_Z, 10, 4, "#00E5FF");
+  addPathLights(scene, PLAZA_X, PLAZA_Z, 0, SHORELINE_Z + 1, "#2098CC");
+
   // ── Beach boardwalk ────────────────────────────────────────
   const boardwalkLen = 8;
   const boardwalkStartZ = 15;
@@ -370,7 +439,7 @@ function buildPark(scene) {
   }
 
   scene.add(stage);
-  createZoneLabel(scene, 0, 5.5, -15, "MUSIC  STAGE", "#00D4F0");
+  createNeonSign(scene, 0, 5.5, -15, "MUSIC  STAGE", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
   // 5. VIBE LOUNGE — left, directly across from Music Library
@@ -440,7 +509,7 @@ function buildPark(scene) {
   lounge.add(fireGlow);
 
   scene.add(lounge);
-  createZoneLabel(scene, -16, 4.2, -10, "VIBE  LOUNGE", "#C43BFF");
+  createNeonSign(scene, -16, 4.2, -10, "VIBE  LOUNGE", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 6. MUSIC LIBRARY — right-back, entrance faces plaza
@@ -507,7 +576,7 @@ function buildPark(scene) {
   library.add(libEntrance);
 
   scene.add(library);
-  createZoneLabel(scene, 16, 4.2, -10, "MUSIC  LIBRARY", "#00D4F0");
+  createNeonSign(scene, 16, 4.2, -10, "MUSIC  LIBRARY", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
   // 7. VISUALIZER DOME — lower-left, entrance facing Central Plaza
@@ -553,7 +622,7 @@ function buildPark(scene) {
   dome.add(domeFloor);
 
   scene.add(dome);
-  createZoneLabel(scene, -10, 4.2, 8, "VISUALIZER  DOME", "#C43BFF");
+  createNeonSign(scene, -10, 4.2, 8, "VISUALIZER  DOME", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 8. DAILY VIBE CHECK — lower-right, open space
@@ -611,7 +680,7 @@ function buildPark(scene) {
   vibeCheck.add(sparkDisc);
 
   scene.add(vibeCheck);
-  createZoneLabel(scene, 10, 3.8, 4, "DAILY  VIBE  CHECK", "#00E5FF");
+  createNeonSign(scene, 10, 3.8, 4, "DAILY  VIBE  CHECK", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 9. CITY EDGE BUILDINGS — framing the perimeter
@@ -1620,6 +1689,29 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
             }
           }
         }
+
+        // ─── NEON SIGNS + PATH LIGHTS — color-shift ambient glow ──
+        const hueShift = Math.sin(t * 0.25) * 0.5 + 0.5; // slow 0..1 wave
+
+        scene.children.forEach((child) => {
+          // Neon signs — breathe opacity + billboard toward camera
+          if (child.userData?.isNeonSign) {
+            child.lookAt(camera.position);
+            const breathe = 0.18 + Math.sin(t * 1.3 + child.position.x * 0.5) * 0.08;
+            child.children.forEach((part) => {
+              if (part.name === "neonBack" && part.material?.opacity !== undefined) {
+                part.material.opacity = breathe;
+              }
+            });
+          }
+          // Path dots — subtle hue oscillation between cyan and purple
+          if (child.userData?.isPathDot && child.material?.color) {
+            const baseColor = new Color(child.userData.baseColor);
+            const mixColor = new Color(child.userData.baseColor === "#C43BFF" ? "#00D4F0" : "#C43BFF");
+            child.material.color.copy(baseColor).lerp(mixColor, hueShift);
+            child.material.opacity = 0.2 + Math.sin(t * 2 + child.userData.phase) * 0.2;
+          }
+        });
 
         // ─── STARS TWINKLE ─────────────────────────────────────
         const starsMesh = scene.userData.stars;
