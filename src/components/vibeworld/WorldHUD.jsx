@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, Sun,
@@ -50,8 +50,21 @@ export default function WorldHUD({
   voiceConnected = false,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
+  const [showZoneLabel, setShowZoneLabel] = useState(false);
+  const zoneFadeTimerRef = useRef(null);
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const zone = detectZone(playerX, playerZ);
+
+  // Zone label: show briefly on zone change, then auto-fade
+  useEffect(() => {
+    if (!zone) return;
+    setShowZoneLabel(true);
+    if (zoneFadeTimerRef.current) clearTimeout(zoneFadeTimerRef.current);
+    zoneFadeTimerRef.current = setTimeout(() => {
+      setShowZoneLabel(false);
+    }, 4000);
+    return () => { if (zoneFadeTimerRef.current) clearTimeout(zoneFadeTimerRef.current); };
+  }, [zone?.id]);
 
   const navigate = useNavigate();
 
@@ -97,85 +110,87 @@ export default function WorldHUD({
 
   return (
     <>
-      {/* ── Zone indicator — left on mobile, centered on desktop ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="absolute top-0 z-[50] pointer-events-none"
-        style={{
-          left: isMobile ? "4px" : "50%",
-          transform: isMobile ? "none" : "translateX(-50%)",
-          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 4.6rem)" : "4rem",
-          maxWidth: isMobile ? "36vw" : "none",
-          overflow: "hidden",
-        }}
-      >
-        {zone && (
+      {/* ── Zone indicator — centered below top bar, auto-fades ── */}
+      {zone && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: showZoneLabel ? 0.7 : 0, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="absolute top-0 left-1/2 z-[50] pointer-events-none"
+          style={{
+            transform: "translateX(-50%)",
+            paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 2.6rem)" : "4rem",
+          }}
+        >
           <div
             className="flex items-center gap-1 rounded-full"
             style={{
-              background: "rgba(0,0,0,0.4)",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              padding: isMobile ? "2px 6px" : "6px 16px",
+              background: "rgba(0,0,0,0.35)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              padding: isMobile ? "2px 8px" : "5px 14px",
             }}
           >
-            {ZoneIcon && <ZoneIcon style={{ width: isMobile ? "10px" : "14px", height: isMobile ? "10px" : "14px" }} className="text-cyan-400 flex-shrink-0" />}
-            <span className="font-black tracking-wider text-white/60 truncate"
+            {ZoneIcon && <ZoneIcon style={{ width: isMobile ? "9px" : "14px", height: isMobile ? "9px" : "14px" }} className="text-cyan-400/60 flex-shrink-0" />}
+            <span className="font-black tracking-wider text-white/50"
               style={{ fontSize: isMobile ? "8px" : "11px" }}
             >
-              {isMobile ? (zone.name.length > 8 ? zone.name.substring(0, 8) + "…" : zone.name) : zone.name}
+              {zone.name}
             </span>
           </div>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
 
-      {/* ── Live Users Badge (top-right) ──────────────────────── */}
+      {/* ── Mic + Online count (top-right, below UVC badge) ───── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="absolute top-0 right-2 z-[56] flex items-center gap-1.5"
+        className="absolute top-0 right-2 z-[56] flex flex-col items-end gap-0.5"
         style={{
-          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 4.5rem)" : "4rem",
+          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 2.5rem)" : "4.5rem",
         }}
       >
-        {/* ── Mic Toggle ──────────────────────────────────────── */}
-        {onToggleMic && (
-          <button
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={() => { try { navigator?.vibrate?.(10); } catch {} onToggleMic(); }}
-            className="flex items-center justify-center w-9 h-9 rounded-full transition-all active:scale-95"
-            style={{
-              background: isMicEnabled
-                ? "linear-gradient(135deg,#00C853,#00E676)"
-                : "rgba(255,255,255,0.08)",
-              border: isMicEnabled
-                ? "1px solid rgba(0,200,83,0.4)"
-                : "1px solid rgba(255,255,255,0.15)",
-              minWidth: "44px",
-              minHeight: "44px",
-              touchAction: "manipulation",
-              pointerEvents: "auto",
-            }}
-            title={isMicEnabled ? "Mute Mic" : "Unmute Mic"}
-          >
-            {isMicEnabled ? (
-              <Mic className="w-4 h-4 text-white" />
-            ) : (
-              <MicOff className="w-4 h-4 text-white/40" />
-            )}
-          </button>
-        )}
-
-        {/* Voice indicator dot */}
-        {voiceConnected && (
-          <span
-            className="w-2 h-2 rounded-full animate-pulse"
-            style={{ background: "#00E676", boxShadow: "0 0 8px rgba(0,230,118,0.6)" }}
-          />
-        )}
-
-        <div className="relative">
+        {/* Mic + voice dot row */}
+        <div className="flex items-center gap-1">
+          {onToggleMic && (
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => { try { navigator?.vibrate?.(10); } catch {} onToggleMic(); }}
+              className="flex items-center justify-center rounded-full transition-all active:scale-95"
+              style={{
+                background: isMicEnabled
+                  ? "linear-gradient(135deg,#00C853,#00E676)"
+                  : "rgba(255,255,255,0.08)",
+                border: isMicEnabled
+                  ? "1px solid rgba(0,200,83,0.4)"
+                  : "1px solid rgba(255,255,255,0.15)",
+                width: isMobile ? "28px" : "36px",
+                height: isMobile ? "28px" : "36px",
+                minWidth: isMobile ? "28px" : "44px",
+                minHeight: isMobile ? "28px" : "44px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
+              }}
+              title={isMicEnabled ? "Mute Mic" : "Unmute Mic"}
+            >
+              {isMicEnabled ? (
+                <Mic style={{ width: isMobile ? "11px" : "14px", height: isMobile ? "11px" : "14px" }} className="text-white" />
+              ) : (
+                <MicOff style={{ width: isMobile ? "11px" : "14px", height: isMobile ? "11px" : "14px" }} className="text-white/40" />
+              )}
+            </button>
+          )}
+          {voiceConnected && (
+            <span
+              className="rounded-full animate-pulse"
+              style={{
+                width: isMobile ? "6px" : "8px",
+                height: isMobile ? "6px" : "8px",
+                background: "#00E676",
+                boxShadow: "0 0 6px rgba(0,230,118,0.6)",
+              }}
+            />
+          )}
           <LiveUsersBadge
             activeUsers={activeUsers}
             userCount={userCount}

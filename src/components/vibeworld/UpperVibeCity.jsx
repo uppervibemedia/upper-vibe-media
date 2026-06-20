@@ -418,32 +418,33 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </div>
       )}
 
-      {/* Top HUD */}
+      {/* Top HUD — compact mobile layout */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: loading ? 0 : 1 }}
         transition={{ delay: 0.4 }}
-        className="absolute top-0 left-0 right-0 z-[55] flex items-center justify-between px-4 py-3"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+        className="absolute top-0 left-0 right-0 z-[55] flex items-start justify-between px-2 pt-2"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 6px)" }}
       >
+        {/* Left: Exit button */}
         <button
           onClick={onExit}
           onTouchStart={(e) => e.stopPropagation()}
-          className="inline-flex items-center gap-0.5 rounded-full font-bold transition-all hover:brightness-110 active:scale-95"
+          className="inline-flex items-center gap-1 rounded-full font-bold transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
           style={{
             background: "rgba(255,255,255,0.12)",
             backdropFilter: "blur(12px)",
             border: "1px solid rgba(255,255,255,0.15)",
-            color: "rgba(255,255,255,0.8)",
-            padding: isMobile ? "3px 6px" : "6px 12px",
+            color: "rgba(255,255,255,0.75)",
+            padding: isMobile ? "3px 10px" : "6px 14px",
             fontSize: isMobile ? "9px" : "12px",
-            minWidth: isMobile ? "28px" : "44px",
-            minHeight: isMobile ? "28px" : "44px",
+            minHeight: isMobile ? "26px" : "44px",
             touchAction: "manipulation",
+            whiteSpace: "nowrap",
           }}
         >
           <ChevronLeft style={{ width: isMobile ? "10px" : "14px", height: isMobile ? "10px" : "14px" }} />
-          {isMobile ? "" : "Exit Upper Vibe City"}
+          {isMobile ? "Exit City" : "Exit Upper Vibe City"}
         </button>
 
         {/* Exit Watch Mode — persistent when watching stage on mobile */}
@@ -451,34 +452,34 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           <button
             onTouchStart={(e) => e.stopPropagation()}
             onClick={() => { try { navigator?.vibrate?.(10); } catch {} handleExitWatchMode(); }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold transition-all active:scale-95 flex-shrink-0"
             style={{
               background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
               color: "#fff",
-              minWidth: "44px",
-              minHeight: "44px",
+              minHeight: "26px",
               touchAction: "manipulation",
               pointerEvents: "auto",
-              boxShadow: "0 0 16px rgba(155,126,255,0.5)",
+              boxShadow: "0 0 12px rgba(155,126,255,0.5)",
             }}
           >
-            <Play className="w-3.5 h-3.5" /> Exit Watch
+            <Play className="w-3 h-3" /> Exit Watch
           </button>
         )}
 
+        {/* Right: UVC badge */}
         <div
-          className="flex items-center rounded-full"
+          className="flex items-center rounded-full flex-shrink-0"
           style={{
-            background: "rgba(255,255,255,0.08)",
+            background: "rgba(255,255,255,0.06)",
             backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            padding: isMobile ? "3px 6px" : "6px 12px",
+            border: "1px solid rgba(255,255,255,0.08)",
+            padding: isMobile ? "3px 8px" : "6px 12px",
           }}
         >
-          <span className="font-heading font-black text-white/50"
+          <span className="font-heading font-black text-white/35"
             style={{
               fontSize: isMobile ? "7px" : "10px",
-              letterSpacing: isMobile ? "0.12em" : "0.2em",
+              letterSpacing: isMobile ? "0.1em" : "0.2em",
             }}
           >
             {isMobile ? "UVC" : "UPPER VIBE CITY"}
