@@ -1090,12 +1090,14 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded }) {
+export default function CityCanvas({ onLoaded, onPositionChange }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
+  const onPosCbRef = useRef(onPositionChange);
+  onPosCbRef.current = onPositionChange;
 
   useEffect(() => {
     const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -1295,6 +1297,11 @@ export default function CityCanvas({ onLoaded }) {
         avatarPosRef.current = [px, py, pz, rot];
         avatar.position.set(px, py, pz);
         avatar.rotation.y = rot;
+
+        // Notify parent of position (throttled — every 10 frames)
+        if (onPosCbRef.current && frameRef.current % 10 === 0) {
+          try { onPosCbRef.current(px, pz, rot); } catch {}
+        }
 
         // ─── CAMERA (third-person, locked to avatar every frame) ──
         const camDist = 5;

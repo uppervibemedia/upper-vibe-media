@@ -7,10 +7,12 @@ import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
 import { useLivePresence } from "@/hooks/useLivePresence";
+import WorldHUD from "@/components/vibeworld/WorldHUD";
 
 export default function UpperVibeCity({ onExit }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0 });
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -76,7 +78,10 @@ export default function UpperVibeCity({ onExit }) {
     <div className="fixed inset-0 z-[60] overflow-hidden" style={{ background: "#050510" }}>
       {/* 3D Park */}
       <div className="absolute inset-0">
-        <CityCanvas onLoaded={() => setLoading(false)} />
+        <CityCanvas
+          onLoaded={() => setLoading(false)}
+          onPositionChange={(x, z, rot) => setPlayerPos({ x, z, rot })}
+        />
       </div>
 
       {/* Loading overlay */}
@@ -141,6 +146,15 @@ export default function UpperVibeCity({ onExit }) {
           </p>
         </motion.div>
       )}
+
+      {/* World HUD — zone-specific interactions */}
+      <WorldHUD
+        playerX={playerPos.x}
+        playerZ={playerPos.z}
+        playerRot={playerPos.rot}
+        isMobile={isMobile}
+        loading={loading}
+      />
 
       {/* Bottom navigation bar */}
       {!loading && (
