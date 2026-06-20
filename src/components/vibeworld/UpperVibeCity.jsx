@@ -30,6 +30,8 @@ export default function UpperVibeCity({ onExit }) {
   const stageIframeRef = useRef(null);
   const stageMutedRef = useRef(true);
   const stageScreenYouTubeRef = useRef(false);
+  const stageIsPlayingRef = useRef(false);
+  const stageTogglePlayRef = useRef(null);
   stageMutedRef.current = stageVideoMuted;
   stageScreenYouTubeRef.current = stageScreenYouTube;
 
@@ -67,20 +69,24 @@ export default function UpperVibeCity({ onExit }) {
       const iframe = stageIframeRef.current;
       if (iframe?.contentWindow) {
         if (next) {
-          // Muting
+          // Muting stage
           iframe.contentWindow.postMessage(
             JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
           );
-          if (!isPlaying && togglePlay) togglePlay();
+          if (!stageIsPlayingRef.current && stageTogglePlayRef.current) {
+            stageTogglePlayRef.current();
+          }
         } else {
-          // Unmuting — set full volume first, then unmute
+          // Unmuting — full volume, then unmute
           iframe.contentWindow.postMessage(
             JSON.stringify({ event: "command", func: "setVolume", args: [100] }), "*"
           );
           iframe.contentWindow.postMessage(
             JSON.stringify({ event: "command", func: "unMute", args: "" }), "*"
           );
-          if (isPlaying && togglePlay) togglePlay();
+          if (stageIsPlayingRef.current && stageTogglePlayRef.current) {
+            stageTogglePlayRef.current();
+          }
         }
       }
       return next;
@@ -91,7 +97,7 @@ export default function UpperVibeCity({ onExit }) {
     setStageScreenIframeKey((k) => k + 1);
   };
   const handleStageExitScreen = () => {
-    // Mute stage audio when exiting screen
+    // Mute stage audio when exiting screen view
     if (!stageMutedRef.current) {
       setStageVideoMuted(true);
       const iframe = stageIframeRef.current;
@@ -100,7 +106,9 @@ export default function UpperVibeCity({ onExit }) {
           JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
         );
       }
-      if (!isPlaying && togglePlay) togglePlay();
+      if (!stageIsPlayingRef.current && stageTogglePlayRef.current) {
+        stageTogglePlayRef.current();
+      }
     }
     setStageScreenYouTube(false);
   };
@@ -120,7 +128,11 @@ export default function UpperVibeCity({ onExit }) {
 
   useLivePresence();
 
-  // ── Stage proximity: fade volume as user walks away ───────────────────
+  // Keep player refs in sync without adding them as effect deps
+  stageIsPlayingRef.current = isPlaying;
+  stageTogglePlayRef.current = togglePlay;
+
+  // ── Stage proximity: smooth distance-based volume fade ────────────────
   useEffect(() => {
     const iframe = stageIframeRef.current;
     if (!stageScreenYouTubeRef.current || !iframe?.contentWindow) return;
@@ -130,30 +142,35 @@ export default function UpperVibeCity({ onExit }) {
     const dz = playerPos.z - STAGE_Z;
     const dist = Math.sqrt(dx * dx + dz * dz);
 
-    const INNER = 7;
-    const OUTER = 13;
+    const INNER = 5;
+    const OUTER = 14;
 
     if (dist > OUTER && !stageMutedRef.current) {
-      // Walked away — force mute
       setStageVideoMuted(true);
       iframe.contentWindow.postMessage(
         JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
       );
-      if (!isPlaying && togglePlay) togglePlay();
+      // Restore global player if it was paused for stage audio
+      if (!stageIsPlayingRef.current && stageTogglePlayRef.current) {
+        stageTogglePlayRef.current();
+      }
     } else if (dist > INNER && !stageMutedRef.current) {
-      // Fade zone — volume drops with distance
+      // Smooth ease-out fade — volume drops gradually then accelerates
       const t = (dist - INNER) / (OUTER - INNER);
-      const vol = Math.round(Math.max(5, (1 - t) * 100));
+      const eased = t < 0.5
+        ? 2 * t * t // ease-in first half
+        : 1 - Math.pow(-2 * t + 2, 2) / 2; // ease-out second half
+      const vol = Math.round(Math.max(2, (1 - eased) * 100));
       iframe.contentWindow.postMessage(
         JSON.stringify({ event: "command", func: "setVolume", args: [vol] }), "*"
       );
     } else if (dist <= INNER && !stageMutedRef.current) {
-      // Full volume near the stage
+      // Full volume
       iframe.contentWindow.postMessage(
         JSON.stringify({ event: "command", func: "setVolume", args: [100] }), "*"
       );
     }
-  }, [playerPos.x, playerPos.z, isPlaying, togglePlay]);
+  }, [playerPos.x, playerPos.z]);
 
   // ── Read analyser frequency data for wave sync ────────────────────────
   useEffect(() => {
@@ -376,9 +393,11 @@ export default function UpperVibeCity({ onExit }) {
         muted={stageVideoMuted}
         onClose={() => {
           setStageVideoPlayerOpen(false);
-          if (!stageVideoMuted) {
+          if (!stageMutedRef.current) {
             setStageVideoMuted(true);
-            if (!isPlaying && togglePlay) togglePlay();
+            if (!stageIsPlayingRef.current && stageTogglePlayRef.current) {
+              stageTogglePlayRef.current();
+            }
           }
         }}
         onToggleMute={handleStageToggleMute}
