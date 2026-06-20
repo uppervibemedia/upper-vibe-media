@@ -29,33 +29,16 @@ export default function UpperVibeCity({ onExit }) {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
 
-  // ── Fetch Academy videos for the stage ─────────────────────────────────
+  // ── Fetch YouTube playlist videos for the stage ─────────────────────────
   useEffect(() => {
-    base44.entities.AcademyLesson.filter(
-      { status: "published", is_featured: true },
-      "-display_order",
-      20
-    )
-      .then((lessons) => {
-        if (lessons?.length > 0) {
-          setStageVideos(lessons);
-        } else {
-          // Fallback: fetch any published lessons
-          base44.entities.AcademyLesson.filter(
-            { status: "published" },
-            "-display_order",
-            20
-          ).then(setStageVideos).catch(() => {});
+    base44.functions.invoke("getPlaylistVideos", {})
+      .then((res) => {
+        const videos = res?.data?.videos;
+        if (videos?.length > 0) {
+          setStageVideos(videos);
         }
       })
-      .catch(() => {
-        // Fallback
-        base44.entities.AcademyLesson.filter(
-          { status: "published" },
-          "-display_order",
-          20
-        ).then(setStageVideos).catch(() => {});
-      });
+      .catch(() => {});
   }, []);
 
   // ── Auto-rotate stage video every 60 seconds ───────────────────────────

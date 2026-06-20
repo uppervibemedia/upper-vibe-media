@@ -329,11 +329,21 @@ function buildPark(scene) {
 
   // Dome entrance (glowing arched doorway)
   const entrance = new Mesh(
-    new BoxGeometry(2, 3, 0.1),
-    new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.6 })
+    new BoxGeometry(2.5, 3.5, 0.1),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.7 })
   );
-  entrance.position.set(-12, 1.5, -3 + 3.4);
+  entrance.position.set(-12, 1.75, -3 + 3.35);
+  entrance.name = "domeEntrance";
   dome.add(entrance);
+
+  // Exit glow ring around entrance
+  const exitRing = new Mesh(
+    new RingGeometry(1.35, 1.55, 32),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
+  );
+  exitRing.position.set(-12, 1.75, -3 + 3.4);
+  exitRing.name = "domeExitRing";
+  dome.add(exitRing);
 
   // Ground light under dome
   const domeFloor = new Mesh(
