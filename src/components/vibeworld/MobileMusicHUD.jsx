@@ -22,7 +22,7 @@ function getLayout() {
   };
 }
 
-export default function MobileMusicHUD({ currentTrack, isPlaying, onTogglePlay, onSkip }) {
+export default function MobileMusicHUD({ currentTrack, isPlaying, onTogglePlay, onSkip, compact = false }) {
   const [expanded, setExpanded] = useState(false);
 
   const haptic = useCallback(() => {
@@ -62,23 +62,34 @@ export default function MobileMusicHUD({ currentTrack, isPlaying, onTogglePlay, 
   // COLLAPSED — small floating pill
   // ═════════════════════════════════════════════════════════════
   if (!expanded) {
+    // When compact (modals open): ultra-mini — just play/pause
+    const pillRight = compact ? Math.max(8, parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-right)").trim()) || 0) + 8 : L.right;
+    const pillBottom = compact ? Math.max(72, parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-bottom)").trim()) || 0) + 72 : L.bottom;
+
     return (
       <div
-        className="fixed z-[60] flex items-center gap-2 px-2.5 py-2 rounded-full"
+        className="fixed z-[58] flex items-center rounded-full"
         style={{
-          right: L.right,
-          bottom: L.bottom,
-          maxWidth: L.maxWidth,
+          right: pillRight,
+          bottom: pillBottom,
           pointerEvents: "auto",
           background: "rgba(0,0,0,0.72)",
           backdropFilter: "blur(14px)",
           WebkitBackdropFilter: "blur(14px)",
           border: "1px solid rgba(255,255,255,0.12)",
           boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+          padding: compact ? "4px" : "8px 10px",
+          gap: compact ? "4px" : "8px",
+          maxWidth: compact ? "116px" : L.maxWidth,
         }}
       >
         {/* Cover */}
-        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 pointer-events-none" style={{ minWidth: 32, minHeight: 32 }}>
+        <div className="rounded-full overflow-hidden flex-shrink-0 pointer-events-none" style={{
+          width: compact ? 36 : 32,
+          height: compact ? 36 : 32,
+          minWidth: compact ? 36 : 32,
+          minHeight: compact ? 36 : 32,
+        }}>
           <CoverImage
             src={currentTrack.cover_url}
             alt={currentTrack.title}
@@ -87,12 +98,14 @@ export default function MobileMusicHUD({ currentTrack, isPlaying, onTogglePlay, 
           />
         </div>
 
-        {/* Title (truncated) */}
-        <div className="flex-1 min-w-0 pointer-events-none pr-1">
-          <p className="text-[10px] font-bold text-white/90 truncate max-w-[90px]">
-            {currentTrack.title}
-          </p>
-        </div>
+        {/* Title (truncated) — hidden in compact mode */}
+        {!compact && (
+          <div className="flex-1 min-w-0 pointer-events-none pr-1">
+            <p className="text-[10px] font-bold text-white/90 truncate max-w-[90px]">
+              {currentTrack.title}
+            </p>
+          </div>
+        )}
 
         {/* Play/Pause */}
         <button
@@ -144,7 +157,7 @@ export default function MobileMusicHUD({ currentTrack, isPlaying, onTogglePlay, 
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-[60] flex justify-center px-3"
+      className="fixed inset-x-0 bottom-0 z-[58] flex justify-center px-3"
       style={{
         paddingBottom: expandBottom,
         pointerEvents: "auto",

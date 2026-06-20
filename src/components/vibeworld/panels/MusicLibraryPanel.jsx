@@ -56,26 +56,40 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="absolute inset-x-0 bottom-0 rounded-t-3xl overflow-hidden"
-      style={{ zIndex: 65 }}
+      className="fixed inset-0 rounded-t-3xl overflow-hidden flex flex-col"
       style={{
-        height: isMobile ? "85dvh" : "75vh",
+        zIndex: 70,
+        top: isMobile ? "0" : undefined,
+        bottom: isMobile ? "0" : undefined,
+        height: isMobile ? "100dvh" : "75vh",
+        paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 0px)" : undefined,
+        paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 0px)" : undefined,
         background: "rgba(8,8,24,0.97)",
         backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
         border: "1px solid rgba(255,255,255,0.1)",
         borderBottom: "none",
+        pointerEvents: "auto",
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 flex-shrink-0" style={{ paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 8px)" : undefined }}>
         <div className="flex items-center gap-2">
           <Music4 className="w-5 h-5 text-cyan-400" />
           <h3 className="font-heading font-black text-lg text-white">Music Library</h3>
         </div>
         <button
-          onClick={onClose}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
-          style={{ color: "rgba(255,255,255,0.6)" }}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:bg-white/20"
+          style={{
+            color: "rgba(255,255,255,0.6)",
+            minWidth: 44,
+            minHeight: 44,
+            touchAction: "manipulation",
+            pointerEvents: "auto",
+          }}
+          aria-label="Close library"
         >
           <X className="w-5 h-5" />
         </button>
@@ -90,10 +104,15 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
             placeholder="Search songs..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onTouchStart={(e) => e.stopPropagation()}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all"
             style={{
               background: "rgba(255,255,255,0.05)",
               border: "1px solid rgba(255,255,255,0.08)",
+              pointerEvents: "auto",
+              touchAction: "manipulation",
+              minHeight: "44px",
+              fontSize: "16px",
             }}
           />
         </div>
@@ -122,7 +141,7 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
       </div>
 
       {/* Track list */}
-      <div className="overflow-y-auto px-4 pb-8" style={{ maxHeight: "calc(100% - 150px)" }}>
+      <div className="flex-1 overflow-y-auto px-4" style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 100px)" : "2rem" }}>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="w-6 h-6 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />

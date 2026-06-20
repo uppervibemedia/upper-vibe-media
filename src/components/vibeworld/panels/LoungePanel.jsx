@@ -54,14 +54,16 @@ export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed 
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="absolute inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
-      style={{ zIndex: 65 }}
+      className="fixed inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
       style={{
+        zIndex: 70,
         height: isMobile ? "80dvh" : "65vh",
         background: "rgba(12,10,24,0.97)",
         backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
         border: "1px solid rgba(255,255,255,0.1)",
         borderBottom: "none",
+        pointerEvents: "auto",
       }}
     >
       {/* Header */}
@@ -71,9 +73,17 @@ export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed 
           <h3 className="font-heading font-black text-lg text-white">Vibe Lounge</h3>
         </div>
         <button
-          onClick={onClose}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
-          style={{ color: "rgba(255,255,255,0.6)" }}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:bg-white/20"
+          style={{
+            color: "rgba(255,255,255,0.6)",
+            minWidth: 44,
+            minHeight: 44,
+            touchAction: "manipulation",
+            pointerEvents: "auto",
+          }}
+          aria-label="Close lounge"
         >
           <X className="w-5 h-5" />
         </button>
@@ -171,10 +181,15 @@ export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+              onTouchStart={(e) => e.stopPropagation()}
               className="flex-1 px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 outline-none"
               style={{
                 background: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(255,255,255,0.08)",
+                pointerEvents: "auto",
+                touchAction: "manipulation",
+                minHeight: "44px",
+                fontSize: "16px",
               }}
             />
             <button

@@ -22,6 +22,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [stageCanvas, setStageCanvas] = useState(null);
   const audioIntensityRef = useRef(0);
   const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
+  const [mobileModalOpen, setMobileModalOpen] = useState(false);
 
   // ── Stage video state ──────────────────────────────────────────────────
   const [stageVideos, setStageVideos] = useState([]);
@@ -363,6 +364,26 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           <ChevronLeft className="w-3.5 h-3.5" /> {isMobile ? "Exit City" : "Exit Upper Vibe City"}
         </button>
 
+        {/* Exit Watch Mode — persistent when watching stage on mobile */}
+        {isMobile && stageWatching && (
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={() => { try { navigator?.vibrate?.(10); } catch {} handleExitWatchMode(); }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+            style={{
+              background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
+              color: "#fff",
+              minWidth: "44px",
+              minHeight: "44px",
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+              boxShadow: "0 0 16px rgba(155,126,255,0.5)",
+            }}
+          >
+            <Play className="w-3.5 h-3.5" /> Exit Watch
+          </button>
+        )}
+
         <div
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
           style={{
@@ -395,6 +416,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onStageFullScreen={handleStageFullScreen}
         onStageExitFullScreen={handleExitFullScreen}
         chatAgeConfirmed={chatAgeConfirmed}
+        onMobileModalChange={setMobileModalOpen}
       />
 
       {/* Bottom navigation bar — DESKTOP ONLY, removed entirely on mobile */}
@@ -518,6 +540,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
               isPlaying={isPlaying}
               onTogglePlay={handleGlobalPlayToggle}
               onSkip={handleGlobalSkip}
+              compact={mobileModalOpen}
             />
           )}
         </>

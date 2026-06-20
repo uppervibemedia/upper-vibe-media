@@ -37,6 +37,7 @@ export default function WorldHUD({
   onStageFullScreen,
   onStageExitFullScreen,
   chatAgeConfirmed = false,
+  onMobileModalChange,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
@@ -52,16 +53,30 @@ export default function WorldHUD({
   const handleOpenMusicLibrary = useCallback(() => {
     hapticTap();
     setMusicPanelOpen(true);
-  }, []);
+    onMobileModalChange?.(true);
+  }, [onMobileModalChange]);
+
+  const handleCloseMusicLibrary = useCallback(() => {
+    setMusicPanelOpen(false);
+    // Only report no modals if lounge is also closed
+    onMobileModalChange?.(loungePanelOpen);
+  }, [onMobileModalChange, loungePanelOpen]);
 
   const handleOpenLounge = useCallback(() => {
     hapticTap();
     setLoungePanelOpen(true);
+    onMobileModalChange?.(true);
     if (chatAgeConfirmed) {
       setChatWarningVisible(true);
       setTimeout(() => setChatWarningVisible(false), 5000);
     }
-  }, [chatAgeConfirmed]);
+  }, [chatAgeConfirmed, onMobileModalChange]);
+
+  const handleCloseLounge = useCallback(() => {
+    setLoungePanelOpen(false);
+    // Only report no modals if music library is also closed
+    onMobileModalChange?.(musicPanelOpen);
+  }, [onMobileModalChange, musicPanelOpen]);
 
   if (loading) return null;
 
@@ -429,7 +444,7 @@ export default function WorldHUD({
       {/* ── Music Library Panel (slide-up) ────────────────────── */}
       <MusicLibraryPanel
         open={musicPanelOpen}
-        onClose={() => setMusicPanelOpen(false)}
+        onClose={handleCloseMusicLibrary}
         isMobile={isMobile}
       />
 
@@ -442,7 +457,7 @@ export default function WorldHUD({
       {/* ── Lounge Panel (slide-up) ───────────────────────────── */}
       <LoungePanel
         open={loungePanelOpen}
-        onClose={() => setLoungePanelOpen(false)}
+        onClose={handleCloseLounge}
         isMobile={isMobile}
         chatAgeConfirmed={chatAgeConfirmed}
       />
