@@ -455,28 +455,7 @@ export default function VisualizerPanel({ open, onClose }) {
         </div>
       )}
 
-      {/* Style dots indicator */}
-      <div className="absolute bottom-16 left-0 right-0 z-10 flex justify-center gap-2">
-        {STYLES.map((s) => (
-          <button
-            key={s.key}
-            onClick={() => { styleIdx.current = STYLES.indexOf(s); setStyleKey(s.key); }}
-            onTouchStart={(e) => e.stopPropagation()}
-            className="rounded-full transition-all"
-            style={{
-              width: s.key === styleKey ? "18px" : "14px",
-              height: s.key === styleKey ? "18px" : "14px",
-              background: s.key === styleKey
-                ? "rgba(155,126,255,0.9)"
-                : "rgba(255,255,255,0.15)",
-              touchAction: "manipulation",
-              pointerEvents: "auto",
-              minWidth: "12px",
-              minHeight: "12px",
-            }}
-          />
-        ))}
-      </div>
+
     </motion.div>
   );
 }
