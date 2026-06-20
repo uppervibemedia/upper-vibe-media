@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useSavedItems } from "@/hooks/useSavedItems";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -13,11 +13,22 @@ const SavedItemsContext = createContext(null);
  */
 export function SavedItemsProvider({ children }) {
   const { user, isLoadingAuth } = useAuth();
+  const [ready, setReady] = useState(false);
+  const readyTimer = useRef(null);
 
-  // Only set userId after auth finishes loading — prevents premature empty fetch
-  const stableUserId = !isLoadingAuth
+  // Only set userId after auth finishes loading — prevents premature empty fetch.
+  // Defer by 1200ms to avoid rate-limit collision with RadioContext + Favorites + Home.
+  const stableUserId = (!isLoadingAuth && ready)
     ? (user?.id || user?._id || user?.uid || null)
     : null;
+
+  // Stagger load: wait 1200ms after auth resolves
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      readyTimer.current = setTimeout(() => setReady(true), 1200);
+    }
+    return () => { if (readyTimer.current) clearTimeout(readyTimer.current); };
+  }, [isLoadingAuth]);
 
   const hook = useSavedItems(stableUserId);
 

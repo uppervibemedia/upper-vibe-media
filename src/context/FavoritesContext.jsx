@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useFavorites } from "@/hooks/useFavorite";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -6,11 +6,22 @@ const FavoritesContext = createContext(null);
 
 export function FavoritesProvider({ children }) {
   const { user, isLoadingAuth } = useAuth();
+  const [ready, setReady] = useState(false);
+  const readyTimer = useRef(null);
 
   // Stable user ID — primary key. Null while auth is loading so useFavorites
   // does not fire a premature empty fetch.
-  const stableUserId = !isLoadingAuth ? (user?.id || user?._id || user?.uid || null) : null;
+  // Defer by 800ms to avoid rate-limit collision with RadioContext + SavedItems + Home
+  const stableUserId = (!isLoadingAuth && ready) ? (user?.id || user?._id || user?.uid || null) : null;
   const userEmail = user?.email || null;
+
+  // Stagger load: wait 800ms after auth resolves before passing userId to useFavorites
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      readyTimer.current = setTimeout(() => setReady(true), 800);
+    }
+    return () => { if (readyTimer.current) clearTimeout(readyTimer.current); };
+  }, [isLoadingAuth]);
 
   const favoritesHook = useFavorites(stableUserId, userEmail);
 
