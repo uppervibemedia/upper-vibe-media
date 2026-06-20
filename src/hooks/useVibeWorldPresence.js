@@ -1,12 +1,12 @@
 /**
- * useVibeWorldPresence — Phase 3 real-time presence with entity subscriptions.
+ * useVibeWorldPresence — Real-time presence with entity subscriptions.
  *
- * - Creates/updates a VibeWorldPresence record on enter
- * - Fast position sync every ~300ms (only when position changed meaningfully)
- * - Heartbeat every 10s with full payload (online status, zone)
- * - Uses base44 entity subscribe() for real-time receiving (no polling)
- * - Batches incoming updates every 100ms for efficient React state merging
- * - Cleans up on exit / pagehide / beforeunload
+ * Phase 3 (real-time): Fast position sync, heartbeats, entity subscriptions.
+ * Phase 4 (disconnect cleanup):
+ *   - Periodic stale-user pruning (every 10s)
+ *   - Visibility change handling (offline when tab hidden, re-join on visibility)
+ *   - Mark offline on unmount / pagehide / beforeunload
+ * Phase 5 (safety): Only authenticated users appear; usernames only (no emails).
  *
  * Returns: { activeUsers, userCount, isBroadcasting }
  */
@@ -82,7 +82,7 @@ export default function useVibeWorldPresence(user, currentZone, position) {
 
     const payload = {
       user_id: user.id,
-      username: user.full_name || user.email?.split("@")[0] || "Vibe Citizen",
+      username: user.full_name || "Vibe Citizen",
       avatar_type: user.avatar_type || "default",
       current_zone: zoneRef.current,
       pos_x: posRef.current.x,
@@ -157,6 +157,13 @@ export default function useVibeWorldPresence(user, currentZone, position) {
       if (!mountedRef.current) return;
       // Skip own events — we track ourselves separately
       if (event.data?.user_id === user.id) return;
+      // Phase 5: Only accept online, non-stale users
+      if (event.type !== "delete" && event.data) {
+        const d = event.data;
+        if (!d.is_online) return;
+        const lastBeat = d.last_heartbeat ? new Date(d.last_heartbeat).getTime() : 0;
+        if (Date.now() - lastBeat > STALE_MS) return;
+      }
 
       pendingChanges.set(event.id, event);
 
@@ -214,7 +221,35 @@ export default function useVibeWorldPresence(user, currentZone, position) {
     return () => clearInterval(beatTimer);
   }, [user?.id, heartbeat]);
 
-  // ── Mark offline on exit ─────────────────────────────────────────────────
+  // ── Phase 4: Periodic stale-user pruning ────────────────────────────────
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const pruneStale = () => {
+      const now = Date.now();
+      const map = usersMapRef.current;
+      let changed = false;
+
+      for (const id in map) {
+        const u = map[id];
+        const lastBeat = u.last_heartbeat ? new Date(u.last_heartbeat).getTime() : 0;
+        if (now - lastBeat > STALE_MS) {
+          delete map[id];
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        setActiveUsers(Object.values(map));
+      }
+    };
+
+    const pruneTimer = setInterval(pruneStale, 10_000);
+
+    return () => clearInterval(pruneTimer);
+  }, [user?.id]);
+
+  // ── Phase 4: Visibility change — go offline when tab hidden ─────────────
   const markOffline = useCallback(() => {
     const rid = recordIdRef.current;
     if (!rid) return;
@@ -225,6 +260,29 @@ export default function useVibeWorldPresence(user, currentZone, position) {
       });
     } catch {}
   }, []);
+
+  const markOnline = useCallback(() => {
+    if (!user?.id || !mountedRef.current) return;
+    setIsBroadcasting(false); // force re-creation on next heartbeat
+    recordIdRef.current = null;
+    heartbeat();
+  }, [user, heartbeat]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        markOffline();
+      } else if (mountedRef.current) {
+        markOnline();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [markOffline, markOnline]);
 
   useEffect(() => {
     const cleanup = () => {
