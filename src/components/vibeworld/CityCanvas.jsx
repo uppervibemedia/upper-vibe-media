@@ -1069,7 +1069,7 @@ function createAvatar(scene) {
 function VirtualJoystick({ onMove, onCameraDelta }) {
   const MAX_R = 45;
   const JOY_BASE_X = 75;
-  const JOY_BASE_Y_OFFSET = 200;
+  const JOY_BASE_Y_OFFSET = 130;
 
   const [thumbX, setThumbX] = useState(0);
   const [thumbY, setThumbY] = useState(0);
@@ -1158,33 +1158,21 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 
   return (
     <>
-      {/* Touch capture layer — only captures non-interactive touches (buttons/links pass through) */}
+      {/* Touch capture layer — captures non-interactive touches, skips buttons */}
       <div
-        className="absolute inset-0 z-30 pointer-events-none"
+        className="absolute inset-0 z-30"
         data-touch-layer="true"
         style={{
           touchAction: "none",
           userSelect: "none",
           WebkitUserSelect: "none",
           WebkitTouchCallout: "none",
+          pointerEvents: "auto",
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       />
-      {/* Touch zone labels — left = Walk, right = Look */}
-      <div
-        className="absolute top-1/3 left-2 z-35 pointer-events-none select-none"
-        style={{ color: "rgba(255,255,255,0.18)", fontSize: 11, fontWeight: 700, letterSpacing: "0.2em" }}
-      >
-        WALK
-      </div>
-      <div
-        className="absolute top-1/3 right-2 z-35 pointer-events-none select-none"
-        style={{ color: "rgba(255,255,255,0.18)", fontSize: 11, fontWeight: 700, letterSpacing: "0.2em" }}
-      >
-        LOOK
-      </div>
       {/* Joystick visual — bottom-left, higher contrast */}
       <div
         className="absolute z-40 rounded-full flex items-center justify-center pointer-events-none"

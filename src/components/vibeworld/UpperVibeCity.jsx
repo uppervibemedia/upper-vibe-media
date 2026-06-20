@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, Play, Pause, Home, Music4, Radio, Compass } from "lucide-react";
+import MobileMiniPlayer from "@/components/vibeworld/MobileMiniPlayer";
 import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
@@ -59,10 +60,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     };
   }, []);
 
-  // Auto-hide controls hint after 7 seconds
+  // Auto-hide controls hint after 5 seconds
   useEffect(() => {
     if (loading) return;
-    const timer = setTimeout(() => setShowControlsHint(false), 7000);
+    const timer = setTimeout(() => setShowControlsHint(false), 5000);
     return () => clearTimeout(timer);
   }, [loading]);
 
@@ -85,7 +86,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Stage video controls ───────────────────────────────────────────────
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
-  const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
+  const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack } = playerCtx || {};
   const { allTracks, tracksLoaded } = radioCtx || {};
 
   // ═══════════════════════════════════════════════════════════════
@@ -243,6 +244,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   stageIsPlayingRef.current = isPlaying;
   stageTogglePlayRef.current = togglePlay;
 
+  const handleGlobalSkip = useCallback(() => { skipTrack?.(); }, [skipTrack]);
+
   // ── Bottom player toggle: mute all other sources first ────────
   const handleGlobalPlayToggle = useCallback(() => {
     if (isPlaying) {
@@ -362,7 +365,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             touchAction: "manipulation",
           }}
         >
-          <ChevronLeft className="w-3.5 h-3.5" /> Exit Park
+          <ChevronLeft className="w-3.5 h-3.5" /> {isMobile ? "Exit City" : "Exit Upper Vibe City"}
         </button>
 
         <div
@@ -460,14 +463,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         chatAgeConfirmed={chatAgeConfirmed}
       />
 
-      {/* Bottom navigation bar — compact on mobile */}
-      {!loading && (
+      {/* Bottom navigation bar — DESKTOP ONLY, removed entirely on mobile */}
+      {!loading && !isMobile && (
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
           className="absolute bottom-0 left-0 right-0 z-[55] flex justify-center px-2"
-          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 4rem)" : "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
         >
           <div
             className="flex items-center justify-around gap-0.5 px-1 py-1.5 rounded-2xl max-w-sm w-full"
@@ -481,7 +484,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             {[
               { to: "/", icon: Home, label: "Home" },
               { to: "/music", icon: Music4, label: "Music" },
-              { to: "/vibe-world", icon: Compass, label: "Park", active: true },
+              { to: "/vibe-world", icon: Compass, label: "Vibe World", active: true },
               { to: "/radio", icon: Radio, label: "Radio" },
             ].map((item) => (
               <Link
@@ -522,14 +525,24 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onClose={handleExitFullScreen}
       />
 
-      {/* Bottom now-playing bar — sits above the nav bar on mobile */}
-      {!loading && currentTrack && (
+      {/* MOBILE: Compact mini-player (collapsed by default, bottom-right) */}
+      {!loading && isMobile && currentTrack && (
+        <MobileMiniPlayer
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          onTogglePlay={handleGlobalPlayToggle}
+          onSkip={handleGlobalSkip}
+        />
+      )}
+
+      {/* DESKTOP: Full now-playing bar */}
+      {!loading && !isMobile && currentTrack && (
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
           className="absolute bottom-0 left-0 right-0 z-[56] flex justify-center px-4"
-          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)" : "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
         >
           <div
             className="flex items-center gap-3 px-3 py-2 rounded-2xl max-w-md w-full"
