@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, Play, Pause, Home, Music4, Radio, Compass } from "lucide-react";
 import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
-import StageVideoPlayer from "@/components/vibeworld/StageVideoPlayer";
 import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
@@ -23,7 +22,7 @@ export default function UpperVibeCity({ onExit }) {
   const [stageVideos, setStageVideos] = useState([]);
   const [stageVideoIdx, setStageVideoIdx] = useState(0);
   const [stageVideoMuted, setStageVideoMuted] = useState(true);
-  const [stageVideoPlayerOpen, setStageVideoPlayerOpen] = useState(false);
+  const [stageWatching, setStageWatching] = useState(false);
   const stageMutedRef = useRef(true);
   const stageIsPlayingRef = useRef(false);
   const stageTogglePlayRef = useRef(null);
@@ -50,9 +49,30 @@ export default function UpperVibeCity({ onExit }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
   const { allTracks, tracksLoaded } = radioCtx || {};
 
-  const handleStageWatchVideo = () => {
-    setStageVideoPlayerOpen(true);
-  };
+  const handleWatchOnStage = useCallback(() => {
+    // Enter stage watching mode: unmute stage, pause global player
+    setStageWatching(true);
+    if (stageVideoMuted) {
+      setStageVideoMuted(false);
+      if (isPlaying && togglePlay) {
+        togglePlay();
+        stagePausedPlayerRef.current = true;
+      }
+    }
+  }, [stageVideoMuted, isPlaying, togglePlay]);
+
+  const handleExitWatchMode = useCallback(() => {
+    // Exit stage watching mode: mute stage, resume global player
+    setStageWatching(false);
+    if (!stageVideoMuted) {
+      setStageVideoMuted(true);
+      if (stagePausedPlayerRef.current && !isPlaying && togglePlay) {
+        togglePlay();
+        stagePausedPlayerRef.current = false;
+      }
+    }
+  }, [stageVideoMuted, isPlaying, togglePlay]);
+
   const handleStageNextVideo = () => {
     if (stageVideos.length <= 1) return;
     setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
@@ -61,15 +81,17 @@ export default function UpperVibeCity({ onExit }) {
     setStageVideoMuted((m) => {
       const next = !m;
       if (!next) {
-        // Unmuting stage — pause global player
-        if (stageIsPlayingRef.current && !stagePausedPlayerRef.current && stageTogglePlayRef.current) {
-          stageTogglePlayRef.current();
+        // Unmuting stage — enter watch mode, pause global player
+        setStageWatching(true);
+        if (isPlaying && !stagePausedPlayerRef.current && togglePlay) {
+          togglePlay();
           stagePausedPlayerRef.current = true;
         }
       } else {
-        // Muting stage — resume global player if stage paused it
-        if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && stageTogglePlayRef.current) {
-          stageTogglePlayRef.current();
+        // Muting stage — exit watch mode, resume global player
+        setStageWatching(false);
+        if (stagePausedPlayerRef.current && !isPlaying && togglePlay) {
+          togglePlay();
           stagePausedPlayerRef.current = false;
         }
       }
@@ -88,11 +110,15 @@ export default function UpperVibeCity({ onExit }) {
       (t) => t.title && t.title.toLowerCase().includes(titleLower.split(" - ")[0]?.split(" | ")[0] || "")
     );
     if (match) {
-      // Mute stage audio so it doesn't compete with the global player
+      // Exit watch mode and mute stage so only global player is active
+      setStageWatching(false);
       if (!stageMutedRef.current) {
         setStageVideoMuted(true);
       }
-      // Clear player override — user explicitly chose their own music
+      // Resume global player if stage had paused it
+      if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && togglePlay) {
+        togglePlay();
+      }
       stagePausedPlayerRef.current = false;
       playTrack(match, "song");
     }
@@ -114,7 +140,11 @@ export default function UpperVibeCity({ onExit }) {
     const OUTER = 14;
 
     if (dist > OUTER) {
-      // Walked away — resume global player if stage paused it
+      // Walked away — exit watch mode and resume global player if stage paused it
+      if (stageWatching) {
+        setStageWatching(false);
+        setStageVideoMuted(true);
+      }
       if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && stageTogglePlayRef.current) {
         stageTogglePlayRef.current();
         stagePausedPlayerRef.current = false;
@@ -231,8 +261,10 @@ export default function UpperVibeCity({ onExit }) {
         loading={loading}
         stageVideoTitle={stageVideos[stageVideoIdx]?.title || null}
         stageVideoMuted={stageVideoMuted}
+        stageWatching={stageWatching}
         stageVideosCount={stageVideos.length}
-        onStageWatchVideo={handleStageWatchVideo}
+        onStageWatchVideo={handleWatchOnStage}
+        onStageExitWatchMode={handleExitWatchMode}
         onStageNextVideo={handleStageNextVideo}
         onStageToggleMute={handleStageToggleMute}
         onStagePlaySong={handleStagePlaySong}
@@ -280,24 +312,6 @@ export default function UpperVibeCity({ onExit }) {
         onReady={(c) => setStageCanvas(c)}
         video={stageVideos[stageVideoIdx] || null}
         audioIntensityRef={audioIntensityRef}
-      />
-
-      {/* Fullscreen stage video player overlay */}
-      <StageVideoPlayer
-        open={stageVideoPlayerOpen}
-        video={stageVideos[stageVideoIdx] || null}
-        muted={stageVideoMuted}
-        onClose={() => {
-          setStageVideoPlayerOpen(false);
-          if (!stageMutedRef.current) {
-            setStageVideoMuted(true);
-            if (!stageIsPlayingRef.current && stageTogglePlayRef.current) {
-              stageTogglePlayRef.current();
-            }
-          }
-        }}
-        onToggleMute={handleStageToggleMute}
-        onPlaySong={handleStagePlaySong}
       />
 
       {/* Bottom now-playing bar */}

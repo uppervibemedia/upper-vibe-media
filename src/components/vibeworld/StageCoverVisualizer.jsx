@@ -199,10 +199,10 @@ function drawFrame(ctx, video, imgCache, t, audioBeat) {
     const audioDriven = beat * zoneBoost * 0.9;
 
     // When audio is playing: blend real audio with simulated waves
-    // When silent: very subtle breathing (0.03 — barely visible, no flicker)
+    // When silent: subtle but visible breathing (0.10 — always noticeable, no flicker)
     const energy = rawBeat > 0.01
       ? audioDriven * 0.75 + simulated * 0.25
-      : simulated * 0.03;
+      : simulated * 0.10;
 
     const finalEnergy = energy * (0.55 + zoneBoost * 0.45);
     const bh = Math.max(3, finalEnergy * eqH);

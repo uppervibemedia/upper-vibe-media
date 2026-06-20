@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, Store, Sun,
-  Compass, Sparkles, Library, Video, SkipForward,
+  Compass, Sparkles, Library, SkipForward,
   Volume2, VolumeX,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -26,8 +26,10 @@ export default function WorldHUD({
   isMobile, loading,
   stageVideoTitle,
   stageVideoMuted,
+  stageWatching,
   stageVideosCount,
   onStageWatchVideo,
+  onStageExitWatchMode,
   onStageNextVideo,
   onStageToggleMute,
   onStagePlaySong,
@@ -135,19 +137,34 @@ export default function WorldHUD({
             )}
 
             <div className="flex flex-wrap gap-2 justify-center">
-              {/* Watch Full Video */}
-              <button
-                onClick={onStageWatchVideo}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-                style={{
-                  background: "linear-gradient(135deg,#0080B8,#00A0DC)",
-                  color: "#fff",
-                  boxShadow: "0 0 20px rgba(0,160,220,0.4)",
-                }}
-              >
-                <Video className="w-3.5 h-3.5" />
-                Watch Full Screen
-              </button>
+              {/* Watch Visualizer on Stage / Exit Watch Mode */}
+              {stageWatching ? (
+                <button
+                  onClick={onStageExitWatchMode}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
+                    color: "#fff",
+                    boxShadow: "0 0 20px rgba(155,126,255,0.4)",
+                  }}
+                >
+                  <Music4 className="w-3.5 h-3.5" />
+                  Exit Watch Mode
+                </button>
+              ) : (
+                <button
+                  onClick={onStageWatchVideo}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
+                    color: "#fff",
+                    boxShadow: "0 0 20px rgba(155,126,255,0.4)",
+                  }}
+                >
+                  <Music4 className="w-3.5 h-3.5" />
+                  Watch Visualizer on Stage
+                </button>
+              )}
 
               {/* Next Video */}
               <button
