@@ -64,9 +64,10 @@ export default function UpperVibeCity({ onExit }) {
     stageVideoTimerRef.current = timer;
   };
   const handleStageToggleMute = () => setStageVideoMuted((m) => !m);
-  const handleStageOpenFull = () => {
-    const video = stageVideos[stageVideoIdx];
-    if (video?.video_url) window.open(video.video_url, "_blank", "noopener");
+  const handleStageListenAudio = () => {
+    setStageVideoMuted(false);
+    // Pause global player when stage audio is activated
+    if (isPlaying && togglePlay) togglePlay();
   };
 
   const handleStagePlaySong = () => {
@@ -87,6 +88,19 @@ export default function UpperVibeCity({ onExit }) {
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
   useLivePresence();
+
+  // ── Distance to stage center (for proximity audio prompt) ──────────────────
+  const STAGE_CENTER_X = 0, STAGE_CENTER_Z = -14;
+  const stageDistance = Math.sqrt(
+    (playerPos.x - STAGE_CENTER_X) ** 2 + (playerPos.z - STAGE_CENTER_Z) ** 2
+  );
+
+  // Auto-mute stage when walking away (outside ~14 units)
+  useEffect(() => {
+    if (stageDistance > 14 && !stageVideoMuted) {
+      setStageVideoMuted(true);
+    }
+  }, [stageDistance, stageVideoMuted]);
 
   const { currentTrack, isPlaying, togglePlay, playTrack } = playerCtx || {};
   const { allTracks, tracksLoaded } = radioCtx || {};
@@ -226,9 +240,10 @@ export default function UpperVibeCity({ onExit }) {
         stageVideosCount={stageVideos.length}
         onStageWatchVideo={handleStageWatchVideo}
         onStageNextVideo={handleStageNextVideo}
-        onStageOpenFull={handleStageOpenFull}
         onStageToggleMute={handleStageToggleMute}
         onStagePlaySong={handleStagePlaySong}
+        onStageListenAudio={handleStageListenAudio}
+        stageDistance={stageDistance}
       />
 
       {/* Bottom navigation bar */}

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, Store, Waves,
   Compass, Sparkles, Library, Video, SkipForward,
-  ExternalLink, Volume2, VolumeX,
+  Volume2, VolumeX,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
@@ -29,9 +29,10 @@ export default function WorldHUD({
   stageVideosCount,
   onStageWatchVideo,
   onStageNextVideo,
-  onStageOpenFull,
   onStageToggleMute,
   onStagePlaySong,
+  onStageListenAudio,
+  stageDistance,
 }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const zone = detectZone(playerX, playerZ);
@@ -136,6 +137,25 @@ export default function WorldHUD({
               </p>
             )}
 
+            {/* Distance-based stage audio prompt */}
+            {stageVideoMuted && stageDistance != null && stageDistance < 10 && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                onClick={onStageListenAudio}
+                className="flex items-center gap-2 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95 mb-1"
+                style={{
+                  background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
+                  color: "#000",
+                  boxShadow: "0 0 24px rgba(0,229,255,0.5)",
+                }}
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                Listen to Stage Audio?
+              </motion.button>
+            )}
+
             <div className="flex flex-wrap gap-2 justify-center">
               {/* Watch Featured Video */}
               <button
@@ -165,19 +185,6 @@ export default function WorldHUD({
                 Next Video
               </button>
 
-              {/* Open Full Video */}
-              <button
-                onClick={onStageOpenFull}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-                style={{
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "rgba(255,255,255,0.6)",
-                }}
-              >
-                <ExternalLink className="w-3 h-3" />
-                YouTube
-              </button>
             </div>
 
             <div className="flex flex-wrap gap-2 justify-center mt-1">
