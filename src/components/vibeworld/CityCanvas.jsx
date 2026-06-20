@@ -1768,7 +1768,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   }, []);
 
   const handleCameraDelta = useCallback((dx) => {
-    mobileInputRef.current.camDx += dx * 0.005;
+    mobileInputRef.current.camDx -= dx * 0.005;
   }, []);
 
   if (error) {
