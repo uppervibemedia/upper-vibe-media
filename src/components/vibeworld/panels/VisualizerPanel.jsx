@@ -314,8 +314,16 @@ export default function VisualizerPanel({ open, onClose }) {
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrev}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/15"
-            style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/15 active:bg-white/25"
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.6)",
+              minWidth: "44px",
+              minHeight: "44px",
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -324,8 +332,16 @@ export default function VisualizerPanel({ open, onClose }) {
           </span>
           <button
             onClick={handleNext}
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/15"
-            style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" }}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/15 active:bg-white/25"
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.6)",
+              minWidth: "44px",
+              minHeight: "44px",
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -388,10 +404,12 @@ export default function VisualizerPanel({ open, onClose }) {
                 <button
                   key={track.id}
                   onClick={() => { playTrack?.(track, "song"); setShowSongPicker(false); }}
+                  onTouchStart={(e) => e.stopPropagation()}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all hover:bg-white/5 active:bg-white/10"
                   style={{
                     touchAction: "manipulation",
                     pointerEvents: "auto",
+                    minHeight: "44px",
                   }}
                 >
                   <div className="w-7 h-7 rounded overflow-hidden flex-shrink-0">
@@ -443,12 +461,18 @@ export default function VisualizerPanel({ open, onClose }) {
           <button
             key={s.key}
             onClick={() => { styleIdx.current = STYLES.indexOf(s); setStyleKey(s.key); }}
-            className="w-2 h-2 rounded-full transition-all"
+            onTouchStart={(e) => e.stopPropagation()}
+            className="rounded-full transition-all"
             style={{
+              width: s.key === styleKey ? "18px" : "14px",
+              height: s.key === styleKey ? "18px" : "14px",
               background: s.key === styleKey
                 ? "rgba(155,126,255,0.9)"
                 : "rgba(255,255,255,0.15)",
-              transform: s.key === styleKey ? "scale(1.4)" : "scale(1)",
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+              minWidth: "12px",
+              minHeight: "12px",
             }}
           />
         ))}
