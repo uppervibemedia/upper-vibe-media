@@ -971,9 +971,11 @@ function buildPark(scene) {
 
   // Trees removed — layout cleanup, decoration will be added later
   // Beach palm row — spaced like umbrellas, lining the back of the beach
+  // Beach palm row — spaced like umbrellas, lining the back of the beach
+  // Removed tree at x=0 that was blocking the central beach pathway
   const palmPositions = [
     [-22, 14], [-16.5, 14], [-11, 14], [-5.5, 14],
-    [0, 14], [5.5, 14], [11, 14], [16.5, 14], [22, 14],
+    [5.5, 14], [11, 14], [16.5, 14], [22, 14],
   ];
   palmPositions.forEach(([px, pz]) => {
     const palm = new Group();
@@ -983,17 +985,34 @@ function buildPark(scene) {
     trunk.castShadow = true;
     palm.add(trunk);
 
-    for (let f = 0; f < 5; f++) {
-      const angle = (f / 5) * Math.PI * 2;
-      const frond = new Mesh(
-        new PlaneGeometry(0.15, 0.8),
+    // Cross-shaped fronds — visible from all camera angles
+    for (let f = 0; f < 6; f++) {
+      const angle = (f / 6) * Math.PI * 2;
+      const fx = Math.cos(angle) * 0.3;
+      const fz = Math.sin(angle) * 0.3;
+
+      // Primary frond
+      const frond1 = new Mesh(
+        new PlaneGeometry(0.12, 0.7),
         mat("#2E7D32", { roughness: 0.5 })
       );
-      frond.position.set(Math.cos(angle) * 0.3, 2.8, Math.sin(angle) * 0.3);
-      frond.rotation.x = Math.cos(angle) * 0.6;
-      frond.rotation.z = Math.sin(angle) * 0.5;
-      frond.castShadow = true;
-      palm.add(frond);
+      frond1.position.set(fx, 2.7, fz);
+      frond1.rotation.x = Math.cos(angle) * 0.5;
+      frond1.rotation.z = Math.sin(angle) * 0.5;
+      frond1.castShadow = true;
+      palm.add(frond1);
+
+      // Cross frond (90° rotated) for visibility from all sides
+      const frond2 = new Mesh(
+        new PlaneGeometry(0.12, 0.7),
+        mat("#3A8F3E", { roughness: 0.5 })
+      );
+      frond2.position.set(fx, 2.7, fz);
+      frond2.rotation.x = Math.cos(angle) * 0.5;
+      frond2.rotation.z = Math.sin(angle) * 0.5;
+      frond2.rotation.y = Math.PI / 2;
+      frond2.castShadow = true;
+      palm.add(frond2);
     }
 
     palm.position.set(px, 0, pz);

@@ -489,10 +489,6 @@ export default function WorldHUD({
         open={vibeCheckOpen}
         onClose={() => { setVibeCheckOpen(false); onMobileModalChange?.(false); }}
         isMobile={isMobile}
-        onViewFullProgress={() => {
-          setVibeCheckOpen(false);
-          navigate("/my-vibes");
-        }}
       />
     </>
   );

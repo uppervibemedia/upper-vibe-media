@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronLeft, ChevronRight, Sparkles, Disc3 } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Sparkles, Disc3, Music4, Search } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 import { usePlayer, requestAnalyser } from "@/context/PlayerContext";
+import CoverImage from "@/components/shared/CoverImage";
 
 const STYLES = [
   { key: "cosmic", label: "Cosmic Tunnel" },
@@ -177,22 +179,27 @@ const DRAW_FNS = {
 };
 
 export default function VisualizerPanel({ open, onClose }) {
-  const { currentTrack, isPlaying } = usePlayer() || {};
+  const { currentTrack, isPlaying, playTrack } = usePlayer() || {};
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const styleIdx = useRef(0);
   const [styleKey, setStyleKey] = useState("cosmic");
   const [analyserData, setAnalyserData] = useState(null);
   const fallbackRef = useRef(false);
+  const [showSongPicker, setShowSongPicker] = useState(false);
+  const [quickTracks, setQuickTracks] = useState([]);
+  const [songSearch, setSongSearch] = useState("");
 
   const handlePrev = useCallback(() => {
     styleIdx.current = (styleIdx.current - 1 + STYLES.length) % STYLES.length;
     setStyleKey(STYLES[styleIdx.current].key);
+    setShowSongPicker(false);
   }, []);
 
   const handleNext = useCallback(() => {
     styleIdx.current = (styleIdx.current + 1) % STYLES.length;
     setStyleKey(STYLES[styleIdx.current].key);
+    setShowSongPicker(false);
   }, []);
 
   useEffect(() => {
@@ -244,6 +251,13 @@ export default function VisualizerPanel({ open, onClose }) {
     };
   }, [open, styleKey, analyserData]);
 
+  // Load quick tracks for song picker
+  useEffect(() => {
+    if (!open) return;
+    base44.entities.Track.filter({ status: "published" }, "-plays", 20)
+      .then(setQuickTracks);
+  }, [open]);
+
   // Attempt to get analyser when panel opens
   useEffect(() => {
     if (!open || analyserData || fallbackRef.current) return;
@@ -257,6 +271,10 @@ export default function VisualizerPanel({ open, onClose }) {
     }, 200);
     return () => clearTimeout(timer);
   }, [open, analyserData]);
+
+  const filteredSongs = quickTracks.filter(t =>
+    !songSearch || t.title?.toLowerCase().includes(songSearch.toLowerCase())
+  ).slice(0, 8);
 
   if (!open) return null;
 
@@ -279,6 +297,7 @@ export default function VisualizerPanel({ open, onClose }) {
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}>
         <button
           onClick={onClose}
+          onTouchStart={(e) => e.stopPropagation()}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/15"
           style={{
             background: "rgba(255,255,255,0.1)",
@@ -312,13 +331,88 @@ export default function VisualizerPanel({ open, onClose }) {
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="w-3 h-3 text-cyan-400" />
-          <span className="text-[10px] font-black tracking-wider text-cyan-400/60">
-            {isPlaying ? "REACTING" : "VISUAL"}
-          </span>
-        </div>
+        <button
+          onClick={() => setShowSongPicker(!showSongPicker)}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/15"
+          style={{
+            background: "rgba(255,255,255,0.08)",
+            color: "rgba(255,255,255,0.6)",
+            minWidth: "44px",
+            minHeight: "44px",
+            touchAction: "manipulation",
+            pointerEvents: "auto",
+          }}
+        >
+          <Music4 className="w-3.5 h-3.5" /> Songs
+        </button>
       </div>
+
+      {/* Song picker overlay */}
+      <AnimatePresence>
+        {showSongPicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute top-16 left-4 right-4 z-20 rounded-2xl overflow-hidden"
+            style={{
+              background: "rgba(12,10,24,0.97)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              backdropFilter: "blur(20px)",
+              pointerEvents: "auto",
+              maxHeight: "60vh",
+            }}
+          >
+            <div className="p-3 border-b border-white/5">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25" />
+                <input
+                  type="text"
+                  placeholder="Search songs..."
+                  value={songSearch}
+                  onChange={(e) => setSongSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 rounded-lg text-xs text-white placeholder-white/25 outline-none"
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    touchAction: "manipulation",
+                    pointerEvents: "auto",
+                  }}
+                />
+              </div>
+            </div>
+            <div className="overflow-y-auto max-h-48"
+              style={{ paddingBottom: "0.5rem" }}>
+              {filteredSongs.map((track) => (
+                <button
+                  key={track.id}
+                  onClick={() => { playTrack?.(track, "song"); setShowSongPicker(false); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all hover:bg-white/5 active:bg-white/10"
+                  style={{
+                    touchAction: "manipulation",
+                    pointerEvents: "auto",
+                  }}
+                >
+                  <div className="w-7 h-7 rounded overflow-hidden flex-shrink-0">
+                    <CoverImage
+                      src={track.cover_url}
+                      alt={track.title}
+                      className="w-full h-full"
+                      iconClassName="w-3 h-3"
+                      fallbackOpacityClass="text-white/20"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-white truncate">{track.title}</p>
+                    <p className="text-[9px] text-white/30 truncate">{track.artist_display || "Upper Vibe Media"}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Now Playing (bottom) */}
       {currentTrack && (

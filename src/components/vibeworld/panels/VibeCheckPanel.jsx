@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { X, Sparkles, TrendingUp, TrendingDown, Zap, Clock, BarChart3, ArrowRight } from "lucide-react";
+import { X, Sparkles, TrendingUp, TrendingDown, Zap, Clock, BarChart3, ArrowRight, ChevronLeft, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 
 const CATEGORY_LABELS = {
@@ -40,52 +41,56 @@ function getStatus(score) {
   return STATUS_LEVELS[0];
 }
 
-export default function VibeCheckPanel({ open, onClose, isMobile, onViewFullProgress }) {
+export default function VibeCheckPanel({ open, onClose, isMobile }) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
+  const [fullReport, setFullReport] = useState(false);
+  const [history, setHistory] = useState([]);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const checkIns = await base44.entities.VibeCheckIn.list("-created_date", 30);
+      const latest = checkIns[0];
+      const yesterday = checkIns.find((c) => {
+        const d = new Date(c.check_in_date || c.created_date);
+        const now = new Date();
+        const target = new Date(now);
+        target.setDate(target.getDate() - 1);
+        return d.toDateString() === target.toDateString();
+      });
+
+      const categories = latest
+        ? computeCategories(latest.mood, latest.mood_score)
+        : computeCategories("neutral", 50);
+
+      setData({
+        score: latest?.vibe_score || latest?.mood_score || 50,
+        status: getStatus(latest?.vibe_score || latest?.mood_score || 50),
+        streak: latest?.streak_days || 0,
+        yesterdayScore: yesterday?.vibe_score || yesterday?.mood_score || null,
+        categories,
+        mood: latest?.mood || "neutral",
+        intention: latest?.intention || "",
+      });
+      setHistory(checkIns.slice(0, 14).reverse());
+    } catch (e) {
+      console.error("[VibeCheckPanel] fetch error:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!open) return;
-    let cancelled = false;
-    setLoading(true);
+    fetchData();
+  }, [open, fetchData]);
 
-    (async () => {
-      try {
-        const checkIns = await base44.entities.VibeCheckIn.list("-created_date", 30);
-        if (cancelled) return;
-
-        const latest = checkIns[0];
-        const yesterday = checkIns.find((c) => {
-          const d = new Date(c.check_in_date || c.created_date);
-          const now = new Date();
-          const target = new Date(now);
-          target.setDate(target.getDate() - 1);
-          return d.toDateString() === target.toDateString();
-        });
-
-        const categories = latest
-          ? computeCategories(latest.mood, latest.mood_score)
-          : computeCategories("neutral", 50);
-
-        setData({
-          score: latest?.vibe_score || latest?.mood_score || 50,
-          status: getStatus(latest?.vibe_score || latest?.mood_score || 50),
-          streak: latest?.streak_days || 0,
-          yesterdayScore: yesterday?.vibe_score || yesterday?.mood_score || null,
-          categories,
-          mood: latest?.mood || "neutral",
-          intention: latest?.intention || "",
-        });
-      } catch (e) {
-        console.error("[VibeCheckPanel] fetch error:", e);
-        setData(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [open]);
+  // Re-fetch when returning from full report view
+  useEffect(() => {
+    if (open && !fullReport) fetchData();
+  }, [open, fullReport]);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -241,7 +246,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile, onViewFullProg
       <div className="flex-shrink-0 px-5 py-4 border-t border-white/5 space-y-2">
         <button
           onTouchStart={(e) => e.stopPropagation()}
-          onClick={() => { hapticTap(); onClose(); }}
+          onClick={() => { hapticTap(); onClose(); navigate("/my-vibes"); }}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
           style={{
             background: "linear-gradient(135deg,#00D4F0,#00E5FF)",
@@ -254,24 +259,22 @@ export default function VibeCheckPanel({ open, onClose, isMobile, onViewFullProg
           <Sparkles className="w-4 h-4" />
           Check In
         </button>
-        {onViewFullProgress && (
-          <button
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={() => { hapticTap(); onViewFullProgress(); }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs tracking-wider transition-all hover:bg-white/10 active:scale-95"
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.6)",
-              minHeight: 48,
-              touchAction: "manipulation",
-              pointerEvents: "auto",
-            }}
-          >
-            <BarChart3 className="w-4 h-4" />
-            View Full Progress
-          </button>
-        )}
+        <button
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={() => { hapticTap(); setFullReport(true); }}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs tracking-wider transition-all hover:bg-white/10 active:scale-95"
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "rgba(255,255,255,0.6)",
+            minHeight: 48,
+            touchAction: "manipulation",
+            pointerEvents: "auto",
+          }}
+        >
+          <BarChart3 className="w-4 h-4" />
+          View Full Progress
+        </button>
         <button
           onTouchStart={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onClose(); }}
@@ -281,6 +284,143 @@ export default function VibeCheckPanel({ open, onClose, isMobile, onViewFullProg
           Close
         </button>
       </div>
+      {/* ── Full Progress Report (nested view) ────────────────── */}
+      {fullReport && (
+        <motion.div
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="absolute inset-0 rounded-t-3xl overflow-hidden flex flex-col"
+          style={{
+            background: "rgba(10,12,22,0.99)",
+            pointerEvents: "auto",
+          }}
+        >
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5 flex-shrink-0">
+            <button
+              onClick={() => setFullReport(false)}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
+              style={{ color: "rgba(255,255,255,0.6)", touchAction: "manipulation" }}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h3 className="font-heading font-black text-base text-white">Full Progress</h3>
+              <p className="text-[10px] text-white/30">Last 14 days</p>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+            {/* Score trend chart */}
+            {history.length >= 2 && (
+              <div>
+                <p className="text-[10px] font-black tracking-wider text-white/30 uppercase mb-3">Score Trend</p>
+                <div className="flex items-end gap-1.5 h-32 px-1"
+                  style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.05)" }}>
+                  {history.map((h, i) => {
+                    const score = h.vibe_score || h.mood_score || 50;
+                    const pct = score / 100;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center justify-end h-full pb-1">
+                        <div
+                          className="w-full rounded-t transition-all"
+                          style={{
+                            height: `${Math.max(4, pct * 100)}%`,
+                            background: score >= 70
+                              ? "linear-gradient(180deg,#4ADE80,#4ADE8044)"
+                              : score >= 50
+                                ? "linear-gradient(180deg,#FBBF24,#FBBF2444)"
+                                : "linear-gradient(180deg,#F87171,#F8717144)",
+                            minHeight: 4,
+                          }}
+                        />
+                        <span className="text-[8px] text-white/25 mt-1">{score}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Trend summary */}
+            {data && (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-3 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <Activity className="w-4 h-4 mx-auto mb-1 text-cyan-400" />
+                  <p className="text-lg font-heading font-black text-white">{data.score}</p>
+                  <p className="text-[9px] font-bold text-white/25 uppercase">Current</p>
+                </div>
+                <div className="p-3 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <Zap className="w-4 h-4 mx-auto mb-1 text-cyan-400" />
+                  <p className="text-lg font-heading font-black text-white">{data.streak}</p>
+                  <p className="text-[9px] font-bold text-white/25 uppercase">Streak</p>
+                </div>
+                <div className="p-3 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  {scoreDiff != null && scoreDiff > 0 ? (
+                    <TrendingUp className="w-4 h-4 mx-auto mb-1 text-green-400" />
+                  ) : scoreDiff != null && scoreDiff < 0 ? (
+                    <TrendingDown className="w-4 h-4 mx-auto mb-1 text-red-400" />
+                  ) : (
+                    <BarChart3 className="w-4 h-4 mx-auto mb-1 text-white/30" />
+                  )}
+                  <p className="text-lg font-heading font-black text-white">
+                    {scoreDiff != null ? (scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff) : "-"}
+                  </p>
+                  <p className="text-[9px] font-bold text-white/25 uppercase">vs Yest.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Category breakdown */}
+            {data && (
+              <div>
+                <p className="text-[10px] font-black tracking-wider text-white/30 uppercase mb-3">Energy Breakdown</p>
+                <div className="space-y-2.5">
+                  {Object.entries(data.categories).map(([key, value]) => (
+                    <div key={key} className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold text-white/40 w-20 text-right flex-shrink-0">
+                        {CATEGORY_LABELS[key] || key}
+                      </span>
+                      <div className="flex-1 h-2 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${value}%`,
+                            background: `linear-gradient(90deg, #00E5FF44, ${value > 60 ? "#4ADE80" : value > 35 ? "#FBBF24" : "#F87171"})`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-white/50 w-8 text-left">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Improvement summary */}
+            {data && scoreDiff != null && (
+              <div className="p-4 rounded-xl" style={{ background: scoreDiff >= 0 ? "rgba(74,222,128,0.05)" : "rgba(248,113,113,0.05)", border: `1px solid ${scoreDiff >= 0 ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)"}` }}>
+                <div className="flex items-center gap-2 mb-1">
+                  {scoreDiff >= 0 ? (
+                    <TrendingUp className="w-4 h-4 text-green-400" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-red-400" />
+                  )}
+                  <span className="text-sm font-heading font-black" style={{ color: scoreDiff >= 0 ? "#4ADE80" : "#F87171" }}>
+                    {scoreDiff >= 0 ? "You're improving!" : "Needs attention"}
+                  </span>
+                </div>
+                <p className="text-xs text-white/40">
+                  {scoreDiff >= 0
+                    ? `Your vibe score is trending up (+${scoreDiff} vs yesterday). Keep your daily check-in streak going!`
+                    : `Your score dropped ${Math.abs(scoreDiff)} points from yesterday. A quick check-in can help reset your energy.`}
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 }
