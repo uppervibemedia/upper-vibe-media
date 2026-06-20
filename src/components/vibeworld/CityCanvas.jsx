@@ -1063,90 +1063,12 @@ function createAvatar(scene) {
   return avatar;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MOBILE VIRTUAL JOYSTICK — dual-touch controls (orientation-aware)
-// TEMPORARY TEST MODE: touch debug logs active for testing
-// ═══════════════════════════════════════════════════════════════
-function VirtualJoystick({ onMove, onCameraDelta }) {
-  const isPortraitRef = useRef(true);
-  const getLayout = useCallback(() => {
-    const isLandscape = window.innerWidth > window.innerHeight;
-    isPortraitRef.current = !isLandscape;
-    const saLeft = parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-left)").trim()) || 0;
-    const saBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-bottom)").trim()) || 0;
-    if (isLandscape) return { joySize: 88, knobSize: 38, maxR: 36, joyBaseX: Math.max(48, saLeft + 48), joyBaseY: window.innerHeight - Math.max(60, saBottom + 60) };
-    return { joySize: 104, knobSize: 42, maxR: 42, joyBaseX: Math.max(24, saLeft + 24), joyBaseY: window.innerHeight - Math.max(90, saBottom + 90) };
-  }, []);
-
-  const [layout, setLayout] = useState(getLayout);
-  const [thumbX, setThumbX] = useState(0);
-  const [thumbY, setThumbY] = useState(0);
-  const [joyActive, setJoyActive] = useState(false);
-  const joyActiveRef = useRef(false);
-  const joyTouchId = useRef(null);
-  const camTouchId = useRef(null);
-  const camBaseRef = useRef({ x: 0, y: 0 });
-  const layoutRef = useRef(layout);
-  layoutRef.current = layout;
-
-  useEffect(() => {
-    let timeout;
-    const update = () => { clearTimeout(timeout); timeout = setTimeout(() => { const L = getLayout(); setLayout(L); layoutRef.current = L; joyTouchId.current = null; camTouchId.current = null; setThumbX(0); setThumbY(0); setJoyActive(false); joyActiveRef.current = false; onMove?.(0, 0); console.log("[Joystick] orientation changed — portrait:", !(window.innerWidth > window.innerHeight), "size:", L.joySize); }, 150); };
-    window.addEventListener("resize", update);
-    window.addEventListener("orientationchange", update);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", update);
-    return () => { clearTimeout(timeout); window.removeEventListener("resize", update); window.removeEventListener("orientationchange", update); if (window.visualViewport) window.visualViewport.removeEventListener("resize", update); };
-  }, [onMove, getLayout]);
-
-  const hapticTap = useCallback(() => { try { navigator?.vibrate?.(10); } catch {} }, []);
-
-  const isInteractiveTarget = useCallback((el) => {
-    while (el && el !== document.body) { const tag = el.tagName?.toLowerCase(); if (tag === "button" || tag === "a" || tag === "input" || tag === "textarea" || tag === "select") return true; if (el.getAttribute?.("role") === "button") return true; if (el.classList?.contains("pointer-events-auto")) return true; if (el.dataset?.touchLayer === "true") break; el = el.parentElement; }
-    return false;
-  }, []);
-
-  const handleJoyStart = useCallback((e) => {
-    if (joyTouchId.current !== null) return; const t = e.changedTouches[0]; e.preventDefault(); e.stopPropagation(); joyTouchId.current = t.identifier; hapticTap(); console.log("[Joystick] touch start");
-  }, [hapticTap]);
-
-  const handleCamStart = useCallback((e) => {
-    if (camTouchId.current !== null) return; const t = e.changedTouches[0]; if (isInteractiveTarget(t.target)) return; e.preventDefault(); camTouchId.current = t.identifier; camBaseRef.current = { x: t.clientX, y: t.clientY }; console.log("[Camera] touch start");
-  }, [isInteractiveTarget]);
-
-  const handleTouchMove = useCallback((e) => {
-    let consumed = false; const L = layoutRef.current;
-    for (const t of [...e.touches]) {
-      if (t.identifier === joyTouchId.current) { consumed = true; let dx = t.clientX - L.joyBaseX; let dy = L.joyBaseY - t.clientY; const dist = Math.sqrt(dx * dx + dy * dy); if (dist > L.maxR) { dx = (dx / dist) * L.maxR; dy = (dy / dist) * L.maxR; } setThumbX(dx); setThumbY(dy); if (dist > 8 && !joyActiveRef.current) { hapticTap(); joyActiveRef.current = true; setJoyActive(true); } if (dist <= 8 && joyActiveRef.current) { joyActiveRef.current = false; setJoyActive(false); } onMove?.(dx / L.maxR, dy / L.maxR); }
-      if (t.identifier === camTouchId.current) { consumed = true; const dx = t.clientX - camBaseRef.current.x; onCameraDelta?.(dx); camBaseRef.current = { x: t.clientX, y: t.clientY }; }
-    }
-    if (consumed) e.preventDefault();
-  }, [onMove, onCameraDelta, hapticTap]);
-
-  const handleTouchEnd = useCallback((e) => {
-    let consumed = false;
-    for (const t of [...e.changedTouches]) {
-      if (t.identifier === joyTouchId.current) { console.log("[Joystick] touch end"); joyTouchId.current = null; joyActiveRef.current = false; setJoyActive(false); setThumbX(0); setThumbY(0); onMove?.(0, 0); consumed = true; }
-      if (t.identifier === camTouchId.current) { console.log("[Camera] touch end"); camTouchId.current = null; consumed = true; }
-    }
-    if (consumed) e.preventDefault();
-  }, [onMove]);
-
-  const L = layout;
-
-  return (
-    <>
-      <div data-zone="camera" style={{ position:"absolute", top:0, right:0, width:"50%", height:"70%", zIndex:30, touchAction:"none", userSelect:"none", WebkitUserSelect:"none", pointerEvents:"auto" }} onTouchStart={handleCamStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} />
-      <div style={{ position:"absolute", width:L.joySize, height:L.joySize, left:L.joyBaseX - L.joySize/2, top:L.joyBaseY - L.joySize/2, zIndex:50, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", background:joyActive?"rgba(255,255,255,0.18)":"rgba(255,255,255,0.08)", border:`2px solid ${joyActive?"rgba(255,255,255,0.35)":"rgba(255,255,255,0.15)"}`, backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", boxShadow:joyActive?"0 0 16px rgba(0,180,220,0.2)":"none", pointerEvents:"auto", touchAction:"none" }} onTouchStart={handleJoyStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-        <div style={{ width:L.knobSize, height:L.knobSize, borderRadius:"50%", pointerEvents:"none", background:joyActive?"linear-gradient(135deg,rgba(0,180,220,0.5),rgba(155,126,255,0.4))":"rgba(255,255,255,0.18)", border:"2px solid rgba(255,255,255,0.35)", transform:`translate(${thumbX}px,${-thumbY}px)` }} />
-      </div>
-    </>
-  );
-}
+// Mobile joystick now lives in ./MobileJoystick.jsx (imported by UpperVibeCity)
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, locked, stageScreenPosRef }) {
+export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, locked, stageScreenPosRef, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1188,7 +1110,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
     prevWalkTime: 0,
   });
   const isMobileRef = useRef(false);
-  const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
+  const _mobileRef = useRef({ x: 0, y: 0, camDx: 0 });
+  const mobileInputRef = props.mobileInputRef || _mobileRef;
   const lockedRef = useRef(false);
   const prevLockedRef = useRef(false);
   lockedRef.current = locked;
@@ -1715,16 +1638,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
     };
   }, []);
 
-  // Mobile joystick handlers — store analog values for the animation loop
-  const handleJoystickMove = useCallback((jx, jy) => {
-    mobileInputRef.current.x = jx;
-    mobileInputRef.current.y = jy;
-  }, []);
-
-  const handleCameraDelta = useCallback((dx) => {
-    mobileInputRef.current.camDx -= dx * 0.005;
-  }, []);
-
   if (error) {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-sky-200">
@@ -1755,13 +1668,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         className="w-full h-full block"
         style={{ touchAction: "none" }}
       />
-      {isMobile && (
-        <VirtualJoystick
-          key={mobileResetKey}
-          onMove={handleJoystickMove}
-          onCameraDelta={handleCameraDelta}
-        />
-      )}
+      {/* Mobile controls rendered by parent (UpperVibeCity) */}
     </div>
   );
 }

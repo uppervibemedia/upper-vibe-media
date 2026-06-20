@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, Play, Pause, Home, Music4, Radio, Compass } from "lucide-react";
-import MobileMiniPlayer from "@/components/vibeworld/MobileMiniPlayer";
+import MobileJoystick from "@/components/vibeworld/MobileJoystick";
+import MobileMusicHUD from "@/components/vibeworld/MobileMusicHUD";
 import { Link } from "react-router-dom";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
@@ -17,10 +18,10 @@ import WorldHUD from "@/components/vibeworld/WorldHUD";
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const [showControlsHint, setShowControlsHint] = useState(true);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0 });
   const [stageCanvas, setStageCanvas] = useState(null);
   const audioIntensityRef = useRef(0);
+  const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
 
   // ── Stage video state ──────────────────────────────────────────────────
   const [stageVideos, setStageVideos] = useState([]);
@@ -59,13 +60,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       el.style.overscrollBehavior = "";
     };
   }, []);
-
-  // Auto-hide controls hint after 5 seconds
-  useEffect(() => {
-    if (loading) return;
-    const timer = setTimeout(() => setShowControlsHint(false), 5000);
-    return () => clearTimeout(timer);
-  }, [loading]);
 
   // ── Fetch YouTube playlist videos + randomize starting video ──────────
   useEffect(() => {
@@ -332,6 +326,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           audioIntensityRef={audioIntensityRef}
           locked={movementLocked}
           stageScreenPosRef={stageScreenPosRef}
+          mobileInputRef={mobileInputRef}
         />
       </div>
 
@@ -380,67 +375,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           </span>
         </div>
       </motion.div>
-
-      {/* Portrait orientation hint — small, non-blocking, auto-hides */}
-      {!loading && isMobile && showControlsHint && !stageWatching && !stageFullScreen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute top-1/3 left-0 right-0 z-[54] flex justify-center pointer-events-none"
-        >
-          <div
-            className="px-3 py-1 rounded-full"
-            style={{
-              background: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(8px)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <p className="text-[9px] font-medium tracking-wide text-white/35">Rotate for a wider view</p>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Controls hint — auto-hides after 7 seconds */}
-      {!loading && showControlsHint && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ delay: 0.4 }}
-          className="absolute top-1/2 left-0 right-0 z-[55] flex justify-center pointer-events-none"
-        >
-          <div
-            className="flex flex-col items-center gap-1.5 px-4 py-2.5 rounded-2xl"
-            style={{
-              background: "rgba(0,0,0,0.65)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.12)",
-            }}
-          >
-            {isMobile ? (
-              <>
-                <p className="text-[11px] font-bold tracking-wider text-white">
-                  <span className="text-cyan-400">Left joystick</span> to move &bull; <span className="text-purple-400">Swipe right</span> to look
-                </p>
-                <p className="text-[9px] text-white/40 tracking-wide">
-                  Tap buttons to interact
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-[11px] font-bold tracking-wider text-white">
-                  W/S <span className="text-cyan-400">Walk</span> &bull; A/D <span className="text-purple-400">Turn</span> &bull; Mouse <span className="text-amber-400">Look</span>
-                </p>
-                <p className="text-[9px] text-white/40 tracking-wide">
-                  Walk into zones to discover actions
-                </p>
-              </>
-            )}
-          </div>
-        </motion.div>
-      )}
 
       {/* World HUD */}
       <WorldHUD
@@ -525,14 +459,68 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onClose={handleExitFullScreen}
       />
 
-      {/* MOBILE: Compact mini-player (collapsed by default, bottom-right) */}
-      {!loading && isMobile && currentTrack && (
-        <MobileMiniPlayer
-          currentTrack={currentTrack}
-          isPlaying={isPlaying}
-          onTogglePlay={handleGlobalPlayToggle}
-          onSkip={handleGlobalSkip}
-        />
+      {/* MOBILE: Game HUD — joystick + camera look + music */}
+      {!loading && isMobile && (
+        <>
+          {/* Camera look zone — right half of screen, only empty space */}
+          <div
+            className="fixed inset-0 z-[45]"
+            style={{ pointerEvents: "none" }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: "50%",
+                height: "65%",
+                pointerEvents: "auto",
+                touchAction: "none",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                const t = e.changedTouches[0];
+                if (t) {
+                  mobileInputRef.current._camBaseX = t.clientX;
+                  mobileInputRef.current._camActive = true;
+                }
+              }}
+              onTouchMove={(e) => {
+                if (!mobileInputRef.current._camActive) return;
+                e.preventDefault();
+                const t = e.touches[0];
+                if (t && mobileInputRef.current._camBaseX !== undefined) {
+                  const dx = t.clientX - mobileInputRef.current._camBaseX;
+                  mobileInputRef.current.camDx -= dx * 0.005;
+                  mobileInputRef.current._camBaseX = t.clientX;
+                }
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                mobileInputRef.current._camActive = false;
+                mobileInputRef.current._camBaseX = undefined;
+              }}
+            />
+          </div>
+
+          <MobileJoystick
+            onMove={(x, y) => {
+              mobileInputRef.current.x = x;
+              mobileInputRef.current.y = y;
+            }}
+          />
+
+          {currentTrack && (
+            <MobileMusicHUD
+              currentTrack={currentTrack}
+              isPlaying={isPlaying}
+              onTogglePlay={handleGlobalPlayToggle}
+              onSkip={handleGlobalSkip}
+            />
+          )}
+        </>
       )}
 
       {/* DESKTOP: Full now-playing bar */}
