@@ -97,6 +97,7 @@ function mat(hexColor, opts = {}) {
 function buildPark(scene) {
   // ─── SKY ────────────────────────────────────────────────────
   createCosmicSky(scene);
+  createSkyline(scene);
 
   // ─── LAYOUT CONSTANTS ────────────────────────────────────────
   const SHORELINE_Z = 20;
@@ -393,6 +394,7 @@ const SKY_FORWARD = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;   /
 const SKY_RIGHT   = `${BASE}/df9a0847f_ChatGPTImageJun19202612_41_21PM.png`;   // Full planet (centered) — East/Right
 const SKY_BACK    = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`;   // No planet — South/Back
 const SKY_LEFT    = `${BASE}/e7caceb54_ChatGPTImageJun19202612_41_07PM.png`;   // Ringed planet + moon — West/Left
+const SKYLINE_BUILDINGS = `${BASE}/69c8ef985_ChatGPTImageJun19202604_48_23PM2.png`;  // Downtown skyline backdrop
 
 // ═══════════════════════════════════════════════════════════════
 // COSMIC SKYBOX — camera-centered cube, BackSide textures
@@ -448,6 +450,61 @@ function createCosmicSky(scene) {
   scene.add(skybox);
 
   scene.fog = new Fog("#0A1525", 48, 60);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SKYLINE BACKDROP — 2D building border rim around playable area
+// ═══════════════════════════════════════════════════════════════
+function createSkyline(scene) {
+  const loader = new THREE.TextureLoader();
+  const tex = loader.load(SKYLINE_BUILDINGS);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+
+  const skylineGroup = new Group();
+  skylineGroup.name = "skyline";
+  skylineGroup.renderOrder = 0;
+
+  const DIST = 27; // just inside skybox edge
+  const PLANE_W = 56;
+  const PLANE_H = 7;
+
+  function makePlane(flip) {
+    const geo = new PlaneGeometry(PLANE_W, PLANE_H);
+    const mat = new MeshBasicMaterial();
+    mat.map = tex;
+    mat.transparent = true;
+    mat.opacity = 0.92;
+    mat.depthWrite = false;
+    mat.side = THREE.DoubleSide;
+    return new Mesh(geo, mat);
+  }
+
+  // North — behind park
+  const north = makePlane();
+  north.position.set(0, PLANE_H / 2, -DIST);
+  skylineGroup.add(north);
+
+  // South — behind ocean horizon
+  const south = makePlane();
+  south.position.set(0, PLANE_H / 2, DIST);
+  south.rotation.y = Math.PI;
+  skylineGroup.add(south);
+
+  // West — left side
+  const west = makePlane();
+  west.position.set(-DIST, PLANE_H / 2, 0);
+  west.rotation.y = Math.PI / 2;
+  skylineGroup.add(west);
+
+  // East — right side
+  const east = makePlane();
+  east.position.set(DIST, PLANE_H / 2, 0);
+  east.rotation.y = -Math.PI / 2;
+  skylineGroup.add(east);
+
+  scene.add(skylineGroup);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -870,6 +927,7 @@ export default function CityCanvas({ onLoaded }) {
 
       // Skybox — must follow camera so sky always feels infinitely far away
       const skybox = scene.getObjectByName("skybox");
+      const skylineGroup = scene.getObjectByName("skyline");
 
       let animId;
       const animate = () => {
@@ -1134,6 +1192,11 @@ export default function CityCanvas({ onLoaded }) {
           skybox.position.copy(camera.position);
           skybox.rotation.y += dt * 0.015; // Very slow Y-axis drift
           skybox.rotation.x += dt * 0.003; // Tiny tilt for depth
+        }
+
+        // ─── SKYLINE — follows camera, sits behind playable land ──
+        if (skylineGroup) {
+          skylineGroup.position.copy(camera.position);
         }
 
         renderer.render(scene, camera);
