@@ -304,9 +304,10 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Stage cover visualizer — audio-reactive equalizer bars */}
+      {/* Stage cover visualizer — cover art + tall equalizer bars */}
       <StageCoverVisualizer
         onReady={(c) => setStageCanvas(c)}
+        video={stageVideos[stageVideoIdx] || null}
         audioIntensityRef={audioIntensityRef}
       />
 
