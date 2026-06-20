@@ -13,7 +13,7 @@ import { useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { getVisitorId, getSessionId } from "@/lib/analytics";
 
-const HEARTBEAT_INTERVAL = 10_000; // 10 seconds
+const HEARTBEAT_INTERVAL = 30_000; // 30 seconds — avoid rate limits
 const PRESENCE_RECORD_KEY = "uvm_presence_id"; // localStorage: ID of our LivePresence record
 
 // Page path → human label mapping
@@ -134,6 +134,10 @@ export function useLivePresence() {
           savePresenceRecordId(rec.id);
         }
       } catch (err) {
+        // Rate limited — skip this beat, retry on next interval
+        if (err?.message?.includes("Rate limit") || err?.status === 429) {
+          return;
+        }
         // If update fails (record deleted), reset and recreate next beat
         if (err?.message?.includes("not found") || err?.status === 404) {
           recordIdRef.current = null;

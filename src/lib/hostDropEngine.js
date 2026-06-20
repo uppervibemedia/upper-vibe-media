@@ -9,16 +9,29 @@ import { base44 } from "@/api/base44Client";
 
 let _cachedDrops = [];
 let _lastPlayed  = null;
+let _dropsLoaded = false;
+let _dropsLoading = null; // share in-flight promise
 
 export async function loadHostDrops() {
-  try {
-    const drops = await base44.entities.RadioHostDrop.filter({ is_active: true });
-    _cachedDrops = drops || [];
-  } catch (e) {
-    console.warn("[hostDropEngine] Failed to load drops:", e.message);
-    _cachedDrops = [];
-  }
-  return _cachedDrops;
+  if (_dropsLoaded && _cachedDrops.length > 0) return _cachedDrops;
+  if (_dropsLoading) return _dropsLoading; // share in-flight
+  
+  _dropsLoading = base44.entities.RadioHostDrop.filter({ is_active: true })
+    .then((drops) => {
+      _cachedDrops = drops || [];
+      _dropsLoaded = true;
+      _dropsLoading = null;
+      return _cachedDrops;
+    })
+    .catch((e) => {
+      console.warn("[hostDropEngine] Failed to load drops:", e.message);
+      _cachedDrops = [];
+      _dropsLoaded = true;
+      _dropsLoading = null;
+      return _cachedDrops;
+    });
+  
+  return _dropsLoading;
 }
 
 export function pickRandomDrop() {
