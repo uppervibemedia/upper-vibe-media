@@ -525,14 +525,85 @@ function buildPark(scene) {
   lounge.add(firePit);
 
   // Fire glow layers (pink → purple gradient)
+  const loungeFireMats = [];
   for (const [radius, opacity] of [[0.55, 0.7], [0.6, 0.4], [0.7, 0.2]]) {
+    const fGlowMat = new MeshBasicMaterial({ color: new Color(radius > 0.55 ? "#C43BFF" : "#E040FB"), depthWrite: false, transparent: true, opacity });
     const fGlow = new Mesh(
       new CylinderGeometry(radius, radius + 0.05, 0.05, 24),
-      new MeshBasicMaterial({ color: new Color(radius > 0.55 ? "#C43BFF" : "#E040FB"), depthWrite: false, transparent: true, opacity })
+      fGlowMat
     );
     fGlow.position.set(-16, 0.32 + (radius - 0.5) * 0.5, -10);
     lounge.add(fGlow);
+    loungeFireMats.push(fGlowMat);
   }
+
+  // ── Neon ambient lighting — floor arcs, vertical pillars, energy ring ──
+  const loungeNeonMats = [...loungeFireMats];
+
+  // Floor neon arcs — curved strips on the platform perimeter
+  for (let a = 0; a < 3; a++) {
+    const arcRadius = 3.2 + a * 0.5;
+    const arcAngle = Math.PI * 0.65;
+    const arcStart = Math.PI - arcAngle / 2;
+    const segments = 32;
+    for (let s = 0; s < segments; s++) {
+      const ang = arcStart + (s / (segments - 1)) * arcAngle;
+      const ax = -16 + Math.cos(ang) * arcRadius;
+      const az = -10 + Math.sin(ang) * arcRadius;
+      const arcDot = new Mesh(
+        new SphereGeometry(0.05, 4, 3),
+        new MeshBasicMaterial({
+          color: new Color(a === 0 ? "#00D4F0" : a === 1 ? "#A078FF" : "#C43BFF"),
+          depthWrite: false, transparent: true, opacity: 0.55,
+        })
+      );
+      arcDot.position.set(ax, 0.02, az);
+      lounge.add(arcDot);
+      loungeNeonMats.push(arcDot.material);
+    }
+  }
+
+  // Vertical neon accent pillars — 4 around the lounge
+  for (let p = 0; p < 4; p++) {
+    const pAng = Math.PI + (p / 3) * Math.PI * 0.65;
+    const pr = 3.0;
+    const px = -16 + Math.cos(pAng) * pr;
+    const pz = -10 + Math.sin(pAng) * pr;
+    const pillarMat = new MeshBasicMaterial({
+      color: new Color(p % 2 === 0 ? "#00D4F0" : "#A078FF"),
+      depthWrite: false, transparent: true, opacity: 0.45,
+    });
+    const pillar = new Mesh(
+      new CylinderGeometry(0.04, 0.04, 2.2, 8),
+      pillarMat
+    );
+    pillar.position.set(px, 1.1, pz);
+    lounge.add(pillar);
+    loungeNeonMats.push(pillarMat);
+
+    // Pillar top glow dot
+    const topDot = new Mesh(
+      new SphereGeometry(0.08, 6, 4),
+      new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.7 })
+    );
+    topDot.position.set(px, 2.2, pz);
+    lounge.add(topDot);
+    loungeNeonMats.push(topDot.material);
+  }
+
+  // Ambient energy ring — low, wide, subtle
+  const energyRing = new Mesh(
+    new RingGeometry(2.8, 3.0, 64),
+    new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.25 })
+  );
+  energyRing.rotation.x = -Math.PI / 2;
+  energyRing.position.set(-16, 0.07, -10);
+  energyRing.renderOrder = 1;
+  lounge.add(energyRing);
+  loungeNeonMats.push(energyRing.material);
+
+  // Store lounge neon materials for audio-reactive pulsing
+  scene.userData.loungeNeonMats = loungeNeonMats;
 
   scene.add(lounge);
   createNeonSign(scene, -16, 4.5, -10, "VIBE  LOUNGE", "#C43BFF");
@@ -956,6 +1027,7 @@ function buildPark(scene) {
   loungeLight.intensity = 1.5; loungeLight.distance = 10;
   loungeLight.position.set(-16, 2, -10);
   scene.add(loungeLight);
+  scene.userData.loungeLight = loungeLight;
 
   const libraryLight = new PointLight();
   libraryLight.color = new Color("#00D4F0");
@@ -1787,6 +1859,23 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         const screenGlowMesh = scene.getObjectByName("stageScreenGlow");
         if (screenGlowMesh?.material) {
           screenGlowMesh.material.opacity = 0.25 + audioBeat * 0.5;
+        }
+
+        // ─── VIBE LOUNGE NEON AMBIENT — pulse with music beat ──────
+        const loungeNeonMats = scene.userData.loungeNeonMats;
+        if (loungeNeonMats) {
+          const loungePulse = 0.4 + audioBeat * 0.6;
+          const loungeWave = Math.sin(t * 2.5) * 0.12;
+          for (const mat of loungeNeonMats) {
+            if (mat?.opacity !== undefined) {
+              mat.opacity = Math.min(0.85, 0.35 + audioBeat * 0.5 + loungeWave);
+            }
+          }
+          // Point light intensity also pulses
+          const ll = scene.userData.loungeLight;
+          if (ll && ll.intensity !== undefined) {
+            ll.intensity = 1.2 + audioBeat * 1.0;
+          }
         }
 
         // ─── NEON SKYLINE PULSE — buildings breathe with the beat ──
