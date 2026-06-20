@@ -24,27 +24,11 @@ export default function UpperVibeCity({ onExit }) {
   const [stageVideoIdx, setStageVideoIdx] = useState(0);
   const [stageVideoMuted, setStageVideoMuted] = useState(true);
   const [stageVideoPlayerOpen, setStageVideoPlayerOpen] = useState(false);
-  const [stageScreenYouTube, setStageScreenYouTube] = useState(false);
-  const [stageProximityScreen, setStageProximityScreen] = useState(false);
-  const [stageScreenBounds, setStageScreenBounds] = useState({ visible: false, left: 0, top: 0, width: 0, height: 0 });
-  const [stageScreenIframeKey, setStageScreenIframeKey] = useState(0);
-  const [stageExplicitlyMuted, setStageExplicitlyMuted] = useState(false);
-  const stageIframeRef = useRef(null);
   const stageMutedRef = useRef(true);
-  const stageExplicitMuteRef = useRef(false);
-  const stageScreenYouTubeRef = useRef(false);
-  const stageProximityRef = useRef(false);
   const stageIsPlayingRef = useRef(false);
   const stageTogglePlayRef = useRef(null);
-  const stagePausedPlayerRef = useRef(false); // track if stage paused the global player
-  const stageProximityEverActivatedRef = useRef(false);
+  const stagePausedPlayerRef = useRef(false);
   stageMutedRef.current = stageVideoMuted;
-  stageExplicitMuteRef.current = stageExplicitlyMuted;
-  stageScreenYouTubeRef.current = stageScreenYouTube;
-  stageProximityRef.current = stageProximityScreen;
-
-  // Combined: iframe shows when either explicit or proximity-activated
-  const stageScreenActive = stageScreenYouTube || stageProximityScreen;
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -72,72 +56,25 @@ export default function UpperVibeCity({ onExit }) {
   const handleStageNextVideo = () => {
     if (stageVideos.length <= 1) return;
     setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
-    setStageScreenIframeKey((k) => k + 1);
   };
   const handleStageToggleMute = () => {
     setStageVideoMuted((m) => {
       const next = !m;
-      const iframe = stageIframeRef.current;
-      if (iframe?.contentWindow) {
-        if (next) {
-          // Explicitly muting — remember user choice
-          setStageExplicitlyMuted(true);
-          iframe.contentWindow.postMessage(
-            JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
-          );
-          if (!stageIsPlayingRef.current && stageTogglePlayRef.current) {
-            stageTogglePlayRef.current();
-          }
-        } else {
-          // Explicitly unmuting — clear explicit mute flag
-          setStageExplicitlyMuted(false);
-          iframe.contentWindow.postMessage(
-            JSON.stringify({ event: "command", func: "setVolume", args: [100] }), "*"
-          );
-          iframe.contentWindow.postMessage(
-            JSON.stringify({ event: "command", func: "unMute", args: "" }), "*"
-          );
-          if (stageIsPlayingRef.current && stageTogglePlayRef.current) {
-            stageTogglePlayRef.current();
-          }
-          // Mute global player so we don't play 2 songs at once
-          if (stageIsPlayingRef.current && !stagePausedPlayerRef.current && stageTogglePlayRef.current) {
-            stageTogglePlayRef.current();
-            stagePausedPlayerRef.current = true;
-          }
+      if (!next) {
+        // Unmuting stage — pause global player
+        if (stageIsPlayingRef.current && !stagePausedPlayerRef.current && stageTogglePlayRef.current) {
+          stageTogglePlayRef.current();
+          stagePausedPlayerRef.current = true;
+        }
+      } else {
+        // Muting stage — resume global player if stage paused it
+        if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && stageTogglePlayRef.current) {
+          stageTogglePlayRef.current();
+          stagePausedPlayerRef.current = false;
         }
       }
       return next;
     });
-  };
-  const handleStageWatchOnScreen = () => {
-    // Explicit mode overrides proximity — clear proximity so exit works cleanly
-    setStageProximityScreen(false);
-    setStageScreenYouTube(true);
-    setStageScreenIframeKey((k) => k + 1);
-  };
-  const handleStageExitScreen = () => {
-    // Mute stage audio when exiting screen view
-    if (!stageMutedRef.current) {
-      setStageVideoMuted(true);
-      const iframe = stageIframeRef.current;
-      if (iframe?.contentWindow) {
-        iframe.contentWindow.postMessage(
-          JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
-        );
-      }
-      if (!stageIsPlayingRef.current && stageTogglePlayRef.current) {
-        stageTogglePlayRef.current();
-      }
-    }
-    setStageScreenYouTube(false);
-    setStageProximityScreen(false);
-    stageProximityEverActivatedRef.current = false;
-    // Resume global player if stage paused it
-    if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && stageTogglePlayRef.current) {
-      stageTogglePlayRef.current();
-      stagePausedPlayerRef.current = false;
-    }
   };
   const handleStagePlaySong = () => {
     const video = stageVideos[stageVideoIdx];
@@ -154,15 +91,7 @@ export default function UpperVibeCity({ onExit }) {
       // Mute stage audio so it doesn't compete with the global player
       if (!stageMutedRef.current) {
         setStageVideoMuted(true);
-        const iframe = stageIframeRef.current;
-        if (iframe?.contentWindow) {
-          iframe.contentWindow.postMessage(
-            JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
-          );
-        }
       }
-      // Clear explicit mute so proximity can auto-unmute later
-      setStageExplicitlyMuted(false);
       // Clear player override — user explicitly chose their own music
       stagePausedPlayerRef.current = false;
       playTrack(match, "song");
@@ -175,80 +104,20 @@ export default function UpperVibeCity({ onExit }) {
   stageIsPlayingRef.current = isPlaying;
   stageTogglePlayRef.current = togglePlay;
 
-  // ── Stage proximity: auto-activate screen + auto-unmute on approach ──
-  // Stage video stays visible once activated, only audio fades with distance
+  // ── Stage proximity: manage global player pause/resume based on distance ──
   useEffect(() => {
     const STAGE_X = 0, STAGE_Z = -14;
     const dx = playerPos.x - STAGE_X;
     const dz = playerPos.z - STAGE_Z;
     const dist = Math.sqrt(dx * dx + dz * dz);
 
-    const INNER = 5;
     const OUTER = 14;
 
-    // Auto-activate the in-world YouTube screen when close — once activated it stays
-    if (dist <= INNER && !stageScreenYouTubeRef.current && !stageProximityRef.current) {
-      setStageProximityScreen(true);
-      stageProximityEverActivatedRef.current = true;
-      setStageScreenIframeKey((k) => k + 1);
-    }
-
-    const iframe = stageIframeRef.current;
-    const screenOn = stageScreenYouTubeRef.current || stageProximityRef.current;
-    if (!screenOn || !iframe?.contentWindow) return;
-
     if (dist > OUTER) {
-      // Walked away — mute stage audio, resume global player if we paused it
-      if (!stageMutedRef.current) {
-        setStageVideoMuted(true);
-        iframe.contentWindow.postMessage(
-          JSON.stringify({ event: "command", func: "mute", args: "" }), "*"
-        );
-        if (!stageIsPlayingRef.current && stageTogglePlayRef.current) {
-          stageTogglePlayRef.current();
-        }
-      }
-      // Resume global player if stage previously paused it
+      // Walked away — resume global player if stage paused it
       if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && stageTogglePlayRef.current) {
         stageTogglePlayRef.current();
         stagePausedPlayerRef.current = false;
-      }
-    } else if (dist <= INNER && stageMutedRef.current && !stageExplicitMuteRef.current) {
-      // Entered inner zone — auto-unmute stage (unless user explicitly muted)
-      setStageVideoMuted(false);
-      iframe.contentWindow.postMessage(
-        JSON.stringify({ event: "command", func: "setVolume", args: [100] }), "*"
-      );
-      iframe.contentWindow.postMessage(
-        JSON.stringify({ event: "command", func: "unMute", args: "" }), "*"
-      );
-      if (stageIsPlayingRef.current && stageTogglePlayRef.current) {
-        stageTogglePlayRef.current();
-      }
-      // Mute global player so we don't play 2 songs at once
-      if (stageIsPlayingRef.current && !stagePausedPlayerRef.current && stageTogglePlayRef.current) {
-        stageTogglePlayRef.current();
-        stagePausedPlayerRef.current = true;
-      }
-    } else if (dist > INNER && dist <= OUTER && !stageMutedRef.current) {
-      // Fade zone — smooth ease-out volume curve
-      const t = (dist - INNER) / (OUTER - INNER);
-      const eased = t < 0.5
-        ? 2 * t * t
-        : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      const vol = Math.round(Math.max(2, (1 - eased) * 100));
-      iframe.contentWindow.postMessage(
-        JSON.stringify({ event: "command", func: "setVolume", args: [vol] }), "*"
-      );
-    } else if (dist <= INNER && !stageMutedRef.current) {
-      // Already unmuted — ensure full volume
-      iframe.contentWindow.postMessage(
-        JSON.stringify({ event: "command", func: "setVolume", args: [100] }), "*"
-      );
-      // Ensure global player stays muted while stage is active
-      if (stageIsPlayingRef.current && !stagePausedPlayerRef.current && stageTogglePlayRef.current) {
-        stageTogglePlayRef.current();
-        stagePausedPlayerRef.current = true;
       }
     }
   }, [playerPos.x, playerPos.z]);
@@ -285,10 +154,8 @@ export default function UpperVibeCity({ onExit }) {
         <CityCanvas
           onLoaded={() => setLoading(false)}
           onPositionChange={(x, z, rot) => setPlayerPos({ x, z, rot })}
-          stageCanvas={!stageScreenActive ? stageCanvas : null}
+          stageCanvas={stageCanvas}
           audioIntensityRef={audioIntensityRef}
-          onStageScreenBounds={setStageScreenBounds}
-          movementLocked={stageScreenYouTube}
         />
       </div>
 
@@ -335,8 +202,8 @@ export default function UpperVibeCity({ onExit }) {
         </div>
       </motion.div>
 
-      {/* Controls hint — only show when not in an active screen mode */}
-      {!loading && !stageScreenActive && (
+      {/* Controls hint */}
+      {!loading && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -355,55 +222,6 @@ export default function UpperVibeCity({ onExit }) {
         </motion.div>
       )}
 
-      {/* Watch on Stage mode banner */}
-      {stageScreenYouTube && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="absolute top-20 left-0 right-0 z-30 flex justify-center pointer-events-none"
-        >
-          <div
-            className="px-4 py-1.5 rounded-full flex items-center gap-2"
-            style={{ background: "rgba(124,58,237,0.25)", border: "1px solid rgba(155,126,255,0.3)" }}
-          >
-            <span className="text-[10px] text-purple-200 font-medium tracking-wider">
-              Press Exit Stage View to walk away
-            </span>
-          </div>
-        </motion.div>
-      )}
-
-      {/* In-world YouTube iframe — auto-activated by proximity or manual Watch on Stage */}
-      {stageScreenActive && stageScreenBounds.visible && stageVideos[stageVideoIdx]?.youtube_video_id && (
-        <div
-          className="absolute z-50 pointer-events-none"
-          style={{
-            left: stageScreenBounds.left,
-            top: stageScreenBounds.top,
-            width: stageScreenBounds.width,
-            height: stageScreenBounds.height,
-          }}
-        >
-          <iframe
-            ref={stageIframeRef}
-            key={stageScreenIframeKey}
-            src={`https://www.youtube.com/embed/${stageVideos[stageVideoIdx].youtube_video_id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=${stageVideos[stageVideoIdx].youtube_video_id}&enablejsapi=1`}
-            className="w-full h-full pointer-events-none"
-            allow="autoplay; encrypted-media"
-            referrerPolicy="strict-origin-when-cross-origin"
-            title={stageVideos[stageVideoIdx].title || "Stage video"}
-            style={{ border: "none" }}
-          />
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              border: "2px solid rgba(155,126,255,0.25)",
-              boxShadow: "inset 0 0 20px rgba(0,160,220,0.08)",
-            }}
-          />
-        </div>
-      )}
-
       {/* World HUD */}
       <WorldHUD
         playerX={playerPos.x}
@@ -414,9 +232,6 @@ export default function UpperVibeCity({ onExit }) {
         stageVideoTitle={stageVideos[stageVideoIdx]?.title || null}
         stageVideoMuted={stageVideoMuted}
         stageVideosCount={stageVideos.length}
-        stageScreenYouTube={stageScreenYouTube}
-        onStageWatchOnScreen={handleStageWatchOnScreen}
-        onStageExitScreen={handleStageExitScreen}
         onStageWatchVideo={handleStageWatchVideo}
         onStageNextVideo={handleStageNextVideo}
         onStageToggleMute={handleStageToggleMute}

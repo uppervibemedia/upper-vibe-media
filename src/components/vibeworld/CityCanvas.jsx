@@ -1100,7 +1100,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, onStageScreenBounds, movementLocked }) {
+export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1108,8 +1108,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   onLoadedRef.current = onLoaded;
   const onPosCbRef = useRef(onPositionChange);
   onPosCbRef.current = onPositionChange;
-  const onStageScreenRef = useRef(onStageScreenBounds);
-  onStageScreenRef.current = onStageScreenBounds;
 
   useEffect(() => {
     const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -1126,8 +1124,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   const avatarPosRef = useRef([...SPAWN, 0]); // [x, y, z, rotY]
   const stageCanvasRef = useRef(null);
   stageCanvasRef.current = stageCanvas;
-  const movementLockedRef = useRef(false);
-  movementLockedRef.current = movementLocked;
   const velocityRef = useRef({ x: 0, z: 0 });
   const targetRotRef = useRef(0);
   const keysRef = useRef({});
@@ -1143,7 +1139,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
-  const lastStageBoundsRef = useRef({ left: -9999, top: -9999, width: -1, height: -1, visible: false });
 
   // Init scene — runs once only
   useEffect(() => {
@@ -1224,38 +1219,35 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         let [px, py, pz, rot] = avatarPosRef.current;
         const vel = velocityRef.current;
 
-        // ─── INPUT (skip if movement is locked) ────────────────────
+        // ─── INPUT ────────────────────
         let inputX = 0, inputZ = 0;
         let turnInput = 0;
-        const locked = movementLockedRef.current;
 
-        if (!locked) {
-          if (isMobileRef.current) {
-            const joy = mobileInputRef.current;
-            if (Math.abs(joy.y) > 0.08) {
-              inputX += Math.sin(rot) * joy.y;
-              inputZ += Math.cos(rot) * joy.y;
-            }
-            turnInput = -joy.x;
-            if (Math.abs(joy.camDx) > 0.0005) {
-              rot += joy.camDx;
-              targetRotRef.current = rot;
-              joy.camDx *= 0.85;
-            }
-          } else {
-            if (keys.w || keys.arrowup) { inputX += Math.sin(rot); inputZ += Math.cos(rot); }
-            if (keys.s || keys.arrowdown) { inputX -= Math.sin(rot); inputZ -= Math.cos(rot); }
-            if (keys.a || keys.arrowleft) turnInput = 1;
-            if (keys.d || keys.arrowright) turnInput = -1;
+        if (isMobileRef.current) {
+          const joy = mobileInputRef.current;
+          if (Math.abs(joy.y) > 0.08) {
+            inputX += Math.sin(rot) * joy.y;
+            inputZ += Math.cos(rot) * joy.y;
           }
+          turnInput = -joy.x;
+          if (Math.abs(joy.camDx) > 0.0005) {
+            rot += joy.camDx;
+            targetRotRef.current = rot;
+            joy.camDx *= 0.85;
+          }
+        } else {
+          if (keys.w || keys.arrowup) { inputX += Math.sin(rot); inputZ += Math.cos(rot); }
+          if (keys.s || keys.arrowdown) { inputX -= Math.sin(rot); inputZ -= Math.cos(rot); }
+          if (keys.a || keys.arrowleft) turnInput = 1;
+          if (keys.d || keys.arrowright) turnInput = -1;
         }
 
         const inputMag = Math.sqrt(inputX * inputX + inputZ * inputZ);
-        const isMoving = inputMag > 0.1 && !locked;
-        const isTurning = Math.abs(turnInput) > 0.01 && !locked;
+        const isMoving = inputMag > 0.1;
+        const isTurning = Math.abs(turnInput) > 0.01;
 
         // ─── MOUSE LOOK ─────────────────────────────────────────
-        if (mouse.down && !locked) {
+        if (mouse.down) {
           rot += mouse.dx * 0.004;
           targetRotRef.current = rot;
           mouse.dx = 0;
@@ -1283,21 +1275,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         } else {
           vel.x += (0 - vel.x) * Math.min(1, DECELERATION * dt);
           vel.z += (0 - vel.z) * Math.min(1, DECELERATION * dt);
-          if (locked) {
-            // Force zero velocity when locked
-            vel.x = 0;
-            vel.z = 0;
-          }
         }
 
         // Smoother rotation lerp
-        let targetRot = locked ? rot : targetRotRef.current;
-        if (!locked) {
-          let diff = targetRot - rot;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          rot += diff * Math.min(1, ROTATION_SMOOTH * dt);
-        }
+        let targetRot = targetRotRef.current;
+        let diff = targetRot - rot;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        rot += diff * Math.min(1, ROTATION_SMOOTH * dt);
 
         // Apply velocity
         const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
@@ -1330,53 +1315,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
           pz - Math.cos(rot) * camDist,
         );
         camera.lookAt(px, py + lookY, pz);
-
-        // ─── STAGE SCREEN 2D PROJECTION — for HTML overlay ───────────
-        if (onStageScreenRef.current && frameRef.current % 4 === 0) {
-          const stageW = 3.5, stageH = 2.0, stageZ = -16.3;
-          const corners = [
-            new Vector3(-stageW, 4.5, stageZ),
-            new Vector3(stageW, 4.5, stageZ),
-            new Vector3(stageW, 0.5, stageZ),
-            new Vector3(-stageW, 0.5, stageZ),
-          ];
-          const canvasW = renderer.domElement.clientWidth;
-          const canvasH = renderer.domElement.clientHeight;
-          let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-          let allBehindCamera = true;
-          for (const corner of corners) {
-            const projected = corner.clone().project(camera);
-            if (projected.z < 1) {
-              const sx = (projected.x * 0.5 + 0.5) * canvasW;
-              const sy = (-projected.y * 0.5 + 0.5) * canvasH;
-              minX = Math.min(minX, sx);
-              maxX = Math.max(maxX, sx);
-              minY = Math.min(minY, sy);
-              maxY = Math.max(maxY, sy);
-              allBehindCamera = false;
-            }
-          }
-          if (!allBehindCamera && maxX > minX && maxY > minY) {
-            // Round to whole pixels and skip updates smaller than 1px
-            const left = Math.round(minX);
-            const top = Math.round(minY);
-            const width = Math.round(maxX - minX);
-            const height = Math.round(maxY - minY);
-            const prev = lastStageBoundsRef.current;
-            const changed = Math.abs(prev.left - left) >= 1
-              || Math.abs(prev.top - top) >= 1
-              || Math.abs(prev.width - width) >= 1
-              || Math.abs(prev.height - height) >= 1
-              || !prev.visible;
-            if (changed) {
-              lastStageBoundsRef.current = { left, top, width, height, visible: true };
-              onStageScreenRef.current({ left, top, width, height, visible: true });
-            }
-          } else if (lastStageBoundsRef.current.visible) {
-            lastStageBoundsRef.current.visible = false;
-            onStageScreenRef.current({ visible: false });
-          }
-        }
 
         // ═════════════════════════════════════════════════════════
         // ANIMATION SYSTEM
