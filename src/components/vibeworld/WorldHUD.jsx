@@ -11,6 +11,7 @@ import { detectZone, ZONES } from "./zoneDetection";
 import MusicLibraryPanel from "./panels/MusicLibraryPanel";
 import LoungePanel from "./panels/LoungePanel";
 import VisualizerPanel from "./panels/VisualizerPanel";
+import ChatWarning from "@/components/vibeworld/ChatWarning";
 
 const ZONE_ICONS = {
   plaza: Compass,
@@ -35,7 +36,9 @@ export default function WorldHUD({
   onStagePlaySong,
   onStageFullScreen,
   onStageExitFullScreen,
+  chatAgeConfirmed = false,
 }) {
+  const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const zone = detectZone(playerX, playerZ);
 
@@ -50,7 +53,12 @@ export default function WorldHUD({
 
   const handleOpenLounge = useCallback(() => {
     setLoungePanelOpen(true);
-  }, []);
+    if (chatAgeConfirmed) {
+      setChatWarningVisible(true);
+      // Auto-dismiss warning after 5 seconds
+      setTimeout(() => setChatWarningVisible(false), 5000);
+    }
+  }, [chatAgeConfirmed]);
 
   if (loading) return null;
 
@@ -84,6 +92,12 @@ export default function WorldHUD({
           </div>
         )}
       </motion.div>
+
+      {/* ── Chat Warning Banner ──────────────────────────────── */}
+      <ChatWarning
+        show={chatWarningVisible}
+        onDismiss={() => setChatWarningVisible(false)}
+      />
 
       {/* ── Now Playing (bottom bar in UpperVibeCity handles this) ── */}
 
@@ -386,6 +400,7 @@ export default function WorldHUD({
         open={loungePanelOpen}
         onClose={() => setLoungePanelOpen(false)}
         isMobile={isMobile}
+        chatAgeConfirmed={chatAgeConfirmed}
       />
     </>
   );

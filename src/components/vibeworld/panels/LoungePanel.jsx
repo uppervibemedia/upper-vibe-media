@@ -12,7 +12,7 @@ const MOODS = [
   { key: "energized", label: "Energized", emoji: "⚡" },
 ];
 
-export default function LoungePanel({ open, onClose, isMobile }) {
+export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed = false }) {
   const { currentTrack, isPlaying, togglePlay } = usePlayer() || {};
   const [activeMood, setActiveMood] = useState(null);
   const [messages, setMessages] = useState([
@@ -160,33 +160,50 @@ export default function LoungePanel({ open, onClose, isMobile }) {
         ))}
       </div>
 
-      {/* Input */}
+      {/* Input or age-restricted message */}
       <div className="flex-shrink-0 px-4 py-3 border-t border-white/5">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Share your vibe..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
-            className="flex-1 px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 outline-none"
+        {chatAgeConfirmed ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Share your vibe..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+              className="flex-1 px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 outline-none"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            />
+            <button
+              onClick={handleSend}
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
+              style={{
+                background: "rgba(155,126,255,0.15)",
+                border: "1px solid rgba(155,126,255,0.25)",
+                color: "#c4aaff",
+              }}
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <div
+            className="text-center px-4 py-3 rounded-xl"
             style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          />
-          <button
-            onClick={handleSend}
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
-            style={{
-              background: "rgba(155,126,255,0.15)",
-              border: "1px solid rgba(155,126,255,0.25)",
-              color: "#c4aaff",
+              background: "rgba(245,168,0,0.06)",
+              border: "1px solid rgba(245,168,0,0.15)",
             }}
           >
-            <Sparkles className="w-4 h-4" />
-          </button>
-        </div>
+            <p className="text-[11px] font-bold text-yellow-400/70">
+              Chat is only available for users 18 and older.
+            </p>
+            <p className="text-[10px] text-white/25 mt-1">
+              You can still view the lounge and use mood reactions.
+            </p>
+          </div>
+        )}
       </div>
     </motion.div>
   );

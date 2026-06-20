@@ -89,21 +89,33 @@
     "vibe_room_age_confirmed": {
       "type": "boolean",
       "default": false
+    },
+    "world_username": {
+      "type": "string",
+      "description": "Public display username in Upper Vibe City"
+    },
+    "uvc_rules_accepted": {
+      "type": "boolean",
+      "default": false,
+      "description": "User accepted Upper Vibe City community rules"
+    },
+    "uvc_agreement_accepted": {
+      "type": "boolean",
+      "default": false,
+      "description": "User accepted Upper Vibe City user agreement"
+    },
+    "uvc_chat_age_confirmed": {
+      "type": "boolean",
+      "default": false,
+      "description": "User confirmed they are 18+ for chat access"
+    },
+    "uvc_accepted_date": {
+      "type": "string",
+      "description": "ISO datetime when rules/agreement were accepted"
+    },
+    "uvc_agreement_version": {
+      "type": "string",
+      "description": "Version identifier of the accepted agreement"
     }
-  },
-  "required": [
-    "plan",
-    "planName",
-    "billingCycle",
-    "subscriptionStatus",
-    "subscription_status",
-    "stripeCustomerId",
-    "stripeSubscriptionId",
-    "stripePriceId",
-    "stripeProductId",
-    "plusStartedAt",
-    "subscriptionCurrentPeriodEnd",
-    "vibe_name",
-    "vibe_avatar_url"
-  ]
+  }
 }

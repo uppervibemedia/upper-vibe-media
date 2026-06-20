@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Compass, Music4, Radio, Rocket, AlertTriangle, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import UpperVibeCity from "@/components/vibeworld/UpperVibeCity";
+import WorldGate from "@/components/vibeworld/WorldGate";
 import PageErrorBoundary from "@/components/shared/PageErrorBoundary";
 
 // ── WebGL support detection ──
@@ -16,7 +17,7 @@ function isWebGLAvailable() {
 }
 
 // ── The hub / landing page — lightweight, no 3D loaded ──
-function VibeWorldHub() {
+function VibeWorldHub({ chatAgeConfirmed }) {
   // Auto-launch via URL param for testing: ?launch=1
   const [launched, setLaunched] = useState(() => {
     try { return new URLSearchParams(window.location.search).get("launch") === "1"; } catch { return false; }
@@ -24,7 +25,7 @@ function VibeWorldHub() {
   const [webglOk] = useState(() => isWebGLAvailable());
 
   if (launched) {
-    return <UpperVibeCity onExit={() => setLaunched(false)} />;
+    return <UpperVibeCity onExit={() => setLaunched(false)} chatAgeConfirmed={chatAgeConfirmed} />;
   }
 
   return (
@@ -134,7 +135,9 @@ function VibeWorldHub() {
 export default function VibeWorld() {
   return (
     <PageErrorBoundary>
-      <VibeWorldHub />
+      <WorldGate>
+        <VibeWorldHub />
+      </WorldGate>
     </PageErrorBoundary>
   );
 }

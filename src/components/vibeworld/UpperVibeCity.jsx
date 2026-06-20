@@ -13,7 +13,7 @@ import { useLivePresence } from "@/hooks/useLivePresence";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
 
-export default function UpperVibeCity({ onExit }) {
+export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [showControlsHint, setShowControlsHint] = useState(true);
@@ -396,6 +396,7 @@ export default function UpperVibeCity({ onExit }) {
         onStagePlaySong={handleStagePlaySong}
         onStageFullScreen={handleStageFullScreen}
         onStageExitFullScreen={handleExitFullScreen}
+        chatAgeConfirmed={chatAgeConfirmed}
       />
 
       {/* Bottom navigation bar — sits closest to screen edge */}
