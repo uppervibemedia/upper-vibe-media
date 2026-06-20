@@ -1074,12 +1074,22 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
   const [thumbX, setThumbX] = useState(0);
   const [thumbY, setThumbY] = useState(0);
   const [joyActive, setJoyActive] = useState(false);
+  const [joyBaseY, setJoyBaseY] = useState(() => window.innerHeight - JOY_BASE_Y_OFFSET);
 
   const joyTouchId = useRef(null);
   const camTouchId = useRef(null);
   const camBaseRef = useRef({ x: 0, y: 0 });
 
-  const findJoyY = useCallback(() => window.innerHeight - JOY_BASE_Y_OFFSET, []);
+  // Keep joyBaseY current on resize/orientation change
+  useEffect(() => {
+    const update = () => setJoyBaseY(window.innerHeight - JOY_BASE_Y_OFFSET);
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, []);
 
   const isInteractiveTarget = useCallback((el) => {
     while (el && el !== document.body) {
@@ -1116,13 +1126,12 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
   }, [isInteractiveTarget]);
 
   const handleTouchMove = useCallback((e) => {
-    const baseY = findJoyY();
     let consumed = false;
     for (const t of [...e.touches]) {
       if (t.identifier === joyTouchId.current) {
         consumed = true;
         let dx = t.clientX - JOY_BASE_X;
-        let dy = baseY - t.clientY;
+        let dy = joyBaseY - t.clientY;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > MAX_R) { dx = (dx / dist) * MAX_R; dy = (dy / dist) * MAX_R; }
         setThumbX(dx);
@@ -1138,7 +1147,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
       }
     }
     if (consumed) e.preventDefault();
-  }, [onMove, onCameraDelta, findJoyY]);
+  }, [onMove, onCameraDelta, joyBaseY]);
 
   const handleTouchEnd = useCallback((e) => {
     let consumed = false;
@@ -1185,7 +1194,7 @@ function VirtualJoystick({ onMove, onCameraDelta }) {
         style={{
           width: 100, height: 100,
           left: JOY_BASE_X - 50,
-          top: findJoyY() - 50,
+          top: joyBaseY - 50,
           background: joyActive ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)",
           border: `2.5px solid ${joyActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)"}`,
           backdropFilter: "blur(10px)",
@@ -1221,6 +1230,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [mobileResetKey, setMobileResetKey] = useState(0);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
   const onPosCbRef = useRef(onPositionChange);
@@ -1726,6 +1736,30 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
     }
   }, []);
 
+  // Orientation / resize cleanup — resets all mobile touch state
+  useEffect(() => {
+    const handleResize = () => {
+      // Clear mobile input
+      mobileInputRef.current = { x: 0, y: 0, camDx: 0 };
+      velocityRef.current = { x: 0, z: 0 };
+      // Remount joystick to clear stuck pointer IDs
+      setMobileResetKey((k) => k + 1);
+      // Force renderer size update (handled in the init resize listener too)
+    };
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleResize);
+    }
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleResize);
+      }
+    };
+  }, []);
+
   // Keyboard
   useEffect(() => {
     const onDown = (e) => { keysRef.current[e.key.toLowerCase()] = true; };
@@ -1803,6 +1837,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
       />
       {isMobile && (
         <VirtualJoystick
+          key={mobileResetKey}
           onMove={handleJoystickMove}
           onCameraDelta={handleCameraDelta}
         />
