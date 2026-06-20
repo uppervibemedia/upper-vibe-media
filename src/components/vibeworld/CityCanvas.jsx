@@ -1260,6 +1260,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   const isMobileRef = useRef(false);
   const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
   const lockedRef = useRef(false);
+  const prevLockedRef = useRef(false);
   lockedRef.current = locked;
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
@@ -1351,6 +1352,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         if (lockedRef.current) {
           // Movement locked — skip all input processing
         } else if (isMobileRef.current) {
+          // Reset mobile input on unlock transition to prevent stale camDx
+          if (prevLockedRef.current) {
+            mobileInputRef.current = { x: 0, y: 0, camDx: 0 };
+          }
           const joy = mobileInputRef.current;
           if (Math.abs(joy.y) > 0.08) {
             inputX += Math.sin(rot) * joy.y;
@@ -1679,6 +1684,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
 
         renderer.render(scene, camera);
         frameRef.current++;
+
+        // Track lock transitions for cleanup
+        prevLockedRef.current = lockedRef.current;
 
         if (frameRef.current === 3) onLoadedRef.current?.();
       };

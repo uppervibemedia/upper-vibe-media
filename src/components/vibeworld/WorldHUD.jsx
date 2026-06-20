@@ -143,28 +143,28 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-1.5 px-2"
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-1 px-1"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
               pointerEvents: "auto",
             }}
           >
-            {/* Now showing label */}
+            {/* Now showing label — compact on mobile */}
             {stageVideoTitle && (
-              <p className="text-[10px] text-white/50 font-medium tracking-wider mb-1 truncate max-w-[80vw]">
-                Now Showing: {stageVideoTitle}
+              <p className="text-[9px] text-white/40 font-medium tracking-wider truncate max-w-[80vw]">
+                {isMobile ? stageVideoTitle.substring(0, 30) + (stageVideoTitle.length > 30 ? "..." : "") : `Now Showing: ${stageVideoTitle}`}
               </p>
             )}
 
-            <div className="flex flex-wrap gap-2 justify-center">
-              {/* Watch Visualizer on Stage / Exit Watch Mode */}
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {/* Watch Stage / Exit */}
               {stageWatching ? (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={onStageExitWatchMode}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
                     color: "#fff",
@@ -174,14 +174,14 @@ export default function WorldHUD({
                     pointerEvents: "auto",
                   }}
                 >
-                  <Music4 className="w-3.5 h-3.5" />
-                  Exit Watch Mode
+                  <Music4 className="w-3 h-3" />
+                  Exit Watch
                 </button>
               ) : (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={onStageWatchVideo}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
                     color: "#fff",
@@ -191,17 +191,17 @@ export default function WorldHUD({
                     pointerEvents: "auto",
                   }}
                 >
-                  <Music4 className="w-3.5 h-3.5" />
-                  Watch on Stage
+                  <Music4 className="w-3 h-3" />
+                  Watch Stage
                 </button>
               )}
 
-              {/* Watch Full Screen */}
+              {/* Full Screen */}
               {onStageFullScreen && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={onStageFullScreen}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#0080B8,#00A0DC)",
                     color: "#fff",
@@ -212,15 +212,15 @@ export default function WorldHUD({
                   }}
                 >
                   <Music4 className="w-3 h-3" />
-                  Watch Full Screen
+                  Full Screen
                 </button>
               )}
 
-              {/* Next Video */}
+              {/* Next */}
               <button
                 onTouchStart={(e) => e.stopPropagation()}
                 onClick={onStageNextVideo}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                 style={{
                   background: "rgba(255,255,255,0.08)",
                   border: "1px solid rgba(255,255,255,0.15)",
@@ -231,18 +231,17 @@ export default function WorldHUD({
                 }}
               >
                 <SkipForward className="w-3 h-3" />
-                Next Video
+                Next
               </button>
-
             </div>
 
-            <div className="flex flex-wrap gap-2 justify-center mt-1">
-              {/* Play This Song */}
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {/* Play Song */}
               {onStagePlaySong && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={onStagePlaySong}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#0080B8,#00A0DC)",
                     color: "#fff",
@@ -252,16 +251,16 @@ export default function WorldHUD({
                   }}
                 >
                   <Music4 className="w-3 h-3" />
-                  Play This Song
+                  Play Song
                 </button>
               )}
 
-              {/* Mute / Unmute Stage */}
+              {/* Mute / Unmute */}
               {onStageToggleMute && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={onStageToggleMute}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: stageVideoMuted
                       ? "rgba(255,255,255,0.08)"
@@ -274,7 +273,7 @@ export default function WorldHUD({
                   }}
                 >
                   {stageVideoMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                  {stageVideoMuted ? "Stage Muted" : "Stage Live"}
+                  {stageVideoMuted ? "Mute" : "Live"}
                 </button>
               )}
             </div>
