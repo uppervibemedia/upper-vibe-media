@@ -17,6 +17,7 @@ import { useDislike } from "../hooks/useDislike";
 // useDislike: toggle records dislikes to DB/localStorage; visual state is local (thumbsDownActive)
 import { recordDislike } from "../lib/radioCurator";
 import UpNextPanel from "../components/radio/UpNextPanel";
+import TrendingLiveSection from "../components/radio/TrendingLiveSection";
 
 import RadioThemePicker, { useRadioTheme, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
 import RadioVisualizer, { MODES } from "../components/radio/RadioVisualizer";
@@ -489,6 +490,9 @@ export default function RadioPage() {
             </motion.div>
           </div>
         )}
+
+        {/* ── Trending Live Broadcast ── */}
+        <TrendingLiveSection themeVars={theme.vars} />
 
         <p className="text-center text-[10px] text-white/15 tracking-wide mt-8">
           Free to stream · Premium members unlock downloads
