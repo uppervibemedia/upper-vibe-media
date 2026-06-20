@@ -20,7 +20,8 @@ import WorldHUD from "@/components/vibeworld/WorldHUD";
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0 });
+  const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0, animState: "idle" });
+  const prevPosRef = useRef({ x: 0, z: 5 });
   const [stageCanvas, setStageCanvas] = useState(null);
   const audioIntensityRef = useRef(0);
   const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
@@ -379,7 +380,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       <div className="absolute inset-0">
         <CityCanvas
           onLoaded={() => setLoading(false)}
-          onPositionChange={(x, z, rot) => setPlayerPos({ x, z, rot })}
+          onPositionChange={(x, z, rot) => {
+            const prev = prevPosRef.current;
+            const dx = x - prev.x;
+            const dz = z - prev.z;
+            const speed = Math.sqrt(dx * dx + dz * dz);
+            const animState = speed > 0.015 ? "walking" : "idle";
+            prevPosRef.current = { x, z };
+            setPlayerPos({ x, z, rot, animState });
+          }}
           stageCanvas={stageWatching ? null : stageCanvas}
           audioIntensityRef={audioIntensityRef}
           locked={movementLocked}

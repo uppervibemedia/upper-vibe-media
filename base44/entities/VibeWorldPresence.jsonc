@@ -39,6 +39,17 @@
       "default": 0,
       "description": "World Y rotation in radians"
     },
+    "animation_state": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "walking",
+        "running",
+        "dancing"
+      ],
+      "default": "idle",
+      "description": "Current animation state of the avatar"
+    },
     "is_online": {
       "type": "boolean",
       "default": true
