@@ -184,9 +184,10 @@ function buildPark(scene) {
   scene.add(ringOuter);
 
   // ═════════════════════════════════════════════════════════════
-  // 3. GLOWING PATHS — from plaza to each zone
+  // 3. GLOWING PATHS — wide neon-lit walkways to every zone
   // ═════════════════════════════════════════════════════════════
-  const pathGlow = new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.35 });
+  const pathGlow = new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.18 });
+  const pathFill = new MeshBasicMaterial({ color: new Color("#1A1A32"), depthWrite: false, transparent: true, opacity: 0.4 });
 
   function createPath(fromX, fromZ, toX, toZ) {
     const dx = toX - fromX, dz = toZ - fromZ;
@@ -194,26 +195,45 @@ function buildPark(scene) {
     const midX = (fromX + toX) / 2, midZ = (fromZ + toZ) / 2;
     const angle = Math.atan2(dx, dz);
 
-    const pathStrip = new Mesh(new PlaneGeometry(0.8, len), pathGlow);
+    // Wide base path (1.6 wide — easy to walk)
+    const pathStrip = new Mesh(new PlaneGeometry(1.6, len), pathFill);
     pathStrip.rotation.x = -Math.PI / 2;
-    pathStrip.position.set(midX, 0.003, midZ);
+    pathStrip.position.set(midX, 0.002, midZ);
     pathStrip.rotation.z = -angle;
+    pathStrip.receiveShadow = true;
     scene.add(pathStrip);
 
-    // Edge lines
-    const halfW = 0.4;
+    // Cyan inner glow strip
+    const innerStrip = new Mesh(new PlaneGeometry(1.2, len), pathGlow);
+    innerStrip.rotation.x = -Math.PI / 2;
+    innerStrip.position.set(midX, 0.003, midZ);
+    innerStrip.rotation.z = -angle;
+    scene.add(innerStrip);
+
+    // Purple neon edge lines (both sides)
+    const halfW = 0.8;
     for (const side of [-1, 1]) {
       const lx = side * halfW * Math.cos(angle);
       const lz = side * -halfW * Math.sin(angle);
       const edge = new Mesh(
-        new PlaneGeometry(0.04, len),
-        new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false })
+        new PlaneGeometry(0.06, len),
+        new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.7 })
       );
       edge.rotation.x = -Math.PI / 2;
-      edge.position.set(midX + lx, 0.004, midZ + lz);
+      edge.position.set(midX + lx, 0.005, midZ + lz);
       edge.rotation.z = -angle;
       scene.add(edge);
     }
+
+    // Center glow line (cyan pulse)
+    const centerGlow = new Mesh(
+      new PlaneGeometry(0.08, len),
+      new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.5 })
+    );
+    centerGlow.rotation.x = -Math.PI / 2;
+    centerGlow.position.set(midX, 0.005, midZ);
+    centerGlow.rotation.z = -angle;
+    scene.add(centerGlow);
   }
 
   // Paths: plaza center to each zone
@@ -222,6 +242,57 @@ function buildPark(scene) {
   createPath(PLAZA_X, PLAZA_Z, -14, -3);       // West → Dome
   createPath(PLAZA_X, PLAZA_Z, 12, -2);        // East → Lounge
   createPath(PLAZA_X, PLAZA_Z, 16, -8);        // SE → Shops
+
+  // ── Beach boardwalk — transition from plaza path into the sand ──
+  const boardwalkLen = 8;
+  const boardwalkZ = 15;
+  const boardwalkMat = new MeshBasicMaterial({ color: new Color("#6B5AA0"), depthWrite: false, transparent: true, opacity: 0.25 });
+  const boardwalkG = new PlaneGeometry(3, boardwalkLen);
+
+  // Boardwalk planks (wider at beach to accommodate lounging)
+  const plankCount = 7;
+  for (let p = 0; p < plankCount; p++) {
+    const pz = boardwalkZ + p * (boardwalkLen / plankCount);
+    const plankW = 2.6 + p * 0.1; // Slightly wider toward shore
+    const plank = new Mesh(
+      new PlaneGeometry(plankW, boardwalkLen / plankCount - 0.1),
+      new MeshBasicMaterial({
+        color: new Color(p % 2 === 0 ? "#5C4A90" : "#4A3A78"),
+        depthWrite: false,
+        transparent: true,
+        opacity: 0.35,
+      })
+    );
+    plank.rotation.x = -Math.PI / 2;
+    plank.position.set(0, 0.015, pz);
+    plank.receiveShadow = true;
+    scene.add(plank);
+
+    // Neon rail glow at boardwalk edges
+    for (const side of [-1, 1]) {
+      const rx = side * (plankW / 2 - 0.15);
+      const post = new Mesh(
+        new CylinderGeometry(0.04, 0.04, 0.5, 6),
+        new MeshBasicMaterial({
+          color: new Color("#A078FF"),
+          depthWrite: false,
+          transparent: true,
+          opacity: 0.5,
+        })
+      );
+      post.position.set(rx, 0.25, pz);
+      scene.add(post);
+    }
+  }
+
+  // Boardwalk entrance glow (where path meets boardwalk)
+  const entranceGlow = new Mesh(
+    new PlaneGeometry(2.8, 0.15),
+    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.7 })
+  );
+  entranceGlow.rotation.x = -Math.PI / 2;
+  entranceGlow.position.set(0, 0.006, 13);
+  scene.add(entranceGlow);
 
   // ═════════════════════════════════════════════════════════════
   // 4. MAIN MUSIC STAGE — north of plaza

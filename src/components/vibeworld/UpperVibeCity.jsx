@@ -40,12 +40,18 @@ export default function UpperVibeCity({ onExit }) {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
 
-  // ── Fetch YouTube playlist videos for the stage ─────────────────────────
+  // ── Fetch YouTube playlist videos + randomize starting video ──────────
   useEffect(() => {
     base44.functions.invoke("getPlaylistVideos", {})
       .then((res) => {
         const videos = res?.data?.videos;
-        if (videos?.length > 0) setStageVideos(videos);
+        if (videos?.length > 0) {
+          setStageVideos(videos);
+          // Randomize starting video so stage feels fresh each visit
+          if (videos.length > 1) {
+            setStageVideoIdx(Math.floor(Math.random() * videos.length));
+          }
+        }
       })
       .catch(() => {});
   }, []);
@@ -258,14 +264,33 @@ export default function UpperVibeCity({ onExit }) {
     return () => cancelAnimationFrame(raf);
   }, [playerCtx?.analyserNode]);
 
-  // Auto-start music when park loads
+  // Auto-start a random/featured song when entering world (only if silent)
   useEffect(() => {
     if (!tracksLoaded || loading) return;
-    if (!currentTrack && allTracks?.length > 0 && playTrack) {
-      const first = allTracks[0];
-      if (first) playTrack(first, "song");
+    if (currentTrack || isPlaying) return; // Already has music — don't interrupt
+    if (allTracks?.length > 0 && playTrack) {
+      const featured = allTracks.filter((t) => t.is_featured);
+      const pool = featured.length > 0 ? featured : allTracks;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      if (pick) playTrack(pick, "song");
     }
-  }, [tracksLoaded, loading, currentTrack, allTracks, playTrack]);
+  }, [tracksLoaded, loading, currentTrack, isPlaying, allTracks, playTrack]);
+
+  // ── Auto-rotate stage video every 60s when user isn't interacting ──
+  useEffect(() => {
+    if (stageVideos.length <= 1) return;
+    const timer = setInterval(() => {
+      if (stageWatching || stageFullScreen) return; // User is actively using stage
+      // Don't rotate if user is near the stage (looking at it)
+      const STAGE_X = 0, STAGE_Z = -14;
+      const dx = playerPos.x - STAGE_X;
+      const dz = playerPos.z - STAGE_Z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < 12) return;
+      setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [stageVideos.length, stageWatching, stageFullScreen, playerPos.x, playerPos.z]);
 
   return (
     <div className="fixed inset-0 z-[60] overflow-hidden" style={{ background: "#050510" }}>

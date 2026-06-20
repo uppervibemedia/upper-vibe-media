@@ -380,7 +380,8 @@ export default function createCitySkyline(scene) {
   addTwinTower(-5, -21, 1.2, 1.8, 1.6, 22, neonCyan, "Twin Towers West");
   addTwinTower(13, -21, 1.0, 1.6, 1.5, 18, neonPurple, "Twin Towers East");
 
-  // ── EAST WING ─────────────────────────────────────────────────
+  // ── EAST WING (all face WEST toward center) ────────────────────
+  const EAST_FACE = -Math.PI / 2;
   const eastTowers = [
     [27, -18, 2.0, 1.9, 14, glassBody, neonCyan],
     [27, -15, 2.4, 1.6, 11, steelBody, neonPurple],
@@ -390,10 +391,11 @@ export default function createCitySkyline(scene) {
     [27, -3, 2.0, 1.5, 12, silverBody, neonBlue],
     [27, 0, 1.8, 1.4, 9, glassBody, neonCyan],
   ];
-  eastTowers.forEach((a) => addSkyscraper(...a));
-  addSetbackTower(27, -4, 2.4, 2.2, 3, neonCyan, "East Gate Tower");
+  eastTowers.forEach((a) => addSkyscraper(a[0], a[1], a[2], a[3], a[4], a[5], a[6], undefined, EAST_FACE));
+  addSetbackTower(27, -4, 2.4, 2.2, 3, neonCyan, "East Gate Tower", EAST_FACE);
 
-  // ── WEST WING ─────────────────────────────────────────────────
+  // ── WEST WING (all face EAST toward center) ───────────────────
+  const WEST_FACE = Math.PI / 2;
   const westTowers = [
     [-27, -18, 2.2, 1.8, 13, steelBody, neonPurple],
     [-27, -15, 1.8, 1.5, 16, glassBody, neonBlue],
@@ -403,9 +405,9 @@ export default function createCitySkyline(scene) {
     [-27, -3, 1.8, 1.4, 11, silverBody, neonCyan],
     [-27, 0, 2.2, 1.6, 9, glassBody, neonPurple],
   ];
-  westTowers.forEach((a) => addSkyscraper(...a));
-  addSetbackTower(-27, -5, 2.6, 2.0, 3, neonPurple, "West Gate Tower");
-  addTwinTower(-27, -10, 1.0, 1.5, 1.8, 16, neonCyan, "West Twin Towers");
+  westTowers.forEach((a) => addSkyscraper(a[0], a[1], a[2], a[3], a[4], a[5], a[6], undefined, WEST_FACE));
+  addSetbackTower(-27, -5, 2.6, 2.0, 3, neonPurple, "West Gate Tower", WEST_FACE);
+  addTwinTower(-27, -10, 1.0, 1.5, 1.8, 16, neonCyan, "West Twin Towers", WEST_FACE);
 
   scene.add(buildings);
 
