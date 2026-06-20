@@ -162,10 +162,13 @@ function drawCoverCache(video, imgCache) {
 }
 
 function drawEqualizerBars(ctx, t, audioBeat, cachedCover) {
-  // Start from the cached cover layer
-  ctx.clearRect(0, 0, W, H);
+  // Draw cached cover first (fills entire canvas — no clearRect needed, no blank frame)
   if (cachedCover) {
     ctx.drawImage(cachedCover, 0, 0);
+  } else {
+    // Only clear if no cover — draw dark background
+    ctx.fillStyle = "#060612";
+    ctx.fillRect(0, 0, W, H);
   }
 
   const rawBeat = audioBeat > 0.01 ? audioBeat : 0;

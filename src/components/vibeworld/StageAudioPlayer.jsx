@@ -78,12 +78,18 @@ const StageAudioPlayer = forwardRef(function StageAudioPlayer({ video, onReady, 
               playerRef.current?.loadVideoById?.(vid);
               lastVideoIdRef.current = vid;
             }
-            // Set volume to 0 first as fallback, then attempt mute API
-            playerRef.current?.setVolume?.(0);
-            if (typeof playerRef.current?.mute === "function") {
-              playerRef.current.mute();
+            // Apply mute state based on what was requested before player was ready
+            if (mutedRef.current) {
+              playerRef.current?.setVolume?.(0);
+              if (typeof playerRef.current?.mute === "function") {
+                playerRef.current.mute();
+              }
+            } else {
+              if (typeof playerRef.current?.unMute === "function") {
+                playerRef.current.unMute();
+              }
+              playerRef.current?.setVolume?.(60);
             }
-            mutedRef.current = true;
             if (queuedPlayRef.current) {
               playerRef.current?.playVideo?.();
               queuedPlayRef.current = false;

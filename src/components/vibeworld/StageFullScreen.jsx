@@ -8,7 +8,6 @@ import { X, Volume2, VolumeX } from "lucide-react";
  */
 export default function StageFullScreen({ open, video, onClose }) {
   const iframeRef = useRef(null);
-  const playerRef = useRef(null);
   const [error, setError] = useState(false);
   const [ready, setReady] = useState(false);
   const [muted, setMuted] = useState(true);

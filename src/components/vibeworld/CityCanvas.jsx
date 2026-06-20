@@ -1414,7 +1414,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
         const audioBeat = audioIntensityRef?.current ?? 0;
 
-        // ─── STAGE SCREEN — visualizer canvas texture (only update when meaningful) ──
+        // ─── STAGE SCREEN — visualizer canvas texture (throttled to avoid GPU flicker) ──
         const stageCanvasVal = stageCanvasRef.current;
         if (stageCanvasVal) {
           const stageScreen = scene.userData.stageScreen;
@@ -1424,14 +1424,20 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
             tex.minFilter = THREE.LinearFilter;
             tex.magFilter = THREE.LinearFilter;
             stageScreen.material = new MeshBasicMaterial({ map: tex, depthWrite: true });
-            stageScreen.material.needsUpdate = true;
             scene.userData._stageCanvasApplied = true;
             scene.userData._stageTex = tex;
-            scene.userData._lastStageTexBeat = -1;
+            scene.userData._lastStageTexTime = 0;
           }
-          // Always re-upload texture each frame so Next-video changes appear instantly
+          // Throttle texture upload to ~15fps to prevent GPU flicker
           const stageTex = scene.userData._stageTex;
-          if (stageTex) stageTex.needsUpdate = true;
+          if (stageTex) {
+            const stageTexNow = performance.now();
+            const STAGE_TEX_INTERVAL = 1000 / 15;
+            if (!scene.userData._lastStageTexTime || stageTexNow - scene.userData._lastStageTexTime >= STAGE_TEX_INTERVAL) {
+              stageTex.needsUpdate = true;
+              scene.userData._lastStageTexTime = stageTexNow;
+            }
+          }
         }
 
         // ─── OCEAN WAVES — rolling from deep water toward shore ──

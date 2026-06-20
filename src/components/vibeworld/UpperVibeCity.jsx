@@ -159,24 +159,17 @@ export default function UpperVibeCity({ onExit }) {
   stageIsPlayingRef.current = isPlaying;
   stageTogglePlayRef.current = togglePlay;
 
-  // ── Stage proximity: manage global player pause/resume based on distance ──
+  // ── Stage proximity: resume global player when walking away from stage ──
   useEffect(() => {
     const STAGE_X = 0, STAGE_Z = -14;
     const dx = playerPos.x - STAGE_X;
     const dz = playerPos.z - STAGE_Z;
     const dist = Math.sqrt(dx * dx + dz * dz);
 
-    const OUTER = 14;
+    const OUTER = 18;
 
     if (dist > OUTER) {
-      // Walked away — exit watch mode, stop YouTube, resume global player
-      if (stageWatching) {
-        setStageWatching(false);
-        setStageVideoMuted(true);
-        if (stageAudioRef.current) {
-          stageAudioRef.current.pause();
-        }
-      }
+      // Resume global player if stage had paused it and user walked far away
       if (stagePausedPlayerRef.current && !stageIsPlayingRef.current && stageTogglePlayRef.current) {
         stageTogglePlayRef.current();
         stagePausedPlayerRef.current = false;
