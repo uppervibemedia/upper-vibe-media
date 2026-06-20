@@ -12,6 +12,9 @@ import MusicLibraryPanel from "./panels/MusicLibraryPanel";
 import LoungePanel from "./panels/LoungePanel";
 import VisualizerPanel from "./panels/VisualizerPanel";
 import VibeCheckPanel from "./panels/VibeCheckPanel";
+import PrivateChatPanel from "./panels/PrivateChatPanel";
+import UserInteractionMenu from "./UserInteractionMenu";
+import IncomingChatRequest from "./IncomingChatRequest";
 import ChatWarning from "@/components/vibeworld/ChatWarning";
 import LiveUsersBadge from "@/components/vibeworld/LiveUsersBadge";
 
@@ -44,6 +47,24 @@ export default function WorldHUD({
   activeUsers = [],
   userCount = 0,
   isBroadcasting = false,
+  // ── Private Chat props ──────────────────────────────────
+  currentUserId,
+  activeChatPeer,
+  chatMessages,
+  incomingRequest,
+  safetyConfirmed,
+  onSelectUser,
+  onRequestChat,
+  onAcceptChat,
+  onDeclineChat,
+  onSendChatMessage,
+  onEndChat,
+  onBlockUser,
+  onReportUser,
+  onSafetyConfirm,
+  blockedUsers,
+  userInteractionTarget,
+  onCloseUserMenu,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -151,6 +172,8 @@ export default function WorldHUD({
           userCount={userCount}
           isBroadcasting={isBroadcasting}
           isMobile={isMobile}
+          currentUserId={currentUserId}
+          onSelectUser={onSelectUser}
         />
       </motion.div>
 
@@ -526,6 +549,59 @@ export default function WorldHUD({
       <VibeCheckPanel
         open={vibeCheckOpen}
         onClose={() => { setVibeCheckOpen(false); onMobileModalChange?.(false); }}
+        isMobile={isMobile}
+      />
+
+      {/* ── User Interaction Menu ──────────────────────────────── */}
+      <UserInteractionMenu
+        open={!!userInteractionTarget}
+        targetUser={userInteractionTarget}
+        onClose={onCloseUserMenu}
+        onRequestChat={() => {
+          if (userInteractionTarget) {
+            onRequestChat(userInteractionTarget.user_id || userInteractionTarget.id, userInteractionTarget.username);
+          }
+        }}
+        onBlock={() => {
+          if (userInteractionTarget) {
+            onBlockUser(userInteractionTarget.user_id || userInteractionTarget.id);
+          }
+        }}
+        onReport={() => onReportUser(userInteractionTarget)}
+        isBlocked={!!(userInteractionTarget && blockedUsers[userInteractionTarget.user_id || userInteractionTarget.id])}
+        isMobile={isMobile}
+      />
+
+      {/* ── Incoming Chat Request ──────────────────────────────── */}
+      <IncomingChatRequest
+        request={incomingRequest}
+        onAccept={() => {
+          if (incomingRequest) {
+            onAcceptChat(incomingRequest.id, incomingRequest.fromUserId, incomingRequest.fromUsername);
+          }
+        }}
+        onDecline={() => {
+          if (incomingRequest) {
+            onDeclineChat(incomingRequest.id, incomingRequest.fromUserId);
+          }
+        }}
+        isMobile={isMobile}
+      />
+
+      {/* ── Private Chat Panel ──────────────────────────────────── */}
+      <PrivateChatPanel
+        open={!!activeChatPeer}
+        peer={activeChatPeer}
+        messages={chatMessages}
+        onSend={onSendChatMessage}
+        onEnd={onEndChat}
+        onBlock={() => {
+          if (activeChatPeer) onBlockUser(activeChatPeer.userId);
+        }}
+        onReport={() => onReportUser(activeChatPeer)}
+        currentUserId={currentUserId}
+        safetyConfirmed={safetyConfirmed}
+        onSafetyConfirm={onSafetyConfirm}
         isMobile={isMobile}
       />
     </>

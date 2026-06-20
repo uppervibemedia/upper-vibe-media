@@ -1,0 +1,78 @@
+{
+  "name": "PrivateChatRequest",
+  "type": "object",
+  "properties": {
+    "from_user_id": {
+      "type": "string",
+      "description": "User ID of the requester"
+    },
+    "from_username": {
+      "type": "string",
+      "description": "Username of the requester (cached for display)"
+    },
+    "to_user_id": {
+      "type": "string",
+      "description": "User ID of the recipient"
+    },
+    "to_username": {
+      "type": "string",
+      "description": "Username of the recipient (cached)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "declined",
+        "expired",
+        "blocked"
+      ],
+      "default": "pending"
+    },
+    "expires_at": {
+      "type": "string",
+      "description": "ISO timestamp when this request expires (60s from creation)"
+    }
+  },
+  "required": [
+    "from_user_id",
+    "from_username",
+    "to_user_id",
+    "to_username"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "from_user_id": "{{user.id}}"
+        },
+        {
+          "to_user_id": "{{user.id}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "to_user_id": "{{user.id}}"
+        },
+        {
+          "from_user_id": "{{user.id}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "from_user_id": "{{user.id}}"
+        },
+        {
+          "to_user_id": "{{user.id}}"
+        }
+      ]
+    }
+  }
+}

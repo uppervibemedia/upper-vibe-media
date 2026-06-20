@@ -13,6 +13,7 @@ import { useRadio } from "@/context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
 import usePersonalizedFeed from "@/hooks/usePersonalizedFeed";
 import useVibeWorldPresence from "@/hooks/useVibeWorldPresence";
+import usePrivateChat from "@/hooks/usePrivateChat";
 import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
@@ -273,6 +274,36 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const currentZoneName = detectZone(playerPos.x, playerPos.z)?.name || "Plaza";
   const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName, playerPos);
 
+  // ── Private Chat ─────────────────────────────────────────────────────
+  const {
+    activeChatPeer, chatMessages, incomingRequest, outgoingStatus,
+    safetyConfirmed, setSafetyConfirmed,
+    sendChatRequest, acceptRequest, declineRequest,
+    sendMessage, endChat, blockUser, blockedUsers,
+  } = usePrivateChat(user);
+  const [userInteractionTarget, setUserInteractionTarget] = useState(null);
+
+  const handleSelectUser = useCallback((userData) => {
+    setUserInteractionTarget({
+      user_id: userData.user_id || userData.id,
+      username: userData.username,
+      id: userData.user_id || userData.id,
+    });
+  }, []);
+
+  const handleCloseUserMenu = useCallback(() => {
+    setUserInteractionTarget(null);
+  }, []);
+
+  const handleRequestChat = useCallback((targetUserId, targetUsername) => {
+    sendChatRequest(targetUserId, targetUsername);
+  }, [sendChatRequest]);
+
+  const handleReportUser = useCallback((target) => {
+    // Placeholder — could open a report form or trigger a backend function
+    try { navigator?.vibrate?.(20); } catch {}
+  }, []);
+
 
   // Keep player refs in sync without adding them as effect deps
   stageIsPlayingRef.current = isPlaying;
@@ -507,6 +538,23 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         activeUsers={activeUsers}
         userCount={userCount}
         isBroadcasting={isBroadcasting}
+        currentUserId={user?.id}
+        activeChatPeer={activeChatPeer}
+        chatMessages={chatMessages}
+        incomingRequest={incomingRequest}
+        safetyConfirmed={safetyConfirmed}
+        onSelectUser={handleSelectUser}
+        onRequestChat={handleRequestChat}
+        onAcceptChat={acceptRequest}
+        onDeclineChat={declineRequest}
+        onSendChatMessage={sendMessage}
+        onEndChat={endChat}
+        onBlockUser={blockUser}
+        onReportUser={handleReportUser}
+        onSafetyConfirm={() => setSafetyConfirmed(true)}
+        blockedUsers={blockedUsers}
+        userInteractionTarget={userInteractionTarget}
+        onCloseUserMenu={handleCloseUserMenu}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}

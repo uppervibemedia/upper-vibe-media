@@ -1,0 +1,54 @@
+{
+  "name": "PrivateChatMessage",
+  "type": "object",
+  "properties": {
+    "chat_id": {
+      "type": "string",
+      "description": "Composite ID: sorted user IDs joined by underscore"
+    },
+    "sender_user_id": {
+      "type": "string",
+      "description": "User ID of sender"
+    },
+    "sender_username": {
+      "type": "string",
+      "description": "Username of sender"
+    },
+    "receiver_user_id": {
+      "type": "string",
+      "description": "User ID of recipient"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message text"
+    }
+  },
+  "required": [
+    "chat_id",
+    "sender_user_id",
+    "sender_username",
+    "receiver_user_id",
+    "message"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "sender_user_id": "{{user.id}}"
+        },
+        {
+          "receiver_user_id": "{{user.id}}"
+        }
+      ]
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

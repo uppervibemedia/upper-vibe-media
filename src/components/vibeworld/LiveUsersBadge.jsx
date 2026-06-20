@@ -10,7 +10,7 @@ import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, X } from "lucide-react";
 
-export default function LiveUsersBadge({ activeUsers, userCount, isBroadcasting, isMobile }) {
+export default function LiveUsersBadge({ activeUsers, userCount, isBroadcasting, isMobile, currentUserId, onSelectUser }) {
   const [expanded, setExpanded] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
@@ -85,27 +85,34 @@ export default function LiveUsersBadge({ activeUsers, userCount, isBroadcasting,
 
             {hasUsers ? (
               <div className="py-1">
-                {activeUsers.map((u) => (
-                  <div
-                    key={u.user_id || u.id}
-                    className="flex items-center gap-2 px-3 py-2"
-                  >
+                {activeUsers.map((u) => {
+                  const isMe = currentUserId && (u.user_id === currentUserId || u.id === currentUserId);
+                  const row = (
                     <div
-                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      style={{ background: "#00E5FF", boxShadow: "0 0 6px rgba(0,229,255,0.5)" }}
-                    />
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold text-white/80 truncate">
-                        {u.username || "Anonymous"}
-                      </p>
-                      {u.current_zone && (
-                        <p className="text-[9px] text-white/30 truncate">
-                          {u.current_zone}
+                      key={u.user_id || u.id}
+                      className={`flex items-center gap-2 px-3 py-2 ${isMe ? "" : "cursor-pointer hover:bg-white/5 transition-colors"}`}
+                      onClick={() => { if (!isMe && onSelectUser) onSelectUser(u); }}
+                      onTouchStart={(e) => { if (!isMe) e.stopPropagation(); }}
+                      style={{ minHeight: 36, touchAction: isMe ? "auto" : "manipulation" }}
+                    >
+                      <div
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ background: isMe ? "#00E676" : "#00E5FF", boxShadow: isMe ? "0 0 6px rgba(0,230,118,0.5)" : "0 0 6px rgba(0,229,255,0.5)" }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-white/80 truncate">
+                          {u.username || "Anonymous"}{isMe ? " (you)" : ""}
                         </p>
-                      )}
+                        {u.current_zone && (
+                          <p className="text-[9px] text-white/30 truncate">
+                            {u.current_zone}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                  return row;
+                })}
               </div>
             ) : (
               <div className="px-3 py-4 text-center">
