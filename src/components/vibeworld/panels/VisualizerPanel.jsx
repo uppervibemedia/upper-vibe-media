@@ -283,8 +283,8 @@ export default function VisualizerPanel({ open, onClose }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-0 z-35 flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.92)" }}
+      className="absolute inset-0 z-[65] flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.92)", pointerEvents: "auto" }}
     >
       {/* Canvas */}
       <canvas
