@@ -20,12 +20,12 @@ export const SKIN_TONES = [
 ];
 
 export const OUTFIT_COLORS = [
-  { key: "electric-blue",  label: "Electric Blue",  hex: "#0055CC", accent: "#00AAFF" },
-  { key: "neon-purple",    label: "Neon Purple",     hex: "#5500AA", accent: "#AA55FF" },
-  { key: "cosmic-black",   label: "Cosmic Black",    hex: "#0A0A18", accent: "#00D4F0" },
-  { key: "white-silver",   label: "White / Silver",  hex: "#CCD8E8", accent: "#88CCFF" },
-  { key: "pink-rose",      label: "Pink / Rose",     hex: "#882255", accent: "#FF77BB" },
-  { key: "gold-yellow",    label: "Gold / Yellow",   hex: "#886600", accent: "#FFD044" },
+  { key: "electric-blue",  label: "Electric Blue",  hex: "#00AADD", swatch: "#00CFFF" },
+  { key: "neon-purple",    label: "Neon Purple",     hex: "#7B2FFF", swatch: "#9B5FFF" },
+  { key: "cosmic-black",   label: "Cosmic Black",    hex: "#080A0F", swatch: "#1A1C22" },
+  { key: "white-silver",   label: "White / Silver",  hex: "#C8D4E0", swatch: "#DDE6F2" },
+  { key: "pink-rose",      label: "Pink / Rose",     hex: "#CC2288", swatch: "#FF4FC3" },
+  { key: "gold-yellow",    label: "Gold / Yellow",   hex: "#CC9900", swatch: "#FFD34D" },
 ];
 
 
@@ -57,26 +57,24 @@ export default function AvatarSetup({ onComplete, existingType, existingTone, ex
       className="fixed inset-0 z-[80] overflow-y-auto"
       style={{ background: "linear-gradient(160deg,#05050f 0%,#080818 55%,#050510 100%)" }}
     >
-      <div className="min-h-full flex flex-col lg:flex-row items-start justify-center gap-0 lg:gap-8 px-4 py-6 lg:py-10 max-w-4xl mx-auto">
+      <div className="min-h-full flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-10 px-4 py-6 lg:py-10 max-w-5xl mx-auto">
 
-        {/* ── LEFT: Avatar Preview ── */}
-        <div className="w-full lg:w-auto flex flex-col items-center gap-3 lg:sticky lg:top-10">
-          <div className="flex items-center gap-2 mb-1">
+        {/* ── LEFT: Options (desktop) / TOP: Preview (mobile) ── */}
+        {/* Mobile: preview first */}
+        <div className="w-full flex flex-col items-center gap-2 lg:hidden">
+          <div className="flex items-center gap-2">
             <Sparkles className="w-3.5 h-3.5" style={{ color: "#9B7EFF" }} />
-            <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>
-              Live Preview
-            </span>
+            <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>Live Preview</span>
           </div>
-
-          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={200} height={300} />
+          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={220} height={340} />
         </div>
 
-        {/* ── RIGHT: Options ── */}
-        <div className="w-full lg:flex-1 flex flex-col gap-5 max-w-sm lg:max-w-none mx-auto">
+        {/* Options column */}
+        <div className="w-full lg:flex-1 flex flex-col gap-4 max-w-sm mx-auto lg:mx-0">
 
           <div className="text-center lg:text-left">
             <h2 className="font-heading font-black text-2xl text-white mb-1">Your Vibe World Avatar</h2>
-            <p className="text-sm text-white/40">Choose your look. This is how others see you in Upper Vibe City.</p>
+            <p className="text-sm text-white/40">Choose your look. Others see this in Upper Vibe City.</p>
           </div>
 
           {/* Body Type */}
@@ -90,28 +88,26 @@ export default function AvatarSetup({ onComplete, existingType, existingTone, ex
                 <button
                   key={type.key}
                   onClick={() => setAvatarType(type.key)}
-                  className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.98]"
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.98]"
                   style={{
-                    background: avatarType === type.key ? `${type.color}18` : "rgba(255,255,255,0.04)",
+                    background: avatarType === type.key ? `${type.color}20` : "rgba(255,255,255,0.04)",
                     border: avatarType === type.key ? `2px solid ${type.color}` : "1px solid rgba(255,255,255,0.08)",
-                    minHeight: 52,
                   }}
                 >
-                  <span className="text-lg flex-shrink-0">{type.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-bold text-white block">{type.label}</span>
-                  </div>
-                  {avatarType === type.key && <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: type.color }} />}
+                  <span className="text-base flex-shrink-0">{type.emoji}</span>
+                  <span className="text-xs font-bold text-white flex-1 min-w-0 truncate">{type.label}</span>
+                  {avatarType === type.key && <Check className="w-3 h-3 flex-shrink-0" style={{ color: type.color }} />}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Skin Tone */}
+          {/* Skin Tone — armor model covers skin, label as mostly cosmetic */}
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1">
               <Palette className="w-3.5 h-3.5 text-white/30" />
               <span className="text-[10px] font-black text-white/30 tracking-wider uppercase">Skin Tone</span>
+              <span className="text-[8px] text-white/18 ml-1">(face &amp; hands)</span>
             </div>
             <div className="flex gap-2 flex-wrap">
               {SKIN_TONES.map((tone) => (
@@ -122,16 +118,16 @@ export default function AvatarSetup({ onComplete, existingType, existingTone, ex
                   className="flex flex-col items-center gap-1 transition-all hover:scale-110 active:scale-95"
                 >
                   <div
-                    className="w-11 h-11 rounded-full flex items-center justify-center"
+                    className="w-9 h-9 rounded-full flex items-center justify-center"
                     style={{
                       background: tone.hex,
                       border: skinTone === tone.key ? "3px solid #fff" : "2px solid rgba(255,255,255,0.15)",
-                      boxShadow: skinTone === tone.key ? `0 0 14px ${tone.hex}88` : "none",
+                      boxShadow: skinTone === tone.key ? `0 0 12px ${tone.hex}88` : "none",
                     }}
                   >
-                    {skinTone === tone.key && <Check className="w-4 h-4" style={{ color: skinTone === "light" || skinTone === "medium-light" ? "#333" : "#fff" }} />}
+                    {skinTone === tone.key && <Check className="w-3.5 h-3.5" style={{ color: skinTone === "light" || skinTone === "medium-light" ? "#333" : "#fff" }} />}
                   </div>
-                  <span className="text-[8px] text-white/30">{tone.label}</span>
+                  <span className="text-[7px] text-white/30">{tone.label}</span>
                 </button>
               ))}
             </div>
@@ -150,39 +146,54 @@ export default function AvatarSetup({ onComplete, existingType, existingTone, ex
                   onClick={() => setOutfitColorKey(c.key)}
                   className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.97]"
                   style={{
-                    background: outfitColorKey === c.key ? `${c.accent}18` : "rgba(255,255,255,0.04)",
-                    border: outfitColorKey === c.key ? `2px solid ${c.accent}` : "1px solid rgba(255,255,255,0.08)",
+                    background: outfitColorKey === c.key ? `${c.swatch}18` : "rgba(255,255,255,0.04)",
+                    border: outfitColorKey === c.key ? `2px solid ${c.swatch}` : "1px solid rgba(255,255,255,0.08)",
                   }}
                 >
                   <div
-                    className="w-6 h-6 rounded-full flex-shrink-0"
-                    style={{ background: c.hex, border: `2px solid ${c.accent}`, boxShadow: `0 0 8px ${c.accent}44` }}
+                    className="w-5 h-5 rounded-full flex-shrink-0"
+                    style={{
+                      background: c.swatch,
+                      border: `2px solid rgba(255,255,255,0.2)`,
+                      boxShadow: outfitColorKey === c.key ? `0 0 8px ${c.swatch}88` : "none",
+                    }}
                   />
                   <span className="text-[11px] font-bold text-white flex-1 min-w-0 truncate">{c.label}</span>
-                  {outfitColorKey === c.key && <Check className="w-3 h-3 flex-shrink-0" style={{ color: c.accent }} />}
+                  {outfitColorKey === c.key && <Check className="w-3 h-3 flex-shrink-0" style={{ color: c.swatch }} />}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Continue */}
+          {/* Save */}
           <button
             onClick={handleContinue}
             disabled={saving}
-            className="flex items-center justify-center gap-2 py-4 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full"
+            className="flex items-center justify-center gap-2 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full mt-1"
             style={{
               background: "linear-gradient(135deg,#9B7EFF,#A078FF)",
               color: "#fff",
-              boxShadow: "0 0 30px rgba(155,126,255,0.35)",
+              boxShadow: "0 0 30px rgba(155,126,255,0.3)",
             }}
           >
             {saving ? "Saving..." : "Enter Upper Vibe City →"}
           </button>
 
           <p className="text-[10px] text-white/20 text-center">
-            More outfits, hairstyles &amp; accessories coming to the Vibe Shop.
+            More outfits &amp; accessories coming to the Vibe Shop.
           </p>
         </div>
+
+        {/* ── RIGHT: Preview (desktop only) ── */}
+        <div className="hidden lg:flex flex-col items-center gap-3 flex-shrink-0 sticky top-10 self-start">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5" style={{ color: "#9B7EFF" }} />
+            <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>Live Preview</span>
+          </div>
+          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={280} height={440} />
+          <p className="text-[9px] text-white/20 text-center">Updates instantly as you choose.</p>
+        </div>
+
       </div>
     </div>
   );

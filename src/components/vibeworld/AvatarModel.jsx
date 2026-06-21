@@ -254,16 +254,29 @@ export function createAvatar(scene, opts = {}, onReady) {
 }
 
 // ─── PUBLIC: retintAvatar ─────────────────────────────────────
-export function retintAvatar(entry, suitColor, styleTintRGB) {
+// suitColor: hex string e.g. "#00AADD" — applied directly to outfit/armor materials
+// Skips skin-toned materials (face, hands, neck) and shadow discs
+export function retintAvatar(entry, suitColor) {
   if (!entry?.root) return;
-  const base  = new THREE.Color(suitColor || "#ffffff");
-  const tint  = styleTintRGB ? new THREE.Color(...styleTintRGB) : new THREE.Color(1, 1, 1);
-  const final = base.clone().multiply(tint);
+  const targetColor = new THREE.Color(suitColor || "#888888");
+
   entry.root.traverse((child) => {
     if (!child.isMesh) return;
     if (child.geometry?.type === "CircleGeometry") return; // skip shadow disc
+
     const mats = Array.isArray(child.material) ? child.material : [child.material];
-    mats.forEach((m) => { if (m?.color) m.color.copy(final); });
+    mats.forEach((m) => {
+      if (!m?.color) return;
+      // Cache original color on first call
+      if (!m.userData._origColor) m.userData._origColor = m.color.clone();
+      const orig = m.userData._origColor;
+      // Skip skin-toned materials — warm mid-range colors (face/hands)
+      const r = orig.r, g = orig.g, b = orig.b;
+      const isSkinLike = (r > 0.35) && (r > b * 1.3) && (g > b * 0.8) && (r < 0.95) && (b < 0.6);
+      if (isSkinLike) { m.color.copy(orig); return; }
+      // Apply outfit color directly
+      m.color.copy(targetColor);
+    });
   });
 }
 
