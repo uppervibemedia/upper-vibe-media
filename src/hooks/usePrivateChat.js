@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 
 const REQUEST_EXPIRY_MS = 60_000; // 60 seconds
 const COOLDOWN_MS = 120_000; // 2 minutes cooldown after decline
-const CLEANUP_INTERVAL_MS = 15_000;
+const CLEANUP_INTERVAL_MS = 30_000;
 
 export default function usePrivateChat(user) {
   const [activeChatPeer, setActiveChatPeer] = useState(null); // { userId, username }
@@ -293,9 +293,9 @@ export default function usePrivateChat(user) {
       }
     };
 
-    // Poll immediately on mount, then every 5 seconds as fallback
+    // Poll immediately on mount, then every 15 seconds as fallback
     poll();
-    const interval = setInterval(poll, 5000);
+    const interval = setInterval(poll, 15_000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [user?.id]);
 

@@ -14,7 +14,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 
-const POSITION_MS = 500;       // Send position every 500ms — balance smooth vs rate limits
+const POSITION_MS = 2000;      // Send position every 2s — prevents rate limits under multi-sub load
 const HEARTBEAT_MS = 10_000;   // Full heartbeat every 10s
 const STALE_MS = 25_000;       // Mark as offline if no heartbeat for 25s
 const BATCH_MS = 100;          // Batch incoming subscribe events every 100ms
