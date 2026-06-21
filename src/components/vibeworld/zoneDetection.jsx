@@ -49,7 +49,7 @@ const ZONES = {
   academy: {
     name: "Upper Vibe Academy",
     id: "academy",
-    cx: -22, cz: -17, radius: 5,
+    cx: -20, cz: 5, radius: 5,
     icon: "GraduationCap",
   },
 };
