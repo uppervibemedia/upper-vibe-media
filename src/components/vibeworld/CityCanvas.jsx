@@ -1393,16 +1393,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       scene.add(avatarRimLight);
       scene.userData.avatarRimLight = avatarRimLight;
 
-      // Load GLB avatar async — createAvatar returns a placeholder Group immediately
-      const avatarPlaceholder = createAvatar(scene, avatarConfig || {}, (entry) => {
+      // createAvatar now returns an entry object immediately (root = controller Group in scene).
+      // The GLB model is loaded async and parented INTO the controller — so movement always works.
+      const initialEntry = createAvatar(scene, avatarConfig || {}, (entry) => {
+        // GLB finished loading — entry.mixer/clips are now populated
+        // root is the same controller Group, already in scene and being moved each frame
         avatarEntryRef.current = entry;
-        avatarRef.current = entry.root;
-        // Sync position immediately
-        const [px, py, pz, rot] = avatarPosRef.current;
-        entry.root.position.set(px, py, pz);
-        entry.root.rotation.y = rot;
       });
-      avatarRef.current = avatarPlaceholder;
+      avatarEntryRef.current = initialEntry;
+      avatarRef.current = initialEntry.root;
 
       // Skybox — must follow camera so sky always feels infinitely far away
       const skybox = scene.getObjectByName("skybox");
@@ -1870,7 +1869,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
           let entry = remoteMap[remote.user_id];
           if (!entry) {
-            // Spawn new remote avatar
+            // Spawn new remote avatar — returns a controller Group immediately
             const group = createRemoteAvatar(
               scene, remote.user_id,
               remote.username || "User",
@@ -1905,8 +1904,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           entry.prevPos = { x: g.position.x, z: g.position.z };
 
           // ─── Remote GLB avatar animation ────────────────────
+          // _avatarEntry is set immediately on the controller group, updated when GLB loads
           const remoteEntry = g.userData._avatarEntry;
-          updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
+          if (remoteEntry) updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
         }
 
         // Despawn avatars that are no longer present
