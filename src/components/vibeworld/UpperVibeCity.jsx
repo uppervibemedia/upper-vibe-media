@@ -53,6 +53,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const handleEmote = useCallback((emote) => {
     if (emote.id === "dance") {
+      // Clear any lingering emote lock before entering dance mode
+      if (playerAvatarEntryRef.current) {
+        playerAvatarEntryRef.current._emoteActive = false;
+        if (playerAvatarEntryRef.current._emoteTimer) {
+          clearTimeout(playerAvatarEntryRef.current._emoteTimer);
+          playerAvatarEntryRef.current._emoteTimer = null;
+        }
+      }
       setIsDancing(true);
       setActiveEmote({ ...emote, startedAt: Date.now() });
     } else {
@@ -87,15 +95,16 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Auto-cancel dance on ANY movement ────────────────────────────────────
   useEffect(() => {
     if (!isDancing) return;
-    // Cancel dance as soon as the avatar moves at all
-    const prev = prevPosRef.current;
-    const moveDx = playerPos.x - prev.x;
-    const moveDz = playerPos.z - prev.z;
-    const moved = Math.abs(moveDx) + Math.abs(moveDz);
-    if (moved > 0.005) {
+    // Cancel dance as soon as the avatar moves — compare against a stable ref
+    const dx = playerPos.x - prevPosRef.current.x;
+    const dz = playerPos.z - prevPosRef.current.z;
+    if (Math.abs(dx) > 0.001 || Math.abs(dz) > 0.001) {
       setIsDancing(false);
       setActiveEmote(null);
       if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
+      if (playerAvatarEntryRef.current) {
+        playerAvatarEntryRef.current._emoteActive = false;
+      }
     }
   }, [playerPos.x, playerPos.z, isDancing]);
 
@@ -747,13 +756,20 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           }}
           onRemoteAvatarClick={handleRemoteAvatarClick}
           onPositionChange={(x, z, rot) => {
-            const prev = prevPosRef.current;
-            const dx = x - prev.x;
-            const dz = z - prev.z;
+            const dx = x - prevPosRef.current.x;
+            const dz = z - prevPosRef.current.z;
             const speed = Math.sqrt(dx * dx + dz * dz);
             const animState = isDancingRef.current ? "dancing" : speed > 0.015 ? "walking" : "idle";
+            // Update prevPosRef BEFORE setState so the auto-cancel effect sees the right delta
+            const prev = { ...prevPosRef.current };
             prevPosRef.current = { x, z };
             setPlayerPos({ x, z, rot, animState });
+            // Inline dance cancel for immediate response (don't wait for effect)
+            if (isDancingRef.current && (Math.abs(x - prev.x) > 0.001 || Math.abs(z - prev.z) > 0.001)) {
+              setIsDancing(false);
+              setActiveEmote(null);
+              if (playerAvatarEntryRef.current) playerAvatarEntryRef.current._emoteActive = false;
+            }
           }}
           onJukeboxProximity={(near, vol) => {
             setNearJukebox(near);
