@@ -171,27 +171,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   scene.add(group);
 }
 
-// ─── Path accent lights — small glowing dots along paths ───────
-function addPathLights(scene, fromX, fromZ, toX, toZ, colorHex) {
-  const dx = toX - fromX, dz = toZ - fromZ;
-  const len = Math.sqrt(dx * dx + dz * dz);
-  const step = 1.8;
-  const count = Math.floor(len / step);
 
-  for (let i = 1; i <= count; i++) {
-    const t = i / (count + 1);
-    const px = fromX + dx * t;
-    const pz = fromZ + dz * t;
-
-    const dot = new Mesh(
-      new SphereGeometry(0.06, 6, 4),
-      new MeshBasicMaterial({ color: new Color(colorHex), depthWrite: false, transparent: true, opacity: 0.6 })
-    );
-    dot.position.set(px, 0.06, pz);
-    dot.userData = { isPathDot: true, baseColor: colorHex, phase: t * Math.PI * 2 };
-    scene.add(dot);
-  }
-}
 
 function buildPark(scene) {
   createCosmicSky(scene);
@@ -267,108 +247,8 @@ function buildPark(scene) {
   addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R);
 
   // ═════════════════════════════════════════════════════════════
-  // 3. GLOWING PATHS — neon walkways to every zone
+  // 3. OPEN CONNECTED FLOOR — clean unified plaza surface
   // ═════════════════════════════════════════════════════════════
-  const pathGlow = new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.18 });
-  const pathFill = new MeshBasicMaterial({ color: new Color("#1A1A32"), depthWrite: false, transparent: true, opacity: 0.4 });
-
-  function createPath(fromX, fromZ, toX, toZ) {
-    const dx = toX - fromX, dz = toZ - fromZ;
-    const len = Math.sqrt(dx * dx + dz * dz);
-    const midX = (fromX + toX) / 2, midZ = (fromZ + toZ) / 2;
-    const angle = Math.atan2(dx, dz);
-
-    const pathStrip = new Mesh(new PlaneGeometry(1.6, len), pathFill);
-    pathStrip.rotation.x = -Math.PI / 2;
-    pathStrip.position.set(midX, 0.002, midZ);
-    pathStrip.rotation.z = -angle;
-    pathStrip.receiveShadow = true;
-    scene.add(pathStrip);
-
-    const innerStrip = new Mesh(new PlaneGeometry(1.2, len), pathGlow);
-    innerStrip.rotation.x = -Math.PI / 2;
-    innerStrip.position.set(midX, 0.003, midZ);
-    innerStrip.rotation.z = -angle;
-    scene.add(innerStrip);
-
-    const halfW = 0.8;
-    for (const side of [-1, 1]) {
-      const lx = side * halfW * Math.cos(angle);
-      const lz = side * -halfW * Math.sin(angle);
-      const edge = new Mesh(
-        new PlaneGeometry(0.06, len),
-        new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.7 })
-      );
-      edge.rotation.x = -Math.PI / 2;
-      edge.position.set(midX + lx, 0.005, midZ + lz);
-      edge.rotation.z = -angle;
-      scene.add(edge);
-    }
-
-    const centerGlow = new Mesh(
-      new PlaneGeometry(0.08, len),
-      new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.5 })
-    );
-    centerGlow.rotation.x = -Math.PI / 2;
-    centerGlow.position.set(midX, 0.005, midZ);
-    centerGlow.rotation.z = -angle;
-    scene.add(centerGlow);
-  }
-
-  // Six paths radiating from Central Plaza — all entrances face the plaza
-  createPath(PLAZA_X, PLAZA_Z, 0, -15);        // North → Main Music Stage
-  createPath(PLAZA_X, PLAZA_Z, -16, -10);      // Left-back → Vibe Lounge
-  createPath(PLAZA_X, PLAZA_Z, 16, -10);       // Right-back → Music Library
-  createPath(PLAZA_X, PLAZA_Z, -10, 8);        // Lower-left → Visualizer Dome
-  createPath(PLAZA_X, PLAZA_Z, 10, 4);         // Lower-right → Daily Vibe Check
-  createPath(PLAZA_X, PLAZA_Z, 0, SHORELINE_Z + 1); // South → Beach
-
-  // Path accent lights — subtle color-shifting dots along walkways
-  addPathLights(scene, PLAZA_X, PLAZA_Z, 0, -15, "#00D4F0");
-  addPathLights(scene, PLAZA_X, PLAZA_Z, -16, -10, "#C43BFF");
-  addPathLights(scene, PLAZA_X, PLAZA_Z, 16, -10, "#00D4F0");
-  addPathLights(scene, PLAZA_X, PLAZA_Z, -10, 8, "#C43BFF");
-  addPathLights(scene, PLAZA_X, PLAZA_Z, 10, 4, "#00E5FF");
-  addPathLights(scene, PLAZA_X, PLAZA_Z, 0, SHORELINE_Z + 1, "#2098CC");
-
-  // ── Beach boardwalk ────────────────────────────────────────
-  const boardwalkLen = 8;
-  const boardwalkStartZ = 18;
-  const plankCount = 7;
-  for (let p = 0; p < plankCount; p++) {
-    const pz = boardwalkStartZ + p * (boardwalkLen / plankCount);
-    const plankW = 2.6 + p * 0.1;
-    const plank = new Mesh(
-      new PlaneGeometry(plankW, boardwalkLen / plankCount - 0.1),
-      new MeshBasicMaterial({
-        color: new Color(p % 2 === 0 ? "#5C4A90" : "#4A3A78"),
-        depthWrite: false, transparent: true, opacity: 0.35,
-      })
-    );
-    plank.rotation.x = -Math.PI / 2;
-    plank.position.set(0, 0.015, pz);
-    plank.receiveShadow = true;
-    scene.add(plank);
-
-    for (const side of [-1, 1]) {
-      const rx = side * (plankW / 2 - 0.15);
-      const post = new Mesh(
-        new CylinderGeometry(0.04, 0.04, 0.5, 6),
-        new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
-      );
-      post.position.set(rx, 0.25, pz);
-      scene.add(post);
-    }
-  }
-
-  // Boardwalk entrance glow
-  const entranceGlow = new Mesh(
-    new PlaneGeometry(2.8, 0.15),
-    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.7 })
-  );
-  entranceGlow.rotation.x = -Math.PI / 2;
-  entranceGlow.position.set(0, 0.006, 16);
-  scene.add(entranceGlow);
 
   // ═════════════════════════════════════════════════════════════
   // 4. MAIN MUSIC STAGE — north (top) of map
@@ -966,10 +846,6 @@ function buildPark(scene) {
   scene.add(academy);
   createNeonSign(scene, ACAD_X, 5.2, ACAD_Z, "VIBE  ACADEMY", "#7C3AED");
 
-  // Path from Central Plaza to Academy
-  createPath(PLAZA_X, PLAZA_Z, ACAD_X, ACAD_Z);
-  addPathLights(scene, PLAZA_X, PLAZA_Z, ACAD_X, ACAD_Z, "#7C3AED");
-
   // Academy ambient light
   const academyLight = new PointLight();
   academyLight.color = new Color("#7C3AED");
@@ -986,10 +862,6 @@ function buildPark(scene) {
   // 8.7. VIBE SHOP — far right, opposite Academy
   // ═════════════════════════════════════════════════════════════
   const { SHOP_X, SHOP_Z } = createVibeShop(scene);
-
-  // Path from Central Plaza to Shop
-  createPath(PLAZA_X, PLAZA_Z, SHOP_X, SHOP_Z);
-  addPathLights(scene, PLAZA_X, PLAZA_Z, SHOP_X, SHOP_Z, "#D4A843");
 
   // ═════════════════════════════════════════════════════════════
   // 9. CITY EDGE BUILDINGS — framing the perimeter
