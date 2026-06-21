@@ -2,7 +2,7 @@
  * AvatarCustomizerPanel — simplified single-screen avatar editor.
  * No skin tone, no body type — outfit color only + live preview.
  */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Palette, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -12,6 +12,13 @@ import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) {
   const [outfitColorKey, setOutfitColorKey] = useState(user?.avatar_outfit_color || "electric-blue");
   const [saving, setSaving] = useState(false);
+
+  // Sync to latest saved value when panel opens
+  useEffect(() => {
+    if (open && user?.avatar_outfit_color) {
+      setOutfitColorKey(user.avatar_outfit_color);
+    }
+  }, [open, user?.avatar_outfit_color]);
 
   const handleApply = async () => {
     setSaving(true);

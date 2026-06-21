@@ -33,7 +33,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
   const [editAvatarOpen, setEditAvatarOpen] = useState(false);
   const [customizerOpen, setCustomizerOpen] = useState(false);
-  const [avatarVersion, setAvatarVersion] = useState(0); // bump to re-read user data
+  const playerAvatarEntryRef = useRef(null); // holds the live avatar entry for retinting
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
   const onDanceFloorRef = useRef(false);
@@ -718,6 +718,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       <div className="absolute inset-0">
         <CityCanvas
           onLoaded={() => setLoading(false)}
+          onAvatarReady={(entry) => {
+            playerAvatarEntryRef.current = entry;
+            // Apply saved outfit color immediately when avatar GLB finishes loading
+            const savedColorKey = user?.avatar_outfit_color || "electric-blue";
+            const COLOR_MAP = {
+              "electric-blue": "#00AADD", "neon-purple": "#7B2FFF",
+              "cosmic-black": "#080A0F", "white-silver": "#C8D4E0",
+              "pink-rose": "#CC2288", "gold-yellow": "#CC9900",
+            };
+            retintAvatar(entry, COLOR_MAP[savedColorKey] || "#00AADD");
+          }}
           onRemoteAvatarClick={handleRemoteAvatarClick}
           onPositionChange={(x, z, rot) => {
             const prev = prevPosRef.current;
@@ -982,8 +993,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
         isMobile={isMobile}
         user={user}
-        onApply={({ outfitColorKey }) => {
-          setAvatarVersion((v) => v + 1);
+        onApply={({ outfitColorKey, suitColor }) => {
+          // Immediately retint the live in-world playable avatar
+          if (playerAvatarEntryRef.current && suitColor) {
+            retintAvatar(playerAvatarEntryRef.current, suitColor);
+          }
         }}
       />
 

@@ -1289,13 +1289,15 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation } from "./Avata
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onAvatarReady, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileResetKey, setMobileResetKey] = useState(0);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
+  const onAvatarReadyRef = useRef(onAvatarReady);
+  onAvatarReadyRef.current = onAvatarReady;
   const onPosCbRef = useRef(onPositionChange);
   onPosCbRef.current = onPositionChange;
   const onJukeboxProxRef = useRef(onJukeboxProximity);
@@ -1408,8 +1410,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       // every frame. When GLB loads, the model is parented INTO entry.root — it inherits
       // all movement automatically. The same entry object is mutated in-place.
       const entry = createAvatar(scene, avatarConfig || {}, (_entry) => {
-        // GLB done loading — mixer/clips now populated on the same entry object
-        // avatarEntryRef already points to it, nothing to reassign
+        // GLB done loading — notify parent so it can apply saved outfit color
+        onAvatarReadyRef.current?.(_entry);
       });
       avatarEntryRef.current = entry;
       avatarRef.current = entry.root; // this is what gets moved every frame
