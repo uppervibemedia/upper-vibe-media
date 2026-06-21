@@ -1377,13 +1377,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       sceneRef.current = scene;
 
       const asp = rw / Math.max(rh, 1);
-      const camera = new PerspectiveCamera(55, asp, 0.1, 80);
+      const camera = new PerspectiveCamera(52, asp, 0.1, 80);
       cameraRef.current = camera;
       // Start camera at a 3/4 front-left angle for a better initial view
-      const initCamDist = 6;
-      const initCamHeight = 2.8;
-      const initLookY = 1.4;
-      camera.position.set(SPAWN[0] - 4, SPAWN[1] + initCamHeight, SPAWN[2] + 4.5);
+      // Avatar head is at y≈1.60, so look-at target at y=0.9 (chest) gives full-body view
+      const initCamDist = 5.5;
+      const initCamHeight = 2.2;
+      const initLookY = 0.9;
+      camera.position.set(SPAWN[0] - 3.5, SPAWN[1] + initCamHeight, SPAWN[2] + 4.0);
       camera.lookAt(SPAWN[0], SPAWN[1] + initLookY, SPAWN[2]);
 
       buildPark(scene);
@@ -1393,11 +1394,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       avatarRef.current = avatar;
 
       // Avatar rim light — soft glow so avatar doesn't blend into dark ground
+      // Avatar head at y≈1.60 from ground, so light at y=1.0 illuminates full body
       const avatarRimLight = new PointLight();
       avatarRimLight.color = new Color("#8899DD");
-      avatarRimLight.intensity = 0.4;
-      avatarRimLight.distance = 6;
-      avatarRimLight.position.set(SPAWN[0], SPAWN[1] + 1.2, SPAWN[2]);
+      avatarRimLight.intensity = 0.5;
+      avatarRimLight.distance = 7;
+      avatarRimLight.position.set(SPAWN[0], SPAWN[1] + 1.0, SPAWN[2]);
       scene.add(avatarRimLight);
       scene.userData.avatarRimLight = avatarRimLight;
 
@@ -1540,9 +1542,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         avatar.position.set(px, py, pz);
         avatar.rotation.y = rot;
 
-        // Rim light follows avatar
+        // Rim light follows avatar — at chest/head height (avatar head at y≈1.60 from ground)
         const rimLight = scene.userData.avatarRimLight;
-        if (rimLight) rimLight.position.set(px, py + 1.2, pz);
+        if (rimLight) rimLight.position.set(px, py + 1.0, pz);
 
         // Notify parent of position (throttled — every 10 frames)
         if (onPosCbRef.current && frameRef.current % 10 === 0) {
@@ -1564,9 +1566,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ─── CAMERA (third-person, or stage-facing when locked) ──
-        const camDist = 6;
-        const camHeight = 3.2;
-        const lookY = 1.4;
+        // Avatar head at y≈1.60 — look-at at chest height (0.9) gives full body in frame
+        const camDist = 5.5;
+        const camHeight = 2.4;
+        const lookY = 0.9;
 
         // Smooth orbit angle lerp
         cameraOrbitRef.current.smoothAngle += 

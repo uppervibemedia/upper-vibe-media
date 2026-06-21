@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import UpperVibeCity from "@/components/vibeworld/UpperVibeCity";
 import WorldGate from "@/components/vibeworld/WorldGate";
 import PageErrorBoundary from "@/components/shared/PageErrorBoundary";
+import AvatarTestPlatform, { DEV_AVATAR_TEST_MODE } from "@/components/vibeworld/AvatarTestPlatform";
 
 // ── WebGL support detection ──
 function isWebGLAvailable() {
@@ -154,6 +155,15 @@ function BypassWrapper({ children }) {
 }
 
 export default function VibeWorld() {
+  // DEV_AVATAR_TEST_MODE — show isolated test platform for avatar inspection
+  if (DEV_AVATAR_TEST_MODE) {
+    return (
+      <PageErrorBoundary>
+        <AvatarTestPlatform avatarConfig={{ avatarType: "masculine", skinTone: "medium", avatarStyle: "streetwear" }} />
+      </PageErrorBoundary>
+    );
+  }
+
   // TEMPORARY TEST MODE: skip WorldGate when DEV_BYPASS_ENTER_WORLD=true OR ?bypass=1 in URL
   const bypass = DEV_BYPASS_ENTER_WORLD || isBypassMode();
 
