@@ -7,393 +7,327 @@ const {
   TorusGeometry, Sprite, SpriteMaterial, CanvasTexture, LinearFilter,
 } = THREE;
 
-// ─── SKIN TONE PALETTE ────────────────────────────────────────
+// ─── SKIN TONES ──────────────────────────────────────────────
 const SKIN_COLORS = {
-  light:         "#FDEBD3",
-  "medium-light":"#F3C9A1",
-  medium:        "#D4A373",
-  "medium-dark": "#B07D5A",
-  dark:          "#7B4A3A",
-  deep:          "#4A2C2A",
+  light:          "#FDEBD3",
+  "medium-light": "#F3C9A1",
+  medium:         "#D4A373",
+  "medium-dark":  "#B07D5A",
+  dark:           "#7B4A3A",
+  deep:           "#4A2C2A",
 };
 
-// ─── AVATAR TYPE BODY PROPORTIONS ─────────────────────────────
-// [shoulderW, hipW, torsoH, armLen, legLen, headScale]
-// Social-world style: slightly larger head, balanced natural limbs
+// ─── BODY PROPORTIONS PER TYPE ───────────────────────────────
+// [shoulderW, hipW, torsoH, armLen, legLen, headScale, waistRatio]
 const BODY_PRESETS = {
-  masculine:  [0.42, 0.30, 0.42, 0.36, 0.78, 1.10],
-  feminine:   [0.34, 0.34, 0.40, 0.34, 0.78, 1.02],
-  nonbinary:  [0.38, 0.32, 0.41, 0.35, 0.78, 1.06],
-  neutral:    [0.38, 0.32, 0.41, 0.35, 0.78, 1.06],
+  masculine:  [0.44, 0.30, 0.44, 0.36, 0.80, 1.08, 0.68],
+  feminine:   [0.34, 0.34, 0.40, 0.34, 0.80, 1.00, 0.85],
+  nonbinary:  [0.39, 0.33, 0.42, 0.35, 0.80, 1.04, 0.76],
+  neutral:    [0.39, 0.33, 0.42, 0.35, 0.80, 1.04, 0.76],
 };
 
-// ─── TYPE-SPECIFIC CLOTHING ───────────────────────────────────
-const SHIRT_COLORS = {
-  masculine:  "#1A5276",
-  feminine:   "#8E44AD",
-  nonbinary:  "#2E86C1",
-  neutral:    "#2E86C1",
-};
-const PANTS_COLORS = {
-  masculine:  "#212F3D",
-  feminine:   "#1B2631",
-  nonbinary:  "#2C3E50",
-  neutral:    "#2C3E50",
-};
+// ─── TYPE-SPECIFIC CLOTHING ──────────────────────────────────
+const SHIRT_COLORS = { masculine: "#1A5276", feminine: "#8E44AD", nonbinary: "#2E86C1", neutral: "#2E86C1" };
+const PANTS_COLORS = { masculine: "#212F3D", feminine: "#1B2631", nonbinary: "#2C3E50", neutral: "#2C3E50" };
+
+// ─── HAIR COLORS ─────────────────────────────────────────────
+const HAIR_BASE = "#2C1B0E";
+const HAIR_LIGHT = "#3E2723";
+
+// ─── Geometry quality: SEG = 12 for smooth human curves ─────
+const SEG = 12;
 
 function mat(hexColor, opts = {}) {
   const m = new MeshStandardMaterial();
   m.color = new Color(hexColor);
   m.roughness = opts.roughness ?? 0.5;
   m.metalness = opts.metalness ?? 0.05;
-  if (opts.transparent) {
-    m.transparent = true;
-    m.opacity = opts.opacity ?? 1;
-    m.depthWrite = opts.depthWrite ?? true;
-  }
+  if (opts.transparent) { m.transparent = true; m.opacity = opts.opacity ?? 1; m.depthWrite = opts.depthWrite ?? true; }
   return m;
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MODERN STYLIZED HUMANOID AVATAR
-// Zepeto + Meta Horizon influence — clean, human, mobile-friendly
+// MODERN STYLIZED HUMANOID AVATAR — full-body, smooth, human
 // ═══════════════════════════════════════════════════════════════
 export function createAvatar(scene, opts = {}) {
   const avatarType = opts.avatarType || "neutral";
   const skinTone = opts.skinTone || "medium";
   const skinHex = SKIN_COLORS[skinTone] || SKIN_COLORS.medium;
   const body = BODY_PRESETS[avatarType] || BODY_PRESETS.neutral;
-  const [shoulderW, hipW, torsoH, armLen, legLen, headScale] = body;
+  const [shoulderW, hipW, torsoH, armLen, legLen, headScale, waistR] = body;
   const shirtColor = SHIRT_COLORS[avatarType] || SHIRT_COLORS.neutral;
   const pantsColor = PANTS_COLORS[avatarType] || PANTS_COLORS.neutral;
 
   const avatar = new Group();
   avatar.name = "avatar";
 
-  const skin = () => mat(skinHex, { roughness: 0.48 });
-  const skinSmooth = () => mat(skinHex, { roughness: 0.38 });
-  const shirt = () => mat(shirtColor, { roughness: 0.22, metalness: 0.06 });
-  const pants = () => mat(pantsColor, { roughness: 0.28, metalness: 0.05 });
-  const shoes = () => mat("#1A1A1A", { roughness: 0.3, metalness: 0.08 });
-  const sole = () => mat("#2C2C2C", { roughness: 0.3, metalness: 0.12 });
-  const hair = () => mat("#2C1B0E", { roughness: 0.48 });
-  const hairHighlight = () => mat("#3E2723", { roughness: 0.42 });
-  const eyeWhite = () => mat("#FFFFFF", { roughness: 0.1 });
-  const iris = () => mat("#5B8C5A", { roughness: 0.08 });
-  const pupil = () => mat("#0A0A0A", { roughness: 0.04 });
-  const brow = () => mat("#3E2723", { roughness: 0.5 });
-  const mouth = () => mat("#C0806A", { roughness: 0.38 });
-  const noseSkin = () => mat(skinHex, { roughness: 0.42 });
+  // Materials
+  const skinM = () => mat(skinHex, { roughness: 0.44 });
+  const skinS = () => mat(skinHex, { roughness: 0.34 });
+  const shirtM = () => mat(shirtColor, { roughness: 0.22, metalness: 0.06 });
+  const pantsM = () => mat(pantsColor, { roughness: 0.26, metalness: 0.04 });
+  const shoeM = () => mat("#1A1A1A", { roughness: 0.28, metalness: 0.08 });
+  const soleM = () => mat("#2C2C2C", { roughness: 0.28, metalness: 0.12 });
+  const hairM = () => mat(HAIR_BASE, { roughness: 0.45 });
+  const hairL = () => mat(HAIR_LIGHT, { roughness: 0.40 });
+  const eyeW = () => mat("#FFFFFF", { roughness: 0.08 });
+  const irisM = () => mat("#5B8C5A", { roughness: 0.06 });
+  const pupilM = () => mat("#080808", { roughness: 0.03 });
+  const browM = () => mat("#3E2723", { roughness: 0.46 });
+  const mouthM = () => mat("#C0806A", { roughness: 0.35 });
+  const noseM = () => mat(skinHex, { roughness: 0.38 });
 
-  function addMesh(group, geo, materialOrFn, pos, casts = true) {
+  function addObj(group, geo, materialOrFn, pos, casts = true) {
     const m = new Mesh(geo, typeof materialOrFn === "function" ? materialOrFn() : materialOrFn);
-    m.position.copy(pos);
-    m.castShadow = casts;
-    m.receiveShadow = casts;
-    group.add(m);
-    return m;
+    m.position.copy(pos); m.castShadow = casts; m.receiveShadow = casts;
+    group.add(m); return m;
   }
 
-  // ─── HEAD — oval shape with facial features ──────────────────
-  function createHead() {
-    const head = new Group();
-    head.name = "head";
-    const hs = headScale;
+  // ─── HEAD — oval, detailed face ───────────────────────────
+  function buildHead() {
+    const h = new Group(); h.name = "head"; const hs = headScale;
 
-    // Main head — oval (scaled sphere)
-    const headGeo = new SphereGeometry(0.1 * hs, 16, 14);
-    const headMesh = new Mesh(headGeo, skin());
-    headMesh.scale.set(0.88, 1.05, 0.82);
-    headMesh.position.y = 0.12 * hs;
-    headMesh.castShadow = true;
-    head.add(headMesh);
+    // Main cranium
+    addObj(h, new SphereGeometry(0.098 * hs, 18, 16), skinM, new Vector3(0, 0.13 * hs, 0));
+    const cranium = h.children[h.children.length - 1];
+    cranium.scale.set(0.86, 1.04, 0.80);
 
-    // Jaw/chin
-    const jawGeo = new SphereGeometry(0.065 * hs, 12, 8);
-    const jaw = new Mesh(jawGeo, skin());
-    jaw.scale.set(0.78, 0.52, 0.64);
-    jaw.position.set(0, 0.04 * hs, 0.055 * hs);
-    jaw.castShadow = true;
-    head.add(jaw);
+    // Jaw
+    const jaw = addObj(h, new SphereGeometry(0.062 * hs, 14, 10), skinM, new Vector3(0, 0.05 * hs, 0.05 * hs));
+    jaw.scale.set(0.78, 0.50, 0.62);
 
-    // ── EYES ────────────────────────────────────────────────
-    const eyeY = 0.145 * hs;
-    const eyeZ = 0.078 * hs;
-    const eyeGap = 0.034 * hs;
-    for (let side = -1; side <= 1; side += 2) {
-      const ex = side * eyeGap;
+    // Cheek bones — two small spheres for 3D cheek definition
+    for (const side of [-1, 1]) {
+      const cheek = addObj(h, new SphereGeometry(0.025 * hs, 8, 6), skinS, new Vector3(side * 0.06 * hs, 0.11 * hs, 0.055 * hs));
+      cheek.scale.set(0.7, 0.6, 0.5);
+    }
 
-      const whiteGeo = new SphereGeometry(0.018 * hs, 8, 6);
-      const white = new Mesh(whiteGeo, eyeWhite());
-      white.scale.set(0.62, 0.85, 0.42);
-      white.position.set(ex, eyeY, eyeZ);
-      head.add(white);
+    // ── EYES — white + iris + pupil + highlight ────────────
+    const eyeY = 0.148 * hs, eyeZ = 0.072 * hs, eyeGap = 0.033 * hs;
+    for (const s of [-1, 1]) {
+      const ex = s * eyeGap;
 
-      const irisGeo = new SphereGeometry(0.01 * hs, 6, 5);
-      const irisMesh = new Mesh(irisGeo, iris());
-      irisMesh.position.set(ex, eyeY, eyeZ + 0.006 * hs);
-      head.add(irisMesh);
+      const white = addObj(h, new SphereGeometry(0.018 * hs, 8, 6), eyeW, new Vector3(ex, eyeY, eyeZ));
+      white.scale.set(0.60, 0.84, 0.38);
 
-      const pupilGeo = new SphereGeometry(0.005 * hs, 4, 3);
-      const pupilMesh = new Mesh(pupilGeo, pupil());
-      pupilMesh.position.set(ex, eyeY, eyeZ + 0.009 * hs);
-      head.add(pupilMesh);
+      addObj(h, new SphereGeometry(0.01 * hs, 6, 5), irisM, new Vector3(ex, eyeY, eyeZ + 0.006 * hs));
+      addObj(h, new SphereGeometry(0.005 * hs, 4, 3), pupilM, new Vector3(ex, eyeY, eyeZ + 0.009 * hs));
 
-      const hlGeo = new SphereGeometry(0.0025 * hs, 3, 2);
-      const hl = new Mesh(hlGeo, new MeshBasicMaterial({ color: 0xFFFFFF }));
+      const hl = new Mesh(new SphereGeometry(0.0025 * hs, 3, 2), new MeshBasicMaterial({ color: 0xFFFFFF }));
       hl.position.set(ex + 0.004 * hs, eyeY + 0.004 * hs, eyeZ + 0.011 * hs);
-      head.add(hl);
+      h.add(hl);
 
-      const browGeo = new BoxGeometry(0.032 * hs, 0.006 * hs, 0.005 * hs);
-      const browMesh = new Mesh(browGeo, brow());
-      browMesh.position.set(ex, eyeY + 0.022 * hs, eyeZ + 0.01 * hs);
-      browMesh.rotation.z = side * 0.05;
-      head.add(browMesh);
+      // Brow — slightly angled
+      const brow = addObj(h, new BoxGeometry(0.034 * hs, 0.007 * hs, 0.006 * hs), browM, new Vector3(ex, eyeY + 0.024 * hs, eyeZ + 0.012 * hs));
+      brow.rotation.z = s * 0.08;
+
+      // Upper eyelid — subtle lid fold
+      const lid = addObj(h, new BoxGeometry(0.022 * hs, 0.003 * hs, 0.008 * hs), skinS, new Vector3(ex, eyeY + 0.013 * hs, eyeZ + 0.004 * hs));
+      lid.rotation.x = -0.15;
     }
 
-    // ── NOSE ────────────────────────────────────────────────
-    const noseGeo = new SphereGeometry(0.013 * hs, 8, 6);
-    const nose = new Mesh(noseGeo, noseSkin());
-    nose.scale.set(0.62, 0.72, 0.52);
-    nose.position.set(0, 0.115 * hs, 0.088 * hs);
-    head.add(nose);
+    // ── NOSE — bridge + tip ───────────────────────────────
+    const noseBridge = addObj(h, new BoxGeometry(0.012 * hs, 0.022 * hs, 0.014 * hs), noseM, new Vector3(0, 0.12 * hs, 0.08 * hs));
+    const noseTip = addObj(h, new SphereGeometry(0.013 * hs, 8, 6), noseM, new Vector3(0, 0.105 * hs, 0.086 * hs));
+    noseTip.scale.set(0.65, 0.55, 0.55);
 
-    // ── MOUTH ───────────────────────────────────────────────
-    const mouthGeo = new BoxGeometry(0.04 * hs, 0.008 * hs, 0.004 * hs);
-    const mouthMesh = new Mesh(mouthGeo, mouth());
-    mouthMesh.position.set(0, 0.072 * hs, 0.088 * hs);
-    head.add(mouthMesh);
-
-    // ── EARS ────────────────────────────────────────────────
-    for (const side of [-1, 1]) {
-      const earGeo = new SphereGeometry(0.022 * hs, 8, 6);
-      const ear = new Mesh(earGeo, skin());
-      ear.scale.set(0.32, 0.62, 0.42);
-      ear.position.set(side * 0.088 * hs, 0.128 * hs, 0.002);
-      ear.castShadow = true;
-      head.add(ear);
+    // Nostrils
+    for (const s of [-1, 1]) {
+      addObj(h, new SphereGeometry(0.005 * hs, 4, 3), mat("#5A3A2A", { roughness: 0.4 }), new Vector3(s * 0.008 * hs, 0.103 * hs, 0.09 * hs));
     }
 
-    // ── HAIR — clean modern cap with layered depth ──────────
-    const hairGeo = new SphereGeometry(0.108 * hs, 14, 12);
-    const hairMesh = new Mesh(hairGeo, hair());
-    hairMesh.scale.set(1.04, 0.56, 0.96);
-    hairMesh.position.set(0, 0.18 * hs, -0.01);
-    hairMesh.castShadow = true;
-    head.add(hairMesh);
+    // ── MOUTH — upper + lower lip ─────────────────────────
+    const upperLip = addObj(h, new BoxGeometry(0.038 * hs, 0.007 * hs, 0.005 * hs), mouthM, new Vector3(0, 0.068 * hs, 0.084 * hs));
+    const lowerLip = addObj(h, new BoxGeometry(0.034 * hs, 0.009 * hs, 0.004 * hs), mouthM, new Vector3(0, 0.064 * hs, 0.085 * hs));
+    lowerLip.rotation.x = 0.15;
 
-    for (const side of [-1, 1]) {
-      const sideHair = new Mesh(new SphereGeometry(0.045 * hs, 8, 7), hairHighlight());
-      sideHair.scale.set(0.55, 0.42, 0.48);
-      sideHair.position.set(side * 0.075 * hs, 0.15 * hs, 0.01);
-      sideHair.castShadow = true;
-      head.add(sideHair);
-
-      const topHair = new Mesh(new SphereGeometry(0.04 * hs, 6, 5), hair());
-      topHair.scale.set(0.48, 0.38, 0.42);
-      topHair.position.set(side * 0.065 * hs, 0.188 * hs, -0.01);
-      head.add(topHair);
+    // ── EARS ──────────────────────────────────────────────
+    for (const s of [-1, 1]) {
+      const ear = addObj(h, new SphereGeometry(0.02 * hs, 8, 6), skinM, new Vector3(s * 0.086 * hs, 0.13 * hs, 0.002));
+      ear.scale.set(0.28, 0.58, 0.40);
     }
 
-    // Front hair detail
-    const frontHair = new Mesh(new BoxGeometry(0.04 * hs, 0.022 * hs, 0.06 * hs), hairHighlight());
-    frontHair.position.set(0, 0.198 * hs, 0.058 * hs);
-    frontHair.rotation.x = -0.22;
-    head.add(frontHair);
+    // ── HAIR — layered modern style ───────────────────────
+    const mainHair = addObj(h, new SphereGeometry(0.106 * hs, 16, 14), hairM, new Vector3(0, 0.19 * hs, -0.01));
+    mainHair.scale.set(1.06, 0.58, 0.96);
 
-    return head;
+    for (const s of [-1, 1]) {
+      addObj(h, new SphereGeometry(0.044 * hs, 8, 7), hairL, new Vector3(s * 0.072 * hs, 0.16 * hs, 0.012));
+      addObj(h, new SphereGeometry(0.038 * hs, 6, 5), hairM, new Vector3(s * 0.06 * hs, 0.20 * hs, -0.008));
+    }
+    // Bangs
+    const bang = addObj(h, new BoxGeometry(0.06 * hs, 0.026 * hs, 0.07 * hs), hairL, new Vector3(0, 0.21 * hs, 0.052 * hs));
+    bang.rotation.x = -0.25;
+    // Back hair
+    addObj(h, new SphereGeometry(0.07 * hs, 10, 8), hairM, new Vector3(0, 0.12 * hs, -0.06 * hs));
+
+    return h;
   }
 
-  // ─── HAND — stylized mitten with subtle fingers ──────────────
-  function createHand() {
-    const hand = new Group();
-    hand.name = "hand";
+  // ─── HAND — shaped with fingers ──────────────────────────
+  function buildHand() {
+    const h = new Group(); h.name = "hand";
 
-    const palmGeo = new BoxGeometry(0.06, 0.034, 0.068);
-    const palm = new Mesh(palmGeo, skinSmooth());
-    palm.position.y = -0.008;
-    palm.castShadow = true;
-    hand.add(palm);
+    addObj(h, new BoxGeometry(0.062, 0.035, 0.07), skinS, new Vector3(0, -0.008, 0));
 
     for (let f = -1; f <= 1; f++) {
-      const fingerGeo = new BoxGeometry(0.016, 0.028, 0.018);
-      const finger = new Mesh(fingerGeo, skinSmooth());
-      finger.position.set(f * 0.019, -0.03, 0.026);
-      finger.rotation.x = -0.12;
-      hand.add(finger);
-
-      const tipGeo = new SphereGeometry(0.008, 4, 3);
-      const tip = new Mesh(tipGeo, skinSmooth());
-      tip.position.set(f * 0.019, -0.044, 0.033);
-      hand.add(tip);
+      addObj(h, new CylinderGeometry(0.007, 0.008, 0.03, 6), skinS, new Vector3(f * 0.02, -0.032, 0.026));
+      addObj(h, new SphereGeometry(0.007, 4, 3), skinS, new Vector3(f * 0.02, -0.048, 0.03));
     }
 
-    const thumbGeo = new CylinderGeometry(0.008, 0.007, 0.034, 6);
-    const thumb = new Mesh(thumbGeo, skinSmooth());
-    thumb.position.set(0.036, -0.004, 0.005);
-    thumb.rotation.z = -0.7;
-    thumb.castShadow = true;
-    hand.add(thumb);
+    addObj(h, new CylinderGeometry(0.007, 0.008, 0.034, 6), skinS, new Vector3(0.038, -0.005, 0.005));
+    h.children[h.children.length - 1].rotation.z = -0.7;
+    addObj(h, new SphereGeometry(0.008, 4, 3), skinS, new Vector3(0.056, -0.026, 0.005));
 
-    const thumbTip = new Mesh(new SphereGeometry(0.008, 4, 3), skinSmooth());
-    thumbTip.position.set(0.052, -0.025, 0.005);
-    hand.add(thumbTip);
-
-    return hand;
+    return h;
   }
 
-  // ─── FOOT — shoe with sole and toe shaping ───────────────────
-  function createFoot() {
-    const foot = new Group();
-    foot.name = "foot";
+  // ─── FOOT — detailed shoe ────────────────────────────────
+  function buildFoot() {
+    const f = new Group(); f.name = "foot";
 
-    const shoeGeo = new BoxGeometry(0.12, 0.062, 0.18);
-    const shoeMesh = new Mesh(shoeGeo, shoes());
-    shoeMesh.position.set(0, 0.014, 0.05);
-    shoeMesh.castShadow = true; shoeMesh.receiveShadow = true;
-    foot.add(shoeMesh);
+    addObj(f, new BoxGeometry(0.12, 0.064, 0.18), shoeM, new Vector3(0, 0.016, 0.05));
+    addObj(f, new BoxGeometry(0.13, 0.025, 0.19), soleM, new Vector3(0, -0.03, 0.05));
 
-    const soleGeo = new BoxGeometry(0.13, 0.025, 0.19);
-    const soleMesh = new Mesh(soleGeo, sole());
-    soleMesh.position.set(0, -0.03, 0.05);
-    soleMesh.castShadow = true; soleMesh.receiveShadow = true;
-    foot.add(soleMesh);
+    // Toe cap
+    const toe = addObj(f, new SphereGeometry(0.04, 8, 6), shoeM, new Vector3(0, 0.008, 0.13));
+    toe.scale.set(0.85, 0.6, 0.5);
 
-    const toeGeo = new SphereGeometry(0.04, 8, 6);
-    const toe = new Mesh(toeGeo, shoes());
-    toe.scale.set(0.85, 0.65, 0.55);
-    toe.position.set(0, 0.008, 0.13);
-    foot.add(toe);
+    // Heel
+    const heel = addObj(f, new BoxGeometry(0.11, 0.04, 0.05), soleM, new Vector3(0, -0.01, -0.04));
 
-    return foot;
+    return f;
   }
 
-  // ─── LOWER LEG — shin + foot ─────────────────────────────────
-  function createLowerLeg() {
-    const leg = new Group();
-    leg.name = "lowerLeg";
+  // ─── LOWER LEG ───────────────────────────────────────────
+  function buildLowerLeg() {
+    const g = new Group(); g.name = "lowerLeg";
     const len = legLen * 0.47;
-    addMesh(leg, new CylinderGeometry(0.05, 0.06, len, 8), pants, new Vector3(0, -len / 2, 0));
-    const f = createFoot();
+    addObj(g, new CylinderGeometry(0.048, 0.058, len, SEG), pantsM, new Vector3(0, -len / 2, 0));
+    const f = buildFoot();
     f.position.set(0, -len - 0.01, 0);
-    leg.add(f);
-    leg.userData.foot = f;
-    return leg;
+    g.add(f);
+    g.userData.foot = f;
+    return g;
   }
 
-  // ─── UPPER LEG — thigh + lower ──────────────────────────────
-  function createUpperLeg() {
-    const leg = new Group();
-    leg.name = "upperLeg";
+  // ─── UPPER LEG ───────────────────────────────────────────
+  function buildUpperLeg() {
+    const g = new Group(); g.name = "upperLeg";
     const len = legLen * 0.53;
-    addMesh(leg, new CylinderGeometry(0.068, 0.074, len, 8), pants, new Vector3(0, -len / 2, 0));
-    const ll = createLowerLeg();
+    addObj(g, new CylinderGeometry(0.066, 0.073, len, SEG), pantsM, new Vector3(0, -len / 2, 0));
+    const ll = buildLowerLeg();
     ll.position.set(0, -len, 0);
-    leg.add(ll);
-    leg.userData.lowerLeg = ll;
-    return leg;
+    g.add(ll);
+    g.userData.lowerLeg = ll;
+    return g;
   }
 
-  // ─── FOREARM — lower arm + hand ──────────────────────────────
-  function createForearm() {
-    const arm = new Group();
-    arm.name = "forearm";
+  // ─── FOREARM ─────────────────────────────────────────────
+  function buildForearm() {
+    const g = new Group(); g.name = "forearm";
     const len = armLen * 0.48;
-    addMesh(arm, new CylinderGeometry(0.034, 0.044, len, 8), skin, new Vector3(0, -len / 2, 0));
-    const h = createHand();
+    addObj(g, new CylinderGeometry(0.032, 0.042, len, SEG), skinM, new Vector3(0, -len / 2, 0));
+    const h = buildHand();
     h.position.set(0, -len, 0);
-    arm.add(h);
-    arm.userData.hand = h;
-    return arm;
+    g.add(h);
+    g.userData.hand = h;
+    return g;
   }
 
-  // ─── UPPER ARM — bicep + forearm ─────────────────────────────
-  function createUpperArm() {
-    const arm = new Group();
-    arm.name = "upperArm";
+  // ─── UPPER ARM ───────────────────────────────────────────
+  function buildUpperArm() {
+    const g = new Group(); g.name = "upperArm";
     const len = armLen * 0.52;
-    addMesh(arm, new CylinderGeometry(0.042, 0.05, len, 8), skin, new Vector3(0, -len / 2, 0));
-    const fa = createForearm();
+    addObj(g, new CylinderGeometry(0.04, 0.048, len, SEG), skinM, new Vector3(0, -len / 2, 0));
+    const fa = buildForearm();
     fa.position.set(0, -len, 0);
-    arm.add(fa);
-    arm.userData.forearm = fa;
-    return arm;
+    g.add(fa);
+    g.userData.forearm = fa;
+    return g;
   }
 
-  // ─── TORSO — chest, waist, neck, limbs ───────────────────────
+  // ─── TORSO — chest, waist, neck, limbs ────────────────────
   const torsoGroup = new Group();
   torsoGroup.name = "torso";
 
-  const chestTop = torsoH * 0.62;
-  const waistY = torsoH * 0.24;
+  const chestBase = torsoH * 0.62;
+  const waistBase = torsoH * 0.18;
 
-  // Lower waist
-  const waistGeo = new CylinderGeometry(shoulderW * 0.32, hipW * 0.38, torsoH * 0.38, 10);
-  addMesh(torsoGroup, waistGeo, shirt, new Vector3(0, waistY, 0));
+  // Lower waist → hips taper
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.30 * waistR, hipW * 0.36, torsoH * 0.42, SEG), shirtM, new Vector3(0, waistBase, 0));
 
-  // Upper chest — wider
-  const chestGeo = new CylinderGeometry(shoulderW * 0.36, shoulderW * 0.34, torsoH * 0.4, 10);
-  addMesh(torsoGroup, chestGeo, shirt, new Vector3(0, waistY + torsoH * 0.2, 0));
+  // Mid torso — main body
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.36, shoulderW * 0.32, torsoH * 0.28, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.22, 0));
 
-  // ─── NECK ──────────────────────────────────────────────────
+  // Upper chest — widest
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.40, shoulderW * 0.37, torsoH * 0.12, SEG), shirtM, new Vector3(0, chestBase - 0.02, 0));
+
+  // Collarbone/shouler top cap
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.42, shoulderW * 0.41, 0.06, SEG), shirtM, new Vector3(0, chestBase + 0.04, 0));
+
+  // ─── NECK ─────────────────────────────────────────────────
   const neckGroup = new Group();
   neckGroup.name = "neck";
-  neckGroup.position.set(0, chestTop + 0.05, 0);
-  addMesh(neckGroup, new CylinderGeometry(0.034, 0.04, 0.1, 8), skin, new Vector3(0, 0.02, 0));
+  neckGroup.position.set(0, chestBase + 0.08, 0);
+  addObj(neckGroup, new CylinderGeometry(0.032, 0.036, 0.1, SEG), skinM, new Vector3(0, 0.02, 0));
 
-  const headGroup = createHead();
+  // Collarbone highlight
+  addObj(neckGroup, new CylinderGeometry(0.06, 0.044, 0.03, SEG), skinS, new Vector3(0, -0.03, 0));
+
+  const headGroup = buildHead();
   headGroup.position.y = 0.06;
   neckGroup.add(headGroup);
   torsoGroup.add(neckGroup);
 
-  // ─── SHOULDERS ─────────────────────────────────────────────
-  const shoulderY = chestTop;
-  const shoulderZ = -0.03;
+  // ─── SHOULDERS ────────────────────────────────────────────
+  const shoulderY = chestBase + 0.01;
+  const shoulderZ = -0.04;
+
+  // Shoulder caps — smooth ball joints
+  const lSCap = addObj(torsoGroup, new SphereGeometry(0.05, SEG, 8), shirtM, new Vector3(-shoulderW * 0.46, shoulderY + 0.01, shoulderZ + 0.02));
+  const rSCap = addObj(torsoGroup, new SphereGeometry(0.05, SEG, 8), shirtM, new Vector3(shoulderW * 0.46, shoulderY + 0.01, shoulderZ + 0.02));
 
   const leftShoulder = new Group();
   leftShoulder.name = "leftShoulder";
-  leftShoulder.position.set(-shoulderW * 0.48, shoulderY, shoulderZ);
-  const leftArm = createUpperArm();
+  leftShoulder.position.set(-shoulderW * 0.50, shoulderY - 0.02, shoulderZ);
+  const leftArm = buildUpperArm();
   leftShoulder.add(leftArm);
   leftShoulder.userData.arm = leftArm;
   torsoGroup.add(leftShoulder);
 
   const rightShoulder = new Group();
   rightShoulder.name = "rightShoulder";
-  rightShoulder.position.set(shoulderW * 0.48, shoulderY, shoulderZ);
-  const rightArm = createUpperArm();
+  rightShoulder.position.set(shoulderW * 0.50, shoulderY - 0.02, shoulderZ);
+  const rightArm = buildUpperArm();
   rightShoulder.add(rightArm);
   rightShoulder.userData.arm = rightArm;
   torsoGroup.add(rightShoulder);
 
-  // ─── HIPS ──────────────────────────────────────────────────
-  const PELVIS_Y = waistY - 0.04;
-  const hipZ = -0.02;
+  // ─── HIPS ─────────────────────────────────────────────────
+  const pelvisY = waistBase - 0.03;
+  const hipZ = -0.03;
 
   const leftHip = new Group();
   leftHip.name = "leftHip";
-  leftHip.position.set(-hipW * 0.44, PELVIS_Y, hipZ);
-  const leftLeg = createUpperLeg();
+  leftHip.position.set(-hipW * 0.44, pelvisY, hipZ);
+  const leftLeg = buildUpperLeg();
   leftHip.add(leftLeg);
   leftHip.userData.leg = leftLeg;
   torsoGroup.add(leftHip);
 
   const rightHip = new Group();
   rightHip.name = "rightHip";
-  rightHip.position.set(hipW * 0.44, PELVIS_Y, hipZ);
-  const rightLeg = createUpperLeg();
+  rightHip.position.set(hipW * 0.44, pelvisY, hipZ);
+  const rightLeg = buildUpperLeg();
   rightHip.add(rightLeg);
   rightHip.userData.leg = rightLeg;
   torsoGroup.add(rightHip);
 
-  // ─── SHADOW DISC ───────────────────────────────────────────
-  const shadowGeo = new CircleGeometry(0.18, 16);
-  const shadowDiscMat = new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false });
-  const shadowDisc = new Mesh(shadowGeo, shadowDiscMat);
-  shadowDisc.rotation.x = -Math.PI / 2;
-  shadowDisc.position.y = -0.92;
-  shadowDisc.name = "shadow";
-  torsoGroup.add(shadowDisc);
+  // ─── SHADOW ───────────────────────────────────────────────
+  const sd = new Mesh(new CircleGeometry(0.19, 16), new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false }));
+  sd.rotation.x = -Math.PI / 2; sd.position.y = -0.94; sd.name = "shadow";
+  torsoGroup.add(sd);
 
   avatar.add(torsoGroup);
   avatar.position.set(SPAWN[0], SPAWN[1], SPAWN[2]);
@@ -402,102 +336,82 @@ export function createAvatar(scene, opts = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// REMOTE AVATAR — stylized LOD matching the modern social-world model
+// REMOTE AVATAR — optimized LOD matching the full model
 // ═══════════════════════════════════════════════════════════════
 export function createRemoteAvatar(scene, userId, username, avatarType, skinTone) {
   const skinHex = SKIN_COLORS[skinTone] || SKIN_COLORS.medium;
   const body = BODY_PRESETS[avatarType] || BODY_PRESETS.neutral;
   const [shoulderW, hipW, torsoH] = body;
+  const RS = 8;
 
   const group = new Group();
   group.name = `remote_${userId}`;
   group.userData = { userId, lastPos: { x: 0, z: 0 }, velocity: 0, walkTime: 0 };
 
-  const skinMat = () => new MeshStandardMaterial({ color: new Color(skinHex), roughness: 0.48 });
-  const bodyMat = () => new MeshStandardMaterial({ color: new Color("#2E86C1"), roughness: 0.28, metalness: 0.15 });
-  const pantsMat = () => new MeshStandardMaterial({ color: new Color("#2C3E50"), roughness: 0.3, metalness: 0.05 });
-  const eyeMat = () => new MeshStandardMaterial({ color: new Color("#0A0A0A"), roughness: 0.06 });
-  const mouthMat = () => new MeshStandardMaterial({ color: new Color("#C0806A"), roughness: 0.38 });
-  const hairMat = () => new MeshStandardMaterial({ color: new Color("#2C1B0E"), roughness: 0.5 });
+  const sMat = () => new MeshStandardMaterial({ color: new Color(skinHex), roughness: 0.44 });
+  const bMat = () => new MeshStandardMaterial({ color: new Color("#2E86C1"), roughness: 0.26, metalness: 0.15 });
+  const pMat = () => new MeshStandardMaterial({ color: new Color("#2C3E50"), roughness: 0.28, metalness: 0.05 });
+  const eMat = () => new MeshStandardMaterial({ color: new Color("#080808"), roughness: 0.05 });
+  const moMat = () => new MeshStandardMaterial({ color: new Color("#C0806A"), roughness: 0.35 });
+  const hMat = () => new MeshStandardMaterial({ color: new Color(HAIR_BASE), roughness: 0.46 });
 
-  // Torso
-  const torso = new Mesh(new CylinderGeometry(shoulderW * 0.34, hipW * 0.38, torsoH, 8), bodyMat());
-  torso.position.y = torsoH * 0.45 + 0.08;
-  torso.castShadow = true;
+  const bodyY = torsoH * 0.45 + 0.10;
+  const torso = new Mesh(new CylinderGeometry(shoulderW * 0.35, hipW * 0.38, torsoH, RS), bMat());
+  torso.position.y = bodyY; torso.castShadow = true;
   group.add(torso);
 
-  // Head group
   const headGroup = new Group();
-  headGroup.position.y = torsoH * 0.7 + 0.22;
+  headGroup.position.y = torsoH * 0.7 + 0.28;
 
-  const headMesh = new Mesh(new SphereGeometry(0.092, 12, 10), skinMat());
-  headMesh.scale.set(0.88, 1.04, 0.82);
-  headMesh.position.y = 0.1;
-  headMesh.castShadow = true;
-  headGroup.add(headMesh);
+  const hm = new Mesh(new SphereGeometry(0.09, 14, 12), sMat());
+  hm.scale.set(0.86, 1.04, 0.80); hm.position.y = 0.1; hm.castShadow = true;
+  headGroup.add(hm);
 
-  const jaw = new Mesh(new SphereGeometry(0.058, 8, 6), skinMat());
-  jaw.scale.set(0.78, 0.48, 0.62);
-  jaw.position.set(0, 0.04, 0.05);
-  headGroup.add(jaw);
+  const jw = new Mesh(new SphereGeometry(0.056, 10, 8), sMat());
+  jw.scale.set(0.78, 0.48, 0.62); jw.position.set(0, 0.04, 0.05);
+  headGroup.add(jw);
 
-  for (let side = -1; side <= 1; side += 2) {
-    const eye = new Mesh(new SphereGeometry(0.012, 5, 4), eyeMat());
-    eye.position.set(side * 0.03, 0.115, 0.07);
+  for (const s of [-1, 1]) {
+    const eye = new Mesh(new SphereGeometry(0.012, 5, 4), eMat());
+    eye.position.set(s * 0.03, 0.115, 0.07);
     headGroup.add(eye);
   }
 
-  const mouth = new Mesh(new BoxGeometry(0.032, 0.007, 0.003), mouthMat());
-  mouth.position.set(0, 0.062, 0.078);
-  headGroup.add(mouth);
+  headGroup.add(new Mesh(new BoxGeometry(0.03, 0.008, 0.003), moMat()));
+  headGroup.children[headGroup.children.length - 1].position.set(0, 0.06, 0.078);
 
-  const hairMesh = new Mesh(new SphereGeometry(0.095, 10, 8), hairMat());
-  hairMesh.scale.set(1.02, 0.52, 0.94);
-  hairMesh.position.set(0, 0.145, -0.01);
-  hairMesh.castShadow = true;
-  headGroup.add(hairMesh);
+  const rHair = new Mesh(new SphereGeometry(0.094, 12, 10), hMat());
+  rHair.scale.set(1.04, 0.54, 0.94); rHair.position.set(0, 0.148, -0.01); rHair.castShadow = true;
+  headGroup.add(rHair);
 
   group.add(headGroup);
 
   // Neck ring
-  const ring = new Mesh(new TorusGeometry(0.08, 0.012, 8, 12), new MeshBasicMaterial({
-    color: new Color("#42A5F5"), depthWrite: false, transparent: true, opacity: 0.5,
-  }));
-  ring.position.y = torsoH * 0.7 + 0.04;
-  ring.rotation.x = Math.PI / 2;
+  const ring = new Mesh(new TorusGeometry(0.078, 0.012, 8, 12), new MeshBasicMaterial({ color: new Color("#42A5F5"), transparent: true, opacity: 0.45, depthWrite: false }));
+  ring.position.y = torsoH * 0.7 + 0.06; ring.rotation.x = Math.PI / 2;
   group.add(ring);
 
-  // Legs with shoes
-  const legLen = 0.38;
-  const legGeo = new CylinderGeometry(0.042, 0.05, legLen, 6);
-  for (const side of [-1, 1]) {
-    const leg = new Mesh(legGeo, pantsMat());
-    leg.position.set(side * 0.07, legLen / 2, 0);
-    leg.castShadow = true;
-    leg.name = side > 0 ? "rightLeg" : "leftLeg";
+  const lLen = 0.38;
+  for (const s of [-1, 1]) {
+    const leg = new Mesh(new CylinderGeometry(0.042, 0.05, lLen, 6), pMat());
+    leg.position.set(s * 0.07, lLen / 2, 0); leg.castShadow = true;
+    leg.name = s > 0 ? "rightLeg" : "leftLeg";
     group.add(leg);
 
-    const shoe = new Mesh(new BoxGeometry(0.08, 0.04, 0.12), new MeshStandardMaterial({ color: "#1A1A1A", roughness: 0.3 }));
-    shoe.position.set(side * 0.07, -0.01, 0.03);
-    shoe.castShadow = true;
+    const shoe = new Mesh(new BoxGeometry(0.08, 0.04, 0.12), new MeshStandardMaterial({ color: "#1A1A1A", roughness: 0.28 }));
+    shoe.position.set(s * 0.07, -0.01, 0.03); shoe.castShadow = true;
     group.add(shoe);
   }
 
-  // Username sprite
-  const nameCanvas = document.createElement("canvas");
-  nameCanvas.width = 256; nameCanvas.height = 64;
-  const ctx = nameCanvas.getContext("2d");
-  ctx.font = "bold 20px 'Inter', sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.fillText((username || "User").substring(0, 16), 128, 32);
-  const nameTex = new CanvasTexture(nameCanvas);
-  nameTex.minFilter = LinearFilter; nameTex.colorSpace = THREE.SRGBColorSpace;
-  const nameSprite = new Sprite(new SpriteMaterial({ map: nameTex, transparent: true, depthWrite: false, depthTest: false }));
-  nameSprite.scale.set(1.2, 0.3, 1);
-  nameSprite.position.y = torsoH * 0.7 + 0.48;
-  nameSprite.renderOrder = 999;
-  group.add(nameSprite);
+  // Username
+  const nc = document.createElement("canvas"); nc.width = 256; nc.height = 64;
+  const ctx = nc.getContext("2d");
+  ctx.font = "bold 20px 'Inter', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fillText((username || "User").substring(0, 16), 128, 32);
+  const nt = new CanvasTexture(nc); nt.minFilter = LinearFilter; nt.colorSpace = THREE.SRGBColorSpace;
+  const ns = new Sprite(new SpriteMaterial({ map: nt, transparent: true, depthWrite: false, depthTest: false }));
+  ns.scale.set(1.2, 0.3, 1); ns.position.y = torsoH * 0.7 + 0.50; ns.renderOrder = 999;
+  group.add(ns);
 
   scene.add(group);
   return group;
