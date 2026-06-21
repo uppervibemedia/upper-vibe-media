@@ -519,7 +519,7 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
 
   const group = new Group();
   group.name = `remote_${userId}`;
-  group.userData = { userId, lastPos: { x: 0, z: 0 }, velocity: 0, walkTime: 0 };
+  group.userData = { userId, lastPos: { x: 0, z: 0 }, velocity: 0, walkTime: 0, speed: 0 };
 
   const sMat = () => new MeshStandardMaterial({ color: new Color(skinHex), roughness: 0.42 });
   const bMat = () => new MeshStandardMaterial({ color: new Color(shirtColor), roughness: 0.26, metalness: 0.15 });
@@ -611,57 +611,119 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   neckMesh.position.y = torsoH * 0.7 + 0.05;
   group.add(neckMesh); neckMesh.castShadow = true;
 
-  // ─── ARMS + HANDS ─────────────────────────────────────────
+  // ─── ARMS + HANDS — joint hierarchy ─────────────────────
   const armLen = body ? body[3] : 0.52;
   const armSeg = armLen * 0.52;
   const faSeg = armLen * 0.48;
   for (const s of [-1, 1]) {
     const sx = s * shoulderW * 0.50;
-    // Upper arm — bicep
+    const signName = s > 0 ? "right" : "left";
+
+    // Shoulder pivot
+    const shoulderPivot = new Group();
+    shoulderPivot.name = `${signName}Shoulder`;
+    shoulderPivot.position.set(sx, torsoH * 0.62, -0.05);
+    group.add(shoulderPivot);
+
+    // Upper arm — bicep, rotates from shoulder
     const upperArm = new Mesh(new CylinderGeometry(0.044, 0.052, armSeg, 10), sMat());
-    upperArm.position.set(sx, torsoH * 0.62 - armSeg / 2, -0.05);
-    upperArm.name = s > 0 ? "rightUpperArm" : "leftUpperArm";
-    group.add(upperArm); upperArm.castShadow = true;
+    upperArm.position.set(0, -armSeg / 2, 0);
+    upperArm.castShadow = true;
+    upperArm.name = `${signName}UpperArm`;
+    shoulderPivot.add(upperArm);
 
-    // Forearm
+    // Elbow pivot
+    const elbowPivot = new Group();
+    elbowPivot.name = `${signName}Elbow`;
+    elbowPivot.position.set(0, -armSeg, 0);
+    shoulderPivot.add(elbowPivot);
+
+    // Forearm — rotates from elbow
     const forearm = new Mesh(new CylinderGeometry(0.036, 0.046, faSeg, 10), sMat());
-    forearm.position.set(sx, torsoH * 0.62 - armSeg - faSeg / 2, -0.05);
-    group.add(forearm); forearm.castShadow = true;
+    forearm.position.set(0, -faSeg / 2, 0);
+    forearm.castShadow = true;
+    forearm.name = `${signName}Forearm`;
+    elbowPivot.add(forearm);
 
-    // Hand (palm + fingers simplified)
+    // Wrist pivot
+    const wristPivot = new Group();
+    wristPivot.name = `${signName}Wrist`;
+    wristPivot.position.set(0, -faSeg, 0);
+    elbowPivot.add(wristPivot);
+
+    // Hand
     const hand = new Mesh(new BoxGeometry(0.06, 0.036, 0.07), sMat());
-    hand.position.set(sx, torsoH * 0.62 - armSeg - faSeg - 0.028, -0.05);
-    group.add(hand); hand.castShadow = true;
+    hand.position.set(0, -0.025, 0);
+    hand.castShadow = true;
+    hand.name = `${signName}Hand`;
+    wristPivot.add(hand);
+
+    // Store refs for animation
+    shoulderPivot.userData = { elbowPivot, wristPivot, hand };
   }
 
-  // ─── LEGS — sculpted thighs + calves ────────────────────
+  // ─── LEGS — sculpted thighs + calves with joint hierarchy ──
   const totalLegLen = legLen || 1.00;
   const thighLen = totalLegLen * 0.52;
   const calfLen = totalLegLen * 0.48;
 
   for (const s of [-1, 1]) {
     const legX = s * hipW * 0.42;
-    const thigh = new Mesh(new CylinderGeometry(0.06, 0.068, thighLen, 10), pMat());
-    thigh.position.set(legX, thighLen / 2, -0.04); thigh.castShadow = true;
-    thigh.name = s > 0 ? "rightLeg" : "leftLeg";
-    group.add(thigh);
+    const signName = s > 0 ? "right" : "left";
 
+    // Hip pivot group
+    const hipPivot = new Group();
+    hipPivot.name = `${signName}Hip`;
+    hipPivot.position.set(legX, thighLen, -0.04);
+    group.add(hipPivot);
+
+    // Thigh — rotates from hip
+    const thigh = new Mesh(new CylinderGeometry(0.06, 0.068, thighLen, 10), pMat());
+    thigh.position.set(0, -thighLen / 2, 0);
+    thigh.castShadow = true;
+    thigh.name = `${signName}Thigh`;
+    hipPivot.add(thigh);
+
+    // Knee pivot
+    const kneePivot = new Group();
+    kneePivot.name = `${signName}Knee`;
+    kneePivot.position.set(0, -thighLen, 0);
+    hipPivot.add(kneePivot);
+
+    // Calf — rotates from knee
     const calf = new Mesh(new CylinderGeometry(0.044, 0.055, calfLen, 10), pMat());
-    calf.position.set(legX, -calfLen / 2, -0.04); calf.castShadow = true;
-    group.add(calf);
+    calf.position.set(0, -calfLen / 2, 0);
+    calf.castShadow = true;
+    calf.name = `${signName}Calf`;
+    kneePivot.add(calf);
+
+    // Ankle pivot
+    const anklePivot = new Group();
+    anklePivot.name = `${signName}Ankle`;
+    anklePivot.position.set(0, -calfLen, 0.02);
+    kneePivot.add(anklePivot);
+
+    // Foot group
+    const footGroup = new Group();
+    footGroup.name = `${signName}Foot`;
 
     // Detailed shoe
     const shoe = new Mesh(new BoxGeometry(0.12, 0.06, 0.18), shoeMat());
-    shoe.position.set(legX, -calfLen - 0.05, 0.01); shoe.castShadow = true;
-    group.add(shoe);
+    shoe.position.set(0, 0.01, 0.04); shoe.castShadow = true;
+    footGroup.add(shoe);
     // Sole
     const sole = new Mesh(new BoxGeometry(0.13, 0.025, 0.19), soleMat());
-    sole.position.set(legX, -calfLen - 0.07, 0.01);
-    group.add(sole); sole.castShadow = true;
+    sole.position.set(0, -0.015, 0.04);
+    footGroup.add(sole); sole.castShadow = true;
     // Toe cap
     const toe = new Mesh(new SphereGeometry(0.04, 8, 6), shoeMat());
-    toe.scale.set(0.82, 0.52, 0.48); toe.position.set(legX, -calfLen - 0.04, 0.10);
-    group.add(toe); toe.castShadow = true;
+    toe.scale.set(0.82, 0.52, 0.48); toe.position.set(0, 0.015, 0.13);
+    footGroup.add(toe); toe.castShadow = true;
+
+    anklePivot.add(footGroup);
+
+    // Store references for animation
+    hipPivot.userData = { kneePivot, anklePivot, footGroup };
   }
 
   // ─── USERNAME ─────────────────────────────────────────────

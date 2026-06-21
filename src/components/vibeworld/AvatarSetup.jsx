@@ -168,27 +168,75 @@ function AvatarPreview({ avatarType, skinTone }) {
           </div>
         </div>
 
-        {/* ─── LEGS — segmented thighs + calves ──────── */}
+        {/* ─── LEGS — full human proportions ─────────── */}
         <div style={{ display: "flex", gap: 8, marginTop: 2, zIndex: 2 }}>
-          {/* Left leg */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            {/* Thigh */}
-            <div style={{ width: 20, height: 44, background: pantsColor, borderRadius: "6px 6px 4px 4px" }} />
-            {/* Calf */}
-            <div style={{ width: 17, height: 40, background: pantsColor, borderRadius: "4px 4px 5px 5px", marginTop: -1 }} />
-            {/* Shoe */}
-            <div style={{ width: 26, height: 10, background: shoeColor, borderRadius: "0 0 9px 4px", marginTop: -1, position: "relative" }}>
-              <div style={{ width: 26, height: 3, background: "#333", borderRadius: "0 0 6px 3px", position: "absolute", bottom: 0 }} />
+          {[0, 1].map((leg) => (
+            <div key={leg} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              {/* Thigh — wider at top, tapers to knee */}
+              <div style={{
+                width: 22, height: 46,
+                background: `linear-gradient(180deg, ${pantsColor} 0%, ${pantsColor}DD 100%)`,
+                borderRadius: "8px 8px 3px 3px",
+                borderLeft: `1px solid ${pantsColor}88`,
+                borderRight: `1px solid ${pantsColor}88`,
+              }} />
+              {/* Knee joint — visible articulation */}
+              <div style={{
+                width: 19, height: 6,
+                background: pantsColor,
+                borderRadius: "3px",
+                marginTop: -2,
+                boxShadow: `0 1px 2px rgba(0,0,0,0.3)`,
+              }} />
+              {/* Calf — muscle shape */}
+              <div style={{
+                width: 20, height: 42,
+                background: `linear-gradient(180deg, ${pantsColor}CC 0%, ${pantsColor} 40%, ${pantsColor} 100%)`,
+                borderRadius: "3px 3px 5px 5px",
+                marginTop: -1,
+                borderLeft: `1px solid ${pantsColor}88`,
+                borderRight: `1px solid ${pantsColor}88`,
+              }} />
+              {/* Ankle — narrow */}
+              <div style={{
+                width: 14, height: 8,
+                background: pantsColor,
+                borderRadius: "0 0 3px 3px",
+                marginTop: -1,
+              }} />
+              {/* Shoe — sneaker detail */}
+              <div style={{
+                width: 26, height: 14,
+                background: shoeColor,
+                borderRadius: "0 0 10px 5px",
+                marginTop: -1,
+                position: "relative",
+                boxShadow: "0 2px 3px rgba(0,0,0,0.4)",
+              }}>
+                {/* Sole */}
+                <div style={{
+                  width: 26, height: 4,
+                  background: "#333",
+                  borderRadius: "0 0 9px 4px",
+                  position: "absolute", bottom: 0,
+                }} />
+                {/* Lace line */}
+                <div style={{
+                  width: 18, height: 2,
+                  background: "rgba(255,255,255,0.2)",
+                  borderRadius: 1,
+                  position: "absolute", top: 3, left: 4,
+                }} />
+                {/* Toe cap */}
+                <div style={{
+                  width: 10, height: 8,
+                  background: "#252525",
+                  borderRadius: "5px 0 0 2px",
+                  position: "absolute", right: 0, top: 1,
+                }} />
+              </div>
             </div>
-          </div>
-          {/* Right leg */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ width: 20, height: 44, background: pantsColor, borderRadius: "6px 6px 4px 4px" }} />
-            <div style={{ width: 17, height: 40, background: pantsColor, borderRadius: "4px 4px 5px 5px", marginTop: -1 }} />
-            <div style={{ width: 26, height: 10, background: shoeColor, borderRadius: "0 0 9px 4px", marginTop: -1, position: "relative" }}>
-              <div style={{ width: 26, height: 3, background: "#333", borderRadius: "0 0 6px 3px", position: "absolute", bottom: 0 }} />
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* ─── ARMS — proper biceps + forearms + hands ─ */}

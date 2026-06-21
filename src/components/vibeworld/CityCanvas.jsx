@@ -1510,69 +1510,137 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ═════════════════════════════════════════════════════════
-        // ANIMATION SYSTEM
+        // HUMAN WALK CYCLE — natural stride with weight shift
         // ═════════════════════════════════════════════════════════
         const anim = animRef.current;
         anim.isMoving = speed > 0.1;
 
-        // Detect backward movement for walk cycle direction reversal
         const facingDot = vel.x * Math.sin(rot) + vel.z * Math.cos(rot);
         const isBackward = facingDot < -0.15;
         const walkDir = isBackward ? -1 : 1;
+        // Extra backward walk speed to keep cycle fluid
+        const backMult = isBackward ? 0.75 : 1;
 
         if (anim.isMoving) {
-          anim.walkTime += speed * WALK_CYCLE_SPEED * walkDir * dt;
-          anim.speed = Math.min(1, anim.speed + dt * 6);
+          anim.walkTime += speed * WALK_CYCLE_SPEED * walkDir * backMult * dt;
+          // Smooth speed ramp-up
+          anim.speed += (1 - anim.speed) * Math.min(1, dt * 5);
         } else {
-          anim.walkTime += anim.prevWalkTime * 0.3 * dt;
-          anim.speed = Math.max(0, anim.speed - dt * 4);
+          // Natural deceleration — walk cycle winds down
+          anim.walkTime += anim.prevWalkTime * 0.25 * dt;
+          anim.speed += (0 - anim.speed) * Math.min(1, dt * 3.5);
         }
-        anim.prevWalkTime = anim.isMoving ? speed * WALK_CYCLE_SPEED * walkDir : 0;
+        anim.prevWalkTime = anim.isMoving ? speed * WALK_CYCLE_SPEED * walkDir * backMult : 0;
+        anim.speed = Math.max(0, Math.min(1, anim.speed));
 
         const wt = anim.walkTime;
         const s = anim.speed;
 
-        // ─── TORSO ──────────────────────────────────────────────
+        // Phase breakdown (2π = one full stride of both legs):
+        //   0→π/2     Right foot plants forward, weight shifts RIGHT
+        //   π/2→π     Right leg pushes back, body rises
+        //   π→3π/2    Left foot plants forward, weight shifts LEFT
+        //   3π/2→2π   Left leg pushes back, body rises
+        const cosWt = Math.cos(wt);
+        const sinWt = Math.sin(wt);
+        const cos2Wt = Math.cos(wt * 2);  // double-step frequency
+        const sin2Wt = Math.sin(wt * 2);
+
+        // ─── TORSO — weight shift + bob + lean ──────────────────
         if (animParts.torso) {
-          const bob = Math.abs(Math.sin(wt * 2)) * 0.035 * s;
-          const lean = vel.x * 0.015;
-          const leanZ = vel.z * 0.015;
+          // Vertical bob: body dips slightly at each foot plant, rises in between
+          const bob = (1 - Math.abs(cosWt)) * 0.04 * s;
           animParts.torso.position.y = bob;
-          animParts.torso.rotation.x = leanZ;
-          animParts.torso.rotation.z = lean;
+
+          // Side-to-side weight shift: body tilts toward planted leg
+          const weightShiftZ = cosWt * 0.025 * s;
+          animParts.torso.rotation.z = weightShiftZ;
+
+          // Forward lean when walking
+          const leanX = facingDot * 0.025 * s;
+          animParts.torso.rotation.x = leanX;
+
+          // Torso twist: shoulders counter-rotate against hips
+          animParts.torso.userData._twist = (animParts.torso.userData._twist || 0) + 
+            ((sinWt * 0.06 * s) - (animParts.torso.userData._twist || 0)) * Math.min(1, dt * 8);
+          // Apply subtle Y rotation if we had a shoulder Group separate from torso
         }
 
-        // ─── LEGS ───────────────────────────────────────────────
-        // Hip rotation: smooth sine wave, opposing legs
-        const hipAngle = Math.sin(wt) * 0.5 * s;
+        // ─── LEGS — multi-joint natural stride ──────────────────
+        // Hip pendulum: forward swing + weight transfer
+        // Phase: max forward at wt=π/2 (right leg), wt=3π/2 (left leg)
+        const hipSwing = sinWt * 0.52 * s;       // Forward/back swing
+        const hipOut  = cosWt * 0.06 * s;        // Sideways separation
+        const hipBob  = sin2Wt * 0.03 * s;       // Vertical hip lift during stride
 
-        if (animParts.leftHip) animParts.leftHip.rotation.x = hipAngle;
-        if (animParts.rightHip) animParts.rightHip.rotation.x = -hipAngle;
+        const lHipAngle = hipSwing;
+        const rHipAngle = -hipSwing;
 
-        // Knee bend: bend when leg is forward (lifting foot), straight when planted
-        // Left knee bends when left hip is forward (wt: π/2 → 3π/2, sin > 0 means forward)
-        const lkneeAngle = Math.max(0, Math.sin(wt)) * 0.6 * s;
-        const rkneeAngle = Math.max(0, -Math.sin(wt)) * 0.6 * s;
+        if (animParts.leftHip) {
+          animParts.leftHip.rotation.x = lHipAngle;
+          animParts.leftHip.position.z = hipOut;
+        }
+        if (animParts.rightHip) {
+          animParts.rightHip.rotation.x = rHipAngle;
+          animParts.rightHip.position.z = -hipOut;
+        }
+
+        // ─── KNEES — realistic heel-strike / toe-off ──────────
+        // Knee bends most during swing phase (foot off ground), straightens at plant
+        // Each leg bends during its swing: left swing = sinWt < 0 phase (π→2π)
+        // Using a softer curve: knee peaks at mid-swing, not at extremes
+        const lSwing = Math.max(0, -sinWt);  // Left leg swinging forward
+        const rSwing = Math.max(0, sinWt);   // Right leg swinging forward
+        // Knee bend peaks during swing phase with smooth curve
+        const lKnee = lSwing * lSwing * 0.72 * s;
+        const rKnee = rSwing * rSwing * 0.72 * s;
+
+        // During plant (stance), slight knee compression for weight absorption
+        const lStance = Math.max(0, sinWt); // Left leg planted
+        const rStance = Math.max(0, -sinWt); // Right leg planted
+        const lKneeCompress = lStance * lStance * 0.08 * s;
+        const rKneeCompress = rStance * rStance * 0.08 * s;
 
         const llLeg = animParts.leftHip?.userData?.leg?.userData?.lowerLeg;
         const rlLeg = animParts.rightHip?.userData?.leg?.userData?.lowerLeg;
-        if (llLeg) llLeg.rotation.x = lkneeAngle;
-        if (rlLeg) rlLeg.rotation.x = rkneeAngle;
+        if (llLeg) llLeg.rotation.x = lKnee + lKneeCompress;
+        if (rlLeg) rlLeg.rotation.x = rKnee + rKneeCompress;
 
-        // ─── ARMS ───────────────────────────────────────────────
-        // Shoulder swing: opposite to same-side leg (right arm with left leg)
-        const shoulderAngle = Math.sin(wt) * 0.45 * s;
+        // ─── FEET — ankle rotation during stride ──────────────
+        // Foot lifts toes during swing, flattens during plant
+        const lFoot = llLeg?.userData?.foot;
+        const rFoot = rlLeg?.userData?.foot;
+        if (lFoot) lFoot.rotation.x = -lSwing * 0.25 * s + lStance * 0.03 * s;
+        if (rFoot) rFoot.rotation.x = -rSwing * 0.25 * s + rStance * 0.03 * s;
 
-        if (animParts.leftShoulder) animParts.leftShoulder.rotation.x = -shoulderAngle;
-        if (animParts.rightShoulder) animParts.rightShoulder.rotation.x = shoulderAngle;
+        // ─── ARMS — full natural swing with forearm ────────────
+        // Arms swing opposite to same-side leg (right arm forward when left leg forward)
+        // Shoulder swing with slight bend at elbow during backward swing
+        const armSwing = sinWt * 0.5 * s;
+        const armOut = cosWt * 0.03 * s;  // Slight arm separation from body
 
-        // Forearm bend: slight bend when arm swings back
+        if (animParts.leftShoulder) {
+          animParts.leftShoulder.rotation.x = -armSwing;
+          animParts.leftShoulder.rotation.z = -armOut;
+        }
+        if (animParts.rightShoulder) {
+          animParts.rightShoulder.rotation.x = armSwing;
+          animParts.rightShoulder.rotation.z = armOut;
+        }
+
+        // Forearm bend: elbows flex when arm swings backward
         const larmForearm = animParts.leftShoulder?.userData?.arm?.userData?.forearm;
         const rarmForearm = animParts.rightShoulder?.userData?.arm?.userData?.forearm;
-        const forearmBend = Math.max(0, Math.sin(wt)) * 0.35 * s;
-        const forearmBendR = Math.max(0, -Math.sin(wt)) * 0.35 * s;
-        if (larmForearm) larmForearm.rotation.x = forearmBendR;
-        if (rarmForearm) rarmForearm.rotation.x = forearmBend;
+        const lArmBack = Math.max(0, sinWt) * 0.4 * s;   // Left arm back = right leg forward
+        const rArmBack = Math.max(0, -sinWt) * 0.4 * s;   // Right arm back = left leg forward
+        if (larmForearm) larmForearm.rotation.x = lArmBack;
+        if (rarmForearm) rarmForearm.rotation.x = rArmBack;
+
+        // Hand rotation — slightly opens during forward swing, closes during back
+        const lHand = larmForearm?.userData?.hand;
+        const rHand = rarmForearm?.userData?.hand;
+        if (lHand) lHand.rotation.x = -lArmBack * 0.3;
+        if (rHand) rHand.rotation.x = -rArmBack * 0.3;
 
         // ─── DANCE ANIMATION ───────────────────────────────────
         if (isDancingRef.current) {
@@ -1688,24 +1756,47 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // Torso breathing when idle
-        else if (!anim.isMoving) {
+        // ─── IDLE BREATHING + posture reset ─────────────────────
+        if (!anim.isMoving && s < 0.05) {
+          // Torso breathing — subtle expansion
           const breathe = Math.sin(t * 1.8) * 0.012;
-          if (animParts.torso) animParts.torso.scale.y = 1 + breathe;
+          if (animParts.torso) {
+            animParts.torso.position.y += (0 - animParts.torso.position.y) * dt * 3;
+            animParts.torso.rotation.z += (0 - animParts.torso.rotation.z) * dt * 4;
+            animParts.torso.rotation.x += (0 - animParts.torso.rotation.x) * dt * 4;
+            animParts.torso.scale.y = 1 + breathe;
+          }
           // Gentle arm sway at rest
           const idleSway = Math.sin(t * 0.8) * 0.04;
           if (animParts.leftShoulder) {
-            animParts.leftShoulder.rotation.x += (-0.12 - animParts.leftShoulder.rotation.x) * dt * 3;
-            animParts.leftShoulder.rotation.z += (idleSway - animParts.leftShoulder.rotation.z) * dt * 3;
+            animParts.leftShoulder.rotation.x += (-0.12 - animParts.leftShoulder.rotation.x) * dt * 4;
+            animParts.leftShoulder.rotation.z += (idleSway - animParts.leftShoulder.rotation.z) * dt * 4;
           }
           if (animParts.rightShoulder) {
-            animParts.rightShoulder.rotation.x += (-0.12 - animParts.rightShoulder.rotation.x) * dt * 3;
-            animParts.rightShoulder.rotation.z += (-idleSway - animParts.rightShoulder.rotation.z) * dt * 3;
+            animParts.rightShoulder.rotation.x += (-0.12 - animParts.rightShoulder.rotation.x) * dt * 4;
+            animParts.rightShoulder.rotation.z += (-idleSway - animParts.rightShoulder.rotation.z) * dt * 4;
           }
-        } else {
-          // Reset shoulder Z during walk
-          if (animParts.leftShoulder) animParts.leftShoulder.rotation.z += (0 - animParts.leftShoulder.rotation.z) * dt * 5;
-          if (animParts.rightShoulder) animParts.rightShoulder.rotation.z += (0 - animParts.rightShoulder.rotation.z) * dt * 5;
+          // Reset legs to neutral
+          if (animParts.leftHip) {
+            animParts.leftHip.rotation.x += (0 - animParts.leftHip.rotation.x) * dt * 4;
+            animParts.leftHip.position.z += (0 - animParts.leftHip.position.z) * dt * 4;
+          }
+          if (animParts.rightHip) {
+            animParts.rightHip.rotation.x += (0 - animParts.rightHip.rotation.x) * dt * 4;
+            animParts.rightHip.position.z += (0 - animParts.rightHip.position.z) * dt * 4;
+          }
+          // Reset knees
+          if (llLeg) llLeg.rotation.x += (0 - llLeg.rotation.x) * dt * 4;
+          if (rlLeg) rlLeg.rotation.x += (0 - rlLeg.rotation.x) * dt * 4;
+          // Reset feet
+          if (lFoot) lFoot.rotation.x += (0 - lFoot.rotation.x) * dt * 4;
+          if (rFoot) rFoot.rotation.x += (0 - rFoot.rotation.x) * dt * 4;
+          // Reset forearms
+          if (larmForearm) larmForearm.rotation.x += (0 - larmForearm.rotation.x) * dt * 4;
+          if (rarmForearm) rarmForearm.rotation.x += (0 - rarmForearm.rotation.x) * dt * 4;
+          // Reset hands
+          if (lHand) lHand.rotation.x += (0 - lHand.rotation.x) * dt * 4;
+          if (rHand) rHand.rotation.x += (0 - rHand.rotation.x) * dt * 4;
         }
 
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
@@ -1940,17 +2031,64 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const vel = Math.sqrt(dx * dx + dz * dz);
           entry.prevPos = { x: g.position.x, z: g.position.z };
 
-          // Walk animation on legs
+          // ─── Remote walk animation with joint hierarchy ────
           const walkTime = g.userData.walkTime || 0;
-          const newWalkTime = walkTime + vel * 7 * dt;
-          g.userData.walkTime = newWalkTime;
+          const gSpeed = g.userData.speed || 0;
+          const targetSpeed = Math.min(1, vel * 30);
+
+          // Smooth speed ramp
+          const newSpeed = gSpeed + (targetSpeed - gSpeed) * Math.min(1, dt * 6);
+          g.userData.speed = newSpeed;
           g.userData.velocity = vel;
 
-          const legAngle = Math.sin(newWalkTime) * 0.35 * Math.min(1, vel * 30);
-          g.children.forEach((child) => {
-            if (child.name === "leftLeg") child.rotation.x = legAngle;
-            if (child.name === "rightLeg") child.rotation.x = -legAngle;
-          });
+          const newWalkTime = walkTime + vel * 7 * dt;
+          // Decay walkTime when stationary
+          g.userData.walkTime = vel > 0.01 ? newWalkTime : walkTime + walkTime * 0.2 * dt;
+
+          const rwt = newWalkTime;
+          const rSpd = newSpeed;
+          const rSin = Math.sin(rwt);
+          const rCos = Math.cos(rwt);
+
+          // Find hip pivots
+          const leftHip = g.getObjectByName("leftHip");
+          const rightHip = g.getObjectByName("rightHip");
+          const leftShoulder = g.getObjectByName("leftShoulder");
+          const rightShoulder = g.getObjectByName("rightShoulder");
+
+          // Hip swing — forward/back
+          const hipAngle = rSin * 0.35 * rSpd;
+          if (leftHip) leftHip.rotation.x = hipAngle;
+          if (rightHip) rightHip.rotation.x = -hipAngle;
+
+          // Knee bend during swing phase
+          const lSwing = Math.max(0, -rSin) * 0.4 * rSpd;
+          const rSwing = Math.max(0, rSin) * 0.4 * rSpd;
+          const lKneePivot = leftHip?.userData?.kneePivot;
+          const rKneePivot = rightHip?.userData?.kneePivot;
+          if (lKneePivot) lKneePivot.rotation.x = lSwing;
+          if (rKneePivot) rKneePivot.rotation.x = rSwing;
+
+          // Ankle/foot rotation
+          const lAnkle = lKneePivot?.userData?.anklePivot || leftHip?.userData?.anklePivot;
+          const rAnkle = rKneePivot?.userData?.anklePivot || rightHip?.userData?.anklePivot;
+          const lFootG = lAnkle?.userData?.footGroup || (lAnkle?.children?.find(c => c.name === "leftFoot" || c.name === "rightFoot"));
+          const rFootG = rAnkle?.userData?.footGroup || (rAnkle?.children?.find(c => c.name === "leftFoot" || c.name === "rightFoot"));
+          if (lFootG) lFootG.rotation.x = rSwing * 0.15;
+          if (rFootG) rFootG.rotation.x = lSwing * 0.15;
+
+          // Arm swing — opposite to legs
+          const armAngle = rSin * 0.35 * rSpd;
+          if (leftShoulder) leftShoulder.rotation.x = -armAngle;
+          if (rightShoulder) rightShoulder.rotation.x = armAngle;
+
+          // Elbow bend when arm swings backward
+          const lElbowPivot = leftShoulder?.userData?.elbowPivot;
+          const rElbowPivot = rightShoulder?.userData?.elbowPivot;
+          const lArmBack = Math.max(0, rSin) * 0.25 * rSpd;
+          const rArmBack = Math.max(0, -rSin) * 0.25 * rSpd;
+          if (lElbowPivot) lElbowPivot.rotation.x = lArmBack;
+          if (rElbowPivot) rElbowPivot.rotation.x = rArmBack;
         }
 
         // Despawn avatars that are no longer present
