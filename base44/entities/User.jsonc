@@ -108,6 +108,15 @@
       ],
       "description": "Avatar body type for Upper Vibe City"
     },
+    "avatar_gender": {
+      "type": "string",
+      "enum": [
+        "male",
+        "female"
+      ],
+      "default": "male",
+      "description": "GLB model gender for avatar: male=Soldier.glb, female=Michelle.glb"
+    },
     "skin_tone": {
       "type": "string",
       "enum": [
@@ -132,6 +141,10 @@
       ],
       "default": "streetwear",
       "description": "Avatar visual style preset"
+    },
+    "avatar_outfit_color": {
+      "type": "string",
+      "description": "Outfit color key e.g. electric-blue"
     },
     "avatar_suit_color": {
       "type": "string",

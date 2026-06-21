@@ -178,6 +178,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     avatarType: user?.avatar_type || "neutral",
     skinTone: user?.skin_tone || "medium",
     rpmAvatarUrl: user?.rpm_avatar_url || null,
+    gender: user?.avatar_gender || "male",
   };
 
   // ── Personalized feed continuous playback ──────────────────────────────

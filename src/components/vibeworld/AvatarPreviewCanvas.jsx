@@ -58,6 +58,7 @@ export default function AvatarPreviewCanvas({ outfitColorKey, gender = "male", w
   const outfitRef = useRef(outfitColorKey);
   outfitRef.current = outfitColorKey;
   const genderRef = useRef(gender);
+  genderRef.current = gender;
   const [activeView, setActiveView] = useState("front");
 
   // Apply camera view instantly when button is clicked

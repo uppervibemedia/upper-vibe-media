@@ -11,26 +11,30 @@ import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 
 export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) {
   const [outfitColorKey, setOutfitColorKey] = useState(user?.avatar_outfit_color || "electric-blue");
+  const [gender, setGender] = useState(user?.avatar_gender || "male");
   const [saving, setSaving] = useState(false);
 
   // Sync to latest saved value when panel opens
   useEffect(() => {
-    if (open && user?.avatar_outfit_color) {
-      setOutfitColorKey(user.avatar_outfit_color);
+    if (open) {
+      if (user?.avatar_outfit_color) setOutfitColorKey(user.avatar_outfit_color);
+      if (user?.avatar_gender) setGender(user.avatar_gender);
     }
-  }, [open, user?.avatar_outfit_color]);
+  }, [open, user?.avatar_outfit_color, user?.avatar_gender]);
 
   const handleApply = async () => {
     setSaving(true);
     try {
       await base44.auth.updateMe({
         avatar_outfit_color: outfitColorKey,
+        avatar_gender: gender,
         avatar_style: "streetwear",
       });
     } catch {}
     setSaving(false);
     onApply?.({
       outfitColorKey,
+      gender,
       style: "streetwear",
       suitColor: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.hex,
     });
@@ -85,11 +89,34 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
 
               {/* Preview */}
               <div className="flex items-center justify-center px-4 pt-4 pb-2 lg:py-6 lg:pl-6 lg:pr-4 flex-shrink-0">
-                <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={200} height={340} />
+                <AvatarPreviewCanvas outfitColorKey={outfitColorKey} gender={gender} width={200} height={340} />
               </div>
 
               {/* Options */}
               <div className="flex flex-col flex-1 px-4 pb-4 pt-2 lg:pt-6 lg:pr-6 gap-4">
+
+                {/* Gender */}
+                <div>
+                  <p className="text-[10px] font-black tracking-[0.2em] uppercase mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    Avatar Model
+                  </p>
+                  <div className="flex gap-2">
+                    {[{ key: "male", label: "♂ Male" }, { key: "female", label: "♀ Female" }].map((g) => (
+                      <button
+                        key={g.key}
+                        onClick={() => setGender(g.key)}
+                        className="flex-1 py-2 rounded-xl text-[12px] font-bold transition-all hover:brightness-110 active:scale-[0.97]"
+                        style={{
+                          background: gender === g.key ? "rgba(155,126,255,0.18)" : "rgba(255,255,255,0.04)",
+                          border: gender === g.key ? "2px solid rgba(155,126,255,0.7)" : "1px solid rgba(255,255,255,0.08)",
+                          color: gender === g.key ? "#C4AAFF" : "rgba(255,255,255,0.45)",
+                        }}
+                      >
+                        {g.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Outfit Color */}
                 <div>

@@ -1409,7 +1409,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       // already in the scene. CityCanvas stores entry.root in avatarRef and moves it
       // every frame. When GLB loads, the model is parented INTO entry.root — it inherits
       // all movement automatically. The same entry object is mutated in-place.
-      const entry = createAvatar(scene, avatarConfig || {}, (_entry) => {
+      const entry = createAvatar(scene, { ...(avatarConfig || {}), gender: avatarConfig?.gender || "male" }, (_entry) => {
         // GLB done loading — notify parent so it can apply saved outfit color
         onAvatarReadyRef.current?.(_entry);
       });
@@ -1908,7 +1908,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               remote.username || "User",
               remote.avatar_type || "neutral",
               remote.skin_tone || "medium",
-              remote.avatar_style || "streetwear"
+              remote.avatar_style || "streetwear",
+              remote.avatar_gender || "male"
             );
             entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 } };
             remoteMap[remote.user_id] = entry;

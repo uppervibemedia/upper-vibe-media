@@ -20,24 +20,28 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { SPAWN } from "./cityData";
 
-const GLB_URL = "https://threejs.org/examples/models/gltf/Soldier.glb";
+const GLB_URLS = {
+  male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
+  female: "https://threejs.org/examples/models/gltf/Michelle.glb",
+};
 
 const _loader = new GLTFLoader();
-let _gltfCache = null;
-let _gltfPromise = null;
+const _gltfCache = {};
+const _gltfPromises = {};
 
-function loadGLTF() {
-  if (_gltfCache) return Promise.resolve(_gltfCache);
-  if (_gltfPromise) return _gltfPromise;
-  _gltfPromise = new Promise((resolve, reject) => {
+function loadGLTF(gender = "male") {
+  const url = GLB_URLS[gender] || GLB_URLS.male;
+  if (_gltfCache[gender]) return Promise.resolve(_gltfCache[gender]);
+  if (_gltfPromises[gender]) return _gltfPromises[gender];
+  _gltfPromises[gender] = new Promise((resolve, reject) => {
     _loader.load(
-      GLB_URL,
-      (g) => { _gltfCache = g; resolve(g); },
+      url,
+      (g) => { _gltfCache[gender] = g; resolve(g); },
       undefined,
-      (e) => { _gltfPromise = null; reject(e); }
+      (e) => { delete _gltfPromises[gender]; reject(e); }
     );
   });
-  return _gltfPromise;
+  return _gltfPromises[gender];
 }
 
 // For the player avatar we use the GLTF scene directly (no clone needed — only 1 player).
@@ -294,7 +298,7 @@ export function createAvatar(scene, opts = {}, onReady) {
     currentAnim: "idle",
   };
 
-  loadGLTF()
+  loadGLTF(opts.gender || "male")
     .then((gltf) => {
       const { mixer, clips, currentAnim } = attachModel(gltf, controller, {
         avatarStyle: opts.avatarStyle || "streetwear",
@@ -350,7 +354,7 @@ export function retintAvatar(entry, suitColor) {
 }
 
 // ─── PUBLIC: createRemoteAvatar ───────────────────────────────
-export function createRemoteAvatar(scene, userId, username, avatarType, skinTone, avatarStyle) {
+export function createRemoteAvatar(scene, userId, username, avatarType, skinTone, avatarStyle, gender = "male") {
   const controller = new THREE.Group();
   controller.name = `remote_${userId}`;
   controller.userData = { userId };
@@ -360,7 +364,7 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   const entry = { root: controller, mixer: null, clips: {}, currentAnim: "idle" };
   controller.userData._avatarEntry = entry; // available immediately for animation loop
 
-  loadGLTF()
+  loadGLTF(gender)
     .then((gltf) => {
       const { mixer, clips, currentAnim } = attachModel(gltf, controller, {
         avatarStyle: avatarStyle || "streetwear",

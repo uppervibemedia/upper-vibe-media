@@ -28,8 +28,9 @@ export const OUTFIT_COLORS = [
   { key: "gold-yellow",    label: "Gold / Yellow",   hex: "#CC9900", swatch: "#FFD34D" },
 ];
 
-export default function AvatarSetup({ onComplete, existingOutfitColor }) {
+export default function AvatarSetup({ onComplete, existingOutfitColor, existingGender }) {
   const [outfitColorKey, setOutfitColorKey] = useState(existingOutfitColor || "electric-blue");
+  const [gender, setGender] = useState(existingGender || "male");
   const [saving, setSaving] = useState(false);
 
   const handleContinue = async () => {
@@ -37,13 +38,14 @@ export default function AvatarSetup({ onComplete, existingOutfitColor }) {
     try {
       await base44.auth.updateMe({
         avatar_outfit_color: outfitColorKey,
+        avatar_gender: gender,
         avatar_style: "streetwear",
         avatar_type: "neutral",
         skin_tone: "medium",
       });
-      onComplete({ avatarType: "neutral", skinTone: "medium", avatarStyle: "streetwear", outfitColorKey });
+      onComplete({ avatarType: "neutral", skinTone: "medium", avatarStyle: "streetwear", outfitColorKey, gender });
     } catch {
-      onComplete({ avatarType: "neutral", skinTone: "medium", avatarStyle: "streetwear", outfitColorKey });
+      onComplete({ avatarType: "neutral", skinTone: "medium", avatarStyle: "streetwear", outfitColorKey, gender });
     }
   };
 
@@ -60,14 +62,37 @@ export default function AvatarSetup({ onComplete, existingOutfitColor }) {
             <Sparkles className="w-3.5 h-3.5" style={{ color: "#9B7EFF" }} />
             <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>Live Preview</span>
           </div>
-          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={220} height={360} />
+          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} gender={gender} width={220} height={360} />
         </div>
 
         {/* Options */}
         <div className="w-full lg:flex-1 flex flex-col gap-5 max-w-sm mx-auto lg:mx-0">
           <div className="text-center lg:text-left">
             <h2 className="font-heading font-black text-2xl text-white mb-1">Your Vibe World Avatar</h2>
-            <p className="text-sm text-white/40">Pick your outfit color. More customization coming soon.</p>
+            <p className="text-sm text-white/40">Choose your model and outfit color.</p>
+          </div>
+
+          {/* Gender */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[10px] font-black text-white/30 tracking-wider uppercase">Avatar Model</span>
+            </div>
+            <div className="flex gap-2">
+              {[{ key: "male", label: "♂ Male" }, { key: "female", label: "♀ Female" }].map((g) => (
+                <button
+                  key={g.key}
+                  onClick={() => setGender(g.key)}
+                  className="flex-1 py-2.5 rounded-xl text-[12px] font-bold transition-all hover:brightness-110 active:scale-[0.98]"
+                  style={{
+                    background: gender === g.key ? "rgba(155,126,255,0.15)" : "rgba(255,255,255,0.04)",
+                    border: gender === g.key ? "2px solid rgba(155,126,255,0.6)" : "1px solid rgba(255,255,255,0.08)",
+                    color: gender === g.key ? "#C4AAFF" : "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Outfit Color */}
@@ -126,7 +151,7 @@ export default function AvatarSetup({ onComplete, existingOutfitColor }) {
             <Sparkles className="w-3.5 h-3.5" style={{ color: "#9B7EFF" }} />
             <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>Live Preview</span>
           </div>
-          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={280} height={460} />
+          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} gender={gender} width={280} height={460} />
           <p className="text-[9px] text-white/20 text-center">Updates instantly as you choose.</p>
         </div>
 

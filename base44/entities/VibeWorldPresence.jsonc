@@ -24,6 +24,15 @@
       ],
       "default": "neutral"
     },
+    "avatar_gender": {
+      "type": "string",
+      "enum": [
+        "male",
+        "female"
+      ],
+      "default": "male",
+      "description": "GLB model gender: male=Soldier.glb, female=Michelle.glb"
+    },
     "skin_tone": {
       "type": "string",
       "enum": [
