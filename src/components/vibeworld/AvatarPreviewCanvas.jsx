@@ -2,11 +2,10 @@
  * AvatarPreviewCanvas — full-body avatar preview with working rotate buttons.
  * Head-to-toe framing, idle animation, live outfit tinting.
  */
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OUTFIT_COLORS } from "./AvatarSetup";
-import { RotateCcw, RotateCw } from "lucide-react";
 
 const GLB_URL = "https://threejs.org/examples/models/gltf/Soldier.glb";
 
@@ -90,7 +89,8 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
     s.camera = camera;
     s.glowMat = glowMat;
     s.yaw = 0;
-    s.autoRotate = true;
+    s.autoRotate = false;
+    s.spinning = false;
     s.model = null;
     s.mixer = null;
 
@@ -137,8 +137,8 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
 
       if (s.mixer) s.mixer.update(dt);
 
-      if (s.autoRotate && s.model) {
-        s.yaw += dt * 0.3;
+      if (s.spinning && s.model) {
+        s.yaw += dt * 0.65; // ~9.6s for full 360°
         s.model.rotation.y = Math.PI + s.yaw;
       }
 
@@ -165,15 +165,8 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
     if (s.model) applyOutfitTint(s.model, outfitColorKey);
   }, [outfitColorKey]);
 
-  const handleRotate = useCallback((delta) => {
-    const s = stateRef.current;
-    s.yaw = (s.yaw || 0) + delta;
-    s.autoRotate = false; // stop auto-rotate on manual interaction
-    if (s.model) s.model.rotation.y = Math.PI + s.yaw;
-    // Resume auto-rotate after 6 seconds of inactivity
-    clearTimeout(s.lockTimer);
-    s.lockTimer = setTimeout(() => { s.autoRotate = true; }, 6000);
-  }, []);
+  const startSpin = () => { stateRef.current.spinning = true; };
+  const stopSpin  = () => { stateRef.current.spinning = false; };
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -190,24 +183,26 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
         <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
       </div>
 
-      {/* Rotate controls */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => handleRotate(-0.6)}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
-        >
-          <RotateCcw className="w-4 h-4 text-white/60" />
-        </button>
-        <span className="text-[9px] text-white/25 font-medium tracking-widest uppercase">Rotate</span>
-        <button
-          onClick={() => handleRotate(0.6)}
-          className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
-        >
-          <RotateCw className="w-4 h-4 text-white/60" />
-        </button>
-      </div>
+      {/* Hold-to-spin button */}
+      <button
+        onMouseDown={startSpin}
+        onMouseUp={stopSpin}
+        onMouseLeave={stopSpin}
+        onTouchStart={(e) => { e.preventDefault(); startSpin(); }}
+        onTouchEnd={stopSpin}
+        onTouchCancel={stopSpin}
+        className="flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold tracking-wider uppercase select-none transition-all active:scale-95"
+        style={{
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.14)",
+          color: "rgba(255,255,255,0.55)",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          touchAction: "none",
+        }}
+      >
+        ↺ Hold to Rotate
+      </button>
     </div>
   );
 }
