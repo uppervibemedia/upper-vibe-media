@@ -23,6 +23,10 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
   const [avatarType, setAvatarType] = useState(existingType || "neutral");
   const [skinTone, setSkinTone] = useState(existingTone || "medium");
   const [saving, setSaving] = useState(false);
+  // Require explicit selection (not just defaults) for first-time setup
+  const [typeSelected, setTypeSelected] = useState(!!existingType);
+  const [toneSelected, setToneSelected] = useState(!!existingTone);
+  const hasSelection = !!(existingType && existingTone) || (typeSelected && toneSelected);
 
   const currentTone = SKIN_TONES.find((t) => t.key === skinTone);
 
@@ -114,7 +118,7 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
             {AVATAR_TYPES.map((type) => (
               <button
                 key={type.key}
-                onClick={() => setAvatarType(type.key)}
+                onClick={() => { setAvatarType(type.key); setTypeSelected(true); }}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.98]"
                 style={{
                   background: avatarType === type.key
@@ -146,7 +150,7 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
             {SKIN_TONES.map((tone) => (
               <button
                 key={tone.key}
-                onClick={() => setSkinTone(tone.key)}
+                onClick={() => { setSkinTone(tone.key); setToneSelected(true); }}
                 className="w-11 h-11 rounded-full transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
                 style={{
                   background: tone.hex,
@@ -163,10 +167,15 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
           </div>
         </div>
 
+        {/* ── Hint when nothing selected ─────────────────────── */}
+        {!hasSelection && (
+          <p className="text-[10px] text-amber-400/60 font-medium">Choose a body type and skin tone to continue</p>
+        )}
+
         {/* ── Continue ─────────────────────────────────────── */}
         <button
           onClick={handleContinue}
-          disabled={saving}
+          disabled={saving || !hasSelection}
           className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
           style={{
             background: "linear-gradient(135deg,#9B7EFF,#A078FF)",
