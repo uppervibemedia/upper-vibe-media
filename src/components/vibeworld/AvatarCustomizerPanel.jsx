@@ -4,15 +4,15 @@
  */
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Palette, Shirt, Check, UserCircle, RotateCcw, RotateCw } from "lucide-react";
+import { X, Palette, Shirt, Check, UserCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { AvatarPreview, AVATAR_TYPES, SKIN_TONES, OUTFIT_COLORS } from "./AvatarSetup";
+import { AVATAR_TYPES, SKIN_TONES, OUTFIT_COLORS } from "./AvatarSetup";
+import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 
 export default function AvatarCustomizerPanel({ open, onClose, onApply, currentStyle, currentSuitColor, isMobile, user }) {
   const [avatarType, setAvatarType] = useState(user?.avatar_type || "neutral");
   const [skinTone, setSkinTone] = useState(user?.skin_tone || "medium");
   const [outfitColorKey, setOutfitColorKey] = useState(user?.avatar_outfit_color || "electric-blue");
-  const [previewRot, setPreviewRot] = useState(0);
   const [saving, setSaving] = useState(false);
 
   const handleApply = async () => {
@@ -77,53 +77,13 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, currentS
 
               {/* ── Live Preview ── */}
               <div
-                className="flex flex-col items-center py-4 gap-2"
+                className="flex flex-col items-center pt-4 pb-2"
                 style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
               >
-                <span className="text-[9px] font-black tracking-[0.2em] uppercase" style={{ color: "rgba(155,126,255,0.6)" }}>
+                <span className="text-[9px] font-black tracking-[0.2em] uppercase mb-2" style={{ color: "rgba(155,126,255,0.6)" }}>
                   Live Preview · Updates Instantly
                 </span>
-                <div
-                  className="relative flex items-center justify-center"
-                  style={{
-                    width: 150, height: 230,
-                    borderRadius: 16,
-                    background: "linear-gradient(180deg, rgba(20,10,40,0.9) 0%, rgba(5,5,20,0.95) 100%)",
-                    border: "1px solid rgba(155,126,255,0.2)",
-                    overflow: "hidden",
-                  }}
-                >
-                  {/* Floor glow */}
-                  <div style={{
-                    position: "absolute", bottom: 10, left: "50%", transform: "translateX(-50%)",
-                    width: 80, height: 12, borderRadius: "50%",
-                    background: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.accent || "#00D4F0",
-                    opacity: 0.18, filter: "blur(6px)",
-                  }} />
-                  <AvatarPreview
-                    avatarType={avatarType}
-                    skinTone={skinTone}
-                    outfitColorKey={outfitColorKey}
-                    rotation={previewRot}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPreviewRot(r => r - 45)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-                  >
-                    <RotateCcw className="w-3 h-3 text-white/40" />
-                  </button>
-                  <span className="text-[8px] text-white/20 font-medium tracking-wider">ROTATE</span>
-                  <button
-                    onClick={() => setPreviewRot(r => r + 45)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-                  >
-                    <RotateCw className="w-3 h-3 text-white/40" />
-                  </button>
-                </div>
+                <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={160} height={240} />
               </div>
 
               {/* Options */}

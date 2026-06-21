@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { Sparkles, UserCircle, Palette, Shirt, Check, RotateCcw, RotateCw } from "lucide-react";
+import { Sparkles, UserCircle, Palette, Shirt, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 
 export const AVATAR_TYPES = [
   { key: "masculine",  label: "Masculine",  emoji: "♂️", color: "#0080B8" },
@@ -28,128 +28,12 @@ export const OUTFIT_COLORS = [
   { key: "gold-yellow",    label: "Gold / Yellow",   hex: "#886600", accent: "#FFD044" },
 ];
 
-const HAIR_COLORS = {
-  "light":        "#C8A060",
-  "medium-light": "#7A4820",
-  "medium":       "#3A1E0A",
-  "tan":          "#2A1208",
-  "brown":        "#180804",
-  "dark-brown":   "#080402",
-};
 
-// Shared SVG avatar preview — used in both AvatarSetup and AvatarCustomizerPanel
-export function AvatarPreview({ avatarType, skinTone, outfitColorKey, rotation = 0 }) {
-  const skin = SKIN_TONES.find((t) => t.key === skinTone)?.hex || "#C8864A";
-  const hair = HAIR_COLORS[skinTone] || "#3A1E0A";
-  const outfit = OUTFIT_COLORS.find((c) => c.key === outfitColorKey) || OUTFIT_COLORS[0];
-  const isFem = avatarType === "feminine";
-  const isMasc = avatarType === "masculine";
-
-  // Pants: slightly darker version of outfit base
-  const pantsColor = "#111122";
-  // Shoes: distinct from outfit
-  const shoeColor = outfitColorKey === "white-silver" ? "#334455" : "#0A0A1A";
-
-  return (
-    <svg
-      viewBox="0 0 80 175"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ transform: `rotateY(${rotation}deg)`, transition: "transform 0.4s ease", display: "block" }}
-    >
-      {/* ── Hair (back layer) ── */}
-      {isFem ? (
-        <>
-          <ellipse cx="40" cy="22" rx="17" ry="14" fill={hair} />
-          <rect x="19" y="28" width="8" height="32" rx="4" fill={hair} />
-          <rect x="53" y="28" width="8" height="32" rx="4" fill={hair} />
-        </>
-      ) : isMasc ? (
-        <ellipse cx="40" cy="18" rx="15" ry="9" fill={hair} />
-      ) : (
-        <>
-          <ellipse cx="40" cy="18" rx="16" ry="10" fill={hair} />
-          <rect x="23" y="22" width="5" height="16" rx="3" fill={hair} />
-          <rect x="52" y="22" width="5" height="16" rx="3" fill={hair} />
-        </>
-      )}
-
-      {/* ── Head ── */}
-      <ellipse cx="40" cy="24" rx={isFem ? 13 : 13.5} ry="15" fill={skin} />
-
-      {/* ── Eyes ── */}
-      <ellipse cx="33.5" cy="22" rx="3.5" ry="2.8" fill="#f5f5f5" />
-      <ellipse cx="46.5" cy="22" rx="3.5" ry="2.8" fill="#f5f5f5" />
-      <circle cx="33.5" cy="22" r="2" fill={isFem ? "#8899ee" : "#336688"} />
-      <circle cx="46.5" cy="22" r="2" fill={isFem ? "#8899ee" : "#336688"} />
-      <circle cx="33.5" cy="22" r="1.1" fill="#111" />
-      <circle cx="46.5" cy="22" r="1.1" fill="#111" />
-      <circle cx="34.3" cy="21.2" r="0.5" fill="white" opacity="0.8" />
-      <circle cx="47.3" cy="21.2" r="0.5" fill="white" opacity="0.8" />
-      {isFem && (
-        <>
-          <path d="M30 18 Q33.5 16.5 37 18" stroke={hair} strokeWidth="1.4" fill="none" strokeLinecap="round" />
-          <path d="M43 18 Q46.5 16.5 50 18" stroke={hair} strokeWidth="1.4" fill="none" strokeLinecap="round" />
-        </>
-      )}
-
-      {/* ── Eyebrows ── */}
-      <path d="M30.5 18.5 Q33.5 17.2 36.5 18.5" stroke="#3a2010" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-      <path d="M43.5 18.5 Q46.5 17.2 49.5 18.5" stroke="#3a2010" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-
-      {/* ── Nose ── */}
-      <circle cx="40" cy="27" r="1.8" fill={skin} stroke="rgba(0,0,0,0.08)" strokeWidth="0.5" />
-
-      {/* ── Mouth ── */}
-      <path d={isFem ? "M36.5 31.5 Q40 34 43.5 31.5" : "M36 31 Q40 33.5 44 31"} stroke="rgba(0,0,0,0.25)" strokeWidth="1.1" fill="none" strokeLinecap="round" />
-
-      {/* ── Neck ── */}
-      <rect x="36.5" y="37" width="7" height="7" rx="3" fill={skin} />
-
-      {/* ── Jacket / Top — main outfit color ── */}
-      <rect x={isFem ? 24 : 22} y="43" width={isFem ? 32 : 36} height="40" rx="8" fill={outfit.hex} />
-
-      {/* Jacket lapels */}
-      <path d="M36 43 L40 52 L44 43" fill={outfit.accent} opacity="0.5" />
-
-      {/* Accent stripe down center */}
-      <rect x="38.5" y="55" width="3" height="22" rx="1.5" fill={outfit.accent} opacity="0.7" />
-
-      {/* Shoulder accent pips */}
-      <circle cx={isFem ? 26 : 24} cy="48" r="3" fill={outfit.accent} opacity="0.65" />
-      <circle cx={isFem ? 54 : 56} cy="48" r="3" fill={outfit.accent} opacity="0.65" />
-
-      {/* ── Arms (sleeve = outfit color) ── */}
-      <rect x={isFem ? 11 : 9} y="44" width="13" height="28" rx="6" fill={outfit.hex} />
-      <rect x={isFem ? 11.5 : 9.5} y="71" width="11" height="16" rx="5.5" fill={skin} />
-      <rect x={isFem ? 56 : 58} y="44" width="13" height="28" rx="6" fill={outfit.hex} />
-      <rect x={isFem ? 57.5 : 59.5} y="71" width="11" height="16" rx="5.5" fill={skin} />
-
-      {/* ── Belt ── */}
-      <rect x={isFem ? 24 : 22} y="82" width={isFem ? 32 : 36} height="4" rx="2" fill={outfit.accent} opacity="0.6" />
-
-      {/* ── Pants — always dark, separate from jacket ── */}
-      <rect x="25" y="85" width="13" height="38" rx="6" fill={pantsColor} />
-      <rect x="42" y="85" width="13" height="38" rx="6" fill={pantsColor} />
-
-      {/* Leg stripe accent */}
-      <rect x="30.5" y="87" width="2" height="30" rx="1" fill={outfit.accent} opacity="0.25" />
-      <rect x="47.5" y="87" width="2" height="30" rx="1" fill={outfit.accent} opacity="0.25" />
-
-      {/* ── Shoes — distinct color ── */}
-      <ellipse cx="31.5" cy="126" rx="10" ry="5.5" fill={shoeColor} />
-      <ellipse cx="48.5" cy="126" rx="10" ry="5.5" fill={shoeColor} />
-      {/* Shoe accent */}
-      <ellipse cx="31.5" cy="124" rx="7" ry="3" fill={outfit.accent} opacity="0.2" />
-      <ellipse cx="48.5" cy="124" rx="7" ry="3" fill={outfit.accent} opacity="0.2" />
-    </svg>
-  );
-}
 
 export default function AvatarSetup({ onComplete, existingType, existingTone, existingStyle, existingOutfitColor }) {
   const [avatarType, setAvatarType] = useState(existingType || "neutral");
   const [skinTone, setSkinTone] = useState(existingTone || "medium");
   const [outfitColorKey, setOutfitColorKey] = useState(existingOutfitColor || "electric-blue");
-  const [previewRot, setPreviewRot] = useState(0);
   const [saving, setSaving] = useState(false);
 
   const handleContinue = async () => {
@@ -184,53 +68,7 @@ export default function AvatarSetup({ onComplete, existingType, existingTone, ex
             </span>
           </div>
 
-          {/* Preview box */}
-          <div
-            className="relative flex items-center justify-center"
-            style={{
-              width: 180, height: 280,
-              borderRadius: 20,
-              background: "linear-gradient(180deg, rgba(20,10,40,0.9) 0%, rgba(5,5,20,0.95) 100%)",
-              border: "1px solid rgba(155,126,255,0.25)",
-              boxShadow: "0 0 60px rgba(155,126,255,0.12), inset 0 0 30px rgba(0,0,0,0.4)",
-              overflow: "hidden",
-            }}
-          >
-            {/* Floor glow */}
-            <div style={{
-              position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)",
-              width: 90, height: 16, borderRadius: "50%",
-              background: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.accent || "#00D4F0",
-              opacity: 0.15, filter: "blur(8px)",
-            }} />
-            <AvatarPreview
-              avatarType={avatarType}
-              skinTone={skinTone}
-              outfitColorKey={outfitColorKey}
-              rotation={previewRot}
-            />
-          </div>
-
-          {/* Rotate buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPreviewRot(r => r - 45)}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-white/50" />
-            </button>
-            <span className="text-[9px] text-white/20 font-medium tracking-wider">ROTATE</span>
-            <button
-              onClick={() => setPreviewRot(r => r + 45)}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
-            >
-              <RotateCw className="w-3.5 h-3.5 text-white/50" />
-            </button>
-          </div>
-
-          <p className="text-[9px] text-white/20 text-center">Preview updates instantly as you choose.</p>
+          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={200} height={300} />
         </div>
 
         {/* ── RIGHT: Options ── */}
