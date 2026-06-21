@@ -21,12 +21,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { SPAWN } from "./cityData";
 
 const GLB_URLS = {
-  male:         "https://threejs.org/examples/models/gltf/Soldier.glb",
-  female:       "https://threejs.org/examples/models/gltf/Xbot.glb",
-  // human_female: loads Michelle's human mesh + borrows Xbot's idle/walk/run animations
-  // Both use the standard Mixamo rig so retargeting is perfect
-  human_female_mesh: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Michelle.glb",
-  human_female_anim: "https://threejs.org/examples/models/gltf/Xbot.glb",
+  male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
+  // female uses the same Soldier.glb — outfit is tinted pink via retintAvatar
+  female: "https://threejs.org/examples/models/gltf/Soldier.glb",
 };
 
 const _loader = new GLTFLoader();
@@ -48,27 +45,9 @@ function loadSingle(key, url) {
 }
 
 function loadGLTF(gender = "male") {
-  if (gender === "human_female") {
-    // Load Michelle mesh + Xbot animations in parallel, then merge
-    const cacheKey = "human_female";
-    if (_gltfCache[cacheKey]) return Promise.resolve(_gltfCache[cacheKey]);
-    if (_gltfPromises[cacheKey]) return _gltfPromises[cacheKey];
-    _gltfPromises[cacheKey] = Promise.all([
-      loadSingle("human_female_mesh", GLB_URLS.human_female_mesh),
-      loadSingle("female", GLB_URLS.female), // reuse Xbot cache
-    ]).then(([meshGltf, animGltf]) => {
-      // Merge: use Michelle scene + Xbot animations
-      const merged = { scene: meshGltf.scene, animations: animGltf.animations };
-      _gltfCache[cacheKey] = merged;
-      return merged;
-    }).catch((err) => {
-      delete _gltfPromises[cacheKey];
-      throw err;
-    });
-    return _gltfPromises[cacheKey];
-  }
+  // Both male and female use Soldier.glb — female is differentiated by outfit color only
   const url = GLB_URLS[gender] || GLB_URLS.male;
-  return loadSingle(gender, url);
+  return loadSingle(gender === "female" ? "male" : gender, url);
 }
 
 // For the player avatar we use the GLTF scene directly (no clone needed — only 1 player).

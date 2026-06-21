@@ -28,11 +28,10 @@
       "type": "string",
       "enum": [
         "male",
-        "female",
-        "human_female"
+        "female"
       ],
       "default": "male",
-      "description": "GLB model: male=Soldier.glb, female=Xbot.glb (cyber), human_female=Michelle.glb+Xbot animations"
+      "description": "Both use Soldier.glb; female gets pink outfit tint"
     },
     "skin_tone": {
       "type": "string",
@@ -52,27 +51,22 @@
         "streetwear",
         "cosmic"
       ],
-      "default": "streetwear",
-      "description": "Outfit style for the avatar"
+      "default": "streetwear"
     },
     "current_zone": {
-      "type": "string",
-      "description": "Current zone in Vibe World e.g. plaza, lounge, stage"
+      "type": "string"
     },
     "pos_x": {
       "type": "number",
-      "default": 0,
-      "description": "World X position"
+      "default": 0
     },
     "pos_z": {
       "type": "number",
-      "default": 0,
-      "description": "World Z position"
+      "default": 0
     },
     "rotation": {
       "type": "number",
-      "default": 0,
-      "description": "World Y rotation in radians"
+      "default": 0
     },
     "animation_state": {
       "type": "string",
@@ -82,20 +76,17 @@
         "running",
         "dancing"
       ],
-      "default": "idle",
-      "description": "Current animation state of the avatar"
+      "default": "idle"
     },
     "is_online": {
       "type": "boolean",
       "default": true
     },
     "last_heartbeat": {
-      "type": "string",
-      "description": "ISO timestamp of last heartbeat"
+      "type": "string"
     },
     "joined_at": {
-      "type": "string",
-      "description": "ISO timestamp when user entered Vibe World"
+      "type": "string"
     }
   },
   "required": [

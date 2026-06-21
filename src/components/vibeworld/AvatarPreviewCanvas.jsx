@@ -8,9 +8,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OUTFIT_COLORS, SKIN_TONES } from "./AvatarSetup";
 
 const GLB_URLS = {
-  male:               "https://threejs.org/examples/models/gltf/Soldier.glb",
-  female:             "https://threejs.org/examples/models/gltf/Xbot.glb",
-  human_female_mesh:  "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Michelle.glb",
+  male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
+  female: "https://threejs.org/examples/models/gltf/Soldier.glb",
 };
 
 const _gltfCache = {};
@@ -27,22 +26,8 @@ function loadSinglePreview(key, url) {
 }
 
 function loadGLTF(gender = "male") {
-  if (gender === "human_female") {
-    const cacheKey = "human_female";
-    if (_gltfCache[cacheKey]) return Promise.resolve(_gltfCache[cacheKey]);
-    if (_gltfPromise[cacheKey]) return _gltfPromise[cacheKey];
-    _gltfPromise[cacheKey] = Promise.all([
-      loadSinglePreview("human_female_mesh", GLB_URLS.human_female_mesh),
-      loadSinglePreview("female", GLB_URLS.female),
-    ]).then(([meshGltf, animGltf]) => {
-      const merged = { scene: meshGltf.scene, animations: animGltf.animations };
-      _gltfCache[cacheKey] = merged;
-      return merged;
-    }).catch((err) => { delete _gltfPromise[cacheKey]; throw err; });
-    return _gltfPromise[cacheKey];
-  }
-  const url = GLB_URLS[gender] || GLB_URLS.male;
-  return loadSinglePreview(gender, url);
+  // Both male and female use the same Soldier.glb — female is outfit-tinted pink
+  return loadSinglePreview("male", GLB_URLS.male);
 }
 
 // ─── Material classification (mirrors AvatarModel.jsx exactly) ────────
@@ -231,7 +216,7 @@ export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "med
       cancelAnimationFrame(s.animId);
       renderer.dispose();
     };
-  }, [gender]); // re-mount when gender changes
+  }, []); // single mount — both genders use same Soldier.glb
 
   // Live re-tint on outfit or skin change
   useEffect(() => {

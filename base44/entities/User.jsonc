@@ -112,11 +112,10 @@
       "type": "string",
       "enum": [
         "male",
-        "female",
-        "human_female"
+        "female"
       ],
       "default": "male",
-      "description": "GLB model: male=Soldier.glb, female=Xbot.glb (cyber), human_female=Michelle.glb+Xbot animations"
+      "description": "Avatar gender: both use Soldier.glb, female gets pink outfit tint by default"
     },
     "skin_tone": {
       "type": "string",
@@ -145,7 +144,7 @@
     },
     "avatar_outfit_color": {
       "type": "string",
-      "description": "Outfit color key e.g. electric-blue"
+      "description": "Outfit color key e.g. electric-blue, pink-rose"
     },
     "avatar_suit_color": {
       "type": "string",
