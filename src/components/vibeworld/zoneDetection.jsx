@@ -46,6 +46,12 @@ const ZONES = {
     cx: 0, cz: 18, radius: 20,
     icon: "Sun",
   },
+  academy: {
+    name: "Upper Vibe Academy",
+    id: "academy",
+    cx: -22, cz: -17, radius: 5,
+    icon: "GraduationCap",
+  },
 };
 
 export function detectZone(px, pz) {
