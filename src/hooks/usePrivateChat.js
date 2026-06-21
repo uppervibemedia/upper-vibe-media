@@ -232,6 +232,46 @@ export default function usePrivateChat(user) {
     return () => clearInterval(cleanupTimerRef.current);
   }, [user?.id]);
 
+  // ── Poll for incoming requests on mount (catches missed subscription events) ─
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const myPending = await base44.entities.PrivateChatRequest.filter({
+          to_user_id: user.id,
+          status: "pending",
+        });
+        if (cancelled) return;
+        if (myPending.length > 0) {
+          const req = myPending[0];
+          // Check not from blocked user
+          if (!blockedUsers[req.from_user_id]) {
+            const expiresAt = req.expires_at ? new Date(req.expires_at).getTime() : 0;
+            if (expiresAt > Date.now()) {
+              setIncomingRequest({
+                id: req.id,
+                fromUserId: req.from_user_id,
+                fromUsername: req.from_username,
+              });
+            }
+          }
+        }
+      } catch {}
+    };
+
+    // Poll immediately on mount, then every 5 seconds as fallback
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user?.id, blockedUsers]);
+
+  // ── Clear outgoing status ────────────────────────────────────
+  const clearOutgoingStatus = useCallback(() => {
+    setOutgoingStatus(null);
+  }, []);
+
   // ── Cleanup on unmount ───────────────────────────────────────
   useEffect(() => {
     return () => {
@@ -259,5 +299,6 @@ export default function usePrivateChat(user) {
     endChat,
     blockUser,
     blockedUsers,
+    clearOutgoingStatus,
   };
 }

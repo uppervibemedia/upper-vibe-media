@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Music4, Tv2, MessageCircle, Sun,
+  Music4, Tv2, MessageCircle, Sun, X,
   Compass, Sparkles, Library, SkipForward,
   Volume2, VolumeX, BookOpen,
 } from "lucide-react";
@@ -69,6 +69,7 @@ export default function WorldHUD({
   onLoungeInputFocus,
   onVoiceActive,
   outgoingStatus,
+  onClearOutgoingStatus,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -203,7 +204,7 @@ export default function WorldHUD({
             }}
           >
             <div
-              className="rounded-xl px-4 py-2 shadow-lg max-w-[85vw]"
+              className="rounded-xl px-4 py-2 shadow-lg max-w-[85vw] relative"
               style={{
                 background: outgoingStatus.status === "pending"
                   ? "rgba(0,200,83,0.12)"
@@ -224,14 +225,27 @@ export default function WorldHUD({
                 backdropFilter: "blur(12px)",
               }}
             >
-              <p className="text-xs font-bold text-white">
+              <button
+                onTouchStart={(e) => e.stopPropagation()}
+                onClick={() => onClearOutgoingStatus?.()}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
+                style={{
+                  color: "rgba(255,255,255,0.4)",
+                  minWidth: 24,
+                  minHeight: 24,
+                  touchAction: "manipulation",
+                }}
+              >
+                <X className="w-3 h-3" />
+              </button>
+              <p className="text-xs font-bold text-white pr-5">
                 {outgoingStatus.status === "pending" && `Request sent to ${outgoingStatus.toUsername || "user"}...`}
                 {outgoingStatus.status === "accepted" && `${outgoingStatus.toUsername || "User"} accepted! Opening chat.`}
                 {outgoingStatus.status === "declined" && `${outgoingStatus.toUsername || "User"} declined.`}
                 {outgoingStatus.status === "expired" && `Request to ${outgoingStatus.toUsername || "user"} expired.`}
                 {outgoingStatus.status === "blocked" && `Cannot send request to ${outgoingStatus.toUsername || "user"}.`}
               </p>
-              <p className="text-[9px] text-white/40 mt-0.5">
+              <p className="text-[9px] text-white/40 mt-0.5 pr-5">
                 {outgoingStatus.status === "pending" && "Waiting for response..."}
                 {outgoingStatus.status === "expired" && "No response received"}
               </p>

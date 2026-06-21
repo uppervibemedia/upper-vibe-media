@@ -16,7 +16,11 @@ export default function IncomingChatRequest({
         initial={{ opacity: 0, y: -20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -20, scale: 0.95 }}
-        className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[85] w-[90vw] max-w-sm pointer-events-auto"
+        className="fixed left-1/2 z-[85] w-[90vw] max-w-sm pointer-events-auto"
+        style={{
+          transform: "translateX(-50%)",
+          top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 75px)" : "5rem",
+        }}
       >
         <div
           className="rounded-2xl p-4"
