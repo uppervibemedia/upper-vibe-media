@@ -551,6 +551,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             prevPosRef.current = { x, z };
             setPlayerPos({ x, z, rot, animState });
           }}
+          isDancing={isDancing}
           stageCanvas={stageWatching ? null : stageCanvas}
           audioIntensityRef={audioIntensityRef}
           audioBassRef={audioBassRef}

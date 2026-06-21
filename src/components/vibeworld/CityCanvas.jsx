@@ -1382,306 +1382,13 @@ function createCosmicSky(scene) {
   scene.fog = new Fog("#0A1525", 48, 60);
 }
 
-// createCitySkyline now lives in ./CitySkyline.jsx (imported at top of file)
-
-// ═══════════════════════════════════════════════════════════════
-// BUILD LOW-POLY HUMANOID AVATAR (spheres, capsules — no boxes)
-// ═══════════════════════════════════════════════════════════════
-function createAvatar(scene) {
-  const avatar = new Group();
-  avatar.name = "avatar";
-
-  // Material helpers
-  const skinMat = () => mat("#FFD5C2", { roughness: 0.45 });
-  const shirtMat = () => mat("#1565C0", { roughness: 0.3 });
-  const pantsMat = () => mat("#1B5E20", { roughness: 0.35 });
-  const shoeMat = () => mat("#3E2723", { roughness: 0.4 });
-  const hairMat = () => mat("#3E2723", { roughness: 0.55 });
-  const eyeMat = () => mat("#111111", { roughness: 0.1 });
-  const darkShoe = () => mat("#1A1A1A", { roughness: 0.35 });
-
-  function addMesh(group, geo, materialOrFn, pos, casts = true) {
-    const m = new Mesh(geo, typeof materialOrFn === "function" ? materialOrFn() : materialOrFn);
-    m.position.copy(pos);
-    m.castShadow = casts;
-    m.receiveShadow = casts;
-    group.add(m);
-    return m;
-  }
-
-  // ─── FEET ────────────────────────────────────────────────────
-  function createFoot() {
-    const foot = new Group();
-    foot.name = "foot";
-    // Shoe body (rounded cylinder for shoe shape)
-    addMesh(foot, new CylinderGeometry(0.04, 0.05, 0.12, 8), darkShoe, new Vector3(0, 0.03, 0.05));
-    // Sole (flat box)
-    const sole = new Mesh(new BoxGeometry(0.11, 0.025, 0.16), shoeMat());
-    sole.position.set(0, -0.02, 0.05);
-    sole.castShadow = true;
-    sole.receiveShadow = true;
-    foot.add(sole);
-    return foot;
-  }
-
-  // ─── LOWER LEG (knee to ankle) ──────────────────────────────
-  function createLowerLeg() {
-    const leg = new Group();
-    leg.name = "lowerLeg";
-    const len = 0.36;
-    addMesh(leg, new CylinderGeometry(0.055, 0.065, len, 8), pantsMat, new Vector3(0, -len / 2, 0));
-
-    const foot = createFoot();
-    foot.position.set(0, -len - 0.01, 0);
-    leg.add(foot);
-    leg.userData.foot = foot;
-    return leg;
-  }
-
-  // ─── UPPER LEG (hip to knee) ────────────────────────────────
-  function createUpperLeg() {
-    const leg = new Group();
-    leg.name = "upperLeg";
-    const len = 0.4;
-    addMesh(leg, new CylinderGeometry(0.065, 0.075, len, 8), pantsMat, new Vector3(0, -len / 2, 0));
-
-    const lowerLeg = createLowerLeg();
-    lowerLeg.position.set(0, -len, 0);
-    leg.add(lowerLeg);
-    leg.userData.lowerLeg = lowerLeg;
-    return leg;
-  }
-
-  // ─── HAND ────────────────────────────────────────────────────
-  function createHand() {
-    const hand = new Group();
-    hand.name = "hand";
-    addMesh(hand, new SphereGeometry(0.045, 6, 4), skinMat, new Vector3(0, 0, 0));
-    return hand;
-  }
-
-  // ─── FOREARM (elbow to wrist) ───────────────────────────────
-  function createForearm() {
-    const arm = new Group();
-    arm.name = "forearm";
-    const len = 0.26;
-    addMesh(arm, new CylinderGeometry(0.04, 0.05, len, 8), skinMat, new Vector3(0, -len / 2, 0));
-
-    const hand = createHand();
-    hand.position.set(0, -len, 0);
-    arm.add(hand);
-    arm.userData.hand = hand;
-    return arm;
-  }
-
-  // ─── UPPER ARM (shoulder to elbow) ──────────────────────────
-  function createUpperArm() {
-    const arm = new Group();
-    arm.name = "upperArm";
-    const len = 0.3;
-    addMesh(arm, new CylinderGeometry(0.045, 0.055, len, 8), skinMat, new Vector3(0, -len / 2, 0));
-
-    const forearm = createForearm();
-    forearm.position.set(0, -len, 0);
-    arm.add(forearm);
-    arm.userData.forearm = forearm;
-    return arm;
-  }
-
-  // ─── TORSO (pelvis to shoulders) ────────────────────────────
-  const torsoGroup = new Group();
-  torsoGroup.name = "torso";
-  // Use a tapered shape: wider at top, narrower at waist
-  // Main torso (wider at top, narrower at waist)
-  addMesh(torsoGroup, new CylinderGeometry(0.13, 0.16, 0.38, 8), shirtMat, new Vector3(0, 0.22, 0));
-  // Slightly wider chest
-  addMesh(torsoGroup, new CylinderGeometry(0.16, 0.17, 0.1, 8), shirtMat, new Vector3(0, 0.44, 0));
-
-  // ─── NECK ───────────────────────────────────────────────────
-  const neckGroup = new Group();
-  neckGroup.name = "neck";
-  neckGroup.position.set(0, 0.5, 0);
-  addMesh(neckGroup, new CylinderGeometry(0.04, 0.05, 0.1, 8), skinMat, new Vector3(0, 0.05, 0));
-
-  // ─── HEAD (sphere, eyes, hair) ──────────────────────────────
-  const headGroup = new Group();
-  headGroup.name = "head";
-  headGroup.position.y = 0.1;
-
-  // Head sphere
-  addMesh(headGroup, new SphereGeometry(0.1, 12, 10), skinMat, new Vector3(0, 0.1, 0), true);
-
-  // Eyes (positioned at front = +Z)
-  for (let ex = -0.04; ex <= 0.04; ex += 0.08) {
-    const eyeGeo = new SphereGeometry(0.015, 6, 4);
-    const eye = new Mesh(eyeGeo, eyeMat());
-    eye.position.set(ex, 0.12, 0.088);
-    headGroup.add(eye);
-    // Pupil highlight
-    const pupilGeo = new SphereGeometry(0.005, 4, 3);
-    const pupilMat = new MeshStandardMaterial();
-    pupilMat.color = new Color("#FFFFFF");
-    pupilMat.roughness = 0.1;
-    const pupil = new Mesh(pupilGeo, pupilMat);
-    pupil.position.set(ex, 0.122, 0.098);
-    headGroup.add(pupil);
-  }
-
-  // Nose (tiny bump)
-  addMesh(headGroup, new SphereGeometry(0.012, 4, 3), mat("#FFC0A8", { roughness: 0.5 }), new Vector3(0, 0.11, 0.1), false);
-
-  // Hair on top
-  addMesh(headGroup, new SphereGeometry(0.105, 8, 6), hairMat, new Vector3(0, 0.135, 0), false);
-
-  // Cap
-  addMesh(headGroup, new CylinderGeometry(0.07, 0.09, 0.06, 8), darkShoe, new Vector3(0, 0.17, 0.02), false);
-  addMesh(headGroup, new BoxGeometry(0.14, 0.015, 0.07), darkShoe, new Vector3(0, 0.17, 0.08), false);
-
-  neckGroup.add(headGroup);
-  torsoGroup.add(neckGroup);
-
-  // ─── SHOULDERS ──────────────────────────────────────────────
-  const leftShoulder = new Group();
-  leftShoulder.name = "leftShoulder";
-  leftShoulder.position.set(-0.19, 0.48, 0);
-  const leftArm = createUpperArm();
-  leftArm.position.set(0, 0, 0);
-  leftShoulder.add(leftArm);
-  leftShoulder.userData.arm = leftArm;
-  torsoGroup.add(leftShoulder);
-
-  const rightShoulder = new Group();
-  rightShoulder.name = "rightShoulder";
-  rightShoulder.position.set(0.19, 0.48, 0);
-  const rightArm = createUpperArm();
-  rightArm.position.set(0, 0, 0);
-  rightShoulder.add(rightArm);
-  rightShoulder.userData.arm = rightArm;
-  torsoGroup.add(rightShoulder);
-
-  // ─── HIPS ───────────────────────────────────────────────────
-  const PELVIS_Y = 0.0; // hips pivot at pelvis level
-
-  const leftHip = new Group();
-  leftHip.name = "leftHip";
-  leftHip.position.set(-0.08, PELVIS_Y, 0);
-  const leftLeg = createUpperLeg();
-  leftLeg.position.set(0, 0, 0);
-  leftHip.add(leftLeg);
-  leftHip.userData.leg = leftLeg;
-  torsoGroup.add(leftHip);
-
-  const rightHip = new Group();
-  rightHip.name = "rightHip";
-  rightHip.position.set(0.08, PELVIS_Y, 0);
-  const rightLeg = createUpperLeg();
-  rightLeg.position.set(0, 0, 0);
-  rightHip.add(rightLeg);
-  rightHip.userData.leg = rightLeg;
-  torsoGroup.add(rightHip);
-
-  // ─── SHADOW DISC ────────────────────────────────────────────
-  const shadowGeo = new CircleGeometry(0.18, 16);
-  const shadowDiscMat = new MeshBasicMaterial();
-  shadowDiscMat.color = new Color("#000000");
-  shadowDiscMat.transparent = true;
-  shadowDiscMat.opacity = 0.22;
-  shadowDiscMat.depthWrite = false;
-  const shadowDisc = new Mesh(shadowGeo, shadowDiscMat);
-  shadowDisc.rotation.x = -Math.PI / 2;
-  shadowDisc.position.y = -0.88;
-  shadowDisc.name = "shadow";
-  torsoGroup.add(shadowDisc);
-
-  avatar.add(torsoGroup);
-  avatar.position.set(SPAWN[0], SPAWN[1], SPAWN[2]);
-  scene.add(avatar);
-
-  return avatar;
-}
-
-// Mobile joystick now lives in ./MobileJoystick.jsx (imported by UpperVibeCity)
-
-// ═══════════════════════════════════════════════════════════════
-// REMOTE AVATAR — Phase 2: render other users in the world
-// ═══════════════════════════════════════════════════════════════
-function createRemoteAvatar(scene, userId, username, avatarType) {
-  const group = new Group();
-  group.name = `remote_${userId}`;
-  group.userData = { userId, lastPos: { x: 0, z: 0 }, velocity: 0, walkTime: 0 };
-
-  // ── Avatar type colors ───────────────────────────────────────
-  const typeColors = {
-    default:  { body: "#1565C0", head: "#1976D2", accent: "#42A5F5" },
-    cyber:    { body: "#1B5E20", head: "#2E7D32", accent: "#00E676" },
-    cosmic:   { body: "#4A148C", head: "#6A1B9A", accent: "#CE93D8" },
-    neon:     { body: "#880E4F", head: "#AD1457", accent: "#FF4081" },
-  };
-  const colors = typeColors[avatarType] || typeColors.default;
-  const bodyMat = () => new MeshStandardMaterial({ color: new Color(colors.body), roughness: 0.35, metalness: 0.2 });
-  const headMat = () => new MeshStandardMaterial({ color: new Color(colors.head), roughness: 0.35 });
-  const accentMat = () => new MeshBasicMaterial({ color: new Color(colors.accent), depthWrite: false });
-
-  // ── Body (cylinder torso) ────────────────────────────────────
-  const torso = new Mesh(new CylinderGeometry(0.12, 0.14, 0.38, 8), bodyMat());
-  torso.position.y = 0.55;
-  torso.castShadow = true;
-  group.add(torso);
-
-  // ── Head (sphere) ────────────────────────────────────────────
-  const head = new Mesh(new SphereGeometry(0.09, 8, 6), headMat());
-  head.position.y = 0.85;
-  head.castShadow = true;
-  group.add(head);
-
-  // ── Accent ring around neck ──────────────────────────────────
-  const ring = new Mesh(new TorusGeometry(0.09, 0.015, 8, 16), accentMat());
-  ring.position.y = 0.78;
-  ring.rotation.x = Math.PI / 2;
-  group.add(ring);
-
-  // ── Legs ─────────────────────────────────────────────────────
-  const legGeo = new CylinderGeometry(0.04, 0.05, 0.35, 6);
-  for (const side of [-1, 1]) {
-    const leg = new Mesh(legGeo, bodyMat());
-    leg.position.set(side * 0.07, 0.18, 0);
-    leg.castShadow = true;
-    leg.name = side > 0 ? "rightLeg" : "leftLeg";
-    group.add(leg);
-  }
-
-  // ── Username sprite ──────────────────────────────────────────
-  const nameCanvas = document.createElement("canvas");
-  nameCanvas.width = 256;
-  nameCanvas.height = 64;
-  const ctx = nameCanvas.getContext("2d");
-  ctx.font = "bold 20px 'Inter', sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  const displayName = (username || "User").substring(0, 16);
-  ctx.fillText(displayName, 128, 32);
-
-  const nameTex = new THREE.CanvasTexture(nameCanvas);
-  nameTex.minFilter = THREE.LinearFilter;
-  nameTex.colorSpace = THREE.SRGBColorSpace;
-
-  const nameSprite = new Sprite(new SpriteMaterial({
-    map: nameTex, transparent: true, depthWrite: false, depthTest: false,
-  }));
-  nameSprite.scale.set(1.2, 0.3, 1);
-  nameSprite.position.y = 1.05;
-  nameSprite.renderOrder = 999;
-  group.add(nameSprite);
-
-  scene.add(group);
-  return group;
-}
+// createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
+import { createAvatar, createRemoteAvatar } from "./AvatarModel.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1734,6 +1441,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const lockedRef = useRef(false);
   const prevLockedRef = useRef(false);
   lockedRef.current = locked;
+  const isDancingRef = useRef(false);
+  isDancingRef.current = isDancing;
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
@@ -2004,8 +1713,43 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (larmForearm) larmForearm.rotation.x = forearmBendR;
         if (rarmForearm) rarmForearm.rotation.x = forearmBend;
 
+        // ─── DANCE ANIMATION ───────────────────────────────────
+        if (isDancingRef.current) {
+          const danceT = t * 3.5; // Faster rhythm for dancing
+          const danceS = Math.min(1, anim.speed + dt * 7); // Always fully animated
+
+          // Bouncy torso
+          if (animParts.torso) {
+            animParts.torso.position.y = Math.abs(Math.sin(danceT * 2)) * 0.08;
+            animParts.torso.rotation.x = Math.sin(danceT * 0.7) * 0.06;
+            animParts.torso.rotation.z = Math.cos(danceT * 0.6) * 0.08;
+          }
+
+          // Arms raised and moving in rhythm (hands up!)
+          if (animParts.leftShoulder) {
+            animParts.leftShoulder.rotation.x = -1.8 + Math.sin(danceT) * 0.5;
+            animParts.leftShoulder.rotation.z = 0.3 + Math.cos(danceT * 0.8) * 0.25;
+          }
+          if (animParts.rightShoulder) {
+            animParts.rightShoulder.rotation.x = -1.8 + Math.cos(danceT) * 0.5;
+            animParts.rightShoulder.rotation.z = -0.3 + Math.sin(danceT * 0.8) * 0.25;
+          }
+
+          // Step in place
+          const stepAngle = Math.sin(danceT) * 0.35;
+          if (animParts.leftHip) animParts.leftHip.rotation.x = stepAngle;
+          if (animParts.rightHip) animParts.rightHip.rotation.x = -stepAngle;
+
+          // Slight knee bend
+          const kneel = Math.max(0, Math.sin(danceT * 2)) * 0.35;
+          const llLeg = animParts.leftHip?.userData?.leg?.userData?.lowerLeg;
+          const rlLeg = animParts.rightHip?.userData?.leg?.userData?.lowerLeg;
+          if (llLeg) llLeg.rotation.x = kneel;
+          if (rlLeg) rlLeg.rotation.x = kneel;
+        }
+
         // Torso breathing when idle
-        if (!anim.isMoving) {
+        else if (!anim.isMoving) {
           const breathe = Math.sin(t * 1.8) * 0.012;
           if (animParts.torso) animParts.torso.scale.y = 1 + breathe;
           // Gentle arm sway at rest
