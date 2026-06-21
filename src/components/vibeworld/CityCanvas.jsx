@@ -1085,6 +1085,27 @@ function buildPark(scene) {
   scene.add(plazaFill);
   scene.userData.plazaFill = plazaFill;
 
+  // ── Shifting neon ambient lights — 4 roving fill lights ──────
+  // These drift slowly around the city, shifting between electric blue
+  // and deep purple to create the "neon night" atmosphere without
+  // adding any new geometry. Performance-friendly: intensity kept low.
+  const neonAmbients = [
+    // [x, y, z, color, distance, phaseOffset]
+    { pos: [8,  3.5,  -6], color: new Color("#0088FF"), distance: 18, phase: 0.0,    baseI: 1.2 }, // electric blue — stage-right
+    { pos: [-8, 3.5,  -6], color: new Color("#7C3AED"), distance: 18, phase: 1.6,    baseI: 1.2 }, // deep purple — stage-left
+    { pos: [0,  4.0,   8], color: new Color("#00C8E8"), distance: 16, phase: 3.1,    baseI: 1.0 }, // cyan — beach entrance
+    { pos: [0,  3.5, -14], color: new Color("#9B4FFF"), distance: 14, phase: 4.7,    baseI: 0.9 }, // violet — behind stage
+  ].map(({ pos, color, distance, phase, baseI }) => {
+    const light = new PointLight();
+    light.color.copy(color);
+    light.intensity = baseI;
+    light.distance = distance;
+    light.position.set(...pos);
+    scene.add(light);
+    return { light, phase, baseI, color1: color.clone(), color2: new Color(phase < 2 ? "#A040FF" : "#00B8D4") };
+  });
+  scene.userData.neonAmbients = neonAmbients;
+
   // ═════════════════════════════════════════════════════════════
   // 13. TWINKLING STARS + PALM TREES
   // ═════════════════════════════════════════════════════════════
@@ -2011,6 +2032,21 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const pf = scene.userData.plazaFill;
         if (pf && pf.intensity !== undefined) {
           pf.intensity = 1.0 + audioBeat * 0.8 + Math.sin(t * 1.2) * 0.2;
+        }
+
+        // ─── SHIFTING NEON AMBIENT LIGHTS — slow color/intensity drift ──
+        // Each light breathes and shifts between its two neon colors.
+        // Very low frequency keeps it subtle and mobile-friendly.
+        const neonAmbients = scene.userData.neonAmbients;
+        if (neonAmbients) {
+          for (const na of neonAmbients) {
+            const wave = Math.sin(t * 0.35 + na.phase); // ~18s full cycle — very slow
+            // Intensity: gentle breath + slight music lift
+            na.light.intensity = na.baseI * (0.7 + wave * 0.3) + audioBeat * 0.4;
+            // Color: lerp between color1 (blue/purple) and color2 (opposite) smoothly
+            const blend = wave * 0.5 + 0.5; // 0..1
+            na.light.color.copy(na.color1).lerp(na.color2, blend * 0.45);
+          }
         }
 
         // ─── NEON SIGNS + PATH LIGHTS — color-shift ambient glow ──
