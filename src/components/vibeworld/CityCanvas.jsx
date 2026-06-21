@@ -895,15 +895,15 @@ function buildPark(scene) {
     academy.add(acadRing);
   }
 
-  // Cinema entrance — wide doorway facing Central Plaza
+  // Cinema entrance — wide doorway facing skyline edge (opposite of plaza)
   const entGeo = new BoxGeometry(3.5, 3.2, 0.12);
   const entMat = new MeshBasicMaterial({
     color: new Color("#00D4F0"),
     depthWrite: false, transparent: true, opacity: 0.6,
   });
   const entrance = new Mesh(entGeo, entMat);
-  // Academy at (-20,5), plaza at (0,-4): direction is (20,-9) → southeast
-  const entAngle = Math.atan2(0 - 5, 0 - (-20)); // angle toward plaza
+  // Academy at (-20,5), face away from plaza: direction is (-20,9) → northwest toward edge
+  const entAngle = Math.atan2(5 - 0, -20 - 0); // angle away from plaza toward edge
   entrance.position.set(ACAD_X + Math.sin(entAngle) * 2.9, 1.7, ACAD_Z + Math.cos(entAngle) * 2.9);
   entrance.rotation.y = entAngle;
   entrance.name = "academyEntrance";

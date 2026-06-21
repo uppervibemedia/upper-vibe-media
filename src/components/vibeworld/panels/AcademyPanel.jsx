@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, GraduationCap, Play, Maximize, ArrowLeft, Tv, Film } from "lucide-react";
+import { X, GraduationCap, Play, Maximize, ArrowLeft, Tv, Film, Volume2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CoverImage from "@/components/shared/CoverImage";
 
@@ -19,7 +19,8 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [viewingLesson, setViewingLesson] = useState(null);
   const [fullScreen, setFullScreen] = useState(false);
-  const playerRef = useRef(null);
+  const [academyMuted, setAcademyMuted] = useState(true);
+  const iframeRef = useRef(null);
 
   // ── Load academy lessons ──────────────────────────────────────
   useEffect(() => {
@@ -66,10 +67,12 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
         return labels.some((lb) => lb.toLowerCase().includes(activeCategory.toLowerCase()));
       }).slice(0, activeCategory === "featured" ? lessons.filter(l => l.is_featured).length : undefined);
 
-  // ── Get YouTube embed URL ────────────────────────────────────
-  const getEmbedUrl = useCallback((lesson) => {
-    if (!lesson?.youtube_video_id && !lesson?.embed_url) return lesson?.video_url || "";
-    return lesson.embed_url || `https://www.youtube.com/embed/${lesson.youtube_video_id}?autoplay=1&rel=0&modestbranding=1`;
+  // ── Build embed URL matching StageFullScreen for reliable playback ──
+  const getEmbedUrl = useCallback((lesson, muted = false) => {
+    const ytId = lesson?.youtube_video_id;
+    if (!ytId) return lesson?.video_url || "";
+    const muteParam = muted ? "&mute=1" : "";
+    return `https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1&rel=0&controls=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}${muteParam}`;
   }, []);
 
   // ── Handle close ─────────────────────────────────────────────
@@ -106,7 +109,7 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
             style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%)" }}>
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => setFullScreen(false)}
+              onClick={() => { setFullScreen(false); setAcademyMuted(true); }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-[10px] text-white/70"
               style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}
             >
@@ -117,7 +120,7 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
             <div className="w-16" />
           </div>
           <iframe
-            src={getEmbedUrl(viewingLesson)}
+            src={getEmbedUrl(viewingLesson, true)}
             className="flex-1 w-full"
             allow="autoplay; encrypted-media; picture-in-picture"
             allowFullScreen
@@ -131,7 +134,7 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
           <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/5">
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => setViewingLesson(null)}
+              onClick={() => { setViewingLesson(null); setAcademyMuted(true); }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-[10px] text-white/60"
               style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
             >
@@ -151,7 +154,7 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
           </div>
 
           {/* Theater screen area */}
-          <div className="flex-1 flex items-center justify-center p-4 relative"
+          <div className="flex-1 flex flex-col items-center justify-center p-4 relative"
             style={{ background: "radial-gradient(ellipse at center, rgba(124,58,237,0.1) 0%, transparent 70%)" }}>
             {/* Theater-style frame */}
             <div className="w-full max-w-3xl relative rounded-2xl overflow-hidden"
@@ -164,7 +167,8 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
                 style={{ background: "linear-gradient(180deg, rgba(10,8,20,0.95) 0%, transparent 100%)" }} />
               <div className="aspect-video w-full bg-black">
                 <iframe
-                  src={getEmbedUrl(viewingLesson)}
+                  ref={iframeRef}
+                  src={getEmbedUrl(viewingLesson, true)}
                   className="w-full h-full"
                   allow="autoplay; encrypted-media; picture-in-picture"
                   allowFullScreen
@@ -172,6 +176,35 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
                 />
               </div>
             </div>
+
+            {/* Mute/Unmute toggle */}
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => {
+                setAcademyMuted(m => {
+                  const next = !m;
+                  if (iframeRef.current?.contentWindow) {
+                    iframeRef.current.contentWindow.postMessage(
+                      JSON.stringify({ event: "command", func: next ? "mute" : "unMute", args: [] }),
+                      "*"
+                    );
+                  }
+                  return next;
+                });
+              }}
+              className="mt-4 flex items-center gap-1.5 px-4 py-2.5 rounded-full font-bold text-xs tracking-wide transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: academyMuted ? "rgba(255,255,255,0.08)" : "rgba(124,58,237,0.3)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                color: academyMuted ? "rgba(255,255,255,0.6)" : "#fff",
+                minWidth: 44,
+                minHeight: 44,
+                touchAction: "manipulation",
+              }}
+            >
+              {academyMuted ? <Volume2 className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+              {academyMuted ? "Unmute Audio" : "Audio On"}
+            </button>
 
             {/* Glowing seat indicators — theater vibe */}
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 opacity-30">
