@@ -1814,7 +1814,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             inputX += Math.sin(rot) * joy.y;
             inputZ += Math.cos(rot) * joy.y;
           }
-          turnInput = -joy.x;
+          turnInput = -joy.x * 0.55;
           if (Math.abs(joy.camDx) > 0.0005) {
             rot += joy.camDx;
             targetRotRef.current = rot;
