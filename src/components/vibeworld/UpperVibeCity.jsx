@@ -85,7 +85,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Stage video controls ───────────────────────────────────────────────
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
-  const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack, registerNextHandler, clearPosition } = playerCtx || {};
+  const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack, registerNextHandler, clearPosition, audioRef } = playerCtx || {};
   const { allTracks, tracksLoaded } = radioCtx || {};
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
@@ -215,8 +215,36 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
   }, [resumeGlobalIfNeeded]);
 
-  // ── Movement locked when watching stage or in full-screen ─
-  const movementLocked = stageWatching || stageFullScreen;
+  // ── Input focus lock (typing in lounge chat) + voice ducking ──
+  const [loungeInputFocused, setLoungeInputFocused] = useState(false);
+  const [voiceActive, setVoiceActive] = useState(false);
+  const preVoiceVolumeRef = useRef(null);
+
+  // ── Movement locked when watching stage, full-screen, or typing ─
+  const movementLocked = stageWatching || stageFullScreen || loungeInputFocused;
+
+  // ── Audio ducking: reduce global music to ~25% when voice is active ──
+  useEffect(() => {
+    const audio = audioRef?.current;
+    if (!audio) return;
+    if (voiceActive) {
+      if (preVoiceVolumeRef.current === null) {
+        preVoiceVolumeRef.current = audio.volume;
+      }
+      audio.volume = 0.25;
+    } else {
+      if (preVoiceVolumeRef.current !== null) {
+        audio.volume = preVoiceVolumeRef.current;
+        preVoiceVolumeRef.current = null;
+      }
+    }
+    return () => {
+      if (preVoiceVolumeRef.current !== null && audio) {
+        audio.volume = preVoiceVolumeRef.current;
+        preVoiceVolumeRef.current = null;
+      }
+    };
+  }, [voiceActive, audioRef]);
 
   const handleStageNextVideo = () => {
     if (stageVideos.length <= 1) return;
@@ -555,6 +583,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         blockedUsers={blockedUsers}
         userInteractionTarget={userInteractionTarget}
         onCloseUserMenu={handleCloseUserMenu}
+        onLoungeInputFocus={setLoungeInputFocused}
+        onVoiceActive={setVoiceActive}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}

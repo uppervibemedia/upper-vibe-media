@@ -65,6 +65,8 @@ export default function WorldHUD({
   blockedUsers,
   userInteractionTarget,
   onCloseUserMenu,
+  onLoungeInputFocus,
+  onVoiceActive,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -543,6 +545,9 @@ export default function WorldHUD({
         onClose={handleCloseLounge}
         isMobile={isMobile}
         chatAgeConfirmed={chatAgeConfirmed}
+        onInputFocus={onLoungeInputFocus}
+        onVoiceActive={onVoiceActive}
+        blockedUsers={blockedUsers}
       />
 
       {/* ── Vibe Check Panel (slide-up) ────────────────────────── */}

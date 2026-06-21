@@ -1,7 +1,9 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { X, MessageCircle, Disc3, Play, Pause, ThumbsUp, Sparkles, Radio } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, MessageCircle, Disc3, Play, Pause, ThumbsUp, Sparkles, Radio, Flag, UserX } from "lucide-react";
 import { usePlayer } from "@/context/PlayerContext";
+import { useAuth } from "@/lib/AuthContext";
+import { base44 } from "@/api/base44Client";
 import CoverImage from "@/components/shared/CoverImage";
 import VoiceLoungePanel from "@/components/vibeworld/panels/VoiceLoungePanel";
 
@@ -13,42 +15,149 @@ const MOODS = [
   { key: "energized", label: "Energized", emoji: "⚡" },
 ];
 
-export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed = false }) {
+const RECENT_MESSAGE_LIMIT = 50;
+
+export default function LoungePanel({
+  open, onClose, isMobile, chatAgeConfirmed = false,
+  onInputFocus, onVoiceActive, blockedUsers,
+}) {
   const { currentTrack, isPlaying, togglePlay } = usePlayer() || {};
+  const { user } = useAuth();
   const [activeMood, setActiveMood] = useState(null);
-  const [messages, setMessages] = useState([
-    { id: 1, user: "UV Radio", text: "Welcome to the Vibe Lounge! Tap a mood to share how you're feeling.", isBot: true },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+  const prevVoiceActive = useRef(false);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    setMessages(prev => [...prev, { id: Date.now(), user: "You", text: input.trim(), isBot: false }]);
+  // Derive a display name for the current user
+  const displayName = user?.full_name || user?.email?.split("@")[0] || "Anon";
+
+  // ── Load recent lounge messages ────────────────────────────
+  useEffect(() => {
+    if (!open || !user?.id) return;
+    base44.entities.VibeRoomMessage.list("-created_date", RECENT_MESSAGE_LIMIT)
+      .then((msgs) => {
+        // Reverse to show oldest first
+        setMessages((msgs || []).reverse());
+      })
+      .catch(() => {});
+  }, [open, user?.id]);
+
+  // ── Subscribe to real-time lounge messages ──────────────────
+  useEffect(() => {
+    if (!open || !user?.id) return;
+    const unsubscribe = base44.entities.VibeRoomMessage.subscribe((event) => {
+      if (event.type === "create" && event.data) {
+        setMessages((prev) => {
+          // Deduplicate by id
+          if (prev.some((m) => m.id === event.data.id)) return prev;
+          return [...prev, event.data];
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [open, user?.id]);
+
+  // ── Auto-scroll to bottom on new messages ───────────────────
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // ── Voice active tracking for audio ducking ─────────────────
+  useEffect(() => {
+    if (onVoiceActive && prevVoiceActive.current !== voiceOpen) {
+      prevVoiceActive.current = voiceOpen;
+      onVoiceActive(voiceOpen);
+    }
+  }, [voiceOpen, onVoiceActive]);
+
+  // ── Focus tracking for movement lock ────────────────────────
+  const handleInputFocus = useCallback(() => {
+    onInputFocus?.(true);
+  }, [onInputFocus]);
+
+  const handleInputBlur = useCallback(() => {
+    onInputFocus?.(false);
+  }, [onInputFocus]);
+
+  // ── Send a message ──────────────────────────────────────────
+  const handleSend = useCallback(async () => {
+    const text = input.trim();
+    if (!text || !user?.id || sending) return;
+    setSending(true);
     setInput("");
 
-    // Bot response
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        user: "UV Radio",
-        text: ["Vibes received! 🌊", "Keep the energy flowing! ✨", "That's the spirit! 🙌", "Music connects us all 🎵"][Math.floor(Math.random() * 4)],
-        isBot: true,
-      }]);
-    }, 600);
-  };
+    // Optimistic local add
+    const optimisticId = `opt_${Date.now()}`;
+    const optimisticMsg = {
+      id: optimisticId,
+      user_name: displayName,
+      user_email: user.email,
+      content: text,
+      created_date: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
 
-  const handleMood = (mood) => {
+    try {
+      await base44.entities.VibeRoomMessage.create({
+        user_email: user.email,
+        user_name: displayName,
+        content: text,
+      });
+    } catch {
+      // Remove optimistic on failure
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+    }
+    setSending(false);
+  }, [input, user, sending, displayName]);
+
+  // ── Keyboard handler ────────────────────────────────────────
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
+
+  // ── Mood reaction ───────────────────────────────────────────
+  const handleMood = useCallback(async (mood) => {
     setActiveMood(mood.key);
-    setMessages(prev => [...prev, {
-      id: Date.now(),
-      user: "You",
-      text: `${mood.emoji} ${mood.label}`,
-      isBot: false,
-    }]);
-  };
+    if (!user?.id) return;
+    try {
+      await base44.entities.VibeRoomMessage.create({
+        user_email: user.email,
+        user_name: displayName,
+        content: `${mood.emoji} ${mood.label}`,
+      });
+    } catch {}
+  }, [user, displayName]);
+
+  // ── Block user from chat ────────────────────────────────────
+  const handleBlockUser = useCallback((msg) => {
+    if (!msg?.user_email) return;
+    // Block by email — can be enhanced
+    try { navigator?.vibrate?.(20); } catch {}
+  }, []);
+
+  // ── Report message ──────────────────────────────────────────
+  const handleReport = useCallback((msg) => {
+    try { navigator?.vibrate?.(20); } catch {}
+  }, []);
+
+  // Clear input when panel closes
+  useEffect(() => {
+    if (!open) setInput("");
+  }, [open]);
 
   if (!open) return null;
+
+  const isBlocked = (msg) => {
+    if (!blockedUsers || !msg?.user_email) return false;
+    return !!blockedUsers[msg.user_email];
+  };
 
   return (
     <motion.div
@@ -170,28 +279,69 @@ export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed 
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.isBot ? "justify-start" : "justify-end"}`}>
-            <div
-              className="max-w-[80%] px-3 py-2 rounded-2xl"
-              style={{
-                background: msg.isBot
-                  ? "rgba(155,126,255,0.08)"
-                  : "rgba(0,160,220,0.12)",
-                border: `1px solid ${msg.isBot
-                  ? "rgba(155,126,255,0.15)"
-                  : "rgba(0,160,220,0.2)"}`,
-              }}
-            >
-              <p className="text-[10px] font-black tracking-wider mb-0.5"
-                style={{ color: msg.isBot ? "rgba(155,126,255,0.6)" : "rgba(0,160,220,0.6)" }}>
-                {msg.user}
-              </p>
-              <p className="text-xs text-white/70">{msg.text}</p>
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
+        {messages.length === 0 && (
+          <p className="text-center text-xs text-white/20 mt-8">
+            No messages yet. Be the first to share your vibe!
+          </p>
+        )}
+        {messages.map((msg) => {
+          if (isBlocked(msg)) return null;
+          const isMe = msg.user_email === user?.email;
+          const timeStr = msg.created_date
+            ? new Date(msg.created_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : "";
+
+          return (
+            <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"} group`}>
+              <div
+                className="max-w-[80%] px-3 py-2 rounded-2xl"
+                style={{
+                  background: isMe
+                    ? "rgba(0,160,220,0.12)"
+                    : "rgba(155,126,255,0.08)",
+                  border: `1px solid ${isMe
+                    ? "rgba(0,160,220,0.2)"
+                    : "rgba(155,126,255,0.15)"}`,
+                }}
+              >
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <p className="text-[10px] font-black tracking-wider"
+                    style={{ color: isMe ? "rgba(0,160,220,0.6)" : "rgba(155,126,255,0.6)" }}>
+                    {msg.user_name || "Anon"}
+                  </p>
+                  {timeStr && (
+                    <span className="text-[9px] text-white/20">{timeStr}</span>
+                  )}
+                </div>
+                <p className="text-xs text-white/70">{msg.content}</p>
+              </div>
+
+              {/* Quick actions on hover (other users only) */}
+              {!isMe && (
+                <div className="hidden group-hover:flex items-center gap-0.5 ml-1 self-end">
+                  <button
+                    onClick={() => handleReport(msg)}
+                    className="w-5 h-5 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.2)" }}
+                    title="Report"
+                  >
+                    <Flag className="w-2.5 h-2.5" />
+                  </button>
+                  <button
+                    onClick={() => handleBlockUser(msg)}
+                    className="w-5 h-5 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.2)" }}
+                    title="Block"
+                  >
+                    <UserX className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input or age-restricted message */}
@@ -199,12 +349,16 @@ export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed 
         {chatAgeConfirmed ? (
           <div className="flex items-center gap-2">
             <input
+              ref={inputRef}
               type="text"
               placeholder="Share your vibe..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+              onKeyDown={handleKeyDown}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
               onTouchStart={(e) => e.stopPropagation()}
+              maxLength={300}
               className="flex-1 px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 outline-none"
               style={{
                 background: "rgba(255,255,255,0.05)",
@@ -217,11 +371,20 @@ export default function LoungePanel({ open, onClose, isMobile, chatAgeConfirmed 
             />
             <button
               onClick={handleSend}
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
+              disabled={!input.trim() || sending}
+              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
               style={{
-                background: "rgba(155,126,255,0.15)",
-                border: "1px solid rgba(155,126,255,0.25)",
-                color: "#c4aaff",
+                background: input.trim()
+                  ? "rgba(155,126,255,0.15)"
+                  : "rgba(255,255,255,0.05)",
+                border: `1px solid ${input.trim()
+                  ? "rgba(155,126,255,0.25)"
+                  : "rgba(255,255,255,0.08)"}`,
+                color: input.trim() ? "#c4aaff" : "rgba(255,255,255,0.2)",
+                minWidth: 44,
+                minHeight: 44,
+                touchAction: "manipulation",
+                pointerEvents: "auto",
               }}
             >
               <Sparkles className="w-4 h-4" />
