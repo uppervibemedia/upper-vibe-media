@@ -81,16 +81,19 @@ export function RadioProvider({ children }) {
   const nextFnRef           = useRef(null);
   const prevFnRef           = useRef(null);
 
-  // ── Load tracks + drops ───────────────────────────────────────────────────
+  // ── Load tracks + drops (staggered to avoid rate limits) ──────────────────
   useEffect(() => {
-    import("@/lib/trackCache").then(({ getPublishedTracks }) => {
-      getPublishedTracks("-created_date", 500).then((res) => {
-        setAllTracks(res);
-        setTracksLoaded(true);
-        setCuratorActive(isCuratorActive());
+    const timer = setTimeout(() => {
+      import("@/lib/trackCache").then(({ getPublishedTracks }) => {
+        getPublishedTracks("-created_date", 500).then((res) => {
+          setAllTracks(res);
+          setTracksLoaded(true);
+          setCuratorActive(isCuratorActive());
+        });
       });
-    });
-    loadHostDrops(); // pre-cache drops in background
+    }, 4000); // Stagger: 4s after mount to avoid rate-limit collision
+    loadHostDrops();
+    return () => clearTimeout(timer);
   }, []);
 
   // ── Restore persisted state (no autoplay) ─────────────────────────────────

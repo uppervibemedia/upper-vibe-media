@@ -18,7 +18,7 @@ export function FavoritesProvider({ children }) {
   // Stagger load: wait 3000ms after auth resolves before passing userId to useFavorites
   useEffect(() => {
     if (!isLoadingAuth) {
-      readyTimer.current = setTimeout(() => setReady(true), 3000);
+      readyTimer.current = setTimeout(() => setReady(true), 6000);
     }
     return () => { if (readyTimer.current) clearTimeout(readyTimer.current); };
   }, [isLoadingAuth]);

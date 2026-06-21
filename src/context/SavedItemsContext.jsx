@@ -25,7 +25,7 @@ export function SavedItemsProvider({ children }) {
   // Stagger load: wait 3500ms after auth resolves
   useEffect(() => {
     if (!isLoadingAuth) {
-      readyTimer.current = setTimeout(() => setReady(true), 3500);
+      readyTimer.current = setTimeout(() => setReady(true), 8000);
     }
     return () => { if (readyTimer.current) clearTimeout(readyTimer.current); };
   }, [isLoadingAuth]);
