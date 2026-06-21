@@ -26,6 +26,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [isMobile, setIsMobile] = useState(false);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0, animState: "idle" });
   const prevPosRef = useRef({ x: 0, z: 5 });
+  const lastDanceCancelPosRef = useRef({ x: 0, z: 5 }); // tracks position at last dance-cancel check
   const [stageCanvas, setStageCanvas] = useState(null);
   const audioIntensityRef = useRef(0);
   const audioBassRef = useRef(0);
@@ -93,18 +94,20 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, []);
 
   // ── Auto-cancel dance on ANY movement ────────────────────────────────────
+  // Uses a separate ref so the delta is always valid (prevPosRef is updated before setState)
   useEffect(() => {
-    if (!isDancing) return;
-    // Cancel dance as soon as the avatar moves — compare against a stable ref
-    const dx = playerPos.x - prevPosRef.current.x;
-    const dz = playerPos.z - prevPosRef.current.z;
+    if (!isDancing) {
+      lastDanceCancelPosRef.current = { x: playerPos.x, z: playerPos.z };
+      return;
+    }
+    const dx = playerPos.x - lastDanceCancelPosRef.current.x;
+    const dz = playerPos.z - lastDanceCancelPosRef.current.z;
+    lastDanceCancelPosRef.current = { x: playerPos.x, z: playerPos.z };
     if (Math.abs(dx) > 0.001 || Math.abs(dz) > 0.001) {
       setIsDancing(false);
       setActiveEmote(null);
       if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
-      if (playerAvatarEntryRef.current) {
-        playerAvatarEntryRef.current._emoteActive = false;
-      }
+      if (playerAvatarEntryRef.current) playerAvatarEntryRef.current._emoteActive = false;
     }
   }, [playerPos.x, playerPos.z, isDancing]);
 

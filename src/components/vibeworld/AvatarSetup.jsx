@@ -12,12 +12,12 @@ export const AVATAR_TYPES = [
 ];
 
 export const SKIN_TONES = [
-  { key: "light",        label: "Light",      hex: "#FDDBB4" },
-  { key: "medium-light", label: "Med-Light",  hex: "#EAB88A" },
-  { key: "medium",       label: "Medium",     hex: "#C8864A" },
-  { key: "tan",          label: "Tan",        hex: "#A06535" },
-  { key: "brown",        label: "Brown",      hex: "#7B4A28" },
-  { key: "dark-brown",   label: "Dark Brown", hex: "#4A2C18" },
+  { key: "light",        label: "Light",       hex: "#FDDBB4" },
+  { key: "medium-light", label: "Med-Light",   hex: "#EAB88A" },
+  { key: "medium",       label: "Medium",      hex: "#C8864A" },
+  { key: "medium-dark",  label: "Med-Dark",    hex: "#A06535" },
+  { key: "dark",         label: "Dark",        hex: "#7B4A28" },
+  { key: "deep",         label: "Deep",        hex: "#4A2C18" },
 ];
 
 export const OUTFIT_COLORS = [
