@@ -20,10 +20,10 @@ const SKIN_COLORS = {
 
 // ─── BODY PROPORTIONS — Fortnite-lite stylized human ──────────
 const BODY_PRESETS = {
-  masculine:  [0.56, 0.38, 0.60, 0.54, 1.00, 1.15, 0.62],
-  feminine:   [0.48, 0.40, 0.55, 0.50, 0.96, 1.10, 0.76],
-  nonbinary:  [0.52, 0.39, 0.57, 0.52, 0.98, 1.12, 0.70],
-  neutral:    [0.52, 0.39, 0.57, 0.52, 0.98, 1.12, 0.70],
+  masculine:  [0.56, 0.38, 0.60, 0.54, 1.00, 1.20, 0.62],
+  feminine:   [0.48, 0.40, 0.55, 0.50, 0.96, 1.16, 0.76],
+  nonbinary:  [0.52, 0.39, 0.57, 0.52, 0.98, 1.18, 0.70],
+  neutral:    [0.52, 0.39, 0.57, 0.52, 0.98, 1.18, 0.70],
 };
 
 // ─── CLOTHING — dark with neon accents per type ─────────────
@@ -92,9 +92,9 @@ export function createAvatar(scene, opts = {}) {
   const avatar = new Group();
   avatar.name = "avatar";
 
-  // Materials
-  const skinM = () => mat(skinHex, { roughness: 0.40 });
-  const skinS = () => mat(skinHex, { roughness: 0.30 });
+  // Materials — brighter for neon-lit night scene
+  const skinM = () => mat(skinHex, { roughness: 0.45 });
+  const skinS = () => mat(skinHex, { roughness: 0.35 });
   const shirtM = () => mat(cloth.shirt, { roughness: 0.22, metalness: 0.10 });
   const shirtAccentM = () => mat(cloth.shirtAccent, { roughness: 0.20, metalness: 0.08 });
   const pantsM = () => mat(cloth.pants, { roughness: 0.26, metalness: 0.06 });
@@ -104,12 +104,13 @@ export function createAvatar(scene, opts = {}) {
   const laceM = () => mat("#E8E8E8", { roughness: 0.35 });
   const hairM = () => mat(HAIR_BASE, { roughness: 0.44 });
   const hairL = () => mat(HAIR_LIGHT, { roughness: 0.38 });
-  const eyeW = () => mat("#FFFFFF", { roughness: 0.04 });
-  const irisM = () => mat("#5B8C5A", { roughness: 0.04 });
-  const pupilM = () => mat("#080808", { roughness: 0.02 });
-  const browM = () => mat("#3A2018", { roughness: 0.44 });
-  const mouthM = () => mat("#C07060", { roughness: 0.30 });
-  const mouthL = () => mat("#B06050", { roughness: 0.28 });
+  // Face features use UNLIT materials so they pop regardless of lighting
+  const eyeW = () => new MeshBasicMaterial({ color: 0xFFFFFF });
+  const irisM = () => new MeshBasicMaterial({ color: 0x5B8C5A });
+  const pupilM = () => new MeshBasicMaterial({ color: 0x080808 });
+  const browM = () => new MeshBasicMaterial({ color: 0x3A2018 });
+  const mouthM = () => new MeshBasicMaterial({ color: 0xC07060 });
+  const mouthL = () => new MeshBasicMaterial({ color: 0xB06050 });
   const neonP = () => neonMat(cloth.neonPrimary, 0.55);
   const neonS = () => neonMat(cloth.neonSecondary, 0.45);
 
@@ -119,145 +120,115 @@ export function createAvatar(scene, opts = {}) {
     group.add(m); return m;
   }
 
-  // ─── HEAD — detailed stylized face ─────────────────────────
+  // ─── HEAD — large visible face with bold features ──────────
   function buildHead() {
     const h = new Group(); h.name = "head";
     const hs = headScale;
 
-    // Cranium — oval dome
-    const cranium = addObj(h, new SphereGeometry(0.10 * hs, 28, 22), skinM, new Vector3(0, 0.13 * hs, 0));
-    cranium.scale.set(0.84, 1.08, 0.78);
+    // Cranium — larger visible dome (radius ~0.18 with scale gives ~0.19 tall)
+    const cranium = addObj(h, new SphereGeometry(0.18 * hs, 28, 22), skinM, new Vector3(0, 0.13 * hs, 0));
+    cranium.scale.set(0.84, 1.06, 0.78);
 
-    // Forehead dome
-    const fh = addObj(h, new SphereGeometry(0.04 * hs, 13, 10), skinM, new Vector3(0, 0.17 * hs, 0.03 * hs));
-    fh.scale.set(0.70, 0.38, 0.50);
+    // Brow ridge — prominent
+    const browRidge = addObj(h, new SphereGeometry(0.10 * hs, 18, 12), skinS, new Vector3(0, 0.10 * hs, 0.06 * hs));
+    browRidge.scale.set(0.72, 0.18, 0.48);
 
-    // Brow ridge
-    const browRidge = addObj(h, new SphereGeometry(0.06 * hs, 18, 12), skinS, new Vector3(0, 0.11 * hs, 0.056 * hs));
-    browRidge.scale.set(0.72, 0.18, 0.52);
-
-    // Jaw — tapered mandible
-    const jaw = addObj(h, new SphereGeometry(0.06 * hs, 20, 14), skinM, new Vector3(0, 0.04 * hs, 0.05 * hs));
-    jaw.scale.set(0.82, 0.46, 0.62);
+    // Jaw — broader tapered shape
+    const jaw = addObj(h, new SphereGeometry(0.10 * hs, 20, 14), skinM, new Vector3(0, 0.03 * hs, 0.05 * hs));
+    jaw.scale.set(0.80, 0.44, 0.60);
 
     // Chin
-    const chin = addObj(h, new SphereGeometry(0.018 * hs, 12, 8), skinS, new Vector3(0, 0.005 * hs, 0.08 * hs));
+    const chin = addObj(h, new SphereGeometry(0.03 * hs, 12, 8), skinS, new Vector3(0, -0.005 * hs, 0.08 * hs));
     chin.scale.set(0.65, 0.45, 0.48);
-
-    // Jawline corners
-    for (const s of [-1, 1]) {
-      const corner = addObj(h, new SphereGeometry(0.014 * hs, 10, 8), skinS, new Vector3(s * 0.052 * hs, 0.038 * hs, 0.058 * hs));
-      corner.scale.set(0.55, 0.38, 0.48);
-    }
 
     // ── CHEEKBONES ──────────────────────────────────────
     for (const s of [-1, 1]) {
-      const cheek = addObj(h, new SphereGeometry(0.03 * hs, 12, 10), skinS, new Vector3(s * 0.062 * hs, 0.10 * hs, 0.052 * hs));
-      cheek.scale.set(0.72, 0.58, 0.44);
+      const cheek = addObj(h, new SphereGeometry(0.05 * hs, 12, 10), skinS, new Vector3(s * 0.06 * hs, 0.09 * hs, 0.05 * hs));
+      cheek.scale.set(0.72, 0.55, 0.44);
     }
 
-    // ── EYE REGION — detailed eyes with lids + brows ───
-    const eyeY = 0.14 * hs, eyeZ = 0.074 * hs, eyeGap = 0.034 * hs;
+    // ── EYE REGION — BIG visible eyes ────────────────────
+    const eyeY = 0.13 * hs, eyeZ = 0.08 * hs, eyeGap = 0.05 * hs;
     for (const s of [-1, 1]) {
       const ex = s * eyeGap;
 
-      // Socket indent
-      const socket = addObj(h, new SphereGeometry(0.016 * hs, 10, 8), skinS, new Vector3(ex, eyeY, eyeZ - 0.002 * hs));
-      socket.scale.set(0.52, 0.65, 0.25);
+      // White — large sphere, scaled flat
+      const white = addObj(h, new SphereGeometry(0.04 * hs, 13, 10), eyeW, new Vector3(ex, eyeY, eyeZ));
+      white.scale.set(0.56, 0.72, 0.30);
 
-      // White
-      const white = addObj(h, new SphereGeometry(0.018 * hs, 13, 10), eyeW, new Vector3(ex, eyeY, eyeZ));
-      white.scale.set(0.56, 0.80, 0.34);
+      // Iris
+      addObj(h, new SphereGeometry(0.018 * hs, 10, 8), irisM, new Vector3(ex, eyeY, eyeZ + 0.008 * hs));
 
-      // Iris + pupil
-      addObj(h, new SphereGeometry(0.01 * hs, 10, 8), irisM, new Vector3(ex, eyeY, eyeZ + 0.007 * hs));
-      addObj(h, new SphereGeometry(0.005 * hs, 8, 6), pupilM, new Vector3(ex, eyeY, eyeZ + 0.01 * hs));
+      // Pupil
+      addObj(h, new SphereGeometry(0.009 * hs, 8, 6), pupilM, new Vector3(ex, eyeY, eyeZ + 0.014 * hs));
 
-      // Highlight
-      const hl = new Mesh(new SphereGeometry(0.0025 * hs, 4, 3), new MeshBasicMaterial({ color: 0xFFFFFF }));
-      hl.position.set(ex + 0.004 * hs, eyeY + 0.006 * hs, eyeZ + 0.012 * hs);
-      h.add(hl);
-
-      // Upper eyelid
-      const upperLid = addObj(h, new BoxGeometry(0.022 * hs, 0.005 * hs, 0.008 * hs), skinS, new Vector3(ex, eyeY + 0.012 * hs, eyeZ + 0.004 * hs));
+      // Upper eyelid — dark outline
+      const upperLid = addObj(h, new BoxGeometry(0.045 * hs, 0.008 * hs, 0.01 * hs), skinS, new Vector3(ex, eyeY + 0.018 * hs, eyeZ + 0.004 * hs));
       upperLid.rotation.x = -0.15;
-      // Lower lid
-      const lowerLid = addObj(h, new BoxGeometry(0.02 * hs, 0.003 * hs, 0.006 * hs), skinS, new Vector3(ex, eyeY - 0.01 * hs, eyeZ));
-      lowerLid.rotation.x = 0.15;
 
-      // Eyebrow
-      const brow = addObj(h, new BoxGeometry(0.038 * hs, 0.007 * hs, 0.006 * hs), browM, new Vector3(ex, eyeY + 0.028 * hs, eyeZ + 0.014 * hs));
-      brow.rotation.z = s * 0.08;
-      brow.rotation.x = -0.05;
+      // Eyebrow — thick block for visibility
+      const brow = addObj(h, new BoxGeometry(0.06 * hs, 0.014 * hs, 0.012 * hs), browM, new Vector3(ex, eyeY + 0.04 * hs, eyeZ + 0.01 * hs));
+      brow.rotation.z = s * 0.06;
     }
 
-    // ── NOSE — refined bridge + tip ────────────────────
-    const noseBridge = addObj(h, new BoxGeometry(0.012 * hs, 0.026 * hs, 0.014 * hs), skinS, new Vector3(0, 0.118 * hs, 0.078 * hs));
-    const noseTip = addObj(h, new SphereGeometry(0.015 * hs, 12, 10), skinS, new Vector3(0, 0.10 * hs, 0.088 * hs));
+    // ── NOSE — prominent block ─────────────────────────
+    const noseBridge = addObj(h, new BoxGeometry(0.025 * hs, 0.04 * hs, 0.024 * hs), skinS, new Vector3(0, 0.10 * hs, 0.08 * hs));
+    const noseTip = addObj(h, new SphereGeometry(0.028 * hs, 12, 10), skinS, new Vector3(0, 0.08 * hs, 0.09 * hs));
     noseTip.scale.set(0.68, 0.55, 0.55);
     for (const s of [-1, 1]) {
-      const nostril = addObj(h, new SphereGeometry(0.005 * hs, 6, 5), mat("#5A3A2A", { roughness: 0.35 }), new Vector3(s * 0.009 * hs, 0.098 * hs, 0.092 * hs));
+      const nostril = addObj(h, new SphereGeometry(0.01 * hs, 6, 5),
+        new MeshBasicMaterial({ color: 0x5A3A2A }),
+        new Vector3(s * 0.016 * hs, 0.076 * hs, 0.094 * hs));
       nostril.scale.set(0.55, 0.45, 0.45);
     }
 
-    // ── MOUTH — full lips ──────────────────────────────
-    const ulCenter = addObj(h, new SphereGeometry(0.006 * hs, 8, 6), mouthM, new Vector3(0, 0.066 * hs, 0.084 * hs));
+    // ── MOUTH — visible lips ───────────────────────────
+    const ulCenter = addObj(h, new SphereGeometry(0.012 * hs, 8, 6), mouthM, new Vector3(0, 0.05 * hs, 0.09 * hs));
     ulCenter.scale.set(0.55, 0.45, 0.35);
     for (const s of [-1, 1]) {
-      const ulSide = addObj(h, new SphereGeometry(0.007 * hs, 7, 5), mouthM, new Vector3(s * 0.016 * hs, 0.063 * hs, 0.083 * hs));
+      const ulSide = addObj(h, new SphereGeometry(0.014 * hs, 7, 5), mouthM, new Vector3(s * 0.03 * hs, 0.045 * hs, 0.088 * hs));
       ulSide.scale.set(0.5, 0.4, 0.35);
     }
-    const lowerLip = addObj(h, new SphereGeometry(0.01 * hs, 10, 8), mouthL, new Vector3(0, 0.058 * hs, 0.085 * hs));
+    const lowerLip = addObj(h, new SphereGeometry(0.018 * hs, 10, 8), mouthL, new Vector3(0, 0.035 * hs, 0.092 * hs));
     lowerLip.scale.set(0.78, 0.35, 0.40);
 
     // ── EARS ───────────────────────────────────────────
     for (const s of [-1, 1]) {
-      const ear = addObj(h, new SphereGeometry(0.022 * hs, 12, 10), skinM, new Vector3(s * 0.088 * hs, 0.12 * hs, 0));
-      ear.scale.set(0.26, 0.62, 0.42);
-      const lobe = addObj(h, new SphereGeometry(0.006 * hs, 7, 5), skinS, new Vector3(s * 0.09 * hs, 0.095 * hs, 0.005));
-      lobe.scale.set(0.4, 0.5, 0.35);
+      const ear = addObj(h, new SphereGeometry(0.04 * hs, 12, 10), skinM, new Vector3(s * 0.09 * hs, 0.11 * hs, 0));
+      ear.scale.set(0.26, 0.58, 0.40);
     }
 
     // ── HAIR — per-type style ──────────────────────────
     const style = cloth.jacketStyle;
     if (style === "track" || style === "hoodie") {
-      // Masculine / Neutral: short modern textured hair
-      const mainHair = addObj(h, new SphereGeometry(0.108 * hs, 24, 20), hairM, new Vector3(0, 0.18 * hs, -0.01));
-      mainHair.scale.set(1.08, 0.58, 0.94);
+      const mainHair = addObj(h, new SphereGeometry(0.20 * hs, 24, 20), hairM, new Vector3(0, 0.17 * hs, -0.01));
+      mainHair.scale.set(1.08, 0.52, 0.94);
       for (const s of [-1, 1]) {
-        addObj(h, new SphereGeometry(0.048 * hs, 13, 10), hairL, new Vector3(s * 0.074 * hs, 0.15 * hs, 0.016));
-        addObj(h, new SphereGeometry(0.042 * hs, 10, 8), hairM, new Vector3(s * 0.062 * hs, 0.19 * hs, -0.004));
+        addObj(h, new SphereGeometry(0.07 * hs, 13, 10), hairL, new Vector3(s * 0.08 * hs, 0.14 * hs, 0.016));
       }
-      const bang = addObj(h, new BoxGeometry(0.065 * hs, 0.03 * hs, 0.074 * hs), hairL, new Vector3(0, 0.205 * hs, 0.05 * hs));
+      const bang = addObj(h, new BoxGeometry(0.10 * hs, 0.05 * hs, 0.08 * hs), hairL, new Vector3(0, 0.21 * hs, 0.05 * hs));
       bang.rotation.x = -0.25;
-      addObj(h, new SphereGeometry(0.078 * hs, 16, 12), hairM, new Vector3(0, 0.10 * hs, -0.065 * hs));
+      addObj(h, new SphereGeometry(0.12 * hs, 16, 12), hairM, new Vector3(0, 0.08 * hs, -0.07 * hs));
     } else if (style === "crop") {
-      // Feminine: curly styled hair / updo
-      const mainHair = addObj(h, new SphereGeometry(0.112 * hs, 24, 20), hairM, new Vector3(0, 0.17 * hs, -0.01));
-      mainHair.scale.set(1.10, 0.62, 0.96);
-      // Curly volume at sides
+      const mainHair = addObj(h, new SphereGeometry(0.21 * hs, 24, 20), hairM, new Vector3(0, 0.16 * hs, -0.01));
+      mainHair.scale.set(1.10, 0.55, 0.96);
       for (const s of [-1, 1]) {
         for (let c = 0; c < 3; c++) {
-          const curl = addObj(h, new SphereGeometry(0.024 * hs, 10, 8), hairL, new Vector3(s * (0.06 + c * 0.015) * hs, 0.13 + c * 0.03 * hs, 0.02));
-          curl.scale.set(0.7, 0.65, 0.55);
+          addObj(h, new SphereGeometry(0.04 * hs, 10, 8), hairL, new Vector3(s * (0.07 + c * 0.02) * hs, 0.12 + c * 0.03 * hs, 0.02));
         }
       }
-      const bang = addObj(h, new BoxGeometry(0.06 * hs, 0.028 * hs, 0.068 * hs), hairL, new Vector3(0, 0.20 * hs, 0.048 * hs));
+      const bang = addObj(h, new BoxGeometry(0.10 * hs, 0.045 * hs, 0.07 * hs), hairL, new Vector3(0, 0.20 * hs, 0.048 * hs));
       bang.rotation.x = -0.22;
-      addObj(h, new SphereGeometry(0.07 * hs, 16, 12), hairM, new Vector3(0, 0.12 * hs, -0.06 * hs));
+      addObj(h, new SphereGeometry(0.11 * hs, 16, 12), hairM, new Vector3(0, 0.10 * hs, -0.06 * hs));
     } else {
-      // Non-Binary: expressive short/medium sweeping hair
-      const mainHair = addObj(h, new SphereGeometry(0.108 * hs, 24, 20), hairM, new Vector3(0, 0.16 * hs, -0.01));
-      mainHair.scale.set(1.10, 0.56, 0.94);
-      // Swept side bangs
-      const sweep = addObj(h, new BoxGeometry(0.05 * hs, 0.026 * hs, 0.08 * hs), hairL, new Vector3(-0.02 * hs, 0.20 * hs, 0.04 * hs));
-      sweep.rotation.z = 0.25;
-      sweep.rotation.x = -0.18;
-      // Textured crown
+      const mainHair = addObj(h, new SphereGeometry(0.20 * hs, 24, 20), hairM, new Vector3(0, 0.15 * hs, -0.01));
+      mainHair.scale.set(1.10, 0.50, 0.94);
+      const sweep = addObj(h, new BoxGeometry(0.08 * hs, 0.04 * hs, 0.08 * hs), hairL, new Vector3(-0.03 * hs, 0.19 * hs, 0.04 * hs));
+      sweep.rotation.z = 0.25; sweep.rotation.x = -0.18;
       for (let i = 0; i < 3; i++) {
-        addObj(h, new SphereGeometry(0.04 * hs, 10, 8), hairL, new Vector3((i - 1) * 0.04 * hs, 0.22 * hs, -0.015 * hs));
+        addObj(h, new SphereGeometry(0.06 * hs, 10, 8), hairL, new Vector3((i - 1) * 0.05 * hs, 0.20 * hs, -0.015 * hs));
       }
-      addObj(h, new SphereGeometry(0.075 * hs, 16, 12), hairM, new Vector3(0, 0.10 * hs, -0.065 * hs));
+      addObj(h, new SphereGeometry(0.12 * hs, 16, 12), hairM, new Vector3(0, 0.08 * hs, -0.065 * hs));
     }
 
     return h;
@@ -628,9 +599,9 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   const bAccent = () => new MeshStandardMaterial({ color: new Color(cloth.shirtAccent), roughness: 0.22, metalness: 0.06 });
   const pMat = () => new MeshStandardMaterial({ color: new Color(cloth.pants), roughness: 0.28, metalness: 0.05 });
   const bltMat = () => new MeshStandardMaterial({ color: new Color("#222224"), roughness: 0.18, metalness: 0.20 });
-  const eMat = () => new MeshStandardMaterial({ color: new Color("#080808"), roughness: 0.05 });
-  const irisMat = () => new MeshStandardMaterial({ color: new Color("#5B8C5A"), roughness: 0.05 });
-  const moMat = () => new MeshStandardMaterial({ color: new Color("#C07060"), roughness: 0.30 });
+  const eMat = () => new MeshBasicMaterial({ color: 0x080808 });
+  const irisMat = () => new MeshBasicMaterial({ color: 0x5B8C5A });
+  const moMat = () => new MeshBasicMaterial({ color: 0xC07060 });
   const hMat = () => new MeshStandardMaterial({ color: new Color(HAIR_BASE), roughness: 0.44 });
   const hLMat = () => new MeshStandardMaterial({ color: new Color(HAIR_LIGHT), roughness: 0.38 });
   const shoeMat = () => new MeshStandardMaterial({ color: new Color("#121214"), roughness: 0.28 });
@@ -643,64 +614,70 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   torso.position.y = bodyY; torso.castShadow = true; torso.receiveShadow = true;
   group.add(torso);
 
-  // ─── HEAD — detailed face ───────────────────────────────
+  // ─── HEAD — big visible face ───────────────────────────────
   const headGroup = new Group();
-  headGroup.position.y = torsoH * 0.68 + 0.32;
+  headGroup.position.y = torsoH * 0.68 + 0.38;
 
-  const cranium = new Mesh(new SphereGeometry(0.096, 20, 18), sMat());
-  cranium.scale.set(0.84, 1.08, 0.78); cranium.position.y = 0.10; cranium.castShadow = true;
+  const cranium = new Mesh(new SphereGeometry(0.16, 22, 18), sMat());
+  cranium.scale.set(0.84, 1.06, 0.78); cranium.position.y = 0.10; cranium.castShadow = true;
   headGroup.add(cranium);
 
-  const jaw = new Mesh(new SphereGeometry(0.052, 16, 12), sMat());
-  jaw.scale.set(0.80, 0.46, 0.62); jaw.position.set(0, 0.03, 0.048);
+  const jaw = new Mesh(new SphereGeometry(0.09, 16, 12), sMat());
+  jaw.scale.set(0.80, 0.44, 0.62); jaw.position.set(0, 0.02, 0.05);
   headGroup.add(jaw);
 
-  const chin = new Mesh(new SphereGeometry(0.016, 10, 8), sMatLight());
-  chin.scale.set(0.65, 0.45, 0.48); chin.position.set(0, 0, 0.078);
+  const chin = new Mesh(new SphereGeometry(0.026, 10, 8), sMatLight());
+  chin.scale.set(0.65, 0.45, 0.48); chin.position.set(0, -0.005, 0.08);
   headGroup.add(chin); chin.castShadow = true;
 
   // Cheekbones
   for (const s of [-1, 1]) {
-    const cheek = new Mesh(new SphereGeometry(0.026, 10, 8), sMatLight());
-    cheek.scale.set(0.68, 0.5, 0.4); cheek.position.set(s * 0.058, 0.095, 0.05);
+    const cheek = new Mesh(new SphereGeometry(0.04, 10, 8), sMatLight());
+    cheek.scale.set(0.68, 0.5, 0.4); cheek.position.set(s * 0.055, 0.09, 0.048);
     headGroup.add(cheek); cheek.castShadow = true;
   }
 
-  // Eyes
+  // Eyes — big and bright
   for (const s of [-1, 1]) {
-    const ex = s * 0.03;
-    const eyeW = new Mesh(new SphereGeometry(0.016, 10, 8), new MeshStandardMaterial({ color: new Color("#FFFFFF"), roughness: 0.04 }));
-    eyeW.scale.set(0.52, 0.75, 0.3); eyeW.position.set(ex, 0.11, 0.065);
-    headGroup.add(eyeW);
+    const ex = s * 0.045;
+    const eyeMesh = new Mesh(new SphereGeometry(0.035, 10, 8), new MeshBasicMaterial({ color: 0xFFFFFF }));
+    eyeMesh.scale.set(0.52, 0.72, 0.28); eyeMesh.position.set(ex, 0.11, 0.07);
+    headGroup.add(eyeMesh);
 
-    const iris = new Mesh(new SphereGeometry(0.008, 8, 6), irisMat());
-    iris.position.set(ex, 0.11, 0.072); headGroup.add(iris);
+    const iris = new Mesh(new SphereGeometry(0.015, 8, 6), irisMat());
+    iris.position.set(ex, 0.11, 0.076); headGroup.add(iris);
 
-    const pupil = new Mesh(new SphereGeometry(0.004, 6, 4), eMat());
-    pupil.position.set(ex, 0.11, 0.074); headGroup.add(pupil);
+    const pupil = new Mesh(new SphereGeometry(0.008, 6, 4), eMat());
+    pupil.position.set(ex, 0.11, 0.080); headGroup.add(pupil);
+
+    // Eyebrow
+    const brow = new Mesh(new BoxGeometry(0.05, 0.012, 0.01),
+      new MeshBasicMaterial({ color: 0x3A2018 }));
+    brow.position.set(ex, 0.14, 0.072); brow.rotation.z = s * 0.06;
+    headGroup.add(brow);
   }
 
-  // Nose
-  const noseBridge = new Mesh(new BoxGeometry(0.01, 0.022, 0.012), sMatLight());
-  noseBridge.position.set(0, 0.115, 0.075); headGroup.add(noseBridge); noseBridge.castShadow = true;
-  const noseTip = new Mesh(new SphereGeometry(0.012, 10, 8), sMatLight());
-  noseTip.scale.set(0.65, 0.5, 0.5); noseTip.position.set(0, 0.095, 0.084);
-  headGroup.add(noseTip); noseTip.castShadow = true;
+  // Nose — bigger
+  const noseBridge = new Mesh(new BoxGeometry(0.02, 0.035, 0.02), sMatLight());
+  noseBridge.position.set(0, 0.10, 0.078); headGroup.add(noseBridge);
+  const noseTip = new Mesh(new SphereGeometry(0.022, 10, 8), sMatLight());
+  noseTip.scale.set(0.65, 0.5, 0.5); noseTip.position.set(0, 0.08, 0.086);
+  headGroup.add(noseTip);
 
-  // Mouth
-  const upperLip = new Mesh(new BoxGeometry(0.036, 0.007, 0.005), moMat());
-  upperLip.position.set(0, 0.062, 0.08); headGroup.add(upperLip);
-  const lowerLip = new Mesh(new BoxGeometry(0.032, 0.009, 0.004),
-    new MeshStandardMaterial({ color: new Color("#B06050"), roughness: 0.28 }));
-  lowerLip.position.set(0, 0.054, 0.081); lowerLip.rotation.x = 0.12;
+  // Mouth — visible
+  const upperLip = new Mesh(new BoxGeometry(0.06, 0.014, 0.008), moMat());
+  upperLip.position.set(0, 0.05, 0.084); headGroup.add(upperLip);
+  const lowerLip = new Mesh(new BoxGeometry(0.052, 0.016, 0.006),
+    new MeshBasicMaterial({ color: 0xB06050 }));
+  lowerLip.position.set(0, 0.035, 0.086); lowerLip.rotation.x = 0.12;
   headGroup.add(lowerLip);
 
   // Hair
-  const rHair = new Mesh(new SphereGeometry(0.098, 18, 16), hMat());
-  rHair.scale.set(1.08, 0.58, 0.94); rHair.position.set(0, 0.16, -0.01); rHair.castShadow = true;
+  const rHair = new Mesh(new SphereGeometry(0.17, 18, 16), hMat());
+  rHair.scale.set(1.08, 0.52, 0.94); rHair.position.set(0, 0.16, -0.01); rHair.castShadow = true;
   headGroup.add(rHair);
-  const bangs = new Mesh(new BoxGeometry(0.06, 0.026, 0.07), hLMat());
-  bangs.position.set(0, 0.20, 0.048); bangs.rotation.x = -0.22;
+  const bangs = new Mesh(new BoxGeometry(0.09, 0.04, 0.07), hLMat());
+  bangs.position.set(0, 0.20, 0.05); bangs.rotation.x = -0.22;
   headGroup.add(bangs);
 
   group.add(headGroup);
