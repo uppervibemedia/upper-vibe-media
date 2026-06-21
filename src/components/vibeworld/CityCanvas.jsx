@@ -45,8 +45,16 @@ const {
 const MOVE_SPEED = 3.0;
 const ACCELERATION = 10.0;
 const DECELERATION = 8.0;
-const TURN_SPEED = 8.0;
-const ROTATION_SMOOTH = 6.0;
+const TURN_SPEED = 2.5;       // radians/sec for A/D turning
+const ROTATION_SMOOTH = 8.0;  // how fast avatar body snaps to move direction
+
+// Camera constants
+const CAM_DIST = 5.5;         // distance behind avatar
+const CAM_HEIGHT = 2.4;       // above avatar ground position
+const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
+const CAM_FOLLOW_SPEED = 6.0; // how fast camera angle follows avatar
+const IDLE_ORBIT_DELAY = 5.0; // seconds before idle orbit starts
+const IDLE_ORBIT_SPEED = 0.3; // radians/sec for idle orbit
 
 // Tree collisions — radius 0.6 per tree
 const TREE_R = 0.5;
@@ -1316,17 +1324,22 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const stageCanvasRef = useRef(null);
   stageCanvasRef.current = stageCanvas;
   const velocityRef = useRef({ x: 0, z: 0 });
-  const targetRotRef = useRef(0);
+  const avatarRotRef = useRef(0);    // avatar body Y rotation (world space)
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0, button: 0 });
-  const cameraOrbitRef = useRef({ angle: 0, smoothAngle: 0 });
+  // Camera: yaw = angle of camera around avatar (0 = directly behind)
+  // camYaw is independent of avatar rotation; avatar rotation is avatarRotRef
+  const camYawRef = useRef(0);          // camera yaw offset (right-click drag)
+  const camYawSmoothRef = useRef(0);    // smoothed camera yaw
+  const idleTimerRef = useRef(0);       // seconds since last movement input
+  const isOrbitingRef = useRef(false);  // true during idle orbit
+  const userTouchingCamRef = useRef(false); // right-click or cam drag active
   const remoteAvatarsRef = useRef({}); // userId → { group, prevPos }
   const remoteUsersRef = useRef([]);
   remoteUsersRef.current = remoteUsers || [];
   const onRemoteClickRef = useRef(onRemoteAvatarClick);
   onRemoteClickRef.current = onRemoteAvatarClick;
   const cameraRef = useRef(null);
-  const animRef = useRef({ walkTime: 0, isMoving: false, speed: 0, prevWalkTime: 0 });
   const isMobileRef = useRef(false);
   const _mobileRef = useRef({ x: 0, y: 0, camDx: 0 });
   const mobileInputRef = props.mobileInputRef || _mobileRef;
@@ -1374,13 +1387,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const asp = rw / Math.max(rh, 1);
       const camera = new PerspectiveCamera(52, asp, 0.1, 80);
       cameraRef.current = camera;
-      // Start camera at a 3/4 front-left angle for a better initial view
-      // Avatar head is at y≈1.60, so look-at target at y=0.9 (chest) gives full-body view
-      const initCamDist = 5.5;
-      const initCamHeight = 2.2;
-      const initLookY = 0.9;
-      camera.position.set(SPAWN[0] - 3.5, SPAWN[1] + initCamHeight, SPAWN[2] + 4.0);
-      camera.lookAt(SPAWN[0], SPAWN[1] + initLookY, SPAWN[2]);
+      // Start directly BEHIND avatar (avatar faces -Z toward stage at spawn)
+      // camYaw=0 → camera behind → at +Z from avatar (opposite of facing direction)
+      camera.position.set(SPAWN[0], SPAWN[1] + CAM_HEIGHT, SPAWN[2] + CAM_DIST);
+      camera.lookAt(SPAWN[0], SPAWN[1] + CAM_LOOK_Y, SPAWN[2]);
 
       buildPark(scene);
 
@@ -1422,95 +1432,80 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const t = now;
         const keys = keysRef.current;
         const mouse = mouseRef.current;
-        let [px, py, pz, rot] = avatarPosRef.current;
+        let [px, py, pz] = avatarPosRef.current;
+        let rot = avatarRotRef.current;
         const vel = velocityRef.current;
 
+        // ─── RIGHT-CLICK / CAM DRAG ──────────────────────────
+        if (mouse.down && mouse.button === 2 && !lockedRef.current) {
+          camYawRef.current -= mouse.dx * 0.006;
+          userTouchingCamRef.current = true;
+          idleTimerRef.current = 0;
+          isOrbitingRef.current = false;
+        } else if (!mouse.down) {
+          userTouchingCamRef.current = false;
+        }
+        mouse.dx = 0;
+        mouse.dy = 0;
+
         // ─── INPUT (skipped when locked) ────────────────────
-        let inputX = 0, inputZ = 0;
-        let turnInput = 0;
+        // avatarFwd = direction the avatar currently faces
+        // W/S move forward/backward in avatar-facing direction
+        // A/D rotate the avatar left/right (and camera follows)
+        let inputFwd = 0; // +1 = forward, -1 = backward
+        let turnInput = 0; // +1 = turn left, -1 = turn right
+        let hasAnyInput = false;
 
         if (lockedRef.current) {
-          // Movement locked — skip all input processing
+          vel.x = 0;
+          vel.z = 0;
         } else if (isMobileRef.current) {
-          // Reset mobile input on unlock transition to prevent stale camDx
           if (prevLockedRef.current) {
             mobileInputRef.current = { x: 0, y: 0, camDx: 0 };
           }
           const joy = mobileInputRef.current;
-          if (Math.abs(joy.y) > 0.08) {
-            inputX += Math.sin(rot) * joy.y;
-            inputZ += Math.cos(rot) * joy.y;
-          }
-          turnInput = -joy.x * 0.55;
+          // joy.y: positive = joystick pushed up = move forward (cy - clientY, so up = +)
+          // joy.x: positive = joystick pushed right = turn right
+          if (Math.abs(joy.y) > 0.08) { inputFwd = joy.y; hasAnyInput = true; }
+          if (Math.abs(joy.x) > 0.08) { turnInput = -joy.x; hasAnyInput = true; }
+          // Camera drag from right side of screen
           if (Math.abs(joy.camDx) > 0.0005) {
-            rot += joy.camDx;
-            targetRotRef.current = rot;
+            camYawRef.current -= joy.camDx;
+            userTouchingCamRef.current = true;
+            idleTimerRef.current = 0;
+            isOrbitingRef.current = false;
             joy.camDx *= 0.85;
+          } else if (mobileInputRef.current._camActive) {
+            // Finger still on cam zone — pause orbit even if no movement
+            userTouchingCamRef.current = true;
+            idleTimerRef.current = 0;
+            isOrbitingRef.current = false;
           }
         } else {
-          if (keys.w || keys.arrowup) { inputX += Math.sin(rot); inputZ += Math.cos(rot); }
-          if (keys.s || keys.arrowdown) { inputX -= Math.sin(rot); inputZ -= Math.cos(rot); }
-          if (keys.a || keys.arrowleft) turnInput = 1;
-          if (keys.d || keys.arrowright) turnInput = -1;
+          if (keys.w || keys.arrowup)    { inputFwd =  1; hasAnyInput = true; }
+          if (keys.s || keys.arrowdown)  { inputFwd = -1; hasAnyInput = true; }
+          if (keys.a || keys.arrowleft)  { turnInput =  1; hasAnyInput = true; }
+          if (keys.d || keys.arrowright) { turnInput = -1; hasAnyInput = true; }
         }
 
-        const inputMag = Math.sqrt(inputX * inputX + inputZ * inputZ);
-        const isMoving = inputMag > 0.1;
-        const isTurning = Math.abs(turnInput) > 0.01;
+        const isMoving = Math.abs(inputFwd) > 0.08 || Math.abs(turnInput) > 0.08;
 
-        // ─── MOUSE — left click rotates avatar, right click orbits camera ──
-        if (mouse.down && !lockedRef.current) {
-          if (mouse.button === 2) {
-            // Right-click: orbit camera around avatar
-            cameraOrbitRef.current.angle += mouse.dx * 0.005;
-            // Wrap angle
-            while (cameraOrbitRef.current.angle > Math.PI) cameraOrbitRef.current.angle -= Math.PI * 2;
-            while (cameraOrbitRef.current.angle < -Math.PI) cameraOrbitRef.current.angle += Math.PI * 2;
-          } else {
-            // Left-click: rotate avatar
-            rot += mouse.dx * 0.004;
-            targetRotRef.current = rot;
-          }
-          mouse.dx = 0;
-          mouse.dy = 0;
-        }
-
-        // ─── TURNING (A/D keys) ─────────────────────────────────
-        if (isTurning) {
+        // ─── AVATAR TURNING (A/D) ────────────────────────────
+        if (Math.abs(turnInput) > 0.01) {
           rot += turnInput * TURN_SPEED * dt;
-          targetRotRef.current = rot;
         }
 
-        // ─── VELOCITY WITH SMOOTH ACCEL/DECEL ──────────────────
-        if (isMoving) {
-          inputX /= inputMag;
-          inputZ /= inputMag;
+        // ─── FORWARD/BACKWARD MOVEMENT ───────────────────────
+        const moveX = Math.sin(rot) * inputFwd;
+        const moveZ = Math.cos(rot) * inputFwd;
 
-          const moveDot = inputX * Math.sin(rot) + inputZ * Math.cos(rot);
-          if (!isTurning && moveDot > -0.3) {
-            const moveAngle = Math.atan2(inputX, inputZ);
-            targetRotRef.current = moveAngle;
-          }
-
-          vel.x += (inputX * MOVE_SPEED - vel.x) * Math.min(1, ACCELERATION * dt);
-          vel.z += (inputZ * MOVE_SPEED - vel.z) * Math.min(1, ACCELERATION * dt);
+        if (isMoving && Math.abs(inputFwd) > 0.08) {
+          vel.x += (moveX * MOVE_SPEED - vel.x) * Math.min(1, ACCELERATION * dt);
+          vel.z += (moveZ * MOVE_SPEED - vel.z) * Math.min(1, ACCELERATION * dt);
         } else {
           vel.x += (0 - vel.x) * Math.min(1, DECELERATION * dt);
           vel.z += (0 - vel.z) * Math.min(1, DECELERATION * dt);
         }
-
-        // Force zero velocity when locked
-        if (lockedRef.current) {
-          vel.x = 0;
-          vel.z = 0;
-        }
-
-        // Smoother rotation lerp
-        let targetRot = targetRotRef.current;
-        let diff = targetRot - rot;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        rot += diff * Math.min(1, ROTATION_SMOOTH * dt);
 
         // Apply velocity
         const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
@@ -1519,15 +1514,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // Collisions
         [px, pz] = resolveCollisions(px, pz, 0.3, COLLISION_BOXES);
-
-        // Ground clamp
         py = SPAWN[1];
 
+        avatarRotRef.current = rot;
         avatarPosRef.current = [px, py, pz, rot];
         const avatar = avatarRef.current;
         if (avatar) { avatar.position.set(px, py, pz); avatar.rotation.y = rot; }
 
-        // Rim light follows avatar — at chest/head height (avatar head at y≈1.60 from ground)
+        // Rim light follows avatar
         const rimLight = scene.userData.avatarRimLight;
         if (rimLight) rimLight.position.set(px, py + 1.0, pz);
 
@@ -1536,48 +1530,72 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           try { onPosCbRef.current(px, pz, rot); } catch {}
         }
 
-        // ── Jukebox proximity — notify parent so HUD can show button ──
+        // ── Jukebox proximity ──
         if (onJukeboxProxRef.current && frameRef.current % 6 === 0) {
           const jdx = px - JUKEBOX_POS.x;
           const jdz = pz - JUKEBOX_POS.z;
           const jDist = Math.sqrt(jdx * jdx + jdz * jdz);
           const nearJukebox = jDist < JUKEBOX_INTERACT_RADIUS;
-          // Proximity volume: 1.0 on dance floor, fades to 0.1 at edge
-          const ddx = px - 0; // plaza center x
-          const ddz = pz - (-4); // plaza center z
+          const ddx = px;
+          const ddz = pz - (-4);
           const dFloorDist = Math.sqrt(ddx * ddx + ddz * ddz);
           const proximityVol = Math.max(0.1, Math.min(1.0, 1.0 - (dFloorDist - 2) / (DANCE_FLOOR_RADIUS - 2)));
           try { onJukeboxProxRef.current(nearJukebox, proximityVol); } catch {}
         }
 
-        // ─── CAMERA (third-person, or stage-facing when locked) ──
-        // Avatar head at y≈1.60 — look-at at chest height (0.9) gives full body in frame
-        const camDist = 5.5;
-        const camHeight = 2.4;
-        const lookY = 0.9;
+        // ─── IDLE ORBIT + CAMERA ─────────────────────────────
+        // Track idle time
+        if (hasAnyInput || speed > 0.05) {
+          idleTimerRef.current = 0;
+          if (isOrbitingRef.current) {
+            // Just started moving after orbit — smoothly reset camYaw to 0
+            isOrbitingRef.current = false;
+            // camYaw will lerp back to 0 below when moving
+          }
+        } else if (!userTouchingCamRef.current && !lockedRef.current && !isDancingRef.current) {
+          idleTimerRef.current += dt;
+        }
 
-        // Smooth orbit angle lerp
-        cameraOrbitRef.current.smoothAngle += 
-          (cameraOrbitRef.current.angle - cameraOrbitRef.current.smoothAngle) * Math.min(1, dt * 5);
+        // When moving, pull camYaw back toward 0 (behind avatar) smoothly
+        if (speed > 0.05 && !userTouchingCamRef.current) {
+          camYawRef.current += (0 - camYawRef.current) * Math.min(1, CAM_FOLLOW_SPEED * dt * 0.5);
+        }
 
-        // When locked (stage watching), smoothly face the stage screen head-on
+        // Start idle orbit
+        if (!isOrbitingRef.current && idleTimerRef.current >= IDLE_ORBIT_DELAY && !userTouchingCamRef.current && !lockedRef.current) {
+          isOrbitingRef.current = true;
+        }
+
+        // Idle orbit: advance camYaw
+        if (isOrbitingRef.current) {
+          camYawRef.current += IDLE_ORBIT_SPEED * dt;
+        }
+
+        // Smooth camera yaw
+        let yawDiff = camYawRef.current - camYawSmoothRef.current;
+        while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+        while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+        camYawSmoothRef.current += yawDiff * Math.min(1, dt * (isOrbitingRef.current ? 2.0 : 8.0));
+
+        // Final camera angle: avatar facing + camYaw offset
+        // Camera sits BEHIND avatar: avatar faces +Z when rot=0, camera is at +Z offset
+        const finalCamAngle = rot + camYawSmoothRef.current;
+
+        // Stage watching mode
         const STAGE_LOOK_AT = new Vector3(0, 2.2, -16.4);
         const STAGE_CAM_POS = new Vector3(0, 3.5, -6);
-        const CAM_LERP = 3.0;
 
         if (lockedRef.current) {
-          // Lerp camera toward stage-facing position
-          camera.position.lerp(STAGE_CAM_POS, Math.min(1, CAM_LERP * dt));
+          camera.position.lerp(STAGE_CAM_POS, Math.min(1, 3.0 * dt));
           camera.lookAt(STAGE_LOOK_AT);
         } else {
-          // Third-person camera with orbit: right-click drags camera around avatar
-          const orbitAngle = rot + cameraOrbitRef.current.smoothAngle;
+          // Behind-avatar third-person camera
           camera.position.set(
-            px - Math.sin(orbitAngle) * camDist,
-            py + camHeight,
-            pz - Math.cos(orbitAngle) * camDist,
+            px - Math.sin(finalCamAngle) * CAM_DIST,
+            py + CAM_HEIGHT,
+            pz - Math.cos(finalCamAngle) * CAM_DIST,
           );
-          camera.lookAt(px, py + lookY, pz);
+          camera.lookAt(px, py + CAM_LOOK_Y, pz);
         }
 
         // ─── GLB AVATAR ANIMATION ────────────────────────────
@@ -1963,13 +1981,18 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             else obj.material.dispose();
           }
         });
-        initializedRef.current = false; // Allow re-init on React Strict Mode remount
+        initializedRef.current = false;
         lastTimeRef.current = 0;
         frameRef.current = 0;
         avatarRef.current = null;
         avatarEntryRef.current = null;
         sceneRef.current = null;
         remoteAvatarsRef.current = {};
+        avatarRotRef.current = 0;
+        camYawRef.current = 0;
+        camYawSmoothRef.current = 0;
+        idleTimerRef.current = 0;
+        isOrbitingRef.current = false;
       };
     } catch (e) {
       console.error("[CityCanvas] init error:", e);
