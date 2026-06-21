@@ -38,8 +38,10 @@ export default function usePrivateChat(user) {
   }, [user, getChatId]);
 
   // ── Send a chat request ───────────────────────────────────────
+  const myDisplayName = user?.full_name || user?.email?.split("@")[0] || "Anon";
+
   const sendChatRequest = useCallback(async (toUserId, toUsername) => {
-    if (!user?.id || !user.username) return { error: "Not authenticated" };
+    if (!user?.id) return { error: "Not authenticated" };
 
     // Check block
     if (blockedUsers[toUserId]) return { error: "User is blocked" };
@@ -58,7 +60,7 @@ export default function usePrivateChat(user) {
       const expiresAt = new Date(Date.now() + REQUEST_EXPIRY_MS).toISOString();
       await base44.entities.PrivateChatRequest.create({
         from_user_id: user.id,
-        from_username: user.username,
+        from_username: myDisplayName,
         to_user_id: toUserId,
         to_username: toUsername,
         status: "pending",
@@ -107,13 +109,14 @@ export default function usePrivateChat(user) {
 
   // ── Send a message ───────────────────────────────────────────
   const sendMessage = useCallback(async (text) => {
-    if (!user?.id || !user.username || !activeChatPeer?.userId || !text?.trim()) return;
+    if (!user?.id || !activeChatPeer?.userId || !text?.trim()) return;
+    const name = user?.full_name || user?.email?.split("@")[0] || "Anon";
     try {
       const chatId = getChatId(user.id, activeChatPeer.userId);
       await base44.entities.PrivateChatMessage.create({
         chat_id: chatId,
         sender_user_id: user.id,
-        sender_username: user.username,
+        sender_username: name,
         receiver_user_id: activeChatPeer.userId,
         message: text.trim(),
       });

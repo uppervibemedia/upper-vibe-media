@@ -1,0 +1,40 @@
+{
+  "name": "VoiceRoomPresence",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User ID of the participant"
+    },
+    "username": {
+      "type": "string",
+      "description": "Display name for voice room"
+    },
+    "room_id": {
+      "type": "string",
+      "description": "Voice room identifier (e.g. vibe-lounge)",
+      "default": "vibe-lounge"
+    },
+    "joined_at": {
+      "type": "string",
+      "description": "ISO timestamp when user joined the voice room"
+    }
+  },
+  "required": [
+    "user_id",
+    "username",
+    "room_id"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": true,
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

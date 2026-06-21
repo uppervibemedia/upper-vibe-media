@@ -70,6 +70,15 @@ export default function VoiceLoungePanel({ open, onClose, isMobile }) {
       signalSubRef.current();
       signalSubRef.current = null;
     }
+    if (presenceSubRef.current) {
+      presenceSubRef.current();
+      presenceSubRef.current = null;
+    }
+    // Delete voice presence record
+    if (presenceIdRef.current) {
+      base44.entities.VoiceRoomPresence.delete(presenceIdRef.current).catch(() => {});
+      presenceIdRef.current = null;
+    }
     setPeerCount(0);
     setMicLevel(0);
   }, []);
@@ -137,6 +146,43 @@ export default function VoiceLoungePanel({ open, onClose, isMobile }) {
     } catch {}
   }, [user, sendSignal, getAudioCtx]);
 
+  // ── Presence ref for cleanup on leave ──────────────────────
+  const presenceIdRef = useRef(null);
+  const presenceSubRef = useRef(null);
+
+  // ── Discover peers: when a new voice presence appears, initiate WebRTC offer ──
+  const connectToPeer = useCallback(async (remoteUserId) => {
+    if (!localStreamRef.current || peerConnsRef.current[remoteUserId]) return;
+    const pc = new RTCPeerConnection(STUN_SERVERS);
+    peerConnsRef.current[remoteUserId] = pc;
+
+    localStreamRef.current.getTracks().forEach((t) => pc.addTrack(t, localStreamRef.current));
+
+    pc.ontrack = (event) => {
+      const stream = event.streams[0];
+      if (!stream) return;
+      const ctx = getAudioCtx();
+      const source = ctx.createMediaStreamSource(stream);
+      source.connect(ctx.destination);
+    };
+    pc.onicecandidate = (ev) => {
+      if (ev.candidate) sendSignal(remoteUserId, "ice_candidate", JSON.stringify(ev.candidate));
+    };
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "connected") setPeerCount((n) => n + 1);
+      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        pc.close();
+        delete peerConnsRef.current[remoteUserId];
+        setPeerCount((n) => Math.max(0, n - 1));
+      }
+    };
+
+    // Initiate offer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await sendSignal(remoteUserId, "offer", JSON.stringify(offer));
+  }, [sendSignal, getAudioCtx]);
+
   // ── Join the voice room ─────────────────────────────────────
   const joinVoiceRoom = useCallback(async () => {
     setStep("connecting");
@@ -153,13 +199,56 @@ export default function VoiceLoungePanel({ open, onClose, isMobile }) {
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      // Subscribe to incoming signals
+      // ── 1. Create voice presence record (peer discovery) ──
+      const displayName = user?.full_name || user?.email?.split("@")[0] || "Anon";
+      try {
+        const presence = await base44.entities.VoiceRoomPresence.create({
+          user_id: user.id,
+          username: displayName,
+          room_id: "vibe-lounge",
+          joined_at: new Date().toISOString(),
+        });
+        presenceIdRef.current = presence.id;
+      } catch {}
+
+      // ── 2. Subscribe to incoming signals ──
       const unsubscribe = base44.entities.VoiceSignal.subscribe((event) => {
         if (event.type === "create" && event.data) handleSignal(event.data);
       });
       signalSubRef.current = unsubscribe;
 
-      // Process pending signals
+      // ── 3. Discover EXISTING peers (connect to each) ──
+      try {
+        const existing = await base44.entities.VoiceRoomPresence.filter({
+          room_id: "vibe-lounge",
+          user_id: { $ne: user.id },
+        });
+        for (const peer of existing) {
+          connectToPeer(peer.user_id);
+        }
+      } catch {}
+
+      // ── 4. Subscribe to NEW peers joining later ──
+      const presUnsub = base44.entities.VoiceRoomPresence.subscribe((event) => {
+        if (event.type === "create" && event.data) {
+          const data = event.data;
+          if (data.user_id !== user.id && data.room_id === "vibe-lounge") {
+            connectToPeer(data.user_id);
+          }
+        }
+        if (event.type === "delete" && event.data) {
+          const data = event.data;
+          const pc = peerConnsRef.current[data.user_id];
+          if (pc) {
+            pc.close();
+            delete peerConnsRef.current[data.user_id];
+            setPeerCount((n) => Math.max(0, n - 1));
+          }
+        }
+      });
+      presenceSubRef.current = presUnsub;
+
+      // ── 5. Process pending signals ──
       try {
         const pending = await base44.entities.VoiceSignal.filter({
           to_user_id: user.id,
@@ -176,7 +265,7 @@ export default function VoiceLoungePanel({ open, onClose, isMobile }) {
         setStep("failed");
       }
     }
-  }, [user, handleSignal, getAudioCtx]);
+  }, [user, handleSignal, getAudioCtx, connectToPeer]);
 
   // ── Leave voice room ────────────────────────────────────────
   const leaveVoiceRoom = useCallback(() => {
