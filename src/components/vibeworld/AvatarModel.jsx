@@ -18,13 +18,13 @@ const SKIN_COLORS = {
 };
 
 // ─── FORTNITE-STYLE BODY PROPORTIONS ─────────────────────────
-// Scale: ~1.8 total height. Head = ~0.28, Torso = ~0.55, Legs = ~0.85
+// Heroic scale: head ~1.15x, torso ~0.58, legs ~1.0 (total ~1.95 height)
 // [shoulderW, hipW, torsoH, armLen, legLen, headScale, waistRatio]
 const BODY_PRESETS = {
-  masculine:  [0.52, 0.36, 0.55, 0.48, 0.88, 1.0, 0.65],
-  feminine:   [0.42, 0.38, 0.50, 0.44, 0.86, 0.95, 0.78],
-  nonbinary:  [0.48, 0.37, 0.52, 0.46, 0.87, 0.98, 0.72],
-  neutral:    [0.48, 0.37, 0.52, 0.46, 0.87, 0.98, 0.72],
+  masculine:  [0.56, 0.38, 0.60, 0.54, 1.00, 1.15, 0.62],
+  feminine:   [0.48, 0.40, 0.55, 0.50, 0.96, 1.10, 0.76],
+  nonbinary:  [0.52, 0.39, 0.57, 0.52, 0.98, 1.12, 0.70],
+  neutral:    [0.52, 0.39, 0.57, 0.52, 0.98, 1.12, 0.70],
 };
 
 // ─── CLOTHING COLORS ─────────────────────────────────────────
@@ -319,12 +319,17 @@ export function createAvatar(scene, opts = {}) {
     return f;
   }
 
-  // ─── LOWER LEG ─────────────────────────────────────────────
+  // ─── LOWER LEG — defined calf muscle ─────────────────────
   function buildLowerLeg() {
     const g = new Group(); g.name = "lowerLeg";
     const len = legLen * 0.48;
-    // Calf shape: wider at top, narrow at ankle
-    addObj(g, new CylinderGeometry(0.055, 0.065, len, SEG), pantsM, new Vector3(0, -len / 2, 0));
+    // Calf: sculpted, wider at upper calf
+    addObj(g, new CylinderGeometry(0.058, 0.068, len, SEG), pantsM, new Vector3(0, -len / 2, 0));
+    // Calf bulge
+    const calf = addObj(g, new SphereGeometry(0.024, 8, 6),
+      new MeshStandardMaterial({ color: new Color(pantsColor), roughness: 0.22, metalness: 0.08 }),
+      new Vector3(0, -len * 0.2, -0.04));
+    calf.scale.set(0.55, 0.6, 0.45);
     const f = buildFoot();
     f.position.set(0, -len - 0.01, 0.03);
     g.add(f);
@@ -332,12 +337,17 @@ export function createAvatar(scene, opts = {}) {
     return g;
   }
 
-  // ─── UPPER LEG ─────────────────────────────────────────────
+  // ─── UPPER LEG — sculpted quadriceps ──────────────────────
   function buildUpperLeg() {
     const g = new Group(); g.name = "upperLeg";
     const len = legLen * 0.52;
-    // Thigh: wider at hip
-    addObj(g, new CylinderGeometry(0.075, 0.082, len, SEG), pantsM, new Vector3(0, -len / 2, 0));
+    // Thigh: sculpted, wider at upper
+    addObj(g, new CylinderGeometry(0.078, 0.088, len, SEG), pantsM, new Vector3(0, -len / 2, 0));
+    // Quad definition
+    const quad = addObj(g, new SphereGeometry(0.03, 8, 6),
+      new MeshStandardMaterial({ color: new Color(pantsColor), roughness: 0.22, metalness: 0.08 }),
+      new Vector3(0, -len * 0.3, 0.065));
+    quad.scale.set(0.65, 0.55, 0.3);
     const ll = buildLowerLeg();
     ll.position.set(0, -len, 0);
     g.add(ll);
@@ -357,11 +367,15 @@ export function createAvatar(scene, opts = {}) {
     return g;
   }
 
-  // ─── UPPER ARM ─────────────────────────────────────────────
+  // ─── UPPER ARM — bicep + tricep definition ─────────────
   function buildUpperArm() {
     const g = new Group(); g.name = "upperArm";
     const len = armLen * 0.52;
-    addObj(g, new CylinderGeometry(0.044, 0.055, len, SEG), skinM, new Vector3(0, -len / 2, 0));
+    // Bicep (wider mid-section)
+    addObj(g, new CylinderGeometry(0.048, 0.058, len, SEG), skinM, new Vector3(0, -len / 2, 0));
+    // Bicep bulge
+    const bicep = addObj(g, new SphereGeometry(0.026, 8, 6), skinS, new Vector3(0, -len * 0.25, 0.03));
+    bicep.scale.set(0.55, 0.7, 0.5);
     const fa = buildForearm();
     fa.position.set(0, -len, 0);
     g.add(fa);
@@ -369,53 +383,85 @@ export function createAvatar(scene, opts = {}) {
     return g;
   }
 
-  // ─── TORSO — broad chest, defined waist ───────────────────
+  // ─── TORSO — sculpted V-taper with chest definition ───────
   const torsoGroup = new Group();
   torsoGroup.name = "torso";
 
-  const chestBase = torsoH * 0.60;
-  const waistBase = torsoH * 0.16;
+  const chestBase = torsoH * 0.62;
+  const waistBase = torsoH * 0.12;
 
-  // Hips
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.28 * waistR, hipW * 0.34, torsoH * 0.28, SEG), pantsM, new Vector3(0, waistBase, 0));
+  // Hips/pelvis
+  addObj(torsoGroup, new CylinderGeometry(hipW * 0.34, hipW * 0.36, torsoH * 0.20, SEG), pantsM, new Vector3(0, waistBase, 0));
 
-  // Waist/belt area
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.32, shoulderW * 0.30, torsoH * 0.12, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.16, 0));
+  // Lower waist
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.30 * waistR, hipW * 0.36, torsoH * 0.16, SEG), pantsM, new Vector3(0, waistBase + torsoH * 0.12, 0));
 
   // Belt strip
-  const belt = addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.33, shoulderW * 0.32, 0.03, SEG), beltM, new Vector3(0, waistBase + torsoH * 0.20, 0));
+  const belt = addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.34, shoulderW * 0.32, 0.035, SEG), beltM, new Vector3(0, waistBase + torsoH * 0.20, 0));
 
-  // Mid torso
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.38, shoulderW * 0.34, torsoH * 0.24, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.26, 0));
+  // Lower torso (narrowing up)
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.35, shoulderW * 0.32, torsoH * 0.14, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.26, 0));
 
-  // Upper chest
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.42, shoulderW * 0.40, torsoH * 0.18, SEG), shirtM, new Vector3(0, chestBase - 0.02, 0));
+  // Mid torso (widening)
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.41, shoulderW * 0.36, torsoH * 0.20, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.36, 0));
 
-  // Collarbone top
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.44, shoulderW * 0.43, 0.08, SEG), shirtM, new Vector3(0, chestBase + 0.06, 0));
+  // Upper chest — broad, pronounced pectorals
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.46, shoulderW * 0.42, torsoH * 0.14, SEG), shirtM, new Vector3(0, chestBase - 0.04, 0));
 
-  // ─── NECK ──────────────────────────────────────────────────
+  // Shoulder cap / trap area
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.48, shoulderW * 0.46, 0.07, SEG), shirtM, new Vector3(0, chestBase + 0.05, 0));
+
+  // Pectoral accent (slight chest definition)
+  const pectoralL = new Mesh(new SphereGeometry(0.025, 8, 6),
+    new MeshStandardMaterial({ color: new Color(shirtColor), roughness: 0.18, metalness: 0.08 }));
+  pectoralL.position.set(-shoulderW * 0.12, chestBase + 0.06, 0.06);
+  pectoralL.scale.set(0.7, 0.5, 0.35);
+  torsoGroup.add(pectoralL);
+
+  const pectoralR = new Mesh(new SphereGeometry(0.025, 8, 6),
+    new MeshStandardMaterial({ color: new Color(shirtColor), roughness: 0.18, metalness: 0.08 }));
+  pectoralR.position.set(shoulderW * 0.12, chestBase + 0.06, 0.06);
+  pectoralR.scale.set(0.7, 0.5, 0.35);
+  torsoGroup.add(pectoralR);
+
+  // ─── TRAPEZIUS + NECK ───────────────────────────────────
   const neckGroup = new Group();
   neckGroup.name = "neck";
-  neckGroup.position.set(0, chestBase + 0.10, 0);
-  addObj(neckGroup, new CylinderGeometry(0.035, 0.04, 0.11, SEG), skinM, new Vector3(0, 0.02, 0));
-  addObj(neckGroup, new CylinderGeometry(0.065, 0.05, 0.03, SEG), skinS, new Vector3(0, -0.03, 0));
+  neckGroup.position.set(0, chestBase + 0.08, 0);
+
+  // Trapezius muscle (slopes from shoulders to neck)
+  for (const s of [-1, 1]) {
+    const trap = addObj(neckGroup, new SphereGeometry(0.032, 10, 8), skinS,
+      new Vector3(s * 0.06, -0.015, -0.02));
+    trap.scale.set(0.6, 0.35, 0.55);
+  }
+
+  addObj(neckGroup, new CylinderGeometry(0.038, 0.044, 0.13, SEG), skinM, new Vector3(0, 0.03, 0));
+  addObj(neckGroup, new CylinderGeometry(0.07, 0.055, 0.025, SEG), skinS, new Vector3(0, -0.02, 0));
 
   const headGroup = buildHead();
   headGroup.position.y = 0.07;
   neckGroup.add(headGroup);
   torsoGroup.add(neckGroup);
 
-  // ─── SHOULDERS ─────────────────────────────────────────────
-  const shoulderY = chestBase + 0.01;
-  const shoulderZ = -0.05;
+  // ─── SHOULDERS — pronounced deltoids ──────────────────────
+  const shoulderY = chestBase + 0.02;
+  const shoulderZ = -0.06;
 
-  addObj(torsoGroup, new SphereGeometry(0.055, SEG, 10), shirtM, new Vector3(-shoulderW * 0.48, shoulderY, shoulderZ + 0.02));
-  addObj(torsoGroup, new SphereGeometry(0.055, SEG, 10), shirtM, new Vector3(shoulderW * 0.48, shoulderY, shoulderZ + 0.02));
+  // Shoulder deltoid muscles
+  const leftDeltoid = new Mesh(new SphereGeometry(0.06, SEG, 12), shirtM());
+  leftDeltoid.position.set(-shoulderW * 0.50, shoulderY, shoulderZ + 0.01);
+  leftDeltoid.scale.set(0.8, 0.75, 0.65);
+  torsoGroup.add(leftDeltoid);
+
+  const rightDeltoid = new Mesh(new SphereGeometry(0.06, SEG, 12), shirtM());
+  rightDeltoid.position.set(shoulderW * 0.50, shoulderY, shoulderZ + 0.01);
+  rightDeltoid.scale.set(0.8, 0.75, 0.65);
+  torsoGroup.add(rightDeltoid);
 
   const leftShoulder = new Group();
   leftShoulder.name = "leftShoulder";
-  leftShoulder.position.set(-shoulderW * 0.54, shoulderY - 0.03, shoulderZ);
+  leftShoulder.position.set(-shoulderW * 0.56, shoulderY - 0.04, shoulderZ - 0.01);
   const leftArm = buildUpperArm();
   leftShoulder.add(leftArm);
   leftShoulder.userData.arm = leftArm;
@@ -423,7 +469,7 @@ export function createAvatar(scene, opts = {}) {
 
   const rightShoulder = new Group();
   rightShoulder.name = "rightShoulder";
-  rightShoulder.position.set(shoulderW * 0.54, shoulderY - 0.03, shoulderZ);
+  rightShoulder.position.set(shoulderW * 0.56, shoulderY - 0.04, shoulderZ - 0.01);
   const rightArm = buildUpperArm();
   rightShoulder.add(rightArm);
   rightShoulder.userData.arm = rightArm;
@@ -486,16 +532,16 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   const shoeMat = () => new MeshStandardMaterial({ color: new Color("#1A1A1A"), roughness: 0.28 });
   const soleMat = () => new MeshStandardMaterial({ color: new Color("#2C2C2C"), roughness: 0.30 });
 
-  // ─── TORSO ─────────────────────────────────────────────────
-  const bodyY = torsoH * 0.45 + 0.12;
-  const torsoGeo = new CylinderGeometry(shoulderW * 0.40, hipW * 0.40, torsoH, RS);
+  // ─── TORSO — V-tapered for heroic silhouette ──────────────
+  const bodyY = torsoH * 0.48;
+  const torsoGeo = new CylinderGeometry(shoulderW * 0.44, hipW * 0.36, torsoH, RS);
   const torso = new Mesh(torsoGeo, bMat());
   torso.position.y = bodyY; torso.castShadow = true; torso.receiveShadow = true;
   group.add(torso);
 
   // ─── HEAD — realistic face features ────────────────────────
   const headGroup = new Group();
-  headGroup.position.y = torsoH * 0.7 + 0.30;
+  headGroup.position.y = torsoH * 0.68 + 0.32;
 
   const cranium = new Mesh(new SphereGeometry(0.096, 18, 16), sMat());
   cranium.scale.set(0.84, 1.08, 0.78); cranium.position.y = 0.10; cranium.castShadow = true;
@@ -566,55 +612,55 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   group.add(neckMesh); neckMesh.castShadow = true;
 
   // ─── ARMS + HANDS ─────────────────────────────────────────
-  const armLen = body ? body[3] : 0.46;
+  const armLen = body ? body[3] : 0.52;
   const armSeg = armLen * 0.52;
   const faSeg = armLen * 0.48;
   for (const s of [-1, 1]) {
-    const sx = s * shoulderW * 0.48;
-    // Upper arm
-    const upperArm = new Mesh(new CylinderGeometry(0.04, 0.048, armSeg, 10), sMat());
-    upperArm.position.set(sx, torsoH * 0.62 - armSeg / 2, -0.04);
+    const sx = s * shoulderW * 0.50;
+    // Upper arm — bicep
+    const upperArm = new Mesh(new CylinderGeometry(0.044, 0.052, armSeg, 10), sMat());
+    upperArm.position.set(sx, torsoH * 0.62 - armSeg / 2, -0.05);
     upperArm.name = s > 0 ? "rightUpperArm" : "leftUpperArm";
     group.add(upperArm); upperArm.castShadow = true;
 
     // Forearm
-    const forearm = new Mesh(new CylinderGeometry(0.032, 0.04, faSeg, 10), sMat());
-    forearm.position.set(sx, torsoH * 0.62 - armSeg - faSeg / 2, -0.04);
+    const forearm = new Mesh(new CylinderGeometry(0.036, 0.046, faSeg, 10), sMat());
+    forearm.position.set(sx, torsoH * 0.62 - armSeg - faSeg / 2, -0.05);
     group.add(forearm); forearm.castShadow = true;
 
     // Hand (palm + fingers simplified)
-    const hand = new Mesh(new BoxGeometry(0.05, 0.032, 0.06), sMat());
-    hand.position.set(sx, torsoH * 0.62 - armSeg - faSeg - 0.025, -0.04);
+    const hand = new Mesh(new BoxGeometry(0.06, 0.036, 0.07), sMat());
+    hand.position.set(sx, torsoH * 0.62 - armSeg - faSeg - 0.028, -0.05);
     group.add(hand); hand.castShadow = true;
   }
 
-  // ─── LEGS ──────────────────────────────────────────────────
-  const totalLegLen = legLen || 0.88;
+  // ─── LEGS — sculpted thighs + calves ────────────────────
+  const totalLegLen = legLen || 1.00;
   const thighLen = totalLegLen * 0.52;
   const calfLen = totalLegLen * 0.48;
 
   for (const s of [-1, 1]) {
-    const legX = s * hipW * 0.40;
-    const thigh = new Mesh(new CylinderGeometry(0.054, 0.060, thighLen, 10), pMat());
-    thigh.position.set(legX, thighLen / 2, -0.03); thigh.castShadow = true;
+    const legX = s * hipW * 0.42;
+    const thigh = new Mesh(new CylinderGeometry(0.06, 0.068, thighLen, 10), pMat());
+    thigh.position.set(legX, thighLen / 2, -0.04); thigh.castShadow = true;
     thigh.name = s > 0 ? "rightLeg" : "leftLeg";
     group.add(thigh);
 
-    const calf = new Mesh(new CylinderGeometry(0.040, 0.048, calfLen, 10), pMat());
-    calf.position.set(legX, -calfLen / 2, -0.03); calf.castShadow = true;
+    const calf = new Mesh(new CylinderGeometry(0.044, 0.055, calfLen, 10), pMat());
+    calf.position.set(legX, -calfLen / 2, -0.04); calf.castShadow = true;
     group.add(calf);
 
     // Detailed shoe
-    const shoe = new Mesh(new BoxGeometry(0.10, 0.055, 0.16), shoeMat());
-    shoe.position.set(legX, -calfLen - 0.045, 0.01); shoe.castShadow = true;
+    const shoe = new Mesh(new BoxGeometry(0.12, 0.06, 0.18), shoeMat());
+    shoe.position.set(legX, -calfLen - 0.05, 0.01); shoe.castShadow = true;
     group.add(shoe);
     // Sole
-    const sole = new Mesh(new BoxGeometry(0.11, 0.022, 0.17), soleMat());
-    sole.position.set(legX, -calfLen - 0.06, 0.01);
+    const sole = new Mesh(new BoxGeometry(0.13, 0.025, 0.19), soleMat());
+    sole.position.set(legX, -calfLen - 0.07, 0.01);
     group.add(sole); sole.castShadow = true;
     // Toe cap
-    const toe = new Mesh(new SphereGeometry(0.035, 8, 6), shoeMat());
-    toe.scale.set(0.8, 0.5, 0.45); toe.position.set(legX, -calfLen - 0.035, 0.09);
+    const toe = new Mesh(new SphereGeometry(0.04, 8, 6), shoeMat());
+    toe.scale.set(0.82, 0.52, 0.48); toe.position.set(legX, -calfLen - 0.04, 0.10);
     group.add(toe); toe.castShadow = true;
   }
 
@@ -625,7 +671,7 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fillText((username || "User").substring(0, 16), 128, 32);
   const nt = new CanvasTexture(nc); nt.minFilter = LinearFilter; nt.colorSpace = THREE.SRGBColorSpace;
   const ns = new Sprite(new SpriteMaterial({ map: nt, transparent: true, depthWrite: false, depthTest: false }));
-  ns.scale.set(1.3, 0.32, 1); ns.position.y = torsoH * 0.7 + 0.55; ns.renderOrder = 999;
+  ns.scale.set(1.4, 0.35, 1); ns.position.y = torsoH * 0.68 + 0.60; ns.renderOrder = 999;
   group.add(ns);
 
   scene.add(group);
