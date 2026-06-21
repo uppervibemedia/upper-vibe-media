@@ -588,7 +588,7 @@ function buildPark(scene) {
   // Entrance faces Central Plaza (northeast from dome at -10,8 toward 0,-4)
   const domeEntrance = new Mesh(
     new BoxGeometry(2.5, 3.5, 0.1),
-    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.7 })
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.85 })
   );
   domeEntrance.position.set(-10, 1.75, 8 - 3.35);
   domeEntrance.name = "domeEntrance";
@@ -963,7 +963,7 @@ function buildPark(scene) {
   const oceanWidth = 68;
   const oceanGeo = new PlaneGeometry(oceanWidth, OCEAN_DEPTH, 56, oceanSegments);
   const oceanMat = new MeshBasicMaterial();
-  oceanMat.color = new Color("#2098CC");
+  oceanMat.color = new Color("#30B0DC");
   oceanMat.side = THREE.DoubleSide;
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
@@ -1013,9 +1013,10 @@ function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 12. LIGHTING — night ambiance
   // ═════════════════════════════════════════════════════════════
+  // Brighter moonlight for better visibility
   const moon = new DirectionalLight();
-  moon.color = new Color("#7B9EC7");
-  moon.intensity = 0.55;
+  moon.color = new Color("#99B8D8");
+  moon.intensity = 0.75;
   moon.position.set(15, 22, SHORELINE_Z + 10);
   moon.castShadow = true;
   moon.shadow.mapSize.width = 2048;
@@ -1029,49 +1030,59 @@ function buildPark(scene) {
   moon.shadow.bias = -0.0003;
   scene.add(moon);
 
+  // Brighter ambient — lifts the whole city
   const ambLight = new AmbientLight();
-  ambLight.color = new Color("#2A1B5E");
-  ambLight.intensity = 0.5;
+  ambLight.color = new Color("#3A2B6E");
+  ambLight.intensity = 0.7;
   scene.add(ambLight);
 
   const hemiLight = new HemisphereLight();
-  hemiLight.color = new Color("#6B5CAA");
-  hemiLight.groundColor = new Color("#1A2430");
-  hemiLight.intensity = 0.35;
+  hemiLight.color = new Color("#8B7CBB");
+  hemiLight.groundColor = new Color("#2A2E3E");
+  hemiLight.intensity = 0.5;
   scene.add(hemiLight);
 
   const beachLight = new PointLight();
-  beachLight.color = new Color("#5599CC");
-  beachLight.intensity = 2.0;
-  beachLight.distance = 20;
+  beachLight.color = new Color("#77BBDD");
+  beachLight.intensity = 2.5;
+  beachLight.distance = 22;
   beachLight.position.set(0, 3, SHORELINE_Z + 6);
   scene.add(beachLight);
 
-  // Additional zone point lights
+  // Additional zone point lights — brighter and more visible
   const loungeLight = new PointLight();
   loungeLight.color = new Color("#A078FF");
-  loungeLight.intensity = 1.5; loungeLight.distance = 10;
-  loungeLight.position.set(-16, 2, -10);
+  loungeLight.intensity = 2.0; loungeLight.distance = 12;
+  loungeLight.position.set(-16, 2.5, -10);
   scene.add(loungeLight);
   scene.userData.loungeLight = loungeLight;
 
   const libraryLight = new PointLight();
   libraryLight.color = new Color("#00D4F0");
-  libraryLight.intensity = 1.5; libraryLight.distance = 10;
-  libraryLight.position.set(16, 2, -10);
+  libraryLight.intensity = 2.0; libraryLight.distance = 12;
+  libraryLight.position.set(16, 2.5, -10);
   scene.add(libraryLight);
 
   const domeLight = new PointLight();
   domeLight.color = new Color("#C43BFF");
-  domeLight.intensity = 1.5; domeLight.distance = 10;
-  domeLight.position.set(-10, 2, 8);
+  domeLight.intensity = 2.0; domeLight.distance = 12;
+  domeLight.position.set(-10, 2.5, 8);
   scene.add(domeLight);
 
   const vibeCheckLight = new PointLight();
   vibeCheckLight.color = new Color("#00E5FF");
-  vibeCheckLight.intensity = 1.5; vibeCheckLight.distance = 8;
-  vibeCheckLight.position.set(10, 2, 4);
+  vibeCheckLight.intensity = 2.0; vibeCheckLight.distance = 10;
+  vibeCheckLight.position.set(10, 2.5, 4);
   scene.add(vibeCheckLight);
+
+  // ── Plaza fill light — soft central glow ──────────────────
+  const plazaFill = new PointLight();
+  plazaFill.color = new Color("#8866CC");
+  plazaFill.intensity = 1.2;
+  plazaFill.distance = 14;
+  plazaFill.position.set(0, 1.5, -4);
+  scene.add(plazaFill);
+  scene.userData.plazaFill = plazaFill;
 
   // ═════════════════════════════════════════════════════════════
   // 13. TWINKLING STARS + PALM TREES
@@ -1901,48 +1912,95 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── STAGE SCREEN GLOW — pulse screen frame with music ──────
         const screenGlowMesh = scene.getObjectByName("stageScreenGlow");
         if (screenGlowMesh?.material) {
-          screenGlowMesh.material.opacity = 0.25 + audioBeat * 0.5;
+          screenGlowMesh.material.opacity = 0.3 + audioBeat * 0.6 + audioIntensityRef?.current * 0.2 || 0;
         }
 
-        // ─── VIBE LOUNGE NEON AMBIENT — pulse with music beat ──────
+        // ─── VIBE LOUNGE NEON AMBIENT — stronger pulse with music ──
         const loungeNeonMats = scene.userData.loungeNeonMats;
         if (loungeNeonMats) {
-          const loungePulse = 0.4 + audioBeat * 0.6;
-          const loungeWave = Math.sin(t * 2.5) * 0.12;
+          const loungeWave = Math.sin(t * 2.5) * 0.15;
           for (const mat of loungeNeonMats) {
             if (mat?.opacity !== undefined) {
-              mat.opacity = Math.min(0.85, 0.35 + audioBeat * 0.5 + loungeWave);
+              mat.opacity = Math.min(0.9, 0.4 + audioBeat * 0.6 + loungeWave);
             }
           }
-          // Point light intensity also pulses
           const ll = scene.userData.loungeLight;
           if (ll && ll.intensity !== undefined) {
-            ll.intensity = 1.2 + audioBeat * 1.0;
+            ll.intensity = 1.5 + audioBeat * 1.2;
           }
         }
 
-        // ─── NEON SKYLINE PULSE — buildings breathe with the beat ──
+        // ─── NEON SKYLINE PULSE + COLOR SHIFT — buildings breathe ──
         const neonMats = scene.userData.neonMats;
         if (neonMats) {
-          const pulse = 0.55 + audioBeat * 0.45 + Math.sin(t * 1.7) * 0.1;
-          for (const mat of neonMats) {
+          const pulse = 0.6 + audioBeat * 0.5 + Math.sin(t * 1.7) * 0.1 + Math.sin(t * 0.6) * 0.08;
+          const colorShift = Math.sin(t * 0.4) * 0.5 + 0.5; // slow 0..1 wave
+          for (let i = 0; i < neonMats.length; i++) {
+            const mat = neonMats[i];
             if (mat?.opacity !== undefined) {
               mat.opacity = pulse;
             }
+            // Subtle color shift between cyan ↔ purple ↔ blue
+            if (mat?.color && i === 0) {
+              // neonCyan — shift toward purple
+              mat.color.copy(new Color("#00D4F0")).lerp(new Color("#C43BFF"), colorShift * 0.15);
+            } else if (mat?.color && i === 1) {
+              // neonPurple — shift toward cyan  
+              mat.color.copy(new Color("#A078FF")).lerp(new Color("#00D4F0"), colorShift * 0.15);
+            } else if (mat?.color && i === 2) {
+              // neonBlue — shift toward purple
+              mat.color.copy(new Color("#3088CC")).lerp(new Color("#C43BFF"), colorShift * 0.12);
+            }
           }
+        }
+
+        // ─── BUILDING WINDOW FLICKERS — occasional random windows dim/brighten ──
+        const buildingsGroup = scene.getObjectByName("cityBuildings");
+        if (buildingsGroup && frameRef.current % 8 === 0) {
+          // Pick a random window mesh from the building group every 8 frames
+          const allWindows = [];
+          buildingsGroup.traverse((child) => {
+            if (child.isMesh && child.material?.isMeshBasicMaterial &&
+                child.material.color?.getHex && child.material.transparent &&
+                child.geometry?.type === "PlaneGeometry" &&
+                child.material.color.getHex() !== 0x00D4F0 && // exclude neon strips
+                child.material.color.getHex() !== 0xA078FF &&
+                child.material.color.getHex() !== 0x3088CC) {
+              allWindows.push(child);
+            }
+          });
+          // Flicker 1-2 windows per batch
+          const flickerCount = 1 + Math.floor(Math.random() * 2);
+          for (let i = 0; i < flickerCount; i++) {
+            const w = allWindows[Math.floor(Math.random() * allWindows.length)];
+            if (w && w.material) {
+              w.material.opacity = 0.2 + Math.random() * 0.5;
+            }
+          }
+        }
+
+        // ─── PLAZA FILL LIGHT — soft pulse with music ─────────
+        const pf = scene.userData.plazaFill;
+        if (pf && pf.intensity !== undefined) {
+          pf.intensity = 1.0 + audioBeat * 0.8 + Math.sin(t * 1.2) * 0.2;
         }
 
         // ─── NEON SIGNS + PATH LIGHTS — color-shift ambient glow ──
         const hueShift = Math.sin(t * 0.25) * 0.5 + 0.5; // slow 0..1 wave
 
         scene.children.forEach((child) => {
-          // Neon signs — breathe opacity + billboard toward camera
+          // Neon signs — brighter + color-shift ambient glow
           if (child.userData?.isNeonSign) {
             child.lookAt(camera.position);
-            const breathe = 0.18 + Math.sin(t * 1.3 + child.position.x * 0.5) * 0.08;
+            const signPhase = child.position.x * 0.5;
+            const breathe = 0.22 + Math.sin(t * 1.3 + signPhase) * 0.1 + audioBeat * 0.12;
             child.children.forEach((part) => {
               if (part.name === "neonBack" && part.material?.opacity !== undefined) {
                 part.material.opacity = breathe;
+              }
+              // Pulse the border frame
+              if (part.material?.color && part.material?.opacity !== undefined && part.renderOrder === 1) {
+                part.material.opacity = 0.35 + audioBeat * 0.3 + Math.sin(t * 1.5 + signPhase) * 0.1;
               }
             });
           }

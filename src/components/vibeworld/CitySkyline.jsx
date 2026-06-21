@@ -43,12 +43,16 @@ export default function createCitySkyline(scene) {
   const darkSteel = mat("#8898AA", { roughness: 0.3, metalness: 0.7 });
 
   const storeGlow = new MeshBasicMaterial();
-  storeGlow.color = new Color("#FFE0A0");
+  storeGlow.color = new Color("#FFE8B8");
   storeGlow.depthWrite = false;
+  storeGlow.transparent = true;
+  storeGlow.opacity = 0.85;
 
   const storeGlowPurple = new MeshBasicMaterial();
-  storeGlowPurple.color = new Color("#D0B8FF");
+  storeGlowPurple.color = new Color("#D8C8FF");
   storeGlowPurple.depthWrite = false;
+  storeGlowPurple.transparent = true;
+  storeGlowPurple.opacity = 0.7;
 
   const neonCyan = new MeshBasicMaterial();
   neonCyan.color = new Color("#00D4F0");
@@ -63,10 +67,10 @@ export default function createCitySkyline(scene) {
   neonBlue.depthWrite = false;
 
   const floorBand = new MeshBasicMaterial();
-  floorBand.color = new Color("#5588AA");
+  floorBand.color = new Color("#77AACC");
   floorBand.depthWrite = false;
   floorBand.transparent = true;
-  floorBand.opacity = 0.4;
+  floorBand.opacity = 0.55;
 
   function addSkyscraper(x, z, w, d, h, bodyMat, accentMat, name, rotY = 0) {
     const g = new Group();
@@ -86,16 +90,16 @@ export default function createCitySkyline(scene) {
 
     // ── Glowing office windows (scattered grid on wide faces) ─
     const winMat = new MeshBasicMaterial();
-    winMat.color = new Color("#FFE8C0");
+    winMat.color = new Color("#FFF0D0");
     winMat.depthWrite = false;
     winMat.transparent = true;
-    winMat.opacity = 0.6;
+    winMat.opacity = 0.75;
 
     const winPurple = new MeshBasicMaterial();
-    winPurple.color = new Color("#D8C4FF");
+    winPurple.color = new Color("#E4D0FF");
     winPurple.depthWrite = false;
     winPurple.transparent = true;
-    winPurple.opacity = 0.4;
+    winPurple.opacity = 0.55;
 
     const winRows = Math.floor((h - 2.5) / 1.4);
     const winCols = Math.max(1, Math.floor(w / 0.9));
@@ -213,7 +217,7 @@ export default function createCitySkyline(scene) {
       }
 
       // Glowing windows
-      const winMat = new MeshBasicMaterial({ color: new Color("#FFE8C0"), depthWrite: false, transparent: true, opacity: 0.55 });
+      const winMat = new MeshBasicMaterial({ color: new Color("#FFF0D0"), depthWrite: false, transparent: true, opacity: 0.7 });
       const winCols = Math.max(1, Math.floor(w / 0.8));
       for (let col = 0; col < winCols; col++) {
         if (Math.random() > 0.55) continue;
@@ -285,7 +289,7 @@ export default function createCitySkyline(scene) {
       }
 
       // Glowing windows
-      const winMat = new MeshBasicMaterial({ color: new Color("#FFE8C0"), depthWrite: false, transparent: true, opacity: 0.55 });
+      const winMat = new MeshBasicMaterial({ color: new Color("#FFF0D0"), depthWrite: false, transparent: true, opacity: 0.7 });
       const winCols = Math.max(1, Math.floor(w / 0.8));
       const winRows = Math.floor((h - 2.5) / 1.3);
       for (let row = 0; row < winRows; row++) {
