@@ -19,16 +19,16 @@ function getLayout() {
       joySize: 76,
       knobSize: 30,
       maxR: 30,
-      left: Math.max(44, saLeft + 44),
-      bottom: Math.max(44, saBottom + 44),
+      left: Math.max(80, saLeft + 80),
+      bottom: Math.max(70, saBottom + 70),
     };
   }
   return {
     joySize: 82,
     knobSize: 36,
     maxR: 32,
-    left: Math.max(20, saLeft + 20),
-    bottom: Math.max(100, saBottom + 100),
+    left: Math.max(40, saLeft + 40),
+    bottom: Math.max(125, saBottom + 125),
   };
 }
 
