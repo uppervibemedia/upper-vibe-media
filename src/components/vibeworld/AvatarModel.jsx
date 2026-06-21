@@ -22,8 +22,7 @@ import { SPAWN } from "./cityData";
 
 const GLB_URLS = {
   male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
-  // female uses the same Soldier.glb — outfit is tinted pink via retintAvatar
-  female: "https://threejs.org/examples/models/gltf/Soldier.glb",
+  female: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Michelle.glb",
 };
 
 const _loader = new GLTFLoader();
@@ -45,16 +44,14 @@ function loadSingle(key, url) {
 }
 
 function loadGLTF(gender = "male") {
-  // Both male and female use Soldier.glb — female is differentiated by outfit color only
-  const url = GLB_URLS[gender] || GLB_URLS.male;
-  return loadSingle(gender === "female" ? "male" : gender, url);
+  const key = gender === "female" ? "female" : "male";
+  return loadSingle(key, GLB_URLS[key]);
 }
 
-// For the player avatar we use the GLTF scene directly (no clone needed — only 1 player).
-// For remote avatars we re-parse a fresh copy via the loader each time.
-// This avoids ALL skeleton rebinding issues.
+// For the player avatar we clone the scene to avoid conflicts with remote avatars
+// that may load the same GLB (e.g. multiple female players sharing Michelle.glb).
 function getModelForPlayer(gltf) {
-  return gltf.scene; // direct use — safe because only one player exists
+  return gltf.scene.clone(true);
 }
 
 function cloneGltfForRemote(gltf) {

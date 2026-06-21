@@ -9,7 +9,7 @@ import { OUTFIT_COLORS, SKIN_TONES } from "./AvatarSetup";
 
 const GLB_URLS = {
   male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
-  female: "https://threejs.org/examples/models/gltf/Soldier.glb",
+  female: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Michelle.glb",
 };
 
 const _gltfCache = {};
@@ -26,8 +26,8 @@ function loadSinglePreview(key, url) {
 }
 
 function loadGLTF(gender = "male") {
-  // Both male and female use the same Soldier.glb — female is outfit-tinted pink
-  return loadSinglePreview("male", GLB_URLS.male);
+  const key = gender === "female" ? "female" : "male";
+  return loadSinglePreview(key, GLB_URLS[key]);
 }
 
 // ─── Material classification (mirrors AvatarModel.jsx exactly) ────────
@@ -216,7 +216,7 @@ export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "med
       cancelAnimationFrame(s.animId);
       renderer.dispose();
     };
-  }, []); // single mount — both genders use same Soldier.glb
+  }, [gender]); // re-mount when gender changes (Soldier vs Michelle)
 
   // Live re-tint on outfit or skin change
   useEffect(() => {
