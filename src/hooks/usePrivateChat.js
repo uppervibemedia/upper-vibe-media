@@ -12,6 +12,8 @@ export default function usePrivateChat(user) {
   const [outgoingStatus, setOutgoingStatus] = useState(null); // { toUsername, status: 'pending'|'accepted'|'declined'|'expired' }
   const [safetyConfirmed, setSafetyConfirmed] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState({});
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [pendingRequests, setPendingRequests] = useState([]); // all pending incoming requests
 
   const chatSubRef = useRef(null);
   const requestSubRef = useRef(null);
@@ -262,18 +264,29 @@ export default function usePrivateChat(user) {
         });
         if (cancelled) return;
         if (myPending.length > 0) {
-          const req = myPending[0];
           const blocked = blockedUsersRef.current || {};
-          if (blocked[req.from_user_id]) return;
-          const expiresAt = req.expires_at ? new Date(req.expires_at).getTime() : 0;
-          if (expiresAt > Date.now()) {
-            console.log("[usePrivateChat] Poll found pending request from:", req.from_username);
+          const validPending = myPending.filter((req) => {
+            if (blocked[req.from_user_id]) return false;
+            const expiresAt = req.expires_at ? new Date(req.expires_at).getTime() : 0;
+            return expiresAt > Date.now();
+          });
+          setPendingRequestsCount(validPending.length);
+          setPendingRequests(validPending.map((req) => ({
+            id: req.id,
+            fromUserId: req.from_user_id,
+            fromUsername: req.from_username,
+          })));
+          if (validPending.length > 0) {
+            const req = validPending[0];
             setIncomingRequest({
               id: req.id,
               fromUserId: req.from_user_id,
               fromUsername: req.from_username,
             });
           }
+        } else {
+          setPendingRequestsCount(0);
+          setPendingRequests([]);
         }
       } catch (e) {
         console.warn("[usePrivateChat] Poll error:", e);
@@ -319,5 +332,7 @@ export default function usePrivateChat(user) {
     blockUser,
     blockedUsers,
     clearOutgoingStatus,
+    pendingRequestsCount,
+    pendingRequests,
   };
 }

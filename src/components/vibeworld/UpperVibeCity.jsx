@@ -308,6 +308,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     safetyConfirmed, setSafetyConfirmed,
     sendChatRequest, acceptRequest, declineRequest,
     sendMessage, endChat, blockUser, blockedUsers, clearOutgoingStatus,
+    pendingRequestsCount, pendingRequests,
   } = usePrivateChat(user);
   const [userInteractionTarget, setUserInteractionTarget] = useState(null);
 
@@ -607,6 +608,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onVoiceActive={setVoiceActive}
         outgoingStatus={outgoingStatus}
         onClearOutgoingStatus={clearOutgoingStatus}
+        pendingRequestsCount={pendingRequestsCount}
+        pendingRequests={pendingRequests}
+        onAcceptChat={acceptRequest}
+        onDeclineChat={declineRequest}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
