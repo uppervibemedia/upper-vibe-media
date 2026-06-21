@@ -47,7 +47,6 @@ const ACCELERATION = 10.0;
 const DECELERATION = 8.0;
 const TURN_SPEED = 8.0;
 const ROTATION_SMOOTH = 6.0;
-const WALK_CYCLE_SPEED = 7.0;
 
 // Tree collisions — radius 0.6 per tree
 const TREE_R = 0.5;
@@ -1277,7 +1276,7 @@ function createCosmicSky(scene) {
 }
 
 // createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
-import { createAvatar, createRemoteAvatar } from "./AvatarModel.jsx";
+import { createAvatar, createRemoteAvatar, updateAvatarAnimation } from "./AvatarModel.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -1312,6 +1311,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
   const sceneRef = useRef(null);
   const avatarRef = useRef(null);
+  const avatarEntryRef = useRef(null); // { root, mixer, clips } from GLB load
   const avatarPosRef = useRef([...SPAWN, 0]); // [x, y, z, rotY]
   const stageCanvasRef = useRef(null);
   stageCanvasRef.current = stageCanvas;
@@ -1326,12 +1326,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const onRemoteClickRef = useRef(onRemoteAvatarClick);
   onRemoteClickRef.current = onRemoteAvatarClick;
   const cameraRef = useRef(null);
-  const animRef = useRef({
-    walkTime: 0,
-    isMoving: false,
-    speed: 0,
-    prevWalkTime: 0,
-  });
+  const animRef = useRef({ walkTime: 0, isMoving: false, speed: 0, prevWalkTime: 0 });
   const isMobileRef = useRef(false);
   const _mobileRef = useRef({ x: 0, y: 0, camDx: 0 });
   const mobileInputRef = props.mobileInputRef || _mobileRef;
@@ -1389,35 +1384,25 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       buildPark(scene);
 
-      // Build procedural avatar
-      const avatar = createAvatar(scene, avatarConfig || {});
-      avatarRef.current = avatar;
-
-      // Avatar rim light — soft glow so avatar doesn't blend into dark ground
-      // Avatar head at y≈1.60 from ground, so light at y=1.0 illuminates full body
+      // Avatar rim light
       const avatarRimLight = new PointLight();
       avatarRimLight.color = new Color("#8899DD");
-      avatarRimLight.intensity = 0.5;
-      avatarRimLight.distance = 7;
-      avatarRimLight.position.set(SPAWN[0], SPAWN[1] + 1.0, SPAWN[2]);
+      avatarRimLight.intensity = 0.8;
+      avatarRimLight.distance = 8;
+      avatarRimLight.position.set(SPAWN[0], SPAWN[1] + 1.2, SPAWN[2]);
       scene.add(avatarRimLight);
       scene.userData.avatarRimLight = avatarRimLight;
 
-      let torso = null;
-      let leftShoulder = null;
-      let rightShoulder = null;
-      let leftHip = null;
-      let rightHip = null;
-      // Deep traverse — arms are children of torso so we need recursive search
-      avatar.traverse((child) => {
-        if (child.name === "torso") torso = child;
-        if (child.name === "leftShoulder") leftShoulder = child;
-        if (child.name === "rightShoulder") rightShoulder = child;
-        if (child.name === "leftHip") leftHip = child;
-        if (child.name === "rightHip") rightHip = child;
+      // Load GLB avatar async — createAvatar returns a placeholder Group immediately
+      const avatarPlaceholder = createAvatar(scene, avatarConfig || {}, (entry) => {
+        avatarEntryRef.current = entry;
+        avatarRef.current = entry.root;
+        // Sync position immediately
+        const [px, py, pz, rot] = avatarPosRef.current;
+        entry.root.position.set(px, py, pz);
+        entry.root.rotation.y = rot;
       });
-
-      const animParts = { torso, leftShoulder, rightShoulder, leftHip, rightHip };
+      avatarRef.current = avatarPlaceholder;
 
       // Skybox — must follow camera so sky always feels infinitely far away
       const skybox = scene.getObjectByName("skybox");
@@ -1539,8 +1524,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         py = SPAWN[1];
 
         avatarPosRef.current = [px, py, pz, rot];
-        avatar.position.set(px, py, pz);
-        avatar.rotation.y = rot;
+        const avatar = avatarRef.current;
+        if (avatar) { avatar.position.set(px, py, pz); avatar.rotation.y = rot; }
 
         // Rim light follows avatar — at chest/head height (avatar head at y≈1.60 from ground)
         const rimLight = scene.userData.avatarRimLight;
@@ -1595,257 +1580,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camera.lookAt(px, py + lookY, pz);
         }
 
-        // ═════════════════════════════════════════════════════════
-        // HUMAN WALK CYCLE — smooth lerped transitions
-        // ═════════════════════════════════════════════════════════
-        const ANIM_LERP = 14; // Speed of animation transitions
-        const IDLE_LERP = 6;
-        const anim = animRef.current;
-        anim.isMoving = speed > 0.1;
-
-        const facingDot = vel.x * Math.sin(rot) + vel.z * Math.cos(rot);
-        const isBackward = facingDot < -0.15;
-        const walkDir = isBackward ? -1 : 1;
-        const backMult = isBackward ? 0.75 : 1;
-
-        if (anim.isMoving) {
-          anim.walkTime += speed * WALK_CYCLE_SPEED * walkDir * backMult * dt;
-          anim.speed += (1 - anim.speed) * Math.min(1, dt * 6);
-        } else {
-          anim.walkTime += anim.prevWalkTime * 0.25 * dt;
-          anim.speed += (0 - anim.speed) * Math.min(1, dt * 4);
-        }
-        anim.prevWalkTime = anim.isMoving ? speed * WALK_CYCLE_SPEED * walkDir * backMult : 0;
-        anim.speed = Math.max(0, Math.min(1, anim.speed));
-
-        const wt = anim.walkTime;
-        const s = anim.speed;
-        const blendLerp = anim.isMoving ? ANIM_LERP : IDLE_LERP;
-
-        // Compute raw sine/cosine values
-        const cosWt = Math.cos(wt);
-        const sinWt = Math.sin(wt);
-        const sin2Wt = Math.sin(wt * 2);
-
-        // ─── TORSO — weight shift + bob + lean (lerped) ────
-        if (animParts.torso) {
-          const targetBob = (1 - Math.abs(cosWt)) * 0.04 * s;
-          const targetTilt = cosWt * 0.025 * s;
-          const targetLean = facingDot * 0.025 * s;
-          const targetTwist = sinWt * 0.06 * s;
-
-          animParts.torso.position.y += (targetBob - animParts.torso.position.y) * Math.min(1, dt * blendLerp);
-          animParts.torso.rotation.z += (targetTilt - animParts.torso.rotation.z) * Math.min(1, dt * blendLerp);
-          animParts.torso.rotation.x += (targetLean - animParts.torso.rotation.x) * Math.min(1, dt * blendLerp);
-          animParts.torso.userData._twist = (animParts.torso.userData._twist || 0) + 
-            (targetTwist - (animParts.torso.userData._twist || 0)) * Math.min(1, dt * blendLerp);
-        }
-
-        // ─── LEGS — lerped hip, knee, foot ─────────────────
-        const hipSwing = sinWt * 0.58 * s;
-        const hipOut = cosWt * 0.07 * s;
-
-        if (animParts.leftHip) {
-          animParts.leftHip.rotation.x += (hipSwing - animParts.leftHip.rotation.x) * Math.min(1, dt * blendLerp);
-          animParts.leftHip.position.z += (hipOut - animParts.leftHip.position.z) * Math.min(1, dt * blendLerp);
-        }
-        if (animParts.rightHip) {
-          animParts.rightHip.rotation.x += (-hipSwing - animParts.rightHip.rotation.x) * Math.min(1, dt * blendLerp);
-          animParts.rightHip.position.z += (-hipOut - animParts.rightHip.position.z) * Math.min(1, dt * blendLerp);
-        }
-
-        // Knees
-        const lSwing = Math.max(0, -sinWt);
-        const rSwing = Math.max(0, sinWt);
-        const lStance = Math.max(0, sinWt);
-        const rStance = Math.max(0, -sinWt);
-        const lKneeTarget = lSwing * lSwing * 0.82 * s + lStance * lStance * 0.12 * s;
-        const rKneeTarget = rSwing * rSwing * 0.82 * s + rStance * rStance * 0.12 * s;
-
-        const llLeg = animParts.leftHip?.userData?.leg?.userData?.lowerLeg
-          || avatar.getObjectByName("leftKnee");
-        const rlLeg = animParts.rightHip?.userData?.leg?.userData?.lowerLeg
-          || avatar.getObjectByName("rightKnee");
-        if (llLeg) llLeg.rotation.x += (lKneeTarget - llLeg.rotation.x) * Math.min(1, dt * blendLerp);
-        if (rlLeg) rlLeg.rotation.x += (rKneeTarget - rlLeg.rotation.x) * Math.min(1, dt * blendLerp);
-
-        // Feet
-        const lFoot = llLeg?.userData?.foot || avatar.getObjectByName("leftFoot");
-        const rFoot = rlLeg?.userData?.foot || avatar.getObjectByName("rightFoot");
-        const lFootTarget = -lSwing * 0.30 * s + lStance * 0.04 * s;
-        const rFootTarget = -rSwing * 0.30 * s + rStance * 0.04 * s;
-        if (lFoot) lFoot.rotation.x += (lFootTarget - lFoot.rotation.x) * Math.min(1, dt * blendLerp);
-        if (rFoot) rFoot.rotation.x += (rFootTarget - rFoot.rotation.x) * Math.min(1, dt * blendLerp);
-
-        // ─── ARMS — lerped shoulder, forearm, hand ──────────
-        const armSwing = sinWt * 0.58 * s;
-        const armOut = cosWt * 0.04 * s;
-
-        if (animParts.leftShoulder) {
-          animParts.leftShoulder.rotation.x += (-armSwing - animParts.leftShoulder.rotation.x) * Math.min(1, dt * blendLerp);
-          animParts.leftShoulder.rotation.z += (-armOut - animParts.leftShoulder.rotation.z) * Math.min(1, dt * blendLerp);
-        }
-        if (animParts.rightShoulder) {
-          animParts.rightShoulder.rotation.x += (armSwing - animParts.rightShoulder.rotation.x) * Math.min(1, dt * blendLerp);
-          animParts.rightShoulder.rotation.z += (armOut - animParts.rightShoulder.rotation.z) * Math.min(1, dt * blendLerp);
-        }
-
-        // Resolve forearm/hand — arms are parented to torso, look up by name if userData path fails
-        const larmForearm = animParts.leftShoulder?.userData?.arm?.userData?.forearm
-          || avatar.getObjectByName("leftElbow");
-        const rarmForearm = animParts.rightShoulder?.userData?.arm?.userData?.forearm
-          || avatar.getObjectByName("rightElbow");
-        const lArmBack = Math.max(0, sinWt) * 0.4 * s;
-        const rArmBack = Math.max(0, -sinWt) * 0.4 * s;
-        if (larmForearm) larmForearm.rotation.x += (lArmBack - larmForearm.rotation.x) * Math.min(1, dt * blendLerp);
-        if (rarmForearm) rarmForearm.rotation.x += (rArmBack - rarmForearm.rotation.x) * Math.min(1, dt * blendLerp);
-
-        const lHand = larmForearm?.userData?.hand;
-        const rHand = rarmForearm?.userData?.hand;
-        if (lHand) lHand.rotation.x += (-lArmBack * 0.3 - lHand.rotation.x) * Math.min(1, dt * blendLerp);
-        if (rHand) rHand.rotation.x += (-rArmBack * 0.3 - rHand.rotation.x) * Math.min(1, dt * blendLerp);
-
-        // ─── DANCE ANIMATION — lerped ────────────────────────
-        if (isDancingRef.current) {
-          const danceT = t * 3.5;
-          const DRP = 18;
-
-          if (animParts.torso) {
-            const dY = Math.abs(Math.sin(danceT * 2)) * 0.08;
-            const dRX = Math.sin(danceT * 0.7) * 0.06;
-            const dRZ = Math.cos(danceT * 0.6) * 0.08;
-            animParts.torso.position.y += (dY - animParts.torso.position.y) * Math.min(1, dt * DRP);
-            animParts.torso.rotation.x += (dRX - animParts.torso.rotation.x) * Math.min(1, dt * DRP);
-            animParts.torso.rotation.z += (dRZ - animParts.torso.rotation.z) * Math.min(1, dt * DRP);
-          }
-          if (animParts.leftShoulder) {
-            animParts.leftShoulder.rotation.x += ((-1.8 + Math.sin(danceT) * 0.5) - animParts.leftShoulder.rotation.x) * Math.min(1, dt * DRP);
-            animParts.leftShoulder.rotation.z += ((0.3 + Math.cos(danceT * 0.8) * 0.25) - animParts.leftShoulder.rotation.z) * Math.min(1, dt * DRP);
-          }
-          if (animParts.rightShoulder) {
-            animParts.rightShoulder.rotation.x += ((-1.8 + Math.cos(danceT) * 0.5) - animParts.rightShoulder.rotation.x) * Math.min(1, dt * DRP);
-            animParts.rightShoulder.rotation.z += ((-0.3 + Math.sin(danceT * 0.8) * 0.25) - animParts.rightShoulder.rotation.z) * Math.min(1, dt * DRP);
-          }
-          const stepAngle = Math.sin(danceT) * 0.35;
-          if (animParts.leftHip) animParts.leftHip.rotation.x += (stepAngle - animParts.leftHip.rotation.x) * Math.min(1, dt * DRP);
-          if (animParts.rightHip) animParts.rightHip.rotation.x += (-stepAngle - animParts.rightHip.rotation.x) * Math.min(1, dt * DRP);
-
-          const kneelD = Math.max(0, Math.sin(danceT * 2)) * 0.35;
-          const llLeg2 = animParts.leftHip?.userData?.leg?.userData?.lowerLeg;
-          const rlLeg2 = animParts.rightHip?.userData?.leg?.userData?.lowerLeg;
-          if (llLeg2) llLeg2.rotation.x += (kneelD - llLeg2.rotation.x) * Math.min(1, dt * DRP);
-          if (rlLeg2) rlLeg2.rotation.x += (kneelD - rlLeg2.rotation.x) * Math.min(1, dt * DRP);
-        }
-
-        // ─── EMOTE ANIMATIONS — lerped ──────────────────────
-        const activeEmoteEffect = activeEmoteRef.current?.effect;
-        if (activeEmoteEffect && activeEmoteEffect !== "dance") {
-          const emoteT = t * 4.0;
-          const EL = 20;
-
-          if (activeEmoteEffect === "wave") {
-            if (animParts.rightShoulder) {
-              animParts.rightShoulder.rotation.x += ((-2.2 + Math.cos(emoteT * 1.5) * 0.3) - animParts.rightShoulder.rotation.x) * Math.min(1, dt * EL);
-              animParts.rightShoulder.rotation.z += ((-0.4 + Math.sin(emoteT * 2) * 0.4) - animParts.rightShoulder.rotation.z) * Math.min(1, dt * EL);
-            }
-            if (animParts.leftShoulder) {
-              animParts.leftShoulder.rotation.x += (-0.12 - animParts.leftShoulder.rotation.x) * Math.min(1, dt * 6);
-              animParts.leftShoulder.rotation.z += (0 - animParts.leftShoulder.rotation.z) * Math.min(1, dt * 6);
-            }
-          } else if (activeEmoteEffect === "clap") {
-            if (animParts.leftShoulder) {
-              animParts.leftShoulder.rotation.x += ((-1.2 + Math.sin(emoteT * 1.8) * 0.3) - animParts.leftShoulder.rotation.x) * Math.min(1, dt * EL);
-              animParts.leftShoulder.rotation.z += (0.6 - animParts.leftShoulder.rotation.z) * Math.min(1, dt * EL);
-            }
-            if (animParts.rightShoulder) {
-              animParts.rightShoulder.rotation.x += ((-1.2 + Math.sin(emoteT * 1.8) * 0.3) - animParts.rightShoulder.rotation.x) * Math.min(1, dt * EL);
-              animParts.rightShoulder.rotation.z += (-0.6 - animParts.rightShoulder.rotation.z) * Math.min(1, dt * EL);
-            }
-            if (animParts.torso) {
-              const by = Math.abs(Math.sin(emoteT * 1.8)) * 0.04;
-              animParts.torso.position.y += (by - animParts.torso.position.y) * Math.min(1, dt * EL);
-            }
-          } else if (activeEmoteEffect === "heart") {
-            if (animParts.leftShoulder) {
-              animParts.leftShoulder.rotation.x += (-1.5 - animParts.leftShoulder.rotation.x) * Math.min(1, dt * EL);
-              animParts.leftShoulder.rotation.z += ((0.6 + Math.sin(emoteT * 0.6) * 0.1) - animParts.leftShoulder.rotation.z) * Math.min(1, dt * EL);
-            }
-            if (animParts.rightShoulder) {
-              animParts.rightShoulder.rotation.x += (-1.5 - animParts.rightShoulder.rotation.x) * Math.min(1, dt * EL);
-              animParts.rightShoulder.rotation.z += ((-0.6 + Math.sin(emoteT * 0.6) * 0.1) - animParts.rightShoulder.rotation.z) * Math.min(1, dt * EL);
-            }
-            if (animParts.torso) {
-              const sz = Math.sin(emoteT * 0.5) * 0.04;
-              animParts.torso.rotation.z += (sz - animParts.torso.rotation.z) * Math.min(1, dt * EL);
-            }
-          } else if (activeEmoteEffect === "fire") {
-            const fi = Math.abs(Math.sin(emoteT * 2));
-            if (animParts.torso) animParts.torso.position.y += (fi * 0.1 - animParts.torso.position.y) * Math.min(1, dt * EL);
-            if (animParts.leftShoulder) {
-              animParts.leftShoulder.rotation.x += ((-2.5 + fi * 0.6) - animParts.leftShoulder.rotation.x) * Math.min(1, dt * EL);
-              animParts.leftShoulder.rotation.z += (0.2 - animParts.leftShoulder.rotation.z) * Math.min(1, dt * EL);
-            }
-            if (animParts.rightShoulder) {
-              animParts.rightShoulder.rotation.x += ((-2.5 + fi * 0.6) - animParts.rightShoulder.rotation.x) * Math.min(1, dt * EL);
-              animParts.rightShoulder.rotation.z += (-0.2 - animParts.rightShoulder.rotation.z) * Math.min(1, dt * EL);
-            }
-            const fh = Math.sin(emoteT * 2) * 0.15;
-            if (animParts.leftHip) animParts.leftHip.rotation.x += (fh - animParts.leftHip.rotation.x) * Math.min(1, dt * EL);
-            if (animParts.rightHip) animParts.rightHip.rotation.x += (-fh - animParts.rightHip.rotation.x) * Math.min(1, dt * EL);
-          } else if (activeEmoteEffect === "peace") {
-            if (animParts.rightShoulder) {
-              animParts.rightShoulder.rotation.x += (-2.4 - animParts.rightShoulder.rotation.x) * Math.min(1, dt * EL);
-              animParts.rightShoulder.rotation.z += ((-0.5 + Math.sin(emoteT * 0.7) * 0.08) - animParts.rightShoulder.rotation.z) * Math.min(1, dt * EL);
-            }
-            if (animParts.leftShoulder) {
-              animParts.leftShoulder.rotation.x += (-0.12 - animParts.leftShoulder.rotation.x) * Math.min(1, dt * 6);
-              animParts.leftShoulder.rotation.z += (0 - animParts.leftShoulder.rotation.z) * Math.min(1, dt * 6);
-            }
-            if (animParts.torso) {
-              const nx = Math.sin(emoteT * 0.6) * 0.03;
-              animParts.torso.rotation.x += (nx - animParts.torso.rotation.x) * Math.min(1, dt * EL);
-            }
-          }
-        }
-
-        // ─── IDLE BREATHING + gentle sway + posture reset ─────
-        if (!anim.isMoving && s < 0.05 && !isDancingRef.current && !activeEmoteRef.current?.effect) {
-          const IL = IDLE_LERP;
-          const breathe = Math.sin(t * 1.8) * 0.015;
-          const idleSway = Math.sin(t * 0.55) * 0.025;
-          const armIdle = Math.sin(t * 0.8) * 0.05;
-
-          if (animParts.torso) {
-            animParts.torso.position.y += (0 - animParts.torso.position.y) * Math.min(1, dt * IL);
-            animParts.torso.rotation.z += (idleSway - animParts.torso.rotation.z) * Math.min(1, dt * IL);
-            animParts.torso.rotation.x += (0 - animParts.torso.rotation.x) * Math.min(1, dt * IL);
-            animParts.torso.scale.y = 1 + breathe;
-          }
-          if (animParts.leftShoulder) {
-            animParts.leftShoulder.rotation.x += (-0.15 - animParts.leftShoulder.rotation.x) * Math.min(1, dt * IL);
-            animParts.leftShoulder.rotation.z += (armIdle - animParts.leftShoulder.rotation.z) * Math.min(1, dt * IL);
-          }
-          if (animParts.rightShoulder) {
-            animParts.rightShoulder.rotation.x += (-0.15 - animParts.rightShoulder.rotation.x) * Math.min(1, dt * IL);
-            animParts.rightShoulder.rotation.z += (-armIdle - animParts.rightShoulder.rotation.z) * Math.min(1, dt * IL);
-          }
-          if (animParts.leftHip) {
-            animParts.leftHip.rotation.x += (0 - animParts.leftHip.rotation.x) * Math.min(1, dt * IL * 1.2);
-            animParts.leftHip.position.z += (0 - animParts.leftHip.position.z) * Math.min(1, dt * IL * 1.2);
-          }
-          if (animParts.rightHip) {
-            animParts.rightHip.rotation.x += (0 - animParts.rightHip.rotation.x) * Math.min(1, dt * IL * 1.2);
-            animParts.rightHip.position.z += (0 - animParts.rightHip.position.z) * Math.min(1, dt * IL * 1.2);
-          }
-          if (llLeg) llLeg.rotation.x += (0 - llLeg.rotation.x) * Math.min(1, dt * IL);
-          if (rlLeg) rlLeg.rotation.x += (0 - rlLeg.rotation.x) * Math.min(1, dt * IL);
-          if (lFoot) lFoot.rotation.x += (0 - lFoot.rotation.x) * Math.min(1, dt * IL);
-          if (rFoot) rFoot.rotation.x += (0 - rFoot.rotation.x) * Math.min(1, dt * IL);
-          if (larmForearm) larmForearm.rotation.x += (0 - larmForearm.rotation.x) * Math.min(1, dt * IL);
-          if (rarmForearm) rarmForearm.rotation.x += (0 - rarmForearm.rotation.x) * Math.min(1, dt * IL);
-          if (lHand) lHand.rotation.x += (0 - lHand.rotation.x) * Math.min(1, dt * IL);
-          if (rHand) rHand.rotation.x += (0 - rHand.rotation.x) * Math.min(1, dt * IL);
-        }
+        // ─── GLB AVATAR ANIMATION ────────────────────────────
+        updateAvatarAnimation(avatarEntryRef.current, speed, isDancingRef.current, dt);
 
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
         const audioBeat = audioIntensityRef?.current ?? 0;
@@ -2168,64 +1904,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const vel = Math.sqrt(dx * dx + dz * dz);
           entry.prevPos = { x: g.position.x, z: g.position.z };
 
-          // ─── Remote walk animation with joint hierarchy ────
-          const walkTime = g.userData.walkTime || 0;
-          const gSpeed = g.userData.speed || 0;
-          const targetSpeed = Math.min(1, vel * 30);
-
-          // Smooth speed ramp
-          const newSpeed = gSpeed + (targetSpeed - gSpeed) * Math.min(1, dt * 6);
-          g.userData.speed = newSpeed;
-          g.userData.velocity = vel;
-
-          const newWalkTime = walkTime + vel * 7 * dt;
-          // Decay walkTime when stationary
-          g.userData.walkTime = vel > 0.01 ? newWalkTime : walkTime + walkTime * 0.2 * dt;
-
-          const rwt = newWalkTime;
-          const rSpd = newSpeed;
-          const rSin = Math.sin(rwt);
-          const rCos = Math.cos(rwt);
-
-          // Find hip pivots
-          const leftHip = g.getObjectByName("leftHip");
-          const rightHip = g.getObjectByName("rightHip");
-          const leftShoulder = g.getObjectByName("leftShoulder");
-          const rightShoulder = g.getObjectByName("rightShoulder");
-
-          // Hip swing — forward/back
-          const hipAngle = rSin * 0.42 * rSpd;
-          if (leftHip) leftHip.rotation.x = hipAngle;
-          if (rightHip) rightHip.rotation.x = -hipAngle;
-
-          // Knee bend during swing phase
-          const lSwing = Math.max(0, -rSin) * 0.48 * rSpd;
-          const rSwing = Math.max(0, rSin) * 0.48 * rSpd;
-          const lKneePivot = leftHip?.userData?.kneePivot;
-          const rKneePivot = rightHip?.userData?.kneePivot;
-          if (lKneePivot) lKneePivot.rotation.x = lSwing;
-          if (rKneePivot) rKneePivot.rotation.x = rSwing;
-
-          // Ankle/foot rotation
-          const lAnkle = lKneePivot?.userData?.anklePivot || leftHip?.userData?.anklePivot;
-          const rAnkle = rKneePivot?.userData?.anklePivot || rightHip?.userData?.anklePivot;
-          const lFootG = lAnkle?.userData?.footGroup || (lAnkle?.children?.find(c => c.name === "leftFoot" || c.name === "rightFoot"));
-          const rFootG = rAnkle?.userData?.footGroup || (rAnkle?.children?.find(c => c.name === "leftFoot" || c.name === "rightFoot"));
-          if (lFootG) lFootG.rotation.x = rSwing * 0.15;
-          if (rFootG) rFootG.rotation.x = lSwing * 0.15;
-
-          // Arm swing — opposite to legs
-          const armAngle = rSin * 0.42 * rSpd;
-          if (leftShoulder) leftShoulder.rotation.x = -armAngle;
-          if (rightShoulder) rightShoulder.rotation.x = armAngle;
-
-          // Elbow bend when arm swings backward
-          const lElbowPivot = leftShoulder?.userData?.elbowPivot;
-          const rElbowPivot = rightShoulder?.userData?.elbowPivot;
-          const lArmBack = Math.max(0, rSin) * 0.30 * rSpd;
-          const rArmBack = Math.max(0, -rSin) * 0.30 * rSpd;
-          if (lElbowPivot) lElbowPivot.rotation.x = lArmBack;
-          if (rElbowPivot) rElbowPivot.rotation.x = rArmBack;
+          // ─── Remote GLB avatar animation ────────────────────
+          const remoteEntry = g.userData._avatarEntry;
+          updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
         }
 
         // Despawn avatars that are no longer present
@@ -2282,6 +1963,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         lastTimeRef.current = 0;
         frameRef.current = 0;
         avatarRef.current = null;
+        avatarEntryRef.current = null;
         sceneRef.current = null;
         remoteAvatarsRef.current = {};
       };

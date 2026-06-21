@@ -1,55 +1,25 @@
 /**
- * AvatarTestPlatform — DEV ONLY clean isolated stage for avatar inspection.
- * Full-suit avatar + color customizer panel.
+ * AvatarTestPlatform — DEV ONLY isolated stage for GLB avatar inspection.
+ * Shows the real humanoid Soldier.glb with idle/walk/run animations.
  */
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
-import { createAvatar } from "./AvatarModel";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-// ── Dev flag — set to false to return to normal world ────────────────────────
 export const DEV_AVATAR_TEST_MODE = true;
 
-const PLATFORM_Y = 0;
+const GLB_URL = "https://threejs.org/examples/models/gltf/Soldier.glb";
+const ANIMS = ["idle", "walk", "run"];
 
+export default function AvatarTestPlatform() {
+  const mountRef = useRef(null);
+  const mixerRef = useRef(null);
+  const clipsRef = useRef({});
+  const currentRef = useRef("idle");
+  const [currentAnim, setCurrentAnim] = useState("idle");
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(null);
 
-const DEFAULT_COLORS = {
-  armor:  "#dde0e8",
-  dark:   "#2a2d35",
-  accent: "#3a7fff",
-  visor:  "#111820",
-};
-
-export default function AvatarTestPlatform({ avatarConfig = {} }) {
-  const mountRef      = useRef(null);
-  const sceneRef      = useRef(null);
-  const avatarRef     = useRef(null);
-  const rendererRef   = useRef(null);
-  const animIdRef     = useRef(null);
-
-  // ── Color state ──────────────────────────────────────────────────────────
-  const [colors, setColors] = useState(DEFAULT_COLORS);
-  const [style, setStyle]   = useState(avatarConfig.avatarStyle || "streetwear");
-
-  // ── Rebuild avatar when config changes ───────────────────────────────────
-  const rebuildAvatar = useCallback(() => {
-    const scene = sceneRef.current;
-    if (!scene) return;
-    if (avatarRef.current) {
-      scene.remove(avatarRef.current);
-      avatarRef.current = null;
-    }
-    const tmpScene = new THREE.Scene();
-    const av = createAvatar(tmpScene, {
-      avatarStyle:    style,
-      colorOverrides: colors,
-    });
-    tmpScene.remove(av);
-    av.position.set(0, PLATFORM_Y, 0);
-    scene.add(av);
-    avatarRef.current = av;
-  }, [colors, style]);
-
-  // ── Three.js scene setup (once) ──────────────────────────────────────────
   useEffect(() => {
     const el = mountRef.current;
     if (!el) return;
@@ -61,19 +31,17 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setClearColor(0x0a0a14);
     el.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
 
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x0a0a14, 18, 32);
-    sceneRef.current = scene;
 
-    // Platform
-    const platGeo = new THREE.CylinderGeometry(5, 5, 0.08, 48);
-    const platMat = new THREE.MeshStandardMaterial({ color: 0x181830, roughness: 0.4, metalness: 0.5 });
-    const platform = new THREE.Mesh(platGeo, platMat);
-    platform.position.y = -0.04;
-    platform.receiveShadow = true;
-    scene.add(platform);
+    // Platform + grid
+    const plat = new THREE.Mesh(
+      new THREE.CylinderGeometry(5, 5, 0.08, 48),
+      new THREE.MeshStandardMaterial({ color: 0x181830, roughness: 0.4, metalness: 0.5 })
+    );
+    plat.position.y = -0.04; plat.receiveShadow = true;
+    scene.add(plat);
 
     const gridMat = new THREE.MeshBasicMaterial({ color: 0x2a2a60, transparent: true, opacity: 0.5 });
     for (let i = -4; i <= 4; i++) {
@@ -82,91 +50,89 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
       const v = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.004, 9), gridMat);
       v.position.set(i, 0.002, 0); scene.add(v);
     }
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00d4f0, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(new THREE.RingGeometry(4.9, 5.1, 64), ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.005;
-    scene.add(ring);
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(4.9, 5.1, 64),
+      new THREE.MeshBasicMaterial({ color: 0x00d4f0, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+    );
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.005; scene.add(ring);
 
     // Lighting
     const key = new THREE.DirectionalLight(0xffeedd, 2.8);
-    key.position.set(3, 6, 5);
-    key.castShadow = true;
+    key.position.set(3, 6, 5); key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
     key.shadow.camera.near = 0.5; key.shadow.camera.far = 20;
     key.shadow.camera.left = -4; key.shadow.camera.right = 4;
-    key.shadow.camera.top = 5;   key.shadow.camera.bottom = -1;
+    key.shadow.camera.top = 5; key.shadow.camera.bottom = -1;
     scene.add(key);
-    scene.add(new THREE.DirectionalLight(0xaaccff, 1.6).position.set(-4, 4, 3) && (() => { const l = new THREE.DirectionalLight(0xaaccff, 1.6); l.position.set(-4, 4, 3); return l; })());
-    const rim = new THREE.DirectionalLight(0x9966ff, 1.2); rim.position.set(0, 3, -6); scene.add(rim);
+    const fill = new THREE.DirectionalLight(0xaaccff, 1.6); fill.position.set(-4, 4, 3); scene.add(fill);
+    const rim  = new THREE.DirectionalLight(0x9966ff, 1.2);  rim.position.set(0, 3, -6);  scene.add(rim);
     scene.add(new THREE.AmbientLight(0x6688aa, 1.4));
     const under = new THREE.PointLight(0x4466cc, 0.8, 8); under.position.set(0, -0.5, 1.5); scene.add(under);
 
-    // Camera
-    const TARGET = new THREE.Vector3(0, 0.85, 0);
-    const CAM_DIST = 3.2;
+    // Camera + orbit
     const camera = new THREE.PerspectiveCamera(50, el.clientWidth / el.clientHeight, 0.1, 40);
-    let orbitAngle = 0;
-    let camHeight = 1.1;
-    let camDist = CAM_DIST;
+    const TARGET = new THREE.Vector3(0, 0.9, 0);
+    let orbitAngle = 0.4, camHeight = 1.2, camDist = 3.2;
 
-    // Mouse/touch orbit
     let isDragging = false, lastX = 0, lastY = 0;
-    const onMouseDown = (e) => {
-      isDragging = true;
-      lastX = e.clientX ?? e.touches?.[0]?.clientX;
-      lastY = e.clientY ?? e.touches?.[0]?.clientY;
-    };
-    const onMouseMove = (e) => {
+    const onDown = (e) => { isDragging = true; lastX = e.clientX ?? e.touches?.[0]?.clientX; lastY = e.clientY ?? e.touches?.[0]?.clientY; };
+    const onMove = (e) => {
       if (!isDragging) return;
       const x = e.clientX ?? e.touches?.[0]?.clientX;
       const y = e.clientY ?? e.touches?.[0]?.clientY;
       if (x === undefined) return;
       orbitAngle -= (x - lastX) * 0.012;
-      camHeight = Math.min(2.8, Math.max(0.1, camHeight - (y - lastY) * 0.008));
+      camHeight = Math.min(2.8, Math.max(0.05, camHeight - (y - lastY) * 0.008));
       lastX = x; lastY = y;
     };
-    const onMouseUp  = () => { isDragging = false; };
-    const onWheel    = (e) => { camDist = Math.min(5.5, Math.max(1.4, camDist + e.deltaY * 0.005)); };
-    renderer.domElement.addEventListener("mousedown", onMouseDown);
-    renderer.domElement.addEventListener("touchstart", onMouseDown);
+    const onUp   = () => { isDragging = false; };
+    const onWheel = (e) => { camDist = Math.min(5.5, Math.max(1.2, camDist + e.deltaY * 0.005)); };
+    renderer.domElement.addEventListener("mousedown", onDown);
+    renderer.domElement.addEventListener("touchstart", onDown);
     renderer.domElement.addEventListener("wheel", onWheel, { passive: true });
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("touchmove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    window.addEventListener("touchend", onMouseUp);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("touchmove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchend", onUp);
 
-    // Initial avatar
-    const tmpScene = new THREE.Scene();
-    const av = createAvatar(tmpScene, {
-      avatarStyle:    avatarConfig.avatarStyle || "streetwear",
-      colorOverrides: DEFAULT_COLORS,
+    // Load GLB
+    let animId;
+    const clock = new THREE.Clock();
+
+    const loader = new GLTFLoader();
+    loader.load(GLB_URL, (gltf) => {
+      const model = gltf.scene;
+      model.traverse((child) => { if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; } });
+      scene.add(model);
+
+      const mixer = new THREE.AnimationMixer(model);
+      mixerRef.current = mixer;
+
+      const clips = {};
+      gltf.animations.forEach((clip) => {
+        const key = clip.name.toLowerCase();
+        clips[key] = mixer.clipAction(clip);
+        clips[key].setLoop(THREE.LoopRepeat, Infinity);
+      });
+      clipsRef.current = clips;
+      if (clips.idle) clips.idle.play();
+      setLoaded(true);
+
+      const animate = () => {
+        animId = requestAnimationFrame(animate);
+        const dt = clock.getDelta();
+        mixer.update(dt);
+        if (!isDragging) orbitAngle += 0.004;
+        camera.position.set(Math.sin(orbitAngle) * camDist, camHeight, Math.cos(orbitAngle) * camDist);
+        TARGET.y = Math.max(0.5, camHeight * 0.75);
+        camera.lookAt(TARGET);
+        renderer.render(scene, camera);
+      };
+      animate();
+    }, undefined, (err) => {
+      console.error("[AvatarTestPlatform] GLB load error:", err);
+      setError("Failed to load GLB model. Check network / CORS.");
     });
-    tmpScene.remove(av);
-    av.position.set(0, PLATFORM_Y, 0);
-    scene.add(av);
-    avatarRef.current = av;
-
-    const animate = () => {
-      animIdRef.current = requestAnimationFrame(animate);
-      if (!isDragging) orbitAngle += 0.004;
-      camera.position.set(Math.sin(orbitAngle) * camDist, camHeight, Math.cos(orbitAngle) * camDist);
-      TARGET.y = Math.max(0.3, camHeight * 0.75);
-      camera.lookAt(TARGET);
-
-      const av = avatarRef.current;
-      if (av) {
-        const t = performance.now() * 0.001;
-        const torso = av.getObjectByName("torso");
-        if (torso) { torso.scale.y = 1 + Math.sin(t * 1.8) * 0.012; torso.rotation.z = Math.sin(t * 0.5) * 0.018; }
-        const ls = av.getObjectByName("leftShoulder");
-        const rs = av.getObjectByName("rightShoulder");
-        if (ls) ls.rotation.z = 0.12 + Math.sin(t * 0.8) * 0.03;
-        if (rs) rs.rotation.z = -0.12 - Math.sin(t * 0.8) * 0.03;
-      }
-      renderer.render(scene, camera);
-    };
-    animate();
 
     const onResize = () => {
       renderer.setSize(el.clientWidth, el.clientHeight);
@@ -176,24 +142,28 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
     window.addEventListener("resize", onResize);
 
     return () => {
-      cancelAnimationFrame(animIdRef.current);
+      cancelAnimationFrame(animId);
       window.removeEventListener("resize", onResize);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("touchmove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("touchend", onMouseUp);
-      renderer.domElement.removeEventListener("wheel", onWheel);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchend", onUp);
       renderer.dispose();
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
     };
-  }, []); // only runs once
+  }, []);
 
-  // Rebuild avatar whenever colors/skin/style change
-  useEffect(() => {
-    rebuildAvatar();
-  }, [rebuildAvatar]);
-
-  const setColor = (key, val) => setColors(c => ({ ...c, [key]: val }));
+  const playAnim = (key) => {
+    const clips = clipsRef.current;
+    const mixer = mixerRef.current;
+    if (!clips[key] || !mixer || currentRef.current === key) return;
+    const from = clips[currentRef.current];
+    const to = clips[key];
+    to.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
+    if (from) from.crossFadeTo(to, 0.3, true);
+    currentRef.current = key;
+    setCurrentAnim(key);
+  };
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col" style={{ background: "#0a0a14" }}>
@@ -207,68 +177,48 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
         <span className="text-white/30 text-[10px] font-mono">drag to rotate/tilt · scroll to zoom</span>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Canvas */}
         <div ref={mountRef} className="flex-1" style={{ cursor: "grab" }} />
 
-        {/* Color Picker Panel */}
-        <div className="w-56 shrink-0 overflow-y-auto flex flex-col gap-3 p-3"
-          style={{ background: "rgba(10,10,28,0.95)", borderLeft: "1px solid rgba(0,212,240,0.15)" }}>
-          <p className="text-[10px] font-mono font-bold text-cyan-400/70 tracking-widest uppercase">Customize</p>
-
-          {/* Suit Colors */}
-          {[
-            { key: "armor",  label: "Armor Plates" },
-            { key: "dark",   label: "Undersuit / Joints" },
-            { key: "accent", label: "Neon Accent" },
-            { key: "visor",  label: "Visor" },
-          ].map(({ key, label }) => (
-            <div key={key} className="flex items-center justify-between gap-2">
-              <label className="text-[10px] font-mono text-white/50 flex-1">{label}</label>
-              <div className="relative w-8 h-6 rounded overflow-hidden cursor-pointer"
-                style={{ border: "1px solid rgba(255,255,255,0.2)", background: colors[key] }}>
-                <input
-                  type="color"
-                  value={colors[key]}
-                  onChange={(e) => setColor(key, e.target.value)}
-                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                />
-              </div>
-            </div>
-          ))}
-
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "8px" }}>
-            <p className="text-[10px] font-mono text-white/40 mb-1.5 uppercase tracking-wider">Style</p>
-            <div className="flex gap-1">
-              {["streetwear", "cosmic"].map(s => (
-                <button key={s} onClick={() => setStyle(s)}
-                  className="flex-1 text-[9px] font-mono py-1 rounded capitalize transition-all"
-                  style={{
-                    background: style === s ? "rgba(0,212,240,0.25)" : "rgba(255,255,255,0.05)",
-                    border: `1px solid ${style === s ? "rgba(0,212,240,0.5)" : "rgba(255,255,255,0.1)"}`,
-                    color: style === s ? "#00d4f0" : "rgba(255,255,255,0.45)",
-                  }}>
-                  {s}
-                </button>
-              ))}
-            </div>
+        {/* Loading / error overlay */}
+        {!loaded && !error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
+            <div className="w-8 h-8 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+            <p className="text-xs text-cyan-300/60 font-mono">Loading humanoid model...</p>
           </div>
-
-          {/* Reset */}
-          <button onClick={() => { setColors(DEFAULT_COLORS); setStyle("streetwear"); }}
-            className="text-[9px] font-mono py-1.5 rounded transition-all hover:brightness-110"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", marginTop: "auto" }}>
-            Reset to Default
-          </button>
-
-          {/* Checklist */}
-          <div className="text-[9px] font-mono space-y-0.5 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", color: "rgba(0,212,240,0.5)" }}>
-            <div>✓ armored space trooper</div>
-            <div>✓ helmet with visor</div>
-            <div>✓ T-pose arms</div>
-            <div>✓ shoulder pauldrons</div>
-            <div>✓ knee pads + belt pouches</div>
+        )}
+        {error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
+            <p className="text-xs text-red-400 font-mono">{error}</p>
           </div>
+        )}
+
+        {/* Animation Controls */}
+        {loaded && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            {ANIMS.map((a) => (
+              <button key={a} onClick={() => playAnim(a)}
+                className="px-4 py-1.5 rounded-full text-[11px] font-mono font-bold uppercase tracking-wider transition-all hover:brightness-110"
+                style={{
+                  background: currentAnim === a ? "rgba(0,212,240,0.25)" : "rgba(255,255,255,0.07)",
+                  border: `1px solid ${currentAnim === a ? "rgba(0,212,240,0.55)" : "rgba(255,255,255,0.12)"}`,
+                  color: currentAnim === a ? "#00d4f0" : "rgba(255,255,255,0.5)",
+                }}>
+                {a}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Info panel */}
+        <div className="absolute top-3 right-3 pointer-events-none"
+          style={{ background: "rgba(10,10,28,0.85)", border: "1px solid rgba(0,212,240,0.15)", borderRadius: 10, padding: "10px 14px" }}>
+          <p className="text-[9px] font-mono text-cyan-400/60 uppercase tracking-wider mb-1">Model</p>
+          <p className="text-[10px] font-mono text-white/70">Soldier.glb (Three.js CC0)</p>
+          <p className="text-[9px] font-mono text-white/35 mt-1">Properly rigged humanoid</p>
+          <p className="text-[9px] font-mono text-white/35">Idle · Walk · Run clips</p>
+          <p className="text-[9px] font-mono text-cyan-400/40 mt-1.5">AnimationMixer driven</p>
         </div>
       </div>
     </div>
