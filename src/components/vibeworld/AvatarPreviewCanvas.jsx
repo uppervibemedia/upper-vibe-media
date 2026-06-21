@@ -8,22 +8,41 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OUTFIT_COLORS, SKIN_TONES } from "./AvatarSetup";
 
 const GLB_URLS = {
-  male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
-  female: "https://threejs.org/examples/models/gltf/Xbot.glb",
+  male:               "https://threejs.org/examples/models/gltf/Soldier.glb",
+  female:             "https://threejs.org/examples/models/gltf/Xbot.glb",
+  human_female_mesh:  "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Michelle.glb",
 };
 
 const _gltfCache = {};
 const _gltfPromise = {};
 
-function loadGLTF(gender = "male") {
-  const url = GLB_URLS[gender] || GLB_URLS.male;
-  if (_gltfCache[gender]) return Promise.resolve(_gltfCache[gender]);
-  if (_gltfPromise[gender]) return _gltfPromise[gender];
+function loadSinglePreview(key, url) {
+  if (_gltfCache[key]) return Promise.resolve(_gltfCache[key]);
+  if (_gltfPromise[key]) return _gltfPromise[key];
   const loader = new GLTFLoader();
-  _gltfPromise[gender] = new Promise((resolve, reject) => {
-    loader.load(url, (g) => { _gltfCache[gender] = g; resolve(g); }, undefined, (e) => { delete _gltfPromise[gender]; reject(e); });
+  _gltfPromise[key] = new Promise((resolve, reject) => {
+    loader.load(url, (g) => { _gltfCache[key] = g; resolve(g); }, undefined, (e) => { delete _gltfPromise[key]; reject(e); });
   });
-  return _gltfPromise[gender];
+  return _gltfPromise[key];
+}
+
+function loadGLTF(gender = "male") {
+  if (gender === "human_female") {
+    const cacheKey = "human_female";
+    if (_gltfCache[cacheKey]) return Promise.resolve(_gltfCache[cacheKey]);
+    if (_gltfPromise[cacheKey]) return _gltfPromise[cacheKey];
+    _gltfPromise[cacheKey] = Promise.all([
+      loadSinglePreview("human_female_mesh", GLB_URLS.human_female_mesh),
+      loadSinglePreview("female", GLB_URLS.female),
+    ]).then(([meshGltf, animGltf]) => {
+      const merged = { scene: meshGltf.scene, animations: animGltf.animations };
+      _gltfCache[cacheKey] = merged;
+      return merged;
+    }).catch((err) => { delete _gltfPromise[cacheKey]; throw err; });
+    return _gltfPromise[cacheKey];
+  }
+  const url = GLB_URLS[gender] || GLB_URLS.male;
+  return loadSinglePreview(gender, url);
 }
 
 // ─── Material classification (mirrors AvatarModel.jsx exactly) ────────
@@ -154,7 +173,8 @@ export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "med
     s.mixer = null;
 
     loadGLTF(genderRef.current).then((gltf) => {
-      const model = gltf.scene.clone(true);
+      // For human_female the scene is Michelle's original — clone it so preview doesn't conflict with in-world use
+      const model = gltf.scene.clone ? gltf.scene.clone(true) : gltf.scene;
       model.name = "previewModel";
       model.rotation.y = Math.PI;
       model.position.set(0, 0, 0);

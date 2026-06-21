@@ -105,12 +105,12 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                   <p className="text-[10px] font-black tracking-[0.2em] uppercase mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
                     Avatar Model
                   </p>
-                  <div className="flex gap-2">
-                    {[{ key: "male", label: "♂ Male" }, { key: "female", label: "♀ Female" }].map((g) => (
+                  <div className="flex gap-2 flex-wrap">
+                    {[{ key: "male", label: "♂ Male" }, { key: "female", label: "⚡ Cyber" }, { key: "human_female", label: "♀ Human" }].map((g) => (
                       <button
                         key={g.key}
                         onClick={() => setGender(g.key)}
-                        className="flex-1 py-2 rounded-xl text-[12px] font-bold transition-all hover:brightness-110 active:scale-[0.97]"
+                        className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all hover:brightness-110 active:scale-[0.97]"
                         style={{
                           background: gender === g.key ? "rgba(155,126,255,0.18)" : "rgba(255,255,255,0.04)",
                           border: gender === g.key ? "2px solid rgba(155,126,255,0.7)" : "1px solid rgba(255,255,255,0.08)",

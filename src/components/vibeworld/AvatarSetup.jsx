@@ -79,12 +79,12 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingG
             <div className="flex items-center gap-2 mb-3">
               <span className="text-[10px] font-black text-white/30 tracking-wider uppercase">Avatar Model</span>
             </div>
-            <div className="flex gap-2">
-              {[{ key: "male", label: "♂ Male" }, { key: "female", label: "♀ Female" }].map((g) => (
+            <div className="flex gap-2 flex-wrap">
+              {[{ key: "male", label: "♂ Male" }, { key: "female", label: "⚡ Cyber" }, { key: "human_female", label: "♀ Human" }].map((g) => (
                 <button
                   key={g.key}
                   onClick={() => setGender(g.key)}
-                  className="flex-1 py-2.5 rounded-xl text-[12px] font-bold transition-all hover:brightness-110 active:scale-[0.98]"
+                  className="flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all hover:brightness-110 active:scale-[0.98]"
                   style={{
                     background: gender === g.key ? "rgba(155,126,255,0.15)" : "rgba(255,255,255,0.04)",
                     border: gender === g.key ? "2px solid rgba(155,126,255,0.6)" : "1px solid rgba(255,255,255,0.08)",

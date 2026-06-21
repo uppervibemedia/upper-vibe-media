@@ -23,26 +23,52 @@ import { SPAWN } from "./cityData";
 const GLB_URLS = {
   male:         "https://threejs.org/examples/models/gltf/Soldier.glb",
   female:       "https://threejs.org/examples/models/gltf/Xbot.glb",
-  human_female: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Xbot.glb",
+  // human_female: loads Michelle's human mesh + borrows Xbot's idle/walk/run animations
+  // Both use the standard Mixamo rig so retargeting is perfect
+  human_female_mesh: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Michelle.glb",
+  human_female_anim: "https://threejs.org/examples/models/gltf/Xbot.glb",
 };
 
 const _loader = new GLTFLoader();
 const _gltfCache = {};
 const _gltfPromises = {};
 
-function loadGLTF(gender = "male") {
-  const url = GLB_URLS[gender] || GLB_URLS.male;
-  if (_gltfCache[gender]) return Promise.resolve(_gltfCache[gender]);
-  if (_gltfPromises[gender]) return _gltfPromises[gender];
-  _gltfPromises[gender] = new Promise((resolve, reject) => {
+function loadSingle(key, url) {
+  if (_gltfCache[key]) return Promise.resolve(_gltfCache[key]);
+  if (_gltfPromises[key]) return _gltfPromises[key];
+  _gltfPromises[key] = new Promise((resolve, reject) => {
     _loader.load(
       url,
-      (g) => { _gltfCache[gender] = g; resolve(g); },
+      (g) => { _gltfCache[key] = g; resolve(g); },
       undefined,
-      (e) => { delete _gltfPromises[gender]; reject(e); }
+      (e) => { delete _gltfPromises[key]; reject(e); }
     );
   });
-  return _gltfPromises[gender];
+  return _gltfPromises[key];
+}
+
+function loadGLTF(gender = "male") {
+  if (gender === "human_female") {
+    // Load Michelle mesh + Xbot animations in parallel, then merge
+    const cacheKey = "human_female";
+    if (_gltfCache[cacheKey]) return Promise.resolve(_gltfCache[cacheKey]);
+    if (_gltfPromises[cacheKey]) return _gltfPromises[cacheKey];
+    _gltfPromises[cacheKey] = Promise.all([
+      loadSingle("human_female_mesh", GLB_URLS.human_female_mesh),
+      loadSingle("female", GLB_URLS.female), // reuse Xbot cache
+    ]).then(([meshGltf, animGltf]) => {
+      // Merge: use Michelle scene + Xbot animations
+      const merged = { scene: meshGltf.scene, animations: animGltf.animations };
+      _gltfCache[cacheKey] = merged;
+      return merged;
+    }).catch((err) => {
+      delete _gltfPromises[cacheKey];
+      throw err;
+    });
+    return _gltfPromises[cacheKey];
+  }
+  const url = GLB_URLS[gender] || GLB_URLS.male;
+  return loadSingle(gender, url);
 }
 
 // For the player avatar we use the GLTF scene directly (no clone needed — only 1 player).
@@ -274,9 +300,13 @@ function attachModel(gltf, controllerGroup, opts = {}) {
   const mixer = new THREE.AnimationMixer(model);
   const clips = {};
   gltf.animations.forEach((clip) => {
+    // Retarget animation tracks to match this model's bone names.
+    // Michelle.glb uses "mixamorig:BoneName" while Xbot uses "mixamorig:BoneName" too —
+    // same Mixamo prefix, so clips cross-apply directly. No rename needed.
+    const action = mixer.clipAction(clip);
+    action.setLoop(THREE.LoopRepeat, Infinity);
     // Store by lowercased name for lookup
-    clips[clip.name.toLowerCase()] = mixer.clipAction(clip);
-    clips[clip.name.toLowerCase()].setLoop(THREE.LoopRepeat, Infinity);
+    clips[clip.name.toLowerCase()] = action;
   });
 
   // Resolve canonical keys — handle naming variations across GLB files

@@ -28,10 +28,11 @@
       "type": "string",
       "enum": [
         "male",
-        "female"
+        "female",
+        "human_female"
       ],
       "default": "male",
-      "description": "GLB model gender: male=Soldier.glb, female=Michelle.glb"
+      "description": "GLB model: male=Soldier.glb, female=Xbot.glb (cyber), human_female=Michelle.glb+Xbot animations"
     },
     "skin_tone": {
       "type": "string",
