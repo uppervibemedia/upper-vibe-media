@@ -1974,31 +1974,32 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           // Each window gets: current opacity, target opacity, next change time
           scene.userData.__windowStates = allWindows.map((w) => ({
             mesh: w,
-            current: w.material.opacity || 0.5,
-            target: w.material.opacity || 0.5,
-            nextChange: t + Math.random() * 6.0, // stagger initial changes over 6s
-            phase: Math.random() * Math.PI * 2,
+            current: w.material.opacity || 0.6,
+            target: w.material.opacity || 0.6,
+            nextChange: t + 1.0 + Math.random() * 8.0,
+            pulseSpeed: 0.25 + Math.random() * 0.5,
+            pulsePhase: Math.random() * Math.PI * 2,
+            isStore: w.position.y < 2.5,
           }));
           scene.userData.__windowFlickerInit = true;
         }
 
         const windowStates = scene.userData.__windowStates;
         if (windowStates) {
-          const LERP_SPEED = 1.2; // Slow transition between states
+          const LERP_SPEED = 0.85;
           for (const ws of windowStates) {
-            // When timer expires, pick a new target opacity
             if (t >= ws.nextChange) {
-              // 70% chance bright, 30% chance dim (more windows lit overall)
-              ws.target = Math.random() < 0.7
-                ? 0.55 + Math.random() * 0.45  // bright range: 0.55-1.0
-                : 0.08 + Math.random() * 0.22; // dim range: 0.08-0.30
-              // Set next change: 2-6 seconds from now
-              ws.nextChange = t + 2.0 + Math.random() * 4.0;
+              const brightChance = ws.isStore ? 0.82 : 0.73;
+              ws.target = Math.random() < brightChance
+                ? 0.5 + Math.random() * 0.5
+                : 0.25 + Math.random() * 0.2;
+              ws.nextChange = t + (ws.isStore ? 3.5 : 2.5) + Math.random() * 5.0;
             }
-            // Smooth lerp toward target
             ws.current += (ws.target - ws.current) * Math.min(1, LERP_SPEED * dt);
+            const microPulse = Math.sin(t * ws.pulseSpeed + ws.pulsePhase) * 0.04;
+            const finalOpacity = Math.max(0.2, Math.min(1.0, ws.current + microPulse));
             if (ws.mesh?.material) {
-              ws.mesh.material.opacity = ws.current;
+              ws.mesh.material.opacity = finalOpacity;
             }
           }
         }

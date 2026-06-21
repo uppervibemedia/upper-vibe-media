@@ -42,17 +42,27 @@ export default function createCitySkyline(scene) {
   const whiteBody = mat("#E0E5EC", { roughness: 0.3, metalness: 0.2 });
   const darkSteel = mat("#8898AA", { roughness: 0.3, metalness: 0.7 });
 
-  const storeGlow = new MeshBasicMaterial();
-  storeGlow.color = new Color("#FFE8B8");
-  storeGlow.depthWrite = false;
-  storeGlow.transparent = true;
-  storeGlow.opacity = 0.85;
-
-  const storeGlowPurple = new MeshBasicMaterial();
-  storeGlowPurple.color = new Color("#D8C8FF");
-  storeGlowPurple.depthWrite = false;
-  storeGlowPurple.transparent = true;
-  storeGlowPurple.opacity = 0.7;
+  // Each store window/door gets its own material for independent animation
+  function makeStoreMat(warm) {
+    const m = new MeshBasicMaterial();
+    // Slightly vary warm (gold-amber) or cool (purple-lavender) tones
+    if (warm) {
+      const r = 0.9 + Math.random() * 0.15;
+      const g = 0.82 + Math.random() * 0.16;
+      const b = 0.6 + Math.random() * 0.2;
+      m.color = new Color(r, g, b);
+      m.opacity = 0.55 + Math.random() * 0.45;
+    } else {
+      const r = 0.76 + Math.random() * 0.16;
+      const g = 0.68 + Math.random() * 0.16;
+      const b = 0.88 + Math.random() * 0.12;
+      m.color = new Color(r, g, b);
+      m.opacity = 0.4 + Math.random() * 0.45;
+    }
+    m.depthWrite = false;
+    m.transparent = true;
+    return m;
+  }
 
   const neonCyan = new MeshBasicMaterial();
   neonCyan.color = new Color("#00D4F0");
@@ -171,17 +181,19 @@ export default function createCitySkyline(scene) {
     const winCount = Math.max(1, Math.floor(w / 1.2));
     for (let ww = 0; ww < winCount; ww++) {
       const wx = -w * 0.38 + ww * (w * 0.76 / (winCount - 1));
-      const glowColor = ww % 2 === 0 ? storeGlow : storeGlowPurple;
-      const sw = new Mesh(new PlaneGeometry(0.55, 1.0), glowColor);
+      // Each store window gets its own unique material — independent timing
+      const frontMat = makeStoreMat(ww % 2 === 0);
+      const backMat = makeStoreMat(ww % 2 === 0);
+      const sw = new Mesh(new PlaneGeometry(0.55, 1.0), frontMat);
       sw.position.set(wx, 1.0, d / 2 + 0.08);
       g.add(sw);
-      const swb = new Mesh(new PlaneGeometry(0.55, 1.0), glowColor);
+      const swb = new Mesh(new PlaneGeometry(0.55, 1.0), backMat);
       swb.position.set(wx, 1.0, -d / 2 - 0.08);
       swb.rotation.y = Math.PI;
       g.add(swb);
     }
 
-    const door = new Mesh(new PlaneGeometry(0.5, 1.5), storeGlow);
+    const door = new Mesh(new PlaneGeometry(0.5, 1.5), makeStoreMat(true));
     door.position.set(0, 0.85, d / 2 + 0.1);
     g.add(door);
 
@@ -255,13 +267,14 @@ export default function createCitySkyline(scene) {
     const bays = Math.floor(baseW / 1.3);
     for (let b = 0; b < bays; b++) {
       const bx = -baseW * 0.38 + b * (baseW * 0.76 / (bays - 1));
-      const glow = b % 3 === 0 ? storeGlow : (b % 3 === 1 ? storeGlowPurple : storeGlow);
-      const sw = new Mesh(new PlaneGeometry(0.6, 1.1), glow);
+      // Each window gets its own material with independent timing
+      const ownMat = makeStoreMat(b % 3 !== 2);
+      const sw = new Mesh(new PlaneGeometry(0.6, 1.1), ownMat);
       sw.position.set(bx, 1.1, baseD / 2 + 0.12);
       g.add(sw);
     }
 
-    const entrance = new Mesh(new PlaneGeometry(0.6, 1.6), storeGlow);
+    const entrance = new Mesh(new PlaneGeometry(0.6, 1.6), makeStoreMat(true));
     entrance.position.set(0, 0.9, baseD / 2 + 0.14);
     g.add(entrance);
 
@@ -345,8 +358,9 @@ export default function createCitySkyline(scene) {
     const tBays = Math.floor(baseW / 1.2);
     for (let b = 0; b < tBays; b++) {
       const bx = -baseW * 0.42 + b * (baseW * 0.84 / (tBays - 1));
-      const glow = b % 3 === 0 ? storeGlowPurple : storeGlow;
-      const sw = new Mesh(new PlaneGeometry(0.5, 0.95), glow);
+      // Each window gets its own material with independent timing
+      const ownMat = makeStoreMat(b % 3 !== 0);
+      const sw = new Mesh(new PlaneGeometry(0.5, 0.95), ownMat);
       sw.position.set(bx, 1.0, d / 2 + 0.12);
       g.add(sw);
     }
