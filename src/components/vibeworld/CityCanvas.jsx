@@ -1594,9 +1594,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── LEGS — multi-joint natural stride ──────────────────
         // Hip pendulum: forward swing + weight transfer
         // Phase: max forward at wt=π/2 (right leg), wt=3π/2 (left leg)
-        const hipSwing = sinWt * 0.52 * s;       // Forward/back swing
-        const hipOut  = cosWt * 0.06 * s;        // Sideways separation
-        const hipBob  = sin2Wt * 0.03 * s;       // Vertical hip lift during stride
+        const hipSwing = sinWt * 0.58 * s;       // Forward/back swing
+        const hipOut  = cosWt * 0.07 * s;        // Sideways separation
+        const hipBob  = sin2Wt * 0.045 * s;      // Vertical hip lift during stride
 
         const lHipAngle = hipSwing;
         const rHipAngle = -hipSwing;
@@ -1612,19 +1612,17 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // ─── KNEES — realistic heel-strike / toe-off ──────────
         // Knee bends most during swing phase (foot off ground), straightens at plant
-        // Each leg bends during its swing: left swing = sinWt < 0 phase (π→2π)
-        // Using a softer curve: knee peaks at mid-swing, not at extremes
         const lSwing = Math.max(0, -sinWt);  // Left leg swinging forward
         const rSwing = Math.max(0, sinWt);   // Right leg swinging forward
         // Knee bend peaks during swing phase with smooth curve
-        const lKnee = lSwing * lSwing * 0.72 * s;
-        const rKnee = rSwing * rSwing * 0.72 * s;
+        const lKnee = lSwing * lSwing * 0.82 * s;
+        const rKnee = rSwing * rSwing * 0.82 * s;
 
         // During plant (stance), slight knee compression for weight absorption
         const lStance = Math.max(0, sinWt); // Left leg planted
         const rStance = Math.max(0, -sinWt); // Right leg planted
-        const lKneeCompress = lStance * lStance * 0.08 * s;
-        const rKneeCompress = rStance * rStance * 0.08 * s;
+        const lKneeCompress = lStance * lStance * 0.12 * s;
+        const rKneeCompress = rStance * rStance * 0.12 * s;
 
         const llLeg = animParts.leftHip?.userData?.leg?.userData?.lowerLeg;
         const rlLeg = animParts.rightHip?.userData?.leg?.userData?.lowerLeg;
@@ -1635,14 +1633,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Foot lifts toes during swing, flattens during plant
         const lFoot = llLeg?.userData?.foot;
         const rFoot = rlLeg?.userData?.foot;
-        if (lFoot) lFoot.rotation.x = -lSwing * 0.25 * s + lStance * 0.03 * s;
-        if (rFoot) rFoot.rotation.x = -rSwing * 0.25 * s + rStance * 0.03 * s;
+        if (lFoot) lFoot.rotation.x = -lSwing * 0.30 * s + lStance * 0.04 * s;
+        if (rFoot) rFoot.rotation.x = -rSwing * 0.30 * s + rStance * 0.04 * s;
 
         // ─── ARMS — full natural swing with forearm ────────────
         // Arms swing opposite to same-side leg (right arm forward when left leg forward)
         // Shoulder swing with slight bend at elbow during backward swing
-        const armSwing = sinWt * 0.5 * s;
-        const armOut = cosWt * 0.03 * s;  // Slight arm separation from body
+        const armSwing = sinWt * 0.58 * s;
+        const armOut = cosWt * 0.04 * s;  // Slight arm separation from body
 
         if (animParts.leftShoulder) {
           animParts.leftShoulder.rotation.x = -armSwing;
@@ -1783,23 +1781,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // ─── IDLE BREATHING + posture reset ─────────────────────
         if (!anim.isMoving && s < 0.05) {
-          // Torso breathing — subtle expansion
-          const breathe = Math.sin(t * 1.8) * 0.012;
+          // Torso breathing — subtle expansion + gentle sway
+          const breathe = Math.sin(t * 1.8) * 0.015;
+          const idleSway = Math.sin(t * 0.55) * 0.025;
           if (animParts.torso) {
             animParts.torso.position.y += (0 - animParts.torso.position.y) * dt * 3;
-            animParts.torso.rotation.z += (0 - animParts.torso.rotation.z) * dt * 4;
-            animParts.torso.rotation.x += (0 - animParts.torso.rotation.x) * dt * 4;
+            animParts.torso.rotation.z += (idleSway - animParts.torso.rotation.z) * dt * 3;
+            animParts.torso.rotation.x += (0 - animParts.torso.rotation.x) * dt * 3;
             animParts.torso.scale.y = 1 + breathe;
           }
           // Gentle arm sway at rest
-          const idleSway = Math.sin(t * 0.8) * 0.04;
+          const armIdle = Math.sin(t * 0.8) * 0.05;
           if (animParts.leftShoulder) {
-            animParts.leftShoulder.rotation.x += (-0.12 - animParts.leftShoulder.rotation.x) * dt * 4;
-            animParts.leftShoulder.rotation.z += (idleSway - animParts.leftShoulder.rotation.z) * dt * 4;
+            animParts.leftShoulder.rotation.x += (-0.15 - animParts.leftShoulder.rotation.x) * dt * 3;
+            animParts.leftShoulder.rotation.z += (armIdle - animParts.leftShoulder.rotation.z) * dt * 3;
           }
           if (animParts.rightShoulder) {
-            animParts.rightShoulder.rotation.x += (-0.12 - animParts.rightShoulder.rotation.x) * dt * 4;
-            animParts.rightShoulder.rotation.z += (-idleSway - animParts.rightShoulder.rotation.z) * dt * 4;
+            animParts.rightShoulder.rotation.x += (-0.15 - animParts.rightShoulder.rotation.x) * dt * 3;
+            animParts.rightShoulder.rotation.z += (-armIdle - animParts.rightShoulder.rotation.z) * dt * 3;
           }
           // Reset legs to neutral
           if (animParts.leftHip) {
@@ -2154,13 +2153,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const rightShoulder = g.getObjectByName("rightShoulder");
 
           // Hip swing — forward/back
-          const hipAngle = rSin * 0.35 * rSpd;
+          const hipAngle = rSin * 0.42 * rSpd;
           if (leftHip) leftHip.rotation.x = hipAngle;
           if (rightHip) rightHip.rotation.x = -hipAngle;
 
           // Knee bend during swing phase
-          const lSwing = Math.max(0, -rSin) * 0.4 * rSpd;
-          const rSwing = Math.max(0, rSin) * 0.4 * rSpd;
+          const lSwing = Math.max(0, -rSin) * 0.48 * rSpd;
+          const rSwing = Math.max(0, rSin) * 0.48 * rSpd;
           const lKneePivot = leftHip?.userData?.kneePivot;
           const rKneePivot = rightHip?.userData?.kneePivot;
           if (lKneePivot) lKneePivot.rotation.x = lSwing;
@@ -2175,15 +2174,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           if (rFootG) rFootG.rotation.x = lSwing * 0.15;
 
           // Arm swing — opposite to legs
-          const armAngle = rSin * 0.35 * rSpd;
+          const armAngle = rSin * 0.42 * rSpd;
           if (leftShoulder) leftShoulder.rotation.x = -armAngle;
           if (rightShoulder) rightShoulder.rotation.x = armAngle;
 
           // Elbow bend when arm swings backward
           const lElbowPivot = leftShoulder?.userData?.elbowPivot;
           const rElbowPivot = rightShoulder?.userData?.elbowPivot;
-          const lArmBack = Math.max(0, rSin) * 0.25 * rSpd;
-          const rArmBack = Math.max(0, -rSin) * 0.25 * rSpd;
+          const lArmBack = Math.max(0, rSin) * 0.30 * rSpd;
+          const rArmBack = Math.max(0, -rSin) * 0.30 * rSpd;
           if (lElbowPivot) lElbowPivot.rotation.x = lArmBack;
           if (rElbowPivot) rElbowPivot.rotation.x = rArmBack;
         }

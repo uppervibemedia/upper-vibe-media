@@ -58,7 +58,7 @@ const CLOTHING = {
 const HAIR_BASE = "#1C110A";
 const HAIR_LIGHT = "#2E1B10";
 
-const SEG = 20; // Higher segments for smoother surfaces
+const SEG = 32; // High segments for smooth human surfaces
 
 function mat(hexColor, opts = {}) {
   const m = new MeshStandardMaterial();
@@ -350,16 +350,19 @@ export function createAvatar(scene, opts = {}) {
     return f;
   }
 
-  // ─── LOWER LEG ─────────────────────────────────────────────
+  // ─── LOWER LEG — sculpted calf ──────────────────────────────
   function buildLowerLeg() {
     const g = new Group(); g.name = "lowerLeg";
     const len = legLen * 0.48;
 
-    // Calf — sculpted
-    addObj(g, new CylinderGeometry(0.058, 0.068, len, SEG), pantsM, new Vector3(0, -len / 2, 0));
-    const calf = addObj(g, new SphereGeometry(0.024, 10, 8),
+    // Calf — sphere-based for natural bulge
+    const calfSphere = addObj(g, new SphereGeometry(0.068, SEG, 16), pantsM, new Vector3(0, -len * 0.30, 0));
+    calfSphere.scale.set(0.80, 0.72, 0.70);
+    addObj(g, new CylinderGeometry(0.056, 0.062, len * 0.40, SEG), pantsM, new Vector3(0, -len * 0.55, 0));
+    addObj(g, new CylinderGeometry(0.052, 0.058, len * 0.35, SEG), pantsM, new Vector3(0, -len * 0.82, 0));
+    const calf = addObj(g, new SphereGeometry(0.026, 12, 10),
       new MeshStandardMaterial({ color: new Color(cloth.pants), roughness: 0.20, metalness: 0.10 }),
-      new Vector3(0, -len * 0.2, -0.04));
+      new Vector3(0, -len * 0.18, -0.04));
     calf.scale.set(0.55, 0.6, 0.45);
 
     // Neon pant stripe down the leg seam
@@ -372,17 +375,20 @@ export function createAvatar(scene, opts = {}) {
     return g;
   }
 
-  // ─── UPPER LEG ─────────────────────────────────────────────
+  // ─── UPPER LEG — sculpted thigh shape ───────────────────────
   function buildUpperLeg() {
     const g = new Group(); g.name = "upperLeg";
     const len = legLen * 0.52;
 
-    // Thigh
-    addObj(g, new CylinderGeometry(0.078, 0.088, len, SEG), pantsM, new Vector3(0, -len / 2, 0));
-    const quad = addObj(g, new SphereGeometry(0.03, 10, 8),
+    // Thigh — sphere-based for natural roundness
+    const thighSphere = addObj(g, new SphereGeometry(0.08, SEG, 18), pantsM, new Vector3(0, -len * 0.30, 0));
+    thighSphere.scale.set(0.88, 0.82, 0.75);
+    addObj(g, new CylinderGeometry(0.074, 0.082, len * 0.45, SEG), pantsM, new Vector3(0, -len * 0.60, 0));
+    addObj(g, new CylinderGeometry(0.066, 0.076, len * 0.35, SEG), pantsM, new Vector3(0, -len * 0.85, -0.005));
+    const quad = addObj(g, new SphereGeometry(0.035, 12, 10),
       new MeshStandardMaterial({ color: new Color(cloth.pants), roughness: 0.20, metalness: 0.10 }),
-      new Vector3(0, -len * 0.3, 0.065));
-    quad.scale.set(0.65, 0.55, 0.3);
+      new Vector3(0, -len * 0.28, 0.068));
+    quad.scale.set(0.70, 0.58, 0.32);
 
     const ll = buildLowerLeg();
     ll.position.set(0, -len, 0);
@@ -391,11 +397,14 @@ export function createAvatar(scene, opts = {}) {
     return g;
   }
 
-  // ─── FOREARM ───────────────────────────────────────────────
+  // ─── FOREARM — sculpted ─────────────────────────────────────
   function buildForearm() {
     const g = new Group(); g.name = "forearm";
     const len = armLen * 0.48;
-    addObj(g, new CylinderGeometry(0.036, 0.046, len, SEG), skinM, new Vector3(0, -len / 2, 0));
+    // Tapered forearm using sphere + cylinder
+    const faTop = addObj(g, new SphereGeometry(0.044, SEG, 14), skinM, new Vector3(0, -len * 0.15, 0));
+    faTop.scale.set(0.76, 0.70, 0.65);
+    addObj(g, new CylinderGeometry(0.034, 0.042, len * 0.60, SEG), skinM, new Vector3(0, -len * 0.50, 0));
 
     // Neon bracelet/wristband
     addObj(g, new CylinderGeometry(0.038, 0.038, 0.018, 16), neonP, new Vector3(0, -len, 0));
@@ -407,18 +416,26 @@ export function createAvatar(scene, opts = {}) {
     return g;
   }
 
-  // ─── UPPER ARM ─────────────────────────────────────────────
+  // ─── UPPER ARM — sculpted bicep shape ───────────────────────
   function buildUpperArm(clothingColor) {
     const g = new Group(); g.name = "upperArm";
     const len = armLen * 0.52;
-    addObj(g, new CylinderGeometry(0.048, 0.058, len, SEG),
+    // Sculpted bicep using sphere for natural roundness
+    const bicepSphere = addObj(g, new SphereGeometry(0.054, SEG, 14),
       new MeshStandardMaterial({ color: new Color(clothingColor), roughness: 0.22, metalness: 0.10 }),
-      new Vector3(0, -len / 2, 0));
-    const bicep = addObj(g, new SphereGeometry(0.026, 10, 8), skinS, new Vector3(0, -len * 0.25, 0.03));
-    bicep.scale.set(0.55, 0.7, 0.5);
+      new Vector3(0, -len * 0.20, 0));
+    bicepSphere.scale.set(0.80, 0.85, 0.72);
+    
+    // Lower upper arm (tricep area) — tapering cylinder
+    addObj(g, new CylinderGeometry(0.048, 0.054, len * 0.55, SEG),
+      new MeshStandardMaterial({ color: new Color(clothingColor), roughness: 0.22, metalness: 0.10 }),
+      new Vector3(0, -len * 0.50, 0));
+    
+    const bicep = addObj(g, new SphereGeometry(0.028, 12, 10), skinS, new Vector3(0, -len * 0.22, 0.04));
+    bicep.scale.set(0.6, 0.75, 0.55);
 
     // Neon arm stripe
-    addObj(g, new BoxGeometry(0.012, len * 0.5, 0.03), neonS, new Vector3(0.04, -len * 0.3, -0.005));
+    addObj(g, new BoxGeometry(0.012, len * 0.5, 0.03), neonS, new Vector3(0.04, -len * 0.30, -0.005));
 
     const fa = buildForearm();
     fa.position.set(0, -len, 0);
@@ -427,7 +444,7 @@ export function createAvatar(scene, opts = {}) {
     return g;
   }
 
-  // ─── TORSO — sculpted V-taper with clothing details ────────
+  // ─── TORSO — sculpted V-taper with layered spheres ──────────
   const torsoGroup = new Group();
   torsoGroup.name = "torso";
 
@@ -435,30 +452,37 @@ export function createAvatar(scene, opts = {}) {
   const chestBase = torsoH * 0.62;
   const waistBase = torsoH * 0.12;
 
-  // Hips/pelvis
-  addObj(torsoGroup, new CylinderGeometry(hipW * 0.34, hipW * 0.36, torsoH * 0.20, SEG), pantsM, new Vector3(0, waistBase, 0));
+  // Hips/pelvis — wider sphere-based
+  const hipPelvis = addObj(torsoGroup, new SphereGeometry(hipW * 0.22, SEG, 20), pantsM, new Vector3(0, waistBase, 0));
+  hipPelvis.scale.set(1.0, 0.65, 0.8);
 
-  // Lower waist
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.30 * (body[6] || 0.7), hipW * 0.36, torsoH * 0.16, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.12, 0));
+  // Lower waist — sphere sculpt
+  const lw = addObj(torsoGroup, new SphereGeometry(shoulderW * 0.24, SEG, 18), shirtM, new Vector3(0, waistBase + torsoH * 0.10, 0));
+  lw.scale.set(0.92, 0.55, 0.72);
 
   // Belt strip with neon accent
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.35, shoulderW * 0.32, 0.035, SEG),
+  addObj(torsoGroup, new TorusGeometry(shoulderW * 0.24, 0.016, 8, SEG),
     mat("#222224", { roughness: 0.18, metalness: 0.20 }),
-    new Vector3(0, waistBase + torsoH * 0.20, 0));
+    new Vector3(0, waistBase + torsoH * 0.18, 0));
   // Belt neon edge
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.352, shoulderW * 0.348, 0.008, 24), neonP, new Vector3(0, waistBase + torsoH * 0.218, 0));
+  addObj(torsoGroup, new TorusGeometry(shoulderW * 0.242, 0.005, 6, SEG), neonP, new Vector3(0, waistBase + torsoH * 0.20, 0));
 
-  // Lower torso
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.35, shoulderW * 0.32, torsoH * 0.14, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.26, 0));
+  // Mid torso — sculpted sphere
+  const midTorso = addObj(torsoGroup, new SphereGeometry(shoulderW * 0.30, SEG, 22), shirtM, new Vector3(0, waistBase + torsoH * 0.30, 0));
+  midTorso.scale.set(0.88, 0.70, 0.72);
 
-  // Mid torso
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.41, shoulderW * 0.36, torsoH * 0.20, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.36, 0));
+  // Upper chest — broader sphere for V-taper
+  const upperChest = addObj(torsoGroup, new SphereGeometry(shoulderW * 0.38, SEG, 24), shirtM, new Vector3(0, chestBase - 0.02, 0));
+  upperChest.scale.set(0.90, 0.58, 0.72);
 
-  // Upper chest
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.46, shoulderW * 0.42, torsoH * 0.14, SEG), shirtM, new Vector3(0, chestBase - 0.04, 0));
+  // Pectoral definition — subtle chest plates
+  for (const s of [-1, 1]) {
+    const pec = addObj(torsoGroup, new SphereGeometry(shoulderW * 0.10, 14, 12), shirtM, new Vector3(s * shoulderW * 0.12, chestBase + 0.01, 0.06));
+    pec.scale.set(0.65, 0.55, 0.35);
+  }
 
-  // Shoulder cap
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.48, shoulderW * 0.46, 0.07, SEG), shirtAccentM, new Vector3(0, chestBase + 0.05, 0));
+  // Shoulder cap — broader for smooth arm attachment
+  addObj(torsoGroup, new SphereGeometry(shoulderW * 0.22, SEG, 16), shirtAccentM, new Vector3(0, chestBase + 0.06, -0.04));
 
   // ── CLOTHING DETAILS per style ─────────────────────
   if (style === "track") {
@@ -497,39 +521,41 @@ export function createAvatar(scene, opts = {}) {
     }
   }
 
-  // ─── TRAPEZIUS + NECK ──────────────────────────────────
+  // ─── TRAPEZIUS + NECK — smooth anatomical ───────────────
   const neckGroup = new Group();
   neckGroup.name = "neck";
   neckGroup.position.set(0, chestBase + 0.08, 0);
 
-  // Trapezius
+  // Trapezius — broader shoulders-to-neck transition
   for (const s of [-1, 1]) {
-    const trap = addObj(neckGroup, new SphereGeometry(0.032, 12, 10), skinS, new Vector3(s * 0.06, -0.015, -0.02));
-    trap.scale.set(0.6, 0.35, 0.55);
+    const trap = addObj(neckGroup, new SphereGeometry(0.038, 14, 12), skinS, new Vector3(s * 0.072, -0.018, -0.02));
+    trap.scale.set(0.65, 0.32, 0.58);
   }
 
-  addObj(neckGroup, new CylinderGeometry(0.038, 0.044, 0.13, SEG), skinM, new Vector3(0, 0.03, 0));
-  addObj(neckGroup, new CylinderGeometry(0.07, 0.055, 0.025, SEG), skinS, new Vector3(0, -0.02, 0));
+  // Neck column — slightly tapered
+  addObj(neckGroup, new CylinderGeometry(0.036, 0.040, 0.12, SEG), skinM, new Vector3(0, 0.03, 0));
+  // Base collar
+  addObj(neckGroup, new SphereGeometry(0.045, 14, 12), skinS, new Vector3(0, -0.02, 0));
 
   const headGroup = buildHead();
   headGroup.position.y = 0.07;
   neckGroup.add(headGroup);
   torsoGroup.add(neckGroup);
 
-  // ─── SHOULDERS ─────────────────────────────────────────
-  const shoulderY = chestBase + 0.02;
-  const shoulderZ = -0.06;
+  // ─── SHOULDERS — rounded deltoids with smooth pivots ───
+  const shoulderY = chestBase + 0.01;
+  const shoulderZ = -0.05;
   const armClothColor = style === "crop" ? skinHex : cloth.shirt;
 
-  // Deltoid muscles
-  const leftDeltoid = new Mesh(new SphereGeometry(0.06, SEG, 14), shirtM());
-  leftDeltoid.position.set(-shoulderW * 0.50, shoulderY, shoulderZ + 0.01);
-  leftDeltoid.scale.set(0.8, 0.75, 0.65);
+  // Deltoid muscles — larger sphere for rounded shoulder
+  const leftDeltoid = new Mesh(new SphereGeometry(0.07, SEG, 16), shirtM());
+  leftDeltoid.position.set(-shoulderW * 0.50, shoulderY, shoulderZ);
+  leftDeltoid.scale.set(0.8, 0.78, 0.68);
   torsoGroup.add(leftDeltoid);
 
-  const rightDeltoid = new Mesh(new SphereGeometry(0.06, SEG, 14), shirtM());
-  rightDeltoid.position.set(shoulderW * 0.50, shoulderY, shoulderZ + 0.01);
-  rightDeltoid.scale.set(0.8, 0.75, 0.65);
+  const rightDeltoid = new Mesh(new SphereGeometry(0.07, SEG, 16), shirtM());
+  rightDeltoid.position.set(shoulderW * 0.50, shoulderY, shoulderZ);
+  rightDeltoid.scale.set(0.8, 0.78, 0.68);
   torsoGroup.add(rightDeltoid);
 
   // Left shoulder pivot
@@ -589,8 +615,8 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   const body = BODY_PRESETS[avatarType] || BODY_PRESETS.neutral;
   const [shoulderW, hipW, torsoH, , legLen] = body;
   const cloth = CLOTHING[avatarType] || CLOTHING.neutral;
-  const RS = 14;
-  const RS_SMALL = 10;
+  const RS = 24;
+  const RS_SMALL = 18;
 
   const group = new Group();
   group.name = `remote_${userId}`;
