@@ -149,17 +149,22 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt) {
   // Emote active: hold on idle, don't interrupt
   if (entry._emoteActive) return;
 
-  // Movement always overrides dance/emote
-  if (speed > 0.07) {
-    if (speed > 0.5) {
+  // Movement ALWAYS overrides dance — highest priority
+  if (speed > 0.05) {
+    // Reset dance timescale bleed: ensure idle clip is at normal speed if we return to idle later
+    if (entry._wasIdleBoosted) {
+      if (entry.clips.idle) entry.clips.idle.setEffectiveTimeScale(1.0);
+      entry._wasIdleBoosted = false;
+    }
+    if (speed > 0.4) {
       const key = entry.clips.run ? "run" : "walk";
       if (entry.clips[key]) {
-        crossFade(entry, key, 0.2);
+        crossFade(entry, key, 0.15);
         entry.clips[key].setEffectiveTimeScale(Math.min(2.4, speed * 0.9));
       }
     } else {
       if (entry.clips.walk) {
-        crossFade(entry, "walk", 0.2);
+        crossFade(entry, "walk", 0.15);
         entry.clips.walk.setEffectiveTimeScale(0.75 + speed * 0.45);
       }
     }
@@ -168,19 +173,19 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt) {
 
   // Standing still — check dance state
   if (isDancing) {
-    // SAFE DANCE: idle at 1.4x — standing animation, no root motion.
-    // Only runs when explicitly triggered (Dance Floor + user tap).
     if (entry.clips.idle) {
       if (entry.currentAnim !== "idle") crossFade(entry, "idle", 0.3);
       entry.clips.idle.setEffectiveTimeScale(1.4);
+      entry._wasIdleBoosted = true;
     }
     return;
   }
 
-  // Default: idle
+  // Default: normal idle — always reset timescale to 1.0
   if (entry.clips.idle) {
     crossFade(entry, "idle", 0.3);
     entry.clips.idle.setEffectiveTimeScale(1.0);
+    entry._wasIdleBoosted = false;
   } else if (entry.clips.walk) {
     crossFade(entry, "walk", 0.3);
     entry.clips.walk.setEffectiveTimeScale(0.0);

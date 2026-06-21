@@ -84,14 +84,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
   }, []);
 
-  // ── Auto-cancel dance on movement ──────────────────────────────────────────
+  // ── Auto-cancel dance on ANY movement ────────────────────────────────────
   useEffect(() => {
     if (!isDancing) return;
+    // Cancel dance as soon as the avatar moves at all
     const prev = prevPosRef.current;
-    const dx = playerPos.x - prev.x;
-    const dz = playerPos.z - prev.z;
-    const speed = Math.sqrt(dx * dx + dz * dz);
-    if (speed > 0.015) {
+    const moveDx = playerPos.x - prev.x;
+    const moveDz = playerPos.z - prev.z;
+    const moved = Math.abs(moveDx) + Math.abs(moveDz);
+    if (moved > 0.005) {
       setIsDancing(false);
       setActiveEmote(null);
       if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
