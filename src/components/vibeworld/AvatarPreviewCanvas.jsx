@@ -7,19 +7,23 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OUTFIT_COLORS } from "./AvatarSetup";
 
-const GLB_URL = "https://threejs.org/examples/models/gltf/Soldier.glb";
+const GLB_URLS = {
+  male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
+  female: "https://threejs.org/examples/models/gltf/Michelle.glb",
+};
 
-let _gltfCache = null;
-let _gltfPromise = null;
+const _gltfCache = {};
+const _gltfPromise = {};
 
-function loadGLTF() {
-  if (_gltfCache) return Promise.resolve(_gltfCache);
-  if (_gltfPromise) return _gltfPromise;
+function loadGLTF(gender = "male") {
+  const url = GLB_URLS[gender] || GLB_URLS.male;
+  if (_gltfCache[gender]) return Promise.resolve(_gltfCache[gender]);
+  if (_gltfPromise[gender]) return _gltfPromise[gender];
   const loader = new GLTFLoader();
-  _gltfPromise = new Promise((resolve, reject) => {
-    loader.load(GLB_URL, (g) => { _gltfCache = g; resolve(g); }, undefined, (e) => { _gltfPromise = null; reject(e); });
+  _gltfPromise[gender] = new Promise((resolve, reject) => {
+    loader.load(url, (g) => { _gltfCache[gender] = g; resolve(g); }, undefined, (e) => { delete _gltfPromise[gender]; reject(e); });
   });
-  return _gltfPromise;
+  return _gltfPromise[gender];
 }
 
 function applyOutfitTint(model, outfitColorKey) {
@@ -48,11 +52,12 @@ const VIEWS = {
   side:  { pos: [3.6, 0.87, 0],  look: [0, 0.87, 0] },
 };
 
-export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, height = 420 }) {
+export default function AvatarPreviewCanvas({ outfitColorKey, gender = "male", width = 260, height = 420 }) {
   const canvasRef = useRef(null);
   const stateRef = useRef({});
   const outfitRef = useRef(outfitColorKey);
   outfitRef.current = outfitColorKey;
+  const genderRef = useRef(gender);
   const [activeView, setActiveView] = useState("front");
 
   // Apply camera view instantly when button is clicked
@@ -112,10 +117,10 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
     s.model = null;
     s.mixer = null;
 
-    loadGLTF().then((gltf) => {
+    loadGLTF(genderRef.current).then((gltf) => {
       const model = gltf.scene.clone(true);
       model.name = "previewModel";
-      model.rotation.y = Math.PI; // chest faces camera in front view
+      model.rotation.y = Math.PI;
       model.position.set(0, 0, 0);
       model.scale.set(1, 1, 1);
 
@@ -170,7 +175,7 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
       cancelAnimationFrame(s.animId);
       renderer.dispose();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gender]); // re-mount when gender changes
 
   // Live re-tint on color change
   useEffect(() => {
