@@ -11,20 +11,12 @@ export const DEV_AVATAR_TEST_MODE = true;
 
 const PLATFORM_Y = 0;
 
-const SKIN_OPTIONS = [
-  { label: "Light",        value: "light" },
-  { label: "Med-Light",    value: "medium-light" },
-  { label: "Medium",       value: "medium" },
-  { label: "Med-Dark",     value: "medium-dark" },
-  { label: "Dark",         value: "dark" },
-  { label: "Deep",         value: "deep" },
-];
 
 const DEFAULT_COLORS = {
-  shirt:  "#1e3a7a",
-  pants:  "#121220",
-  accent: "#00d4f0",
-  shoes:  "#0e0e1a",
+  armor:  "#dde0e8",
+  dark:   "#2a2d35",
+  accent: "#3a7fff",
+  visor:  "#111820",
 };
 
 export default function AvatarTestPlatform({ avatarConfig = {} }) {
@@ -35,9 +27,8 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
   const animIdRef     = useRef(null);
 
   // ── Color state ──────────────────────────────────────────────────────────
-  const [colors, setColors]     = useState(DEFAULT_COLORS);
-  const [skinTone, setSkinTone] = useState(avatarConfig.skinTone || "medium");
-  const [style, setStyle]       = useState(avatarConfig.avatarStyle || "streetwear");
+  const [colors, setColors] = useState(DEFAULT_COLORS);
+  const [style, setStyle]   = useState(avatarConfig.avatarStyle || "streetwear");
 
   // ── Rebuild avatar when config changes ───────────────────────────────────
   const rebuildAvatar = useCallback(() => {
@@ -49,8 +40,6 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
     }
     const tmpScene = new THREE.Scene();
     const av = createAvatar(tmpScene, {
-      avatarType:     avatarConfig.avatarType || "neutral",
-      skinTone,
       avatarStyle:    style,
       colorOverrides: colors,
     });
@@ -58,7 +47,7 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
     av.position.set(0, PLATFORM_Y, 0);
     scene.add(av);
     avatarRef.current = av;
-  }, [colors, skinTone, style, avatarConfig.avatarType]);
+  }, [colors, style]);
 
   // ── Three.js scene setup (once) ──────────────────────────────────────────
   useEffect(() => {
@@ -150,8 +139,6 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
     // Initial avatar
     const tmpScene = new THREE.Scene();
     const av = createAvatar(tmpScene, {
-      avatarType:     avatarConfig.avatarType || "neutral",
-      skinTone:       avatarConfig.skinTone   || "medium",
       avatarStyle:    avatarConfig.avatarStyle || "streetwear",
       colorOverrides: DEFAULT_COLORS,
     });
@@ -231,10 +218,10 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
 
           {/* Suit Colors */}
           {[
-            { key: "shirt",  label: "Jacket / Sleeves" },
-            { key: "pants",  label: "Pants" },
-            { key: "shoes",  label: "Shoes" },
+            { key: "armor",  label: "Armor Plates" },
+            { key: "dark",   label: "Undersuit / Joints" },
             { key: "accent", label: "Neon Accent" },
+            { key: "visor",  label: "Visor" },
           ].map(({ key, label }) => (
             <div key={key} className="flex items-center justify-between gap-2">
               <label className="text-[10px] font-mono text-white/50 flex-1">{label}</label>
@@ -249,23 +236,6 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
               </div>
             </div>
           ))}
-
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "8px" }}>
-            <p className="text-[10px] font-mono text-white/40 mb-1.5 uppercase tracking-wider">Skin Tone</p>
-            <div className="grid grid-cols-3 gap-1">
-              {SKIN_OPTIONS.map(o => (
-                <button key={o.value} onClick={() => setSkinTone(o.value)}
-                  className="text-[8px] font-mono py-1 rounded transition-all"
-                  style={{
-                    background: skinTone === o.value ? "rgba(0,212,240,0.25)" : "rgba(255,255,255,0.05)",
-                    border: `1px solid ${skinTone === o.value ? "rgba(0,212,240,0.5)" : "rgba(255,255,255,0.1)"}`,
-                    color: skinTone === o.value ? "#00d4f0" : "rgba(255,255,255,0.45)",
-                  }}>
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "8px" }}>
             <p className="text-[10px] font-mono text-white/40 mb-1.5 uppercase tracking-wider">Style</p>
@@ -285,7 +255,7 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
           </div>
 
           {/* Reset */}
-          <button onClick={() => { setColors(DEFAULT_COLORS); setSkinTone("medium"); setStyle("streetwear"); }}
+          <button onClick={() => { setColors(DEFAULT_COLORS); setStyle("streetwear"); }}
             className="text-[9px] font-mono py-1.5 rounded transition-all hover:brightness-110"
             style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)", marginTop: "auto" }}>
             Reset to Default
@@ -293,11 +263,11 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
 
           {/* Checklist */}
           <div className="text-[9px] font-mono space-y-0.5 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", color: "rgba(0,212,240,0.5)" }}>
-            <div>✓ full suit — no exposed skin</div>
-            <div>✓ separate jacket + pants</div>
-            <div>✓ gloved hands</div>
-            <div>✓ neon accent wrist cuffs</div>
-            <div>✓ human proportions</div>
+            <div>✓ armored space trooper</div>
+            <div>✓ helmet with visor</div>
+            <div>✓ T-pose arms</div>
+            <div>✓ shoulder pauldrons</div>
+            <div>✓ knee pads + belt pouches</div>
           </div>
         </div>
       </div>
