@@ -4,7 +4,8 @@ import { ChevronLeft, Play } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
-import { retintAvatar, playEmoteAnimation, stopEmoteAnimation } from "@/components/vibeworld/AvatarModel";
+import { retintAvatar, applySkinColor, playEmoteAnimation, stopEmoteAnimation } from "@/components/vibeworld/AvatarModel";
+import { OUTFIT_COLORS, SKIN_TONES } from "@/components/vibeworld/AvatarSetup";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
 import StageVideoEmbed from "@/components/vibeworld/StageVideoEmbed";
@@ -46,8 +47,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const personalTimeRef = useRef(0);          // playback position when paused on entry
   const jukeboxFadeRef = useRef(null);        // fade interval handle
 
-  // ── Dance Floor / Emote state ─────────────────────────────────────────────
-  const [isDancing, setIsDancing] = useState(false);
+  // ── Dance Floor / Emote state — always reset to false on mount ───────────
+  const [isDancing, setIsDancing] = useState(false); // never persisted
   const isDancingRef = useRef(false);
   isDancingRef.current = isDancing;
   const [activeEmote, setActiveEmote] = useState(null); // { id, label, color, effect, startedAt }
@@ -103,6 +104,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
     }
   }, [playerPos.x, playerPos.z, isDancing]);
+
+  // On mount: guarantee clean animation state — no dance, no emote
+  useEffect(() => {
+    setIsDancing(false);
+    setActiveEmote(null);
+  }, []);
 
   // Cleanup emote timer on unmount
   useEffect(() => {
@@ -736,17 +743,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             playerAvatarEntryRef.current = entry;
             // Apply saved outfit + skin color immediately when avatar GLB finishes loading
             const savedColorKey = user?.avatar_outfit_color || "electric-blue";
-            const COLOR_MAP = {
-              "electric-blue": "#00AADD", "neon-purple": "#7B2FFF",
-              "cosmic-black": "#080A0F", "white-silver": "#C8D4E0",
-              "pink-rose": "#CC2288", "gold-yellow": "#CC9900",
-            };
-            const SKIN_MAP = {
-              "light": "#FDDBB4", "medium-light": "#EAB88A", "medium": "#C8864A",
-              "tan": "#A06535", "brown": "#7B4A28", "dark-brown": "#4A2C18",
-            };
-            const skinColor = user?.avatar_gender === "female" ? (SKIN_MAP[user?.skin_tone] || null) : null;
-            retintAvatar(entry, COLOR_MAP[savedColorKey] || "#00AADD", skinColor);
+            const outfitEntry = OUTFIT_COLORS.find(c => c.key === savedColorKey);
+            const suitColor = outfitEntry?.hex || "#00AADD";
+            const skinEntry = user?.avatar_gender === "female"
+              ? SKIN_TONES.find(s => s.key === (user?.skin_tone || "medium"))
+              : null;
+            const skinColor = skinEntry?.hex || null;
+            retintAvatar(entry, suitColor, skinColor);
           }}
           onRemoteAvatarClick={handleRemoteAvatarClick}
           onPositionChange={(x, z, rot) => {
@@ -1012,14 +1015,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
         isMobile={isMobile}
         user={user}
-        onApply={({ outfitColorKey, skinToneKey, suitColor }) => {
+        onApply={({ outfitColorKey, skinToneKey, gender, suitColor }) => {
           // Immediately retint the live in-world playable avatar
           if (playerAvatarEntryRef.current && suitColor) {
-            const SKIN_MAP = {
-              "light": "#FDDBB4", "medium-light": "#EAB88A", "medium": "#C8864A",
-              "tan": "#A06535", "brown": "#7B4A28", "dark-brown": "#4A2C18",
-            };
-            const skinColor = SKIN_MAP[skinToneKey] || null;
+            const skinEntry = gender === "female"
+              ? SKIN_TONES.find(s => s.key === (skinToneKey || "medium"))
+              : null;
+            const skinColor = skinEntry?.hex || null;
             retintAvatar(playerAvatarEntryRef.current, suitColor, skinColor);
           }
         }}

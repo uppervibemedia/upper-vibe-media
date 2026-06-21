@@ -96,24 +96,35 @@ function makeShadow() {
   return m;
 }
 
-const STYLE_TINTS = {
-  streetwear: null,
-  cosmic:  [0.72, 0.55, 1.0],
-  neon:    [0.50, 1.00, 0.85],
-  shadow:  [0.40, 0.40, 0.55],
-  golden:  [1.00, 0.85, 0.40],
-  crimson: [1.00, 0.35, 0.35],
-};
+// ─── Material classification ──────────────────────────────────
+// Returns "skin" | "hair" | "outfit" based on mesh name + color heuristics.
+// Order matters: name-based check runs first; color heuristic is fallback.
+function classifyMaterial(meshName, origColor) {
+  const name = (meshName || "").toLowerCase();
 
-function applyStyleTint(root, avatarStyle) {
-  const rgb = STYLE_TINTS[avatarStyle];
-  if (!rgb) return;
-  const tint = new THREE.Color(...rgb);
-  root.traverse((child) => {
-    if (!child.isMesh) return;
-    const mats = Array.isArray(child.material) ? child.material : [child.material];
-    mats.forEach((m) => { if (m?.color) m.color.multiply(tint); });
-  });
+  // Hair — name signals
+  if (/hair|eyebrow|brow|beard|facial_hair|eyelash|lash/i.test(name)) return "hair";
+
+  // Skin — name signals
+  if (/skin|face|head|neck|hand|arm|leg|body|torso|flesh/i.test(name)) return "skin";
+
+  // Outfit — name signals
+  if (/shirt|top|jacket|pant|boot|shoe|armor|cloth|outfit|suit|sleeve|collar|vest|coat|glove|belt|strap|trim|neon|accessory|accesso|pad|knee|chest|shoulder|visor|helmet|mask|cape|skirt/i.test(name)) return "outfit";
+
+  // Fallback: color heuristic
+  const { r, g, b } = origColor;
+  // Skin-like: warm mid-range (not too bright white, not near-black)
+  const isSkinLike = r > 0.28 && r > b * 1.25 && g > b * 0.75 && r < 0.96 && b < 0.65 && g < 0.90;
+  if (isSkinLike) return "skin";
+
+  // Hair-like: very dark or near-neutral dark brown/black
+  const brightness = (r + g + b) / 3;
+  const isNearNeutral = Math.abs(r - g) < 0.06 && Math.abs(g - b) < 0.06;
+  if (brightness < 0.18 && isNearNeutral) return "hair"; // very dark neutral = likely hair/dark feature
+  const isDarkBrown = r > g && r > b && (r - b) < 0.18 && brightness < 0.22;
+  if (isDarkBrown) return "hair";
+
+  return "outfit";
 }
 
 // ─── crossFade helper ─────────────────────────────────────────
@@ -135,40 +146,44 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt) {
   if (!entry || !entry.mixer) return;
   entry.mixer.update(dt);
 
-  // Emote active: stay on idle, don't interrupt
+  // Emote active: hold on idle, don't interrupt
   if (entry._emoteActive) return;
 
-  if (isDancing) {
-    // SAFE DANCE: use idle at 1.4x — it's already a standing animation with
-    // no root motion, no hip drop, no forward translation. Looks like a gentle
-    // rhythmic sway. Never use run/walk here — they move the hips forward.
-    const key = entry.clips.idle ? "idle" : entry.clips.walk ? "walk" : null;
-    if (key) {
-      if (entry.currentAnim !== key) crossFade(entry, key, 0.3);
-      entry.clips[key].setEffectiveTimeScale(1.4);
+  // Movement always overrides dance/emote
+  if (speed > 0.07) {
+    if (speed > 0.5) {
+      const key = entry.clips.run ? "run" : "walk";
+      if (entry.clips[key]) {
+        crossFade(entry, key, 0.2);
+        entry.clips[key].setEffectiveTimeScale(Math.min(2.4, speed * 0.9));
+      }
+    } else {
+      if (entry.clips.walk) {
+        crossFade(entry, "walk", 0.2);
+        entry.clips.walk.setEffectiveTimeScale(0.75 + speed * 0.45);
+      }
     }
     return;
   }
 
-  if (speed > 0.5) {
-    const key = entry.clips.run ? "run" : "walk";
-    if (entry.clips[key]) {
-      crossFade(entry, key, 0.2);
-      entry.clips[key].setEffectiveTimeScale(Math.min(2.4, speed * 0.9));
-    }
-  } else if (speed > 0.07) {
-    if (entry.clips.walk) {
-      crossFade(entry, "walk", 0.2);
-      entry.clips.walk.setEffectiveTimeScale(0.75 + speed * 0.45);
-    }
-  } else {
+  // Standing still — check dance state
+  if (isDancing) {
+    // SAFE DANCE: idle at 1.4x — standing animation, no root motion.
+    // Only runs when explicitly triggered (Dance Floor + user tap).
     if (entry.clips.idle) {
-      crossFade(entry, "idle", 0.3);
-      entry.clips.idle.setEffectiveTimeScale(1.0);
-    } else if (entry.clips.walk) {
-      crossFade(entry, "walk", 0.3);
-      entry.clips.walk.setEffectiveTimeScale(0.0);
+      if (entry.currentAnim !== "idle") crossFade(entry, "idle", 0.3);
+      entry.clips.idle.setEffectiveTimeScale(1.4);
     }
+    return;
+  }
+
+  // Default: idle
+  if (entry.clips.idle) {
+    crossFade(entry, "idle", 0.3);
+    entry.clips.idle.setEffectiveTimeScale(1.0);
+  } else if (entry.clips.walk) {
+    crossFade(entry, "walk", 0.3);
+    entry.clips.walk.setEffectiveTimeScale(0.0);
   }
 }
 
@@ -250,7 +265,7 @@ function attachModel(gltf, controllerGroup, opts = {}) {
     if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
   });
 
-  applyStyleTint(model, opts.avatarStyle || "streetwear");
+  // applyStyleTint removed — retintAvatar handles all coloring now
 
   // MUST add to controller BEFORE creating AnimationMixer
   controllerGroup.add(model);
@@ -265,9 +280,11 @@ function attachModel(gltf, controllerGroup, opts = {}) {
     clips[key] = action;
   });
 
-  // Play idle immediately — never leave in T-pose
+  // Always start in idle — never T-pose, never dance
   const startKey = clips.idle ? "idle" : clips.walk ? "walk" : Object.keys(clips)[0];
   if (startKey && clips[startKey]) {
+    // Stop all other clips first to ensure clean state
+    Object.values(clips).forEach((a) => { a.stop(); });
     clips[startKey].reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
   }
 
@@ -296,6 +313,8 @@ export function createAvatar(scene, opts = {}, onReady) {
     mixer: null,
     clips: {},
     currentAnim: "idle",
+    _emoteActive: false,
+    _emoteTimer: null,
   };
 
   loadGLTF(opts.gender || "male")
@@ -327,11 +346,12 @@ export function createAvatar(scene, opts = {}, onReady) {
 }
 
 // ─── PUBLIC: retintAvatar ─────────────────────────────────────
-// suitColor: hex string e.g. "#00AADD" — applied to outfit/armor materials
-// skinColor: hex string e.g. "#FDDBB4" — optional, applied to skin-toned materials
+// suitColor: hex string — applied to outfit/accessory materials only
+// skinColor: hex string — optional, applied to skin materials only
+// Hair materials are never changed.
 export function retintAvatar(entry, suitColor, skinColor) {
   if (!entry?.root) return;
-  const targetColor = new THREE.Color(suitColor || "#888888");
+  const outfitTarget = new THREE.Color(suitColor || "#888888");
   const skinTarget = skinColor ? new THREE.Color(skinColor) : null;
 
   entry.root.traverse((child) => {
@@ -341,16 +361,42 @@ export function retintAvatar(entry, suitColor, skinColor) {
     const mats = Array.isArray(child.material) ? child.material : [child.material];
     mats.forEach((m) => {
       if (!m?.color) return;
-      // Cache original color on first call
       if (!m.userData._origColor) m.userData._origColor = m.color.clone();
       const orig = m.userData._origColor;
-      const r = orig.r, g = orig.g, b = orig.b;
-      const isSkinLike = (r > 0.35) && (r > b * 1.3) && (g > b * 0.8) && (r < 0.95) && (b < 0.6);
-      if (isSkinLike) {
-        m.color.copy(skinTarget || orig);
+      const kind = classifyMaterial(child.name, orig);
+
+      if (kind === "skin") {
+        // Only update skin if a skin color was provided
+        if (skinTarget) m.color.copy(skinTarget);
+        else m.color.copy(orig); // restore original
+      } else if (kind === "hair") {
+        // Never change hair — always restore original
+        m.color.copy(orig);
       } else {
-        m.color.copy(targetColor);
+        // outfit / accessories
+        m.color.copy(outfitTarget);
       }
+    });
+  });
+}
+
+// ─── PUBLIC: applySkinColor ───────────────────────────────────
+// Apply only skin color without touching outfit.
+export function applySkinColor(entry, skinColor) {
+  if (!entry?.root || !skinColor) return;
+  const skinTarget = new THREE.Color(skinColor);
+
+  entry.root.traverse((child) => {
+    if (!child.isMesh) return;
+    if (child.geometry?.type === "CircleGeometry") return;
+
+    const mats = Array.isArray(child.material) ? child.material : [child.material];
+    mats.forEach((m) => {
+      if (!m?.color) return;
+      if (!m.userData._origColor) m.userData._origColor = m.color.clone();
+      const orig = m.userData._origColor;
+      const kind = classifyMaterial(child.name, orig);
+      if (kind === "skin") m.color.copy(skinTarget);
     });
   });
 }
