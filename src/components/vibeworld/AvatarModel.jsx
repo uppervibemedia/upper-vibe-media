@@ -170,33 +170,39 @@ function buildAvatarBody(opts = {}) {
   const neonM   = glowMat(pal.neon, 0.8);
 
   // ── LEGS ─────────────────────────────────────────────────────────────────
-  // Hip pivots at y=0.82 — same height as torso center for seamless join
+  // Hip pivots at y=0.72 — legs start from here downward
   for (const { name, sx } of [{ name: "leftHip", sx: 0.095 }, { name: "rightHip", sx: -0.095 }]) {
     const hipG = new THREE.Group();
     hipG.name = name;
-    hipG.position.set(sx, 0.82, 0);
+    hipG.position.set(sx, 0.72, 0);
 
     // Upper leg (thigh) — hangs downward from hip pivot
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.30, 4, 8), pantMat);
-    thigh.position.y = -0.22;  // center of thigh below pivot
+    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.28, 4, 8), pantMat);
+    thigh.position.y = -0.20;  // center of thigh below pivot
     thigh.castShadow = true;
     hipG.add(thigh);
+
+    // Waistband overlap box — fills any gap between torso bottom and thigh top
+    const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.085, 0.12, 8), pantMat);
+    waist.position.y = 0.04; // sits at top of leg, overlapping torso bottom
+    waist.castShadow = true;
+    hipG.add(waist);
 
     // Knee pivot — at bottom of thigh
     const kneeG = new THREE.Group();
     kneeG.name = name.replace("Hip", "Knee");
-    kneeG.position.y = -0.42;  // from hip down to knee
+    kneeG.position.y = -0.40;  // from hip down to knee
 
     // Shin
-    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.060, 0.25, 4, 8), pantMat);
-    shin.position.y = -0.16;
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.058, 0.24, 4, 8), pantMat);
+    shin.position.y = -0.15;
     shin.castShadow = true;
     kneeG.add(shin);
 
     // Foot/ankle pivot
     const footG = new THREE.Group();
     footG.name = name.replace("Hip", "Foot");
-    footG.position.y = -0.32;
+    footG.position.y = -0.30;
 
     const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.07, 0.21), shoeMat);
     shoe.position.set(0, -0.015, 0.025);
@@ -216,16 +222,30 @@ function buildAvatarBody(opts = {}) {
     root.add(hipG);
   }
 
+  // ── HIP BRIDGE — solid block connecting both legs to torso bottom ─────────
+  // Placed at y=0.76 (between leg tops at 0.72 and torso bottom at ~0.60)
+  const hipBridge = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.30, 0.24), pantMat);
+  hipBridge.position.set(0, 0.76, 0);
+  hipBridge.castShadow = true;
+  root.add(hipBridge);
+
   // ── TORSO ─────────────────────────────────────────────────────────────────
-  // Torso pivot at y=0.82, capsule center=0, extends ~0.315 down and ~0.315 up
+  // Torso pivot at y=0.95 — bottom of capsule = 0.95 - 0.21 - 0.155 = 0.585
+  // Hip bridge top = 0.76 + 0.15 = 0.91 → fully overlaps, no gap
   const torsoG = new THREE.Group();
   torsoG.name = "torso";
-  torsoG.position.y = 0.82;
+  torsoG.position.y = 0.95;
 
-  // Main shirt — taller capsule to bridge from hips up to shoulders
-  const torsoMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.155, 0.40, 4, 10), topMat);
+  // Main shirt — capsule bridging from hips up to shoulders
+  const torsoMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.155, 0.52, 4, 10), topMat);
   torsoMesh.castShadow = true;
   torsoG.add(torsoMesh);
+
+  // Collar — fills gap between shirt top and neck, taller to prevent gap
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.14, 0.22, 10), topMat);
+  collar.position.y = 0.36; // top of torso capsule area
+  collar.castShadow = true;
+  torsoG.add(collar);
 
   // Neon chest stripe
   const chestStripe = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.28, 0.012), neonM);
@@ -243,7 +263,7 @@ function buildAvatarBody(opts = {}) {
   for (const { name, sx } of [{ name: "leftShoulder", sx: 0.20 }, { name: "rightShoulder", sx: -0.20 }]) {
     const shG = new THREE.Group();
     shG.name = name;
-    shG.position.set(sx, 0.18, 0);
+    shG.position.set(sx, 0.20, 0);
     // Natural rest: arms hang slightly forward and out
     shG.rotation.x = -0.10;
     shG.rotation.z = sx > 0 ? 0.12 : -0.12;
@@ -281,14 +301,15 @@ function buildAvatarBody(opts = {}) {
   root.add(torsoG);
 
   // ── NECK + HEAD ───────────────────────────────────────────────────────────
-  // Neck connects top of torso (~0.82+0.35=1.17) to head
-  const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.044, 0.10, 4, 6), skinMat);
-  neck.position.set(0, 1.20, 0);
+  // Collar top ≈ 1.42. Use a very tall neck cylinder that fully bridges collar→head.
+  // Neck center at 1.35 → bottom=1.25 (inside collar), top=1.45 (into head sphere)
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.08, 0.40, 10), skinMat);
+  neck.position.set(0, 1.33, 0);
   root.add(neck);
 
   const headAnchor = new THREE.Group();
   headAnchor.name = "headAnchor";
-  headAnchor.position.set(0, 1.38, 0);
+  headAnchor.position.set(0, 1.52, 0);
   headAnchor.add(makeFace(skinHex, avatarType));
   headAnchor.add(makeHair(hairHex, avatarType));
   root.add(headAnchor);

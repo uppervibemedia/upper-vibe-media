@@ -1380,9 +1380,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const camera = new PerspectiveCamera(55, asp, 0.1, 80);
       cameraRef.current = camera;
       // Start camera behind avatar (same as animation loop will use)
-      const initCamDist = 5;
-      const initCamHeight = 2.5;
-      const initLookY = 1.5;
+      const initCamDist = 6;
+      const initCamHeight = 3.2;
+      const initLookY = 1.4;
       camera.position.set(SPAWN[0], SPAWN[1] + initCamHeight, SPAWN[2] - initCamDist);
       camera.lookAt(SPAWN[0], SPAWN[1] + initLookY, SPAWN[2]);
 
@@ -1564,9 +1564,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ─── CAMERA (third-person, or stage-facing when locked) ──
-        const camDist = 5;
-        const camHeight = 2.5;
-        const lookY = 1.5;
+        const camDist = 6;
+        const camHeight = 3.2;
+        const lookY = 1.4;
 
         // Smooth orbit angle lerp
         cameraOrbitRef.current.smoothAngle += 
