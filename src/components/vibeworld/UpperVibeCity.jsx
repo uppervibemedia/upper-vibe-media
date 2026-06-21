@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, Play, Pause, SkipForward } from "lucide-react";
+import { ChevronLeft, Play } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
-import MobileMusicHUD from "@/components/vibeworld/MobileMusicHUD";
+import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
 import StageVideoEmbed from "@/components/vibeworld/StageVideoEmbed";
-import CoverImage from "@/components/shared/CoverImage";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -786,12 +785,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           />
 
           {currentTrack && (
-            <MobileMusicHUD
+            <DraggableMediaPlayer
               currentTrack={currentTrack}
               isPlaying={isPlaying}
               onTogglePlay={handleGlobalPlayToggle}
               onSkip={handleGlobalSkip}
-              compact={mobileModalOpen}
             />
           )}
         </>
@@ -815,55 +813,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         />
       )}
 
-      {/* DESKTOP: Full now-playing bar */}
+      {/* DESKTOP: Draggable media player */}
       {!loading && !isMobile && currentTrack && (
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="absolute bottom-0 left-0 right-0 z-[56] flex justify-center px-4"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
-        >
-          <div
-            className="flex items-center gap-3 px-3 py-2 rounded-2xl max-w-md w-full"
-            style={{
-              background: "rgba(255,255,255,0.4)",
-              border: "1px solid rgba(255,255,255,0.3)",
-              backdropFilter: "blur(16px)",
-            }}
-          >
-            <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
-              <CoverImage
-                src={currentTrack.cover_url}
-                alt={currentTrack.title}
-                className="w-full h-full"
-                iconClassName="w-4 h-4"
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-gray-800 truncate">{currentTrack.title}</p>
-              <p className="text-[10px] text-gray-500 truncate">
-                {currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}
-              </p>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                onClick={handleGlobalSkip}
-                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/30"
-                style={{ background: "rgba(0,0,0,0.08)", color: "rgba(0,0,0,0.5)", minWidth: "44px", minHeight: "44px" }}
-              >
-                <SkipForward className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleGlobalPlayToggle}
-                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: "#2E7D32", color: "#fff", minWidth: "44px", minHeight: "44px" }}
-              >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-              </button>
-            </div>
-          </div>
-        </motion.div>
+        <DraggableMediaPlayer
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          onTogglePlay={handleGlobalPlayToggle}
+          onSkip={handleGlobalSkip}
+        />
       )}
     </div>
   );
