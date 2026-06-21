@@ -106,7 +106,7 @@
         "nonbinary",
         "neutral"
       ],
-      "description": "Avatar body type for Upper Vibe City (no default \u2014 user must pick)"
+      "description": "Avatar body type for Upper Vibe City"
     },
     "skin_tone": {
       "type": "string",
@@ -118,76 +118,76 @@
         "dark",
         "deep"
       ],
-      "description": "Skin tone for avatar in Upper Vibe City (no default \u2014 user must pick)"
+      "description": "Skin tone for avatar"
     },
     "avatar_style": {
       "type": "string",
       "enum": [
         "streetwear",
-        "cosmic"
+        "cosmic",
+        "neon",
+        "shadow",
+        "golden",
+        "crimson"
       ],
       "default": "streetwear",
-      "description": "Avatar outfit style: streetwear = modern human look, cosmic = futuristic armor"
+      "description": "Avatar visual style preset"
+    },
+    "avatar_suit_color": {
+      "type": "string",
+      "description": "Hex color for the avatar suit e.g. #4a5c3a"
     },
     "uvc_rules_accepted": {
       "type": "boolean",
-      "default": false,
-      "description": "User accepted Upper Vibe City community rules"
+      "default": false
     },
     "uvc_agreement_accepted": {
       "type": "boolean",
-      "default": false,
-      "description": "User accepted Upper Vibe City user agreement"
+      "default": false
     },
     "uvc_chat_age_confirmed": {
       "type": "boolean",
-      "default": false,
-      "description": "User confirmed they are 18+ for chat access"
+      "default": false
     },
     "uvc_accepted_date": {
-      "type": "string",
-      "description": "ISO datetime when rules/agreement were accepted"
+      "type": "string"
     },
     "uvc_agreement_version": {
-      "type": "string",
-      "description": "Version identifier of the accepted agreement"
+      "type": "string"
     },
     "outfit_id": {
-      "type": "string",
-      "description": "Future: equipped outfit ID from Vibe Shop"
+      "type": "string"
     },
     "hair_id": {
-      "type": "string",
-      "description": "Future: equipped hairstyle ID from Vibe Shop"
+      "type": "string"
     },
     "accessory_ids": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Future: equipped accessory IDs"
+      }
     },
     "shoe_id": {
-      "type": "string",
-      "description": "Future: equipped shoe ID from Vibe Shop"
+      "type": "string"
     },
     "aura_id": {
-      "type": "string",
-      "description": "Future: equipped aura/effect ID from Vibe Shop"
+      "type": "string"
     },
     "emote_pack_ids": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Future: owned emote pack IDs"
+      }
     },
     "owned_items": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Future: all owned item IDs from Vibe Shop"
+      }
+    },
+    "rpm_avatar_url": {
+      "type": "string",
+      "description": "Ready Player Me avatar GLB URL"
     }
   }
 }

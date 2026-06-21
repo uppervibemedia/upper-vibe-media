@@ -221,6 +221,28 @@ export function createAvatar(scene, opts = {}, onReady) {
   return placeholder; // returned synchronously for CityCanvas compatibility
 }
 
+// ── PUBLIC: retintAvatar — apply a new color+style tint to an existing avatar entry ──
+/**
+ * Call after the user changes suit color or visual style in the customizer.
+ * @param {object} entry - returned by createAvatar
+ * @param {string} suitColor - hex string e.g. "#4a5c3a"
+ * @param {number[]} styleTint - [r,g,b] multiplier e.g. [0.72,0.55,1.0]
+ */
+export function retintAvatar(entry, suitColor, styleTint) {
+  if (!entry?.root) return;
+  const baseColor = new THREE.Color(suitColor || "#ffffff");
+  const tint = styleTint ? new THREE.Color(...styleTint) : new THREE.Color(1, 1, 1);
+  const final = baseColor.clone().multiply(tint);
+
+  entry.root.traverse((child) => {
+    if (!child.isMesh) return;
+    const mats = Array.isArray(child.material) ? child.material : [child.material];
+    mats.forEach((mat) => {
+      if (mat?.color) mat.color.copy(final);
+    });
+  });
+}
+
 // ── PUBLIC: createRemoteAvatar ────────────────────────────────────────────
 export function createRemoteAvatar(scene, userId, username, avatarType, skinTone, avatarStyle) {
   const placeholder = new THREE.Group();

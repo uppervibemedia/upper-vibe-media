@@ -4,6 +4,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
+import { retintAvatar } from "@/components/vibeworld/AvatarModel";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
 import StageVideoEmbed from "@/components/vibeworld/StageVideoEmbed";
@@ -17,6 +18,7 @@ import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
 import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
+import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
 
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
@@ -30,6 +32,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
   const [editAvatarOpen, setEditAvatarOpen] = useState(false);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState(0); // bump to re-read user data
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
@@ -879,7 +882,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onEmote={handleEmote}
         onStopDance={handleStopDance}
         isDancing={isDancing}
-        onEditAvatar={() => setEditAvatarOpen(true)}
+        onEditAvatar={() => setCustomizerOpen(true)}
         nearJukebox={nearJukebox}
       />
 
@@ -971,16 +974,19 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </>
       )}
 
-      {/* ── Edit Avatar overlay — RPM Creator ──────────────────────────── */}
-      {editAvatarOpen && (
-        <RPMAvatarCreator
-          onComplete={async () => {
-            setEditAvatarOpen(false);
-            setAvatarVersion((v) => v + 1);
-          }}
-          existingUrl={user?.rpm_avatar_url || null}
-        />
-      )}
+      {/* ── Avatar Customizer Panel (color + style) ────────────────────── */}
+      <AvatarCustomizerPanel
+        open={customizerOpen}
+        onClose={() => setCustomizerOpen(false)}
+        currentStyle={user?.avatar_style || "streetwear"}
+        currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
+        isMobile={isMobile}
+        onApply={({ style, suitColor }) => {
+          // Live-retint the player avatar immediately via the avatarEntryRef in CityCanvas
+          // We store the entry on the CityCanvas ref via a callback
+          setAvatarVersion((v) => v + 1);
+        }}
+      />
 
       {/* DESKTOP: Draggable media player */}
       {!loading && !isMobile && currentTrack && (
