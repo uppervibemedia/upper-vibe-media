@@ -16,10 +16,18 @@ function isWebGLAvailable() {
   }
 }
 
+// ══════════════════════════════════════════════════════════
+// DEV BYPASS — set to true to skip Enter the World screen
+// and load directly into Upper Vibe City for avatar testing.
+// Set back to false before production launch.
+// ══════════════════════════════════════════════════════════
+const DEV_BYPASS_ENTER_WORLD = true;
+
 // ── The hub / landing page — lightweight, no 3D loaded ──
 function VibeWorldHub({ chatAgeConfirmed }) {
-  // Auto-launch via URL param for testing: ?launch=1
+  // Auto-launch when dev bypass is active OR via URL param ?launch=1
   const [launched, setLaunched] = useState(() => {
+    if (DEV_BYPASS_ENTER_WORLD) return true;
     try { return new URLSearchParams(window.location.search).get("launch") === "1"; } catch { return false; }
   });
   const [webglOk] = useState(() => isWebGLAvailable());
@@ -146,8 +154,8 @@ function BypassWrapper({ children }) {
 }
 
 export default function VibeWorld() {
-  // TEMPORARY TEST MODE: skip WorldGate when ?bypass=1 is in the URL
-  const bypass = isBypassMode();
+  // TEMPORARY TEST MODE: skip WorldGate when DEV_BYPASS_ENTER_WORLD=true OR ?bypass=1 in URL
+  const bypass = DEV_BYPASS_ENTER_WORLD || isBypassMode();
 
   return (
     <PageErrorBoundary>
