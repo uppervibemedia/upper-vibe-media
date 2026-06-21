@@ -34,8 +34,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
   const onDanceFloorRef = useRef(false);
-  const danceFloorPausedRef = useRef(false); // did we pause personal music on entry?
-  const jukeboxTrackRef = useRef(null);      // track currently playing as jukebox music
+
+  // ── Separate Jukebox audio element — never touches personal player ────────
+  const jukeboxAudioRef = useRef(null);       // dedicated <audio> for dance floor
+  const jukeboxTrackRef = useRef(null);       // which track is loaded in jukebox
+  const personalWasPlayingRef = useRef(false);// was personal player playing on entry?
+  const personalTimeRef = useRef(0);          // playback position when paused on entry
+  const jukeboxFadeRef = useRef(null);        // fade interval handle
 
   // ── Dance Floor / Emote state ─────────────────────────────────────────────
   const [isDancing, setIsDancing] = useState(false);
@@ -292,20 +297,23 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Movement locked when watching stage, full-screen, or typing ─
   const movementLocked = stageWatching || stageFullScreen || loungeInputFocused;
 
-  // ── Audio ducking: reduce global music to ~25% when voice is active ──
+  // ── Audio ducking: reduce personal player + jukebox to ~25% when voice is active ──
   useEffect(() => {
     const audio = audioRef?.current;
-    if (!audio) return;
+    const jk = jukeboxAudioRef.current;
     if (voiceActive) {
-      if (preVoiceVolumeRef.current === null) {
+      if (preVoiceVolumeRef.current === null && audio) {
         preVoiceVolumeRef.current = audio.volume;
       }
-      audio.volume = 0.25;
+      if (audio) audio.volume = 0.25;
+      if (jk) jk.volume = 0.15;
     } else {
-      if (preVoiceVolumeRef.current !== null) {
+      if (preVoiceVolumeRef.current !== null && audio) {
         audio.volume = preVoiceVolumeRef.current;
         preVoiceVolumeRef.current = null;
       }
+      // Restore jukebox volume if on dance floor
+      if (jk && onDanceFloorRef.current) jk.volume = 0.85;
     }
     return () => {
       if (preVoiceVolumeRef.current !== null && audio) {
@@ -538,10 +546,61 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   isPlayingRef.current = isPlaying;
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
-  const playTrackRef = useRef(playTrack);
-  playTrackRef.current = playTrack;
 
-  // ── Dance floor proximity: pause personal music, start jukebox ────────────
+  // ── Jukebox helpers — operate on the dedicated jukebox <audio> only ────────
+  const startJukebox = useCallback((audioUrl) => {
+    if (!audioUrl) return;
+    // Create the dedicated audio element once
+    if (!jukeboxAudioRef.current) {
+      jukeboxAudioRef.current = new Audio();
+      jukeboxAudioRef.current.loop = true;
+    }
+    const jk = jukeboxAudioRef.current;
+    if (jk.src !== audioUrl) {
+      jk.src = audioUrl;
+      jk.load();
+    }
+    jk.volume = 0;
+    jk.play().catch(() => {});
+    // Fade in
+    clearInterval(jukeboxFadeRef.current);
+    let vol = 0;
+    jukeboxFadeRef.current = setInterval(() => {
+      vol = Math.min(0.85, vol + 0.05);
+      if (jk) jk.volume = vol;
+      if (vol >= 0.85) clearInterval(jukeboxFadeRef.current);
+    }, 60);
+  }, []);
+
+  const stopJukebox = useCallback(() => {
+    const jk = jukeboxAudioRef.current;
+    if (!jk) return;
+    clearInterval(jukeboxFadeRef.current);
+    let vol = jk.volume;
+    jukeboxFadeRef.current = setInterval(() => {
+      vol = Math.max(0, vol - 0.06);
+      if (jk) jk.volume = vol;
+      if (vol <= 0) {
+        clearInterval(jukeboxFadeRef.current);
+        jk.pause();
+        jk.currentTime = 0;
+      }
+    }, 60);
+  }, []);
+
+  // Cleanup jukebox on unmount
+  useEffect(() => {
+    return () => {
+      clearInterval(jukeboxFadeRef.current);
+      if (jukeboxAudioRef.current) {
+        jukeboxAudioRef.current.pause();
+        jukeboxAudioRef.current.src = "";
+        jukeboxAudioRef.current = null;
+      }
+    };
+  }, []);
+
+  // ── Dance floor proximity: SEPARATE jukebox audio, never touches personal player ──
   useEffect(() => {
     const DANCE_X = 0, DANCE_Z = -4, DANCE_RADIUS = 7;
     const dx = playerPos.x - DANCE_X;
@@ -550,43 +609,59 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     const isOnFloor = dist < DANCE_RADIUS;
 
     if (isOnFloor && !onDanceFloorRef.current) {
-      // Entered dance floor
+      // ── ENTERED DANCE FLOOR ──
       onDanceFloorRef.current = true;
-      // Pause personal music if it's playing
+
+      // Save personal player state, then pause it (don't change its track)
+      personalWasPlayingRef.current = isPlayingRef.current;
       if (isPlayingRef.current && togglePlayRef.current) {
-        danceFloorPausedRef.current = true;
-        togglePlayRef.current();
+        // Save current position before pausing
+        const audio = audioRef?.current;
+        personalTimeRef.current = audio?.currentTime ?? 0;
+        togglePlayRef.current(); // pause personal player
       }
-      // Fetch and play a featured jukebox track
-      base44.entities.Track.filter({ is_featured: true, status: "published" }, "-display_order", 8)
-        .then((tracks) => {
-          const pool = tracks.length > 0 ? tracks : [];
-          if (pool.length > 0 && playTrackRef.current) {
-            const pick = pool[Math.floor(Math.random() * pool.length)];
-            jukeboxTrackRef.current = pick;
-            playTrackRef.current(pick, "song");
-          }
-        })
-        .catch(() => {});
+
+      // Start jukebox on its own separate audio element
+      if (!jukeboxTrackRef.current) {
+        // Fetch a featured track for the jukebox
+        base44.entities.Track.filter({ is_featured: true, status: "published" }, "-display_order", 8)
+          .then((tracks) => {
+            const pool = tracks.length > 0 ? tracks : [];
+            if (pool.length > 0) {
+              const pick = pool[Math.floor(Math.random() * pool.length)];
+              jukeboxTrackRef.current = pick;
+              startJukebox(pick.audio_url);
+            }
+          })
+          .catch(() => {});
+      } else {
+        // Resume already-loaded jukebox track
+        startJukebox(jukeboxTrackRef.current.audio_url);
+      }
 
     } else if (!isOnFloor && onDanceFloorRef.current) {
-      // Left dance floor
+      // ── LEFT DANCE FLOOR ──
       onDanceFloorRef.current = false;
-      // Pause the jukebox track that was playing
-      if (isPlayingRef.current && togglePlayRef.current) {
-        togglePlayRef.current();
-      }
-      // Resume personal music if we paused it
-      if (danceFloorPausedRef.current) {
-        danceFloorPausedRef.current = false;
+
+      // Fade out jukebox (personal player is untouched)
+      stopJukebox();
+
+      // Resume personal player if it was playing before
+      if (personalWasPlayingRef.current) {
+        personalWasPlayingRef.current = false;
         setTimeout(() => {
+          // Restore position if possible
+          const audio = audioRef?.current;
+          if (audio && personalTimeRef.current > 0) {
+            audio.currentTime = personalTimeRef.current;
+          }
           if (!isPlayingRef.current && togglePlayRef.current) {
             togglePlayRef.current();
           }
-        }, 200);
+        }, 300);
       }
     }
-  }, [playerPos.x, playerPos.z]);
+  }, [playerPos.x, playerPos.z, startJukebox, stopJukebox, audioRef]);
 
   // ── Auto-rotate stage video every 60s when user isn't interacting ──
   useEffect(() => {
@@ -623,9 +698,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onJukeboxProximity={(near, vol) => {
             setNearJukebox(near);
             jukeboxProxVolRef.current = vol;
-            // Apply proximity volume to global audio
-            const audio = audioRef?.current;
-            if (audio) audio.volume = Math.max(0.05, Math.min(1.0, vol));
+            // Apply proximity volume to JUKEBOX audio only — never touch personal player
+            const jk = jukeboxAudioRef.current;
+            if (jk && onDanceFloorRef.current) {
+              jk.volume = Math.max(0.05, Math.min(0.9, vol * 0.85));
+            }
           }}
           isDancing={isDancing}
           activeEmote={activeEmote}
