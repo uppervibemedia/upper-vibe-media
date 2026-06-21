@@ -94,10 +94,29 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
       }).slice(0, activeCategory === "featured" ? lessons.filter(l => l.is_featured).length : undefined);
 
   // ── Build embed URL matching StageFullScreen exactly ──
-  const getEmbedUrl = useCallback((lesson) => {
-    const ytId = lesson?.youtube_video_id;
+  const getEmbedUrl = useCallback((ytId) => {
     if (!ytId) return null;
     return `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&controls=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`;
+  }, []);
+
+  // ── Handle iframe load — send playVideo postMessage ────────
+  const handleIframeLoad = useCallback(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: "command", func: "playVideo", args: [] }),
+        "*"
+      );
+    }
+  }, []);
+
+  // ── Send postMessage to iframe ────────────────────────────
+  const postToIframe = useCallback((func, args = []) => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: "command", func, args }),
+        "*"
+      );
+    }
   }, []);
 
   // ── Handle close ─────────────────────────────────────────────
@@ -145,11 +164,15 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
             <div className="w-16" />
           </div>
           <iframe
-            src={getEmbedUrl(viewingLesson) || ""}
+            key={viewingLesson?.youtube_video_id}
+            ref={iframeRef}
+            src={getEmbedUrl(viewingLesson?.youtube_video_id) || ""}
             className="flex-1 w-full"
             allow="autoplay; encrypted-media; picture-in-picture"
+            referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
-            style={{ border: "none" }}
+            style={{ border: "none", background: "#000" }}
+            onLoad={handleIframeLoad}
           />
         </div>
       ) : viewingLesson ? (
@@ -192,12 +215,15 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
                 style={{ background: "linear-gradient(180deg, rgba(10,8,20,0.95) 0%, transparent 100%)" }} />
               <div className="aspect-video w-full bg-black">
                 <iframe
+                  key={viewingLesson?.youtube_video_id}
                   ref={iframeRef}
-                  src={getEmbedUrl(viewingLesson)}
+                  src={getEmbedUrl(viewingLesson?.youtube_video_id)}
                   className="w-full h-full"
                   allow="autoplay; encrypted-media; picture-in-picture"
+                  referrerPolicy="strict-origin-when-cross-origin"
                   allowFullScreen
-                  style={{ border: "none" }}
+                  style={{ border: "none", background: "#000" }}
+                  onLoad={handleIframeLoad}
                 />
               </div>
             </div>
@@ -208,12 +234,8 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
               onClick={() => {
                 setAcademyMuted(m => {
                   const next = !m;
-                  if (iframeRef.current?.contentWindow) {
-                    iframeRef.current.contentWindow.postMessage(
-                      JSON.stringify({ event: "command", func: next ? "mute" : "unMute", args: [] }),
-                      "*"
-                    );
-                  }
+                  postToIframe(next ? "mute" : "unMute");
+                  if (!next) postToIframe("setVolume", [80]);
                   return next;
                 });
               }}
