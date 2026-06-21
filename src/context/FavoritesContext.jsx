@@ -11,14 +11,14 @@ export function FavoritesProvider({ children }) {
 
   // Stable user ID — primary key. Null while auth is loading so useFavorites
   // does not fire a premature empty fetch.
-  // Defer by 800ms to avoid rate-limit collision with RadioContext + SavedItems + Home
+  // Defer by 3000ms to avoid rate-limit collision with admin analytics + saved items.
   const stableUserId = (!isLoadingAuth && ready) ? (user?.id || user?._id || user?.uid || null) : null;
   const userEmail = user?.email || null;
 
-  // Stagger load: wait 800ms after auth resolves before passing userId to useFavorites
+  // Stagger load: wait 3000ms after auth resolves before passing userId to useFavorites
   useEffect(() => {
     if (!isLoadingAuth) {
-      readyTimer.current = setTimeout(() => setReady(true), 800);
+      readyTimer.current = setTimeout(() => setReady(true), 3000);
     }
     return () => { if (readyTimer.current) clearTimeout(readyTimer.current); };
   }, [isLoadingAuth]);

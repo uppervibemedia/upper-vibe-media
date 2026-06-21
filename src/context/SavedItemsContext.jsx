@@ -17,15 +17,15 @@ export function SavedItemsProvider({ children }) {
   const readyTimer = useRef(null);
 
   // Only set userId after auth finishes loading — prevents premature empty fetch.
-  // Defer by 1200ms to avoid rate-limit collision with RadioContext + Favorites + Home.
+  // Defer by 3500ms to avoid rate-limit collision with admin analytics + favorites.
   const stableUserId = (!isLoadingAuth && ready)
     ? (user?.id || user?._id || user?.uid || null)
     : null;
 
-  // Stagger load: wait 1200ms after auth resolves
+  // Stagger load: wait 3500ms after auth resolves
   useEffect(() => {
     if (!isLoadingAuth) {
-      readyTimer.current = setTimeout(() => setReady(true), 1200);
+      readyTimer.current = setTimeout(() => setReady(true), 3500);
     }
     return () => { if (readyTimer.current) clearTimeout(readyTimer.current); };
   }, [isLoadingAuth]);
