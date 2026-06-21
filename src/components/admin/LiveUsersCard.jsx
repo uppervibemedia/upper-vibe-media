@@ -10,7 +10,7 @@ import { Radio, ChevronDown, ChevronUp, Bug } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const LIVE_WINDOW_MS = 30_000;   // 30 seconds
-const POLL_INTERVAL  =  5_000;   // 5 seconds
+const POLL_INTERVAL  = 15_000;   // 15 seconds — avoid rate limits
 
 function sanitizePageLabel(path, label) {
   if (!path) return label || "Unknown";
