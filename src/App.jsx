@@ -48,6 +48,7 @@ import FAQ from './pages/FAQ';
 import Start from './pages/Start';
 import VibeWorld from './pages/VibeWorld';
 import PersonalizedFeed from './pages/PersonalizedFeed';
+import ChatRequests from './pages/ChatRequests';
 import { isSafeRoute, defaultRouteForUser } from './lib/safeRedirect';
 
 const LoadingScreen = () => (
@@ -167,6 +168,7 @@ const AuthenticatedApp = () => {
         <Route path="/start" element={<Start />} />
         <Route path="/vibe-world" element={<VibeWorld />} />
         <Route path="/my-feed" element={<PersonalizedFeed />} />
+        <Route path="/connections" element={<ChatRequests />} />
         <Route path="/email-list" element={<EmailList />} />
       </Route>
       <Route path="/forgot-password" element={<ForgotPassword />} />
