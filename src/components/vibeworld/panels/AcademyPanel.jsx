@@ -67,12 +67,11 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
         return labels.some((lb) => lb.toLowerCase().includes(activeCategory.toLowerCase()));
       }).slice(0, activeCategory === "featured" ? lessons.filter(l => l.is_featured).length : undefined);
 
-  // ── Build embed URL matching StageFullScreen for reliable playback ──
-  const getEmbedUrl = useCallback((lesson, muted = false) => {
+  // ── Build embed URL matching StageFullScreen exactly ──
+  const getEmbedUrl = useCallback((lesson) => {
     const ytId = lesson?.youtube_video_id;
-    if (!ytId) return lesson?.video_url || "";
-    const muteParam = muted ? "&mute=1" : "";
-    return `https://www.youtube.com/embed/${ytId}?autoplay=1&playsinline=1&enablejsapi=1&rel=0&controls=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}${muteParam}`;
+    if (!ytId) return null;
+    return `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&controls=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`;
   }, []);
 
   // ── Handle close ─────────────────────────────────────────────
@@ -120,7 +119,7 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
             <div className="w-16" />
           </div>
           <iframe
-            src={getEmbedUrl(viewingLesson, true)}
+            src={getEmbedUrl(viewingLesson) || ""}
             className="flex-1 w-full"
             allow="autoplay; encrypted-media; picture-in-picture"
             allowFullScreen
@@ -168,7 +167,7 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
               <div className="aspect-video w-full bg-black">
                 <iframe
                   ref={iframeRef}
-                  src={getEmbedUrl(viewingLesson, true)}
+                  src={getEmbedUrl(viewingLesson)}
                   className="w-full h-full"
                   allow="autoplay; encrypted-media; picture-in-picture"
                   allowFullScreen
@@ -228,7 +227,7 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 flex-shrink-0">
             <div className="flex items-center gap-2">
               <GraduationCap className="w-5 h-5 text-purple-400" />
-              <h3 className="font-heading font-black text-lg text-white">Upper Vibe Academy</h3>
+              <h3 className="font-heading font-black text-lg text-white">Vibe Academy</h3>
             </div>
             <button
               onTouchStart={(e) => e.stopPropagation()}

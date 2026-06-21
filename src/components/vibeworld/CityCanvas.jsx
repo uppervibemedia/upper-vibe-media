@@ -961,7 +961,7 @@ function buildPark(scene) {
   academy.add(roofDot);
 
   scene.add(academy);
-  createNeonSign(scene, ACAD_X, 5.2, ACAD_Z, "UPPER VIBE ACADEMY", "#7C3AED");
+  createNeonSign(scene, ACAD_X, 5.2, ACAD_Z, "VIBE  ACADEMY", "#7C3AED");
 
   // Path from Central Plaza to Academy
   createPath(PLAZA_X, PLAZA_Z, ACAD_X, ACAD_Z);
