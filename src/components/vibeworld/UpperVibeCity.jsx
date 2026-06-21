@@ -4,7 +4,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
-import { retintAvatar, playEmoteAnimation, stopEmoteAnimation } from "@/components/vibeworld/AvatarModel";
+import { retintAvatar, playEmoteAnimation, stopEmoteAnimation, stopDanceAnimation } from "@/components/vibeworld/AvatarModel";
 import { OUTFIT_COLORS, SKIN_TONES } from "@/components/vibeworld/AvatarSetup";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
@@ -83,13 +83,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsDancing(false);
     setActiveEmote(null);
     if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
-    // Clear emote state so avatar returns to idle on next frame
+    // Use stopDanceAnimation for a clean immediate fade-to-idle
     if (playerAvatarEntryRef.current) {
-      playerAvatarEntryRef.current._emoteActive = false;
-      if (playerAvatarEntryRef.current._emoteTimer) {
-        clearTimeout(playerAvatarEntryRef.current._emoteTimer);
-        playerAvatarEntryRef.current._emoteTimer = null;
-      }
+      stopDanceAnimation(playerAvatarEntryRef.current);
     }
   }, []);
 
@@ -749,6 +745,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             playerAvatarEntryRef.current = entry;
             // Guarantee clean animation state on spawn — never dance on load
             entry._emoteActive = false;
+            entry._isDancing = false;
             entry._emoteTimer && clearTimeout(entry._emoteTimer);
             entry._emoteTimer = null;
             // Apply saved outfit + skin color immediately when avatar GLB finishes loading
@@ -770,11 +767,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             const prev = { ...prevPosRef.current };
             prevPosRef.current = { x, z };
             setPlayerPos({ x, z, rot, animState });
-            // Inline dance cancel for immediate response (don't wait for effect)
+            // Inline dance cancel for immediate response (don't wait for React effect)
             if (isDancingRef.current && (Math.abs(x - prev.x) > 0.001 || Math.abs(z - prev.z) > 0.001)) {
               setIsDancing(false);
               setActiveEmote(null);
-              if (playerAvatarEntryRef.current) playerAvatarEntryRef.current._emoteActive = false;
+              // Immediately stop dance on the animation entry — don't wait for re-render
+              if (playerAvatarEntryRef.current) {
+                stopDanceAnimation(playerAvatarEntryRef.current);
+              }
             }
           }}
           onJukeboxProximity={(near, vol) => {

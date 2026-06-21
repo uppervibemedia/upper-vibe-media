@@ -150,25 +150,43 @@ function classifyMaterial(meshName, matName, origColor) {
   return "outfit";
 }
 
-// ─── crossFade helper ─────────────────────────────────────────
-// Smoothly transitions from current clip to target clip.
-// No-ops if already playing the target or target doesn't exist.
-function crossFade(entry, toKey, duration = 0.2) {
+// ─── fadeToAction ─────────────────────────────────────────────
+// Properly fades out the previous action and fades in the new one.
+// One active base animation at a time — no bleed-through.
+// Skips if already playing the target at normal speed.
+function fadeToAction(entry, toKey, duration = 0.2) {
   if (!entry.clips[toKey]) return;
-  if (entry.currentAnim === toKey) return;
-  const from = entry.clips[entry.currentAnim];
-  const to   = entry.clips[toKey];
-  to.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-  if (from && from !== to) from.crossFadeTo(to, duration, true);
+  const nextAction = entry.clips[toKey];
+
+  // Only skip if already playing this key AND timescale is not 0 (frozen walk trick)
+  if (entry.currentAnim === toKey && nextAction.getEffectiveWeight() > 0.9 && nextAction.timeScale !== 0) return;
+
+  const prevAction = entry.clips[entry.currentAnim];
+
+  // Stop ALL other clips first to prevent multi-action bleed
+  Object.entries(entry.clips).forEach(([key, action]) => {
+    if (key !== toKey && action !== nextAction) {
+      action.fadeOut(duration);
+    }
+  });
+
   entry.currentAnim = toKey;
+
+  nextAction
+    .reset()
+    .setEffectiveTimeScale(1)
+    .setEffectiveWeight(1)
+    .fadeIn(duration)
+    .play();
 }
 
 // ─── PUBLIC: updateAvatarAnimation ───────────────────────────
-// Priority order (highest → lowest):
-//   1. Moving (speed > threshold) → walk or run
-//   2. Dancing (idle boosted) → idle at 1.4x
-//   3. Default → idle at 1.0x
-// Emote active flag just holds the current state — movement still wins.
+// STRICT priority order (highest → lowest):
+//   1. MOVEMENT (speed > threshold) → walk or run — ALWAYS wins, cancels dance
+//   2. DANCE — only if _isDancing flag is set AND no movement
+//   3. IDLE — default
+//
+// Dance is stored as entry._isDancing so it can be forcibly cleared on movement.
 export function updateAvatarAnimation(entry, speed, isDancing, dt) {
   if (!entry || !entry.mixer) return;
   entry.mixer.update(dt);
@@ -177,40 +195,52 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt) {
   const walkKey = entry._walkKey || "walk";
   const runKey  = entry._runKey  || null;
 
-  // ── 1. MOVEMENT — always highest priority ──────────────────
-  if (speed > 0.04) {
-    // Clear emote so it doesn't block next idle
+  const isMoving = speed > 0.04;
+
+  // ── 1. MOVEMENT — HIGHEST PRIORITY, cancels dance unconditionally ──
+  if (isMoving) {
+    // Force-clear ALL dance/emote state — movement always wins
     entry._emoteActive = false;
-    // Reset idle timescale in case dance boosted it
-    if (entry.clips[idleKey]) entry.clips[idleKey].setEffectiveTimeScale(1.0);
+    entry._isDancing = false;
 
     if (speed > 0.35 && runKey && entry.clips[runKey]) {
-      crossFade(entry, runKey, 0.15);
+      fadeToAction(entry, runKey, 0.15);
       entry.clips[runKey].setEffectiveTimeScale(Math.min(2.4, speed * 0.85));
     } else if (entry.clips[walkKey]) {
-      crossFade(entry, walkKey, 0.15);
+      fadeToAction(entry, walkKey, 0.15);
       entry.clips[walkKey].setEffectiveTimeScale(Math.max(0.6, 0.7 + speed * 0.4));
     }
     return;
   }
 
-  // ── 2. EMOTE active — hold current clip, don't change ──────
+  // ── 2. NOT MOVING — sync dance state from external isDancing prop ──
+  entry._isDancing = isDancing;
+
+  // ── 3. EMOTE active — hold current clip, don't change ──────
   if (entry._emoteActive) return;
 
-  // ── 3. DANCE — idle at boosted speed ───────────────────────
+  // ── 4. DANCE — play idle at boosted timescale ───────────────
   if (isDancing && entry.clips[idleKey]) {
-    crossFade(entry, idleKey, 0.25);
+    if (entry.currentAnim !== idleKey) {
+      fadeToAction(entry, idleKey, 0.25);
+    }
     entry.clips[idleKey].setEffectiveTimeScale(1.4);
     return;
   }
 
-  // ── 4. DEFAULT IDLE ─────────────────────────────────────────
+  // ── 5. DEFAULT IDLE ──────────────────────────────────────────
+  // Reset idle timescale in case dance boosted it previously
   if (entry.clips[idleKey]) {
-    crossFade(entry, idleKey, 0.25);
-    entry.clips[idleKey].setEffectiveTimeScale(1.0);
+    if (entry.currentAnim === idleKey) {
+      // Already idle — just ensure normal speed
+      entry.clips[idleKey].setEffectiveTimeScale(1.0);
+    } else {
+      fadeToAction(entry, idleKey, 0.25);
+      entry.clips[idleKey].setEffectiveTimeScale(1.0);
+    }
   } else if (entry.clips[walkKey]) {
     // Fallback: frozen walk = effective idle
-    crossFade(entry, walkKey, 0.25);
+    fadeToAction(entry, walkKey, 0.25);
     entry.clips[walkKey].setEffectiveTimeScale(0.0);
   }
 }
@@ -220,7 +250,22 @@ export function stopEmoteAnimation(entry) {
   if (!entry) return;
   if (entry._emoteTimer) { clearTimeout(entry._emoteTimer); entry._emoteTimer = null; }
   entry._emoteActive = false;
-  // updateAvatarAnimation will handle returning to idle on the next frame
+  // updateAvatarAnimation will pick up idle on the next frame
+}
+
+// ─── PUBLIC: stopDanceAnimation ──────────────────────────────
+// Called when dance mode is cancelled externally (movement, zone exit, stop button).
+export function stopDanceAnimation(entry) {
+  if (!entry) return;
+  entry._isDancing = false;
+  entry._emoteActive = false;
+  // Fade to idle immediately — do not wait for next updateAvatarAnimation call
+  const idleKey = entry._idleKey || "idle";
+  const walkKey = entry._walkKey || "walk";
+  if (entry.clips && (entry.clips[idleKey] || entry.clips[walkKey])) {
+    fadeToAction(entry, idleKey || walkKey, 0.2);
+    if (entry.clips[idleKey]) entry.clips[idleKey].setEffectiveTimeScale(1.0);
+  }
 }
 
 // ─── PUBLIC: playEmoteAnimation ──────────────────────────────
@@ -234,13 +279,10 @@ export function playEmoteAnimation(entry, emoteId) {
   const duration = DURATIONS[emoteId] ?? 2000;
 
   // Snap to idle and hold — visual effect handled by EmoteEffect overlay
-  const idleKey = entry._idleKey || entry.clips.idle ? (entry._idleKey || "idle") : null;
-  if (idleKey && entry.clips[idleKey] && entry.currentAnim !== idleKey) {
-    const current = entry.clips[entry.currentAnim];
-    const idle = entry.clips[idleKey];
-    idle.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-    if (current && current !== idle) current.crossFadeTo(idle, 0.15, true);
-    entry.currentAnim = idleKey;
+  const idleKey = entry._idleKey || "idle";
+  if (idleKey && entry.clips?.[idleKey]) {
+    fadeToAction(entry, idleKey, 0.15);
+    entry.clips[idleKey].setEffectiveTimeScale(1.0);
   }
 
   entry._emoteActive = true;
@@ -316,6 +358,7 @@ function attachModel(gltf, controllerGroup, opts = {}) {
     _idleKey: idleKey,
     _walkKey: walkKey,
     _runKey:  runKey,
+    _isDancing: false,
   };
 }
 
@@ -340,6 +383,7 @@ export function createAvatar(scene, opts = {}, onReady) {
     _runKey: "run",
     _emoteActive: false,
     _emoteTimer: null,
+    _isDancing: false,
   };
 
   loadGLTF(opts.gender || "male")
@@ -357,6 +401,7 @@ export function createAvatar(scene, opts = {}, onReady) {
       entry._runKey  = result._runKey;
       // Guarantee clean state: not dancing, not emoting
       entry._emoteActive = false;
+      entry._isDancing = false;
       onReady?.(entry);
     })
     .catch((err) => {
@@ -443,7 +488,7 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   controller.add(makeShadow());
   scene.add(controller);
 
-  const entry = { root: controller, mixer: null, clips: {}, currentAnim: "idle", _idleKey: "idle", _walkKey: "walk", _runKey: "run", _emoteActive: false, _emoteTimer: null };
+  const entry = { root: controller, mixer: null, clips: {}, currentAnim: "idle", _idleKey: "idle", _walkKey: "walk", _runKey: "run", _emoteActive: false, _emoteTimer: null, _isDancing: false };
   controller.userData._avatarEntry = entry; // available immediately for animation loop
 
   loadGLTF(gender)
