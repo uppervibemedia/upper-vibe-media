@@ -571,8 +571,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       // Ease in-out cubic
       const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-      if (jk) jk.volume = jkStart + (jkTarget - jkStart) * ease;
-      if (personal) personal.volume = personalStart + (personalTarget - personalStart) * ease;
+      if (jk) jk.volume = Math.min(1, Math.max(0, jkStart + (jkTarget - jkStart) * ease));
+      if (personal) personal.volume = Math.min(1, Math.max(0, personalStart + (personalTarget - personalStart) * ease));
 
       if (t < 1) {
         crossfadeRafRef.current = requestAnimationFrame(tick);
