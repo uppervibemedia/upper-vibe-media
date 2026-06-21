@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
+import createVibeShop from "./VibeShop";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -973,6 +974,15 @@ function buildPark(scene) {
   academyLight.intensity = 1.8; academyLight.distance = 12;
   academyLight.position.set(ACAD_X, 2.5, ACAD_Z);
   scene.add(academyLight);
+
+  // ═════════════════════════════════════════════════════════════
+  // 8.6. VIBE SHOP — far right, opposite Academy
+  // ═════════════════════════════════════════════════════════════
+  const { SHOP_X, SHOP_Z } = createVibeShop(scene);
+
+  // Path from Central Plaza to Shop
+  createPath(PLAZA_X, PLAZA_Z, SHOP_X, SHOP_Z);
+  addPathLights(scene, PLAZA_X, PLAZA_Z, SHOP_X, SHOP_Z, "#D4A843");
 
   // ═════════════════════════════════════════════════════════════
   // 9. CITY EDGE BUILDINGS — framing the perimeter

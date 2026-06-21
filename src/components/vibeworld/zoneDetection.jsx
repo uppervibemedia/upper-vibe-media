@@ -52,6 +52,12 @@ const ZONES = {
     cx: -20, cz: 5, radius: 5,
     icon: "GraduationCap",
   },
+  shop: {
+    name: "Vibe Shop",
+    id: "shop",
+    cx: 22, cz: 5, radius: 4.5,
+    icon: "ShoppingBag",
+  },
 };
 
 export function detectZone(px, pz) {

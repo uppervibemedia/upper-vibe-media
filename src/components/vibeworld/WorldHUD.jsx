@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, Sun, X,
   Compass, Sparkles, Library, SkipForward,
-  Volume2, VolumeX, BookOpen, GraduationCap,
+  Volume2, VolumeX, BookOpen, GraduationCap, ShoppingBag,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
@@ -14,6 +14,7 @@ import VisualizerPanel from "./panels/VisualizerPanel";
 import VibeCheckPanel from "./panels/VibeCheckPanel";
 import PrivateChatPanel from "./panels/PrivateChatPanel";
 import AcademyPanel from "./panels/AcademyPanel";
+import ShopPanel from "./panels/ShopPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import IncomingChatRequest from "./IncomingChatRequest";
 import ChatWarning from "@/components/vibeworld/ChatWarning";
@@ -28,6 +29,7 @@ const ZONE_ICONS = {
   vibecheck: Sparkles,
   beach: Sun,
   academy: GraduationCap,
+  shop: ShoppingBag,
 };
 
 export default function WorldHUD({
@@ -98,6 +100,7 @@ export default function WorldHUD({
   const [visualizerOpen, setVisualizerOpen] = useState(false);
   const [vibeCheckOpen, setVibeCheckOpen] = useState(false);
   const [academyOpen, setAcademyOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -603,6 +606,39 @@ export default function WorldHUD({
           </motion.div>
         )}
 
+        {zone?.id === "shop" && (
+          <motion.div
+            key="shop-actions"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
+            style={{
+              paddingBottom: isMobile
+                ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
+                : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+              pointerEvents: "none",
+            }}
+          >
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => { hapticTap(); setShopOpen(true); onMobileModalChange?.(true); }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#7C3AED,#00D4F0)",
+                color: "#fff",
+                boxShadow: "0 0 20px rgba(124,58,237,0.4)",
+                minHeight: "44px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
+              }}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              Browse Shop
+            </button>
+          </motion.div>
+        )}
+
         {zone?.id === "beach" && (
           <motion.div
             key="beach-actions"
@@ -666,6 +702,13 @@ export default function WorldHUD({
       <AcademyPanel
         open={academyOpen}
         onClose={() => { setAcademyOpen(false); onMobileModalChange?.(false); }}
+        isMobile={isMobile}
+      />
+
+      {/* ── Shop Panel (slide-up) ──────────────────────────────── */}
+      <ShopPanel
+        open={shopOpen}
+        onClose={() => { setShopOpen(false); onMobileModalChange?.(false); }}
         isMobile={isMobile}
       />
 
