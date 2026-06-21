@@ -106,8 +106,7 @@
         "nonbinary",
         "neutral"
       ],
-      "default": "neutral",
-      "description": "Avatar body type for Upper Vibe City"
+      "description": "Avatar body type for Upper Vibe City (no default \u2014 user must pick)"
     },
     "skin_tone": {
       "type": "string",
@@ -119,8 +118,7 @@
         "dark",
         "deep"
       ],
-      "default": "medium",
-      "description": "Skin tone for avatar in Upper Vibe City"
+      "description": "Skin tone for avatar in Upper Vibe City (no default \u2014 user must pick)"
     },
     "uvc_rules_accepted": {
       "type": "boolean",
