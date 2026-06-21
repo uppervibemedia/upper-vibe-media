@@ -19,6 +19,7 @@ import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
 import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
+import EmoteEffect from "@/components/vibeworld/EmoteEffect";
 
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
@@ -1009,6 +1010,33 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onTogglePlay={handleGlobalPlayToggle}
           onSkip={handleGlobalSkip}
         />
+      )}
+
+      {/* ── Emote visual effects — floating above avatar ─────────── */}
+      <EmoteEffect activeEmote={activeEmote} isMobile={isMobile} />
+
+      {/* ── Dancing indicator badge ───────────────────────────────── */}
+      {isDancing && !loading && (
+        <div
+          className="fixed z-[71] pointer-events-none"
+          style={{
+            left: "50%",
+            top: isMobile ? "36%" : "30%",
+            transform: "translateX(-50%)",
+          }}
+        >
+          <div
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full"
+            style={{
+              background: "rgba(196,59,255,0.15)",
+              border: "1px solid rgba(196,59,255,0.35)",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <span style={{ fontSize: 13 }}>🕺</span>
+            <span className="font-black tracking-wider" style={{ fontSize: 10, color: "#C43BFF" }}>DANCING</span>
+          </div>
+        </div>
       )}
     </div>
   );
