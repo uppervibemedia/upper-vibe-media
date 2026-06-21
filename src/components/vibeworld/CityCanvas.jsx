@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
 import createVibeShop from "./VibeShop";
+import createZenBeach, { animateZenBeach } from "./ZenBeach";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -67,12 +68,12 @@ function resolveCollisions(px, pz, r, boxes) {
     z += (dz / dist) * overlap;
   }
 
-  // Beach shoreline boundary — stop at water's edge
-  const SHORELINE_Z = 20;
+  // Beach shoreline boundary
+  const SHORELINE_Z = 26;
   if (z > 0) {
     if (z > SHORELINE_Z) z = SHORELINE_Z;
-    if (x < -24) x = -24;
-    if (x > 24) x = 24;
+    if (x < -28) x = -28;
+    if (x > 28) x = 28;
   }
 
   // Circular boundary for rest of the park
@@ -195,17 +196,17 @@ function buildPark(scene) {
   createCosmicSky(scene);
   createCitySkyline(scene);
 
-  const SHORELINE_Z = 20;
+  const SHORELINE_Z = 26;
   const OCEAN_DEPTH = 54;
 
   // ═════════════════════════════════════════════════════════════
   // 1. GROUND — dark urban plaza floor
   // ═════════════════════════════════════════════════════════════
-  const groundGeo = new PlaneGeometry(56, 44);
+  const groundGeo = new PlaneGeometry(68, 52);
   const groundMat = mat("#1A1A2E", { roughness: 0.85 });
   const ground = new Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(0, -0.01, -9);
+  ground.position.set(0, -0.01, -10);
   ground.receiveShadow = true;
   ground.name = "plazaGround";
   scene.add(ground);
@@ -331,7 +332,7 @@ function buildPark(scene) {
 
   // ── Beach boardwalk ────────────────────────────────────────
   const boardwalkLen = 8;
-  const boardwalkStartZ = 15;
+  const boardwalkStartZ = 18;
   const plankCount = 7;
   for (let p = 0; p < plankCount; p++) {
     const pz = boardwalkStartZ + p * (boardwalkLen / plankCount);
@@ -365,7 +366,7 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.7 })
   );
   entranceGlow.rotation.x = -Math.PI / 2;
-  entranceGlow.position.set(0, 0.006, 13);
+  entranceGlow.position.set(0, 0.006, 16);
   scene.add(entranceGlow);
 
   // ═════════════════════════════════════════════════════════════
@@ -976,7 +977,12 @@ function buildPark(scene) {
   scene.add(academyLight);
 
   // ═════════════════════════════════════════════════════════════
-  // 8.6. VIBE SHOP — far right, opposite Academy
+  // 8.6. ZEN BEACH — meditation zone, left-side beach area
+  // ═════════════════════════════════════════════════════════════
+  createZenBeach(scene, PLAZA_X, PLAZA_Z);
+
+  // ═════════════════════════════════════════════════════════════
+  // 8.7. VIBE SHOP — far right, opposite Academy
   // ═════════════════════════════════════════════════════════════
   const { SHOP_X, SHOP_Z } = createVibeShop(scene);
 
@@ -1045,25 +1051,23 @@ function buildPark(scene) {
 
   scene.add(edgeBuildings);
 
-  // ═════════════════════════════════════════════════════════════
   // 10. BEACH WALK — south edge
-  // ═════════════════════════════════════════════════════════════
-  const bufferGeo = new PlaneGeometry(56, 6);
+  const bufferGeo = new PlaneGeometry(68, 8);
   const buffer = new Mesh(bufferGeo, mat("#2A2A40", { roughness: 0.7 }));
   buffer.rotation.x = -Math.PI / 2;
-  buffer.position.set(0, -0.002, 12);
+  buffer.position.set(0, -0.002, 16);
   buffer.receiveShadow = true;
   scene.add(buffer);
 
-  const drySand = new Mesh(new PlaneGeometry(56, 5), mat("#D8B47E", { roughness: 0.5 }));
+  const drySand = new Mesh(new PlaneGeometry(68, 6), mat("#D8B47E", { roughness: 0.5 }));
   drySand.rotation.x = -Math.PI / 2;
-  drySand.position.set(0, 0.002, 15.5);
+  drySand.position.set(0, 0.002, 21);
   drySand.receiveShadow = true;
   scene.add(drySand);
 
-  const wetSand = new Mesh(new PlaneGeometry(56, 3), mat("#A07048", { roughness: 0.28, metalness: 0.1 }));
+  const wetSand = new Mesh(new PlaneGeometry(68, 4), mat("#A07048", { roughness: 0.28, metalness: 0.1 }));
   wetSand.rotation.x = -Math.PI / 2;
-  wetSand.position.set(0, 0.003, 19);
+  wetSand.position.set(0, 0.003, 25.5);
   wetSand.receiveShadow = true;
   scene.add(wetSand);
 
@@ -1075,7 +1079,7 @@ function buildPark(scene) {
   const umbColors = ["#9B7EFF", "#00D4F0", "#C43BFF"];
   for (let u = 0; u < 6; u++) {
     const ux = -14 + u * 5.5;
-    const uz = 17.5;
+    const uz = 22.5;
     const pole = new Mesh(new CylinderGeometry(0.04, 0.04, 2, 6), mat("#CCCCDD", { roughness: 0.3, metalness: 0.3 }));
     pole.position.set(ux, 1.0, uz); pole.castShadow = true;
     chairGroup.add(pole);
@@ -1094,11 +1098,10 @@ function buildPark(scene) {
   }
   scene.add(chairGroup);
 
-  // ═════════════════════════════════════════════════════════════
-  // 11. OCEAN — waves from shore to horizon
-  // ═════════════════════════════════════════════════════════════
+  // 11. OCEAN — waves from shore
   const oceanSegments = 54;
-  const oceanGeo = new PlaneGeometry(56, OCEAN_DEPTH, 56, oceanSegments);
+  const oceanWidth = 68;
+  const oceanGeo = new PlaneGeometry(oceanWidth, OCEAN_DEPTH, 56, oceanSegments);
   const oceanMat = new MeshBasicMaterial();
   oceanMat.color = new Color("#2098CC");
   oceanMat.side = THREE.DoubleSide;
@@ -1115,7 +1118,7 @@ function buildPark(scene) {
   scene.userData._oceanOrig = origArr;
   scene.userData._oceanCenterZ = SHORELINE_Z + OCEAN_DEPTH / 2;
 
-  const foamGeo = new PlaneGeometry(56, 1.5);
+  const foamGeo = new PlaneGeometry(68, 1.5);
   const foamMeshMat = new MeshBasicMaterial();
   foamMeshMat.color = new Color("#FFFFFF");
   foamMeshMat.transparent = true;
@@ -1132,7 +1135,7 @@ function buildPark(scene) {
   scene.userData.shorelineZ = SHORELINE_Z;
 
   // ── Shoreline glow strip — pulses with music beat ──────────
-  const shoreGlowGeo = new PlaneGeometry(56, 0.5);
+  const shoreGlowGeo = new PlaneGeometry(68, 0.5);
   const shoreGlowMat = new MeshBasicMaterial();
   shoreGlowMat.color = new Color("#00D4F0");
   shoreGlowMat.transparent = true;
@@ -1159,8 +1162,8 @@ function buildPark(scene) {
   moon.shadow.mapSize.height = 2048;
   moon.shadow.camera.near = 0.5;
   moon.shadow.camera.far = 80;
-  moon.shadow.camera.left = -30;
-  moon.shadow.camera.right = 30;
+  moon.shadow.camera.left = -36;
+  moon.shadow.camera.right = 36;
   moon.shadow.camera.top = 30;
   moon.shadow.camera.bottom = -30;
   moon.shadow.bias = -0.0003;
@@ -1220,8 +1223,8 @@ function buildPark(scene) {
   // Beach palm row — spaced like umbrellas, lining the back of the beach
   // Removed tree at x=0 that was blocking the central beach pathway
   const palmPositions = [
-    [-22, 14], [-16.5, 14], [-11, 14], [-5.5, 14],
-    [5.5, 14], [11, 14], [16.5, 14], [22, 14],
+    [-24, 19], [-18, 19], [-12, 19], [-6, 19],
+    [6, 19], [12, 19], [18, 19], [24, 19],
   ];
   palmPositions.forEach(([px, pz]) => {
     const palm = new Group();
@@ -2174,7 +2177,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             child.material.color.copy(baseColor).lerp(mixColor, hueShift);
             child.material.opacity = 0.2 + Math.sin(t * 2 + child.userData.phase) * 0.2;
           }
+          if (child.userData?.isZenParticle) {
+            const p = child.userData;
+            child.position.y = p.baseY + Math.sin(t * 1.2 + p.phase) * 0.15;
+            child.position.x = p.baseX + Math.cos(t * 0.8 + p.phase) * 0.2;
+            child.position.z = p.baseZ + Math.sin(t * 0.6 + p.phase) * 0.2;
+          }
         });
+        animateZenBeach(scene, t, audioBeat);
 
         // ─── STARS TWINKLE ─────────────────────────────────────
         const starsMesh = scene.userData.stars;

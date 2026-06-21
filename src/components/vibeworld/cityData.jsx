@@ -2,7 +2,7 @@
  * Simple Park Layout
  */
 export const SPAWN = [0, 0.9, 5];
-export const PARK_RADIUS = 30;
+export const PARK_RADIUS = 36;
 
 // Empty districts — will be populated later when city is built
 export const DISTRICTS = {};

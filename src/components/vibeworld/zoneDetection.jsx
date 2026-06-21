@@ -43,8 +43,14 @@ const ZONES = {
   beach: {
     name: "Beach Walk",
     id: "beach",
-    cx: 0, cz: 18, radius: 20,
+    cx: 0, cz: 24, radius: 22,
     icon: "Sun",
+  },
+  zenbeach: {
+    name: "Zen Beach",
+    id: "zenbeach",
+    cx: -20, cz: 28, radius: 4,
+    icon: "Sparkles",
   },
   academy: {
     name: "Vibe Academy",

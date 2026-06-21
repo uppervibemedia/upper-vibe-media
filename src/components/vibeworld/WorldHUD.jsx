@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, Sun, X,
   Compass, Sparkles, Library, SkipForward,
-  Volume2, VolumeX, BookOpen, GraduationCap, ShoppingBag, Bell,
+  Volume2, VolumeX, BookOpen, GraduationCap, ShoppingBag, Bell, Waves,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
@@ -15,6 +15,7 @@ import VibeCheckPanel from "./panels/VibeCheckPanel";
 import PrivateChatPanel from "./panels/PrivateChatPanel";
 import AcademyPanel from "./panels/AcademyPanel";
 import ShopPanel from "./panels/ShopPanel";
+import ZenBeachPanel from "./panels/ZenBeachPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import IncomingChatRequest from "./IncomingChatRequest";
 import ChatWarning from "@/components/vibeworld/ChatWarning";
@@ -28,6 +29,7 @@ const ZONE_ICONS = {
   library: Library,
   vibecheck: Sparkles,
   beach: Sun,
+  zenbeach: Waves,
   academy: GraduationCap,
   shop: ShoppingBag,
 };
@@ -103,6 +105,7 @@ export default function WorldHUD({
   const [vibeCheckOpen, setVibeCheckOpen] = useState(false);
   const [academyOpen, setAcademyOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
+  const [zenBeachOpen, setZenBeachOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
@@ -778,6 +781,39 @@ export default function WorldHUD({
             </span>
           </motion.div>
         )}
+
+        {zone?.id === "zenbeach" && (
+          <motion.div
+            key="zenbeach-actions"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
+            style={{
+              paddingBottom: isMobile
+                ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
+                : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+              pointerEvents: "none",
+            }}
+          >
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => { hapticTap(); setZenBeachOpen(true); onMobileModalChange?.(true); }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#00D4F0,#7C3AED)",
+                color: "#fff",
+                boxShadow: "0 0 20px rgba(0,212,240,0.35)",
+                minHeight: "44px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
+              }}
+            >
+              <Waves className="w-3.5 h-3.5" />
+              Enter Zen Beach
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* ── Music Library Panel (slide-up) ────────────────────── */}
@@ -822,6 +858,13 @@ export default function WorldHUD({
       <ShopPanel
         open={shopOpen}
         onClose={() => { setShopOpen(false); onMobileModalChange?.(false); }}
+        isMobile={isMobile}
+      />
+
+      {/* ── Zen Beach Panel (slide-up) ────────────────────────── */}
+      <ZenBeachPanel
+        open={zenBeachOpen}
+        onClose={() => { setZenBeachOpen(false); onMobileModalChange?.(false); }}
         isMobile={isMobile}
       />
 
