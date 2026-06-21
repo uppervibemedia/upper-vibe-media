@@ -21,10 +21,8 @@ export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDanc
       onClose?.();
     } else {
       onEmote?.(emote);
-      if (emote.id === "dance") {
-        // Auto-close panel so user can see avatar dancing
-        onClose?.();
-      }
+      // Auto-close panel so user can see avatar animation
+      onClose?.();
     }
   }, [onEmote, onStopDance, onClose, isDancing]);
 

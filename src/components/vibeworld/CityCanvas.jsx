@@ -1388,7 +1388,7 @@ import { createAvatar, createRemoteAvatar } from "./AvatarModel.jsx";
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef,   remoteUsers, isDancing = false, activeEmote = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1443,6 +1443,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   lockedRef.current = locked;
   const isDancingRef = useRef(false);
   isDancingRef.current = isDancing;
+  const activeEmoteRef = useRef(null);
+  activeEmoteRef.current = activeEmote;
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
@@ -1746,6 +1748,85 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const rlLeg = animParts.rightHip?.userData?.leg?.userData?.lowerLeg;
           if (llLeg) llLeg.rotation.x = kneel;
           if (rlLeg) rlLeg.rotation.x = kneel;
+        }
+
+        // ─── EMOTE ANIMATIONS (wave, clap, heart, fire, peace) ──
+        const activeEmoteEffect = activeEmoteRef.current?.effect;
+        if (activeEmoteEffect && activeEmoteEffect !== "dance") {
+          const emoteT = t * 4.0; // Quick tempo for emotes
+          const emoteS = Math.min(1, anim.speed + dt * 10); // Fast ramp
+
+          if (activeEmoteEffect === "wave") {
+            // Right arm raised, waving side to side
+            if (animParts.rightShoulder) {
+              animParts.rightShoulder.rotation.x = -2.2 + Math.cos(emoteT * 1.5) * 0.3;
+              animParts.rightShoulder.rotation.z = -0.4 + Math.sin(emoteT * 2) * 0.4;
+            }
+            // Left arm stays down
+            if (animParts.leftShoulder) {
+              animParts.leftShoulder.rotation.x += (-0.12 - animParts.leftShoulder.rotation.x) * dt * 4;
+              animParts.leftShoulder.rotation.z += (0 - animParts.leftShoulder.rotation.z) * dt * 4;
+            }
+          } else if (activeEmoteEffect === "clap") {
+            // Both hands come together in front
+            if (animParts.leftShoulder) {
+              animParts.leftShoulder.rotation.x = -1.2 + Math.sin(emoteT * 1.8) * 0.3;
+              animParts.leftShoulder.rotation.z = 0.6;
+            }
+            if (animParts.rightShoulder) {
+              animParts.rightShoulder.rotation.x = -1.2 + Math.sin(emoteT * 1.8) * 0.3;
+              animParts.rightShoulder.rotation.z = -0.6;
+            }
+            // Bounce slightly
+            if (animParts.torso) {
+              animParts.torso.position.y = Math.abs(Math.sin(emoteT * 1.8)) * 0.04;
+            }
+          } else if (activeEmoteEffect === "heart") {
+            // Arms form heart shape in front
+            if (animParts.leftShoulder) {
+              animParts.leftShoulder.rotation.x = -1.5;
+              animParts.leftShoulder.rotation.z = 0.6 + Math.sin(emoteT * 0.6) * 0.1;
+            }
+            if (animParts.rightShoulder) {
+              animParts.rightShoulder.rotation.x = -1.5;
+              animParts.rightShoulder.rotation.z = -0.6 + Math.sin(emoteT * 0.6) * 0.1;
+            }
+            // Slight sway
+            if (animParts.torso) {
+              animParts.torso.rotation.z = Math.sin(emoteT * 0.5) * 0.04;
+            }
+          } else if (activeEmoteEffect === "fire") {
+            // Energetic bounce with arms punching up
+            const fireIntensity = Math.abs(Math.sin(emoteT * 2));
+            if (animParts.torso) {
+              animParts.torso.position.y = fireIntensity * 0.1;
+            }
+            if (animParts.leftShoulder) {
+              animParts.leftShoulder.rotation.x = -2.5 + fireIntensity * 0.6;
+              animParts.leftShoulder.rotation.z = 0.2;
+            }
+            if (animParts.rightShoulder) {
+              animParts.rightShoulder.rotation.x = -2.5 + fireIntensity * 0.6;
+              animParts.rightShoulder.rotation.z = -0.2;
+            }
+            if (animParts.leftHip) animParts.leftHip.rotation.x = Math.sin(emoteT * 2) * 0.15;
+            if (animParts.rightHip) animParts.rightHip.rotation.x = -Math.sin(emoteT * 2) * 0.15;
+          } else if (activeEmoteEffect === "peace") {
+            // Right arm raised with peace sign
+            if (animParts.rightShoulder) {
+              animParts.rightShoulder.rotation.x = -2.4;
+              animParts.rightShoulder.rotation.z = -0.5 + Math.sin(emoteT * 0.7) * 0.08;
+            }
+            // Left arm relaxed
+            if (animParts.leftShoulder) {
+              animParts.leftShoulder.rotation.x += (-0.12 - animParts.leftShoulder.rotation.x) * dt * 4;
+              animParts.leftShoulder.rotation.z += (0 - animParts.leftShoulder.rotation.z) * dt * 4;
+            }
+            // Slight nod
+            if (animParts.torso) {
+              animParts.torso.rotation.x = Math.sin(emoteT * 0.6) * 0.03;
+            }
+          }
         }
 
         // Torso breathing when idle
