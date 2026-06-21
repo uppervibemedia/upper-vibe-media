@@ -1278,7 +1278,6 @@ function createCosmicSky(scene) {
 
 // createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
 import { createAvatar, createRemoteAvatar } from "./AvatarModel.jsx";
-import { loadRPMAvatar } from "./RPMLoader.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -1389,21 +1388,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       buildPark(scene);
 
-      // Use Ready Player Me GLB if available, else fallback to primitive avatar
-      let avatar;
-      const rpmUrl = avatarConfig?.rpmAvatarUrl;
-      if (rpmUrl) {
-        avatar = loadRPMAvatar(
-          scene, rpmUrl,
-          { x: SPAWN[0], y: SPAWN[1], z: SPAWN[2] },
-          (loadedModel) => {
-            // Swap the avatar reference once GLB is loaded
-            avatarRef.current = loadedModel;
-          }
-        );
-      } else {
-        avatar = createAvatar(scene, avatarConfig || {});
-      }
+      // Build procedural avatar
+      const avatar = createAvatar(scene, avatarConfig || {});
       avatarRef.current = avatar;
 
       // Avatar rim light — soft glow so avatar doesn't blend into dark ground
@@ -1420,6 +1406,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       let rightShoulder = null;
       let leftHip = null;
       let rightHip = null;
+      // Deep traverse — arms are children of torso so we need recursive search
       avatar.traverse((child) => {
         if (child.name === "torso") torso = child;
         if (child.name === "leftShoulder") leftShoulder = child;
@@ -1672,14 +1659,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const lKneeTarget = lSwing * lSwing * 0.82 * s + lStance * lStance * 0.12 * s;
         const rKneeTarget = rSwing * rSwing * 0.82 * s + rStance * rStance * 0.12 * s;
 
-        const llLeg = animParts.leftHip?.userData?.leg?.userData?.lowerLeg;
-        const rlLeg = animParts.rightHip?.userData?.leg?.userData?.lowerLeg;
+        const llLeg = animParts.leftHip?.userData?.leg?.userData?.lowerLeg
+          || avatar.getObjectByName("leftKnee");
+        const rlLeg = animParts.rightHip?.userData?.leg?.userData?.lowerLeg
+          || avatar.getObjectByName("rightKnee");
         if (llLeg) llLeg.rotation.x += (lKneeTarget - llLeg.rotation.x) * Math.min(1, dt * blendLerp);
         if (rlLeg) rlLeg.rotation.x += (rKneeTarget - rlLeg.rotation.x) * Math.min(1, dt * blendLerp);
 
         // Feet
-        const lFoot = llLeg?.userData?.foot;
-        const rFoot = rlLeg?.userData?.foot;
+        const lFoot = llLeg?.userData?.foot || avatar.getObjectByName("leftFoot");
+        const rFoot = rlLeg?.userData?.foot || avatar.getObjectByName("rightFoot");
         const lFootTarget = -lSwing * 0.30 * s + lStance * 0.04 * s;
         const rFootTarget = -rSwing * 0.30 * s + rStance * 0.04 * s;
         if (lFoot) lFoot.rotation.x += (lFootTarget - lFoot.rotation.x) * Math.min(1, dt * blendLerp);
@@ -1698,8 +1687,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           animParts.rightShoulder.rotation.z += (armOut - animParts.rightShoulder.rotation.z) * Math.min(1, dt * blendLerp);
         }
 
-        const larmForearm = animParts.leftShoulder?.userData?.arm?.userData?.forearm;
-        const rarmForearm = animParts.rightShoulder?.userData?.arm?.userData?.forearm;
+        // Resolve forearm/hand — arms are parented to torso, look up by name if userData path fails
+        const larmForearm = animParts.leftShoulder?.userData?.arm?.userData?.forearm
+          || avatar.getObjectByName("leftElbow");
+        const rarmForearm = animParts.rightShoulder?.userData?.arm?.userData?.forearm
+          || avatar.getObjectByName("rightElbow");
         const lArmBack = Math.max(0, sinWt) * 0.4 * s;
         const rArmBack = Math.max(0, -sinWt) * 0.4 * s;
         if (larmForearm) larmForearm.rotation.x += (lArmBack - larmForearm.rotation.x) * Math.min(1, dt * blendLerp);
