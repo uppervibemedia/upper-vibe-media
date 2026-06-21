@@ -9,7 +9,7 @@ import { createAvatar } from "./AvatarModel";
 
 // ── Dev flag — set to false to return to normal world ────────────────────────
 // Set to true temporarily to inspect avatar on clean test platform
-export const DEV_AVATAR_TEST_MODE = false;
+export const DEV_AVATAR_TEST_MODE = true;
 
 const PLATFORM_Y = 0;
 const AVATAR_Y   = PLATFORM_Y; // feet on platform
@@ -107,20 +107,34 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
     let orbitAngle = 0; // auto-rotates slowly for all-angle view
     const camera = new THREE.PerspectiveCamera(50, el.clientWidth / el.clientHeight, 0.1, 40);
 
-    // Mouse / touch orbit override
+    // Mouse / touch orbit override — horizontal AND vertical drag + scroll zoom
     let isDragging = false;
-    let lastX = 0;
-    const onMouseDown = (e) => { isDragging = true; lastX = e.clientX || e.touches?.[0]?.clientX; };
+    let lastX = 0, lastY = 0;
+    let camHeight = CAM_HEIGHT;  // vertical orbit
+    const CAM_HEIGHT_MIN = 0.1;  // look at feet
+    const CAM_HEIGHT_MAX = 2.8;  // look from above
+    let camDist = CAM_DIST;
+    const onMouseDown = (e) => {
+      isDragging = true;
+      lastX = e.clientX ?? e.touches?.[0]?.clientX;
+      lastY = e.clientY ?? e.touches?.[0]?.clientY;
+    };
     const onMouseMove = (e) => {
       if (!isDragging) return;
       const x = e.clientX ?? e.touches?.[0]?.clientX;
+      const y = e.clientY ?? e.touches?.[0]?.clientY;
       if (x === undefined) return;
       orbitAngle -= (x - lastX) * 0.012;
-      lastX = x;
+      camHeight = Math.min(CAM_HEIGHT_MAX, Math.max(CAM_HEIGHT_MIN, camHeight - (y - lastY) * 0.008));
+      lastX = x; lastY = y;
     };
     const onMouseUp = () => { isDragging = false; };
+    const onWheel = (e) => {
+      camDist = Math.min(5.5, Math.max(1.4, camDist + e.deltaY * 0.005));
+    };
     renderer.domElement.addEventListener("mousedown", onMouseDown);
     renderer.domElement.addEventListener("touchstart", onMouseDown);
+    renderer.domElement.addEventListener("wheel", onWheel, { passive: true });
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("touchmove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
@@ -133,10 +147,12 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
       if (!isDragging) orbitAngle += 0.004;
 
       camera.position.set(
-        Math.sin(orbitAngle) * CAM_DIST,
-        CAM_HEIGHT,
-        Math.cos(orbitAngle) * CAM_DIST,
+        Math.sin(orbitAngle) * camDist,
+        camHeight,
+        Math.cos(orbitAngle) * camDist,
       );
+      // Look-at target tracks camera height so avatar stays centered
+      TARGET.y = Math.max(0.3, camHeight * 0.75);
       camera.lookAt(TARGET);
 
       // Idle avatar breathing
@@ -169,6 +185,7 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
       window.removeEventListener("touchmove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("touchend", onMouseUp);
+      renderer.domElement.removeEventListener("wheel", onWheel);
       renderer.dispose();
       el.removeChild(renderer.domElement);
     };
@@ -185,7 +202,7 @@ export default function AvatarTestPlatform({ avatarConfig = {} }) {
             DEV · AVATAR TEST PLATFORM
           </span>
         </div>
-        <span className="text-white/30 text-[10px] font-mono">drag to rotate · auto-orbits</span>
+        <span className="text-white/30 text-[10px] font-mono">drag to rotate/tilt · scroll to zoom</span>
       </div>
 
       {/* Canvas */}
