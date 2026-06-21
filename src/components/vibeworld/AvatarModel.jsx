@@ -21,8 +21,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { SPAWN } from "./cityData";
 
 const GLB_URLS = {
-  male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
-  female: "https://threejs.org/examples/models/gltf/Xbot.glb",
+  male:         "https://threejs.org/examples/models/gltf/Soldier.glb",
+  female:       "https://threejs.org/examples/models/gltf/Xbot.glb",
+  human_female: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Xbot.glb",
 };
 
 const _loader = new GLTFLoader();
