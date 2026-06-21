@@ -6,7 +6,7 @@ import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
-export const DEV_AVATAR_TEST_MODE = true;
+export const DEV_AVATAR_TEST_MODE = false;
 
 const GLB_URL = "https://threejs.org/examples/models/gltf/Soldier.glb";
 const ANIMS = ["idle", "walk", "run"];
