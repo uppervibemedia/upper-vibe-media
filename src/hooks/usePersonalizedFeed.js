@@ -26,7 +26,8 @@ export default function usePersonalizedFeed(userId) {
     if (startedRef.current) return;
     startedRef.current = true;
 
-    const communityFetch = Promise.all([
+    // Stagger API calls to avoid rate limits: community first, then user
+    const communityFetch = () => Promise.all([
       getPublishedTracks("-created_date", 200),
       base44.entities.SongStream.list("-created_date", 500),
       base44.entities.Favorite.filter({ type: "track" }, "-created_date", 1000),
@@ -34,20 +35,21 @@ export default function usePersonalizedFeed(userId) {
     ]);
 
     const userFetch = userId
-      ? Promise.all([
+      ? () => new Promise(resolve => setTimeout(resolve, 500)).then(() => Promise.all([
           base44.entities.SongStream.filter({ user_id: userId }, "-created_date", 300),
           base44.entities.Favorite.filter({ user_email: null, created_by_id: userId, type: "track" }, "-created_date", 200),
           base44.entities.UserDownload.filter({ user_id: userId }, "-created_date", 200),
           base44.entities.VibeCheckIn.filter({ user_id: userId }, "-check_in_date", 7),
-        ])
-      : Promise.resolve([[], [], [], []]);
+        ]))
+      : () => Promise.resolve([[], [], [], []]);
 
-    Promise.all([communityFetch, userFetch]).then(([
-      [tracks, allStreams, allFavs, allDls],
-      [myStreams, myFavs, myDls, myCheckIns],
-    ]) => {
+    communityFetch().then(([tracks, allStreams, allFavs, allDls]) => {
       setAllTracks(tracks);
       setCommunityIdx(buildCommunityIndex(allStreams, allFavs, allDls));
+      // Stagger user-scoped calls after community data loads
+      return userFetch();
+    }).then((userResult) => {
+      const [myStreams, myFavs, myDls, myCheckIns] = userResult || [[], [], [], []];
       setUserStreams(myStreams);
       setUserFavs(myFavs);
       setUserDownloads(myDls);

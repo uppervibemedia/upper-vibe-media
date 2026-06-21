@@ -280,9 +280,9 @@ export default function usePrivateChat(user) {
       }
     };
 
-    // Poll immediately on mount, then every 3 seconds as fallback
+    // Poll immediately on mount, then every 5 seconds as fallback
     poll();
-    const interval = setInterval(poll, 3000);
+    const interval = setInterval(poll, 5000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [user?.id]);
 
