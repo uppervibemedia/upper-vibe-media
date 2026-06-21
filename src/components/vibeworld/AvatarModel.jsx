@@ -127,11 +127,16 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt) {
   if (!entry || !entry.mixer) return;
   entry.mixer.update(dt);
 
+  // If an emote override is active, let it play — don't interrupt
+  if (entry._emoteActive) return;
+
   if (isDancing) {
-    const key = entry.clips.run ? "run" : entry.clips.walk ? "walk" : null;
+    // Dance: fast walk animation at high speed creates a bouncy dance feel
+    // Use walk at 2.2x speed — energetic rhythm without the running lean
+    const key = entry.clips.walk ? "walk" : entry.clips.run ? "run" : null;
     if (key) {
-      crossFade(entry, key, 0.3);
-      entry.clips[key].setEffectiveTimeScale(1.4);
+      if (entry.currentAnim !== key) crossFade(entry, key, 0.25);
+      entry.clips[key].setEffectiveTimeScale(2.2);
     }
     return;
   }
@@ -155,6 +160,54 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt) {
       entry.clips.walk.setEffectiveTimeScale(0.0);
     }
   }
+}
+
+// ─── PUBLIC: playEmoteAnimation ──────────────────────────────
+// Plays a short emote animation on the avatar using existing clips.
+// Each emote id maps to a distinct clip + speed to feel different.
+// After durationMs, reverts to idle.
+export function playEmoteAnimation(entry, emoteId) {
+  if (!entry || !entry.mixer) return;
+
+  // Cancel any existing emote timer
+  if (entry._emoteTimer) { clearTimeout(entry._emoteTimer); entry._emoteTimer = null; }
+
+  const clips = entry.clips;
+
+  // Map emote → { clip key, timeScale, durationMs }
+  const EMOTE_MAP = {
+    wave:  { key: "walk", timeScale: 0.4,  durationMs: 2200 }, // slow swaying = wave
+    clap:  { key: "walk", timeScale: 1.8,  durationMs: 2000 }, // fast bounce = clapping energy
+    heart: { key: "idle", timeScale: 0.25, durationMs: 2500 }, // very slow idle = dreamy
+    fire:  { key: "run",  timeScale: 3.0,  durationMs: 1800 }, // fast run = hype
+    peace: { key: "idle", timeScale: 0.5,  durationMs: 2500 }, // slow idle = chill
+  };
+
+  const cfg = EMOTE_MAP[emoteId];
+  if (!cfg || !clips[cfg.key]) return;
+
+  entry._emoteActive = true;
+
+  // Force transition to emote clip at distinct speed
+  const from = clips[entry.currentAnim];
+  const to = clips[cfg.key];
+  to.reset().setEffectiveTimeScale(cfg.timeScale).setEffectiveWeight(1).play();
+  if (from && from !== to) from.crossFadeTo(to, 0.15, true);
+  entry.currentAnim = cfg.key;
+
+  // Revert to idle after duration
+  entry._emoteTimer = setTimeout(() => {
+    entry._emoteActive = false;
+    entry._emoteTimer = null;
+    // Crossfade back to idle
+    const idleClip = clips.idle || clips.walk;
+    if (idleClip) {
+      const current = clips[entry.currentAnim];
+      idleClip.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
+      if (current && current !== idleClip) current.crossFadeTo(idleClip, 0.3, true);
+      entry.currentAnim = clips.idle ? "idle" : "walk";
+    }
+  }, cfg.durationMs);
 }
 
 // ─── attachModel ─────────────────────────────────────────────

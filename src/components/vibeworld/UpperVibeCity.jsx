@@ -4,7 +4,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
-import { retintAvatar } from "@/components/vibeworld/AvatarModel";
+import { retintAvatar, playEmoteAnimation } from "@/components/vibeworld/AvatarModel";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
 import StageVideoEmbed from "@/components/vibeworld/StageVideoEmbed";
@@ -62,7 +62,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       // Clear any existing emote timer
       if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
       setActiveEmote({ ...emote, startedAt: Date.now() });
-      // Non-dance emotes last 3 seconds
+      // Trigger actual avatar body movement for this emote
+      if (playerAvatarEntryRef.current) {
+        playEmoteAnimation(playerAvatarEntryRef.current, emote.id);
+      }
+      // Visual overlay lasts 3 seconds
       emoteTimerRef.current = setTimeout(() => {
         setActiveEmote(null);
       }, 3000);
