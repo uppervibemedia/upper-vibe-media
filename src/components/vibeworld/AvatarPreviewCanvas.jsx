@@ -9,7 +9,7 @@ import { OUTFIT_COLORS, SKIN_TONES } from "./AvatarSetup";
 
 const GLB_URLS = {
   male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
-  female: "https://threejs.org/examples/models/gltf/Michelle.glb",
+  female: "https://threejs.org/examples/models/gltf/Xbot.glb",
 };
 
 const _gltfCache = {};
