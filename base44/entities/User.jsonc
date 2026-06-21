@@ -18,7 +18,7 @@
     "isPremium": {
       "type": "boolean",
       "default": false,
-      "description": "Legacy compatibility field \u2014 same as isPlus"
+      "description": "Legacy compatibility field - same as isPlus"
     },
     "tier": {
       "type": "string",
@@ -94,13 +94,33 @@
       "type": "string",
       "description": "Public display username in Upper Vibe City"
     },
-    "world_avatar": {
+    "world_username_lower": {
+      "type": "string",
+      "description": "Lowercase username for uniqueness checks"
+    },
+    "avatar_type": {
       "type": "string",
       "enum": [
-        "male",
-        "female"
+        "masculine",
+        "feminine",
+        "nonbinary",
+        "neutral"
       ],
-      "description": "Avatar type for Upper Vibe City"
+      "default": "neutral",
+      "description": "Avatar body type for Upper Vibe City"
+    },
+    "skin_tone": {
+      "type": "string",
+      "enum": [
+        "light",
+        "medium-light",
+        "medium",
+        "medium-dark",
+        "dark",
+        "deep"
+      ],
+      "default": "medium",
+      "description": "Skin tone for avatar in Upper Vibe City"
     },
     "uvc_rules_accepted": {
       "type": "boolean",

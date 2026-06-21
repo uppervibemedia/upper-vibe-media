@@ -1388,7 +1388,7 @@ import { createAvatar, createRemoteAvatar } from "./AvatarModel.jsx";
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef,   remoteUsers, isDancing = false, activeEmote = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef,   remoteUsers, isDancing = false, activeEmote = null, avatarConfig, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1490,7 +1490,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       camera.lookAt(SPAWN[0], SPAWN[1] + initLookY, SPAWN[2]);
 
       buildPark(scene);
-      const avatar = createAvatar(scene);
+      const avatar = createAvatar(scene, avatarConfig || {});
       avatarRef.current = avatar;
 
       let torso = null;
@@ -2059,7 +2059,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             const group = createRemoteAvatar(
               scene, remote.user_id,
               remote.username || "User",
-              remote.avatar_type || "default"
+              remote.avatar_type || "neutral",
+              remote.skin_tone || "medium"
             );
             entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 } };
             remoteMap[remote.user_id] = entry;

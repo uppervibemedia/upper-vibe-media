@@ -39,7 +39,7 @@ export default function WorldGate({ children }) {
     // (includes custom fields like world_username, uvc_rules_accepted, etc.)
     if (!user.world_username) {
       setStep(STEP.SETUP_USERNAME);
-    } else if (!user.world_avatar) {
+    } else if (!user.avatar_type) {
       setStep(STEP.SETUP_AVATAR);
     } else if (
       !user.uvc_rules_accepted ||
@@ -110,7 +110,13 @@ export default function WorldGate({ children }) {
   }
 
   if (step === STEP.SETUP_AVATAR) {
-    return <AvatarSetup onComplete={handleAvatarComplete} />;
+    return (
+      <AvatarSetup
+        onComplete={handleAvatarComplete}
+        existingType={user?.avatar_type || null}
+        existingTone={user?.skin_tone || null}
+      />
+    );
   }
 
   if (step === STEP.SHOW_RULES) {

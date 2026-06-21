@@ -17,6 +17,7 @@ import usePrivateChat from "@/hooks/usePrivateChat";
 import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
+import AvatarSetup from "@/components/vibeworld/AvatarSetup";
 
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
@@ -29,6 +30,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const audioBeatRef = useRef(0);
   const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
+  const [editAvatarOpen, setEditAvatarOpen] = useState(false);
+  const [avatarVersion, setAvatarVersion] = useState(0); // bump to re-read user data
 
   // ── Dance Floor / Emote state ─────────────────────────────────────────────
   const [isDancing, setIsDancing] = useState(false);
@@ -144,6 +147,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const { allTracks, tracksLoaded } = radioCtx || {};
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
+
+  // ── Avatar config derived from user data ──────────────────────────────
+  const avatarConfig = {
+    avatarType: user?.avatar_type || "neutral",
+    skinTone: user?.skin_tone || "medium",
+  };
 
   // ── Personalized feed continuous playback ──────────────────────────────
   const feedActiveRef = useRef(false);
@@ -561,6 +570,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           stageScreenPosRef={stageScreenPosRef}
           mobileInputRef={mobileInputRef}
           remoteUsers={activeUsers}
+          avatarConfig={avatarConfig}
         />
       </div>
 
@@ -695,6 +705,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onEmote={handleEmote}
         onStopDance={handleStopDance}
         isDancing={isDancing}
+        onEditAvatar={() => setEditAvatarOpen(true)}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
@@ -784,6 +795,24 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             />
           )}
         </>
+      )}
+
+      {/* ── Edit Avatar overlay ────────────────────────────────────────── */}
+      {editAvatarOpen && (
+        <AvatarSetup
+          onComplete={async () => {
+            setEditAvatarOpen(false);
+            // Bump version to trigger re-read of user data next render
+            setAvatarVersion((v) => v + 1);
+            // Refresh user data
+            try {
+              const freshUser = await base44.auth.me();
+              setAvatarVersion((v) => v + 1);
+            } catch {}
+          }}
+          existingType={user?.avatar_type || "neutral"}
+          existingTone={user?.skin_tone || "medium"}
+        />
       )}
 
       {/* DESKTOP: Full now-playing bar */}

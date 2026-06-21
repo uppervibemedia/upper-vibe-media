@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Music4, Tv2, MessageCircle, Sun, X,
+  Music4, Tv2, MessageCircle, Sun, X, UserCircle,
   Compass, Sparkles, Library, SkipForward,
   Volume2, VolumeX, BookOpen, GraduationCap, ShoppingBag, Bell, Waves,
 } from "lucide-react";
@@ -83,6 +83,7 @@ export default function WorldHUD({
   onEmote,
   onStopDance,
   isDancing = false,
+  onEditAvatar,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -235,6 +236,30 @@ export default function WorldHUD({
           currentUserId={currentUserId}
           onSelectUser={onSelectUser}
         />
+
+        {/* Edit Avatar button (only in plaza) */}
+        {zone?.id === "plaza" && onEditAvatar && (
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={() => onEditAvatar()}
+            className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(8px)",
+              width: isMobile ? 28 : 32,
+              height: isMobile ? 28 : 32,
+              minWidth: isMobile ? 28 : 32,
+              minHeight: isMobile ? 28 : 32,
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
+            title="Edit Avatar"
+          >
+            <UserCircle style={{ width: isMobile ? 11 : 13, height: isMobile ? 11 : 13 }}
+              color="rgba(255,255,255,0.4)" />
+          </button>
+        )}
       </motion.div>
 
       {/* ── Pending Requests dropdown ───────────────────────── */}
