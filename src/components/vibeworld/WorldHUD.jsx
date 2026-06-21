@@ -392,7 +392,7 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
+            className="absolute bottom-0 right-0 z-[57] flex flex-col items-end gap-2 px-3"
             style={{
               paddingBottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 12rem)"
@@ -400,41 +400,41 @@ export default function WorldHUD({
               pointerEvents: "none",
             }}
           >
-            {/* Dance / Emotes button */}
-            <button
-              onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); setEmotePanelOpen(true); }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg,#C43BFF,#E040FB)",
-                color: "#fff",
-                boxShadow: "0 0 24px rgba(196,59,255,0.45)",
-                minHeight: "44px",
-                touchAction: "manipulation",
-                pointerEvents: "auto",
-              }}
-            >
-              <Music4 className="w-3.5 h-3.5" />
-              Dance / Emotes
-            </button>
-
-            {/* Music Library button */}
-            <button
-              onTouchStart={(e) => e.stopPropagation()}
-              onClick={handleOpenMusicLibrary}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg,#0080B8,#00A0DC)",
-                color: "#fff",
-                boxShadow: "0 0 20px rgba(0,160,220,0.4)",
-                minHeight: "44px",
-                touchAction: "manipulation",
-                pointerEvents: "auto",
-              }}
-            >
-              <Library className="w-3.5 h-3.5" />
-              Browse Music Library
-            </button>
+            {isDancing ? (
+              <button
+                onTouchStart={(e) => e.stopPropagation()}
+                onClick={() => { hapticTap(); onStopDance?.(); }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "rgba(255,255,255,0.7)",
+                  minHeight: isMobile ? 36 : 40,
+                  touchAction: "manipulation",
+                  pointerEvents: "auto",
+                }}
+              >
+                <X className="w-3 h-3" />
+                Stop Dance
+              </button>
+            ) : (
+              <button
+                onTouchStart={(e) => e.stopPropagation()}
+                onClick={() => { hapticTap(); setEmotePanelOpen(true); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  background: "linear-gradient(135deg,#C43BFF88,#E040FB88)",
+                  border: "1px solid rgba(196,59,255,0.3)",
+                  color: "#fff",
+                  minHeight: isMobile ? 36 : 40,
+                  touchAction: "manipulation",
+                  pointerEvents: "auto",
+                }}
+              >
+                <Sparkles className="w-3 h-3" />
+                Emotes
+              </button>
+            )}
           </motion.div>
         )}
 
