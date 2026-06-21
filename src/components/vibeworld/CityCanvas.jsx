@@ -844,7 +844,7 @@ function buildPark(scene) {
   const academy = new Group();
   academy.name = "upperVibeAcademy";
 
-  const ACAD_X = -22, ACAD_Z = -17;
+  const ACAD_X = -5, ACAD_Z = 14;
 
   // Base platform — wide, cinematic
   const acadPlat = new Mesh(
@@ -902,8 +902,8 @@ function buildPark(scene) {
     depthWrite: false, transparent: true, opacity: 0.6,
   });
   const entrance = new Mesh(entGeo, entMat);
-  // Academy at (-22,-17), plaza at (0,-4): direction is (22,13) → southeast
-  const entAngle = Math.atan2(0 - (-17), 0 - (-22)); // angle toward plaza
+  // Academy at (-5,14), plaza at (0,-4): direction is (5,-18) → southeast
+  const entAngle = Math.atan2(5, -18); // angle toward plaza
   entrance.position.set(ACAD_X + Math.sin(entAngle) * 2.9, 1.7, ACAD_Z + Math.cos(entAngle) * 2.9);
   entrance.rotation.y = entAngle;
   entrance.name = "academyEntrance";
