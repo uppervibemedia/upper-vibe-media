@@ -319,12 +319,24 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     });
   }, []);
 
+  const handleRemoteAvatarClick = useCallback((userId, username) => {
+    setUserInteractionTarget({ user_id: userId, username, id: userId });
+  }, []);
+
   const handleCloseUserMenu = useCallback(() => {
     setUserInteractionTarget(null);
   }, []);
 
   const handleRequestChat = useCallback((targetUserId, targetUsername) => {
     sendChatRequest(targetUserId, targetUsername);
+  }, [sendChatRequest]);
+
+  const handleRequestVoiceChat = useCallback(async (targetUserId, targetUsername) => {
+    // Voice chat request: send a chat request, then auto-send a voice-prompt message
+    const result = await sendChatRequest(targetUserId, targetUsername);
+    if (result?.success) {
+      // After the request is accepted, the system will handle voice through the Lounge/VoiceLoungePanel
+    }
   }, [sendChatRequest]);
 
   const handleReportUser = useCallback((target) => {
@@ -446,6 +458,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       <div className="absolute inset-0">
         <CityCanvas
           onLoaded={() => setLoading(false)}
+          onRemoteAvatarClick={handleRemoteAvatarClick}
           onPositionChange={(x, z, rot) => {
             const prev = prevPosRef.current;
             const dx = x - prev.x;
@@ -573,6 +586,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         safetyConfirmed={safetyConfirmed}
         onSelectUser={handleSelectUser}
         onRequestChat={handleRequestChat}
+        onRequestVoiceChat={handleRequestVoiceChat}
         onAcceptChat={acceptRequest}
         onDeclineChat={declineRequest}
         onSendChatMessage={sendMessage}

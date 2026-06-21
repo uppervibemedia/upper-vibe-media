@@ -1515,7 +1515,7 @@ function createRemoteAvatar(scene, userId, username, avatarType) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, audioIntensityRef, locked, stageScreenPosRef, remoteUsers, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, locked, stageScreenPosRef, remoteUsers, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1553,6 +1553,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
   const remoteAvatarsRef = useRef({}); // userId → { group, prevPos }
   const remoteUsersRef = useRef([]);
   remoteUsersRef.current = remoteUsers || [];
+  const onRemoteClickRef = useRef(onRemoteAvatarClick);
+  onRemoteClickRef.current = onRemoteAvatarClick;
+  const cameraRef = useRef(null);
   const animRef = useRef({
     walkTime: 0,
     isMoving: false,
@@ -1601,6 +1604,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
 
       const asp = rw / Math.max(rh, 1);
       const camera = new PerspectiveCamera(55, asp, 0.1, 80);
+      cameraRef.current = camera;
       // Start camera behind avatar (same as animation loop will use)
       const initCamDist = 5;
       const initCamHeight = 2.5;
@@ -2199,6 +2203,73 @@ export default function CityCanvas({ onLoaded, onPositionChange, stageCanvas, au
       window.removeEventListener("mousedown", onDown);
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("mousemove", onMove);
+    };
+  }, []);
+
+  // ─── REMOTE AVATAR CLICK DETECTION (raycasting) ────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleClick = (e) => {
+      // Only process clicks directly on the canvas (ignore HUD buttons)
+      if (e.target !== canvas) return;
+
+      const scene = sceneRef.current;
+      const camera = cameraRef.current;
+      if (!scene || !camera) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
+      raycaster.far = 20; // Only detect within reasonable distance
+
+      // Collect all remote avatar groups (including name sprites)
+      const remoteGroups = [];
+      const remoteMap = remoteAvatarsRef.current;
+      for (const id in remoteMap) {
+        const entry = remoteMap[id];
+        if (entry.group) remoteGroups.push(entry.group);
+      }
+
+      if (remoteGroups.length === 0) return;
+
+      // Raycast against remote avatar groups (recursive: includes torso, head, name sprite)
+      const intersects = raycaster.intersectObjects(remoteGroups, true);
+
+      if (intersects.length > 0) {
+        // Walk up to find the root remote avatar group
+        let obj = intersects[0].object;
+        while (obj && !obj.name?.startsWith("remote_")) {
+          obj = obj.parent;
+        }
+        if (obj && obj.userData?.userId) {
+          const hitUserId = obj.userData.userId;
+          // Find the remote user data
+          const remoteUser = remoteUsersRef.current.find(
+            (u) => u.user_id === hitUserId
+          );
+          if (remoteUser && onRemoteClickRef.current) {
+            onRemoteClickRef.current(hitUserId, remoteUser.username || "User");
+          }
+        }
+      }
+    };
+
+    canvas.addEventListener("click", handleClick);
+    // Also handle touch on mobile
+    canvas.addEventListener("touchend", (e) => {
+      // Convert touch to click-like event
+      if (e.target !== canvas) return;
+      if (e.changedTouches.length === 1 && !e.cancelable) return;
+      handleClick({ target: canvas, clientX: e.changedTouches[0]?.clientX, clientY: e.changedTouches[0]?.clientY });
+    });
+
+    return () => {
+      canvas.removeEventListener("click", handleClick);
     };
   }, []);
 

@@ -55,6 +55,7 @@ export default function WorldHUD({
   safetyConfirmed,
   onSelectUser,
   onRequestChat,
+  onRequestVoiceChat,
   onAcceptChat,
   onDeclineChat,
   onSendChatMessage,
@@ -565,6 +566,11 @@ export default function WorldHUD({
         onRequestChat={() => {
           if (userInteractionTarget) {
             onRequestChat(userInteractionTarget.user_id || userInteractionTarget.id, userInteractionTarget.username);
+          }
+        }}
+        onRequestVoiceChat={() => {
+          if (userInteractionTarget) {
+            onRequestVoiceChat(userInteractionTarget.user_id || userInteractionTarget.id, userInteractionTarget.username);
           }
         }}
         onBlock={() => {

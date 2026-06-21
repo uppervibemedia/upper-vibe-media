@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { X, MessageCircle, User, UserX, Flag, AlertTriangle } from "lucide-react";
+import { X, MessageCircle, Phone, User, UserX, Flag, AlertTriangle } from "lucide-react";
 
 export default function UserInteractionMenu({
   open,
   targetUser,
   onClose,
   onRequestChat,
+  onRequestVoiceChat,
   onBlock,
   onReport,
   isBlocked,
@@ -72,22 +73,41 @@ export default function UserInteractionMenu({
         {/* Options */}
         <div className="p-2 space-y-1">
           {!isBlocked && (
-            <button
-              onClick={() => { onRequestChat(); onClose(); }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: "rgba(0,200,83,0.08)",
-                border: "1px solid rgba(0,200,83,0.12)",
-                minHeight: 44,
-                touchAction: "manipulation",
-              }}
-            >
-              <MessageCircle className="w-4 h-4 text-green-400" />
-              <div className="text-left">
-                <p className="text-xs font-bold text-white">Request 1-on-1 Chat</p>
-                <p className="text-[10px] text-white/30">Send a private chat request</p>
-              </div>
-            </button>
+            <>
+              <button
+                onClick={() => { onRequestChat(); onClose(); }}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  background: "rgba(0,200,83,0.08)",
+                  border: "1px solid rgba(0,200,83,0.12)",
+                  minHeight: 44,
+                  touchAction: "manipulation",
+                }}
+              >
+                <MessageCircle className="w-4 h-4 text-green-400" />
+                <div className="text-left">
+                  <p className="text-xs font-bold text-white">Request 1-on-1 Chat</p>
+                  <p className="text-[10px] text-white/30">Send a private chat request</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => { onRequestVoiceChat?.(); onClose(); }}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  background: "rgba(0,160,220,0.08)",
+                  border: "1px solid rgba(0,160,220,0.12)",
+                  minHeight: 44,
+                  touchAction: "manipulation",
+                }}
+              >
+                <Phone className="w-4 h-4 text-cyan-400" />
+                <div className="text-left">
+                  <p className="text-xs font-bold text-white">Request Voice Chat</p>
+                  <p className="text-[10px] text-white/30">Start a 1-on-1 voice call</p>
+                </div>
+              </button>
+            </>
           )}
 
           <button
