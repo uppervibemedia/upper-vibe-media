@@ -4,8 +4,7 @@ import { SPAWN } from "./cityData";
 const {
   BoxGeometry, CylinderGeometry, SphereGeometry, Group, Mesh,
   MeshStandardMaterial, MeshBasicMaterial, Color, Vector3,
-  TorusGeometry, Sprite, SpriteMaterial, CanvasTexture, LinearFilter,
-  ShapeGeometry, Shape, CircleGeometry,
+  CircleGeometry, CanvasTexture, LinearFilter, Sprite, SpriteMaterial,
 } = THREE;
 
 // ─── SKIN TONES ──────────────────────────────────────────────
@@ -18,449 +17,202 @@ const SKIN_COLORS = {
   deep:           "#4A2C2A",
 };
 
-// ─── BODY PROPORTIONS — Fortnite-lite stylized human ──────────
 const BODY_PRESETS = {
-  masculine:  [0.56, 0.38, 0.60, 0.54, 1.00, 1.20, 0.62],
-  feminine:   [0.48, 0.40, 0.55, 0.50, 0.96, 1.16, 0.76],
-  nonbinary:  [0.52, 0.39, 0.57, 0.52, 0.98, 1.18, 0.70],
-  neutral:    [0.52, 0.39, 0.57, 0.52, 0.98, 1.18, 0.70],
+  masculine:  [0.56, 0.38, 0.60, 0.54, 1.00, 1.20],
+  feminine:   [0.48, 0.40, 0.55, 0.50, 0.96, 1.16],
+  nonbinary:  [0.52, 0.39, 0.57, 0.52, 0.98, 1.18],
+  neutral:    [0.52, 0.39, 0.57, 0.52, 0.98, 1.18],
 };
 
-// ─── CLOTHING — dark with neon accents per type ─────────────
 const CLOTHING = {
-  masculine: {
-    shirt: "#141416", shirtAccent: "#1A1A1E",
-    neonPrimary: "#00E5FF", neonSecondary: "#E040FB",
-    pants: "#1A1A1E", shoe: "#121214",
-    jacketStyle: "track",
-  },
-  feminine: {
-    shirt: "#141416", shirtAccent: "#1A1A1E",
-    neonPrimary: "#E040FB", neonSecondary: "#00E5FF",
-    pants: "#18181C", shoe: "#121214",
-    jacketStyle: "crop",
-  },
-  nonbinary: {
-    shirt: "#141416", shirtAccent: "#1A1A1E",
-    neonPrimary: "#A078FF", neonSecondary: "#00E5FF",
-    pants: "#1A1A1E", shoe: "#121214",
-    jacketStyle: "layered",
-  },
-  neutral: {
-    shirt: "#141416", shirtAccent: "#1A1A1E",
-    neonPrimary: "#00D4F0", neonSecondary: "#00D4F0",
-    pants: "#18181C", shoe: "#121214",
-    jacketStyle: "hoodie",
-  },
+  masculine: { shirt: "#1A3A8A", pants: "#1A1A2E", shoe: "#111118", neonPrimary: "#00E5FF" },
+  feminine:  { shirt: "#2A1A6A", pants: "#1A1A2E", shoe: "#111118", neonPrimary: "#E040FB" },
+  nonbinary: { shirt: "#1A2A6A", pants: "#1A1A2E", shoe: "#111118", neonPrimary: "#A078FF" },
+  neutral:   { shirt: "#1A3A7A", pants: "#1A2A1A", shoe: "#111118", neonPrimary: "#00D4F0" },
 };
 
-// ─── HAIR COLORS ─────────────────────────────────────────────
-const HAIR_BASE = "#1C110A";
-const HAIR_LIGHT = "#2E1B10";
-
-const SEG = 32;
-
-function mat(hexColor, opts = {}) {
+function mat(hex, opts = {}) {
   const m = new MeshStandardMaterial();
-  m.color = new Color(hexColor);
-  m.roughness = opts.roughness ?? 0.5;
+  m.color = new Color(hex);
+  m.roughness = opts.roughness ?? 0.55;
   m.metalness = opts.metalness ?? 0.05;
-  if (opts.transparent) { m.transparent = true; m.opacity = opts.opacity ?? 1; m.depthWrite = opts.depthWrite ?? true; }
   return m;
 }
 
-function neonMat(hexColor, opacity = 0.6) {
-  return new MeshBasicMaterial({
-    color: new Color(hexColor),
-    depthWrite: false,
-    transparent: true,
-    opacity,
-  });
-}
-
 // ═══════════════════════════════════════════════════════════════
-// STYLIZED HUMAN AVATAR
+// LOCAL AVATAR — matches the live screenshot style
+// Simple blocky humanoid: sphere head, box torso, cylinder limbs
 // ═══════════════════════════════════════════════════════════════
 export function createAvatar(scene, opts = {}) {
   const avatarType = opts.avatarType || "neutral";
-  const skinTone = opts.skinTone || "medium";
-  const skinHex = SKIN_COLORS[skinTone] || SKIN_COLORS.medium;
-  const body = BODY_PRESETS[avatarType] || BODY_PRESETS.neutral;
+  const skinTone   = opts.skinTone  || "medium";
+  const skinHex    = SKIN_COLORS[skinTone] || SKIN_COLORS.medium;
+  const body       = BODY_PRESETS[avatarType] || BODY_PRESETS.neutral;
   const [shoulderW, hipW, torsoH, armLen, legLen, headScale] = body;
-  const cloth = CLOTHING[avatarType] || CLOTHING.neutral;
+  const cloth      = CLOTHING[avatarType] || CLOTHING.neutral;
 
   const avatar = new Group();
   avatar.name = "avatar";
 
-  const skinM = () => mat(skinHex, { roughness: 0.45 });
-  const skinS = () => mat(skinHex, { roughness: 0.35 });
-  const shirtM = () => mat(cloth.shirt, { roughness: 0.22, metalness: 0.10 });
-  const shirtAccentM = () => mat(cloth.shirtAccent, { roughness: 0.20, metalness: 0.08 });
-  const pantsM = () => mat(cloth.pants, { roughness: 0.26, metalness: 0.06 });
-  const shoeM = () => mat(cloth.shoe, { roughness: 0.28, metalness: 0.10 });
-  const soleM = () => mat("#1A1A1A", { roughness: 0.32, metalness: 0.12 });
-  const laceM = () => mat("#E8E8E8", { roughness: 0.35 });
-  const hairM = () => mat(HAIR_BASE, { roughness: 0.44 });
-  const hairL = () => mat(HAIR_LIGHT, { roughness: 0.38 });
-  const eyeW = () => new MeshBasicMaterial({ color: 0xFFFFFF });
-  const irisM = () => new MeshBasicMaterial({ color: 0x5B8C5A });
-  const pupilM = () => new MeshBasicMaterial({ color: 0x080808 });
-  const browM = () => new MeshBasicMaterial({ color: 0x3A2018 });
-  const mouthM = () => new MeshBasicMaterial({ color: 0xC07060 });
-  const mouthL = () => new MeshBasicMaterial({ color: 0xB06050 });
-  const neonP = () => neonMat(cloth.neonPrimary, 0.55);
-  const neonS = () => neonMat(cloth.neonSecondary, 0.45);
+  const skinM  = () => mat(skinHex, { roughness: 0.50 });
+  const shirtM = () => mat(cloth.shirt, { roughness: 0.55, metalness: 0.05 });
+  const pantsM = () => mat(cloth.pants, { roughness: 0.60 });
+  const shoeM  = () => mat(cloth.shoe,  { roughness: 0.55 });
+  const hairM  = () => mat("#1A1008", { roughness: 0.6 });
 
-  function addObj(group, geo, materialOrFn, pos, casts = true) {
-    const m = new Mesh(geo, typeof materialOrFn === "function" ? materialOrFn() : materialOrFn);
-    m.position.copy(pos); m.castShadow = casts; m.receiveShadow = casts;
-    group.add(m); return m;
-  }
-
-  // ─── HEAD ──────────────────────────────────────────────────
-  function buildHead() {
-    const h = new Group(); h.name = "head";
-    const hs = headScale;
-
-    const cranium = addObj(h, new SphereGeometry(0.18 * hs, 28, 22), skinM, new Vector3(0, 0.13 * hs, 0));
-    cranium.scale.set(0.84, 1.06, 0.78);
-
-    const browRidge = addObj(h, new SphereGeometry(0.10 * hs, 18, 12), skinS, new Vector3(0, 0.10 * hs, 0.06 * hs));
-    browRidge.scale.set(0.72, 0.18, 0.48);
-
-    const jaw = addObj(h, new SphereGeometry(0.10 * hs, 20, 14), skinM, new Vector3(0, 0.03 * hs, 0.05 * hs));
-    jaw.scale.set(0.80, 0.44, 0.60);
-
-    const chin = addObj(h, new SphereGeometry(0.03 * hs, 12, 8), skinS, new Vector3(0, -0.005 * hs, 0.08 * hs));
-    chin.scale.set(0.65, 0.45, 0.48);
-
-    for (const s of [-1, 1]) {
-      const cheek = addObj(h, new SphereGeometry(0.05 * hs, 12, 10), skinS, new Vector3(s * 0.06 * hs, 0.09 * hs, 0.05 * hs));
-      cheek.scale.set(0.72, 0.55, 0.44);
-    }
-
-    const eyeY = 0.13 * hs, eyeZ = 0.08 * hs, eyeGap = 0.05 * hs;
-    for (const s of [-1, 1]) {
-      const ex = s * eyeGap;
-      const white = addObj(h, new SphereGeometry(0.04 * hs, 13, 10), eyeW, new Vector3(ex, eyeY, eyeZ));
-      white.scale.set(0.56, 0.72, 0.30);
-      addObj(h, new SphereGeometry(0.018 * hs, 10, 8), irisM, new Vector3(ex, eyeY, eyeZ + 0.008 * hs));
-      addObj(h, new SphereGeometry(0.009 * hs, 8, 6), pupilM, new Vector3(ex, eyeY, eyeZ + 0.014 * hs));
-      const upperLid = addObj(h, new BoxGeometry(0.045 * hs, 0.008 * hs, 0.01 * hs), skinS, new Vector3(ex, eyeY + 0.018 * hs, eyeZ + 0.004 * hs));
-      upperLid.rotation.x = -0.15;
-      const brow = addObj(h, new BoxGeometry(0.06 * hs, 0.014 * hs, 0.012 * hs), browM, new Vector3(ex, eyeY + 0.04 * hs, eyeZ + 0.01 * hs));
-      brow.rotation.z = s * 0.06;
-    }
-
-    const noseBridge = addObj(h, new BoxGeometry(0.025 * hs, 0.04 * hs, 0.024 * hs), skinS, new Vector3(0, 0.10 * hs, 0.08 * hs));
-    const noseTip = addObj(h, new SphereGeometry(0.028 * hs, 12, 10), skinS, new Vector3(0, 0.08 * hs, 0.09 * hs));
-    noseTip.scale.set(0.68, 0.55, 0.55);
-    for (const s of [-1, 1]) {
-      const nostril = addObj(h, new SphereGeometry(0.01 * hs, 6, 5),
-        new MeshBasicMaterial({ color: 0x5A3A2A }),
-        new Vector3(s * 0.016 * hs, 0.076 * hs, 0.094 * hs));
-      nostril.scale.set(0.55, 0.45, 0.45);
-    }
-
-    const ulCenter = addObj(h, new SphereGeometry(0.012 * hs, 8, 6), mouthM, new Vector3(0, 0.05 * hs, 0.09 * hs));
-    ulCenter.scale.set(0.55, 0.45, 0.35);
-    for (const s of [-1, 1]) {
-      const ulSide = addObj(h, new SphereGeometry(0.014 * hs, 7, 5), mouthM, new Vector3(s * 0.03 * hs, 0.045 * hs, 0.088 * hs));
-      ulSide.scale.set(0.5, 0.4, 0.35);
-    }
-    const lowerLip = addObj(h, new SphereGeometry(0.018 * hs, 10, 8), mouthL, new Vector3(0, 0.035 * hs, 0.092 * hs));
-    lowerLip.scale.set(0.78, 0.35, 0.40);
-
-    for (const s of [-1, 1]) {
-      const ear = addObj(h, new SphereGeometry(0.04 * hs, 12, 10), skinM, new Vector3(s * 0.09 * hs, 0.11 * hs, 0));
-      ear.scale.set(0.26, 0.58, 0.40);
-    }
-
-    const style = cloth.jacketStyle;
-    if (style === "track" || style === "hoodie") {
-      const mainHair = addObj(h, new SphereGeometry(0.20 * hs, 24, 20), hairM, new Vector3(0, 0.17 * hs, -0.01));
-      mainHair.scale.set(1.08, 0.52, 0.94);
-      for (const s of [-1, 1]) {
-        addObj(h, new SphereGeometry(0.07 * hs, 13, 10), hairL, new Vector3(s * 0.08 * hs, 0.14 * hs, 0.016));
-      }
-      const bang = addObj(h, new BoxGeometry(0.10 * hs, 0.05 * hs, 0.08 * hs), hairL, new Vector3(0, 0.21 * hs, 0.05 * hs));
-      bang.rotation.x = -0.25;
-      addObj(h, new SphereGeometry(0.12 * hs, 16, 12), hairM, new Vector3(0, 0.08 * hs, -0.07 * hs));
-    } else if (style === "crop") {
-      const mainHair = addObj(h, new SphereGeometry(0.21 * hs, 24, 20), hairM, new Vector3(0, 0.16 * hs, -0.01));
-      mainHair.scale.set(1.10, 0.55, 0.96);
-      for (const s of [-1, 1]) {
-        for (let c = 0; c < 3; c++) {
-          addObj(h, new SphereGeometry(0.04 * hs, 10, 8), hairL, new Vector3(s * (0.07 + c * 0.02) * hs, 0.12 + c * 0.03 * hs, 0.02));
-        }
-      }
-      const bang = addObj(h, new BoxGeometry(0.10 * hs, 0.045 * hs, 0.07 * hs), hairL, new Vector3(0, 0.20 * hs, 0.048 * hs));
-      bang.rotation.x = -0.22;
-      addObj(h, new SphereGeometry(0.11 * hs, 16, 12), hairM, new Vector3(0, 0.10 * hs, -0.06 * hs));
-    } else {
-      const mainHair = addObj(h, new SphereGeometry(0.20 * hs, 24, 20), hairM, new Vector3(0, 0.15 * hs, -0.01));
-      mainHair.scale.set(1.10, 0.50, 0.94);
-      const sweep = addObj(h, new BoxGeometry(0.08 * hs, 0.04 * hs, 0.08 * hs), hairL, new Vector3(-0.03 * hs, 0.19 * hs, 0.04 * hs));
-      sweep.rotation.z = 0.25; sweep.rotation.x = -0.18;
-      for (let i = 0; i < 3; i++) {
-        addObj(h, new SphereGeometry(0.06 * hs, 10, 8), hairL, new Vector3((i - 1) * 0.05 * hs, 0.20 * hs, -0.015 * hs));
-      }
-      addObj(h, new SphereGeometry(0.12 * hs, 16, 12), hairM, new Vector3(0, 0.08 * hs, -0.065 * hs));
-    }
-
-    return h;
-  }
-
-  // ─── HAND — stylized with segmented fingers ───────────────
-  function buildHand() {
-    const hd = new Group(); hd.name = "hand";
-
-    addObj(hd, new BoxGeometry(0.072, 0.042, 0.082), skinS, new Vector3(0, -0.01, 0));
-    const heel = addObj(hd, new SphereGeometry(0.018, 10, 8), skinS, new Vector3(0.025, -0.018, -0.008));
-    heel.scale.set(0.55, 0.45, 0.6);
-
-    for (let f = -1; f <= 2; f++) {
-      const fx = f * 0.023;
-      const fingerLen = f === 2 ? 0.026 : (f === 1 ? 0.032 : (f === 0 ? 0.036 : 0.028));
-      const segLen = fingerLen / 3;
-      const radius = f === 2 ? 0.0055 : (f === -1 ? 0.006 : 0.007);
-
-      addObj(hd, new CylinderGeometry(radius, radius * 0.95, segLen, 10), skinS, new Vector3(fx, -0.018, 0.032));
-      addObj(hd, new CylinderGeometry(radius * 0.92, radius * 0.85, segLen, 10), skinS, new Vector3(fx, -0.018 - segLen, 0.036));
-      addObj(hd, new CylinderGeometry(radius * 0.82, radius * 0.72, segLen, 10), skinS, new Vector3(fx, -0.018 - segLen * 2, 0.039));
-      addObj(hd, new SphereGeometry(radius * 0.62, 7, 5), skinS, new Vector3(fx, -0.018 - segLen * 2.7, 0.042));
-      addObj(hd, new SphereGeometry(radius * 1.15, 8, 6), skinS, new Vector3(fx, -0.012, 0.024));
-    }
-
-    const thumbBase = addObj(hd, new CylinderGeometry(0.008, 0.009, 0.022, 10), skinS, new Vector3(0.032, -0.006, 0.01));
-    thumbBase.rotation.z = -0.5;
-    const thumbMid = addObj(hd, new CylinderGeometry(0.0075, 0.008, 0.024, 10), skinS, new Vector3(0.046, -0.022, 0.012));
-    thumbMid.rotation.z = -0.7;
-    addObj(hd, new SphereGeometry(0.007, 8, 6), skinS, new Vector3(0.058, -0.036, 0.014));
-
-    addObj(hd, new CylinderGeometry(0.028, 0.034, 0.06, 12), skinS, new Vector3(0, 0.01, -0.02));
-
-    return hd;
-  }
-
-  // ─── FOOT — modern sneaker with neon sole ──────────────────
-  function buildFoot() {
-    const f = new Group(); f.name = "foot";
-
-    addObj(f, new BoxGeometry(0.14, 0.074, 0.21), shoeM, new Vector3(0, 0.02, 0.06));
-    addObj(f, new BoxGeometry(0.15, 0.03, 0.22), soleM, new Vector3(0, -0.03, 0.06));
-    addObj(f, new BoxGeometry(0.14, 0.012, 0.21), neonP, new Vector3(0, -0.012, 0.06));
-    addObj(f, new BoxGeometry(0.13, 0.022, 0.06), soleM, new Vector3(0, -0.012, -0.04));
-
-    const toe = addObj(f, new SphereGeometry(0.048, 13, 10), shoeM, new Vector3(0, 0.015, 0.16));
-    toe.scale.set(0.82, 0.62, 0.50);
-
-    const toeCap = addObj(f, new SphereGeometry(0.042, 10, 8), mat("#1A1A1A", { roughness: 0.20 }), new Vector3(0, 0.02, 0.14));
-    toeCap.scale.set(0.78, 0.45, 0.42);
-
-    addObj(f, new BoxGeometry(0.124, 0.06, 0.05), mat("#141414", { roughness: 0.20 }), new Vector3(0, 0.015, -0.04));
-
-    const stripe = addObj(f, new BoxGeometry(0.12, 0.012, 0.16), laceM, new Vector3(0, -0.008, 0.05));
-    stripe.rotation.x = 0.08;
-
-    addObj(f, new BoxGeometry(0.09, 0.03, 0.045), shoeM, new Vector3(0, 0.06, 0.04));
-    addObj(f, new BoxGeometry(0.088, 0.008, 0.04), mat("#181818", { roughness: 0.22 }), new Vector3(0, 0.075, 0.04));
-
-    const laceArea = addObj(f, new BoxGeometry(0.10, 0.018, 0.07), mat("#181818", { roughness: 0.22 }), new Vector3(0, 0.055, 0.05));
-    laceArea.rotation.x = 0.3;
-    for (let l = 0; l < 4; l++) {
-      const lx = (l - 1.5) * 0.032;
-      addObj(f, new BoxGeometry(0.014, 0.004, 0.07), laceM, new Vector3(lx, 0.06 - l * 0.01, 0.055));
-    }
-
-    addObj(f, new CylinderGeometry(0.062, 0.066, 0.06, 16), shoeM, new Vector3(0, 0.07, -0.02));
-    addObj(f, new TorusGeometry(0.06, 0.012, 10, 16), mat("#181818", { roughness: 0.22 }), new Vector3(0, 0.07, -0.02));
-
-    return f;
-  }
-
-  // ─── LOWER LEG ──────────────────────────────────────────────
-  function buildLowerLeg() {
-    const g = new Group(); g.name = "lowerLeg";
-    const len = legLen * 0.48;
-
-    const calfSphere = addObj(g, new SphereGeometry(0.068, SEG, 16), pantsM, new Vector3(0, -len * 0.30, 0));
-    calfSphere.scale.set(0.80, 0.72, 0.70);
-    addObj(g, new CylinderGeometry(0.056, 0.062, len * 0.40, SEG), pantsM, new Vector3(0, -len * 0.55, 0));
-    addObj(g, new CylinderGeometry(0.052, 0.058, len * 0.35, SEG), pantsM, new Vector3(0, -len * 0.82, 0));
-
-    const neonStripe = addObj(g, new BoxGeometry(0.012, len * 0.65, 0.04), neonS, new Vector3(0.05, -len * 0.25, -0.005));
-
-    const f = buildFoot();
-    f.position.set(0, -len - 0.01, 0.03);
-    g.add(f);
-    g.userData.foot = f;
-    return g;
-  }
-
-  // ─── UPPER LEG ───────────────────────────────────────────────
-  function buildUpperLeg() {
-    const g = new Group(); g.name = "upperLeg";
-    const len = legLen * 0.52;
-
-    const thighSphere = addObj(g, new SphereGeometry(0.08, SEG, 18), pantsM, new Vector3(0, -len * 0.30, 0));
-    thighSphere.scale.set(0.88, 0.82, 0.75);
-    addObj(g, new CylinderGeometry(0.074, 0.082, len * 0.45, SEG), pantsM, new Vector3(0, -len * 0.60, 0));
-    addObj(g, new CylinderGeometry(0.066, 0.076, len * 0.35, SEG), pantsM, new Vector3(0, -len * 0.85, -0.005));
-
-    const ll = buildLowerLeg();
-    ll.position.set(0, -len, 0);
-    g.add(ll);
-    g.userData.lowerLeg = ll;
-    return g;
-  }
-
-  // ─── FOREARM ─────────────────────────────────────────────────
-  function buildForearm() {
-    const g = new Group(); g.name = "forearm";
-    const len = armLen * 0.48;
-    const faTop = addObj(g, new SphereGeometry(0.044, SEG, 14), skinM, new Vector3(0, -len * 0.15, 0));
-    faTop.scale.set(0.76, 0.70, 0.65);
-    addObj(g, new CylinderGeometry(0.034, 0.042, len * 0.60, SEG), skinM, new Vector3(0, -len * 0.50, 0));
-
-    addObj(g, new CylinderGeometry(0.038, 0.038, 0.018, 16), neonP, new Vector3(0, -len, 0));
-
-    const hd = buildHand();
-    hd.position.set(0, -len, 0.005);
-    g.add(hd);
-    g.userData.hand = hd;
-    return g;
-  }
-
-  // ─── UPPER ARM ───────────────────────────────────────────────
-  function buildUpperArm(clothingColor) {
-    const g = new Group(); g.name = "upperArm";
-    const len = armLen * 0.52;
-    const bicepSphere = addObj(g, new SphereGeometry(0.054, SEG, 14),
-      new MeshStandardMaterial({ color: new Color(clothingColor), roughness: 0.22, metalness: 0.10 }),
-      new Vector3(0, -len * 0.20, 0));
-    bicepSphere.scale.set(0.80, 0.85, 0.72);
-
-    addObj(g, new CylinderGeometry(0.048, 0.054, len * 0.55, SEG),
-      new MeshStandardMaterial({ color: new Color(clothingColor), roughness: 0.22, metalness: 0.10 }),
-      new Vector3(0, -len * 0.50, 0));
-
-    addObj(g, new BoxGeometry(0.012, len * 0.5, 0.03), neonS, new Vector3(0.04, -len * 0.30, -0.005));
-
-    const fa = buildForearm();
-    fa.position.set(0, -len, 0);
-    g.add(fa);
-    g.userData.forearm = fa;
-    return g;
-  }
-
-  // ─── TORSO ────────────────────────────────────────────────────
   const torsoGroup = new Group();
   torsoGroup.name = "torso";
 
-  const style = cloth.jacketStyle;
-  const armClothColor = style === "crop" ? skinHex : cloth.shirt;
+  // ── HEAD ────────────────────────────────────────────────────
+  const headGroup = new Group(); headGroup.name = "head";
 
-  const torsoMesh = new Mesh(
-    new CylinderGeometry(shoulderW * 0.42, hipW * 0.34, torsoH, SEG),
+  // Skull
+  const skull = new Mesh(new SphereGeometry(0.16 * headScale, 16, 14), skinM());
+  skull.scale.set(0.88, 1.02, 0.84);
+  skull.position.set(0, 0.10 * headScale, 0);
+  skull.castShadow = true;
+  headGroup.add(skull);
+
+  // Hair cap — sits on top, slightly larger
+  const hairCap = new Mesh(new SphereGeometry(0.165 * headScale, 14, 12), hairM());
+  hairCap.scale.set(0.92, 0.58, 0.90);
+  hairCap.position.set(0, 0.155 * headScale, -0.01);
+  hairCap.castShadow = true;
+  headGroup.add(hairCap);
+
+  // Simple eyes — dark spheres
+  for (const s of [-1, 1]) {
+    const eye = new Mesh(new SphereGeometry(0.022 * headScale, 8, 6),
+      new MeshBasicMaterial({ color: 0x111111 }));
+    eye.position.set(s * 0.055 * headScale, 0.10 * headScale, 0.115 * headScale);
+    headGroup.add(eye);
+  }
+
+  // Neck
+  const neck = new Mesh(new CylinderGeometry(0.055, 0.060, 0.12, 10), skinM());
+  neck.position.set(0, -0.04, 0);
+  neck.castShadow = true;
+  headGroup.add(neck);
+
+  headGroup.position.set(0, torsoH + 0.14, 0);
+  torsoGroup.add(headGroup);
+
+  // ── TORSO — simple box, sleeveless look ─────────────────────
+  const torsoBox = new Mesh(
+    new BoxGeometry(shoulderW * 0.74, torsoH, 0.28),
     shirtM()
   );
-  torsoMesh.position.y = torsoH * 0.50;
-  torsoMesh.castShadow = true; torsoMesh.receiveShadow = true;
-  torsoGroup.add(torsoMesh);
+  torsoBox.position.y = torsoH * 0.50;
+  torsoBox.castShadow = true; torsoBox.receiveShadow = true;
+  torsoGroup.add(torsoBox);
 
-  addObj(torsoGroup, new TorusGeometry(hipW * 0.34, 0.016, 8, SEG),
-    mat("#222224", { roughness: 0.18, metalness: 0.20 }),
-    new Vector3(0, torsoH * 0.15, 0));
-  addObj(torsoGroup, new TorusGeometry(hipW * 0.345, 0.005, 6, SEG),
-    neonP, new Vector3(0, torsoH * 0.17, 0));
+  // Slight V-taper — shoulder wider than waist
+  torsoBox.scale.set(1, 1, 1);
 
-  const chestY = torsoH * 0.72;
-  if (style === "track") {
-    addObj(torsoGroup, new BoxGeometry(0.01, torsoH * 0.35, 0.08), neonP, new Vector3(0, chestY - 0.06, 0.07));
-    const triShape = new Shape();
-    triShape.moveTo(0, 0.05); triShape.lineTo(-0.02, -0.02); triShape.lineTo(0.02, -0.02); triShape.closePath();
-    const triMesh = new Mesh(new ShapeGeometry(triShape), neonP());
-    triMesh.position.set(0, chestY + 0.04, 0.07);
-    torsoGroup.add(triMesh);
-  } else if (style === "crop") {
-    const pulseShape = new Shape();
-    pulseShape.moveTo(-0.022, 0); pulseShape.lineTo(-0.012, 0); pulseShape.lineTo(-0.008, -0.022); pulseShape.lineTo(-0.002, 0.022); pulseShape.lineTo(0.002, -0.008); pulseShape.lineTo(0.008, 0.014); pulseShape.lineTo(0.012, -0.018); pulseShape.lineTo(0.018, 0.010); pulseShape.lineTo(0.022, 0);
-    const pulseMesh = new Mesh(new ShapeGeometry(pulseShape), neonP());
-    pulseMesh.position.set(0, chestY + 0.04, 0.07);
-    torsoGroup.add(pulseMesh);
-  } else if (style === "layered") {
-    const triShape = new Shape();
-    triShape.moveTo(0, 0.05); triShape.lineTo(-0.02, -0.02); triShape.lineTo(0.02, -0.02); triShape.closePath();
-    const triMesh = new Mesh(new ShapeGeometry(triShape), neonP());
-    triMesh.position.set(0, chestY + 0.04, 0.07);
-    torsoGroup.add(triMesh);
-    addObj(torsoGroup, new BoxGeometry(shoulderW * 0.4, 0.022, 0.04), shirtAccentM, new Vector3(0, chestY + 0.08, 0.06));
-  } else {
-    for (const s of [-1, 1]) {
-      addObj(torsoGroup, new BoxGeometry(0.01, torsoH * 0.5, 0.04), neonP, new Vector3(s * shoulderW * 0.14, chestY - 0.08, 0.06));
-    }
-  }
-
-  // ─── NECK + HEAD ──────────────────────────────────────────
-  const neckGroup = new Group();
-  neckGroup.name = "neck";
-  neckGroup.position.set(0, torsoH + 0.02, 0);
+  // ── ARMS — cylinders, skin color, separate from torso ───────
+  const armThick = 0.062;
+  const upperArmLen = armLen * 0.50;
+  const foreArmLen  = armLen * 0.50;
 
   for (const s of [-1, 1]) {
-    const trap = addObj(neckGroup, new SphereGeometry(0.05, 16, 12), skinS, new Vector3(s * 0.08, -0.02, -0.02));
-    trap.scale.set(0.65, 0.35, 0.58);
+    const armX = s * (shoulderW * 0.44);
+
+    // Shoulder pivot
+    const shoulderPivot = new Group();
+    shoulderPivot.name = s > 0 ? "rightShoulder" : "leftShoulder";
+    shoulderPivot.position.set(armX, torsoH * 0.78, 0);
+    torsoGroup.add(shoulderPivot);
+
+    const upperArm = new Mesh(
+      new CylinderGeometry(armThick, armThick * 0.90, upperArmLen, 10),
+      skinM()
+    );
+    upperArm.position.set(0, -upperArmLen / 2, 0);
+    upperArm.castShadow = true;
+    shoulderPivot.add(upperArm);
+
+    // Elbow pivot
+    const elbowPivot = new Group();
+    elbowPivot.name = s > 0 ? "rightElbow" : "leftElbow";
+    elbowPivot.position.set(0, -upperArmLen, 0);
+    shoulderPivot.add(elbowPivot);
+
+    const foreArm = new Mesh(
+      new CylinderGeometry(armThick * 0.85, armThick * 0.75, foreArmLen, 10),
+      skinM()
+    );
+    foreArm.position.set(0, -foreArmLen / 2, 0);
+    foreArm.castShadow = true;
+    elbowPivot.add(foreArm);
+
+    // Hand — simple box
+    const hand = new Mesh(new BoxGeometry(0.075, 0.055, 0.055), skinM());
+    hand.name = s > 0 ? "rightHand" : "leftHand";
+    hand.position.set(0, -foreArmLen - 0.03, 0);
+    hand.castShadow = true;
+    elbowPivot.add(hand);
+
+    shoulderPivot.userData = { elbowPivot, hand };
   }
-  addObj(neckGroup, new CylinderGeometry(0.038, 0.042, 0.12, SEG), skinM, new Vector3(0, 0.03, 0));
-  addObj(neckGroup, new SphereGeometry(0.045, 14, 12), skinS, new Vector3(0, -0.02, 0));
 
-  const headGroup = buildHead();
-  headGroup.position.y = 0.07;
-  neckGroup.add(headGroup);
-  torsoGroup.add(neckGroup);
+  // ── HIPS + LEGS — matching screenshot ───────────────────────
+  const thighLen = legLen * 0.50;
+  const calfLen  = legLen * 0.50;
+  const legThick = 0.072;
 
-  // ─── ARMS ─────────────────────────────────────────────────
-  const shoulderY = torsoH * 0.65;
+  for (const s of [-1, 1]) {
+    const legX = s * hipW * 0.28;
 
-  const leftShoulder = new Group();
-  leftShoulder.name = "leftShoulder";
-  leftShoulder.position.set(-shoulderW * 0.48, shoulderY, -0.03);
-  const leftArm = buildUpperArm(armClothColor);
-  leftShoulder.add(leftArm);
-  leftShoulder.userData.arm = leftArm;
-  torsoGroup.add(leftShoulder);
+    const hipPivot = new Group();
+    hipPivot.name = s > 0 ? "rightHip" : "leftHip";
+    hipPivot.position.set(legX, thighLen, 0);
+    torsoGroup.add(hipPivot);
 
-  const rightShoulder = new Group();
-  rightShoulder.name = "rightShoulder";
-  rightShoulder.position.set(shoulderW * 0.48, shoulderY, -0.03);
-  const rightArm = buildUpperArm(armClothColor);
-  rightShoulder.add(rightArm);
-  rightShoulder.userData.arm = rightArm;
-  torsoGroup.add(rightShoulder);
+    const thigh = new Mesh(
+      new CylinderGeometry(legThick, legThick * 0.88, thighLen, 12),
+      pantsM()
+    );
+    thigh.position.set(0, -thighLen / 2, 0);
+    thigh.castShadow = true; thigh.receiveShadow = true;
+    hipPivot.add(thigh);
 
-  // ─── HIPS ─────────────────────────────────────────────────
-  const hipY = 0.05;
+    const kneePivot = new Group();
+    kneePivot.name = s > 0 ? "rightKnee" : "leftKnee";
+    kneePivot.position.set(0, -thighLen, 0);
+    hipPivot.add(kneePivot);
 
-  const leftHip = new Group();
-  leftHip.name = "leftHip";
-  leftHip.position.set(-hipW * 0.42, hipY, -0.03);
-  const leftLeg = buildUpperLeg();
-  leftHip.add(leftLeg);
-  leftHip.userData.leg = leftLeg;
-  torsoGroup.add(leftHip);
+    const calf = new Mesh(
+      new CylinderGeometry(legThick * 0.82, legThick * 0.72, calfLen, 12),
+      pantsM()
+    );
+    calf.position.set(0, -calfLen / 2, 0);
+    calf.castShadow = true; calf.receiveShadow = true;
+    kneePivot.add(calf);
 
-  const rightHip = new Group();
-  rightHip.name = "rightHip";
-  rightHip.position.set(hipW * 0.42, hipY, -0.03);
-  const rightLeg = buildUpperLeg();
-  rightHip.add(rightLeg);
-  rightHip.userData.leg = rightLeg;
-  torsoGroup.add(rightHip);
+    // Foot — simple low box
+    const anklePivot = new Group();
+    anklePivot.name = s > 0 ? "rightAnkle" : "leftAnkle";
+    anklePivot.position.set(0, -calfLen, 0);
+    kneePivot.add(anklePivot);
 
-  // ─── SHADOW ────────────────────────────────────────────────
-  const sd = new Mesh(new CircleGeometry(0.22, 16), new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false }));
-  sd.rotation.x = -Math.PI / 2; sd.position.y = -1.10; sd.name = "shadow";
-  torsoGroup.add(sd);
+    const foot = new Mesh(new BoxGeometry(0.10, 0.055, 0.18), shoeM());
+    foot.name = s > 0 ? "rightFoot" : "leftFoot";
+    foot.position.set(0, -0.028, 0.04);
+    foot.castShadow = true;
+    anklePivot.add(foot);
+
+    hipPivot.userData = { kneePivot, anklePivot };
+  }
+
+  // Shadow blob
+  const shadow = new Mesh(
+    new CircleGeometry(0.22, 14),
+    new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.20, depthWrite: false })
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = -(thighLen + calfLen + 0.06);
+  shadow.name = "shadow";
+  torsoGroup.add(shadow);
 
   avatar.add(torsoGroup);
   avatar.position.set(SPAWN[0], SPAWN[1], SPAWN[2]);
@@ -469,192 +221,133 @@ export function createAvatar(scene, opts = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// REMOTE AVATAR
+// REMOTE AVATAR — same simple style
 // ═══════════════════════════════════════════════════════════════
 export function createRemoteAvatar(scene, userId, username, avatarType, skinTone) {
   const skinHex = SKIN_COLORS[skinTone] || SKIN_COLORS.medium;
-  const body = BODY_PRESETS[avatarType] || BODY_PRESETS.neutral;
-  const [shoulderW, hipW, torsoH, , legLen] = body;
-  const cloth = CLOTHING[avatarType] || CLOTHING.neutral;
-  const RS = 24;
-  const RS_SMALL = 18;
+  const body    = BODY_PRESETS[avatarType] || BODY_PRESETS.neutral;
+  const [shoulderW, hipW, torsoH, armLen, legLen, headScale] = body;
+  const cloth   = CLOTHING[avatarType] || CLOTHING.neutral;
 
   const group = new Group();
-  group.name = `remote_${userId}`;
+  group.name  = `remote_${userId}`;
   group.userData = { userId, lastPos: { x: 0, z: 0 }, velocity: 0, walkTime: 0, speed: 0 };
 
-  const sMat = () => new MeshStandardMaterial({ color: new Color(skinHex), roughness: 0.40 });
-  const sMatLight = () => new MeshStandardMaterial({ color: new Color(skinHex), roughness: 0.30 });
-  const bMat = () => new MeshStandardMaterial({ color: new Color(cloth.shirt), roughness: 0.24, metalness: 0.08 });
-  const pMat = () => new MeshStandardMaterial({ color: new Color(cloth.pants), roughness: 0.28, metalness: 0.05 });
-  const shoeMat = () => new MeshStandardMaterial({ color: new Color("#121214"), roughness: 0.28 });
-  const soleMat = () => new MeshStandardMaterial({ color: new Color("#1A1A1A"), roughness: 0.32 });
-  const nMat = () => new MeshBasicMaterial({ color: new Color(cloth.neonPrimary), transparent: true, opacity: 0.40, depthWrite: false });
-  const hMat = () => new MeshStandardMaterial({ color: new Color(HAIR_BASE), roughness: 0.44 });
-  const hLMat = () => new MeshStandardMaterial({ color: new Color(HAIR_LIGHT), roughness: 0.38 });
-  const eMat = () => new MeshBasicMaterial({ color: 0x080808 });
-  const irisMat = () => new MeshBasicMaterial({ color: 0x5B8C5A });
-  const moMat = () => new MeshBasicMaterial({ color: 0xC07060 });
+  const sMat  = () => new MeshStandardMaterial({ color: new Color(skinHex), roughness: 0.50 });
+  const bMat  = () => new MeshStandardMaterial({ color: new Color(cloth.shirt), roughness: 0.55 });
+  const pMat  = () => new MeshStandardMaterial({ color: new Color(cloth.pants), roughness: 0.60 });
+  const shMat = () => new MeshStandardMaterial({ color: new Color(cloth.shoe),  roughness: 0.55 });
+  const hMat  = () => new MeshStandardMaterial({ color: new Color("#1A1008"), roughness: 0.6 });
+
+  const upperArmLen = armLen * 0.50, foreArmLen = armLen * 0.50;
+  const thighLen = legLen * 0.50, calfLen = legLen * 0.50;
+  const armThick = 0.062, legThick = 0.072;
 
   // Torso
-  const torso = new Mesh(new CylinderGeometry(shoulderW * 0.44, hipW * 0.36, torsoH, RS), bMat());
-  torso.position.y = torsoH * 0.48; torso.castShadow = true; torso.receiveShadow = true;
+  const torso = new Mesh(new BoxGeometry(shoulderW * 0.74, torsoH, 0.28), bMat());
+  torso.position.y = torsoH * 0.50; torso.castShadow = true; torso.receiveShadow = true;
   group.add(torso);
 
   // Head
-  const headGroup = new Group();
-  headGroup.position.y = torsoH * 0.68 + 0.38;
+  const skull = new Mesh(new SphereGeometry(0.16 * headScale, 14, 12), sMat());
+  skull.scale.set(0.88, 1.02, 0.84);
+  skull.position.y = torsoH + 0.28 * headScale; skull.castShadow = true;
+  group.add(skull);
 
-  const cranium = new Mesh(new SphereGeometry(0.16, 22, 18), sMat());
-  cranium.scale.set(0.84, 1.06, 0.78); cranium.position.y = 0.10; cranium.castShadow = true;
-  headGroup.add(cranium);
-
-  const jaw = new Mesh(new SphereGeometry(0.09, 16, 12), sMat());
-  jaw.scale.set(0.80, 0.44, 0.62); jaw.position.set(0, 0.02, 0.05);
-  headGroup.add(jaw);
+  const hairCap = new Mesh(new SphereGeometry(0.165 * headScale, 12, 10), hMat());
+  hairCap.scale.set(0.92, 0.58, 0.90);
+  hairCap.position.y = torsoH + 0.325 * headScale;
+  group.add(hairCap);
 
   for (const s of [-1, 1]) {
-    const ex = s * 0.045;
-    const eyeMesh = new Mesh(new SphereGeometry(0.035, 10, 8), new MeshBasicMaterial({ color: 0xFFFFFF }));
-    eyeMesh.scale.set(0.52, 0.72, 0.28); eyeMesh.position.set(ex, 0.11, 0.07);
-    headGroup.add(eyeMesh);
-    const iris = new Mesh(new SphereGeometry(0.015, 8, 6), irisMat());
-    iris.position.set(ex, 0.11, 0.076); headGroup.add(iris);
-    const pupil = new Mesh(new SphereGeometry(0.008, 6, 4), eMat());
-    pupil.position.set(ex, 0.11, 0.080); headGroup.add(pupil);
-    const brow = new Mesh(new BoxGeometry(0.05, 0.012, 0.01), new MeshBasicMaterial({ color: 0x3A2018 }));
-    brow.position.set(ex, 0.14, 0.072); brow.rotation.z = s * 0.06;
-    headGroup.add(brow);
+    const eye = new Mesh(new SphereGeometry(0.020 * headScale, 7, 5),
+      new MeshBasicMaterial({ color: 0x111111 }));
+    eye.position.set(s * 0.052 * headScale, torsoH + 0.28 * headScale, 0.13 * headScale);
+    group.add(eye);
   }
 
-  const noseTip = new Mesh(new SphereGeometry(0.022, 10, 8), sMatLight());
-  noseTip.scale.set(0.65, 0.5, 0.5); noseTip.position.set(0, 0.08, 0.086);
-  headGroup.add(noseTip);
-
-  const upperLip = new Mesh(new BoxGeometry(0.06, 0.014, 0.008), moMat());
-  upperLip.position.set(0, 0.05, 0.084); headGroup.add(upperLip);
-  const lowerLip = new Mesh(new BoxGeometry(0.052, 0.016, 0.006), new MeshBasicMaterial({ color: 0xB06050 }));
-  lowerLip.position.set(0, 0.035, 0.086); lowerLip.rotation.x = 0.12;
-  headGroup.add(lowerLip);
-
-  const rHair = new Mesh(new SphereGeometry(0.17, 18, 16), hMat());
-  rHair.scale.set(1.08, 0.52, 0.94); rHair.position.set(0, 0.16, -0.01); rHair.castShadow = true;
-  headGroup.add(rHair);
-  const bangs = new Mesh(new BoxGeometry(0.09, 0.04, 0.07), hLMat());
-  bangs.position.set(0, 0.20, 0.05); bangs.rotation.x = -0.22;
-  headGroup.add(bangs);
-
-  group.add(headGroup);
-
   // Neck
-  const neckMesh = new Mesh(new CylinderGeometry(0.035, 0.04, 0.10, RS_SMALL), sMat());
-  neckMesh.position.y = torsoH * 0.7 + 0.05;
-  group.add(neckMesh);
+  const neck = new Mesh(new CylinderGeometry(0.050, 0.056, 0.11, 9), sMat());
+  neck.position.y = torsoH + 0.10; neck.castShadow = true;
+  group.add(neck);
 
   // Arms
-  const armLen = body ? body[3] : 0.52;
-  const armSeg = armLen * 0.52, faSeg = armLen * 0.48;
   for (const s of [-1, 1]) {
-    const sx = s * shoulderW * 0.50;
-    const signName = s > 0 ? "right" : "left";
+    const sign = s > 0 ? "right" : "left";
+    const armX = s * (shoulderW * 0.44);
 
     const shoulderPivot = new Group();
-    shoulderPivot.name = `${signName}Shoulder`;
-    shoulderPivot.position.set(sx, torsoH * 0.62, -0.05);
+    shoulderPivot.name = `${sign}Shoulder`;
+    shoulderPivot.position.set(armX, torsoH * 0.78, 0);
     group.add(shoulderPivot);
 
-    const upperArm = new Mesh(new CylinderGeometry(0.044, 0.052, armSeg, RS_SMALL), sMat());
-    upperArm.position.set(0, -armSeg / 2, 0); upperArm.castShadow = true;
-    upperArm.name = `${signName}UpperArm`;
-    shoulderPivot.add(upperArm);
-
-    const armStripe = new Mesh(new BoxGeometry(0.01, armSeg * 0.5, 0.025), nMat());
-    armStripe.position.set(s * 0.04, -armSeg * 0.3, -0.005);
-    shoulderPivot.add(armStripe);
+    const ua = new Mesh(new CylinderGeometry(armThick, armThick * 0.90, upperArmLen, 9), sMat());
+    ua.position.set(0, -upperArmLen / 2, 0); ua.castShadow = true;
+    shoulderPivot.add(ua);
 
     const elbowPivot = new Group();
-    elbowPivot.name = `${signName}Elbow`;
-    elbowPivot.position.set(0, -armSeg, 0);
+    elbowPivot.name = `${sign}Elbow`;
+    elbowPivot.position.set(0, -upperArmLen, 0);
     shoulderPivot.add(elbowPivot);
 
-    const forearm = new Mesh(new CylinderGeometry(0.036, 0.046, faSeg, RS_SMALL), sMat());
-    forearm.position.set(0, -faSeg / 2, 0); forearm.castShadow = true;
-    forearm.name = `${signName}Forearm`;
-    elbowPivot.add(forearm);
+    const fa = new Mesh(new CylinderGeometry(armThick * 0.85, armThick * 0.75, foreArmLen, 9), sMat());
+    fa.position.set(0, -foreArmLen / 2, 0); fa.castShadow = true;
+    elbowPivot.add(fa);
 
-    const wristPivot = new Group();
-    wristPivot.name = `${signName}Wrist`;
-    wristPivot.position.set(0, -faSeg, 0);
-    elbowPivot.add(wristPivot);
+    const hand = new Mesh(new BoxGeometry(0.070, 0.052, 0.052), sMat());
+    hand.position.set(0, -foreArmLen - 0.028, 0); hand.castShadow = true;
+    hand.name = `${sign}Hand`;
+    elbowPivot.add(hand);
 
-    const hand = new Mesh(new BoxGeometry(0.06, 0.036, 0.07), sMat());
-    hand.position.set(0, -0.025, 0); hand.castShadow = true;
-    hand.name = `${signName}Hand`;
-    wristPivot.add(hand);
-
-    shoulderPivot.userData = { elbowPivot, wristPivot, hand };
+    shoulderPivot.userData = { elbowPivot, hand };
   }
 
   // Legs
-  const totalLegLen = legLen || 1.00;
-  const thighLen = totalLegLen * 0.52, calfLen = totalLegLen * 0.48;
   for (const s of [-1, 1]) {
-    const legX = s * hipW * 0.42;
-    const signName = s > 0 ? "right" : "left";
+    const sign = s > 0 ? "right" : "left";
+    const legX = s * hipW * 0.28;
 
     const hipPivot = new Group();
-    hipPivot.name = `${signName}Hip`;
-    hipPivot.position.set(legX, thighLen, -0.04);
+    hipPivot.name = `${sign}Hip`;
+    hipPivot.position.set(legX, thighLen, 0);
     group.add(hipPivot);
 
-    const thigh = new Mesh(new CylinderGeometry(0.06, 0.068, thighLen, RS_SMALL), pMat());
+    const thigh = new Mesh(new CylinderGeometry(legThick, legThick * 0.88, thighLen, 11), pMat());
     thigh.position.set(0, -thighLen / 2, 0); thigh.castShadow = true;
-    thigh.name = `${signName}Thigh`;
     hipPivot.add(thigh);
 
     const kneePivot = new Group();
-    kneePivot.name = `${signName}Knee`;
+    kneePivot.name = `${sign}Knee`;
     kneePivot.position.set(0, -thighLen, 0);
     hipPivot.add(kneePivot);
 
-    const calf = new Mesh(new CylinderGeometry(0.044, 0.055, calfLen, RS_SMALL), pMat());
+    const calf = new Mesh(new CylinderGeometry(legThick * 0.82, legThick * 0.72, calfLen, 11), pMat());
     calf.position.set(0, -calfLen / 2, 0); calf.castShadow = true;
-    calf.name = `${signName}Calf`;
     kneePivot.add(calf);
 
     const anklePivot = new Group();
-    anklePivot.name = `${signName}Ankle`;
-    anklePivot.position.set(0, -calfLen, 0.02);
+    anklePivot.name = `${sign}Ankle`;
+    anklePivot.position.set(0, -calfLen, 0);
     kneePivot.add(anklePivot);
 
-    const footGroup = new Group();
-    footGroup.name = `${signName}Foot`;
+    const foot = new Mesh(new BoxGeometry(0.10, 0.055, 0.18), shMat());
+    foot.position.set(0, -0.028, 0.04); foot.castShadow = true;
+    anklePivot.add(foot);
 
-    const shoe = new Mesh(new BoxGeometry(0.12, 0.06, 0.18), shoeMat());
-    shoe.position.set(0, 0.01, 0.04); shoe.castShadow = true;
-    footGroup.add(shoe);
-    const sole = new Mesh(new BoxGeometry(0.13, 0.025, 0.19), soleMat());
-    sole.position.set(0, -0.015, 0.04);
-    footGroup.add(sole);
-    const soleNeon = new Mesh(new BoxGeometry(0.12, 0.009, 0.18), nMat());
-    soleNeon.position.set(0, -0.005, 0.04);
-    footGroup.add(soleNeon);
-    const toe = new Mesh(new SphereGeometry(0.04, 10, 8), shoeMat());
-    toe.scale.set(0.82, 0.52, 0.48); toe.position.set(0, 0.015, 0.13);
-    footGroup.add(toe);
-
-    anklePivot.add(footGroup);
-    hipPivot.userData = { kneePivot, anklePivot, footGroup };
+    hipPivot.userData = { kneePivot, anklePivot, footGroup: foot };
   }
 
   // Username label
   const nc = document.createElement("canvas"); nc.width = 256; nc.height = 64;
   const ctx = nc.getContext("2d");
-  ctx.font = "bold 20px 'Inter', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fillText((username || "User").substring(0, 16), 128, 32);
+  ctx.font = "bold 20px 'Inter', sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillText((username || "User").substring(0, 16), 128, 32);
   const nt = new CanvasTexture(nc); nt.minFilter = LinearFilter; nt.colorSpace = THREE.SRGBColorSpace;
   const ns = new Sprite(new SpriteMaterial({ map: nt, transparent: true, depthWrite: false, depthTest: false }));
-  ns.scale.set(1.4, 0.35, 1); ns.position.y = torsoH * 0.68 + 0.60; ns.renderOrder = 999;
+  ns.scale.set(1.4, 0.35, 1);
+  ns.position.y = torsoH + 0.70; ns.renderOrder = 999;
   group.add(ns);
 
   scene.add(group);
