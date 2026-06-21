@@ -44,11 +44,11 @@ export default function Admin() {
 
   const loadAll = async (defer = false) => {
     setLoading(true);
-    if (defer) await new Promise((r) => setTimeout(r, 8000));
+    if (defer) await new Promise((r) => setTimeout(r, 10000));
     const t = await base44.entities.Track.list("-created_date", 200);
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 2500));
     const a = await base44.entities.Artist.list("name", 100);
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 2500));
     const c = await base44.entities.Category.list("display_order", 50);
     setTracks(t);
     setArtists(a);
