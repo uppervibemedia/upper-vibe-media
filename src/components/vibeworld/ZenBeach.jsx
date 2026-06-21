@@ -28,57 +28,6 @@ function mat(hexColor, opts = {}) {
   return m;
 }
 
-function createPath(scene, fromX, fromZ, toX, toZ, colorHex) {
-  const dx = toX - fromX, dz = toZ - fromZ;
-  const len = Math.sqrt(dx * dx + dz * dz);
-  const midX = (fromX + toX) / 2, midZ = (fromZ + toZ) / 2;
-  const angle = Math.atan2(dx, dz);
-
-  const pathGlow = new MeshBasicMaterial({ color: new Color(colorHex), depthWrite: false, transparent: true, opacity: 0.16 });
-  const pathFill = new MeshBasicMaterial({ color: new Color("#1A1A32"), depthWrite: false, transparent: true, opacity: 0.35 });
-
-  const pathStrip = new Mesh(new PlaneGeometry(1.4, len), pathFill);
-  pathStrip.rotation.x = -Math.PI / 2;
-  pathStrip.position.set(midX, 0.002, midZ);
-  pathStrip.rotation.z = -angle;
-  pathStrip.receiveShadow = true;
-  scene.add(pathStrip);
-
-  const innerStrip = new Mesh(new PlaneGeometry(1.0, len), pathGlow);
-  innerStrip.rotation.x = -Math.PI / 2;
-  innerStrip.position.set(midX, 0.003, midZ);
-  innerStrip.rotation.z = -angle;
-  scene.add(innerStrip);
-
-  const centerGlow = new Mesh(
-    new PlaneGeometry(0.06, len),
-    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.4 })
-  );
-  centerGlow.rotation.x = -Math.PI / 2;
-  centerGlow.position.set(midX, 0.005, midZ);
-  centerGlow.rotation.z = -angle;
-  scene.add(centerGlow);
-}
-
-function addPathLights(scene, fromX, fromZ, toX, toZ, colorHex) {
-  const dx = toX - fromX, dz = toZ - fromZ;
-  const len = Math.sqrt(dx * dx + dz * dz);
-  const step = 1.8;
-  const count = Math.floor(len / step);
-  for (let i = 1; i <= count; i++) {
-    const t = i / (count + 1);
-    const px = fromX + dx * t;
-    const pz = fromZ + dz * t;
-    const dot = new Mesh(
-      new SphereGeometry(0.05, 6, 4),
-      new MeshBasicMaterial({ color: new Color(colorHex), depthWrite: false, transparent: true, opacity: 0.5 })
-    );
-    dot.position.set(px, 0.06, pz);
-    dot.userData = { isPathDot: true, baseColor: colorHex, phase: t * Math.PI * 2 };
-    scene.add(dot);
-  }
-}
-
 function createNeonSign(scene, x, y, z, text, colorHex) {
   const group = new Group();
   group.name = "neonSign_" + text.replace(/\s+/g, "");
@@ -216,14 +165,6 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
     particle.name = "zenParticle";
     scene.add(particle);
   }
-
-  // Path: Central Plaza → Zen Beach
-  createPath(scene, PLAZA_X, PLAZA_Z, ZEN_X, ZEN_Z, "#00D4F0");
-  addPathLights(scene, PLAZA_X, PLAZA_Z, ZEN_X, ZEN_Z, "#00D4F0");
-
-  // Path: Beach area → Zen Beach
-  createPath(scene, 0, 20, ZEN_X, ZEN_Z, "#A078FF");
-  addPathLights(scene, 0, 20, ZEN_X, ZEN_Z, "#A078FF");
 
   // Ambient light
   const zenLight = new PointLight();
