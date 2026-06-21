@@ -203,9 +203,13 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt) {
     if (speed > 0.35 && runKey && entry.clips[runKey]) {
       fadeToAction(entry, runKey, 0.15);
       entry.clips[runKey].setEffectiveTimeScale(Math.min(2.4, speed * 0.85));
-    } else if (entry.clips[walkKey]) {
+    } else if (walkKey && entry.clips[walkKey]) {
       fadeToAction(entry, walkKey, 0.15);
       entry.clips[walkKey].setEffectiveTimeScale(Math.max(0.6, 0.7 + speed * 0.4));
+    } else if (idleKey && entry.clips[idleKey]) {
+      // No walk clip (single-clip Michelle export) — speed up idle to simulate walking
+      fadeToAction(entry, idleKey, 0.15);
+      entry.clips[idleKey].setEffectiveTimeScale(Math.max(1.5, 1.8 + speed * 0.5));
     }
     return;
   }
@@ -235,10 +239,6 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt) {
       fadeToAction(entry, idleKey, 0.25);
       entry.clips[idleKey].setEffectiveTimeScale(1.0);
     }
-  } else if (entry.clips[walkKey]) {
-    // Fallback: frozen walk = effective idle
-    fadeToAction(entry, walkKey, 0.25);
-    entry.clips[walkKey].setEffectiveTimeScale(0.0);
   }
 }
 
@@ -303,7 +303,19 @@ function attachModel(gltf, controllerGroup, opts = {}) {
   // Rotate 180° on Y so the model's chest faces +Z (matching movement forward direction)
   model.position.set(0, 0, 0);
   model.rotation.set(0, Math.PI, 0);
-  model.scale.set(1, 1, 1);
+
+  // Auto-detect scale: measure bounding box height and normalise to ~1.8m (Soldier's height)
+  // This fixes Michelle.glb which is exported at a different unit scale.
+  {
+    const box = new THREE.Box3().setFromObject(model);
+    const modelHeight = box.max.y - box.min.y;
+    const targetHeight = 1.8;
+    const scaleFactor = modelHeight > 0.1 ? targetHeight / modelHeight : 1.0;
+    model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+    // Re-ground the model: shift Y so feet sit at y=0
+    const newBox = new THREE.Box3().setFromObject(model);
+    model.position.y = -newBox.min.y;
+  }
 
   model.traverse((child) => {
     if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
@@ -318,21 +330,31 @@ function attachModel(gltf, controllerGroup, opts = {}) {
   const mixer = new THREE.AnimationMixer(model);
   const clips = {};
   gltf.animations.forEach((clip) => {
-    // Retarget animation tracks to match this model's bone names.
-    // Michelle.glb uses "mixamorig:BoneName" while Xbot uses "mixamorig:BoneName" too —
-    // same Mixamo prefix, so clips cross-apply directly. No rename needed.
     const action = mixer.clipAction(clip);
     action.setLoop(THREE.LoopRepeat, Infinity);
-    // Store by lowercased name for lookup
+    // Store by both lowercased name AND index for fallback lookups
     clips[clip.name.toLowerCase()] = action;
   });
 
+  // Debug: log clip names to help diagnose missing animations
+  if (gltf.animations.length > 0) {
+    console.log("[AvatarModel] Loaded clips:", gltf.animations.map(a => a.name));
+  }
+
   // Resolve canonical keys — handle naming variations across GLB files
   // Soldier.glb: "Idle", "Walk", "Run", "TPose"
-  // Michelle.glb: may differ — scan for closest match
-  const idleKey = ["idle", "standing", "breathe", "rest"].find(k => clips[k]) || Object.keys(clips).find(k => /idle|stand|breath/i.test(k)) || null;
-  const walkKey = ["walk", "walking"].find(k => clips[k]) || Object.keys(clips).find(k => /walk/i.test(k)) || null;
-  const runKey  = ["run", "running"].find(k => clips[k])  || Object.keys(clips).find(k => /run/i.test(k))  || null;
+  // Michelle.glb (Mixamo export): "mixamo.com" (idle), or named clips like "idle", "walking", "running"
+  //   Some Michelle.glb exports have only ONE clip named "mixamo.com" — use it as idle fallback.
+  const idleKey = ["idle", "standing", "breathe", "rest", "mixamo.com"].find(k => clips[k])
+    || Object.keys(clips).find(k => /idle|stand|breath/i.test(k))
+    || Object.keys(clips)[0] // absolute fallback — first clip
+    || null;
+  const walkKey = ["walk", "walking"].find(k => clips[k])
+    || Object.keys(clips).find(k => /walk/i.test(k))
+    || null;
+  const runKey  = ["run", "running"].find(k => clips[k])
+    || Object.keys(clips).find(k => /run/i.test(k))
+    || null;
 
   // Stop ALL clips — ensure clean slate, no auto-play from GLB defaults
   Object.values(clips).forEach((a) => { a.stop(); a.setEffectiveWeight(0); });

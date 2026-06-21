@@ -163,7 +163,16 @@ export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "med
       model.name = "previewModel";
       model.rotation.y = Math.PI;
       model.position.set(0, 0, 0);
-      model.scale.set(1, 1, 1);
+
+      // Auto-scale to ~1.8m tall so preview is consistent across Soldier and Michelle
+      {
+        const box = new THREE.Box3().setFromObject(model);
+        const h = box.max.y - box.min.y;
+        const sf = h > 0.1 ? 1.8 / h : 1.0;
+        model.scale.set(sf, sf, sf);
+        const newBox = new THREE.Box3().setFromObject(model);
+        model.position.y = -newBox.min.y;
+      }
 
       model.traverse((child) => {
         if (!child.isMesh) return;
