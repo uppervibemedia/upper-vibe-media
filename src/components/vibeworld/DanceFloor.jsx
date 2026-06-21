@@ -43,7 +43,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
         color: new Color(tileColors[colorIdx]),
         depthWrite: false,
         transparent: true,
-        opacity: 0.18,
+        opacity: 0.27,
         side: THREE.DoubleSide,
       });
 
@@ -230,11 +230,11 @@ export function animateDanceFloor(scene, t, audioBeat, audioIntensity) {
       const tileWave = Math.sin(t * 1.5 + p.phase + audioBeat * 3) * 0.5 + 0.5;
       const intensity = Math.max(0, tileWave * beatPulse * 0.7);
 
-      // Brighten the tile based on music
+      // Brighten the tile based on music — 50% brighter base
       const baseColor = new Color(p.baseColor);
-      const brightColor = new Color(p.baseColor).multiplyScalar(2.0 + audioBeat * 2.5);
+      const brightColor = new Color(p.baseColor).multiplyScalar(2.5 + audioBeat * 2.5);
       td.mat.color.copy(baseColor).lerp(brightColor, intensity);
-      td.mat.opacity = 0.12 + intensity * 0.45;
+      td.mat.opacity = 0.20 + intensity * 0.65;
     }
   }
 

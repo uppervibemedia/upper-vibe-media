@@ -1954,27 +1954,51 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── BUILDING WINDOW FLICKERS — occasional random windows dim/brighten ──
+        // ─── BUILDING WINDOW FLICKERS — staggered natural on/off cycles ──
+        // Each window independently stays lit or dim for several seconds
+        // before slowly transitioning to the opposite state.
         const buildingsGroup = scene.getObjectByName("cityBuildings");
-        if (buildingsGroup && frameRef.current % 8 === 0) {
-          // Pick a random window mesh from the building group every 8 frames
+        if (!scene.userData.__windowFlickerInit && buildingsGroup) {
+          // One-time: collect all window meshes and assign per-window timers
           const allWindows = [];
           buildingsGroup.traverse((child) => {
             if (child.isMesh && child.material?.isMeshBasicMaterial &&
                 child.material.color?.getHex && child.material.transparent &&
                 child.geometry?.type === "PlaneGeometry" &&
-                child.material.color.getHex() !== 0x00D4F0 && // exclude neon strips
+                child.material.color.getHex() !== 0x00D4F0 &&
                 child.material.color.getHex() !== 0xA078FF &&
                 child.material.color.getHex() !== 0x3088CC) {
               allWindows.push(child);
             }
           });
-          // Flicker 1-2 windows per batch
-          const flickerCount = 1 + Math.floor(Math.random() * 2);
-          for (let i = 0; i < flickerCount; i++) {
-            const w = allWindows[Math.floor(Math.random() * allWindows.length)];
-            if (w && w.material) {
-              w.material.opacity = 0.2 + Math.random() * 0.5;
+          // Each window gets: current opacity, target opacity, next change time
+          scene.userData.__windowStates = allWindows.map((w) => ({
+            mesh: w,
+            current: w.material.opacity || 0.5,
+            target: w.material.opacity || 0.5,
+            nextChange: t + Math.random() * 6.0, // stagger initial changes over 6s
+            phase: Math.random() * Math.PI * 2,
+          }));
+          scene.userData.__windowFlickerInit = true;
+        }
+
+        const windowStates = scene.userData.__windowStates;
+        if (windowStates) {
+          const LERP_SPEED = 1.2; // Slow transition between states
+          for (const ws of windowStates) {
+            // When timer expires, pick a new target opacity
+            if (t >= ws.nextChange) {
+              // 70% chance bright, 30% chance dim (more windows lit overall)
+              ws.target = Math.random() < 0.7
+                ? 0.55 + Math.random() * 0.45  // bright range: 0.55-1.0
+                : 0.08 + Math.random() * 0.22; // dim range: 0.08-0.30
+              // Set next change: 2-6 seconds from now
+              ws.nextChange = t + 2.0 + Math.random() * 4.0;
+            }
+            // Smooth lerp toward target
+            ws.current += (ws.target - ws.current) * Math.min(1, LERP_SPEED * dt);
+            if (ws.mesh?.material) {
+              ws.mesh.material.opacity = ws.current;
             }
           }
         }
