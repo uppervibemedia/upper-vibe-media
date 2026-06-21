@@ -1131,6 +1131,22 @@ function buildPark(scene) {
   scene.userData._foamBaseZ = SHORELINE_Z + 0.3;
   scene.userData.shorelineZ = SHORELINE_Z;
 
+  // ── Shoreline glow strip — pulses with music beat ──────────
+  const shoreGlowGeo = new PlaneGeometry(56, 0.5);
+  const shoreGlowMat = new MeshBasicMaterial();
+  shoreGlowMat.color = new Color("#00D4F0");
+  shoreGlowMat.transparent = true;
+  shoreGlowMat.opacity = 0.12;
+  shoreGlowMat.depthWrite = false;
+  shoreGlowMat.side = THREE.DoubleSide;
+  const shoreGlow = new Mesh(shoreGlowGeo, shoreGlowMat);
+  shoreGlow.rotation.x = -Math.PI / 2;
+  shoreGlow.position.set(0, 0.01, SHORELINE_Z);
+  shoreGlow.renderOrder = 1;
+  shoreGlow.name = "shoreGlow";
+  scene.add(shoreGlow);
+  scene.userData.shoreGlow = shoreGlow;
+
   // ═════════════════════════════════════════════════════════════
   // 12. LIGHTING — night ambiance
   // ═════════════════════════════════════════════════════════════
@@ -1661,7 +1677,7 @@ function createRemoteAvatar(scene, userId, username, avatarType) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, locked, stageScreenPosRef, remoteUsers, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -2045,33 +2061,40 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const oceanCenterZ = scene.userData._oceanCenterZ || 47;
         const SLZ = scene.userData.shorelineZ || 20;
 
+        // Audio data (with fallback to 0 when not playing)
+        const bassEnergy = audioBassRef?.current ?? 0;
+        const beatPulse = audioBeatRef?.current ?? 0;
+
+        // Wave cycle: music-reactive tempo — faster with more energy
+        const waveSpeed = 1.8 + bassEnergy * 4.5 + beatPulse * 2.0;
+        const waveT = t * waveSpeed;
+
         if (oceanMesh && origArr) {
           const pos = oceanMesh.geometry.attributes.position;
           const arr = pos.array;
-          const waveT = t * 0.55; // main wave cycle
 
           for (let i = 0; i < arr.length; i += 3) {
             const worldZ = oceanCenterZ + origArr[i + 2];
-            const distFromShore = worldZ - SLZ; // 0 at shore, positive going out to sea
+            const distFromShore = worldZ - SLZ;
 
-            if (distFromShore < 0) continue; // skip sand side
+            if (distFromShore < 0) continue;
 
             // Phase: deeper water leads, shore water lags → waves travel toward shore
-            const phase = distFromShore * 0.3 - waveT * 3.0;
-            const wave = Math.sin(phase) * 0.5 + 0.5; // 0..1 smooth wave
+            const phase = distFromShore * 0.3 - waveT * 2.2;
+            const wave = Math.sin(phase) * 0.5 + 0.5;
 
             // Height: waves get taller as they approach shore
-            const buildFactor = 1 - Math.max(0, 1 - distFromShore / 20); // 0 far out → 1 near shore
-            // Music intensity boosts wave height (0.18 base + up to 0.12 from audio)
-            const musicBoost = 1 + audioBeat * 0.8;
-            const height = wave * buildFactor * 0.18 * musicBoost;
+            const buildFactor = 1 - Math.max(0, 1 - distFromShore / 20);
+            // Bass drives wave height, beat adds punch
+            const heightBoost = 1 + bassEnergy * 1.4 + beatPulse * 0.6;
+            const height = wave * buildFactor * 0.18 * heightBoost;
 
             // Forward surge: water pushes toward shore during wave crest
-            const surge = wave * buildFactor * 0.12 * musicBoost;
+            const surge = wave * buildFactor * 0.12 * heightBoost;
 
-            arr[i] = origArr[i]; // X stays
-            arr[i + 1] = origArr[i + 1] + height; // Y rises with wave
-            arr[i + 2] = origArr[i + 2] + surge; // Z surges forward
+            arr[i] = origArr[i];
+            arr[i + 1] = origArr[i + 1] + height;
+            arr[i + 2] = origArr[i + 2] + surge;
           }
           pos.needsUpdate = true;
         }
@@ -2080,9 +2103,20 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const foamMesh = scene.userData.foam;
         if (foamMesh && foamMesh.material) {
           const tide = Math.sin(t * 0.55) * 0.5 + 0.5;
-          const foamBoost = 1 + audioBeat;
+          const foamBoost = 1 + bassEnergy * 1.2 + beatPulse * 0.8;
           foamMesh.material.opacity = (0.18 + tide * 0.55) * foamBoost;
           foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.7;
+        }
+
+        // ─── SHORELINE GLOW — pulses with beat ──────────────────
+        const shoreGlow = scene.userData.shoreGlow;
+        if (shoreGlow?.material) {
+          const glowOpacity = 0.08 + bassEnergy * 0.25 + beatPulse * 0.35;
+          shoreGlow.material.opacity = glowOpacity;
+          // Shift color between cyan and purple based on energy
+          const cyan = new Color("#00D4F0");
+          const purple = new Color("#A078FF");
+          shoreGlow.material.color.copy(cyan).lerp(purple, Math.min(1, bassEnergy * 1.5));
         }
 
         // ─── STAGE SCREEN GLOW — pulse screen frame with music ──────

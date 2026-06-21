@@ -25,6 +25,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const prevPosRef = useRef({ x: 0, z: 5 });
   const [stageCanvas, setStageCanvas] = useState(null);
   const audioIntensityRef = useRef(0);
+  const audioBassRef = useRef(0);
+  const audioBeatRef = useRef(0);
   const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
 
@@ -397,11 +399,32 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     if (!playerCtx?.analyserNode) return;
     let raf;
     const analyser = playerCtx.analyserNode;
-    const freqData = new Uint8Array(analyser.frequencyBinCount);
+    const binCount = analyser.frequencyBinCount;
+    const freqData = new Uint8Array(binCount);
+    // Bass bins: roughly first 10% of bins (0-200Hz range)
+    const bassBinCount = Math.max(4, Math.floor(binCount * 0.1));
+    let prevIntensity = 0;
     const loop = () => {
       analyser.getByteFrequencyData(freqData);
-      const sum = freqData.reduce((a, b) => a + b, 0);
-      audioIntensityRef.current = sum / (freqData.length * 255);
+      // Overall intensity
+      let sum = 0;
+      let bassSum = 0;
+      for (let i = 0; i < binCount; i++) {
+        sum += freqData[i];
+        if (i < bassBinCount) bassSum += freqData[i];
+      }
+      const intensity = sum / (binCount * 255);
+      const bass = bassSum / (bassBinCount * 255);
+      audioIntensityRef.current = intensity;
+      audioBassRef.current = bass;
+      // Beat detection: sharp rise in intensity triggers a pulse
+      const rise = intensity - prevIntensity;
+      if (rise > 0.08 && intensity > 0.18) {
+        audioBeatRef.current = Math.min(1, rise * 6);
+      } else {
+        audioBeatRef.current *= 0.88; // decay
+      }
+      prevIntensity = intensity;
       raf = requestAnimationFrame(loop);
     };
     loop();
@@ -477,6 +500,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           }}
           stageCanvas={stageWatching ? null : stageCanvas}
           audioIntensityRef={audioIntensityRef}
+          audioBassRef={audioBassRef}
+          audioBeatRef={audioBeatRef}
           locked={movementLocked}
           stageScreenPosRef={stageScreenPosRef}
           mobileInputRef={mobileInputRef}
