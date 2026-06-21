@@ -33,6 +33,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [avatarVersion, setAvatarVersion] = useState(0); // bump to re-read user data
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
+  const onDanceFloorRef = useRef(false);
+  const danceFloorPausedRef = useRef(false); // did we pause personal music on entry?
+  const jukeboxTrackRef = useRef(null);      // track currently playing as jukebox music
 
   // ── Dance Floor / Emote state ─────────────────────────────────────────────
   const [isDancing, setIsDancing] = useState(false);
@@ -529,6 +532,61 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       }
     }
   }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
+
+  // Keep stable refs for dance floor handlers
+  const isPlayingRef = useRef(false);
+  isPlayingRef.current = isPlaying;
+  const togglePlayRef = useRef(togglePlay);
+  togglePlayRef.current = togglePlay;
+  const playTrackRef = useRef(playTrack);
+  playTrackRef.current = playTrack;
+
+  // ── Dance floor proximity: pause personal music, start jukebox ────────────
+  useEffect(() => {
+    const DANCE_X = 0, DANCE_Z = -4, DANCE_RADIUS = 7;
+    const dx = playerPos.x - DANCE_X;
+    const dz = playerPos.z - DANCE_Z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    const isOnFloor = dist < DANCE_RADIUS;
+
+    if (isOnFloor && !onDanceFloorRef.current) {
+      // Entered dance floor
+      onDanceFloorRef.current = true;
+      // Pause personal music if it's playing
+      if (isPlayingRef.current && togglePlayRef.current) {
+        danceFloorPausedRef.current = true;
+        togglePlayRef.current();
+      }
+      // Fetch and play a featured jukebox track
+      base44.entities.Track.filter({ is_featured: true, status: "published" }, "-display_order", 8)
+        .then((tracks) => {
+          const pool = tracks.length > 0 ? tracks : [];
+          if (pool.length > 0 && playTrackRef.current) {
+            const pick = pool[Math.floor(Math.random() * pool.length)];
+            jukeboxTrackRef.current = pick;
+            playTrackRef.current(pick, "song");
+          }
+        })
+        .catch(() => {});
+
+    } else if (!isOnFloor && onDanceFloorRef.current) {
+      // Left dance floor
+      onDanceFloorRef.current = false;
+      // Pause the jukebox track that was playing
+      if (isPlayingRef.current && togglePlayRef.current) {
+        togglePlayRef.current();
+      }
+      // Resume personal music if we paused it
+      if (danceFloorPausedRef.current) {
+        danceFloorPausedRef.current = false;
+        setTimeout(() => {
+          if (!isPlayingRef.current && togglePlayRef.current) {
+            togglePlayRef.current();
+          }
+        }, 200);
+      }
+    }
+  }, [playerPos.x, playerPos.z]);
 
   // ── Auto-rotate stage video every 60s when user isn't interacting ──
   useEffect(() => {
