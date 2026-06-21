@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, GraduationCap, Play, Maximize, ArrowLeft, Tv, Film, Volume2, Crown, Sparkles } from "lucide-react";
+import { X, GraduationCap, Play, Maximize, ArrowLeft, Tv, Film, Volume2, VolumeX, Crown, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CoverImage from "@/components/shared/CoverImage";
 import { useAuth } from "@/lib/AuthContext";
@@ -161,7 +161,30 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
               Back
             </button>
             <p className="text-xs font-bold text-white truncate mx-2">{viewingLesson.title}</p>
-            <div className="w-16" />
+            {/* Mute/Unmute in full-screen */}
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => {
+                setAcademyMuted(m => {
+                  const next = !m;
+                  postToIframe(next ? "mute" : "unMute");
+                  if (!next) postToIframe("setVolume", [80]);
+                  return next;
+                });
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold text-[10px] tracking-wide transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: academyMuted ? "rgba(255,255,255,0.08)" : "rgba(124,58,237,0.3)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: academyMuted ? "rgba(255,255,255,0.6)" : "#fff",
+                minWidth: 44,
+                minHeight: 44,
+                touchAction: "manipulation",
+              }}
+            >
+              {academyMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+              {academyMuted ? "Muted" : "Audio"}
+            </button>
           </div>
           <iframe
             key={viewingLesson?.youtube_video_id}
@@ -249,7 +272,7 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
                 touchAction: "manipulation",
               }}
             >
-              {academyMuted ? <Volume2 className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+              {academyMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
               {academyMuted ? "Unmute Audio" : "Audio On"}
             </button>
 
