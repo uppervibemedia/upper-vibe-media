@@ -40,37 +40,24 @@ function loadGLTF() {
   return _gltfPromise;
 }
 
-// Clone a GLTF scene — manual deep clone that properly rebinds skeletons
-function cloneGltf(gltf) {
-  // Deep clone the scene graph
-  const cloned = gltf.scene.clone(true);
+// For the player avatar we use the GLTF scene directly (no clone needed — only 1 player).
+// For remote avatars we re-parse a fresh copy via the loader each time.
+// This avoids ALL skeleton rebinding issues.
+function getModelForPlayer(gltf) {
+  return gltf.scene; // direct use — safe because only one player exists
+}
 
-  // Rebuild SkinnedMesh bindings after clone
-  const srcMeshes = [];
-  const dstMeshes = [];
-  gltf.scene.traverse((o) => { if (o.isSkinnedMesh) srcMeshes.push(o); });
-  cloned.traverse((o) => { if (o.isSkinnedMesh) dstMeshes.push(o); });
-
-  dstMeshes.forEach((dst, i) => {
-    const src = srcMeshes[i];
-    if (!src) return;
-    const srcBones = [];
-    src.skeleton.bones.forEach((b) => srcBones.push(b.name));
-
-    const newBones = [];
-    const newBoneInverses = [];
-    srcBones.forEach((name, j) => {
-      let found = null;
-      cloned.traverse((o) => { if (o.isBone && o.name === name) found = o; });
-      newBones.push(found || dst.skeleton.bones[j]);
-      newBoneInverses.push(src.skeleton.boneInverses[j].clone());
-    });
-
-    dst.skeleton = new THREE.Skeleton(newBones, newBoneInverses);
-    dst.bind(dst.skeleton, dst.matrixWorld);
-  });
-
-  return cloned;
+function cloneGltfForRemote(gltf) {
+  // Use THREE's built-in ObjectLoader-style clone which handles SkinnedMesh correctly
+  // by serializing to JSON and re-parsing
+  try {
+    const exp = new THREE.ObjectLoader();
+    const json = gltf.scene.toJSON();
+    return exp.parse(json);
+  } catch {
+    // Fallback: simple clone (may have skeleton issues but better than crash)
+    return gltf.scene.clone(true);
+  }
 }
 
 function makeNameSprite(text) {
@@ -178,7 +165,7 @@ function attachModel(gltf, controllerGroup, opts = {}) {
   const existing = controllerGroup.getObjectByName("avatarModel");
   if (existing) controllerGroup.remove(existing);
 
-  const model = cloneGltf(gltf);
+  const model = opts.isRemote ? cloneGltfForRemote(gltf) : getModelForPlayer(gltf);
   model.name = "avatarModel";
   // Model lives at local origin — inherits controller position/rotation/scale
   model.position.set(0, 0, 0);
@@ -241,6 +228,7 @@ export function createAvatar(scene, opts = {}, onReady) {
     .then((gltf) => {
       const { mixer, clips, currentAnim } = attachModel(gltf, controller, {
         avatarStyle: opts.avatarStyle || "streetwear",
+        isRemote: false,
       });
       // Mutate the SAME entry object that CityCanvas already has a reference to
       entry.mixer = mixer;
@@ -294,6 +282,7 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
       const { mixer, clips, currentAnim } = attachModel(gltf, controller, {
         avatarStyle: avatarStyle || "streetwear",
         username,
+        isRemote: true,
       });
       entry.mixer = mixer;
       entry.clips = clips;
