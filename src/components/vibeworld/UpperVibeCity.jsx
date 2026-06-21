@@ -77,9 +77,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsDancing(false);
     setActiveEmote(null);
     if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
-    // Cancel any lingering emote override on the avatar entry
+    // Clear emote state so avatar returns to idle on next frame
     if (playerAvatarEntryRef.current) {
-      stopEmoteAnimation(playerAvatarEntryRef.current);
+      playerAvatarEntryRef.current._emoteActive = false;
+      if (playerAvatarEntryRef.current._emoteTimer) {
+        clearTimeout(playerAvatarEntryRef.current._emoteTimer);
+        playerAvatarEntryRef.current._emoteTimer = null;
+      }
     }
   }, []);
 
