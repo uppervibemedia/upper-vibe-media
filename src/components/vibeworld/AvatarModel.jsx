@@ -241,9 +241,10 @@ function buildAvatarBody(opts = {}) {
   torsoMesh.castShadow = true;
   torsoG.add(torsoMesh);
 
-  // Collar — fills gap between shirt top and neck, taller to prevent gap
-  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.14, 0.22, 10), topMat);
-  collar.position.y = 0.36; // top of torso capsule area
+  // Collar — snug funnel from shirt top up to neck base
+  // torsoG at y=0.95, collar center at 0.95+0.42=1.37 world, top=1.42+0.13=1.455
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.145, 0.26, 10), topMat);
+  collar.position.y = 0.42;
   collar.castShadow = true;
   torsoG.add(collar);
 
@@ -301,15 +302,16 @@ function buildAvatarBody(opts = {}) {
   root.add(torsoG);
 
   // ── NECK + HEAD ───────────────────────────────────────────────────────────
-  // Collar top ≈ 1.42. Use a very tall neck cylinder that fully bridges collar→head.
-  // Neck center at 1.35 → bottom=1.25 (inside collar), top=1.45 (into head sphere)
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.08, 0.40, 10), skinMat);
-  neck.position.set(0, 1.33, 0);
+  // Collar top = 0.95 + 0.36 + 0.11 = 1.42
+  // Neck: small cylinder sitting mostly inside collar, just barely peeking above it
+  // Neck center at 1.41 (height 0.18) → bottom=1.32 (inside collar), top=1.50
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.060, 0.070, 0.18, 10), skinMat);
+  neck.position.set(0, 1.41, 0);
   root.add(neck);
 
   const headAnchor = new THREE.Group();
   headAnchor.name = "headAnchor";
-  headAnchor.position.set(0, 1.52, 0);
+  headAnchor.position.set(0, 1.56, 0);
   headAnchor.add(makeFace(skinHex, avatarType));
   headAnchor.add(makeHair(hairHex, avatarType));
   root.add(headAnchor);

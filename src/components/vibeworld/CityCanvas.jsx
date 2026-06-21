@@ -1379,11 +1379,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const asp = rw / Math.max(rh, 1);
       const camera = new PerspectiveCamera(55, asp, 0.1, 80);
       cameraRef.current = camera;
-      // Start camera behind avatar (same as animation loop will use)
+      // Start camera at a 3/4 front-left angle for a better initial view
       const initCamDist = 6;
-      const initCamHeight = 3.2;
+      const initCamHeight = 2.8;
       const initLookY = 1.4;
-      camera.position.set(SPAWN[0], SPAWN[1] + initCamHeight, SPAWN[2] - initCamDist);
+      camera.position.set(SPAWN[0] - 4, SPAWN[1] + initCamHeight, SPAWN[2] + 4.5);
       camera.lookAt(SPAWN[0], SPAWN[1] + initLookY, SPAWN[2]);
 
       buildPark(scene);
