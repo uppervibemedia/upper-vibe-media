@@ -117,6 +117,7 @@ export default function WorldGate({ children }) {
         existingUrl={user?.rpm_avatar_url || null}
         existingType={user?.avatar_type || null}
         existingTone={user?.skin_tone || null}
+        existingStyle={user?.avatar_style || null}
       />
     );
   }

@@ -85,6 +85,7 @@ export default function useVibeWorldPresence(user, currentZone, position) {
       username: user.full_name || "Vibe Citizen",
       avatar_type: user.avatar_type || "neutral",
       skin_tone: user.skin_tone || "medium",
+      avatar_style: user.avatar_style || "streetwear",
       current_zone: zoneRef.current,
       pos_x: posRef.current.x,
       pos_z: posRef.current.z,

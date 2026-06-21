@@ -2089,7 +2089,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               scene, remote.user_id,
               remote.username || "User",
               remote.avatar_type || "neutral",
-              remote.skin_tone || "medium"
+              remote.skin_tone || "medium",
+              remote.avatar_style || "streetwear"
             );
             entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 } };
             remoteMap[remote.user_id] = entry;

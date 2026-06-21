@@ -26,10 +26,10 @@ const RPM_URL = RPM_CONFIGURED
   ? `https://${RPM_SUBDOMAIN.trim()}.readyplayer.me/avatar?frameApi&clearCache`
   : null;
 
-export default function RPMAvatarCreator({ onComplete, existingUrl, existingType, existingTone }) {
+export default function RPMAvatarCreator({ onComplete, existingUrl, existingType, existingTone, existingStyle }) {
   // If RPM is not configured, go straight to AvatarSetup fallback
   if (!RPM_CONFIGURED) {
-    return <AvatarSetup onComplete={onComplete} existingType={existingType || null} existingTone={existingTone || null} />;
+    return <AvatarSetup onComplete={onComplete} existingType={existingType || null} existingTone={existingTone || null} existingStyle={existingStyle || null} />;
   }
 
   return (

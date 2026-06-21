@@ -13,12 +13,37 @@
     "avatar_type": {
       "type": "string",
       "enum": [
+        "masculine",
+        "feminine",
+        "nonbinary",
+        "neutral",
         "default",
         "cyber",
         "cosmic",
         "neon"
       ],
-      "default": "default"
+      "default": "neutral"
+    },
+    "skin_tone": {
+      "type": "string",
+      "enum": [
+        "light",
+        "medium-light",
+        "medium",
+        "medium-dark",
+        "dark",
+        "deep"
+      ],
+      "default": "medium"
+    },
+    "avatar_style": {
+      "type": "string",
+      "enum": [
+        "streetwear",
+        "cosmic"
+      ],
+      "default": "streetwear",
+      "description": "Outfit style for the avatar"
     },
     "current_zone": {
       "type": "string",

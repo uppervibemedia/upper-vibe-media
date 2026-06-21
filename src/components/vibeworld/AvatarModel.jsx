@@ -1,37 +1,56 @@
 /**
- * AvatarModel — GLB-based Humanoid Avatar
+ * AvatarModel — GLB-based Humanoid Avatar with Face/Hair/Outfit Overlays
  *
- * Uses a real low-poly humanoid GLB from a free CDN.
- * Falls back to a simple capsule placeholder if the GLB fails to load.
- *
- * The loaded model is wrapped in a Group whose children are named to match
- * the CityCanvas animation system:
- *   torso, leftShoulder, rightShoulder, leftHip, rightHip
- *   + userData.leg.userData.lowerLeg per hip
- *   + userData.arm.userData.forearm per shoulder
+ * The GLB (Soldier.glb) provides the body shape, scale, rig, and animation.
+ * We overlay face features, hairstyles, and outfit color accents on top.
+ * Nothing about the body geometry, scale, rig, or movement is changed.
  */
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { SPAWN } from "./cityData";
 
-// ─── FREE CC0 LOW-POLY HUMANOID MODELS ───────────────────────────────────────
-// Quaternius "Ultimate Modular Characters" pack hosted on itch / GitHub Pages
-// These are CC0 stylized humanoids, ~50KB each, mobile-friendly.
-// We use one base model and tint/scale per avatar type.
+// ─── GLB MODEL (provides body shape, rig, animations) ────────────────────────
+const SOLDIER_GLB = "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Soldier.glb";
+
 const MODEL_URLS = {
-  masculine:  "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Soldier.glb",
-  feminine:   "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Soldier.glb",
-  nonbinary:  "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Soldier.glb",
-  neutral:    "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Soldier.glb",
+  masculine:  SOLDIER_GLB,
+  feminine:   SOLDIER_GLB,
+  nonbinary:  SOLDIER_GLB,
+  neutral:    SOLDIER_GLB,
 };
 
-// Body tints per type
-const TYPE_TINT = {
-  masculine:  0x1a5fc8,   // blue
-  feminine:   0x9b27af,   // purple
-  nonbinary:  0x4caf8e,   // teal
-  neutral:    0x2196f3,   // cyan-blue
+// ─── OUTFIT ACCENT COLORS ─────────────────────────────────────────────────────
+// streetwear = modern Upper Vibe look; cosmic = futuristic armor tint
+const OUTFIT_COLORS = {
+  streetwear: {
+    masculine:  0x1a3a6e,  // deep navy hoodie
+    feminine:   0x4a1060,  // deep purple jacket
+    nonbinary:  0x0d4a3a,  // deep teal top
+    neutral:    0x0d3050,  // dark cyan-blue
+  },
+  cosmic: {
+    masculine:  0x0d1f4a,  // dark armor blue
+    feminine:   0x2d0640,  // dark armor purple
+    nonbinary:  0x0a2820,  // dark armor teal
+    neutral:    0x071828,  // dark armor cyan
+  },
+};
+
+// Neon accent line color per outfit/type
+const ACCENT_COLORS = {
+  streetwear: {
+    masculine:  0x00b8d4,
+    feminine:   0xe040fb,
+    nonbinary:  0x00e5a0,
+    neutral:    0x00e5ff,
+  },
+  cosmic: {
+    masculine:  0x00cfff,
+    feminine:   0xd060ff,
+    nonbinary:  0x00ffcc,
+    neutral:    0x40e0ff,
+  },
 };
 
 const SKIN_TONES = {
@@ -43,7 +62,17 @@ const SKIN_TONES = {
   "deep":         0x3e2018,
 };
 
-// Three.js Soldier.glb uses these exact bone names (verified from source)
+// Hair color per skin tone (realistic range)
+const HAIR_COLORS = {
+  "light":        0xc8a060,  // dirty blonde
+  "medium-light": 0x7a4820,  // medium brown
+  "medium":       0x3a1e0a,  // dark brown
+  "medium-dark":  0x1a0a04,  // very dark brown
+  "dark":         0x100804,  // near black
+  "deep":         0x080402,  // black
+};
+
+// Three.js Soldier.glb bone names
 const BONE_MAP = {
   torso:          ["Spine", "mixamorigSpine", "spine", "Spine1", "spine01"],
   leftShoulder:   ["LeftArm", "mixamorigLeftArm", "Left_Arm", "leftArm"],
@@ -72,7 +101,7 @@ function findBone(root, candidates) {
   return found;
 }
 
-// ─── NAME LABEL SPRITE ────────────────────────────────────────
+// ─── NAME LABEL SPRITE ────────────────────────────────────────────────────────
 function makeNameSprite(name) {
   const nc = document.createElement("canvas");
   nc.width = 256; nc.height = 52;
@@ -93,7 +122,7 @@ function makeNameSprite(name) {
   return sprite;
 }
 
-// ─── SHADOW BLOB ──────────────────────────────────────────────
+// ─── SHADOW BLOB ──────────────────────────────────────────────────────────────
 function makeShadow() {
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.28, 14),
@@ -104,136 +133,357 @@ function makeShadow() {
   return shadow;
 }
 
-// ─── FALLBACK CAPSULE AVATAR ──────────────────────────────────
-// Used when GLB load fails. Simple but human-proportioned capsule stack.
+// ─── FACE OVERLAY ─────────────────────────────────────────────────────────────
+// Attaches a visible face (skin, eyes, brows, nose, mouth) onto the GLB head bone.
+// The GLB soldier has a helmet mesh — we keep the body but add our face geometry
+// ABOVE the neck area where the head should be exposed.
+function makeFaceGroup(skinHex, avatarType, avatarStyle) {
+  const skin = new THREE.Color(skinHex);
+  const faceGroup = new THREE.Group();
+  faceGroup.name = "faceOverlay";
+
+  // Unlit face mat so it's always visible regardless of lighting
+  const faceMat = new THREE.MeshBasicMaterial({ color: skin });
+  const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xf5f5f5 });
+  const eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  const eyeIrisMat = new THREE.MeshBasicMaterial({ color: avatarType === "feminine" ? 0x5566cc : 0x336688 });
+  const browMat = new THREE.MeshBasicMaterial({ color: 0x1a0e08 });
+  const lipMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(skinHex).multiplyScalar(0.75) });
+
+  // ── Head sphere (skin tone) ──
+  const headMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.115, 16, 12),
+    faceMat,
+  );
+  headMesh.position.set(0, 0, 0);
+  faceGroup.add(headMesh);
+
+  // ── Eyes ──
+  // Eye socket (white)
+  const eyeWhiteGeo = new THREE.SphereGeometry(0.028, 8, 6);
+  const lEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+  const rEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+  lEyeWhite.position.set(0.042, 0.018, 0.096);
+  rEyeWhite.position.set(-0.042, 0.018, 0.096);
+  faceGroup.add(lEyeWhite, rEyeWhite);
+
+  // Iris
+  const irisGeo = new THREE.SphereGeometry(0.018, 8, 6);
+  const lIris = new THREE.Mesh(irisGeo, eyeIrisMat);
+  const rIris = new THREE.Mesh(irisGeo, eyeIrisMat);
+  lIris.position.set(0.042, 0.018, 0.108);
+  rIris.position.set(-0.042, 0.018, 0.108);
+  faceGroup.add(lIris, rIris);
+
+  // Pupil
+  const pupilGeo = new THREE.SphereGeometry(0.011, 6, 4);
+  const lPupil = new THREE.Mesh(pupilGeo, eyePupilMat);
+  const rPupil = new THREE.Mesh(pupilGeo, eyePupilMat);
+  lPupil.position.set(0.042, 0.018, 0.116);
+  rPupil.position.set(-0.042, 0.018, 0.116);
+  faceGroup.add(lPupil, rPupil);
+
+  // ── Eyebrows ──
+  const browGeo = new THREE.BoxGeometry(0.038, 0.007, 0.006);
+  const lBrow = new THREE.Mesh(browGeo, browMat);
+  const rBrow = new THREE.Mesh(browGeo, browMat);
+  // Slight inward angle
+  lBrow.position.set(0.042, 0.052, 0.098);
+  rBrow.position.set(-0.042, 0.052, 0.098);
+  lBrow.rotation.z = -0.15;
+  rBrow.rotation.z = 0.15;
+  faceGroup.add(lBrow, rBrow);
+
+  // ── Nose ──
+  const noseGeo = new THREE.SphereGeometry(0.014, 6, 4);
+  const noseMesh = new THREE.Mesh(noseGeo, faceMat);
+  noseMesh.scale.set(1, 0.7, 1.2);
+  noseMesh.position.set(0, -0.01, 0.112);
+  faceGroup.add(noseMesh);
+
+  // ── Mouth / lips ──
+  // Upper lip
+  const upperLipGeo = new THREE.CapsuleGeometry(0.022, 0.024, 4, 6);
+  const upperLip = new THREE.Mesh(upperLipGeo, lipMat);
+  upperLip.rotation.z = Math.PI / 2;
+  upperLip.position.set(0, -0.042, 0.105);
+  faceGroup.add(upperLip);
+
+  // Lower lip (slightly larger)
+  const lowerLipGeo = new THREE.CapsuleGeometry(0.018, 0.030, 4, 6);
+  const lowerLip = new THREE.Mesh(lowerLipGeo, lipMat);
+  lowerLip.rotation.z = Math.PI / 2;
+  lowerLip.position.set(0, -0.056, 0.103);
+  faceGroup.add(lowerLip);
+
+  // ── Ear stubs ──
+  const earGeo = new THREE.SphereGeometry(0.022, 6, 4);
+  const earMat = new THREE.MeshBasicMaterial({ color: skin });
+  const lEar = new THREE.Mesh(earGeo, earMat);
+  const rEar = new THREE.Mesh(earGeo, earMat);
+  lEar.scale.set(0.5, 0.8, 0.5);
+  rEar.scale.set(0.5, 0.8, 0.5);
+  lEar.position.set(0.114, 0.005, 0);
+  rEar.position.set(-0.114, 0.005, 0);
+  faceGroup.add(lEar, rEar);
+
+  return faceGroup;
+}
+
+// ─── HAIR OVERLAY ─────────────────────────────────────────────────────────────
+function makeHairGroup(hairColor, avatarType) {
+  const hairGroup = new THREE.Group();
+  hairGroup.name = "hairOverlay";
+  const mat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(hairColor),
+    roughness: 0.85,
+    metalness: 0.0,
+  });
+
+  if (avatarType === "feminine") {
+    // Shoulder-length layered hair
+    // Top cap
+    const topGeo = new THREE.SphereGeometry(0.122, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.58);
+    const topMesh = new THREE.Mesh(topGeo, mat);
+    topMesh.position.set(0, 0.005, -0.005);
+    hairGroup.add(topMesh);
+
+    // Side volume — left
+    const sideGeoL = new THREE.SphereGeometry(0.09, 8, 6);
+    const sideMeshL = new THREE.Mesh(sideGeoL, mat);
+    sideMeshL.scale.set(0.5, 1.4, 0.6);
+    sideMeshL.position.set(0.112, -0.06, 0.01);
+    hairGroup.add(sideMeshL);
+
+    // Side volume — right
+    const sideMeshR = sideMeshL.clone();
+    sideMeshR.position.set(-0.112, -0.06, 0.01);
+    hairGroup.add(sideMeshR);
+
+    // Back length
+    const backGeo = new THREE.SphereGeometry(0.1, 8, 6);
+    const backMesh = new THREE.Mesh(backGeo, mat);
+    backMesh.scale.set(0.75, 1.6, 0.7);
+    backMesh.position.set(0, -0.08, -0.07);
+    hairGroup.add(backMesh);
+
+  } else if (avatarType === "masculine") {
+    // Short textured fade / crop
+    // Main cap (slightly flat on sides = fade look)
+    const topGeo = new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    const topMesh = new THREE.Mesh(topGeo, mat);
+    topMesh.scale.set(0.92, 0.95, 0.92);
+    topMesh.position.set(0, 0.01, -0.004);
+    hairGroup.add(topMesh);
+
+    // Front texture bump
+    const frontGeo = new THREE.SphereGeometry(0.065, 8, 5);
+    const frontMesh = new THREE.Mesh(frontGeo, mat);
+    frontMesh.scale.set(1.1, 0.55, 0.7);
+    frontMesh.position.set(0, 0.06, 0.082);
+    hairGroup.add(frontMesh);
+
+  } else {
+    // nonbinary / neutral — medium textured style
+    const topGeo = new THREE.SphereGeometry(0.122, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    const topMesh = new THREE.Mesh(topGeo, mat);
+    topMesh.position.set(0, 0.004, -0.004);
+    hairGroup.add(topMesh);
+
+    // Slight side volume
+    const sideGeoL = new THREE.SphereGeometry(0.07, 6, 5);
+    const sideMeshL = new THREE.Mesh(sideGeoL, mat);
+    sideMeshL.scale.set(0.45, 1.0, 0.55);
+    sideMeshL.position.set(0.106, -0.02, 0.0);
+    hairGroup.add(sideMeshL);
+
+    const sideMeshR = sideMeshL.clone();
+    sideMeshR.position.set(-0.106, -0.02, 0.0);
+    hairGroup.add(sideMeshR);
+  }
+
+  return hairGroup;
+}
+
+// ─── OUTFIT ACCENT STRIP ──────────────────────────────────────────────────────
+// Adds a thin neon strip along the chest of the GLB to signal outfit style.
+// Kept very minimal so it doesn't clash with the GLB body mesh.
+function makeOutfitAccents(accentColor, avatarStyle) {
+  const group = new THREE.Group();
+  group.name = "outfitAccents";
+
+  const accentMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(accentColor),
+    transparent: true,
+    opacity: avatarStyle === "cosmic" ? 0.85 : 0.65,
+  });
+
+  // Chest stripe
+  const stripeGeo = new THREE.BoxGeometry(0.018, 0.28, 0.012);
+  const stripe = new THREE.Mesh(stripeGeo, accentMat);
+  stripe.position.set(0, 0, 0.18); // in front of chest
+  group.add(stripe);
+
+  // Shoulder pip — left
+  const pipGeo = new THREE.SphereGeometry(0.018, 6, 4);
+  const lPip = new THREE.Mesh(pipGeo, accentMat);
+  lPip.position.set(0.17, 0.12, 0.12);
+  group.add(lPip);
+
+  // Shoulder pip — right
+  const rPip = lPip.clone();
+  rPip.position.set(-0.17, 0.12, 0.12);
+  group.add(rPip);
+
+  return group;
+}
+
+// ─── APPLY STYLE OVERLAYS ONTO LOADED GLB ────────────────────────────────────
+// Called after GLB loads. Adds face, hair, outfit accents ON TOP of the model.
+// Does NOT modify the GLB geometry, scale, or rig.
+function addStyleOverlays(wrapper, glbModel, opts = {}) {
+  const { avatarType = "neutral", skinTone = "medium", avatarStyle = "streetwear" } = opts;
+  const skinHex = SKIN_TONES[skinTone] || SKIN_TONES.medium;
+  const hairHex = HAIR_COLORS[skinTone] || HAIR_COLORS.medium;
+  const style = avatarStyle === "cosmic" ? "cosmic" : "streetwear";
+  const accentColor = ACCENT_COLORS[style]?.[avatarType] || ACCENT_COLORS.streetwear.neutral;
+
+  // ── Tint the GLB body to match outfit color ──
+  const outfitColor = new THREE.Color(OUTFIT_COLORS[style]?.[avatarType] || 0x1a3a6e);
+  glbModel.traverse((child) => {
+    if (!child.isMesh) return;
+    child.castShadow = true;
+    child.receiveShadow = true;
+    // Tint all body meshes with outfit color (keeps texture detail, adds color wash)
+    if (child.material) {
+      const mat = child.material.clone();
+      mat.color = outfitColor;
+      // For cosmic style, add a slight emissive glow
+      if (style === "cosmic") {
+        mat.emissive = new THREE.Color(accentColor);
+        mat.emissiveIntensity = 0.08;
+      }
+      child.material = mat;
+    }
+  });
+
+  // ── Find head bone to attach face/hair at correct world position ──
+  // Soldier GLB head bone position is roughly at Y=1.7 in model space
+  // Since model is offset by -0.9 in wrapper, head is at wrapper Y ≈ 0.82
+  // We attach face/hair to a sub-group at the head position
+  const headAnchor = new THREE.Group();
+  headAnchor.name = "headAnchor";
+  headAnchor.position.set(0, 0.85, 0); // approximate head center in wrapper coords
+
+  // Face
+  const faceGroup = makeFaceGroup(skinHex, avatarType, style);
+  headAnchor.add(faceGroup);
+
+  // Hair
+  const hairGroup = makeHairGroup(hairHex, avatarType);
+  headAnchor.add(hairGroup);
+
+  wrapper.add(headAnchor);
+
+  // ── Outfit accents (chest stripe, shoulder pips) ──
+  const accents = makeOutfitAccents(accentColor, style);
+  accents.position.set(0, 0.35, 0); // torso area
+  wrapper.add(accents);
+}
+
+// ─── CAPSULE FALLBACK (used if GLB fails to load) ────────────────────────────
 function createCapsuleFallback(scene, opts = {}) {
   const type = opts.avatarType || "neutral";
-  const tint = TYPE_TINT[type] ?? 0x2196f3;
-  const skin = SKIN_TONES[opts.skinTone] || SKIN_TONES.medium;
+  const style = opts.avatarStyle || "streetwear";
+  const skinHex = SKIN_TONES[opts.skinTone] || SKIN_TONES.medium;
+  const hairHex = HAIR_COLORS[opts.skinTone] || HAIR_COLORS.medium;
+  const outfitColor = OUTFIT_COLORS[style]?.[type] || 0x1a3a6e;
+  const accentColor = ACCENT_COLORS[style]?.[type] || 0x00e5ff;
 
   const root = new THREE.Group();
   root.name = "avatar";
 
-  const M = (hex, rough = 0.55) =>
-    new THREE.MeshStandardMaterial({ color: new THREE.Color(hex), roughness: rough });
+  const M = (hex, rough = 0.55, emissive = null, ei = 0) => {
+    const m = new THREE.MeshStandardMaterial({ color: new THREE.Color(hex), roughness: rough });
+    if (emissive) { m.emissive = new THREE.Color(emissive); m.emissiveIntensity = ei; }
+    return m;
+  };
 
-  // Legs group (hip pivot)
+  // Legs
   const lHipG = new THREE.Group(); lHipG.name = "leftHip"; lHipG.position.set(0.10, 0.55, 0);
   const rHipG = new THREE.Group(); rHipG.name = "rightHip"; rHipG.position.set(-0.10, 0.55, 0);
-
-  // Thighs
   const thighGeo = new THREE.CapsuleGeometry(0.07, 0.28, 4, 8);
-  const pantMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x111122) });
+  const pantMat = M(0x111122);
   const lThigh = new THREE.Mesh(thighGeo, pantMat); lThigh.position.y = -0.18;
   const rThigh = new THREE.Mesh(thighGeo, pantMat); rThigh.position.y = -0.18;
   lHipG.add(lThigh); rHipG.add(rThigh);
-
-  // Knee pivots
   const lKneeG = new THREE.Group(); lKneeG.name = "leftKnee"; lKneeG.position.y = -0.36;
   const rKneeG = new THREE.Group(); rKneeG.name = "rightKnee"; rKneeG.position.y = -0.36;
   lHipG.add(lKneeG); rHipG.add(rKneeG);
-
-  // Shins
   const shinGeo = new THREE.CapsuleGeometry(0.055, 0.24, 4, 8);
-  const lShin = new THREE.Mesh(shinGeo, pantMat); lShin.position.y = -0.16;
-  const rShin = new THREE.Mesh(shinGeo, pantMat); rShin.position.y = -0.16;
-  lKneeG.add(lShin); rKneeG.add(rShin);
-
-  // Feet pivots
+  lKneeG.add(new THREE.Mesh(shinGeo, pantMat)); rKneeG.add(new THREE.Mesh(shinGeo, pantMat));
   const lFootG = new THREE.Group(); lFootG.name = "leftFoot"; lFootG.position.y = -0.30;
   const rFootG = new THREE.Group(); rFootG.name = "rightFoot"; rFootG.position.y = -0.30;
   lKneeG.add(lFootG); rKneeG.add(rFootG);
-
   const shoeGeo = new THREE.BoxGeometry(0.10, 0.06, 0.20);
-  const shoeMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(0x111118) });
-  const lShoe = new THREE.Mesh(shoeGeo, shoeMat); lShoe.position.set(0, -0.03, 0.04);
-  const rShoe = new THREE.Mesh(shoeGeo, shoeMat); rShoe.position.set(0, -0.03, 0.04);
-  lFootG.add(lShoe); rFootG.add(rShoe);
-
-  // userData for animation
-  lKneeG.userData.foot = lFootG;
-  rKneeG.userData.foot = rFootG;
+  const shoeMat = M(0x111118);
+  lFootG.add(new THREE.Mesh(shoeGeo, shoeMat));
+  rFootG.add(new THREE.Mesh(shoeGeo, shoeMat));
+  lKneeG.userData.foot = lFootG; rKneeG.userData.foot = rFootG;
   lHipG.userData.leg = { userData: { lowerLeg: lKneeG } };
   rHipG.userData.leg = { userData: { lowerLeg: rKneeG } };
-
   root.add(lHipG, rHipG);
 
   // Torso
   const torsoG = new THREE.Group(); torsoG.name = "torso"; torsoG.position.y = 0.78;
-  const torsoMesh = new THREE.Mesh(
+  torsoG.add(new THREE.Mesh(
     new THREE.CapsuleGeometry(0.14, 0.36, 4, 8),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color(tint), emissive: new THREE.Color(tint), emissiveIntensity: 0.25 }),
-  );
-  torsoMesh.castShadow = true;
-  torsoG.add(torsoMesh);
+    M(outfitColor, 0.6, accentColor, 0.15),
+  ));
   root.add(torsoG);
 
   // Arms
   const lShG = new THREE.Group(); lShG.name = "leftShoulder"; lShG.position.set(0.18, 0.92, 0);
   const rShG = new THREE.Group(); rShG.name = "rightShoulder"; rShG.position.set(-0.18, 0.92, 0);
-
   const upperArmGeo = new THREE.CapsuleGeometry(0.045, 0.22, 4, 6);
-  const shirtMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(tint) });
-  const skinMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(skin) });
-
-  const lUA = new THREE.Mesh(upperArmGeo, shirtMat); lUA.position.y = -0.14;
-  const rUA = new THREE.Mesh(upperArmGeo, shirtMat); rUA.position.y = -0.14;
-  lShG.add(lUA); rShG.add(rUA);
-
+  const shirtMat = M(outfitColor);
+  const skinMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(skinHex) });
+  lShG.add(new THREE.Mesh(upperArmGeo, shirtMat));
+  rShG.add(new THREE.Mesh(upperArmGeo, shirtMat));
   const lElbG = new THREE.Group(); lElbG.name = "leftElbow"; lElbG.position.y = -0.26;
   const rElbG = new THREE.Group(); rElbG.name = "rightElbow"; rElbG.position.y = -0.26;
   lShG.add(lElbG); rShG.add(rElbG);
-
   const foreArmGeo = new THREE.CapsuleGeometry(0.038, 0.20, 4, 6);
-  const lFA = new THREE.Mesh(foreArmGeo, skinMat); lFA.position.y = -0.13;
-  const rFA = new THREE.Mesh(foreArmGeo, skinMat); rFA.position.y = -0.13;
-  lElbG.add(lFA); rElbG.add(rFA);
-
-  // Hand stub
+  lElbG.add(new THREE.Mesh(foreArmGeo, skinMat));
+  rElbG.add(new THREE.Mesh(foreArmGeo, skinMat));
+  const handGeo = new THREE.SphereGeometry(0.038, 6, 4);
   const lHandG = new THREE.Group(); lHandG.name = "leftHand"; lHandG.position.y = -0.24;
   const rHandG = new THREE.Group(); rHandG.name = "rightHand"; rHandG.position.y = -0.24;
   lElbG.add(lHandG); rElbG.add(rHandG);
-  const handGeo = new THREE.SphereGeometry(0.038, 6, 4);
   lHandG.add(new THREE.Mesh(handGeo, skinMat));
   rHandG.add(new THREE.Mesh(handGeo, skinMat));
-
-  // userData for animation
   lShG.userData.arm = { userData: { forearm: lElbG } };
   rShG.userData.arm = { userData: { forearm: rElbG } };
-  lElbG.userData.hand = lHandG;
-  rElbG.userData.hand = rHandG;
-
+  lElbG.userData.hand = lHandG; rElbG.userData.hand = rHandG;
   root.add(lShG, rShG);
 
   // Neck
-  const neckMesh = new THREE.Mesh(
+  root.add(new THREE.Mesh(
     new THREE.CapsuleGeometry(0.04, 0.08, 4, 6),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color(skin) }),
-  );
-  neckMesh.position.set(0, 1.12, 0);
-  root.add(neckMesh);
+    skinMat,
+  )).position?.set?.(0, 1.12, 0);
 
-  // Head
-  const headGeo = new THREE.SphereGeometry(0.12, 12, 10);
-  const headMesh = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({ color: new THREE.Color(skin), emissive: new THREE.Color(skin), emissiveIntensity: 0.15 }));
-  headMesh.position.set(0, 1.30, 0);
-  headMesh.castShadow = true;
-  root.add(headMesh);
+  // ── Face (head anchor at 1.30) ──
+  const headAnchor = new THREE.Group();
+  headAnchor.position.set(0, 1.30, 0);
 
-  // Simple hair cap
-  const hairGeo = new THREE.SphereGeometry(0.125, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
-  const hairMesh = new THREE.Mesh(hairGeo, new THREE.MeshStandardMaterial({ color: new THREE.Color(0x1a0e08) }));
-  hairMesh.position.set(0, 1.32, 0);
-  root.add(hairMesh);
+  const faceG = makeFaceGroup(skinHex, type, style);
+  headAnchor.add(faceG);
 
-  // Eyes
-  const eyeGeo = new THREE.SphereGeometry(0.018, 6, 4);
-  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-  const lEye = new THREE.Mesh(eyeGeo, eyeMat); lEye.position.set(0.045, 1.32, 0.112);
-  const rEye = new THREE.Mesh(eyeGeo, eyeMat); rEye.position.set(-0.045, 1.32, 0.112);
-  root.add(lEye, rEye);
+  const hairG = makeHairGroup(hairHex, type);
+  headAnchor.add(hairG);
 
-  // Shadow
+  root.add(headAnchor);
   root.add(makeShadow());
 
   root.position.set(SPAWN[0], SPAWN[1], SPAWN[2]);
@@ -241,136 +491,74 @@ function createCapsuleFallback(scene, opts = {}) {
   return root;
 }
 
-// ─── APPLY GLB MODEL TO WRAPPER GROUP ────────────────────────────────────────
+// ─── APPLY GLB + OVERLAYS ─────────────────────────────────────────────────────
 function applyModelToWrapper(wrapper, gltf, opts = {}) {
-  const type = opts.avatarType || "neutral";
-  const tint = new THREE.Color(TYPE_TINT[type] ?? 0x2196f3);
-  const skin = new THREE.Color(SKIN_TONES[opts.skinTone] || SKIN_TONES.medium);
-
   const model = gltf.scene;
   model.scale.setScalar(1.0);
-  model.position.set(0, -0.9, 0); // SPAWN[1]=0.9, offset so feet touch ground
-
-  // Recolor model to match avatar type
-  model.traverse((child) => {
-    if (!child.isMesh) return;
-    child.castShadow = true;
-    child.receiveShadow = true;
-
-    const nameLower = (child.name || "").toLowerCase();
-    // Shirt / jacket → tint color
-    if (nameLower.includes("shirt") || nameLower.includes("top") ||
-        nameLower.includes("jacket") || nameLower.includes("upper") ||
-        nameLower.includes("torso") || nameLower.includes("body")) {
-      if (child.material) {
-        child.material = child.material.clone();
-        child.material.color.copy(tint);
-      }
-    }
-    // Skin → skin tone
-    if (nameLower.includes("head") || nameLower.includes("skin") ||
-        nameLower.includes("face") || nameLower.includes("hand") ||
-        nameLower.includes("neck")) {
-      if (child.material) {
-        child.material = child.material.clone();
-        child.material.color.copy(skin);
-      }
-    }
-  });
+  model.position.set(0, -0.9, 0); // offset so feet touch ground (wrapper sits at SPAWN Y=0.9)
 
   wrapper.add(model);
 
-  // ── Map bones to our animation joint names ──────────────────
-  // Find armature root
-  let armature = null;
-  model.traverse((obj) => { if (obj.isSkinnedMesh && !armature) armature = obj; });
+  // Add face/hair/outfit overlays on top of the GLB
+  addStyleOverlays(wrapper, model, opts);
 
+  // ── Map bones for animation system ──
   const joints = {};
   for (const [ourName, candidates] of Object.entries(BONE_MAP)) {
     joints[ourName] = findBone(model, candidates);
   }
 
-  // Expose joints as named children on the wrapper so CityCanvas can find them
-  // We create proxy Group objects at the right positions
-  const torsoProxy = joints.torso || new THREE.Group();
-  torsoProxy.name = "torso";
+  const torsoProxy = joints.torso || new THREE.Group(); torsoProxy.name = "torso";
+  const lShProxy = joints.leftShoulder || new THREE.Group(); lShProxy.name = "leftShoulder";
+  const rShProxy = joints.rightShoulder || new THREE.Group(); rShProxy.name = "rightShoulder";
+  const lHipProxy = joints.leftHip || new THREE.Group(); lHipProxy.name = "leftHip";
+  const rHipProxy = joints.rightHip || new THREE.Group(); rHipProxy.name = "rightHip";
 
-  const lShProxy = joints.leftShoulder || new THREE.Group();
-  lShProxy.name = "leftShoulder";
-
-  const rShProxy = joints.rightShoulder || new THREE.Group();
-  rShProxy.name = "rightShoulder";
-
-  const lHipProxy = joints.leftHip || new THREE.Group();
-  lHipProxy.name = "leftHip";
-
-  const rHipProxy = joints.rightHip || new THREE.Group();
-  rHipProxy.name = "rightHip";
-
-  // Wire up leg/arm userData chains for the animation system
-  const lKneeProxy = joints.leftKnee || new THREE.Group();
-  lKneeProxy.name = "leftKnee";
-  const rKneeProxy = joints.rightKnee || new THREE.Group();
-  rKneeProxy.name = "rightKnee";
-  const lAnkleProxy = joints.leftAnkle || new THREE.Group();
-  lAnkleProxy.name = "leftFoot";
-  const rAnkleProxy = joints.rightAnkle || new THREE.Group();
-  rAnkleProxy.name = "rightFoot";
+  const lKneeProxy = joints.leftKnee || new THREE.Group(); lKneeProxy.name = "leftKnee";
+  const rKneeProxy = joints.rightKnee || new THREE.Group(); rKneeProxy.name = "rightKnee";
+  const lAnkleProxy = joints.leftAnkle || new THREE.Group(); lAnkleProxy.name = "leftFoot";
+  const rAnkleProxy = joints.rightAnkle || new THREE.Group(); rAnkleProxy.name = "rightFoot";
 
   lKneeProxy.userData.foot = lAnkleProxy;
   rKneeProxy.userData.foot = rAnkleProxy;
   lHipProxy.userData.leg = { userData: { lowerLeg: lKneeProxy } };
   rHipProxy.userData.leg = { userData: { lowerLeg: rKneeProxy } };
 
-  const lElbProxy = joints.leftElbow || new THREE.Group();
-  lElbProxy.name = "leftElbow";
-  const rElbProxy = joints.rightElbow || new THREE.Group();
-  rElbProxy.name = "rightElbow";
-
-  lElbProxy.userData.hand = null;
-  rElbProxy.userData.hand = null;
+  const lElbProxy = joints.leftElbow || new THREE.Group(); lElbProxy.name = "leftElbow";
+  const rElbProxy = joints.rightElbow || new THREE.Group(); rElbProxy.name = "rightElbow";
+  lElbProxy.userData.hand = null; rElbProxy.userData.hand = null;
   lShProxy.userData.arm = { userData: { forearm: lElbProxy } };
   rShProxy.userData.arm = { userData: { forearm: rElbProxy } };
 
   wrapper.userData.joints = {
-    torso: torsoProxy,
-    leftShoulder: lShProxy,
-    rightShoulder: rShProxy,
-    leftHip: lHipProxy,
-    rightHip: rHipProxy,
+    torso: torsoProxy, leftShoulder: lShProxy, rightShoulder: rShProxy,
+    leftHip: lHipProxy, rightHip: rHipProxy,
   };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // createAvatar — LOCAL PLAYER
-// Returns a Group immediately (capsule fallback), then swaps to GLB once loaded.
 // ═══════════════════════════════════════════════════════════════════════════════
 export function createAvatar(scene, opts = {}) {
   const type = opts.avatarType || "neutral";
   const url = MODEL_URLS[type] || MODEL_URLS.neutral;
 
-  // Start with capsule fallback — visible immediately
+  // Start with styled capsule fallback — visible immediately
   const wrapper = createCapsuleFallback(scene, opts);
 
-  // Attempt to load GLB and swap out the fallback
+  // Load GLB and swap in once ready
   const loader = new GLTFLoader();
   loader.load(
     url,
     (gltf) => {
-      // Remove capsule children (keep the Group identity for ref stability)
       while (wrapper.children.length > 0) wrapper.remove(wrapper.children[0]);
-
       applyModelToWrapper(wrapper, gltf, opts);
-
-      // Re-add shadow blob
       wrapper.add(makeShadow());
-
-      // Rim light will be re-added by CityCanvas automatically
-      console.log("[AvatarModel] GLB loaded:", url);
+      console.log("[AvatarModel] GLB loaded with style overlays:", opts.avatarStyle);
     },
     undefined,
     (err) => {
-      console.warn("[AvatarModel] GLB load failed, keeping capsule fallback:", err);
+      console.warn("[AvatarModel] GLB load failed, keeping styled fallback:", err);
     }
   );
 
@@ -380,104 +568,84 @@ export function createAvatar(scene, opts = {}) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // createRemoteAvatar — OTHER PLAYERS
 // ═══════════════════════════════════════════════════════════════════════════════
-export function createRemoteAvatar(scene, userId, username, avatarType, skinTone) {
+export function createRemoteAvatar(scene, userId, username, avatarType, skinTone, avatarStyle) {
   const type = avatarType || "neutral";
+  const style = avatarStyle || "streetwear";
   const url = MODEL_URLS[type] || MODEL_URLS.neutral;
 
-  // Capsule placeholder immediately visible
   const group = new THREE.Group();
   group.name = `remote_${userId}`;
   group.userData = { userId, walkTime: 0, speed: 0 };
 
-  // Build a minimal capsule remote while GLB loads
-  const tint = TYPE_TINT[type] ?? 0x2196f3;
-  const skin = SKIN_TONES[skinTone] || SKIN_TONES.medium;
+  // Build styled capsule placeholder while GLB loads
+  const skinHex = SKIN_TONES[skinTone] || SKIN_TONES.medium;
+  const hairHex = HAIR_COLORS[skinTone] || HAIR_COLORS.medium;
+  const outfitColor = OUTFIT_COLORS[style]?.[type] || 0x1a3a6e;
+  const accentColor = ACCENT_COLORS[style]?.[type] || 0x00e5ff;
   const M = (c, r = 0.6) => new THREE.MeshStandardMaterial({ color: new THREE.Color(c), roughness: r });
 
   // Body
-  const bodyMesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.36, 4, 8), M(tint));
-  bodyMesh.position.y = 0.78;
-  bodyMesh.castShadow = true;
-  group.add(bodyMesh);
+  group.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.36, 4, 8), M(outfitColor)));
+  const body = group.children[0]; body.position.y = 0.78; body.castShadow = true;
 
-  // Head
-  const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), M(skin));
-  headMesh.position.y = 1.30;
-  headMesh.castShadow = true;
-  group.add(headMesh);
-
-  // Hair
-  const hairMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(0.125, 8, 7, 0, Math.PI * 2, 0, Math.PI * 0.55),
-    M(0x1a0e08),
-  );
-  hairMesh.position.y = 1.32;
-  group.add(hairMesh);
-
-  // Legs (hip pivots for animation)
+  // Legs
   [-1, 1].forEach((s) => {
     const side = s > 0 ? "right" : "left";
     const hPivot = new THREE.Group(); hPivot.name = side + "Hip"; hPivot.position.set(s * -0.10, 0.55, 0);
-    const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.26, 4, 6), M(0x111122));
-    thigh.position.y = -0.17;
-    hPivot.add(thigh);
+    hPivot.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.26, 4, 6), M(0x111122)));
+    hPivot.children[0].position.y = -0.17;
     const kPivot = new THREE.Group(); kPivot.name = side + "Knee"; kPivot.position.y = -0.34;
-    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.22, 4, 6), M(0x111122));
-    shin.position.y = -0.15;
-    kPivot.add(shin);
+    kPivot.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.22, 4, 6), M(0x111122)));
+    kPivot.children[0].position.y = -0.15;
     const aPivot = new THREE.Group(); aPivot.name = side + "Foot"; aPivot.position.y = -0.28;
     kPivot.add(aPivot);
-    kPivot.userData.anklePivot = aPivot;
     kPivot.userData.foot = aPivot;
-    hPivot.userData.kneePivot = kPivot;
     hPivot.userData.leg = { userData: { lowerLeg: kPivot } };
     hPivot.add(kPivot);
     group.add(hPivot);
   });
 
-  // Arms (shoulder pivots)
+  // Arms
   [-1, 1].forEach((s) => {
     const side = s > 0 ? "right" : "left";
     const shPivot = new THREE.Group(); shPivot.name = side + "Shoulder"; shPivot.position.set(s * -0.18, 0.92, 0);
-    const uArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.042, 0.20, 4, 6), M(tint));
-    uArm.position.y = -0.13;
-    shPivot.add(uArm);
+    shPivot.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.042, 0.20, 4, 6), M(outfitColor)));
+    shPivot.children[0].position.y = -0.13;
     const ePivot = new THREE.Group(); ePivot.name = side + "Elbow"; ePivot.position.y = -0.24;
-    const fArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.18, 4, 6), M(skin));
-    fArm.position.y = -0.12;
-    ePivot.add(fArm);
-    shPivot.userData.elbowPivot = ePivot;
+    ePivot.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.18, 4, 6), M(skinHex)));
+    ePivot.children[0].position.y = -0.12;
     shPivot.userData.arm = { userData: { forearm: ePivot } };
     shPivot.add(ePivot);
     group.add(shPivot);
   });
 
+  // Face anchor
+  const headAnchor = new THREE.Group();
+  headAnchor.position.set(0, 1.30, 0);
+  headAnchor.add(makeFaceGroup(skinHex, type, style));
+  headAnchor.add(makeHairGroup(hairHex, type));
+  group.add(headAnchor);
+
   // Name label
   const nameSprite = makeNameSprite(username);
   nameSprite.position.y = 1.65;
   group.add(nameSprite);
-
-  // Shadow
   group.add(makeShadow());
 
-  // Attempt to load GLB and replace with real model
+  // Load GLB and replace
   const loader = new GLTFLoader();
   loader.load(
     url,
     (gltf) => {
-      // Remove primitive children
       const toRemove = group.children.filter((c) => !(c instanceof THREE.Sprite));
       toRemove.forEach((c) => group.remove(c));
-
-      applyModelToWrapper(group, gltf, { avatarType: type, skinTone });
-
-      // Re-add name sprite and shadow
+      applyModelToWrapper(group, gltf, { avatarType: type, skinTone, avatarStyle: style });
       group.add(nameSprite);
       group.add(makeShadow());
     },
     undefined,
     (err) => {
-      console.warn("[AvatarModel] Remote GLB load failed, keeping capsule:", err);
+      console.warn("[AvatarModel] Remote GLB load failed, keeping styled fallback:", err);
     }
   );
 

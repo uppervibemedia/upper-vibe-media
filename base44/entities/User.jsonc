@@ -120,6 +120,15 @@
       ],
       "description": "Skin tone for avatar in Upper Vibe City (no default \u2014 user must pick)"
     },
+    "avatar_style": {
+      "type": "string",
+      "enum": [
+        "streetwear",
+        "cosmic"
+      ],
+      "default": "streetwear",
+      "description": "Avatar outfit style: streetwear = modern human look, cosmic = futuristic armor"
+    },
     "uvc_rules_accepted": {
       "type": "boolean",
       "default": false,
