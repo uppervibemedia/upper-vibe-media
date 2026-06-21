@@ -168,8 +168,9 @@ function attachModel(gltf, controllerGroup, opts = {}) {
   const model = opts.isRemote ? cloneGltfForRemote(gltf) : getModelForPlayer(gltf);
   model.name = "avatarModel";
   // Model lives at local origin — inherits controller position/rotation/scale
+  // Rotate 180° on Y so the model's chest faces +Z (matching movement forward direction)
   model.position.set(0, 0, 0);
-  model.rotation.set(0, 0, 0);
+  model.rotation.set(0, Math.PI, 0);
   model.scale.set(1, 1, 1);
 
   model.traverse((child) => {

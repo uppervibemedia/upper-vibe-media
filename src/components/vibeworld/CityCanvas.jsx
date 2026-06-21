@@ -53,8 +53,8 @@ const CAM_DIST = 5.5;         // distance behind avatar
 const CAM_HEIGHT = 2.4;       // above avatar ground position
 const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
 const CAM_FOLLOW_SPEED = 6.0; // how fast camera angle follows avatar
-const IDLE_ORBIT_DELAY = 5.0; // seconds before idle orbit starts
-const IDLE_ORBIT_SPEED = 0.3; // radians/sec for idle orbit
+const IDLE_ORBIT_DELAY = 120.0; // seconds before idle orbit starts (2 minutes)
+const IDLE_ORBIT_SPEED = 0.18; // radians/sec for idle orbit (very slow)
 
 // Tree collisions — radius 0.6 per tree
 const TREE_R = 0.5;
@@ -1489,19 +1489,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         const isMoving = Math.abs(inputFwd) > 0.08 || Math.abs(turnInput) > 0.08;
+        if (Math.abs(turnInput) > 0.08 && Math.abs(inputFwd) < 0.08) hasAnyInput = true; // A/D alone also counts
 
         // ─── AVATAR TURNING (A/D) ────────────────────────────
         if (Math.abs(turnInput) > 0.01) {
           rot += turnInput * TURN_SPEED * dt;
         }
 
-        // ─── FORWARD/BACKWARD MOVEMENT ───────────────────────
-        const moveX = Math.sin(rot) * inputFwd;
-        const moveZ = Math.cos(rot) * inputFwd;
+        // ─── FORWARD/BACKWARD + STRAFE MOVEMENT ──────────────
+        // Avatar forward is +Z when rot=0: sin(rot) = right, cos(rot) = forward
+        // A/D also contribute lateral movement (strafe) at reduced speed
+        const strafeInput = -turnInput * 0.6; // A=left strafe, D=right strafe
+        const moveX = Math.sin(rot) * inputFwd + Math.cos(rot) * strafeInput;
+        const moveZ = Math.cos(rot) * inputFwd - Math.sin(rot) * strafeInput;
 
-        if (isMoving && Math.abs(inputFwd) > 0.08) {
-          vel.x += (moveX * MOVE_SPEED - vel.x) * Math.min(1, ACCELERATION * dt);
-          vel.z += (moveZ * MOVE_SPEED - vel.z) * Math.min(1, ACCELERATION * dt);
+        if (isMoving) {
+          const targetSpeed = (Math.abs(inputFwd) > 0.08 || Math.abs(strafeInput) > 0.04) ? MOVE_SPEED : 0;
+          vel.x += (moveX * targetSpeed - vel.x) * Math.min(1, ACCELERATION * dt);
+          vel.z += (moveZ * targetSpeed - vel.z) * Math.min(1, ACCELERATION * dt);
         } else {
           vel.x += (0 - vel.x) * Math.min(1, DECELERATION * dt);
           vel.z += (0 - vel.z) * Math.min(1, DECELERATION * dt);
@@ -1589,12 +1594,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camera.position.lerp(STAGE_CAM_POS, Math.min(1, 3.0 * dt));
           camera.lookAt(STAGE_LOOK_AT);
         } else {
-          // Behind-avatar third-person camera
+          // True behind-avatar third-person camera:
+          // Avatar forward = +Z when rot=0. "Behind" = camera offset in -Z direction.
+          // finalCamAngle=0 → camera at (px, py+height, pz-dist) = behind avatar facing +Z ✓
+          // camYaw rotates this offset around the avatar (right-click/drag)
           camera.position.set(
             px - Math.sin(finalCamAngle) * CAM_DIST,
             py + CAM_HEIGHT,
             pz - Math.cos(finalCamAngle) * CAM_DIST,
           );
+          // Look at avatar chest height
           camera.lookAt(px, py + CAM_LOOK_Y, pz);
         }
 
