@@ -1393,15 +1393,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       scene.add(avatarRimLight);
       scene.userData.avatarRimLight = avatarRimLight;
 
-      // createAvatar now returns an entry object immediately (root = controller Group in scene).
-      // The GLB model is loaded async and parented INTO the controller — so movement always works.
-      const initialEntry = createAvatar(scene, avatarConfig || {}, (entry) => {
-        // GLB finished loading — entry.mixer/clips are now populated
-        // root is the same controller Group, already in scene and being moved each frame
-        avatarEntryRef.current = entry;
+      // createAvatar returns an entry immediately. entry.root is the controller Group
+      // already in the scene. CityCanvas stores entry.root in avatarRef and moves it
+      // every frame. When GLB loads, the model is parented INTO entry.root — it inherits
+      // all movement automatically. The same entry object is mutated in-place.
+      const entry = createAvatar(scene, avatarConfig || {}, (_entry) => {
+        // GLB done loading — mixer/clips now populated on the same entry object
+        // avatarEntryRef already points to it, nothing to reassign
       });
-      avatarEntryRef.current = initialEntry;
-      avatarRef.current = initialEntry.root;
+      avatarEntryRef.current = entry;
+      avatarRef.current = entry.root; // this is what gets moved every frame
 
       // Skybox — must follow camera so sky always feels infinitely far away
       const skybox = scene.getObjectByName("skybox");
@@ -1580,7 +1581,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ─── GLB AVATAR ANIMATION ────────────────────────────
-        updateAvatarAnimation(avatarEntryRef.current, speed, isDancingRef.current, dt);
+        // avatarEntryRef.current is the same object returned by createAvatar.
+        // Its mixer/clips get populated in-place when GLB loads — no reassignment needed.
+        const avatarEntry = avatarEntryRef.current;
+        if (avatarEntry) updateAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt);
 
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
         const audioBeat = audioIntensityRef?.current ?? 0;
