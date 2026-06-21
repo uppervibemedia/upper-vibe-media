@@ -49,7 +49,7 @@ const ZONES = {
   zenbeach: {
     name: "Zen Beach",
     id: "zenbeach",
-    cx: -20, cz: 28, radius: 4,
+    cx: -20, cz: 22, radius: 4,
     icon: "Sparkles",
   },
   academy: {

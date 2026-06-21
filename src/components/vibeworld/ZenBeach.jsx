@@ -131,7 +131,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
 }
 
 export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
-  const ZEN_X = -20, ZEN_Z = 28;
+  const ZEN_X = -20, ZEN_Z = 22;
 
   // Circular meditation platform
   const zenPlat = new Mesh(
@@ -222,8 +222,8 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   addPathLights(scene, PLAZA_X, PLAZA_Z, ZEN_X, ZEN_Z, "#00D4F0");
 
   // Path: Beach area → Zen Beach
-  createPath(scene, 0, 23, ZEN_X, ZEN_Z, "#A078FF");
-  addPathLights(scene, 0, 23, ZEN_X, ZEN_Z, "#A078FF");
+  createPath(scene, 0, 20, ZEN_X, ZEN_Z, "#A078FF");
+  addPathLights(scene, 0, 20, ZEN_X, ZEN_Z, "#A078FF");
 
   // Ambient light
   const zenLight = new PointLight();
