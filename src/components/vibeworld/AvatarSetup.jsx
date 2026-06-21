@@ -40,142 +40,113 @@ function AvatarPreview({ avatarType, skinTone }) {
   const shirtColor = SHIRT_COLORS[avatarType] || SHIRT_COLORS.neutral;
   const hairColor = HAIR_COLORS[avatarType] || HAIR_COLORS.neutral;
 
-  // Body proportions per type
-  const shoulderW = avatarType === "masculine" ? 60 : avatarType === "feminine" ? 52 : 56;
-  const hipW = avatarType === "feminine" ? 48 : 44;
-  const bodyH = avatarType === "masculine" ? 72 : avatarType === "feminine" ? 68 : 70;
+  // Fortnite-style proportions
+  const shoulderW = avatarType === "masculine" ? 62 : avatarType === "feminine" ? 50 : 56;
+  const bodyH = avatarType === "masculine" ? 55 : avatarType === "feminine" ? 50 : 52;
+  const legLen = avatarType === "masculine" ? 88 : avatarType === "feminine" ? 86 : 87;
 
   return (
     <div className="flex flex-col items-center gap-2">
-      {/* Full body preview container */}
       <div
         className="relative flex flex-col items-center rounded-2xl overflow-hidden"
         style={{
-          width: 140,
-          height: 220,
+          width: 150,
+          height: 240,
           background: `linear-gradient(180deg, ${typeCfg.color}11 0%, transparent 60%)`,
           border: `2px solid ${typeCfg.color}33`,
           boxShadow: `0 0 40px ${typeCfg.color}18`,
         }}
       >
         {/* ── HEAD ──────────────────────────────────── */}
-        <div className="relative mt-3" style={{ zIndex: 2 }}>
-          {/* Hair back */}
+        <div className="relative mt-2" style={{ zIndex: 2 }}>
           <div style={{
-            width: 42, height: 46,
+            width: 44, height: 48,
             background: hairColor,
-            borderRadius: "50% 50% 40% 40%",
+            borderRadius: "50% 50% 38% 38%",
             position: "absolute",
-            top: -6, left: -1,
+            top: -7, left: -2,
           }} />
-          {/* Face */}
           <div style={{
-            width: 38, height: 42,
+            width: 40, height: 44,
             background: tone.hex,
-            borderRadius: "48% 48% 42% 42%",
+            borderRadius: "46% 46% 40% 40%",
             position: "relative",
             border: `1px solid ${tone.shadow}`,
           }}>
-            {/* Eyes */}
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", paddingTop: 13 }}>
-              <div style={{ width: 4, height: 5, background: "#1A1A1A", borderRadius: "50%" }} />
-              <div style={{ width: 4, height: 5, background: "#1A1A1A", borderRadius: "50%" }} />
+            <div style={{ display: "flex", gap: 11, justifyContent: "center", paddingTop: 14 }}>
+              <div style={{ width: 4.5, height: 5.5, background: "#1A1A1A", borderRadius: "50%" }} />
+              <div style={{ width: 4.5, height: 5.5, background: "#1A1A1A", borderRadius: "50%" }} />
             </div>
-            {/* Nose */}
-            <div style={{ width: 3, height: 3, background: tone.shadow, borderRadius: "50%", margin: "3px auto 0" }} />
-            {/* Mouth */}
-            <div style={{ width: 8, height: 2, background: "#C0806A", borderRadius: 2, margin: "2px auto 0" }} />
+            <div style={{ width: 3.5, height: 3, background: tone.shadow, borderRadius: "50%", margin: "3px auto 0" }} />
+            <div style={{ width: 9, height: 2.5, background: "#C07060", borderRadius: 2, margin: "3px auto 0" }} />
           </div>
-          {/* Hair front bang */}
           <div style={{
-            width: 36, height: 10,
+            width: 38, height: 11,
             background: hairColor,
             borderRadius: "40% 40% 0 0",
             position: "absolute",
-            top: -3, left: 1,
+            top: -4, left: 0,
             opacity: 0.9,
           }} />
         </div>
 
         {/* ── NECK ──────────────────────────────────── */}
-        <div style={{
-          width: 10, height: 8,
-          background: tone.hex,
-          borderRadius: 3,
-          marginTop: -1,
-        }} />
+        <div style={{ width: 12, height: 9, background: tone.hex, borderRadius: 3, marginTop: -1 }} />
 
-        {/* ── TORSO (shirt) ──────────────────────────── */}
+        {/* ── TORSO (shirt) — broad chest, tapered waist ── */}
         <div style={{
           width: shoulderW, height: bodyH,
           background: shirtColor,
-          borderRadius: "14px 14px 8px 8px",
+          borderRadius: "12px 12px 6px 6px",
           position: "relative",
           marginTop: -1,
         }}>
-          {/* Collar line */}
           <div style={{
-            width: shoulderW * 0.6, height: 4,
-            background: `${shirtColor}99`,
+            width: shoulderW * 0.55, height: 3,
+            background: `${shirtColor}88`,
             borderRadius: 2,
-            margin: "4px auto 0",
+            margin: "5px auto 0",
+          }} />
+          {/* Belt */}
+          <div style={{
+            width: shoulderW * 0.7, height: 5,
+            background: "#3A3A3A",
+            borderRadius: 2,
+            margin: `${bodyH - 10}px auto 0`,
           }} />
         </div>
 
-        {/* ── LEGS (pants) ───────────────────────────── */}
-        <div style={{ display: "flex", gap: 6, marginTop: -1 }}>
-          <div style={{
-            width: 18, height: 56,
-            background: "#212F3D",
-            borderRadius: "0 0 6px 6px",
-          }} />
-          <div style={{
-            width: 18, height: 56,
-            background: "#212F3D",
-            borderRadius: "0 0 6px 6px",
-          }} />
+        {/* ── LEGS — longer for Fortnite proportions ─── */}
+        <div style={{ display: "flex", gap: 7, marginTop: -1 }}>
+          <div style={{ width: 20, height: legLen * 0.52, background: "#212F3D", borderRadius: "4px 4px 0 0" }} />
+          <div style={{ width: 20, height: legLen * 0.52, background: "#212F3D", borderRadius: "4px 4px 0 0" }} />
+        </div>
+        <div style={{ display: "flex", gap: 7, marginTop: -1 }}>
+          <div style={{ width: 17, height: legLen * 0.48, background: "#212F3D", borderRadius: "0 0 5px 5px" }} />
+          <div style={{ width: 17, height: legLen * 0.48, background: "#212F3D", borderRadius: "0 0 5px 5px" }} />
         </div>
 
-        {/* ── ARMS (skin) ────────────────────────────── */}
-        <div style={{
-          position: "absolute", top: 56, left: 8,
-          width: 12, height: 52,
-          background: tone.hex,
-          borderRadius: "6px 6px 4px 4px",
-          zIndex: 1,
-        }} />
-        <div style={{
-          position: "absolute", top: 56, right: 8,
-          width: 12, height: 52,
-          background: tone.hex,
-          borderRadius: "6px 6px 4px 4px",
-          zIndex: 1,
-        }} />
+        {/* ── ARMS — upper + lower ──────────────────── */}
+        <div style={{ position: "absolute", top: 60, left: 5, zIndex: 1 }}>
+          <div style={{ width: 13, height: 28, background: tone.hex, borderRadius: "7px 7px 4px 4px" }} />
+          <div style={{ width: 11, height: 26, background: tone.hex, borderRadius: "4px 4px 5px 5px" }} />
+        </div>
+        <div style={{ position: "absolute", top: 60, right: 5, zIndex: 1 }}>
+          <div style={{ width: 13, height: 28, background: tone.hex, borderRadius: "7px 7px 4px 4px" }} />
+          <div style={{ width: 11, height: 26, background: tone.hex, borderRadius: "4px 4px 5px 5px" }} />
+        </div>
 
         {/* ── SHOES ──────────────────────────────────── */}
-        <div style={{ display: "flex", gap: 6, marginTop: 0 }}>
-          <div style={{ width: 22, height: 8, background: "#1A1A1A", borderRadius: "0 0 6px 2px" }} />
-          <div style={{ width: 22, height: 8, background: "#1A1A1A", borderRadius: "0 0 6px 2px" }} />
+        <div style={{ display: "flex", gap: 7, marginTop: 0 }}>
+          <div style={{ width: 24, height: 9, background: "#1A1A1A", borderRadius: "0 0 7px 3px" }} />
+          <div style={{ width: 24, height: 9, background: "#1A1A1A", borderRadius: "0 0 7px 3px" }} />
         </div>
 
-        {/* ── Hands ──────────────────────────────────── */}
-        <div style={{
-          position: "absolute", top: 104, left: 4,
-          width: 14, height: 10,
-          background: tone.hex,
-          borderRadius: 5,
-          zIndex: 3,
-        }} />
-        <div style={{
-          position: "absolute", top: 104, right: 4,
-          width: 14, height: 10,
-          background: tone.hex,
-          borderRadius: 5,
-          zIndex: 3,
-        }} />
+        {/* ── HANDS — palm with fingers ──────────────── */}
+        <div style={{ position: "absolute", top: 110, left: 1, width: 15, height: 12, background: tone.hex, borderRadius: 5, zIndex: 3 }} />
+        <div style={{ position: "absolute", top: 110, right: 1, width: 15, height: 12, background: tone.hex, borderRadius: 5, zIndex: 3 }} />
       </div>
 
-      {/* Label */}
       <p className="text-xs text-white/40 font-bold tracking-wider uppercase">
         {typeCfg.label} • {tone.label}
       </p>
