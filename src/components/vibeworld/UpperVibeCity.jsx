@@ -981,6 +981,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentStyle={user?.avatar_style || "streetwear"}
         currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
         isMobile={isMobile}
+        user={user}
         onApply={({ style, suitColor }) => {
           // Live-retint the player avatar immediately via the avatarEntryRef in CityCanvas
           // We store the entry on the CityCanvas ref via a callback
