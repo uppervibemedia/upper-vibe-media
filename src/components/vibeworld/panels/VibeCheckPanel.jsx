@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, TrendingUp, TrendingDown, Zap, BarChart3, ChevronLeft, Activity, ArrowLeft, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +16,32 @@ const CATEGORY_LABELS = {
   safety: "Safety", clarity: "Clarity", consistency: "Consistency",
   gratitude: "Gratitude", rest: "Rest", action: "Action",
 };
+
+// ── Score Meter — extracted outside to prevent re-creation on every render ──
+function ScoreMeter({ value, color, size = 144 }) {
+  const r = size * 0.39;
+  const circ = 2 * Math.PI * r;
+  const prog = Math.max(0, Math.min(100, value)) / 100 * circ;
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+        <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
+          strokeDasharray={circ}
+          initial={{ strokeDashoffset: circ }}
+          animate={{ strokeDashoffset: circ - prog }}
+          transition={{ duration: 1.4, ease: "easeOut" }}
+          style={{ filter: `drop-shadow(0 0 8px ${color})` }} />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <motion.span className="font-heading font-black text-3xl text-white leading-none"
+          initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.6, duration: 0.4 }}>{value}</motion.span>
+        <span className="text-[8px] font-black text-white/25 tracking-widest uppercase mt-0.5">VIBE SCORE</span>
+      </div>
+    </div>
+  );
+}
 
 function computeCategories(mood, moodScore) {
   const base = moodScore || 50;
@@ -86,11 +112,18 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
   const [resultScore, setResultScore] = useState(null);
   const [resultStreak, setResultStreak] = useState(0);
 
+  // Stable refs to avoid dependency churn
+  const userRef = useRef(user);
+  userRef.current = user;
+  const fetchDataRef = useRef(null);
+  const prevOpenRef = useRef(false);
+
   const fetchData = useCallback(async () => {
-    if (!user) return;
+    const currentUser = userRef.current;
+    if (!currentUser) return;
     setLoading(true);
     try {
-      const all = await base44.entities.VibeCheckIn.filter({ user_id: user.id }, "-check_in_date", 365);
+      const all = await base44.entities.VibeCheckIn.filter({ user_id: currentUser.id }, "-check_in_date", 365);
       const latest = all.find((c) => c.check_in_date === todayStr());
       const yesterday = all.find((c) => c.check_in_date === yesterdayDateStr());
       const dates = [...new Set(all.map((c) => c.check_in_date))];
@@ -116,10 +149,21 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
+  // Keep a stable ref for fetchData
+  fetchDataRef.current = fetchData;
+
+  // Reset state only when the panel actually opens (not on every dependency change)
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      prevOpenRef.current = false;
+      return;
+    }
+    // Only reset when transitioning from closed → open
+    if (prevOpenRef.current) return;
+    prevOpenRef.current = true;
+
     if (!user) { setLoading(false); return; }
     setPhase("view");
     setQIndex(0);
@@ -127,12 +171,12 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
     setResultScore(null);
     setSaving(false);
     fetchData();
-  }, [open, fetchData, user]);
+  }, [open, user]);
 
-  // Re-fetch when returning to view from result/report
+  // Re-fetch when returning to view from result/report — use stable ref
   useEffect(() => {
-    if (open && phase === "view") fetchData();
-  }, [open, phase, fetchData]);
+    if (open && phase === "view") fetchDataRef.current?.();
+  }, [open, phase]);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -182,32 +226,6 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
   const status = getStatus(score);
   const cat = vibeCategory(score);
   const streak = resultStreak || data?.streak || 0;
-
-  // ── Score Meter Component ───────────────────────────────────
-  const ScoreMeter = ({ value, color, size = 144 }) => {
-    const r = size * 0.39;
-    const circ = 2 * Math.PI * r;
-    const prog = (value / 100) * circ;
-    return (
-      <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-        <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
-          <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
-            strokeDasharray={circ}
-            initial={{ strokeDashoffset: circ }}
-            animate={{ strokeDashoffset: circ - prog }}
-            transition={{ duration: 1.4, ease: "easeOut" }}
-            style={{ filter: `drop-shadow(0 0 8px ${color})` }} />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <motion.span className="font-heading font-black text-3xl text-white leading-none"
-            initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.6, duration: 0.4 }}>{value}</motion.span>
-          <span className="text-[8px] font-black text-white/25 tracking-widest uppercase mt-0.5">VIBE SCORE</span>
-        </div>
-      </div>
-    );
-  };
 
   const currentQ = questions[qIndex];
   const totalQ = questions.length;
@@ -473,7 +491,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
           {phase === "result" && (
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); setPhase("view"); setResultScore(null); fetchData(); }}
+              onClick={() => { hapticTap(); setPhase("view"); setResultScore(null); fetchDataRef.current?.(); }}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
                 background: "linear-gradient(135deg,#4ADE80,#22C55E)",
