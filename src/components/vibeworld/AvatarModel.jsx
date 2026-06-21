@@ -31,6 +31,16 @@ const OUTFIT = {
   cosmic:     { shirt: 0x1a1060, pants: 0x0a0818, shoes: 0x08060e, accent: 0xa040ff, shoeSole: 0xa040ff },
 };
 
+// Override palette from custom hex strings (used by AvatarTestPlatform color picker)
+function buildPalette(base, overrides = {}) {
+  const p = { ...base };
+  if (overrides.shirt)  p.shirt  = parseInt(overrides.shirt.replace("#", ""), 16);
+  if (overrides.pants)  p.pants  = parseInt(overrides.pants.replace("#", ""), 16);
+  if (overrides.accent) p.accent = parseInt(overrides.accent.replace("#", ""), 16);
+  if (overrides.shoes)  p.shoes  = parseInt(overrides.shoes.replace("#", ""), 16);
+  return p;
+}
+
 // ─── MATERIAL HELPERS ────────────────────────────────────────────────────────
 function stdMat(hex, rough = 0.6, metal = 0.05) {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(hex), roughness: rough, metalness: metal });
@@ -217,10 +227,11 @@ function makeHair(hairHex, avatarType) {
     Top of head: y ≈ 1.72
 */
 function buildAvatarBody(opts = {}) {
-  const { avatarType = "neutral", skinTone = "medium", avatarStyle = "streetwear" } = opts;
+  const { avatarType = "neutral", skinTone = "medium", avatarStyle = "streetwear", colorOverrides = {} } = opts;
   const skinHex = SKIN_TONES[skinTone] || SKIN_TONES.medium;
   const hairHex = HAIR_COLORS[skinTone] || HAIR_COLORS.medium;
-  const pal = OUTFIT[avatarStyle === "cosmic" ? "cosmic" : "streetwear"];
+  const basePal = OUTFIT[avatarStyle === "cosmic" ? "cosmic" : "streetwear"];
+  const pal = buildPalette(basePal, colorOverrides);
 
   const root = new THREE.Group();
   root.name = "avatar";
@@ -358,28 +369,28 @@ function buildAvatarBody(opts = {}) {
     elbG.name = name.replace("Shoulder", "Elbow");
     elbG.position.y = -0.23;
 
-    // Forearm — skin-colored, shorter to keep total arm length proportional
-    const fArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.034, 0.16, 4, 6), skinMat);
+    // Forearm — full suit sleeve (no exposed skin)
+    const fArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.034, 0.16, 4, 6), shirtMat);
     fArm.position.y = -0.10;
     fArm.castShadow = true;
     elbG.add(fArm);
 
-    // Wrist cuff
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.036, 0.028, 8), stdMat(pal.shirt, 0.4, 0.2));
+    // Wrist cuff — accent trim
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.040, 0.038, 0.032, 8), neonM);
     cuff.position.y = -0.192;
     elbG.add(cuff);
 
-    // Hand — rounded palm
+    // Hand — gloved (suit color)
     const handG = new THREE.Group();
     handG.name = name.replace("Shoulder", "Hand");
     handG.position.y = -0.22;
 
-    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.036, 9, 7), skinMat);
+    const palm = new THREE.Mesh(new THREE.SphereGeometry(0.038, 9, 7), shirtMat);
     palm.scale.set(0.92, 0.75, 0.68);
     handG.add(palm);
 
-    // Thumb stub
-    const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, 0.020, 3, 5), skinMat);
+    // Thumb stub — gloved
+    const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, 0.020, 3, 5), shirtMat);
     thumb.position.set(sx > 0 ? 0.026 : -0.026, 0.007, 0.010);
     thumb.rotation.z = sx > 0 ? -0.5 : 0.5;
     handG.add(thumb);
@@ -394,9 +405,8 @@ function buildAvatarBody(opts = {}) {
   root.add(torsoG);
 
   // ── NECK ──────────────────────────────────────────────────────────────────
-  // Torso pivot at y=1.05, collar at local y=0.24, collar top ≈ y=1.05+0.29=1.34
-  // Head center at y=1.56. Neck bridges 1.32..1.52 with slight overlap on both ends.
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.056, 0.066, 0.22, 10), skinMat);
+  // Suit collar/turtleneck — same material as shirt so no skin gap visible
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.072, 0.24, 10), shirtMat);
   neck.position.set(0, 1.43, 0);
   neck.castShadow = true;
   root.add(neck);
@@ -413,6 +423,7 @@ function buildAvatarBody(opts = {}) {
 }
 
 // ─── PUBLIC: createAvatar ────────────────────────────────────────────────────
+// opts may include colorOverrides: { shirt, pants, accent, shoes } as "#rrggbb" hex strings
 export function createAvatar(scene, opts = {}) {
   const root = buildAvatarBody(opts);
   root.add(makeShadow());
