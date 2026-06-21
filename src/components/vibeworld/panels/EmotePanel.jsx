@@ -16,12 +16,17 @@ export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDanc
 
   const handleEmote = useCallback((emote) => {
     hapticTap();
-    onEmote?.(emote);
-    if (emote.id === "dance") {
-      // Auto-close panel so user can see avatar dancing
+    if (emote.id === "dance" && isDancing) {
+      onStopDance?.();
       onClose?.();
+    } else {
+      onEmote?.(emote);
+      if (emote.id === "dance") {
+        // Auto-close panel so user can see avatar dancing
+        onClose?.();
+      }
     }
-  }, [onEmote, onClose]);
+  }, [onEmote, onStopDance, onClose, isDancing]);
 
   if (!open) return null;
 
@@ -68,6 +73,7 @@ export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDanc
         style={{ gridTemplateColumns: "repeat(3, 1fr)" }}
       >
         {EMOTES.map((emote) => {
+          const isActive = emote.id === "dance" && isDancing;
           const Icon = emote.icon;
           return (
             <button
@@ -76,8 +82,8 @@ export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDanc
               onClick={() => handleEmote(emote)}
               className="flex flex-col items-center justify-center gap-1 rounded-lg transition-all hover:brightness-110 active:scale-95"
               style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.06)",
+                background: isActive ? `${emote.color}18` : "rgba(255,255,255,0.03)",
+                border: `1px solid ${isActive ? emote.color + "44" : "rgba(255,255,255,0.06)"}`,
                 padding: isMobile ? "6px 2px" : "7px 4px",
                 minHeight: isMobile ? 48 : 54,
                 touchAction: "manipulation",
@@ -96,7 +102,7 @@ export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDanc
                   style={{
                     width: isMobile ? 12 : 14,
                     height: isMobile ? 12 : 14,
-                    color: emote.color,
+                    color: isActive ? emote.color : `${emote.color}cc`,
                   }}
                 />
               </div>
@@ -104,10 +110,10 @@ export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDanc
                 className="font-black tracking-wider"
                 style={{
                   fontSize: isMobile ? "7px" : "8px",
-                  color: "rgba(255,255,255,0.45)",
+                  color: isActive ? emote.color : "rgba(255,255,255,0.45)",
                 }}
               >
-                {emote.label}
+                {isActive ? "Stop" : emote.label}
               </span>
             </button>
           );
