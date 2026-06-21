@@ -44,9 +44,11 @@ export default function Admin() {
 
   const loadAll = async () => {
     setLoading(true);
-    // Sequence calls to avoid rate limiting
-    const t = await base44.entities.Track.list("-created_date", 500);
+    // Stagger calls to avoid rate limiting
+    const t = await base44.entities.Track.list("-created_date", 200);
+    await new Promise((r) => setTimeout(r, 400));
     const a = await base44.entities.Artist.list("name", 100);
+    await new Promise((r) => setTimeout(r, 400));
     const c = await base44.entities.Category.list("display_order", 50);
     setTracks(t);
     setArtists(a);
