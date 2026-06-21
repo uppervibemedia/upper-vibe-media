@@ -8,10 +8,12 @@ import { X, Palette, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { OUTFIT_COLORS } from "./AvatarSetup";
 import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
+import SkinToneSelector from "./SkinToneSelector";
 
 export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) {
   const [outfitColorKey, setOutfitColorKey] = useState(user?.avatar_outfit_color || "electric-blue");
   const [gender, setGender] = useState(user?.avatar_gender || "male");
+  const [skinToneKey, setSkinToneKey] = useState(user?.skin_tone || "medium");
   const [saving, setSaving] = useState(false);
 
   // Sync to latest saved value when panel opens
@@ -19,8 +21,9 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
     if (open) {
       if (user?.avatar_outfit_color) setOutfitColorKey(user.avatar_outfit_color);
       if (user?.avatar_gender) setGender(user.avatar_gender);
+      if (user?.skin_tone) setSkinToneKey(user.skin_tone);
     }
-  }, [open, user?.avatar_outfit_color, user?.avatar_gender]);
+  }, [open, user?.avatar_outfit_color, user?.avatar_gender, user?.skin_tone]);
 
   const handleApply = async () => {
     setSaving(true);
@@ -29,12 +32,14 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
         avatar_outfit_color: outfitColorKey,
         avatar_gender: gender,
         avatar_style: "streetwear",
+        skin_tone: skinToneKey,
       });
     } catch {}
     setSaving(false);
     onApply?.({
       outfitColorKey,
       gender,
+      skinToneKey,
       style: "streetwear",
       suitColor: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.hex,
     });
@@ -89,7 +94,7 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
 
               {/* Preview */}
               <div className="flex items-center justify-center px-4 pt-4 pb-2 lg:py-6 lg:pl-6 lg:pr-4 flex-shrink-0">
-                <AvatarPreviewCanvas outfitColorKey={outfitColorKey} gender={gender} width={200} height={340} />
+                <AvatarPreviewCanvas outfitColorKey={outfitColorKey} skinToneKey={skinToneKey} gender={gender} width={200} height={340} />
               </div>
 
               {/* Options */}
@@ -117,6 +122,11 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                     ))}
                   </div>
                 </div>
+
+                {/* Skin Tone — female only */}
+                {gender === "female" && (
+                  <SkinToneSelector value={skinToneKey} onChange={setSkinToneKey} />
+                )}
 
                 {/* Outfit Color */}
                 <div>

@@ -5,7 +5,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { OUTFIT_COLORS } from "./AvatarSetup";
+import { OUTFIT_COLORS, SKIN_TONES } from "./AvatarSetup";
 
 const GLB_URLS = {
   male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
@@ -26,11 +26,14 @@ function loadGLTF(gender = "male") {
   return _gltfPromise[gender];
 }
 
-function applyOutfitTint(model, outfitColorKey) {
+function applyTints(model, outfitColorKey, skinToneKey) {
   if (!model) return;
   const outfit = OUTFIT_COLORS.find(c => c.key === outfitColorKey);
   if (!outfit) return;
-  const targetColor = new THREE.Color(outfit.hex);
+  const outfitColor = new THREE.Color(outfit.hex);
+  const skinEntry = SKIN_TONES.find(s => s.key === skinToneKey);
+  const skinColor = skinEntry ? new THREE.Color(skinEntry.hex) : null;
+
   model.traverse((child) => {
     if (!child.isMesh) return;
     const mats = Array.isArray(child.material) ? child.material : [child.material];
@@ -39,7 +42,11 @@ function applyOutfitTint(model, outfitColorKey) {
       if (!m.userData._origColor) m.userData._origColor = m.color.clone();
       const orig = m.userData._origColor;
       const isSkin = orig.r > 0.35 && orig.r > orig.b * 1.3 && orig.g > orig.b * 0.8 && orig.r < 0.95 && orig.b < 0.6;
-      m.color.copy(isSkin ? orig : targetColor);
+      if (isSkin) {
+        m.color.copy(skinColor || orig);
+      } else {
+        m.color.copy(outfitColor);
+      }
     });
   });
 }
@@ -52,11 +59,13 @@ const VIEWS = {
   side:  { pos: [3.6, 0.87, 0],  look: [0, 0.87, 0] },
 };
 
-export default function AvatarPreviewCanvas({ outfitColorKey, gender = "male", width = 260, height = 420 }) {
+export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "medium", gender = "male", width = 260, height = 420 }) {
   const canvasRef = useRef(null);
   const stateRef = useRef({});
   const outfitRef = useRef(outfitColorKey);
   outfitRef.current = outfitColorKey;
+  const skinRef = useRef(skinToneKey);
+  skinRef.current = skinToneKey;
   const genderRef = useRef(gender);
   genderRef.current = gender;
   const [activeView, setActiveView] = useState("front");
@@ -133,7 +142,7 @@ export default function AvatarPreviewCanvas({ outfitColorKey, gender = "male", w
 
       scene.add(model);
       s.model = model;
-      applyOutfitTint(model, outfitRef.current);
+      applyTints(model, outfitRef.current, skinRef.current);
 
       if (gltf.animations.length) {
         const mixer = new THREE.AnimationMixer(model);
@@ -178,11 +187,11 @@ export default function AvatarPreviewCanvas({ outfitColorKey, gender = "male", w
     };
   }, [gender]); // re-mount when gender changes
 
-  // Live re-tint on color change
+  // Live re-tint on outfit or skin change
   useEffect(() => {
     const s = stateRef.current;
-    if (s.model) applyOutfitTint(s.model, outfitColorKey);
-  }, [outfitColorKey]);
+    if (s.model) applyTints(s.model, outfitColorKey, skinToneKey);
+  }, [outfitColorKey, skinToneKey]);
 
   const viewButtons = [
     { key: "front", label: "Front" },

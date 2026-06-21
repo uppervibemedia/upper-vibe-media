@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Sparkles, Shirt, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
+import SkinToneSelector from "./SkinToneSelector";
 
 export const AVATAR_TYPES = [
   { key: "masculine",  label: "Masculine",  emoji: "♂️", color: "#0080B8" },
@@ -11,12 +12,12 @@ export const AVATAR_TYPES = [
 ];
 
 export const SKIN_TONES = [
-  { key: "light",        label: "Light",      hex: "#FDEBD3" },
-  { key: "medium-light", label: "Med-Light",  hex: "#F3C9A1" },
+  { key: "light",        label: "Light",      hex: "#FDDBB4" },
+  { key: "medium-light", label: "Med-Light",  hex: "#EAB88A" },
   { key: "medium",       label: "Medium",     hex: "#C8864A" },
-  { key: "tan",          label: "Tan",        hex: "#B07D5A" },
-  { key: "brown",        label: "Brown",      hex: "#7B4A3A" },
-  { key: "dark-brown",   label: "Dark Brown", hex: "#4A2C2A" },
+  { key: "tan",          label: "Tan",        hex: "#A06535" },
+  { key: "brown",        label: "Brown",      hex: "#7B4A28" },
+  { key: "dark-brown",   label: "Dark Brown", hex: "#4A2C18" },
 ];
 
 export const OUTFIT_COLORS = [
@@ -28,9 +29,10 @@ export const OUTFIT_COLORS = [
   { key: "gold-yellow",    label: "Gold / Yellow",   hex: "#CC9900", swatch: "#FFD34D" },
 ];
 
-export default function AvatarSetup({ onComplete, existingOutfitColor, existingGender }) {
+export default function AvatarSetup({ onComplete, existingOutfitColor, existingGender, existingSkinTone }) {
   const [outfitColorKey, setOutfitColorKey] = useState(existingOutfitColor || "electric-blue");
   const [gender, setGender] = useState(existingGender || "male");
+  const [skinToneKey, setSkinToneKey] = useState(existingSkinTone || "medium");
   const [saving, setSaving] = useState(false);
 
   const handleContinue = async () => {
@@ -41,11 +43,11 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingG
         avatar_gender: gender,
         avatar_style: "streetwear",
         avatar_type: "neutral",
-        skin_tone: "medium",
+        skin_tone: skinToneKey,
       });
-      onComplete({ avatarType: "neutral", skinTone: "medium", avatarStyle: "streetwear", outfitColorKey, gender });
+      onComplete({ avatarType: "neutral", skinTone: skinToneKey, avatarStyle: "streetwear", outfitColorKey, gender });
     } catch {
-      onComplete({ avatarType: "neutral", skinTone: "medium", avatarStyle: "streetwear", outfitColorKey, gender });
+      onComplete({ avatarType: "neutral", skinTone: skinToneKey, avatarStyle: "streetwear", outfitColorKey, gender });
     }
   };
 
@@ -62,7 +64,7 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingG
             <Sparkles className="w-3.5 h-3.5" style={{ color: "#9B7EFF" }} />
             <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>Live Preview</span>
           </div>
-          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} gender={gender} width={220} height={360} />
+          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} gender={gender} skinToneKey={skinToneKey} width={220} height={360} />
         </div>
 
         {/* Options */}
@@ -94,6 +96,11 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingG
               ))}
             </div>
           </div>
+
+          {/* Skin Tone — female only */}
+          {gender === "female" && (
+            <SkinToneSelector value={skinToneKey} onChange={setSkinToneKey} />
+          )}
 
           {/* Outfit Color */}
           <div>
@@ -151,7 +158,7 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingG
             <Sparkles className="w-3.5 h-3.5" style={{ color: "#9B7EFF" }} />
             <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>Live Preview</span>
           </div>
-          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} gender={gender} width={280} height={460} />
+          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} gender={gender} skinToneKey={skinToneKey} width={280} height={460} />
           <p className="text-[9px] text-white/20 text-center">Updates instantly as you choose.</p>
         </div>
 

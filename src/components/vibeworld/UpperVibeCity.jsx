@@ -734,14 +734,19 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onLoaded={() => setLoading(false)}
           onAvatarReady={(entry) => {
             playerAvatarEntryRef.current = entry;
-            // Apply saved outfit color immediately when avatar GLB finishes loading
+            // Apply saved outfit + skin color immediately when avatar GLB finishes loading
             const savedColorKey = user?.avatar_outfit_color || "electric-blue";
             const COLOR_MAP = {
               "electric-blue": "#00AADD", "neon-purple": "#7B2FFF",
               "cosmic-black": "#080A0F", "white-silver": "#C8D4E0",
               "pink-rose": "#CC2288", "gold-yellow": "#CC9900",
             };
-            retintAvatar(entry, COLOR_MAP[savedColorKey] || "#00AADD");
+            const SKIN_MAP = {
+              "light": "#FDDBB4", "medium-light": "#EAB88A", "medium": "#C8864A",
+              "tan": "#A06535", "brown": "#7B4A28", "dark-brown": "#4A2C18",
+            };
+            const skinColor = user?.avatar_gender === "female" ? (SKIN_MAP[user?.skin_tone] || null) : null;
+            retintAvatar(entry, COLOR_MAP[savedColorKey] || "#00AADD", skinColor);
           }}
           onRemoteAvatarClick={handleRemoteAvatarClick}
           onPositionChange={(x, z, rot) => {
@@ -1007,10 +1012,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
         isMobile={isMobile}
         user={user}
-        onApply={({ outfitColorKey, suitColor }) => {
+        onApply={({ outfitColorKey, skinToneKey, suitColor }) => {
           // Immediately retint the live in-world playable avatar
           if (playerAvatarEntryRef.current && suitColor) {
-            retintAvatar(playerAvatarEntryRef.current, suitColor);
+            const SKIN_MAP = {
+              "light": "#FDDBB4", "medium-light": "#EAB88A", "medium": "#C8864A",
+              "tan": "#A06535", "brown": "#7B4A28", "dark-brown": "#4A2C18",
+            };
+            const skinColor = SKIN_MAP[skinToneKey] || null;
+            retintAvatar(playerAvatarEntryRef.current, suitColor, skinColor);
           }
         }}
       />

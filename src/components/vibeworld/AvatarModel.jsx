@@ -327,11 +327,12 @@ export function createAvatar(scene, opts = {}, onReady) {
 }
 
 // ─── PUBLIC: retintAvatar ─────────────────────────────────────
-// suitColor: hex string e.g. "#00AADD" — applied directly to outfit/armor materials
-// Skips skin-toned materials (face, hands, neck) and shadow discs
-export function retintAvatar(entry, suitColor) {
+// suitColor: hex string e.g. "#00AADD" — applied to outfit/armor materials
+// skinColor: hex string e.g. "#FDDBB4" — optional, applied to skin-toned materials
+export function retintAvatar(entry, suitColor, skinColor) {
   if (!entry?.root) return;
   const targetColor = new THREE.Color(suitColor || "#888888");
+  const skinTarget = skinColor ? new THREE.Color(skinColor) : null;
 
   entry.root.traverse((child) => {
     if (!child.isMesh) return;
@@ -343,12 +344,13 @@ export function retintAvatar(entry, suitColor) {
       // Cache original color on first call
       if (!m.userData._origColor) m.userData._origColor = m.color.clone();
       const orig = m.userData._origColor;
-      // Skip skin-toned materials — warm mid-range colors (face/hands)
       const r = orig.r, g = orig.g, b = orig.b;
       const isSkinLike = (r > 0.35) && (r > b * 1.3) && (g > b * 0.8) && (r < 0.95) && (b < 0.6);
-      if (isSkinLike) { m.color.copy(orig); return; }
-      // Apply outfit color directly
-      m.color.copy(targetColor);
+      if (isSkinLike) {
+        m.color.copy(skinTarget || orig);
+      } else {
+        m.color.copy(targetColor);
+      }
     });
   });
 }
