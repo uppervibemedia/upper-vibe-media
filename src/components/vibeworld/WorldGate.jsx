@@ -115,6 +115,8 @@ export default function WorldGate({ children }) {
       <RPMAvatarCreator
         onComplete={handleAvatarComplete}
         existingUrl={user?.rpm_avatar_url || null}
+        existingType={user?.avatar_type || null}
+        existingTone={user?.skin_tone || null}
       />
     );
   }
