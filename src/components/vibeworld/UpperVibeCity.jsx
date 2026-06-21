@@ -4,7 +4,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
-import { retintAvatar, applySkinColor, playEmoteAnimation, stopEmoteAnimation } from "@/components/vibeworld/AvatarModel";
+import { retintAvatar, playEmoteAnimation, stopEmoteAnimation } from "@/components/vibeworld/AvatarModel";
 import { OUTFIT_COLORS, SKIN_TONES } from "@/components/vibeworld/AvatarSetup";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
@@ -18,7 +18,6 @@ import usePrivateChat from "@/hooks/usePrivateChat";
 import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
-import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
 import EmoteEffect from "@/components/vibeworld/EmoteEffect";
 
@@ -32,8 +31,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const audioBassRef = useRef(0);
   const audioBeatRef = useRef(0);
   const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
-  const [mobileModalOpen, setMobileModalOpen] = useState(false);
-  const [editAvatarOpen, setEditAvatarOpen] = useState(false);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const playerAvatarEntryRef = useRef(null); // holds the live avatar entry for retinting
   const [nearJukebox, setNearJukebox] = useState(false);
@@ -53,7 +50,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   isDancingRef.current = isDancing;
   const [activeEmote, setActiveEmote] = useState(null); // { id, label, color, effect, startedAt }
   const emoteTimerRef = useRef(null);
-  const wasMovingRef = useRef(false);
 
   const handleEmote = useCallback((emote) => {
     if (emote.id === "dance") {
@@ -89,9 +85,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, []);
 
   // ── Auto-cancel dance on movement ──────────────────────────────────────────
-  const danceMovingRef = useRef(false);
-  danceMovingRef.current = false; // Reset each render
-
   useEffect(() => {
     if (!isDancing) return;
     const prev = prevPosRef.current;
@@ -175,10 +168,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Stage video controls ───────────────────────────────────────────────
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
-  const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack, registerNextHandler, clearPosition, audioRef } = playerCtx || {};
-  const { allTracks, tracksLoaded } = radioCtx || {};
+  const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack, registerNextHandler, audioRef } = playerCtx || {};
+  const { allTracks } = radioCtx || {};
   const { user } = useAuth();
-  const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
+  const { sortedTracks, loading: feedLoading } = usePersonalizedFeed(user?.id);
 
   // ── Avatar config derived from user data ──────────────────────────────
   const avatarConfig = {
@@ -771,7 +764,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             }
           }}
           isDancing={isDancing}
-          activeEmote={activeEmote}
           stageCanvas={stageWatching ? null : stageCanvas}
           audioIntensityRef={audioIntensityRef}
           audioBassRef={audioBassRef}
@@ -882,7 +874,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onStageFullScreen={handleStageFullScreen}
         onStageExitFullScreen={handleExitFullScreen}
         chatAgeConfirmed={chatAgeConfirmed}
-        onMobileModalChange={setMobileModalOpen}
+        onMobileModalChange={() => {}}
         activeUsers={activeUsers}
         userCount={userCount}
         isBroadcasting={isBroadcasting}
