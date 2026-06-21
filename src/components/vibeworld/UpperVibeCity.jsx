@@ -327,8 +327,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setUserInteractionTarget(null);
   }, []);
 
-  const handleRequestChat = useCallback((targetUserId, targetUsername) => {
-    sendChatRequest(targetUserId, targetUsername);
+  const handleRequestChat = useCallback(async (targetUserId, targetUsername) => {
+    if (!targetUserId) {
+      console.warn("[handleRequestChat] No target user ID");
+      return;
+    }
+    console.log("[handleRequestChat] Sending chat request to:", targetUserId, targetUsername);
+    const result = await sendChatRequest(targetUserId, targetUsername);
+    console.log("[handleRequestChat] Result:", JSON.stringify(result));
   }, [sendChatRequest]);
 
   const handleRequestVoiceChat = useCallback(async (targetUserId, targetUsername) => {
@@ -599,6 +605,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onCloseUserMenu={handleCloseUserMenu}
         onLoungeInputFocus={setLoungeInputFocused}
         onVoiceActive={setVoiceActive}
+        outgoingStatus={outgoingStatus}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}

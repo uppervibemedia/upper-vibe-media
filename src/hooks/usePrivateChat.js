@@ -41,7 +41,14 @@ export default function usePrivateChat(user) {
   const myDisplayName = user?.full_name || user?.email?.split("@")[0] || "Anon";
 
   const sendChatRequest = useCallback(async (toUserId, toUsername) => {
-    if (!user?.id) return { error: "Not authenticated" };
+    if (!user?.id) {
+      console.warn("[sendChatRequest] Not authenticated, no user.id");
+      return { error: "Not authenticated" };
+    }
+    if (!toUserId) {
+      console.warn("[sendChatRequest] No target user ID provided");
+      return { error: "No target user" };
+    }
 
     // Check block
     if (blockedUsers[toUserId]) return { error: "User is blocked" };
@@ -54,11 +61,19 @@ export default function usePrivateChat(user) {
         status: "pending",
       });
       if (existing.length > 0) return { error: "You already have a pending request to this user" };
-    } catch {}
+    } catch (e) {
+      console.warn("[sendChatRequest] Error checking existing requests:", e);
+    }
 
     try {
       const expiresAt = new Date(Date.now() + REQUEST_EXPIRY_MS).toISOString();
-      await base44.entities.PrivateChatRequest.create({
+      console.log("[sendChatRequest] Creating request:", {
+        from_user_id: user.id,
+        from_username: myDisplayName,
+        to_user_id: toUserId,
+        to_username: toUsername,
+      });
+      const created = await base44.entities.PrivateChatRequest.create({
         from_user_id: user.id,
         from_username: myDisplayName,
         to_user_id: toUserId,
@@ -66,6 +81,7 @@ export default function usePrivateChat(user) {
         status: "pending",
         expires_at: expiresAt,
       });
+      console.log("[sendChatRequest] Created:", created);
       setOutgoingStatus({ toUsername, status: "pending" });
 
       // Auto-expire timer
@@ -78,10 +94,11 @@ export default function usePrivateChat(user) {
       }, REQUEST_EXPIRY_MS);
 
       return { success: true };
-    } catch {
-      return { error: "Failed to send request" };
+    } catch (e) {
+      console.error("[sendChatRequest] Failed to create request:", e);
+      return { error: "Failed to send request: " + (e?.message || String(e)) };
     }
-  }, [user, blockedUsers]);
+  }, [user, blockedUsers, myDisplayName]);
 
   // ── Accept incoming request ──────────────────────────────────
   const acceptRequest = useCallback(async (requestId, fromUserId, fromUsername) => {

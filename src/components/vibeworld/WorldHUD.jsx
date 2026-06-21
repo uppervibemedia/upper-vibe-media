@@ -68,6 +68,7 @@ export default function WorldHUD({
   onCloseUserMenu,
   onLoungeInputFocus,
   onVoiceActive,
+  outgoingStatus,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -185,6 +186,59 @@ export default function WorldHUD({
         show={chatWarningVisible}
         onDismiss={() => setChatWarningVisible(false)}
       />
+
+      {/* ── Outgoing chat request status ─────────────────────── */}
+      <AnimatePresence>
+        {outgoingStatus && (
+          <motion.div
+            key={`out-${outgoingStatus.status}`}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+            className="fixed left-1/2 z-[86] pointer-events-auto"
+            style={{
+              transform: "translateX(-50%)",
+              top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 90px)" : "100px",
+            }}
+          >
+            <div
+              className="rounded-xl px-4 py-2 shadow-lg max-w-[85vw]"
+              style={{
+                background: outgoingStatus.status === "pending"
+                  ? "rgba(0,200,83,0.12)"
+                  : outgoingStatus.status === "accepted"
+                  ? "rgba(0,200,83,0.15)"
+                  : outgoingStatus.status === "expired"
+                  ? "rgba(100,100,100,0.12)"
+                  : "rgba(239,68,68,0.12)",
+                border: `1px solid ${
+                  outgoingStatus.status === "pending"
+                    ? "rgba(0,200,83,0.3)"
+                    : outgoingStatus.status === "accepted"
+                    ? "rgba(0,200,83,0.4)"
+                    : outgoingStatus.status === "expired"
+                    ? "rgba(150,150,150,0.2)"
+                    : "rgba(239,68,68,0.2)"
+                }`,
+                backdropFilter: "blur(12px)",
+              }}
+            >
+              <p className="text-xs font-bold text-white">
+                {outgoingStatus.status === "pending" && `Request sent to ${outgoingStatus.toUsername || "user"}...`}
+                {outgoingStatus.status === "accepted" && `${outgoingStatus.toUsername || "User"} accepted! Opening chat.`}
+                {outgoingStatus.status === "declined" && `${outgoingStatus.toUsername || "User"} declined.`}
+                {outgoingStatus.status === "expired" && `Request to ${outgoingStatus.toUsername || "user"} expired.`}
+                {outgoingStatus.status === "blocked" && `Cannot send request to ${outgoingStatus.toUsername || "user"}.`}
+              </p>
+              <p className="text-[9px] text-white/40 mt-0.5">
+                {outgoingStatus.status === "pending" && "Waiting for response..."}
+                {outgoingStatus.status === "expired" && "No response received"}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Now Playing (bottom bar in UpperVibeCity handles this) ── */}
 
