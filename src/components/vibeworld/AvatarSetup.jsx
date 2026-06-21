@@ -3,8 +3,6 @@ import { motion } from "framer-motion";
 import { Sparkles, UserCircle, Palette } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import * as THREE from "three";
-import { createAvatar } from "@/components/vibeworld/AvatarModel";
-
 const AVATAR_TYPES = [
   { key: "masculine",  label: "Masculine",  emoji: "♂️", color: "#0080B8", desc: "Athletic build" },
   { key: "feminine",   label: "Feminine",   emoji: "♀️", color: "#E040FB", desc: "Styled curves" },
@@ -21,135 +19,65 @@ const SKIN_TONES = [
   { key: "deep",         label: "Deep",       hex: "#4A2C2A" },
 ];
 
-// ── 3-D Avatar Preview using Three.js ─────────────────────────
+// Body type color preview (no Three.js needed for setup screen)
+const TYPE_PREVIEW = {
+  masculine:  { color: "#1a5fc8", emoji: "🧍", accent: "#00D4F0" },
+  feminine:   { color: "#9b27af", emoji: "🧍", accent: "#E040FB" },
+  nonbinary:  { color: "#4caf8e", emoji: "🧍", accent: "#A078FF" },
+  neutral:    { color: "#2196f3", emoji: "🧍", accent: "#00E5FF" },
+};
+
 function AvatarPreview3D({ avatarType, skinTone }) {
-  const mountRef = useRef(null);
-  const rendererRef = useRef(null);
-  const sceneRef = useRef(null);
-  const cameraRef = useRef(null);
-  const avatarRef = useRef(null);
-  const rafRef = useRef(null);
-  const initRef = useRef(false);
-
-  // Rebuild avatar whenever type/tone changes
-  useEffect(() => {
-    const mount = mountRef.current;
-    if (!mount) return;
-
-    // Dispose old renderer if re-running
-    if (rendererRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rendererRef.current.dispose();
-      if (sceneRef.current) {
-        sceneRef.current.traverse(obj => {
-          if (obj.geometry) obj.geometry.dispose();
-          if (obj.material) {
-            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-            else obj.material.dispose();
-          }
-        });
-      }
-      mount.innerHTML = "";
-    }
-
-    const W = 160, H = 280;
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(W, H);
-    renderer.setClearColor(0x000000, 0);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    mount.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
-
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
-
-    // Lights
-    const amb = new THREE.AmbientLight(0x7070CC, 1.2);
-    scene.add(amb);
-
-    const key = new THREE.DirectionalLight(0xCCDDFF, 1.8);
-    key.position.set(2, 4, 3);
-    key.castShadow = true;
-    scene.add(key);
-
-    const fill = new THREE.DirectionalLight(0xC43BFF, 0.6);
-    fill.position.set(-2, 2, -1);
-    scene.add(fill);
-
-    const rim = new THREE.DirectionalLight(0x00D4F0, 0.8);
-    rim.position.set(0, 1, -3);
-    scene.add(rim);
-
-    // Camera — framed on avatar from front-right slightly elevated
-    const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 20);
-    camera.position.set(0.4, 0.9, 2.1);
-    camera.lookAt(0, 0.5, 0);
-    cameraRef.current = camera;
-
-    // Create avatar — spawns at SPAWN position, we'll re-center
-    const avatar = createAvatar(scene, { avatarType, skinTone });
-    // Re-center to origin for preview
-    avatar.position.set(0, 0, 0);
-    avatarRef.current = avatar;
-
-    let t = 0;
-    const animate = () => {
-      rafRef.current = requestAnimationFrame(animate);
-      t += 0.016;
-
-      // Slow rotation for preview feel
-      avatar.rotation.y = Math.sin(t * 0.4) * 0.5 - 0.3;
-
-      // Gentle idle breathing
-      const torso = avatar.getObjectByName("torso");
-      if (torso) {
-        torso.scale.y = 1 + Math.sin(t * 1.6) * 0.012;
-        torso.rotation.z = Math.sin(t * 0.5) * 0.018;
-      }
-
-      const lSh = avatar.getObjectByName("leftShoulder");
-      const rSh = avatar.getObjectByName("rightShoulder");
-      const sway = Math.sin(t * 0.8) * 0.04;
-      if (lSh) lSh.rotation.x = -0.12 + sway;
-      if (rSh) rSh.rotation.x = -0.12 - sway;
-
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      renderer.dispose();
-      scene.traverse(obj => {
-        if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) {
-          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-          else obj.material.dispose();
-        }
-      });
-      mount.innerHTML = "";
-    };
-  }, [avatarType, skinTone]);
+  const SKIN_HEX = {
+    "light": "#FDEBD3", "medium-light": "#F0C490", "medium": "#C8864A",
+    "medium-dark": "#9A6038", "dark": "#6B3A22", "deep": "#3E2018",
+  };
+  const skin = SKIN_HEX[skinTone] || "#C8864A";
+  const tp = TYPE_PREVIEW[avatarType] || TYPE_PREVIEW.neutral;
 
   return (
-    <div
-      ref={mountRef}
-      style={{
-        width: 160,
-        height: 280,
-        borderRadius: 16,
-        overflow: "hidden",
-        background: "linear-gradient(180deg, rgba(155,126,255,0.08) 0%, rgba(0,212,240,0.05) 100%)",
-        border: "1px solid rgba(155,126,255,0.20)",
-        boxShadow: "0 0 40px rgba(155,126,255,0.12)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    />
+    <div style={{
+      width: 160, height: 280, borderRadius: 16, overflow: "hidden",
+      background: "linear-gradient(180deg, rgba(155,126,255,0.08) 0%, rgba(0,212,240,0.05) 100%)",
+      border: "1px solid rgba(155,126,255,0.20)",
+      boxShadow: "0 0 40px rgba(155,126,255,0.12)",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8,
+    }}>
+      {/* Simple SVG humanoid silhouette */}
+      <svg viewBox="0 0 80 160" width="80" height="160" xmlns="http://www.w3.org/2000/svg">
+        {/* Head */}
+        <circle cx="40" cy="22" r="14" fill={skin} />
+        {/* Hair */}
+        <ellipse cx="40" cy="12" rx="14" ry="10" fill="#1a0e08" />
+        {/* Eyes */}
+        <circle cx="35" cy="21" r="2.5" fill="#222" />
+        <circle cx="45" cy="21" r="2.5" fill="#222" />
+        {/* Neck */}
+        <rect x="36" y="35" width="8" height="8" rx="3" fill={skin} />
+        {/* Torso */}
+        <rect x="22" y="42" width="36" height="42" rx="8" fill={tp.color} />
+        {/* Left Arm */}
+        <rect x="10" y="44" width="12" height="32" rx="6" fill={tp.color} />
+        <rect x="10" y="75" width="10" height="18" rx="5" fill={skin} />
+        {/* Right Arm */}
+        <rect x="58" y="44" width="12" height="32" rx="6" fill={tp.color} />
+        <rect x="60" y="75" width="10" height="18" rx="5" fill={skin} />
+        {/* Left Leg */}
+        <rect x="24" y="84" width="14" height="36" rx="7" fill="#111122" />
+        <rect x="24" y="118" width="14" height="24" rx="7" fill="#111122" />
+        {/* Right Leg */}
+        <rect x="42" y="84" width="14" height="36" rx="7" fill="#111122" />
+        <rect x="42" y="118" width="14" height="24" rx="7" fill="#111122" />
+        {/* Shoes */}
+        <ellipse cx="31" cy="148" rx="10" ry="5" fill="#0a0a18" />
+        <ellipse cx="49" cy="148" rx="10" ry="5" fill="#0a0a18" />
+        {/* Chest accent line */}
+        <rect x="39" y="47" width="2" height="28" rx="1" fill={tp.accent} opacity="0.7" />
+      </svg>
+      <p style={{ color: tp.accent, fontSize: 11, fontWeight: 700, marginTop: 4, letterSpacing: 1 }}>
+        {avatarType?.toUpperCase()}
+      </p>
+    </div>
   );
 }
 
