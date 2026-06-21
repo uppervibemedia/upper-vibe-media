@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, GraduationCap, Play, Maximize, ArrowLeft, Tv, Film, Volume2 } from "lucide-react";
+import { X, GraduationCap, Play, Maximize, ArrowLeft, Tv, Film, Volume2, Crown, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import CoverImage from "@/components/shared/CoverImage";
+import { useAuth } from "@/lib/AuthContext";
 
 const CATEGORIES = [
   { key: "manifest_mode_tv", label: "Manifest Mode TV", emoji: "📺", color: "#7C3AED" },
@@ -20,7 +21,32 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
   const [viewingLesson, setViewingLesson] = useState(null);
   const [fullScreen, setFullScreen] = useState(false);
   const [academyMuted, setAcademyMuted] = useState(true);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState("");
   const iframeRef = useRef(null);
+  const { user, isAuthenticated, navigateToLogin } = useAuth();
+
+  // ── Plus membership check ────────────────────────────────────
+  const isPlus = user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" || user?.tier === "premium" || user?.isPremium === true || user?.role === "premium";
+
+  // ── Handle Plus upgrade checkout ────────────────────────────
+  const handleUpgrade = async () => {
+    if (!isAuthenticated) { navigateToLogin(); return; }
+    if (window.self !== window.top) { setUpgradeError("Checkout is only available from the published app."); return; }
+    setUpgradeError("");
+    setUpgradeLoading(true);
+    try {
+      const res = await base44.functions.invoke("stripeCheckout", {
+        plan: "plus",
+        billingCycle: "monthly",
+        successUrl: `${window.location.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/vibe-world`,
+      });
+      if (res.data?.url) window.location.href = res.data.url;
+      else setUpgradeError("Something went wrong. Please try again.");
+    } catch (e) { setUpgradeError(e?.response?.data?.error || "Something went wrong. Please try again."); }
+    setUpgradeLoading(false);
+  };
 
   // ── Load academy lessons ──────────────────────────────────────
   useEffect(() => {
@@ -260,6 +286,59 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
               </button>
             ))}
           </div>
+
+          {/* Plus Membership Card */}
+          {!isPlus ? (
+            <div className="flex-shrink-0 px-4 py-3 mx-4 mt-2 rounded-2xl"
+              style={{
+                background: "linear-gradient(135deg, rgba(200,137,42,0.12), rgba(237,184,74,0.06))",
+                border: "1px solid rgba(212,168,67,0.25)",
+              }}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(212,168,67,0.15)", border: "1px solid rgba(212,168,67,0.3)" }}>
+                    <Crown className="w-3.5 h-3.5" style={{ color: "#EDB84A" }} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black tracking-wide" style={{ color: "#EDB84A" }}>
+                      Upgrade to Plus — $4.99/month
+                    </p>
+                    <p className="text-[9px] text-white/30 line-clamp-1">
+                      Unlock premium content, full songs, videos, downloads, and member features.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={handleUpgrade}
+                    disabled={upgradeLoading}
+                    className="px-3 py-1.5 rounded-full font-black text-[10px] tracking-wide transition-all hover:brightness-110 active:scale-95 disabled:opacity-60"
+                    style={{
+                      background: "linear-gradient(135deg,#C8892A,#EDB84A)",
+                      color: "#000",
+                      minHeight: "32px",
+                      touchAction: "manipulation",
+                    }}
+                  >
+                    {upgradeLoading ? "Loading..." : "Join Plus"}
+                  </button>
+                </div>
+              </div>
+              {upgradeError && (
+                <p className="text-[9px] text-red-400 mt-1.5 ml-0">{upgradeError}</p>
+              )}
+            </div>
+          ) : (
+            <div className="flex-shrink-0 px-4 py-1.5 mx-4 mt-2 rounded-full flex items-center gap-1.5 justify-center"
+              style={{ background: "rgba(212,168,67,0.06)", border: "1px solid rgba(212,168,67,0.15)" }}>
+              <Sparkles className="w-3 h-3" style={{ color: "#EDB84A" }} />
+              <span className="text-[9px] font-black tracking-wider" style={{ color: "rgba(237,184,74,0.7)" }}>
+                Your Plus Access Is Active
+              </span>
+            </div>
+          )}
 
           {/* Video grid */}
           <div className="flex-1 overflow-y-auto px-4 py-4">
