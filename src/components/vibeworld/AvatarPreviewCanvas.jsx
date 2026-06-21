@@ -1,8 +1,8 @@
 /**
- * AvatarPreviewCanvas — full-body avatar preview with working rotate buttons.
- * Head-to-toe framing, idle animation, live outfit tinting.
+ * AvatarPreviewCanvas — full-body avatar preview with Front / Back / Side view buttons.
+ * No rotation button — replaced with instant camera angle presets.
  */
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OUTFIT_COLORS } from "./AvatarSetup";
@@ -34,18 +34,36 @@ function applyOutfitTint(model, outfitColorKey) {
       if (!m?.color) return;
       if (!m.userData._origColor) m.userData._origColor = m.color.clone();
       const orig = m.userData._origColor;
-      // Skip skin-like materials (warm mid tones — face/hands)
       const isSkin = orig.r > 0.35 && orig.r > orig.b * 1.3 && orig.g > orig.b * 0.8 && orig.r < 0.95 && orig.b < 0.6;
       m.color.copy(isSkin ? orig : targetColor);
     });
   });
 }
 
+// Camera presets: position and lookAt for each view
+// Model faces +Z (rotation.y = Math.PI means chest toward +Z in world space)
+const VIEWS = {
+  front: { pos: [0, 0.87, 3.6],  look: [0, 0.87, 0] },
+  back:  { pos: [0, 0.87, -3.6], look: [0, 0.87, 0] },
+  side:  { pos: [3.6, 0.87, 0],  look: [0, 0.87, 0] },
+};
+
 export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, height = 420 }) {
   const canvasRef = useRef(null);
   const stateRef = useRef({});
   const outfitRef = useRef(outfitColorKey);
   outfitRef.current = outfitColorKey;
+  const [activeView, setActiveView] = useState("front");
+
+  // Apply camera view instantly when button is clicked
+  const setView = (viewKey) => {
+    setActiveView(viewKey);
+    const s = stateRef.current;
+    if (!s.camera) return;
+    const v = VIEWS[viewKey];
+    s.camera.position.set(...v.pos);
+    s.camera.lookAt(...v.look);
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -59,8 +77,7 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
 
     const scene = new THREE.Scene();
 
-    // Camera: Soldier.glb feet at y=0, head ~1.75m.
-    // FOV 32, position at y=0.87 (midpoint), z=3.6 — frames full body head-to-toe
+    // Camera starts at front view
     const camera = new THREE.PerspectiveCamera(32, width / height, 0.1, 50);
     camera.position.set(0, 0.87, 3.6);
     camera.lookAt(0, 0.87, 0);
@@ -76,6 +93,10 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
     const rim = new THREE.DirectionalLight(0xaaaaff, 0.8);
     rim.position.set(0, 4, -4);
     scene.add(rim);
+    // Back light for back view readability
+    const backLight = new THREE.DirectionalLight(0xccddff, 2.0);
+    backLight.position.set(0, 3, -5);
+    scene.add(backLight);
 
     // Floor glow disc
     const glowMat = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.18, depthWrite: false });
@@ -88,16 +109,13 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
     s.scene = scene;
     s.camera = camera;
     s.glowMat = glowMat;
-    s.yaw = 0;
-    s.autoRotate = false;
-    s.spinning = false;
     s.model = null;
     s.mixer = null;
 
     loadGLTF().then((gltf) => {
       const model = gltf.scene.clone(true);
       model.name = "previewModel";
-      model.rotation.y = Math.PI; // face camera
+      model.rotation.y = Math.PI; // chest faces camera in front view
       model.position.set(0, 0, 0);
       model.scale.set(1, 1, 1);
 
@@ -137,11 +155,6 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
 
       if (s.mixer) s.mixer.update(dt);
 
-      if (s.spinning && s.model) {
-        s.yaw += dt * 0.65; // ~9.6s for full 360°
-        s.model.rotation.y = Math.PI + s.yaw;
-      }
-
       if (s.glowMat) {
         const outfit = OUTFIT_COLORS.find(c => c.key === outfitRef.current);
         const glowColor = outfit?.hex === "#080A0F" ? "#00D4F0" : outfit?.hex || "#4488ff";
@@ -159,14 +172,17 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Live re-tint
+  // Live re-tint on color change
   useEffect(() => {
     const s = stateRef.current;
     if (s.model) applyOutfitTint(s.model, outfitColorKey);
   }, [outfitColorKey]);
 
-  const startSpin = () => { stateRef.current.spinning = true; };
-  const stopSpin  = () => { stateRef.current.spinning = false; };
+  const viewButtons = [
+    { key: "front", label: "Front" },
+    { key: "back",  label: "Back"  },
+    { key: "side",  label: "Side"  },
+  ];
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -183,26 +199,23 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, heigh
         <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
       </div>
 
-      {/* Hold-to-spin button */}
-      <button
-        onMouseDown={startSpin}
-        onMouseUp={stopSpin}
-        onMouseLeave={stopSpin}
-        onTouchStart={(e) => { e.preventDefault(); startSpin(); }}
-        onTouchEnd={stopSpin}
-        onTouchCancel={stopSpin}
-        className="flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold tracking-wider uppercase select-none transition-all active:scale-95"
-        style={{
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.14)",
-          color: "rgba(255,255,255,0.55)",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-          touchAction: "none",
-        }}
-      >
-        ↺ Hold to Rotate
-      </button>
+      {/* View buttons — instant camera preset, no rotation logic */}
+      <div className="flex items-center gap-1.5">
+        {viewButtons.map((v) => (
+          <button
+            key={v.key}
+            onClick={() => setView(v.key)}
+            className="px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all active:scale-95"
+            style={{
+              background: activeView === v.key ? "rgba(155,126,255,0.2)" : "rgba(255,255,255,0.05)",
+              border: `1px solid ${activeView === v.key ? "rgba(155,126,255,0.5)" : "rgba(255,255,255,0.1)"}`,
+              color: activeView === v.key ? "#A078FF" : "rgba(255,255,255,0.45)",
+            }}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

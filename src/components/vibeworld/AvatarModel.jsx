@@ -122,22 +122,57 @@ function crossFade(entry, toKey, duration = 0.22) {
   entry.currentAnim = toKey;
 }
 
+// ─── Lock root bone Z so animations play in-place ─────────────
+// Soldier.glb has a root bone that translates forward during walk/run.
+// We reset it to 0 every frame after the mixer updates so the avatar
+// bounces/moves in place without sliding.
+function lockRootInPlace(entry) {
+  if (!entry._rootBone) {
+    // Find the root-most SkinnedMesh skeleton root bone
+    const model = entry.root?.getObjectByName("avatarModel");
+    if (!model) return;
+    // Look for a SkinnedMesh and grab its skeleton root
+    model.traverse((obj) => {
+      if (entry._rootBone) return;
+      if (obj.isSkinnedMesh && obj.skeleton?.bones?.length) {
+        entry._rootBone = obj.skeleton.bones[0];
+      }
+    });
+    // Fallback: first Bone in the scene
+    if (!entry._rootBone) {
+      model.traverse((obj) => {
+        if (!entry._rootBone && obj.isBone) entry._rootBone = obj;
+      });
+    }
+  }
+  if (entry._rootBone) {
+    entry._rootBone.position.x = 0;
+    entry._rootBone.position.z = 0;
+  }
+}
+
 // ─── PUBLIC: updateAvatarAnimation ───────────────────────────
 export function updateAvatarAnimation(entry, speed, isDancing, dt) {
   if (!entry || !entry.mixer) return;
   entry.mixer.update(dt);
 
-  // If an emote override is active, let it play — don't interrupt
-  if (entry._emoteActive) return;
+  // If a one-shot emote override is active, keep root locked and return
+  if (entry._emoteActive) {
+    lockRootInPlace(entry);
+    return;
+  }
 
   if (isDancing) {
-    // Dance: fast walk animation at high speed creates a bouncy dance feel
-    // Use walk at 2.2x speed — energetic rhythm without the running lean
-    const key = entry.clips.walk ? "walk" : entry.clips.run ? "run" : null;
-    if (key) {
-      if (entry.currentAnim !== key) crossFade(entry, key, 0.25);
-      entry.clips[key].setEffectiveTimeScale(2.2);
+    // Dance in-place: use the run clip (more limb movement than walk)
+    // but lock root Z so the avatar stays put and just bounces
+    if (entry.clips.run) {
+      if (entry.currentAnim !== "run") crossFade(entry, "run", 0.3);
+      entry.clips.run.setEffectiveTimeScale(1.6);
+    } else if (entry.clips.walk) {
+      if (entry.currentAnim !== "walk") crossFade(entry, "walk", 0.3);
+      entry.clips.walk.setEffectiveTimeScale(1.8);
     }
+    lockRootInPlace(entry);
     return;
   }
 
@@ -162,10 +197,32 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt) {
   }
 }
 
+// ─── PUBLIC: stopEmoteAnimation ──────────────────────────────
+export function stopEmoteAnimation(entry) {
+  if (!entry) return;
+  if (entry._emoteTimer) { clearTimeout(entry._emoteTimer); entry._emoteTimer = null; }
+  entry._emoteActive = false;
+  // Return to idle
+  const clips = entry.clips;
+  const idleClip = clips.idle || clips.walk;
+  if (idleClip && entry.mixer) {
+    const current = clips[entry.currentAnim];
+    idleClip.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
+    if (current && current !== idleClip) current.crossFadeTo(idleClip, 0.3, true);
+    entry.currentAnim = clips.idle ? "idle" : "walk";
+  }
+}
+
 // ─── PUBLIC: playEmoteAnimation ──────────────────────────────
-// Plays a short emote animation on the avatar using existing clips.
-// Each emote id maps to a distinct clip + speed to feel different.
-// After durationMs, reverts to idle.
+// Each emote uses a specific clip + timeScale that looks distinct.
+// Root bone is locked in place so the avatar never slides forward.
+//
+// Emote → clip mapping (Soldier.glb has: idle, walk, run):
+//   wave  → idle at 1.5x  (gentle upper-body sway, arms move naturally)
+//   clap  → walk at 2.5x  (fast torso/arm pumping, locked in place)
+//   heart → idle at 0.4x  (very slow dreamy sway)
+//   fire  → run  at 2.0x  (arms and legs pumping hard, locked in place)
+//   peace → idle at 0.8x  (relaxed idle sway)
 export function playEmoteAnimation(entry, emoteId) {
   if (!entry || !entry.mixer) return;
 
@@ -175,38 +232,36 @@ export function playEmoteAnimation(entry, emoteId) {
   const clips = entry.clips;
 
   // Map emote → { clip key, timeScale, durationMs }
+  // Never use the same clip+speed as dance (run@1.6x) to keep them distinct
   const EMOTE_MAP = {
-    wave:  { key: "walk", timeScale: 0.4,  durationMs: 2200 }, // slow swaying = wave
-    clap:  { key: "walk", timeScale: 1.8,  durationMs: 2000 }, // fast bounce = clapping energy
-    heart: { key: "idle", timeScale: 0.25, durationMs: 2500 }, // very slow idle = dreamy
-    fire:  { key: "run",  timeScale: 3.0,  durationMs: 1800 }, // fast run = hype
-    peace: { key: "idle", timeScale: 0.5,  durationMs: 2500 }, // slow idle = chill
+    wave:  { key: "idle", timeScale: 1.5,  durationMs: 2200 },
+    clap:  { key: "walk", timeScale: 2.5,  durationMs: 2000 },
+    heart: { key: "idle", timeScale: 0.4,  durationMs: 2500 },
+    fire:  { key: "run",  timeScale: 2.2,  durationMs: 1800 },
+    peace: { key: "idle", timeScale: 0.8,  durationMs: 2500 },
   };
 
   const cfg = EMOTE_MAP[emoteId];
-  if (!cfg || !clips[cfg.key]) return;
+  if (!cfg) return;
+
+  // Pick the clip — fall back gracefully if the preferred one is missing
+  const clipKey = clips[cfg.key] ? cfg.key : clips.idle ? "idle" : Object.keys(clips)[0];
+  if (!clipKey || !clips[clipKey]) return;
 
   entry._emoteActive = true;
 
-  // Force transition to emote clip at distinct speed
+  // Transition to emote clip
   const from = clips[entry.currentAnim];
-  const to = clips[cfg.key];
+  const to = clips[clipKey];
   to.reset().setEffectiveTimeScale(cfg.timeScale).setEffectiveWeight(1).play();
   if (from && from !== to) from.crossFadeTo(to, 0.15, true);
-  entry.currentAnim = cfg.key;
+  entry.currentAnim = clipKey;
+
+  // Root locked in place — handled each frame in updateAvatarAnimation
 
   // Revert to idle after duration
   entry._emoteTimer = setTimeout(() => {
-    entry._emoteActive = false;
-    entry._emoteTimer = null;
-    // Crossfade back to idle
-    const idleClip = clips.idle || clips.walk;
-    if (idleClip) {
-      const current = clips[entry.currentAnim];
-      idleClip.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-      if (current && current !== idleClip) current.crossFadeTo(idleClip, 0.3, true);
-      entry.currentAnim = clips.idle ? "idle" : "walk";
-    }
+    stopEmoteAnimation(entry);
   }, cfg.durationMs);
 }
 

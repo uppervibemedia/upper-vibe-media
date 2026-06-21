@@ -4,7 +4,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
-import { retintAvatar, playEmoteAnimation } from "@/components/vibeworld/AvatarModel";
+import { retintAvatar, playEmoteAnimation, stopEmoteAnimation } from "@/components/vibeworld/AvatarModel";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
 import StageVideoEmbed from "@/components/vibeworld/StageVideoEmbed";
@@ -77,6 +77,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsDancing(false);
     setActiveEmote(null);
     if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
+    // Cancel any lingering emote override on the avatar entry
+    if (playerAvatarEntryRef.current) {
+      stopEmoteAnimation(playerAvatarEntryRef.current);
+    }
   }, []);
 
   // ── Auto-cancel dance on movement ──────────────────────────────────────────
