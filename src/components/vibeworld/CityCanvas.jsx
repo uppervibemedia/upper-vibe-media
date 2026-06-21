@@ -112,7 +112,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   const backGeo = new PlaneGeometry(7, 2);
   const backMat = new MeshBasicMaterial({
     color: new Color(colorHex),
-    transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide,
+    transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide,
   });
   const back = new Mesh(backGeo, backMat);
   back.name = "neonBack";
@@ -122,7 +122,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   const borderGeo = new PlaneGeometry(7.1, 2.1);
   const borderMat = new MeshBasicMaterial({
     color: new Color(colorHex),
-    transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide,
+    transparent: true, opacity: 0.50, depthWrite: false, side: THREE.DoubleSide,
   });
   const borderFrame = new Mesh(borderGeo, borderMat);
   borderFrame.renderOrder = 1;
@@ -167,7 +167,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   // Billboard toward camera — sprite handles this but we parent the group to scene
   // Each sign should always face the camera, so we'll make the whole group a billboard
   // Using Object3D.lookAt in render loop — store ref for animation
-  group.userData = { isNeonSign: true, baseOpacity: 0.35, colorHex };
+  group.userData = { isNeonSign: true, baseOpacity: 0.50, colorHex };
   scene.add(group);
 }
 
@@ -184,7 +184,7 @@ function buildPark(scene) {
   // 1. GROUND — dark urban plaza floor
   // ═════════════════════════════════════════════════════════════
   const groundGeo = new PlaneGeometry(68, 52);
-  const groundMat = mat("#1A1A2E", { roughness: 0.85 });
+  const groundMat = mat("#0B1020", { roughness: 0.55, metalness: 0.15 });
   const ground = new Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(0, -0.01, -10);
@@ -199,7 +199,7 @@ function buildPark(scene) {
 
   const plazaDisc = new Mesh(
     new CircleGeometry(PLAZA_R, 64),
-    mat("#1E1E36", { roughness: 0.5, metalness: 0.25 })
+    mat("#141B2D", { roughness: 0.35, metalness: 0.30 })
   );
   plazaDisc.rotation.x = -Math.PI / 2;
   plazaDisc.position.set(PLAZA_X, 0.001, PLAZA_Z);
@@ -256,7 +256,7 @@ function buildPark(scene) {
   const stage = new Group();
   stage.name = "musicStage";
 
-  const stagePlat = new Mesh(new BoxGeometry(8, 0.5, 5), mat("#2A2A4A", { roughness: 0.3, metalness: 0.5 }));
+  const stagePlat = new Mesh(new BoxGeometry(8, 0.5, 5), mat("#1A2050", { roughness: 0.25, metalness: 0.55 }));
   stagePlat.position.set(0, 0.25, -15);
   stagePlat.castShadow = true; stagePlat.receiveShadow = true;
   stage.add(stagePlat);
@@ -278,8 +278,8 @@ function buildPark(scene) {
   scene.userData._stageCanvasApplied = false;
 
   const screenGlow = new Mesh(
-    new BoxGeometry(7.2, 4.2, 0.05),
-    new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
+  new BoxGeometry(7.2, 4.2, 0.05),
+  new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.65 })
   );
   screenGlow.position.set(0, 2.5, -17.4);
   screenGlow.name = "stageScreenGlow";
@@ -334,7 +334,7 @@ function buildPark(scene) {
   // Platform — larger, darker metallic
   const loungePlat = new Mesh(
     new CircleGeometry(4.5, 48),
-    mat("#151528", { roughness: 0.4, metalness: 0.5 })
+    mat("#181032", { roughness: 0.30, metalness: 0.55 })
   );
   loungePlat.rotation.x = -Math.PI / 2;
   loungePlat.position.set(-16, 0.003, -10);
@@ -500,7 +500,7 @@ function buildPark(scene) {
 
   const libPlat = new Mesh(
     new CircleGeometry(4, 32),
-    mat("#1A2A3E", { roughness: 0.5, metalness: 0.3 })
+    mat("#162040", { roughness: 0.35, metalness: 0.35 })
   );
   libPlat.rotation.x = -Math.PI / 2;
   libPlat.position.set(16, 0.002, -10);
@@ -568,7 +568,7 @@ function buildPark(scene) {
   const domeGeo2 = new SphereGeometry(3.5, 32, 20, 0, Math.PI * 2, 0, Math.PI / 2);
   const domeMesh2 = new Mesh(
     domeGeo2,
-    mat("#1E2A3E", { roughness: 0.25, metalness: 0.6, transparent: true, opacity: 0.7, depthWrite: true })
+    mat("#1A2540", { roughness: 0.20, metalness: 0.65, transparent: true, opacity: 0.75, depthWrite: true })
   );
   domeMesh2.position.set(-10, 0.05, 8);
   domeMesh2.castShadow = true;
@@ -614,7 +614,7 @@ function buildPark(scene) {
   // Base platform — slightly larger for check-in feel
   const vcPlat = new Mesh(
     new CircleGeometry(3, 48),
-    mat("#151E2A", { roughness: 0.4, metalness: 0.5 })
+    mat("#142540", { roughness: 0.30, metalness: 0.55 })
   );
   vcPlat.rotation.x = -Math.PI / 2;
   vcPlat.position.set(10, 0.003, 4);
@@ -732,7 +732,7 @@ function buildPark(scene) {
   // Base platform — wide, cinematic
   const acadPlat = new Mesh(
     new BoxGeometry(8, 0.15, 6),
-    mat("#151028", { roughness: 0.4, metalness: 0.5 })
+    mat("#181032", { roughness: 0.30, metalness: 0.55 })
   );
   acadPlat.position.set(ACAD_X, 0.08, ACAD_Z);
   acadPlat.receiveShadow = true;
@@ -1013,10 +1013,10 @@ function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 12. LIGHTING — night ambiance
   // ═════════════════════════════════════════════════════════════
-  // Brighter moonlight for better visibility
+  // Soft moonlight — keeps night vibe visible
   const moon = new DirectionalLight();
-  moon.color = new Color("#99B8D8");
-  moon.intensity = 0.75;
+  moon.color = new Color("#8899CC");
+  moon.intensity = 0.6;
   moon.position.set(15, 22, SHORELINE_Z + 10);
   moon.castShadow = true;
   moon.shadow.mapSize.width = 2048;
@@ -1027,59 +1027,60 @@ function buildPark(scene) {
   moon.shadow.camera.right = 36;
   moon.shadow.camera.top = 30;
   moon.shadow.camera.bottom = -30;
-  moon.shadow.bias = -0.0003;
+  moon.shadow.bias = -0.0006;
   scene.add(moon);
 
-  // Brighter ambient — lifts the whole city
+  // Soft blue ambient — bright neon city night
   const ambLight = new AmbientLight();
-  ambLight.color = new Color("#3A2B6E");
-  ambLight.intensity = 0.7;
+  ambLight.color = new Color("#4850A0");
+  ambLight.intensity = 0.9;
   scene.add(ambLight);
 
+  // Purple-blue hemisphere fill
   const hemiLight = new HemisphereLight();
-  hemiLight.color = new Color("#8B7CBB");
-  hemiLight.groundColor = new Color("#2A2E3E");
-  hemiLight.intensity = 0.5;
+  hemiLight.color = new Color("#6B5CAA");
+  hemiLight.groundColor = new Color("#1A2040");
+  hemiLight.intensity = 0.7;
   scene.add(hemiLight);
 
   const beachLight = new PointLight();
-  beachLight.color = new Color("#77BBDD");
-  beachLight.intensity = 2.5;
-  beachLight.distance = 22;
+  beachLight.color = new Color("#55AADD");
+  beachLight.intensity = 3.5;
+  beachLight.distance = 24;
   beachLight.position.set(0, 3, SHORELINE_Z + 6);
   scene.add(beachLight);
 
-  // Additional zone point lights — brighter and more visible
+  // Zone point lights — bright neon glow per zone
   const loungeLight = new PointLight();
-  loungeLight.color = new Color("#A078FF");
-  loungeLight.intensity = 2.0; loungeLight.distance = 12;
+  loungeLight.color = new Color("#E040FB");
+  loungeLight.intensity = 3.5; loungeLight.distance = 14;
   loungeLight.position.set(-16, 2.5, -10);
   scene.add(loungeLight);
   scene.userData.loungeLight = loungeLight;
 
   const libraryLight = new PointLight();
-  libraryLight.color = new Color("#00D4F0");
-  libraryLight.intensity = 2.0; libraryLight.distance = 12;
+  libraryLight.color = new Color("#00E5FF");
+  libraryLight.intensity = 3.5; libraryLight.distance = 14;
   libraryLight.position.set(16, 2.5, -10);
   scene.add(libraryLight);
 
   const domeLight = new PointLight();
-  domeLight.color = new Color("#C43BFF");
-  domeLight.intensity = 2.0; domeLight.distance = 12;
+  domeLight.color = new Color("#FF00FF");
+  domeLight.intensity = 3.5; domeLight.distance = 14;
   domeLight.position.set(-10, 2.5, 8);
   scene.add(domeLight);
 
   const vibeCheckLight = new PointLight();
   vibeCheckLight.color = new Color("#00E5FF");
-  vibeCheckLight.intensity = 2.0; vibeCheckLight.distance = 10;
+  vibeCheckLight.intensity = 3.5; vibeCheckLight.distance = 12;
   vibeCheckLight.position.set(10, 2.5, 4);
   scene.add(vibeCheckLight);
 
   // ── Plaza fill light — soft central glow ──────────────────
   const plazaFill = new PointLight();
-  plazaFill.color = new Color("#8866CC");
-  plazaFill.intensity = 1.2;
-  plazaFill.distance = 14;
+  plazaFill.color = new Color("#8888DD");
+  plazaFill.intensity = 2.0;
+  plazaFill.distance = 16;
   plazaFill.position.set(0, 1.5, -4);
   scene.add(plazaFill);
   scene.userData.plazaFill = plazaFill;
@@ -1249,7 +1250,7 @@ function createCosmicSky(scene) {
   skybox.renderOrder = -1; // Always render behind everything
   scene.add(skybox);
 
-  scene.fog = new Fog("#0A1525", 48, 60);
+  scene.fog = new Fog("#101835", 52, 62);
 }
 
 // createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
@@ -1337,7 +1338,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         canvas,
         antialias: true,
       });
-      renderer.setClearColor(0x050510); // Deep void — matches sky reference
+      renderer.setClearColor(0x0A1020); // Deep navy void — bright neon night
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       // Use window dimensions on mobile for reliable viewport sizing
       const rw = isMobileRef.current ? window.innerWidth : canvas.clientWidth;
@@ -1362,6 +1363,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       buildPark(scene);
       const avatar = createAvatar(scene, avatarConfig || {});
       avatarRef.current = avatar;
+
+      // Avatar rim light — soft glow so avatar doesn't blend into dark ground
+      const avatarRimLight = new PointLight();
+      avatarRimLight.color = new Color("#8899DD");
+      avatarRimLight.intensity = 0.4;
+      avatarRimLight.distance = 6;
+      avatarRimLight.position.set(SPAWN[0], SPAWN[1] + 1.2, SPAWN[2]);
+      scene.add(avatarRimLight);
+      scene.userData.avatarRimLight = avatarRimLight;
 
       let torso = null;
       let leftShoulder = null;
@@ -1490,6 +1500,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         avatarPosRef.current = [px, py, pz, rot];
         avatar.position.set(px, py, pz);
         avatar.rotation.y = rot;
+
+        // Rim light follows avatar
+        const rimLight = scene.userData.avatarRimLight;
+        if (rimLight) rimLight.position.set(px, py + 1.2, pz);
 
         // Notify parent of position (throttled — every 10 frames)
         if (onPosCbRef.current && frameRef.current % 10 === 0) {
@@ -1912,7 +1926,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── STAGE SCREEN GLOW — pulse screen frame with music ──────
         const screenGlowMesh = scene.getObjectByName("stageScreenGlow");
         if (screenGlowMesh?.material) {
-          screenGlowMesh.material.opacity = 0.3 + audioBeat * 0.6 + audioIntensityRef?.current * 0.2 || 0;
+          screenGlowMesh.material.opacity = 0.45 + audioBeat * 0.7 + (audioIntensityRef?.current || 0) * 0.3;
         }
 
         // ─── VIBE LOUNGE NEON AMBIENT — stronger pulse with music ──

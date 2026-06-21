@@ -105,7 +105,7 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   // Outer glow ring — cyan
   const zenOuterRing = new Mesh(
     new RingGeometry(3.3, 3.5, 64),
-    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.4 })
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.55 })
   );
   zenOuterRing.rotation.x = -Math.PI / 2;
   zenOuterRing.position.set(ZEN_X, 0.01, ZEN_Z);
@@ -117,7 +117,7 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   // Inner gold ring
   const zenInnerRing = new Mesh(
     new RingGeometry(1.6, 1.8, 48),
-    new MeshBasicMaterial({ color: new Color("#EDB84A"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.3 })
+    new MeshBasicMaterial({ color: new Color("#F5C870"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.45 })
   );
   zenInnerRing.rotation.x = -Math.PI / 2;
   zenInnerRing.position.set(ZEN_X, 0.011, ZEN_Z);
@@ -178,8 +178,8 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   // Ambient light
   const zenLight = new PointLight();
   zenLight.color = new Color("#A078FF");
-  zenLight.intensity = 1.2;
-  zenLight.distance = 10;
+  zenLight.intensity = 2.2;
+  zenLight.distance = 12;
   zenLight.position.set(ZEN_X, 1.5, ZEN_Z);
   zenLight.name = "zenLight";
   scene.add(zenLight);
@@ -188,8 +188,8 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   // ── SUNSET GLOW — warm ambient light above the beach ──────
   const sunsetLight = new PointLight();
   sunsetLight.color = new Color("#F97316");
-  sunsetLight.intensity = 0.8;
-  sunsetLight.distance = 16;
+  sunsetLight.intensity = 1.4;
+  sunsetLight.distance = 18;
   sunsetLight.position.set(ZEN_X, 3, ZEN_Z + 3);
   sunsetLight.name = "zenSunsetLight";
   scene.add(sunsetLight);
@@ -285,13 +285,13 @@ export function animateZenBeach(scene, t, audioBeat) {
   if (!zOrb) return;
   const br = Math.sin(t * 0.4) * 0.5 + 0.5;
   zOrb.position.y = 0.5 + Math.sin(t * 0.7) * 0.1;
-  if (zOrb.material?.opacity !== undefined) zOrb.material.opacity = 0.4 + br * 0.35 + audioBeat * 0.15;
+  if (zOrb.material?.opacity !== undefined) zOrb.material.opacity = 0.55 + br * 0.35 + audioBeat * 0.15;
   const zo = scene.userData.zenOuterRing;
-  if (zo?.material?.opacity !== undefined) zo.material.opacity = 0.25 + br * 0.2 + audioBeat * 0.1;
+  if (zo?.material?.opacity !== undefined) zo.material.opacity = 0.35 + br * 0.2 + audioBeat * 0.1;
   const zi = scene.userData.zenInnerRing;
-  if (zi?.material?.opacity !== undefined) zi.material.opacity = 0.2 + br * 0.2;
+  if (zi?.material?.opacity !== undefined) zi.material.opacity = 0.30 + br * 0.2;
   const zl = scene.userData.zenLight;
-  if (zl) zl.intensity = 0.9 + br * 0.5;
+  if (zl) zl.intensity = 1.5 + br * 0.5;
 
   // ── Sunset glow — gentle breathing pulse ──────────────────
   const sunsetGlow = scene.userData.zenSunsetGlow;

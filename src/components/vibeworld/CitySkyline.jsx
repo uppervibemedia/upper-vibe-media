@@ -36,11 +36,11 @@ export default function createCitySkyline(scene) {
   const buildings = new Group();
   buildings.name = "cityBuildings";
 
-  const glassBody = mat("#B0C5D8", { roughness: 0.2, metalness: 0.35 });
-  const steelBody = mat("#C8D4E0", { roughness: 0.25, metalness: 0.65 });
-  const silverBody = mat("#D4DBE4", { roughness: 0.3, metalness: 0.55 });
-  const whiteBody = mat("#E0E5EC", { roughness: 0.3, metalness: 0.2 });
-  const darkSteel = mat("#8898AA", { roughness: 0.3, metalness: 0.7 });
+  const glassBody = mat("#8899BB", { roughness: 0.18, metalness: 0.40 });
+  const steelBody = mat("#99AACC", { roughness: 0.22, metalness: 0.70 });
+  const silverBody = mat("#AABBCC", { roughness: 0.28, metalness: 0.60 });
+  const whiteBody = mat("#C0C8D8", { roughness: 0.28, metalness: 0.25 });
+  const darkSteel = mat("#667788", { roughness: 0.28, metalness: 0.75 });
 
   // Each store window/door gets its own material for independent animation
   function makeStoreMat(warm) {
@@ -51,13 +51,13 @@ export default function createCitySkyline(scene) {
       const g = 0.82 + Math.random() * 0.16;
       const b = 0.6 + Math.random() * 0.2;
       m.color = new Color(r, g, b);
-      m.opacity = 0.55 + Math.random() * 0.45;
+      m.opacity = 0.65 + Math.random() * 0.35;
     } else {
       const r = 0.76 + Math.random() * 0.16;
       const g = 0.68 + Math.random() * 0.16;
       const b = 0.88 + Math.random() * 0.12;
       m.color = new Color(r, g, b);
-      m.opacity = 0.4 + Math.random() * 0.45;
+      m.opacity = 0.5 + Math.random() * 0.45;
     }
     m.depthWrite = false;
     m.transparent = true;
@@ -65,22 +65,28 @@ export default function createCitySkyline(scene) {
   }
 
   const neonCyan = new MeshBasicMaterial();
-  neonCyan.color = new Color("#00D4F0");
+  neonCyan.color = new Color("#00E5FF");
   neonCyan.depthWrite = false;
+  neonCyan.transparent = true;
+  neonCyan.opacity = 0.9;
 
   const neonPurple = new MeshBasicMaterial();
-  neonPurple.color = new Color("#A078FF");
+  neonPurple.color = new Color("#C43BFF");
   neonPurple.depthWrite = false;
+  neonPurple.transparent = true;
+  neonPurple.opacity = 0.9;
 
   const neonBlue = new MeshBasicMaterial();
-  neonBlue.color = new Color("#3088CC");
+  neonBlue.color = new Color("#40A0EE");
   neonBlue.depthWrite = false;
+  neonBlue.transparent = true;
+  neonBlue.opacity = 0.9;
 
   const floorBand = new MeshBasicMaterial();
-  floorBand.color = new Color("#77AACC");
+  floorBand.color = new Color("#88BBEE");
   floorBand.depthWrite = false;
   floorBand.transparent = true;
-  floorBand.opacity = 0.55;
+  floorBand.opacity = 0.65;
 
   function addSkyscraper(x, z, w, d, h, bodyMat, accentMat, name, rotY = 0) {
     const g = new Group();

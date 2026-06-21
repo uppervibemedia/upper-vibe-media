@@ -43,7 +43,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
         color: new Color(tileColors[colorIdx]),
         depthWrite: false,
         transparent: true,
-        opacity: 0.27,
+        opacity: 0.42,
         side: THREE.DoubleSide,
       });
 
@@ -66,11 +66,11 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
 
   // ── Concentric pulse rings — brighter, more visible ──────────
   const ringDefs = [
-    { inner: 1.9, outer: 2.05, color: "#E040FB", opacity: 0.55, name: "danceInnerRing" },
-    { inner: 2.8, outer: 2.95, color: "#EDB84A", opacity: 0.40, name: "danceGoldRing" },
-    { inner: 3.6, outer: 3.75, color: "#00D4F0", opacity: 0.45, name: "danceCyanRing" },
-    { inner: 4.5, outer: 4.7,  color: "#9B7EFF", opacity: 0.42, name: "danceOuterRing" },
-    { inner: 5.5, outer: 5.7,  color: "#FF6EC7", opacity: 0.32, name: "dancePinkRing" },
+    { inner: 1.9, outer: 2.05, color: "#E040FB", opacity: 0.72, name: "danceInnerRing" },
+    { inner: 2.8, outer: 2.95, color: "#EDB84A", opacity: 0.55, name: "danceGoldRing" },
+    { inner: 3.6, outer: 3.75, color: "#00D4F0", opacity: 0.60, name: "danceCyanRing" },
+    { inner: 4.5, outer: 4.7,  color: "#9B7EFF", opacity: 0.55, name: "danceOuterRing" },
+    { inner: 5.5, outer: 5.7,  color: "#FF6EC7", opacity: 0.45, name: "dancePinkRing" },
   ];
 
   for (const rd of ringDefs) {
@@ -124,11 +124,11 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
       color: new Color(tileColors[i % tileColors.length]),
       depthWrite: false,
       transparent: true,
-      opacity: 0.35,
+      opacity: 0.50,
     });
     const dot = new Mesh(dotGeo, dotMat);
     dot.position.set(PLAZA_X + dx, 0.006, PLAZA_Z + dz);
-    dot.userData = { phase: i * 0.3, baseOpacity: 0.35 };
+    dot.userData = { phase: i * 0.3, baseOpacity: 0.50 };
     scene.add(dot);
     dotMats.push({ mat: dotMat, dot });
   }
@@ -234,7 +234,7 @@ export function animateDanceFloor(scene, t, audioBeat, audioIntensity) {
       const baseColor = new Color(p.baseColor);
       const brightColor = new Color(p.baseColor).multiplyScalar(2.5 + audioBeat * 2.5);
       td.mat.color.copy(baseColor).lerp(brightColor, intensity);
-      td.mat.opacity = 0.20 + intensity * 0.65;
+      td.mat.opacity = 0.28 + intensity * 0.65;
     }
   }
 
