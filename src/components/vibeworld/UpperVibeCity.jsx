@@ -16,7 +16,7 @@ import usePrivateChat from "@/hooks/usePrivateChat";
 import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
-import AvatarSetup from "@/components/vibeworld/AvatarSetup";
+import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
@@ -151,6 +151,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const avatarConfig = {
     avatarType: user?.avatar_type || "neutral",
     skinTone: user?.skin_tone || "medium",
+    rpmAvatarUrl: user?.rpm_avatar_url || null,
   };
 
   // ── Personalized feed continuous playback ──────────────────────────────
@@ -795,21 +796,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </>
       )}
 
-      {/* ── Edit Avatar overlay ────────────────────────────────────────── */}
+      {/* ── Edit Avatar overlay — RPM Creator ──────────────────────────── */}
       {editAvatarOpen && (
-        <AvatarSetup
+        <RPMAvatarCreator
           onComplete={async () => {
             setEditAvatarOpen(false);
-            // Bump version to trigger re-read of user data next render
             setAvatarVersion((v) => v + 1);
-            // Refresh user data
-            try {
-              const freshUser = await base44.auth.me();
-              setAvatarVersion((v) => v + 1);
-            } catch {}
           }}
-          existingType={user?.avatar_type || "neutral"}
-          existingTone={user?.skin_tone || "medium"}
+          existingUrl={user?.rpm_avatar_url || null}
         />
       )}
 

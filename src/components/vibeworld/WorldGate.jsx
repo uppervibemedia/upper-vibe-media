@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import WorldAccessScreen from "@/components/vibeworld/WorldAccessScreen";
 import UsernameSetup from "@/components/vibeworld/UsernameSetup";
 import AvatarSetup from "@/components/vibeworld/AvatarSetup";
+import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 import CommunityRulesModal from "@/components/vibeworld/CommunityRulesModal";
 import UserAgreementModal from "@/components/vibeworld/UserAgreementModal";
 
@@ -39,7 +40,7 @@ export default function WorldGate({ children }) {
     // (includes custom fields like world_username, uvc_rules_accepted, etc.)
     if (!user.world_username) {
       setStep(STEP.SETUP_USERNAME);
-    } else if (!user.avatar_type) {
+    } else if (!user.avatar_type && !user.rpm_avatar_url) {
       setStep(STEP.SETUP_AVATAR);
     } else if (
       !user.uvc_rules_accepted ||
@@ -111,10 +112,9 @@ export default function WorldGate({ children }) {
 
   if (step === STEP.SETUP_AVATAR) {
     return (
-      <AvatarSetup
+      <RPMAvatarCreator
         onComplete={handleAvatarComplete}
-        existingType={user?.avatar_type || null}
-        existingTone={user?.skin_tone || null}
+        existingUrl={user?.rpm_avatar_url || null}
       />
     );
   }

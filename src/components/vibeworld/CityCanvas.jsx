@@ -1255,6 +1255,7 @@ function createCosmicSky(scene) {
 
 // createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
 import { createAvatar, createRemoteAvatar } from "./AvatarModel.jsx";
+import { loadRPMAvatar } from "./RPMLoader.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
@@ -1362,7 +1363,22 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       camera.lookAt(SPAWN[0], SPAWN[1] + initLookY, SPAWN[2]);
 
       buildPark(scene);
-      const avatar = createAvatar(scene, avatarConfig || {});
+
+      // Use Ready Player Me GLB if available, else fallback to primitive avatar
+      let avatar;
+      const rpmUrl = avatarConfig?.rpmAvatarUrl;
+      if (rpmUrl) {
+        avatar = loadRPMAvatar(
+          scene, rpmUrl,
+          { x: SPAWN[0], y: SPAWN[1], z: SPAWN[2] },
+          (loadedModel) => {
+            // Swap the avatar reference once GLB is loaded
+            avatarRef.current = loadedModel;
+          }
+        );
+      } else {
+        avatar = createAvatar(scene, avatarConfig || {});
+      }
       avatarRef.current = avatar;
 
       // Avatar rim light — soft glow so avatar doesn't blend into dark ground
