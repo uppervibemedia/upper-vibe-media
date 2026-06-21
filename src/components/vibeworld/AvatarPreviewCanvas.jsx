@@ -26,21 +26,22 @@ function loadGLTF(gender = "male") {
   return _gltfPromise[gender];
 }
 
-// ─── Material classification (mirrors AvatarModel.jsx) ────────
-function classifyMaterial(meshName, origColor) {
-  const name = (meshName || "").toLowerCase();
-  if (/hair|eyebrow|brow|beard|facial_hair|eyelash|lash/i.test(name)) return "hair";
-  if (/skin|face|head|neck|hand|arm|leg|body|torso|flesh/i.test(name)) return "skin";
-  if (/shirt|top|jacket|pant|boot|shoe|armor|cloth|outfit|suit|sleeve|collar|vest|coat|glove|belt|strap|trim|neon|accessory|accesso|pad|knee|chest|shoulder|visor|helmet|mask|cape|skirt/i.test(name)) return "outfit";
+// ─── Material classification (mirrors AvatarModel.jsx exactly) ────────
+function classifyMaterial(meshName, matName, origColor) {
+  const combined = ((meshName || "") + " " + (matName || "")).toLowerCase();
+
+  if (/hair|eyebrow|brow|beard|facial_hair|eyelash|lash|bun|ponytail/i.test(combined)) return "hair";
+  if (/\bskin\b|face|neck|hand|finger|wrist|forearm|upperarm|calf|shin|thigh|foot|toe|ear|nose|lip|mouth|chin|cheek|forehead|flesh|body_skin/i.test(combined)) return "skin";
+  if (/shirt|top|jacket|pant|trouser|boot|shoe|armor|armour|cloth|outfit|suit|sleeve|collar|vest|coat|glove|belt|strap|trim|neon|accessory|accesso|pad|knee|chest|shoulder|visor|helmet|mask|cape|skirt|sock|sneaker|hoodie|shorts|uniform/i.test(combined)) return "outfit";
 
   const { r, g, b } = origColor;
-  const isSkinLike = r > 0.28 && r > b * 1.25 && g > b * 0.75 && r < 0.96 && b < 0.65 && g < 0.90;
+  const brightness = (r + g + b) / 3;
+  const isSkinLike = r > 0.25 && r > b * 1.20 && g > b * 0.70 && r < 0.97 && b < 0.70 && g < 0.92 && brightness > 0.22 && brightness < 0.88;
   if (isSkinLike) return "skin";
 
-  const brightness = (r + g + b) / 3;
-  const isNearNeutral = Math.abs(r - g) < 0.06 && Math.abs(g - b) < 0.06;
+  const isNearNeutral = Math.abs(r - g) < 0.07 && Math.abs(g - b) < 0.07;
   if (brightness < 0.18 && isNearNeutral) return "hair";
-  const isDarkBrown = r > g && r > b && (r - b) < 0.18 && brightness < 0.22;
+  const isDarkBrown = r > g && r > b && (r - b) < 0.22 && brightness < 0.25 && r < 0.45;
   if (isDarkBrown) return "hair";
 
   return "outfit";
@@ -52,6 +53,7 @@ function applyTints(model, outfitColorKey, skinToneKey) {
   if (!outfit) return;
   const outfitColor = new THREE.Color(outfit.hex);
   const skinEntry = SKIN_TONES.find(s => s.key === skinToneKey);
+  // Always provide a skin color — fall back to original if not found
   const skinColor = skinEntry ? new THREE.Color(skinEntry.hex) : null;
 
   model.traverse((child) => {
@@ -61,7 +63,8 @@ function applyTints(model, outfitColorKey, skinToneKey) {
       if (!m?.color) return;
       if (!m.userData._origColor) m.userData._origColor = m.color.clone();
       const orig = m.userData._origColor;
-      const kind = classifyMaterial(child.name, orig);
+      const matName = m.name || "";
+      const kind = classifyMaterial(child.name, matName, orig);
 
       if (kind === "skin") {
         m.color.copy(skinColor || orig);

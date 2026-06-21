@@ -98,32 +98,49 @@ function makeShadow() {
 
 // ─── Material classification ──────────────────────────────────
 // Returns "skin" | "hair" | "outfit" based on mesh name + color heuristics.
-// Order matters: name-based check runs first; color heuristic is fallback.
-function classifyMaterial(meshName, origColor) {
-  const name = (meshName || "").toLowerCase();
+// Soldier.glb mesh names: "Alpha_Body_Geometry", "Alpha_Joints_Geometry", etc.
+// Michelle.glb mesh names: "Ch03_Body", "Ch03_Eyelashes", "Ch03_Hair", etc.
+function classifyMaterial(meshName, matName, origColor) {
+  const mname = (meshName || "").toLowerCase();
+  const mat   = (matName  || "").toLowerCase();
+  const combined = mname + " " + mat;
 
-  // Hair — name signals
-  if (/hair|eyebrow|brow|beard|facial_hair|eyelash|lash/i.test(name)) return "hair";
+  // ── HAIR — highest priority, protect from all tinting ──────
+  if (/hair|eyebrow|brow|beard|facial_hair|eyelash|lash|bun|ponytail/i.test(combined)) return "hair";
 
-  // Skin — name signals
-  if (/skin|face|head|neck|hand|arm|leg|body|torso|flesh/i.test(name)) return "skin";
+  // ── SKIN — explicit name signals ───────────────────────────
+  // Soldier.glb: "Alpha_Body_Geometry" with skin-toned material = skin
+  // Michelle.glb: "Ch03_Body" exposed skin parts
+  if (/\bskin\b|face|neck|hand|finger|wrist|forearm|upperarm|calf|shin|thigh|foot|toe|ear|nose|lip|mouth|chin|cheek|forehead|flesh|body_skin/i.test(combined)) return "skin";
 
-  // Outfit — name signals
-  if (/shirt|top|jacket|pant|boot|shoe|armor|cloth|outfit|suit|sleeve|collar|vest|coat|glove|belt|strap|trim|neon|accessory|accesso|pad|knee|chest|shoulder|visor|helmet|mask|cape|skirt/i.test(name)) return "outfit";
+  // ── OUTFIT — explicit name signals ─────────────────────────
+  if (/shirt|top|jacket|pant|trouser|boot|shoe|armor|armour|cloth|outfit|suit|sleeve|collar|vest|coat|glove|belt|strap|trim|neon|accessory|accesso|pad|knee|chest|shoulder|visor|helmet|mask|cape|skirt|sock|sneaker|hoodie|shorts|uniform/i.test(combined)) return "outfit";
 
-  // Fallback: color heuristic
+  // ── FALLBACK: color heuristics ─────────────────────────────
   const { r, g, b } = origColor;
-  // Skin-like: warm mid-range (not too bright white, not near-black)
-  const isSkinLike = r > 0.28 && r > b * 1.25 && g > b * 0.75 && r < 0.96 && b < 0.65 && g < 0.90;
+  const brightness = (r + g + b) / 3;
+
+  // Skin-like: warm mid-range tone
+  // r dominant, not too dark, not too desaturated/white
+  const isSkinLike = (
+    r > 0.25 &&
+    r > b * 1.20 &&
+    g > b * 0.70 &&
+    r < 0.97 &&
+    b < 0.70 &&
+    g < 0.92 &&
+    brightness > 0.22 &&
+    brightness < 0.88
+  );
   if (isSkinLike) return "skin";
 
-  // Hair-like: very dark or near-neutral dark brown/black
-  const brightness = (r + g + b) / 3;
-  const isNearNeutral = Math.abs(r - g) < 0.06 && Math.abs(g - b) < 0.06;
-  if (brightness < 0.18 && isNearNeutral) return "hair"; // very dark neutral = likely hair/dark feature
-  const isDarkBrown = r > g && r > b && (r - b) < 0.18 && brightness < 0.22;
+  // Hair-like: very dark neutral or dark warm brown
+  const isNearNeutral = Math.abs(r - g) < 0.07 && Math.abs(g - b) < 0.07;
+  if (brightness < 0.18 && isNearNeutral) return "hair";
+  const isDarkBrown = r > g && r > b && (r - b) < 0.22 && brightness < 0.25 && r < 0.45;
   if (isDarkBrown) return "hair";
 
+  // Bright / saturated / chromatic → outfit
   return "outfit";
 }
 
@@ -351,7 +368,8 @@ export function createAvatar(scene, opts = {}, onReady) {
 // ─── PUBLIC: retintAvatar ─────────────────────────────────────
 // suitColor: hex string — applied to outfit/accessory materials only
 // skinColor: hex string — optional, applied to skin materials only
-// Hair materials are never changed.
+// Hair materials are NEVER changed.
+// skinColor=null means "restore original skin" — still safe for all genders.
 export function retintAvatar(entry, suitColor, skinColor) {
   if (!entry?.root) return;
   const outfitTarget = new THREE.Color(suitColor || "#888888");
@@ -364,19 +382,21 @@ export function retintAvatar(entry, suitColor, skinColor) {
     const mats = Array.isArray(child.material) ? child.material : [child.material];
     mats.forEach((m) => {
       if (!m?.color) return;
+      // Store original color the FIRST time we encounter each material
       if (!m.userData._origColor) m.userData._origColor = m.color.clone();
       const orig = m.userData._origColor;
-      const kind = classifyMaterial(child.name, orig);
+      // Use both mesh name AND material name for better classification
+      const matName = m.name || "";
+      const kind = classifyMaterial(child.name, matName, orig);
 
       if (kind === "skin") {
-        // Only update skin if a skin color was provided
-        if (skinTarget) m.color.copy(skinTarget);
-        else m.color.copy(orig); // restore original
+        // Apply skin color if provided, otherwise restore original
+        m.color.copy(skinTarget || orig);
       } else if (kind === "hair") {
-        // Never change hair — always restore original
+        // Always restore original — hair is never tinted
         m.color.copy(orig);
       } else {
-        // outfit / accessories
+        // outfit / accessories — apply suit color
         m.color.copy(outfitTarget);
       }
     });
@@ -384,7 +404,7 @@ export function retintAvatar(entry, suitColor, skinColor) {
 }
 
 // ─── PUBLIC: applySkinColor ───────────────────────────────────
-// Apply only skin color without touching outfit.
+// Apply only skin color without touching outfit or hair.
 export function applySkinColor(entry, skinColor) {
   if (!entry?.root || !skinColor) return;
   const skinTarget = new THREE.Color(skinColor);
@@ -398,7 +418,8 @@ export function applySkinColor(entry, skinColor) {
       if (!m?.color) return;
       if (!m.userData._origColor) m.userData._origColor = m.color.clone();
       const orig = m.userData._origColor;
-      const kind = classifyMaterial(child.name, orig);
+      const matName = m.name || "";
+      const kind = classifyMaterial(child.name, matName, orig);
       if (kind === "skin") m.color.copy(skinTarget);
     });
   });

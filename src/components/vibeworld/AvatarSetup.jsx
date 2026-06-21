@@ -97,10 +97,8 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingG
             </div>
           </div>
 
-          {/* Skin Tone — female only */}
-          {gender === "female" && (
-            <SkinToneSelector value={skinToneKey} onChange={setSkinToneKey} />
-          )}
+          {/* Skin Tone — all genders */}
+          <SkinToneSelector value={skinToneKey} onChange={setSkinToneKey} />
 
           {/* Outfit Color */}
           <div>

@@ -123,10 +123,8 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                   </div>
                 </div>
 
-                {/* Skin Tone — female only */}
-                {gender === "female" && (
-                  <SkinToneSelector value={skinToneKey} onChange={setSkinToneKey} />
-                )}
+                {/* Skin Tone — all genders */}
+                <SkinToneSelector value={skinToneKey} onChange={setSkinToneKey} />
 
                 {/* Outfit Color */}
                 <div>

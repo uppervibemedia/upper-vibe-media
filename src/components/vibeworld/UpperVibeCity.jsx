@@ -747,13 +747,16 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onLoaded={() => setLoading(false)}
           onAvatarReady={(entry) => {
             playerAvatarEntryRef.current = entry;
+            // Guarantee clean animation state on spawn — never dance on load
+            entry._emoteActive = false;
+            entry._emoteTimer && clearTimeout(entry._emoteTimer);
+            entry._emoteTimer = null;
             // Apply saved outfit + skin color immediately when avatar GLB finishes loading
             const savedColorKey = user?.avatar_outfit_color || "electric-blue";
             const outfitEntry = OUTFIT_COLORS.find(c => c.key === savedColorKey);
             const suitColor = outfitEntry?.hex || "#00AADD";
-            const skinEntry = user?.avatar_gender === "female"
-              ? SKIN_TONES.find(s => s.key === (user?.skin_tone || "medium"))
-              : null;
+            // Apply skin to ALL genders — null falls back to original material color
+            const skinEntry = SKIN_TONES.find(s => s.key === (user?.skin_tone || "medium"));
             const skinColor = skinEntry?.hex || null;
             retintAvatar(entry, suitColor, skinColor);
           }}
@@ -1027,12 +1030,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
         isMobile={isMobile}
         user={user}
-        onApply={({ outfitColorKey, skinToneKey, gender, suitColor }) => {
-          // Immediately retint the live in-world playable avatar
+        onApply={({ outfitColorKey, skinToneKey, suitColor }) => {
+          // Immediately retint the live in-world playable avatar — all genders
           if (playerAvatarEntryRef.current && suitColor) {
-            const skinEntry = gender === "female"
-              ? SKIN_TONES.find(s => s.key === (skinToneKey || "medium"))
-              : null;
+            const skinEntry = SKIN_TONES.find(s => s.key === (skinToneKey || "medium"));
             const skinColor = skinEntry?.hex || null;
             retintAvatar(playerAvatarEntryRef.current, suitColor, skinColor);
           }
