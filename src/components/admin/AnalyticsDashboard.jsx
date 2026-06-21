@@ -217,15 +217,15 @@ export default function AnalyticsDashboard() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Defer analytics start to avoid colliding with Admin loadAll (which takes ~4.3s)
-      await new Promise((r) => setTimeout(r, 5000));
-      // Sequential with 1s gaps — heavy payloads must be spread wide
+      // Defer analytics start to avoid colliding with Admin loadAll (~10s)
+      await new Promise((r) => setTimeout(r, 9000));
+      // Sequential with 1.5s gaps — heavy payloads must be spread wide
       const evs = await base44.entities.AnalyticsEvent.list("-created_date", 500);
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1500));
       const strms = await base44.entities.SongStream.list("-created_date", 250);
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1500));
       const subs = await base44.entities.EmailSubscriber.list("-created_date", 250);
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1500));
       const tracks = await base44.entities.Track.filter({ status: "published" }, "-created_date", 100);
       // Build song id → record index for Top Pages enrichment
       const idx = {};
