@@ -2,9 +2,10 @@ import * as THREE from "three";
 import { SPAWN } from "./cityData";
 
 const {
-  BoxGeometry, CircleGeometry, CylinderGeometry, SphereGeometry, Group, Mesh,
+  BoxGeometry, CylinderGeometry, SphereGeometry, Group, Mesh,
   MeshStandardMaterial, MeshBasicMaterial, Color, Vector3,
   TorusGeometry, Sprite, SpriteMaterial, CanvasTexture, LinearFilter,
+  ShapeGeometry, Shape, CircleGeometry,
 } = THREE;
 
 // ─── SKIN TONES ──────────────────────────────────────────────
@@ -17,9 +18,7 @@ const SKIN_COLORS = {
   deep:           "#4A2C2A",
 };
 
-// ─── FORTNITE-STYLE BODY PROPORTIONS ─────────────────────────
-// Heroic scale: head ~1.15x, torso ~0.58, legs ~1.0 (total ~1.95 height)
-// [shoulderW, hipW, torsoH, armLen, legLen, headScale, waistRatio]
+// ─── BODY PROPORTIONS — Fortnite-lite stylized human ──────────
 const BODY_PRESETS = {
   masculine:  [0.56, 0.38, 0.60, 0.54, 1.00, 1.15, 0.62],
   feminine:   [0.48, 0.40, 0.55, 0.50, 0.96, 1.10, 0.76],
@@ -27,16 +26,39 @@ const BODY_PRESETS = {
   neutral:    [0.52, 0.39, 0.57, 0.52, 0.98, 1.12, 0.70],
 };
 
-// ─── CLOTHING COLORS ─────────────────────────────────────────
-const SHIRT_COLORS = { masculine: "#1A5276", feminine: "#8E44AD", nonbinary: "#2E86C1", neutral: "#2E86C1" };
-const PANTS_COLORS = { masculine: "#212F3D", feminine: "#1B2631", nonbinary: "#2C3E50", neutral: "#2C3E50" };
-const BELT_COLORS  = { masculine: "#3A3A3A", feminine: "#4A3040", nonbinary: "#3A3A4A", neutral: "#3A3A4A" };
+// ─── CLOTHING — dark with neon accents per type ─────────────
+const CLOTHING = {
+  masculine: {
+    shirt: "#141416", shirtAccent: "#1A1A1E",
+    neonPrimary: "#00E5FF", neonSecondary: "#E040FB",
+    pants: "#1A1A1E", shoe: "#121214",
+    jacketStyle: "track",
+  },
+  feminine: {
+    shirt: "#141416", shirtAccent: "#1A1A1E",
+    neonPrimary: "#E040FB", neonSecondary: "#00E5FF",
+    pants: "#18181C", shoe: "#121214",
+    jacketStyle: "crop",
+  },
+  nonbinary: {
+    shirt: "#141416", shirtAccent: "#1A1A1E",
+    neonPrimary: "#A078FF", neonSecondary: "#00E5FF",
+    pants: "#1A1A1E", shoe: "#121214",
+    jacketStyle: "layered",
+  },
+  neutral: {
+    shirt: "#141416", shirtAccent: "#1A1A1E",
+    neonPrimary: "#00D4F0", neonSecondary: "#00D4F0",
+    pants: "#18181C", shoe: "#121214",
+    jacketStyle: "hoodie",
+  },
+};
 
 // ─── HAIR COLORS ─────────────────────────────────────────────
-const HAIR_BASE = "#2C1B0E";
-const HAIR_LIGHT = "#3E2723";
+const HAIR_BASE = "#1C110A";
+const HAIR_LIGHT = "#2E1B10";
 
-const SEG = 16;
+const SEG = 20; // Higher segments for smoother surfaces
 
 function mat(hexColor, opts = {}) {
   const m = new MeshStandardMaterial();
@@ -47,39 +69,49 @@ function mat(hexColor, opts = {}) {
   return m;
 }
 
+function neonMat(hexColor, opacity = 0.6) {
+  return new MeshBasicMaterial({
+    color: new Color(hexColor),
+    depthWrite: false,
+    transparent: true,
+    opacity,
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════
-// FORTNITE-STYLE AVATAR — heroic proportions, detailed human
+// STYLIZED HUMAN AVATAR — social-world quality
 // ═══════════════════════════════════════════════════════════════
 export function createAvatar(scene, opts = {}) {
   const avatarType = opts.avatarType || "neutral";
   const skinTone = opts.skinTone || "medium";
   const skinHex = SKIN_COLORS[skinTone] || SKIN_COLORS.medium;
   const body = BODY_PRESETS[avatarType] || BODY_PRESETS.neutral;
-  const [shoulderW, hipW, torsoH, armLen, legLen, headScale, waistR] = body;
-  const shirtColor = SHIRT_COLORS[avatarType] || SHIRT_COLORS.neutral;
-  const pantsColor = PANTS_COLORS[avatarType] || PANTS_COLORS.neutral;
-  const beltColor = BELT_COLORS[avatarType] || BELT_COLORS.neutral;
+  const [shoulderW, hipW, torsoH, armLen, legLen, headScale] = body;
+  const cloth = CLOTHING[avatarType] || CLOTHING.neutral;
 
   const avatar = new Group();
   avatar.name = "avatar";
 
   // Materials
-  const skinM = () => mat(skinHex, { roughness: 0.42 });
-  const skinS = () => mat(skinHex, { roughness: 0.32 });
-  const shirtM = () => mat(shirtColor, { roughness: 0.24, metalness: 0.06 });
-  const pantsM = () => mat(pantsColor, { roughness: 0.28, metalness: 0.04 });
-  const beltM = () => mat(beltColor, { roughness: 0.20, metalness: 0.15 });
-  const shoeM = () => mat("#1A1A1A", { roughness: 0.28, metalness: 0.08 });
-  const soleM = () => mat("#2C2C2C", { roughness: 0.30, metalness: 0.10 });
-  const laceM = () => mat("#DDDDDD", { roughness: 0.35 });
+  const skinM = () => mat(skinHex, { roughness: 0.40 });
+  const skinS = () => mat(skinHex, { roughness: 0.30 });
+  const shirtM = () => mat(cloth.shirt, { roughness: 0.22, metalness: 0.10 });
+  const shirtAccentM = () => mat(cloth.shirtAccent, { roughness: 0.20, metalness: 0.08 });
+  const pantsM = () => mat(cloth.pants, { roughness: 0.26, metalness: 0.06 });
+  const pantsAccentM = () => mat(cloth.pants, { roughness: 0.24, metalness: 0.05 });
+  const shoeM = () => mat(cloth.shoe, { roughness: 0.28, metalness: 0.10 });
+  const soleM = () => mat("#1A1A1A", { roughness: 0.32, metalness: 0.12 });
+  const laceM = () => mat("#E8E8E8", { roughness: 0.35 });
   const hairM = () => mat(HAIR_BASE, { roughness: 0.44 });
   const hairL = () => mat(HAIR_LIGHT, { roughness: 0.38 });
-  const eyeW = () => mat("#FFFFFF", { roughness: 0.06 });
-  const irisM = () => mat("#5B8C5A", { roughness: 0.05 });
+  const eyeW = () => mat("#FFFFFF", { roughness: 0.04 });
+  const irisM = () => mat("#5B8C5A", { roughness: 0.04 });
   const pupilM = () => mat("#080808", { roughness: 0.02 });
-  const browM = () => mat("#3E2723", { roughness: 0.44 });
-  const mouthM = () => mat("#C07060", { roughness: 0.32 });
-  const mouthL = () => mat("#B06050", { roughness: 0.30 });
+  const browM = () => mat("#3A2018", { roughness: 0.44 });
+  const mouthM = () => mat("#C07060", { roughness: 0.30 });
+  const mouthL = () => mat("#B06050", { roughness: 0.28 });
+  const neonP = () => neonMat(cloth.neonPrimary, 0.55);
+  const neonS = () => neonMat(cloth.neonSecondary, 0.45);
 
   function addObj(group, geo, materialOrFn, pos, casts = true) {
     const m = new Mesh(geo, typeof materialOrFn === "function" ? materialOrFn() : materialOrFn);
@@ -87,249 +119,252 @@ export function createAvatar(scene, opts = {}) {
     group.add(m); return m;
   }
 
-  // ─── HEAD — realistic human face with defined features ──
+  // ─── HEAD — detailed stylized face ─────────────────────────
   function buildHead() {
-    const h = new Group(); h.name = "head"; const hs = headScale;
-    const eyeY = 0.14 * hs, eyeZ = 0.074 * hs, eyeGap = 0.034 * hs;
+    const h = new Group(); h.name = "head";
+    const hs = headScale;
 
-    // Cranium — oval with defined brow ridge
-    const cranium = addObj(h, new SphereGeometry(0.10 * hs, 24, 20), skinM, new Vector3(0, 0.13 * hs, 0));
+    // Cranium — oval dome
+    const cranium = addObj(h, new SphereGeometry(0.10 * hs, 28, 22), skinM, new Vector3(0, 0.13 * hs, 0));
     cranium.scale.set(0.84, 1.08, 0.78);
-    // Brow ridge — horizontal ridge above eyes
-    const browRidge = addObj(h, new SphereGeometry(0.06 * hs, 14, 10), skinS, new Vector3(0, 0.11 * hs, 0.056 * hs));
-    browRidge.scale.set(0.72, 0.18, 0.52);
 
     // Forehead dome
-    const fh = addObj(h, new SphereGeometry(0.04 * hs, 10, 8), skinM, new Vector3(0, 0.17 * hs, 0.03 * hs));
+    const fh = addObj(h, new SphereGeometry(0.04 * hs, 13, 10), skinM, new Vector3(0, 0.17 * hs, 0.03 * hs));
     fh.scale.set(0.70, 0.38, 0.50);
 
-    // Jaw — tapered, defined mandible
-    const jaw = addObj(h, new SphereGeometry(0.06 * hs, 16, 12), skinM, new Vector3(0, 0.04 * hs, 0.05 * hs));
+    // Brow ridge
+    const browRidge = addObj(h, new SphereGeometry(0.06 * hs, 18, 12), skinS, new Vector3(0, 0.11 * hs, 0.056 * hs));
+    browRidge.scale.set(0.72, 0.18, 0.52);
+
+    // Jaw — tapered mandible
+    const jaw = addObj(h, new SphereGeometry(0.06 * hs, 20, 14), skinM, new Vector3(0, 0.04 * hs, 0.05 * hs));
     jaw.scale.set(0.82, 0.46, 0.62);
 
-    // Chin — pointed, distinct
-    const chin = addObj(h, new SphereGeometry(0.018 * hs, 10, 8), skinS, new Vector3(0, 0.005 * hs, 0.08 * hs));
+    // Chin
+    const chin = addObj(h, new SphereGeometry(0.018 * hs, 12, 8), skinS, new Vector3(0, 0.005 * hs, 0.08 * hs));
     chin.scale.set(0.65, 0.45, 0.48);
 
-    // Jawline corners (gonion)
+    // Jawline corners
     for (const s of [-1, 1]) {
-      const corner = addObj(h, new SphereGeometry(0.014 * hs, 8, 6), skinS, new Vector3(s * 0.052 * hs, 0.038 * hs, 0.058 * hs));
+      const corner = addObj(h, new SphereGeometry(0.014 * hs, 10, 8), skinS, new Vector3(s * 0.052 * hs, 0.038 * hs, 0.058 * hs));
       corner.scale.set(0.55, 0.38, 0.48);
     }
 
-    // ── CHEEKBONES — prominent zygomatic ──────────────
+    // ── CHEEKBONES ──────────────────────────────────────
     for (const s of [-1, 1]) {
-      const cheek = addObj(h, new SphereGeometry(0.03 * hs, 10, 8), skinS, new Vector3(s * 0.062 * hs, 0.10 * hs, 0.052 * hs));
+      const cheek = addObj(h, new SphereGeometry(0.03 * hs, 12, 10), skinS, new Vector3(s * 0.062 * hs, 0.10 * hs, 0.052 * hs));
       cheek.scale.set(0.72, 0.58, 0.44);
-      // Under-cheek hollow
-      const hollow = addObj(h, new SphereGeometry(0.016 * hs, 6, 5), skinS, new Vector3(s * 0.058 * hs, 0.078 * hs, 0.05 * hs));
-      hollow.scale.set(0.6, 0.35, 0.4);
     }
 
-    // ── EYE SOCKETS — defined orbital bones ──────────
-    for (const s of [-1, 1]) {
-      const ex = s * eyeGap;
-      // Upper orbital rim
-      const orbit = addObj(h, new SphereGeometry(0.018 * hs, 8, 5), skinS, new Vector3(ex, eyeY + 0.012 * hs, eyeZ - 0.004 * hs));
-      orbit.scale.set(0.55, 0.22, 0.50);
-    }
-
-    // ── EYES — white + iris + pupil + highlight ──────
+    // ── EYE REGION — detailed eyes with lids + brows ───
+    const eyeY = 0.14 * hs, eyeZ = 0.074 * hs, eyeGap = 0.034 * hs;
     for (const s of [-1, 1]) {
       const ex = s * eyeGap;
 
-      // Eye socket indent
-      const socket = addObj(h, new SphereGeometry(0.016 * hs, 8, 6), skinS, new Vector3(ex, eyeY, eyeZ - 0.002 * hs));
+      // Socket indent
+      const socket = addObj(h, new SphereGeometry(0.016 * hs, 10, 8), skinS, new Vector3(ex, eyeY, eyeZ - 0.002 * hs));
       socket.scale.set(0.52, 0.65, 0.25);
 
-      const white = addObj(h, new SphereGeometry(0.018 * hs, 10, 8), eyeW, new Vector3(ex, eyeY, eyeZ));
+      // White
+      const white = addObj(h, new SphereGeometry(0.018 * hs, 13, 10), eyeW, new Vector3(ex, eyeY, eyeZ));
       white.scale.set(0.56, 0.80, 0.34);
 
-      addObj(h, new SphereGeometry(0.01 * hs, 8, 6), irisM, new Vector3(ex, eyeY, eyeZ + 0.007 * hs));
-      addObj(h, new SphereGeometry(0.005 * hs, 6, 4), pupilM, new Vector3(ex, eyeY, eyeZ + 0.01 * hs));
+      // Iris + pupil
+      addObj(h, new SphereGeometry(0.01 * hs, 10, 8), irisM, new Vector3(ex, eyeY, eyeZ + 0.007 * hs));
+      addObj(h, new SphereGeometry(0.005 * hs, 8, 6), pupilM, new Vector3(ex, eyeY, eyeZ + 0.01 * hs));
 
-      const hl = new Mesh(new SphereGeometry(0.0025 * hs, 3, 2), new MeshBasicMaterial({ color: 0xFFFFFF }));
+      // Highlight
+      const hl = new Mesh(new SphereGeometry(0.0025 * hs, 4, 3), new MeshBasicMaterial({ color: 0xFFFFFF }));
       hl.position.set(ex + 0.004 * hs, eyeY + 0.006 * hs, eyeZ + 0.012 * hs);
       h.add(hl);
 
       // Upper eyelid
       const upperLid = addObj(h, new BoxGeometry(0.022 * hs, 0.005 * hs, 0.008 * hs), skinS, new Vector3(ex, eyeY + 0.012 * hs, eyeZ + 0.004 * hs));
       upperLid.rotation.x = -0.15;
-      // Lower eyelid
+      // Lower lid
       const lowerLid = addObj(h, new BoxGeometry(0.02 * hs, 0.003 * hs, 0.006 * hs), skinS, new Vector3(ex, eyeY - 0.01 * hs, eyeZ));
       lowerLid.rotation.x = 0.15;
 
-      // Eyebrow — arched
+      // Eyebrow
       const brow = addObj(h, new BoxGeometry(0.038 * hs, 0.007 * hs, 0.006 * hs), browM, new Vector3(ex, eyeY + 0.028 * hs, eyeZ + 0.014 * hs));
       brow.rotation.z = s * 0.08;
       brow.rotation.x = -0.05;
     }
 
-    // ── NOSE — bridge + tip + nostrils ─────────────────
+    // ── NOSE — refined bridge + tip ────────────────────
     const noseBridge = addObj(h, new BoxGeometry(0.012 * hs, 0.026 * hs, 0.014 * hs), skinS, new Vector3(0, 0.118 * hs, 0.078 * hs));
-    const noseTip = addObj(h, new SphereGeometry(0.015 * hs, 10, 8), skinS, new Vector3(0, 0.10 * hs, 0.088 * hs));
+    const noseTip = addObj(h, new SphereGeometry(0.015 * hs, 12, 10), skinS, new Vector3(0, 0.10 * hs, 0.088 * hs));
     noseTip.scale.set(0.68, 0.55, 0.55);
-    // Nostrils
     for (const s of [-1, 1]) {
-      const nostril = addObj(h, new SphereGeometry(0.005 * hs, 5, 4), mat("#5A3A2A", { roughness: 0.35 }), new Vector3(s * 0.009 * hs, 0.098 * hs, 0.092 * hs));
+      const nostril = addObj(h, new SphereGeometry(0.005 * hs, 6, 5), mat("#5A3A2A", { roughness: 0.35 }), new Vector3(s * 0.009 * hs, 0.098 * hs, 0.092 * hs));
       nostril.scale.set(0.55, 0.45, 0.45);
     }
-    // Nasolabial fold
-    for (const s of [-1, 1]) {
-      addObj(h, new BoxGeometry(0.004 * hs, 0.018 * hs, 0.003 * hs), skinS, new Vector3(s * 0.014 * hs, 0.085 * hs, 0.078 * hs));
-    }
 
-    // ── MOUTH — full lips with Cupid's bow ────────────
-    // Upper lip — M shape (Cupid's bow) via three segments
-    const ulCenter = addObj(h, new SphereGeometry(0.006 * hs, 6, 4), mouthM, new Vector3(0, 0.066 * hs, 0.084 * hs));
+    // ── MOUTH — full lips ──────────────────────────────
+    const ulCenter = addObj(h, new SphereGeometry(0.006 * hs, 8, 6), mouthM, new Vector3(0, 0.066 * hs, 0.084 * hs));
     ulCenter.scale.set(0.55, 0.45, 0.35);
     for (const s of [-1, 1]) {
-      const ulSide = addObj(h, new SphereGeometry(0.007 * hs, 5, 4), mouthM, new Vector3(s * 0.016 * hs, 0.063 * hs, 0.083 * hs));
+      const ulSide = addObj(h, new SphereGeometry(0.007 * hs, 7, 5), mouthM, new Vector3(s * 0.016 * hs, 0.063 * hs, 0.083 * hs));
       ulSide.scale.set(0.5, 0.4, 0.35);
     }
-    // Lower lip — fuller
-    const lowerLip = addObj(h, new SphereGeometry(0.01 * hs, 8, 6), mouthL, new Vector3(0, 0.058 * hs, 0.085 * hs));
+    const lowerLip = addObj(h, new SphereGeometry(0.01 * hs, 10, 8), mouthL, new Vector3(0, 0.058 * hs, 0.085 * hs));
     lowerLip.scale.set(0.78, 0.35, 0.40);
-    // Lip corners
-    for (const s of [-1, 1]) {
-      addObj(h, new SphereGeometry(0.003 * hs, 4, 3), mouthL, new Vector3(s * 0.02 * hs, 0.062 * hs, 0.082 * hs));
-    }
 
-    // ── EARS — detailed outer ear ─────────────────────
+    // ── EARS ───────────────────────────────────────────
     for (const s of [-1, 1]) {
-      const ear = addObj(h, new SphereGeometry(0.022 * hs, 10, 8), skinM, new Vector3(s * 0.088 * hs, 0.12 * hs, 0));
+      const ear = addObj(h, new SphereGeometry(0.022 * hs, 12, 10), skinM, new Vector3(s * 0.088 * hs, 0.12 * hs, 0));
       ear.scale.set(0.26, 0.62, 0.42);
-      // Ear lobe
-      const lobe = addObj(h, new SphereGeometry(0.006 * hs, 6, 4), skinS, new Vector3(s * 0.09 * hs, 0.095 * hs, 0.005));
+      const lobe = addObj(h, new SphereGeometry(0.006 * hs, 7, 5), skinS, new Vector3(s * 0.09 * hs, 0.095 * hs, 0.005));
       lobe.scale.set(0.4, 0.5, 0.35);
     }
 
-    // ── HAIR — layered modern style ───────────────────
-    const mainHair = addObj(h, new SphereGeometry(0.108 * hs, 20, 18), hairM, new Vector3(0, 0.18 * hs, -0.01));
-    mainHair.scale.set(1.08, 0.58, 0.94);
-    // Side hair
-    for (const s of [-1, 1]) {
-      addObj(h, new SphereGeometry(0.048 * hs, 10, 8), hairL, new Vector3(s * 0.074 * hs, 0.15 * hs, 0.016));
-      addObj(h, new SphereGeometry(0.042 * hs, 8, 6), hairM, new Vector3(s * 0.062 * hs, 0.19 * hs, -0.004));
+    // ── HAIR — per-type style ──────────────────────────
+    const style = cloth.jacketStyle;
+    if (style === "track" || style === "hoodie") {
+      // Masculine / Neutral: short modern textured hair
+      const mainHair = addObj(h, new SphereGeometry(0.108 * hs, 24, 20), hairM, new Vector3(0, 0.18 * hs, -0.01));
+      mainHair.scale.set(1.08, 0.58, 0.94);
+      for (const s of [-1, 1]) {
+        addObj(h, new SphereGeometry(0.048 * hs, 13, 10), hairL, new Vector3(s * 0.074 * hs, 0.15 * hs, 0.016));
+        addObj(h, new SphereGeometry(0.042 * hs, 10, 8), hairM, new Vector3(s * 0.062 * hs, 0.19 * hs, -0.004));
+      }
+      const bang = addObj(h, new BoxGeometry(0.065 * hs, 0.03 * hs, 0.074 * hs), hairL, new Vector3(0, 0.205 * hs, 0.05 * hs));
+      bang.rotation.x = -0.25;
+      addObj(h, new SphereGeometry(0.078 * hs, 16, 12), hairM, new Vector3(0, 0.10 * hs, -0.065 * hs));
+    } else if (style === "crop") {
+      // Feminine: curly styled hair / updo
+      const mainHair = addObj(h, new SphereGeometry(0.112 * hs, 24, 20), hairM, new Vector3(0, 0.17 * hs, -0.01));
+      mainHair.scale.set(1.10, 0.62, 0.96);
+      // Curly volume at sides
+      for (const s of [-1, 1]) {
+        for (let c = 0; c < 3; c++) {
+          const curl = addObj(h, new SphereGeometry(0.024 * hs, 10, 8), hairL, new Vector3(s * (0.06 + c * 0.015) * hs, 0.13 + c * 0.03 * hs, 0.02));
+          curl.scale.set(0.7, 0.65, 0.55);
+        }
+      }
+      const bang = addObj(h, new BoxGeometry(0.06 * hs, 0.028 * hs, 0.068 * hs), hairL, new Vector3(0, 0.20 * hs, 0.048 * hs));
+      bang.rotation.x = -0.22;
+      addObj(h, new SphereGeometry(0.07 * hs, 16, 12), hairM, new Vector3(0, 0.12 * hs, -0.06 * hs));
+    } else {
+      // Non-Binary: expressive short/medium sweeping hair
+      const mainHair = addObj(h, new SphereGeometry(0.108 * hs, 24, 20), hairM, new Vector3(0, 0.16 * hs, -0.01));
+      mainHair.scale.set(1.10, 0.56, 0.94);
+      // Swept side bangs
+      const sweep = addObj(h, new BoxGeometry(0.05 * hs, 0.026 * hs, 0.08 * hs), hairL, new Vector3(-0.02 * hs, 0.20 * hs, 0.04 * hs));
+      sweep.rotation.z = 0.25;
+      sweep.rotation.x = -0.18;
+      // Textured crown
+      for (let i = 0; i < 3; i++) {
+        addObj(h, new SphereGeometry(0.04 * hs, 10, 8), hairL, new Vector3((i - 1) * 0.04 * hs, 0.22 * hs, -0.015 * hs));
+      }
+      addObj(h, new SphereGeometry(0.075 * hs, 16, 12), hairM, new Vector3(0, 0.10 * hs, -0.065 * hs));
     }
-    // Hair bangs/fringe
-    const bang = addObj(h, new BoxGeometry(0.065 * hs, 0.03 * hs, 0.074 * hs), hairL, new Vector3(0, 0.205 * hs, 0.05 * hs));
-    bang.rotation.x = -0.25;
-    // Back hair
-    addObj(h, new SphereGeometry(0.078 * hs, 12, 10), hairM, new Vector3(0, 0.10 * hs, -0.065 * hs));
-    // Crown hair
-    addObj(h, new SphereGeometry(0.06 * hs, 10, 8), hairL, new Vector3(0, 0.22 * hs, -0.02 * hs));
 
     return h;
   }
 
-  // ─── HAND — realistic with segmented fingers, palm, thumb ──
+  // ─── HAND — stylized with segmented fingers ───────────────
   function buildHand() {
     const hd = new Group(); hd.name = "hand";
 
-    // Palm — wider at base, tapered
-    const palm = addObj(hd, new BoxGeometry(0.072, 0.042, 0.082), skinS, new Vector3(0, -0.01, 0));
-    // Palm heel (thenar eminence)
-    const heel = addObj(hd, new SphereGeometry(0.018, 8, 6), skinS, new Vector3(0.025, -0.018, -0.008));
+    // Palm
+    addObj(hd, new BoxGeometry(0.072, 0.042, 0.082), skinS, new Vector3(0, -0.01, 0));
+    // Palm heel
+    const heel = addObj(hd, new SphereGeometry(0.018, 10, 8), skinS, new Vector3(0.025, -0.018, -0.008));
     heel.scale.set(0.55, 0.45, 0.6);
-    // Hypothenar (pinky side pad)
-    const hypo = addObj(hd, new SphereGeometry(0.016, 6, 5), skinS, new Vector3(-0.028, -0.015, -0.004));
-    hypo.scale.set(0.4, 0.5, 0.55);
 
-    // ── FOUR FINGERS — 3 segments each (proximal, middle, distal) ──
+    // Four fingers
     for (let f = -1; f <= 2; f++) {
       const fx = f * 0.023;
-      const fingerLen = f === 2 ? 0.026 : (f === 1 ? 0.032 : (f === 0 ? 0.036 : 0.028)); // pinky shortest, middle longest
+      const fingerLen = f === 2 ? 0.026 : (f === 1 ? 0.032 : (f === 0 ? 0.036 : 0.028));
       const segLen = fingerLen / 3;
-      const radius = f === 2 ? 0.0055 : (f === -1 ? 0.006 : 0.007); // pinky thinnest
+      const radius = f === 2 ? 0.0055 : (f === -1 ? 0.006 : 0.007);
 
-      // Proximal phalanx (from knuckle)
-      addObj(hd, new CylinderGeometry(radius, radius * 0.95, segLen, 8), skinS, new Vector3(fx, -0.018, 0.032));
-      // Middle phalanx
-      addObj(hd, new CylinderGeometry(radius * 0.92, radius * 0.85, segLen, 8), skinS, new Vector3(fx, -0.018 - segLen, 0.036));
-      // Distal phalanx
-      addObj(hd, new CylinderGeometry(radius * 0.82, radius * 0.72, segLen, 8), skinS, new Vector3(fx, -0.018 - segLen * 2, 0.039));
-      // Fingertip pad
-      addObj(hd, new SphereGeometry(radius * 0.62, 6, 4), skinS, new Vector3(fx, -0.018 - segLen * 2.7, 0.042));
-
-      // Knuckle
-      addObj(hd, new SphereGeometry(radius * 1.15, 6, 4), skinS, new Vector3(fx, -0.012, 0.024));
+      addObj(hd, new CylinderGeometry(radius, radius * 0.95, segLen, 10), skinS, new Vector3(fx, -0.018, 0.032));
+      addObj(hd, new CylinderGeometry(radius * 0.92, radius * 0.85, segLen, 10), skinS, new Vector3(fx, -0.018 - segLen, 0.036));
+      addObj(hd, new CylinderGeometry(radius * 0.82, radius * 0.72, segLen, 10), skinS, new Vector3(fx, -0.018 - segLen * 2, 0.039));
+      addObj(hd, new SphereGeometry(radius * 0.62, 7, 5), skinS, new Vector3(fx, -0.018 - segLen * 2.7, 0.042));
+      addObj(hd, new SphereGeometry(radius * 1.15, 8, 6), skinS, new Vector3(fx, -0.012, 0.024));
     }
 
-    // ── THUMB — 2 visible segments, rotated outward ──
-    const thumbBase = addObj(hd, new CylinderGeometry(0.008, 0.009, 0.022, 8), skinS, new Vector3(0.032, -0.006, 0.01));
+    // Thumb
+    const thumbBase = addObj(hd, new CylinderGeometry(0.008, 0.009, 0.022, 10), skinS, new Vector3(0.032, -0.006, 0.01));
     thumbBase.rotation.z = -0.5;
-    const thumbMid = addObj(hd, new CylinderGeometry(0.0075, 0.008, 0.024, 8), skinS, new Vector3(0.046, -0.022, 0.012));
+    const thumbMid = addObj(hd, new CylinderGeometry(0.0075, 0.008, 0.024, 10), skinS, new Vector3(0.046, -0.022, 0.012));
     thumbMid.rotation.z = -0.7;
-    addObj(hd, new SphereGeometry(0.007, 6, 4), skinS, new Vector3(0.058, -0.036, 0.014));
+    addObj(hd, new SphereGeometry(0.007, 8, 6), skinS, new Vector3(0.058, -0.036, 0.014));
 
-    // ── WRIST ──────────────────────────────────────────
-    addObj(hd, new CylinderGeometry(0.028, 0.034, 0.06, 10), skinS, new Vector3(0, 0.01, -0.02));
+    // Wrist
+    addObj(hd, new CylinderGeometry(0.028, 0.034, 0.06, 12), skinS, new Vector3(0, 0.01, -0.02));
 
     return hd;
   }
 
-  // ─── FOOT — realistic high-top sneaker ────────────────────
+  // ─── FOOT — modern sneaker with neon sole ──────────────────
   function buildFoot() {
     const f = new Group(); f.name = "foot";
 
-    // Main shoe body — wider midfoot, tapered heel
-    const body = addObj(f, new BoxGeometry(0.14, 0.074, 0.21), shoeM, new Vector3(0, 0.02, 0.06));
+    // Main shoe body
+    addObj(f, new BoxGeometry(0.14, 0.074, 0.21), shoeM, new Vector3(0, 0.02, 0.06));
 
-    // ── SOLE — thick with tread detail ────────────────
+    // Sole
     addObj(f, new BoxGeometry(0.15, 0.03, 0.22), soleM, new Vector3(0, -0.03, 0.06));
-    // Sole edge highlight
-    addObj(f, new BoxGeometry(0.14, 0.01, 0.21), mat("#3A3A3A", { roughness: 0.25 }), new Vector3(0, -0.012, 0.06));
-    // Heel sole — thicker at back
+
+    // Neon sole stripe
+    addObj(f, new BoxGeometry(0.14, 0.012, 0.21), neonP, new Vector3(0, -0.012, 0.06));
+
+    // Heel
     addObj(f, new BoxGeometry(0.13, 0.022, 0.06), soleM, new Vector3(0, -0.012, -0.04));
 
-    // ── TOE BOX — rounded front ────────────────────────
-    const toe = addObj(f, new SphereGeometry(0.048, 10, 8), shoeM, new Vector3(0, 0.015, 0.16));
+    // Toe box
+    const toe = addObj(f, new SphereGeometry(0.048, 13, 10), shoeM, new Vector3(0, 0.015, 0.16));
     toe.scale.set(0.82, 0.62, 0.50);
-    // Toe cap overlay
-    const toeCap = addObj(f, new SphereGeometry(0.042, 8, 6), mat("#252525", { roughness: 0.22 }), new Vector3(0, 0.02, 0.14));
+
+    // Toe cap
+    const toeCap = addObj(f, new SphereGeometry(0.042, 10, 8), mat("#1A1A1A", { roughness: 0.20 }), new Vector3(0, 0.02, 0.14));
     toeCap.scale.set(0.78, 0.45, 0.42);
 
-    // ── HEEL COUNTER — stiffer rear section ────────────
-    addObj(f, new BoxGeometry(0.124, 0.06, 0.05), mat("#1F1F1F", { roughness: 0.22 }), new Vector3(0, 0.015, -0.04));
+    // Heel counter
+    addObj(f, new BoxGeometry(0.124, 0.06, 0.05), mat("#141414", { roughness: 0.20 }), new Vector3(0, 0.015, -0.04));
 
-    // ── MIDSOLE STRIPE — lateral S curve ──────────────
+    // Midsole stripe
     const stripe = addObj(f, new BoxGeometry(0.12, 0.012, 0.16), laceM, new Vector3(0, -0.008, 0.05));
     stripe.rotation.x = 0.08;
 
-    // ── TONGUE — padded, rises above shoe ─────────────
+    // Tongue
     addObj(f, new BoxGeometry(0.09, 0.03, 0.045), shoeM, new Vector3(0, 0.06, 0.04));
-    // Tongue top edge
-    addObj(f, new BoxGeometry(0.088, 0.008, 0.04), mat("#252525", { roughness: 0.22 }), new Vector3(0, 0.075, 0.04));
+    addObj(f, new BoxGeometry(0.088, 0.008, 0.04), mat("#181818", { roughness: 0.22 }), new Vector3(0, 0.075, 0.04));
 
-    // ── LACE PLACKET — diagonal lace area ──────────────
-    const laceArea = addObj(f, new BoxGeometry(0.10, 0.018, 0.07), mat("#222222", { roughness: 0.22 }), new Vector3(0, 0.055, 0.05));
+    // Lace area
+    const laceArea = addObj(f, new BoxGeometry(0.10, 0.018, 0.07), mat("#181818", { roughness: 0.22 }), new Vector3(0, 0.055, 0.05));
     laceArea.rotation.x = 0.3;
-    // Individual lace cross-hatches
     for (let l = 0; l < 4; l++) {
       const lx = (l - 1.5) * 0.032;
       addObj(f, new BoxGeometry(0.014, 0.004, 0.07), laceM, new Vector3(lx, 0.06 - l * 0.01, 0.055));
     }
 
-    // ── ANKLE COLLAR — padded rim ─────────────────────
-    const collar = addObj(f, new CylinderGeometry(0.062, 0.066, 0.06, 14), shoeM, new Vector3(0, 0.07, -0.02));
-    // Collar padding
-    addObj(f, new TorusGeometry(0.06, 0.012, 8, 14), mat("#252525", { roughness: 0.22 }), new Vector3(0, 0.07, -0.02));
+    // Ankle collar
+    addObj(f, new CylinderGeometry(0.062, 0.066, 0.06, 16), shoeM, new Vector3(0, 0.07, -0.02));
+    addObj(f, new TorusGeometry(0.06, 0.012, 10, 16), mat("#181818", { roughness: 0.22 }), new Vector3(0, 0.07, -0.02));
 
     return f;
   }
 
-  // ─── LOWER LEG — defined calf muscle ─────────────────────
+  // ─── LOWER LEG ─────────────────────────────────────────────
   function buildLowerLeg() {
     const g = new Group(); g.name = "lowerLeg";
     const len = legLen * 0.48;
-    // Calf: sculpted, wider at upper calf
+
+    // Calf — sculpted
     addObj(g, new CylinderGeometry(0.058, 0.068, len, SEG), pantsM, new Vector3(0, -len / 2, 0));
-    // Calf bulge
-    const calf = addObj(g, new SphereGeometry(0.024, 8, 6),
-      new MeshStandardMaterial({ color: new Color(pantsColor), roughness: 0.22, metalness: 0.08 }),
+    const calf = addObj(g, new SphereGeometry(0.024, 10, 8),
+      new MeshStandardMaterial({ color: new Color(cloth.pants), roughness: 0.20, metalness: 0.10 }),
       new Vector3(0, -len * 0.2, -0.04));
     calf.scale.set(0.55, 0.6, 0.45);
+
+    // Neon pant stripe down the leg seam
+    const neonStripe = addObj(g, new BoxGeometry(0.012, len * 0.65, 0.04), neonS, new Vector3(0.05, -len * 0.25, -0.005));
+
     const f = buildFoot();
     f.position.set(0, -len - 0.01, 0.03);
     g.add(f);
@@ -337,17 +372,18 @@ export function createAvatar(scene, opts = {}) {
     return g;
   }
 
-  // ─── UPPER LEG — sculpted quadriceps ──────────────────────
+  // ─── UPPER LEG ─────────────────────────────────────────────
   function buildUpperLeg() {
     const g = new Group(); g.name = "upperLeg";
     const len = legLen * 0.52;
-    // Thigh: sculpted, wider at upper
+
+    // Thigh
     addObj(g, new CylinderGeometry(0.078, 0.088, len, SEG), pantsM, new Vector3(0, -len / 2, 0));
-    // Quad definition
-    const quad = addObj(g, new SphereGeometry(0.03, 8, 6),
-      new MeshStandardMaterial({ color: new Color(pantsColor), roughness: 0.22, metalness: 0.08 }),
+    const quad = addObj(g, new SphereGeometry(0.03, 10, 8),
+      new MeshStandardMaterial({ color: new Color(cloth.pants), roughness: 0.20, metalness: 0.10 }),
       new Vector3(0, -len * 0.3, 0.065));
     quad.scale.set(0.65, 0.55, 0.3);
+
     const ll = buildLowerLeg();
     ll.position.set(0, -len, 0);
     g.add(ll);
@@ -360,6 +396,10 @@ export function createAvatar(scene, opts = {}) {
     const g = new Group(); g.name = "forearm";
     const len = armLen * 0.48;
     addObj(g, new CylinderGeometry(0.036, 0.046, len, SEG), skinM, new Vector3(0, -len / 2, 0));
+
+    // Neon bracelet/wristband
+    addObj(g, new CylinderGeometry(0.038, 0.038, 0.018, 16), neonP, new Vector3(0, -len, 0));
+
     const hd = buildHand();
     hd.position.set(0, -len, 0.005);
     g.add(hd);
@@ -367,15 +407,19 @@ export function createAvatar(scene, opts = {}) {
     return g;
   }
 
-  // ─── UPPER ARM — bicep + tricep definition ─────────────
-  function buildUpperArm() {
+  // ─── UPPER ARM ─────────────────────────────────────────────
+  function buildUpperArm(clothingColor) {
     const g = new Group(); g.name = "upperArm";
     const len = armLen * 0.52;
-    // Bicep (wider mid-section)
-    addObj(g, new CylinderGeometry(0.048, 0.058, len, SEG), skinM, new Vector3(0, -len / 2, 0));
-    // Bicep bulge
-    const bicep = addObj(g, new SphereGeometry(0.026, 8, 6), skinS, new Vector3(0, -len * 0.25, 0.03));
+    addObj(g, new CylinderGeometry(0.048, 0.058, len, SEG),
+      new MeshStandardMaterial({ color: new Color(clothingColor), roughness: 0.22, metalness: 0.10 }),
+      new Vector3(0, -len / 2, 0));
+    const bicep = addObj(g, new SphereGeometry(0.026, 10, 8), skinS, new Vector3(0, -len * 0.25, 0.03));
     bicep.scale.set(0.55, 0.7, 0.5);
+
+    // Neon arm stripe
+    addObj(g, new BoxGeometry(0.012, len * 0.5, 0.03), neonS, new Vector3(0.04, -len * 0.3, -0.005));
+
     const fa = buildForearm();
     fa.position.set(0, -len, 0);
     g.add(fa);
@@ -383,10 +427,11 @@ export function createAvatar(scene, opts = {}) {
     return g;
   }
 
-  // ─── TORSO — sculpted V-taper with chest definition ───────
+  // ─── TORSO — sculpted V-taper with clothing details ────────
   const torsoGroup = new Group();
   torsoGroup.name = "torso";
 
+  const style = cloth.jacketStyle;
   const chestBase = torsoH * 0.62;
   const waistBase = torsoH * 0.12;
 
@@ -394,45 +439,72 @@ export function createAvatar(scene, opts = {}) {
   addObj(torsoGroup, new CylinderGeometry(hipW * 0.34, hipW * 0.36, torsoH * 0.20, SEG), pantsM, new Vector3(0, waistBase, 0));
 
   // Lower waist
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.30 * waistR, hipW * 0.36, torsoH * 0.16, SEG), pantsM, new Vector3(0, waistBase + torsoH * 0.12, 0));
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.30 * (body[6] || 0.7), hipW * 0.36, torsoH * 0.16, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.12, 0));
 
-  // Belt strip
-  const belt = addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.34, shoulderW * 0.32, 0.035, SEG), beltM, new Vector3(0, waistBase + torsoH * 0.20, 0));
+  // Belt strip with neon accent
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.35, shoulderW * 0.32, 0.035, SEG),
+    mat("#222224", { roughness: 0.18, metalness: 0.20 }),
+    new Vector3(0, waistBase + torsoH * 0.20, 0));
+  // Belt neon edge
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.352, shoulderW * 0.348, 0.008, 24), neonP, new Vector3(0, waistBase + torsoH * 0.218, 0));
 
-  // Lower torso (narrowing up)
+  // Lower torso
   addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.35, shoulderW * 0.32, torsoH * 0.14, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.26, 0));
 
-  // Mid torso (widening)
+  // Mid torso
   addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.41, shoulderW * 0.36, torsoH * 0.20, SEG), shirtM, new Vector3(0, waistBase + torsoH * 0.36, 0));
 
-  // Upper chest — broad, pronounced pectorals
+  // Upper chest
   addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.46, shoulderW * 0.42, torsoH * 0.14, SEG), shirtM, new Vector3(0, chestBase - 0.04, 0));
 
-  // Shoulder cap / trap area
-  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.48, shoulderW * 0.46, 0.07, SEG), shirtM, new Vector3(0, chestBase + 0.05, 0));
+  // Shoulder cap
+  addObj(torsoGroup, new CylinderGeometry(shoulderW * 0.48, shoulderW * 0.46, 0.07, SEG), shirtAccentM, new Vector3(0, chestBase + 0.05, 0));
 
-  // Pectoral accent (slight chest definition)
-  const pectoralL = new Mesh(new SphereGeometry(0.025, 8, 6),
-    new MeshStandardMaterial({ color: new Color(shirtColor), roughness: 0.18, metalness: 0.08 }));
-  pectoralL.position.set(-shoulderW * 0.12, chestBase + 0.06, 0.06);
-  pectoralL.scale.set(0.7, 0.5, 0.35);
-  torsoGroup.add(pectoralL);
+  // ── CLOTHING DETAILS per style ─────────────────────
+  if (style === "track") {
+    // Masculine: track jacket with neon chest triangle
+    // Center zipper line
+    addObj(torsoGroup, new BoxGeometry(0.01, torsoH * 0.35, 0.08), neonP, new Vector3(0, chestBase - 0.02, 0.07));
+    // Chest triangle icon
+    const triShape = new Shape();
+    triShape.moveTo(0, 0.04); triShape.lineTo(-0.016, -0.014); triShape.lineTo(0.016, -0.014); triShape.closePath();
+    const triGeo = new ShapeGeometry(triShape);
+    const triMesh = new Mesh(triGeo, neonP);
+    triMesh.position.set(0, chestBase + 0.06, 0.07);
+    torsoGroup.add(triMesh);
+  } else if (style === "crop") {
+    // Feminine: cropped jacket with heartbeat pulse graphic
+    const pulseShape = new Shape();
+    pulseShape.moveTo(-0.018, 0); pulseShape.lineTo(-0.01, 0); pulseShape.lineTo(-0.006, -0.018); pulseShape.lineTo(-0.002, 0.018); pulseShape.lineTo(0.002, -0.006); pulseShape.lineTo(0.006, 0.012); pulseShape.lineTo(0.01, -0.014); pulseShape.lineTo(0.014, 0.008); pulseShape.lineTo(0.018, 0);
+    const pulseGeo = new ShapeGeometry(pulseShape);
+    const pulseMesh = new Mesh(pulseGeo, neonP);
+    pulseMesh.position.set(0, chestBase + 0.05, 0.07);
+    torsoGroup.add(pulseMesh);
+  } else if (style === "layered") {
+    // Non-Binary: triangle icon + layered shirt collar
+    const triShape = new Shape();
+    triShape.moveTo(0, 0.04); triShape.lineTo(-0.016, -0.014); triShape.lineTo(0.016, -0.014); triShape.closePath();
+    const triGeo = new ShapeGeometry(triShape);
+    const triMesh = new Mesh(triGeo, neonP);
+    triMesh.position.set(0, chestBase + 0.06, 0.07);
+    torsoGroup.add(triMesh);
+    // Layered collar accent
+    addObj(torsoGroup, new BoxGeometry(shoulderW * 0.4, 0.022, 0.04), shirtAccentM, new Vector3(0, chestBase + 0.09, 0.06));
+  } else {
+    // Neutral: hoodie with vertical neon piping
+    for (const s of [-1, 1]) {
+      addObj(torsoGroup, new BoxGeometry(0.01, torsoH * 0.5, 0.04), neonP, new Vector3(s * shoulderW * 0.14, chestBase - 0.04, 0.06));
+    }
+  }
 
-  const pectoralR = new Mesh(new SphereGeometry(0.025, 8, 6),
-    new MeshStandardMaterial({ color: new Color(shirtColor), roughness: 0.18, metalness: 0.08 }));
-  pectoralR.position.set(shoulderW * 0.12, chestBase + 0.06, 0.06);
-  pectoralR.scale.set(0.7, 0.5, 0.35);
-  torsoGroup.add(pectoralR);
-
-  // ─── TRAPEZIUS + NECK ───────────────────────────────────
+  // ─── TRAPEZIUS + NECK ──────────────────────────────────
   const neckGroup = new Group();
   neckGroup.name = "neck";
   neckGroup.position.set(0, chestBase + 0.08, 0);
 
-  // Trapezius muscle (slopes from shoulders to neck)
+  // Trapezius
   for (const s of [-1, 1]) {
-    const trap = addObj(neckGroup, new SphereGeometry(0.032, 10, 8), skinS,
-      new Vector3(s * 0.06, -0.015, -0.02));
+    const trap = addObj(neckGroup, new SphereGeometry(0.032, 12, 10), skinS, new Vector3(s * 0.06, -0.015, -0.02));
     trap.scale.set(0.6, 0.35, 0.55);
   }
 
@@ -444,38 +516,41 @@ export function createAvatar(scene, opts = {}) {
   neckGroup.add(headGroup);
   torsoGroup.add(neckGroup);
 
-  // ─── SHOULDERS — pronounced deltoids ──────────────────────
+  // ─── SHOULDERS ─────────────────────────────────────────
   const shoulderY = chestBase + 0.02;
   const shoulderZ = -0.06;
+  const armClothColor = style === "crop" ? skinHex : cloth.shirt;
 
-  // Shoulder deltoid muscles
-  const leftDeltoid = new Mesh(new SphereGeometry(0.06, SEG, 12), shirtM());
+  // Deltoid muscles
+  const leftDeltoid = new Mesh(new SphereGeometry(0.06, SEG, 14), shirtM());
   leftDeltoid.position.set(-shoulderW * 0.50, shoulderY, shoulderZ + 0.01);
   leftDeltoid.scale.set(0.8, 0.75, 0.65);
   torsoGroup.add(leftDeltoid);
 
-  const rightDeltoid = new Mesh(new SphereGeometry(0.06, SEG, 12), shirtM());
+  const rightDeltoid = new Mesh(new SphereGeometry(0.06, SEG, 14), shirtM());
   rightDeltoid.position.set(shoulderW * 0.50, shoulderY, shoulderZ + 0.01);
   rightDeltoid.scale.set(0.8, 0.75, 0.65);
   torsoGroup.add(rightDeltoid);
 
+  // Left shoulder pivot
   const leftShoulder = new Group();
   leftShoulder.name = "leftShoulder";
   leftShoulder.position.set(-shoulderW * 0.56, shoulderY - 0.04, shoulderZ - 0.01);
-  const leftArm = buildUpperArm();
+  const leftArm = buildUpperArm(armClothColor);
   leftShoulder.add(leftArm);
   leftShoulder.userData.arm = leftArm;
   torsoGroup.add(leftShoulder);
 
+  // Right shoulder pivot
   const rightShoulder = new Group();
   rightShoulder.name = "rightShoulder";
   rightShoulder.position.set(shoulderW * 0.56, shoulderY - 0.04, shoulderZ - 0.01);
-  const rightArm = buildUpperArm();
+  const rightArm = buildUpperArm(armClothColor);
   rightShoulder.add(rightArm);
   rightShoulder.userData.arm = rightArm;
   torsoGroup.add(rightShoulder);
 
-  // ─── HIPS ──────────────────────────────────────────────────
+  // ─── HIPS ──────────────────────────────────────────────
   const pelvisY = waistBase - 0.03;
   const hipZ = -0.04;
 
@@ -495,7 +570,7 @@ export function createAvatar(scene, opts = {}) {
   rightHip.userData.leg = rightLeg;
   torsoGroup.add(rightHip);
 
-  // ─── SHADOW ────────────────────────────────────────────────
+  // ─── SHADOW ────────────────────────────────────────────
   const sd = new Mesh(new CircleGeometry(0.22, 16), new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false }));
   sd.rotation.x = -Math.PI / 2; sd.position.y = -1.10; sd.name = "shadow";
   torsoGroup.add(sd);
@@ -507,226 +582,208 @@ export function createAvatar(scene, opts = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// REMOTE AVATAR — optimized LOD matching the Fortnite-style model
+// REMOTE AVATAR — optimized LOD, matching the main avatar style
 // ═══════════════════════════════════════════════════════════════
 export function createRemoteAvatar(scene, userId, username, avatarType, skinTone) {
   const skinHex = SKIN_COLORS[skinTone] || SKIN_COLORS.medium;
   const body = BODY_PRESETS[avatarType] || BODY_PRESETS.neutral;
   const [shoulderW, hipW, torsoH, , legLen] = body;
-  const shirtColor = SHIRT_COLORS[avatarType] || SHIRT_COLORS.neutral;
-  const pantsColor = PANTS_COLORS[avatarType] || PANTS_COLORS.neutral;
-  const RS = 12;
+  const cloth = CLOTHING[avatarType] || CLOTHING.neutral;
+  const RS = 14;
+  const RS_SMALL = 10;
 
   const group = new Group();
   group.name = `remote_${userId}`;
   group.userData = { userId, lastPos: { x: 0, z: 0 }, velocity: 0, walkTime: 0, speed: 0 };
 
-  const sMat = () => new MeshStandardMaterial({ color: new Color(skinHex), roughness: 0.42 });
-  const bMat = () => new MeshStandardMaterial({ color: new Color(shirtColor), roughness: 0.26, metalness: 0.15 });
-  const pMat = () => new MeshStandardMaterial({ color: new Color(pantsColor), roughness: 0.28, metalness: 0.05 });
+  const sMat = () => new MeshStandardMaterial({ color: new Color(skinHex), roughness: 0.40 });
+  const sMatLight = () => new MeshStandardMaterial({ color: new Color(skinHex), roughness: 0.30 });
+  const bMat = () => new MeshStandardMaterial({ color: new Color(cloth.shirt), roughness: 0.24, metalness: 0.08 });
+  const bAccent = () => new MeshStandardMaterial({ color: new Color(cloth.shirtAccent), roughness: 0.22, metalness: 0.06 });
+  const pMat = () => new MeshStandardMaterial({ color: new Color(cloth.pants), roughness: 0.28, metalness: 0.05 });
+  const bltMat = () => new MeshStandardMaterial({ color: new Color("#222224"), roughness: 0.18, metalness: 0.20 });
   const eMat = () => new MeshStandardMaterial({ color: new Color("#080808"), roughness: 0.05 });
   const irisMat = () => new MeshStandardMaterial({ color: new Color("#5B8C5A"), roughness: 0.05 });
-  const moMat = () => new MeshStandardMaterial({ color: new Color("#C07060"), roughness: 0.32 });
+  const moMat = () => new MeshStandardMaterial({ color: new Color("#C07060"), roughness: 0.30 });
   const hMat = () => new MeshStandardMaterial({ color: new Color(HAIR_BASE), roughness: 0.44 });
   const hLMat = () => new MeshStandardMaterial({ color: new Color(HAIR_LIGHT), roughness: 0.38 });
-  const shoeMat = () => new MeshStandardMaterial({ color: new Color("#1A1A1A"), roughness: 0.28 });
-  const soleMat = () => new MeshStandardMaterial({ color: new Color("#2C2C2C"), roughness: 0.30 });
+  const shoeMat = () => new MeshStandardMaterial({ color: new Color("#121214"), roughness: 0.28 });
+  const soleMat = () => new MeshStandardMaterial({ color: new Color("#1A1A1A"), roughness: 0.32 });
+  const neonMat = () => new MeshBasicMaterial({ color: new Color(cloth.neonPrimary), transparent: true, opacity: 0.40, depthWrite: false });
 
-  // ─── TORSO — V-tapered for heroic silhouette ──────────────
+  // ─── TORSO — V-tapered ──────────────────────────────────
   const bodyY = torsoH * 0.48;
-  const torsoGeo = new CylinderGeometry(shoulderW * 0.44, hipW * 0.36, torsoH, RS);
-  const torso = new Mesh(torsoGeo, bMat());
+  const torso = new Mesh(new CylinderGeometry(shoulderW * 0.44, hipW * 0.36, torsoH, RS), bMat());
   torso.position.y = bodyY; torso.castShadow = true; torso.receiveShadow = true;
   group.add(torso);
 
-  // ─── HEAD — realistic face features ────────────────────────
+  // ─── HEAD — detailed face ───────────────────────────────
   const headGroup = new Group();
   headGroup.position.y = torsoH * 0.68 + 0.32;
 
-  const cranium = new Mesh(new SphereGeometry(0.096, 18, 16), sMat());
+  const cranium = new Mesh(new SphereGeometry(0.096, 20, 18), sMat());
   cranium.scale.set(0.84, 1.08, 0.78); cranium.position.y = 0.10; cranium.castShadow = true;
   headGroup.add(cranium);
 
-  const jaw = new Mesh(new SphereGeometry(0.052, 14, 10), sMat());
+  const jaw = new Mesh(new SphereGeometry(0.052, 16, 12), sMat());
   jaw.scale.set(0.80, 0.46, 0.62); jaw.position.set(0, 0.03, 0.048);
   headGroup.add(jaw);
 
-  const chin = new Mesh(new SphereGeometry(0.016, 8, 6), sMat());
+  const chin = new Mesh(new SphereGeometry(0.016, 10, 8), sMatLight());
   chin.scale.set(0.65, 0.45, 0.48); chin.position.set(0, 0, 0.078);
-  headGroup.add(chin);
-  chin.castShadow = true;
+  headGroup.add(chin); chin.castShadow = true;
 
   // Cheekbones
   for (const s of [-1, 1]) {
-    const cheek = new Mesh(new SphereGeometry(0.026, 8, 6), sMat());
+    const cheek = new Mesh(new SphereGeometry(0.026, 10, 8), sMatLight());
     cheek.scale.set(0.68, 0.5, 0.4); cheek.position.set(s * 0.058, 0.095, 0.05);
     headGroup.add(cheek); cheek.castShadow = true;
   }
 
-  // Eyes — white + iris + pupil
+  // Eyes
   for (const s of [-1, 1]) {
     const ex = s * 0.03;
-    const eyeW = new Mesh(new SphereGeometry(0.016, 8, 6), new MeshStandardMaterial({ color: new Color("#FFFFFF"), roughness: 0.06 }));
+    const eyeW = new Mesh(new SphereGeometry(0.016, 10, 8), new MeshStandardMaterial({ color: new Color("#FFFFFF"), roughness: 0.04 }));
     eyeW.scale.set(0.52, 0.75, 0.3); eyeW.position.set(ex, 0.11, 0.065);
     headGroup.add(eyeW);
 
-    const iris = new Mesh(new SphereGeometry(0.008, 6, 4), irisMat());
-    iris.position.set(ex, 0.11, 0.072);
-    headGroup.add(iris);
+    const iris = new Mesh(new SphereGeometry(0.008, 8, 6), irisMat());
+    iris.position.set(ex, 0.11, 0.072); headGroup.add(iris);
 
-    const pupil = new Mesh(new SphereGeometry(0.004, 4, 3), eMat());
-    pupil.position.set(ex, 0.11, 0.074);
-    headGroup.add(pupil);
+    const pupil = new Mesh(new SphereGeometry(0.004, 6, 4), eMat());
+    pupil.position.set(ex, 0.11, 0.074); headGroup.add(pupil);
   }
 
   // Nose
-  const noseBridge = new Mesh(new BoxGeometry(0.01, 0.022, 0.012), sMat());
-  noseBridge.position.set(0, 0.115, 0.075);
-  headGroup.add(noseBridge); noseBridge.castShadow = true;
-  const noseTip = new Mesh(new SphereGeometry(0.012, 8, 6), sMat());
+  const noseBridge = new Mesh(new BoxGeometry(0.01, 0.022, 0.012), sMatLight());
+  noseBridge.position.set(0, 0.115, 0.075); headGroup.add(noseBridge); noseBridge.castShadow = true;
+  const noseTip = new Mesh(new SphereGeometry(0.012, 10, 8), sMatLight());
   noseTip.scale.set(0.65, 0.5, 0.5); noseTip.position.set(0, 0.095, 0.084);
   headGroup.add(noseTip); noseTip.castShadow = true;
 
   // Mouth
   const upperLip = new Mesh(new BoxGeometry(0.036, 0.007, 0.005), moMat());
-  upperLip.position.set(0, 0.062, 0.08);
-  headGroup.add(upperLip);
-  const lowerLip = new Mesh(new BoxGeometry(0.032, 0.009, 0.004), new MeshStandardMaterial({ color: new Color("#B06050"), roughness: 0.30 }));
+  upperLip.position.set(0, 0.062, 0.08); headGroup.add(upperLip);
+  const lowerLip = new Mesh(new BoxGeometry(0.032, 0.009, 0.004),
+    new MeshStandardMaterial({ color: new Color("#B06050"), roughness: 0.28 }));
   lowerLip.position.set(0, 0.054, 0.081); lowerLip.rotation.x = 0.12;
   headGroup.add(lowerLip);
 
-  // Hair — layered
-  const rHair = new Mesh(new SphereGeometry(0.098, 16, 14), hMat());
+  // Hair
+  const rHair = new Mesh(new SphereGeometry(0.098, 18, 16), hMat());
   rHair.scale.set(1.08, 0.58, 0.94); rHair.position.set(0, 0.16, -0.01); rHair.castShadow = true;
   headGroup.add(rHair);
-  // Bangs
   const bangs = new Mesh(new BoxGeometry(0.06, 0.026, 0.07), hLMat());
   bangs.position.set(0, 0.20, 0.048); bangs.rotation.x = -0.22;
   headGroup.add(bangs);
 
   group.add(headGroup);
 
-  // ─── NECK ─────────────────────────────────────────────────
-  const neckMesh = new Mesh(new CylinderGeometry(0.035, 0.04, 0.10, 10), sMat());
+  // ─── NECK ───────────────────────────────────────────────
+  const neckMesh = new Mesh(new CylinderGeometry(0.035, 0.04, 0.10, RS_SMALL), sMat());
   neckMesh.position.y = torsoH * 0.7 + 0.05;
   group.add(neckMesh); neckMesh.castShadow = true;
 
-  // ─── ARMS + HANDS — joint hierarchy ─────────────────────
+  // ─── ARMS + HANDS ──────────────────────────────────
   const armLen = body ? body[3] : 0.52;
-  const armSeg = armLen * 0.52;
-  const faSeg = armLen * 0.48;
+  const armSeg = armLen * 0.52, faSeg = armLen * 0.48;
   for (const s of [-1, 1]) {
     const sx = s * shoulderW * 0.50;
     const signName = s > 0 ? "right" : "left";
 
-    // Shoulder pivot
     const shoulderPivot = new Group();
     shoulderPivot.name = `${signName}Shoulder`;
     shoulderPivot.position.set(sx, torsoH * 0.62, -0.05);
     group.add(shoulderPivot);
 
-    // Upper arm — bicep, rotates from shoulder
-    const upperArm = new Mesh(new CylinderGeometry(0.044, 0.052, armSeg, 10), sMat());
-    upperArm.position.set(0, -armSeg / 2, 0);
-    upperArm.castShadow = true;
+    const upperArm = new Mesh(new CylinderGeometry(0.044, 0.052, armSeg, RS_SMALL), sMat());
+    upperArm.position.set(0, -armSeg / 2, 0); upperArm.castShadow = true;
     upperArm.name = `${signName}UpperArm`;
     shoulderPivot.add(upperArm);
 
-    // Elbow pivot
+    // Neon arm stripe
+    const armStripe = new Mesh(new BoxGeometry(0.01, armSeg * 0.5, 0.025), neonMat());
+    armStripe.position.set(s * 0.04, -armSeg * 0.3, -0.005);
+    shoulderPivot.add(armStripe);
+
     const elbowPivot = new Group();
     elbowPivot.name = `${signName}Elbow`;
     elbowPivot.position.set(0, -armSeg, 0);
     shoulderPivot.add(elbowPivot);
 
-    // Forearm — rotates from elbow
-    const forearm = new Mesh(new CylinderGeometry(0.036, 0.046, faSeg, 10), sMat());
-    forearm.position.set(0, -faSeg / 2, 0);
-    forearm.castShadow = true;
+    const forearm = new Mesh(new CylinderGeometry(0.036, 0.046, faSeg, RS_SMALL), sMat());
+    forearm.position.set(0, -faSeg / 2, 0); forearm.castShadow = true;
     forearm.name = `${signName}Forearm`;
     elbowPivot.add(forearm);
 
-    // Wrist pivot
     const wristPivot = new Group();
     wristPivot.name = `${signName}Wrist`;
     wristPivot.position.set(0, -faSeg, 0);
     elbowPivot.add(wristPivot);
 
-    // Hand
     const hand = new Mesh(new BoxGeometry(0.06, 0.036, 0.07), sMat());
-    hand.position.set(0, -0.025, 0);
-    hand.castShadow = true;
+    hand.position.set(0, -0.025, 0); hand.castShadow = true;
     hand.name = `${signName}Hand`;
     wristPivot.add(hand);
 
-    // Store refs for animation
     shoulderPivot.userData = { elbowPivot, wristPivot, hand };
   }
 
-  // ─── LEGS — sculpted thighs + calves with joint hierarchy ──
+  // ─── LEGS ──────────────────────────────────────────
   const totalLegLen = legLen || 1.00;
-  const thighLen = totalLegLen * 0.52;
-  const calfLen = totalLegLen * 0.48;
-
+  const thighLen = totalLegLen * 0.52, calfLen = totalLegLen * 0.48;
   for (const s of [-1, 1]) {
     const legX = s * hipW * 0.42;
     const signName = s > 0 ? "right" : "left";
 
-    // Hip pivot group
     const hipPivot = new Group();
     hipPivot.name = `${signName}Hip`;
     hipPivot.position.set(legX, thighLen, -0.04);
     group.add(hipPivot);
 
-    // Thigh — rotates from hip
-    const thigh = new Mesh(new CylinderGeometry(0.06, 0.068, thighLen, 10), pMat());
-    thigh.position.set(0, -thighLen / 2, 0);
-    thigh.castShadow = true;
+    const thigh = new Mesh(new CylinderGeometry(0.06, 0.068, thighLen, RS_SMALL), pMat());
+    thigh.position.set(0, -thighLen / 2, 0); thigh.castShadow = true;
     thigh.name = `${signName}Thigh`;
     hipPivot.add(thigh);
 
-    // Knee pivot
+    // Belt/waist neon accent on hip pivot
+    const beltStrip = new Mesh(new BoxGeometry(0.008, 0.04, 0.025), neonMat());
+    beltStrip.position.set(0, 0.02, 0.02);
+    hipPivot.add(beltStrip);
+
     const kneePivot = new Group();
     kneePivot.name = `${signName}Knee`;
     kneePivot.position.set(0, -thighLen, 0);
     hipPivot.add(kneePivot);
 
-    // Calf — rotates from knee
-    const calf = new Mesh(new CylinderGeometry(0.044, 0.055, calfLen, 10), pMat());
-    calf.position.set(0, -calfLen / 2, 0);
-    calf.castShadow = true;
+    const calf = new Mesh(new CylinderGeometry(0.044, 0.055, calfLen, RS_SMALL), pMat());
+    calf.position.set(0, -calfLen / 2, 0); calf.castShadow = true;
     calf.name = `${signName}Calf`;
     kneePivot.add(calf);
 
-    // Ankle pivot
     const anklePivot = new Group();
     anklePivot.name = `${signName}Ankle`;
     anklePivot.position.set(0, -calfLen, 0.02);
     kneePivot.add(anklePivot);
 
-    // Foot group
     const footGroup = new Group();
     footGroup.name = `${signName}Foot`;
 
-    // Detailed shoe
     const shoe = new Mesh(new BoxGeometry(0.12, 0.06, 0.18), shoeMat());
     shoe.position.set(0, 0.01, 0.04); shoe.castShadow = true;
     footGroup.add(shoe);
-    // Sole
     const sole = new Mesh(new BoxGeometry(0.13, 0.025, 0.19), soleMat());
     sole.position.set(0, -0.015, 0.04);
     footGroup.add(sole); sole.castShadow = true;
-    // Toe cap
-    const toe = new Mesh(new SphereGeometry(0.04, 8, 6), shoeMat());
+    const toe = new Mesh(new SphereGeometry(0.04, 10, 8), shoeMat());
     toe.scale.set(0.82, 0.52, 0.48); toe.position.set(0, 0.015, 0.13);
     footGroup.add(toe); toe.castShadow = true;
 
     anklePivot.add(footGroup);
-
-    // Store references for animation
     hipPivot.userData = { kneePivot, anklePivot, footGroup };
   }
 
-  // ─── USERNAME ─────────────────────────────────────────────
+  // ─── USERNAME ───────────────────────────────────────────
   const nc = document.createElement("canvas"); nc.width = 256; nc.height = 64;
   const ctx = nc.getContext("2d");
   ctx.font = "bold 20px 'Inter', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";

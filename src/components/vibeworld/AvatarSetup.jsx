@@ -4,10 +4,10 @@ import { Sparkles, UserCircle, Palette } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const AVATAR_TYPES = [
-  { key: "masculine", label: "Masculine", emoji: "♂️", color: "#0080B8", desc: "Broader shoulders" },
-  { key: "feminine", label: "Feminine", emoji: "♀️", color: "#E040FB", desc: "Subtle curves" },
-  { key: "nonbinary", label: "Non-Binary", emoji: "⚧️", color: "#A078FF", desc: "Balanced build" },
-  { key: "neutral", label: "Neutral", emoji: "😊", color: "#00D4F0", desc: "Classic style" },
+  { key: "masculine", label: "Masculine", emoji: "♂️", color: "#0080B8", neon: "#00E5FF", desc: "Athletic build" },
+  { key: "feminine", label: "Feminine", emoji: "♀️", color: "#E040FB", neon: "#E040FB", desc: "Styled curves" },
+  { key: "nonbinary", label: "Non-Binary", emoji: "⚧️", color: "#A078FF", neon: "#A078FF", desc: "Balanced style" },
+  { key: "neutral", label: "Neutral", emoji: "😊", color: "#00D4F0", neon: "#00D4F0", desc: "Clean & classic" },
 ];
 
 const SKIN_TONES = [
@@ -19,262 +19,203 @@ const SKIN_TONES = [
   { key: "deep", label: "Deep", hex: "#4A2C2A", shadow: "#3D2321" },
 ];
 
-const SHIRT_COLORS = {
-  masculine: "#1A5276",
-  feminine: "#8E44AD",
-  nonbinary: "#2E86C1",
-  neutral: "#2E86C1",
+const CLOTHING = {
+  masculine: { shirt: "#141416", accent: "#1A1A1E", neon: "#00E5FF", pants: "#1A1A1E", shoe: "#121214", style: "track" },
+  feminine: { shirt: "#141416", accent: "#1A1A1E", neon: "#E040FB", pants: "#18181C", shoe: "#121214", style: "crop" },
+  nonbinary: { shirt: "#141416", accent: "#1A1A1E", neon: "#A078FF", pants: "#1A1A1E", shoe: "#121214", style: "layered" },
+  neutral: { shirt: "#141416", accent: "#1A1A1E", neon: "#00D4F0", pants: "#18181C", shoe: "#121214", style: "hoodie" },
 };
 
 const HAIR_COLORS = {
-  masculine: "#2C1B0E",
-  feminine: "#1A0E08",
-  nonbinary: "#3E2723",
-  neutral: "#3E2723",
+  masculine: "#1C110A", feminine: "#180C06", nonbinary: "#2A1810", neutral: "#2A1810",
 };
 
-// ── Full-body Avatar Preview (CSS drawn, human-proportioned) ──
+// ── Full-Body Avatar Preview — CSS-drawn stylized human ──
 function AvatarPreview({ avatarType, skinTone }) {
   const tone = SKIN_TONES.find(t => t.key === skinTone) || SKIN_TONES[2];
   const typeCfg = AVATAR_TYPES.find(t => t.key === avatarType) || AVATAR_TYPES[3];
-  const shirtColor = SHIRT_COLORS[avatarType] || SHIRT_COLORS.neutral;
+  const cloth = CLOTHING[avatarType] || CLOTHING.neutral;
   const hairColor = HAIR_COLORS[avatarType] || HAIR_COLORS.neutral;
-  const pantsColor = avatarType === "masculine" ? "#212F3D" : avatarType === "feminine" ? "#1B2631" : "#2C3E50";
-  const shoeColor = "#1A1A1A";
-  const beltColor = "#3A3A3A";
+  const style = cloth.style;
 
-  // Fortnite-heroic proportions — 8-head scale, broad shoulders, long legs
-  const sw = avatarType === "masculine" ? 64 : avatarType === "feminine" ? 48 : 56;
-  const hw = sw * (avatarType === "feminine" ? 0.9 : 0.7);
+  const sw = avatarType === "masculine" ? 64 : avatarType === "feminine" ? 50 : 56;
+  const hw = sw * (avatarType === "feminine" ? 0.88 : 0.68);
 
   return (
     <div className="flex flex-col items-center gap-2">
       <div
-        className="relative flex flex-col items-center rounded-2xl overflow-hidden"
+        className="relative flex flex-col items-center rounded-2xl overflow-visible"
         style={{
-          width: 160,
-          height: 260,
+          width: 160, height: 280,
           background: `linear-gradient(180deg, ${typeCfg.color}11 0%, transparent 55%)`,
           border: `2px solid ${typeCfg.color}33`,
-          boxShadow: `0 0 50px ${typeCfg.color}14`,
+          boxShadow: `0 0 60px ${typeCfg.color}14`,
         }}
       >
-        {/* ─── HEAD ──────────────────────────────────── */}
+        {/* ── HEAD ──────────────────────────────────── */}
         <div className="relative" style={{ marginTop: 6, zIndex: 5 }}>
-          {/* Hair back/top */}
+          {/* Hair back */}
           <div style={{
-            width: 48, height: 52,
+            width: 50, height: 54,
             background: hairColor,
             borderRadius: "55% 55% 42% 42%",
-            position: "absolute",
-            top: -8, left: -5,
-            boxShadow: `0 2px 6px ${hairColor}44`,
+            position: "absolute", top: -8, left: -6,
+            boxShadow: `0 2px 8px ${hairColor}44`,
           }} />
           {/* Face */}
           <div style={{
-            width: 44, height: 48,
+            width: 46, height: 50,
             background: `linear-gradient(160deg, ${tone.hex} 0%, ${tone.shadow} 100%)`,
-            borderRadius: "48% 48% 42% 42%",
+            borderRadius: "50% 50% 42% 42%",
             position: "relative",
             border: `1px solid ${tone.shadow}`,
+            boxShadow: `0 2px 8px ${tone.shadow}22`,
           }}>
             {/* Eyes */}
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", paddingTop: 16, position: "relative" }}>
-              {/* Left eye */}
-              <div style={{ position: "relative", width: 6, height: 7 }}>
-                <div style={{ width: 7, height: 7, background: "#FFF", borderRadius: "50%", position: "absolute", top: 0, left: -1 }} />
-                <div style={{ width: 3.5, height: 3.5, background: "#4A7C59", borderRadius: "50%", position: "absolute", top: 2, left: 2 }} />
-                <div style={{ width: 1.5, height: 1.5, background: "#0A0A0A", borderRadius: "50%", position: "absolute", top: 3, left: 3 }} />
-              </div>
-              {/* Right eye */}
-              <div style={{ position: "relative", width: 6, height: 7 }}>
-                <div style={{ width: 7, height: 7, background: "#FFF", borderRadius: "50%", position: "absolute", top: 0, left: -1 }} />
-                <div style={{ width: 3.5, height: 3.5, background: "#4A7C59", borderRadius: "50%", position: "absolute", top: 2, left: 2 }} />
-                <div style={{ width: 1.5, height: 1.5, background: "#0A0A0A", borderRadius: "50%", position: "absolute", top: 3, left: 3 }} />
-              </div>
+            <div className="flex gap-12 justify-center pt-16 relative">
+              {[0, 1].map(i => (
+                <div key={i} className="relative" style={{ width: 7, height: 8 }}>
+                  <div style={{ width: 8, height: 8, background: "#FFF", borderRadius: "50%", position: "absolute", top: 0, left: -1, boxShadow: "0 0 2px rgba(0,0,0,0.1)" }} />
+                  <div style={{ width: 4, height: 4, background: "#4A7C59", borderRadius: "50%", position: "absolute", top: 2.5, left: 2.5, border: "0.5px solid #2E5A3C" }} />
+                  <div style={{ width: 2, height: 2, background: "#0A0A0A", borderRadius: "50%", position: "absolute", top: 3.5, left: 3.5 }} />
+                  {/* Eye highlight */}
+                  <div style={{ width: 1.5, height: 1, background: "#FFF", borderRadius: "50%", position: "absolute", top: 1.5, left: 1.5, opacity: 0.9 }} />
+                </div>
+              ))}
             </div>
-            {/* Eyebrows */}
-            <div style={{ display: "flex", gap: 11, justifyContent: "center", marginTop: -10 }}>
-              <div style={{ width: 8, height: 2.5, background: "#3E2723", borderRadius: 2, transform: "rotate(-2deg)" }} />
-              <div style={{ width: 8, height: 2.5, background: "#3E2723", borderRadius: 2, transform: "rotate(2deg)" }} />
+            {/* Brows */}
+            <div className="flex gap-11 justify-center" style={{ marginTop: -10 }}>
+              {[0, 1].map(i => (
+                <div key={i} style={{ width: 9, height: 3, background: "#3A2018", borderRadius: 2, transform: i === 0 ? "rotate(-2deg)" : "rotate(2deg)" }} />
+              ))}
             </div>
             {/* Nose */}
-            <div style={{ width: 3, height: 5, background: tone.shadow, borderRadius: "50%", margin: "4px auto 0" }} />
+            <div style={{ width: 4, height: 6, background: tone.shadow, borderRadius: "50%", margin: "4px auto 0", opacity: 0.7 }} />
             {/* Mouth */}
-            <div style={{ width: 10, height: 3, background: "#C07060", borderRadius: 3, margin: "3px auto 0" }} />
+            <div style={{ width: 11, height: 3.5, background: "#C07060", borderRadius: 3, margin: "3px auto 0" }} />
             {/* Blush */}
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "0 5px", marginTop: -12 }}>
+            <div className="flex justify-between px-[6px]" style={{ marginTop: -12 }}>
               <div style={{ width: 6, height: 4, background: "#E8A0A066", borderRadius: "50%" }} />
               <div style={{ width: 6, height: 4, background: "#E8A0A066", borderRadius: "50%" }} />
             </div>
           </div>
-          {/* Hair front/bangs */}
+          {/* Hair front / bangs */}
           <div style={{
-            width: 42, height: 14,
+            width: 44, height: 15,
             background: hairColor,
             borderRadius: "0 0 50% 50%",
-            position: "absolute",
-            top: -2, left: -3,
-            opacity: 0.92,
+            position: "absolute", top: -1, left: -4,
+            opacity: 0.95,
           }} />
+          {/* Style-specific hair details */}
+          {style === "crop" && (
+            <div className="flex gap-3" style={{ position: "absolute", top: 6, left: 2 }}>
+              <div style={{ width: 10, height: 10, background: hairColor, borderRadius: "50%", opacity: 0.5 }} />
+              <div style={{ width: 8, height: 8, background: hairColor, borderRadius: "50%", opacity: 0.4 }} />
+            </div>
+          )}
         </div>
 
-        {/* ─── NECK ──────────────────────────────────── */}
+        {/* ── NECK ──────────────────────────────────── */}
         <div style={{
-          width: 14, height: 10,
+          width: 15, height: 12,
           background: `linear-gradient(180deg, ${tone.hex} 0%, ${tone.shadow} 100%)`,
-          borderRadius: "3px 3px 6px 6px",
-          marginTop: -2,
+          borderRadius: "4px 4px 7px 7px",
+          marginTop: -3,
           zIndex: 4,
         }} />
 
-        {/* ─── TORSO — V-tapered, human-proportioned ── */}
-        <div style={{
-          position: "relative",
-          width: sw,
-          marginTop: -1,
-          zIndex: 3,
-        }}>
+        {/* ── TORSO — V-tapered with neon accents ── */}
+        <div style={{ position: "relative", width: sw + 6, marginTop: -2, zIndex: 3 }}>
           {/* Shoulder caps */}
-          <div style={{ position: "absolute", top: -6, left: -8, width: 22, height: 18, background: shirtColor, borderRadius: "50%" }} />
-          <div style={{ position: "absolute", top: -6, right: -8, width: 22, height: 18, background: shirtColor, borderRadius: "50%" }} />
-          {/* Chest/torso — wider at shoulders, narrower at waist */}
-          <svg width={sw + 4} height="60" style={{ marginLeft: -2 }}>
+          <div style={{ position: "absolute", top: -6, left: -9, width: 24, height: 20, background: cloth.shirt, borderRadius: "50%" }} />
+          <div style={{ position: "absolute", top: -6, right: -9, width: 24, height: 20, background: cloth.shirt, borderRadius: "50%" }} />
+
+          <svg width={sw + 8} height="65" style={{ marginLeft: -1 }}>
             <polygon
-              points={`${2 + sw * 0.15},0 ${2 + sw * 0.85},0 ${2 + sw * 0.9},56 ${2 + sw * 0.1},56`}
-              fill={shirtColor}
-              rx="4"
+              points={`${4 + sw * 0.15},0 ${4 + sw * 0.85},0 ${4 + sw * 0.90},56 ${4 + sw * 0.10},56`}
+              fill={cloth.shirt}
             />
             {/* Collarbone accent */}
-            <line x1={2 + sw * 0.2} y1="2" x2={2 + sw * 0.8} y2="2" stroke={shirtColor} strokeWidth="2.5" opacity="0.6" strokeLinecap="round" />
+            <line x1={4 + sw * 0.2} y1="3" x2={4 + sw * 0.8} y2="3" stroke={cloth.accent} strokeWidth="2.5" opacity="0.5" strokeLinecap="round" />
           </svg>
-          {/* Belt */}
-          <div style={{
-            width: sw * 0.75, height: 5,
-            background: beltColor,
-            borderRadius: 2,
-            margin: "-6px auto 0",
-            position: "relative",
-            zIndex: 1,
-          }}>
-            {/* Belt buckle */}
-            <div style={{
-              width: 8, height: 6,
-              background: "#C8A84E",
-              borderRadius: 2,
-              margin: "0 auto",
-              border: "1px solid #A08830",
-            }} />
+
+          {/* Style-specific chest detail */}
+          {style === "track" && (
+            <>
+              <div style={{ width: 1.5, height: 22, background: cloth.neon, position: "absolute", top: 4, left: "50%", transform: "translateX(-50%)", opacity: 0.7 }} />
+              <div style={{ width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: `10px solid ${cloth.neon}`, position: "absolute", top: -4, left: "50%", transform: "translateX(-50%)", opacity: 0.75 }} />
+            </>
+          )}
+          {style === "crop" && (
+            <div style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", opacity: 0.7 }}>
+              <svg width="36" height="12" viewBox="0 0 36 12">
+                <polyline points="4,6 10,6 14,2 18,12 22,6 24,9 28,6 32,10" fill="none" stroke={cloth.neon} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          )}
+          {style === "layered" && (
+            <>
+              <div style={{ width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: `12px solid ${cloth.neon}`, position: "absolute", top: -2, left: "50%", transform: "translateX(-50%)", opacity: 0.7 }} />
+              <div style={{ width: sw * 0.35, height: 3, background: cloth.accent, borderRadius: 1, position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", opacity: 0.5 }} />
+            </>
+          )}
+          {style === "hoodie" && (
+            <div className="flex justify-around" style={{ position: "absolute", top: 4, width: sw + 8 }}>
+              <div style={{ width: 1, height: 30, background: cloth.neon, opacity: 0.6, borderRadius: 1 }} />
+              <div style={{ width: 1, height: 30, background: cloth.neon, opacity: 0.6, borderRadius: 1 }} />
+            </div>
+          )}
+
+          {/* Belt with neon */}
+          <div style={{ width: sw * 0.72, height: 6, background: "#222224", borderRadius: 3, margin: "-7px auto 0", position: "relative", zIndex: 1 }}>
+            <div style={{ width: sw * 0.72, height: 1, background: cloth.neon, opacity: 0.5, borderRadius: 1, position: "absolute", top: 0 }} />
+            <div style={{ width: 9, height: 7, background: "#C8A84E", borderRadius: 2, margin: "0 auto", border: "1px solid #A08830" }} />
           </div>
         </div>
 
-        {/* ─── LEGS — full human proportions ─────────── */}
-        <div style={{ display: "flex", gap: 8, marginTop: 2, zIndex: 2 }}>
+        {/* ── LEGS ────────────────────────────────────── */}
+        <div className="flex" style={{ gap: 8, marginTop: 3, zIndex: 2 }}>
           {[0, 1].map((leg) => (
-            <div key={leg} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              {/* Thigh — wider at top, tapers to knee */}
+            <div key={leg} className="flex flex-col items-center">
+              <div style={{ width: 22, height: 46, background: `linear-gradient(180deg, ${cloth.pants} 0%, ${cloth.pants}DA 100%)`, borderRadius: "8px 8px 4px 4px" }} />
+              <div style={{ width: 20, height: 6, background: cloth.pants, borderRadius: "3px", marginTop: -2, boxShadow: "0 1px 2px rgba(0,0,0,0.3)" }} />
+              <div style={{ width: 20, height: 42, background: `linear-gradient(180deg, ${cloth.pants}CC 0%, ${cloth.pants} 40%, ${cloth.pants} 100%)`, borderRadius: "4px 4px 6px 6px", marginTop: -1 }} />
+              <div style={{ width: 15, height: 8, background: cloth.pants, borderRadius: "0 0 3px 3px", marginTop: -1 }} />
+              {/* Neon pant stripe */}
+              <div style={{ width: 1.5, height: 82, background: cloth.neon, opacity: 0.35, position: "absolute", marginTop: 0, marginLeft: leg === 0 ? -3 : 3 }} />
               <div style={{
-                width: 22, height: 46,
-                background: `linear-gradient(180deg, ${pantsColor} 0%, ${pantsColor}DD 100%)`,
-                borderRadius: "8px 8px 3px 3px",
-                borderLeft: `1px solid ${pantsColor}88`,
-                borderRight: `1px solid ${pantsColor}88`,
-              }} />
-              {/* Knee joint — visible articulation */}
-              <div style={{
-                width: 19, height: 6,
-                background: pantsColor,
-                borderRadius: "3px",
-                marginTop: -2,
-                boxShadow: `0 1px 2px rgba(0,0,0,0.3)`,
-              }} />
-              {/* Calf — muscle shape */}
-              <div style={{
-                width: 20, height: 42,
-                background: `linear-gradient(180deg, ${pantsColor}CC 0%, ${pantsColor} 40%, ${pantsColor} 100%)`,
-                borderRadius: "3px 3px 5px 5px",
-                marginTop: -1,
-                borderLeft: `1px solid ${pantsColor}88`,
-                borderRight: `1px solid ${pantsColor}88`,
-              }} />
-              {/* Ankle — narrow */}
-              <div style={{
-                width: 14, height: 8,
-                background: pantsColor,
-                borderRadius: "0 0 3px 3px",
-                marginTop: -1,
-              }} />
-              {/* Shoe — sneaker detail */}
-              <div style={{
-                width: 26, height: 14,
-                background: shoeColor,
-                borderRadius: "0 0 10px 5px",
-                marginTop: -1,
-                position: "relative",
-                boxShadow: "0 2px 3px rgba(0,0,0,0.4)",
+                width: 28, height: 16, background: cloth.shoe, borderRadius: "0 0 11px 5px", marginTop: -1,
+                position: "relative", boxShadow: "0 2px 4px rgba(0,0,0,0.4)",
               }}>
-                {/* Sole */}
-                <div style={{
-                  width: 26, height: 4,
-                  background: "#333",
-                  borderRadius: "0 0 9px 4px",
-                  position: "absolute", bottom: 0,
-                }} />
-                {/* Lace line */}
-                <div style={{
-                  width: 18, height: 2,
-                  background: "rgba(255,255,255,0.2)",
-                  borderRadius: 1,
-                  position: "absolute", top: 3, left: 4,
-                }} />
-                {/* Toe cap */}
-                <div style={{
-                  width: 10, height: 8,
-                  background: "#252525",
-                  borderRadius: "5px 0 0 2px",
-                  position: "absolute", right: 0, top: 1,
-                }} />
+                <div style={{ width: 28, height: 5, background: "#1A1A1A", borderRadius: "0 0 10px 4px", position: "absolute", bottom: 0 }} />
+                <div style={{ width: 28, height: 1.5, background: cloth.neon, opacity: 0.5, position: "absolute", top: 5, borderRadius: 1 }} />
+                <div style={{ width: 18, height: 2, background: "rgba(255,255,255,0.15)", borderRadius: 1, position: "absolute", top: 3, left: 5 }} />
+                <div style={{ width: 11, height: 9, background: "#181818", borderRadius: "6px 0 0 2px", position: "absolute", right: 0, top: 1 }} />
               </div>
             </div>
           ))}
         </div>
 
-        {/* ─── ARMS — proper biceps + forearms + hands ─ */}
-        {/* Left arm */}
-        <div style={{ position: "absolute", top: 63, left: -12, zIndex: 1 }}>
-          {/* Upper arm / bicep */}
-          <div style={{ width: 14, height: 30, background: tone.hex, borderRadius: "8px 8px 6px 6px", boxShadow: `inset 0 0 4px ${tone.shadow}` }} />
-          {/* Forearm */}
-          <div style={{ width: 11, height: 28, background: tone.hex, borderRadius: "5px 5px 6px 6px", marginTop: -1 }} />
-          {/* Hand */}
-          <div style={{ width: 16, height: 13, background: tone.hex, borderRadius: 6, marginTop: -1, position: "relative" }}>
-            {/* Fingers */}
-            {[-4, 0, 4].map((fx, i) => (
-              <div key={i} style={{
-                width: 3.5, height: 7,
-                background: tone.hex,
-                borderRadius: "3px 3px 2px 2px",
-                position: "absolute",
-                top: -6,
-                left: 3.5 + fx,
-              }} />
+        {/* ── ARMS — with skin showing + neon wristbands ─ */}
+        <div style={{ position: "absolute", top: 64, left: -14, zIndex: 1 }}>
+          <div style={{ width: 15, height: 32, background: tone.hex, borderRadius: "10px 10px 7px 7px", boxShadow: `inset 0 0 5px ${tone.shadow}` }} />
+          <div style={{ width: 12, height: 28, background: tone.hex, borderRadius: "6px 6px 7px 7px", marginTop: -1 }} />
+          {/* Neon wristband */}
+          <div style={{ width: 13, height: 2, background: cloth.neon, opacity: 0.6, borderRadius: 1, marginTop: -1 }} />
+          <div style={{ width: 17, height: 14, background: tone.hex, borderRadius: 7, marginTop: -1, position: "relative" }}>
+            {[-5, 0, 5].map((fx, i) => (
+              <div key={i} style={{ width: 4, height: 8, background: tone.hex, borderRadius: "4px 4px 2px 2px", position: "absolute", top: -6, left: 4 + fx }} />
             ))}
           </div>
         </div>
-        {/* Right arm */}
-        <div style={{ position: "absolute", top: 63, right: -12, zIndex: 1 }}>
-          <div style={{ width: 14, height: 30, background: tone.hex, borderRadius: "8px 8px 6px 6px", boxShadow: `inset 0 0 4px ${tone.shadow}` }} />
-          <div style={{ width: 11, height: 28, background: tone.hex, borderRadius: "5px 5px 6px 6px", marginTop: -1 }} />
-          <div style={{ width: 16, height: 13, background: tone.hex, borderRadius: 6, marginTop: -1, position: "relative" }}>
-            {[-4, 0, 4].map((fx, i) => (
-              <div key={i} style={{
-                width: 3.5, height: 7,
-                background: tone.hex,
-                borderRadius: "3px 3px 2px 2px",
-                position: "absolute",
-                top: -6,
-                left: 3.5 + fx,
-              }} />
+        <div style={{ position: "absolute", top: 64, right: -14, zIndex: 1 }}>
+          <div style={{ width: 15, height: 32, background: tone.hex, borderRadius: "10px 10px 7px 7px", boxShadow: `inset 0 0 5px ${tone.shadow}` }} />
+          <div style={{ width: 12, height: 28, background: tone.hex, borderRadius: "6px 6px 7px 7px", marginTop: -1 }} />
+          <div style={{ width: 13, height: 2, background: cloth.neon, opacity: 0.6, borderRadius: 1, marginTop: -1 }} />
+          <div style={{ width: 17, height: 14, background: tone.hex, borderRadius: 7, marginTop: -1, position: "relative" }}>
+            {[-5, 0, 5].map((fx, i) => (
+              <div key={i} style={{ width: 4, height: 8, background: tone.hex, borderRadius: "4px 4px 2px 2px", position: "absolute", top: -6, left: 4 + fx }} />
             ))}
           </div>
         </div>
@@ -334,23 +275,23 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
           style={{ background: "rgba(155,126,255,0.1)", border: "1px solid rgba(155,126,255,0.25)" }}>
           <Sparkles className="w-3 h-3" style={{ color: "#9B7EFF" }} />
           <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>
-            Step 2 of 3
+            Customize Avatar
           </span>
         </div>
 
         <div>
           <h2 className="font-heading font-black text-2xl md:text-3xl text-white mb-1">
-            Customize Your Avatar
+            Your Vibe World Avatar
           </h2>
           <p className="text-sm text-white/40 leading-relaxed max-w-sm mx-auto">
-            Choose your avatar type and skin tone. You can change this anytime.
+            Choose your look. This is how others will see you in Upper Vibe City.
           </p>
         </div>
 
-        {/* ── Full-Body Avatar Preview ────────────────────── */}
+        {/* ── Full-Body Preview ────────────────────── */}
         <AvatarPreview avatarType={avatarType} skinTone={skinTone} />
 
-        {/* ── Avatar Type Selection ────────────────────────── */}
+        {/* ── Body Type ──────────────────────────────── */}
         <div className="w-full max-w-xs">
           <div className="flex items-center gap-2 mb-2 px-1">
             <UserCircle className="w-3.5 h-3.5 text-white/30" />
@@ -361,7 +302,7 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
               <button
                 key={type.key}
                 onClick={() => { setAvatarType(type.key); setTypeSelected(true); }}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.98]"
+                className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.98]"
                 style={{
                   background: avatarType === type.key
                     ? `${type.color}14`
@@ -369,7 +310,7 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
                   border: avatarType === type.key
                     ? `2px solid ${type.color}`
                     : "1px solid rgba(255,255,255,0.08)",
-                  minHeight: 54,
+                  minHeight: 58,
                 }}
               >
                 <span className="text-lg flex-shrink-0">{type.emoji}</span>
@@ -382,7 +323,7 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
           </div>
         </div>
 
-        {/* ── Skin Tone Selection ──────────────────────────── */}
+        {/* ── Skin Tone ──────────────────────────────── */}
         <div className="w-full max-w-xs">
           <div className="flex items-center gap-2 mb-2 px-1">
             <Palette className="w-3.5 h-3.5 text-white/30" />
@@ -393,14 +334,14 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
               <button
                 key={tone.key}
                 onClick={() => { setSkinTone(tone.key); setToneSelected(true); }}
-                className="w-11 h-11 rounded-full transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
+                className="w-12 h-12 rounded-full transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
                 style={{
                   background: tone.hex,
                   border: skinTone === tone.key
-                    ? "2px solid #fff"
+                    ? "3px solid #fff"
                     : "2px solid rgba(255,255,255,0.15)",
                   boxShadow: skinTone === tone.key
-                    ? `0 0 14px ${tone.hex}66`
+                    ? `0 0 16px ${tone.hex}66`
                     : "none",
                 }}
                 title={tone.label}
@@ -409,12 +350,12 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
           </div>
         </div>
 
-        {/* ── Hint when nothing selected ─────────────────────── */}
+        {/* ── Hint ──────────────────────────────────────── */}
         {!hasSelection && (
           <p className="text-[10px] text-amber-400/60 font-medium">Choose a body type and skin tone to continue</p>
         )}
 
-        {/* ── Continue ─────────────────────────────────────── */}
+        {/* ── Continue ──────────────────────────────────── */}
         <button
           onClick={handleContinue}
           disabled={saving || !hasSelection}
@@ -432,7 +373,7 @@ export default function AvatarSetup({ onComplete, existingType, existingTone }) 
         </button>
 
         <p className="text-[10px] text-white/20 max-w-xs">
-          This is your base avatar. More outfits, hairstyles, and accessories coming soon.
+          This is your base avatar. More outfits, hairstyles, and accessories coming to the Vibe Shop.
         </p>
       </motion.div>
     </div>

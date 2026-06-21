@@ -142,6 +142,43 @@
     "uvc_agreement_version": {
       "type": "string",
       "description": "Version identifier of the accepted agreement"
+    },
+    "outfit_id": {
+      "type": "string",
+      "description": "Future: equipped outfit ID from Vibe Shop"
+    },
+    "hair_id": {
+      "type": "string",
+      "description": "Future: equipped hairstyle ID from Vibe Shop"
+    },
+    "accessory_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Future: equipped accessory IDs"
+    },
+    "shoe_id": {
+      "type": "string",
+      "description": "Future: equipped shoe ID from Vibe Shop"
+    },
+    "aura_id": {
+      "type": "string",
+      "description": "Future: equipped aura/effect ID from Vibe Shop"
+    },
+    "emote_pack_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Future: owned emote pack IDs"
+    },
+    "owned_items": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Future: all owned item IDs from Vibe Shop"
     }
   }
 }
