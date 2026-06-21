@@ -5,6 +5,7 @@ import createCitySkyline from "./CitySkyline";
 import createVibeShop from "./VibeShop";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
+import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -245,6 +246,7 @@ function buildPark(scene) {
   ringOuter.renderOrder = 1;
   scene.add(ringOuter);
   addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R);
+  createJukebox(scene);
 
   // ═════════════════════════════════════════════════════════════
   // 3. OPEN CONNECTED FLOOR — clean unified plaza surface
@@ -1281,7 +1283,7 @@ import { loadRPMAvatar } from "./RPMLoader.jsx";
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef,   remoteUsers, isDancing = false, activeEmote = null, avatarConfig, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1290,6 +1292,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   onLoadedRef.current = onLoaded;
   const onPosCbRef = useRef(onPositionChange);
   onPosCbRef.current = onPositionChange;
+  const onJukeboxProxRef = useRef(onJukeboxProximity);
+  onJukeboxProxRef.current = onJukeboxProximity;
 
   useEffect(() => {
     const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -1556,6 +1560,20 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Notify parent of position (throttled — every 10 frames)
         if (onPosCbRef.current && frameRef.current % 10 === 0) {
           try { onPosCbRef.current(px, pz, rot); } catch {}
+        }
+
+        // ── Jukebox proximity — notify parent so HUD can show button ──
+        if (onJukeboxProxRef.current && frameRef.current % 6 === 0) {
+          const jdx = px - JUKEBOX_POS.x;
+          const jdz = pz - JUKEBOX_POS.z;
+          const jDist = Math.sqrt(jdx * jdx + jdz * jdz);
+          const nearJukebox = jDist < JUKEBOX_INTERACT_RADIUS;
+          // Proximity volume: 1.0 on dance floor, fades to 0.1 at edge
+          const ddx = px - 0; // plaza center x
+          const ddz = pz - (-4); // plaza center z
+          const dFloorDist = Math.sqrt(ddx * ddx + ddz * ddz);
+          const proximityVol = Math.max(0.1, Math.min(1.0, 1.0 - (dFloorDist - 2) / (DANCE_FLOOR_RADIUS - 2)));
+          try { onJukeboxProxRef.current(nearJukebox, proximityVol); } catch {}
         }
 
         // ─── CAMERA (third-person, or stage-facing when locked) ──
@@ -2076,6 +2094,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         });
         animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
+        animateJukebox(scene, t, audioBeat);
 
         // Stars twinkle
         const starsMesh = scene.userData.stars;

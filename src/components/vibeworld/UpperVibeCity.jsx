@@ -31,6 +31,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
   const [editAvatarOpen, setEditAvatarOpen] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState(0); // bump to re-read user data
+  const [nearJukebox, setNearJukebox] = useState(false);
+  const jukeboxProxVolRef = useRef(1.0);
 
   // ── Dance Floor / Emote state ─────────────────────────────────────────────
   const [isDancing, setIsDancing] = useState(false);
@@ -560,6 +562,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             prevPosRef.current = { x, z };
             setPlayerPos({ x, z, rot, animState });
           }}
+          onJukeboxProximity={(near, vol) => {
+            setNearJukebox(near);
+            jukeboxProxVolRef.current = vol;
+            // Apply proximity volume to global audio
+            const audio = audioRef?.current;
+            if (audio) audio.volume = Math.max(0.05, Math.min(1.0, vol));
+          }}
           isDancing={isDancing}
           activeEmote={activeEmote}
           stageCanvas={stageWatching ? null : stageCanvas}
@@ -706,6 +715,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onStopDance={handleStopDance}
         isDancing={isDancing}
         onEditAvatar={() => setEditAvatarOpen(true)}
+        nearJukebox={nearJukebox}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}

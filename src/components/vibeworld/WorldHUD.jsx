@@ -17,6 +17,7 @@ import AcademyPanel from "./panels/AcademyPanel";
 import ShopPanel from "./panels/ShopPanel";
 import ZenBeachPanel from "./panels/ZenBeachPanel";
 import EmotePanel from "./panels/EmotePanel";
+import JukeboxPanel from "./panels/JukeboxPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import IncomingChatRequest from "./IncomingChatRequest";
 import ChatWarning from "@/components/vibeworld/ChatWarning";
@@ -84,6 +85,7 @@ export default function WorldHUD({
   onStopDance,
   isDancing = false,
   onEditAvatar,
+  nearJukebox = false,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -114,6 +116,7 @@ export default function WorldHUD({
   const [zenBeachOpen, setZenBeachOpen] = useState(false);
   const [emotePanelOpen, setEmotePanelOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
+  const [jukeboxOpen, setJukeboxOpen] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -425,6 +428,24 @@ export default function WorldHUD({
               pointerEvents: "none",
             }}
           >
+            {nearJukebox && (
+              <button
+                onTouchStart={(e) => e.stopPropagation()}
+                onClick={() => { hapticTap(); setJukeboxOpen(true); onMobileModalChange?.(true); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  background: "linear-gradient(135deg,#00B8D488,#00D4F088)",
+                  border: "1px solid rgba(0,212,240,0.4)",
+                  color: "#fff",
+                  minHeight: isMobile ? 36 : 40,
+                  touchAction: "manipulation",
+                  pointerEvents: "auto",
+                  boxShadow: "0 0 14px rgba(0,212,240,0.25)",
+                }}
+              >
+                🎵 Jukebox
+              </button>
+            )}
             {isDancing ? (
               <button
                 onTouchStart={(e) => e.stopPropagation()}
@@ -914,6 +935,13 @@ export default function WorldHUD({
       <ZenBeachPanel
         open={zenBeachOpen}
         onClose={() => { setZenBeachOpen(false); onMobileModalChange?.(false); }}
+        isMobile={isMobile}
+      />
+
+      {/* ── Jukebox Panel ────────────────────────────────────────── */}
+      <JukeboxPanel
+        open={jukeboxOpen}
+        onClose={() => { setJukeboxOpen(false); onMobileModalChange?.(false); }}
         isMobile={isMobile}
       />
 
