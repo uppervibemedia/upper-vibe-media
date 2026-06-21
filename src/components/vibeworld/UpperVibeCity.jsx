@@ -547,6 +547,46 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
 
+  // ── Smooth RAF-based crossfade between personal player and jukebox ──────────
+  // personalTargetVolRef tracks where the personal audio element should land
+  const personalTargetVolRef = useRef(1.0);
+  const personalBaseVolRef = useRef(1.0); // original vol before dance floor entry
+
+  const crossfadeRafRef = useRef(null);
+
+  const runCrossfade = useCallback((durationMs = 1200) => {
+    cancelAnimationFrame(crossfadeRafRef.current);
+    const jk = jukeboxAudioRef.current;
+    const personal = audioRef?.current;
+    const startTime = performance.now();
+
+    // Snapshot starting volumes
+    const jkStart = jk ? jk.volume : 0;
+    const jkTarget = personalTargetVolRef.current === 0 ? 0.85 : 0; // entering=fade jk in, exiting=fade jk out
+    const personalStart = personal ? personal.volume : 1;
+    const personalTarget = personalTargetVolRef.current; // 0 when entering, restored vol when exiting
+
+    const tick = (now) => {
+      const t = Math.min(1, (now - startTime) / durationMs);
+      // Ease in-out cubic
+      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+      if (jk) jk.volume = jkStart + (jkTarget - jkStart) * ease;
+      if (personal) personal.volume = personalStart + (personalTarget - personalStart) * ease;
+
+      if (t < 1) {
+        crossfadeRafRef.current = requestAnimationFrame(tick);
+      } else {
+        // Crossfade done — if jukebox faded out, pause it
+        if (jkTarget === 0 && jk) {
+          jk.pause();
+          jk.currentTime = 0;
+        }
+      }
+    };
+    crossfadeRafRef.current = requestAnimationFrame(tick);
+  }, [audioRef]);
+
   // ── Jukebox helpers — operate on the dedicated jukebox <audio> only ────────
   const startJukebox = useCallback((audioUrl) => {
     if (!audioUrl) return;
@@ -562,35 +602,23 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
     jk.volume = 0;
     jk.play().catch(() => {});
-    // Fade in
-    clearInterval(jukeboxFadeRef.current);
-    let vol = 0;
-    jukeboxFadeRef.current = setInterval(() => {
-      vol = Math.min(0.85, vol + 0.05);
-      if (jk) jk.volume = vol;
-      if (vol >= 0.85) clearInterval(jukeboxFadeRef.current);
-    }, 60);
-  }, []);
+    // personalTargetVolRef=0 signals crossfade: jk fades IN, personal fades OUT
+    personalTargetVolRef.current = 0;
+    runCrossfade(1200);
+  }, [runCrossfade]);
 
   const stopJukebox = useCallback(() => {
     const jk = jukeboxAudioRef.current;
     if (!jk) return;
-    clearInterval(jukeboxFadeRef.current);
-    let vol = jk.volume;
-    jukeboxFadeRef.current = setInterval(() => {
-      vol = Math.max(0, vol - 0.06);
-      if (jk) jk.volume = vol;
-      if (vol <= 0) {
-        clearInterval(jukeboxFadeRef.current);
-        jk.pause();
-        jk.currentTime = 0;
-      }
-    }, 60);
-  }, []);
+    // personalTargetVolRef=restored vol signals crossfade: jk fades OUT, personal fades IN
+    personalTargetVolRef.current = personalBaseVolRef.current;
+    runCrossfade(1000);
+  }, [runCrossfade]);
 
   // Cleanup jukebox on unmount
   useEffect(() => {
     return () => {
+      cancelAnimationFrame(crossfadeRafRef.current);
       clearInterval(jukeboxFadeRef.current);
       if (jukeboxAudioRef.current) {
         jukeboxAudioRef.current.pause();
@@ -612,18 +640,22 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       // ── ENTERED DANCE FLOOR ──
       onDanceFloorRef.current = true;
 
-      // Save personal player state, then pause it (don't change its track)
+      // Save personal player state (position + whether it was playing + current volume)
+      const audio = audioRef?.current;
       personalWasPlayingRef.current = isPlayingRef.current;
-      if (isPlayingRef.current && togglePlayRef.current) {
-        // Save current position before pausing
-        const audio = audioRef?.current;
-        personalTimeRef.current = audio?.currentTime ?? 0;
-        togglePlayRef.current(); // pause personal player
+      personalTimeRef.current = audio?.currentTime ?? 0;
+      personalBaseVolRef.current = (audio && audio.volume > 0) ? audio.volume : 1.0;
+
+      // If personal player is paused, briefly un-mute it to full vol so crossfade has something to fade
+      if (audio && audio.volume === 0) audio.volume = personalBaseVolRef.current;
+
+      // If personal player wasn't playing, just ensure jukebox fades in from silence (no personal vol change needed)
+      if (!isPlayingRef.current) {
+        personalTargetVolRef.current = personalBaseVolRef.current; // no vol change needed
       }
 
-      // Start jukebox on its own separate audio element
+      // Start jukebox — crossfade handles fading personal out + jukebox in
       if (!jukeboxTrackRef.current) {
-        // Fetch a featured track for the jukebox
         base44.entities.Track.filter({ is_featured: true, status: "published" }, "-display_order", 8)
           .then((tracks) => {
             const pool = tracks.length > 0 ? tracks : [];
@@ -635,7 +667,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           })
           .catch(() => {});
       } else {
-        // Resume already-loaded jukebox track
         startJukebox(jukeboxTrackRef.current.audio_url);
       }
 
@@ -643,14 +674,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       // ── LEFT DANCE FLOOR ──
       onDanceFloorRef.current = false;
 
-      // Fade out jukebox (personal player is untouched)
+      // Crossfade: jukebox fades out, personal fades back in
       stopJukebox();
 
-      // Resume personal player if it was playing before
+      // Resume personal player playback after crossfade settles (~300ms in)
       if (personalWasPlayingRef.current) {
         personalWasPlayingRef.current = false;
         setTimeout(() => {
-          // Restore position if possible
           const audio = audioRef?.current;
           if (audio && personalTimeRef.current > 0) {
             audio.currentTime = personalTimeRef.current;
@@ -698,9 +728,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onJukeboxProximity={(near, vol) => {
             setNearJukebox(near);
             jukeboxProxVolRef.current = vol;
-            // Apply proximity volume to JUKEBOX audio only — never touch personal player
+            // Proximity volume only applies to jukebox while on dance floor — never personal player
             const jk = jukeboxAudioRef.current;
-            if (jk && onDanceFloorRef.current) {
+            if (jk && onDanceFloorRef.current && !crossfadeRafRef.current) {
               jk.volume = Math.max(0.05, Math.min(0.9, vol * 0.85));
             }
           }}
