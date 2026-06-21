@@ -42,13 +42,13 @@ export default function Admin() {
   const [editingTrack, setEditingTrack] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const loadAll = async () => {
+  const loadAll = async (defer = false) => {
     setLoading(true);
-    // Stagger calls to avoid rate limiting
+    if (defer) await new Promise((r) => setTimeout(r, 2500));
     const t = await base44.entities.Track.list("-created_date", 200);
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 600));
     const a = await base44.entities.Artist.list("name", 100);
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 600));
     const c = await base44.entities.Category.list("display_order", 50);
     setTracks(t);
     setArtists(a);
@@ -56,7 +56,7 @@ export default function Admin() {
     setLoading(false);
   };
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(true); }, []);
 
   if (user?.role !== "admin") {
     return (
