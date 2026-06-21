@@ -924,27 +924,14 @@ function buildPark(scene) {
 
   scene.add(edgeBuildings);
 
-  // 10. BEACH WALK — south edge
-  const bufferGeo = new PlaneGeometry(68, 8);
-  const buffer = new Mesh(bufferGeo, mat("#2A2A40", { roughness: 0.7 }));
-  buffer.rotation.x = -Math.PI / 2;
-  buffer.position.set(0, -0.002, 16);
-  buffer.receiveShadow = true;
-  scene.add(buffer);
-
-  const drySand = new Mesh(new PlaneGeometry(68, 6), mat("#D8B47E", { roughness: 0.5 }));
-  drySand.rotation.x = -Math.PI / 2;
-  drySand.position.set(0, 0.002, 21);
-  drySand.receiveShadow = true;
-  scene.add(drySand);
-
-  const wetSand = new Mesh(new PlaneGeometry(68, 4), mat("#A07048", { roughness: 0.28, metalness: 0.1 }));
-  wetSand.rotation.x = -Math.PI / 2;
-  wetSand.position.set(0, 0.003, 25.5);
-  wetSand.receiveShadow = true;
-  scene.add(wetSand);
-
-  // Boardwalk railing removed — open beach access
+  // 10. BEACH — single continuous sand surface
+  const beachGeo = new PlaneGeometry(68, 18);
+  const beach = new Mesh(beachGeo, mat("#C8A878", { roughness: 0.5 }));
+  beach.rotation.x = -Math.PI / 2;
+  beach.position.set(0, 0.001, 21);
+  beach.receiveShadow = true;
+  beach.name = "beach";
+  scene.add(beach);
 
   // Beach lounge chairs
   const chairGroup = new Group();
@@ -1867,13 +1854,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
                 part.material.opacity = breathe;
               }
             });
-          }
-          // Path dots — subtle hue oscillation between cyan and purple
-          if (child.userData?.isPathDot && child.material?.color) {
-            const baseColor = new Color(child.userData.baseColor);
-            const mixColor = new Color(child.userData.baseColor === "#C43BFF" ? "#00D4F0" : "#C43BFF");
-            child.material.color.copy(baseColor).lerp(mixColor, hueShift);
-            child.material.opacity = 0.2 + Math.sin(t * 2 + child.userData.phase) * 0.2;
           }
           if (child.userData?.isZenParticle) {
             const p = child.userData;
