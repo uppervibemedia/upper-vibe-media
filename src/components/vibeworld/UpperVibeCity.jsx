@@ -30,6 +30,59 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
 
+  // ── Dance Floor / Emote state ─────────────────────────────────────────────
+  const [isDancing, setIsDancing] = useState(false);
+  const isDancingRef = useRef(false);
+  isDancingRef.current = isDancing;
+  const [activeEmote, setActiveEmote] = useState(null); // { id, label, color, effect, startedAt }
+  const emoteTimerRef = useRef(null);
+  const wasMovingRef = useRef(false);
+
+  const handleEmote = useCallback((emote) => {
+    if (emote.id === "dance") {
+      setIsDancing(true);
+      setActiveEmote({ ...emote, startedAt: Date.now() });
+    } else {
+      // Clear any existing emote timer
+      if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
+      setActiveEmote({ ...emote, startedAt: Date.now() });
+      // Non-dance emotes last 3 seconds
+      emoteTimerRef.current = setTimeout(() => {
+        setActiveEmote(null);
+      }, 3000);
+    }
+  }, []);
+
+  const handleStopDance = useCallback(() => {
+    setIsDancing(false);
+    setActiveEmote(null);
+    if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
+  }, []);
+
+  // ── Auto-cancel dance on movement ──────────────────────────────────────────
+  const danceMovingRef = useRef(false);
+  danceMovingRef.current = false; // Reset each render
+
+  useEffect(() => {
+    if (!isDancing) return;
+    const prev = prevPosRef.current;
+    const dx = playerPos.x - prev.x;
+    const dz = playerPos.z - prev.z;
+    const speed = Math.sqrt(dx * dx + dz * dz);
+    if (speed > 0.015) {
+      setIsDancing(false);
+      setActiveEmote(null);
+      if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
+    }
+  }, [playerPos.x, playerPos.z, isDancing]);
+
+  // Cleanup emote timer on unmount
+  useEffect(() => {
+    return () => {
+      if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
+    };
+  }, []);
+
   // ── Stage video state ──────────────────────────────────────────────────
   const [stageVideos, setStageVideos] = useState([]);
   const [stageVideoIdx, setStageVideoIdx] = useState(0);
@@ -494,7 +547,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             const dx = x - prev.x;
             const dz = z - prev.z;
             const speed = Math.sqrt(dx * dx + dz * dz);
-            const animState = speed > 0.015 ? "walking" : "idle";
+            const animState = isDancingRef.current ? "dancing" : speed > 0.015 ? "walking" : "idle";
             prevPosRef.current = { x, z };
             setPlayerPos({ x, z, rot, animState });
           }}
@@ -637,6 +690,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         pendingRequests={pendingRequests}
         onAcceptChat={acceptRequest}
         onDeclineChat={declineRequest}
+        onEmote={handleEmote}
+        onStopDance={handleStopDance}
+        isDancing={isDancing}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}

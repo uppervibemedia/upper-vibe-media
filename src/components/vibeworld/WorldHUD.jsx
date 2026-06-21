@@ -16,6 +16,7 @@ import PrivateChatPanel from "./panels/PrivateChatPanel";
 import AcademyPanel from "./panels/AcademyPanel";
 import ShopPanel from "./panels/ShopPanel";
 import ZenBeachPanel from "./panels/ZenBeachPanel";
+import EmotePanel from "./panels/EmotePanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import IncomingChatRequest from "./IncomingChatRequest";
 import ChatWarning from "@/components/vibeworld/ChatWarning";
@@ -78,6 +79,10 @@ export default function WorldHUD({
   onClearOutgoingStatus,
   pendingRequestsCount = 0,
   pendingRequests = [],
+  // ── Emote / Dance Floor props ──────────────────────────────
+  onEmote,
+  onStopDance,
+  isDancing = false,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -106,6 +111,7 @@ export default function WorldHUD({
   const [academyOpen, setAcademyOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [zenBeachOpen, setZenBeachOpen] = useState(false);
+  const [emotePanelOpen, setEmotePanelOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
@@ -389,11 +395,29 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
+                ? "calc(env(safe-area-inset-bottom, 0px) + 12rem)"
+                : "calc(env(safe-area-inset-bottom, 0px) + 10rem)",
               pointerEvents: "none",
             }}
           >
+            {/* Dance / Emotes button */}
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => { hapticTap(); setEmotePanelOpen(true); }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#C43BFF,#E040FB)",
+                color: "#fff",
+                boxShadow: "0 0 24px rgba(196,59,255,0.45)",
+                minHeight: "44px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
+              }}
+            >
+              <Music4 className="w-3.5 h-3.5" />
+              Dance / Emotes
+            </button>
+
             {/* Music Library button */}
             <button
               onTouchStart={(e) => e.stopPropagation()}
@@ -865,6 +889,16 @@ export default function WorldHUD({
       <ZenBeachPanel
         open={zenBeachOpen}
         onClose={() => { setZenBeachOpen(false); onMobileModalChange?.(false); }}
+        isMobile={isMobile}
+      />
+
+      {/* ── Emote Panel (popup) ────────────────────────────────── */}
+      <EmotePanel
+        open={emotePanelOpen}
+        onClose={() => { setEmotePanelOpen(false); }}
+        onEmote={(emote) => { onEmote?.(emote); }}
+        onStopDance={onStopDance}
+        isDancing={isDancing}
         isMobile={isMobile}
       />
 

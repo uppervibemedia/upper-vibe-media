@@ -4,6 +4,7 @@ import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
 import createVibeShop from "./VibeShop";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
+import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -255,7 +256,6 @@ function buildPark(scene) {
   uvcDisc.renderOrder = 1;
   scene.add(uvcDisc);
 
-  // Outer purple ring
   const ringOuter = new Mesh(
     new RingGeometry(PLAZA_R - 0.5, PLAZA_R - 0.2, 64),
     new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, side: THREE.DoubleSide })
@@ -264,6 +264,7 @@ function buildPark(scene) {
   ringOuter.position.set(PLAZA_X, 0.005, PLAZA_Z);
   ringOuter.renderOrder = 1;
   scene.add(ringOuter);
+  addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R);
 
   // ═════════════════════════════════════════════════════════════
   // 3. GLOWING PATHS — neon walkways to every zone
@@ -2026,7 +2027,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
         const audioBeat = audioIntensityRef?.current ?? 0;
 
-        // ─── STAGE SCREEN — visualizer canvas texture or hide when watching ──
+        // Stage screen — visualizer canvas
         const stageCanvasVal = stageCanvasRef.current;
         const stageScreen = scene.userData.stageScreen;
         if (stageCanvasVal) {
@@ -2184,9 +2185,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             child.position.z = p.baseZ + Math.sin(t * 0.6 + p.phase) * 0.2;
           }
         });
-        animateZenBeach(scene, t, audioBeat);
+        animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
 
-        // ─── STARS TWINKLE ─────────────────────────────────────
+        // Stars twinkle
         const starsMesh = scene.userData.stars;
         if (starsMesh && starsMesh.material) {
           starsMesh.material.opacity = 0.45 + Math.sin(t * 0.9) * 0.08 + Math.cos(t * 0.6) * 0.07;
