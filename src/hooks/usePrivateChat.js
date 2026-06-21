@@ -17,6 +17,12 @@ export default function usePrivateChat(user) {
   const requestSubRef = useRef(null);
   const expiryTimersRef = useRef({});
   const cleanupTimerRef = useRef(null);
+  const blockedUsersRef = useRef({});
+  const userRef = useRef(null);
+
+  // Keep refs in sync
+  useEffect(() => { blockedUsersRef.current = blockedUsers; }, [blockedUsers]);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   // ── Build chat_id from two user IDs (sorted) ──────────────────
   const getChatId = useCallback((uid1, uid2) => {
@@ -51,7 +57,7 @@ export default function usePrivateChat(user) {
     }
 
     // Check block
-    if (blockedUsers[toUserId]) return { error: "User is blocked" };
+    if (blockedUsersRef.current[toUserId]) return { error: "User is blocked" };
 
     // Check existing pending request
     try {
@@ -98,7 +104,7 @@ export default function usePrivateChat(user) {
       console.error("[sendChatRequest] Failed to create request:", e);
       return { error: "Failed to send request: " + (e?.message || String(e)) };
     }
-  }, [user, blockedUsers, myDisplayName]);
+  }, [user, myDisplayName]);
 
   // ── Accept incoming request ──────────────────────────────────
   const acceptRequest = useCallback(async (requestId, fromUserId, fromUsername) => {
@@ -170,12 +176,18 @@ export default function usePrivateChat(user) {
   useEffect(() => {
     if (!user?.id) return;
 
+    const myId = user.id;
+
     const unsubscribe = base44.entities.PrivateChatRequest.subscribe((event) => {
       if (event.type !== "create" || !event.data) return;
       const data = event.data;
-      if (data.to_user_id !== user.id) return;
+      if (data.to_user_id !== myId) return;
       if (data.status !== "pending") return;
-      if (blockedUsers[data.from_user_id]) return;
+
+      const blocked = blockedUsersRef.current || {};
+      if (blocked[data.from_user_id]) return;
+
+      console.log("[usePrivateChat] Incoming request from:", data.from_username, "id:", data.id);
 
       setIncomingRequest({
         id: data.id,
@@ -184,7 +196,9 @@ export default function usePrivateChat(user) {
       });
 
       // Auto-expire incoming request
-      expiryTimersRef.current[`in_${data.from_user_id}`] = setTimeout(() => {
+      const timerKey = `in_${data.from_user_id}`;
+      if (expiryTimersRef.current[timerKey]) clearTimeout(expiryTimersRef.current[timerKey]);
+      expiryTimersRef.current[timerKey] = setTimeout(() => {
         setIncomingRequest((prev) =>
           prev?.fromUserId === data.from_user_id ? null : prev
         );
@@ -193,7 +207,7 @@ export default function usePrivateChat(user) {
 
     requestSubRef.current = unsubscribe;
     return () => unsubscribe();
-  }, [user?.id, blockedUsers]);
+  }, [user?.id]);
 
   // ── Subscribe to messages in active chat ─────────────────────
   useEffect(() => {
@@ -236,36 +250,41 @@ export default function usePrivateChat(user) {
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
+    const myId = user.id;
 
     const poll = async () => {
+      if (cancelled) return;
+      // Don't poll if we already have an active incoming request showing
       try {
         const myPending = await base44.entities.PrivateChatRequest.filter({
-          to_user_id: user.id,
+          to_user_id: myId,
           status: "pending",
         });
         if (cancelled) return;
         if (myPending.length > 0) {
           const req = myPending[0];
-          // Check not from blocked user
-          if (!blockedUsers[req.from_user_id]) {
-            const expiresAt = req.expires_at ? new Date(req.expires_at).getTime() : 0;
-            if (expiresAt > Date.now()) {
-              setIncomingRequest({
-                id: req.id,
-                fromUserId: req.from_user_id,
-                fromUsername: req.from_username,
-              });
-            }
+          const blocked = blockedUsersRef.current || {};
+          if (blocked[req.from_user_id]) return;
+          const expiresAt = req.expires_at ? new Date(req.expires_at).getTime() : 0;
+          if (expiresAt > Date.now()) {
+            console.log("[usePrivateChat] Poll found pending request from:", req.from_username);
+            setIncomingRequest({
+              id: req.id,
+              fromUserId: req.from_user_id,
+              fromUsername: req.from_username,
+            });
           }
         }
-      } catch {}
+      } catch (e) {
+        console.warn("[usePrivateChat] Poll error:", e);
+      }
     };
 
-    // Poll immediately on mount, then every 5 seconds as fallback
+    // Poll immediately on mount, then every 3 seconds as fallback
     poll();
-    const interval = setInterval(poll, 5000);
+    const interval = setInterval(poll, 3000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [user?.id, blockedUsers]);
+  }, [user?.id]);
 
   // ── Clear outgoing status ────────────────────────────────────
   const clearOutgoingStatus = useCallback(() => {

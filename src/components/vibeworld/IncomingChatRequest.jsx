@@ -8,10 +8,9 @@ export default function IncomingChatRequest({
   onDecline,
   isMobile,
 }) {
-  if (!request) return null;
-
   return (
     <AnimatePresence>
+      {request && (
       <motion.div
         initial={{ opacity: 0, y: -20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -88,6 +87,7 @@ export default function IncomingChatRequest({
           </div>
         </div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 }
