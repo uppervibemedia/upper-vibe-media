@@ -128,67 +128,67 @@ function classifyMaterial(meshName, origColor) {
 }
 
 // ─── crossFade helper ─────────────────────────────────────────
-function crossFade(entry, toKey, duration = 0.22) {
-  if (!entry.clips[toKey] || entry.currentAnim === toKey) return;
+// Smoothly transitions from current clip to target clip.
+// No-ops if already playing the target or target doesn't exist.
+function crossFade(entry, toKey, duration = 0.2) {
+  if (!entry.clips[toKey]) return;
+  if (entry.currentAnim === toKey) return;
   const from = entry.clips[entry.currentAnim];
   const to   = entry.clips[toKey];
   to.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-  if (from) from.crossFadeTo(to, duration, true);
+  if (from && from !== to) from.crossFadeTo(to, duration, true);
   entry.currentAnim = toKey;
 }
 
 // ─── PUBLIC: updateAvatarAnimation ───────────────────────────
-// SAFE RULE: Only ever play idle/walk/run clips from Soldier.glb.
-// Never touch bone positions directly — the hip bone controls body height
-// and zeroing it collapses the avatar. Never play run during dance — run
-// has forward root motion that breaks the standing pose in-place.
+// Priority order (highest → lowest):
+//   1. Moving (speed > threshold) → walk or run
+//   2. Dancing (idle boosted) → idle at 1.4x
+//   3. Default → idle at 1.0x
+// Emote active flag just holds the current state — movement still wins.
 export function updateAvatarAnimation(entry, speed, isDancing, dt) {
   if (!entry || !entry.mixer) return;
   entry.mixer.update(dt);
 
-  // Emote active: hold on idle, don't interrupt
+  const idleKey = entry._idleKey || "idle";
+  const walkKey = entry._walkKey || "walk";
+  const runKey  = entry._runKey  || null;
+
+  // ── 1. MOVEMENT — always highest priority ──────────────────
+  if (speed > 0.04) {
+    // Clear emote so it doesn't block next idle
+    entry._emoteActive = false;
+    // Reset idle timescale in case dance boosted it
+    if (entry.clips[idleKey]) entry.clips[idleKey].setEffectiveTimeScale(1.0);
+
+    if (speed > 0.35 && runKey && entry.clips[runKey]) {
+      crossFade(entry, runKey, 0.15);
+      entry.clips[runKey].setEffectiveTimeScale(Math.min(2.4, speed * 0.85));
+    } else if (entry.clips[walkKey]) {
+      crossFade(entry, walkKey, 0.15);
+      entry.clips[walkKey].setEffectiveTimeScale(Math.max(0.6, 0.7 + speed * 0.4));
+    }
+    return;
+  }
+
+  // ── 2. EMOTE active — hold current clip, don't change ──────
   if (entry._emoteActive) return;
 
-  // Movement ALWAYS overrides dance — highest priority
-  if (speed > 0.05) {
-    // Reset dance timescale bleed: ensure idle clip is at normal speed if we return to idle later
-    if (entry._wasIdleBoosted) {
-      if (entry.clips.idle) entry.clips.idle.setEffectiveTimeScale(1.0);
-      entry._wasIdleBoosted = false;
-    }
-    if (speed > 0.4) {
-      const key = entry.clips.run ? "run" : "walk";
-      if (entry.clips[key]) {
-        crossFade(entry, key, 0.15);
-        entry.clips[key].setEffectiveTimeScale(Math.min(2.4, speed * 0.9));
-      }
-    } else {
-      if (entry.clips.walk) {
-        crossFade(entry, "walk", 0.15);
-        entry.clips.walk.setEffectiveTimeScale(0.75 + speed * 0.45);
-      }
-    }
+  // ── 3. DANCE — idle at boosted speed ───────────────────────
+  if (isDancing && entry.clips[idleKey]) {
+    crossFade(entry, idleKey, 0.25);
+    entry.clips[idleKey].setEffectiveTimeScale(1.4);
     return;
   }
 
-  // Standing still — check dance state
-  if (isDancing) {
-    if (entry.clips.idle) {
-      if (entry.currentAnim !== "idle") crossFade(entry, "idle", 0.3);
-      entry.clips.idle.setEffectiveTimeScale(1.4);
-      entry._wasIdleBoosted = true;
-    }
-    return;
-  }
-
-  // Default: normal idle — always reset timescale to 1.0
-  if (entry.clips.idle) {
-    crossFade(entry, "idle", 0.3);
-    entry.clips.idle.setEffectiveTimeScale(1.0);
-    entry._wasIdleBoosted = false;
-  } else if (entry.clips.walk) {
-    crossFade(entry, "walk", 0.3);
-    entry.clips.walk.setEffectiveTimeScale(0.0);
+  // ── 4. DEFAULT IDLE ─────────────────────────────────────────
+  if (entry.clips[idleKey]) {
+    crossFade(entry, idleKey, 0.25);
+    entry.clips[idleKey].setEffectiveTimeScale(1.0);
+  } else if (entry.clips[walkKey]) {
+    // Fallback: frozen walk = effective idle
+    crossFade(entry, walkKey, 0.25);
+    entry.clips[walkKey].setEffectiveTimeScale(0.0);
   }
 }
 
@@ -197,56 +197,33 @@ export function stopEmoteAnimation(entry) {
   if (!entry) return;
   if (entry._emoteTimer) { clearTimeout(entry._emoteTimer); entry._emoteTimer = null; }
   entry._emoteActive = false;
-  // Return to idle — always safe, never collapses the avatar
-  if (!entry.mixer) return;
-  const clips = entry.clips;
-  const idleKey = clips.idle ? "idle" : clips.walk ? "walk" : null;
-  if (!idleKey) return;
-  const idleAction = clips[idleKey];
-  const current = clips[entry.currentAnim];
-  idleAction.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-  if (current && current !== idleAction) current.crossFadeTo(idleAction, 0.3, true);
-  entry.currentAnim = idleKey;
+  // updateAvatarAnimation will handle returning to idle on the next frame
 }
 
 // ─── PUBLIC: playEmoteAnimation ──────────────────────────────
-// SAFE RULE: All emotes stay on the idle clip at normal speed.
-// We do NOT switch to walk/run for emotes — those animations move the
-// hips in ways that collapse or slide the avatar.
-// Visual effects (emoji overlays) are handled by EmoteEffect component.
-// This function just marks _emoteActive so updateAvatarAnimation holds
-// on idle, then auto-clears after the effect duration.
+// Marks _emoteActive so updateAvatarAnimation holds on idle during the effect.
+// Movement always overrides emote (speed > threshold clears _emoteActive).
 export function playEmoteAnimation(entry, emoteId) {
   if (!entry || !entry.mixer) return;
-
-  // Cancel any existing emote timer
   if (entry._emoteTimer) { clearTimeout(entry._emoteTimer); entry._emoteTimer = null; }
 
-  const clips = entry.clips;
-  const idleKey = clips.idle ? "idle" : clips.walk ? "walk" : null;
-  if (!idleKey) return;
-
-  // Emote durations (ms) — just controls how long _emoteActive stays true
-  const DURATIONS = {
-    wave: 2200, clap: 2000, heart: 2500, fire: 1800, peace: 2500, dance: 0,
-  };
+  const DURATIONS = { wave: 2200, clap: 2000, heart: 2500, fire: 1800, peace: 2500, dance: 0 };
   const duration = DURATIONS[emoteId] ?? 2000;
 
-  // Stay on idle — don't switch clips, don't adjust timeScale
-  // The visual effect (emoji/particles) is shown by EmoteEffect component
-  entry._emoteActive = true;
-  if (entry.currentAnim !== idleKey) {
-    const current = clips[entry.currentAnim];
-    const idle = clips[idleKey];
+  // Snap to idle and hold — visual effect handled by EmoteEffect overlay
+  const idleKey = entry._idleKey || entry.clips.idle ? (entry._idleKey || "idle") : null;
+  if (idleKey && entry.clips[idleKey] && entry.currentAnim !== idleKey) {
+    const current = entry.clips[entry.currentAnim];
+    const idle = entry.clips[idleKey];
     idle.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-    if (current && current !== idle) current.crossFadeTo(idle, 0.2, true);
+    if (current && current !== idle) current.crossFadeTo(idle, 0.15, true);
     entry.currentAnim = idleKey;
   }
 
+  entry._emoteActive = true;
+
   if (duration > 0) {
-    entry._emoteTimer = setTimeout(() => {
-      stopEmoteAnimation(entry);
-    }, duration);
+    entry._emoteTimer = setTimeout(() => stopEmoteAnimation(entry), duration);
   }
 }
 
@@ -279,17 +256,24 @@ function attachModel(gltf, controllerGroup, opts = {}) {
   const mixer = new THREE.AnimationMixer(model);
   const clips = {};
   gltf.animations.forEach((clip) => {
-    const key = clip.name.toLowerCase(); // "idle", "walk", "run"
-    const action = mixer.clipAction(clip);
-    action.setLoop(THREE.LoopRepeat, Infinity);
-    clips[key] = action;
+    // Store by lowercased name for lookup
+    clips[clip.name.toLowerCase()] = mixer.clipAction(clip);
+    clips[clip.name.toLowerCase()].setLoop(THREE.LoopRepeat, Infinity);
   });
 
-  // Always start in idle — never T-pose, never dance
-  const startKey = clips.idle ? "idle" : clips.walk ? "walk" : Object.keys(clips)[0];
+  // Resolve canonical keys — handle naming variations across GLB files
+  // Soldier.glb: "Idle", "Walk", "Run", "TPose"
+  // Michelle.glb: may differ — scan for closest match
+  const idleKey = ["idle", "standing", "breathe", "rest"].find(k => clips[k]) || Object.keys(clips).find(k => /idle|stand|breath/i.test(k)) || null;
+  const walkKey = ["walk", "walking"].find(k => clips[k]) || Object.keys(clips).find(k => /walk/i.test(k)) || null;
+  const runKey  = ["run", "running"].find(k => clips[k])  || Object.keys(clips).find(k => /run/i.test(k))  || null;
+
+  // Stop ALL clips — ensure clean slate, no auto-play from GLB defaults
+  Object.values(clips).forEach((a) => { a.stop(); a.setEffectiveWeight(0); });
+
+  // Start in idle immediately — never T-pose or dance
+  const startKey = idleKey || walkKey || Object.keys(clips)[0];
   if (startKey && clips[startKey]) {
-    // Stop all other clips first to ensure clean state
-    Object.values(clips).forEach((a) => { a.stop(); });
     clips[startKey].reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
   }
 
@@ -299,7 +283,13 @@ function attachModel(gltf, controllerGroup, opts = {}) {
     controllerGroup.add(sprite);
   }
 
-  return { mixer, clips, currentAnim: startKey || "idle" };
+  return {
+    mixer, clips,
+    currentAnim: startKey || idleKey || "idle",
+    _idleKey: idleKey,
+    _walkKey: walkKey,
+    _runKey:  runKey,
+  };
 }
 
 // ─── PUBLIC: createAvatar ─────────────────────────────────────
@@ -318,20 +308,28 @@ export function createAvatar(scene, opts = {}, onReady) {
     mixer: null,
     clips: {},
     currentAnim: "idle",
+    _idleKey: "idle",
+    _walkKey: "walk",
+    _runKey: "run",
     _emoteActive: false,
     _emoteTimer: null,
   };
 
   loadGLTF(opts.gender || "male")
     .then((gltf) => {
-      const { mixer, clips, currentAnim } = attachModel(gltf, controller, {
+      const result = attachModel(gltf, controller, {
         avatarStyle: opts.avatarStyle || "streetwear",
         isRemote: false,
       });
       // Mutate the SAME entry object that CityCanvas already has a reference to
-      entry.mixer = mixer;
-      entry.clips = clips;
-      entry.currentAnim = currentAnim;
+      entry.mixer = result.mixer;
+      entry.clips = result.clips;
+      entry.currentAnim = result.currentAnim;
+      entry._idleKey = result._idleKey;
+      entry._walkKey = result._walkKey;
+      entry._runKey  = result._runKey;
+      // Guarantee clean state: not dancing, not emoting
+      entry._emoteActive = false;
       onReady?.(entry);
     })
     .catch((err) => {
@@ -414,19 +412,22 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   controller.add(makeShadow());
   scene.add(controller);
 
-  const entry = { root: controller, mixer: null, clips: {}, currentAnim: "idle" };
+  const entry = { root: controller, mixer: null, clips: {}, currentAnim: "idle", _idleKey: "idle", _walkKey: "walk", _runKey: "run", _emoteActive: false, _emoteTimer: null };
   controller.userData._avatarEntry = entry; // available immediately for animation loop
 
   loadGLTF(gender)
     .then((gltf) => {
-      const { mixer, clips, currentAnim } = attachModel(gltf, controller, {
+      const result = attachModel(gltf, controller, {
         avatarStyle: avatarStyle || "streetwear",
         username,
         isRemote: true,
       });
-      entry.mixer = mixer;
-      entry.clips = clips;
-      entry.currentAnim = currentAnim;
+      entry.mixer = result.mixer;
+      entry.clips = result.clips;
+      entry.currentAnim = result.currentAnim;
+      entry._idleKey = result._idleKey;
+      entry._walkKey = result._walkKey;
+      entry._runKey  = result._runKey;
     })
     .catch((err) => console.error("[AvatarModel] Remote GLB load failed:", err));
 
