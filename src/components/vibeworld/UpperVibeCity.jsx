@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, Play } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
@@ -150,18 +150,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Stage video state ──────────────────────────────────────────────────
   const [stageVideos, setStageVideos] = useState([]);
   const [stageVideoIdx, setStageVideoIdx] = useState(0);
-  const [stageVideoMuted, setStageVideoMuted] = useState(true);
   const [stageWatching, setStageWatching] = useState(false);
   const [stageFullScreen, setStageFullScreen] = useState(false);
-  const stageMutedRef = useRef(true);
+  const stagePausedPlayerRef = useRef(false);
+  const stageEmbedRef = useRef(null);
+  const stageScreenPosRef = useRef({ x: -9999, y: -9999, w: 0, h: 0 });
+  const preFullscreenWasWatchingRef = useRef(false);
+  const fullscreenPausedPlayerRef = useRef(false);
   const stageIsPlayingRef = useRef(false);
   const stageTogglePlayRef = useRef(null);
-  const stagePausedPlayerRef = useRef(false);
-  const stageEmbedRef = useRef(null); // StageVideoEmbed ref (handles video + audio)
-  const stageScreenPosRef = useRef({ x: -9999, y: -9999, w: 0, h: 0 });
-  const preFullscreenWasWatchingRef = useRef(false); // was stage active before fullscreen?
-  const fullscreenPausedPlayerRef = useRef(false); // was global playing before fullscreen?
-  stageMutedRef.current = stageVideoMuted;
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -291,7 +288,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   /** Mute stage embed + exit watch state. Safe to call anytime. */
   const muteStage = useCallback(() => {
     setStageWatching(false);
-    setStageVideoMuted(true);
     if (stageEmbedRef.current) {
       stageEmbedRef.current.mute();
       stageEmbedRef.current.pause();
@@ -325,7 +321,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
     // 3) Start stage audio
     setStageWatching(true);
-    setStageVideoMuted(false);
     setTimeout(() => {
       if (stageEmbedRef.current) {
         stageEmbedRef.current.unmute();
@@ -368,7 +363,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     if (preFullscreenWasWatchingRef.current) {
       // Resume stage watching
       setStageWatching(true);
-      setStageVideoMuted(false);
       setTimeout(() => {
         if (stageEmbedRef.current) {
           stageEmbedRef.current.unmute();
@@ -392,14 +386,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // because that would trigger the stage-lock camera branch inside CityCanvas.
   const movementLocked = stageWatching || stageFullScreen || loungeInputFocused;
 
-  // ── Dance floor detection (plaza zone: cx=0, cz=-13, r=7) ─────────────────────
-  // Dance floor audio zone — matches the plaza zone radius exactly (7.0)
-  // so DJ audio only plays when physically inside the plaza/dance floor zone
+  // ── Dance floor boundary (matches DanceFloor visual zone) ─────────────────
   const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -13, DANCE_FLOOR_R = 7.0;
-  // Zone reference positions — keep in sync with zoneDetection.jsx
-  const DOME_CX = -13, DOME_CZ = 3;
-  const LOUNGE_CX = -22, LOUNGE_CZ = -26;
-  const VIBECHECK_CX = -16, VIBECHECK_CZ = -13;
   const dfDx = playerPos.x - DANCE_FLOOR_CX;
   const dfDz = playerPos.z - DANCE_FLOOR_CZ;
   const onDanceFloor = Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_R;
@@ -407,7 +395,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const savedPersonalTimeRef = useRef(0);
   const danceFloorPausedRef = useRef(false);
 
-  // ── World DJ Stream — gated strictly to dance floor only ──────────────────
+  // ── World DJ Stream — strictly gated: volume only raises inside dance floor ──
   const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, danceFloorMode: onDanceFloor });
 
   // ── Hoverboard zone proximity detection ──────────────────────
@@ -455,31 +443,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const handleStageNextVideo = () => {
     if (stageVideos.length <= 1) return;
     setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
-  };
-  const handleStageToggleMute = () => {
-    setStageVideoMuted((m) => {
-      const next = !m;
-      if (!next) {
-        // Unmuting — same coordination as Watch on Stage
-        if (stageFullScreen) setStageFullScreen(false);
-        pauseGlobal();
-        stagePausedPlayerRef.current = true;
-        setStageWatching(true);
-        setTimeout(() => {
-          if (stageEmbedRef.current) {
-            stageEmbedRef.current.unmute();
-            stageEmbedRef.current.play();
-          }
-        }, 300);
-      } else {
-        // Muting — same as exit watch mode
-        muteStage();
-        if (!stageFullScreen) {
-          resumeGlobalIfNeeded(stagePausedPlayerRef);
-        }
-      }
-      return next;
-    });
   };
 
   const handleStagePlaySong = () => {
@@ -864,25 +827,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           <ChevronLeft style={{ width: "16px", height: "16px" }} />
         </button>
 
-        {/* Exit Watch Mode — persistent when watching stage on mobile */}
-        {isMobile && stageWatching && (
-          <button
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={() => { try { navigator?.vibrate?.(10); } catch {} handleExitWatchMode(); }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold transition-all active:scale-95 flex-shrink-0"
-            style={{
-              background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
-              color: "#fff",
-              minHeight: "26px",
-              touchAction: "manipulation",
-              pointerEvents: "auto",
-              boxShadow: "0 0 12px rgba(155,126,255,0.5)",
-            }}
-          >
-            <Play className="w-3 h-3" /> Exit Watch
-          </button>
-        )}
-
         {/* Right: tiny UVC badge */}
         <div
           className="flex items-center rounded-full flex-shrink-0"
@@ -915,13 +859,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         playerPos={playerPos}
         forceOpenPanel={openPanelOnLoad}
         stageVideoTitle={stageVideos[stageVideoIdx]?.title || null}
-        stageVideoMuted={stageVideoMuted}
         stageWatching={stageWatching}
         stageVideosCount={stageVideos.length}
         onStageWatchVideo={handleWatchOnStage}
         onStageExitWatchMode={handleExitWatchMode}
         onStageNextVideo={handleStageNextVideo}
-        onStageToggleMute={handleStageToggleMute}
         onStagePlaySong={handleStagePlaySong}
         onStageFullScreen={handleStageFullScreen}
         onStageExitFullScreen={handleExitFullScreen}
