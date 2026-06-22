@@ -57,6 +57,8 @@ const CAM_DIST = 5.5;         // distance behind avatar
 const CAM_HEIGHT = 2.4;       // above avatar ground position
 const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
 const CAM_FOLLOW_SPEED = 6.0; // how fast camera angle follows avatar
+const CAM_PITCH_MIN = -0.18;  // radians — max look down
+const CAM_PITCH_MAX =  1.1;   // radians — max look up (nearly straight up)
 const IDLE_ORBIT_DELAY = 120.0; // seconds before idle orbit starts (2 minutes)
 const IDLE_ORBIT_SPEED = 0.18; // radians/sec for idle orbit (very slow)
 
@@ -1292,6 +1294,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   // camYaw is independent of avatar rotation; avatar rotation is avatarRotRef
   const camYawRef = useRef(0);          // camera yaw offset (right-click drag)
   const camYawSmoothRef = useRef(0);    // smoothed camera yaw
+  const camPitchRef = useRef(0);        // camera pitch (vertical look, radians)
+  const camPitchSmoothRef = useRef(0);  // smoothed pitch
   const idleTimerRef = useRef(0);       // seconds since last movement input
   const isOrbitingRef = useRef(false);  // true during idle orbit
   const userTouchingCamRef = useRef(false); // right-click or cam drag active
@@ -1473,6 +1477,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── RIGHT-CLICK / CAM DRAG ──────────────────────────
         if (mouse.down && mouse.button === 2 && !lockedRef.current) {
           camYawRef.current -= mouse.dx * 0.006;
+          camPitchRef.current = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current + mouse.dy * 0.005));
           userTouchingCamRef.current = true;
           idleTimerRef.current = 0;
           isOrbitingRef.current = false;
@@ -1502,13 +1507,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           // joy.x: positive = joystick pushed right = turn right
           if (Math.abs(joy.y) > 0.08) { inputFwd = joy.y; hasAnyInput = true; }
           if (Math.abs(joy.x) > 0.08) { turnInput = -joy.x; hasAnyInput = true; }
-          // Camera drag from right side of screen
-          if (Math.abs(joy.camDx) > 0.0005) {
+          // Camera drag from right side of screen (horizontal yaw + vertical pitch)
+          if (Math.abs(joy.camDx) > 0.0005 || Math.abs(joy.camDy || 0) > 0.0005) {
             camYawRef.current += joy.camDx;
+            camPitchRef.current = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current + (joy.camDy || 0)));
             userTouchingCamRef.current = true;
             idleTimerRef.current = 0;
             isOrbitingRef.current = false;
             joy.camDx *= 0.85;
+            if (joy.camDy) joy.camDy *= 0.85;
           } else if (mobileInputRef.current._camActive) {
             // Finger still on cam zone — pause orbit even if no movement
             userTouchingCamRef.current = true;
@@ -1662,15 +1669,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camYawRef.current += IDLE_ORBIT_SPEED * dt;
         }
 
-        // Smooth camera yaw
+        // Smooth camera yaw + pitch
         let yawDiff = camYawRef.current - camYawSmoothRef.current;
         while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
         while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
         camYawSmoothRef.current += yawDiff * Math.min(1, dt * (isOrbitingRef.current ? 2.0 : 8.0));
+        camPitchSmoothRef.current += (camPitchRef.current - camPitchSmoothRef.current) * Math.min(1, dt * 8.0);
 
         // Final camera angle: avatar facing + camYaw offset
-        // Camera sits BEHIND avatar: avatar faces +Z when rot=0, camera is at +Z offset
         const finalCamAngle = rot + camYawSmoothRef.current;
+        const pitch = camPitchSmoothRef.current;
 
         if (ferrisRidingRef.current) {
           const cabin = getCabinWorldPosition(0, t);
@@ -1685,12 +1693,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camera.position.lerp(new Vector3(0, 3.0, -12), Math.min(1, 3.0 * dt));
           camera.lookAt(new Vector3(0, 3.5, -34.4));
         } else {
-          camera.position.set(
-            px - Math.sin(finalCamAngle) * CAM_DIST,
-            py + CAM_HEIGHT,
-            pz - Math.cos(finalCamAngle) * CAM_DIST,
-          );
-          camera.lookAt(px, py + CAM_LOOK_Y, pz);
+          // Camera orbits behind avatar at camYaw; pitch lifts camera eye upward
+          const camX = px - Math.sin(finalCamAngle) * CAM_DIST * Math.cos(pitch);
+          const camY = py + CAM_HEIGHT + Math.sin(pitch) * CAM_DIST * 1.4;
+          const camZ = pz - Math.cos(finalCamAngle) * CAM_DIST * Math.cos(pitch);
+          camera.position.set(camX, camY, camZ);
+          // Look-at shifts up with pitch so the view rotates around the avatar
+          const lookY = py + CAM_LOOK_Y + Math.sin(pitch) * 3.5;
+          camera.lookAt(px, lookY, pz);
         }
 
         // ─── GLB AVATAR ANIMATION ────────────────────────────

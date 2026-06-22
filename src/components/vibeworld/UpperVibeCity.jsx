@@ -979,6 +979,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                 const t = e.changedTouches[0];
                 if (t) {
                   mobileInputRef.current._camBaseX = t.clientX;
+                  mobileInputRef.current._camBaseY = t.clientY;
                   mobileInputRef.current._camActive = true;
                 }
               }}
@@ -986,10 +987,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                 if (!mobileInputRef.current._camActive) return;
                 e.preventDefault();
                 const t = e.touches[0];
-                if (t && mobileInputRef.current._camBaseX !== undefined) {
-                  const dx = t.clientX - mobileInputRef.current._camBaseX;
-                  mobileInputRef.current.camDx += dx * 0.0025;
-                  mobileInputRef.current._camBaseX = t.clientX;
+                if (t) {
+                  if (mobileInputRef.current._camBaseX !== undefined) {
+                    const dx = t.clientX - mobileInputRef.current._camBaseX;
+                    mobileInputRef.current.camDx += dx * 0.0025;
+                    mobileInputRef.current._camBaseX = t.clientX;
+                  }
+                  if (mobileInputRef.current._camBaseY !== undefined) {
+                    const dy = t.clientY - mobileInputRef.current._camBaseY;
+                    mobileInputRef.current.camDy = (mobileInputRef.current.camDy || 0) + dy * 0.003;
+                    mobileInputRef.current._camBaseY = t.clientY;
+                  }
                 }
               }}
               onTouchEnd={(e) => {

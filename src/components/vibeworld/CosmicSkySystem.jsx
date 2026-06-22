@@ -32,7 +32,7 @@ const SKY_D = `${BASE}/e7caceb54_ChatGPTImageJun19202612_41_07PM.png`; // ringed
 
 export function createCosmicSky(scene) {
   const loader = new THREE.TextureLoader();
-  const SKYBOX_SIZE = 58;
+  const SKYBOX_SIZE = 90; // Large enough to cover full upward view with no gaps
 
   const loadTex = (url) => {
     const tex = loader.load(url, undefined, undefined, () => {
