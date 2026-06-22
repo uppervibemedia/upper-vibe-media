@@ -28,6 +28,7 @@ import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/or
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
+import CameraLookZone from "@/components/vibeworld/CameraLookZone";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -950,68 +951,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       {!loading && isMobile && (
         <>
           {/* Camera look zone — right half of screen, only empty space */}
-          <div
-            className="fixed inset-0 z-[45]"
-            style={{ pointerEvents: "none" }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                // Camera look zone: right 60% of screen, top portion only.
-                // Must NOT cover the joystick area (bottom-left).
-                // Width: only right side — joystick is always left-anchored.
-                right: 0,
-                top: 0,
-                width: mobileLayout
-                  ? `${Math.round(mobileLayout.vw - (mobileLayout.joystick.cx + mobileLayout.joystick.halfSize + 12))}px`
-                  : "60%",
-                // Height: stop well above the joystick top edge
-                height: mobileLayout
-                  ? `${mobileLayout.joystick.cy - mobileLayout.joystick.halfSize - 24}px`
-                  : "58%",
-                pointerEvents: "auto",
-                touchAction: "none",
-                userSelect: "none",
-                WebkitUserSelect: "none",
-              }}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                const t = e.changedTouches[0];
-                if (t) {
-                  mobileInputRef.current._camBaseX = t.clientX;
-                  mobileInputRef.current._camBaseY = t.clientY;
-                  mobileInputRef.current._camActive = true;
-                }
-              }}
-              onTouchMove={(e) => {
-                if (!mobileInputRef.current._camActive) return;
-                e.preventDefault();
-                const t = e.touches[0];
-                if (t) {
-                  if (mobileInputRef.current._camBaseX !== undefined) {
-                    const dx = t.clientX - mobileInputRef.current._camBaseX;
-                    // drag RIGHT = positive dx = camera turns right = positive camDx
-                    // Sensitivity 0.0016 (~35% lower than before) for balanced feel with joystick
-                    mobileInputRef.current.camDx = Math.max(-0.035, Math.min(0.035, dx * 0.0016));
-                    mobileInputRef.current._camBaseX = t.clientX;
-                  }
-                  if (mobileInputRef.current._camBaseY !== undefined) {
-                    const dy = t.clientY - mobileInputRef.current._camBaseY;
-                    // drag UP (negative dy) = look UP = positive camDy
-                    mobileInputRef.current.camDy = Math.max(-0.018, Math.min(0.018, -dy * 0.002));
-                    mobileInputRef.current._camBaseY = t.clientY;
-                  }
-                }
-              }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                mobileInputRef.current._camActive = false;
-                mobileInputRef.current._camBaseX = undefined;
-                mobileInputRef.current._camBaseY = undefined;
-                mobileInputRef.current.camDy = 0;
-              }}
-            />
-          </div>
+          {/* Uses a ref + native non-passive listeners for reliable iOS Safari touch handling */}
+          <CameraLookZone mobileInputRef={mobileInputRef} mobileLayout={mobileLayout} />
 
           <MobileJoystick
             onMove={(x, y) => {
