@@ -72,7 +72,7 @@ async function writeDJSettings(trackId, startTs, trackRecordId, tsRecordId) {
   }
 }
 
-export default function useWorldDJStream({ enabled = true, proximityVol = 0, danceFloorMode = false }) {
+export default function useWorldDJStream({ enabled = true, danceFloorMode = false }) {
   const djAudioRef = useRef(null);
   const [djTrack, setDjTrack] = useState(null);
   const [djVolume, setDjVolume] = useState(0);
@@ -80,8 +80,6 @@ export default function useWorldDJStream({ enabled = true, proximityVol = 0, dan
   // Internal state refs (avoid stale closures in callbacks)
   const trackPoolRef = useRef([]);      // all available DJ tracks
   const currentTrackRef = useRef(null); // { track, startTs, settingsTrackRecId, settingsTsRecId }
-  const proximityVolRef = useRef(0);
-  proximityVolRef.current = proximityVol;
   const danceFloorModeRef = useRef(false);
   danceFloorModeRef.current = danceFloorMode;
   const enabledRef = useRef(enabled);
@@ -109,14 +107,7 @@ export default function useWorldDJStream({ enabled = true, proximityVol = 0, dan
     return (candidates.length > 0 ? candidates : pool)[Math.floor(Math.random() * (candidates.length || pool.length))];
   }, []);
 
-  // ── Apply target DJ volume (proximity-scaled) ─────────────────────
-  const applyVolume = useCallback((targetVol) => {
-    const el = djAudioRef.current;
-    if (!el) return;
-    const scaled = Math.max(0, Math.min(MAX_VOL, targetVol * MAX_VOL));
-    el.volume = scaled;
-    setDjVolume(scaled);
-  }, []);
+
 
   // ── Load + play a track, seeking to the live position ─────────────
   const loadAndPlay = useCallback((track, startTs) => {
@@ -146,9 +137,8 @@ export default function useWorldDJStream({ enabled = true, proximityVol = 0, dan
       }
       el.play().catch(() => {});
       setDjTrack(track);
-      // Fade in to current proximity volume (or full if on dance floor)
-      const effectiveVol = danceFloorModeRef.current ? 1.0 : proximityVolRef.current;
-      const vol = Math.max(0, Math.min(MAX_VOL, effectiveVol * MAX_VOL));
+      // Only fade in if user is currently on the dance floor; otherwise stay silent
+      const vol = danceFloorModeRef.current ? MAX_VOL : 0;
       fadeCleanupRef.current?.();
       fadeCleanupRef.current = crossfadeVol(el, vol, FADE_DURATION);
       setDjVolume(vol);
@@ -278,17 +268,22 @@ export default function useWorldDJStream({ enabled = true, proximityVol = 0, dan
     };
   }, [enabled, syncFromSettings, advanceTrack]);
 
-  // ── Proximity / dance floor volume → apply to audio element in real time ────────
+  // ── Dance floor gating: DJ audio ONLY plays when on dance floor ─────────────
   useEffect(() => {
     const el = djAudioRef.current;
-    if (!el || el.paused) return;
-    // Dance floor mode: full volume regardless of proximity
-    const effectiveVol = danceFloorMode ? 1.0 : proximityVol;
-    const scaled = Math.max(0, Math.min(MAX_VOL, effectiveVol * MAX_VOL));
-    fadeCleanupRef.current?.();
-    fadeCleanupRef.current = crossfadeVol(el, scaled, FADE_DURATION);
-    setDjVolume(scaled);
-  }, [proximityVol, danceFloorMode]);
+    if (!el) return;
+    if (danceFloorMode) {
+      // On dance floor → fade to full volume
+      fadeCleanupRef.current?.();
+      fadeCleanupRef.current = crossfadeVol(el, MAX_VOL, FADE_DURATION);
+      setDjVolume(MAX_VOL);
+    } else {
+      // Off dance floor → immediately mute (no proximity bleed)
+      fadeCleanupRef.current?.();
+      fadeCleanupRef.current = crossfadeVol(el, 0, 600);
+      setDjVolume(0);
+    }
+  }, [danceFloorMode]);
 
   // ── Fade out + stop when disabled ────────────────────────────────
   useEffect(() => {

@@ -137,6 +137,10 @@
       "type": "string",
       "description": "Hex color for the avatar suit e.g. #4a5c3a"
     },
+    "avatar_outfit_color": {
+      "type": "string",
+      "description": "Outfit color key for Vibe Suit e.g. cosmic-blue"
+    },
     "uvc_rules_accepted": {
       "type": "boolean",
       "default": false
@@ -188,6 +192,15 @@
     "rpm_avatar_url": {
       "type": "string",
       "description": "Ready Player Me avatar GLB URL"
+    },
+    "trail_boost_unlocked": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when user has earned Trail Boost via Vibe Orbs"
+    },
+    "trail_boost_unlocked_at": {
+      "type": "string",
+      "description": "ISO datetime when Trail Boost was first unlocked"
     }
   }
 }

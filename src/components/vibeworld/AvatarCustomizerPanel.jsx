@@ -5,7 +5,7 @@
  */
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Check } from "lucide-react";
+import { X, Sparkles, Check, Zap, Lock } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { OUTFIT_COLORS } from "./AvatarSetup";
 import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
@@ -14,6 +14,8 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
   const [outfitColorKey, setOutfitColorKey] = useState(user?.avatar_outfit_color || "cosmic-blue");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const trailUnlocked = !!user?.trail_boost_unlocked;
+  const isMember = !!(user?.isPlus || user?.tier === "plus" || user?.tier === "premium" || user?.role === "admin");
 
   const handleApply = async () => {
     setSaving(true);
@@ -149,6 +151,33 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
 
                   {/* Spacer */}
                   <div className="flex-1 min-h-4" />
+
+                  {/* Trail Boost reward status */}
+                  <div
+                    className="mt-4 flex items-center gap-3 px-4 py-3 rounded-2xl"
+                    style={{
+                      background: trailUnlocked ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.04)",
+                      border: trailUnlocked ? "1px solid rgba(255,215,0,0.25)" : "1px solid rgba(255,255,255,0.07)",
+                    }}
+                  >
+                    {trailUnlocked ? (
+                      <Zap className="w-4 h-4 flex-shrink-0" style={{ color: "#FFD700" }} />
+                    ) : (
+                      <Lock className="w-4 h-4 flex-shrink-0" style={{ color: "rgba(255,255,255,0.25)" }} />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black" style={{ color: trailUnlocked ? "#FFD700" : "rgba(255,255,255,0.35)" }}>
+                        {trailUnlocked ? "⚡ Trail Boost Unlocked" : "Trail Boost — Locked"}
+                      </p>
+                      <p className="text-[9px] mt-0.5" style={{ color: "rgba(255,255,255,0.2)" }}>
+                        {trailUnlocked
+                          ? "Earn 50 orbs in the Launch Zone to re-activate"
+                          : isMember
+                          ? "Collect 50 Vibe Orbs in the Launch Zone to unlock"
+                          : "Requires Upper Vibe Plus — collect 50 orbs to unlock"}
+                      </p>
+                    </div>
+                  </div>
 
                   {/* Apply */}
                   <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>

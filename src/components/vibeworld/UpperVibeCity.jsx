@@ -49,13 +49,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     try { return JSON.parse(localStorage.getItem("vibeOrbData") || "{}")?.lifetimeVibeOrbs ?? 0; } catch { return 0; }
   });
 
-  // ── DJ proximity volume (0..1) — driven by player distance ──────────────
-  const [djProximityVol, setDjProximityVol] = useState(0);
-  const djProximityVolRef = useRef(0);
-  const djActiveRef = useRef(false);          // true when DJ audio is the dominant source
-  const personalWasPlayingRef = useRef(false);// was personal player playing on DJ entry?
-  const personalTimeRef = useRef(0);          // playback position when paused on DJ entry
-  const jukeboxFadeRef = useRef(null);        // fade ref (kept for cleanup compat)
+  const jukeboxFadeRef = useRef(null);        // kept for cleanup compat
 
   // ── Dance Floor / Emote state ─────────────────────────────────────────────
   const [isDancing, setIsDancing] = useState(false);
@@ -358,16 +352,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const savedPersonalTimeRef = useRef(0);
   const danceFloorPausedRef = useRef(false);
 
-  // ── World DJ Stream — declared before djAudioRef is referenced in the effect below ──
-  const DJ_BOOTH_X = 8.2, DJ_BOOTH_Z = -3.5;
-  const DJ_FADE_START = 6;
-  const DJ_FADE_END   = 18;
-  const dxDJ = playerPos.x - DJ_BOOTH_X;
-  const dzDJ = playerPos.z - DJ_BOOTH_Z;
-  const distDJ = Math.sqrt(dxDJ * dxDJ + dzDJ * dzDJ);
-  const rawProximity = 1 - Math.max(0, Math.min(1, (distDJ - DJ_FADE_START) / (DJ_FADE_END - DJ_FADE_START)));
-  djProximityVolRef.current = rawProximity;
-  const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, proximityVol: rawProximity, danceFloorMode: onDanceFloor });
+  // ── World DJ Stream — gated strictly to dance floor only ──────────────────
+  const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, danceFloorMode: onDanceFloor });
 
   // ── Audio ducking: reduce personal player + DJ stream to ~25% when voice is active ──
   useEffect(() => {
@@ -611,39 +597,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
   }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
 
-  // Keep stable refs for dance floor handlers
-  const isPlayingRef = useRef(false);
-  isPlayingRef.current = isPlaying;
-  const togglePlayRef = useRef(togglePlay);
-  togglePlayRef.current = togglePlay;
   const personalBaseVolRef = useRef(1.0);
-  const crossfadeRafRef = useRef(null);
 
-  // (DJ stream and proximity vars declared above, before voice-ducking useEffect)
-
-  // ── Duck personal player when DJ is audible (proximity only, not dance floor) ──
-  useEffect(() => {
-    const personal = audioRef?.current;
-    if (!personal) return;
-    // Dance floor mode handles its own audio — skip proximity ducking
-    if (onDanceFloor) return;
-
-    const DJ_DUCK_THRESHOLD = 0.25;
-    const isDJAudible = rawProximity > DJ_DUCK_THRESHOLD;
-
-    if (isDJAudible && !djActiveRef.current) {
-      djActiveRef.current = true;
-      personalBaseVolRef.current = personal.volume > 0 ? personal.volume : 1.0;
-      const target = Math.max(0.05, 1 - rawProximity * 0.95);
-      personal.volume = target;
-    } else if (!isDJAudible && djActiveRef.current) {
-      djActiveRef.current = false;
-      personal.volume = personalBaseVolRef.current;
-    } else if (isDJAudible && djActiveRef.current) {
-      const target = Math.max(0.05, 1 - rawProximity * 0.95);
-      personal.volume = target;
-    }
-  }, [rawProximity, onDanceFloor, audioRef]);
+  // DJ audio is gated strictly to dance floor — no proximity bleed outside
 
   // ── Dance floor enter / exit — pause personal player, restore on exit ──────────
   useEffect(() => {
@@ -679,12 +635,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
   }, [onDanceFloor, audioRef, isPlaying, togglePlay]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount — restore personal player volume
   useEffect(() => {
     return () => {
-      cancelAnimationFrame(crossfadeRafRef.current);
       clearInterval(jukeboxFadeRef.current);
-      // Restore personal player volume
       const personal = audioRef?.current;
       if (personal) personal.volume = personalBaseVolRef.current;
     };
@@ -1026,7 +980,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       )}
 
       {/* ── Vibe Orb Reward System ── */}
-      <OrbRewardSystem orbCount={orbCount} isMobile={isMobile} />
+      <OrbRewardSystem orbCount={orbCount} isMobile={isMobile} user={user} />
 
       {/* ── Orb Leaderboard — shown near Vibe Launch Zone ── */}
       <OrbLeaderboard
