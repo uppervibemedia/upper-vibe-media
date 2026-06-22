@@ -349,6 +349,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Movement locked when watching stage, full-screen, or typing ─
   const movementLocked = stageWatching || stageFullScreen || loungeInputFocused;
 
+  // ── Dance floor detection (plaza zone: cx=0, cz=-4, r=7) ─────────────────────
+  const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -4, DANCE_FLOOR_R = 7;
+  const dfDx = playerPos.x - DANCE_FLOOR_CX;
+  const dfDz = playerPos.z - DANCE_FLOOR_CZ;
+  const onDanceFloor = Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_R;
+  const wasOnDanceFloorRef = useRef(false);
+  const savedPersonalTimeRef = useRef(0);
+  const danceFloorPausedRef = useRef(false);
+
   // ── World DJ Stream — declared before djAudioRef is referenced in the effect below ──
   const DJ_BOOTH_X = 8.2, DJ_BOOTH_Z = -3.5;
   const DJ_FADE_START = 6;
@@ -358,7 +367,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const distDJ = Math.sqrt(dxDJ * dxDJ + dzDJ * dzDJ);
   const rawProximity = 1 - Math.max(0, Math.min(1, (distDJ - DJ_FADE_START) / (DJ_FADE_END - DJ_FADE_START)));
   djProximityVolRef.current = rawProximity;
-  const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, proximityVol: rawProximity });
+  const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, proximityVol: rawProximity, danceFloorMode: onDanceFloor });
 
   // ── Audio ducking: reduce personal player + DJ stream to ~25% when voice is active ──
   useEffect(() => {
@@ -612,30 +621,63 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // (DJ stream and proximity vars declared above, before voice-ducking useEffect)
 
-  // ── Duck personal player when DJ is audible ───────────────────────────────
+  // ── Duck personal player when DJ is audible (proximity only, not dance floor) ──
   useEffect(() => {
     const personal = audioRef?.current;
     if (!personal) return;
+    // Dance floor mode handles its own audio — skip proximity ducking
+    if (onDanceFloor) return;
 
-    const DJ_DUCK_THRESHOLD = 0.25; // start ducking personal when DJ vol > this
+    const DJ_DUCK_THRESHOLD = 0.25;
     const isDJAudible = rawProximity > DJ_DUCK_THRESHOLD;
 
     if (isDJAudible && !djActiveRef.current) {
       djActiveRef.current = true;
       personalBaseVolRef.current = personal.volume > 0 ? personal.volume : 1.0;
-      // Smoothly reduce personal player to near-zero
       const target = Math.max(0.05, 1 - rawProximity * 0.95);
       personal.volume = target;
     } else if (!isDJAudible && djActiveRef.current) {
       djActiveRef.current = false;
-      // Restore personal player volume
       personal.volume = personalBaseVolRef.current;
     } else if (isDJAudible && djActiveRef.current) {
-      // Continuously adjust personal duck level with proximity
       const target = Math.max(0.05, 1 - rawProximity * 0.95);
       personal.volume = target;
     }
-  }, [rawProximity, audioRef]);
+  }, [rawProximity, onDanceFloor, audioRef]);
+
+  // ── Dance floor enter / exit — pause personal player, restore on exit ──────────
+  useEffect(() => {
+    const personal = audioRef?.current;
+    if (onDanceFloor && !wasOnDanceFloorRef.current) {
+      // Entered dance floor
+      wasOnDanceFloorRef.current = true;
+      if (personal) {
+        savedPersonalTimeRef.current = personal.currentTime;
+        if (isPlaying) {
+          danceFloorPausedRef.current = true;
+          togglePlay?.();
+        }
+        // Silence personal player volume (DJ stream takes over via danceFloorMode)
+        personal.volume = 0;
+      }
+    } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
+      // Left dance floor
+      wasOnDanceFloorRef.current = false;
+      if (personal) {
+        // Restore saved playback position
+        if (savedPersonalTimeRef.current > 0) {
+          personal.currentTime = savedPersonalTimeRef.current;
+        }
+        // Restore volume
+        personal.volume = personalBaseVolRef.current;
+        // Resume playback if we paused it on entry
+        if (danceFloorPausedRef.current) {
+          danceFloorPausedRef.current = false;
+          if (!isPlaying) togglePlay?.();
+        }
+      }
+    }
+  }, [onDanceFloor, audioRef, isPlaying, togglePlay]);
 
   // Cleanup on unmount
   useEffect(() => {

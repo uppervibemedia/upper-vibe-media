@@ -72,7 +72,7 @@ async function writeDJSettings(trackId, startTs, trackRecordId, tsRecordId) {
   }
 }
 
-export default function useWorldDJStream({ enabled = true, proximityVol = 0 }) {
+export default function useWorldDJStream({ enabled = true, proximityVol = 0, danceFloorMode = false }) {
   const djAudioRef = useRef(null);
   const [djTrack, setDjTrack] = useState(null);
   const [djVolume, setDjVolume] = useState(0);
@@ -82,6 +82,8 @@ export default function useWorldDJStream({ enabled = true, proximityVol = 0 }) {
   const currentTrackRef = useRef(null); // { track, startTs, settingsTrackRecId, settingsTsRecId }
   const proximityVolRef = useRef(0);
   proximityVolRef.current = proximityVol;
+  const danceFloorModeRef = useRef(false);
+  danceFloorModeRef.current = danceFloorMode;
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
   const fadeCleanupRef = useRef(null);
@@ -144,8 +146,9 @@ export default function useWorldDJStream({ enabled = true, proximityVol = 0 }) {
       }
       el.play().catch(() => {});
       setDjTrack(track);
-      // Fade in to current proximity volume
-      const vol = Math.max(0, Math.min(MAX_VOL, proximityVolRef.current * MAX_VOL));
+      // Fade in to current proximity volume (or full if on dance floor)
+      const effectiveVol = danceFloorModeRef.current ? 1.0 : proximityVolRef.current;
+      const vol = Math.max(0, Math.min(MAX_VOL, effectiveVol * MAX_VOL));
       fadeCleanupRef.current?.();
       fadeCleanupRef.current = crossfadeVol(el, vol, FADE_DURATION);
       setDjVolume(vol);
@@ -275,15 +278,17 @@ export default function useWorldDJStream({ enabled = true, proximityVol = 0 }) {
     };
   }, [enabled, syncFromSettings, advanceTrack]);
 
-  // ── Proximity volume → apply to audio element in real time ────────
+  // ── Proximity / dance floor volume → apply to audio element in real time ────────
   useEffect(() => {
     const el = djAudioRef.current;
     if (!el || el.paused) return;
-    const scaled = Math.max(0, Math.min(MAX_VOL, proximityVol * MAX_VOL));
-    // Smooth but fast
-    el.volume = scaled;
+    // Dance floor mode: full volume regardless of proximity
+    const effectiveVol = danceFloorMode ? 1.0 : proximityVol;
+    const scaled = Math.max(0, Math.min(MAX_VOL, effectiveVol * MAX_VOL));
+    fadeCleanupRef.current?.();
+    fadeCleanupRef.current = crossfadeVol(el, scaled, FADE_DURATION);
     setDjVolume(scaled);
-  }, [proximityVol]);
+  }, [proximityVol, danceFloorMode]);
 
   // ── Fade out + stop when disabled ────────────────────────────────
   useEffect(() => {
