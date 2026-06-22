@@ -1690,10 +1690,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (ferrisRidingRef.current) {
           const cabin = getCabinWorldPosition(0, t);
           camera.position.lerp(new Vector3(cabin.x, cabin.y + 0.6, cabin.z), Math.min(1, 4.0 * dt));
-          // Blend look target: city at bottom → beach/ocean at top of wheel
+          // atTop: 0=bottom, 1=peak of wheel
           const atTop = Math.max(0, Math.min(1, (cabin.y - WHEEL_HUB_Y) / WHEEL_RADIUS));
-          const lookTarget = new Vector3().lerpVectors(new Vector3(0, WHEEL_HUB_Y * 0.4, -10), new Vector3(0, 2, 40), atTop);
-          camera.lookAt(lookTarget);
+          // Concert window: cabin near the top (0.75–1.0) faces the stage perfectly
+          const concertWindow = Math.max(0, (atTop - 0.72) / 0.28);
+          const concertBlend = concertWindow * concertWindow * (3 - 2 * concertWindow); // smooth step
+          // Blend: normal aerial look → zoom in on the music screen for a concert moment
+          const normalLook = new Vector3().lerpVectors(new Vector3(0, WHEEL_HUB_Y * 0.4, -10), new Vector3(0, 2, 40), atTop);
+          const concertLook = new Vector3(0, 4.5, -34.4); // center of stage screen
+          camera.lookAt(normalLook.lerp(concertLook, concertBlend));
           // Hide avatar every frame so it never clips into view (GLB may load late)
           if (avatarRef.current) avatarRef.current.visible = false;
         } else if (lockedRef.current) {
@@ -2120,49 +2125,19 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── BEACH STARGAZING — idle on beach tilts camera gently skyward ──
-        // Only activates when: idle > 8s, player on beach side (pz > 18), not locked, not riding
-        {
-          const onBeach = pz > 18 && !lockedRef.current && !ferrisRidingRef.current && !hbRidingRef.current;
-          const idleEnough = idleTimerRef.current > 8.0;
-          const shouldStargaze = onBeach && idleEnough;
-
+        // ─── BEACH STARGAZING ────────────────────────────────────────
+        if (pz > 18 && !lockedRef.current && !ferrisRidingRef.current && !hbRidingRef.current && idleTimerRef.current > 8.0) {
           if (!scene.userData._stargazeBlend) scene.userData._stargazeBlend = 0;
-          // Smoothly blend in/out
-          const targetBlend = shouldStargaze ? 1 : 0;
-          scene.userData._stargazeBlend += (targetBlend - scene.userData._stargazeBlend) * Math.min(1, dt * 0.6);
-          const blend = scene.userData._stargazeBlend;
-
-          if (blend > 0.01) {
-            // Gentle slow pan across the sky (very slow horizontal drift)
-            const slowPan = Math.sin(t * 0.05) * 0.4;
-            // Look position: blend from normal look-at toward straight up + forward
-            const normalLookX = px;
-            const normalLookY = py + CAM_LOOK_Y + Math.sin(camPitchSmoothRef.current) * 3.5;
-            const normalLookZ = pz;
-            // Stargazing look: camera stays near ground, looks up at ~60° above horizon
-            const starLookX = px + Math.sin(slowPan) * 8;
-            const starLookY = py + 12; // high up — into the sky
-            const starLookZ = pz + Math.cos(slowPan) * 8;
-            // Camera position for stargazing: pull back slightly and lower (lying on beach feel)
-            const normalCamX = px - Math.sin(rot + camYawSmoothRef.current) * CAM_DIST * Math.cos(camPitchSmoothRef.current);
-            const normalCamY = py + CAM_HEIGHT + Math.sin(camPitchSmoothRef.current) * CAM_DIST * 1.4;
-            const normalCamZ = pz - Math.cos(rot + camYawSmoothRef.current) * CAM_DIST * Math.cos(camPitchSmoothRef.current);
-            const starCamX = px + Math.sin(slowPan) * 1.5;
-            const starCamY = py + 0.6; // low — as if lying down
-            const starCamZ = pz + 2.0;
-            // Apply blended overrides directly to camera (normal camera was already set above)
-            camera.position.set(
-              normalCamX + (starCamX - normalCamX) * blend,
-              normalCamY + (starCamY - normalCamY) * blend,
-              normalCamZ + (starCamZ - normalCamZ) * blend,
-            );
-            camera.lookAt(
-              normalLookX + (starLookX - normalLookX) * blend,
-              normalLookY + (starLookY - normalLookY) * blend,
-              normalLookZ + (starLookZ - normalLookZ) * blend,
-            );
-          }
+          scene.userData._stargazeBlend = Math.min(1, scene.userData._stargazeBlend + dt * 0.6);
+          const sg = scene.userData._stargazeBlend;
+          const sp = Math.sin(t * 0.05) * 0.4;
+          const nCamX = px - Math.sin(rot + camYawSmoothRef.current) * CAM_DIST * Math.cos(camPitchSmoothRef.current);
+          const nCamY = py + CAM_HEIGHT + Math.sin(camPitchSmoothRef.current) * CAM_DIST * 1.4;
+          const nCamZ = pz - Math.cos(rot + camYawSmoothRef.current) * CAM_DIST * Math.cos(camPitchSmoothRef.current);
+          camera.position.set(nCamX + (px + Math.sin(sp) * 1.5 - nCamX) * sg, nCamY + (py + 0.6 - nCamY) * sg, nCamZ + (pz + 2.0 - nCamZ) * sg);
+          camera.lookAt(px + Math.sin(sp) * 8 * sg, py + CAM_LOOK_Y + (12 - CAM_LOOK_Y) * sg, pz + Math.cos(sp) * 8 * sg);
+        } else {
+          if (scene.userData._stargazeBlend > 0) scene.userData._stargazeBlend = Math.max(0, scene.userData._stargazeBlend - dt * 1.5);
         }
 
         // ─── COSMIC SKY — skybox follow, stars twinkle, shooting stars, asteroids ──
