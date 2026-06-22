@@ -707,6 +707,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           avatarConfig={avatarConfig}
           djTrack={djTrack}
           launchRef={launchRef}
+          hbRiding={hbRiding}
           onNearPad={(padIdx, airborne, orbs) => {
             setNearLaunchPad(padIdx >= 0 && !airborne);
             setIsAirborne(airborne);
@@ -1001,6 +1002,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onStartRide={() => setHbRiding(true)}
         onEndRide={() => setHbRiding(false)}
       />
+
 
       {/* ── Vibe Orb Reward System ── */}
       <OrbRewardSystem orbCount={orbCount} isMobile={isMobile} user={user} />

@@ -1233,12 +1233,12 @@ function createCosmicSky(scene) {
 }
 
 // createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
-import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar } from "./AvatarModel.jsx";
+import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1307,6 +1307,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   lockedRef.current = locked;
   const isDancingRef = useRef(false);
   isDancingRef.current = isDancing;
+  const hbRidingRef = useRef(false);
+  hbRidingRef.current = hbRiding;
   const activeEmoteRef = useRef(null);
   activeEmoteRef.current = activeEmote;
   const lastTimeRef = useRef(0);
@@ -1549,7 +1551,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
           vel.x *= 0.88; vel.z *= 0.88; // dampen horizontal during flight
         } else {
-          py = SPAWN[1];
+          // When riding hoverboard, float avatar slightly above ground
+          const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
+          py = SPAWN[1] + hbLift;
           // Check pad proximity (every 6 frames for responsiveness)
           if (frameRef.current % 6 === 0 && sceneRef.current) {
             nearPadRef.current = getNearLaunchPad(px, pz);
@@ -1904,6 +1908,26 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         });
         animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         animateJukebox(scene, t, audioBeat);
+
+        // ── Hoverboard attach once GLB is ready (handles async load during ride) ──
+        if (hbRidingRef.current && avatarEntryRef.current && !avatarRef.current?.getObjectByName("avatarHoverboard")) {
+          attachHoverboard(avatarEntryRef.current);
+        }
+
+        // ── Hoverboard board glow animation ──────────────────
+        if (hbRidingRef.current && avatarRef.current) {
+          const hbMesh = avatarRef.current.getObjectByName("avatarHoverboard");
+          if (hbMesh) {
+            const stripeMat = hbMesh.userData.stripeMat;
+            if (stripeMat) {
+              stripeMat.opacity = 0.6 + audioBeat * 0.35 + Math.sin(t * 4.0) * 0.15;
+              stripeMat.color.copy(new Color("#00E5FF")).lerp(new Color("#C43BFF"), Math.sin(t * 1.8) * 0.5 + 0.5);
+            }
+            // Slight forward lean based on movement speed
+            const spd = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.z ** 2);
+            hbMesh.rotation.x = spd * 0.06; // lean forward when moving
+          }
+        }
         animateLaunchZone(scene, t, audioBeat, dt);
         animateHoverboardZone(scene, t, audioBeat);
 
@@ -2068,6 +2092,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             else obj.material.dispose();
           }
         });
+        // Detach hoverboard on unmount
+        if (avatarEntryRef.current) detachHoverboard(avatarEntryRef.current);
         initializedRef.current = false;
         lastTimeRef.current = 0;
         frameRef.current = 0;
@@ -2110,6 +2136,17 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       }
     };
   }, []);
+
+  // Hoverboard attach/detach
+  useEffect(() => {
+    const entry = avatarEntryRef.current;
+    if (!entry) return;
+    if (hbRiding) {
+      attachHoverboard(entry);
+    } else {
+      detachHoverboard(entry);
+    }
+  }, [hbRiding]);
 
   // Keyboard
   useEffect(() => {

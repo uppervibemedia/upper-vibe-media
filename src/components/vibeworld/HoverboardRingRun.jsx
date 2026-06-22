@@ -1,12 +1,8 @@
 /**
- * HoverboardRingRun — Expanded coastal hoverboard course.
- * A long, sweeping route along the beach/ocean edge with:
- *   - 16 rings spread ~80 world units along the coastline
- *   - Height variation: low (0.6), medium (1.8), high (3.8), very-high (5.5)
- *   - Curves & turns tracking the shoreline + out over water
- *   - Ring sizes: small (1.4r), normal (2.0r), large (2.8r), giant (4.0r)
- *   - Giant finish portal at the far end
- *   - Speed-boost ramp tunnels between key sections
+ * HoverboardRingRun — Compact coastal hoverboard course.
+ * 10 rings: 5 heading toward the water edge, 5 looping back to start/finish.
+ * All rings are reasonably sized (md/lg only), well-spaced, no overlap.
+ * Course stays on the right side of the beach (x: 22 → 5 → back).
  */
 import * as THREE from "three";
 
@@ -24,39 +20,31 @@ export const HOVERBOARD_START = { x: 28, z: 23 };
 export const HOVERBOARD_INTERACT_RADIUS = 6.0;
 
 // ─── RING DEFINITIONS ──────────────────────────────────────────────────────
-// Course runs WEST along the beach shoreline (z≈22-26, decreasing x from 28 → -28)
-// All rings sit over sand or shallow water, well clear of the city plaza.
-// rotY ≈ Math.PI/2 so rings face along the x-axis (player runs left/right)
+// 10 rings: start at x=22,z=23 → push toward water edge (z increases to ~30)
+// then loop back toward start/finish at x=22,z=23.
+// Spacing ~5-6 units between rings to avoid overlap. Max ring size = lg (r=2.0).
+// rotY = Math.PI/2 so rings face along the x-axis (player moves west then east).
 export const HOVERBOARD_RINGS = [
-  // ── Opening warm-up — low beach entry ────────────────────────────────────
-  { id:  0, x:  20,  y: 1.2, z: 23,  rotY: Math.PI/2, size: "lg", color: "#00E5FF" },
-  { id:  1, x:  12,  y: 0.9, z: 24,  rotY: Math.PI/2, size: "md", color: "#00E5FF" },
-  { id:  2, x:   4,  y: 1.5, z: 23,  rotY: Math.PI/2, size: "xl", color: "#C43BFF" }, // GIANT
-  // ── Rising section — climb over the water ────────────────────────────────
-  { id:  3, x:  -4,  y: 2.5, z: 25,  rotY: Math.PI/2, size: "md", color: "#00E5FF" },
-  { id:  4, x: -10,  y: 3.8, z: 26,  rotY: Math.PI/2, size: "lg", color: "#FFD700" }, // HIGH gold
-  { id:  5, x: -16,  y: 5.0, z: 25,  rotY: Math.PI/2, size: "md", color: "#00E5FF" }, // PEAK
-  // ── Mid course — swoop back down toward sand ──────────────────────────────
-  { id:  6, x: -20,  y: 3.2, z: 24,  rotY: Math.PI/2, size: "lg", color: "#C43BFF" },
-  { id:  7, x: -24,  y: 1.8, z: 23,  rotY: Math.PI/2, size: "xl", color: "#FFD700" }, // GIANT low sweep
-  { id:  8, x: -26,  y: 1.0, z: 24,  rotY: Math.PI/2, size: "md", color: "#00E5FF" },
-  // ── Turn — curl back east ─────────────────────────────────────────────────
-  { id:  9, x: -26,  y: 1.5, z: 27,  rotY: 0,         size: "lg", color: "#C43BFF" }, // 90° turn ring
-  { id: 10, x: -22,  y: 2.2, z: 29,  rotY: Math.PI/2, size: "md", color: "#00E5FF" }, // heading back east
-  { id: 11, x: -14,  y: 3.5, z: 28,  rotY: Math.PI/2, size: "lg", color: "#FFD700" }, // HIGH return
-  // ── Final sprint — race back east toward finish ───────────────────────────
-  { id: 12, x:  -6,  y: 2.0, z: 27,  rotY: Math.PI/2, size: "md", color: "#00E5FF" },
-  { id: 13, x:   2,  y: 1.2, z: 26,  rotY: Math.PI/2, size: "xl", color: "#C43BFF" }, // GIANT
-  { id: 14, x:  10,  y: 2.5, z: 25,  rotY: Math.PI/2, size: "lg", color: "#FFD700" }, // HIGH finale
-  { id: 15, x:  18,  y: 1.2, z: 24,  rotY: Math.PI/2, size: "xl", color: "#00E5FF" }, // FINISH ring
+  // ── Out leg — heading toward the water (z increases, x decreases) ────────
+  { id: 0, x: 20, y: 1.2, z: 24, rotY: Math.PI/2, size: "md", color: "#00E5FF" },
+  { id: 1, x: 16, y: 1.8, z: 26, rotY: Math.PI/2, size: "lg", color: "#C43BFF" },
+  { id: 2, x: 12, y: 1.2, z: 28, rotY: Math.PI/2, size: "md", color: "#00E5FF" },
+  { id: 3, x:  8, y: 2.2, z: 29, rotY: Math.PI/2, size: "lg", color: "#FFD700" },
+  { id: 4, x:  5, y: 1.2, z: 30, rotY: Math.PI/2, size: "md", color: "#C43BFF" },
+  // ── Return leg — looping back toward start/finish ─────────────────────────
+  { id: 5, x:  8, y: 1.8, z: 26, rotY: Math.PI/2, size: "md", color: "#00E5FF" },
+  { id: 6, x: 11, y: 2.5, z: 24, rotY: Math.PI/2, size: "lg", color: "#FFD700" },
+  { id: 7, x: 15, y: 1.2, z: 27, rotY: Math.PI/2, size: "md", color: "#C43BFF" },
+  { id: 8, x: 19, y: 2.0, z: 25, rotY: Math.PI/2, size: "lg", color: "#00E5FF" },
+  { id: 9, x: 22, y: 1.2, z: 24, rotY: Math.PI/2, size: "md", color: "#FFD700" }, // FINISH ring
 ];
 
-const RING_RADIUS = { sm: 1.4, md: 2.0, lg: 2.8, xl: 4.0 };
-const RING_TUBE   = { sm: 0.10, md: 0.13, lg: 0.18, xl: 0.24 };
+const RING_RADIUS = { md: 2.0, lg: 2.8 };
+const RING_TUBE   = { md: 0.13, lg: 0.18 };
 const RING_SEGMENTS = 64;
 
-// Finish portal position (just east of ring 15, back at start side)
-const FINISH_POS = { x: 26, y: 1.2, z: 24 };
+// Finish portal position — near start pad
+const FINISH_POS = { x: 26, y: 1.2, z: 23 };
 
 function bmat(hex, opacity = 1, extra = {}) {
   const m = new MeshBasicMaterial({ color: new Color(hex), depthWrite: false, ...extra });
@@ -156,7 +144,7 @@ export function createHoverboardZone(scene) {
   scene.add(startLabel);
 
   // Sub-label: ring count
-  const subLabel = makeLabel("16 RINGS · COAST COURSE", "#C43BFF", [4.5, 0.75]);
+  const subLabel = makeLabel("10 RINGS · COAST COURSE", "#C43BFF", [4.5, 0.75]);
   subLabel.position.set(SX, 4.2, SZ);
   scene.add(subLabel);
 
@@ -301,11 +289,11 @@ export function createHoverboardZone(scene) {
   scene.add(hbLight);
   scene.userData.hbLight = hbLight;
 
-  // Mid-course light (around the far west turn)
+  // Mid-course light (around the far water end of the course)
   const midLight = new PointLight();
   midLight.color = new Color("#C43BFF");
   midLight.intensity = 3.0; midLight.distance = 18;
-  midLight.position.set(-26, 5, 25);
+  midLight.position.set(5, 5, 29);
   scene.add(midLight);
   scene.userData.hbMidLight = midLight;
 

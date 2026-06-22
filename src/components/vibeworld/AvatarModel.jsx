@@ -253,6 +253,71 @@ export function createAvatar(scene, opts = {}, onReady) {
   return entry;
 }
 
+// ─── PUBLIC: attachHoverboard / detachHoverboard ──────────────
+// Attaches a glowing hoverboard mesh under the avatar's feet.
+// The board floats at y=-0.05 relative to controller root.
+export function attachHoverboard(entry) {
+  if (!entry?.root) return;
+  if (entry.root.getObjectByName("avatarHoverboard")) return; // already attached
+
+  const board = new THREE.Group();
+  board.name = "avatarHoverboard";
+
+  // Main deck
+  const deck = new THREE.Mesh(
+    new THREE.BoxGeometry(0.55, 0.06, 0.22),
+    new THREE.MeshStandardMaterial({ color: new THREE.Color("#0A0A1E"), roughness: 0.1, metalness: 0.95 })
+  );
+  deck.position.y = 0;
+  deck.castShadow = true;
+  board.add(deck);
+
+  // Deck surface glow stripe
+  const stripe = new THREE.Mesh(
+    new THREE.BoxGeometry(0.50, 0.02, 0.08),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.85, depthWrite: false })
+  );
+  stripe.position.set(0, 0.04, 0);
+  board.add(stripe);
+  board.userData.stripeMat = stripe.material;
+
+  // Side glow strips
+  for (const bz of [-0.12, 0.12]) {
+    const edge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.02, 0.02),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color("#C43BFF"), transparent: true, opacity: 0.7, depthWrite: false })
+    );
+    edge.position.set(0, 0.01, bz);
+    board.add(edge);
+  }
+
+  // Thruster glow under each end
+  for (const bx of [-0.22, 0.22]) {
+    const thrust = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.055, 0.04, 8),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.9, depthWrite: false })
+    );
+    thrust.position.set(bx, -0.03, 0);
+    board.add(thrust);
+  }
+
+  // Position board at avatar feet level
+  board.position.set(0, -0.05, 0);
+  entry.root.add(board);
+}
+
+export function detachHoverboard(entry) {
+  if (!entry?.root) return;
+  const board = entry.root.getObjectByName("avatarHoverboard");
+  if (board) {
+    board.traverse((obj) => {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) obj.material.dispose();
+    });
+    entry.root.remove(board);
+  }
+}
+
 // ─── PUBLIC: retintAvatar ─────────────────────────────────────
 // suitColor: hex string e.g. "#00AADD" — applied directly to outfit/armor materials
 // Skips skin-toned materials (face, hands, neck) and shadow discs

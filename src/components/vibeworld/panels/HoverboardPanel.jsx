@@ -8,25 +8,19 @@ import { X, Zap, Trophy, RotateCcw, Star, Wind } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { HOVERBOARD_RINGS } from "../HoverboardRingRun";
 
-const RING_COUNT = 16;
-const GAME_DURATION = 90; // seconds — generous for a long course
+const RING_COUNT = 10;
+const GAME_DURATION = 60; // seconds
 
-// Points per ring — increases as course gets harder
+// Points per ring
 const RING_POINTS = [
-  100, 120, 200, // warm-up
-  150, 250, 350, // rising
-  250, 400, 200, // loop
-  200, 200, 300, // comeback
-  200, 400, 300, 600, // final sprint (ring 16 = 600 pts)
+  100, 150, 100, 200, 100, // out leg
+  100, 200, 150, 200, 400, // return leg (last ring = bonus)
 ];
 
 // Ring colors for the progress bar
 const RING_COLORS = [
-  "#00E5FF","#00E5FF","#C43BFF",
-  "#00E5FF","#FFD700","#00E5FF",
-  "#C43BFF","#FFD700","#00E5FF",
-  "#C43BFF","#00E5FF","#FFD700",
-  "#C43BFF","#FFD700","#00E5FF","#00E5FF",
+  "#00E5FF","#C43BFF","#00E5FF","#FFD700","#C43BFF",
+  "#00E5FF","#FFD700","#C43BFF","#00E5FF","#FFD700",
 ];
 
 export default function HoverboardPanel({
@@ -61,7 +55,7 @@ export default function HoverboardPanel({
     clearTimeout(comboTimerRef.current);
     setPhase("finished");
     onEndRide?.();
-    const didUnlock = finalRings >= 8;
+    const didUnlock = finalRings >= 6;
     setTrailUnlocked(didUnlock);
     if (finalScore > highScore) {
       setHighScore(finalScore);
@@ -181,16 +175,16 @@ export default function HoverboardPanel({
             </div>
 
             <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
-              Surf through <span style={{ color: "#00E5FF", fontWeight: 700 }}>16 glowing rings</span> along the coastline.
+              Surf through <span style={{ color: "#00E5FF", fontWeight: 700 }}>10 glowing rings</span> along the coastline.
               Chain rings for combos · Reach the finish portal for max rewards.
             </p>
 
             {/* Course highlights */}
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Rings", value: "16", color: "#00E5FF" },
-                { label: "Time", value: "90s", color: "#C43BFF" },
-                { label: "Trail Boost", value: "8+ rings", color: "#FFD700" },
+                { label: "Rings", value: "10", color: "#00E5FF" },
+                { label: "Time", value: "60s", color: "#C43BFF" },
+                { label: "Trail Boost", value: "6+ rings", color: "#FFD700" },
               ].map((s) => (
                 <div key={s.label}
                   className="flex flex-col items-center py-2 rounded-xl"
@@ -451,7 +445,7 @@ export default function HoverboardPanel({
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px]"
                 style={{ background: "rgba(0,229,255,0.06)", border: "1px solid rgba(0,229,255,0.18)", color: "rgba(0,229,255,0.8)" }}
               >
-                ✦ +{ringsHit} Vibe Orbs earned — ride 8+ rings to unlock Trail Boost!
+                ✦ +{ringsHit} Vibe Orbs earned — ride 6+ rings to unlock Trail Boost!
               </div>
             )}
 
