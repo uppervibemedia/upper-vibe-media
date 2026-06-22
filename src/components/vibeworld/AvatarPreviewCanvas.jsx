@@ -1,203 +1,163 @@
 /**
- * AvatarPreviewCanvas — full-body avatar preview with Front / Back / Side view buttons.
- * No rotation button — replaced with instant camera angle presets.
+ * AvatarPreviewCanvas — renders the actual Soldier.glb in an isolated Three.js scene.
+ * Fixes: idle pose (no T-pose), correct hex-based tinting, larger framing, live updates.
  */
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { OUTFIT_COLORS, SKIN_TONES } from "./AvatarSetup";
+import { OUTFIT_COLORS } from "./AvatarSetup";
+import { RotateCcw, RotateCw } from "lucide-react";
 
-// Both use Soldier.glb — Michelle.glb has no walk/idle clips (only SambaDance + TPose).
-const GLB_URLS = {
-  male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
-  female: "https://threejs.org/examples/models/gltf/Soldier.glb",
-};
+const GLB_URL = "https://threejs.org/examples/models/gltf/Soldier.glb";
 
-const _gltfCache = {};
-const _gltfPromise = {};
+let _gltfCache = null;
+let _gltfPromise = null;
 
-function loadSinglePreview(key, url) {
-  if (_gltfCache[key]) return Promise.resolve(_gltfCache[key]);
-  if (_gltfPromise[key]) return _gltfPromise[key];
+function loadGLTF() {
+  if (_gltfCache) return Promise.resolve(_gltfCache);
+  if (_gltfPromise) return _gltfPromise;
   const loader = new GLTFLoader();
-  _gltfPromise[key] = new Promise((resolve, reject) => {
-    loader.load(url, (g) => { _gltfCache[key] = g; resolve(g); }, undefined, (e) => { delete _gltfPromise[key]; reject(e); });
+  _gltfPromise = new Promise((resolve, reject) => {
+    loader.load(GLB_URL, (g) => { _gltfCache = g; resolve(g); }, undefined, (e) => { _gltfPromise = null; reject(e); });
   });
-  return _gltfPromise[key];
+  return _gltfPromise;
 }
 
-function loadGLTF(gender = "male") {
-  const key = gender === "female" ? "female" : "male";
-  return loadSinglePreview(key, GLB_URLS[key]);
-}
-
-// ─── Material classification (mirrors AvatarModel.jsx exactly) ────────
-function classifyMaterial(meshName, matName, origColor) {
-  const combined = ((meshName || "") + " " + (matName || "")).toLowerCase();
-
-  if (/hair|eyebrow|brow|beard|facial_hair|eyelash|lash|bun|ponytail/i.test(combined)) return "hair";
-  if (/\bskin\b|face|neck|hand|finger|wrist|forearm|upperarm|calf|shin|thigh|foot|toe|ear|nose|lip|mouth|chin|cheek|forehead|flesh|body_skin/i.test(combined)) return "skin";
-  if (/shirt|top|jacket|pant|trouser|boot|shoe|armor|armour|cloth|outfit|suit|sleeve|collar|vest|coat|glove|belt|strap|trim|neon|accessory|accesso|pad|knee|chest|shoulder|visor|helmet|mask|cape|skirt|sock|sneaker|hoodie|shorts|uniform/i.test(combined)) return "outfit";
-
-  const { r, g, b } = origColor;
-  const brightness = (r + g + b) / 3;
-  const isSkinLike = r > 0.25 && r > b * 1.20 && g > b * 0.70 && r < 0.97 && b < 0.70 && g < 0.92 && brightness > 0.22 && brightness < 0.88;
-  if (isSkinLike) return "skin";
-
-  const isNearNeutral = Math.abs(r - g) < 0.07 && Math.abs(g - b) < 0.07;
-  if (brightness < 0.18 && isNearNeutral) return "hair";
-  const isDarkBrown = r > g && r > b && (r - b) < 0.22 && brightness < 0.25 && r < 0.45;
-  if (isDarkBrown) return "hair";
-
-  return "outfit";
-}
-
-function applyTints(model, outfitColorKey, skinToneKey) {
+// Apply outfit color using the hex value directly — not accent (which caused wrong colors)
+// Only tints meshes that are NOT skin/face (identified by their original base color lightness)
+function applyOutfitTint(model, outfitColorKey) {
   if (!model) return;
   const outfit = OUTFIT_COLORS.find(c => c.key === outfitColorKey);
   if (!outfit) return;
-  const outfitColor = new THREE.Color(outfit.hex);
-  const skinEntry = SKIN_TONES.find(s => s.key === skinToneKey);
-  // Always provide a skin color — fall back to original if not found
-  const skinColor = skinEntry ? new THREE.Color(skinEntry.hex) : null;
+
+  const targetColor = new THREE.Color(outfit.hex);
 
   model.traverse((child) => {
     if (!child.isMesh) return;
     const mats = Array.isArray(child.material) ? child.material : [child.material];
     mats.forEach((m) => {
       if (!m?.color) return;
-      if (!m.userData._origColor) m.userData._origColor = m.color.clone();
-      const orig = m.userData._origColor;
-      const matName = m.name || "";
-      const kind = classifyMaterial(child.name, matName, orig);
-
-      if (kind === "skin") {
-        m.color.copy(skinColor || orig);
-      } else if (kind === "hair") {
-        m.color.copy(orig); // never change hair
-      } else {
-        m.color.copy(outfitColor);
+      // Restore original color first
+      if (!m.userData._origColor) {
+        m.userData._origColor = m.color.clone();
       }
+      const orig = m.userData._origColor;
+      // Skip skin-toned materials (warm mid-range colors — face/hands/neck)
+      // Skin colors have R > B and R > 0.4 and not very dark
+      const r = orig.r, g = orig.g, b = orig.b;
+      const isSkinLike = (r > 0.35) && (r > b * 1.3) && (g > b * 0.8) && (r < 0.95) && (b < 0.6);
+      if (isSkinLike) {
+        m.color.copy(orig); // restore, don't tint
+        return;
+      }
+      // Apply outfit color directly
+      m.color.copy(targetColor);
     });
   });
 }
 
-// Camera presets: position and lookAt for each view
-// Model faces +Z (rotation.y = Math.PI means chest toward +Z in world space)
-const VIEWS = {
-  front: { pos: [0, 0.87, 3.6],  look: [0, 0.87, 0] },
-  back:  { pos: [0, 0.87, -3.6], look: [0, 0.87, 0] },
-  side:  { pos: [3.6, 0.87, 0],  look: [0, 0.87, 0] },
-};
-
-export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "medium", gender = "male", width = 260, height = 420 }) {
+export default function AvatarPreviewCanvas({ outfitColorKey, width = 260, height = 400 }) {
   const canvasRef = useRef(null);
-  const stateRef = useRef({});
+  const sceneRef = useRef({});
   const outfitRef = useRef(outfitColorKey);
   outfitRef.current = outfitColorKey;
-  const skinRef = useRef(skinToneKey);
-  skinRef.current = skinToneKey;
-  const genderRef = useRef(gender);
-  genderRef.current = gender;
-  const [activeView, setActiveView] = useState("front");
-
-  // Apply camera view instantly when button is clicked
-  const setView = (viewKey) => {
-    setActiveView(viewKey);
-    const s = stateRef.current;
-    if (!s.camera) return;
-    const v = VIEWS[viewKey];
-    s.camera.position.set(...v.pos);
-    s.camera.lookAt(...v.look);
-  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const s = stateRef.current;
+    const s = sceneRef.current;
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
     renderer.setClearColor(0x000000, 0);
+    s.renderer = renderer;
 
     const scene = new THREE.Scene();
+    s.scene = scene;
 
-    // Camera starts at front view
-    const camera = new THREE.PerspectiveCamera(32, width / height, 0.1, 50);
-    camera.position.set(0, 0.87, 3.6);
-    camera.lookAt(0, 0.87, 0);
+    // Camera framing: Soldier.glb is ~1.8m tall, feet at y=0, head at ~1.75
+    // FOV 38 + distance 3.2 frames the full body with head room
+    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 50);
+    camera.position.set(0, 0.88, 3.2);
+    camera.lookAt(0, 0.88, 0);
+    s.camera = camera;
 
-    // Studio lighting
-    scene.add(new THREE.AmbientLight(0xffffff, 1.8));
-    const key = new THREE.DirectionalLight(0xffffff, 3.2);
-    key.position.set(2, 5, 4);
+    // Strong studio lighting so outfit colors read clearly
+    scene.add(new THREE.AmbientLight(0xffffff, 1.6));
+    const key = new THREE.DirectionalLight(0xffffff, 3.0);
+    key.position.set(2, 6, 5);
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xbbccff, 1.2);
+    const fill = new THREE.DirectionalLight(0xbbccff, 1.1);
     fill.position.set(-3, 3, 2);
     scene.add(fill);
-    const rim = new THREE.DirectionalLight(0xaaaaff, 0.8);
+    const rim = new THREE.DirectionalLight(0xaaaaff, 0.7);
     rim.position.set(0, 4, -4);
     scene.add(rim);
-    // Back light for back view readability
-    const backLight = new THREE.DirectionalLight(0xccddff, 2.0);
-    backLight.position.set(0, 3, -5);
-    scene.add(backLight);
 
     // Floor glow disc
-    const glowMat = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.18, depthWrite: false });
-    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 32), glowMat);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.2, depthWrite: false });
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 32), glowMat);
     glow.rotation.x = -Math.PI / 2;
     glow.position.y = 0.002;
     scene.add(glow);
-
-    s.renderer = renderer;
-    s.scene = scene;
-    s.camera = camera;
     s.glowMat = glowMat;
+
+    s.yaw = 0;
+    s.yawLocked = false;
     s.model = null;
     s.mixer = null;
+    s.loaded = false;
 
-    loadGLTF(genderRef.current).then((gltf) => {
-      // For human_female the scene is Michelle's original — clone it so preview doesn't conflict with in-world use
-      const model = gltf.scene.clone ? gltf.scene.clone(true) : gltf.scene;
+    loadGLTF().then((gltf) => {
+      const model = gltf.scene.clone(true);
       model.name = "previewModel";
+      model.rotation.y = Math.PI; // face camera
       model.position.set(0, 0, 0);
-      model.rotation.set(0, 0, 0);
       model.scale.set(1, 1, 1);
 
-      // Add to scene
-      scene.add(model);
-
-      // Soldier.glb is in meter units — scale 1 is correct for both genders
-      model.scale.set(1, 1, 1);
-      model.position.y = 0;
-      model.rotation.y = Math.PI;
-
+      // Cache original material colors before any tinting
       model.traverse((child) => {
         if (!child.isMesh) return;
         const mats = Array.isArray(child.material) ? child.material : [child.material];
-        mats.forEach((m) => { if (m?.color && !m.userData._origColor) m.userData._origColor = m.color.clone(); });
+        mats.forEach((m) => {
+          if (m?.color && !m.userData._origColor) {
+            m.userData._origColor = m.color.clone();
+          }
+        });
       });
 
+      scene.add(model);
       s.model = model;
-      applyTints(model, outfitRef.current, skinRef.current);
 
+      // Apply current outfit immediately (no waiting for idle animation)
+      applyOutfitTint(model, outfitRef.current);
+
+      // Play idle animation so model is NOT in T-pose
       if (gltf.animations.length) {
         const mixer = new THREE.AnimationMixer(model);
-        const idleClip = gltf.animations.find(a => a.name.toLowerCase().includes("idle")) || gltf.animations[0];
+        // Prefer "idle", fall back to first animation
+        const idleClip = gltf.animations.find(a => a.name.toLowerCase().includes("idle"))
+          || gltf.animations[0];
         const action = mixer.clipAction(idleClip);
         action.setLoop(THREE.LoopRepeat, Infinity);
-        action.setEffectiveTimeScale(0.75);
+        action.setEffectiveTimeScale(0.8); // slightly slower for a calm pose
         action.setEffectiveWeight(1);
         action.play();
         s.mixer = mixer;
       }
+
+      s.loaded = true;
     }).catch(() => {
-      const cap = new THREE.Mesh(new THREE.CapsuleGeometry(0.25, 1.2, 4, 8), new THREE.MeshStandardMaterial({ color: 0x4466aa }));
+      // Capsule fallback
+      const cap = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.25, 1.2, 4, 8),
+        new THREE.MeshStandardMaterial({ color: 0x4466aa })
+      );
       cap.position.y = 0.85;
       scene.add(cap);
       s.model = cap;
+      s.loaded = true;
     });
 
     s.lastTime = performance.now() * 0.001;
@@ -209,11 +169,17 @@ export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "med
 
       if (s.mixer) s.mixer.update(dt);
 
+      // Gentle slow auto-rotate when not manually rotated
+      if (!s.yawLocked && s.model) {
+        s.yaw += dt * 0.28;
+        s.model.rotation.y = Math.PI + s.yaw;
+      }
+
+      // Pulse glow color to match current outfit
       if (s.glowMat) {
         const outfit = OUTFIT_COLORS.find(c => c.key === outfitRef.current);
-        const glowColor = outfit?.hex === "#080A0F" ? "#00D4F0" : outfit?.hex || "#4488ff";
-        s.glowMat.color.set(glowColor);
-        s.glowMat.opacity = 0.12 + Math.sin(now * 1.2) * 0.06;
+        if (outfit) s.glowMat.color.set(outfit.hex === "#05070D" || outfit.hex === "#080A12" ? "#00D4F0" : outfit.hex);
+        s.glowMat.opacity = 0.14 + Math.sin(now * 1.4) * 0.05;
       }
 
       renderer.render(scene, camera);
@@ -224,51 +190,56 @@ export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "med
       cancelAnimationFrame(s.animId);
       renderer.dispose();
     };
-  }, [gender]); // re-mount when gender changes (Soldier vs Michelle)
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Live re-tint on outfit or skin change
+  // Live re-tint on every outfit change
   useEffect(() => {
-    const s = stateRef.current;
-    if (s.model) applyTints(s.model, outfitColorKey, skinToneKey);
-  }, [outfitColorKey, skinToneKey]);
+    const s = sceneRef.current;
+    if (s.model) applyOutfitTint(s.model, outfitColorKey);
+  }, [outfitColorKey]);
 
-  const viewButtons = [
-    { key: "front", label: "Front" },
-    { key: "back",  label: "Back"  },
-    { key: "side",  label: "Side"  },
-  ];
+  const handleRotate = (delta) => {
+    const s = sceneRef.current;
+    s.yaw = (s.yaw || 0) + delta;
+    s.yawLocked = true;
+    if (s.model) s.model.rotation.y = Math.PI + s.yaw;
+    clearTimeout(s.lockTimer);
+    s.lockTimer = setTimeout(() => { s.yawLocked = false; }, 5000);
+  };
 
   return (
     <div className="flex flex-col items-center gap-2">
       <div
         style={{
           width, height,
-          borderRadius: 16,
+          borderRadius: 18,
           overflow: "hidden",
+          position: "relative",
           background: "linear-gradient(180deg, #0e0a1e 0%, #07060f 100%)",
           border: "1px solid rgba(155,126,255,0.2)",
-          boxShadow: "0 0 40px rgba(155,126,255,0.08), inset 0 0 20px rgba(0,0,0,0.4)",
+          boxShadow: "0 0 50px rgba(155,126,255,0.08), inset 0 0 30px rgba(0,0,0,0.5)",
         }}
       >
         <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
       </div>
 
-      {/* View buttons — instant camera preset, no rotation logic */}
-      <div className="flex items-center gap-1.5">
-        {viewButtons.map((v) => (
-          <button
-            key={v.key}
-            onClick={() => setView(v.key)}
-            className="px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all active:scale-95"
-            style={{
-              background: activeView === v.key ? "rgba(155,126,255,0.2)" : "rgba(255,255,255,0.05)",
-              border: `1px solid ${activeView === v.key ? "rgba(155,126,255,0.5)" : "rgba(255,255,255,0.1)"}`,
-              color: activeView === v.key ? "#A078FF" : "rgba(255,255,255,0.45)",
-            }}
-          >
-            {v.label}
-          </button>
-        ))}
+      {/* Rotate controls */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => handleRotate(-0.55)}
+          className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-white/50" />
+        </button>
+        <span className="text-[9px] text-white/20 font-medium tracking-wider">ROTATE</span>
+        <button
+          onClick={() => handleRotate(0.55)}
+          className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <RotateCw className="w-3.5 h-3.5 text-white/50" />
+        </button>
       </div>
     </div>
   );

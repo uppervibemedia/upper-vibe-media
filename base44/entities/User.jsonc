@@ -108,15 +108,6 @@
       ],
       "description": "Avatar body type for Upper Vibe City"
     },
-    "avatar_gender": {
-      "type": "string",
-      "enum": [
-        "male",
-        "female"
-      ],
-      "default": "male",
-      "description": "Avatar gender: both use Soldier.glb, female gets pink outfit tint by default"
-    },
     "skin_tone": {
       "type": "string",
       "enum": [
@@ -141,10 +132,6 @@
       ],
       "default": "streetwear",
       "description": "Avatar visual style preset"
-    },
-    "avatar_outfit_color": {
-      "type": "string",
-      "description": "Outfit color key e.g. electric-blue, pink-rose"
     },
     "avatar_suit_color": {
       "type": "string",

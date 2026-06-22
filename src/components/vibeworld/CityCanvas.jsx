@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
@@ -22,6 +22,7 @@ const {
   CylinderGeometry,
   SphereGeometry,
   BoxGeometry,
+  TorusGeometry,
   Vector3,
   Mesh,
   Group,
@@ -34,6 +35,10 @@ const {
   BufferAttribute,
   PointsMaterial,
   Points,
+  SpriteMaterial,
+  Sprite,
+  CanvasTexture,
+  LinearFilter,
 } = THREE;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
@@ -41,6 +46,7 @@ const MOVE_SPEED = 3.0;
 const ACCELERATION = 10.0;
 const DECELERATION = 8.0;
 const TURN_SPEED = 2.5;       // radians/sec for A/D turning
+const ROTATION_SMOOTH = 8.0;  // how fast avatar body snaps to move direction
 
 // Camera constants
 const CAM_DIST = 5.5;         // distance behind avatar
@@ -864,7 +870,7 @@ function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 8.7. VIBE SHOP — far right, opposite Academy
   // ═════════════════════════════════════════════════════════════
-  createVibeShop(scene);
+  const { SHOP_X, SHOP_Z } = createVibeShop(scene);
 
   // ═════════════════════════════════════════════════════════════
   // 9. CITY EDGE BUILDINGS — framing the perimeter
@@ -1249,7 +1255,7 @@ function createCosmicSky(scene) {
   // Four directional textures — planets only on East (+X) and West (-X)
   const texForward = loadTex(SKY_FORWARD);  // +Z = North / Forward — no planet
   const texRight   = loadTex(SKY_RIGHT);    // +X = East  / Right   — planet
-  loadTex(SKY_BACK);                        // -Z = South / Back    — preload
+  const texBack    = loadTex(SKY_BACK);     // -Z = South / Back    — no planet
   const texLeft    = loadTex(SKY_LEFT);     // -X = West  / Left    — planet
 
   // Bottom face: deep void (underground, rarely visible)
@@ -1283,15 +1289,13 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation } from "./Avata
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, avatarConfig, onJukeboxProximity, onAvatarReady, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [, setMobileResetKey] = useState(0);
+  const [mobileResetKey, setMobileResetKey] = useState(0);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
-  const onAvatarReadyRef = useRef(onAvatarReady);
-  onAvatarReadyRef.current = onAvatarReady;
   const onPosCbRef = useRef(onPositionChange);
   onPosCbRef.current = onPositionChange;
   const onJukeboxProxRef = useRef(onJukeboxProximity);
@@ -1344,7 +1348,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   lockedRef.current = locked;
   const isDancingRef = useRef(false);
   isDancingRef.current = isDancing;
-
+  const activeEmoteRef = useRef(null);
+  activeEmoteRef.current = activeEmote;
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
@@ -1402,9 +1407,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       // already in the scene. CityCanvas stores entry.root in avatarRef and moves it
       // every frame. When GLB loads, the model is parented INTO entry.root — it inherits
       // all movement automatically. The same entry object is mutated in-place.
-      const entry = createAvatar(scene, { ...(avatarConfig || {}), gender: avatarConfig?.gender || "male" }, (_entry) => {
-        // GLB done loading — notify parent so it can apply saved outfit color
-        onAvatarReadyRef.current?.(_entry);
+      const entry = createAvatar(scene, avatarConfig || {}, (_entry) => {
+        // GLB done loading — mixer/clips now populated on the same entry object
+        // avatarEntryRef already points to it, nothing to reassign
       });
       avatarEntryRef.current = entry;
       avatarRef.current = entry.root; // this is what gets moved every frame
@@ -1824,6 +1829,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ─── NEON SIGNS + PATH LIGHTS — color-shift ambient glow ──
+        const hueShift = Math.sin(t * 0.25) * 0.5 + 0.5; // slow 0..1 wave
+
         scene.children.forEach((child) => {
           // Neon signs — brighter + color-shift ambient glow
           if (child.userData?.isNeonSign) {
@@ -1899,8 +1906,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               remote.username || "User",
               remote.avatar_type || "neutral",
               remote.skin_tone || "medium",
-              remote.avatar_style || "streetwear",
-              remote.avatar_gender || "male"
+              remote.avatar_style || "streetwear"
             );
             entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 } };
             remoteMap[remote.user_id] = entry;

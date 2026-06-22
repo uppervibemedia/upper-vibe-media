@@ -4,8 +4,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
-import { retintAvatar, playEmoteAnimation, stopEmoteAnimation, stopDanceAnimation } from "@/components/vibeworld/AvatarModel";
-import { OUTFIT_COLORS, SKIN_TONES } from "@/components/vibeworld/AvatarSetup";
+import { retintAvatar } from "@/components/vibeworld/AvatarModel";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
 import StageVideoEmbed from "@/components/vibeworld/StageVideoEmbed";
@@ -18,22 +17,23 @@ import usePrivateChat from "@/hooks/usePrivateChat";
 import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
+import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
-import EmoteEffect from "@/components/vibeworld/EmoteEffect";
 
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0, animState: "idle" });
   const prevPosRef = useRef({ x: 0, z: 5 });
-  const lastDanceCancelPosRef = useRef({ x: 0, z: 5 }); // tracks position at last dance-cancel check
   const [stageCanvas, setStageCanvas] = useState(null);
   const audioIntensityRef = useRef(0);
   const audioBassRef = useRef(0);
   const audioBeatRef = useRef(0);
   const mobileInputRef = useRef({ x: 0, y: 0, camDx: 0 });
+  const [mobileModalOpen, setMobileModalOpen] = useState(false);
+  const [editAvatarOpen, setEditAvatarOpen] = useState(false);
   const [customizerOpen, setCustomizerOpen] = useState(false);
-  const playerAvatarEntryRef = useRef(null); // holds the live avatar entry for retinting
+  const [avatarVersion, setAvatarVersion] = useState(0); // bump to re-read user data
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
   const onDanceFloorRef = useRef(false);
@@ -45,34 +45,23 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const personalTimeRef = useRef(0);          // playback position when paused on entry
   const jukeboxFadeRef = useRef(null);        // fade interval handle
 
-  // ── Dance Floor / Emote state — always reset to false on mount ───────────
-  const [isDancing, setIsDancing] = useState(false); // never persisted
+  // ── Dance Floor / Emote state ─────────────────────────────────────────────
+  const [isDancing, setIsDancing] = useState(false);
   const isDancingRef = useRef(false);
   isDancingRef.current = isDancing;
   const [activeEmote, setActiveEmote] = useState(null); // { id, label, color, effect, startedAt }
   const emoteTimerRef = useRef(null);
+  const wasMovingRef = useRef(false);
 
   const handleEmote = useCallback((emote) => {
     if (emote.id === "dance") {
-      // Clear any lingering emote lock before entering dance mode
-      if (playerAvatarEntryRef.current) {
-        playerAvatarEntryRef.current._emoteActive = false;
-        if (playerAvatarEntryRef.current._emoteTimer) {
-          clearTimeout(playerAvatarEntryRef.current._emoteTimer);
-          playerAvatarEntryRef.current._emoteTimer = null;
-        }
-      }
       setIsDancing(true);
       setActiveEmote({ ...emote, startedAt: Date.now() });
     } else {
       // Clear any existing emote timer
       if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
       setActiveEmote({ ...emote, startedAt: Date.now() });
-      // Trigger actual avatar body movement for this emote
-      if (playerAvatarEntryRef.current) {
-        playEmoteAnimation(playerAvatarEntryRef.current, emote.id);
-      }
-      // Visual overlay lasts 3 seconds
+      // Non-dance emotes last 3 seconds
       emoteTimerRef.current = setTimeout(() => {
         setActiveEmote(null);
       }, 3000);
@@ -83,35 +72,24 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsDancing(false);
     setActiveEmote(null);
     if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
-    // Use stopDanceAnimation for a clean immediate fade-to-idle
-    if (playerAvatarEntryRef.current) {
-      stopDanceAnimation(playerAvatarEntryRef.current);
-    }
   }, []);
 
-  // ── Auto-cancel dance on ANY movement ────────────────────────────────────
-  // Uses a separate ref so the delta is always valid (prevPosRef is updated before setState)
+  // ── Auto-cancel dance on movement ──────────────────────────────────────────
+  const danceMovingRef = useRef(false);
+  danceMovingRef.current = false; // Reset each render
+
   useEffect(() => {
-    if (!isDancing) {
-      lastDanceCancelPosRef.current = { x: playerPos.x, z: playerPos.z };
-      return;
-    }
-    const dx = playerPos.x - lastDanceCancelPosRef.current.x;
-    const dz = playerPos.z - lastDanceCancelPosRef.current.z;
-    lastDanceCancelPosRef.current = { x: playerPos.x, z: playerPos.z };
-    if (Math.abs(dx) > 0.001 || Math.abs(dz) > 0.001) {
+    if (!isDancing) return;
+    const prev = prevPosRef.current;
+    const dx = playerPos.x - prev.x;
+    const dz = playerPos.z - prev.z;
+    const speed = Math.sqrt(dx * dx + dz * dz);
+    if (speed > 0.015) {
       setIsDancing(false);
       setActiveEmote(null);
       if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
-      if (playerAvatarEntryRef.current) playerAvatarEntryRef.current._emoteActive = false;
     }
   }, [playerPos.x, playerPos.z, isDancing]);
-
-  // On mount: guarantee clean animation state — no dance, no emote
-  useEffect(() => {
-    setIsDancing(false);
-    setActiveEmote(null);
-  }, []);
 
   // Cleanup emote timer on unmount
   useEffect(() => {
@@ -177,17 +155,16 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Stage video controls ───────────────────────────────────────────────
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
-  const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack, registerNextHandler, audioRef } = playerCtx || {};
-  const { allTracks } = radioCtx || {};
+  const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack, registerNextHandler, clearPosition, audioRef } = playerCtx || {};
+  const { allTracks, tracksLoaded } = radioCtx || {};
   const { user } = useAuth();
-  const { sortedTracks, loading: feedLoading } = usePersonalizedFeed(user?.id);
+  const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
 
   // ── Avatar config derived from user data ──────────────────────────────
   const avatarConfig = {
     avatarType: user?.avatar_type || "neutral",
     skinTone: user?.skin_tone || "medium",
     rpmAvatarUrl: user?.rpm_avatar_url || null,
-    gender: user?.avatar_gender || "male",
   };
 
   // ── Personalized feed continuous playback ──────────────────────────────
@@ -741,41 +718,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       <div className="absolute inset-0">
         <CityCanvas
           onLoaded={() => setLoading(false)}
-          onAvatarReady={(entry) => {
-            playerAvatarEntryRef.current = entry;
-            // Guarantee clean animation state on spawn — never dance on load
-            entry._emoteActive = false;
-            entry._isDancing = false;
-            entry._emoteTimer && clearTimeout(entry._emoteTimer);
-            entry._emoteTimer = null;
-            // Apply saved outfit + skin color immediately when avatar GLB finishes loading
-            const savedColorKey = user?.avatar_outfit_color || "electric-blue";
-            const outfitEntry = OUTFIT_COLORS.find(c => c.key === savedColorKey);
-            const suitColor = outfitEntry?.hex || "#00AADD";
-            // Apply skin to ALL genders — null falls back to original material color
-            const skinEntry = SKIN_TONES.find(s => s.key === (user?.skin_tone || "medium"));
-            const skinColor = skinEntry?.hex || null;
-            retintAvatar(entry, suitColor, skinColor);
-          }}
           onRemoteAvatarClick={handleRemoteAvatarClick}
           onPositionChange={(x, z, rot) => {
-            const dx = x - prevPosRef.current.x;
-            const dz = z - prevPosRef.current.z;
+            const prev = prevPosRef.current;
+            const dx = x - prev.x;
+            const dz = z - prev.z;
             const speed = Math.sqrt(dx * dx + dz * dz);
             const animState = isDancingRef.current ? "dancing" : speed > 0.015 ? "walking" : "idle";
-            // Update prevPosRef BEFORE setState so the auto-cancel effect sees the right delta
-            const prev = { ...prevPosRef.current };
             prevPosRef.current = { x, z };
             setPlayerPos({ x, z, rot, animState });
-            // Inline dance cancel for immediate response (don't wait for React effect)
-            if (isDancingRef.current && (Math.abs(x - prev.x) > 0.001 || Math.abs(z - prev.z) > 0.001)) {
-              setIsDancing(false);
-              setActiveEmote(null);
-              // Immediately stop dance on the animation entry — don't wait for re-render
-              if (playerAvatarEntryRef.current) {
-                stopDanceAnimation(playerAvatarEntryRef.current);
-              }
-            }
           }}
           onJukeboxProximity={(near, vol) => {
             setNearJukebox(near);
@@ -787,6 +738,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             }
           }}
           isDancing={isDancing}
+          activeEmote={activeEmote}
           stageCanvas={stageWatching ? null : stageCanvas}
           audioIntensityRef={audioIntensityRef}
           audioBassRef={audioBassRef}
@@ -897,7 +849,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onStageFullScreen={handleStageFullScreen}
         onStageExitFullScreen={handleExitFullScreen}
         chatAgeConfirmed={chatAgeConfirmed}
-        onMobileModalChange={() => {}}
+        onMobileModalChange={setMobileModalOpen}
         activeUsers={activeUsers}
         userCount={userCount}
         isBroadcasting={isBroadcasting}
@@ -1030,13 +982,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
         isMobile={isMobile}
         user={user}
-        onApply={({ outfitColorKey, skinToneKey, suitColor }) => {
-          // Immediately retint the live in-world playable avatar — all genders
-          if (playerAvatarEntryRef.current && suitColor) {
-            const skinEntry = SKIN_TONES.find(s => s.key === (skinToneKey || "medium"));
-            const skinColor = skinEntry?.hex || null;
-            retintAvatar(playerAvatarEntryRef.current, suitColor, skinColor);
-          }
+        onApply={({ outfitColorKey }) => {
+          setAvatarVersion((v) => v + 1);
         }}
       />
 
@@ -1048,33 +995,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onTogglePlay={handleGlobalPlayToggle}
           onSkip={handleGlobalSkip}
         />
-      )}
-
-      {/* ── Emote visual effects — floating above avatar ─────────── */}
-      <EmoteEffect activeEmote={activeEmote} isMobile={isMobile} />
-
-      {/* ── Dancing indicator badge ───────────────────────────────── */}
-      {isDancing && !loading && (
-        <div
-          className="fixed z-[71] pointer-events-none"
-          style={{
-            left: "50%",
-            top: isMobile ? "36%" : "30%",
-            transform: "translateX(-50%)",
-          }}
-        >
-          <div
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full"
-            style={{
-              background: "rgba(196,59,255,0.15)",
-              border: "1px solid rgba(196,59,255,0.35)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            <span style={{ fontSize: 13 }}>🕺</span>
-            <span className="font-black tracking-wider" style={{ fontSize: 10, color: "#C43BFF" }}>DANCING</span>
-          </div>
-        </div>
       )}
     </div>
   );
