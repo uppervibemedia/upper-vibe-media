@@ -1560,7 +1560,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           if (Math.abs(joy.x) > 0.08) { turnInput = -joy.x; hasAnyInput = true; }
           // Camera drag from right side of screen
           if (Math.abs(joy.camDx) > 0.0005) {
-            camYawRef.current -= joy.camDx;
+            camYawRef.current += joy.camDx;
             userTouchingCamRef.current = true;
             idleTimerRef.current = 0;
             isOrbitingRef.current = false;
@@ -2341,18 +2341,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     };
   }, []);
 
-  // Hoverboard attach/detach — runs when hbRiding toggles.
-  // Also handled frame-by-frame (below) for async GLB load race condition.
+  // Hoverboard attach/detach; ferris ride hides avatar to avoid blocking ride-cam view
   useEffect(() => {
     const entry = avatarEntryRef.current;
-    if (hbRiding) {
-      console.log("[HB] hbRiding=true — attaching board, entry:", !!entry, "glb loaded:", !!entry?.mixer);
-      if (entry) attachHoverboard(entry);
-    } else {
-      console.log("[HB] hbRiding=false — detaching board");
-      if (entry) detachHoverboard(entry);
-    }
+    if (hbRiding) { if (entry) attachHoverboard(entry); }
+    else { if (entry) detachHoverboard(entry); }
   }, [hbRiding]);
+  useEffect(() => {
+    const root = avatarRef.current;
+    if (root) root.visible = !ferrisRiding;
+  }, [ferrisRiding]);
 
   // Keyboard
   useEffect(() => {

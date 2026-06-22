@@ -170,6 +170,7 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
     setAnswers([]);
     setResultScore(null);
     setSaving(false);
+    setSubmitError(null);
     fetchData();
   }, [open, user]);
 
@@ -194,12 +195,17 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
 
   const handleBack = () => { if (qIndex > 0) setQIndex(qIndex - 1); };
 
+  const [submitError, setSubmitError] = useState(null);
+
   const submitCheckIn = async (finalAnswers) => {
     if (!user || saving) return;
     setSaving(true);
-    const ss = streakToScore(data?.streak || 0);
+    setSubmitError(null);
+    // Calculate score immediately — don't wait on data to be loaded
+    const currentStreak = data?.streak ?? 0;
+    const ss = streakToScore(currentStreak);
     const score = calcVibeScoreFromAnswers(finalAnswers, ss, !!data?.yesterdayScore);
-    const newStreak = (data?.streak || 0) + 1;
+    const newStreak = currentStreak + 1;
     const cat = vibeCategory(score);
     try {
       await base44.entities.VibeCheckIn.create({
@@ -214,9 +220,13 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
       base44.analytics.track({ eventName: "vibe_check_submitted", properties: { vibe_score: score, mood: cat.moodTag } });
       setResultScore(score);
       setResultStreak(newStreak);
+      setSaving(false);
       setPhase("result");
-    } catch (e) { console.error(e); }
-    setSaving(false);
+    } catch (e) {
+      console.error("[VibeCheck] submitCheckIn error:", e);
+      setSubmitError("Could not save your score. Tap Retry to try again.");
+      setSaving(false);
+    }
   };
 
   if (!open) return null;
@@ -348,6 +358,18 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
                 <div className="mt-5 flex items-center justify-center gap-2 text-xs text-white/40">
                   <div className="w-4 h-4 rounded-full animate-spin" style={{ border: "2px solid rgba(0,229,255,0.3)", borderTopColor: "#00E5FF" }} />
                   Calculating your vibe…
+                </div>
+              )}
+              {submitError && !saving && (
+                <div className="mt-5 p-3 rounded-xl text-center"
+                  style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)" }}>
+                  <p className="text-xs text-red-400 mb-2">{submitError}</p>
+                  <button
+                    onClick={() => submitCheckIn(answers)}
+                    className="px-4 py-2 rounded-full font-black text-xs transition-all hover:brightness-110 active:scale-95"
+                    style={{ background: "rgba(248,113,113,0.2)", border: "1px solid rgba(248,113,113,0.4)", color: "#F87171", touchAction: "manipulation" }}>
+                    Retry
+                  </button>
                 </div>
               )}
             </motion.div>

@@ -988,7 +988,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                 const t = e.touches[0];
                 if (t && mobileInputRef.current._camBaseX !== undefined) {
                   const dx = t.clientX - mobileInputRef.current._camBaseX;
-                  mobileInputRef.current.camDx -= dx * 0.0025;
+                  mobileInputRef.current.camDx += dx * 0.0025;
                   mobileInputRef.current._camBaseX = t.clientX;
                 }
               }}
