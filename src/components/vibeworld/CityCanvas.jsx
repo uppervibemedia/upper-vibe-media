@@ -1227,65 +1227,8 @@ function createStarField(scene) {
   scene.userData.stars = stars;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// DIRECTIONAL SKY IMAGES — four unique deep-space cosmic views
-// ═══════════════════════════════════════════════════════════════
-const BASE = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
-const SKY_FORWARD = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;   // No planet — North/Forward
-const SKY_RIGHT   = `${BASE}/df9a0847f_ChatGPTImageJun19202612_41_21PM.png`;   // Full planet (centered) — East/Right
-const SKY_BACK    = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`;   // No planet — South/Back
-const SKY_LEFT    = `${BASE}/e7caceb54_ChatGPTImageJun19202612_41_07PM.png`;   // Ringed planet + moon — West/Left
-
-// ═══════════════════════════════════════════════════════════════
-// COSMIC SKYBOX — camera-centered cube, BackSide textures
-// BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
-//
-// Direction order (planets separated by non-planet views):
-//   Forward (+Z) = no planet  →  Right (+X) = planet
-//   Back    (-Z) = no planet  →  Left  (-X) = planet
-// ═══════════════════════════════════════════════════════════════
-function createCosmicSky(scene) {
-  const loader = new THREE.TextureLoader();
-  const SKYBOX_SIZE = 55;
-
-  const loadTex = (url) => {
-    const tex = loader.load(url);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = THREE.ClampToEdgeWrapping;
-    tex.wrapT = THREE.ClampToEdgeWrapping;
-    return tex;
-  };
-
-  // Four directional textures — planets only on East (+X) and West (-X)
-  const texForward = loadTex(SKY_FORWARD);  // +Z = North / Forward — no planet
-  const texRight   = loadTex(SKY_RIGHT);    // +X = East  / Right   — planet
-  const texBack    = loadTex(SKY_BACK);     // -Z = South / Back    — no planet
-  const texLeft    = loadTex(SKY_LEFT);     // -X = West  / Left    — planet
-
-  // Bottom face: deep void (underground, rarely visible)
-  const bottomMat = new MeshBasicMaterial();
-  bottomMat.color = new Color("#050510");
-  bottomMat.side = THREE.BackSide;
-  bottomMat.depthWrite = false;
-
-  // Materials array in BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
-  // All sides use cosmic textures — top reuses texForward for a seamless overhead sky
-  const materials = [
-    new MeshBasicMaterial({ map: texRight,   side: THREE.BackSide, depthWrite: false }), // +X = Right/East  (planet)
-    new MeshBasicMaterial({ map: texLeft,    side: THREE.BackSide, depthWrite: false }), // -X = Left/West   (planet)
-    new MeshBasicMaterial({ map: texForward, side: THREE.BackSide, depthWrite: false }), // +Y = Top (cosmic, no planet)
-    bottomMat,                                                                           // -Y = Bottom
-    new MeshBasicMaterial({ map: texRight,   side: THREE.BackSide, depthWrite: false }), // +Z = North (galaxy)
-    new MeshBasicMaterial({ map: texLeft,    side: THREE.BackSide, depthWrite: false }), // -Z = South (galaxy)
-  ];
-
-  const skybox = new Mesh(new BoxGeometry(SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE), materials);
-  skybox.name = "skybox";
-  skybox.renderOrder = -1; // Always render behind everything
-  scene.add(skybox);
-
-  scene.fog = new Fog("#101835", 75, 95);
-}
+// Sky system extracted to CosmicSkySystem.js
+import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 
 // createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
@@ -1506,8 +1449,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         };
       }
 
-      // Skybox — must follow camera so sky always feels infinitely far away
-      const skybox = scene.getObjectByName("skybox");
+      // Skybox is managed by animateCosmicSky each frame
 
       let animId;
       const animate = () => {
@@ -2160,20 +2102,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // Stars twinkle
-        const starsMesh = scene.userData.stars;
-        if (starsMesh && starsMesh.material) {
-          starsMesh.material.opacity = 0.45 + Math.sin(t * 0.9) * 0.08 + Math.cos(t * 0.6) * 0.07;
-          // Vary star size slightly too
-          starsMesh.material.size = 0.32 + Math.sin(t * 1.2) * 0.04;
-        }
-
-        // ─── SKYBOX — follows camera + slow drift rotation ─────────
-        if (skybox) {
-          skybox.position.copy(camera.position);
-          skybox.rotation.y += dt * 0.015; // Very slow Y-axis drift
-          skybox.rotation.x += dt * 0.003; // Tiny tilt for depth
-        }
+        // ─── COSMIC SKY — skybox follow, stars twinkle, shooting stars, asteroids ──
+        animateCosmicSky(scene, camera, t, dt);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
