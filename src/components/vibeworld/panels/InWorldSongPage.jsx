@@ -5,23 +5,23 @@
  */
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, Pause, Download, ExternalLink, Lock, Crown, Waves, Heart, ArrowLeft, DollarSign } from "lucide-react";
+import { X, Play, Pause, Download, Lock, Crown, Waves, ArrowLeft, DollarSign } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import SaveHeartButton from "@/components/shared/SaveHeartButton";
 
-function UpgradeView({ track, onBack, onClose, isMobile }) {
-  const [donateAmount, setDonateAmount] = useState(5);
-
+function UpgradeView({ track, onBack, onClose, isMobile, onNavigate }) {
   const handleUpgrade = (e) => {
     e.stopPropagation();
-    window.open("/membership", "_blank");
+    onClose();
+    onNavigate("/membership");
   };
 
   const handleDonate = (e) => {
     e.stopPropagation();
-    // Navigate to song page where donation/purchase is handled
-    window.open(`/song/${track.id}?donate=1`, "_blank");
+    onClose();
+    onNavigate(`/song/${track.id}?donate=1`);
   };
 
   return (
@@ -135,6 +135,7 @@ function UpgradeView({ track, onBack, onClose, isMobile }) {
 export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const { user } = useAuth() || {};
+  const navigate = useNavigate();
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   if (!track) return null;
@@ -151,12 +152,19 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying 
     }
   };
 
-  // All download clicks go to the full song page — preserving city state for return
+  // Navigate in-app to song page — preserving city state for return via "Back to City" button
   const handleDownloadClick = (e) => {
     e.stopPropagation();
-    // Mark that user came from Vibe World so song page shows "Back to City" button
     try { sessionStorage.setItem("vibeworld_return", "1"); } catch {}
-    window.open(`/song/${track.id}?downloadIntent=true`, "_blank");
+    onClose();
+    navigate(`/song/${track.id}?downloadIntent=true`);
+  };
+
+  const handleOpenSongPage = (e) => {
+    e.stopPropagation();
+    try { sessionStorage.setItem("vibeworld_return", "1"); } catch {}
+    onClose();
+    navigate(`/song/${track.id}`);
   };
 
   return (
@@ -199,6 +207,7 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying 
               onBack={() => setShowUpgrade(false)}
               onClose={onClose}
               isMobile={isMobile}
+              onNavigate={navigate}
             />
           ) : (
             <motion.div
@@ -273,18 +282,15 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying 
                 </div>
 
                 {/* Full song page */}
-                <a
-                  href={`/song/${track.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
                   onTouchStart={(e) => e.stopPropagation()}
-                  onClick={(e) => { e.stopPropagation(); try { sessionStorage.setItem("vibeworld_return", "1"); } catch {} }}
-                  className="w-11 h-11 rounded-xl flex items-center justify-center transition-all hover:bg-white/10 active:scale-90 flex-shrink-0"
+                  onClick={handleOpenSongPage}
+                  className="w-11 h-11 rounded-xl flex items-center justify-center transition-all hover:bg-white/10 active:scale-90 flex-shrink-0 text-xs font-black"
                   style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", touchAction: "manipulation", minWidth: 44, minHeight: 44 }}
-                  title="Open full song page"
+                  title="Open song page"
                 >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+                  ↗
+                </button>
               </div>
 
               {/* Download row — always shown, upgrade prompt for non-Plus */}
