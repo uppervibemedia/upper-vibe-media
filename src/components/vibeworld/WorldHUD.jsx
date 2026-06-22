@@ -41,7 +41,7 @@ const ZONE_ICONS = {
 
 export default function WorldHUD({
   playerX, playerZ, playerRot, playerPos, forceOpenPanel,
-  isMobile, loading,
+  isMobile, mobileLayout, loading,
   stageVideoTitle,
   stageVideoMuted,
   stageWatching,
@@ -112,6 +112,26 @@ export default function WorldHUD({
 
   const navigate = useNavigate();
 
+  // Derive safe bottom values from mobileLayout (real iPhone viewport) or fallback
+  // actionBottom: px from bottom of screen for zone action buttons
+  // djCardBottom: px from bottom for DJ card
+  const actionBottomPx = isMobile && mobileLayout
+    ? mobileLayout.actionBottom
+    : isMobile ? 248 : null; // null = use CSS calc fallback
+  const djCardBottomPx = isMobile && mobileLayout
+    ? mobileLayout.djCardBottom
+    : isMobile ? 232 : null;
+
+  // Helper: returns style object for bottom positioning
+  const actionStyle = (desktopBottom = "6.5rem") => ({
+    paddingBottom: isMobile && actionBottomPx !== null
+      ? `${actionBottomPx}px`
+      : isMobile
+        ? "calc(env(safe-area-inset-bottom, 0px) + 248px)"
+        : `calc(env(safe-area-inset-bottom, 0px) + ${desktopBottom})`,
+    pointerEvents: "none",
+  });
+
   // Panel states
   const [musicPanelOpen, setMusicPanelOpen] = useState(false);
   const [loungePanelOpen, setLoungePanelOpen] = useState(false);
@@ -180,7 +200,9 @@ export default function WorldHUD({
           className="absolute top-0 left-1/2 z-[50] pointer-events-none"
           style={{
             transform: "translateX(-50%)",
-            paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 3.5rem)" : "4rem",
+            paddingTop: isMobile && mobileLayout
+              ? `${mobileLayout.sa.top + 56}px`
+              : isMobile ? "calc(env(safe-area-inset-top, 0px) + 3.5rem)" : "4rem",
           }}
         >
           <div
@@ -209,7 +231,9 @@ export default function WorldHUD({
         style={{ pointerEvents: stageWatching ? "none" : "auto" }}
         className="absolute top-0 right-1.5 z-[56] flex items-center gap-1.5"
         style={{
-          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 3.4rem)" : "4.5rem",
+          paddingTop: isMobile && mobileLayout
+            ? `${mobileLayout.sa.top + 54}px`
+            : isMobile ? "calc(env(safe-area-inset-top, 0px) + 3.4rem)" : "4.5rem",
         }}
       >
         {/* Chat requests bell */}
@@ -441,10 +465,11 @@ export default function WorldHUD({
             transition={{ type: "spring", damping: 26, stiffness: 300 }}
             className="absolute z-[57] pointer-events-auto"
             style={{
-              // DJ card must clear the mini player (bottom=180px) AND have some gap
-              bottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 14.5rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 11rem)",
+              bottom: isMobile && djCardBottomPx !== null
+                ? djCardBottomPx
+                : isMobile
+                  ? "calc(env(safe-area-inset-bottom, 0px) + 14.5rem)"
+                  : "calc(env(safe-area-inset-bottom, 0px) + 11rem)",
               left: "50%",
               transform: "translateX(-50%)",
               width: isMobile ? "min(calc(100vw - 80px), 240px)" : "280px",
@@ -520,14 +545,7 @@ export default function WorldHUD({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             className="absolute bottom-0 right-0 z-[57] flex flex-col items-end gap-2 px-3"
-            style={{
-              // Must clear joystick (bottom≈217px portrait) + mini player (bottom≈228px)
-              // 15.5rem ≈ 248px which clears both safely
-              paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 9rem)",
-              pointerEvents: "none",
-            }}
+            style={actionStyle("9rem")}
           >
             {nearJukebox && (
               <button
@@ -593,13 +611,13 @@ export default function WorldHUD({
             exit={{ opacity: 0, y: 10 }}
             className="fixed left-0 right-0 z-[200] flex flex-col items-center gap-1.5 px-2 pointer-events-none"
             style={{
-              // When watching: push tray to very bottom so it sits below the embedded video.
-              // When idle: sit above joystick safe zone (portrait=135px + button height).
               bottom: stageWatching
-                ? "calc(env(safe-area-inset-bottom, 0px) + 4px)"
-                : isMobile
-                  ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
-                  : "5rem",
+                ? (isMobile && mobileLayout ? mobileLayout.sa.bottom + 6 : 6)
+                : isMobile && actionBottomPx !== null
+                  ? actionBottomPx
+                  : isMobile
+                    ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
+                    : "5rem",
             }}
           >
             {/* Now showing label — only when NOT watching (avoids overlay on video) */}
@@ -786,12 +804,7 @@ export default function WorldHUD({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={{
-              paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
-              pointerEvents: "none",
-            }}
+            style={actionStyle()}
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
@@ -819,12 +832,7 @@ export default function WorldHUD({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={{
-              paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
-              pointerEvents: "none",
-            }}
+            style={actionStyle()}
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
@@ -852,12 +860,7 @@ export default function WorldHUD({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={{
-              paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
-              pointerEvents: "none",
-            }}
+            style={actionStyle()}
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
@@ -885,12 +888,7 @@ export default function WorldHUD({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={{
-              paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
-              pointerEvents: "none",
-            }}
+            style={actionStyle()}
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
@@ -918,12 +916,7 @@ export default function WorldHUD({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={{
-              paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
-              pointerEvents: "none",
-            }}
+            style={actionStyle()}
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
@@ -951,12 +944,7 @@ export default function WorldHUD({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={{
-              paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
-              pointerEvents: "none",
-            }}
+            style={actionStyle()}
           >
             <p className="text-[10px] text-white/40 tracking-wider">Your music keeps playing</p>
             <button
@@ -988,12 +976,7 @@ export default function WorldHUD({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={{
-              paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
-              pointerEvents: "none",
-            }}
+            style={actionStyle()}
           >
             <span
               className="px-3 py-1.5 rounded-full text-[10px] font-black tracking-wider"
@@ -1015,12 +998,7 @@ export default function WorldHUD({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={{
-              paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
-              pointerEvents: "none",
-            }}
+            style={actionStyle()}
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}

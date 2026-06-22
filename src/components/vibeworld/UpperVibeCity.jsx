@@ -26,6 +26,8 @@ import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
 import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/orbBank";
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
+import useMobileLayout from "@/hooks/useMobileLayout";
+import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -49,6 +51,7 @@ function clearReturnState() {
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const mobileLayout = useMobileLayout(isMobile);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0, animState: "idle" });
   // Restore saved return state (position + panel) when returning from SongPage
   const returnState = useRef(readReturnState());
@@ -834,7 +837,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         animate={{ opacity: loading ? 0 : 1 }}
         transition={{ delay: 0.4 }}
         className="absolute top-0 left-0 right-0 z-[55] flex items-center justify-between px-1.5"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 4px)" }}
+        style={{
+          paddingTop: isMobile && mobileLayout
+            ? `${mobileLayout.sa.top + 4}px`
+            : "calc(env(safe-area-inset-top, 0px) + 4px)"
+        }}
       >
         {/* Left: icon-only Exit */}
         <button
@@ -903,6 +910,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         playerZ={playerPos.z}
         playerRot={playerPos.rot}
         isMobile={isMobile}
+        mobileLayout={mobileLayout}
         loading={loading}
         playerPos={playerPos}
         forceOpenPanel={openPanelOnLoad}
@@ -995,8 +1003,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                 position: "absolute",
                 top: 0,
                 right: 0,
-                width: "50%",
-                height: "65%",
+                // Leave the bottom portion free for joystick + player + buttons
+                // Use mobileLayout to know exactly how much to exclude
+                width: "55%",
+                height: mobileLayout
+                  ? `${mobileLayout.joystick.cy - mobileLayout.joystick.halfSize - 16}px`
+                  : "60%",
                 pointerEvents: "auto",
                 touchAction: "none",
                 userSelect: "none",
@@ -1043,8 +1055,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         <div
           className="fixed z-[60] flex flex-col items-center gap-2 pointer-events-none"
           style={{
-            // Must clear joystick top edge (portrait ~217px) + mini player (228px)
-            bottom: isMobile ? "calc(248px + env(safe-area-inset-bottom,0px))" : "96px",
+            bottom: isMobile && mobileLayout
+              ? mobileLayout.launchHudBottom
+              : isMobile ? 248 : 96,
             left: "50%",
             transform: "translateX(-50%)",
           }}
@@ -1099,6 +1112,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       <HoverboardPanel
         visible={nearHoverboard || hbRiding}
         isMobile={isMobile}
+        mobileLayout={mobileLayout}
         user={user}
         onStartRide={handleHbStart}
         onEndRide={handleHbEnd}
@@ -1157,6 +1171,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
+
+      {/* Mobile debug overlay — only visible with ?debug=mobile in URL */}
+      <MobileDebugOverlay
+        layout={mobileLayout}
+        zone={detectZone(playerPos.x, playerPos.z)}
+        mediaMode={stageFullScreen ? "fullscreen" : stageWatching ? "watch" : "none"}
+        playerPos={playerPos}
+      />
     </div>
   );
 }

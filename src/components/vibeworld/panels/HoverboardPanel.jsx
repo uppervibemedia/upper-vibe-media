@@ -10,7 +10,7 @@ import { X, Zap, Trophy, Wind, Star, Coins } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests, syncBankToAccount } from "@/lib/orbBank";
 
-export default function HoverboardPanel({ visible, isMobile, user, onStartRide, onEndRide }) {
+export default function HoverboardPanel({ visible, isMobile, mobileLayout, user, onStartRide, onEndRide }) {
   const [phase, setPhase] = useState("idle");
   const [sessionOrbs, setSessionOrbs] = useState(0);
   const [orbBank, setOrbBank] = useState(() => getOrbBank());

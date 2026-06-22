@@ -1,46 +1,12 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import useMobileLayout from "@/hooks/useMobileLayout";
 
 /**
  * MobileJoystick — left-side movement thumbstick for mobile gameplay.
- *
- * Fixed HUD element. Uses Pointer Events with iOS touch fallback.
- * Orientation-aware sizing/positioning. Feeds normalized vector (-1..1)
- * into the same movement controller used by desktop WASD.
+ * Consumes useMobileLayout for real iPhone visual-viewport geometry.
  */
-
-// ── Layout helpers ──────────────────────────────────────────────
-function getLayout() {
-  const isLandscape = window.innerWidth > window.innerHeight;
-  const saLeft = parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-left)").trim()) || 0;
-  const saBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-bottom)").trim()) || 0;
-
-  if (isLandscape) {
-    // Landscape: joystick center must be above the mini-player (bottom=180px).
-    // Joystick is 76px tall, center must be at bottom >= 180 + 38 + 12 = 230px
-    // to ensure the joystick does not overlap the player pill.
-    return {
-      joySize: 76,
-      knobSize: 30,
-      maxR: 30,
-      left: Math.max(65, saLeft + 65),
-      bottom: Math.max(230, saBottom + 230),
-    };
-  }
-  // Portrait: center at bottom=175 so joystick top edge ~175+41=216px,
-  // player is at bottom=180 and height=48, so player top=228px — clear.
-  return {
-    joySize: 82,
-    knobSize: 36,
-    maxR: 32,
-    left: Math.max(65, saLeft + 65),
-    bottom: Math.max(175, saBottom + 175),
-  };
-}
-
 export default function MobileJoystick({ onMove }) {
-  const [layout, setLayout] = useState(getLayout);
-  const layoutRef = useRef(layout);
-  layoutRef.current = layout;
+  const layout = useMobileLayout(true);
 
   // Thumb position relative to center
   const [thumbDX, setThumbDX] = useState(0);
@@ -49,46 +15,28 @@ export default function MobileJoystick({ onMove }) {
 
   const activePtrId = useRef(null);
   const activeRef = useRef(false);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+
+  // Reset on orientation change (layout will update, just clear active state)
+  useEffect(() => {
+    activePtrId.current = null;
+    activeRef.current = false;
+    setActive(false);
+    setThumbDX(0);
+    setThumbDY(0);
+    onMove?.(0, 0);
+  }, [layout?.isLandscape, onMove]);
 
   const haptic = useCallback(() => {
     try { navigator?.vibrate?.(10); } catch {}
   }, []);
 
-  // ── Orientation reset ────────────────────────────────────────
-  useEffect(() => {
-    let t;
-    const reset = () => {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        const L = getLayout();
-        setLayout(L);
-        layoutRef.current = L;
-        // Hard reset all state
-        activePtrId.current = null;
-        activeRef.current = false;
-        setActive(false);
-        setThumbDX(0);
-        setThumbDY(0);
-        onMove?.(0, 0);
-      }, 120);
-    };
-    window.addEventListener("resize", reset);
-    window.addEventListener("orientationchange", reset);
-    if (window.visualViewport) window.visualViewport.addEventListener("resize", reset);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener("resize", reset);
-      window.removeEventListener("orientationchange", reset);
-      if (window.visualViewport) window.visualViewport.removeEventListener("resize", reset);
-    };
-  }, [onMove]);
-
-  // ── Pointer handlers ──────────────────────────────────────────
   const handleDown = useCallback((e) => {
     if (activePtrId.current !== null) return;
     e.preventDefault();
     e.stopPropagation();
-    const ptr = e.nativeEvent.pointerId ?? e.changedTouches?.[0]?.identifier;
+    const ptr = e.nativeEvent?.pointerId ?? e.changedTouches?.[0]?.identifier ?? 0;
     activePtrId.current = ptr;
     haptic();
   }, [haptic]);
@@ -96,35 +44,35 @@ export default function MobileJoystick({ onMove }) {
   const handleMove = useCallback((e) => {
     if (activePtrId.current === null) return;
     e.preventDefault();
-
     const L = layoutRef.current;
-    let clientX, clientY;
+    if (!L) return;
 
-    if (e.nativeEvent.pointerId !== undefined) {
-      // Pointer event
+    let clientX, clientY;
+    if (e.nativeEvent?.pointerId !== undefined) {
       const ptrs = e.nativeEvent.getCoalescedEvents?.() || [e.nativeEvent];
       const ourPtr = [...ptrs].find(p => p.pointerId === activePtrId.current);
       if (!ourPtr) return;
       clientX = ourPtr.clientX;
       clientY = ourPtr.clientY;
     } else {
-      // Touch fallback
       const touch = [...e.touches].find(t => t.identifier === activePtrId.current);
       if (!touch) return;
       clientX = touch.clientX;
       clientY = touch.clientY;
     }
 
-    // Calculate delta from joystick center (bottom-left anchored)
-    const cx = L.left;
-    const cy = window.innerHeight - L.bottom;
-    let dx = (clientX - cx) / (L.joySize / 2);
-    let dy = (cy - clientY) / (L.joySize / 2);
+    // joystick center in screen coords (from top-left)
+    const cx = L.joystick.cx;
+    const cy = L.joystick.cy;
+    const halfSize = L.joystick.halfSize;
+
+    let dx = (clientX - cx) / halfSize;
+    let dy = (cy - clientY) / halfSize;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist > 1) { dx /= dist; dy /= dist; }
 
-    setThumbDX(dx * L.maxR);
-    setThumbDY(-dy * L.maxR);
+    setThumbDX(dx * L.joystick.maxR);
+    setThumbDY(-dy * L.joystick.maxR);
 
     if (dist > 0.15 && !activeRef.current) {
       activeRef.current = true;
@@ -141,15 +89,13 @@ export default function MobileJoystick({ onMove }) {
 
   const handleUp = useCallback((e) => {
     if (activePtrId.current === null) return;
-
     let found = false;
-    if (e.nativeEvent.pointerId !== undefined) {
+    if (e.nativeEvent?.pointerId !== undefined) {
       found = e.nativeEvent.pointerId === activePtrId.current;
     } else {
       found = [...e.changedTouches].some(t => t.identifier === activePtrId.current);
     }
     if (!found) return;
-
     e.preventDefault();
     activePtrId.current = null;
     activeRef.current = false;
@@ -159,23 +105,24 @@ export default function MobileJoystick({ onMove }) {
     onMove?.(0, 0);
   }, [onMove]);
 
-  const L = layout;
+  if (!layout) return null;
+
+  const { joystick } = layout;
 
   return (
     <div
       className="fixed z-[60]"
       style={{
-        left: L.left - L.joySize / 2,
-        bottom: L.bottom - L.joySize / 2,
-        width: L.joySize,
-        height: L.joySize,
+        // Position the joystick ring: top-left corner of the bounding box
+        left: joystick.cx - joystick.halfSize,
+        top: joystick.cy - joystick.halfSize,
+        width: joystick.size,
+        height: joystick.size,
         borderRadius: "50%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: active
-          ? "rgba(255,255,255,0.12)"
-          : "rgba(255,255,255,0.04)",
+        background: active ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
         border: `1.5px solid ${active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)"}`,
         backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)",
@@ -194,11 +141,10 @@ export default function MobileJoystick({ onMove }) {
       onTouchEnd={handleUp}
       onTouchCancel={handleUp}
     >
-      {/* Knob */}
       <div
         style={{
-          width: L.knobSize,
-          height: L.knobSize,
+          width: joystick.maxR * 2 * 0.55,
+          height: joystick.maxR * 2 * 0.55,
           borderRadius: "50%",
           pointerEvents: "none",
           background: active
