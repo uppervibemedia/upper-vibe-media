@@ -601,7 +601,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // DJ audio is gated strictly to dance floor — no proximity bleed outside
 
-  // ── Dance floor enter / exit — pause personal player, restore on exit ──────────
+  // ── Dance floor enter / exit — mute personal player on entry, restore on exit ──
   useEffect(() => {
     const personal = audioRef?.current;
     if (onDanceFloor && !wasOnDanceFloorRef.current) {
@@ -609,31 +609,32 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       wasOnDanceFloorRef.current = true;
       if (personal) {
         savedPersonalTimeRef.current = personal.currentTime;
+        // Pause personal player (save state for seamless resume)
         if (isPlaying) {
           danceFloorPausedRef.current = true;
           togglePlay?.();
         }
-        // Silence personal player volume (DJ stream takes over via danceFloorMode)
         personal.volume = 0;
       }
     } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
       // Left dance floor
       wasOnDanceFloorRef.current = false;
       if (personal) {
-        // Restore saved playback position
+        // Restore volume first
+        personal.volume = personalBaseVolRef.current;
+        // Restore playback position to where they left off
         if (savedPersonalTimeRef.current > 0) {
           personal.currentTime = savedPersonalTimeRef.current;
+          savedPersonalTimeRef.current = 0;
         }
-        // Restore volume
-        personal.volume = personalBaseVolRef.current;
-        // Resume playback if we paused it on entry
+        // Resume if we paused on entry
         if (danceFloorPausedRef.current) {
           danceFloorPausedRef.current = false;
           if (!isPlaying) togglePlay?.();
         }
       }
     }
-  }, [onDanceFloor, audioRef, isPlaying, togglePlay]);
+  }, [onDanceFloor]); // intentionally minimal deps — audioRef/togglePlay/isPlaying accessed via current ref
 
   // Cleanup on unmount — restore personal player volume
   useEffect(() => {
@@ -692,6 +693,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           mobileInputRef={mobileInputRef}
           remoteUsers={activeUsers}
           avatarConfig={avatarConfig}
+          djTrack={djTrack}
           launchRef={launchRef}
           onNearPad={(padIdx, airborne, orbs) => {
             setNearLaunchPad(padIdx >= 0 && !airborne);

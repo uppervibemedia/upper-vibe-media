@@ -18,7 +18,8 @@ import { base44 } from "@/api/base44Client";
 const POLL_INTERVAL = 8000;      // poll AppSettings every 8s
 const SYNC_TOLERANCE = 2.5;      // seconds — resync if drift > this
 const FADE_DURATION = 1200;      // ms for volume crossfade
-const MAX_VOL = 0.88;            // max DJ audio volume (proximity scaled)
+const MAX_VOL = 0.88;            // max DJ audio volume
+const RECENT_HISTORY = 5;        // avoid repeating last N tracks
 
 // ─── Volume crossfade utility ─────────────────────────────────────────────────
 function crossfadeVol(audioEl, targetVol, durationMs, onDone) {
@@ -79,6 +80,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
 
   // Internal state refs (avoid stale closures in callbacks)
   const trackPoolRef = useRef([]);      // all available DJ tracks
+  const recentTrackIds = useRef([]);    // recently played track IDs (no-repeat buffer)
   const currentTrackRef = useRef(null); // { track, startTs, settingsTrackRecId, settingsTsRecId }
   const danceFloorModeRef = useRef(false);
   danceFloorModeRef.current = danceFloorMode;
@@ -98,13 +100,23 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       .catch(() => {});
   }, []);
 
-  // ── Pick next track from pool (not the same as current) ──────────
+  // ── Pick next track — avoid recent history ────────────────────────
   const pickNextTrack = useCallback(() => {
     const pool = trackPoolRef.current;
     if (!pool.length) return null;
-    const cur = currentTrackRef.current?.track;
-    const candidates = pool.filter((t) => !cur || t.id !== cur.id);
-    return (candidates.length > 0 ? candidates : pool)[Math.floor(Math.random() * (candidates.length || pool.length))];
+    const recent = new Set(recentTrackIds.current);
+    let candidates = pool.filter((t) => !recent.has(t.id));
+    if (candidates.length === 0) {
+      // All tracks played — reset history but still skip current
+      const cur = currentTrackRef.current?.track?.id;
+      candidates = pool.filter((t) => !cur || t.id !== cur);
+      recentTrackIds.current = [];
+    }
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    if (pick) {
+      recentTrackIds.current = [...recentTrackIds.current, pick.id].slice(-RECENT_HISTORY);
+    }
+    return pick || pool[0];
   }, []);
 
 
