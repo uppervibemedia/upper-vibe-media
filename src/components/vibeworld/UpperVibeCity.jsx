@@ -382,7 +382,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── Movement locked when watching stage, full-screen, or typing ─
   const [ferrisRiding, setFerrisRiding] = useState(false);
-  const movementLocked = stageWatching || stageFullScreen || loungeInputFocused || ferrisRiding;
+  const movementLocked = stageWatching || stageFullScreen || loungeInputFocused || ferrisRiding; // ferrisRiding locks avatar movement so camera can follow cabin freely
 
   // ── Dance floor detection (plaza zone: cx=0, cz=-13, r=7) ─────────────────────
   const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -13, DANCE_FLOOR_R = 10.5;
@@ -774,6 +774,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           djTrack={djTrack}
           launchRef={launchRef}
           hbRiding={hbRiding}
+          ferrisRiding={ferrisRiding}
           onNearPad={(padIdx, airborne, orbs) => {
             setNearLaunchPad(padIdx >= 0 && !airborne);
             setIsAirborne(airborne);

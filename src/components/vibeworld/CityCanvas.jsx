@@ -4,7 +4,7 @@ import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
 // Vibe Shop is temporarily disabled — replaced by Ferris Wheel
 // import createVibeShop from "./VibeShop";
-import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_INTERACT_RADIUS, getRidePosition, NUM_CABINS, WHEEL_RADIUS } from "./FerrisWheel";
+import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, getCabinWorldPosition, getBoardingPosition } from "./FerrisWheel";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
@@ -64,11 +64,7 @@ const IDLE_ORBIT_SPEED = 0.18; // radians/sec for idle orbit (very slow)
 const TREE_R = 0.5;
 const COLLISION_BOXES = [
   ...TREE_POSITIONS.map(([tx, tz]) => [tx, tz, TREE_R, TREE_R]),
-  // Ferris wheel support legs collision (two legs at x=22±1.8, z=5)
-  [22 - 1.5, 5, 0.5, 0.5],
-  [22 + 1.5, 5, 0.5, 0.5],
-  // Ferris wheel center base collision
-  [22, 5, 1.0, 1.0],
+  [22 - 1.5, 5, 0.5, 0.5], [22 + 1.5, 5, 0.5, 0.5], [22, 5, 1.2, 1.2],
 ];
 
 // ─── UTILITIES ────────────────────────────────────────────────
@@ -1295,7 +1291,7 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, spawnOverride = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1370,6 +1366,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   isDancingRef.current = isDancing;
   const hbRidingRef = useRef(false);
   hbRidingRef.current = hbRiding;
+  const ferrisRidingRef = useRef(false);
+  ferrisRidingRef.current = ferrisRiding;
 
   const activeEmoteRef = useRef(null);
   activeEmoteRef.current = activeEmote;
@@ -1730,11 +1728,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Camera sits BEHIND avatar: avatar faces +Z when rot=0, camera is at +Z offset
         const finalCamAngle = rot + camYawSmoothRef.current;
 
-        // Stage watching mode
         const STAGE_LOOK_AT = new Vector3(0, 3.5, -34.4);
         const STAGE_CAM_POS = new Vector3(0, 3.0, -12);
-
-        if (lockedRef.current) {
+        if (ferrisRidingRef.current) {
+          const cp = getCabinWorldPosition(0, t);
+          camera.position.lerp(new Vector3(cp.x - 4, cp.y + 1.2, cp.z - 3), Math.min(1, 3.5 * dt));
+          camera.lookAt(cp.x, cp.y, cp.z);
+        } else if (lockedRef.current) {
           camera.position.lerp(STAGE_CAM_POS, Math.min(1, 3.0 * dt));
           camera.lookAt(STAGE_LOOK_AT);
         } else {
