@@ -2120,6 +2120,51 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
+        // ─── BEACH STARGAZING — idle on beach tilts camera gently skyward ──
+        // Only activates when: idle > 8s, player on beach side (pz > 18), not locked, not riding
+        {
+          const onBeach = pz > 18 && !lockedRef.current && !ferrisRidingRef.current && !hbRidingRef.current;
+          const idleEnough = idleTimerRef.current > 8.0;
+          const shouldStargaze = onBeach && idleEnough;
+
+          if (!scene.userData._stargazeBlend) scene.userData._stargazeBlend = 0;
+          // Smoothly blend in/out
+          const targetBlend = shouldStargaze ? 1 : 0;
+          scene.userData._stargazeBlend += (targetBlend - scene.userData._stargazeBlend) * Math.min(1, dt * 0.6);
+          const blend = scene.userData._stargazeBlend;
+
+          if (blend > 0.01) {
+            // Gentle slow pan across the sky (very slow horizontal drift)
+            const slowPan = Math.sin(t * 0.05) * 0.4;
+            // Look position: blend from normal look-at toward straight up + forward
+            const normalLookX = px;
+            const normalLookY = py + CAM_LOOK_Y + Math.sin(camPitchSmoothRef.current) * 3.5;
+            const normalLookZ = pz;
+            // Stargazing look: camera stays near ground, looks up at ~60° above horizon
+            const starLookX = px + Math.sin(slowPan) * 8;
+            const starLookY = py + 12; // high up — into the sky
+            const starLookZ = pz + Math.cos(slowPan) * 8;
+            // Camera position for stargazing: pull back slightly and lower (lying on beach feel)
+            const normalCamX = px - Math.sin(rot + camYawSmoothRef.current) * CAM_DIST * Math.cos(camPitchSmoothRef.current);
+            const normalCamY = py + CAM_HEIGHT + Math.sin(camPitchSmoothRef.current) * CAM_DIST * 1.4;
+            const normalCamZ = pz - Math.cos(rot + camYawSmoothRef.current) * CAM_DIST * Math.cos(camPitchSmoothRef.current);
+            const starCamX = px + Math.sin(slowPan) * 1.5;
+            const starCamY = py + 0.6; // low — as if lying down
+            const starCamZ = pz + 2.0;
+            // Apply blended overrides directly to camera (normal camera was already set above)
+            camera.position.set(
+              normalCamX + (starCamX - normalCamX) * blend,
+              normalCamY + (starCamY - normalCamY) * blend,
+              normalCamZ + (starCamZ - normalCamZ) * blend,
+            );
+            camera.lookAt(
+              normalLookX + (starLookX - normalLookX) * blend,
+              normalLookY + (starLookY - normalLookY) * blend,
+              normalLookZ + (starLookZ - normalLookZ) * blend,
+            );
+          }
+        }
+
         // ─── COSMIC SKY — skybox follow, stars twinkle, shooting stars, asteroids ──
         animateCosmicSky(scene, camera, t, dt);
 
