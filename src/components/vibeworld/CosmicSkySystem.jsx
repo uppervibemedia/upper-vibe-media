@@ -8,8 +8,7 @@
  */
 import * as THREE from "three";
 
-const BASE = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
-const SKY_A = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;
+const SKY_A = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154/653866605_ChatGPTImageJun19202612_41_07PM.png";
 
 export function createCosmicSky(scene) {
   const loader = new THREE.TextureLoader();
