@@ -692,6 +692,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           mobileInputRef={mobileInputRef}
           remoteUsers={activeUsers}
           avatarConfig={avatarConfig}
+          djTrack={djTrack}
           launchRef={launchRef}
           onNearPad={(padIdx, airborne, orbs) => {
             setNearLaunchPad(padIdx >= 0 && !airborne);

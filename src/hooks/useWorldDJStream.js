@@ -79,6 +79,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
 
   // Internal state refs (avoid stale closures in callbacks)
   const trackPoolRef = useRef([]);      // all available DJ tracks
+  const recentTrackIdsRef = useRef([]); // history to avoid repeats (last 8 played)
   const currentTrackRef = useRef(null); // { track, startTs, settingsTrackRecId, settingsTsRecId }
   const danceFloorModeRef = useRef(false);
   danceFloorModeRef.current = danceFloorMode;
@@ -98,13 +99,25 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       .catch(() => {});
   }, []);
 
-  // ── Pick next track from pool (not the same as current) ──────────
+  // ── Pick next track from pool, avoiding recent repeats ───────────
   const pickNextTrack = useCallback(() => {
     const pool = trackPoolRef.current;
     if (!pool.length) return null;
-    const cur = currentTrackRef.current?.track;
-    const candidates = pool.filter((t) => !cur || t.id !== cur.id);
-    return (candidates.length > 0 ? candidates : pool)[Math.floor(Math.random() * (candidates.length || pool.length))];
+    const recent = recentTrackIdsRef.current;
+    // Exclude last 8 played tracks (or half the pool size, whichever is smaller)
+    const historySize = Math.min(8, Math.floor(pool.length / 2));
+    const recentSet = new Set(recent.slice(-historySize));
+    let candidates = pool.filter((t) => !recentSet.has(t.id));
+    // Fallback: if all tracks are in recent history, just avoid the most recent one
+    if (!candidates.length) {
+      const lastId = recent[recent.length - 1];
+      candidates = pool.filter((t) => t.id !== lastId);
+    }
+    if (!candidates.length) candidates = pool;
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    // Record in history
+    recentTrackIdsRef.current = [...recent, pick.id].slice(-12);
+    return pick;
   }, []);
 
 

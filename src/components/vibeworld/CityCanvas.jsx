@@ -1296,7 +1296,7 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar }
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1307,6 +1307,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   onPosCbRef.current = onPositionChange;
   const onJukeboxProxRef = useRef(onJukeboxProximity);
   onJukeboxProxRef.current = onJukeboxProximity;
+  const djTrackRef = useRef(djTrack);
+  djTrackRef.current = djTrack;
+
+  // Update the in-world "Now Playing" display whenever djTrack changes
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    const draw = scene.userData.djDrawNowPlaying;
+    if (draw) draw(djTrack?.title || "", djTrack?.artist_display || "Upper Vibe");
+  }, [djTrack?.id, djTrack?.title]);
 
   useEffect(() => {
     const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
