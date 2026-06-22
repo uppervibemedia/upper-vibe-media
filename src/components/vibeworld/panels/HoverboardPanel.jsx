@@ -1,6 +1,7 @@
 /**
- * HoverboardPanel — Free-ride Hoverboard Beach Zone HUD.
- * Simple: Start Ride / Exit Ride, orb counter, boost flash, high score.
+ * HoverboardPanel — Neon Surf Beach zone HUD.
+ * Idle: centered bottom invite card.
+ * Riding: compact top-RIGHT corner HUD (matching Vibe Launch style).
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,7 +9,7 @@ import { X, Zap, Trophy, Wind, Star } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 export default function HoverboardPanel({ visible, isMobile, user, onStartRide, onEndRide }) {
-  const [phase, setPhase] = useState("idle"); // idle | riding
+  const [phase, setPhase] = useState("idle");
   const [orbsCollected, setOrbsCollected] = useState(0);
   const [totalOrbs, setTotalOrbs] = useState(() => {
     try { return parseInt(localStorage.getItem("hb_total_orbs") || "0", 10); } catch { return 0; }
@@ -23,10 +24,8 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
   const onStartRideRef = useRef(onStartRide);
   useEffect(() => { onEndRideRef.current = onEndRide; }, [onEndRide]);
   useEffect(() => { onStartRideRef.current = onStartRide; }, [onStartRide]);
-
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
-  // Load saved total from user account
   useEffect(() => {
     if (user?.hb_total_orbs) setTotalOrbs(user.hb_total_orbs);
   }, [user?.hb_total_orbs]);
@@ -37,7 +36,7 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
     setBoostFlash(false);
     phaseRef.current = "riding";
     setPhase("riding");
-    window.__hbResetRings = true; // triggers resetOrbs in CityCanvas
+    window.__hbResetRings = true;
     onStartRideRef.current?.();
   }, []);
 
@@ -46,12 +45,10 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
     setPhase("idle");
     onEndRideRef.current?.();
 
-    // Save orbs
     const newTotal = totalOrbs + orbsRef.current;
     setTotalOrbs(newTotal);
     try { localStorage.setItem("hb_total_orbs", String(newTotal)); } catch {}
 
-    // Unlock trail boost at 5 orbs collected in one ride
     const didUnlock = orbsRef.current >= 5;
     if (didUnlock) {
       setTrailUnlocked(true);
@@ -61,7 +58,6 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
     }
   }, [totalOrbs]);
 
-  // Register orb collector once — reads phaseRef so no stale closure
   useEffect(() => {
     window.__hbCollectOrb = (orbId) => {
       if (phaseRef.current !== "riding") return;
@@ -83,14 +79,20 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
 
   if (!visible) return null;
 
+  // Idle invite panel — bottom-center
   const PANEL_BOTTOM = isMobile
     ? "calc(140px + env(safe-area-inset-bottom, 0px))"
     : "80px";
 
+  // Riding HUD top offset — below the top bar (matches Vibe Launch style)
+  const HUD_TOP = isMobile
+    ? "calc(env(safe-area-inset-top, 0px) + 56px)"
+    : "68px";
+
   return (
     <AnimatePresence mode="wait">
 
-      {/* ── IDLE: Beach zone invitation panel ── */}
+      {/* ── IDLE: invite card ── */}
       {phase === "idle" && (
         <motion.div
           key="hb-idle"
@@ -99,9 +101,9 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
           exit={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.25 }}
           className="fixed z-[65] left-1/2 -translate-x-1/2 pointer-events-auto"
-          style={{ bottom: PANEL_BOTTOM, maxWidth: 360, width: "92vw" }}
+          style={{ bottom: PANEL_BOTTOM, maxWidth: 340, width: "88vw" }}
         >
-          <div className="rounded-2xl px-5 py-5 flex flex-col gap-3"
+          <div className="rounded-2xl px-5 py-4 flex flex-col gap-3"
             style={{
               background: "rgba(4,2,20,0.94)",
               border: "1px solid rgba(0,229,255,0.35)",
@@ -117,12 +119,12 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
             {totalOrbs > 0 && (
               <div className="flex items-center gap-1.5 text-[10px]" style={{ color: "#FFD700" }}>
                 <Trophy className="w-3 h-3" />
-                <span>Total orbs collected: <strong>{totalOrbs}</strong></span>
+                <span>Total orbs: <strong>{totalOrbs}</strong></span>
               </div>
             )}
 
             {trailUnlocked && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-black"
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-black"
                 style={{ background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)", color: "#FFD700" }}
               >
                 <Wind className="w-3 h-3" /> Trail Boost active!
@@ -131,7 +133,7 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
 
             <button
               onClick={startRide}
-              className="w-full py-3.5 rounded-full font-black text-sm tracking-widest transition-all hover:brightness-110 active:scale-[0.97]"
+              className="w-full py-3 rounded-full font-black text-sm tracking-widest transition-all hover:brightness-110 active:scale-[0.97]"
               style={{
                 background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
                 color: "#000",
@@ -142,92 +144,89 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
             </button>
 
             <p className="text-[9px] text-center" style={{ color: "rgba(255,255,255,0.18)" }}>
-              Desktop: WASD / Arrow Keys &nbsp;·&nbsp; Mobile: Joystick
+              WASD / Arrow Keys &nbsp;·&nbsp; Mobile: Joystick
             </p>
           </div>
         </motion.div>
       )}
 
-      {/* ── RIDING: minimal HUD with orb counter and exit button ── */}
+      {/* ── RIDING: compact top-right corner HUD ── */}
       {phase === "riding" && (
         <motion.div
           key="hb-riding"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          transition={{ duration: 0.2 }}
           className="fixed z-[65] pointer-events-none"
           style={{
-            top: isMobile ? "calc(56px + env(safe-area-inset-top,0px) + 8px)" : 68,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: isMobile ? "96vw" : 420,
+            top: HUD_TOP,
+            right: isMobile ? "8px" : "14px",
+            width: isMobile ? "130px" : "148px",
           }}
         >
-          {/* Exit button */}
-          <div className="flex justify-end mb-1.5 pointer-events-auto">
-            <button
-              onClick={exitRide}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black tracking-wider transition-all hover:bg-white/10 active:scale-[0.97]"
-              style={{
-                background: "rgba(4,2,20,0.82)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "rgba(255,255,255,0.5)",
-                backdropFilter: "blur(10px)",
-              }}
-            >
-              <X className="w-3 h-3" /> EXIT RIDE
-            </button>
-          </div>
-
-          {/* HUD bar */}
           <div
-            className="flex items-center justify-center gap-4 px-5 py-2.5 rounded-2xl"
+            className="rounded-2xl overflow-hidden"
             style={{
               background: "rgba(4,2,20,0.88)",
               border: "1px solid rgba(0,229,255,0.28)",
               backdropFilter: "blur(12px)",
+              boxShadow: "0 0 20px rgba(0,184,212,0.12)",
             }}
           >
-            <div className="flex items-center gap-2">
-              <Star className="w-4 h-4" style={{ color: "#00E5FF" }} />
-              <div className="flex flex-col">
-                <span className="text-[8px] font-bold tracking-widest" style={{ color: "rgba(0,229,255,0.55)" }}>ORBS</span>
-                <span className="font-black text-white text-lg leading-none">{orbsCollected}</span>
+            {/* Orb count row */}
+            <div className="flex items-center gap-2 px-3 py-2">
+              <Star className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#00E5FF" }} />
+              <div className="flex flex-col flex-1">
+                <span className="font-black tracking-widest" style={{ fontSize: "7px", color: "rgba(0,229,255,0.55)" }}>ORBS</span>
+                <span className="font-black text-white leading-none" style={{ fontSize: "18px" }}>{orbsCollected}</span>
               </div>
+              {trailUnlocked || orbsCollected >= 5 ? (
+                <Wind className="w-3 h-3 flex-shrink-0" style={{ color: "#FFD700" }} />
+              ) : null}
             </div>
 
+            {/* Trail Boost badge */}
             {orbsCollected >= 5 && (
-              <>
-                <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.09)" }} />
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(255,215,0,0.15)", border: "1px solid rgba(255,215,0,0.4)" }}
-                >
-                  <Wind className="w-3 h-3" style={{ color: "#FFD700" }} />
-                  <span className="text-[9px] font-black" style={{ color: "#FFD700" }}>TRAIL BOOST!</span>
-                </div>
-              </>
+              <div
+                className="mx-2 mb-1.5 flex items-center justify-center gap-1 rounded-lg py-0.5"
+                style={{ background: "rgba(255,215,0,0.12)", border: "1px solid rgba(255,215,0,0.3)" }}
+              >
+                <span className="font-black" style={{ fontSize: "8px", color: "#FFD700" }}>TRAIL BOOST!</span>
+              </div>
             )}
+
+            {/* Exit button */}
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <button
+                onClick={exitRide}
+                className="w-full flex items-center justify-center gap-1.5 py-2 pointer-events-auto transition-all hover:bg-white/5 active:scale-[0.97]"
+                style={{ color: "rgba(255,255,255,0.45)", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em" }}
+              >
+                <X className="w-3 h-3" /> EXIT RIDE
+              </button>
+            </div>
           </div>
 
-          {/* Boost flash */}
+          {/* Speed boost flash — floats above HUD */}
           <AnimatePresence>
             {boostFlash && (
               <motion.div
                 key="boost"
                 initial={{ opacity: 1, scale: 1, y: 0 }}
-                animate={{ opacity: 0, scale: 1.5, y: -40 }}
+                animate={{ opacity: 0, scale: 1.4, y: -36 }}
                 exit={{}}
                 transition={{ duration: 0.9 }}
-                className="absolute left-1/2 font-black text-xl pointer-events-none"
+                className="absolute right-0 font-black pointer-events-none"
                 style={{
-                  top: 70,
-                  transform: "translateX(-60%)",
+                  top: -8,
+                  fontSize: "13px",
                   color: "#00FF88",
-                  textShadow: "0 0 24px #00FF88",
+                  textShadow: "0 0 20px #00FF88",
                   whiteSpace: "nowrap",
                 }}
               >
-                ⚡ SPEED BOOST!
+                ⚡ SPEED!
               </motion.div>
             )}
           </AnimatePresence>
@@ -238,15 +237,15 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
               <motion.div
                 key="launch"
                 initial={{ opacity: 1, scale: 1, y: 0 }}
-                animate={{ opacity: 0, scale: 1.6, y: -60 }}
+                animate={{ opacity: 0, scale: 1.4, y: -40 }}
                 exit={{}}
                 transition={{ duration: 1.2 }}
-                className="absolute left-1/2 font-black text-xl pointer-events-none"
+                className="absolute right-0 font-black pointer-events-none"
                 style={{
-                  top: 70,
-                  transform: "translateX(10%)",
+                  top: -8,
+                  fontSize: "13px",
                   color: "#FF9900",
-                  textShadow: "0 0 30px #FF6600",
+                  textShadow: "0 0 20px #FF6600",
                   whiteSpace: "nowrap",
                 }}
               >

@@ -64,7 +64,7 @@ export default function OrbLeaderboard({ visible, isMobile, currentUserId, curre
       .map(([id, v]) => ({ id, username: v.username, orbs: v.orbs ?? 0 }))
       .filter(e => e.orbs > 0)
       .sort((a, b) => b.orbs - a.orbs)
-      .slice(0, 10);
+      .slice(0, 6);
 
     setEntries(sorted);
   };
@@ -105,9 +105,11 @@ export default function OrbLeaderboard({ visible, isMobile, currentUserId, curre
           transition={{ duration: 0.25, ease: "easeOut" }}
           className="fixed z-[62] pointer-events-none"
           style={{
-            top: isMobile ? "calc(env(safe-area-inset-top,0px) + 60px)" : "72px",
+            // Sit in the right side, well below the top bar and player controls
+            // On mobile: pushed down further to avoid covering anything interactive
+            top: isMobile ? "calc(env(safe-area-inset-top,0px) + 130px)" : "130px",
             right: isMobile ? "8px" : "14px",
-            width: isMobile ? "148px" : "172px",
+            width: isMobile ? "136px" : "156px",
           }}
         >
           <div
