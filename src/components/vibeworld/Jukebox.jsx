@@ -9,9 +9,9 @@ import * as THREE from "three";
 const PLAZA_X = 0;
 const PLAZA_Z = -4;
 
-// DJ Booth sits to the RIGHT (east) of the dance floor, beside the Music Library.
-// Dance floor center is (0, -4), radius 7. Booth at (12, -4) — beside the floor, east side.
-export const JUKEBOX_POS = { x: 12, z: -4 };
+// DJ Booth sits to the RIGHT (east) of the dance floor, close enough to feel connected.
+// Dance floor center is (0, -4), radius 7. Booth at (9, -4) — just off the floor edge.
+export const JUKEBOX_POS = { x: 9, z: -4 };
 export const JUKEBOX_INTERACT_RADIUS = 6;
 export const DANCE_FLOOR_RADIUS = 7;
 
@@ -259,8 +259,7 @@ export function createJukebox(scene) {
 
   // ── "LIVE DJ" hologram sign ────────────────────────────────────────
   const liveDJTex = makeTextSprite([
-    { text: "▶  LIVE DJ", color: "#00E5FF", size: 38, blur: 22, y: 48, double: true },
-    { text: "Upper Vibe Radio", color: "#A078FF", size: 22, blur: 10, y: 96 },
+    { text: "▶  LIVE DJ", color: "#00E5FF", size: 42, blur: 22, y: 64, double: true },
   ], { width: 512, height: 128 });
 
   const holoMat = new THREE.SpriteMaterial({ map: liveDJTex, transparent: true, depthWrite: false, depthTest: false });
