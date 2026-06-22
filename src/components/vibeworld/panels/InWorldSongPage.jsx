@@ -178,34 +178,54 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying,
     navigate(`/song/${track.id}`);
   };
 
+  // On mobile: bottom-sheet style, on desktop: centered modal
+  const isLandscape = isMobile && typeof window !== "undefined" && window.innerWidth > window.innerHeight;
+
   return (
     <motion.div
       key="inworld-song-page"
-      initial={{ opacity: 0, scale: 0.95, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95, y: 20 }}
+      initial={{ opacity: 0, y: isMobile ? 40 : 0, scale: isMobile ? 1 : 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: isMobile ? 40 : 0, scale: isMobile ? 1 : 0.95 }}
       transition={{ type: "spring", damping: 28, stiffness: 300 }}
-      className="fixed inset-0 z-[90] flex items-center justify-center pointer-events-auto"
-      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
+      className="fixed inset-0 z-[90] flex pointer-events-auto"
+      style={{
+        background: "rgba(0,0,0,0.75)",
+        backdropFilter: "blur(12px)",
+        alignItems: isMobile ? "flex-end" : "center",
+        justifyContent: "center",
+      }}
       onClick={onClose}
     >
       <div
-        className="relative rounded-2xl overflow-hidden flex flex-col"
+        className="relative flex flex-col overflow-hidden"
         style={{
-          width: isMobile ? "min(calc(100vw - 24px), 360px)" : "340px",
-          maxHeight: isMobile ? "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 40px)" : "580px",
-          background: "rgba(8,8,24,0.98)",
+          // Mobile portrait: bottom sheet, limited height so cover + buttons visible
+          // Mobile landscape: side-anchored compact card
+          // Desktop: centered modal
+          width: isMobile
+            ? isLandscape ? "min(calc(100vw - 32px), 480px)" : "100%"
+            : "340px",
+          maxWidth: isMobile ? "100%" : "340px",
+          maxHeight: isMobile
+            ? isLandscape
+              ? "min(calc(100dvh - 24px), 340px)"
+              : "min(calc(100dvh - env(safe-area-inset-top,0px) - 16px), 520px)"
+            : "580px",
+          borderRadius: isMobile && !isLandscape ? "20px 20px 0 0" : "20px",
+          background: "rgba(8,8,24,0.99)",
           border: "1px solid rgba(0,229,255,0.18)",
           boxShadow: "0 0 48px rgba(0,184,212,0.15), 0 8px 40px rgba(0,0,0,0.7)",
+          paddingBottom: isMobile && !isLandscape ? "env(safe-area-inset-bottom, 0px)" : 0,
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close */}
+        {/* Close button — top right */}
         <button
           onTouchStart={(e) => e.stopPropagation()}
           onClick={onClose}
           className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
-          style={{ color: "rgba(255,255,255,0.6)", touchAction: "manipulation", minWidth: 36, minHeight: 36, background: "rgba(0,0,0,0.4)" }}
+          style={{ color: "rgba(255,255,255,0.6)", touchAction: "manipulation", minWidth: 36, minHeight: 36, background: "rgba(0,0,0,0.5)" }}
         >
           <X className="w-4 h-4" />
         </button>
@@ -227,25 +247,35 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying,
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="flex flex-col"
+              className="flex overflow-hidden"
+              style={{ flexDirection: isLandscape ? "row" : "column" }}
             >
-              {/* Cover art — full square */}
-              <div className="relative w-full flex-shrink-0" style={{ aspectRatio: "1/1" }}>
+              {/* Cover art */}
+              <div
+                className="relative flex-shrink-0"
+                style={isLandscape
+                  ? { width: "140px", minHeight: "100%", aspectRatio: "unset" }
+                  : { width: "100%", aspectRatio: "1/1", maxHeight: isMobile ? "180px" : "unset" }
+                }
+              >
                 {track.cover_url ? (
                   <img
                     src={track.cover_url}
                     alt={track.title}
                     className="w-full h-full object-cover block"
+                    style={{ height: isLandscape ? "100%" : undefined }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center"
-                    style={{ background: "rgba(0,100,150,0.2)" }}>
+                    style={{ background: "rgba(0,100,150,0.2)", minHeight: isLandscape ? "100%" : "120px" }}>
                     <span className="text-5xl">🎵</span>
                   </div>
                 )}
                 {/* Gradient overlay */}
-                <div className="absolute inset-x-0 bottom-0 h-1/3"
-                  style={{ background: "linear-gradient(to top, rgba(8,8,24,1) 0%, transparent 100%)" }} />
+                {!isLandscape && (
+                  <div className="absolute inset-x-0 bottom-0 h-1/3"
+                    style={{ background: "linear-gradient(to top, rgba(8,8,24,1) 0%, transparent 100%)" }} />
+                )}
                 {track.frequency_type === "432hz" && (
                   <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
                     style={{ background: "rgba(0,160,220,0.3)", color: "#00E5FF", border: "1px solid rgba(0,160,220,0.4)" }}>
@@ -254,88 +284,92 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying,
                 )}
               </div>
 
-              {/* Info */}
-              <div className="px-4 pt-2 pb-1 flex-shrink-0">
-                <p className="font-heading font-black text-white text-base leading-tight line-clamp-2">
-                  {track.title}
-                </p>
-                <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
-                  {track.artist_display || "Upper Vibe Media"}
-                </p>
-              </div>
-
-              {/* Actions row */}
-              <div className="px-4 pb-2 pt-1 flex items-center gap-2 flex-shrink-0">
-                {/* Play */}
-                <button
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onClick={(e) => { e.stopPropagation(); handlePlay(); }}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-sm flex-1 justify-center transition-all hover:brightness-110 active:scale-[0.97]"
-                  style={{
-                    background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
-                    color: "#000",
-                    minHeight: "44px",
-                    touchAction: "manipulation",
-                  }}
-                >
-                  {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-                  {isActive ? "Pause" : "Play"}
-                </button>
-
-                {/* Favorite */}
-                <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
-                  <SaveHeartButton
-                    item={track}
-                    itemType="song"
-                    meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
-                    size="md"
-                  />
+              {/* Info + Actions */}
+              <div className="flex flex-col flex-1 min-w-0 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+                {/* Info */}
+                <div className="px-4 pt-3 pb-1 flex-shrink-0">
+                  <p className="font-heading font-black text-white leading-tight line-clamp-2"
+                    style={{ fontSize: isMobile ? "14px" : "16px" }}>
+                    {track.title}
+                  </p>
+                  <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
+                    {track.artist_display || "Upper Vibe Media"}
+                  </p>
                 </div>
 
-                {/* Full song page */}
-                <button
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onClick={handleOpenSongPage}
-                  className="w-11 h-11 rounded-xl flex items-center justify-center transition-all hover:bg-white/10 active:scale-90 flex-shrink-0 text-xs font-black"
-                  style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", touchAction: "manipulation", minWidth: 44, minHeight: 44 }}
-                  title="Open song page"
-                >
-                  ↗
-                </button>
-              </div>
+                {/* Actions row */}
+                <div className="px-4 pb-2 pt-1 flex items-center gap-2 flex-shrink-0">
+                  {/* Play */}
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); handlePlay(); }}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-sm flex-1 justify-center transition-all hover:brightness-110 active:scale-[0.97]"
+                    style={{
+                      background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
+                      color: "#000",
+                      minHeight: "44px",
+                      touchAction: "manipulation",
+                    }}
+                  >
+                    {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+                    {isActive ? "Pause" : "Play"}
+                  </button>
 
-              {/* Download row — always shown, upgrade prompt for non-Plus */}
-              <div className="px-4 pb-4 flex-shrink-0">
-                <button
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onClick={handleDownloadClick}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-black text-sm transition-all hover:brightness-110 active:scale-[0.97]"
-                  style={{
-                    background: isPlus
-                      ? "linear-gradient(135deg,rgba(212,168,67,0.2),rgba(212,168,67,0.1))"
-                      : "rgba(212,168,67,0.06)",
-                    border: isPlus
-                      ? "1px solid rgba(212,168,67,0.4)"
-                      : "1px solid rgba(212,168,67,0.2)",
-                    color: isPlus ? "#D4A843" : "rgba(212,168,67,0.6)",
-                    minHeight: "44px",
-                    touchAction: "manipulation",
-                  }}
-                >
-                  {isPlus ? (
-                    <>
-                      <Download className="w-4 h-4" />
-                      Download (Plus)
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>Download</span>
-                      <Crown className="w-3 h-3 ml-0.5" style={{ color: "#D4A843" }} />
-                      <span className="text-[10px] font-normal opacity-60">— tap to unlock</span>
-                    </>
-                  )}
-                </button>
+                  {/* Favorite */}
+                  <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
+                    <SaveHeartButton
+                      item={track}
+                      itemType="song"
+                      meta={{ title: track.title, artist: track.artist_display, cover_url: track.cover_url }}
+                      size="md"
+                    />
+                  </div>
+
+                  {/* Full song page */}
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={handleOpenSongPage}
+                    className="w-11 h-11 rounded-xl flex items-center justify-center transition-all hover:bg-white/10 active:scale-90 flex-shrink-0 text-xs font-black"
+                    style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", touchAction: "manipulation", minWidth: 44, minHeight: 44 }}
+                    title="Open song page"
+                  >
+                    ↗
+                  </button>
+                </div>
+
+                {/* Download row */}
+                <div className="px-4 pb-4 flex-shrink-0">
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={handleDownloadClick}
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-black text-sm transition-all hover:brightness-110 active:scale-[0.97]"
+                    style={{
+                      background: isPlus
+                        ? "linear-gradient(135deg,rgba(212,168,67,0.2),rgba(212,168,67,0.1))"
+                        : "rgba(212,168,67,0.06)",
+                      border: isPlus
+                        ? "1px solid rgba(212,168,67,0.4)"
+                        : "1px solid rgba(212,168,67,0.2)",
+                      color: isPlus ? "#D4A843" : "rgba(212,168,67,0.6)",
+                      minHeight: "44px",
+                      touchAction: "manipulation",
+                    }}
+                  >
+                    {isPlus ? (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Download (Plus)
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>Download</span>
+                        <Crown className="w-3 h-3 ml-0.5" style={{ color: "#D4A843" }} />
+                        <span className="text-[10px] font-normal opacity-60">Plus required</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}

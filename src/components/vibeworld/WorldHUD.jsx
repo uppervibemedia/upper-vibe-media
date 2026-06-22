@@ -441,11 +441,11 @@ export default function WorldHUD({
             className="absolute z-[57] pointer-events-auto"
             style={{
               bottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 13rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 11rem)",
               left: "50%",
               transform: "translateX(-50%)",
-              width: isMobile ? "min(calc(100vw - 80px), 280px)" : "280px",
+              width: isMobile ? "min(calc(100vw - 80px), 240px)" : "280px",
             }}
           >
             <button
@@ -469,8 +469,8 @@ export default function WorldHUD({
                 overflow: "hidden",
               }}
             >
-              {/* Cover art — square, no fixed height so full image always shows */}
-              <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+              {/* Cover art — 16:9 thumbnail, smaller on mobile */}
+              <div className="relative w-full" style={{ aspectRatio: "16/9", maxHeight: isMobile ? "100px" : "160px", overflow: "hidden" }}>
                 {djTrack.cover_url ? (
                   <img src={djTrack.cover_url} alt={djTrack.title}
                     className="w-full h-full object-cover block" />
@@ -520,7 +520,7 @@ export default function WorldHUD({
             className="absolute bottom-0 right-0 z-[57] flex flex-col items-end gap-2 px-3"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 10rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 9rem)",
               pointerEvents: "none",
             }}
@@ -590,8 +590,8 @@ export default function WorldHUD({
             className="fixed left-0 right-0 z-[200] flex flex-col items-center gap-1.5 px-2 pointer-events-none"
             style={{
               bottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
-                : "6.5rem",
+                ? "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)"
+                : "5rem",
             }}
           >
             {/* Now showing label */}
@@ -736,7 +736,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -769,7 +769,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -802,7 +802,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -835,7 +835,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -868,7 +868,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -901,7 +901,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -938,7 +938,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -965,7 +965,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}

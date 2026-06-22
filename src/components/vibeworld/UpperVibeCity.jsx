@@ -387,7 +387,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const movementLocked = stageWatching || stageFullScreen || loungeInputFocused;
 
   // ── Dance floor detection (plaza zone: cx=0, cz=-13, r=7) ─────────────────────
-  const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -13, DANCE_FLOOR_R = 10.5;
+  // Dance floor audio zone — matches the plaza zone radius exactly (7.0)
+  // so DJ audio only plays when physically inside the plaza/dance floor zone
+  const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -13, DANCE_FLOOR_R = 7.0;
   // Zone reference positions — keep in sync with zoneDetection.jsx
   const DOME_CX = -13, DOME_CZ = 3;
   const LOUNGE_CX = -22, LOUNGE_CZ = -26;
@@ -1016,14 +1018,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             }}
           />
 
-          {currentTrack && (
-            <DraggableMediaPlayer
-              currentTrack={currentTrack}
-              isPlaying={isPlaying}
-              onTogglePlay={handleGlobalPlayToggle}
-              onSkip={handleGlobalSkip}
-            />
-          )}
         </>
       )}
 
@@ -1032,7 +1026,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         <div
           className="fixed z-[60] flex flex-col items-center gap-2 pointer-events-none"
           style={{
-            bottom: isMobile ? "calc(130px + env(safe-area-inset-bottom,0px))" : "96px",
+            bottom: isMobile ? "calc(200px + env(safe-area-inset-bottom,0px))" : "96px",
             left: "50%",
             transform: "translateX(-50%)",
           }}
@@ -1124,6 +1118,16 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* DESKTOP: Draggable media player */}
       {!loading && !isMobile && currentTrack && (
+        <DraggableMediaPlayer
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          onTogglePlay={handleGlobalPlayToggle}
+          onSkip={handleGlobalSkip}
+        />
+      )}
+
+      {/* MOBILE: mini player — hidden when a modal panel is open to avoid overlap */}
+      {!loading && isMobile && currentTrack && !mobileModalOpen && (
         <DraggableMediaPlayer
           currentTrack={currentTrack}
           isPlaying={isPlaying}

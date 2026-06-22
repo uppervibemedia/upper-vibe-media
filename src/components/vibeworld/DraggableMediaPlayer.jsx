@@ -29,7 +29,8 @@ export default function DraggableMediaPlayer({
   onTogglePlay,
   onSkip,
 }) {
-  const [pos, setPos] = useState(() => loadPos());
+  const [isMobileDevice] = useState(() => /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  const [pos, setPos] = useState(() => isMobileDevice ? null : loadPos());
   const draggingRef = useRef(false);
   const offsetRef = useRef({ x: 0, y: 0 });
   const playerRef = useRef(null);
@@ -37,8 +38,9 @@ export default function DraggableMediaPlayer({
   const tapCountRef = useRef({ count: 0, lastTime: 0 });
   const isDraggingRef = useRef(false);
 
-  // On mount, if no saved position, default to bottom-right
+  // On mount, if no saved position, default to bottom-right (desktop only)
   useEffect(() => {
+    if (isMobileDevice) return; // Mobile uses fixed bottom anchor
     if (!pos) {
       const saRight = parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-right)").trim()) || 0;
       const saBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-bottom)").trim()) || 0;
@@ -47,7 +49,7 @@ export default function DraggableMediaPlayer({
         y: window.innerHeight - 70 - Math.max(96, saBottom + 96),
       });
     }
-  }, []);
+  }, [isMobileDevice]);
 
   const resetPosition = useCallback(() => {
     const saRight = parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-right)").trim()) || 0;
@@ -126,24 +128,37 @@ export default function DraggableMediaPlayer({
     tapCountRef.current.lastTime = now;
   }, [resetPosition]);
 
-  if (!currentTrack || !pos) return null;
+  if (!currentTrack) return null;
+  // Mobile: needs pos OR isMobileDevice (fixed anchor, no pos needed)
+  if (!isMobileDevice && !pos) return null;
+
+  // Mobile: fixed bottom-left anchor above safe area, compact size
+  const mobileStyle = {
+    left: "12px",
+    bottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)",
+    top: "unset",
+    maxWidth: "200px",
+  };
+  const desktopStyle = {
+    left: pos?.x ?? 0,
+    top: pos?.y ?? 0,
+    maxWidth: "260px",
+  };
 
   return (
     <div
       ref={playerRef}
       className="fixed z-[58] flex items-center gap-1.5 px-2 py-1.5 rounded-full select-none"
       style={{
-        left: pos.x,
-        top: pos.y,
-        maxWidth: "260px",
+        ...(isMobileDevice ? mobileStyle : desktopStyle),
         pointerEvents: "auto",
-        touchAction: "none",
-        background: "rgba(0,0,0,0.72)",
+        touchAction: isMobileDevice ? "manipulation" : "none",
+        background: "rgba(0,0,0,0.82)",
         backdropFilter: "blur(14px)",
         WebkitBackdropFilter: "blur(14px)",
         border: "1px solid rgba(255,255,255,0.12)",
         boxShadow: "0 2px 20px rgba(0,0,0,0.45)",
-        height: "52px",
+        height: "48px",
       }}
     >
       {/* Drag handle — left side grip */}

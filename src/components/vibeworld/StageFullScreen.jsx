@@ -103,12 +103,15 @@ export default function StageFullScreen({ open, video, onClose }) {
             <p className="text-white/35 text-[10px]">Main Music Stage</p>
           </div>
 
-          {/* Video container — 16:9 */}
+          {/* Video container — 16:9, full-width on mobile portrait */}
           <div
-            className="relative w-full max-w-4xl aspect-video mx-4 rounded-xl overflow-hidden"
+            className="relative w-full max-w-4xl aspect-video overflow-hidden"
             style={{
+              borderRadius: "12px",
+              margin: "0 8px",
               boxShadow: "0 0 60px rgba(155,126,255,0.3), 0 0 120px rgba(0,160,220,0.15)",
               background: "#000",
+              maxWidth: "calc(100vw - 16px)",
             }}
           >
             {ytId && !error ? (
