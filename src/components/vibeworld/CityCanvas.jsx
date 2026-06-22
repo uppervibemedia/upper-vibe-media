@@ -1320,6 +1320,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const orbCountRef = useRef(0);
   const nearPadRef = useRef(-1);
   const speedBoostUntilRef = useRef(0); // timestamp (performance.now) when boost expires
+  const splashParticlesRef = useRef(null); // water spray particle system
 
   // Init scene — runs once only
   useEffect(() => {
@@ -1360,6 +1361,31 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       camera.lookAt(SPAWN[0], SPAWN[1] + CAM_LOOK_Y, SPAWN[2]);
 
       buildPark(scene);
+
+      // ── Water splash particle system — reusable pool of droplet sprites ──
+      {
+        const SPLASH_COUNT = 28;
+        const splashGeo = new BufferGeometry();
+        const pos = new Float32Array(SPLASH_COUNT * 3);
+        splashGeo.setAttribute("position", new BufferAttribute(pos, 3));
+        const splashMat = new PointsMaterial({
+          color: new Color("#80DFFF"),
+          size: 0.18,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const splashPoints = new Points(splashGeo, splashMat);
+        splashPoints.name = "hbSplash";
+        splashPoints.renderOrder = 5;
+        scene.add(splashPoints);
+        // Per-particle state: velocity, life, maxLife
+        const particles = Array.from({ length: SPLASH_COUNT }, () => ({
+          vx: 0, vy: 0, vz: 0, life: 0, maxLife: 0,
+        }));
+        splashParticlesRef.current = { points: splashPoints, particles, pos };
+      }
 
       // ── Expose launch trigger ref once (not in animation loop) ──
       if (launchRef) {
@@ -1945,6 +1971,62 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
         animateLaunchZone(scene, t, audioBeat, dt);
         animateHoverboardZone(scene, t, audioBeat);
+
+        // ── WATER SPLASH — hoverboard spray when rider is in the ocean zone ──
+        const splash = splashParticlesRef.current;
+        if (splash) {
+          const { points, particles, pos } = splash;
+          const inWater = hbRidingRef.current && pz > 34;
+          const spd = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+          const isMoving2 = spd > 0.3;
+
+          // Emit new spray droplets every ~3 frames when in water and moving
+          if (inWater && isMoving2 && frameRef.current % 3 === 0) {
+            // Spread: fan behind the board (opposite of velocity direction)
+            const emitCount = Math.min(3, Math.ceil(spd * 0.8));
+            const emitted = particles.filter(p => p.life <= 0);
+            let used = 0;
+            for (const p of emitted) {
+              if (used >= emitCount) break;
+              // Behind the avatar: offset opposite to movement direction
+              const bx = px - (vel.x / spd) * 0.4 + (Math.random() - 0.5) * 0.6;
+              const bz = pz - (vel.z / spd) * 0.4 + (Math.random() - 0.5) * 0.6;
+              const idx = particles.indexOf(p) * 3;
+              pos[idx]     = bx;
+              pos[idx + 1] = 0.05;
+              pos[idx + 2] = bz;
+              // Spray velocity: upward + sideways fan
+              p.vx = (Math.random() - 0.5) * 1.8 - (vel.x / spd) * 0.5;
+              p.vy = 0.8 + Math.random() * 1.2;
+              p.vz = (Math.random() - 0.5) * 1.8 - (vel.z / spd) * 0.5;
+              p.maxLife = 0.35 + Math.random() * 0.3;
+              p.life = p.maxLife;
+              used++;
+            }
+          }
+
+          // Simulate all particles
+          let anyAlive = false;
+          for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            const idx = i * 3;
+            if (p.life > 0) {
+              p.life -= dt;
+              pos[idx]     += p.vx * dt;
+              pos[idx + 1] += p.vy * dt;
+              pos[idx + 2] += p.vz * dt;
+              p.vy -= 3.5 * dt; // gravity
+              anyAlive = true;
+            } else {
+              // Park dead particles far away (invisible)
+              pos[idx] = 9999; pos[idx + 1] = 9999; pos[idx + 2] = 9999;
+            }
+          }
+          points.geometry.attributes.position.needsUpdate = true;
+          // Fade opacity based on whether any particles are active
+          const targetOpacity = anyAlive ? 0.75 : 0;
+          points.material.opacity += (targetOpacity - points.material.opacity) * Math.min(1, 12 * dt);
+        }
 
         // Reset orbs when new ride starts
         if (window.__hbResetRings) {
