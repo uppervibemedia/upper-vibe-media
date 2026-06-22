@@ -7,9 +7,10 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OUTFIT_COLORS, SKIN_TONES } from "./AvatarSetup";
 
+// Both use Soldier.glb — Michelle.glb has no walk/idle clips (only SambaDance + TPose).
 const GLB_URLS = {
   male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
-  female: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Michelle.glb",
+  female: "https://threejs.org/examples/models/gltf/Soldier.glb",
 };
 
 const _gltfCache = {};
@@ -168,18 +169,9 @@ export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "med
       // Add to scene
       scene.add(model);
 
-      // Detect Mixamo rig (Michelle) vs Soldier by bone naming
-      // Michelle.glb bones are named "mixamorig:*" — confirmed from GLB JSON
-      let isMixamo = false;
-      model.traverse((c) => { if (c.name && c.name.startsWith("mixamorig")) isMixamo = true; });
-
-      if (isMixamo) {
-        model.scale.set(0.0106, 0.0106, 0.0106);
-        model.position.y = 0;
-      } else {
-        model.scale.set(1, 1, 1);
-        model.position.y = 0;
-      }
+      // Soldier.glb is in meter units — scale 1 is correct for both genders
+      model.scale.set(1, 1, 1);
+      model.position.y = 0;
       model.rotation.y = Math.PI;
 
       model.traverse((child) => {

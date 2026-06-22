@@ -20,9 +20,12 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { SPAWN } from "./cityData";
 
+// Both genders use Soldier.glb — it has Idle/Walk/Run on a Mixamo rig.
+// Michelle.glb only contains SambaDance + TPose — no locomotion clips.
+// Female differentiation is handled via outfit color tinting in retintAvatar.
 const GLB_URLS = {
   male:   "https://threejs.org/examples/models/gltf/Soldier.glb",
-  female: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Michelle.glb",
+  female: "https://threejs.org/examples/models/gltf/Soldier.glb",
 };
 
 const _loader = new GLTFLoader();
@@ -309,22 +312,9 @@ function attachModel(gltf, controllerGroup, opts = {}) {
   controllerGroup.add(model);
 
   // ── SCALE + GROUND ────────────────────────────────────────────
-  // Soldier.glb: exported at ~1.8m (meter units), scale 1 is correct.
-  // Michelle.glb: Mixamo export in centimeter units (~170cm = 170 units tall).
-  //   Her skeleton bones are named "mixamorig:*" — that's the reliable detection signal.
-  //   Scale factor: 1.8m / 170units ≈ 0.0106
-  let isMixamo = false;
-  model.traverse((c) => { if (c.name && c.name.startsWith("mixamorig")) isMixamo = true; });
-
-  if (isMixamo) {
-    model.scale.set(0.0106, 0.0106, 0.0106);
-    model.position.y = 0;
-    console.log("[AvatarModel] Mixamo rig detected → scale 0.0106");
-  } else {
-    model.scale.set(1, 1, 1);
-    model.position.y = 0;
-    console.log("[AvatarModel] Soldier rig detected → scale 1.0");
-  }
+  // Soldier.glb is in meter units, ~1.8m tall at scale 1. Scale 1 is correct.
+  model.scale.set(1, 1, 1);
+  model.position.y = 0;
 
   // Face +Z (chest toward camera behind avatar)
   model.rotation.set(0, Math.PI, 0);
