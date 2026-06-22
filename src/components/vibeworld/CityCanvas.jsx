@@ -1239,7 +1239,7 @@ function createStarField(scene) {
 
 // Sky system extracted to CosmicSkySystem.js
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
-import { createCrystalZone, animateCrystalZone, CRYSTAL_ZONE_CENTER, CRYSTAL_ZONE_RADIUS } from "./CrystalZone";
+import { createCrystalZone, animateCrystalZone, setupCrystalInteraction, CRYSTAL_ZONE_CENTER, CRYSTAL_ZONE_RADIUS } from "./CrystalZone";
 
 // createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
@@ -1379,6 +1379,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       camera.lookAt(spX, spY + CAM_LOOK_Y, spZ);
 
       buildPark(scene);
+      setupCrystalInteraction(scene, camera, canvas);
 
       // ── Water splash particle system — reusable pool of droplet sprites ──
       {
@@ -1984,7 +1985,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         });
         animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
-        animateCrystalZone(scene, t, audioBeat, px, pz);
+        animateCrystalZone(scene, t, audioBeat, px, pz, dt);
         animateJukebox(scene, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──
@@ -2260,6 +2261,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         });
         // Detach hoverboard on unmount
         if (avatarEntryRef.current) detachHoverboard(avatarEntryRef.current);
+        // Clean up crystal interaction listeners
+        if (scene.userData._crystalCleanup) scene.userData._crystalCleanup();
         initializedRef.current = false;
         lastTimeRef.current = 0;
         frameRef.current = 0;

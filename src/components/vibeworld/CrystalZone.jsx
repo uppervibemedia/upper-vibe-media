@@ -105,6 +105,20 @@ function buildArcLine(scene, from, to, colorHex) {
   return { line, from: from.clone(), to: to.clone(), colorHex, mat, positions };
 }
 
+// ── Ripple ring burst — expands outward on crystal click ─────────────────────
+function buildRippleRing(scene) {
+  const mat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color("#C084FC"),
+    transparent: true, opacity: 0,
+    depthWrite: false, side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.4, 48), mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.renderOrder = 5;
+  scene.add(mesh);
+  return { mesh, mat, active: false, life: 0, maxLife: 0, cx: 0, cz: 0, color: "#C084FC" };
+}
+
 // ── Main export: creates the entire crystal zone ──────────────────────────────
 export function createCrystalZone(scene) {
   const CX = CRYSTAL_ZONE_CENTER.x;
@@ -239,10 +253,30 @@ export function createCrystalZone(scene) {
   mistPoints.renderOrder = 2;
   scene.add(mistPoints);
 
+  // ── Ripple ring pool (5 concurrent) ──────────────────────────────────────
+  const rippleRings = Array.from({ length: 5 }, () => buildRippleRing(scene));
+
+  // ── Interaction state ─────────────────────────────────────────────────────
+  // allCrystals: array of { entry, meshes } — entry = crystal data, meshes = clickable mesh list
+  const allCrystals = [
+    { entry: giant, label: "giant" },
+    ...smallCrystals.map((sc, i) => ({ entry: sc, label: `small_${i}` })),
+  ];
+
+  // Build a flat list of all meshes → crystal entry mapping for raycasting
+  const crystalMeshMap = new Map(); // mesh uuid → crystal entry
+  for (const { entry } of allCrystals) {
+    entry.group.traverse((obj) => {
+      if (obj.isMesh) crystalMeshMap.set(obj.uuid, entry);
+    });
+  }
+
   // Store everything for animation
   scene.userData.crystalZone = {
     giant,
     smallCrystals,
+    allCrystals,
+    crystalMeshMap,
     arcs,
     crystalLight,
     crystalLight2,
@@ -253,12 +287,100 @@ export function createCrystalZone(scene) {
     mistPoints,
     mistGeo,
     mistMat,
-    proximity: 0, // 0 = idle, 1 = fully activated
+    rippleRings,
+    proximity: 0,
+    // Interaction tracking
+    hoveredEntry: null,     // currently hovered crystal entry
+    clickedEntry: null,     // recently clicked crystal entry
+    clickTimer: 0,          // seconds remaining for click burst
+    clickMaxTime: 1.2,      // how long the click burst lasts
+  };
+}
+
+// ── Setup pointer interaction — call once after scene is ready ────────────────
+// canvas: the WebGL canvas element; camera: THREE.Camera
+export function setupCrystalInteraction(scene, camera, canvas) {
+  const cz = scene.userData.crystalZone;
+  if (!cz || !canvas) return;
+
+  const raycaster = new THREE.Raycaster();
+  raycaster.far = 28;
+  const mouse = new THREE.Vector2();
+
+  const getMeshesArray = () => Array.from(cz.crystalMeshMap.keys()).map((uuid) => {
+    let found = null;
+    scene.traverse((obj) => { if (obj.isMesh && obj.uuid === uuid) found = obj; });
+    return found;
+  }).filter(Boolean);
+
+  // Cache meshes once (crystals don't move or respawn)
+  let cachedMeshes = null;
+
+  const toNDC = (clientX, clientY) => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x =  ((clientX - rect.left) / rect.width)  * 2 - 1;
+    mouse.y = -((clientY - rect.top)  / rect.height) * 2 + 1;
+  };
+
+  const getHit = () => {
+    if (!cachedMeshes) cachedMeshes = getMeshesArray();
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(cachedMeshes, false);
+    if (!hits.length) return null;
+    return cz.crystalMeshMap.get(hits[0].object.uuid) || null;
+  };
+
+  const onMouseMove = (e) => {
+    toNDC(e.clientX, e.clientY);
+    cz.hoveredEntry = getHit();
+    canvas.style.cursor = cz.hoveredEntry ? "pointer" : "";
+  };
+
+  const onClick = (e) => {
+    toNDC(e.clientX, e.clientY);
+    const hit = getHit();
+    if (!hit) return;
+    cz.clickedEntry = hit;
+    cz.clickTimer = cz.clickMaxTime;
+    // Fire a ripple at the crystal's base
+    const freeRipple = cz.rippleRings.find((r) => !r.active);
+    if (freeRipple) {
+      freeRipple.cx = hit.group.position.x;
+      freeRipple.cz = hit.group.position.z;
+      freeRipple.color = hit.colorHex;
+      freeRipple.mesh.position.set(freeRipple.cx, 0.04, freeRipple.cz);
+      freeRipple.active = true;
+      freeRipple.life = 0;
+      freeRipple.maxLife = 1.6;
+      freeRipple.mat.color.set(hit.colorHex);
+      freeRipple.mat.opacity = 0.9;
+    }
+  };
+
+  // Touch support for mobile
+  const onTouch = (e) => {
+    const t0 = e.changedTouches[0];
+    if (!t0) return;
+    toNDC(t0.clientX, t0.clientY);
+    cz.hoveredEntry = getHit();
+    onClick({ clientX: t0.clientX, clientY: t0.clientY });
+  };
+
+  canvas.addEventListener("mousemove", onMouseMove);
+  canvas.addEventListener("click", onClick);
+  canvas.addEventListener("touchend", onTouch, { passive: true });
+
+  // Store cleanup fn
+  scene.userData._crystalCleanup = () => {
+    canvas.removeEventListener("mousemove", onMouseMove);
+    canvas.removeEventListener("click", onClick);
+    canvas.removeEventListener("touchend", onTouch);
+    canvas.style.cursor = "";
   };
 }
 
 // ── Animation — called every frame from CityCanvas ───────────────────────────
-export function animateCrystalZone(scene, t, audioBeat, playerX, playerZ) {
+export function animateCrystalZone(scene, t, audioBeat, playerX, playerZ, dt = 0.016) {
   const cz = scene.userData.crystalZone;
   if (!cz) return;
 
@@ -278,26 +400,53 @@ export function animateCrystalZone(scene, t, audioBeat, playerX, playerZ) {
   cz.groundDisc.opacity = 0.30 + P * 0.28;
   cz.haloRing.opacity  = 0.25 + P * 0.55 + beat * 0.25 + Math.sin(t * 3.0) * 0.08;
 
-  // ── Giant crystal breathe ───────────────────────────────────────────────
-  const giantPulse = Math.sin(t * 1.8) * 0.12 + Math.sin(t * 3.5 + 0.5) * 0.06;
-  cz.giant.bodyMat.opacity = cz.giant.baseOpacity.body + P * 0.20 + beat * 0.12 + giantPulse;
-  cz.giant.tipMat.opacity  = cz.giant.baseOpacity.tip  + P * 0.12 + beat * 0.10 + giantPulse * 0.7;
-  cz.giant.coreMat.opacity = cz.giant.baseOpacity.core + P * 0.45 + beat * 0.30 + giantPulse * 1.2;
-  cz.giant.footRing.opacity = cz.giant.baseOpacity.foot + P * 0.40 + beat * 0.20;
-  // Gentle vertical bob on giant
-  cz.giant.group.position.y = Math.sin(t * 0.9) * 0.06;
+  // ── Click burst timer ────────────────────────────────────────────────────
+  if (cz.clickTimer > 0) cz.clickTimer -= dt ?? 0.016;
 
-  // ── Small crystals ──────────────────────────────────────────────────────
-  cz.smallCrystals.forEach((sc, i) => {
-    const phase = i * 0.62;
-    const pulse = Math.sin(t * 2.2 + phase) * 0.10 + Math.sin(t * 1.1 + phase * 1.7) * 0.05;
-    sc.bodyMat.opacity = sc.baseOpacity.body + P * 0.18 + beat * 0.10 + pulse;
-    sc.tipMat.opacity  = sc.baseOpacity.tip  + P * 0.12 + beat * 0.08 + pulse * 0.7;
-    sc.coreMat.opacity = sc.baseOpacity.core + P * 0.40 + beat * 0.28 + pulse * 1.3;
-    sc.footRing.opacity = sc.baseOpacity.foot + P * 0.35 + beat * 0.18;
-    // Subtle bob
-    sc.group.position.y = Math.sin(t * 1.1 + phase) * 0.03;
-  });
+  // ── Per-crystal animation (giant + small together) ────────────────────────
+  const animCrystal = (entry, isGiant, index) => {
+    const phase = isGiant ? 0 : index * 0.62;
+    const freqMult = isGiant ? 1.0 : 1.22;
+    const pulse = Math.sin(t * 2.2 * freqMult + phase) * 0.10 + Math.sin(t * 1.1 * freqMult + phase * 1.7) * 0.05;
+
+    const isHovered  = cz.hoveredEntry === entry;
+    const isClicked  = cz.clickedEntry === entry && cz.clickTimer > 0;
+    const clickFrac  = isClicked ? Math.min(1, cz.clickTimer / cz.clickMaxTime) : 0;
+
+    // Hover: smooth bloom — crystal brightens and core blazes
+    const hoverBoost = isHovered ? 0.30 : 0;
+    // Click burst: sharp white-hot flash that decays
+    const clickFlash = isClicked ? clickFrac * (isGiant ? 0.55 : 0.45) : 0;
+
+    // Color emissive surge on hover/click — lerp toward white
+    const surgeAmt = Math.min(1, hoverBoost * 2.0 + clickFlash * 3.0);
+    const surgeColor = new THREE.Color(entry.colorHex).lerp(new THREE.Color("#FFFFFF"), surgeAmt * 0.65);
+
+    entry.bodyMat.color.copy(surgeColor);
+    entry.tipMat.color.copy(surgeColor);
+    entry.coreMat.color.copy(new THREE.Color(entry.colorHex).lerp(new THREE.Color("#FFFFFF"), surgeAmt * 0.85));
+
+    // Opacity surge
+    const extraO = hoverBoost + clickFlash;
+    entry.bodyMat.opacity = Math.min(1, entry.baseOpacity.body + P * 0.18 + beat * 0.10 + pulse + extraO);
+    entry.tipMat.opacity  = Math.min(1, entry.baseOpacity.tip  + P * 0.12 + beat * 0.08 + pulse * 0.7 + extraO * 0.9);
+    entry.coreMat.opacity = Math.min(1, entry.baseOpacity.core + P * 0.40 + beat * 0.28 + pulse * 1.3 + extraO * 1.4);
+    entry.footRing.opacity = Math.min(1, entry.baseOpacity.foot + P * 0.35 + beat * 0.18 + extraO * 0.6);
+
+    // Hover: gentle scale grow; click: sharp scale pop
+    const scaleTarget = 1.0 + hoverBoost * 0.12 + clickFlash * 0.20;
+    entry.group.scale.setScalar(
+      entry.group.scale.x + (scaleTarget - entry.group.scale.x) * 0.18
+    );
+
+    // Bob
+    const bobAmt = isGiant ? 0.06 : 0.03;
+    const bobSpeed = isGiant ? 0.9 : 1.1;
+    entry.group.position.y = Math.sin(t * bobSpeed + phase) * bobAmt + (isHovered ? 0.08 : 0) + clickFlash * 0.12;
+  };
+
+  animCrystal(cz.giant, true, 0);
+  cz.smallCrystals.forEach((sc, i) => animCrystal(sc, false, i));
 
   // ── Point lights intensity ──────────────────────────────────────────────
   cz.crystalLight.intensity  = 1.5 + P * 3.5 + beat * 1.2 + Math.sin(t * 2.0) * 0.4;
@@ -346,4 +495,26 @@ export function animateCrystalZone(scene, t, audioBeat, playerX, playerZ) {
   mistGeo.attributes.position.needsUpdate = true;
   cz.mistMat.opacity = 0.12 + P * 0.28 + beat * 0.12 + Math.sin(t * 1.6) * 0.04;
   cz.mistMat.color.set("#B794F4").lerp(new THREE.Color("#67E8F9"), P * 0.6);
+
+  // ── Ripple rings — expand outward from clicked crystal ────────────────────
+  for (const ring of cz.rippleRings) {
+    if (!ring.active) continue;
+    ring.life += dt;
+    const progress = ring.life / ring.maxLife;
+    if (progress >= 1) {
+      ring.active = false;
+      ring.mat.opacity = 0;
+      continue;
+    }
+    // Expand: radius grows from 0 → 4.5 units
+    const radius = progress * 4.5;
+    const thickness = 0.25 + progress * 0.15;
+    ring.mesh.geometry.dispose();
+    ring.mesh.geometry = new THREE.RingGeometry(radius, radius + thickness, 48);
+    // Fade: sharp bright start → fade to zero
+    ring.mat.opacity = (1 - progress) * 0.75;
+    // Color shift: crystal color → cyan → transparent
+    const fadeColor = new THREE.Color(ring.color).lerp(new THREE.Color("#00E5FF"), progress * 0.8);
+    ring.mat.color.copy(fadeColor);
+  }
 }
