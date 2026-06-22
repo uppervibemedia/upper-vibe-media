@@ -47,14 +47,20 @@ export default function HoverboardPanel({
   const scoreRef     = useRef(0); // always in sync for endGame closure
   const ringsRef     = useRef(0);
   const comboRef     = useRef(0);
+  // Stable refs — prevents endGame/startGame from recreating on every render
+  const onEndRideRef = useRef(onEndRide);
+  const onStartRideRef = useRef(onStartRide);
+  useEffect(() => { onEndRideRef.current = onEndRide; }, [onEndRide]);
+  useEffect(() => { onStartRideRef.current = onStartRide; }, [onStartRide]);
 
   useEffect(() => { if (user?.hb_high_score) setHighScore(user.hb_high_score); }, [user?.hb_high_score]);
 
   const endGame = useCallback((finalScore, finalRings) => {
+    console.log("[HB] endGame called — score:", finalScore, "rings:", finalRings);
     clearInterval(timerRef.current);
     clearTimeout(comboTimerRef.current);
     setPhase("finished");
-    onEndRide?.();
+    onEndRideRef.current?.(); // use ref so this callback never goes stale
     const didUnlock = finalRings >= 6;
     setTrailUnlocked(didUnlock);
     if (finalScore > highScore) {
@@ -64,7 +70,7 @@ export default function HoverboardPanel({
     } else if (didUnlock) {
       try { base44.auth.updateMe({ trail_boost_unlocked: true }); } catch {}
     }
-  }, [highScore, onEndRide]);
+  }, [highScore]); // removed onEndRide dep — now uses stable ref
 
   const startGame = useCallback(() => {
     clearInterval(timerRef.current);
@@ -81,7 +87,8 @@ export default function HoverboardPanel({
     setShowFlash(false);
     setTrailUnlocked(false);
     window.__hbResetRings = true; // tell CityCanvas to reset ring collected flags
-    onStartRide?.();
+    console.log("[HB] startGame — mounting board");
+    onStartRideRef.current?.();
 
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
@@ -93,12 +100,13 @@ export default function HoverboardPanel({
         return t - 1;
       });
     }, 1000);
-  }, [onStartRide, endGame]);
+  }, [endGame]); // onStartRide now uses stable ref
 
   // Expose ring collector on window so CityCanvas render loop can call it
   useEffect(() => {
     window.__hbCollectRing = (ringIdx) => {
-      if (phase !== "riding") return;
+      console.log(`[HB] __hbCollectRing(${ringIdx}) — phase:`, phase);
+      if (phase !== "riding") { console.warn("[HB] Ignored — not riding"); return; }
       const basePoints = RING_POINTS[ringIdx] ?? 100;
       const currentCombo = comboRef.current;
       const multiplier = currentCombo >= 5 ? 3 : currentCombo >= 3 ? 2 : 1;

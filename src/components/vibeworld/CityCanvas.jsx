@@ -1941,32 +1941,33 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         animateLaunchZone(scene, t, audioBeat, dt);
         animateHoverboardZone(scene, t, audioBeat);
 
-        // ─── HOVERBOARD RING COLLISION ────────────────────────
-        if (window.__hbCollectRing && frameRef.current % 3 === 0) {
+        // Reset rings FIRST (before collision check so fresh start is clean)
+        if (window.__hbResetRings) {
+          window.__hbResetRings = false;
+          resetRings(scene);
+          console.log("[HB] Rings reset for new ride");
+        }
+
+        // ─── HOVERBOARD RING COLLISION — only while actively riding ──
+        if (hbRidingRef.current && window.__hbCollectRing && frameRef.current % 3 === 0) {
           const hbRings = scene.userData.hbRingMeshes;
           if (hbRings) {
             for (const r of hbRings) {
               if (r.collected) continue;
               const rd = HOVERBOARD_RINGS[r.idx];
               if (!rd) continue;
-              // Hit radius scales with ring size — xl=4.0, lg=2.8, md=2.0, sm=1.4
               const sizeHit = rd.size === "xl" ? 3.6 : rd.size === "lg" ? 2.4 : rd.size === "md" ? 1.8 : 1.2;
               const dx = px - rd.x, dz = pz - rd.z;
               const dist = Math.sqrt(dx * dx + dz * dz);
-              const vertTolerance = rd.y > 3.0 ? 2.5 : 2.0; // more forgiving at height
+              const vertTolerance = rd.y > 3.0 ? 2.5 : 2.0;
               if (dist < sizeHit && Math.abs(py - rd.y) < vertTolerance) {
                 r.collected = true;
                 flashRing(scene, r.idx);
+                console.log(`[HB] Ring ${r.idx} collected at dist=${dist.toFixed(2)}`);
                 window.__hbCollectRing(r.idx);
               }
             }
           }
-        }
-
-        // Reset rings when a new ride starts
-        if (window.__hbResetRings) {
-          window.__hbResetRings = false;
-          resetRings(scene);
         }
 
         // Stars twinkle
@@ -2152,9 +2153,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   useEffect(() => {
     const entry = avatarEntryRef.current;
     if (hbRiding) {
-      // entry may be null if GLB hasn't loaded yet — frame loop handles that
+      console.log("[HB] hbRiding=true — attaching board, entry:", !!entry, "glb loaded:", !!entry?.mixer);
       if (entry) attachHoverboard(entry);
     } else {
+      console.log("[HB] hbRiding=false — detaching board");
       if (entry) detachHoverboard(entry);
     }
   }, [hbRiding]);

@@ -368,6 +368,16 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setNearHoverboard(dist < HOVERBOARD_INTERACT_RADIUS);
   }, [playerPos.x, playerPos.z]);
 
+  // Stable callbacks — never recreated, so endGame/startGame closures stay valid
+  const handleHbStart = useCallback(() => {
+    console.log("[HB] Ride started — mounting board");
+    setHbRiding(true);
+  }, []);
+  const handleHbEnd = useCallback(() => {
+    console.log("[HB] Ride ended — dismounting board");
+    setHbRiding(false);
+  }, []);
+
   // ── Audio ducking: reduce personal player + DJ stream to ~25% when voice is active ──
   useEffect(() => {
     const audio = audioRef?.current;
@@ -999,8 +1009,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         visible={nearHoverboard || hbRiding}
         isMobile={isMobile}
         user={user}
-        onStartRide={() => setHbRiding(true)}
-        onEndRide={() => setHbRiding(false)}
+        onStartRide={handleHbStart}
+        onEndRide={handleHbEnd}
       />
 
 
