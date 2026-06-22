@@ -448,7 +448,7 @@ export default function WorldHUD({
               }}
             >
               {/* Cover art — wide banner */}
-              <div className="relative w-full overflow-hidden" style={{ height: isMobile ? 110 : 130 }}>
+              <div className="relative w-full overflow-hidden" style={{ height: isMobile ? 88 : 105 }}>
                 {djTrack.cover_url ? (
                   <img src={djTrack.cover_url} alt={djTrack.title}
                     className="w-full h-full object-cover block" />

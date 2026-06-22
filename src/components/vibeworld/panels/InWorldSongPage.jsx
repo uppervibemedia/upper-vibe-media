@@ -14,12 +14,14 @@ import SaveHeartButton from "@/components/shared/SaveHeartButton";
 function UpgradeView({ track, onBack, onClose, isMobile, onNavigate }) {
   const handleUpgrade = (e) => {
     e.stopPropagation();
+    try { sessionStorage.setItem("vibeworld_return_url", window.location.href); sessionStorage.setItem("vibeworld_return", "1"); } catch {}
     onClose();
     onNavigate("/membership");
   };
 
   const handleDonate = (e) => {
     e.stopPropagation();
+    try { sessionStorage.setItem("vibeworld_return_url", window.location.href); sessionStorage.setItem("vibeworld_return", "1"); } catch {}
     onClose();
     onNavigate(`/song/${track.id}?donate=1`);
   };
@@ -152,17 +154,24 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying 
     }
   };
 
-  // Navigate in-app to song page — preserving city state for return via "Back to City" button
+  // Save the full current URL (including hash/query) so SongPage can navigate back exactly
+  const saveReturnUrl = () => {
+    try {
+      sessionStorage.setItem("vibeworld_return_url", window.location.href);
+      sessionStorage.setItem("vibeworld_return", "1");
+    } catch {}
+  };
+
   const handleDownloadClick = (e) => {
     e.stopPropagation();
-    try { sessionStorage.setItem("vibeworld_return", "1"); } catch {}
+    saveReturnUrl();
     onClose();
     navigate(`/song/${track.id}?downloadIntent=true`);
   };
 
   const handleOpenSongPage = (e) => {
     e.stopPropagation();
-    try { sessionStorage.setItem("vibeworld_return", "1"); } catch {}
+    saveReturnUrl();
     onClose();
     navigate(`/song/${track.id}`);
   };

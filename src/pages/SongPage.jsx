@@ -274,13 +274,14 @@ function SongPageInner() {
           {showCityReturn && (
             <button
               onClick={() => {
-                try { sessionStorage.removeItem("vibeworld_return"); } catch {}
-                // If opened in a new tab, close it; otherwise navigate to vibe-world
-                if (window.opener || window.history.length <= 2) {
-                  window.close();
-                } else {
-                  navigate("/vibe-world");
-                }
+                let returnUrl = "/vibe-world";
+                try {
+                  const saved = sessionStorage.getItem("vibeworld_return_url");
+                  if (saved) returnUrl = saved;
+                  sessionStorage.removeItem("vibeworld_return");
+                  sessionStorage.removeItem("vibeworld_return_url");
+                } catch {}
+                navigate(returnUrl.replace(window.location.origin, "") || "/vibe-world");
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black tracking-wide transition-all hover:brightness-110 active:scale-95"
               style={{
