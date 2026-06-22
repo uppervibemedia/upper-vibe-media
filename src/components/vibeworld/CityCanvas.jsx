@@ -1914,19 +1914,31 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           attachHoverboard(avatarEntryRef.current);
         }
 
-        // ── Hoverboard board glow animation ──────────────────
+        // ── Hoverboard board glow + avatar lean animation ─────
         if (hbRidingRef.current && avatarRef.current) {
           const hbMesh = avatarRef.current.getObjectByName("avatarHoverboard");
           if (hbMesh) {
             const stripeMat = hbMesh.userData.stripeMat;
             if (stripeMat) {
-              stripeMat.opacity = 0.6 + audioBeat * 0.35 + Math.sin(t * 4.0) * 0.15;
-              stripeMat.color.copy(new Color("#00E5FF")).lerp(new Color("#C43BFF"), Math.sin(t * 1.8) * 0.5 + 0.5);
+              stripeMat.opacity = 0.7 + audioBeat * 0.28 + Math.sin(t * 4.5) * 0.12;
+              stripeMat.color.copy(new Color("#00E5FF")).lerp(new Color("#C43BFF"), Math.sin(t * 1.6) * 0.5 + 0.5);
             }
-            // Slight forward lean based on movement speed
+            // Animate hover disc opacity
+            if (hbMesh.userData.hoverDisc) {
+              hbMesh.userData.hoverDisc.opacity = 0.15 + audioBeat * 0.25 + Math.sin(t * 3.0) * 0.08;
+            }
+            // Board rocks gently side to side when idle, tilts forward when moving
             const spd = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.z ** 2);
-            hbMesh.rotation.x = spd * 0.06; // lean forward when moving
+            hbMesh.rotation.x = spd > 0.3 ? -spd * 0.07 : Math.sin(t * 1.4) * 0.025;
+            hbMesh.rotation.z = Math.sin(t * 0.9) * 0.018;
           }
+          // Whole avatar leans forward when accelerating
+          const spd = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.z ** 2);
+          const targetLean = spd > 0.5 ? -spd * 0.055 : 0;
+          avatarRef.current.rotation.x = (avatarRef.current.rotation.x || 0) * 0.85 + targetLean * 0.15;
+        } else if (avatarRef.current) {
+          // Reset lean when not riding
+          avatarRef.current.rotation.x = (avatarRef.current.rotation.x || 0) * 0.85;
         }
         animateLaunchZone(scene, t, audioBeat, dt);
         animateHoverboardZone(scene, t, audioBeat);

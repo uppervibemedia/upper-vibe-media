@@ -255,7 +255,6 @@ export function createAvatar(scene, opts = {}, onReady) {
 
 // ─── PUBLIC: attachHoverboard / detachHoverboard ──────────────
 // Attaches a glowing hoverboard mesh under the avatar's feet.
-// The board floats at y=-0.05 relative to controller root.
 export function attachHoverboard(entry) {
   if (!entry?.root) return;
   if (entry.root.getObjectByName("avatarHoverboard")) return; // already attached
@@ -263,46 +262,78 @@ export function attachHoverboard(entry) {
   const board = new THREE.Group();
   board.name = "avatarHoverboard";
 
-  // Main deck
+  // Main deck — wide enough to be visible under character feet
   const deck = new THREE.Mesh(
-    new THREE.BoxGeometry(0.55, 0.06, 0.22),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color("#0A0A1E"), roughness: 0.1, metalness: 0.95 })
+    new THREE.BoxGeometry(0.38, 0.07, 0.7),
+    new THREE.MeshStandardMaterial({ color: new THREE.Color("#0A0A1E"), roughness: 0.08, metalness: 0.96 })
   );
-  deck.position.y = 0;
   deck.castShadow = true;
   board.add(deck);
 
-  // Deck surface glow stripe
+  // Top glow stripe (center line)
   const stripe = new THREE.Mesh(
-    new THREE.BoxGeometry(0.50, 0.02, 0.08),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.85, depthWrite: false })
+    new THREE.BoxGeometry(0.22, 0.025, 0.62),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.9, depthWrite: false })
   );
-  stripe.position.set(0, 0.04, 0);
+  stripe.position.y = 0.048;
   board.add(stripe);
   board.userData.stripeMat = stripe.material;
 
-  // Side glow strips
-  for (const bz of [-0.12, 0.12]) {
+  // Side edge glow strips (long sides)
+  for (const bx of [-0.20, 0.20]) {
     const edge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.55, 0.02, 0.02),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color("#C43BFF"), transparent: true, opacity: 0.7, depthWrite: false })
+      new THREE.BoxGeometry(0.03, 0.025, 0.68),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color("#C43BFF"), transparent: true, opacity: 0.75, depthWrite: false })
     );
-    edge.position.set(0, 0.01, bz);
+    edge.position.set(bx, 0.048, 0);
     board.add(edge);
   }
 
-  // Thruster glow under each end
-  for (const bx of [-0.22, 0.22]) {
-    const thrust = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.055, 0.04, 8),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.9, depthWrite: false })
+  // Nose/tail kick — slightly angled ends
+  for (const bz of [-0.38, 0.38]) {
+    const kick = new THREE.Mesh(
+      new THREE.BoxGeometry(0.36, 0.04, 0.06),
+      new THREE.MeshStandardMaterial({ color: new THREE.Color("#111128"), roughness: 0.1, metalness: 0.9 })
     );
-    thrust.position.set(bx, -0.03, 0);
-    board.add(thrust);
+    kick.position.set(0, 0.055, bz);
+    kick.rotation.x = bz < 0 ? -0.25 : 0.25;
+    board.add(kick);
   }
 
-  // Position board at avatar feet level
-  board.position.set(0, -0.05, 0);
+  // Thruster pods — 4 corners, glow downward
+  for (const bx of [-0.14, 0.14]) {
+    for (const bz of [-0.28, 0.28]) {
+      const thrust = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.045, 0.055, 0.05, 8),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color("#00CCFF"), transparent: true, opacity: 0.85, depthWrite: false })
+      );
+      thrust.position.set(bx, -0.045, bz);
+      board.add(thrust);
+
+      // Thruster glow cone pointing downward
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry(0.065, 0.12, 8),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.35, depthWrite: false })
+      );
+      cone.position.set(bx, -0.12, bz);
+      cone.rotation.x = Math.PI; // point down
+      board.add(cone);
+    }
+  }
+
+  // Hover glow disc on the ground beneath the board
+  const hoverDisc = new THREE.Mesh(
+    new THREE.CircleGeometry(0.28, 24),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color("#00C8FF"), transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide })
+  );
+  hoverDisc.rotation.x = -Math.PI / 2;
+  hoverDisc.position.y = -0.18;
+  hoverDisc.renderOrder = 1;
+  board.add(hoverDisc);
+  board.userData.hoverDisc = hoverDisc.material;
+
+  // Position board just below avatar feet (GLB feet sit at y≈0 on controller)
+  board.position.set(0, -0.08, 0);
   entry.root.add(board);
 }
 
