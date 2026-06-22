@@ -7,6 +7,7 @@ import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
+import { createHoverboardZone, animateHoverboardZone, flashRing, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS } from "./HoverboardRingRun";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -885,6 +886,11 @@ function buildPark(scene) {
   createZenBeach(scene, PLAZA_X, PLAZA_Z);
 
   // ═════════════════════════════════════════════════════════════
+  // 8.8. HOVERBOARD RING RUN — right-side beach, action zone
+  // ═════════════════════════════════════════════════════════════
+  createHoverboardZone(scene);
+
+  // ═════════════════════════════════════════════════════════════
   // 8.7. VIBE SHOP — far right, opposite Academy
   // ═════════════════════════════════════════════════════════════
   const { SHOP_X, SHOP_Z } = createVibeShop(scene);
@@ -1643,6 +1649,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           try { onNearPad(nearPadRef.current, launchStateRef.current.active, orbCountRef.current); } catch {}
         }
 
+        // ── Hoverboard zone proximity ──
+        if (frameRef.current % 10 === 0) {
+          const hbdx = px - HOVERBOARD_START.x;
+          const hbdz = pz - HOVERBOARD_START.z;
+          const hbDist = Math.sqrt(hbdx * hbdx + hbdz * hbdz);
+          scene.userData._nearHoverboard = hbDist < HOVERBOARD_INTERACT_RADIUS;
+        }
+
         // ── Jukebox proximity ──
         if (onJukeboxProxRef.current && frameRef.current % 6 === 0) {
           const jdx = px - JUKEBOX_POS.x;
@@ -1965,6 +1979,28 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         animateJukebox(scene, t, audioBeat);
         animateLaunchZone(scene, t, audioBeat, dt);
+        animateHoverboardZone(scene, t, audioBeat);
+
+        // ─── HOVERBOARD RING COLLISION ────────────────────────
+        if (window.__hbCollectRing && frameRef.current % 3 === 0) {
+          const hbRings = scene.userData.hbRingMeshes;
+          if (hbRings) {
+            for (const r of hbRings) {
+              if (r.collected) continue;
+              const rd = HOVERBOARD_RINGS[r.idx];
+              if (!rd) continue;
+              const dx = px - rd.x, dz = pz - rd.z;
+              const dist = Math.sqrt(dx * dx + dz * dz);
+              if (dist < 2.0 && Math.abs(py - rd.y) < 1.5) {
+                r.collected = true;
+                flashRing(scene, r.idx);
+                window.__hbCollectRing(r.idx);
+                // Reset collected flag after 8s so replays work
+                setTimeout(() => { r.collected = false; }, 8000);
+              }
+            }
+          }
+        }
 
         // Stars twinkle
         const starsMesh = scene.userData.stars;

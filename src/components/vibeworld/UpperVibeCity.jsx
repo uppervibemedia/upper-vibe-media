@@ -22,6 +22,8 @@ import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel"
 import OrbRewardSystem from "@/components/vibeworld/OrbRewardSystem";
 import OrbLeaderboard from "@/components/vibeworld/OrbLeaderboard";
 import useWorldDJStream from "@/hooks/useWorldDJStream";
+import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
+import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
 
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [nearLaunchPad, setNearLaunchPad] = useState(false);
   const [isAirborne, setIsAirborne] = useState(false);
   const [orbCount, setOrbCount] = useState(0);
+  // ── Hoverboard Ring Run state ─────────────────────────────────
+  const [nearHoverboard, setNearHoverboard] = useState(false);
+  const [hbRiding, setHbRiding] = useState(false);
+  const [hbNextRing, setHbNextRing] = useState(0);
   const [lifetimeOrbs, setLifetimeOrbs] = useState(() => {
     try { return JSON.parse(localStorage.getItem("vibeOrbData") || "{}")?.lifetimeVibeOrbs ?? 0; } catch { return 0; }
   });
@@ -354,6 +360,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── World DJ Stream — gated strictly to dance floor only ──────────────────
   const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, danceFloorMode: onDanceFloor });
+
+  // ── Hoverboard zone proximity detection ──────────────────────
+  useEffect(() => {
+    const hbdx = playerPos.x - HOVERBOARD_START.x;
+    const hbdz = playerPos.z - HOVERBOARD_START.z;
+    const dist = Math.sqrt(hbdx * hbdx + hbdz * hbdz);
+    setNearHoverboard(dist < HOVERBOARD_INTERACT_RADIUS);
+  }, [playerPos.x, playerPos.z]);
 
   // ── Audio ducking: reduce personal player + DJ stream to ~25% when voice is active ──
   useEffect(() => {
@@ -979,6 +993,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           )}
         </div>
       )}
+
+      {/* ── Hoverboard Ring Run HUD ── */}
+      <HoverboardPanel
+        visible={nearHoverboard || hbRiding}
+        isMobile={isMobile}
+        user={user}
+        nextRingIdx={hbNextRing}
+        onStartRide={() => { setHbRiding(true); setHbNextRing(0); }}
+        onEndRide={() => setHbRiding(false)}
+        onRingCollected={(idx) => setHbNextRing((idx + 1) % 8)}
+      />
 
       {/* ── Vibe Orb Reward System ── */}
       <OrbRewardSystem orbCount={orbCount} isMobile={isMobile} user={user} />

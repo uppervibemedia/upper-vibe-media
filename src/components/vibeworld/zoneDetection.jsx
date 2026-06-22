@@ -70,6 +70,12 @@ const ZONES = {
     cx: 0, cz: 4, radius: 6,
     icon: "Rocket",
   },
+  hoverboard: {
+    name: "Hoverboard Ring Run",
+    id: "hoverboard",
+    cx: 20, cz: 22, radius: 8,
+    icon: "Zap",
+  },
 };
 
 export function detectZone(px, pz) {
