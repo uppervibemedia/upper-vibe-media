@@ -38,7 +38,7 @@ const ZONE_ICONS = {
 };
 
 export default function WorldHUD({
-  playerX, playerZ, playerRot,
+  playerX, playerZ, playerRot, playerPos, forceOpenPanel,
   isMobile, loading,
   stageVideoTitle,
   stageVideoMuted,
@@ -112,6 +112,15 @@ export default function WorldHUD({
   // Panel states
   const [musicPanelOpen, setMusicPanelOpen] = useState(false);
   const [loungePanelOpen, setLoungePanelOpen] = useState(false);
+
+  // Force open a panel when returning from SongPage
+  useEffect(() => {
+    if (!forceOpenPanel) return;
+    if (forceOpenPanel === "music_library") {
+      setMusicPanelOpen(true);
+      onMobileModalChange?.(true);
+    }
+  }, [forceOpenPanel]);
   const [visualizerOpen, setVisualizerOpen] = useState(false);
   const [vibeCheckOpen, setVibeCheckOpen] = useState(false);
   const [academyOpen, setAcademyOpen] = useState(false);
@@ -432,23 +441,24 @@ export default function WorldHUD({
                 : "calc(env(safe-area-inset-bottom, 0px) + 11rem)",
               left: "50%",
               transform: "translateX(-50%)",
-              width: isMobile ? "min(calc(100vw - 80px), 300px)" : "300px",
+              width: isMobile ? "min(calc(100vw - 80px), 280px)" : "280px",
             }}
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
               onClick={() => { hapticTap(); setDjSongPageOpen(true); }}
-              className="w-full rounded-2xl overflow-hidden transition-all hover:brightness-110 active:scale-[0.97] text-left"
+              className="w-full rounded-2xl transition-all hover:brightness-110 active:scale-[0.97] text-left"
               style={{
                 background: "rgba(5,4,18,0.96)",
                 border: "1px solid rgba(0,229,255,0.28)",
                 backdropFilter: "blur(20px)",
                 boxShadow: "0 0 32px rgba(196,59,255,0.22), 0 8px 32px rgba(0,0,0,0.6)",
                 touchAction: "manipulation",
+                overflow: "hidden",
               }}
             >
-              {/* Cover art — wide banner */}
-              <div className="relative w-full overflow-hidden" style={{ height: isMobile ? 88 : 105 }}>
+              {/* Cover art — square, no fixed height so full image always shows */}
+              <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
                 {djTrack.cover_url ? (
                   <img src={djTrack.cover_url} alt={djTrack.title}
                     className="w-full h-full object-cover block" />
@@ -459,7 +469,7 @@ export default function WorldHUD({
                   </div>
                 )}
                 {/* Gradient overlay for text legibility */}
-                <div className="absolute inset-x-0 bottom-0 h-2/3"
+                <div className="absolute inset-x-0 bottom-0 h-1/2"
                   style={{ background: "linear-gradient(to top, rgba(5,4,18,1) 0%, transparent 100%)" }} />
                 {/* LIVE DJ badge */}
                 <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full"
@@ -969,6 +979,7 @@ export default function WorldHUD({
         open={musicPanelOpen}
         onClose={handleCloseMusicLibrary}
         isMobile={isMobile}
+        playerPos={playerPos}
       />
 
       {/* ── Visualizer Panel (fullscreen) ─────────────────────── */}
@@ -1031,6 +1042,7 @@ export default function WorldHUD({
             track={djTrack}
             onClose={() => setDjSongPageOpen(false)}
             isMobile={isMobile}
+            sourceComponent="dj_booth"
           />
         )}
       </AnimatePresence>

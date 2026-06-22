@@ -10,7 +10,7 @@ const PLAZA_Z = -13;
 
 // DJ Booth sits to the right of the dance floor, just outside its edge (moved 20% farther right)
 export const JUKEBOX_POS = { x: PLAZA_X + 9.8, z: PLAZA_Z + 0.5 };
-export const JUKEBOX_INTERACT_RADIUS = 5.5;
+export const JUKEBOX_INTERACT_RADIUS = 7.0;
 export const DANCE_FLOOR_RADIUS = 7;
 
 // Scale multiplier — 50% larger than original (1.0 * 1.5 * 1.5)

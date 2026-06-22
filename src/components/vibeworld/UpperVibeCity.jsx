@@ -27,10 +27,32 @@ import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibew
 import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/orbBank";
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
 
+// Read saved return position from sessionStorage (set before navigating to SongPage)
+function readReturnState() {
+  try {
+    const x = parseFloat(sessionStorage.getItem("vibeworld_avatar_x") || "NaN");
+    const z = parseFloat(sessionStorage.getItem("vibeworld_avatar_z") || "NaN");
+    const rot = parseFloat(sessionStorage.getItem("vibeworld_avatar_rot") || "0");
+    const panel = sessionStorage.getItem("vibeworld_open_panel") || null;
+    if (!isNaN(x) && !isNaN(z)) return { x, z, rot, panel };
+  } catch {}
+  return null;
+}
+
+function clearReturnState() {
+  try {
+    ["vibeworld_avatar_x","vibeworld_avatar_z","vibeworld_avatar_rot","vibeworld_open_panel",
+     "vibeworld_source","vibeworld_scroll","vibeworld_selected_song"].forEach(k => sessionStorage.removeItem(k));
+  } catch {}
+}
+
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0, animState: "idle" });
+  // Restore saved return state (position + panel) when returning from SongPage
+  const returnState = useRef(readReturnState());
+  const returnStateApplied = useRef(false);
   const prevPosRef = useRef({ x: 0, z: 5 });
   const [stageCanvas, setStageCanvas] = useState(null);
   const audioIntensityRef = useRef(0);
@@ -113,6 +135,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
     };
   }, []);
+
+  const [openPanelOnLoad, setOpenPanelOnLoad] = useState(null);
 
   // ── Stage video state ──────────────────────────────────────────────────
   const [stageVideos, setStageVideos] = useState([]);
@@ -697,7 +721,23 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       {/* 3D Park */}
       <div className="absolute inset-0">
         <CityCanvas
-          onLoaded={() => setLoading(false)}
+          spawnOverride={returnState.current ? { x: returnState.current.x, z: returnState.current.z, rot: returnState.current.rot } : null}
+          onLoaded={() => {
+            setLoading(false);
+            // After world loads, auto-open the panel user came from, then clear state
+            if (returnState.current && !returnStateApplied.current) {
+              returnStateApplied.current = true;
+              const panel = returnState.current.panel;
+              clearReturnState();
+              returnState.current = null;
+              // Re-open the panel they came from
+              if (panel === "music_library") {
+                setTimeout(() => setOpenPanelOnLoad("music_library"), 600);
+              } else if (panel === "dj_booth") {
+                setTimeout(() => setOpenPanelOnLoad("dj_booth"), 600);
+              }
+            }
+          }}
           onRemoteAvatarClick={handleRemoteAvatarClick}
           retintRef={retintInWorldRef}
           onPositionChange={(x, z, rot) => {
@@ -835,6 +875,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         playerRot={playerPos.rot}
         isMobile={isMobile}
         loading={loading}
+        playerPos={playerPos}
+        forceOpenPanel={openPanelOnLoad}
         stageVideoTitle={stageVideos[stageVideoIdx]?.title || null}
         stageVideoMuted={stageVideoMuted}
         stageWatching={stageWatching}

@@ -87,7 +87,7 @@ function SongCard({ track, isCurrent, isPlaying, onPlay, onOpenDetail }) {
   );
 }
 
-export default function MusicLibraryPanel({ open, onClose, isMobile }) {
+export default function MusicLibraryPanel({ open, onClose, isMobile, playerPos }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -127,9 +127,20 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
     }
   };
 
-  // Save scroll position before opening song detail, restore on close
+  // Save scroll position + world state before opening song detail
   const handleOpenDetail = (track) => {
     savedScrollRef.current = scrollRef.current?.scrollTop || 0;
+    // Save world position so "Back to City" can return here
+    try {
+      if (playerPos) {
+        sessionStorage.setItem("vibeworld_avatar_x", String(playerPos.x || 0));
+        sessionStorage.setItem("vibeworld_avatar_z", String(playerPos.z || 0));
+        sessionStorage.setItem("vibeworld_avatar_rot", String(playerPos.rot || 0));
+      }
+      sessionStorage.setItem("vibeworld_open_panel", "music_library");
+      sessionStorage.setItem("vibeworld_scroll", String(savedScrollRef.current));
+      sessionStorage.setItem("vibeworld_selected_song", track.id);
+    } catch {}
     setSongPageTrack(track);
   };
 
@@ -152,6 +163,7 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
             track={songPageTrack}
             onClose={handleCloseSongPage}
             isMobile={isMobile}
+            sourceComponent="music_library"
           />
         )}
       </AnimatePresence>

@@ -1286,7 +1286,7 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, spawnOverride = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1327,11 +1327,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const sceneRef = useRef(null);
   const avatarRef = useRef(null);
   const avatarEntryRef = useRef(null); // { root, mixer, clips } from GLB load
-  const avatarPosRef = useRef([...SPAWN, 0]); // [x, y, z, rotY]
+  // Use spawn override if provided (restores position when returning from SongPage)
+  const effectiveSpawn = spawnOverride
+    ? [spawnOverride.x, SPAWN[1], spawnOverride.z, spawnOverride.rot || 0]
+    : [...SPAWN, 0];
+  const avatarPosRef = useRef(effectiveSpawn); // [x, y, z, rotY]
   const stageCanvasRef = useRef(null);
   stageCanvasRef.current = stageCanvas;
   const velocityRef = useRef({ x: 0, z: 0 });
-  const avatarRotRef = useRef(0);    // avatar body Y rotation (world space)
+  const avatarRotRef = useRef(spawnOverride?.rot || 0);    // avatar body Y rotation (world space)
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0, button: 0 });
   // Camera: yaw = angle of camera around avatar (0 = directly behind)
@@ -1402,10 +1406,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const asp = rw / Math.max(rh, 1);
       const camera = new PerspectiveCamera(52, asp, 0.1, 100);
       cameraRef.current = camera;
-      // Start directly BEHIND avatar (avatar faces -Z toward stage at spawn)
-      // camYaw=0 → camera behind → at +Z from avatar (opposite of facing direction)
-      camera.position.set(SPAWN[0], SPAWN[1] + CAM_HEIGHT, SPAWN[2] + CAM_DIST);
-      camera.lookAt(SPAWN[0], SPAWN[1] + CAM_LOOK_Y, SPAWN[2]);
+      // Start directly BEHIND avatar — use spawnOverride position if provided
+      const [spX, spY, spZ] = effectiveSpawn;
+      camera.position.set(spX, spY + CAM_HEIGHT, spZ + CAM_DIST);
+      camera.lookAt(spX, spY + CAM_LOOK_Y, spZ);
 
       buildPark(scene);
 

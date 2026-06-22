@@ -134,7 +134,7 @@ function UpgradeView({ track, onBack, onClose, isMobile, onNavigate }) {
   );
 }
 
-export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying }) {
+export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying, sourceComponent = "unknown" }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const { user } = useAuth() || {};
   const navigate = useNavigate();
@@ -154,24 +154,26 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying 
     }
   };
 
-  // Save the full current URL (including hash/query) so SongPage can navigate back exactly
-  const saveReturnUrl = () => {
+  // Save the full current URL + world state so SongPage can navigate back exactly
+  const saveReturnUrl = (src = "unknown") => {
     try {
       sessionStorage.setItem("vibeworld_return_url", window.location.href);
       sessionStorage.setItem("vibeworld_return", "1");
+      sessionStorage.setItem("vibeworld_source", src);
+      sessionStorage.setItem("vibeworld_open_panel", src);
     } catch {}
   };
 
   const handleDownloadClick = (e) => {
     e.stopPropagation();
-    saveReturnUrl();
+    saveReturnUrl(sourceComponent);
     onClose();
     navigate(`/song/${track.id}?downloadIntent=true`);
   };
 
   const handleOpenSongPage = (e) => {
     e.stopPropagation();
-    saveReturnUrl();
+    saveReturnUrl(sourceComponent);
     onClose();
     navigate(`/song/${track.id}`);
   };
