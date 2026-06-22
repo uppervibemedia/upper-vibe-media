@@ -352,7 +352,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Dance floor detection (plaza zone: cx=0, cz=-13, r=7) ─────────────────────
   const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -13, DANCE_FLOOR_R = 10.5;
   // Zone reference positions — keep in sync with zoneDetection.jsx
-  const DOME_CX = -13, DOME_CZ = 8;
+  const DOME_CX = -13, DOME_CZ = 3;
   const LOUNGE_CX = -22, LOUNGE_CZ = -26;
   const VIBECHECK_CX = -16, VIBECHECK_CZ = -13;
   const dfDx = playerPos.x - DANCE_FLOOR_CX;

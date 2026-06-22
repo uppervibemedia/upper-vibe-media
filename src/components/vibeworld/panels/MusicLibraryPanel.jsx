@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, Play, Pause, Music4, Waves, Info } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -87,6 +87,8 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
   const [activeTab, setActiveTab] = useState("latest");
   const [search, setSearch] = useState("");
   const [songPageTrack, setSongPageTrack] = useState(null);
+  const scrollRef = useRef(null);
+  const savedScrollRef = useRef(0);
 
   useEffect(() => {
     if (!open) return;
@@ -118,6 +120,20 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
     }
   };
 
+  // Save scroll position before opening song detail, restore on close
+  const handleOpenDetail = (track) => {
+    savedScrollRef.current = scrollRef.current?.scrollTop || 0;
+    setSongPageTrack(track);
+  };
+
+  const handleCloseSongPage = () => {
+    setSongPageTrack(null);
+    // Restore scroll after react renders
+    setTimeout(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = savedScrollRef.current;
+    }, 50);
+  };
+
   if (!open) return null;
 
   return (
@@ -127,7 +143,7 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
         {songPageTrack && (
           <InWorldSongPage
             track={songPageTrack}
-            onClose={() => setSongPageTrack(null)}
+            onClose={handleCloseSongPage}
             isMobile={isMobile}
           />
         )}
@@ -138,14 +154,11 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="fixed inset-0 rounded-t-3xl overflow-hidden flex flex-col"
+        className="fixed inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
         style={{
           zIndex: 70,
-          top: isMobile ? "0" : undefined,
-          bottom: isMobile ? "0" : undefined,
-          height: isMobile ? "100dvh" : "82vh",
-          paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 0px)" : undefined,
-          paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 0px)" : undefined,
+          top: isMobile ? "0" : "auto",
+          height: isMobile ? "100dvh" : "84vh",
           background: "rgba(8,8,24,0.97)",
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
@@ -157,7 +170,7 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
         {/* Header */}
         <div
           className="flex items-center justify-between px-4 py-3 border-b border-white/5 flex-shrink-0"
-          style={{ paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 8px)" : undefined }}
+          style={{ paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 12px)" : "12px" }}
         >
           <div className="flex items-center gap-2">
             <Music4 className="w-5 h-5 text-cyan-400" />
@@ -220,8 +233,11 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
         </div>
 
         {/* Song grid */}
-        <div className="flex-1 overflow-y-auto px-3"
-          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 100px)" : "2rem" }}>
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto px-3"
+          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 120px)" : "2rem" }}
+        >
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <div className="w-6 h-6 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />
@@ -233,8 +249,8 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
               className="grid gap-2 pt-2"
               style={{
                 gridTemplateColumns: isMobile
-                  ? "repeat(auto-fill, minmax(82px, 1fr))"
-                  : "repeat(auto-fill, minmax(120px, 1fr))",
+                  ? "repeat(auto-fill, minmax(96px, 1fr))"
+                  : "repeat(auto-fill, minmax(130px, 1fr))",
               }}
             >
               {filtered.map((track) => (
@@ -244,7 +260,7 @@ export default function MusicLibraryPanel({ open, onClose, isMobile }) {
                   isCurrent={currentTrack?.id === track.id}
                   isPlaying={isPlaying}
                   onPlay={handlePlay}
-                  onOpenDetail={setSongPageTrack}
+                  onOpenDetail={handleOpenDetail}
                 />
               ))}
             </div>

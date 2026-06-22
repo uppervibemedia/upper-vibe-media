@@ -8,8 +8,8 @@ import * as THREE from "three";
 const PLAZA_X = 0;
 const PLAZA_Z = -13;
 
-// DJ Booth sits to the right of the dance floor, just outside its edge
-export const JUKEBOX_POS = { x: PLAZA_X + 8.2, z: PLAZA_Z + 0.5 };
+// DJ Booth sits to the right of the dance floor, just outside its edge (moved 20% farther right)
+export const JUKEBOX_POS = { x: PLAZA_X + 9.8, z: PLAZA_Z + 0.5 };
 export const JUKEBOX_INTERACT_RADIUS = 5.5;
 export const DANCE_FLOOR_RADIUS = 7;
 

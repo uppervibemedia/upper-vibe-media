@@ -135,8 +135,17 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   const group = new Group();
   group.name = "neonSign_" + text.replace(/\s+/g, "");
 
+  // Measure text width to size everything responsively
+  const tmpCanvas = document.createElement("canvas");
+  const tmpCtx = tmpCanvas.getContext("2d");
+  tmpCtx.font = "bold 28px 'Syne', 'Inter', sans-serif";
+  const textW = tmpCtx.measureText(text).width;
+  const canvasW = Math.max(512, Math.ceil(textW) + 80);
+  const canvasH = 72;
+  const worldW = Math.max(6, (canvasW / 512) * 7.5); // scale world width with text length
+
   // Glowing backing plate
-  const backGeo = new PlaneGeometry(7, 2);
+  const backGeo = new PlaneGeometry(worldW, 1.8);
   const backMat = new MeshBasicMaterial({
     color: new Color(colorHex),
     transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide,
@@ -146,7 +155,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   group.add(back);
 
   // Neon border frame
-  const borderGeo = new PlaneGeometry(7.1, 2.1);
+  const borderGeo = new PlaneGeometry(worldW + 0.1, 1.9);
   const borderMat = new MeshBasicMaterial({
     color: new Color(colorHex),
     transparent: true, opacity: 0.50, depthWrite: false, side: THREE.DoubleSide,
@@ -155,19 +164,19 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   borderFrame.renderOrder = 1;
   group.add(borderFrame);
 
-  // Text sprite
+  // Text sprite — dynamically sized canvas so nothing is cut off
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 64;
+  canvas.width = canvasW;
+  canvas.height = canvasH;
   const ctx = canvas.getContext("2d");
   ctx.shadowColor = colorHex;
-  ctx.shadowBlur = 12;
-  ctx.font = "bold 22px 'Syne', 'Inter', sans-serif";
+  ctx.shadowBlur = 14;
+  ctx.font = "bold 28px 'Syne', 'Inter', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#FFFFFF";
-  ctx.fillText(text, 128, 32);
-  ctx.fillText(text, 128, 32); // double-draw for glow intensity
+  ctx.fillText(text, canvasW / 2, canvasH / 2);
+  ctx.fillText(text, canvasW / 2, canvasH / 2); // double-draw for glow
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.minFilter = THREE.LinearFilter;
@@ -178,7 +187,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
     transparent: true, depthWrite: false, depthTest: false,
   });
   const sprite = new THREE.Sprite(spriteMat);
-  sprite.scale.set(6, 1.5, 1);
+  sprite.scale.set(worldW, worldW * (canvasH / canvasW), 1);
   sprite.renderOrder = 2;
   group.add(sprite);
 
@@ -187,13 +196,10 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
     new SphereGeometry(0.12, 8, 6),
     new MeshBasicMaterial({ color: new Color("#FFFFFF"), depthWrite: false })
   );
-  dot.position.set(0, 1.2, 0);
+  dot.position.set(0, 1.1, 0);
   group.add(dot);
 
   group.position.set(x, y, z);
-  // Billboard toward camera — sprite handles this but we parent the group to scene
-  // Each sign should always face the camera, so we'll make the whole group a billboard
-  // Using Object3D.lookAt in render loop — store ref for animation
   group.userData = { isNeonSign: true, baseOpacity: 0.50, colorHex };
   scene.add(group);
 }
@@ -614,7 +620,7 @@ function buildPark(scene) {
     domeGeo2,
     mat("#1A2540", { roughness: 0.20, metalness: 0.65, transparent: true, opacity: 0.75, depthWrite: true })
   );
-  domeMesh2.position.set(-13, 0.05, 8);
+  domeMesh2.position.set(-13, 0.05, 3);
   domeMesh2.castShadow = true;
   dome.add(domeMesh2);
 
@@ -625,7 +631,7 @@ function buildPark(scene) {
       new SphereGeometry(0.08, 4, 3),
       new MeshBasicMaterial({ color: new Color(["#C43BFF", "#00D4F0", "#FF00FF"][d % 3]), depthWrite: false })
     );
-    dot.position.set(-13 + Math.cos(dAng) * 3.2, 1.5 + (d % 3) * 0.8, 8 + Math.sin(dAng) * 3.2);
+    dot.position.set(-13 + Math.cos(dAng) * 3.2, 1.5 + (d % 3) * 0.8, 3 + Math.sin(dAng) * 3.2);
     dome.add(dot);
   }
 
@@ -634,7 +640,7 @@ function buildPark(scene) {
     new BoxGeometry(2.5, 3.5, 0.1),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.85 })
   );
-  domeEntrance.position.set(-13, 1.75, 8 - 3.35);
+  domeEntrance.position.set(-13, 1.75, 3 - 3.35);
   domeEntrance.name = "domeEntrance";
   dome.add(domeEntrance);
 
@@ -643,11 +649,11 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#1E2A4E"), depthWrite: false, transparent: true, opacity: 0.3 })
   );
   domeFloor.rotation.x = -Math.PI / 2;
-  domeFloor.position.set(-13, 0.003, 8);
+  domeFloor.position.set(-13, 0.003, 3);
   dome.add(domeFloor);
 
   scene.add(dome);
-  createNeonSign(scene, -13, 4.2, 8, "VISUALIZER  DOME", "#C43BFF");
+  createNeonSign(scene, -13, 4.2, 3, "VISUALIZER  DOME", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 8. DAILY VIBE CHECK — Vibe Mirror reflection zone
@@ -1118,7 +1124,7 @@ function buildPark(scene) {
   const domeLight = new PointLight();
   domeLight.color = new Color("#FF00FF");
   domeLight.intensity = 3.5; domeLight.distance = 14;
-  domeLight.position.set(-13, 2.5, 8);
+  domeLight.position.set(-13, 2.5, 3);
   scene.add(domeLight);
 
   const vibeCheckLight = new PointLight();

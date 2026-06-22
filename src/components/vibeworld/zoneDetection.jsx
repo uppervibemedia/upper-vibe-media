@@ -31,7 +31,7 @@ const ZONES = {
   dome: {
     name: "Visualizer Dome",
     id: "dome",
-    cx: -13, cz: 8, radius: 5,
+    cx: -13, cz: 3, radius: 5,
     icon: "Tv2",
   },
   vibecheck: {
