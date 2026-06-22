@@ -1944,7 +1944,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             child.position.z = p.baseZ + Math.sin(t * 0.6 + p.phase) * 0.2;
           }
         });
-        animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
+        animateZenBeach(scene, t, audioBeat);
+        const djIsPlaying = !!(djTrackRef.current && (audioIntensityRef?.current ?? 0) > 0.01);
+        animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0, djIsPlaying);
         // Push current DJ track into scene for Now Playing display
         if (djTrackRef.current) scene.userData.djNowPlayingTrack = djTrackRef.current;
         animateJukebox(scene, t, audioBeat);
