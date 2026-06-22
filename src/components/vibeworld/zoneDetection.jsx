@@ -76,6 +76,12 @@ const ZONES = {
     cx: 28, cz: 23, radius: 8,
     icon: "Zap",
   },
+  crystalzone: {
+    name: "Crystal Zone",
+    id: "crystalzone",
+    cx: -28, cz: -11, radius: 9,
+    icon: "Sparkles",
+  },
 };
 
 export function detectZone(px, pz) {

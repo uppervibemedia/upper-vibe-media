@@ -10,6 +10,7 @@ import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
 import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
+import { createCrystalZone, animateCrystalZone } from "./CrystalZone";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -912,6 +913,12 @@ function buildPark(scene) {
   academyLight.position.set(ACAD_X, 2.5, ACAD_Z);
   scene.add(academyLight);
 
+
+  // ═════════════════════════════════════════════════════════════
+  // 8.5.5 CRYSTAL ZONE — between Vibe Lounge and Vibe Academy
+  // ═════════════════════════════════════════════════════════════
+  createCrystalZone(scene);
+  createNeonSign(scene, -28, 6.8, -11, "CRYSTAL  ZONE", "#AA66FF");
 
   // ═════════════════════════════════════════════════════════════
   // 8.6. ZEN BEACH — meditation zone, left-side beach area
@@ -1960,6 +1967,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         });
         animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
+        animateCrystalZone(scene, t, dt, px, pz);
         animateJukebox(scene, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──
