@@ -19,6 +19,7 @@ import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
 import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
+import OrbRewardSystem from "@/components/vibeworld/OrbRewardSystem";
 
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
@@ -1071,6 +1072,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           )}
         </div>
       )}
+
+      {/* ── Vibe Orb Reward System ── */}
+      <OrbRewardSystem orbCount={orbCount} isMobile={isMobile} />
 
       {/* ── Avatar Customizer Panel (color + style) ────────────────────── */}
       <AvatarCustomizerPanel
