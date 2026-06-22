@@ -4,7 +4,7 @@ import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
 // Vibe Shop is temporarily disabled — replaced by Ferris Wheel
 // import createVibeShop from "./VibeShop";
-import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, getCabinWorldPosition, getBoardingPosition } from "./FerrisWheel";
+import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, getCabinWorldPosition, getBoardingPosition } from "./FerrisWheel";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
@@ -1728,26 +1728,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Camera sits BEHIND avatar: avatar faces +Z when rot=0, camera is at +Z offset
         const finalCamAngle = rot + camYawSmoothRef.current;
 
-        const STAGE_LOOK_AT = new Vector3(0, 3.5, -34.4);
-        const STAGE_CAM_POS = new Vector3(0, 3.0, -12);
         if (ferrisRidingRef.current) {
+          // Outward-facing ride cam: sit just outside the cabin, look away from wheel hub over the city
           const cp = getCabinWorldPosition(0, t);
-          camera.position.lerp(new Vector3(cp.x - 4, cp.y + 1.2, cp.z - 3), Math.min(1, 3.5 * dt));
-          camera.lookAt(cp.x, cp.y, cp.z);
+          const wa = t * 0.18, ry = 0.26;
+          const lz = Math.sin(wa) * WHEEL_RADIUS;
+          const owx = -Math.sin(ry) * lz, owz = Math.cos(ry) * lz;
+          const ol = Math.sqrt(owx * owx + owz * owz) || 1;
+          camera.position.lerp(new Vector3(cp.x + owx / ol * 1.5, cp.y + 0.4, cp.z + owz / ol * 1.5), Math.min(1, 5 * dt));
+          camera.lookAt(cp.x + owx / ol * 20, cp.y - 2, cp.z + owz / ol * 20);
         } else if (lockedRef.current) {
-          camera.position.lerp(STAGE_CAM_POS, Math.min(1, 3.0 * dt));
-          camera.lookAt(STAGE_LOOK_AT);
+          camera.position.lerp(new Vector3(0, 3.0, -12), Math.min(1, 3.0 * dt));
+          camera.lookAt(new Vector3(0, 3.5, -34.4));
         } else {
-          // True behind-avatar third-person camera:
-          // Avatar forward = +Z when rot=0. "Behind" = camera offset in -Z direction.
-          // finalCamAngle=0 → camera at (px, py+height, pz-dist) = behind avatar facing +Z ✓
-          // camYaw rotates this offset around the avatar (right-click/drag)
           camera.position.set(
             px - Math.sin(finalCamAngle) * CAM_DIST,
             py + CAM_HEIGHT,
             pz - Math.cos(finalCamAngle) * CAM_DIST,
           );
-          // Look at avatar chest height
           camera.lookAt(px, py + CAM_LOOK_Y, pz);
         }
 
