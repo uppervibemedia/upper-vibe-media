@@ -996,8 +996,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                   }
                   if (mobileInputRef.current._camBaseY !== undefined) {
                     const dy = t.clientY - mobileInputRef.current._camBaseY;
-                    // Negate: drag UP = negative dy = should look UP = increase pitch
-                    mobileInputRef.current.camDy = (mobileInputRef.current.camDy || 0) - dy * 0.003;
+                    // One-shot delta per frame — do NOT accumulate, CityCanvas reads and decays it
+                    // drag DOWN (positive dy) = look DOWN = negative camDy (but we clamp pitch anyway)
+                    // drag UP (negative dy) = look UP = positive camDy
+                    // Hard-clamp magnitude so a single big swipe can't break pitch limits
+                    mobileInputRef.current.camDy = Math.max(-0.025, Math.min(0.025, -dy * 0.003));
                     mobileInputRef.current._camBaseY = t.clientY;
                   }
                 }
@@ -1006,6 +1009,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                 e.preventDefault();
                 mobileInputRef.current._camActive = false;
                 mobileInputRef.current._camBaseX = undefined;
+                mobileInputRef.current._camBaseY = undefined;
+                mobileInputRef.current.camDy = 0;
               }}
             />
           </div>
