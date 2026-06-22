@@ -141,9 +141,6 @@ export function createHoverboardZone(scene) {
   const titleLabel = makeLabel("NEON  SURF  BEACH", "#00E5FF", [5.5, 1.0]);
   titleLabel.position.set(SX, 5.5, SZ);
   scene.add(titleLabel);
-  const subLabel = makeLabel("COLLECT ORBS · BOOST · LAUNCH!", "#C43BFF", [5.5, 0.7]);
-  subLabel.position.set(SX, 4.3, SZ);
-  scene.add(subLabel);
 
   // ── ENERGY ORBS ─────────────────────────────────────────────────────────
   const orbMeshes = [];

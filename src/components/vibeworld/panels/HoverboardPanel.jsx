@@ -114,29 +114,6 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
               <span className="font-black text-white text-sm tracking-wider">NEON SURF BEACH</span>
             </div>
 
-            <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
-              Cruise the beach freely on your hoverboard.
-              Collect <span style={{ color: "#00E5FF", fontWeight: 700 }}>energy orbs</span>,
-              hit <span style={{ color: "#00FF88", fontWeight: 700 }}>Boost Pads</span> for speed, and
-              hit <span style={{ color: "#FF9900", fontWeight: 700 }}>Launch Pads</span> to fly into the air!
-            </p>
-
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: "Orbs", value: "12 spots", color: "#00E5FF" },
-                { label: "Boost Pads", value: "Speed ↑", color: "#00FF88" },
-                { label: "Launch Pads", value: "Air Launch", color: "#FF9900" },
-              ].map(s => (
-                <div key={s.label}
-                  className="flex flex-col items-center py-2 rounded-xl"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-                >
-                  <span className="text-[9px] font-bold tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>{s.label}</span>
-                  <span className="font-black text-[11px] mt-0.5" style={{ color: s.color }}>{s.value}</span>
-                </div>
-              ))}
-            </div>
-
             {totalOrbs > 0 && (
               <div className="flex items-center gap-1.5 text-[10px]" style={{ color: "#FFD700" }}>
                 <Trophy className="w-3 h-3" />
@@ -217,14 +194,6 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
                 <span className="text-[8px] font-bold tracking-widest" style={{ color: "rgba(0,229,255,0.55)" }}>ORBS</span>
                 <span className="font-black text-white text-lg leading-none">{orbsCollected}</span>
               </div>
-            </div>
-
-            <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.09)" }} />
-
-            <div className="text-center">
-              <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-                🏄 Free Riding the Beach
-              </span>
             </div>
 
             {orbsCollected >= 5 && (
