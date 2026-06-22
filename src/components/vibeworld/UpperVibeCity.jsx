@@ -20,6 +20,7 @@ import WorldHUD from "@/components/vibeworld/WorldHUD";
 import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
 import OrbRewardSystem from "@/components/vibeworld/OrbRewardSystem";
+import OrbLeaderboard from "@/components/vibeworld/OrbLeaderboard";
 
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
@@ -43,6 +44,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [nearLaunchPad, setNearLaunchPad] = useState(false);
   const [isAirborne, setIsAirborne] = useState(false);
   const [orbCount, setOrbCount] = useState(0);
+  const [lifetimeOrbs, setLifetimeOrbs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("vibeOrbData") || "{}")?.lifetimeVibeOrbs ?? 0; } catch { return 0; }
+  });
 
   // ── Separate Jukebox audio element — never touches personal player ────────
   const jukeboxAudioRef = useRef(null);       // dedicated <audio> for dance floor
@@ -797,6 +801,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             setNearLaunchPad(padIdx >= 0 && !airborne);
             setIsAirborne(airborne);
             setOrbCount(orbs);
+            // Sync lifetime orbs from storage whenever orb count changes
+            try {
+              const lt = JSON.parse(localStorage.getItem("vibeOrbData") || "{}")?.lifetimeVibeOrbs ?? 0;
+              setLifetimeOrbs(lt);
+            } catch {}
           }}
         />
       </div>
@@ -1075,6 +1084,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* ── Vibe Orb Reward System ── */}
       <OrbRewardSystem orbCount={orbCount} isMobile={isMobile} />
+
+      {/* ── Orb Leaderboard — shown near Vibe Launch Zone ── */}
+      <OrbLeaderboard
+        visible={!loading && (nearLaunchPad || isAirborne || (Math.abs(playerPos.x) < 12 && playerPos.z > 5 && playerPos.z < 20))}
+        isMobile={isMobile}
+        currentUserId={user?.id}
+        currentUserOrbs={lifetimeOrbs}
+        currentUsername={user?.full_name || "You"}
+      />
 
       {/* ── Avatar Customizer Panel (color + style) ────────────────────── */}
       <AvatarCustomizerPanel

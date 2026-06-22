@@ -86,6 +86,11 @@
     "joined_at": {
       "type": "string",
       "description": "ISO timestamp when user entered Vibe World"
+    },
+    "lifetime_orbs": {
+      "type": "number",
+      "default": 0,
+      "description": "Lifetime Vibe Orbs collected \u2014 used for leaderboard"
     }
   },
   "required": [

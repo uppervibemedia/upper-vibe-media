@@ -21,6 +21,16 @@ const BATCH_MS = 100;          // Batch incoming subscribe events every 100ms
 const POS_THRESHOLD = 0.05;    // Minimum position delta to trigger an update
 const ROT_THRESHOLD = 0.02;    // Minimum rotation delta to trigger an update
 
+function getLifetimeOrbs() {
+  try {
+    const raw = localStorage.getItem("vibeOrbData");
+    if (!raw) return 0;
+    return JSON.parse(raw)?.lifetimeVibeOrbs ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 export default function useVibeWorldPresence(user, currentZone, position) {
   const [activeUsers, setActiveUsers] = useState([]);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -94,6 +104,7 @@ export default function useVibeWorldPresence(user, currentZone, position) {
       is_online: true,
       last_heartbeat: now,
       joined_at: now,
+      lifetime_orbs: getLifetimeOrbs(),
     };
 
     try {
