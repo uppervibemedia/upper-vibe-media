@@ -2,7 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Wind } from "lucide-react";
 
-export default function FerrisWheelPanel({ open, onClose, onRide, isRiding, onExitRide, isMobile }) {
+export default function FerrisWheelPanel({ open, onClose, onRide, isRiding, onExitRide, isMobile, mobileLayout }) {
   if (isRiding) {
     // Riding overlay — always-visible Exit button
     return (
@@ -14,9 +14,11 @@ export default function FerrisWheelPanel({ open, onClose, onRide, isRiding, onEx
           exit={{ opacity: 0, y: 20 }}
           className="fixed z-[80] pointer-events-auto"
           style={{
-            bottom: isMobile
-              ? "calc(env(safe-area-inset-bottom,0px) + 7rem)"
-              : "6.5rem",
+            bottom: isMobile && mobileLayout
+              ? mobileLayout.actionBottom
+              : isMobile
+                ? "calc(env(safe-area-inset-bottom,0px) + 7rem)"
+                : "6.5rem",
             left: "50%",
             transform: "translateX(-50%)",
           }}

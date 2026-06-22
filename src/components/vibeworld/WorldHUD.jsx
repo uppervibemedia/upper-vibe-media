@@ -1076,6 +1076,7 @@ export default function WorldHUD({
           try { navigator?.vibrate?.(15); } catch {}
         }}
         isMobile={isMobile}
+        mobileLayout={mobileLayout}
       />
 
 

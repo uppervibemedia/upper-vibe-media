@@ -87,12 +87,16 @@ export default function HoverboardPanel({ visible, isMobile, mobileLayout, user,
 
   if (!visible) return null;
 
-  const PANEL_BOTTOM = isMobile
-    ? "calc(140px + env(safe-area-inset-bottom, 0px))"
-    : "80px";
-  const HUD_TOP = isMobile
-    ? "calc(env(safe-area-inset-top, 0px) + 56px)"
-    : "68px";
+  const PANEL_BOTTOM = isMobile && mobileLayout
+    ? mobileLayout.actionBottom
+    : isMobile
+      ? "calc(140px + env(safe-area-inset-bottom, 0px))"
+      : "80px";
+  const HUD_TOP = isMobile && mobileLayout
+    ? mobileLayout.sa.top + 56
+    : isMobile
+      ? "calc(env(safe-area-inset-top, 0px) + 56px)"
+      : "68px";
 
   return (
     <AnimatePresence mode="wait">
