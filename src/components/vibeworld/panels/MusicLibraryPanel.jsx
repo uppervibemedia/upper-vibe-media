@@ -16,7 +16,6 @@ function SongCard({ track, isCurrent, isPlaying, onPlay, onOpenDetail }) {
   const isActive = isCurrent && isPlaying;
   return (
     <div
-      onClick={() => onPlay(track)}
       onTouchStart={(e) => e.stopPropagation()}
       className="group relative flex flex-col rounded-xl overflow-hidden cursor-pointer transition-all active:scale-[0.97] hover:brightness-110"
       style={{
@@ -25,8 +24,11 @@ function SongCard({ track, isCurrent, isPlaying, onPlay, onOpenDetail }) {
         touchAction: "manipulation",
       }}
     >
-      {/* Cover */}
-      <div className="relative aspect-square w-full overflow-hidden">
+      {/* Cover — clicking opens song detail page */}
+      <div
+        className="relative aspect-square w-full overflow-hidden"
+        onClick={() => onOpenDetail(track)}
+      >
         <CoverImage
           src={track.cover_url}
           alt={track.title}
@@ -34,16 +36,14 @@ function SongCard({ track, isCurrent, isPlaying, onPlay, onOpenDetail }) {
           iconClassName="w-5 h-5"
           fallbackOpacityClass="text-white/15"
         />
-        {/* Play/pause overlay */}
+        {/* Overlay — always visible on hover/tap */}
         <div
           className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity"
-          style={{ background: "rgba(0,0,0,0.55)" }}
+          style={{ background: "rgba(0,0,0,0.45)" }}
         >
           <div className="w-9 h-9 rounded-full flex items-center justify-center"
             style={{ background: "rgba(0,229,255,0.25)", border: "1px solid rgba(0,229,255,0.4)" }}>
-            {isActive
-              ? <Pause className="w-4 h-4 text-white" />
-              : <Play className="w-4 h-4 text-white ml-0.5" />}
+            <Info className="w-4 h-4 text-white" />
           </div>
         </div>
         {/* 432 Hz badge */}
@@ -53,28 +53,35 @@ function SongCard({ track, isCurrent, isPlaying, onPlay, onOpenDetail }) {
             <Waves className="w-2 h-2" /> 432
           </div>
         )}
-        {/* Info button — opens song detail */}
-        <div
-          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => { e.stopPropagation(); onOpenDetail(track); }}
-        >
-          <div
-            className="w-6 h-6 rounded-full flex items-center justify-center"
-            style={{ background: "rgba(0,229,255,0.2)", border: "1px solid rgba(0,229,255,0.35)" }}
-          >
-            <Info className="w-3 h-3 text-cyan-300" />
-          </div>
-        </div>
       </div>
-      {/* Info */}
-      <div className="px-2 py-2 flex flex-col gap-0.5 min-w-0">
-        <p className="text-[11px] font-bold text-white leading-tight line-clamp-2"
-          title={track.title}>
-          {track.title}
-        </p>
-        <p className="text-[9px] text-white/30 leading-tight truncate">
-          {track.artist_display || "Upper Vibe Media"}
-        </p>
+      {/* Info + play button row */}
+      <div
+        className="px-2 py-2 flex items-center gap-1.5 min-w-0"
+        onClick={() => onOpenDetail(track)}
+      >
+        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+          <p className="text-[11px] font-bold text-white leading-tight line-clamp-2" title={track.title}>
+            {track.title}
+          </p>
+          <p className="text-[9px] text-white/30 leading-tight truncate">
+            {track.artist_display || "Upper Vibe Media"}
+          </p>
+        </div>
+        {/* Quick play button — doesn't open detail */}
+        <button
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onPlay(track); }}
+          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-110 active:scale-95"
+          style={{
+            background: isActive ? "rgba(0,229,255,0.2)" : "rgba(255,255,255,0.07)",
+            border: `1px solid ${isActive ? "rgba(0,229,255,0.3)" : "rgba(255,255,255,0.1)"}`,
+            touchAction: "manipulation",
+          }}
+        >
+          {isActive
+            ? <Pause className="w-3 h-3 text-cyan-300" />
+            : <Play className="w-3 h-3 text-white/60 ml-0.5" />}
+        </button>
       </div>
     </div>
   );

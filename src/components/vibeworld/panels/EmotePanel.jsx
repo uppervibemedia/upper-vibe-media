@@ -11,20 +11,21 @@ const EMOTES = [
   { id: "peace",  label: "Peace", icon: Flower2,   color: "#A078FF", effect: "peace" },
 ];
 
-export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDancing, isMobile }) {
+export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDancing, activeEmote, isMobile }) {
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
   const handleEmote = useCallback((emote) => {
     hapticTap();
-    if (emote.id === "dance" && isDancing) {
+    // If tapping the currently active emote (or dance while dancing), stop it
+    if (isDancing && activeEmote?.id === emote.id) {
       onStopDance?.();
       onClose?.();
     } else {
       onEmote?.(emote);
-      // Auto-close panel so user can see avatar animation
+      // Auto-close panel so user can watch avatar animation
       onClose?.();
     }
-  }, [onEmote, onStopDance, onClose, isDancing]);
+  }, [onEmote, onStopDance, onClose, isDancing, activeEmote]);
 
   if (!open) return null;
 
@@ -71,7 +72,7 @@ export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDanc
         style={{ gridTemplateColumns: "repeat(3, 1fr)" }}
       >
         {EMOTES.map((emote) => {
-          const isActive = emote.id === "dance" && isDancing;
+          const isActive = isDancing && activeEmote?.id === emote.id;
           const Icon = emote.icon;
           return (
             <button

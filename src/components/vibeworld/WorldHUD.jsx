@@ -85,6 +85,7 @@ export default function WorldHUD({
   onEmote,
   onStopDance,
   isDancing = false,
+  activeEmote = null,
   onEditAvatar,
   nearJukebox = false,
   djTrack = null,
@@ -415,52 +416,74 @@ export default function WorldHUD({
 
       {/* ── Now Playing (bottom bar in UpperVibeCity handles this) ── */}
 
-      {/* ── DJ Now Playing chip — shows cover when near jukebox ── */}
+      {/* ── DJ Now Playing card — larger song card above DJ Booth when near jukebox ── */}
       <AnimatePresence>
         {nearJukebox && djTrack && !jukeboxOpen && (
-          <motion.button
-            key="dj-cover-chip"
-            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+          <motion.div
+            key="dj-song-card"
+            initial={{ opacity: 0, y: 16, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.9 }}
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={() => { hapticTap(); setDjSongPageOpen(true); }}
-            className="absolute z-[57] flex items-center gap-2 rounded-2xl transition-all hover:brightness-110 active:scale-95 pointer-events-auto"
+            exit={{ opacity: 0, y: 16, scale: 0.92 }}
+            transition={{ type: "spring", damping: 26, stiffness: 300 }}
+            className="absolute z-[57] pointer-events-auto"
             style={{
               bottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 13rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 11rem)",
               left: "50%",
               transform: "translateX(-50%)",
-              background: "rgba(5,4,18,0.92)",
-              border: "1px solid rgba(0,229,255,0.25)",
-              backdropFilter: "blur(16px)",
-              boxShadow: "0 0 20px rgba(196,59,255,0.2)",
-              padding: "6px 12px 6px 6px",
-              touchAction: "manipulation",
-              maxWidth: isMobile ? "calc(100vw - 120px)" : "260px",
+              width: isMobile ? "min(calc(100vw - 80px), 300px)" : "300px",
             }}
           >
-            {djTrack.cover_url ? (
-              <img src={djTrack.cover_url} alt={djTrack.title}
-                className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
-            ) : (
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(196,59,255,0.2)" }}>
-                <span style={{ fontSize: "18px" }}>🎧</span>
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => { hapticTap(); setDjSongPageOpen(true); }}
+              className="w-full rounded-2xl overflow-hidden transition-all hover:brightness-110 active:scale-[0.97] text-left"
+              style={{
+                background: "rgba(5,4,18,0.96)",
+                border: "1px solid rgba(0,229,255,0.28)",
+                backdropFilter: "blur(20px)",
+                boxShadow: "0 0 32px rgba(196,59,255,0.22), 0 8px 32px rgba(0,0,0,0.6)",
+                touchAction: "manipulation",
+              }}
+            >
+              {/* Cover art — wide banner */}
+              <div className="relative w-full overflow-hidden" style={{ height: isMobile ? 110 : 130 }}>
+                {djTrack.cover_url ? (
+                  <img src={djTrack.cover_url} alt={djTrack.title}
+                    className="w-full h-full object-cover block" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg,rgba(196,59,255,0.25),rgba(0,229,255,0.15))" }}>
+                    <span style={{ fontSize: "36px" }}>🎧</span>
+                  </div>
+                )}
+                {/* Gradient overlay for text legibility */}
+                <div className="absolute inset-x-0 bottom-0 h-2/3"
+                  style={{ background: "linear-gradient(to top, rgba(5,4,18,1) 0%, transparent 100%)" }} />
+                {/* LIVE DJ badge */}
+                <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(255,75,195,0.2)", border: "1px solid rgba(255,75,195,0.4)", backdropFilter: "blur(8px)" }}>
+                  <div className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: "#FF4FC3" }} />
+                  <span className="font-black text-[8px] tracking-widest" style={{ color: "#FF4FC3" }}>LIVE DJ</span>
+                </div>
               </div>
-            )}
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: "#FF4FC3" }} />
-                <span className="font-black text-[8px] tracking-widest" style={{ color: "#FF4FC3" }}>LIVE DJ</span>
+
+              {/* Track info */}
+              <div className="px-3 pt-1.5 pb-3">
+                <p className="font-heading font-black text-white text-sm leading-tight truncate">{djTrack.title}</p>
+                <div className="flex items-center justify-between mt-0.5">
+                  <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.4)" }}>
+                    {djTrack.artist_display || "Upper Vibe Media"}
+                  </p>
+                  <span className="text-[9px] font-black tracking-wider flex-shrink-0 ml-2"
+                    style={{ color: "rgba(0,229,255,0.6)" }}>
+                    tap for info
+                  </span>
+                </div>
               </div>
-              <p className="font-black text-white text-[11px] truncate leading-tight">{djTrack.title}</p>
-              <p className="text-[9px] truncate" style={{ color: "rgba(255,255,255,0.4)" }}>
-                tap for info &amp; download
-              </p>
-            </div>
-          </motion.button>
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -504,16 +527,16 @@ export default function WorldHUD({
                 onClick={() => { hapticTap(); onStopDance?.(); }}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                 style={{
-                  background: "rgba(255,255,255,0.1)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "rgba(255,255,255,0.7)",
+                  background: activeEmote ? `${activeEmote.color}18` : "rgba(255,255,255,0.1)",
+                  border: `1px solid ${activeEmote ? activeEmote.color + "44" : "rgba(255,255,255,0.15)"}`,
+                  color: activeEmote ? activeEmote.color : "rgba(255,255,255,0.7)",
                   minHeight: isMobile ? 36 : 40,
                   touchAction: "manipulation",
                   pointerEvents: "auto",
                 }}
               >
                 <X className="w-3 h-3" />
-                Stop Dance
+                {activeEmote?.id !== "dance" ? `Stop ${activeEmote?.label || "Emote"}` : "Stop Dance"}
               </button>
             ) : (
               <button
@@ -1019,6 +1042,7 @@ export default function WorldHUD({
         onEmote={(emote) => { onEmote?.(emote); }}
         onStopDance={onStopDance}
         isDancing={isDancing}
+        activeEmote={activeEmote}
         isMobile={isMobile}
       />
 

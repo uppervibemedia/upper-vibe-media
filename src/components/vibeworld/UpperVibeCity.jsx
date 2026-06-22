@@ -66,18 +66,21 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const wasMovingRef = useRef(false);
 
   const handleEmote = useCallback((emote) => {
-    if (emote.id === "dance") {
-      setIsDancing(true);
-      setActiveEmote({ ...emote, startedAt: Date.now() });
-    } else {
-      // Clear any existing emote timer
-      if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
-      setActiveEmote({ ...emote, startedAt: Date.now() });
-      // Non-dance emotes last 3 seconds
+    // Clear any existing emote timer
+    if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
+
+    // All emotes drive isDancing=true so procedural pose runs in updateAvatarAnimation
+    setIsDancing(true);
+    setActiveEmote({ ...emote, startedAt: Date.now() });
+
+    if (emote.id !== "dance") {
+      // Non-dance emotes auto-expire after 3s then return to idle
       emoteTimerRef.current = setTimeout(() => {
+        setIsDancing(false);
         setActiveEmote(null);
       }, 3000);
     }
+    // "dance" persists until handleStopDance() or movement cancels it
   }, []);
 
   const handleStopDance = useCallback(() => {
@@ -876,6 +879,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onEmote={handleEmote}
         onStopDance={handleStopDance}
         isDancing={isDancing}
+        activeEmote={activeEmote}
         onEditAvatar={() => setCustomizerOpen(true)}
         nearJukebox={nearJukebox}
         djTrack={djTrack}
