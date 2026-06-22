@@ -268,40 +268,40 @@ function buildPark(scene) {
   const stage = new Group();
   stage.name = "musicStage";
 
-  // Tall riser base — gives stage presence from a distance
-  const stageRiser = new Mesh(new BoxGeometry(10, 2.0, 5.5), mat("#111830", { roughness: 0.3, metalness: 0.6 }));
-  stageRiser.position.set(0, 1.0, -15);
+  // Riser base — lowered (1.0 → 0.5 height)
+  const stageRiser = new Mesh(new BoxGeometry(10, 1.0, 5.5), mat("#111830", { roughness: 0.3, metalness: 0.6 }));
+  stageRiser.position.set(0, 0.5, -15);
   stageRiser.castShadow = true; stageRiser.receiveShadow = true;
   stage.add(stageRiser);
 
-  // Top platform deck
+  // Top platform deck — lowered to match
   const stagePlat = new Mesh(new BoxGeometry(10, 0.25, 5.5), mat("#1A2050", { roughness: 0.2, metalness: 0.65 }));
-  stagePlat.position.set(0, 2.12, -15);
+  stagePlat.position.set(0, 1.12, -15);
   stagePlat.castShadow = true; stagePlat.receiveShadow = true;
   stage.add(stagePlat);
 
-  // Front edge neon strip — glows at stage lip height
+  // Front edge neon strip
   const stageEdge = new Mesh(
     new BoxGeometry(10.1, 0.08, 0.1),
     new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
   );
-  stageEdge.position.set(0, 2.27, -12.2);
+  stageEdge.position.set(0, 1.27, -12.2);
   stage.add(stageEdge);
 
-  // Side neon strips — vertical accents on left and right riser faces
+  // Side neon strips
   for (const sx of [-5.05, 5.05]) {
     const sideStrip = new Mesh(
-      new BoxGeometry(0.06, 2.0, 0.06),
+      new BoxGeometry(0.06, 1.0, 0.06),
       new MeshBasicMaterial({ color: new Color(sx < 0 ? "#C43BFF" : "#00D4F0"), depthWrite: false, transparent: true, opacity: 0.7 })
     );
-    sideStrip.position.set(sx, 1.0, -15);
+    sideStrip.position.set(sx, 0.5, -15);
     stage.add(sideStrip);
   }
 
-  // Main screen — centered, tall, dominant
+  // Main screen — wider (8→14), taller (5→7), lower center (5.5→3.5)
   const screenMat = mat("#1A1A3A", { roughness: 0.2, metalness: 0.7 });
-  const screen = new Mesh(new BoxGeometry(8, 5, 0.2), screenMat);
-  screen.position.set(0, 5.5, -17.4);
+  const screen = new Mesh(new BoxGeometry(14, 7, 0.2), screenMat);
+  screen.position.set(0, 3.5, -17.4);
   screen.castShadow = true;
   screen.name = "stageScreen";
   stage.add(screen);
@@ -309,18 +309,18 @@ function buildPark(scene) {
   scene.userData._stageCanvasApplied = false;
 
   const screenGlow = new Mesh(
-    new BoxGeometry(8.2, 5.2, 0.05),
+    new BoxGeometry(14.3, 7.3, 0.05),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.65 })
   );
-  screenGlow.position.set(0, 5.5, -17.4);
+  screenGlow.position.set(0, 3.5, -17.4);
   screenGlow.name = "stageScreenGlow";
   stage.add(screenGlow);
 
-  // Stage arch — curved neon frame centered on screen
+  // Stage arch — scaled to match wider screen
   for (let a = 0; a < 10; a++) {
     const archAngle = -Math.PI / 2 + (a / 9) * Math.PI;
-    const ax = Math.cos(archAngle) * 4.4;
-    const ay = 5.5 + Math.sin(archAngle) * 4.4;
+    const ax = Math.cos(archAngle) * 7.2;
+    const ay = 3.5 + Math.sin(archAngle) * 7.2;
     const archSeg = new Mesh(
       new BoxGeometry(0.09, 0.09, 0.15),
       new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, transparent: true, opacity: 0.85 })
@@ -329,22 +329,22 @@ function buildPark(scene) {
     stage.add(archSeg);
   }
 
-  // Stage lights — elevated to illuminate the raised platform
+  // Stage lights — adjusted to lowered platform
   const spotL = new PointLight();
-  spotL.color = new Color("#A078FF"); spotL.intensity = 5; spotL.distance = 16;
-  spotL.position.set(-4, 6.0, -14); stage.add(spotL);
+  spotL.color = new Color("#A078FF"); spotL.intensity = 5; spotL.distance = 20;
+  spotL.position.set(-6, 4.5, -14); stage.add(spotL);
 
   const spotR = new PointLight();
-  spotR.color = new Color("#00D4F0"); spotR.intensity = 5; spotR.distance = 16;
-  spotR.position.set(4, 6.0, -14); stage.add(spotR);
+  spotR.color = new Color("#00D4F0"); spotR.intensity = 5; spotR.distance = 20;
+  spotR.position.set(6, 4.5, -14); stage.add(spotR);
 
-  // Front wash light — illuminates stage surface from below
+  // Front wash light
   const frontWash = new PointLight();
-  frontWash.color = new Color("#9B4FFF"); frontWash.intensity = 3; frontWash.distance = 12;
-  frontWash.position.set(0, 3.5, -12); stage.add(frontWash);
+  frontWash.color = new Color("#9B4FFF"); frontWash.intensity = 3; frontWash.distance = 14;
+  frontWash.position.set(0, 2.5, -12); stage.add(frontWash);
 
   scene.add(stage);
-  createNeonSign(scene, 0, 10.5, -15, "MUSIC  STAGE", "#00D4F0");
+  createNeonSign(scene, 0, 8.5, -15, "MUSIC  STAGE", "#00D4F0");
 
   // ═══════════════════════════════════════
   // VIBE LAUNCH ZONE
@@ -1639,8 +1639,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const finalCamAngle = rot + camYawSmoothRef.current;
 
         // Stage watching mode
-        const STAGE_LOOK_AT = new Vector3(0, 5.0, -16.4);
-        const STAGE_CAM_POS = new Vector3(0, 5.0, -4);
+        const STAGE_LOOK_AT = new Vector3(0, 3.5, -16.4);
+        const STAGE_CAM_POS = new Vector3(0, 3.0, -4);
 
         if (lockedRef.current) {
           camera.position.lerp(STAGE_CAM_POS, Math.min(1, 3.0 * dt));
@@ -1996,15 +1996,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
         // (attribute pixels are scaled by devicePixelRatio on retina/mobile)
         if (stageScreenPosRef) {
-          const ss = new Vector3(0, 5.5, -17.4);
+          const ss = new Vector3(0, 3.5, -17.4);
           const proj = ss.clone().project(camera);
           const rw = renderer.domElement.clientWidth || renderer.domElement.width;
           const rh = renderer.domElement.clientHeight || renderer.domElement.height;
           const cx = (proj.x * 0.5 + 0.5) * rw;
           const cy = (-proj.y * 0.5 + 0.5) * rh;
-          // Project corners for size (screen is 8×5 centered at y=5.5)
-          const tl = new Vector3(-4.0, 8.0, -17.4).project(camera);
-          const br = new Vector3(4.0, 3.0, -17.4).project(camera);
+          // Project corners for size (screen is 14×7 centered at y=3.5)
+          const tl = new Vector3(-7.0, 7.0, -17.4).project(camera);
+          const br = new Vector3(7.0, 0.0, -17.4).project(camera);
           const sw = Math.abs((br.x - tl.x) * 0.5 * rw);
           const sh = Math.abs((-br.y + tl.y) * 0.5 * rh);
           stageScreenPosRef.current = { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh };
