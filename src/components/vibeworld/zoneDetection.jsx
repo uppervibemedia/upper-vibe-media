@@ -64,6 +64,12 @@ const ZONES = {
     cx: 22, cz: 5, radius: 4.5,
     icon: "ShoppingBag",
   },
+  launchzone: {
+    name: "Vibe Launch Zone",
+    id: "launchzone",
+    cx: 0, cz: 4, radius: 6,
+    icon: "Rocket",
+  },
 };
 
 export function detectZone(px, pz) {

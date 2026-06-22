@@ -6,6 +6,7 @@ import createVibeShop from "./VibeShop";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
+import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -333,6 +334,12 @@ function buildPark(scene) {
 
   scene.add(stage);
   createNeonSign(scene, 0, 5.5, -15, "MUSIC  STAGE", "#00D4F0");
+
+  // ═══════════════════════════════════════
+  // VIBE LAUNCH ZONE
+  // ═══════════════════════════════════════
+  buildLaunchZone(scene);
+  createNeonSign(scene, 0, 3.2, 4, "VIBE  LAUNCH  ZONE", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 5. VIBE LOUNGE — futuristic social hangout, semi-circle seating
@@ -1289,7 +1296,7 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar }
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1353,6 +1360,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
+  // Launch zone state
+  const launchStateRef = useRef({ active: false, phase: "idle", timer: 0, startY: 0 });
+  const orbCountRef = useRef(0);
+  const nearPadRef = useRef(-1);
 
   // Init scene — runs once only
   useEffect(() => {
@@ -1544,7 +1555,39 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // Collisions
         [px, pz] = resolveCollisions(px, pz, 0.3, COLLISION_BOXES);
-        py = SPAWN[1];
+
+        // ── Launch zone physics ──────────────────────────────
+        const ls = launchStateRef.current;
+        if (ls.active) {
+          ls.timer += dt;
+          if (ls.phase === "rise") {
+            const progress = Math.min(ls.timer / LAUNCH_DURATION, 1);
+            const eased = 1 - (1 - progress) * (1 - progress); // ease-out
+            py = ls.startY + LAUNCH_HEIGHT * eased;
+            // Collect orbs while airborne
+            if (sceneRef.current) {
+              const c = collectNearbyOrbs(sceneRef.current, px, py, pz);
+              if (c.length) orbCountRef.current += c.length;
+            }
+            if (progress >= 1) { ls.phase = "fall"; ls.timer = 0; }
+          } else if (ls.phase === "fall") {
+            const progress = Math.min(ls.timer / GLIDE_DURATION, 1);
+            const eased = progress * progress; // ease-in
+            py = ls.startY + LAUNCH_HEIGHT * (1 - eased);
+            if (progress >= 1) {
+              py = ls.startY;
+              ls.active = false;
+              ls.phase = "idle";
+            }
+          }
+          vel.x *= 0.92; vel.z *= 0.92; // dampen horizontal during flight
+        } else {
+          py = SPAWN[1];
+          // Check pad proximity (every 8 frames)
+          if (frameRef.current % 8 === 0 && sceneRef.current) {
+            nearPadRef.current = getNearLaunchPad(px, pz);
+          }
+        }
 
         avatarRotRef.current = rot;
         avatarPosRef.current = [px, py, pz, rot];
@@ -1558,6 +1601,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Notify parent of position (throttled — every 10 frames)
         if (onPosCbRef.current && frameRef.current % 10 === 0) {
           try { onPosCbRef.current(px, pz, rot); } catch {}
+        }
+
+        // ── Expose launch trigger ──
+        if (launchRef) {
+          launchRef.current = () => {
+            const ls = launchStateRef.current;
+            if (!ls.active) {
+              ls.active = true;
+              ls.phase = "rise";
+              ls.timer = 0;
+              ls.startY = SPAWN[1];
+            }
+          };
+        }
+
+        // ── Notify parent of near-pad state ──
+        if (onNearPad && frameRef.current % 10 === 0) {
+          try { onNearPad(nearPadRef.current, launchStateRef.current.active, orbCountRef.current); } catch {}
         }
 
         // ── Jukebox proximity ──
@@ -1881,6 +1942,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         });
         animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         animateJukebox(scene, t, audioBeat);
+        animateLaunchZone(scene, t, audioBeat);
 
         // Stars twinkle
         const starsMesh = scene.userData.stars;

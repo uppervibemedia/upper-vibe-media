@@ -1,7 +1,7 @@
 /**
  * AvatarPreviewCanvas — full-body Vibe Suit preview with Front/Side/Back view controls.
  */
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useRef, useEffect, useCallback, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OUTFIT_COLORS } from "./AvatarSetup";
@@ -41,8 +41,12 @@ function applyOutfitTint(model, outfitColorKey) {
   });
 }
 
-// Preset yaw angles for each view
-const VIEW_ANGLES = { front: 0, side: Math.PI / 2, back: Math.PI };
+// Absolute model.rotation.y values for each named view
+// Model faces camera at rotation.y = Math.PI (base).
+// Front  = facing camera   → Math.PI
+// Side   = left profile    → Math.PI * 1.5
+// Back   = back to camera  → 0 (or Math.PI * 2)
+const VIEW_ROT = { front: Math.PI, side: Math.PI * 1.5, back: 0 };
 
 export default function AvatarPreviewCanvas({ outfitColorKey, width = 300, height = 460 }) {
   const canvasRef = useRef(null);
@@ -145,6 +149,9 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 300, heigh
       if (state.autoRotate && state.model) {
         state.yaw += dt * 0.25;
         state.model.rotation.y = Math.PI + state.yaw;
+      } else if (!state.autoRotate && state.model && state.targetRot !== undefined) {
+        // Snap to target view rotation
+        state.model.rotation.y = state.targetRot;
       }
 
       // Pulse glow to match suit color
@@ -170,29 +177,36 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 300, heigh
     if (s.current.model) applyOutfitTint(s.current.model, outfitColorKey);
   }, [outfitColorKey]);
 
+  const [activeView, setActiveView] = React.useState("auto");
+
   const setView = useCallback((viewName) => {
     const state = s.current;
-    if (!state.model) return;
+    // Stop auto-rotate immediately
     state.autoRotate = false;
-    state.yaw = VIEW_ANGLES[viewName] ?? 0;
-    state.model.rotation.y = Math.PI + state.yaw;
-    // Resume auto-rotate after 8s of no interaction
     clearTimeout(state.viewTimer);
-    state.viewTimer = setTimeout(() => { state.autoRotate = true; }, 8000);
+    setActiveView(viewName);
+    // Apply rotation directly — works even before model loads (stored, applied in loop)
+    state.targetRot = VIEW_ROT[viewName] ?? Math.PI;
+    if (state.model) state.model.rotation.y = state.targetRot;
+    // Resume auto-rotate after 10s idle
+    state.viewTimer = setTimeout(() => {
+      state.autoRotate = true;
+      setActiveView("auto");
+    }, 10000);
   }, []);
 
-  const btnStyle = (active) => ({
-    padding: "5px 14px",
+  const btnBase = {
+    padding: "5px 16px",
     borderRadius: 20,
     fontSize: 10,
     fontWeight: 800,
     letterSpacing: "0.12em",
     cursor: "pointer",
     transition: "all 0.15s",
-    background: active ? "rgba(155,126,255,0.25)" : "rgba(255,255,255,0.05)",
-    border: active ? "1px solid rgba(155,126,255,0.7)" : "1px solid rgba(255,255,255,0.1)",
-    color: active ? "#c4aaff" : "rgba(255,255,255,0.4)",
-  });
+    userSelect: "none",
+  };
+  const btnActive = { ...btnBase, background: "rgba(155,126,255,0.28)", border: "1px solid rgba(155,126,255,0.8)", color: "#c4aaff" };
+  const btnIdle   = { ...btnBase, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.45)" };
 
   return (
     <div className="flex flex-col items-center gap-2 w-full">
@@ -213,9 +227,9 @@ export default function AvatarPreviewCanvas({ outfitColorKey, width = 300, heigh
 
       {/* View controls */}
       <div className="flex items-center gap-2">
-        <button style={btnStyle(false)} onClick={() => setView("front")}>FRONT</button>
-        <button style={btnStyle(false)} onClick={() => setView("side")}>SIDE</button>
-        <button style={btnStyle(false)} onClick={() => setView("back")}>BACK</button>
+        <button style={activeView === "front" ? btnActive : btnIdle} onClick={() => setView("front")}>FRONT</button>
+        <button style={activeView === "side"  ? btnActive : btnIdle} onClick={() => setView("side")}>SIDE</button>
+        <button style={activeView === "back"  ? btnActive : btnIdle} onClick={() => setView("back")}>BACK</button>
       </div>
     </div>
   );
