@@ -57,8 +57,8 @@ const CAM_DIST = 5.5;         // distance behind avatar
 const CAM_HEIGHT = 2.4;       // above avatar ground position
 const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
 const CAM_FOLLOW_SPEED = 6.0; // how fast camera angle follows avatar
-const CAM_PITCH_MIN = -0.35;  // radians — max look down (city side, shows stage)
-const CAM_PITCH_MAX =  0.95;  // radians — max look up ~54°, safe skybox range
+const CAM_PITCH_MIN = -0.10;  // radians — barely any look-down (prevents under-avatar view)
+const CAM_PITCH_MAX =  0.32;  // radians — ~18° look up, enough to see sky without breaking skybox
 const CAM_FOV_DEFAULT = 52;
 const CAM_FOV_ZOOM_STAGE = 36; // FOV when zoomed toward stage from beach
 const IDLE_ORBIT_DELAY = 120.0; // seconds before idle orbit starts (2 minutes)
@@ -1716,9 +1716,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           // ── Dynamic FOV: zoom toward stage when on beach looking city-side ──
           // Beach zone: pz > 10. Stage zoom: pitch < -0.2 (looking down/back = over city).
           const onBeach = pz > 10;
-          const lookingBackAtCity = pitch < -0.10;
+          const lookingBackAtCity = pitch < -0.05;
           const stageZoomAmount = onBeach && lookingBackAtCity
-            ? Math.max(0, Math.min(1, (-pitch - 0.10) / 0.22)) * Math.max(0, Math.min(1, (pz - 10) / 12))
+            ? Math.max(0, Math.min(1, (-pitch - 0.05) / 0.08)) * Math.max(0, Math.min(1, (pz - 10) / 12))
             : 0;
           const targetFov = CAM_FOV_DEFAULT + (CAM_FOV_ZOOM_STAGE - CAM_FOV_DEFAULT) * stageZoomAmount;
           camFovRef.current += (targetFov - camFovRef.current) * Math.min(1, dt * 2.5);
