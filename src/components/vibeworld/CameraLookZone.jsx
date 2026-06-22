@@ -15,16 +15,18 @@ export default function CameraLookZone({ mobileInputRef, mobileLayout }) {
   const zoneRef = useRef(null);
 
   // Zone geometry derived from mobileLayout (recalculated on layout change)
+  // Width: everything to the right of the joystick's right edge
+  // Height: full viewport height — the zone handles any touch in the right-side area
   const zoneStyle = {
     position: "fixed",
     right: 0,
     top: 0,
     width: mobileLayout
-      ? `${Math.round(mobileLayout.vw - (mobileLayout.joystick.cx + mobileLayout.joystick.halfSize + 12))}px`
-      : "60%",
+      ? `${Math.round(mobileLayout.vw - (mobileLayout.joystick.cx + mobileLayout.joystick.halfSize + 8))}px`
+      : "62%",
     height: mobileLayout
-      ? `${mobileLayout.joystick.cy - mobileLayout.joystick.halfSize - 24}px`
-      : "58%",
+      ? `${mobileLayout.vh}px`
+      : "100%",
     zIndex: 45,
     // Transparent — purely an interaction surface
     background: "transparent",
@@ -58,15 +60,14 @@ export default function CameraLookZone({ mobileInputRef, mobileLayout }) {
       if (mobileInputRef.current._camBaseX !== undefined) {
         const dx = t.clientX - mobileInputRef.current._camBaseX;
         // drag RIGHT (+dx) = camera turns right = positive camDx
-        // Sensitivity tuned down slightly for fluid, non-twitchy feel on iOS
-        mobileInputRef.current.camDx = Math.max(-0.04, Math.min(0.04, dx * 0.0018));
+        mobileInputRef.current.camDx = Math.max(-0.055, Math.min(0.055, dx * 0.0025));
         mobileInputRef.current._camBaseX = t.clientX;
       }
 
       if (mobileInputRef.current._camBaseY !== undefined) {
         const dy = t.clientY - mobileInputRef.current._camBaseY;
         // drag UP (-dy) = look up = positive camDy; drag DOWN = look down
-        mobileInputRef.current.camDy = Math.max(-0.025, Math.min(0.025, -dy * 0.003));
+        mobileInputRef.current.camDy = Math.max(-0.018, Math.min(0.018, -dy * 0.003));
         mobileInputRef.current._camBaseY = t.clientY;
       }
     };

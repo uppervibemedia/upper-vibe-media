@@ -46,9 +46,9 @@ const {
 } = THREE;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
-const MOVE_SPEED = 3.0;
-const ACCELERATION = 10.0;
-const DECELERATION = 8.0;
+const MOVE_SPEED = 2.4;
+const ACCELERATION = 7.0;
+const DECELERATION = 7.0;
 const TURN_SPEED = 2.5;       // radians/sec for A/D turning
 const ROTATION_SMOOTH = 8.0;  // how fast avatar body snaps to move direction
 
@@ -59,11 +59,9 @@ const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
 // Recenter speed: how fast camYaw snaps back behind avatar when moving
 const CAM_RECENTER_SPEED = 4.5; // radians/sec blend rate toward 0 when moving
 const CAM_PITCH_MIN = -0.10;  // radians — slight look-up prevention (keeps avatar visible)
-const CAM_PITCH_MAX =  0.28;  // radians — ~16° look up max (safe sky range)
-// Downward pitch limit: prevents extreme overhead/top-down view
-// Negative pitch = camera rises higher = more overhead
-// We want to allow only a small downward angle from behind-avatar POV
-const CAM_PITCH_DOWN_MIN = -0.04; // ~-2.3° — prevents under-character view flip
+const CAM_PITCH_MAX =  0.32;  // radians — ~18° look up max (safe sky range)
+// Downward pitch limit: prevents camera flipping under the character
+const CAM_PITCH_DOWN_MIN = -0.08; // ~-4.5° — safe floor, prevents under-character view
 const CAM_FOV_DEFAULT = 52;
 const CAM_FOV_ZOOM_STAGE = 36; // FOV when zoomed toward stage from beach
 
@@ -1697,12 +1695,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camera.lookAt(new Vector3(0, 3.5, -34.4));
         } else {
           // Camera orbits behind avatar at camYaw; pitch lifts camera eye upward
-          const camX = px - Math.sin(finalCamAngle) * CAM_DIST * Math.cos(pitch);
-          const camY = py + CAM_HEIGHT + Math.sin(pitch) * CAM_DIST * 1.4;
-          const camZ = pz - Math.cos(finalCamAngle) * CAM_DIST * Math.cos(pitch);
+          // In landscape on mobile, pull camera closer to avoid the "too far zoomed out" feel
+          const isLandscapeMobile = isMobileRef.current && window.innerWidth > window.innerHeight;
+          const effectiveDist = isLandscapeMobile ? CAM_DIST * 0.72 : CAM_DIST;
+          const effectiveHeight = isLandscapeMobile ? CAM_HEIGHT * 0.82 : CAM_HEIGHT;
+          const camX = px - Math.sin(finalCamAngle) * effectiveDist * Math.cos(pitch);
+          const camY = py + effectiveHeight + Math.sin(pitch) * effectiveDist * 1.4;
+          const camZ = pz - Math.cos(finalCamAngle) * effectiveDist * Math.cos(pitch);
           camera.position.set(camX, camY, camZ);
           // Look-at shifts up with pitch so the view rotates around the avatar
-          const lookY = py + CAM_LOOK_Y + Math.sin(pitch) * 3.5;
+          const lookY = py + CAM_LOOK_Y + Math.sin(pitch) * (isLandscapeMobile ? 2.5 : 3.5);
           camera.lookAt(px, lookY, pz);
 
           // ── Dynamic FOV: zoom toward stage when on beach looking city-side ──
