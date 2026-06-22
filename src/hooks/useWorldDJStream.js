@@ -1,21 +1,21 @@
 /**
- * useWorldDJStream — clean zone-gated world DJ stream.
+ * useWorldDJStream — strict zone-gated DJ audio stream.
  *
- * RULES:
- * - Audio element is ALWAYS created at volume 0.
- * - Volume is ONLY raised when danceFloorMode === true.
- * - On spawn / outside dance floor: complete silence, no bleed possible.
- * - Uses a single Audio element; never multiple sources.
+ * ABSOLUTE RULES:
+ * 1. Audio element ALWAYS starts at volume=0, muted=true.
+ * 2. Volume is ONLY ever raised when danceFloorMode===true AND the gate effect runs.
+ * 3. On spawn: danceFloorMode=false → volume stays 0, muted=true. No exceptions.
+ * 4. loadAndPlaySilent NEVER raises volume — it only sets src, seeks, and calls play().
+ * 5. The gate effect is the ONLY place that changes volume/muted.
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 
 const POLL_INTERVAL = 8000;
 const SYNC_TOLERANCE = 2.5;
-const FADE_IN_MS = 1000;
-const MAX_VOL = 0.88;
+const FADE_IN_MS = 900;
+const MAX_VOL = 0.85;
 
-// ── Smooth volume fade ────────────────────────────────────────────────────────
 function fadeVolume(audioEl, targetVol, durationMs) {
   if (!audioEl) return () => {};
   const startVol = audioEl.volume;
@@ -30,7 +30,6 @@ function fadeVolume(audioEl, targetVol, durationMs) {
   return () => cancelAnimationFrame(raf);
 }
 
-// ── AppSettings helpers ───────────────────────────────────────────────────────
 async function readDJSettings() {
   try {
     const [trackRow, tsRow] = await Promise.all([
@@ -69,20 +68,21 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
 
   const trackPoolRef = useRef([]);
   const recentIdsRef = useRef([]);
-  const currentRef = useRef(null); // { track, startTs, trackRecordId, tsRecordId }
+  const currentRef = useRef(null);
   const danceFloorRef = useRef(false);
+  // Keep danceFloorRef strictly in sync — this is what loadAndPlaySilent reads
+  danceFloorRef.current = danceFloorMode;
+
   const fadeCleanupRef = useRef(null);
   const pollTimerRef = useRef(null);
   const didInitRef = useRef(false);
 
-  // Always keep ref in sync — used inside callbacks to avoid stale closures
-  danceFloorRef.current = danceFloorMode;
-
-  // ── Ensure audio element exists at volume 0 ─────────────────────────────────
+  // ── Create audio element — ALWAYS muted and volume=0 at birth ──────────────
   const getAudio = useCallback(() => {
     if (!djAudioRef.current) {
       const el = new Audio();
-      el.volume = 0; // ALWAYS start silent
+      el.volume = 0;
+      el.muted = true; // double-lock: both volume=0 AND muted=true on spawn
       el.preload = "auto";
       djAudioRef.current = el;
     }
@@ -109,7 +109,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     return pick;
   }, []);
 
-  // ── Load track silently, seek to live position ──────────────────────────────
+  // ── Load track silently — NEVER touches volume/muted ───────────────────────
   const loadAndPlaySilent = useCallback((track, startTs) => {
     if (!track?.audio_url) return;
     const el = getAudio();
@@ -118,35 +118,46 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     fadeCleanupRef.current?.();
     fadeCleanupRef.current = null;
 
-    // Hard mute — volume is controlled exclusively by the danceFloor gate effect
+    // HARD enforce silence — this function must NEVER raise volume
     el.volume = 0;
+    el.muted = true;
 
     const elapsedSec = Math.max(0, (Date.now() - startTs) / 1000);
+
+    const begin = () => {
+      // Re-assert silence — canplay may fire after danceFloor state changed
+      el.volume = 0;
+      el.muted = true;
+
+      const dur = el.duration || 0;
+      const target = dur > 0 ? Math.min(elapsedSec % dur, Math.max(0, dur - 0.5)) : 0;
+      if (Math.abs(el.currentTime - target) > SYNC_TOLERANCE) {
+        el.currentTime = target;
+      }
+
+      el.play().catch(() => {});
+      setDjTrack(track);
+
+      // NOW check if user is on dance floor — only AFTER track is ready
+      // This is safe because the gate effect will also run when danceFloorMode changes
+      // We only raise volume here if we're already on the floor (e.g. track change while dancing)
+      if (danceFloorRef.current) {
+        el.muted = false;
+        fadeCleanupRef.current = fadeVolume(el, MAX_VOL, FADE_IN_MS);
+      }
+    };
 
     if (el.src !== track.audio_url) {
       el.src = track.audio_url;
       el.load();
     }
 
-    const begin = () => {
-      el.volume = 0; // re-assert silence after canplay fires
-      const dur = el.duration || 0;
-      const target = dur > 0 ? Math.min(elapsedSec % dur, Math.max(0, dur - 0.5)) : 0;
-      if (Math.abs(el.currentTime - target) > SYNC_TOLERANCE) {
-        el.currentTime = target;
-      }
-      el.play().catch(() => {});
-      setDjTrack(track);
-
-      // If user is already on dance floor when track starts, fade in immediately
-      if (danceFloorRef.current) {
-        fadeCleanupRef.current = fadeVolume(el, MAX_VOL, FADE_IN_MS);
-      }
-    };
-
     if (el.readyState >= 2) {
       begin();
     } else {
+      // Remove any existing listener to prevent stacking
+      el.removeEventListener("canplay", el._djBeginHandler);
+      el._djBeginHandler = begin;
       el.addEventListener("canplay", begin, { once: true });
     }
   }, [getAudio]);
@@ -186,7 +197,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     if (!track) return;
 
     if (currentRef.current?.track?.id === trackId) {
-      // Same track — check drift
+      // Same track — check drift (only if actually playing)
       const el = djAudioRef.current;
       if (el && !el.paused) {
         const elapsed = (Date.now() - startTs) / 1000;
@@ -206,11 +217,13 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   useEffect(() => {
     if (!enabled) return;
 
-    // Pre-create audio element at volume 0 — must happen before any async work
-    getAudio();
+    // Create audio element immediately — MUTED + volume=0 before any async work
+    const el = getAudio();
+    el.volume = 0;
+    el.muted = true;
 
     const initTimer = setTimeout(async () => {
-      // Wait for track pool
+      // Wait for track pool to load
       let attempts = 0;
       await new Promise(resolve => {
         const check = () => {
@@ -223,12 +236,12 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       if (!didInitRef.current) {
         didInitRef.current = true;
         await syncFromSettings();
-        const el = djAudioRef.current;
-        if (el) {
-          el.addEventListener("ended", () => advanceTrack());
+        const audio = djAudioRef.current;
+        if (audio) {
+          audio.addEventListener("ended", () => advanceTrack());
         }
       }
-    }, 800); // slightly longer delay to ensure spawn audio gate fires first
+    }, 1200); // delay init so spawn location is established before any audio decisions
 
     pollTimerRef.current = setInterval(syncFromSettings, POLL_INTERVAL);
 
@@ -238,35 +251,40 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     };
   }, [enabled, syncFromSettings, advanceTrack, getAudio]);
 
-  // ── DANCE FLOOR GATE — this is the ONLY place volume is ever raised ─────────
-  // danceFloorMode=false at spawn → silence. Crossing boundary → fade in.
-  // Leaving boundary → instant hard mute (no fade bleed).
+  // ── DANCE FLOOR GATE ────────────────────────────────────────────────────────
+  // This is THE ONLY place that ever unmutes / raises volume.
+  // Runs on every danceFloorMode change including the initial false → stays false.
   useEffect(() => {
     const el = djAudioRef.current;
+
+    // Always cancel any in-progress fade first
     fadeCleanupRef.current?.();
     fadeCleanupRef.current = null;
 
     if (danceFloorMode) {
-      // Entered dance floor — fade in
+      // User stepped onto dance floor → unmute and fade in
       if (el) {
+        el.muted = false;
         fadeCleanupRef.current = fadeVolume(el, MAX_VOL, FADE_IN_MS);
       }
     } else {
-      // Outside dance floor — INSTANT hard mute, zero tolerance for bleed
+      // User is NOT on dance floor (including spawn) → INSTANT hard silence
       if (el) {
         el.volume = 0;
+        el.muted = true;
       }
     }
   }, [danceFloorMode]);
 
-  // ── Fade out + stop when disabled ──────────────────────────────────────────
+  // ── Disabled cleanup ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!enabled) {
       const el = djAudioRef.current;
       if (el) {
         fadeCleanupRef.current?.();
-        fadeCleanupRef.current = fadeVolume(el, 0, 600);
-        setTimeout(() => { el.pause(); }, 700);
+        el.volume = 0;
+        el.muted = true;
+        el.pause();
       }
     }
   }, [enabled]);
@@ -277,7 +295,12 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       clearInterval(pollTimerRef.current);
       fadeCleanupRef.current?.();
       const el = djAudioRef.current;
-      if (el) { el.pause(); el.src = ""; }
+      if (el) {
+        el.volume = 0;
+        el.muted = true;
+        el.pause();
+        el.src = "";
+      }
       djAudioRef.current = null;
     };
   }, []);

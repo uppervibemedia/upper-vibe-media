@@ -152,6 +152,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [stageVideoIdx, setStageVideoIdx] = useState(0);
   const [stageWatching, setStageWatching] = useState(false);
   const [stageFullScreen, setStageFullScreen] = useState(false);
+  const [stageMuted, setStageMuted] = useState(true);
   const stagePausedPlayerRef = useRef(false);
   const stageEmbedRef = useRef(null);
   const stageScreenPosRef = useRef({ x: -9999, y: -9999, w: 0, h: 0 });
@@ -288,10 +289,24 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   /** Mute stage embed + exit watch state. Safe to call anytime. */
   const muteStage = useCallback(() => {
     setStageWatching(false);
+    setStageMuted(true);
     if (stageEmbedRef.current) {
       stageEmbedRef.current.mute();
       stageEmbedRef.current.pause();
     }
+  }, []);
+
+  /** Toggle mute on the stage embed without affecting watch mode or movement. */
+  const handleStageMuteToggle = useCallback(() => {
+    setStageMuted((prev) => {
+      const next = !prev;
+      if (next) {
+        stageEmbedRef.current?.mute();
+      } else {
+        stageEmbedRef.current?.unmute();
+      }
+      return next;
+    });
   }, []);
 
   /** Pause global player if currently playing. Returns true if it was playing. */
@@ -319,13 +334,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     pauseGlobal();
     stagePausedPlayerRef.current = true;
 
-    // 3) Start stage audio
+    // 3) Start stage audio — start muted (iOS), user can unmute via button
     setStageWatching(true);
+    setStageMuted(true); // starts muted per iOS autoplay rules; button unmutes
     setTimeout(() => {
-      if (stageEmbedRef.current) {
-        stageEmbedRef.current.unmute();
-        stageEmbedRef.current.play();
-      }
+      stageEmbedRef.current?.play();
     }, 300);
   }, [stageFullScreen, pauseGlobal]);
 
@@ -361,13 +374,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
     // Restore previous audio state
     if (preFullscreenWasWatchingRef.current) {
-      // Resume stage watching
+      // Resume stage watching (muted — user taps to unmute)
       setStageWatching(true);
+      setStageMuted(true);
       setTimeout(() => {
-        if (stageEmbedRef.current) {
-          stageEmbedRef.current.unmute();
-          stageEmbedRef.current.play();
-        }
+        stageEmbedRef.current?.play();
       }, 300);
     } else {
       // Resume global player if fullscreen had paused it
@@ -867,6 +878,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onStagePlaySong={handleStagePlaySong}
         onStageFullScreen={handleStageFullScreen}
         onStageExitFullScreen={handleExitFullScreen}
+        onStageMuteToggle={handleStageMuteToggle}
+        stageMuted={stageMuted}
         chatAgeConfirmed={chatAgeConfirmed}
         onMobileModalChange={setMobileModalOpen}
         activeUsers={activeUsers}

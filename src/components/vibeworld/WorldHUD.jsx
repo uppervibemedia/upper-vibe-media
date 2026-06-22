@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, Sun, X, UserCircle,
   Compass, Sparkles, Library, SkipForward,
-  BookOpen, GraduationCap, Bell, Waves,
+  BookOpen, GraduationCap, Bell, Waves, Volume2, VolumeX,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
@@ -51,6 +51,8 @@ export default function WorldHUD({
   onStagePlaySong,
   onStageFullScreen,
   onStageExitFullScreen,
+  onStageMuteToggle,
+  stageMuted = true,
   chatAgeConfirmed = false,
   onMobileModalChange,
   activeUsers = [],
@@ -470,7 +472,7 @@ export default function WorldHUD({
                   : "calc(env(safe-area-inset-bottom, 0px) + 11rem)",
               left: "50%",
               transform: "translateX(-50%)",
-              width: isMobile ? "min(calc(100vw - 80px), 240px)" : "280px",
+              width: isMobile ? "min(calc(100vw - 120px), 144px)" : "168px",
             }}
           >
             <button
@@ -494,8 +496,8 @@ export default function WorldHUD({
                 overflow: "hidden",
               }}
             >
-              {/* Cover art — 16:9 thumbnail, smaller on mobile */}
-              <div className="relative w-full" style={{ aspectRatio: "16/9", maxHeight: isMobile ? "100px" : "160px", overflow: "hidden" }}>
+              {/* Cover art — 16:9 thumbnail */}
+              <div className="relative w-full" style={{ aspectRatio: "16/9", maxHeight: isMobile ? "60px" : "95px", overflow: "hidden" }}>
                 {djTrack.cover_url ? (
                   <img src={djTrack.cover_url} alt={djTrack.title}
                     className="w-full h-full object-cover block" />
@@ -509,23 +511,23 @@ export default function WorldHUD({
                 <div className="absolute inset-x-0 bottom-0 h-1/2"
                   style={{ background: "linear-gradient(to top, rgba(5,4,18,1) 0%, transparent 100%)" }} />
                 {/* LIVE DJ badge */}
-                <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full"
+                <div className="absolute top-1 left-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full"
                   style={{ background: "rgba(255,75,195,0.2)", border: "1px solid rgba(255,75,195,0.4)", backdropFilter: "blur(8px)" }}>
-                  <div className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: "#FF4FC3" }} />
-                  <span className="font-black text-[8px] tracking-widest" style={{ color: "#FF4FC3" }}>LIVE DJ</span>
+                  <div className="w-1 h-1 rounded-full animate-pulse flex-shrink-0" style={{ background: "#FF4FC3" }} />
+                  <span className="font-black text-[7px] tracking-widest" style={{ color: "#FF4FC3" }}>LIVE DJ</span>
                 </div>
               </div>
 
               {/* Track info */}
-              <div className="px-3 pt-1.5 pb-3">
-                <p className="font-heading font-black text-white text-sm leading-tight truncate">{djTrack.title}</p>
+              <div className="px-2 pt-1 pb-2">
+                <p className="font-heading font-black text-white text-[10px] leading-tight truncate">{djTrack.title}</p>
                 <div className="flex items-center justify-between mt-0.5">
-                  <p className="text-[10px] truncate" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  <p className="text-[8px] truncate" style={{ color: "rgba(255,255,255,0.4)" }}>
                     {djTrack.artist_display || "Upper Vibe Media"}
                   </p>
-                  <span className="text-[9px] font-black tracking-wider flex-shrink-0 ml-2"
+                  <span className="text-[7px] font-black tracking-wider flex-shrink-0 ml-1"
                     style={{ color: "rgba(0,229,255,0.6)" }}>
-                    tap for info
+                    tap
                   </span>
                 </div>
               </div>
@@ -632,12 +634,30 @@ export default function WorldHUD({
               </div>
             )}
 
-            {/* Watch mode: Exit Watch + Full Screen only — no mute button */}
+            {/* Watch mode: Mute toggle + Exit Watch + Full Screen */}
             {stageWatching ? (
               <div
                 className="flex items-center gap-2 px-3 py-2 rounded-2xl"
                 style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.1)" }}
               >
+                {/* Mute/Unmute — ONLY controls audio, never exits watch mode */}
+                {onStageMuteToggle && (
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); hapticTap(); onStageMuteToggle(); }}
+                    className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
+                    style={{
+                      background: stageMuted ? "rgba(255,255,255,0.1)" : "rgba(124,58,237,0.4)",
+                      border: `1px solid ${stageMuted ? "rgba(255,255,255,0.2)" : "rgba(155,126,255,0.5)"}`,
+                      color: stageMuted ? "rgba(255,255,255,0.6)" : "#fff",
+                      width: 36, height: 36, minWidth: 36, minHeight: 36,
+                      touchAction: "manipulation", pointerEvents: "auto",
+                    }}
+                    title={stageMuted ? "Unmute Stage" : "Mute Stage"}
+                  >
+                    {stageMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                  </button>
+                )}
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={() => { hapticTap(); onStageExitWatchMode(); }}
