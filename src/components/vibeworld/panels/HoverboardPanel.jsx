@@ -14,6 +14,7 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
     try { return parseInt(localStorage.getItem("hb_total_orbs") || "0", 10); } catch { return 0; }
   });
   const [boostFlash, setBoostFlash] = useState(false);
+  const [launchFlash, setLaunchFlash] = useState(false);
   const [trailUnlocked, setTrailUnlocked] = useState(false);
 
   const phaseRef = useRef("idle");
@@ -70,9 +71,14 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
     window.__hbBoostTriggered = () => {
       if (phaseRef.current !== "riding") return;
       setBoostFlash(true);
-      setTimeout(() => setBoostFlash(false), 800);
+      setTimeout(() => setBoostFlash(false), 900);
     };
-    return () => { window.__hbCollectOrb = null; window.__hbBoostTriggered = null; };
+    window.__hbLaunchTriggered = () => {
+      if (phaseRef.current !== "riding") return;
+      setLaunchFlash(true);
+      setTimeout(() => setLaunchFlash(false), 1200);
+    };
+    return () => { window.__hbCollectOrb = null; window.__hbBoostTriggered = null; window.__hbLaunchTriggered = null; };
   }, []);
 
   if (!visible) return null;
@@ -105,20 +111,21 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
           >
             <div className="flex items-center gap-2.5">
               <Zap className="w-5 h-5 flex-shrink-0" style={{ color: "#00E5FF" }} />
-              <span className="font-black text-white text-sm tracking-wider">HOVERBOARD BEACH ZONE</span>
+              <span className="font-black text-white text-sm tracking-wider">NEON SURF BEACH</span>
             </div>
 
             <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
               Cruise the beach freely on your hoverboard.
-              Collect <span style={{ color: "#00E5FF", fontWeight: 700 }}>energy orbs</span> and
-              hit <span style={{ color: "#FFD700", fontWeight: 700 }}>boost pads</span> for extra thrills!
+              Collect <span style={{ color: "#00E5FF", fontWeight: 700 }}>energy orbs</span>,
+              hit <span style={{ color: "#00FF88", fontWeight: 700 }}>Boost Pads</span> for speed, and
+              hit <span style={{ color: "#FF9900", fontWeight: 700 }}>Launch Pads</span> to fly into the air!
             </p>
 
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Style", value: "Free Ride", color: "#00E5FF" },
-                { label: "Orbs", value: "12 spots", color: "#C43BFF" },
-                { label: "Trail Boost", value: "5+ orbs", color: "#FFD700" },
+                { label: "Orbs", value: "12 spots", color: "#00E5FF" },
+                { label: "Boost Pads", value: "Speed ↑", color: "#00FF88" },
+                { label: "Launch Pads", value: "Air Launch", color: "#FF9900" },
               ].map(s => (
                 <div key={s.label}
                   className="flex flex-col items-center py-2 rounded-xl"
@@ -241,17 +248,40 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
                 initial={{ opacity: 1, scale: 1, y: 0 }}
                 animate={{ opacity: 0, scale: 1.5, y: -40 }}
                 exit={{}}
-                transition={{ duration: 0.8 }}
+                transition={{ duration: 0.9 }}
                 className="absolute left-1/2 font-black text-xl pointer-events-none"
                 style={{
                   top: 70,
-                  transform: "translateX(-50%)",
-                  color: "#FFD700",
-                  textShadow: "0 0 24px #FFD700",
+                  transform: "translateX(-60%)",
+                  color: "#00FF88",
+                  textShadow: "0 0 24px #00FF88",
                   whiteSpace: "nowrap",
                 }}
               >
-                ⚡ BOOST!
+                ⚡ SPEED BOOST!
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Launch flash */}
+          <AnimatePresence>
+            {launchFlash && (
+              <motion.div
+                key="launch"
+                initial={{ opacity: 1, scale: 1, y: 0 }}
+                animate={{ opacity: 0, scale: 1.6, y: -60 }}
+                exit={{}}
+                transition={{ duration: 1.2 }}
+                className="absolute left-1/2 font-black text-xl pointer-events-none"
+                style={{
+                  top: 70,
+                  transform: "translateX(10%)",
+                  color: "#FF9900",
+                  textShadow: "0 0 30px #FF6600",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                🚀 LAUNCH!
               </motion.div>
             )}
           </AnimatePresence>

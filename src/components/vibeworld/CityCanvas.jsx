@@ -7,7 +7,7 @@ import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
-import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS } from "./HoverboardRingRun";
+import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -344,7 +344,7 @@ function buildPark(scene) {
   frontWash.position.set(0, 2.5, -12); stage.add(frontWash);
 
   scene.add(stage);
-  createNeonSign(scene, 0, 8.5, -15, "MUSIC  STAGE", "#00D4F0");
+  createNeonSign(scene, 0, 7.5, -15, "MUSIC  STAGE", "#00D4F0");
 
   // ═══════════════════════════════════════
   // VIBE LAUNCH ZONE
@@ -1964,14 +1964,38 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── BOOST PAD DETECTION — triggers flash in HUD ──────────────
+        // ─── BOOST PAD DETECTION — speed burst ───────────────────────
         if (hbRidingRef.current && frameRef.current % 6 === 0) {
           for (const pad of BOOST_PADS) {
             const dx = px - pad.x, dz = pz - pad.z;
             if (Math.sqrt(dx * dx + dz * dz) < 1.5) {
-              if (!scene.userData._lastBoostTime || performance.now() - scene.userData._lastBoostTime > 2000) {
+              if (!scene.userData._lastBoostTime || performance.now() - scene.userData._lastBoostTime > 2200) {
                 scene.userData._lastBoostTime = performance.now();
+                // Apply speed impulse in avatar's current facing direction
+                vel.x += Math.sin(rot) * 4.5;
+                vel.z += Math.cos(rot) * 4.5;
                 if (window.__hbBoostTriggered) window.__hbBoostTriggered();
+              }
+            }
+          }
+        }
+
+        // ─── LAUNCH PAD DETECTION — air launch ───────────────────────
+        if (hbRidingRef.current && frameRef.current % 6 === 0) {
+          for (const pad of LAUNCH_PADS) {
+            const dx = px - pad.x, dz = pz - pad.z;
+            if (Math.sqrt(dx * dx + dz * dz) < 1.6) {
+              if (!scene.userData._lastLaunchTime || performance.now() - scene.userData._lastLaunchTime > 3000) {
+                scene.userData._lastLaunchTime = performance.now();
+                // Trigger a mini launch arc via launchState (reuse existing launch system)
+                const ls = launchStateRef.current;
+                if (!ls.active) {
+                  ls.active = true;
+                  ls.phase = "rise";
+                  ls.timer = 0;
+                  ls.startY = py;
+                }
+                if (window.__hbLaunchTriggered) window.__hbLaunchTriggered();
               }
             }
           }

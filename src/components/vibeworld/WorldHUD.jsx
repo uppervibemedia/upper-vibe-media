@@ -491,137 +491,140 @@ export default function WorldHUD({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-1 px-1"
+            className="fixed left-0 right-0 z-[200] flex flex-col items-center gap-1.5 px-2 pointer-events-none"
             style={{
-              paddingBottom: isMobile
+              bottom: isMobile
                 ? "calc(env(safe-area-inset-bottom, 0px) + 8rem)"
-                : "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)",
-              pointerEvents: "none",
+                : "7.5rem",
             }}
           >
-            {/* Now showing label — compact on mobile */}
+            {/* Now showing label */}
             {stageVideoTitle && (
-              <p className="text-[9px] text-white/40 font-medium tracking-wider truncate max-w-[80vw]">
-                {isMobile ? stageVideoTitle.substring(0, 30) + (stageVideoTitle.length > 30 ? "..." : "") : `Now Showing: ${stageVideoTitle}`}
-              </p>
+              <div
+                className="px-3 py-1 rounded-full"
+                style={{
+                  background: "rgba(0,0,0,0.6)",
+                  backdropFilter: "blur(8px)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                <p className="text-[9px] text-white/50 font-medium tracking-wider truncate max-w-[70vw] text-center">
+                  {isMobile ? stageVideoTitle.substring(0, 32) + (stageVideoTitle.length > 32 ? "…" : "") : `Now Showing: ${stageVideoTitle}`}
+                </p>
+              </div>
             )}
 
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {/* Watch Stage / Exit */}
+            {/* Row 1: Watch/Exit · Full Screen · Next */}
+            <div
+              className="flex flex-wrap gap-1.5 justify-center p-2 rounded-2xl"
+              style={{
+                background: "rgba(0,0,0,0.55)",
+                backdropFilter: "blur(14px)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+              }}
+            >
               {stageWatching ? (
-              <button
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => { hapticTap(); onStageExitWatchMode(); }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                <button
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={() => { hapticTap(); onStageExitWatchMode(); }}
+                  className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
                     color: "#fff",
-                    boxShadow: "0 0 20px rgba(155,126,255,0.4)",
-                    minHeight: "44px",
+                    boxShadow: "0 0 14px rgba(155,126,255,0.35)",
+                    minHeight: "36px",
                     touchAction: "manipulation",
                     pointerEvents: "auto",
                   }}
                 >
-                  <Music4 className="w-3 h-3" />
-                  Exit Watch
+                  <Music4 className="w-3 h-3" /> Exit Watch
                 </button>
               ) : (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={() => { hapticTap(); onStageWatchVideo(); }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
                     color: "#fff",
-                    boxShadow: "0 0 20px rgba(155,126,255,0.4)",
-                    minHeight: "44px",
+                    boxShadow: "0 0 14px rgba(155,126,255,0.35)",
+                    minHeight: "36px",
                     touchAction: "manipulation",
                     pointerEvents: "auto",
                   }}
                 >
-                  <Music4 className="w-3 h-3" />
-                  Watch Stage
+                  <Music4 className="w-3 h-3" /> Watch Stage
                 </button>
               )}
 
-              {/* Full Screen */}
               {onStageFullScreen && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={() => { hapticTap(); onStageFullScreen(); }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#0080B8,#00A0DC)",
                     color: "#fff",
-                    boxShadow: "0 0 20px rgba(0,160,220,0.4)",
-                    minHeight: "44px",
+                    boxShadow: "0 0 14px rgba(0,160,220,0.35)",
+                    minHeight: "36px",
                     touchAction: "manipulation",
                     pointerEvents: "auto",
                   }}
                 >
-                  <Music4 className="w-3 h-3" />
-                  Full Screen
+                  <Tv2 className="w-3 h-3" /> Full Screen
                 </button>
               )}
 
-              {/* Next */}
               <button
                 onTouchStart={(e) => e.stopPropagation()}
                 onClick={() => { hapticTap(); onStageNextVideo(); }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                 style={{
-                  background: "rgba(255,255,255,0.08)",
+                  background: "rgba(255,255,255,0.1)",
                   border: "1px solid rgba(255,255,255,0.15)",
-                  color: "rgba(255,255,255,0.6)",
-                  minHeight: "44px",
+                  color: "rgba(255,255,255,0.7)",
+                  minHeight: "36px",
                   touchAction: "manipulation",
                   pointerEvents: "auto",
                 }}
               >
-                <SkipForward className="w-3 h-3" />
-                Next
+                <SkipForward className="w-3 h-3" /> Next
               </button>
-            </div>
 
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {/* Play Song */}
               {onStagePlaySong && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={() => { hapticTap(); onStagePlaySong(); }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
                     background: "linear-gradient(135deg,#0080B8,#00A0DC)",
                     color: "#fff",
-                    minHeight: "44px",
+                    minHeight: "36px",
                     touchAction: "manipulation",
                     pointerEvents: "auto",
                   }}
                 >
-                  <Music4 className="w-3 h-3" />
-                  Play Song
+                  <Music4 className="w-3 h-3" /> Play Song
                 </button>
               )}
 
-              {/* Mute / Unmute */}
               {onStageToggleMute && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={() => { hapticTap(); onStageToggleMute(); }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
-                    background: stageVideoMuted
-                      ? "rgba(255,255,255,0.08)"
-                      : "rgba(124,58,237,0.3)",
+                    background: stageVideoMuted ? "rgba(255,255,255,0.1)" : "rgba(124,58,237,0.35)",
                     border: "1px solid rgba(255,255,255,0.15)",
                     color: stageVideoMuted ? "rgba(255,255,255,0.6)" : "#fff",
-                    minHeight: "44px",
+                    minHeight: "36px",
                     touchAction: "manipulation",
                     pointerEvents: "auto",
                   }}
                 >
                   {stageVideoMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                  {stageVideoMuted ? "Mute" : "Live"}
+                  {stageVideoMuted ? "Unmute" : "Live"}
                 </button>
               )}
             </div>

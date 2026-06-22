@@ -71,7 +71,7 @@ const ZONES = {
     icon: "Rocket",
   },
   hoverboard: {
-    name: "Hoverboard Ring Run",
+    name: "Neon Surf Beach",
     id: "hoverboard",
     cx: 28, cz: 23, radius: 8,
     icon: "Zap",
