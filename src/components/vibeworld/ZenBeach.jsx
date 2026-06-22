@@ -276,6 +276,40 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   // Neon sign
   createNeonSign(scene, ZEN_X, 3.5, ZEN_Z, "ZEN  BEACH", "#00D4F0");
 
+  // ── WHOLE-BEACH SUNSET GLOW SPRITES — warm orange/pink/purple radial haze ──
+  // Same effect as Zen Beach but spread across the entire sand strip
+  for (const [gx, gz, sw, sh] of [
+    [  0, 26, 38, 14],   // centre beach — large wide wash
+    [-18, 24, 22, 10],   // left side
+    [ 18, 24, 22, 10],   // right side
+    [-10, 30, 18,  9],   // deep left
+    [ 10, 30, 18,  9],   // deep right
+    [  0, 32, 28,  9],   // shoreline
+  ]) {
+    const gc = document.createElement("canvas");
+    gc.width = 256; gc.height = 256;
+    const gctx = gc.getContext("2d");
+    const gg = gctx.createRadialGradient(128, 180, 10, 128, 128, 160);
+    gg.addColorStop(0,   "rgba(251,146,60,0.30)");
+    gg.addColorStop(0.3, "rgba(236,72,153,0.12)");
+    gg.addColorStop(0.6, "rgba(168,85,247,0.04)");
+    gg.addColorStop(1,   "rgba(0,0,0,0)");
+    gctx.fillStyle = gg;
+    gctx.fillRect(0, 0, 256, 256);
+    const gtex = new CanvasTexture(gc);
+    gtex.minFilter = LinearFilter;
+    gtex.colorSpace = THREE.SRGBColorSpace;
+    const gSprite = new Sprite(new SpriteMaterial({
+      map: gtex, transparent: true, opacity: 0.45,
+      depthWrite: false, depthTest: false, blending: AdditiveBlending,
+    }));
+    gSprite.scale.set(sw, sh, 1);
+    gSprite.position.set(gx, 3.5, gz);
+    gSprite.renderOrder = 0;
+    gSprite.name = "beachSunsetGlow";
+    scene.add(gSprite);
+  }
+
   return { ZEN_X, ZEN_Z };
 }
 
