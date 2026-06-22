@@ -8,8 +8,8 @@ import React, { useEffect, useRef } from "react";
  * and cannot stop scroll, causing drift and missed inputs).
  *
  * Sensitivity tuned to match joystick feel:
- *   camDx: 0.0016 per px (horizontal yaw, ~35% lower than old value)
- *   camDy: 0.002  per px (vertical pitch, clamped)
+ *   camDx: 0.0025 per px (horizontal yaw)
+ *   camDy: 0.003  per px (vertical pitch, clamped)
  */
 export default function CameraLookZone({ mobileInputRef, mobileLayout }) {
   const zoneRef = useRef(null);
@@ -58,15 +58,14 @@ export default function CameraLookZone({ mobileInputRef, mobileLayout }) {
       if (mobileInputRef.current._camBaseX !== undefined) {
         const dx = t.clientX - mobileInputRef.current._camBaseX;
         // drag RIGHT (+dx) = camera turns right = positive camDx
-        // 0.0016 sensitivity — balanced with joystick movement feel
-        mobileInputRef.current.camDx = Math.max(-0.035, Math.min(0.035, dx * 0.0016));
+        mobileInputRef.current.camDx = Math.max(-0.055, Math.min(0.055, dx * 0.0025));
         mobileInputRef.current._camBaseX = t.clientX;
       }
 
       if (mobileInputRef.current._camBaseY !== undefined) {
         const dy = t.clientY - mobileInputRef.current._camBaseY;
         // drag UP (-dy) = look up = positive camDy; drag DOWN = look down
-        mobileInputRef.current.camDy = Math.max(-0.018, Math.min(0.018, -dy * 0.002));
+        mobileInputRef.current.camDy = Math.max(-0.025, Math.min(0.025, -dy * 0.003));
         mobileInputRef.current._camBaseY = t.clientY;
       }
     };
