@@ -134,12 +134,20 @@ export default function ChatRequests() {
           >
             <ArrowLeft className="w-5 h-5 text-muted-foreground" />
           </button>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="font-heading font-black text-2xl text-foreground">Your Connections</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               Manage chat requests and active connections
             </p>
           </div>
+          <button
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:bg-muted flex-shrink-0"
+            style={{ minWidth: 40, minHeight: 40 }}
+            aria-label="Close"
+          >
+            <X className="w-5 h-5 text-muted-foreground" />
+          </button>
         </div>
 
         {loading ? (
