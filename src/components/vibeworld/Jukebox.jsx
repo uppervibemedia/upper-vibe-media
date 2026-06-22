@@ -19,8 +19,8 @@ export const DANCE_FLOOR_RADIUS = 7;
 // Booth is at x=-12, floor center at x=0 → face angle = +90° (Math.PI/2) around Y axis.
 const FACE_ANGLE = Math.PI / 2; // faces +X (toward dance floor center)
 
-// Scale multiplier — 2.0x (slightly smaller as secondary attraction)
-const S = 2.0;
+// Scale multiplier — 1.0x (compact secondary attraction)
+const S = 1.0;
 
 function mat(hexColor, opts = {}) {
   const m = new THREE.MeshStandardMaterial();
