@@ -151,21 +151,12 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying 
     }
   };
 
+  // All download clicks go to the full song page — preserving city state for return
   const handleDownloadClick = (e) => {
     e.stopPropagation();
-    if (isPlus && track.audio_url) {
-      // Real download for Plus users
-      const a = document.createElement("a");
-      a.href = track.audio_url;
-      a.download = `${track.title}.mp3`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } else if (isPlus) {
-      window.open(`/song/${track.id}`, "_blank");
-    } else {
-      setShowUpgrade(true);
-    }
+    // Mark that user came from Vibe World so song page shows "Back to City" button
+    try { sessionStorage.setItem("vibeworld_return", "1"); } catch {}
+    window.open(`/song/${track.id}?downloadIntent=true`, "_blank");
   };
 
   return (
@@ -287,7 +278,7 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying 
                   target="_blank"
                   rel="noopener noreferrer"
                   onTouchStart={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); try { sessionStorage.setItem("vibeworld_return", "1"); } catch {} }}
                   className="w-11 h-11 rounded-xl flex items-center justify-center transition-all hover:bg-white/10 active:scale-90 flex-shrink-0"
                   style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", touchAction: "manipulation", minWidth: 44, minHeight: 44 }}
                   title="Open full song page"

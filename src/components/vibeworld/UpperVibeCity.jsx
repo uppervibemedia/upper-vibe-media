@@ -25,6 +25,7 @@ import useWorldDJStream from "@/hooks/useWorldDJStream";
 import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
 import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/orbBank";
+import EmojiEmote from "@/components/vibeworld/EmojiEmote";
 
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
@@ -1077,6 +1078,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onSkip={handleGlobalSkip}
         />
       )}
+
+      {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
+      <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
     </div>
   );
 }

@@ -1,11 +1,11 @@
 import React, { useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Music4, Hand, Heart, Flame, Flower2, Sparkles } from "lucide-react";
+import { X, Music4, Hand, Heart, Flame, Flower2 } from "lucide-react";
 
+// dance/clap = body animation (clap motion); wave/heart/fire/peace = emoji floaters only
 const EMOTES = [
   { id: "dance",  label: "Dance", icon: Music4,   color: "#C43BFF", effect: "dance" },
   { id: "wave",   label: "Wave",  icon: Hand,      color: "#00D4F0", effect: "wave"  },
-  { id: "clap",   label: "Clap",  icon: Sparkles,  color: "#EDB84A", effect: "clap"  },
   { id: "heart",  label: "Heart", icon: Heart,     color: "#FF4081", effect: "heart" },
   { id: "fire",   label: "Fire",  icon: Flame,     color: "#FF6D00", effect: "fire"  },
   { id: "peace",  label: "Peace", icon: Flower2,   color: "#A078FF", effect: "peace" },
@@ -69,7 +69,7 @@ export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDanc
       {/* Emote grid — 3 columns, 2 rows */}
       <div
         className="grid gap-1.5 p-2.5"
-        style={{ gridTemplateColumns: "repeat(3, 1fr)" }}
+        style={{ gridTemplateColumns: "repeat(3, 1fr)", gridTemplateRows: "auto" }}
       >
         {EMOTES.map((emote) => {
           const isActive = isDancing && activeEmote?.id === emote.id;

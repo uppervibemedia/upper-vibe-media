@@ -153,74 +153,16 @@ function applyEmotePose(entry, dt) {
   const PI  = Math.PI;
 
   switch (entry._emote) {
-    case "wave": {
-      // Right arm waves up and down, head turns slightly
-      if (armR) {
-        armR.rotation.z = -PI * 0.55 + sin(tm * 5.0) * 0.45;
-        armR.rotation.x = sin(tm * 5.0) * 0.15;
-      }
-      if (armL) { armL.rotation.z = 0.1; }
-      if (head) { head.rotation.y = sin(tm * 2.0) * 0.2; }
-      break;
-    }
+    case "dance":
     case "clap": {
-      // Both arms swing toward each other rhythmically
+      // Dance animation = clapping-style: both arms swing toward each other rhythmically
       const clap = Math.abs(sin(tm * 6.0));
       if (armL) { armL.rotation.z = PI * 0.3 - clap * 0.7; armL.rotation.x = clap * 0.3; }
       if (armR) { armR.rotation.z = -(PI * 0.3 - clap * 0.7); armR.rotation.x = clap * 0.3; }
       if (head) { head.rotation.x = sin(tm * 6.0) * 0.06; }
       break;
     }
-    case "heart": {
-      // Arms open wide, head tilts lovingly, slight body sway
-      if (armL) { armL.rotation.z = PI * 0.5 + sin(tm * 1.5) * 0.1; armL.rotation.x = 0.2; }
-      if (armR) { armR.rotation.z = -(PI * 0.5 + sin(tm * 1.5) * 0.1); armR.rotation.x = 0.2; }
-      if (head) { head.rotation.z = sin(tm * 1.5) * 0.12; head.rotation.x = -0.08; }
-      if (spine) { spine.rotation.z = sin(tm * 1.5) * 0.04; }
-      break;
-    }
-    case "fire": {
-      // Pump fist up rhythmically, energetic body bounce
-      if (armR) {
-        armR.rotation.z = -PI * 0.35;
-        armR.rotation.x = -PI * 0.4 + sin(tm * 5.5) * PI * 0.35;
-      }
-      if (armL) { armL.rotation.z = 0.2; }
-      if (spine) { spine.rotation.x = sin(tm * 5.5) * 0.06; }
-      if (head) { head.rotation.x = sin(tm * 5.5) * 0.05; }
-      break;
-    }
-    case "peace": {
-      // V sign — arm slightly raised with gentle sway
-      if (armR) {
-        armR.rotation.z = -PI * 0.35 + sin(tm * 1.2) * 0.08;
-        armR.rotation.x = -PI * 0.15;
-      }
-      if (armL) { armL.rotation.z = 0.1; }
-      if (head) { head.rotation.z = sin(tm * 1.0) * 0.08; }
-      if (spine) { spine.rotation.z = sin(tm * 1.0) * 0.03; }
-      break;
-    }
-    case "dance": {
-      // Groove in place: body sway + arm swing + head bob
-      if (spine) {
-        spine.rotation.z = sin(tm * 3.0) * 0.15;
-        spine.rotation.y = sin(tm * 1.5) * 0.12;
-      }
-      if (armL) {
-        armL.rotation.z = PI * 0.2 + sin(tm * 3.0 + PI) * 0.45;
-        armL.rotation.x = cos(tm * 1.5) * 0.2;
-      }
-      if (armR) {
-        armR.rotation.z = -(PI * 0.2 + sin(tm * 3.0) * 0.45);
-        armR.rotation.x = cos(tm * 1.5 + PI) * 0.2;
-      }
-      if (head) {
-        head.rotation.z = sin(tm * 3.0) * 0.08;
-        head.rotation.y = sin(tm * 1.5) * 0.1;
-      }
-      break;
-    }
+    // All other emotes: emoji-only — no body animation (handled by EmojiEmote overlay in React)
     default:
       break;
   }
@@ -245,14 +187,16 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt, isHoverboardi
   }
 
   if (isDancing) {
-    // Lock to idle/walk at slow speed and apply procedural emote pose on top
+    // dance/clap emotes drive body animation; all others are emoji-only (no bone manipulation)
+    const BODY_EMOTES = new Set(["dance", "clap"]);
     const key = entry.clips.idle ? "idle" : entry.clips.walk ? "walk" : null;
     if (key) {
       crossFade(entry, key, 0.3);
-      // Run idle at 0.6x — subtle body sway from base animation
       entry.clips[key].setEffectiveTimeScale(0.6);
     }
-    applyEmotePose(entry, dt);
+    if (entry._emote && BODY_EMOTES.has(entry._emote)) {
+      applyEmotePose(entry, dt);
+    }
     return;
   }
 

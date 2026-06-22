@@ -117,6 +117,10 @@ function SongPageInner() {
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [vizPlaying, setVizPlaying] = useState(false);
   const [downloadIntent, setDownloadIntent] = useState(false);
+  // "Back to Upper Vibe City" — shown when user came from VibeWorld
+  const [showCityReturn, setShowCityReturn] = useState(() => {
+    try { return sessionStorage.getItem("vibeworld_return") === "1"; } catch { return false; }
+  });
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus: isAuthPlus, isAdmin: isAuthAdmin } = useAuth();
   const isPlus = isAuthPlus || isAuthAdmin;
@@ -258,14 +262,37 @@ function SongPageInner() {
       <div
         className="max-w-5xl mx-auto px-4 sm:px-6"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
-        <button
-          onClick={() => {
-            if (window.history.length > 1) navigate(-1);
-            else navigate("/music");
-          }}
-          className="inline-flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors mb-4 active:scale-95">
-          <ChevronLeft className="w-3.5 h-3.5" /> Back
-        </button>
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
+          <button
+            onClick={() => {
+              if (window.history.length > 1) navigate(-1);
+              else navigate("/music");
+            }}
+            className="inline-flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors active:scale-95">
+            <ChevronLeft className="w-3.5 h-3.5" /> Back
+          </button>
+          {showCityReturn && (
+            <button
+              onClick={() => {
+                try { sessionStorage.removeItem("vibeworld_return"); } catch {}
+                // If opened in a new tab, close it; otherwise navigate to vibe-world
+                if (window.opener || window.history.length <= 2) {
+                  window.close();
+                } else {
+                  navigate("/vibe-world");
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black tracking-wide transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,rgba(0,184,212,0.2),rgba(155,126,255,0.15))",
+                border: "1px solid rgba(0,212,240,0.3)",
+                color: "#00D4F0",
+              }}
+            >
+              🌆 Back to Upper Vibe City
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Two-column layout: streaming-platform style */}
