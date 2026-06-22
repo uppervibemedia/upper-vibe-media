@@ -4,7 +4,7 @@ import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
 // Vibe Shop is temporarily disabled — replaced by Ferris Wheel
 // import createVibeShop from "./VibeShop";
-import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, getCabinWorldPosition, getBoardingPosition } from "./FerrisWheel";
+import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, WHEEL_HUB_Y, getCabinWorldPosition, getBoardingPosition } from "./FerrisWheel";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
@@ -1729,17 +1729,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const finalCamAngle = rot + camYawSmoothRef.current;
 
         if (ferrisRidingRef.current) {
-          // Avatar-in-foreground view: camera sits in front of the wheel, looks toward it
-          // so the avatar is visible in the foreground with the wheel rotating behind them.
-          const boardPos = getBoardingPosition();
-          // Camera positioned ~5 units in front of the boarding platform, slightly elevated
-          const camX = WHEEL_X + (boardPos.x - WHEEL_X) * 1.6 + 0.5;
-          const camZ = WHEEL_Z + (boardPos.z - WHEEL_Z) * 1.6;
-          const camY = 2.8 + Math.sin(t * 0.4) * 0.15; // gentle float
-          camera.position.lerp(new Vector3(camX, camY, camZ), Math.min(1, 3.5 * dt));
-          // Look at a point between the avatar and the wheel hub so both are in frame
-          const lookY = 1.8 + Math.sin(t * 0.3) * 0.1;
-          camera.lookAt(WHEEL_X, lookY, WHEEL_Z - 1.0);
+          // Ride camera: follow cabin 0 as it orbits, look outward toward the city
+          const cabin = getCabinWorldPosition(0, t);
+          // Camera sits just behind/above the cabin — rider's POV looking out
+          const camTarget = new Vector3(cabin.x, cabin.y + 0.5, cabin.z);
+          camera.position.lerp(camTarget, Math.min(1, 4.0 * dt));
+          // Look toward city center from the cabin position
+          camera.lookAt(0, WHEEL_HUB_Y * 0.5, -10);
+          // Hide avatar every frame so it never clips into view (GLB may load late)
+          if (avatarRef.current) avatarRef.current.visible = false;
         } else if (lockedRef.current) {
           camera.position.lerp(new Vector3(0, 3.0, -12), Math.min(1, 3.0 * dt));
           camera.lookAt(new Vector3(0, 3.5, -34.4));
@@ -2348,8 +2346,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     else { if (entry) detachHoverboard(entry); }
   }, [hbRiding]);
   useEffect(() => {
-    const root = avatarRef.current;
-    if (root) root.visible = !ferrisRiding;
+    // When ride ends, restore avatar visibility. When riding, the animation loop
+    // hides it every frame (handles late GLB loads gracefully).
+    if (!ferrisRiding && avatarRef.current) {
+      avatarRef.current.visible = true;
+    }
   }, [ferrisRiding]);
 
   // Keyboard
