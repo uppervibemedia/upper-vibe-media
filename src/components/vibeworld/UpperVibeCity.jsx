@@ -337,6 +337,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     if (!stageFullScreen) {
       resumeGlobalIfNeeded(stagePausedPlayerRef);
     }
+    // Always clear the stage-paused flag so subsequent dance floor enter/exit
+    // does not try to double-resume from a stale "was watching stage" state
+    stagePausedPlayerRef.current = false;
   }, [muteStage, stageFullScreen, resumeGlobalIfNeeded]);
 
   const handleStageFullScreen = useCallback(() => {
@@ -629,11 +632,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return () => cancelAnimationFrame(raf);
   }, [playerCtx?.analyserNode]);
 
-  // Auto-start personalized feed when entering world (only if silent).
+  // Auto-start personalized feed when entering world (only if silent and NOT on dance floor).
   // Uses feedStartedRef to prevent re-triggering when user pauses playback.
   useEffect(() => {
     if (feedLoading || loading || !playTrack) return;
     if (feedStartedRef.current) return; // already initialized — don't restart on state changes
+    // Don't auto-start personal music if player is already on the dance floor
+    // (DJ stream is the audio source there)
+    if (onDanceFloor) return;
     // If something is already playing, adopt it into feed mode
     if (currentTrack && isPlaying) {
       feedActiveRef.current = true;
@@ -668,6 +674,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // DJ audio is gated strictly to dance floor — no proximity bleed outside
 
+  // Keep stable refs for isPlaying/togglePlay so dance floor effect never uses stale closures
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
+  const togglePlayRef = useRef(togglePlay);
+  togglePlayRef.current = togglePlay;
+
   // ── Dance floor enter / exit — pause personal player, restore on exit ──────────
   useEffect(() => {
     const personal = audioRef?.current;
@@ -676,11 +688,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       wasOnDanceFloorRef.current = true;
       if (personal) {
         savedPersonalTimeRef.current = personal.currentTime;
-        if (isPlaying) {
+        // Only pause if currently playing (use ref to avoid stale closure)
+        if (isPlayingRef.current) {
           danceFloorPausedRef.current = true;
-          togglePlay?.();
+          togglePlayRef.current?.();
         }
-        // Silence personal player volume (DJ stream takes over via danceFloorMode)
+        // Silence personal player volume — DJ stream takes over
         personal.volume = 0;
       }
     } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
@@ -691,16 +704,20 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         if (savedPersonalTimeRef.current > 0) {
           personal.currentTime = savedPersonalTimeRef.current;
         }
-        // Restore volume
+        // Restore full volume
         personal.volume = personalBaseVolRef.current;
-        // Resume playback if we paused it on entry
+        // Resume playback only if we were the ones who paused it
         if (danceFloorPausedRef.current) {
           danceFloorPausedRef.current = false;
-          if (!isPlaying) togglePlay?.();
+          // Resume only if not currently playing (avoid double-toggle)
+          if (!isPlayingRef.current) {
+            togglePlayRef.current?.();
+          }
         }
       }
     }
-  }, [onDanceFloor, audioRef, isPlaying, togglePlay]);
+  // onDanceFloor is the only real trigger; refs handle the rest without stale values
+  }, [onDanceFloor, audioRef]);
 
   // Cleanup on unmount — restore personal player volume
   useEffect(() => {
@@ -1026,7 +1043,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         <div
           className="fixed z-[60] flex flex-col items-center gap-2 pointer-events-none"
           style={{
-            bottom: isMobile ? "calc(200px + env(safe-area-inset-bottom,0px))" : "96px",
+            // Must clear joystick top edge (portrait ~217px) + mini player (228px)
+            bottom: isMobile ? "calc(248px + env(safe-area-inset-bottom,0px))" : "96px",
             left: "50%",
             transform: "translateX(-50%)",
           }}
@@ -1116,8 +1134,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         }}
       />
 
-      {/* DESKTOP: Draggable media player */}
-      {!loading && !isMobile && currentTrack && (
+      {/* DESKTOP: Draggable media player — hidden during stage watch (stage has its own controls) */}
+      {!loading && !isMobile && currentTrack && !stageWatching && !stageFullScreen && (
         <DraggableMediaPlayer
           currentTrack={currentTrack}
           isPlaying={isPlaying}
@@ -1126,8 +1144,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         />
       )}
 
-      {/* MOBILE: mini player — hidden when a modal panel is open to avoid overlap */}
-      {!loading && isMobile && currentTrack && !mobileModalOpen && (
+      {/* MOBILE: mini player — hidden when a modal/panel is open, when watching stage,
+          or in full screen (those modes have their own controls) */}
+      {!loading && isMobile && currentTrack && !mobileModalOpen && !stageWatching && !stageFullScreen && (
         <DraggableMediaPlayer
           currentTrack={currentTrack}
           isPlaying={isPlaying}

@@ -15,20 +15,25 @@ function getLayout() {
   const saBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue("env(safe-area-inset-bottom)").trim()) || 0;
 
   if (isLandscape) {
+    // Landscape: joystick center must be above the mini-player (bottom=180px).
+    // Joystick is 76px tall, center must be at bottom >= 180 + 38 + 12 = 230px
+    // to ensure the joystick does not overlap the player pill.
     return {
       joySize: 76,
       knobSize: 30,
       maxR: 30,
-      left: Math.max(105, saLeft + 105),
-      bottom: Math.max(75, saBottom + 75),
+      left: Math.max(65, saLeft + 65),
+      bottom: Math.max(230, saBottom + 230),
     };
   }
+  // Portrait: center at bottom=175 so joystick top edge ~175+41=216px,
+  // player is at bottom=180 and height=48, so player top=228px — clear.
   return {
     joySize: 82,
     knobSize: 36,
     maxR: 32,
     left: Math.max(65, saLeft + 65),
-    bottom: Math.max(135, saBottom + 135),
+    bottom: Math.max(175, saBottom + 175),
   };
 }
 

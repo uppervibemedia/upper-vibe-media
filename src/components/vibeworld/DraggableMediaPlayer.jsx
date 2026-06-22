@@ -132,12 +132,15 @@ export default function DraggableMediaPlayer({
   // Mobile: needs pos OR isMobileDevice (fixed anchor, no pos needed)
   if (!isMobileDevice && !pos) return null;
 
-  // Mobile: fixed bottom-left anchor above safe area, compact size
+  // Mobile: fixed bottom-LEFT anchor — must sit ABOVE the joystick.
+  // Portrait joystick bottom=135px, landscape=75px. Use the taller portrait value
+  // so the player never overlaps the joystick in either orientation.
+  // We push it up to 180px so there's also safe clearance for action buttons.
   const mobileStyle = {
     left: "12px",
-    bottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)",
+    bottom: "calc(env(safe-area-inset-bottom, 0px) + 180px)",
     top: "unset",
-    maxWidth: "200px",
+    maxWidth: "210px",
   };
   const desktopStyle = {
     left: pos?.x ?? 0,

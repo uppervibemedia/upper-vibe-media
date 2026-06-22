@@ -126,10 +126,12 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   const loadAndPlay = useCallback((track, startTs) => {
     if (!track?.audio_url) return;
 
-    // Create audio element lazily
+    // Create audio element lazily — always start at volume 0 (dance floor gate controls it)
     if (!djAudioRef.current) {
-      djAudioRef.current = new Audio();
-      djAudioRef.current.volume = 0;
+      const el = new Audio();
+      el.volume = 0;
+      el.preload = "auto";
+      djAudioRef.current = el;
     }
     const el = djAudioRef.current;
     const nowMs = Date.now();

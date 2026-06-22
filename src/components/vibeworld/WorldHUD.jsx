@@ -171,8 +171,8 @@ export default function WorldHUD({
 
   return (
     <>
-      {/* ── Zone indicator — second row below top bar, auto-fades ── */}
-      {zone && (
+      {/* ── Zone indicator — hidden when watching stage to keep video clean ── */}
+      {zone && !stageWatching && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: showZoneLabel ? 0.6 : 0, y: 0 }}
@@ -202,10 +202,11 @@ export default function WorldHUD({
         </motion.div>
       )}
 
-      {/* ── Online count + Requests bell (second row, right-aligned) ───── */}
+      {/* ── Online count + Requests bell — hidden during stage watch ── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
+        animate={{ opacity: stageWatching ? 0 : 1, y: 0 }}
+        style={{ pointerEvents: stageWatching ? "none" : "auto" }}
         className="absolute top-0 right-1.5 z-[56] flex items-center gap-1.5"
         style={{
           paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 3.4rem)" : "4.5rem",
@@ -431,7 +432,7 @@ export default function WorldHUD({
 
       {/* ── DJ Now Playing card — larger song card above DJ Booth when near jukebox ── */}
       <AnimatePresence>
-        {nearJukebox && djTrack && !jukeboxOpen && (
+        {nearJukebox && djTrack && !jukeboxOpen && !stageWatching && (
           <motion.div
             key="dj-song-card"
             initial={{ opacity: 0, y: 16, scale: 0.92 }}
@@ -440,8 +441,9 @@ export default function WorldHUD({
             transition={{ type: "spring", damping: 26, stiffness: 300 }}
             className="absolute z-[57] pointer-events-auto"
             style={{
+              // DJ card must clear the mini player (bottom=180px) AND have some gap
               bottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 14.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 11rem)",
               left: "50%",
               transform: "translateX(-50%)",
@@ -509,9 +511,9 @@ export default function WorldHUD({
         )}
       </AnimatePresence>
 
-      {/* ── Zone-specific action buttons ────────────────────────── */}
+      {/* ── Zone-specific action buttons — hidden entirely when watching stage video ── */}
       <AnimatePresence>
-        {zone?.id === "plaza" && (
+        {zone?.id === "plaza" && !stageWatching && (
           <motion.div
             key="plaza-actions"
             initial={{ opacity: 0, y: 10 }}
@@ -519,8 +521,10 @@ export default function WorldHUD({
             exit={{ opacity: 0, y: 10 }}
             className="absolute bottom-0 right-0 z-[57] flex flex-col items-end gap-2 px-3"
             style={{
+              // Must clear joystick (bottom≈217px portrait) + mini player (bottom≈228px)
+              // 15.5rem ≈ 248px which clears both safely
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 7.5rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 9rem)",
               pointerEvents: "none",
             }}
@@ -589,13 +593,17 @@ export default function WorldHUD({
             exit={{ opacity: 0, y: 10 }}
             className="fixed left-0 right-0 z-[200] flex flex-col items-center gap-1.5 px-2 pointer-events-none"
             style={{
-              bottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)"
-                : "5rem",
+              // When watching: push tray to very bottom so it sits below the embedded video.
+              // When idle: sit above joystick safe zone (portrait=135px + button height).
+              bottom: stageWatching
+                ? "calc(env(safe-area-inset-bottom, 0px) + 4px)"
+                : isMobile
+                  ? "calc(env(safe-area-inset-bottom, 0px) + 9rem)"
+                  : "5rem",
             }}
           >
-            {/* Now showing label */}
-            {stageVideoTitle && (
+            {/* Now showing label — only when NOT watching (avoids overlay on video) */}
+            {stageVideoTitle && !stageWatching && (
               <div
                 className="px-3 py-1 rounded-full"
                 style={{
@@ -604,23 +612,24 @@ export default function WorldHUD({
                   border: "1px solid rgba(255,255,255,0.08)",
                 }}
               >
-                <p className="text-[9px] text-white/50 font-medium tracking-wider truncate max-w-[70vw] text-center">
-                  {isMobile ? stageVideoTitle.substring(0, 32) + (stageVideoTitle.length > 32 ? "…" : "") : `Now Showing: ${stageVideoTitle}`}
+                <p className="text-[9px] text-white/50 font-medium tracking-wider truncate max-w-[60vw] text-center">
+                  {isMobile
+                    ? stageVideoTitle.substring(0, 28) + (stageVideoTitle.length > 28 ? "…" : "")
+                    : `Now Showing: ${stageVideoTitle.substring(0, 40)}${stageVideoTitle.length > 40 ? "…" : ""}`}
                 </p>
               </div>
             )}
 
-            {/* Row 1: Watch/Exit · Full Screen · Next */}
-            <div
-              className="flex flex-wrap gap-1.5 justify-center p-2 rounded-2xl"
-              style={{
-                background: "rgba(0,0,0,0.55)",
-                backdropFilter: "blur(14px)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
-              }}
-            >
-              {stageWatching ? (
+            {/* When watching: minimal compact tray — exit + mute only, no overlapping buttons */}
+            {stageWatching ? (
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-2xl"
+                style={{
+                  background: "rgba(0,0,0,0.75)",
+                  backdropFilter: "blur(16px)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={() => { hapticTap(); onStageExitWatchMode(); }}
@@ -628,7 +637,6 @@ export default function WorldHUD({
                   style={{
                     background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
                     color: "#fff",
-                    boxShadow: "0 0 14px rgba(155,126,255,0.35)",
                     minHeight: "36px",
                     touchAction: "manipulation",
                     pointerEvents: "auto",
@@ -636,7 +644,51 @@ export default function WorldHUD({
                 >
                   <Music4 className="w-3 h-3" /> Exit Watch
                 </button>
-              ) : (
+                {onStageFullScreen && (
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={() => { hapticTap(); onStageFullScreen(); }}
+                    className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                    style={{
+                      background: "linear-gradient(135deg,#0080B8,#00A0DC)",
+                      color: "#fff",
+                      minHeight: "36px",
+                      touchAction: "manipulation",
+                      pointerEvents: "auto",
+                    }}
+                  >
+                    <Tv2 className="w-3 h-3" /> Full Screen
+                  </button>
+                )}
+                {onStageToggleMute && (
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={() => { hapticTap(); onStageToggleMute(); }}
+                    className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                    style={{
+                      background: stageVideoMuted ? "rgba(255,255,255,0.1)" : "rgba(124,58,237,0.35)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      color: stageVideoMuted ? "rgba(255,255,255,0.6)" : "#fff",
+                      minHeight: "36px",
+                      touchAction: "manipulation",
+                      pointerEvents: "auto",
+                    }}
+                  >
+                    {stageVideoMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                  </button>
+                )}
+              </div>
+            ) : (
+              /* Not watching: full button row */
+              <div
+                className="flex flex-wrap gap-1.5 justify-center p-2 rounded-2xl"
+                style={{
+                  background: "rgba(0,0,0,0.55)",
+                  backdropFilter: "blur(14px)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+                }}
+              >
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={() => { hapticTap(); onStageWatchVideo(); }}
@@ -652,78 +704,78 @@ export default function WorldHUD({
                 >
                   <Music4 className="w-3 h-3" /> Watch Stage
                 </button>
-              )}
 
-              {onStageFullScreen && (
+                {onStageFullScreen && (
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={() => { hapticTap(); onStageFullScreen(); }}
+                    className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                    style={{
+                      background: "linear-gradient(135deg,#0080B8,#00A0DC)",
+                      color: "#fff",
+                      boxShadow: "0 0 14px rgba(0,160,220,0.35)",
+                      minHeight: "36px",
+                      touchAction: "manipulation",
+                      pointerEvents: "auto",
+                    }}
+                  >
+                    <Tv2 className="w-3 h-3" /> Full Screen
+                  </button>
+                )}
+
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
-                  onClick={() => { hapticTap(); onStageFullScreen(); }}
+                  onClick={() => { hapticTap(); onStageNextVideo(); }}
                   className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
                   style={{
-                    background: "linear-gradient(135deg,#0080B8,#00A0DC)",
-                    color: "#fff",
-                    boxShadow: "0 0 14px rgba(0,160,220,0.35)",
-                    minHeight: "36px",
-                    touchAction: "manipulation",
-                    pointerEvents: "auto",
-                  }}
-                >
-                  <Tv2 className="w-3 h-3" /> Full Screen
-                </button>
-              )}
-
-              <button
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => { hapticTap(); onStageNextVideo(); }}
-                className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
-                style={{
-                  background: "rgba(255,255,255,0.1)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "rgba(255,255,255,0.7)",
-                  minHeight: "36px",
-                  touchAction: "manipulation",
-                  pointerEvents: "auto",
-                }}
-              >
-                <SkipForward className="w-3 h-3" /> Next
-              </button>
-
-              {onStagePlaySong && (
-                <button
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onClick={() => { hapticTap(); onStagePlaySong(); }}
-                  className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
-                  style={{
-                    background: "linear-gradient(135deg,#0080B8,#00A0DC)",
-                    color: "#fff",
-                    minHeight: "36px",
-                    touchAction: "manipulation",
-                    pointerEvents: "auto",
-                  }}
-                >
-                  <Music4 className="w-3 h-3" /> Play Song
-                </button>
-              )}
-
-              {onStageToggleMute && (
-                <button
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onClick={() => { hapticTap(); onStageToggleMute(); }}
-                  className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
-                  style={{
-                    background: stageVideoMuted ? "rgba(255,255,255,0.1)" : "rgba(124,58,237,0.35)",
+                    background: "rgba(255,255,255,0.1)",
                     border: "1px solid rgba(255,255,255,0.15)",
-                    color: stageVideoMuted ? "rgba(255,255,255,0.6)" : "#fff",
+                    color: "rgba(255,255,255,0.7)",
                     minHeight: "36px",
                     touchAction: "manipulation",
                     pointerEvents: "auto",
                   }}
                 >
-                  {stageVideoMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                  {stageVideoMuted ? "Unmute" : "Live"}
+                  <SkipForward className="w-3 h-3" /> Next
                 </button>
-              )}
-            </div>
+
+                {onStagePlaySong && (
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={() => { hapticTap(); onStagePlaySong(); }}
+                    className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                    style={{
+                      background: "linear-gradient(135deg,#0080B8,#00A0DC)",
+                      color: "#fff",
+                      minHeight: "36px",
+                      touchAction: "manipulation",
+                      pointerEvents: "auto",
+                    }}
+                  >
+                    <Music4 className="w-3 h-3" /> Play Song
+                  </button>
+                )}
+
+                {onStageToggleMute && (
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={() => { hapticTap(); onStageToggleMute(); }}
+                    className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                    style={{
+                      background: stageVideoMuted ? "rgba(255,255,255,0.1)" : "rgba(124,58,237,0.35)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      color: stageVideoMuted ? "rgba(255,255,255,0.6)" : "#fff",
+                      minHeight: "36px",
+                      touchAction: "manipulation",
+                      pointerEvents: "auto",
+                    }}
+                  >
+                    {stageVideoMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                    {stageVideoMuted ? "Unmute" : "Live"}
+                  </button>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -736,7 +788,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -769,7 +821,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -802,7 +854,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -835,7 +887,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -868,7 +920,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -901,7 +953,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -938,7 +990,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
@@ -965,7 +1017,7 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={{
               paddingBottom: isMobile
-                ? "calc(env(safe-area-inset-bottom, 0px) + 7rem)"
+                ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
                 : "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)",
               pointerEvents: "none",
             }}
