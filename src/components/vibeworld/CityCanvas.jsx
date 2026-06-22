@@ -263,21 +263,20 @@ function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
 
   // ═════════════════════════════════════════════════════════════
-  // 4. MAIN MUSIC STAGE — north (top) of map
-  // Raised platform: plat top at y=2.2, screen center at y=5.5
+  // 4. MAIN MUSIC STAGE — pushed back to z=-26 for open gathering space
   // ═════════════════════════════════════════════════════════════
   const stage = new Group();
   stage.name = "musicStage";
 
-  // Riser base — lowered (1.0 → 0.5 height)
+  // Riser base
   const stageRiser = new Mesh(new BoxGeometry(10, 1.0, 5.5), mat("#111830", { roughness: 0.3, metalness: 0.6 }));
-  stageRiser.position.set(0, 0.5, -15);
+  stageRiser.position.set(0, 0.5, -26);
   stageRiser.castShadow = true; stageRiser.receiveShadow = true;
   stage.add(stageRiser);
 
-  // Top platform deck — lowered to match
+  // Top platform deck
   const stagePlat = new Mesh(new BoxGeometry(10, 0.25, 5.5), mat("#1A2050", { roughness: 0.2, metalness: 0.65 }));
-  stagePlat.position.set(0, 1.12, -15);
+  stagePlat.position.set(0, 1.12, -26);
   stagePlat.castShadow = true; stagePlat.receiveShadow = true;
   stage.add(stagePlat);
 
@@ -286,7 +285,7 @@ function buildPark(scene) {
     new BoxGeometry(10.1, 0.08, 0.1),
     new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
   );
-  stageEdge.position.set(0, 1.27, -12.2);
+  stageEdge.position.set(0, 1.27, -23.2);
   stage.add(stageEdge);
 
   // Side neon strips
@@ -295,14 +294,14 @@ function buildPark(scene) {
       new BoxGeometry(0.06, 1.0, 0.06),
       new MeshBasicMaterial({ color: new Color(sx < 0 ? "#C43BFF" : "#00D4F0"), depthWrite: false, transparent: true, opacity: 0.7 })
     );
-    sideStrip.position.set(sx, 0.5, -15);
+    sideStrip.position.set(sx, 0.5, -26);
     stage.add(sideStrip);
   }
 
-  // Main screen — wider (8→14), taller (5→7), lower center (5.5→3.5)
+  // Main screen
   const screenMat = mat("#1A1A3A", { roughness: 0.2, metalness: 0.7 });
   const screen = new Mesh(new BoxGeometry(14, 7, 0.2), screenMat);
-  screen.position.set(0, 3.5, -17.4);
+  screen.position.set(0, 3.5, -28.4);
   screen.castShadow = true;
   screen.name = "stageScreen";
   stage.add(screen);
@@ -313,11 +312,11 @@ function buildPark(scene) {
     new BoxGeometry(14.3, 7.3, 0.05),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.65 })
   );
-  screenGlow.position.set(0, 3.5, -17.4);
+  screenGlow.position.set(0, 3.5, -28.4);
   screenGlow.name = "stageScreenGlow";
   stage.add(screenGlow);
 
-  // Stage arch — scaled to match wider screen
+  // Stage arch
   for (let a = 0; a < 10; a++) {
     const archAngle = -Math.PI / 2 + (a / 9) * Math.PI;
     const ax = Math.cos(archAngle) * 7.2;
@@ -326,26 +325,26 @@ function buildPark(scene) {
       new BoxGeometry(0.09, 0.09, 0.15),
       new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, transparent: true, opacity: 0.85 })
     );
-    archSeg.position.set(ax, ay, -17.3);
+    archSeg.position.set(ax, ay, -28.3);
     stage.add(archSeg);
   }
 
-  // Stage lights — adjusted to lowered platform
+  // Stage lights
   const spotL = new PointLight();
   spotL.color = new Color("#A078FF"); spotL.intensity = 5; spotL.distance = 20;
-  spotL.position.set(-6, 4.5, -14); stage.add(spotL);
+  spotL.position.set(-6, 4.5, -25); stage.add(spotL);
 
   const spotR = new PointLight();
   spotR.color = new Color("#00D4F0"); spotR.intensity = 5; spotR.distance = 20;
-  spotR.position.set(6, 4.5, -14); stage.add(spotR);
+  spotR.position.set(6, 4.5, -25); stage.add(spotR);
 
   // Front wash light
   const frontWash = new PointLight();
   frontWash.color = new Color("#9B4FFF"); frontWash.intensity = 3; frontWash.distance = 14;
-  frontWash.position.set(0, 2.5, -12); stage.add(frontWash);
+  frontWash.position.set(0, 2.5, -23); stage.add(frontWash);
 
   scene.add(stage);
-  createNeonSign(scene, 0, 7.5, -15, "MUSIC  STAGE", "#00D4F0");
+  createNeonSign(scene, 0, 7.5, -26, "MUSIC  STAGE", "#00D4F0");
 
   // ═══════════════════════════════════════
   // VIBE LAUNCH ZONE
@@ -365,7 +364,7 @@ function buildPark(scene) {
     mat("#181032", { roughness: 0.30, metalness: 0.55 })
   );
   loungePlat.rotation.x = -Math.PI / 2;
-  loungePlat.position.set(-16, 0.003, -10);
+  loungePlat.position.set(-22, 0.003, -20);
   loungePlat.receiveShadow = true;
   lounge.add(loungePlat);
 
@@ -375,7 +374,7 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
   );
   loungeOuterRing.rotation.x = -Math.PI / 2;
-  loungeOuterRing.position.set(-16, 0.006, -10);
+  loungeOuterRing.position.set(-22, 0.006, -20);
   loungeOuterRing.renderOrder = 1;
   lounge.add(loungeOuterRing);
 
@@ -383,8 +382,8 @@ function buildPark(scene) {
   for (let i = 0; i < 5; i++) {
     const ang = Math.PI + (i / 4) * Math.PI * 0.65; // ~117° arc for openness
     const radius = 2.8;
-    const sx = -16 + Math.cos(ang) * radius;
-    const sz = -10 + Math.sin(ang) * radius;
+    const sx = -22 + Math.cos(ang) * radius;
+    const sz = -20 + Math.sin(ang) * radius;
 
     // Curved seat body (3 box segments for a gentle curve effect)
     const seatBase = new Mesh(
@@ -408,8 +407,8 @@ function buildPark(scene) {
     // Small side table between every other seat
     if (i < 4) {
       const nextAng = Math.PI + ((i + 0.5) / 4) * Math.PI * 0.65;
-      const tx = -16 + Math.cos(nextAng) * (radius - 0.15);
-      const tz = -10 + Math.sin(nextAng) * (radius - 0.15);
+      const tx = -22 + Math.cos(nextAng) * (radius - 0.15);
+      const tz = -20 + Math.sin(nextAng) * (radius - 0.15);
       const table = new Mesh(
         new CylinderGeometry(0.22, 0.25, 0.12, 8),
         mat("#3A2A5A", { roughness: 0.25, metalness: 0.5 })
@@ -432,7 +431,7 @@ function buildPark(scene) {
     new CylinderGeometry(0.5, 0.65, 0.25, 24),
     mat("#3A2A5A", { roughness: 0.2, metalness: 0.6 })
   );
-  firePit.position.set(-16, 0.14, -10);
+  firePit.position.set(-22, 0.14, -20);
   firePit.castShadow = true;
   lounge.add(firePit);
 
@@ -444,7 +443,7 @@ function buildPark(scene) {
       new CylinderGeometry(radius, radius + 0.05, 0.05, 24),
       fGlowMat
     );
-    fGlow.position.set(-16, 0.32 + (radius - 0.5) * 0.5, -10);
+    fGlow.position.set(-22, 0.32 + (radius - 0.5) * 0.5, -20);
     lounge.add(fGlow);
     loungeFireMats.push(fGlowMat);
   }
@@ -460,8 +459,8 @@ function buildPark(scene) {
     const segments = 32;
     for (let s = 0; s < segments; s++) {
       const ang = arcStart + (s / (segments - 1)) * arcAngle;
-      const ax = -16 + Math.cos(ang) * arcRadius;
-      const az = -10 + Math.sin(ang) * arcRadius;
+      const ax = -22 + Math.cos(ang) * arcRadius;
+      const az = -20 + Math.sin(ang) * arcRadius;
       const arcDot = new Mesh(
         new SphereGeometry(0.05, 4, 3),
         new MeshBasicMaterial({
@@ -479,8 +478,8 @@ function buildPark(scene) {
   for (let p = 0; p < 4; p++) {
     const pAng = Math.PI + (p / 3) * Math.PI * 0.65;
     const pr = 3.0;
-    const px = -16 + Math.cos(pAng) * pr;
-    const pz = -10 + Math.sin(pAng) * pr;
+    const px = -22 + Math.cos(pAng) * pr;
+    const pz = -20 + Math.sin(pAng) * pr;
     const pillarMat = new MeshBasicMaterial({
       color: new Color(p % 2 === 0 ? "#00D4F0" : "#A078FF"),
       depthWrite: false, transparent: true, opacity: 0.45,
@@ -509,7 +508,7 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.25 })
   );
   energyRing.rotation.x = -Math.PI / 2;
-  energyRing.position.set(-16, 0.07, -10);
+  energyRing.position.set(-22, 0.07, -20);
   energyRing.renderOrder = 1;
   lounge.add(energyRing);
   loungeNeonMats.push(energyRing.material);
@@ -518,7 +517,7 @@ function buildPark(scene) {
   scene.userData.loungeNeonMats = loungeNeonMats;
 
   scene.add(lounge);
-  createNeonSign(scene, -16, 4.5, -10, "VIBE  LOUNGE", "#C43BFF");
+  createNeonSign(scene, -22, 4.5, -20, "VIBE  LOUNGE", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 6. MUSIC LIBRARY — right-back, entrance faces plaza
@@ -531,7 +530,7 @@ function buildPark(scene) {
     mat("#162040", { roughness: 0.35, metalness: 0.35 })
   );
   libPlat.rotation.x = -Math.PI / 2;
-  libPlat.position.set(16, 0.002, -10);
+  libPlat.position.set(22, 0.002, -20);
   libPlat.receiveShadow = true;
   library.add(libPlat);
 
@@ -540,7 +539,7 @@ function buildPark(scene) {
     new CylinderGeometry(2.8, 3, 3.2, 16),
     mat("#1E2E4A", { roughness: 0.3, metalness: 0.35, transparent: true, opacity: 0.85, depthWrite: true })
   );
-  libBldg.position.set(16, 1.6, -10);
+  libBldg.position.set(22, 1.6, -20);
   libBldg.castShadow = true;
   library.add(libBldg);
 
@@ -551,7 +550,7 @@ function buildPark(scene) {
       new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide })
     );
     libRing.rotation.x = -Math.PI / 2;
-    libRing.position.set(16, ry, -10);
+    libRing.position.set(22, ry, -20);
     libRing.renderOrder = 1;
     library.add(libRing);
   }
@@ -571,7 +570,7 @@ function buildPark(scene) {
     new MeshBasicMaterial({ map: iconTex, depthWrite: false, side: THREE.DoubleSide })
   );
   iconDisc.rotation.x = -Math.PI / 2;
-  iconDisc.position.set(16, 3.25, -10);
+  iconDisc.position.set(22, 3.25, -20);
   iconDisc.renderOrder = 1;
   library.add(iconDisc);
 
@@ -580,12 +579,12 @@ function buildPark(scene) {
     new BoxGeometry(2.2, 3.0, 0.08),
     new MeshBasicMaterial({ color: new Color("#0080B8"), depthWrite: false, transparent: true, opacity: 0.65 })
   );
-  libEntrance.position.set(16 - 2.8, 1.5, -10);
+  libEntrance.position.set(22 - 2.8, 1.5, -20);
   libEntrance.rotation.y = Math.PI / 2;
   library.add(libEntrance);
 
   scene.add(library);
-  createNeonSign(scene, 16, 4.2, -10, "MUSIC  LIBRARY", "#00D4F0");
+  createNeonSign(scene, 22, 4.2, -20, "MUSIC  LIBRARY", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
   // 7. VISUALIZER DOME — lower-left, entrance facing Central Plaza
@@ -1032,11 +1031,11 @@ function buildPark(scene) {
   moon.shadow.mapSize.width = 2048;
   moon.shadow.mapSize.height = 2048;
   moon.shadow.camera.near = 0.5;
-  moon.shadow.camera.far = 80;
-  moon.shadow.camera.left = -45;
-  moon.shadow.camera.right = 45;
-  moon.shadow.camera.top = 38;
-  moon.shadow.camera.bottom = -38;
+  moon.shadow.camera.far = 100;
+  moon.shadow.camera.left = -55;
+  moon.shadow.camera.right = 55;
+  moon.shadow.camera.top = 48;
+  moon.shadow.camera.bottom = -48;
   moon.shadow.bias = -0.0006;
   scene.add(moon);
 
@@ -1088,14 +1087,14 @@ function buildPark(scene) {
   const loungeLight = new PointLight();
   loungeLight.color = new Color("#E040FB");
   loungeLight.intensity = 3.5; loungeLight.distance = 14;
-  loungeLight.position.set(-16, 2.5, -10);
+  loungeLight.position.set(-22, 2.5, -20);
   scene.add(loungeLight);
   scene.userData.loungeLight = loungeLight;
 
   const libraryLight = new PointLight();
   libraryLight.color = new Color("#00E5FF");
   libraryLight.intensity = 3.5; libraryLight.distance = 14;
-  libraryLight.position.set(16, 2.5, -10);
+  libraryLight.position.set(22, 2.5, -20);
   scene.add(libraryLight);
 
   const domeLight = new PointLight();
@@ -1125,10 +1124,10 @@ function buildPark(scene) {
   // adding any new geometry. Performance-friendly: intensity kept low.
   const neonAmbients = [
     // [x, y, z, color, distance, phaseOffset]
-    { pos: [8,  3.5,  -6], color: new Color("#0088FF"), distance: 18, phase: 0.0,    baseI: 1.2 }, // electric blue — stage-right
-    { pos: [-8, 3.5,  -6], color: new Color("#7C3AED"), distance: 18, phase: 1.6,    baseI: 1.2 }, // deep purple — stage-left
+    { pos: [8,  3.5, -14], color: new Color("#0088FF"), distance: 18, phase: 0.0,    baseI: 1.2 }, // electric blue — stage-right
+    { pos: [-8, 3.5, -14], color: new Color("#7C3AED"), distance: 18, phase: 1.6,    baseI: 1.2 }, // deep purple — stage-left
     { pos: [0,  4.0,   8], color: new Color("#00C8E8"), distance: 16, phase: 3.1,    baseI: 1.0 }, // cyan — beach entrance
-    { pos: [0,  3.5, -14], color: new Color("#9B4FFF"), distance: 14, phase: 4.7,    baseI: 0.9 }, // violet — behind stage
+    { pos: [0,  3.5, -24], color: new Color("#9B4FFF"), distance: 14, phase: 4.7,    baseI: 0.9 }, // violet — behind stage
   ].map(({ pos, color, distance, phase, baseI }) => {
     const light = new PointLight();
     light.color.copy(color);
@@ -1254,7 +1253,7 @@ function createCosmicSky(scene) {
   skybox.renderOrder = -1; // Always render behind everything
   scene.add(skybox);
 
-  scene.fog = new Fog("#101835", 62, 75);
+  scene.fog = new Fog("#101835", 75, 95);
 }
 
 // createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
@@ -1377,7 +1376,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       sceneRef.current = scene;
 
       const asp = rw / Math.max(rh, 1);
-      const camera = new PerspectiveCamera(52, asp, 0.1, 80);
+      const camera = new PerspectiveCamera(52, asp, 0.1, 100);
       cameraRef.current = camera;
       // Start directly BEHIND avatar (avatar faces -Z toward stage at spawn)
       // camYaw=0 → camera behind → at +Z from avatar (opposite of facing direction)
@@ -1694,8 +1693,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const finalCamAngle = rot + camYawSmoothRef.current;
 
         // Stage watching mode
-        const STAGE_LOOK_AT = new Vector3(0, 3.5, -16.4);
-        const STAGE_CAM_POS = new Vector3(0, 3.0, -4);
+        const STAGE_LOOK_AT = new Vector3(0, 3.5, -28.4);
+        const STAGE_CAM_POS = new Vector3(0, 3.0, -8);
 
         if (lockedRef.current) {
           camera.position.lerp(STAGE_CAM_POS, Math.min(1, 3.0 * dt));
@@ -2132,15 +2131,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
         // (attribute pixels are scaled by devicePixelRatio on retina/mobile)
         if (stageScreenPosRef) {
-          const ss = new Vector3(0, 3.5, -17.4);
+          const ss = new Vector3(0, 3.5, -28.4);
           const proj = ss.clone().project(camera);
           const rw = renderer.domElement.clientWidth || renderer.domElement.width;
           const rh = renderer.domElement.clientHeight || renderer.domElement.height;
           const cx = (proj.x * 0.5 + 0.5) * rw;
           const cy = (-proj.y * 0.5 + 0.5) * rh;
           // Project corners for size (screen is 14×7 centered at y=3.5)
-          const tl = new Vector3(-7.0, 7.0, -17.4).project(camera);
-          const br = new Vector3(7.0, 0.0, -17.4).project(camera);
+          const tl = new Vector3(-7.0, 7.0, -28.4).project(camera);
+          const br = new Vector3(7.0, 0.0, -28.4).project(camera);
           const sw = Math.abs((br.x - tl.x) * 0.5 * rw);
           const sh = Math.abs((-br.y + tl.y) * 0.5 * rh);
           stageScreenPosRef.current = { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh };
