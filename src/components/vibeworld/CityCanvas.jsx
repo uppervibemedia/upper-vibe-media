@@ -1296,7 +1296,7 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar }
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1307,8 +1307,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   onPosCbRef.current = onPositionChange;
   const onJukeboxProxRef = useRef(onJukeboxProximity);
   onJukeboxProxRef.current = onJukeboxProximity;
-  const djTrackRef = useRef(djTrack);
-  djTrackRef.current = djTrack;
 
   useEffect(() => {
     const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -1944,11 +1942,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             child.position.z = p.baseZ + Math.sin(t * 0.6 + p.phase) * 0.2;
           }
         });
-        animateZenBeach(scene, t, audioBeat);
-        const djIsPlaying = !!(djTrackRef.current && (audioIntensityRef?.current ?? 0) > 0.01);
-        animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0, djIsPlaying);
-        // Push current DJ track into scene for Now Playing display
-        if (djTrackRef.current) scene.userData.djNowPlayingTrack = djTrackRef.current;
+        animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         animateJukebox(scene, t, audioBeat);
         animateLaunchZone(scene, t, audioBeat, dt);
 

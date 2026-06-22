@@ -171,152 +171,80 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
   scene.userData._danceFloorTileData = floorTileMats;
 }
 
-// Beat detector — tracks rising edge of audioBeat for sharp snap effects
-let _prevBeat = 0;
-let _beatSnap = 0;         // sharp 0→1 impulse on detected beat
-let _beatSnapDecay = 0;    // decayed snap (used for tile flash)
-let _rippleT = 0;          // timestamp of last beat-triggered ripple
-let _djWasPlaying = false; // tracks DJ audio state for entry flash
-
 /**
  * animateDanceFloor — music-reactive floor with wave patterns,
  * light sweeps, rhythmic tile flashes, and ring pulses.
- * When djIsPlaying=true, adds sharp beat-sync tile pulses + ripple waves.
  */
-export function animateDanceFloor(scene, t, audioBeat, audioIntensity, djIsPlaying = false) {
+export function animateDanceFloor(scene, t, audioBeat, audioIntensity) {
   const rings = scene.userData._danceRings;
   const sweeps = scene.userData._danceSweeps;
   const dots = scene.userData._danceDots;
   const tileData = scene.userData._danceFloorTileData;
 
-  // ── Beat snap detection (sharp leading-edge pulse) ────────────────
-  const beatRise = audioBeat - _prevBeat;
-  if (beatRise > 0.12 && audioBeat > 0.22) {
-    _beatSnap = 1.0;
-    _rippleT = t;
-  }
-  _beatSnapDecay = _beatSnap * 0.82; // fast decay each call (~60fps = ~5 frames to half)
-  _beatSnap = _beatSnapDecay;
-  _prevBeat = audioBeat;
-
-  const djActive = djIsPlaying && audioIntensity > 0.03;
   const hasMusic = audioIntensity > 0.05;
-
-  // Base pulse — DJ mode uses sharper, higher-contrast values
-  const beatPulse = djActive
-    ? 0.5 + audioBeat * 1.1 + audioIntensity * 0.45 + _beatSnap * 0.55
-    : hasMusic
+  const beatPulse = hasMusic
     ? 0.6 + audioBeat * 0.6 + audioIntensity * 0.3
     : 0.5 + Math.sin(t * 0.8) * 0.12 + Math.sin(t * 1.3) * 0.08;
 
-  // ── Pulse rings — sharper beat snap in DJ mode ────────────────────
+  // ── Pulse rings — each with its own phase ────────────────
   if (rings) {
     for (let i = 0; i < rings.length; i++) {
       const r = rings[i];
-      if (r.mat?.opacity === undefined) continue;
+      if (!r.mat?.opacity !== undefined) continue;
       const wave = Math.sin(t * 1.2 + i * 0.7) * 0.5 + 0.5;
-      let opacity = r.baseOpacity * (0.7 + beatPulse * 0.5 + wave * 0.15);
-      if (djActive) {
-        // Hard flash on beat snap — rings strobe outward in sequence
-        const ringDelay = i * 0.06; // stagger outward ring by ring
-        const snapAmt = Math.max(0, _beatSnap - ringDelay);
-        opacity = Math.min(1.0, opacity + snapAmt * 0.85);
-        // Color flash: cycle rings between cyan and pink on beat
-        const snap01 = Math.min(1, snapAmt * 3);
-        const baseCyan = new Color(r.color || "#00D4F0");
-        const flashWhite = new Color("#FFFFFF");
-        r.mat.color.copy(baseCyan).lerp(flashWhite, snap01 * 0.45);
-      }
-      r.mat.opacity = Math.min(1.0, opacity);
+      r.mat.opacity = r.baseOpacity * (0.7 + beatPulse * 0.5 + wave * 0.15);
     }
   }
 
-  // ── Light sweeps — faster + brighter in DJ mode ───────────────────
+  // ── Light sweeps — rotating arcs with fade ───────────────
   if (sweeps) {
     for (const s of sweeps) {
-      if (s.mat?.opacity === undefined) continue;
+      if (!s.mat?.opacity !== undefined) continue;
       const sw = s.sweep;
-      const speed = djActive ? sw.userData.sweepSpeed * 2.2 : sw.userData.sweepSpeed;
-      sw.rotation.z += 0.003 * speed;
-      const sweepWave = Math.sin(t * sw.userData.sweepSpeed + s.phase) * 0.5 + 0.5;
-      let opacity = sweepWave * sw.userData.baseOpacity * beatPulse;
-      if (djActive) opacity = Math.min(0.85, opacity + _beatSnap * 0.35);
-      s.mat.opacity = opacity;
+      // Rotate sweep position
+      sw.rotation.z += 0.003 * s.sweep.userData.sweepSpeed;
+      // Pulse opacity with beat
+      const sweepWave = Math.sin(t * s.sweep.userData.sweepSpeed + s.phase) * 0.5 + 0.5;
+      s.mat.opacity = sweepWave * s.sweep.userData.baseOpacity * beatPulse;
     }
   }
 
-  // ── Edge dots — chase pattern in DJ mode ─────────────────────────
+  // ── Edge dots — sequential glowing ─────────────────────
   if (dots) {
-    for (let i = 0; i < dots.length; i++) {
-      const d = dots[i];
-      if (d.mat?.opacity === undefined) continue;
+    for (const d of dots) {
+      if (!d.mat?.opacity !== undefined) continue;
       const wave = Math.sin(t * 2.5 + d.dot.userData.phase) * 0.5 + 0.5;
-      let opacity = d.dot.userData.baseOpacity * (0.5 + beatPulse * 0.5 + wave * 0.25);
-      if (djActive) {
-        // Chase effect: lights travel around the perimeter in sync with beat
-        const chaseAngle = (t * 2.5) % (Math.PI * 2);
-        const dotAngle = (i / dots.length) * Math.PI * 2;
-        const angleDiff = Math.abs(((dotAngle - chaseAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
-        const chaseGlow = Math.max(0, 1 - angleDiff / 0.8);
-        opacity = Math.min(1.0, opacity + chaseGlow * 0.7 + _beatSnap * 0.5);
-      }
-      d.mat.opacity = opacity;
+      d.mat.opacity = d.dot.userData.baseOpacity * (0.5 + beatPulse * 0.5 + wave * 0.25);
     }
   }
 
-  // ── Tile grid — beat-ripple wave from center in DJ mode ──────────
+  // ── Tile grid — music-reactive wave patterns ────────────
+  // Flash individual tiles in wave-like patterns based on beat
   if (tileData) {
-    const PLAZA_X = 0, PLAZA_Z = -4;
-    const timeSinceRipple = t - _rippleT;
-
     for (const td of tileData) {
       if (!td.mat?.color) continue;
       const tile = td.tile;
       const p = tile.userData;
 
-      if (djActive) {
-        // Distance from floor center — used for ripple timing
-        const dx = p.baseX - PLAZA_X;
-        const dz = p.baseZ - PLAZA_Z;
-        const dist = Math.sqrt(dx * dx + dz * dz);
+      // Each tile pulses to its own phase + the global beat
+      const tileWave = Math.sin(t * 1.5 + p.phase + audioBeat * 3) * 0.5 + 0.5;
+      const intensity = Math.max(0, tileWave * beatPulse * 0.7);
 
-        // Outward ripple: wave front travels at ~3 units/sec from center on beat
-        const RIPPLE_SPEED = 3.0;
-        const rippleFront = timeSinceRipple * RIPPLE_SPEED;
-        const rippleWidth = 1.8;
-        const rippleDiff = Math.abs(dist - rippleFront);
-        const rippleGlow = rippleDiff < rippleWidth
-          ? Math.max(0, 1 - rippleDiff / rippleWidth) * Math.max(0, 1 - timeSinceRipple * 1.2)
-          : 0;
+      // Brighten the tile based on music — 50% brighter base
+      const baseColor = new Color(p.baseColor);
+      const brightColor = new Color(p.baseColor).multiplyScalar(2.5 + audioBeat * 2.5);
+      td.mat.color.copy(baseColor).lerp(brightColor, intensity);
+      td.mat.opacity = 0.28 + intensity * 0.65;
+    }
+  }
 
-        // Per-tile wave (ambient shimmer between beats)
-        const tileWave = Math.sin(t * 2.0 + p.phase + dist * 0.8) * 0.5 + 0.5;
-        const beatBoost = audioBeat * 1.2 + audioIntensity * 0.5;
-        const intensity = Math.max(0, tileWave * 0.4 + beatBoost * 0.5 + rippleGlow * 0.9);
-
-        // Color: flash toward white on ripple, then back to base
-        const baseColor = new Color(p.baseColor);
-        const rippleColor = new Color("#FFFFFF");
-        const beatColor = new Color(p.baseColor).multiplyScalar(3.5 + audioBeat * 3.0);
-        td.mat.color.copy(baseColor).lerp(beatColor, Math.min(1, intensity * 0.6));
-        if (rippleGlow > 0.15) {
-          td.mat.color.lerp(rippleColor, rippleGlow * 0.55);
-        }
-        td.mat.opacity = Math.min(0.95, 0.22 + intensity * 0.75);
-
-        // Slight Z-lift on beat snap (tiles "pop" upward briefly)
-        const lift = _beatSnap * 0.04 * (1 - dist / 8);
-        tile.position.y = 0.007 + Math.max(0, lift);
-
-      } else {
-        // Normal mode — ambient shimmer
-        const tileWave = Math.sin(t * 1.5 + p.phase + audioBeat * 3) * 0.5 + 0.5;
-        const intensity = Math.max(0, tileWave * beatPulse * 0.7);
-        const baseColor = new Color(p.baseColor);
-        const brightColor = new Color(p.baseColor).multiplyScalar(2.5 + audioBeat * 2.5);
-        td.mat.color.copy(baseColor).lerp(brightColor, intensity);
-        td.mat.opacity = 0.28 + intensity * 0.65;
-        tile.position.y = 0.007;
+  // ── Also pulse the central UVC ring materials ────────────
+  const uvcMats = scene.userData.danceFloorMats;
+  if (uvcMats) {
+    for (let i = 0; i < Math.min(5, uvcMats.length); i++) {
+      const m = uvcMats[i];
+      if (m?.opacity !== undefined) {
+        // Keep these in range for the ring materials which are first in the array
       }
     }
   }
