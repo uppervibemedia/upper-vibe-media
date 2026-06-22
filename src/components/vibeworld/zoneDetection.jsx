@@ -58,11 +58,11 @@ const ZONES = {
     cx: -28, cz: 5, radius: 5,
     icon: "GraduationCap",
   },
-  shop: {
-    name: "Vibe Shop",
-    id: "shop",
-    cx: 22, cz: 5, radius: 4.5,
-    icon: "ShoppingBag",
+  ferriswheel: {
+    name: "Neon Vibe Wheel",
+    id: "ferriswheel",
+    cx: 22, cz: 5, radius: 6.0,
+    icon: "Ferris",
   },
   launchzone: {
     name: "Vibe Launch Zone",

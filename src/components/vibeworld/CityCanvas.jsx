@@ -2,7 +2,9 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
-import createVibeShop from "./VibeShop";
+// Vibe Shop is temporarily disabled — replaced by Ferris Wheel
+// import createVibeShop from "./VibeShop";
+import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_INTERACT_RADIUS, getRidePosition, NUM_CABINS, WHEEL_RADIUS } from "./FerrisWheel";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
@@ -60,7 +62,14 @@ const IDLE_ORBIT_SPEED = 0.18; // radians/sec for idle orbit (very slow)
 
 // Tree collisions — radius 0.6 per tree
 const TREE_R = 0.5;
-const COLLISION_BOXES = TREE_POSITIONS.map(([tx, tz]) => [tx, tz, TREE_R, TREE_R]);
+const COLLISION_BOXES = [
+  ...TREE_POSITIONS.map(([tx, tz]) => [tx, tz, TREE_R, TREE_R]),
+  // Ferris wheel support legs collision (two legs at x=22±1.8, z=5)
+  [22 - 1.5, 5, 0.5, 0.5],
+  [22 + 1.5, 5, 0.5, 0.5],
+  // Ferris wheel center base collision
+  [22, 5, 1.0, 1.0],
+];
 
 // ─── UTILITIES ────────────────────────────────────────────────
 function circleVsCircle(x1, z1, r1, x2, z2, r2) {
@@ -915,9 +924,9 @@ function buildPark(scene) {
   createHoverboardZone(scene);
 
   // ═════════════════════════════════════════════════════════════
-  // 8.7. VIBE SHOP — far right, opposite Academy
+  // 8.7. NEON VIBE WHEEL — far right (Vibe Shop temporarily disabled)
   // ═════════════════════════════════════════════════════════════
-  const { SHOP_X, SHOP_Z } = createVibeShop(scene);
+  createFerrisWheel(scene);
 
   // ═════════════════════════════════════════════════════════════
   // 9. CITY EDGE BUILDINGS — framing the perimeter
@@ -1361,6 +1370,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   isDancingRef.current = isDancing;
   const hbRidingRef = useRef(false);
   hbRidingRef.current = hbRiding;
+
   const activeEmoteRef = useRef(null);
   activeEmoteRef.current = activeEmote;
   const lastTimeRef = useRef(0);
@@ -2033,6 +2043,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
         animateLaunchZone(scene, t, audioBeat, dt);
         animateHoverboardZone(scene, t, audioBeat);
+        animateFerrisWheel(scene, t, audioBeat);
 
         // ── WATER SPLASH — hoverboard spray when rider is in the ocean zone ──
         const splash = splashParticlesRef.current;

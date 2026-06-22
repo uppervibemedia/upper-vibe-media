@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, Sun, X, UserCircle,
   Compass, Sparkles, Library, SkipForward,
-  Volume2, VolumeX, BookOpen, GraduationCap, ShoppingBag, Bell, Waves,
+  Volume2, VolumeX, BookOpen, GraduationCap, Bell, Waves,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
@@ -14,7 +14,9 @@ import VisualizerPanel from "./panels/VisualizerPanel";
 import VibeCheckPanel from "./panels/VibeCheckPanel";
 import PrivateChatPanel from "./panels/PrivateChatPanel";
 import AcademyPanel from "./panels/AcademyPanel";
-import ShopPanel from "./panels/ShopPanel";
+// ShopPanel temporarily disabled
+// import ShopPanel from "./panels/ShopPanel";
+import FerrisWheelPanel from "./panels/FerrisWheelPanel";
 import ZenBeachPanel from "./panels/ZenBeachPanel";
 import EmotePanel from "./panels/EmotePanel";
 import JukeboxPanel from "./panels/JukeboxPanel";
@@ -34,7 +36,7 @@ const ZONE_ICONS = {
   beach: Sun,
   zenbeach: Waves,
   academy: GraduationCap,
-  shop: ShoppingBag,
+  ferriswheel: Sparkles,
 };
 
 export default function WorldHUD({
@@ -89,6 +91,7 @@ export default function WorldHUD({
   onEditAvatar,
   nearJukebox = false,
   djTrack = null,
+  onFerrisRideChange,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -124,7 +127,8 @@ export default function WorldHUD({
   const [visualizerOpen, setVisualizerOpen] = useState(false);
   const [vibeCheckOpen, setVibeCheckOpen] = useState(false);
   const [academyOpen, setAcademyOpen] = useState(false);
-  const [shopOpen, setShopOpen] = useState(false);
+  const [ferrisWheelOpen, setFerrisWheelOpen] = useState(false);
+  const [isRiding, setIsRiding] = useState(false);
   const [zenBeachOpen, setZenBeachOpen] = useState(false);
   const [emotePanelOpen, setEmotePanelOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
@@ -888,9 +892,9 @@ export default function WorldHUD({
           </motion.div>
         )}
 
-        {zone?.id === "shop" && (
+        {zone?.id === "ferriswheel" && !isRiding && (
           <motion.div
-            key="shop-actions"
+            key="ferriswheel-actions"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
@@ -904,19 +908,18 @@ export default function WorldHUD({
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); setShopOpen(true); onMobileModalChange?.(true); }}
+              onClick={() => { hapticTap(); setFerrisWheelOpen(true); onMobileModalChange?.(true); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
-                background: "linear-gradient(135deg,#7C3AED,#00D4F0)",
-                color: "#fff",
-                boxShadow: "0 0 20px rgba(124,58,237,0.4)",
+                background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
+                color: "#000",
+                boxShadow: "0 0 20px rgba(0,184,212,0.4)",
                 minHeight: "44px",
                 touchAction: "manipulation",
                 pointerEvents: "auto",
               }}
             >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              Browse Shop
+              🎡 Ride the Wheel
             </button>
           </motion.div>
         )}
@@ -1021,10 +1024,22 @@ export default function WorldHUD({
         isMobile={isMobile}
       />
 
-      {/* ── Shop Panel (slide-up) ──────────────────────────────── */}
-      <ShopPanel
-        open={shopOpen}
-        onClose={() => { setShopOpen(false); onMobileModalChange?.(false); }}
+      {/* ── Ferris Wheel Panel ────────────────────────────────────── */}
+      <FerrisWheelPanel
+        open={ferrisWheelOpen}
+        onClose={() => { setFerrisWheelOpen(false); onMobileModalChange?.(false); }}
+        onRide={() => {
+          setFerrisWheelOpen(false);
+          setIsRiding(true);
+          onFerrisRideChange?.(true);
+          onMobileModalChange?.(false);
+        }}
+        isRiding={isRiding}
+        onExitRide={() => {
+          setIsRiding(false);
+          onFerrisRideChange?.(false);
+          try { navigator?.vibrate?.(15); } catch {}
+        }}
         isMobile={isMobile}
       />
 
