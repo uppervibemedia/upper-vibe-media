@@ -1413,8 +1413,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (savedColor) {
           // Map outfitColorKey to hex — matches OUTFIT_COLORS in AvatarSetup
           const COLOR_MAP = {
-            "electric-blue":  "#00AADD",
+            "cosmic-blue":    "#00AADD",
             "neon-purple":    "#7B2FFF",
+            "shadow-black":   "#080A0F",
+            "rose-glow":      "#CC2288",
+            "gold-aura":      "#CC9900",
+            // legacy keys
+            "electric-blue":  "#00AADD",
             "cosmic-black":   "#080A0F",
             "white-silver":   "#C8D4E0",
             "pink-rose":      "#CC2288",
