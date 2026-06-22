@@ -7,6 +7,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from "@/api/base44Client";
+import { getOrbBank, getZoneBests } from "@/lib/orbBank";
 
 const CACHE_KEY = "vibeOrbLeaderboardCache";
 const REFRESH_MS = 30_000; // re-fetch every 30s
@@ -30,6 +31,7 @@ const RANK_ICONS  = ["👑", "⚡", "✦"];
 
 export default function OrbLeaderboard({ visible, isMobile, currentUserId, currentUserOrbs, currentUsername }) {
   const [entries, setEntries] = useState([]);
+  const [zoneBests, setZoneBests] = useState(() => getZoneBests());
   const cacheRef = useRef(loadCache());
   const fetchTimerRef = useRef(null);
 
@@ -90,6 +92,7 @@ export default function OrbLeaderboard({ visible, isMobile, currentUserId, curre
   // Update own score in entries whenever it changes
   useEffect(() => {
     mergeAndSort([]);
+    setZoneBests(getZoneBests());
   }, [currentUserOrbs, currentUserId]);
 
   if (!visible) return null;
@@ -192,6 +195,28 @@ export default function OrbLeaderboard({ visible, isMobile, currentUserId, curre
                 })
               )}
             </div>
+
+            {/* Zone bests */}
+            {(zoneBests.launch > 0 || zoneBests.beach > 0) && (
+              <div
+                className="px-2 pb-1.5 flex flex-col gap-0.5"
+                style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
+              >
+                <span className="px-1 pt-1" style={{ fontSize: "6px", color: "rgba(255,255,255,0.2)", letterSpacing: "0.12em" }}>YOUR ZONE BESTS</span>
+                {zoneBests.launch > 0 && (
+                  <div className="flex items-center justify-between px-1.5 py-0.5 rounded" style={{ background: "rgba(0,229,255,0.06)" }}>
+                    <span style={{ fontSize: "8px", color: "rgba(0,229,255,0.6)" }}>🚀 Launch</span>
+                    <span className="font-black" style={{ fontSize: "9px", color: "#00E5FF" }}>{zoneBests.launch}</span>
+                  </div>
+                )}
+                {zoneBests.beach > 0 && (
+                  <div className="flex items-center justify-between px-1.5 py-0.5 rounded" style={{ background: "rgba(255,215,0,0.06)" }}>
+                    <span style={{ fontSize: "8px", color: "rgba(255,215,0,0.6)" }}>⚡ Beach</span>
+                    <span className="font-black" style={{ fontSize: "9px", color: "#FFD700" }}>{zoneBests.beach}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Footer label */}
             <div

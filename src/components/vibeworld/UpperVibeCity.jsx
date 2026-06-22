@@ -24,6 +24,7 @@ import OrbLeaderboard from "@/components/vibeworld/OrbLeaderboard";
 import useWorldDJStream from "@/hooks/useWorldDJStream";
 import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
+import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/orbBank";
 
 export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
@@ -46,13 +47,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const launchRef = useRef(null);
   const [nearLaunchPad, setNearLaunchPad] = useState(false);
   const [isAirborne, setIsAirborne] = useState(false);
-  const [orbCount, setOrbCount] = useState(0);
+  const [orbCount, setOrbCount] = useState(0);         // launch session orbs
+  const [launchSessionOrbs, setLaunchSessionOrbs] = useState(0); // tracked per launch
+  const launchSessionRef = useRef(0);
   // ── Hoverboard Ring Run state ─────────────────────────────────
   const [nearHoverboard, setNearHoverboard] = useState(false);
   const [hbRiding, setHbRiding] = useState(false);
-  const [lifetimeOrbs, setLifetimeOrbs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("vibeOrbData") || "{}")?.lifetimeVibeOrbs ?? 0; } catch { return 0; }
-  });
+  const [orbBank, setOrbBank] = useState(() => getOrbBank());
 
   const jukeboxFadeRef = useRef(null);        // kept for cleanup compat
 
@@ -721,12 +722,21 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onNearPad={(padIdx, airborne, orbs) => {
             setNearLaunchPad(padIdx >= 0 && !airborne);
             setIsAirborne(airborne);
+
+            // Detect when a launch session ends (landed) — add to bank
+            const prevAirborne = launchSessionRef.current > 0 && !airborne;
+            if (prevAirborne && orbs > launchSessionRef.current) {
+              const earned = orbs - launchSessionRef.current;
+              const newBank = addToOrbBank(earned);
+              updateZoneBest("launch", orbs);
+              setOrbBank(newBank);
+            }
+            // Track per-session starts
+            if (airborne && !isAirborne) launchSessionRef.current = orbs;
+            if (!airborne) launchSessionRef.current = 0;
+
             setOrbCount(orbs);
-            // Sync lifetime orbs from storage whenever orb count changes
-            try {
-              const lt = JSON.parse(localStorage.getItem("vibeOrbData") || "{}")?.lifetimeVibeOrbs ?? 0;
-              setLifetimeOrbs(lt);
-            } catch {}
+            setLaunchSessionOrbs(orbs);
           }}
         />
       </div>
@@ -965,17 +975,25 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             transform: "translateX(-50%)",
           }}
         >
-          {/* Orb counter — always visible when any have been collected */}
-          {orbCount > 0 && (
+          {/* Session + bank row */}
+          <div className="flex items-center gap-2">
+            {orbCount > 0 && (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black pointer-events-none"
+                style={{ background: "rgba(0,229,255,0.12)", border: "1px solid rgba(0,229,255,0.3)", color: "#00E5FF", backdropFilter: "blur(8px)" }}
+              >
+                ✦ {orbCount} this run
+              </div>
+            )}
             <div
               className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black pointer-events-none"
-              style={{ background: "rgba(0,229,255,0.12)", border: "1px solid rgba(0,229,255,0.3)", color: "#00E5FF", backdropFilter: "blur(8px)" }}
+              style={{ background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)", color: "#FFD700", backdropFilter: "blur(8px)" }}
             >
-              ✦ {orbCount} Vibe {orbCount === 1 ? "Orb" : "Orbs"}
+              🪙 {orbBank} Bank
             </div>
-          )}
+          </div>
 
-          {/* Launch button — only when standing on pad, not airborne */}
+          {/* Launch button */}
           {nearLaunchPad && !isAirborne && (
             <button
               onClick={() => { try { navigator?.vibrate?.(30); } catch {} launchRef.current?.(); }}
@@ -992,7 +1010,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             </button>
           )}
 
-          {/* Airborne indicator */}
           {isAirborne && (
             <div
               className="px-5 py-1.5 rounded-full font-black text-[11px] tracking-widest pointer-events-none"
@@ -1022,7 +1039,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         visible={!loading && (nearLaunchPad || isAirborne || (Math.abs(playerPos.x) < 12 && playerPos.z > 5 && playerPos.z < 20))}
         isMobile={isMobile}
         currentUserId={user?.id}
-        currentUserOrbs={lifetimeOrbs}
+        currentUserOrbs={orbBank}
         currentUsername={user?.full_name || "You"}
       />
 

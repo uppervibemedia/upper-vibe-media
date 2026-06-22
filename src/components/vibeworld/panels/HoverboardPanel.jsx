@@ -1,38 +1,46 @@
 /**
  * HoverboardPanel — Neon Surf Beach zone HUD.
- * Idle: centered bottom invite card.
- * Riding: compact top-RIGHT corner HUD (matching Vibe Launch style).
+ * - Session Orbs: collected this ride
+ * - Total Orb Bank: shared lifetime currency (written via orbBank.js)
+ * - Zone best: beach personal record
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, Trophy, Wind, Star } from "lucide-react";
+import { X, Zap, Trophy, Wind, Star, Coins } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests, syncBankToAccount } from "@/lib/orbBank";
 
 export default function HoverboardPanel({ visible, isMobile, user, onStartRide, onEndRide }) {
   const [phase, setPhase] = useState("idle");
-  const [orbsCollected, setOrbsCollected] = useState(0);
-  const [totalOrbs, setTotalOrbs] = useState(() => {
-    try { return parseInt(localStorage.getItem("hb_total_orbs") || "0", 10); } catch { return 0; }
-  });
+  const [sessionOrbs, setSessionOrbs] = useState(0);
+  const [orbBank, setOrbBank] = useState(() => getOrbBank());
+  const [zoneBest, setZoneBest] = useState(() => getZoneBests().beach ?? 0);
   const [boostFlash, setBoostFlash] = useState(false);
   const [launchFlash, setLaunchFlash] = useState(false);
   const [trailUnlocked, setTrailUnlocked] = useState(false);
 
   const phaseRef = useRef("idle");
-  const orbsRef = useRef(0);
+  const sessionRef = useRef(0);
   const onEndRideRef = useRef(onEndRide);
   const onStartRideRef = useRef(onStartRide);
   useEffect(() => { onEndRideRef.current = onEndRide; }, [onEndRide]);
   useEffect(() => { onStartRideRef.current = onStartRide; }, [onStartRide]);
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
+  // Sync bank total from user account on mount
   useEffect(() => {
-    if (user?.hb_total_orbs) setTotalOrbs(user.hb_total_orbs);
+    if (user?.hb_total_orbs) {
+      const stored = getOrbBank();
+      if (user.hb_total_orbs > stored) {
+        try { localStorage.setItem("uvc_orb_bank_total", String(user.hb_total_orbs)); } catch {}
+        setOrbBank(user.hb_total_orbs);
+      }
+    }
   }, [user?.hb_total_orbs]);
 
   const startRide = useCallback(() => {
-    orbsRef.current = 0;
-    setOrbsCollected(0);
+    sessionRef.current = 0;
+    setSessionOrbs(0);
     setBoostFlash(false);
     phaseRef.current = "riding";
     setPhase("riding");
@@ -45,24 +53,24 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
     setPhase("idle");
     onEndRideRef.current?.();
 
-    const newTotal = totalOrbs + orbsRef.current;
-    setTotalOrbs(newTotal);
-    try { localStorage.setItem("hb_total_orbs", String(newTotal)); } catch {}
+    const earned = sessionRef.current;
+    if (earned > 0) {
+      const newBank = addToOrbBank(earned);
+      setOrbBank(newBank);
+      const best = updateZoneBest("beach", earned);
+      setZoneBest(best);
 
-    const didUnlock = orbsRef.current >= 5;
-    if (didUnlock) {
-      setTrailUnlocked(true);
-      try { base44.auth.updateMe({ trail_boost_unlocked: true, hb_total_orbs: newTotal }); } catch {}
-    } else {
-      try { base44.auth.updateMe({ hb_total_orbs: newTotal }); } catch {}
+      const didUnlock = newBank >= 5 || earned >= 5;
+      syncBankToAccount(base44, didUnlock ? { trail_boost_unlocked: true } : {});
+      if (didUnlock) setTrailUnlocked(true);
     }
-  }, [totalOrbs]);
+  }, []);
 
   useEffect(() => {
     window.__hbCollectOrb = (orbId) => {
       if (phaseRef.current !== "riding") return;
-      orbsRef.current += 1;
-      setOrbsCollected(c => c + 1);
+      sessionRef.current += 1;
+      setSessionOrbs(c => c + 1);
     };
     window.__hbBoostTriggered = () => {
       if (phaseRef.current !== "riding") return;
@@ -79,12 +87,9 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
 
   if (!visible) return null;
 
-  // Idle invite panel — bottom-center
   const PANEL_BOTTOM = isMobile
     ? "calc(140px + env(safe-area-inset-bottom, 0px))"
     : "80px";
-
-  // Riding HUD top offset — below the top bar (matches Vibe Launch style)
   const HUD_TOP = isMobile
     ? "calc(env(safe-area-inset-top, 0px) + 56px)"
     : "68px";
@@ -116,12 +121,19 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
               <span className="font-black text-white text-sm tracking-wider">NEON SURF BEACH</span>
             </div>
 
-            {totalOrbs > 0 && (
-              <div className="flex items-center gap-1.5 text-[10px]" style={{ color: "#FFD700" }}>
-                <Trophy className="w-3 h-3" />
-                <span>Total orbs: <strong>{totalOrbs}</strong></span>
+            {/* Stats row */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-[11px]" style={{ color: "#FFD700" }}>
+                <Coins className="w-3 h-3" />
+                <span>Bank: <strong>{orbBank}</strong></span>
               </div>
-            )}
+              {zoneBest > 0 && (
+                <div className="flex items-center gap-1.5 text-[11px]" style={{ color: "rgba(0,229,255,0.7)" }}>
+                  <Trophy className="w-3 h-3" />
+                  <span>Best: <strong>{zoneBest}</strong></span>
+                </div>
+              )}
+            </div>
 
             {trailUnlocked && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-black"
@@ -159,14 +171,9 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
           exit={{ opacity: 0, x: 20 }}
           transition={{ duration: 0.2 }}
           className="fixed z-[65] pointer-events-none"
-          style={{
-            top: HUD_TOP,
-            right: isMobile ? "8px" : "14px",
-            width: isMobile ? "130px" : "148px",
-          }}
+          style={{ top: HUD_TOP, right: isMobile ? "8px" : "14px", width: isMobile ? "136px" : "152px" }}
         >
-          <div
-            className="rounded-2xl overflow-hidden"
+          <div className="rounded-2xl overflow-hidden"
             style={{
               background: "rgba(4,2,20,0.88)",
               border: "1px solid rgba(0,229,255,0.28)",
@@ -174,20 +181,27 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
               boxShadow: "0 0 20px rgba(0,184,212,0.12)",
             }}
           >
-            {/* Orb count row */}
+            {/* Session orbs */}
             <div className="flex items-center gap-2 px-3 py-2">
               <Star className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#00E5FF" }} />
               <div className="flex flex-col flex-1">
-                <span className="font-black tracking-widest" style={{ fontSize: "7px", color: "rgba(0,229,255,0.55)" }}>ORBS</span>
-                <span className="font-black text-white leading-none" style={{ fontSize: "18px" }}>{orbsCollected}</span>
+                <span className="font-black tracking-widest" style={{ fontSize: "7px", color: "rgba(0,229,255,0.55)" }}>SESSION</span>
+                <span className="font-black text-white leading-none" style={{ fontSize: "18px" }}>{sessionOrbs}</span>
               </div>
-              {trailUnlocked || orbsCollected >= 5 ? (
-                <Wind className="w-3 h-3 flex-shrink-0" style={{ color: "#FFD700" }} />
-              ) : null}
+              {trailUnlocked && <Wind className="w-3 h-3 flex-shrink-0" style={{ color: "#FFD700" }} />}
+            </div>
+
+            {/* Bank row */}
+            <div className="flex items-center gap-1.5 px-3 pb-1.5">
+              <Coins className="w-3 h-3 flex-shrink-0" style={{ color: "#FFD700" }} />
+              <div className="flex flex-col flex-1">
+                <span className="font-black tracking-widest" style={{ fontSize: "6px", color: "rgba(255,215,0,0.5)" }}>BANK</span>
+                <span className="font-black" style={{ fontSize: "12px", color: "#FFD700" }}>{orbBank + sessionOrbs}</span>
+              </div>
             </div>
 
             {/* Trail Boost badge */}
-            {orbsCollected >= 5 && (
+            {sessionOrbs >= 5 && (
               <div
                 className="mx-2 mb-1.5 flex items-center justify-center gap-1 rounded-lg py-0.5"
                 style={{ background: "rgba(255,215,0,0.12)", border: "1px solid rgba(255,215,0,0.3)" }}
@@ -208,23 +222,12 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
             </div>
           </div>
 
-          {/* Speed boost flash — floats above HUD */}
+          {/* Boost flash */}
           <AnimatePresence>
             {boostFlash && (
-              <motion.div
-                key="boost"
-                initial={{ opacity: 1, scale: 1, y: 0 }}
-                animate={{ opacity: 0, scale: 1.4, y: -36 }}
-                exit={{}}
-                transition={{ duration: 0.9 }}
+              <motion.div key="boost" initial={{ opacity: 1, scale: 1, y: 0 }} animate={{ opacity: 0, scale: 1.4, y: -36 }} exit={{}} transition={{ duration: 0.9 }}
                 className="absolute right-0 font-black pointer-events-none"
-                style={{
-                  top: -8,
-                  fontSize: "13px",
-                  color: "#00FF88",
-                  textShadow: "0 0 20px #00FF88",
-                  whiteSpace: "nowrap",
-                }}
+                style={{ top: -8, fontSize: "13px", color: "#00FF88", textShadow: "0 0 20px #00FF88", whiteSpace: "nowrap" }}
               >
                 ⚡ SPEED!
               </motion.div>
@@ -234,20 +237,9 @@ export default function HoverboardPanel({ visible, isMobile, user, onStartRide, 
           {/* Launch flash */}
           <AnimatePresence>
             {launchFlash && (
-              <motion.div
-                key="launch"
-                initial={{ opacity: 1, scale: 1, y: 0 }}
-                animate={{ opacity: 0, scale: 1.4, y: -40 }}
-                exit={{}}
-                transition={{ duration: 1.2 }}
+              <motion.div key="launch" initial={{ opacity: 1, scale: 1, y: 0 }} animate={{ opacity: 0, scale: 1.4, y: -40 }} exit={{}} transition={{ duration: 1.2 }}
                 className="absolute right-0 font-black pointer-events-none"
-                style={{
-                  top: -8,
-                  fontSize: "13px",
-                  color: "#FF9900",
-                  textShadow: "0 0 20px #FF6600",
-                  whiteSpace: "nowrap",
-                }}
+                style={{ top: -8, fontSize: "13px", color: "#FF9900", textShadow: "0 0 20px #FF6600", whiteSpace: "nowrap" }}
               >
                 🚀 LAUNCH!
               </motion.div>

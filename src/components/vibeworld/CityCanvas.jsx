@@ -959,7 +959,7 @@ function buildPark(scene) {
 
   // 10. BEACH — wider sand strip for the hoverboard course
   const beachGeo = new PlaneGeometry(68, 24);
-  const beach = new Mesh(beachGeo, mat("#C8A878", { roughness: 0.5 }));
+  const beach = new Mesh(beachGeo, mat("#D4AA70", { roughness: 0.55, metalness: 0.0 }));
   beach.rotation.x = -Math.PI / 2;
   beach.position.set(0, 0.001, 24);
   beach.receiveShadow = true;
@@ -1053,12 +1053,36 @@ function buildPark(scene) {
   hemiLight.intensity = 0.7;
   scene.add(hemiLight);
 
+  // ── BEACH LIGHTING — much brighter and warmer than city interior ──
   const beachLight = new PointLight();
-  beachLight.color = new Color("#55AADD");
-  beachLight.intensity = 3.5;
-  beachLight.distance = 30;
-  beachLight.position.set(0, 3, SHORELINE_Z + 4);
+  beachLight.color = new Color("#FFE0A0");
+  beachLight.intensity = 6.0;
+  beachLight.distance = 42;
+  beachLight.position.set(0, 5, SHORELINE_Z + 6);
   scene.add(beachLight);
+
+  // Warm sun fills from above-left and above-right
+  const beachSunL = new PointLight();
+  beachSunL.color = new Color("#FFD580");
+  beachSunL.intensity = 4.5;
+  beachSunL.distance = 36;
+  beachSunL.position.set(-20, 7, SHORELINE_Z + 8);
+  scene.add(beachSunL);
+
+  const beachSunR = new PointLight();
+  beachSunR.color = new Color("#FFC060");
+  beachSunR.intensity = 4.5;
+  beachSunR.distance = 36;
+  beachSunR.position.set(20, 7, SHORELINE_Z + 8);
+  scene.add(beachSunR);
+
+  // Ocean reflection — cool blue-cyan shimmer on the water surface
+  const oceanReflect = new PointLight();
+  oceanReflect.color = new Color("#40D4FF");
+  oceanReflect.intensity = 3.5;
+  oceanReflect.distance = 28;
+  oceanReflect.position.set(0, 2, SHORELINE_Z + 20);
+  scene.add(oceanReflect);
 
   // Zone point lights — bright neon glow per zone
   const loungeLight = new PointLight();
