@@ -372,7 +372,7 @@ export function animateFerrisWheel(scene, t, audioBeat) {
   if (!fw) return;
 
   // Smooth continuous rotation — ~35s per revolution
-  const angle = t * 0.18;
+  const angle = -(t * 0.18);
   fw.wheelGroup.rotation.z = angle;
 
   // Counter-rotate each gondola to stay upright
