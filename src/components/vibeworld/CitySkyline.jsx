@@ -286,7 +286,7 @@ export default function createCitySkyline(scene) {
   northBack.forEach((a) => addSkyscraper(...a));
 
   // ══════════════════════════════════════════════════════════════
-  // EAST WING — x=38, every 3 units from z=-35 to z=14 (no beach)
+  // EAST WING — x=38, every 3 units from z=-35 to z=11 (stops before beach sand)
   // ══════════════════════════════════════════════════════════════
   const EAST_FACE = -Math.PI / 2;
   const eastTowers = [
@@ -305,13 +305,12 @@ export default function createCitySkyline(scene) {
     [38,   1, 1.8, 1.4, 10, glassBody,  neonCyan],
     [38,   4, 2.2, 1.6, 14, steelBody,  neonPurple],
     [38,   7, 2.0, 1.5, 11, silverBody, neonBlue],
-    [38,  10, 2.4, 1.7, 13, glassBody,  neonCyan],
-    [38,  14, 2.0, 1.5, 10, steelBody,  neonPurple],
+    [38,  11, 2.4, 1.7, 13, glassBody,  neonCyan],
   ];
   eastTowers.forEach((a) => addSkyscraper(a[0], a[1], a[2], a[3], a[4], a[5], a[6], undefined, EAST_FACE));
   addSetbackTower(38, -9, 2.4, 2.2, 3, neonCyan,   "East Gate Tower", EAST_FACE);
   addTwinTower(38, -22, 1.0, 1.5, 1.8, 18, neonPurple, "East Twin Towers", EAST_FACE);
-  // Second depth row behind east wall
+  // Second depth row behind east wall (stop at z=8 — well clear of beach)
   const eastBack = [
     [42, -33, 1.8, 1.4, 11, glassBody,  neonBlue],
     [42, -27, 2.0, 1.4, 14, steelBody,  neonCyan],
@@ -320,12 +319,12 @@ export default function createCitySkyline(scene) {
     [42,  -9, 1.8, 1.3,  9, steelBody,  neonCyan],
     [42,  -3, 2.0, 1.4, 12, silverBody, neonPurple],
     [42,   3, 1.8, 1.4, 10, glassBody,  neonBlue],
-    [42,  10, 1.8, 1.3,  9, steelBody,  neonCyan],
+    [42,   8, 1.8, 1.3,  9, steelBody,  neonCyan],
   ];
   eastBack.forEach((a) => addSkyscraper(a[0], a[1], a[2], a[3], a[4], a[5], a[6], undefined, EAST_FACE));
 
   // ══════════════════════════════════════════════════════════════
-  // WEST WING — x=-38, every 3 units from z=-35 to z=14 (no beach)
+  // WEST WING — x=-38, every 3 units from z=-35 to z=11 (stops before beach sand)
   // ══════════════════════════════════════════════════════════════
   const WEST_FACE = Math.PI / 2;
   const westTowers = [
@@ -344,13 +343,12 @@ export default function createCitySkyline(scene) {
     [-38,   1, 1.8, 1.4,  9, steelBody,  neonBlue],
     [-38,   4, 2.4, 1.7, 14, glassBody,  neonCyan],
     [-38,   7, 2.0, 1.5, 11, steelBody,  neonPurple],
-    [-38,  10, 2.4, 1.7, 12, silverBody, neonBlue],
-    [-38,  14, 2.0, 1.5, 10, glassBody,  neonCyan],
+    [-38,  11, 2.4, 1.7, 12, silverBody, neonBlue],
   ];
   westTowers.forEach((a) => addSkyscraper(a[0], a[1], a[2], a[3], a[4], a[5], a[6], undefined, WEST_FACE));
   addSetbackTower(-38, -9, 2.6, 2.0, 3, neonPurple, "West Gate Tower", WEST_FACE);
   addTwinTower(-38, -22, 1.0, 1.5, 1.8, 18, neonCyan, "West Twin Towers", WEST_FACE);
-  // Second depth row behind west wall
+  // Second depth row behind west wall (stop at z=8 — well clear of beach)
   const westBack = [
     [-42, -33, 1.8, 1.4, 12, steelBody,  neonPurple],
     [-42, -27, 2.0, 1.4, 15, glassBody,  neonBlue],
@@ -359,7 +357,7 @@ export default function createCitySkyline(scene) {
     [-42,  -9, 1.8, 1.3,  9, glassBody,  neonBlue],
     [-42,  -3, 2.0, 1.4, 12, silverBody, neonCyan],
     [-42,   3, 1.8, 1.4, 10, steelBody,  neonPurple],
-    [-42,  10, 1.8, 1.3,  9, glassBody,  neonBlue],
+    [-42,   8, 1.8, 1.3,  9, glassBody,  neonBlue],
   ];
   westBack.forEach((a) => addSkyscraper(a[0], a[1], a[2], a[3], a[4], a[5], a[6], undefined, WEST_FACE));
 

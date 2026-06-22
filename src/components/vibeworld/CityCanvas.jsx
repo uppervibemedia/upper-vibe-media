@@ -68,6 +68,14 @@ function circleVsCircle(x1, z1, r1, x2, z2, r2) {
   return dx * dx + dz * dz < (r1 + r2) * (r1 + r2);
 }
 
+// Skyline boundary — rectangular perimeter matching CitySkyline.jsx wall positions
+// North wall: z=-36  East wall: x=36  West wall: x=-36
+// Beach/south open face starts at z=15 (where wings end)
+const SKYLINE_NORTH = -36;
+const SKYLINE_EAST  =  36;
+const SKYLINE_WEST  = -36;
+const SKYLINE_BEACH_START = 15; // south of this z, beach x-limits apply
+
 function resolveCollisions(px, pz, r, boxes, isHoverboarding = false) {
   let x = px, z = pz;
   for (const [bx, bz, br] of boxes) {
@@ -79,21 +87,29 @@ function resolveCollisions(px, pz, r, boxes, isHoverboarding = false) {
     z += (dz / dist) * overlap;
   }
 
-  // Beach shoreline boundary
-  // Normal players stop at shore (z=34); hoverboard riders can surf deep into the ocean (z=75)
-  const maxZ = isHoverboarding ? 75 : 34;
-  if (z > 0) {
-    if (z > maxZ) z = maxZ;
-    if (x < -28) x = -28;
-    if (x > 28) x = 28;
+  // ── Rectangular skyline perimeter ──────────────────────────────
+  // North wall (z=-36): block players from going behind stage/north buildings
+  if (z < SKYLINE_NORTH + r) z = SKYLINE_NORTH + r;
+  // East wall (x=36): block access behind east wing buildings
+  if (x > SKYLINE_EAST - r) x = SKYLINE_EAST - r;
+  // West wall (x=-36): block access behind west wing buildings
+  if (x < SKYLINE_WEST + r) x = SKYLINE_WEST + r;
+
+  // ── Beach zone (z > SKYLINE_BEACH_START) ───────────────────────
+  // Wings stop at z=14; apply narrower x limits so players don't walk off
+  // to the sides where there are no buildings. Beach area is open but contained.
+  if (z >= SKYLINE_BEACH_START) {
+    // Gradually narrow the x corridor as player moves toward ocean
+    const beachProgress = Math.min(1, (z - SKYLINE_BEACH_START) / 18);
+    const beachXLimit = 34 - beachProgress * 6; // from ±34 → ±28 deep
+    if (x > beachXLimit) x = beachXLimit;
+    if (x < -beachXLimit) x = -beachXLimit;
   }
 
-  // Circular boundary for rest of the park
-  const d = Math.sqrt(x * x + z * z);
-  if (d > PARK_RADIUS - r) {
-    x = (x / d) * (PARK_RADIUS - r);
-    z = (z / d) * (PARK_RADIUS - r);
-  }
+  // Beach shoreline / ocean boundary
+  const maxZ = isHoverboarding ? 75 : 34;
+  if (z > maxZ) z = maxZ;
+
   return [x, z];
 }
 
@@ -365,7 +381,7 @@ function buildPark(scene) {
     mat("#181032", { roughness: 0.30, metalness: 0.55 })
   );
   loungePlat.rotation.x = -Math.PI / 2;
-  loungePlat.position.set(-22, 0.003, -20);
+  loungePlat.position.set(-22, 0.003, -26);
   loungePlat.receiveShadow = true;
   lounge.add(loungePlat);
 
@@ -375,7 +391,7 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
   );
   loungeOuterRing.rotation.x = -Math.PI / 2;
-  loungeOuterRing.position.set(-22, 0.006, -20);
+  loungeOuterRing.position.set(-22, 0.006, -26);
   loungeOuterRing.renderOrder = 1;
   lounge.add(loungeOuterRing);
 
@@ -384,7 +400,7 @@ function buildPark(scene) {
     const ang = Math.PI + (i / 4) * Math.PI * 0.65; // ~117° arc for openness
     const radius = 2.8;
     const sx = -22 + Math.cos(ang) * radius;
-    const sz = -20 + Math.sin(ang) * radius;
+    const sz = -26 + Math.sin(ang) * radius;
 
     // Curved seat body (3 box segments for a gentle curve effect)
     const seatBase = new Mesh(
@@ -409,7 +425,7 @@ function buildPark(scene) {
     if (i < 4) {
       const nextAng = Math.PI + ((i + 0.5) / 4) * Math.PI * 0.65;
       const tx = -22 + Math.cos(nextAng) * (radius - 0.15);
-      const tz = -20 + Math.sin(nextAng) * (radius - 0.15);
+      const tz = -26 + Math.sin(nextAng) * (radius - 0.15);
       const table = new Mesh(
         new CylinderGeometry(0.22, 0.25, 0.12, 8),
         mat("#3A2A5A", { roughness: 0.25, metalness: 0.5 })
@@ -432,7 +448,7 @@ function buildPark(scene) {
     new CylinderGeometry(0.5, 0.65, 0.25, 24),
     mat("#3A2A5A", { roughness: 0.2, metalness: 0.6 })
   );
-  firePit.position.set(-22, 0.14, -20);
+  firePit.position.set(-22, 0.14, -26);
   firePit.castShadow = true;
   lounge.add(firePit);
 
@@ -444,7 +460,7 @@ function buildPark(scene) {
       new CylinderGeometry(radius, radius + 0.05, 0.05, 24),
       fGlowMat
     );
-    fGlow.position.set(-22, 0.32 + (radius - 0.5) * 0.5, -20);
+    fGlow.position.set(-22, 0.32 + (radius - 0.5) * 0.5, -26);
     lounge.add(fGlow);
     loungeFireMats.push(fGlowMat);
   }
@@ -461,7 +477,7 @@ function buildPark(scene) {
     for (let s = 0; s < segments; s++) {
       const ang = arcStart + (s / (segments - 1)) * arcAngle;
       const ax = -22 + Math.cos(ang) * arcRadius;
-      const az = -20 + Math.sin(ang) * arcRadius;
+      const az = -26 + Math.sin(ang) * arcRadius;
       const arcDot = new Mesh(
         new SphereGeometry(0.05, 4, 3),
         new MeshBasicMaterial({
@@ -480,7 +496,7 @@ function buildPark(scene) {
     const pAng = Math.PI + (p / 3) * Math.PI * 0.65;
     const pr = 3.0;
     const px = -22 + Math.cos(pAng) * pr;
-    const pz = -20 + Math.sin(pAng) * pr;
+    const pz = -26 + Math.sin(pAng) * pr;
     const pillarMat = new MeshBasicMaterial({
       color: new Color(p % 2 === 0 ? "#00D4F0" : "#A078FF"),
       depthWrite: false, transparent: true, opacity: 0.45,
@@ -509,7 +525,7 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.25 })
   );
   energyRing.rotation.x = -Math.PI / 2;
-  energyRing.position.set(-22, 0.07, -20);
+  energyRing.position.set(-22, 0.07, -26);
   energyRing.renderOrder = 1;
   lounge.add(energyRing);
   loungeNeonMats.push(energyRing.material);
@@ -518,7 +534,7 @@ function buildPark(scene) {
   scene.userData.loungeNeonMats = loungeNeonMats;
 
   scene.add(lounge);
-  createNeonSign(scene, -22, 4.5, -20, "VIBE  LOUNGE", "#C43BFF");
+  createNeonSign(scene, -22, 4.5, -26, "VIBE  LOUNGE", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 6. MUSIC LIBRARY — right-back, entrance faces plaza
@@ -598,7 +614,7 @@ function buildPark(scene) {
     domeGeo2,
     mat("#1A2540", { roughness: 0.20, metalness: 0.65, transparent: true, opacity: 0.75, depthWrite: true })
   );
-  domeMesh2.position.set(-10, 0.05, 8);
+  domeMesh2.position.set(-13, 0.05, 8);
   domeMesh2.castShadow = true;
   dome.add(domeMesh2);
 
@@ -609,7 +625,7 @@ function buildPark(scene) {
       new SphereGeometry(0.08, 4, 3),
       new MeshBasicMaterial({ color: new Color(["#C43BFF", "#00D4F0", "#FF00FF"][d % 3]), depthWrite: false })
     );
-    dot.position.set(-10 + Math.cos(dAng) * 3.2, 1.5 + (d % 3) * 0.8, 8 + Math.sin(dAng) * 3.2);
+    dot.position.set(-13 + Math.cos(dAng) * 3.2, 1.5 + (d % 3) * 0.8, 8 + Math.sin(dAng) * 3.2);
     dome.add(dot);
   }
 
@@ -618,7 +634,7 @@ function buildPark(scene) {
     new BoxGeometry(2.5, 3.5, 0.1),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.85 })
   );
-  domeEntrance.position.set(-10, 1.75, 8 - 3.35);
+  domeEntrance.position.set(-13, 1.75, 8 - 3.35);
   domeEntrance.name = "domeEntrance";
   dome.add(domeEntrance);
 
@@ -627,11 +643,11 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#1E2A4E"), depthWrite: false, transparent: true, opacity: 0.3 })
   );
   domeFloor.rotation.x = -Math.PI / 2;
-  domeFloor.position.set(-10, 0.003, 8);
+  domeFloor.position.set(-13, 0.003, 8);
   dome.add(domeFloor);
 
   scene.add(dome);
-  createNeonSign(scene, -10, 4.2, 8, "VISUALIZER  DOME", "#C43BFF");
+  createNeonSign(scene, -13, 4.2, 8, "VISUALIZER  DOME", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 8. DAILY VIBE CHECK — Vibe Mirror reflection zone
@@ -645,7 +661,7 @@ function buildPark(scene) {
     mat("#142540", { roughness: 0.30, metalness: 0.55 })
   );
   vcPlat.rotation.x = -Math.PI / 2;
-  vcPlat.position.set(-16, 0.003, -16);
+  vcPlat.position.set(-16, 0.003, -13);
   vcPlat.receiveShadow = true;
   vibeCheck.add(vcPlat);
 
@@ -655,7 +671,7 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
   );
   vcOuterRing.rotation.x = -Math.PI / 2;
-  vcOuterRing.position.set(-16, 0.006, -16);
+  vcOuterRing.position.set(-16, 0.006, -13);
   vcOuterRing.renderOrder = 1;
   vibeCheck.add(vcOuterRing);
 
@@ -665,7 +681,7 @@ function buildPark(scene) {
     mat("#1E2E3E", { roughness: 0.3, metalness: 0.6, transparent: true, opacity: 0.7, depthWrite: true })
   );
   vcStep.rotation.x = -Math.PI / 2;
-  vcStep.position.set(-16, 0.06, -16);
+  vcStep.position.set(-16, 0.06, -13);
   vcStep.receiveShadow = true;
   vibeCheck.add(vcStep);
 
@@ -675,16 +691,16 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
   );
   vcStepRing.rotation.x = -Math.PI / 2;
-  vcStepRing.position.set(-16, 0.07, -16);
+  vcStepRing.position.set(-16, 0.07, -13);
   vcStepRing.renderOrder = 1;
   vibeCheck.add(vcStepRing);
 
   // Mirror assembly sub-group — rotated to face Central Plaza + Vibe Lounge
   const mirrorGroup = new Group();
   mirrorGroup.name = "vibeMirrorGroup";
-  // Rotate to face the Central Plaza (0,-13) from mirror position (-16,-16)
-  // Direction vector: dx=16, dz=3
-  mirrorGroup.rotation.y = Math.atan2(16, 3);
+  // Rotate to face the Central Plaza (0,-13) from mirror position (-16,-13)
+  // Direction vector: dx=16, dz=0 → faces east
+  mirrorGroup.rotation.y = Math.atan2(16, 0);
 
   // Vibe Mirror — tall glowing vertical panel
   const mirrorMat = mat("#0A1525", { roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.85, depthWrite: true });
@@ -743,11 +759,11 @@ function buildPark(scene) {
   mirrorGroup.add(mirrorDot);
 
   // Place mirror group at the zone center
-  mirrorGroup.position.set(-16, 0, -16);
+  mirrorGroup.position.set(-16, 0, -13);
   vibeCheck.add(mirrorGroup);
 
   scene.add(vibeCheck);
-  createNeonSign(scene, -16, 4.4, -16, "DAILY  VIBE  CHECK", "#00E5FF");
+  createNeonSign(scene, -16, 4.4, -13, "DAILY  VIBE  CHECK", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 8.5. UPPER VIBE ACADEMY — futuristic learning cinema, top-left
@@ -1089,7 +1105,7 @@ function buildPark(scene) {
   const loungeLight = new PointLight();
   loungeLight.color = new Color("#E040FB");
   loungeLight.intensity = 3.5; loungeLight.distance = 14;
-  loungeLight.position.set(-22, 2.5, -20);
+  loungeLight.position.set(-22, 2.5, -26);
   scene.add(loungeLight);
   scene.userData.loungeLight = loungeLight;
 
@@ -1102,13 +1118,13 @@ function buildPark(scene) {
   const domeLight = new PointLight();
   domeLight.color = new Color("#FF00FF");
   domeLight.intensity = 3.5; domeLight.distance = 14;
-  domeLight.position.set(-10, 2.5, 8);
+  domeLight.position.set(-13, 2.5, 8);
   scene.add(domeLight);
 
   const vibeCheckLight = new PointLight();
   vibeCheckLight.color = new Color("#00E5FF");
   vibeCheckLight.intensity = 3.5; vibeCheckLight.distance = 12;
-  vibeCheckLight.position.set(-16, 2.5, -16);
+  vibeCheckLight.position.set(-16, 2.5, -13);
   scene.add(vibeCheckLight);
 
   // ── Plaza fill light — soft central glow ──────────────────
