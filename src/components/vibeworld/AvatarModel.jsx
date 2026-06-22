@@ -123,9 +123,22 @@ function crossFade(entry, toKey, duration = 0.22) {
 }
 
 // ─── PUBLIC: updateAvatarAnimation ───────────────────────────
-export function updateAvatarAnimation(entry, speed, isDancing, dt) {
+// isHoverboarding: when true, locks avatar in idle pose — feet stay planted on board.
+export function updateAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false) {
   if (!entry || !entry.mixer) return;
   entry.mixer.update(dt);
+
+  // Hoverboard mode: freeze in idle — no walking/running animation at all
+  if (isHoverboarding) {
+    if (entry.clips.idle) {
+      crossFade(entry, "idle", 0.35);
+      entry.clips.idle.setEffectiveTimeScale(0.0); // fully frozen pose
+    } else if (entry.clips.walk) {
+      crossFade(entry, "walk", 0.35);
+      entry.clips.walk.setEffectiveTimeScale(0.0);
+    }
+    return;
+  }
 
   if (isDancing) {
     const key = entry.clips.run ? "run" : entry.clips.walk ? "walk" : null;

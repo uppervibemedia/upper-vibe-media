@@ -237,6 +237,21 @@ export default function HoverboardPanel({
             width: isMobile ? "96vw" : 480,
           }}
         >
+          {/* Exit Ride button — always clickable */}
+          <div className="flex justify-end mb-1.5 pointer-events-auto">
+            <button
+              onClick={() => endGame(scoreRef.current, ringsRef.current)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black tracking-wider transition-all hover:bg-white/10 active:scale-[0.97]"
+              style={{
+                background: "rgba(4,2,20,0.82)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.5)",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <X className="w-3 h-3" /> EXIT RIDE
+            </button>
+          </div>
           {/* Main HUD bar */}
           <div
             className="flex items-center gap-3 px-4 py-2.5 rounded-2xl"
@@ -354,7 +369,7 @@ export default function HoverboardPanel({
                 transition={{ duration: 0.7 }}
                 className="absolute left-1/2 font-black"
                 style={{
-                  top: 60,
+                  top: 90,
                   color: comboMultiplier >= 3 ? "#ff6060" : comboMultiplier >= 2 ? "#FFD700" : "#00E5FF",
                   fontSize: comboMultiplier >= 2 ? 22 : 18,
                   transform: "translateX(-50%)",
@@ -393,7 +408,7 @@ export default function HoverboardPanel({
             <div className="flex items-center gap-2">
               <Star className="w-5 h-5 flex-shrink-0" style={{ color: "#FFD700" }} />
               <span className="font-black text-white text-sm tracking-wider">
-                {ringsHit >= RING_COUNT ? "🏆 PERFECT RUN!" : ringsHit >= 12 ? "⚡ GREAT RIDE!" : "RIDE COMPLETE!"}
+                {ringsHit >= RING_COUNT ? "🏆 PERFECT RUN!" : ringsHit >= 7 ? "⚡ GREAT RIDE!" : "RIDE COMPLETE!"}
               </span>
             </div>
 
