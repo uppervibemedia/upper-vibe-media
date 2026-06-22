@@ -1,17 +1,17 @@
 /**
- * AvatarCustomizerPanel — in-world Vibe Suit editor.
- * Phase 1: style + color only. No gender, no skin tone.
+ * AvatarCustomizerPanel — Vibe Suit editor.
+ * Two-column desktop layout: preview left, colors right.
+ * No Avatar Style (does nothing visible), no skin tone, no body type.
  */
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Zap, Check } from "lucide-react";
+import { X, Sparkles, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { OUTFIT_COLORS, VIBE_SUIT_STYLES } from "./AvatarSetup";
+import { OUTFIT_COLORS } from "./AvatarSetup";
 import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 
 export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) {
   const [outfitColorKey, setOutfitColorKey] = useState(user?.avatar_outfit_color || "cosmic-blue");
-  const [vibeStyle, setVibeStyle] = useState(user?.avatar_style || "cosmic-explorer");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -19,17 +19,13 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
     setSaving(true);
     setError(null);
     try {
-      await base44.auth.updateMe({
-        avatar_outfit_color: outfitColorKey,
-        avatar_style: vibeStyle,
-      });
+      await base44.auth.updateMe({ avatar_outfit_color: outfitColorKey });
       onApply?.({
         outfitColorKey,
-        style: vibeStyle,
         suitColor: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.hex,
       });
       onClose?.();
-    } catch (e) {
+    } catch {
       setError("Save failed. Please try again.");
     }
     setSaving(false);
@@ -40,148 +36,145 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
       {open && (
         <motion.div
           key="avatar-customizer"
-          initial={{ opacity: 0, y: "100%" }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: "100%" }}
-          transition={{ type: "spring", damping: 28, stiffness: 280 }}
-          className="fixed inset-x-0 bottom-0 z-[85] pointer-events-auto"
-          onTouchStart={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[85] flex items-center justify-center pointer-events-auto"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
+          onClick={onClose}
         >
-          <div
-            className="flex flex-col overflow-hidden"
-            style={{
-              borderRadius: "20px 20px 0 0",
-              background: "rgba(10,8,24,0.98)",
-              border: "1px solid rgba(155,126,255,0.18)",
-              backdropFilter: "blur(20px)",
-              maxHeight: "94vh",
-            }}
+          <motion.div
+            initial={{ scale: 0.92, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.92, opacity: 0, y: 20 }}
+            transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            className="relative w-full mx-3"
+            style={{ maxWidth: 760, maxHeight: "92vh" }}
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div
-              className="flex items-center justify-between px-4 py-3 flex-shrink-0"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+              className="flex flex-col overflow-hidden"
+              style={{
+                borderRadius: 24,
+                background: "rgba(10,8,24,0.98)",
+                border: "1px solid rgba(155,126,255,0.2)",
+                boxShadow: "0 0 80px rgba(155,126,255,0.12)",
+              }}
             >
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4" style={{ color: "#9B7EFF" }} />
-                <span className="text-sm font-black text-white tracking-wider">Choose Your Vibe Suit</span>
-              </div>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
-                style={{ color: "rgba(255,255,255,0.4)" }}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto">
-
-              {/* Preview */}
+              {/* Header */}
               <div
-                className="flex flex-col items-center py-4"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <span className="text-[9px] font-black tracking-[0.2em] uppercase mb-3" style={{ color: "rgba(155,126,255,0.6)" }}>
-                  Live Preview · Updates Instantly
-                </span>
-                <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={200} height={310} />
+                <div className="flex items-center gap-2.5">
+                  <Sparkles className="w-4 h-4" style={{ color: "#9B7EFF" }} />
+                  <span className="font-black text-white tracking-wider" style={{ fontSize: 15 }}>
+                    Choose Your Vibe Suit
+                  </span>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {/* Options */}
-              <div className="px-4 py-4 space-y-5">
+              {/* Body — two-column desktop, stack mobile */}
+              <div className="flex flex-col lg:flex-row flex-1 overflow-hidden" style={{ maxHeight: "calc(92vh - 130px)" }}>
 
-                {/* Avatar Style */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Zap className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.3)" }} />
-                    <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.3)" }}>
-                      Avatar Style
-                    </span>
+                {/* LEFT: preview */}
+                <div
+                  className="flex flex-col items-center justify-center px-5 py-5 flex-shrink-0 lg:w-80"
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                >
+                  {/* Mobile: compact preview */}
+                  <div className="block lg:hidden w-full">
+                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={300} height={280} />
                   </div>
-                  <div className="grid grid-cols-1 gap-2">
-                    {VIBE_SUIT_STYLES.map((s) => (
-                      <button
-                        key={s.key}
-                        onClick={() => setVibeStyle(s.key)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.97]"
-                        style={{
-                          background: vibeStyle === s.key ? `${s.color}18` : "rgba(255,255,255,0.04)",
-                          border: vibeStyle === s.key ? `2px solid ${s.color}` : "1px solid rgba(255,255,255,0.08)",
-                        }}
-                      >
-                        <span className="text-lg flex-shrink-0">{s.emoji}</span>
-                        <span className="text-[11px] font-bold text-white flex-1">{s.label}</span>
-                        {vibeStyle === s.key && <Check className="w-3 h-3 flex-shrink-0" style={{ color: s.color }} />}
-                      </button>
-                    ))}
+                  {/* Desktop: tall preview */}
+                  <div className="hidden lg:block w-full">
+                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={280} height={440} />
                   </div>
+                  <p className="text-[9px] mt-2 text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
+                    Click a color to preview instantly
+                  </p>
                 </div>
 
-                {/* Suit Color */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.3)" }} />
+                {/* RIGHT: color picker + apply */}
+                <div
+                  className="flex flex-col flex-1 overflow-y-auto px-5 py-5 lg:border-l"
+                  style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                >
+                  <div className="mb-4">
                     <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.3)" }}>
                       Suit Color
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {OUTFIT_COLORS.map((c) => (
-                      <button
-                        key={c.key}
-                        onClick={() => setOutfitColorKey(c.key)}
-                        className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.97]"
-                        style={{
-                          background: outfitColorKey === c.key ? `${c.swatch}18` : "rgba(255,255,255,0.04)",
-                          border: outfitColorKey === c.key ? `2px solid ${c.swatch}` : "1px solid rgba(255,255,255,0.08)",
-                        }}
-                      >
-                        <div
-                          className="w-5 h-5 rounded-full flex-shrink-0"
+
+                  <div className="grid grid-cols-2 gap-2.5 flex-1">
+                    {OUTFIT_COLORS.map((c) => {
+                      const active = outfitColorKey === c.key;
+                      return (
+                        <button
+                          key={c.key}
+                          onClick={() => setOutfitColorKey(c.key)}
+                          className="flex items-center gap-3 px-3.5 py-3 rounded-2xl text-left transition-all hover:brightness-110 active:scale-[0.97]"
                           style={{
-                            background: c.swatch,
-                            border: "2px solid rgba(255,255,255,0.2)",
-                            boxShadow: outfitColorKey === c.key ? `0 0 8px ${c.swatch}88` : "none",
+                            background: active ? `${c.swatch}15` : "rgba(255,255,255,0.04)",
+                            border: active ? `2px solid ${c.swatch}` : "1px solid rgba(255,255,255,0.08)",
+                            boxShadow: active ? `0 0 16px ${c.swatch}30` : "none",
                           }}
-                        />
-                        <span className="text-[10px] font-bold text-white flex-1 min-w-0 truncate">{c.label}</span>
-                        {outfitColorKey === c.key && <Check className="w-3 h-3 flex-shrink-0" style={{ color: c.swatch }} />}
-                      </button>
-                    ))}
+                        >
+                          <div
+                            className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
+                            style={{
+                              background: c.swatch,
+                              border: "2px solid rgba(255,255,255,0.25)",
+                              boxShadow: active ? `0 0 10px ${c.swatch}` : "none",
+                            }}
+                          >
+                            {active && <Check className="w-3.5 h-3.5" style={{ color: c.key === "shadow-black" ? "#fff" : "#000" }} />}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[11px] font-black text-white truncate">{c.label}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Spacer */}
+                  <div className="flex-1 min-h-4" />
+
+                  {/* Apply */}
+                  <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    {error && (
+                      <p className="text-[10px] text-red-400 text-center mb-2">{error}</p>
+                    )}
+                    <button
+                      onClick={handleApply}
+                      disabled={saving}
+                      className="w-full py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+                      style={{
+                        background: "linear-gradient(135deg,#9B7EFF,#A078FF)",
+                        color: "#fff",
+                        boxShadow: "0 0 28px rgba(155,126,255,0.3)",
+                      }}
+                    >
+                      {saving ? "Saving..." : "Apply Vibe Suit"}
+                    </button>
+                    <p className="text-[9px] text-center mt-2" style={{ color: "rgba(255,255,255,0.18)" }}>
+                      Human avatars and premium styles coming soon.
+                    </p>
                   </div>
                 </div>
-
-                <p className="text-[9px] text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
-                  Human avatars and premium styles coming soon.
-                </p>
               </div>
             </div>
-
-            {/* Apply button */}
-            <div
-              className="flex-shrink-0 px-4 py-3"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-            >
-              {error && (
-                <p className="text-[10px] text-red-400 text-center mb-2">{error}</p>
-              )}
-              <button
-                onClick={handleApply}
-                disabled={saving}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
-                style={{
-                  background: "linear-gradient(135deg,#9B7EFF,#A078FF)",
-                  color: "#fff",
-                  boxShadow: "0 0 24px rgba(155,126,255,0.3)",
-                }}
-              >
-                {saving ? "Saving..." : "Apply & Update Avatar"}
-              </button>
-            </div>
-          </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

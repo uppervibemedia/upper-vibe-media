@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sparkles, Zap, Check } from "lucide-react";
+import { Sparkles, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 
@@ -66,33 +66,6 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingS
             <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
               Your futuristic identity in Upper Vibe City.
             </p>
-          </div>
-
-          {/* Suit Style */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Zap className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.3)" }} />
-              <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.3)" }}>
-                Avatar Style
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-              {VIBE_SUIT_STYLES.map((s) => (
-                <button
-                  key={s.key}
-                  onClick={() => setVibeStyle(s.key)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.98]"
-                  style={{
-                    background: vibeStyle === s.key ? `${s.color}18` : "rgba(255,255,255,0.04)",
-                    border: vibeStyle === s.key ? `2px solid ${s.color}` : "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-                  <span className="text-lg flex-shrink-0">{s.emoji}</span>
-                  <span className="text-[12px] font-bold text-white flex-1">{s.label}</span>
-                  {vibeStyle === s.key && <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: s.color }} />}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Suit Color */}
