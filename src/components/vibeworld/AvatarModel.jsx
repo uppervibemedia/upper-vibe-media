@@ -309,20 +309,21 @@ function attachModel(gltf, controllerGroup, opts = {}) {
   controllerGroup.add(model);
 
   // ── SCALE + GROUND ────────────────────────────────────────────
-  // Soldier.glb: exported at ~1.8m, scale 1 is correct, feet at y≈0
-  // Michelle.glb: Mixamo export at 1cm units (~170 units tall) → needs scale ~0.0106
-  // We detect by checking for "Ch03" mesh names (Michelle's naming convention).
-  let isMichelle = false;
-  model.traverse((c) => { if (c.name && c.name.startsWith("Ch0")) isMichelle = true; });
+  // Soldier.glb: exported at ~1.8m (meter units), scale 1 is correct.
+  // Michelle.glb: Mixamo export in centimeter units (~170cm = 170 units tall).
+  //   Her skeleton bones are named "mixamorig:*" — that's the reliable detection signal.
+  //   Scale factor: 1.8m / 170units ≈ 0.0106
+  let isMixamo = false;
+  model.traverse((c) => { if (c.name && c.name.startsWith("mixamorig")) isMixamo = true; });
 
-  if (isMichelle) {
-    // Michelle.glb: scale to 1.8m. Her skeleton root sits at y=0, tips at ~170.
+  if (isMixamo) {
     model.scale.set(0.0106, 0.0106, 0.0106);
     model.position.y = 0;
+    console.log("[AvatarModel] Mixamo rig detected → scale 0.0106");
   } else {
-    // Soldier.glb (and any standard 1m-unit GLB): already correct
     model.scale.set(1, 1, 1);
     model.position.y = 0;
+    console.log("[AvatarModel] Soldier rig detected → scale 1.0");
   }
 
   // Face +Z (chest toward camera behind avatar)

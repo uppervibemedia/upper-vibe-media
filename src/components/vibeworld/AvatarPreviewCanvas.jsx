@@ -168,11 +168,12 @@ export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "med
       // Add to scene
       scene.add(model);
 
-      // Detect Michelle vs Soldier by mesh naming convention
-      let isMichelle = false;
-      model.traverse((c) => { if (c.name && c.name.startsWith("Ch0")) isMichelle = true; });
+      // Detect Mixamo rig (Michelle) vs Soldier by bone naming
+      // Michelle.glb bones are named "mixamorig:*" — confirmed from GLB JSON
+      let isMixamo = false;
+      model.traverse((c) => { if (c.name && c.name.startsWith("mixamorig")) isMixamo = true; });
 
-      if (isMichelle) {
+      if (isMixamo) {
         model.scale.set(0.0106, 0.0106, 0.0106);
         model.position.y = 0;
       } else {
