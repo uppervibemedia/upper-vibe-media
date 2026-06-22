@@ -44,9 +44,9 @@ export default function Admin() {
 
   const loadAll = async () => {
     setLoading(true);
-    const t = await base44.entities.Track.list("-created_date", 200);
+    const t = await base44.entities.Track.list("-created_date", 100);
     setTracks(t);
-    const a = await base44.entities.Artist.list("name", 100);
+    const a = await base44.entities.Artist.list("name", 50);
     setArtists(a);
     const c = await base44.entities.Category.list("display_order", 50);
     setCategories(c);
