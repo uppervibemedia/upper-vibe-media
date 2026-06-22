@@ -1,103 +1,58 @@
 /**
- * CosmicSkySystem — skybox + shooting stars + asteroids + star twinkling
- * All sky activity is random and natural — not excessive.
+ * CosmicSkySystem — seamless sphere skybox + shooting stars + asteroids
  *
- * Skybox fix: 6 unique face textures, no adjacent duplicates.
- * Shooting stars: rare streaks (~1 every 15–45s), quick fade.
- * Asteroids: very slow drifters (~1 visible at a time, subtle).
- * Stars: per-star twinkle phases for soft atmospheric shimmer.
+ * Skybox: SphereGeometry (no box seams/edges ever visible).
+ * Shooting stars: every 8-12s, arc from high sky down toward the beach horizon (+Z).
+ * Asteroids: every 10s, streaks across the sky toward the horizon — always visible.
  */
 import * as THREE from "three";
 
 const BASE = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
-
-// Four source images — varied: 2 with planets, 2 star fields / nebulas
-const SKY_A = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`; // star field / nebula (no planet)
-const SKY_B = `${BASE}/df9a0847f_ChatGPTImageJun19202612_41_21PM.png`; // full planet centered
-const SKY_C = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`; // star field / nebula (no planet)
-const SKY_D = `${BASE}/e7caceb54_ChatGPTImageJun19202612_41_07PM.png`; // ringed planet + moon
-
-// BoxGeometry face order: +X, -X, +Y, -Y, +Z, -Z
-// Rules:
-//   • No two adjacent faces share the same texture
-//   • Planets (B, D) must NOT be on adjacent faces
-//   • Adjacent pairs: (+X,-X), (+Y,-Y), (+Z,-Z), and ring pairs (+X,+Z), (-X,-Z) etc.
-//   • Solution: alternate planet / no-planet with no touching planets
-//     +X=B(planet), -X=C(stars), +Y=A(stars), -Y=dark, +Z=D(planet), -Z=A(stars)
-//     BUT +X(planet) and +Z(planet) share an edge → swap +Z to C
-//     Final: +X=B, -X=C, +Y=A, -Y=dark, +Z=C(stars), -Z=D(planet)
-//     Now: +X(B) adj to -X(C)✓, +Y(A) adj to -Y(dark)✓, +Z(C) adj to -Z(D)✓
-//     Edge adjacencies: +X adj +Z → B,C ✓  | -X adj -Z → C,D ✓
-//     No two planets touch. ✓
+const SKY_A = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;
+const SKY_B = `${BASE}/5b01fc961_ChatGPTImageJun19202611_55_39AM.png`;
 
 export function createCosmicSky(scene) {
   const loader = new THREE.TextureLoader();
-  const SKYBOX_SIZE = 90; // Large enough to cover full upward view with no gaps
 
-  const loadTex = (url) => {
-    const tex = loader.load(url, undefined, undefined, () => {
-      // On error, texture stays black — acceptable fallback
-    });
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = THREE.ClampToEdgeWrapping;
-    tex.wrapT = THREE.ClampToEdgeWrapping;
-    tex.generateMipmaps = false;
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    return tex;
-  };
+  // ── Seamless sphere skybox — no box edges ever visible ──────────
+  const skyTex = loader.load(SKY_A);
+  skyTex.colorSpace = THREE.SRGBColorSpace;
+  skyTex.wrapS = THREE.RepeatWrapping;
+  skyTex.wrapT = THREE.ClampToEdgeWrapping;
+  skyTex.repeat.set(2, 1); // wrap twice around equator for coverage
+  skyTex.generateMipmaps = false;
+  skyTex.minFilter = THREE.LinearFilter;
+  skyTex.magFilter = THREE.LinearFilter;
 
-  const tA = loadTex(SKY_A);
-  const tB = loadTex(SKY_B);
-  const tC = loadTex(SKY_C);
-  const tD = loadTex(SKY_D);
-
-  const darkMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color("#060616"),
+  const skyMat = new THREE.MeshBasicMaterial({
+    map: skyTex,
     side: THREE.BackSide,
     depthWrite: false,
   });
 
-  function faceMat(tex) {
-    return new THREE.MeshBasicMaterial({
-      map: tex,
-      side: THREE.BackSide,
-      depthWrite: false,
-    });
-  }
-
-  // Face order: +X, -X, +Y, -Y, +Z, -Z
-  const materials = [
-    faceMat(tB),   // +X East  — planet
-    faceMat(tC),   // -X West  — stars
-    faceMat(tA),   // +Y Top   — nebula
-    darkMat,       // -Y Bottom — void (never visible)
-    faceMat(tC),   // +Z North  — stars (different from adjacent planets)
-    faceMat(tD),   // -Z South  — ringed planet
-  ];
-
   const skybox = new THREE.Mesh(
-    new THREE.BoxGeometry(SKYBOX_SIZE, SKYBOX_SIZE, SKYBOX_SIZE),
-    materials
+    new THREE.SphereGeometry(80, 32, 16),
+    skyMat
   );
   skybox.name = "skybox";
   skybox.renderOrder = -1;
   scene.add(skybox);
 
-  // ── Shooting stars ─────────────────────────────────────────────
-  // Each streak: a short line segment sprite that fades quickly
-  const SHOOT_COUNT = 5; // pool of reusable streaks
+  // ── Shooting stars — pool of 6 streaks ──────────────────────────
+  // They spawn high in the sky and fall toward the beach horizon (+Z direction)
+  const SHOOT_COUNT = 6;
   const shootingStars = [];
   for (let i = 0; i < SHOOT_COUNT; i++) {
     const c = document.createElement("canvas");
-    c.width = 128; c.height = 4;
+    c.width = 160; c.height = 4;
     const ctx = c.getContext("2d");
-    const grad = ctx.createLinearGradient(0, 0, 128, 0);
+    const grad = ctx.createLinearGradient(0, 0, 160, 0);
     grad.addColorStop(0, "rgba(255,255,255,0)");
-    grad.addColorStop(0.7, "rgba(220,240,255,0.9)");
+    grad.addColorStop(0.5, "rgba(200,230,255,0.7)");
+    grad.addColorStop(0.85, "rgba(240,250,255,0.95)");
     grad.addColorStop(1, "rgba(255,255,255,1)");
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 128, 4);
+    ctx.fillRect(0, 0, 160, 4);
     const tex = new THREE.CanvasTexture(c);
     tex.minFilter = THREE.LinearFilter;
     const mat = new THREE.SpriteMaterial({
@@ -105,106 +60,119 @@ export function createCosmicSky(scene) {
       depthWrite: false, blending: THREE.AdditiveBlending,
     });
     const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(6 + Math.random() * 4, 0.18, 1);
-    sprite.renderOrder = 3;
+    sprite.scale.set(7 + Math.random() * 4, 0.22, 1);
+    sprite.renderOrder = 4;
     scene.add(sprite);
-    // State: idle until nextFire
-    const nextFire = performance.now() * 0.001 + 8 + Math.random() * 40;
-    shootingStars.push({ sprite, mat, active: false, life: 0, maxLife: 0, vx: 0, vy: 0, nextFire });
+    // Stagger initial fire times so they don't all go at once
+    const nextFire = performance.now() * 0.001 + 3 + i * 2 + Math.random() * 4;
+    shootingStars.push({ sprite, mat, active: false, life: 0, maxLife: 0, vx: 0, vy: 0, vz: 0, nextFire });
   }
   scene.userData.shootingStars = shootingStars;
 
-  // ── Asteroids ──────────────────────────────────────────────────
-  // Tiny slow-moving specks — drifting cosmic debris
+  // ── Asteroids — 3 glowing rock streaks ───────────────────────────
   const ASTEROID_COUNT = 3;
   const asteroids = [];
   for (let i = 0; i < ASTEROID_COUNT; i++) {
-    const size = 0.08 + Math.random() * 0.1;
-    const geo = new THREE.SphereGeometry(size, 4, 3);
-    const mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#CCBBAA"),
-      transparent: true, opacity: 0,
-      depthWrite: false,
+    // Each asteroid is a small bright sprite so it's clearly visible as a streak
+    const ac = document.createElement("canvas");
+    ac.width = 64; ac.height = 64;
+    const actx = ac.getContext("2d");
+    const ag = actx.createRadialGradient(32, 32, 0, 32, 32, 28);
+    ag.addColorStop(0, "rgba(255,220,140,1)");
+    ag.addColorStop(0.3, "rgba(255,160,60,0.8)");
+    ag.addColorStop(0.7, "rgba(200,80,20,0.3)");
+    ag.addColorStop(1, "rgba(0,0,0,0)");
+    actx.fillStyle = ag;
+    actx.fillRect(0, 0, 64, 64);
+    const atex = new THREE.CanvasTexture(ac);
+    atex.minFilter = THREE.LinearFilter;
+    const amat = new THREE.SpriteMaterial({
+      map: atex, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending,
     });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.renderOrder = 3;
-    scene.add(mesh);
-    const nextFire = performance.now() * 0.001 + 20 + Math.random() * 60;
-    asteroids.push({ mesh, mat, active: false, life: 0, maxLife: 0, vx: 0, vy: 0, vz: 0, nextFire });
+    const asprite = new THREE.Sprite(amat);
+    asprite.scale.set(1.2, 1.2, 1);
+    asprite.renderOrder = 4;
+    scene.add(asprite);
+    // Also add a tail streak
+    const tc = document.createElement("canvas");
+    tc.width = 128; tc.height = 3;
+    const tctx = tc.getContext("2d");
+    const tg = tctx.createLinearGradient(0, 0, 128, 0);
+    tg.addColorStop(0, "rgba(255,160,60,0)");
+    tg.addColorStop(0.6, "rgba(255,200,100,0.6)");
+    tg.addColorStop(1, "rgba(255,220,140,0.9)");
+    tctx.fillStyle = tg;
+    tctx.fillRect(0, 0, 128, 3);
+    const ttex = new THREE.CanvasTexture(tc);
+    ttex.minFilter = THREE.LinearFilter;
+    const tmat = new THREE.SpriteMaterial({
+      map: ttex, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    const tail = new THREE.Sprite(tmat);
+    tail.scale.set(5, 0.18, 1);
+    tail.renderOrder = 4;
+    scene.add(tail);
+
+    // Stagger: fire at 5, 15, 25s etc
+    const nextFire = performance.now() * 0.001 + 5 + i * 10 + Math.random() * 3;
+    asteroids.push({ asprite, amat, tail, tmat, active: false, life: 0, maxLife: 0, vx: 0, vy: 0, vz: 0, nextFire });
   }
   scene.userData.asteroids = asteroids;
-
-  // ── Per-star twinkle phases ────────────────────────────────────
-  // Already handled by CityCanvas stars material — we add per-star index phases
-  // to the star geometry so they twinkle individually (set once here)
-  // The existing starsMesh already has userData.phases from createStarField.
-  // We just ensure the animation loop uses them (done in animateCosmicSky).
 
   scene.fog = new THREE.Fog("#101835", 75, 95);
 }
 
-// ─── Animation tick — call every frame from CityCanvas ───────────
-// camPos: camera.position (Vector3) — skybox follows camera
-// skybox: scene.getObjectByName("skybox")
-// t: elapsed time in seconds
-// dt: delta time
 export function animateCosmicSky(scene, camera, t, dt) {
-  // ── Skybox follows camera, very slow Y drift ─────────────────
+  // ── Skybox follows camera, very slow rotation ────────────────
   const skybox = scene.getObjectByName("skybox");
   if (skybox) {
     skybox.position.copy(camera.position);
-    skybox.rotation.y += dt * 0.012;
-    skybox.rotation.x += dt * 0.002;
+    skybox.rotation.y += dt * 0.008;
   }
 
-  // ── Star twinkling — per-star phases if available ─────────────
+  // ── Star twinkling ───────────────────────────────────────────
   const starsMesh = scene.userData.stars;
   if (starsMesh?.material) {
-    // Global opacity breath
     starsMesh.material.opacity = 0.42 + Math.sin(t * 0.85) * 0.08 + Math.cos(t * 0.55) * 0.06;
     starsMesh.material.size = 0.30 + Math.sin(t * 1.1) * 0.05;
   }
 
-  // ── Shooting stars ────────────────────────────────────────────
+  // ── Shooting stars — spawn high, arc toward beach horizon ────
+  // Beach is at +Z direction from center. Spawn above camera, travel toward +Z and down.
   const shootingStars = scene.userData.shootingStars;
   if (shootingStars) {
     for (const ss of shootingStars) {
       if (!ss.active) {
         if (t >= ss.nextFire) {
-          // Launch from a random position high in the sky sphere
-          const ang = Math.random() * Math.PI * 2;
-          const elev = 0.3 + Math.random() * 0.5; // above horizon
-          const r = 22 + Math.random() * 6;
-          const cx = camera.position.x + Math.cos(ang) * r;
-          const cy = camera.position.y + 8 + elev * 12;
-          const cz = camera.position.z + Math.sin(ang) * r;
+          // Spawn high in sky above and slightly behind camera
+          const sideSpread = (Math.random() - 0.5) * 30; // left/right spread
+          const cx = camera.position.x + sideSpread;
+          const cy = camera.position.y + 18 + Math.random() * 10; // high in sky
+          const cz = camera.position.z - 15 - Math.random() * 10; // behind camera (away from beach)
           ss.sprite.position.set(cx, cy, cz);
-          // Direction: slightly downward, fast
-          const travelAng = ang + Math.PI + (Math.random() - 0.5) * 0.6;
-          ss.vx = Math.cos(travelAng) * (18 + Math.random() * 10);
-          ss.vy = -(3 + Math.random() * 4);
-          ss.vz = Math.sin(travelAng) * (18 + Math.random() * 10);
-          ss.maxLife = 0.55 + Math.random() * 0.35;
+          // Travel toward +Z (beach horizon) and downward
+          ss.vx = sideSpread * 0.3; // slight lateral drift
+          ss.vy = -(8 + Math.random() * 6); // fall
+          ss.vz = 20 + Math.random() * 15; // toward beach
+          ss.maxLife = 0.8 + Math.random() * 0.5;
           ss.life = ss.maxLife;
           ss.active = true;
           ss.mat.opacity = 0;
-          // Rotate sprite to align with travel direction
-          ss.sprite.material.rotation = Math.atan2(ss.vy, Math.sqrt(ss.vx * ss.vx + ss.vz * ss.vz));
+          // Align sprite with travel direction
+          ss.sprite.material.rotation = Math.atan2(ss.vy, ss.vz) + Math.PI * 0.5;
         }
       } else {
         ss.life -= dt;
         if (ss.life <= 0) {
           ss.active = false;
           ss.mat.opacity = 0;
-          // Next fire: 15–50s from now
-          ss.nextFire = t + 15 + Math.random() * 35;
+          ss.nextFire = t + 7 + Math.random() * 6; // every 7-13s
         } else {
-          const progress = ss.life / ss.maxLife;
-          // Fade in quickly, hold, then fade out
-          ss.mat.opacity = progress < 0.85
-            ? (progress / 0.85)
-            : Math.max(0, (ss.life / ss.maxLife) * 0.9);
-          ss.mat.opacity *= 0.85; // keep subtle
+          const prog = ss.life / ss.maxLife;
+          // Bright flash in, fade out
+          ss.mat.opacity = Math.min(prog * 3, 1) * Math.min((1 - prog) * 3, 1) * 0.92;
           ss.sprite.position.x += ss.vx * dt;
           ss.sprite.position.y += ss.vy * dt;
           ss.sprite.position.z += ss.vz * dt;
@@ -213,48 +181,54 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
-  // ── Asteroids ─────────────────────────────────────────────────
+  // ── Asteroids — bright fireballs arcing toward beach horizon ──
   const asteroids = scene.userData.asteroids;
   if (asteroids) {
     for (const ast of asteroids) {
       if (!ast.active) {
         if (t >= ast.nextFire) {
-          // Spawn on sky sphere perimeter, drift slowly
-          const ang = Math.random() * Math.PI * 2;
-          const elev = -0.1 + Math.random() * 0.6;
-          const r = 18 + Math.random() * 8;
-          ast.mesh.position.set(
-            camera.position.x + Math.cos(ang) * r,
-            camera.position.y + 4 + elev * 10,
-            camera.position.z + Math.sin(ang) * r,
-          );
-          // Very slow drift — almost imperceptible
-          const driftAng = ang + Math.PI + (Math.random() - 0.5) * 1.0;
-          ast.vx = Math.cos(driftAng) * (0.4 + Math.random() * 0.6);
-          ast.vy = (Math.random() - 0.5) * 0.15;
-          ast.vz = Math.sin(driftAng) * (0.4 + Math.random() * 0.6);
-          ast.maxLife = 18 + Math.random() * 22; // 18–40s drift
+          // Spawn high and offset, travel toward beach (+Z) and down
+          const sideSpread = (Math.random() - 0.5) * 28;
+          const startX = camera.position.x + sideSpread;
+          const startY = camera.position.y + 14 + Math.random() * 8;
+          const startZ = camera.position.z - 8 - Math.random() * 12;
+          ast.asprite.position.set(startX, startY, startZ);
+          ast.tail.position.set(startX - 2, startY, startZ - 2);
+          // Velocity: toward beach and down
+          ast.vx = sideSpread * 0.1;
+          ast.vy = -(5 + Math.random() * 4);
+          ast.vz = 12 + Math.random() * 8;
+          ast.maxLife = 1.5 + Math.random() * 1.0;
           ast.life = ast.maxLife;
           ast.active = true;
-          ast.mat.opacity = 0;
+          ast.amat.opacity = 0;
+          ast.tmat.opacity = 0;
+          // Align tail with direction
+          const angle = Math.atan2(ast.vy, ast.vz) + Math.PI * 0.5;
+          ast.tail.material.rotation = angle;
+          ast.asprite.material.rotation = angle;
         }
       } else {
         ast.life -= dt;
         if (ast.life <= 0) {
           ast.active = false;
-          ast.mat.opacity = 0;
-          ast.nextFire = t + 25 + Math.random() * 55;
+          ast.amat.opacity = 0;
+          ast.tmat.opacity = 0;
+          ast.nextFire = t + 8 + Math.random() * 5; // every 8-13s
         } else {
-          const progress = ast.life / ast.maxLife;
-          // Gentle fade in/out — very subtle
-          const envelope = Math.min(progress / 0.1, 1) * Math.min((1 - progress) / 0.1, 1);
-          ast.mat.opacity = envelope * (0.35 + Math.random() * 0.05);
-          ast.mesh.position.x += ast.vx * dt;
-          ast.mesh.position.y += ast.vy * dt;
-          ast.mesh.position.z += ast.vz * dt;
-          // Slow tumble
-          ast.mesh.rotation.x += dt * 0.3;
-          ast.mesh.rotation.y += dt * 0.2;
+          const prog = ast.life / ast.maxLife;
+          const envelope = Math.min(prog * 4, 1) * Math.min((1 - prog) * 4, 1);
+          ast.amat.opacity = envelope * 0.95;
+          ast.tmat.opacity = envelope * 0.75;
+          ast.asprite.position.x += ast.vx * dt;
+          ast.asprite.position.y += ast.vy * dt;
+          ast.asprite.position.z += ast.vz * dt;
+          // Tail slightly behind
+          ast.tail.position.set(
+            ast.asprite.position.x - ast.vx * 0.08,
+            ast.asprite.position.y - ast.vy * 0.08,
+            ast.asprite.position.z - ast.vz * 0.08,
+          );
         }
       }
     }
