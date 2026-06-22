@@ -287,8 +287,9 @@ export function createFerrisWheel(scene) {
     arm.position.y = 0.72;
     gondola.add(arm);
 
-    // Counter-rotate so gondola always hangs straight down
-    gondola.rotation.z = -angle;
+    // Store base angle — animation loop will set rotation.z = baseAngle - wheelAngle
+    // so gondola always hangs straight down regardless of wheel position
+    gondola.rotation.z = angle; // initial upright hang
     gondola.userData.baseAngle = angle;
     cabinGroup.add(gondola);
   }
@@ -371,14 +372,17 @@ export function animateFerrisWheel(scene, t, audioBeat) {
   const fw = scene.userData.ferrisWheel;
   if (!fw) return;
 
-  // Smooth continuous rotation — ~35s per revolution
+  // Smooth continuous counter-clockwise rotation — ~35s per revolution
+  // Only rotate the wheelGroup around Z — root stays fixed
   const angle = -(t * 0.18);
   fw.wheelGroup.rotation.z = angle;
 
-  // Counter-rotate each gondola to stay upright
+  // Counter-rotate each gondola so they always hang straight down
+  // Use absolute angle (baseAngle - wheelAngle) so they don't accumulate
   for (const child of fw.cabinGroup.children) {
     if (child.name?.startsWith("cabin_")) {
-      child.rotation.z = -angle;
+      const base = child.userData.baseAngle || 0;
+      child.rotation.z = base - angle;
     }
   }
 
@@ -407,7 +411,7 @@ export function animateFerrisWheel(scene, t, audioBeat) {
 // ─── World-space cabin position for ride camera ───────────────────
 // Returns { x, y, z } of cabin i at time t, in world space
 export function getCabinWorldPosition(cabinIndex, t) {
-  const wheelAngle = t * 0.18;
+  const wheelAngle = -(t * 0.18); // counter-clockwise matches animation
   const cabinAngle = (cabinIndex / NUM_CABINS) * Math.PI * 2;
   // wheelGroup rotates around z, cabin is at (0, cy, cx) local to wheelGroup
   // wheelGroup is at (0, WHEEL_HUB_Y, 0) local to root

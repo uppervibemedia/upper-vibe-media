@@ -906,20 +906,25 @@ export default function WorldHUD({
               pointerEvents: "none",
             }}
           >
+            <p className="text-[10px] text-white/40 tracking-wider">Your music keeps playing</p>
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); setFerrisWheelOpen(true); onMobileModalChange?.(true); }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+              onClick={() => {
+                hapticTap();
+                setIsRiding(true);
+                onFerrisRideChange?.(true);
+              }}
+              className="flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
                 background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
                 color: "#000",
-                boxShadow: "0 0 20px rgba(0,184,212,0.4)",
-                minHeight: "44px",
+                boxShadow: "0 0 24px rgba(0,184,212,0.45)",
+                minHeight: "52px",
                 touchAction: "manipulation",
                 pointerEvents: "auto",
               }}
             >
-              🎡 Ride the Wheel
+              🎡 Ride Wheel
             </button>
           </motion.div>
         )}
@@ -1042,6 +1047,7 @@ export default function WorldHUD({
         }}
         isMobile={isMobile}
       />
+
 
       {/* ── Zen Beach Panel (slide-up) ────────────────────────── */}
       <ZenBeachPanel
