@@ -1025,43 +1025,51 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* ── Vibe Launch Zone HUD ── */}
       {!loading && (nearLaunchPad || isAirborne) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          className="fixed z-[60] flex flex-col items-center gap-2"
+        <div
+          className="fixed z-[60] flex flex-col items-center gap-2 pointer-events-none"
           style={{
-            bottom: isMobile ? "calc(120px + env(safe-area-inset-bottom,0px))" : "90px",
+            bottom: isMobile ? "calc(130px + env(safe-area-inset-bottom,0px))" : "96px",
             left: "50%",
             transform: "translateX(-50%)",
-            pointerEvents: "auto",
           }}
         >
+          {/* Orb counter — always visible when any have been collected */}
           {orbCount > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black" style={{ background: "rgba(0,229,255,0.15)", border: "1px solid rgba(0,229,255,0.35)", color: "#00E5FF" }}>
-              ✦ {orbCount} Vibe {orbCount === 1 ? "Orb" : "Orbs"} collected
+            <div
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black pointer-events-none"
+              style={{ background: "rgba(0,229,255,0.12)", border: "1px solid rgba(0,229,255,0.3)", color: "#00E5FF", backdropFilter: "blur(8px)" }}
+            >
+              ✦ {orbCount} Vibe {orbCount === 1 ? "Orb" : "Orbs"}
             </div>
           )}
-          {!isAirborne && (
+
+          {/* Launch button — only when standing on pad, not airborne */}
+          {nearLaunchPad && !isAirborne && (
             <button
-              onClick={() => { try { navigator?.vibrate?.(25); } catch {} launchRef.current?.(); }}
-              className="px-8 py-3 rounded-full font-black text-sm tracking-widest transition-all hover:brightness-110 active:scale-95"
+              onClick={() => { try { navigator?.vibrate?.(30); } catch {} launchRef.current?.(); }}
+              className="pointer-events-auto px-7 py-3 rounded-full font-black text-sm tracking-widest transition-all hover:brightness-110 active:scale-95"
               style={{
-                background: "linear-gradient(135deg,#00D4F0,#9B7EFF)",
+                background: "linear-gradient(135deg,#00B8D4,#9B4FFF)",
                 color: "#fff",
-                boxShadow: "0 0 30px rgba(0,212,240,0.4)",
-                letterSpacing: "0.2em",
+                boxShadow: "0 0 24px rgba(0,184,212,0.45), 0 2px 12px rgba(0,0,0,0.4)",
+                letterSpacing: "0.18em",
+                fontSize: "13px",
               }}
             >
               🚀 LAUNCH
             </button>
           )}
+
+          {/* Airborne indicator */}
           {isAirborne && (
-            <div className="px-6 py-2 rounded-full font-black text-xs tracking-widest" style={{ background: "rgba(155,126,255,0.2)", border: "1px solid rgba(155,126,255,0.4)", color: "#c4aaff" }}>
+            <div
+              className="px-5 py-1.5 rounded-full font-black text-[11px] tracking-widest pointer-events-none"
+              style={{ background: "rgba(155,126,255,0.18)", border: "1px solid rgba(155,126,255,0.35)", color: "#c4aaff", backdropFilter: "blur(8px)" }}
+            >
               ⚡ AIRBORNE
             </div>
           )}
-        </motion.div>
+        </div>
       )}
 
       {/* ── Avatar Customizer Panel (color + style) ────────────────────── */}

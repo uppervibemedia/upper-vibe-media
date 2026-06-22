@@ -6,7 +6,7 @@ import createVibeShop from "./VibeShop";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
-import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
+import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -1405,6 +1405,19 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       buildPark(scene);
 
+      // ── Expose launch trigger ref once (not in animation loop) ──
+      if (launchRef) {
+        launchRef.current = () => {
+          const ls = launchStateRef.current;
+          if (!ls.active) {
+            ls.active = true;
+            ls.phase = "rise";
+            ls.timer = 0;
+            ls.startY = SPAWN[1];
+          }
+        };
+      }
+
       // Avatar rim light
       const avatarRimLight = new PointLight();
       avatarRimLight.color = new Color("#8899DD");
@@ -1564,11 +1577,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             const progress = Math.min(ls.timer / LAUNCH_DURATION, 1);
             const eased = 1 - (1 - progress) * (1 - progress); // ease-out
             py = ls.startY + LAUNCH_HEIGHT * eased;
-            // Collect orbs while airborne
-            if (sceneRef.current) {
-              const c = collectNearbyOrbs(sceneRef.current, px, py, pz);
-              if (c.length) orbCountRef.current += c.length;
-            }
             if (progress >= 1) { ls.phase = "fall"; ls.timer = 0; }
           } else if (ls.phase === "fall") {
             const progress = Math.min(ls.timer / GLIDE_DURATION, 1);
@@ -1578,13 +1586,20 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               py = ls.startY;
               ls.active = false;
               ls.phase = "idle";
+              // Landing pulse ring at current position
+              if (sceneRef.current) triggerLandingPulse(sceneRef.current, px, pz);
             }
           }
-          vel.x *= 0.92; vel.z *= 0.92; // dampen horizontal during flight
+          // Collect orbs every frame during ALL airborne phases using real py height
+          if (sceneRef.current) {
+            const c = collectNearbyOrbs(sceneRef.current, px, py, pz);
+            if (c.length) orbCountRef.current += c.length;
+          }
+          vel.x *= 0.88; vel.z *= 0.88; // dampen horizontal during flight
         } else {
           py = SPAWN[1];
-          // Check pad proximity (every 8 frames)
-          if (frameRef.current % 8 === 0 && sceneRef.current) {
+          // Check pad proximity (every 6 frames for responsiveness)
+          if (frameRef.current % 6 === 0 && sceneRef.current) {
             nearPadRef.current = getNearLaunchPad(px, pz);
           }
         }
@@ -1601,19 +1616,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Notify parent of position (throttled — every 10 frames)
         if (onPosCbRef.current && frameRef.current % 10 === 0) {
           try { onPosCbRef.current(px, pz, rot); } catch {}
-        }
-
-        // ── Expose launch trigger ──
-        if (launchRef) {
-          launchRef.current = () => {
-            const ls = launchStateRef.current;
-            if (!ls.active) {
-              ls.active = true;
-              ls.phase = "rise";
-              ls.timer = 0;
-              ls.startY = SPAWN[1];
-            }
-          };
         }
 
         // ── Notify parent of near-pad state ──
@@ -1942,7 +1944,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         });
         animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         animateJukebox(scene, t, audioBeat);
-        animateLaunchZone(scene, t, audioBeat);
+        animateLaunchZone(scene, t, audioBeat, dt);
 
         // Stars twinkle
         const starsMesh = scene.userData.stars;
