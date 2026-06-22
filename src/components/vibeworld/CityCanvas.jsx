@@ -80,7 +80,7 @@ function resolveCollisions(px, pz, r, boxes) {
   }
 
   // Beach shoreline boundary
-  const SHORELINE_Z = 26;
+  const SHORELINE_Z = 34;
   if (z > 0) {
     if (z > SHORELINE_Z) z = SHORELINE_Z;
     if (x < -28) x = -28;
@@ -187,7 +187,7 @@ function buildPark(scene) {
   createCosmicSky(scene);
   createCitySkyline(scene);
 
-  const SHORELINE_Z = 26;
+  const SHORELINE_Z = 32;
   const OCEAN_DEPTH = 54;
 
   // ═════════════════════════════════════════════════════════════
@@ -956,39 +956,16 @@ function buildPark(scene) {
 
   scene.add(edgeBuildings);
 
-  // 10. BEACH — single continuous sand surface
-  const beachGeo = new PlaneGeometry(68, 18);
+  // 10. BEACH — wider sand strip for the hoverboard course
+  const beachGeo = new PlaneGeometry(68, 24);
   const beach = new Mesh(beachGeo, mat("#C8A878", { roughness: 0.5 }));
   beach.rotation.x = -Math.PI / 2;
-  beach.position.set(0, 0.001, 21);
+  beach.position.set(0, 0.001, 24);
   beach.receiveShadow = true;
   beach.name = "beach";
   scene.add(beach);
 
-  // Beach lounge chairs
-  const chairGroup = new Group();
-  chairGroup.name = "beachChairs";
-  const umbColors = ["#9B7EFF", "#00D4F0", "#C43BFF"];
-  for (let u = 0; u < 6; u++) {
-    const ux = -14 + u * 5.5;
-    const uz = 22.5;
-    const pole = new Mesh(new CylinderGeometry(0.04, 0.04, 2, 6), mat("#CCCCDD", { roughness: 0.3, metalness: 0.3 }));
-    pole.position.set(ux, 1.0, uz); pole.castShadow = true;
-    chairGroup.add(pole);
-
-    const canopy = new Mesh(
-      new CylinderGeometry(0.05, 0.8, 0.6, 12),
-      mat(umbColors[u % 3], { roughness: 0.4, metalness: 0.1 })
-    );
-    canopy.position.set(ux, 2.2, uz); canopy.castShadow = true;
-    chairGroup.add(canopy);
-
-    const chair = new Mesh(new BoxGeometry(0.5, 0.08, 1.4), mat("#555566", { roughness: 0.4, metalness: 0.3 }));
-    chair.position.set(ux + 0.6, 0.06, uz); chair.rotation.x = -0.2;
-    chair.castShadow = true; chair.receiveShadow = true;
-    chairGroup.add(chair);
-  }
-  scene.add(chairGroup);
+  // Beach chairs removed — hoverboard course uses this space
 
   // 11. OCEAN — waves from shore
   const oceanSegments = 54;
@@ -1078,8 +1055,8 @@ function buildPark(scene) {
   const beachLight = new PointLight();
   beachLight.color = new Color("#55AADD");
   beachLight.intensity = 3.5;
-  beachLight.distance = 24;
-  beachLight.position.set(0, 3, SHORELINE_Z + 6);
+  beachLight.distance = 30;
+  beachLight.position.set(0, 3, SHORELINE_Z + 4);
   scene.add(beachLight);
 
   // Zone point lights — bright neon glow per zone
@@ -1143,58 +1120,7 @@ function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   createStarField(scene);
 
-  // Trees removed — layout cleanup, decoration will be added later
-  // Beach palm row — spaced like umbrellas, lining the back of the beach
-  // Beach palm row — spaced like umbrellas, lining the back of the beach
-  // Removed tree at x=0 that was blocking the central beach pathway
-  const palmPositions = [
-    [-24, 19], [-18, 19], [-12, 19], [-6, 19],
-    [6, 19], [12, 19], [18, 19], [24, 19],
-  ];
-  palmPositions.forEach(([px, pz]) => {
-    const palm = new Group();
-    const trunkGeo = new CylinderGeometry(0.06, 0.1, 3, 8);
-    const trunk = new Mesh(trunkGeo, mat("#6D4C41", { roughness: 0.6 }));
-    trunk.position.y = 1.5;
-    trunk.castShadow = true;
-    palm.add(trunk);
-
-    // DoubleSide fronds — four planes per position for omni-directional visibility
-    const frondGeoGreen = new PlaneGeometry(0.2, 0.7);
-    const frondMatGreen = new MeshStandardMaterial({
-      color: new Color("#2E7D32"),
-      roughness: 0.5,
-      side: THREE.DoubleSide,
-    });
-    const frondMatLighter = new MeshStandardMaterial({
-      color: new Color("#3A8F3E"),
-      roughness: 0.5,
-      side: THREE.DoubleSide,
-    });
-
-    for (let f = 0; f < 6; f++) {
-      const angle = (f / 6) * Math.PI * 2;
-      const fx = Math.cos(angle) * 0.3;
-      const fz = Math.sin(angle) * 0.3;
-
-      // Four crossing fronds at each position — visible from every angle
-      for (let cr = 0; cr < 4; cr++) {
-        const frond = new Mesh(
-          frondGeoGreen,
-          cr % 2 === 0 ? frondMatGreen : frondMatLighter,
-        );
-        frond.position.set(fx, 2.7, fz);
-        frond.rotation.x = Math.cos(angle) * 0.5;
-        frond.rotation.z = Math.sin(angle) * 0.5;
-        frond.rotation.y = (cr / 4) * Math.PI;
-        frond.castShadow = true;
-        palm.add(frond);
-      }
-    }
-
-    palm.position.set(px, 0, pz);
-    scene.add(palm);
-  });
+  // Palm trees removed — hoverboard course runs along the beach
 }
 
 // ═══════════════════════════════════════════════════════════════

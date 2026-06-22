@@ -19,43 +19,43 @@ const {
   SpriteMaterial, Sprite, CanvasTexture, LinearFilter,
 } = THREE;
 
-export const HOVERBOARD_START = { x: 22, z: 22 };
+// Start pad: right side of beach, player runs westward along the shoreline
+export const HOVERBOARD_START = { x: 28, z: 23 };
 export const HOVERBOARD_INTERACT_RADIUS = 6.0;
 
 // ─── RING DEFINITIONS ──────────────────────────────────────────────────────
-// Each ring: { id, x, y, z, rotY, size, color }
-// size: 'sm'=r1.4  'md'=r2.0  'lg'=r2.8  'xl'=r4.0
-// The course sweeps from start (22,22) → northeast along coast → loops out
-// over the water → curves back southwest → finish portal (26, 22)
+// Course runs WEST along the beach shoreline (z≈22-26, decreasing x from 28 → -28)
+// All rings sit over sand or shallow water, well clear of the city plaza.
+// rotY ≈ Math.PI/2 so rings face along the x-axis (player runs left/right)
 export const HOVERBOARD_RINGS = [
-  // ── Warm-up straight (beach entry, low & forgiving) ──────────────────────
-  { id:  0, x: 22,  y: 1.2, z: 17,  rotY: 0,    size: "lg", color: "#00E5FF" }, // ring 1  — straight ahead
-  { id:  1, x: 24,  y: 1.8, z: 13,  rotY: 0.3,  size: "md", color: "#00E5FF" }, // ring 2  — slight right
-  { id:  2, x: 27,  y: 0.8, z: 9,   rotY: 0.5,  size: "xl", color: "#C43BFF" }, // ring 3  — GIANT low sweep
-  // ── Rising section (into the air over water) ───────────────────────────
-  { id:  3, x: 30,  y: 2.4, z: 6,   rotY: 0.6,  size: "md", color: "#00E5FF" }, // ring 4
-  { id:  4, x: 32,  y: 3.8, z: 3,   rotY: 0.7,  size: "lg", color: "#FFD700" }, // ring 5  — HIGH gold ring
-  { id:  5, x: 34,  y: 5.5, z: 0,   rotY: 0.4,  size: "md", color: "#00E5FF" }, // ring 6  — VERY HIGH peak
-  // ── Sweeping left turn (north, over open water) ────────────────────────
-  { id:  6, x: 33,  y: 4.0, z: -4,  rotY: 1.2,  size: "lg", color: "#C43BFF" }, // ring 7  — diving left
-  { id:  7, x: 30,  y: 2.5, z: -7,  rotY: 1.6,  size: "xl", color: "#FFD700" }, // ring 8  — GIANT mid-air
-  { id:  8, x: 26,  y: 1.6, z: -8,  rotY: 2.0,  size: "md", color: "#00E5FF" }, // ring 9
-  // ── Deep beach turn (curls back southwest) ────────────────────────────
-  { id:  9, x: 22,  y: 1.2, z: -6,  rotY: 2.5,  size: "lg", color: "#C43BFF" }, // ring 10
-  { id: 10, x: 18,  y: 2.0, z: -2,  rotY: 3.0,  size: "md", color: "#00E5FF" }, // ring 11 — heading south
-  { id: 11, x: 16,  y: 3.2, z: 4,   rotY: 3.2,  size: "lg", color: "#FFD700" }, // ring 12 — HIGH comeback
-  { id: 12, x: 17,  y: 1.8, z: 10,  rotY: 3.5,  size: "md", color: "#00E5FF" }, // ring 13
-  // ── Final sprint (back toward finish) ────────────────────────────────
-  { id: 13, x: 19,  y: 1.0, z: 15,  rotY: -0.2, size: "xl", color: "#C43BFF" }, // ring 14 — GIANT final stretch
-  { id: 14, x: 21,  y: 2.5, z: 18,  rotY: 0,    size: "lg", color: "#FFD700" }, // ring 15 — high finish approach
-  { id: 15, x: 24,  y: 1.2, z: 22,  rotY: 0,    size: "xl", color: "#00E5FF" }, // ring 16 — FINISH RING (leads into portal)
+  // ── Opening warm-up — low beach entry ────────────────────────────────────
+  { id:  0, x:  20,  y: 1.2, z: 23,  rotY: Math.PI/2, size: "lg", color: "#00E5FF" },
+  { id:  1, x:  12,  y: 0.9, z: 24,  rotY: Math.PI/2, size: "md", color: "#00E5FF" },
+  { id:  2, x:   4,  y: 1.5, z: 23,  rotY: Math.PI/2, size: "xl", color: "#C43BFF" }, // GIANT
+  // ── Rising section — climb over the water ────────────────────────────────
+  { id:  3, x:  -4,  y: 2.5, z: 25,  rotY: Math.PI/2, size: "md", color: "#00E5FF" },
+  { id:  4, x: -10,  y: 3.8, z: 26,  rotY: Math.PI/2, size: "lg", color: "#FFD700" }, // HIGH gold
+  { id:  5, x: -16,  y: 5.0, z: 25,  rotY: Math.PI/2, size: "md", color: "#00E5FF" }, // PEAK
+  // ── Mid course — swoop back down toward sand ──────────────────────────────
+  { id:  6, x: -20,  y: 3.2, z: 24,  rotY: Math.PI/2, size: "lg", color: "#C43BFF" },
+  { id:  7, x: -24,  y: 1.8, z: 23,  rotY: Math.PI/2, size: "xl", color: "#FFD700" }, // GIANT low sweep
+  { id:  8, x: -26,  y: 1.0, z: 24,  rotY: Math.PI/2, size: "md", color: "#00E5FF" },
+  // ── Turn — curl back east ─────────────────────────────────────────────────
+  { id:  9, x: -26,  y: 1.5, z: 27,  rotY: 0,         size: "lg", color: "#C43BFF" }, // 90° turn ring
+  { id: 10, x: -22,  y: 2.2, z: 29,  rotY: Math.PI/2, size: "md", color: "#00E5FF" }, // heading back east
+  { id: 11, x: -14,  y: 3.5, z: 28,  rotY: Math.PI/2, size: "lg", color: "#FFD700" }, // HIGH return
+  // ── Final sprint — race back east toward finish ───────────────────────────
+  { id: 12, x:  -6,  y: 2.0, z: 27,  rotY: Math.PI/2, size: "md", color: "#00E5FF" },
+  { id: 13, x:   2,  y: 1.2, z: 26,  rotY: Math.PI/2, size: "xl", color: "#C43BFF" }, // GIANT
+  { id: 14, x:  10,  y: 2.5, z: 25,  rotY: Math.PI/2, size: "lg", color: "#FFD700" }, // HIGH finale
+  { id: 15, x:  18,  y: 1.2, z: 24,  rotY: Math.PI/2, size: "xl", color: "#00E5FF" }, // FINISH ring
 ];
 
 const RING_RADIUS = { sm: 1.4, md: 2.0, lg: 2.8, xl: 4.0 };
 const RING_TUBE   = { sm: 0.10, md: 0.13, lg: 0.18, xl: 0.24 };
 const RING_SEGMENTS = 64;
 
-// Finish portal position (just past ring 15)
+// Finish portal position (just east of ring 15, back at start side)
 const FINISH_POS = { x: 26, y: 1.2, z: 24 };
 
 function bmat(hex, opacity = 1, extra = {}) {
@@ -135,29 +135,29 @@ export function createHoverboardZone(scene) {
     }
   }
 
-  // ── START ARCH ───────────────────────────────────────────────────────────
-  for (const bx of [-3.0, 3.0]) {
+  // ── START ARCH — straddles the x-axis (player runs west/left) ───────────
+  for (const bz of [-3.0, 3.0]) {
     const pylon = new Mesh(new CylinderGeometry(0.12, 0.15, 4.5, 12), smat("#111130", { r: 0.25, m: 0.8 }));
-    pylon.position.set(SX + bx, 2.25, SZ - 2.5);
+    pylon.position.set(SX + 3, 2.25, SZ + bz);
     pylon.castShadow = true;
     scene.add(pylon);
-    const pylonGlow = new Mesh(new CylinderGeometry(0.05, 0.05, 4.4, 8), bmat(bx < 0 ? "#C43BFF" : "#00E5FF", 0.6));
-    pylonGlow.position.set(SX + bx, 2.25, SZ - 2.5);
+    const pylonGlow = new Mesh(new CylinderGeometry(0.05, 0.05, 4.4, 8), bmat(bz < 0 ? "#C43BFF" : "#00E5FF", 0.6));
+    pylonGlow.position.set(SX + 3, 2.25, SZ + bz);
     scene.add(pylonGlow);
   }
-  const archBar = new Mesh(new BoxGeometry(6.3, 0.12, 0.12), bmat("#00E5FF", 0.9));
-  archBar.position.set(SX, 4.52, SZ - 2.5);
+  const archBar = new Mesh(new BoxGeometry(0.12, 0.12, 6.3), bmat("#00E5FF", 0.9));
+  archBar.position.set(SX + 3, 4.52, SZ);
   scene.add(archBar);
   scene.userData.hbArchBarMat = archBar.material;
 
   // Arch label
   const startLabel = makeLabel("HOVERBOARD  RING  RUN", "#00E5FF", [5.5, 1.0]);
-  startLabel.position.set(SX, 5.3, SZ - 2.5);
+  startLabel.position.set(SX, 5.3, SZ);
   scene.add(startLabel);
 
   // Sub-label: ring count
   const subLabel = makeLabel("16 RINGS · COAST COURSE", "#C43BFF", [4.5, 0.75]);
-  subLabel.position.set(SX, 4.2, SZ - 2.5);
+  subLabel.position.set(SX, 4.2, SZ);
   scene.add(subLabel);
 
   // ── RING PATH ────────────────────────────────────────────────────────────
@@ -301,11 +301,11 @@ export function createHoverboardZone(scene) {
   scene.add(hbLight);
   scene.userData.hbLight = hbLight;
 
-  // Mid-course light (around the far loop)
+  // Mid-course light (around the far west turn)
   const midLight = new PointLight();
   midLight.color = new Color("#C43BFF");
   midLight.intensity = 3.0; midLight.distance = 18;
-  midLight.position.set(32, 5, -3);
+  midLight.position.set(-26, 5, 25);
   scene.add(midLight);
   scene.userData.hbMidLight = midLight;
 
