@@ -1,52 +1,81 @@
+/**
+ * DJBoothPanel (replaces JukeboxPanel) — Live DJ Booth interaction panel.
+ * Shows current track info + Join/Leave buttons.
+ * Uses the existing global player — no new audio system.
+ */
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Music4, Play, Disc3 } from "lucide-react";
+import { X, Music4, Radio, Disc3 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
 
-const JUKEBOX_COLOR = "#00D4F0";
+const DJ_CYAN = "#00E5FF";
+const DJ_PURPLE = "#C43BFF";
+const DJ_PINK = "#FF4FC3";
+
+// Animated equalizer bars
+function EqBars({ active }) {
+  return (
+    <div className="flex items-end gap-0.5 h-4">
+      {[1, 2, 3, 4, 5].map((b) => (
+        <div
+          key={b}
+          className="w-1 rounded-full"
+          style={{
+            background: b % 2 === 0 ? DJ_PURPLE : DJ_CYAN,
+            height: active ? `${6 + b * 2}px` : "4px",
+            animation: active ? `pulse-glow ${0.3 + b * 0.12}s ease-in-out infinite alternate` : "none",
+            transition: "height 0.3s ease",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function JukeboxPanel({ open, onClose, isMobile }) {
+  const [joined, setJoined] = useState(false);
+  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer() || {};
   const [featuredTracks, setFeaturedTracks] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [playingId, setPlayingId] = useState(null);
-  const { playTrack, currentTrack, isPlaying } = usePlayer() || {};
 
+  // Fetch a pool of featured tracks on open (for "start mix" when nothing playing)
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    base44.entities.Track.filter({ is_featured: true, status: "published" }, "-display_order", 20)
-      .then((tracks) => {
-        if (tracks.length === 0) {
-          // fallback: any published tracks
-          return base44.entities.Track.list("-created_date", 16);
-        }
-        return tracks;
-      })
-      .then(setFeaturedTracks)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    base44.entities.Track.filter({ is_featured: true, status: "published" }, "-display_order", 8)
+      .then((tracks) => { if (tracks.length > 0) setFeaturedTracks(tracks); })
+      .catch(() => {});
   }, [open]);
 
-  const handlePlay = (track) => {
-    if (playTrack) {
-      playTrack(track);
-      setPlayingId(track.id);
+  // When panel closes, reset joined state
+  useEffect(() => { if (!open) setJoined(false); }, [open]);
+
+  const handleJoin = () => {
+    setJoined(true);
+    // If nothing is playing, start a featured track via global player
+    if (!isPlaying && featuredTracks.length > 0 && playTrack) {
+      const pick = featuredTracks[Math.floor(Math.random() * featuredTracks.length)];
+      playTrack(pick, "song");
     }
   };
 
-  const isCurrentlyPlaying = (track) =>
-    currentTrack?.id === track.id && isPlaying;
+  const handleLeave = () => {
+    setJoined(false);
+    onClose?.();
+  };
+
+  const trackTitle = currentTrack?.title || "Live DJ Mix";
+  const trackArtist = currentTrack?.artist_display || "Upper Vibe";
+  const trackCover = currentTrack?.cover_url || null;
 
   return (
     <AnimatePresence>
       {open && (
         <motion.div
-          key="jukebox-panel"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 40 }}
-          transition={{ type: "spring", stiffness: 280, damping: 28 }}
+          key="dj-booth-panel"
+          initial={{ opacity: 0, y: 40, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 40, scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 300, damping: 28 }}
           className="absolute left-0 right-0 bottom-0 z-[70] pointer-events-auto"
           style={{
             paddingBottom: isMobile
@@ -57,155 +86,157 @@ export default function JukeboxPanel({ open, onClose, isMobile }) {
           <div
             className="mx-auto rounded-2xl overflow-hidden"
             style={{
-              maxWidth: isMobile ? "100%" : "440px",
+              maxWidth: isMobile ? "calc(100% - 16px)" : "400px",
               margin: isMobile ? "0 8px" : "0 auto",
-              background: "rgba(8,8,24,0.97)",
-              border: `1px solid rgba(0,212,240,0.25)`,
-              boxShadow: `0 0 40px rgba(0,212,240,0.15), 0 8px 32px rgba(0,0,0,0.6)`,
-              backdropFilter: "blur(20px)",
+              background: "rgba(5,4,18,0.97)",
+              border: `1px solid rgba(0,229,255,0.22)`,
+              boxShadow: `0 0 48px rgba(196,59,255,0.18), 0 0 24px rgba(0,229,255,0.12), 0 8px 40px rgba(0,0,0,0.7)`,
+              backdropFilter: "blur(24px)",
             }}
           >
             {/* Header */}
             <div
               className="flex items-center justify-between px-4 py-3"
-              style={{ borderBottom: "1px solid rgba(0,212,240,0.12)" }}
+              style={{
+                borderBottom: "1px solid rgba(0,229,255,0.1)",
+                background: "linear-gradient(90deg,rgba(196,59,255,0.08),rgba(0,229,255,0.06))",
+              }}
             >
               <div className="flex items-center gap-2.5">
                 <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{
-                    background: `rgba(0,212,240,0.15)`,
-                    border: `1px solid rgba(0,212,240,0.3)`,
+                    background: "linear-gradient(135deg,rgba(196,59,255,0.25),rgba(0,229,255,0.15))",
+                    border: "1px solid rgba(0,229,255,0.3)",
                   }}
                 >
-                  <Disc3 className="w-4 h-4" style={{ color: JUKEBOX_COLOR }} />
+                  <Disc3 className="w-4 h-4" style={{ color: DJ_CYAN }} />
                 </div>
                 <div>
-                  <p className="font-heading font-black text-sm text-white leading-none">
-                    Plaza Jukebox
+                  <p className="font-heading font-black text-sm text-white leading-none tracking-wide">
+                    Upper Vibe DJ Booth
                   </p>
-                  <p className="text-[9px] text-white/35 mt-0.5 leading-none">
-                    Featured tracks · plays for everyone nearby
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: DJ_PINK }} />
+                    <p className="text-[9px] font-bold tracking-wider" style={{ color: DJ_PINK }}>
+                      LIVE SET
+                    </p>
+                  </div>
                 </div>
               </div>
               <button
                 onTouchStart={(e) => e.stopPropagation()}
                 onClick={onClose}
                 className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
-                style={{ color: "rgba(255,255,255,0.4)", touchAction: "manipulation" }}
+                style={{ color: "rgba(255,255,255,0.35)", touchAction: "manipulation" }}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Proximity hint */}
-            <div
-              className="flex items-center gap-2 px-4 py-2"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-            >
+            {/* Now Playing card */}
+            <div className="px-4 pt-4 pb-3">
               <div
-                className="w-2 h-2 rounded-full animate-pulse flex-shrink-0"
-                style={{ background: JUKEBOX_COLOR }}
-              />
-              <p className="text-[10px] font-medium" style={{ color: `rgba(0,212,240,0.7)` }}>
-                🎶 Stay on the dance floor to hear it at full volume
+                className="rounded-xl p-3 flex items-center gap-3"
+                style={{
+                  background: "rgba(0,229,255,0.05)",
+                  border: "1px solid rgba(0,229,255,0.12)",
+                }}
+              >
+                {/* Cover */}
+                <div
+                  className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center"
+                  style={{ background: "rgba(196,59,255,0.15)", border: "1px solid rgba(196,59,255,0.25)" }}
+                >
+                  {trackCover ? (
+                    <img src={trackCover} alt={trackTitle} className="w-full h-full object-cover" />
+                  ) : (
+                    <Radio className="w-5 h-5" style={{ color: DJ_PURPLE }} />
+                  )}
+                </div>
+
+                {/* Track info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black tracking-widest uppercase mb-0.5" style={{ color: DJ_PURPLE }}>
+                    Now Playing
+                  </p>
+                  <p className="text-sm font-black text-white truncate leading-tight">{trackTitle}</p>
+                  <p className="text-[10px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
+                    {trackArtist}
+                  </p>
+                </div>
+
+                {/* EQ bars */}
+                <div className="flex-shrink-0">
+                  <EqBars active={isPlaying && joined} />
+                </div>
+              </div>
+            </div>
+
+            {/* EQ visualizer bar row */}
+            <div className="px-4 pb-3 flex items-end justify-center gap-1 h-8">
+              {Array.from({ length: 18 }).map((_, i) => {
+                const h = 4 + Math.sin(i * 0.8) * 8 + (i % 3 === 0 ? 6 : 0);
+                return (
+                  <div
+                    key={i}
+                    className="flex-1 rounded-full"
+                    style={{
+                      background: i % 3 === 0 ? DJ_CYAN : i % 3 === 1 ? DJ_PURPLE : DJ_PINK,
+                      height: isPlaying && joined ? `${h}px` : "3px",
+                      opacity: isPlaying && joined ? 0.65 : 0.2,
+                      animation: isPlaying && joined ? `pulse-glow ${0.35 + i * 0.04}s ease-in-out infinite alternate` : "none",
+                      transition: "height 0.4s ease, opacity 0.4s ease",
+                    }}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Hint */}
+            <div
+              className="px-4 py-2 flex items-center gap-2"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
+            >
+              <Music4 className="w-3 h-3 flex-shrink-0" style={{ color: "rgba(0,229,255,0.5)" }} />
+              <p className="text-[9px]" style={{ color: "rgba(255,255,255,0.28)" }}>
+                Stay on the Dance Floor to hear the mix at full volume
               </p>
             </div>
 
-            {/* Track list */}
-            <div
-              className="overflow-y-auto"
-              style={{ maxHeight: isMobile ? "40vh" : "320px" }}
-            >
-              {loading && (
-                <div className="flex items-center justify-center py-10">
-                  <div className="w-5 h-5 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
-                </div>
+            {/* Action buttons */}
+            <div className="px-4 pb-4 flex gap-2">
+              {!joined ? (
+                <button
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={handleJoin}
+                  className="flex-1 py-3 rounded-xl font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-[0.98]"
+                  style={{
+                    background: "linear-gradient(135deg,#00B8D4,#C43BFF)",
+                    color: "#fff",
+                    boxShadow: "0 0 24px rgba(196,59,255,0.35)",
+                    touchAction: "manipulation",
+                    minHeight: "48px",
+                  }}
+                >
+                  🎧 Join Live DJ
+                </button>
+              ) : (
+                <button
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={handleLeave}
+                  className="flex-1 py-3 rounded-xl font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-[0.98]"
+                  style={{
+                    background: "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    color: "rgba(255,255,255,0.6)",
+                    touchAction: "manipulation",
+                    minHeight: "48px",
+                  }}
+                >
+                  Leave DJ Audio
+                </button>
               )}
-              {!loading && featuredTracks.length === 0 && (
-                <p className="text-center text-xs text-white/30 py-10">
-                  No featured tracks yet
-                </p>
-              )}
-              {!loading &&
-                featuredTracks.map((track) => {
-                  const active = isCurrentlyPlaying(track);
-                  return (
-                    <button
-                      key={track.id}
-                      onTouchStart={(e) => e.stopPropagation()}
-                      onClick={() => handlePlay(track)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all hover:bg-white/5 active:bg-white/8"
-                      style={{
-                        borderBottom: "1px solid rgba(255,255,255,0.03)",
-                        background: active
-                          ? "rgba(0,212,240,0.07)"
-                          : "transparent",
-                        touchAction: "manipulation",
-                      }}
-                    >
-                      {/* Cover */}
-                      <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
-                        {track.cover_url ? (
-                          <img
-                            src={track.cover_url}
-                            alt={track.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div
-                            className="w-full h-full flex items-center justify-center"
-                            style={{ background: "rgba(0,212,240,0.1)" }}
-                          >
-                            <Music4 className="w-4 h-4" style={{ color: JUKEBOX_COLOR }} />
-                          </div>
-                        )}
-                        {active && (
-                          <div
-                            className="absolute inset-0 flex items-center justify-center"
-                            style={{ background: "rgba(0,0,0,0.45)" }}
-                          >
-                            <div className="flex items-end gap-0.5">
-                              {[1, 2, 3].map((b) => (
-                                <div
-                                  key={b}
-                                  className="w-0.5 rounded-full"
-                                  style={{
-                                    background: JUKEBOX_COLOR,
-                                    height: `${6 + b * 3}px`,
-                                    animation: `pulse-glow ${0.4 + b * 0.15}s ease-in-out infinite alternate`,
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="text-sm font-bold truncate"
-                          style={{ color: active ? JUKEBOX_COLOR : "rgba(255,255,255,0.9)" }}
-                        >
-                          {track.title}
-                        </p>
-                        <p className="text-[10px] text-white/35 truncate">
-                          {track.artist_display || "Upper Vibe"}
-                        </p>
-                      </div>
-
-                      {/* Play icon */}
-                      {!active && (
-                        <Play
-                          className="w-4 h-4 flex-shrink-0"
-                          style={{ color: "rgba(255,255,255,0.2)" }}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
             </div>
           </div>
         </motion.div>

@@ -443,7 +443,7 @@ export default function WorldHUD({
                   boxShadow: "0 0 14px rgba(0,212,240,0.25)",
                 }}
               >
-                🎵 Jukebox
+                🎧 Live DJ
               </button>
             )}
             {isDancing ? (
