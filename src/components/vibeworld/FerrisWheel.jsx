@@ -132,84 +132,70 @@ export function createFerrisWheel(scene) {
   axleGlow.position.set(0, 10.2, 0);
   root.add(axleGlow);
 
+  // ─── Rotating wheel group — rim + spokes + cabins all spin together ──
+  const wheelGroup = new Group();
+  wheelGroup.name = "wheelRotatingGroup";
+  wheelGroup.position.set(0, 10.2, 0);
+  root.add(wheelGroup);
+
   // ─── Main wheel rim — torus ───────────────────────────────────
   const rimGeo = new TorusGeometry(WHEEL_RADIUS, 0.14, 12, 64);
   const rimMesh = new Mesh(rimGeo, mat("#1E3050", { metalness: 0.8, roughness: 0.2 }));
   rimMesh.rotation.y = Math.PI / 2;
-  rimMesh.position.set(0, 10.2, 0);
   rimMesh.castShadow = true;
   rimMesh.name = "wheelRim";
-  root.add(rimMesh);
+  wheelGroup.add(rimMesh);
 
-  // Neon rim glow ring
+  // Neon rim glow ring — outer
+  const rimGlowMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.55 });
   const rimGlow = new Mesh(
-    new TorusGeometry(WHEEL_RADIUS + 0.08, 0.06, 8, 64),
-    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.55 })
+    new TorusGeometry(WHEEL_RADIUS + 0.08, 0.07, 8, 64),
+    rimGlowMat
   );
   rimGlow.rotation.y = Math.PI / 2;
-  rimGlow.position.set(0, 10.2, 0);
   rimGlow.name = "rimGlow";
-  root.add(rimGlow);
+  wheelGroup.add(rimGlow);
 
-  // Inner rim
+  // Second softer glow halo — wider, very transparent for bloom-like spread
+  const rimGlow2Mat = new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, transparent: true, opacity: 0.18 });
+  const rimGlow2 = new Mesh(
+    new TorusGeometry(WHEEL_RADIUS + 0.28, 0.18, 6, 64),
+    rimGlow2Mat
+  );
+  rimGlow2.rotation.y = Math.PI / 2;
+  rimGlow2.name = "rimGlow2";
+  wheelGroup.add(rimGlow2);
+
+  // Inner rim accent
   const innerRim = new Mesh(
     new TorusGeometry(WHEEL_RADIUS - 0.8, 0.07, 8, 48),
     new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.35 })
   );
   innerRim.rotation.y = Math.PI / 2;
-  innerRim.position.set(0, 10.2, 0);
-  root.add(innerRim);
+  wheelGroup.add(innerRim);
 
   // ─── Spokes ──────────────────────────────────────────────────
   const spokeGroup = new Group();
   spokeGroup.name = "wheelSpokes";
-  spokeGroup.position.set(0, 10.2, 0);
   const numSpokes = NUM_CABINS;
-  const spokeMat = mat("#1A2B3C", { metalness: 0.8, roughness: 0.2 });
-  for (let i = 0; i < numSpokes; i++) {
-    const angle = (i / numSpokes) * Math.PI * 2;
-    const spoke = new Mesh(
-      new CylinderGeometry(0.045, 0.045, WHEEL_RADIUS, 6),
-      spokeMat
-    );
-    // Spokes run radially — rotate to point outward in the rim plane
-    spoke.rotation.z = angle;
-    spoke.position.set(
-      0,
-      Math.sin(angle) * WHEEL_RADIUS / 2,
-      Math.cos(angle) * WHEEL_RADIUS / 2
-    );
-    // Actually: spoke lies along Y, we rotate to face outward
-    spoke.rotation.set(angle, 0, 0);
-    spoke.position.set(0, 0, 0); // will be offset below
-    spokeGroup.add(spoke);
-  }
-  root.add(spokeGroup);
-
-  // Rebuild spokes properly — CylinderGeometry along Y axis, rotate to point outward
-  spokeGroup.clear();
   for (let i = 0; i < numSpokes; i++) {
     const angle = (i / numSpokes) * Math.PI * 2;
     const spoke = new Mesh(
       new CylinderGeometry(0.04, 0.04, WHEEL_RADIUS, 6),
       mat("#1A2B3C", { metalness: 0.8, roughness: 0.2 })
     );
-    // Cylinder default along Y. Rotate so it points radially in the XZ plane of the wheel.
-    // Wheel rim is in the Y plane (torus rotated 90° around Y means rim is in XZ).
-    // Actually our torus is rotation.y = PI/2 so rim is in the XZ plane.
-    // Spokes: center at axle, tip at rim edge. Rim is at Y=0 from axle, so spokes are in XZ plane.
-    spoke.rotation.x = Math.PI / 2; // lay flat
-    spoke.rotation.z = angle; // rotate around Z to point toward each cabin angle
+    spoke.rotation.x = Math.PI / 2;
+    spoke.rotation.z = angle;
     const halfR = WHEEL_RADIUS / 2;
     spoke.position.set(Math.sin(angle) * halfR, Math.cos(angle) * halfR, 0);
     spokeGroup.add(spoke);
   }
+  wheelGroup.add(spokeGroup);
 
   // ─── Cabins ───────────────────────────────────────────────────
   const cabinGroup = new Group();
   cabinGroup.name = "cabinGroup";
-  cabinGroup.position.set(0, 10.2, 0);
-  root.add(cabinGroup);
+  wheelGroup.add(cabinGroup);
 
   const CABIN_COLORS = ["#C43BFF","#00E5FF","#FFD700","#FF4FC3","#A078FF","#00C8A0","#FF6B35","#7C3AED"];
   for (let i = 0; i < NUM_CABINS; i++) {
@@ -312,10 +298,10 @@ export function createFerrisWheel(scene) {
   // Store references for animation
   scene.userData.ferrisWheel = {
     root,
+    wheelGroup,
     cabinGroup,
-    rimMesh,
     rimGlow,
-    spokeGroup,
+    rimGlow2,
     wheelLight,
     angle: 0,
   };
@@ -328,47 +314,59 @@ export function animateFerrisWheel(scene, t, audioBeat) {
   const fw = scene.userData.ferrisWheel;
   if (!fw) return;
 
-  // Slow rotation — ~30s per full revolution (~0.21 rad/s)
-  fw.angle = t * 0.21;
+  // Smooth continuous rotation — ~30s per full revolution
+  const angle = t * 0.21;
 
-  // Rotate cabin group and spokes around their center (the axle)
-  fw.cabinGroup.rotation.z = fw.angle;
-  fw.spokeGroup.rotation.z = fw.angle;
+  // Rotate the entire wheel group (rim + spokes + cabins all move together)
+  fw.wheelGroup.rotation.z = angle;
 
   // Cabins counter-rotate to stay upright (gondola gravity effect)
   for (const child of fw.cabinGroup.children) {
     if (child.name?.startsWith("cabin_") || child.name?.startsWith("cabinGlow_")) {
-      child.rotation.z = -fw.angle;
+      child.rotation.z = -angle;
     }
   }
 
-  // Rim glow pulse with audio
+  // Outer rim glow — pulses cyan↔purple with audio beat
   if (fw.rimGlow?.material) {
-    fw.rimGlow.material.opacity = 0.35 + Math.sin(t * 2.0) * 0.15 + audioBeat * 0.25;
+    const glowPulse = 0.45 + Math.sin(t * 2.2) * 0.18 + audioBeat * 0.3;
+    fw.rimGlow.material.opacity = glowPulse;
+    // Color shift: cyan → purple → cyan
+    const shift = Math.sin(t * 0.7) * 0.5 + 0.5;
+    fw.rimGlow.material.color.set(new Color("#00E5FF")).lerp(new Color("#C43BFF"), shift);
   }
 
-  // Cabin glow color cycle
+  // Wide soft halo — opposite phase for alternating glow effect
+  if (fw.rimGlow2?.material) {
+    fw.rimGlow2.material.opacity = 0.12 + Math.sin(t * 2.2 + Math.PI) * 0.1 + audioBeat * 0.15;
+    const shift2 = Math.sin(t * 0.7 + Math.PI) * 0.5 + 0.5;
+    fw.rimGlow2.material.color.set(new Color("#C43BFF")).lerp(new Color("#FFD700"), shift2 * 0.6);
+  }
+
+  // Cabin glow opacity cycle — each cabin breathes independently
   let ci = 0;
   for (const child of fw.cabinGroup.children) {
     if (child.userData?.glowMat) {
-      child.userData.glowMat.opacity = 0.4 + Math.sin(t * 1.5 + ci * 0.8) * 0.25;
+      child.userData.glowMat.opacity = 0.45 + Math.sin(t * 1.5 + ci * 0.8) * 0.28 + audioBeat * 0.2;
       ci++;
     }
   }
 
-  // Wheel light pulse
+  // Wheel point light — color-shifts and pulses
   if (fw.wheelLight) {
-    fw.wheelLight.intensity = 2.5 + audioBeat * 1.5 + Math.sin(t * 1.2) * 0.5;
+    fw.wheelLight.intensity = 2.8 + audioBeat * 2.0 + Math.sin(t * 1.4) * 0.6;
+    const colorShift = Math.sin(t * 0.5) * 0.5 + 0.5;
+    fw.wheelLight.color.set(new Color("#00D4F0")).lerp(new Color("#C43BFF"), colorShift);
   }
 }
 
-// Returns the world position a riding avatar should be placed at, given current wheel angle
-export function getRidePosition(cabinIndex, wheelAngle) {
-  // Cabin at bottom of wheel as default boarding position (angle offset = 0)
+// Returns the world position a riding avatar should be placed at, given the current time
+export function getRidePosition(cabinIndex, t) {
+  const wheelAngle = t * 0.21;
   const angle = wheelAngle + (cabinIndex / NUM_CABINS) * Math.PI * 2;
-  // Wheel rotated 90° on Y, so cabins rotate in the Z/Y plane
+  // cabinGroup is at wheelGroup center (WHEEL_X, 10.2, WHEEL_Z), rotated in Z
   const x = WHEEL_X;
   const y = Math.max(0.5, 10.2 + Math.cos(angle) * WHEEL_RADIUS);
-  const z = WHEEL_Z + Math.sin(angle) * WHEEL_RADIUS * 0.5;
+  const z = WHEEL_Z + Math.sin(angle) * WHEEL_RADIUS * 0.3;
   return { x, y, z };
 }
