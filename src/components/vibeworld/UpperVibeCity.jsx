@@ -137,6 +137,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, []);
 
   const [openPanelOnLoad, setOpenPanelOnLoad] = useState(null);
+  // Clear forceOpenPanel after WorldHUD processes it so it doesn't re-trigger
+  useEffect(() => {
+    if (!openPanelOnLoad) return;
+    const t = setTimeout(() => setOpenPanelOnLoad(null), 1500);
+    return () => clearTimeout(t);
+  }, [openPanelOnLoad]);
 
   // ── Stage video state ──────────────────────────────────────────────────
   const [stageVideos, setStageVideos] = useState([]);

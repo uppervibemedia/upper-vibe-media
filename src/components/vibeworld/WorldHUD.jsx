@@ -446,7 +446,15 @@ export default function WorldHUD({
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); setDjSongPageOpen(true); }}
+              onClick={() => {
+                hapticTap();
+                try {
+                  sessionStorage.setItem("vibeworld_avatar_x", String(playerX || 0));
+                  sessionStorage.setItem("vibeworld_avatar_z", String(playerZ || 0));
+                  sessionStorage.setItem("vibeworld_avatar_rot", String(playerRot || 0));
+                } catch {}
+                setDjSongPageOpen(true);
+              }}
               className="w-full rounded-2xl transition-all hover:brightness-110 active:scale-[0.97] text-left"
               style={{
                 background: "rgba(5,4,18,0.96)",
