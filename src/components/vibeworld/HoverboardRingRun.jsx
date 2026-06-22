@@ -19,32 +19,40 @@ const {
 export const HOVERBOARD_START = { x: 28, z: 23 };
 export const HOVERBOARD_INTERACT_RADIUS = 6.0;
 
-// ─── RING DEFINITIONS ──────────────────────────────────────────────────────
-// 10 rings: start at x=22,z=23 → push toward water edge (z increases to ~30)
-// then loop back toward start/finish at x=22,z=23.
-// Spacing ~5-6 units between rings to avoid overlap. Max ring size = lg (r=2.0).
-// rotY = Math.PI/2 so rings face along the x-axis (player moves west then east).
+// ─── RING DEFINITIONS — U-TURN OUT-AND-BACK COURSE ─────────────────────────
+//
+// OUT LEG (rings 1–5): Player rides from start westward along the WATER EDGE (high Z ~30).
+//   x goes 24 → 4, z stays near 30 (water side).
+//
+// RETURN LEG (rings 6–10): Player turns around at ring 5, rides east along the
+//   BLACKTOP/PATH side (low Z ~22). x goes 4 → 24, z stays near 22.
+//
+// This creates a clear U-shaped loop: out near water, back near path.
+// rotY = 0 so rings face along the Z-axis (perpendicular to the player's east-west path).
 export const HOVERBOARD_RINGS = [
-  // ── Out leg — heading toward the water (z increases, x decreases) ────────
-  { id: 0, x: 20, y: 1.2, z: 24, rotY: Math.PI/2, size: "md", color: "#00E5FF" },
-  { id: 1, x: 16, y: 1.8, z: 26, rotY: Math.PI/2, size: "lg", color: "#C43BFF" },
-  { id: 2, x: 12, y: 1.2, z: 28, rotY: Math.PI/2, size: "md", color: "#00E5FF" },
-  { id: 3, x:  8, y: 2.2, z: 29, rotY: Math.PI/2, size: "lg", color: "#FFD700" },
-  { id: 4, x:  5, y: 1.2, z: 30, rotY: Math.PI/2, size: "md", color: "#C43BFF" },
-  // ── Return leg — looping back toward start/finish ─────────────────────────
-  { id: 5, x:  8, y: 1.8, z: 26, rotY: Math.PI/2, size: "md", color: "#00E5FF" },
-  { id: 6, x: 11, y: 2.5, z: 24, rotY: Math.PI/2, size: "lg", color: "#FFD700" },
-  { id: 7, x: 15, y: 1.2, z: 27, rotY: Math.PI/2, size: "md", color: "#C43BFF" },
-  { id: 8, x: 19, y: 2.0, z: 25, rotY: Math.PI/2, size: "lg", color: "#00E5FF" },
-  { id: 9, x: 22, y: 1.2, z: 24, rotY: Math.PI/2, size: "md", color: "#FFD700" }, // FINISH ring
+  // ── OUT LEG — heading west along the water edge (high Z ~30) ─────────────
+  { id: 0, x: 22, y: 1.5, z: 30, rotY: 0, size: "md", color: "#00E5FF" }, // Ring 1
+  { id: 1, x: 16, y: 2.0, z: 31, rotY: 0, size: "lg", color: "#00C8FF" }, // Ring 2
+  { id: 2, x: 10, y: 1.5, z: 31, rotY: 0, size: "md", color: "#00E5FF" }, // Ring 3
+  { id: 3, x:  5, y: 2.2, z: 30, rotY: 0, size: "lg", color: "#00AAFF" }, // Ring 4
+  { id: 4, x:  2, y: 1.5, z: 29, rotY: 0, size: "lg", color: "#00E5FF" }, // Ring 5 — TURNAROUND
+  // ── RETURN LEG — riding east along the blacktop/path side (low Z ~22) ────
+  { id: 5, x:  5, y: 1.5, z: 22, rotY: 0, size: "lg", color: "#C43BFF" }, // Ring 6
+  { id: 6, x: 10, y: 2.0, z: 21, rotY: 0, size: "md", color: "#A020F0" }, // Ring 7
+  { id: 7, x: 16, y: 1.5, z: 22, rotY: 0, size: "lg", color: "#C43BFF" }, // Ring 8
+  { id: 8, x: 21, y: 2.2, z: 21, rotY: 0, size: "md", color: "#A020F0" }, // Ring 9
+  { id: 9, x: 25, y: 1.5, z: 22, rotY: 0, size: "lg", color: "#FFD700" }, // Ring 10 — FINISH
 ];
 
 const RING_RADIUS = { md: 2.0, lg: 2.8 };
 const RING_TUBE   = { md: 0.13, lg: 0.18 };
 const RING_SEGMENTS = 64;
 
-// Finish portal position — near start pad
-const FINISH_POS = { x: 26, y: 1.2, z: 23 };
+// Finish portal position — near start pad, on the blacktop return side
+const FINISH_POS = { x: 28, y: 1.2, z: 22 };
+
+// Turnaround position — the far west end where the U-turn happens
+const TURNAROUND_POS = { x: 2, y: 0, z: 26 };
 
 function bmat(hex, opacity = 1, extra = {}) {
   const m = new MeshBasicMaterial({ color: new Color(hex), depthWrite: false, ...extra });
@@ -144,7 +152,7 @@ export function createHoverboardZone(scene) {
   scene.add(startLabel);
 
   // Sub-label: ring count
-  const subLabel = makeLabel("10 RINGS · COAST COURSE", "#C43BFF", [4.5, 0.75]);
+  const subLabel = makeLabel("OUT & BACK · U-TURN COURSE", "#C43BFF", [4.5, 0.75]);
   subLabel.position.set(SX, 4.2, SZ);
   scene.add(subLabel);
 
@@ -252,6 +260,7 @@ export function createHoverboardZone(scene) {
   finishGroup.add(finishLabel);
 
   finishGroup.position.set(FINISH_POS.x, FINISH_POS.y + 3.5, FINISH_POS.z);
+  finishGroup.rotation.y = Math.PI / 2; // face along the Z-axis (player rides east past it)
   scene.add(finishGroup);
   scene.userData.hbFinishGroup = finishGroup;
 
@@ -264,21 +273,105 @@ export function createHoverboardZone(scene) {
   scene.add(finishLight);
   scene.userData.hbFinishLight = finishLight;
 
-  // ── COURSE GUIDE LIGHTS — cyan dots along path ──────────────────────────
-  for (let i = 0; i < HOVERBOARD_RINGS.length - 1; i++) {
-    const a = HOVERBOARD_RINGS[i];
-    const b = HOVERBOARD_RINGS[i + 1];
-    // Two mid-point guide dots between each consecutive ring
-    for (const t of [0.33, 0.66]) {
-      const gx = a.x + (b.x - a.x) * t;
-      const gy = Math.max(0.4, (a.y + (b.y - a.y) * t) * 0.4); // near ground
-      const gz = a.z + (b.z - a.z) * t;
-      const dot = new Mesh(new SphereGeometry(0.15, 6, 4), bmat("#00C8FF", 0.45));
-      dot.position.set(gx, gy, gz);
-      dot.name = `hbGuideDot_${i}_${t}`;
-      scene.add(dot);
+  // ── GUIDE LINES — blue for out leg (water side), purple for return leg ───
+  // Draw glowing ground-level dots forming two clear guide paths.
+
+  // OUT LEG guide (rings 1-5): blue dots near z~30 (water edge)
+  // Go from start pad → ring 5, spaced every ~2 units along X
+  const outPoints = [
+    { x: 28, z: 29.5 }, { x: 25, z: 30 }, { x: 22, z: 30.5 },
+    { x: 19, z: 30.8 }, { x: 16, z: 31 }, { x: 13, z: 31 },
+    { x: 10, z: 31 }, { x: 7, z: 30.5 }, { x: 4, z: 30 }, { x: 2, z: 29 },
+  ];
+  outPoints.forEach((p, i) => {
+    const dot = new Mesh(new SphereGeometry(0.18, 6, 4), bmat("#00C8FF", 0.55));
+    dot.position.set(p.x, 0.12, p.z);
+    dot.name = `hbGuideDot_out_${i}`;
+    scene.add(dot);
+  });
+
+  // Glowing arrow chevrons on out leg — pointing west (toward ring 5)
+  for (let ax = 25; ax >= 4; ax -= 6) {
+    const arr = new Group();
+    arr.name = `hbArrowOut_${ax}`;
+    // V-shape: two angled bars
+    for (const side of [-1, 1]) {
+      const bar = new Mesh(new BoxGeometry(0.08, 0.08, 1.1), bmat("#00E5FF", 0.7));
+      bar.rotation.y = side * 0.5;
+      bar.position.set(side * 0.35, 0.15, 0);
+      arr.add(bar);
     }
+    arr.position.set(ax, 0.15, 30.5);
+    arr.rotation.y = Math.PI; // point west
+    scene.add(arr);
   }
+
+  // RETURN LEG guide (rings 6-10): purple dots near z~22 (blacktop side)
+  const returnPoints = [
+    { x: 2, z: 24 }, { x: 5, z: 22.5 }, { x: 8, z: 22 },
+    { x: 11, z: 21.5 }, { x: 14, z: 21.5 }, { x: 17, z: 22 },
+    { x: 20, z: 21.5 }, { x: 22, z: 22 }, { x: 25, z: 22 }, { x: 28, z: 22.5 },
+  ];
+  returnPoints.forEach((p, i) => {
+    const dot = new Mesh(new SphereGeometry(0.18, 6, 4), bmat("#C43BFF", 0.55));
+    dot.position.set(p.x, 0.12, p.z);
+    dot.name = `hbGuideDot_ret_${i}`;
+    scene.add(dot);
+  });
+
+  // Glowing arrow chevrons on return leg — pointing east (toward finish)
+  for (let ax = 4; ax <= 26; ax += 6) {
+    const arr = new Group();
+    arr.name = `hbArrowRet_${ax}`;
+    for (const side of [-1, 1]) {
+      const bar = new Mesh(new BoxGeometry(0.08, 0.08, 1.1), bmat("#C43BFF", 0.7));
+      bar.rotation.y = side * 0.5;
+      bar.position.set(side * 0.35, 0.15, 0);
+      arr.add(bar);
+    }
+    arr.position.set(ax, 0.15, 21.5);
+    arr.rotation.y = 0; // point east
+    scene.add(arr);
+  }
+
+  // ── TURNAROUND MARKER — glowing U-turn indicator at the far west end ──────
+  const turnGroup = new Group();
+  turnGroup.name = "hbTurnaround";
+
+  const turnPad = new Mesh(new CylinderGeometry(2.2, 2.5, 0.12, 32), smat("#200830", { r: 0.15, m: 0.9 }));
+  turnPad.position.y = 0.06;
+  turnGroup.add(turnPad);
+
+  const turnRingMat = bmat("#FFD700", 0.8);
+  const turnRing = new Mesh(new RingGeometry(1.8, 2.2, 64), turnRingMat);
+  turnRing.rotation.x = -Math.PI / 2;
+  turnRing.position.y = 0.14;
+  turnRing.renderOrder = 1;
+  turnGroup.add(turnRing);
+  scene.userData.hbTurnRingMat = turnRingMat;
+
+  const turnLabel = makeLabel("U-TURN", "#FFD700", [3.5, 0.8]);
+  turnLabel.position.y = 3.2;
+  turnGroup.add(turnLabel);
+
+  // Arrow pointing right (east) to indicate direction change
+  const arrowLabel = makeLabel("➜", "#FFD700", [2.0, 2.0]);
+  arrowLabel.position.set(1.5, 2.2, 0);
+  turnGroup.add(arrowLabel);
+
+  // Twin pylons
+  for (const bz of [-2.5, 2.5]) {
+    const tp = new Mesh(new CylinderGeometry(0.1, 0.12, 4.0, 10), smat("#111030", { r: 0.2, m: 0.85 }));
+    tp.position.set(0, 2.0, bz);
+    turnGroup.add(tp);
+    const tpg = new Mesh(new CylinderGeometry(0.04, 0.04, 3.9, 8), bmat("#FFD700", 0.55));
+    tpg.position.set(0, 2.0, bz);
+    turnGroup.add(tpg);
+  }
+
+  turnGroup.position.set(TURNAROUND_POS.x, TURNAROUND_POS.y, TURNAROUND_POS.z);
+  scene.add(turnGroup);
+  scene.userData.hbTurnGroup = turnGroup;
 
   // ── ZONE AMBIENT LIGHTS ─────────────────────────────────────────────────
   const hbLight = new PointLight();
@@ -289,13 +382,29 @@ export function createHoverboardZone(scene) {
   scene.add(hbLight);
   scene.userData.hbLight = hbLight;
 
-  // Mid-course light (around the far water end of the course)
+  // Mid-course light (water side, midway out)
   const midLight = new PointLight();
-  midLight.color = new Color("#C43BFF");
-  midLight.intensity = 3.0; midLight.distance = 18;
-  midLight.position.set(5, 5, 29);
+  midLight.color = new Color("#00C8FF");
+  midLight.intensity = 3.0; midLight.distance = 22;
+  midLight.position.set(12, 5, 31);
   scene.add(midLight);
   scene.userData.hbMidLight = midLight;
+
+  // Turnaround light
+  const turnLight = new PointLight();
+  turnLight.color = new Color("#FFD700");
+  turnLight.intensity = 4.0; turnLight.distance = 18;
+  turnLight.position.set(TURNAROUND_POS.x, 4, TURNAROUND_POS.z);
+  scene.add(turnLight);
+  scene.userData.hbTurnLight = turnLight;
+
+  // Return leg light (blacktop side)
+  const retLight = new PointLight();
+  retLight.color = new Color("#C43BFF");
+  retLight.intensity = 3.0; retLight.distance = 22;
+  retLight.position.set(12, 5, 21);
+  scene.add(retLight);
+  scene.userData.hbRetLight = retLight;
 
   return { padRingMat, ringMeshes };
 }
@@ -368,12 +477,29 @@ export function animateHoverboardZone(scene, t, beat) {
     fl.color.copy(new Color("#FFD700")).lerp(new Color("#00E5FF"), Math.sin(t * 0.5) * 0.5 + 0.5);
   }
 
-  // ── Guide dot pulse ────────────────────────────────────────────────────
+  // ── Guide dot + arrow pulse ────────────────────────────────────────────
   scene.children.forEach((c) => {
-    if (c.name?.startsWith("hbGuideDot_") && c.material) {
-      c.material.opacity = 0.25 + beat * 0.3 + Math.sin(t * 2.5 + c.position.x * 0.3) * 0.15;
+    if (c.name?.startsWith("hbGuideDot_out_") && c.material) {
+      // Blue out-leg dots pulse brighter
+      c.material.opacity = 0.35 + beat * 0.35 + Math.sin(t * 2.8 + c.position.x * 0.4) * 0.18;
+    } else if (c.name?.startsWith("hbGuideDot_ret_") && c.material) {
+      // Purple return-leg dots pulse offset
+      c.material.opacity = 0.35 + beat * 0.35 + Math.sin(t * 2.8 + c.position.x * 0.4 + Math.PI) * 0.18;
+    } else if (c.name?.startsWith("hbArrowOut_") || c.name?.startsWith("hbArrowRet_")) {
+      // Arrow chevrons flash with beat
+      c.children?.forEach((bar) => {
+        if (bar.material) bar.material.opacity = 0.45 + beat * 0.5 + Math.sin(t * 3.0 + c.position.x * 0.3) * 0.2;
+      });
     }
   });
+
+  // Turnaround marker pulse
+  const turnRingM = scene.userData.hbTurnRingMat;
+  if (turnRingM) turnRingM.opacity = 0.55 + beat * 0.42 + Math.sin(t * 1.8) * 0.15;
+  const tl = scene.userData.hbTurnLight;
+  if (tl) tl.intensity = 3.0 + beat * 3.5 + Math.sin(t * 1.4) * 0.8;
+  const rl = scene.userData.hbRetLight;
+  if (rl) rl.intensity = 2.0 + beat * 2.5 + Math.sin(t * 1.6 + 1.5) * 0.5;
 }
 
 /**
