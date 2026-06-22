@@ -254,7 +254,8 @@ export function createAvatar(scene, opts = {}, onReady) {
 }
 
 // ─── PUBLIC: attachHoverboard / detachHoverboard ──────────────
-// Attaches a glowing hoverboard mesh under the avatar's feet.
+// Attaches a glowing hoverboard mesh as a child of the avatar model node
+// (not the controller root) so it moves WITH the character in world space.
 export function attachHoverboard(entry) {
   if (!entry?.root) return;
   if (entry.root.getObjectByName("avatarHoverboard")) return; // already attached
@@ -262,79 +263,85 @@ export function attachHoverboard(entry) {
   const board = new THREE.Group();
   board.name = "avatarHoverboard";
 
-  // Main deck — wide enough to be visible under character feet
+  // Main deck — Z is forward direction in world, so board runs front-to-back
   const deck = new THREE.Mesh(
-    new THREE.BoxGeometry(0.38, 0.07, 0.7),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color("#0A0A1E"), roughness: 0.08, metalness: 0.96 })
+    new THREE.BoxGeometry(0.32, 0.06, 0.75),
+    new THREE.MeshStandardMaterial({ color: new THREE.Color("#080818"), roughness: 0.06, metalness: 0.98 })
   );
   deck.castShadow = true;
   board.add(deck);
 
-  // Top glow stripe (center line)
+  // Top center glow stripe
   const stripe = new THREE.Mesh(
-    new THREE.BoxGeometry(0.22, 0.025, 0.62),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.9, depthWrite: false })
+    new THREE.BoxGeometry(0.18, 0.022, 0.68),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.92, depthWrite: false })
   );
-  stripe.position.y = 0.048;
+  stripe.position.y = 0.042;
   board.add(stripe);
   board.userData.stripeMat = stripe.material;
 
-  // Side edge glow strips (long sides)
-  for (const bx of [-0.20, 0.20]) {
-    const edge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.03, 0.025, 0.68),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color("#C43BFF"), transparent: true, opacity: 0.75, depthWrite: false })
+  // Left/right side rail glows
+  for (const bx of [-0.17, 0.17]) {
+    const rail = new THREE.Mesh(
+      new THREE.BoxGeometry(0.025, 0.02, 0.72),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color("#C43BFF"), transparent: true, opacity: 0.8, depthWrite: false })
     );
-    edge.position.set(bx, 0.048, 0);
-    board.add(edge);
+    rail.position.set(bx, 0.041, 0);
+    board.add(rail);
   }
 
-  // Nose/tail kick — slightly angled ends
-  for (const bz of [-0.38, 0.38]) {
+  // Nose/tail kick-ups (front and back)
+  for (const bz of [-0.40, 0.40]) {
     const kick = new THREE.Mesh(
-      new THREE.BoxGeometry(0.36, 0.04, 0.06),
-      new THREE.MeshStandardMaterial({ color: new THREE.Color("#111128"), roughness: 0.1, metalness: 0.9 })
+      new THREE.BoxGeometry(0.30, 0.035, 0.055),
+      new THREE.MeshStandardMaterial({ color: new THREE.Color("#0E0E22"), roughness: 0.08, metalness: 0.95 })
     );
-    kick.position.set(0, 0.055, bz);
-    kick.rotation.x = bz < 0 ? -0.25 : 0.25;
+    kick.position.set(0, 0.05, bz);
+    kick.rotation.x = bz < 0 ? -0.28 : 0.28;
     board.add(kick);
   }
 
-  // Thruster pods — 4 corners, glow downward
-  for (const bx of [-0.14, 0.14]) {
-    for (const bz of [-0.28, 0.28]) {
-      const thrust = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.045, 0.055, 0.05, 8),
-        new THREE.MeshBasicMaterial({ color: new THREE.Color("#00CCFF"), transparent: true, opacity: 0.85, depthWrite: false })
+  // 4 corner thruster nozzles
+  for (const bx of [-0.12, 0.12]) {
+    for (const bz of [-0.30, 0.30]) {
+      const nozzle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.042, 0.052, 0.045, 8),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color("#00CCFF"), transparent: true, opacity: 0.88, depthWrite: false })
       );
-      thrust.position.set(bx, -0.045, bz);
-      board.add(thrust);
+      nozzle.position.set(bx, -0.038, bz);
+      board.add(nozzle);
 
-      // Thruster glow cone pointing downward
+      // Downward thruster glow cone
       const cone = new THREE.Mesh(
-        new THREE.ConeGeometry(0.065, 0.12, 8),
-        new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.35, depthWrite: false })
+        new THREE.ConeGeometry(0.06, 0.10, 8),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color("#00E5FF"), transparent: true, opacity: 0.32, depthWrite: false })
       );
-      cone.position.set(bx, -0.12, bz);
-      cone.rotation.x = Math.PI; // point down
+      cone.rotation.x = Math.PI;
+      cone.position.set(bx, -0.11, bz);
       board.add(cone);
     }
   }
 
-  // Hover glow disc on the ground beneath the board
-  const hoverDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(0.28, 24),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color("#00C8FF"), transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide })
-  );
-  hoverDisc.rotation.x = -Math.PI / 2;
-  hoverDisc.position.y = -0.18;
-  hoverDisc.renderOrder = 1;
-  board.add(hoverDisc);
-  board.userData.hoverDisc = hoverDisc.material;
+  // Ground hover disc — projects glow under the board
+  const discMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color("#00AAFF"),
+    transparent: true, opacity: 0.20, depthWrite: false, side: THREE.DoubleSide
+  });
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.30, 24), discMat);
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = -0.20;
+  disc.renderOrder = 1;
+  board.add(disc);
+  board.userData.hoverDisc = discMat;
 
-  // Position board just below avatar feet (GLB feet sit at y≈0 on controller)
-  board.position.set(0, -0.08, 0);
+  // Attach board to controller root — it is moved each frame via avatar.position.set()
+  // so the board moves identically with the avatar.
+  // Y offset puts it just below the character's feet (GLB feet ≈ y=0 on controller).
+  board.position.set(0, -0.05, 0);
+  board.rotation.set(0, 0, 0); // ensure no inherited rotation weirdness
+
   entry.root.add(board);
+  entry._hbBoard = board; // quick ref for animation
 }
 
 export function detachHoverboard(entry) {
@@ -347,6 +354,7 @@ export function detachHoverboard(entry) {
     });
     entry.root.remove(board);
   }
+  entry._hbBoard = null;
 }
 
 // ─── PUBLIC: retintAvatar ─────────────────────────────────────

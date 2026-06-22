@@ -1909,36 +1909,34 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         animateJukebox(scene, t, audioBeat);
 
-        // ── Hoverboard attach once GLB is ready (handles async load during ride) ──
-        if (hbRidingRef.current && avatarEntryRef.current && !avatarRef.current?.getObjectByName("avatarHoverboard")) {
+        // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──
+        if (hbRidingRef.current && avatarEntryRef.current && !avatarEntryRef.current._hbBoard) {
           attachHoverboard(avatarEntryRef.current);
         }
 
-        // ── Hoverboard board glow + avatar lean animation ─────
-        if (hbRidingRef.current && avatarRef.current) {
-          const hbMesh = avatarRef.current.getObjectByName("avatarHoverboard");
-          if (hbMesh) {
-            const stripeMat = hbMesh.userData.stripeMat;
+        // ── Hoverboard board glow animation ─────────────────────
+        // IMPORTANT: never touch avatar.rotation.x — the controller root only ever
+        // has rotation.y set (facing direction). Touching x/z breaks movement sync.
+        if (hbRidingRef.current) {
+          const hbBoard = avatarEntryRef.current?._hbBoard;
+          if (hbBoard) {
+            const stripeMat = hbBoard.userData.stripeMat;
             if (stripeMat) {
-              stripeMat.opacity = 0.7 + audioBeat * 0.28 + Math.sin(t * 4.5) * 0.12;
+              stripeMat.opacity = 0.72 + audioBeat * 0.26 + Math.sin(t * 4.5) * 0.10;
               stripeMat.color.copy(new Color("#00E5FF")).lerp(new Color("#C43BFF"), Math.sin(t * 1.6) * 0.5 + 0.5);
             }
-            // Animate hover disc opacity
-            if (hbMesh.userData.hoverDisc) {
-              hbMesh.userData.hoverDisc.opacity = 0.15 + audioBeat * 0.25 + Math.sin(t * 3.0) * 0.08;
+            if (hbBoard.userData.hoverDisc) {
+              hbBoard.userData.hoverDisc.opacity = 0.14 + audioBeat * 0.22 + Math.sin(t * 3.0) * 0.07;
             }
-            // Board rocks gently side to side when idle, tilts forward when moving
+            // Board tilts forward on speed, gently rolls when idle — rotation is LOCAL to board group only
             const spd = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.z ** 2);
-            hbMesh.rotation.x = spd > 0.3 ? -spd * 0.07 : Math.sin(t * 1.4) * 0.025;
-            hbMesh.rotation.z = Math.sin(t * 0.9) * 0.018;
+            hbBoard.rotation.x = spd > 0.3 ? -spd * 0.06 : Math.sin(t * 1.2) * 0.02;
+            hbBoard.rotation.z = Math.sin(t * 0.85) * 0.015;
           }
-          // Whole avatar leans forward when accelerating
-          const spd = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.z ** 2);
-          const targetLean = spd > 0.5 ? -spd * 0.055 : 0;
-          avatarRef.current.rotation.x = (avatarRef.current.rotation.x || 0) * 0.85 + targetLean * 0.15;
-        } else if (avatarRef.current) {
-          // Reset lean when not riding
-          avatarRef.current.rotation.x = (avatarRef.current.rotation.x || 0) * 0.85;
+        } else {
+          // Ensure board rotation resets after detach
+          const hbBoard = avatarEntryRef.current?._hbBoard;
+          if (hbBoard) { hbBoard.rotation.x = 0; hbBoard.rotation.z = 0; }
         }
         animateLaunchZone(scene, t, audioBeat, dt);
         animateHoverboardZone(scene, t, audioBeat);
@@ -2149,14 +2147,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     };
   }, []);
 
-  // Hoverboard attach/detach
+  // Hoverboard attach/detach — runs when hbRiding toggles.
+  // Also handled frame-by-frame (below) for async GLB load race condition.
   useEffect(() => {
     const entry = avatarEntryRef.current;
-    if (!entry) return;
     if (hbRiding) {
-      attachHoverboard(entry);
+      // entry may be null if GLB hasn't loaded yet — frame loop handles that
+      if (entry) attachHoverboard(entry);
     } else {
-      detachHoverboard(entry);
+      if (entry) detachHoverboard(entry);
     }
   }, [hbRiding]);
 
