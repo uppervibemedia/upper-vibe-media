@@ -68,7 +68,7 @@ function circleVsCircle(x1, z1, r1, x2, z2, r2) {
   return dx * dx + dz * dz < (r1 + r2) * (r1 + r2);
 }
 
-function resolveCollisions(px, pz, r, boxes) {
+function resolveCollisions(px, pz, r, boxes, isHoverboarding = false) {
   let x = px, z = pz;
   for (const [bx, bz, br] of boxes) {
     if (!circleVsCircle(x, z, r, bx, bz, br)) continue;
@@ -80,9 +80,10 @@ function resolveCollisions(px, pz, r, boxes) {
   }
 
   // Beach shoreline boundary
-  const SHORELINE_Z = 34;
+  // Normal players stop at shore (z=34); hoverboard riders can go 50% into the ocean (z=59)
+  const maxZ = isHoverboarding ? 59 : 34;
   if (z > 0) {
-    if (z > SHORELINE_Z) z = SHORELINE_Z;
+    if (z > maxZ) z = maxZ;
     if (x < -28) x = -28;
     if (x > 28) x = 28;
   }
@@ -1318,6 +1319,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const launchStateRef = useRef({ active: false, phase: "idle", timer: 0, startY: 0 });
   const orbCountRef = useRef(0);
   const nearPadRef = useRef(-1);
+  const speedBoostUntilRef = useRef(0); // timestamp (performance.now) when boost expires
 
   // Init scene — runs once only
   useEffect(() => {
@@ -1521,7 +1523,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         pz += vel.z * dt;
 
         // Collisions
-        [px, pz] = resolveCollisions(px, pz, 0.3, COLLISION_BOXES);
+        [px, pz] = resolveCollisions(px, pz, 0.3, COLLISION_BOXES, hbRidingRef.current);
 
         // ── Launch zone physics ──────────────────────────────
         const ls = launchStateRef.current;
@@ -1964,19 +1966,27 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── BOOST PAD DETECTION — speed burst ───────────────────────
+        // ─── SPEED PAD DETECTION — temporary speed multiplier ────────
         if (hbRidingRef.current && frameRef.current % 6 === 0) {
+          const nowMs = performance.now();
           for (const pad of BOOST_PADS) {
             const dx = px - pad.x, dz = pz - pad.z;
             if (Math.sqrt(dx * dx + dz * dz) < 1.5) {
-              if (!scene.userData._lastBoostTime || performance.now() - scene.userData._lastBoostTime > 2200) {
-                scene.userData._lastBoostTime = performance.now();
-                // Apply speed impulse in avatar's current facing direction
-                vel.x += Math.sin(rot) * 4.5;
-                vel.z += Math.cos(rot) * 4.5;
+              if (nowMs > speedBoostUntilRef.current) {
+                // Grant 2.5s speed boost (3× normal speed)
+                speedBoostUntilRef.current = nowMs + 2500;
                 if (window.__hbBoostTriggered) window.__hbBoostTriggered();
               }
             }
+          }
+        }
+
+        // Apply active speed boost — multiply target velocity when boosting
+        if (hbRidingRef.current && performance.now() < speedBoostUntilRef.current) {
+          const boostMult = 3.0;
+          if (isMoving) {
+            vel.x += (moveX * MOVE_SPEED * boostMult - vel.x) * Math.min(1, ACCELERATION * dt);
+            vel.z += (moveZ * MOVE_SPEED * boostMult - vel.z) * Math.min(1, ACCELERATION * dt);
           }
         }
 

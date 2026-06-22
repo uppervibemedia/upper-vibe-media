@@ -212,7 +212,7 @@ export function createHoverboardZone(scene) {
     innerDisc.renderOrder = 1;
     g.add(innerDisc);
 
-    const lbl = makeLabel("BOOST", "#00FF88", [2.0, 0.55]);
+    const lbl = makeLabel("SPEED", "#00FF88", [2.0, 0.55]);
     lbl.position.y = 1.5;
     g.add(lbl);
 
