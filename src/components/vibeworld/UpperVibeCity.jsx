@@ -991,16 +991,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                   if (mobileInputRef.current._camBaseX !== undefined) {
                     const dx = t.clientX - mobileInputRef.current._camBaseX;
                     // drag RIGHT = positive dx = camera turns right = positive camDx
-                    mobileInputRef.current.camDx = Math.max(-0.04, Math.min(0.04, dx * 0.0025));
+                    // Sensitivity 0.0016 (~35% lower than before) for balanced feel with joystick
+                    mobileInputRef.current.camDx = Math.max(-0.035, Math.min(0.035, dx * 0.0016));
                     mobileInputRef.current._camBaseX = t.clientX;
                   }
                   if (mobileInputRef.current._camBaseY !== undefined) {
                     const dy = t.clientY - mobileInputRef.current._camBaseY;
-                    // One-shot delta per frame — do NOT accumulate, CityCanvas reads and decays it
-                    // drag DOWN (positive dy) = look DOWN = negative camDy (but we clamp pitch anyway)
                     // drag UP (negative dy) = look UP = positive camDy
-                    // Hard-clamp magnitude so a single big swipe can't break pitch limits
-                    mobileInputRef.current.camDy = Math.max(-0.025, Math.min(0.025, -dy * 0.003));
+                    mobileInputRef.current.camDy = Math.max(-0.018, Math.min(0.018, -dy * 0.002));
                     mobileInputRef.current._camBaseY = t.clientY;
                   }
                 }

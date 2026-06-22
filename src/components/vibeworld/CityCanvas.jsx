@@ -1491,8 +1491,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── DESKTOP RIGHT-CLICK / CAM DRAG ──────────────────
         if (mouse.down && mouse.button === 2 && !lockedRef.current) {
           // drag right = positive movementX = camera yaw increases (turns right)
-          camYawRef.current += mouse.dx * 0.006;
-          camPitchRef.current = Math.max(CAM_PITCH_DOWN_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current - mouse.dy * 0.005));
+          // Sensitivity reduced ~33% for smoother feel
+          camYawRef.current += mouse.dx * 0.004;
+          camPitchRef.current = Math.max(CAM_PITCH_DOWN_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current - mouse.dy * 0.004));
           userTouchingCamRef.current = true;
         } else if (!mouse.down) {
           userTouchingCamRef.current = false;
@@ -1520,11 +1521,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           // Camera drag (horizontal yaw + vertical pitch) — finger drag is direct
           if (Math.abs(joy.camDx) > 0.0005 || Math.abs(joy.camDy || 0) > 0.0005) {
             // drag right (positive camDx) = camera turns right = positive yaw
-            camYawRef.current += joy.camDx;
-            camPitchRef.current = Math.max(CAM_PITCH_DOWN_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current + (joy.camDy || 0)));
+            // Apply damping factor 0.65 for smoother, less spinny feel
+            camYawRef.current += joy.camDx * 0.65;
+            camPitchRef.current = Math.max(CAM_PITCH_DOWN_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current + (joy.camDy || 0) * 0.65));
             userTouchingCamRef.current = true;
-            joy.camDx *= 0.85;
-            if (joy.camDy) joy.camDy *= 0.85;
+            joy.camDx *= 0.7;
+            if (joy.camDy) joy.camDy *= 0.7;
           } else if (mobileInputRef.current._camActive) {
             userTouchingCamRef.current = true;
           }
@@ -1663,13 +1665,26 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           try { onJukeboxProxRef.current(nearJukebox, proximityVol); } catch {}
         }
 
-        // ─── CAMERA YAW RECENTER ON MOVEMENT ─────────────────
-        // Idle: user can freely rotate 360 with the cam stick, no auto-orbit.
-        // Moving: smoothly pull camYaw back to 0 (behind avatar) so the view
-        //         stays aligned with the direction of travel.
-        if (isMoving && !userTouchingCamRef.current) {
-          // Smooth recenter — blend camYaw toward 0 while moving
-          camYawRef.current += (0 - camYawRef.current) * Math.min(1, CAM_RECENTER_SPEED * dt);
+        // ─── CAMERA YAW + AVATAR ALIGNMENT ──────────────────
+        // While idle and not touching the cam, avatar slowly rotates to face the
+        // camera-facing direction (camYaw → 0 by rotating the avatar to absorb the offset).
+        // This means when the user starts running, they immediately go the right way.
+        //
+        // While moving, snap camYaw back to 0 quickly so camera stays behind avatar.
+        if (!userTouchingCamRef.current) {
+          if (isMoving) {
+            // Fast recenter behind avatar while running
+            camYawRef.current += (0 - camYawRef.current) * Math.min(1, CAM_RECENTER_SPEED * dt);
+          } else {
+            // Idle: avatar slowly rotates to absorb camYaw — keeps camYaw near 0
+            // so the user's "forward" always matches where they're looking.
+            const idleAlignSpeed = 1.8; // rad/s — slow enough to feel intentional
+            if (Math.abs(camYawSmoothRef.current) > 0.01) {
+              const absorb = camYawSmoothRef.current * Math.min(1, idleAlignSpeed * dt);
+              rot += absorb;
+              camYawRef.current -= absorb;
+            }
+          }
         }
         // When cam touch ends and player is stationary, hold current yaw (360 free look)
         if (!mobileInputRef.current?._camActive && !mouse.down) {
