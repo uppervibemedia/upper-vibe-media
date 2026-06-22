@@ -114,7 +114,8 @@ export function createCosmicSky(scene) {
   }
   scene.userData.shootingStars = shootingStars;
 
-  // ── Small background asteroids ─────────────────────────────────
+  // ── Asteroids ──────────────────────────────────────────────────
+  // Tiny slow-moving specks — drifting cosmic debris
   const ASTEROID_COUNT = 3;
   const asteroids = [];
   for (let i = 0; i < ASTEROID_COUNT; i++) {
@@ -132,69 +133,6 @@ export function createCosmicSky(scene) {
     asteroids.push({ mesh, mat, active: false, life: 0, maxLife: 0, vx: 0, vy: 0, vz: 0, nextFire });
   }
   scene.userData.asteroids = asteroids;
-
-  // ── BIG BEACH ASTEROID — giant rock crossing the open beach sky every ~90s ──
-  // Large enough to be clearly visible, crosses in ~20s over the beach horizon
-  const bigAstGroup = new THREE.Group();
-  bigAstGroup.renderOrder = 4;
-
-  // Core body — much larger so it's clearly visible from the beach
-  const bigCoreMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#B8A898"), transparent: true, opacity: 0, depthWrite: false });
-  const bigCore = new THREE.Mesh(new THREE.SphereGeometry(3.0, 10, 7), bigCoreMat);
-  bigAstGroup.add(bigCore);
-
-  // Lumpy surface chunks — scaled up proportionally
-  const chunkDefs = [
-    [1.5, 5, 4, "#A09080",  2.2,  0.5,  1.4],
-    [1.2, 5, 4, "#C0B0A0", -1.8,  1.2, -1.3],
-    [1.0, 4, 3, "#907060",  0.8, -1.5,  2.0],
-    [1.3, 5, 4, "#B0A090", -2.0, -0.8,  1.0],
-    [0.9, 4, 3, "#A89888",  1.5,  1.8, -1.8],
-  ];
-  const chunkMats = [bigCoreMat];
-  for (const [r, ws, hs, col, cx, cy, cz] of chunkDefs) {
-    const cm = new THREE.MeshBasicMaterial({ color: new THREE.Color(col), transparent: true, opacity: 0, depthWrite: false });
-    const ch = new THREE.Mesh(new THREE.SphereGeometry(r, ws, hs), cm);
-    ch.position.set(cx, cy, cz);
-    bigAstGroup.add(ch);
-    chunkMats.push(cm);
-  }
-
-  // Glow halo — warm orange atmospheric trail
-  const haloMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#FF6622"), transparent: true, opacity: 0, depthWrite: false, side: THREE.BackSide });
-  const halo = new THREE.Mesh(new THREE.SphereGeometry(4.5, 10, 7), haloMat);
-  bigAstGroup.add(halo);
-
-  // Fire/trail sprite behind the asteroid
-  const trailCanvas = document.createElement("canvas");
-  trailCanvas.width = 256; trailCanvas.height = 32;
-  const trailCtx = trailCanvas.getContext("2d");
-  const trailGrad = trailCtx.createLinearGradient(0, 0, 256, 0);
-  trailGrad.addColorStop(0, "rgba(255,120,40,0)");
-  trailGrad.addColorStop(0.5, "rgba(255,180,80,0.6)");
-  trailGrad.addColorStop(1, "rgba(255,220,140,0.9)");
-  trailCtx.fillStyle = trailGrad;
-  trailCtx.fillRect(0, 0, 256, 32);
-  const trailTex = new THREE.CanvasTexture(trailCanvas);
-  trailTex.minFilter = THREE.LinearFilter;
-  const trailMat = new THREE.SpriteMaterial({ map: trailTex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
-  const trailSprite = new THREE.Sprite(trailMat);
-  trailSprite.scale.set(18, 2.5, 1);
-  trailSprite.position.set(5, 0, 0); // offset behind (will be rotated with group)
-  bigAstGroup.add(trailSprite);
-
-  scene.add(bigAstGroup);
-  scene.userData.bigAsteroid = {
-    group: bigAstGroup,
-    mats: chunkMats,
-    haloMat,
-    trailMat,
-    active: false,
-    life: 0,
-    maxLife: 0,
-    vx: 0, vy: 0, vz: 0,
-    nextFire: performance.now() * 0.001 + 5, // first pass after 5s
-  };
 
   // ── Per-star twinkle phases ────────────────────────────────────
   // Already handled by CityCanvas stars material — we add per-star index phases
@@ -275,12 +213,13 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
-  // ── Small background asteroids ────────────────────────────────
+  // ── Asteroids ─────────────────────────────────────────────────
   const asteroids = scene.userData.asteroids;
   if (asteroids) {
     for (const ast of asteroids) {
       if (!ast.active) {
         if (t >= ast.nextFire) {
+          // Spawn on sky sphere perimeter, drift slowly
           const ang = Math.random() * Math.PI * 2;
           const elev = -0.1 + Math.random() * 0.6;
           const r = 18 + Math.random() * 8;
@@ -289,11 +228,12 @@ export function animateCosmicSky(scene, camera, t, dt) {
             camera.position.y + 4 + elev * 10,
             camera.position.z + Math.sin(ang) * r,
           );
+          // Very slow drift — almost imperceptible
           const driftAng = ang + Math.PI + (Math.random() - 0.5) * 1.0;
           ast.vx = Math.cos(driftAng) * (0.4 + Math.random() * 0.6);
           ast.vy = (Math.random() - 0.5) * 0.15;
           ast.vz = Math.sin(driftAng) * (0.4 + Math.random() * 0.6);
-          ast.maxLife = 18 + Math.random() * 22;
+          ast.maxLife = 18 + Math.random() * 22; // 18–40s drift
           ast.life = ast.maxLife;
           ast.active = true;
           ast.mat.opacity = 0;
@@ -306,76 +246,16 @@ export function animateCosmicSky(scene, camera, t, dt) {
           ast.nextFire = t + 25 + Math.random() * 55;
         } else {
           const progress = ast.life / ast.maxLife;
+          // Gentle fade in/out — very subtle
           const envelope = Math.min(progress / 0.1, 1) * Math.min((1 - progress) / 0.1, 1);
           ast.mat.opacity = envelope * (0.35 + Math.random() * 0.05);
           ast.mesh.position.x += ast.vx * dt;
           ast.mesh.position.y += ast.vy * dt;
           ast.mesh.position.z += ast.vz * dt;
+          // Slow tumble
           ast.mesh.rotation.x += dt * 0.3;
           ast.mesh.rotation.y += dt * 0.2;
         }
-      }
-    }
-  }
-
-  // ── BIG BEACH ASTEROID — crosses beach sky every ~90s, clearly visible ──────
-  const ba = scene.userData.bigAsteroid;
-  if (ba) {
-    if (!ba.active) {
-      if (t >= ba.nextFire) {
-        // Spawn: high above the beach side (z=28 = mid-beach), one side to the other.
-        // Fixed world height so it always crosses the horizon in full view.
-        // Y=22 puts it solidly in the upper sky above the beach horizon line.
-        const side = Math.random() < 0.5 ? -1 : 1;
-        const startX = side * 52;          // well off-screen to the side
-        const startY = 22;                 // fixed high world-space Y — always sky
-        const startZ = 24 + Math.random() * 10; // over beach/ocean zone
-        ba.group.position.set(startX, startY, startZ);
-        ba.group.rotation.set(
-          Math.random() * Math.PI * 2,
-          Math.random() * Math.PI * 2,
-          Math.random() * Math.PI * 2
-        );
-        // Travel distance: ~104 units (−52 to +52). Duration: 20s. Speed = 104/20 = 5.2 u/s
-        const crossDist = 104;
-        const crossTime = 20;
-        ba.vx = -side * (crossDist / crossTime);
-        ba.vy = -0.15;                     // very slight downward arc over 20s
-        ba.vz = (Math.random() - 0.5) * 0.5; // almost no z drift
-        ba.maxLife = crossTime;
-        ba.life = crossTime;
-        ba.active = true;
-        for (const m of ba.mats) m.opacity = 0;
-        ba.haloMat.opacity = 0;
-        if (ba.trailMat) ba.trailMat.opacity = 0;
-        // Orient trail sprite to face travel direction (trail extends behind)
-        ba.group.children.forEach(c => {
-          if (c.isSprite) c.position.set(side * 8, 0.5, 0);
-        });
-      }
-    } else {
-      ba.life -= dt;
-      if (ba.life <= 0) {
-        ba.active = false;
-        for (const m of ba.mats) m.opacity = 0;
-        ba.haloMat.opacity = 0;
-        if (ba.trailMat) ba.trailMat.opacity = 0;
-        ba.nextFire = t + 70 + Math.random() * 20; // ~90s cycle
-      } else {
-        const progress = 1 - (ba.life / ba.maxLife); // 0→1 over lifetime
-        // Smooth fade in over first 10%, hold, fade out over last 10%
-        const envelope = Math.min(progress / 0.10, 1) * Math.min((1 - progress) / 0.10, 1);
-        const opacity = envelope * 0.95;
-        for (const m of ba.mats) m.opacity = opacity;
-        ba.haloMat.opacity = envelope * 0.30;
-        if (ba.trailMat) ba.trailMat.opacity = envelope * 0.75;
-        ba.group.position.x += ba.vx * dt;
-        ba.group.position.y += ba.vy * dt;
-        ba.group.position.z += ba.vz * dt;
-        // Slow visible tumble
-        ba.group.rotation.x += dt * 0.35;
-        ba.group.rotation.y += dt * 0.20;
-        ba.group.rotation.z += dt * 0.12;
       }
     }
   }
