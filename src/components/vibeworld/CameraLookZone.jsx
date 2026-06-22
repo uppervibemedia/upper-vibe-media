@@ -58,7 +58,8 @@ export default function CameraLookZone({ mobileInputRef, mobileLayout }) {
       if (mobileInputRef.current._camBaseX !== undefined) {
         const dx = t.clientX - mobileInputRef.current._camBaseX;
         // drag RIGHT (+dx) = camera turns right = positive camDx
-        mobileInputRef.current.camDx = Math.max(-0.055, Math.min(0.055, dx * 0.0025));
+        // Sensitivity tuned down slightly for fluid, non-twitchy feel on iOS
+        mobileInputRef.current.camDx = Math.max(-0.04, Math.min(0.04, dx * 0.0018));
         mobileInputRef.current._camBaseX = t.clientX;
       }
 

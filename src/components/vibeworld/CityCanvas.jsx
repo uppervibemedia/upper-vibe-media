@@ -63,7 +63,7 @@ const CAM_PITCH_MAX =  0.28;  // radians — ~16° look up max (safe sky range)
 // Downward pitch limit: prevents extreme overhead/top-down view
 // Negative pitch = camera rises higher = more overhead
 // We want to allow only a small downward angle from behind-avatar POV
-const CAM_PITCH_DOWN_MIN = -0.08; // ~-4.5° — barely any overhead
+const CAM_PITCH_DOWN_MIN = -0.04; // ~-2.3° — prevents under-character view flip
 const CAM_FOV_DEFAULT = 52;
 const CAM_FOV_ZOOM_STAGE = 36; // FOV when zoomed toward stage from beach
 
