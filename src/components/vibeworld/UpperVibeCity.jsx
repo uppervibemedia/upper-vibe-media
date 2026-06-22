@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
+import CameraLookZone from "@/components/vibeworld/CameraLookZone";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
 import CityCanvas from "@/components/vibeworld/CityCanvas";
 import { retintAvatar } from "@/components/vibeworld/AvatarModel";
@@ -946,67 +947,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onClose={handleExitFullScreen}
       />
 
-      {/* MOBILE: Game HUD — joystick + camera look + music */}
+      {/* MOBILE: Game HUD — joystick + camera look */}
       {!loading && isMobile && (
         <>
-          {/* Camera look zone — right half of screen, only empty space */}
-          <div
-            className="fixed inset-0 z-[45]"
-            style={{ pointerEvents: "none" }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                // Camera look zone: right 60% of screen, top portion only.
-                // Must NOT cover the joystick area (bottom-left).
-                // Width: only right side — joystick is always left-anchored.
-                right: 0,
-                top: 0,
-                width: mobileLayout
-                  ? `${Math.round(mobileLayout.vw - (mobileLayout.joystick.cx + mobileLayout.joystick.halfSize + 12))}px`
-                  : "60%",
-                // Height: stop well above the joystick top edge
-                height: mobileLayout
-                  ? `${mobileLayout.joystick.cy - mobileLayout.joystick.halfSize - 24}px`
-                  : "58%",
-                pointerEvents: "auto",
-                touchAction: "none",
-                userSelect: "none",
-                WebkitUserSelect: "none",
-              }}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                const t = e.changedTouches[0];
-                if (t) {
-                  mobileInputRef.current._camBaseX = t.clientX;
-                  mobileInputRef.current._camBaseY = t.clientY;
-                  mobileInputRef.current._camActive = true;
-                }
-              }}
-              onTouchMove={(e) => {
-                if (!mobileInputRef.current._camActive) return;
-                e.preventDefault();
-                const t = e.touches[0];
-                if (t) {
-                  if (mobileInputRef.current._camBaseX !== undefined) {
-                    const dx = t.clientX - mobileInputRef.current._camBaseX;
-                    mobileInputRef.current.camDx += dx * 0.0025;
-                    mobileInputRef.current._camBaseX = t.clientX;
-                  }
-                  if (mobileInputRef.current._camBaseY !== undefined) {
-                    const dy = t.clientY - mobileInputRef.current._camBaseY;
-                    mobileInputRef.current.camDy = (mobileInputRef.current.camDy || 0) + dy * 0.003;
-                    mobileInputRef.current._camBaseY = t.clientY;
-                  }
-                }
-              }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                mobileInputRef.current._camActive = false;
-                mobileInputRef.current._camBaseX = undefined;
-              }}
-            />
-          </div>
+          {/* Right-side camera look zone — full right half of screen.
+              Uses touch identifier tracking (not movementX which is unreliable on iOS).
+              Drag right = look right, drag left = look left, drag up = look up, drag down = look down. */}
+          <CameraLookZone mobileInputRef={mobileInputRef} />
 
           <MobileJoystick
             onMove={(x, y) => {
@@ -1014,7 +961,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
               mobileInputRef.current.y = y;
             }}
           />
-
         </>
       )}
 
