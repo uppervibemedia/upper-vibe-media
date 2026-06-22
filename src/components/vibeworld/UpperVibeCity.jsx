@@ -50,7 +50,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Hoverboard Ring Run state ─────────────────────────────────
   const [nearHoverboard, setNearHoverboard] = useState(false);
   const [hbRiding, setHbRiding] = useState(false);
-  const [hbNextRing, setHbNextRing] = useState(0);
   const [lifetimeOrbs, setLifetimeOrbs] = useState(() => {
     try { return JSON.parse(localStorage.getItem("vibeOrbData") || "{}")?.lifetimeVibeOrbs ?? 0; } catch { return 0; }
   });
@@ -999,10 +998,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         visible={nearHoverboard || hbRiding}
         isMobile={isMobile}
         user={user}
-        nextRingIdx={hbNextRing}
-        onStartRide={() => { setHbRiding(true); setHbNextRing(0); }}
+        onStartRide={() => setHbRiding(true)}
         onEndRide={() => setHbRiding(false)}
-        onRingCollected={(idx) => setHbNextRing((idx + 1) % 8)}
       />
 
       {/* ── Vibe Orb Reward System ── */}

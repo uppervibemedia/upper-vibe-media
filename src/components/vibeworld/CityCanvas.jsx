@@ -7,7 +7,7 @@ import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
-import { createHoverboardZone, animateHoverboardZone, flashRing, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS } from "./HoverboardRingRun";
+import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS } from "./HoverboardRingRun";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -1989,17 +1989,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               if (r.collected) continue;
               const rd = HOVERBOARD_RINGS[r.idx];
               if (!rd) continue;
+              // Hit radius scales with ring size — xl=4.0, lg=2.8, md=2.0, sm=1.4
+              const sizeHit = rd.size === "xl" ? 3.6 : rd.size === "lg" ? 2.4 : rd.size === "md" ? 1.8 : 1.2;
               const dx = px - rd.x, dz = pz - rd.z;
               const dist = Math.sqrt(dx * dx + dz * dz);
-              if (dist < 2.0 && Math.abs(py - rd.y) < 1.5) {
+              const vertTolerance = rd.y > 3.0 ? 2.5 : 2.0; // more forgiving at height
+              if (dist < sizeHit && Math.abs(py - rd.y) < vertTolerance) {
                 r.collected = true;
                 flashRing(scene, r.idx);
                 window.__hbCollectRing(r.idx);
-                // Reset collected flag after 8s so replays work
-                setTimeout(() => { r.collected = false; }, 8000);
               }
             }
           }
+        }
+
+        // Reset rings when a new ride starts
+        if (window.__hbResetRings) {
+          window.__hbResetRings = false;
+          resetRings(scene);
         }
 
         // Stars twinkle
