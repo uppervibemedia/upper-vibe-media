@@ -1,160 +1,78 @@
 /**
- * HoverboardPanel — HUD for the expanded 16-ring Hoverboard Ring Run.
- * Features: score, combo streaks, ring progress bar, trail-boost reward.
+ * HoverboardPanel — Free-ride Hoverboard Beach Zone HUD.
+ * Simple: Start Ride / Exit Ride, orb counter, boost flash, high score.
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, Trophy, RotateCcw, Star, Wind } from "lucide-react";
+import { X, Zap, Trophy, Wind, Star } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { HOVERBOARD_RINGS } from "../HoverboardRingRun";
 
-const RING_COUNT = 10;
-const GAME_DURATION = 60; // seconds
-
-// Points per ring
-const RING_POINTS = [
-  100, 150, 100, 200, 100, // out leg
-  100, 200, 150, 200, 400, // return leg (last ring = bonus)
-];
-
-// Ring colors for the progress bar
-const RING_COLORS = [
-  "#00E5FF","#C43BFF","#00E5FF","#FFD700","#C43BFF",
-  "#00E5FF","#FFD700","#C43BFF","#00E5FF","#FFD700",
-];
-
-export default function HoverboardPanel({
-  visible,
-  isMobile,
-  user,
-  onStartRide,
-  onEndRide,
-}) {
-  const [phase, setPhase] = useState("idle"); // idle | riding | finished
-  const [score, setScore]       = useState(0);
-  const [combo, setCombo]       = useState(0);
-  const [maxCombo, setMaxCombo] = useState(0);
-  const [ringsHit, setRingsHit] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
-  const [highScore, setHighScore] = useState(() => {
-    try { return parseInt(localStorage.getItem("hb_highscore") || "0", 10); } catch { return 0; }
+export default function HoverboardPanel({ visible, isMobile, user, onStartRide, onEndRide }) {
+  const [phase, setPhase] = useState("idle"); // idle | riding
+  const [orbsCollected, setOrbsCollected] = useState(0);
+  const [totalOrbs, setTotalOrbs] = useState(() => {
+    try { return parseInt(localStorage.getItem("hb_total_orbs") || "0", 10); } catch { return 0; }
   });
-  const [showFlash, setShowFlash] = useState(false);
-  const [lastPoints, setLastPoints] = useState(0);
+  const [boostFlash, setBoostFlash] = useState(false);
   const [trailUnlocked, setTrailUnlocked] = useState(false);
-  const timerRef     = useRef(null);
-  const comboTimerRef = useRef(null);
-  const scoreRef     = useRef(0); // always in sync for endGame closure
-  const ringsRef     = useRef(0);
-  const comboRef     = useRef(0);
-  const phaseRef     = useRef("idle"); // mirror of phase — always current, no stale closure
-  // Stable refs — prevents endGame/startGame from recreating on every render
+
+  const phaseRef = useRef("idle");
+  const orbsRef = useRef(0);
   const onEndRideRef = useRef(onEndRide);
   const onStartRideRef = useRef(onStartRide);
   useEffect(() => { onEndRideRef.current = onEndRide; }, [onEndRide]);
   useEffect(() => { onStartRideRef.current = onStartRide; }, [onStartRide]);
 
-  useEffect(() => { if (user?.hb_high_score) setHighScore(user.hb_high_score); }, [user?.hb_high_score]);
-
-  // Keep phaseRef in sync — this is the source of truth for the ring handler
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
-  const endGame = useCallback((finalScore, finalRings) => {
-    console.log("[HB] endGame called — score:", finalScore, "rings:", finalRings);
-    clearInterval(timerRef.current);
-    clearTimeout(comboTimerRef.current);
-    phaseRef.current = "finished";
-    setPhase("finished");
-    onEndRideRef.current?.(); // use ref so this callback never goes stale
-    const didUnlock = finalRings >= 6;
-    setTrailUnlocked(didUnlock);
-    if (finalScore > highScore) {
-      setHighScore(finalScore);
-      localStorage.setItem("hb_highscore", String(finalScore));
-      try { base44.auth.updateMe({ hb_high_score: finalScore, trail_boost_unlocked: didUnlock || undefined }); } catch {}
-    } else if (didUnlock) {
-      try { base44.auth.updateMe({ trail_boost_unlocked: true }); } catch {}
-    }
-  }, [highScore]); // removed onEndRide dep — now uses stable ref
-
-  const startGame = useCallback(() => {
-    clearInterval(timerRef.current);
-    clearTimeout(comboTimerRef.current);
-    scoreRef.current = 0;
-    ringsRef.current = 0;
-    comboRef.current = 0;
-    setPhase("riding");
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
-    setRingsHit(0);
-    setTimeLeft(GAME_DURATION);
-    setShowFlash(false);
-    setTrailUnlocked(false);
-    phaseRef.current = "riding";
-    window.__hbResetRings = true; // tell CityCanvas to reset ring collected flags
-    console.log("[HB] startGame — mounting board");
-    onStartRideRef.current?.();
-
-    timerRef.current = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          clearInterval(timerRef.current);
-          endGame(scoreRef.current, ringsRef.current);
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-  }, [endGame]); // onStartRide now uses stable ref
-
-  // Expose ring collector ONCE on mount — uses refs so it never goes stale.
-  // phaseRef.current is the source of truth (never a stale closure value).
-  const endGameRef = useRef(endGame);
-  useEffect(() => { endGameRef.current = endGame; }, [endGame]);
-
+  // Load saved total from user account
   useEffect(() => {
-    window.__hbCollectRing = (ringIdx) => {
-      if (phaseRef.current !== "riding") {
-        console.warn(`[HB] __hbCollectRing(${ringIdx}) ignored — phase: ${phaseRef.current}`);
-        return;
-      }
-      console.log(`[HB] __hbCollectRing(${ringIdx}) — collecting`);
-      const basePoints = RING_POINTS[ringIdx] ?? 100;
-      const currentCombo = comboRef.current;
-      const multiplier = currentCombo >= 5 ? 3 : currentCombo >= 3 ? 2 : 1;
-      const pts = basePoints * multiplier;
+    if (user?.hb_total_orbs) setTotalOrbs(user.hb_total_orbs);
+  }, [user?.hb_total_orbs]);
 
-      scoreRef.current += pts;
-      ringsRef.current = ringIdx + 1;
-      comboRef.current += 1;
+  const startRide = useCallback(() => {
+    orbsRef.current = 0;
+    setOrbsCollected(0);
+    setBoostFlash(false);
+    phaseRef.current = "riding";
+    setPhase("riding");
+    window.__hbResetRings = true; // triggers resetOrbs in CityCanvas
+    onStartRideRef.current?.();
+  }, []);
 
-      setLastPoints(pts);
-      setScore(scoreRef.current);
-      setRingsHit(ringIdx + 1);
-      setCombo((c) => {
-        const next = c + 1;
-        setMaxCombo((m) => Math.max(m, next));
-        return next;
-      });
-      setShowFlash(true);
-      setTimeout(() => setShowFlash(false), 700);
+  const exitRide = useCallback(() => {
+    phaseRef.current = "idle";
+    setPhase("idle");
+    onEndRideRef.current?.();
 
-      clearTimeout(comboTimerRef.current);
-      comboTimerRef.current = setTimeout(() => { setCombo(0); comboRef.current = 0; }, 4000);
+    // Save orbs
+    const newTotal = totalOrbs + orbsRef.current;
+    setTotalOrbs(newTotal);
+    try { localStorage.setItem("hb_total_orbs", String(newTotal)); } catch {}
 
-      // All rings collected — finish!
-      if (ringIdx + 1 >= RING_COUNT) {
-        clearInterval(timerRef.current);
-        setTimeout(() => endGameRef.current(scoreRef.current, ringsRef.current), 500);
-      }
+    // Unlock trail boost at 5 orbs collected in one ride
+    const didUnlock = orbsRef.current >= 5;
+    if (didUnlock) {
+      setTrailUnlocked(true);
+      try { base44.auth.updateMe({ trail_boost_unlocked: true, hb_total_orbs: newTotal }); } catch {}
+    } else {
+      try { base44.auth.updateMe({ hb_total_orbs: newTotal }); } catch {}
+    }
+  }, [totalOrbs]);
+
+  // Register orb collector once — reads phaseRef so no stale closure
+  useEffect(() => {
+    window.__hbCollectOrb = (orbId) => {
+      if (phaseRef.current !== "riding") return;
+      orbsRef.current += 1;
+      setOrbsCollected(c => c + 1);
     };
-    return () => { window.__hbCollectRing = null; };
-  }, []); // ← empty deps: register once, reads phaseRef for gating
-
-  useEffect(() => () => {
-    clearInterval(timerRef.current);
-    clearTimeout(comboTimerRef.current);
+    window.__hbBoostTriggered = () => {
+      if (phaseRef.current !== "riding") return;
+      setBoostFlash(true);
+      setTimeout(() => setBoostFlash(false), 800);
+    };
+    return () => { window.__hbCollectOrb = null; window.__hbBoostTriggered = null; };
   }, []);
 
   if (!visible) return null;
@@ -163,14 +81,10 @@ export default function HoverboardPanel({
     ? "calc(140px + env(safe-area-inset-bottom, 0px))"
     : "80px";
 
-  const comboMultiplier = combo >= 5 ? 3 : combo >= 3 ? 2 : 1;
-  const timeWarning = timeLeft <= 15;
-  const timePct = timeLeft / GAME_DURATION;
-
   return (
     <AnimatePresence mode="wait">
 
-      {/* ── IDLE: approach prompt ── */}
+      {/* ── IDLE: Beach zone invitation panel ── */}
       {phase === "idle" && (
         <motion.div
           key="hb-idle"
@@ -181,8 +95,7 @@ export default function HoverboardPanel({
           className="fixed z-[65] left-1/2 -translate-x-1/2 pointer-events-auto"
           style={{ bottom: PANEL_BOTTOM, maxWidth: 360, width: "92vw" }}
         >
-          <div
-            className="rounded-2xl px-5 py-5 flex flex-col gap-3"
+          <div className="rounded-2xl px-5 py-5 flex flex-col gap-3"
             style={{
               background: "rgba(4,2,20,0.94)",
               border: "1px solid rgba(0,229,255,0.35)",
@@ -192,40 +105,48 @@ export default function HoverboardPanel({
           >
             <div className="flex items-center gap-2.5">
               <Zap className="w-5 h-5 flex-shrink-0" style={{ color: "#00E5FF" }} />
-              <span className="font-black text-white text-sm tracking-wider">HOVERBOARD RING RUN</span>
+              <span className="font-black text-white text-sm tracking-wider">HOVERBOARD BEACH ZONE</span>
             </div>
 
             <p className="text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
-              Surf through <span style={{ color: "#00E5FF", fontWeight: 700 }}>10 glowing rings</span> along the coastline.
-              Chain rings for combos · Reach the finish portal for max rewards.
+              Cruise the beach freely on your hoverboard.
+              Collect <span style={{ color: "#00E5FF", fontWeight: 700 }}>energy orbs</span> and
+              hit <span style={{ color: "#FFD700", fontWeight: 700 }}>boost pads</span> for extra thrills!
             </p>
 
-            {/* Course highlights */}
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Rings", value: "10", color: "#00E5FF" },
-                { label: "Time", value: "60s", color: "#C43BFF" },
-                { label: "Trail Boost", value: "6+ rings", color: "#FFD700" },
-              ].map((s) => (
+                { label: "Style", value: "Free Ride", color: "#00E5FF" },
+                { label: "Orbs", value: "12 spots", color: "#C43BFF" },
+                { label: "Trail Boost", value: "5+ orbs", color: "#FFD700" },
+              ].map(s => (
                 <div key={s.label}
                   className="flex flex-col items-center py-2 rounded-xl"
                   style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
                 >
                   <span className="text-[9px] font-bold tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>{s.label}</span>
-                  <span className="font-black text-[12px] mt-0.5" style={{ color: s.color }}>{s.value}</span>
+                  <span className="font-black text-[11px] mt-0.5" style={{ color: s.color }}>{s.value}</span>
                 </div>
               ))}
             </div>
 
-            {highScore > 0 && (
+            {totalOrbs > 0 && (
               <div className="flex items-center gap-1.5 text-[10px]" style={{ color: "#FFD700" }}>
                 <Trophy className="w-3 h-3" />
-                <span>Personal best: <strong>{highScore.toLocaleString()}</strong> pts</span>
+                <span>Total orbs collected: <strong>{totalOrbs}</strong></span>
+              </div>
+            )}
+
+            {trailUnlocked && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-black"
+                style={{ background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)", color: "#FFD700" }}
+              >
+                <Wind className="w-3 h-3" /> Trail Boost active!
               </div>
             )}
 
             <button
-              onClick={startGame}
+              onClick={startRide}
               className="w-full py-3.5 rounded-full font-black text-sm tracking-widest transition-all hover:brightness-110 active:scale-[0.97]"
               style={{
                 background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
@@ -243,10 +164,10 @@ export default function HoverboardPanel({
         </motion.div>
       )}
 
-      {/* ── RIDING: in-game HUD ── */}
+      {/* ── RIDING: minimal HUD with orb counter and exit button ── */}
       {phase === "riding" && (
         <motion.div
-          key="hb-hud"
+          key="hb-riding"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -255,13 +176,13 @@ export default function HoverboardPanel({
             top: isMobile ? "calc(56px + env(safe-area-inset-top,0px) + 8px)" : 68,
             left: "50%",
             transform: "translateX(-50%)",
-            width: isMobile ? "96vw" : 480,
+            width: isMobile ? "96vw" : 420,
           }}
         >
-          {/* Exit Ride button — always clickable */}
+          {/* Exit button */}
           <div className="flex justify-end mb-1.5 pointer-events-auto">
             <button
-              onClick={() => endGame(scoreRef.current, ringsRef.current)}
+              onClick={exitRide}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black tracking-wider transition-all hover:bg-white/10 active:scale-[0.97]"
               style={{
                 background: "rgba(4,2,20,0.82)",
@@ -273,237 +194,70 @@ export default function HoverboardPanel({
               <X className="w-3 h-3" /> EXIT RIDE
             </button>
           </div>
-          {/* Main HUD bar */}
+
+          {/* HUD bar */}
           <div
-            className="flex items-center gap-3 px-4 py-2.5 rounded-2xl"
+            className="flex items-center justify-center gap-4 px-5 py-2.5 rounded-2xl"
             style={{
               background: "rgba(4,2,20,0.88)",
               border: "1px solid rgba(0,229,255,0.28)",
               backdropFilter: "blur(12px)",
             }}
           >
-            {/* Score */}
-            <div className="flex flex-col items-center min-w-[56px]">
-              <span className="text-[8px] font-bold tracking-widest" style={{ color: "rgba(0,229,255,0.55)" }}>SCORE</span>
-              <span className="font-black text-white leading-none" style={{ fontSize: isMobile ? 15 : 18 }}>
-                {score.toLocaleString()}
-              </span>
-            </div>
-
-            <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.09)", flexShrink: 0 }} />
-
-            {/* Ring progress */}
-            <div className="flex flex-col items-center min-w-[44px]">
-              <span className="text-[8px] font-bold tracking-widest" style={{ color: "rgba(196,59,255,0.7)" }}>RINGS</span>
-              <span className="font-black text-white leading-none" style={{ fontSize: isMobile ? 15 : 18 }}>
-                {ringsHit}<span style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>/{RING_COUNT}</span>
-              </span>
-            </div>
-
-            <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.09)", flexShrink: 0 }} />
-
-            {/* Timer */}
-            <div className="flex flex-col items-center min-w-[36px]">
-              <span className="text-[8px] font-bold tracking-widest" style={{ color: timeWarning ? "#ff4455" : "rgba(0,229,255,0.55)" }}>TIME</span>
-              <span className="font-black leading-none" style={{ fontSize: isMobile ? 15 : 18, color: timeWarning ? "#ff4455" : "#fff" }}>
-                {timeLeft}s
-              </span>
-            </div>
-
-            {/* Combo — shown when active */}
-            <AnimatePresence>
-              {combo >= 2 && (
-                <motion.div
-                  key="combo"
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.7 }}
-                  className="flex flex-col items-center"
-                  style={{ minWidth: 52 }}
-                >
-                  <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.09)", position: "absolute", left: 0 }} />
-                  <span className="text-[8px] font-bold tracking-widest" style={{ color: "#FFD700" }}>COMBO</span>
-                  <span className="font-black leading-none" style={{ fontSize: isMobile ? 15 : 18, color: "#FFD700" }}>
-                    x{combo}
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Multiplier badge */}
-            {comboMultiplier > 1 && (
-              <div
-                className="flex items-center gap-1 px-2 py-0.5 rounded-full font-black text-[10px] flex-shrink-0"
-                style={{
-                  background: comboMultiplier >= 3 ? "rgba(255,60,60,0.2)" : "rgba(255,215,0,0.15)",
-                  border: `1px solid ${comboMultiplier >= 3 ? "rgba(255,60,60,0.5)" : "rgba(255,215,0,0.4)"}`,
-                  color: comboMultiplier >= 3 ? "#ff6060" : "#FFD700",
-                }}
-              >
-                {comboMultiplier >= 3 ? "🔥" : "⚡"} {comboMultiplier}×
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4" style={{ color: "#00E5FF" }} />
+              <div className="flex flex-col">
+                <span className="text-[8px] font-bold tracking-widest" style={{ color: "rgba(0,229,255,0.55)" }}>ORBS</span>
+                <span className="font-black text-white text-lg leading-none">{orbsCollected}</span>
               </div>
+            </div>
+
+            <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.09)" }} />
+
+            <div className="text-center">
+              <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+                🏄 Free Riding the Beach
+              </span>
+            </div>
+
+            {orbsCollected >= 5 && (
+              <>
+                <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.09)" }} />
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(255,215,0,0.15)", border: "1px solid rgba(255,215,0,0.4)" }}
+                >
+                  <Wind className="w-3 h-3" style={{ color: "#FFD700" }} />
+                  <span className="text-[9px] font-black" style={{ color: "#FFD700" }}>TRAIL BOOST!</span>
+                </div>
+              </>
             )}
           </div>
 
-          {/* Ring progress dots */}
-          <div className="flex gap-1 mt-1.5 justify-center flex-wrap px-2">
-            {HOVERBOARD_RINGS.map((_, i) => (
-              <div
-                key={i}
-                className="rounded-full transition-all"
-                style={{
-                  width: i < ringsHit ? 7 : 5,
-                  height: i < ringsHit ? 7 : 5,
-                  background: i < ringsHit ? RING_COLORS[i] : "rgba(255,255,255,0.18)",
-                  boxShadow: i < ringsHit ? `0 0 6px ${RING_COLORS[i]}` : "none",
-                  marginTop: i < ringsHit ? 0 : 1,
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Time bar */}
-          <div
-            className="mt-1.5 mx-1 rounded-full overflow-hidden"
-            style={{ height: 3, background: "rgba(255,255,255,0.08)" }}
-          >
-            <motion.div
-              className="h-full rounded-full"
-              style={{
-                width: `${timePct * 100}%`,
-                background: timeWarning
-                  ? "linear-gradient(90deg,#ff4455,#ff6060)"
-                  : "linear-gradient(90deg,#00B8D4,#00E5FF)",
-                transition: "width 1s linear",
-              }}
-            />
-          </div>
-
-          {/* Points flash */}
+          {/* Boost flash */}
           <AnimatePresence>
-            {showFlash && (
+            {boostFlash && (
               <motion.div
-                key={`flash-${lastPoints}`}
-                initial={{ opacity: 1, y: 0, scale: 1 }}
-                animate={{ opacity: 0, y: -40, scale: 1.4 }}
+                key="boost"
+                initial={{ opacity: 1, scale: 1, y: 0 }}
+                animate={{ opacity: 0, scale: 1.5, y: -40 }}
                 exit={{}}
-                transition={{ duration: 0.7 }}
-                className="absolute left-1/2 font-black"
+                transition={{ duration: 0.8 }}
+                className="absolute left-1/2 font-black text-xl pointer-events-none"
                 style={{
-                  top: 90,
-                  color: comboMultiplier >= 3 ? "#ff6060" : comboMultiplier >= 2 ? "#FFD700" : "#00E5FF",
-                  fontSize: comboMultiplier >= 2 ? 22 : 18,
+                  top: 70,
                   transform: "translateX(-50%)",
-                  textShadow: `0 0 24px currentColor`,
-                  pointerEvents: "none",
+                  color: "#FFD700",
+                  textShadow: "0 0 24px #FFD700",
                   whiteSpace: "nowrap",
                 }}
               >
-                +{lastPoints.toLocaleString()} {comboMultiplier >= 2 ? `x${comboMultiplier}` : ""}
+                ⚡ BOOST!
               </motion.div>
             )}
           </AnimatePresence>
         </motion.div>
       )}
 
-      {/* ── FINISHED: results panel ── */}
-      {phase === "finished" && (
-        <motion.div
-          key="hb-finish"
-          initial={{ opacity: 0, scale: 0.88, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          transition={{ type: "spring", damping: 24, stiffness: 260 }}
-          className="fixed z-[65] left-1/2 -translate-x-1/2 pointer-events-auto"
-          style={{ bottom: PANEL_BOTTOM, maxWidth: 360, width: "92vw" }}
-        >
-          <div
-            className="rounded-2xl px-5 py-5 flex flex-col gap-3.5"
-            style={{
-              background: "rgba(4,2,20,0.97)",
-              border: "1px solid rgba(0,229,255,0.4)",
-              boxShadow: "0 0 60px rgba(0,229,255,0.16)",
-              backdropFilter: "blur(16px)",
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <Star className="w-5 h-5 flex-shrink-0" style={{ color: "#FFD700" }} />
-              <span className="font-black text-white text-sm tracking-wider">
-                {ringsHit >= RING_COUNT ? "🏆 PERFECT RUN!" : ringsHit >= 7 ? "⚡ GREAT RIDE!" : "RIDE COMPLETE!"}
-              </span>
-            </div>
-
-            {/* Stats grid */}
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: "Score",     value: score.toLocaleString(), color: "#00E5FF" },
-                { label: "Rings Hit", value: `${ringsHit} / ${RING_COUNT}`, color: "#C43BFF" },
-                { label: "Best Combo",value: `x${maxCombo}`, color: "#FFD700" },
-                { label: "High Score",value: highScore.toLocaleString(), color: "#FFD700" },
-              ].map((s) => (
-                <div key={s.label}
-                  className="flex flex-col items-center p-2.5 rounded-xl"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-                >
-                  <span className="text-[9px] font-bold tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>{s.label}</span>
-                  <span className="font-black text-sm mt-0.5" style={{ color: s.color }}>{s.value}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* New high score badge */}
-            {score >= highScore && score > 0 && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-black"
-                style={{ background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.25)", color: "#FFD700" }}
-              >
-                🏆 New Personal Best!
-              </div>
-            )}
-
-            {/* Trail boost unlock */}
-            {trailUnlocked && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
-                style={{ background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)" }}
-              >
-                <Wind className="w-4 h-4 flex-shrink-0" style={{ color: "#FFD700" }} />
-                <div>
-                  <p className="text-[11px] font-black" style={{ color: "#FFD700" }}>⚡ Trail Boost Unlocked!</p>
-                  <p className="text-[9px] mt-0.5" style={{ color: "rgba(255,215,0,0.6)" }}>Active in Avatar Customizer — keep riding to maintain it</p>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Orb reward */}
-            {ringsHit > 0 && !trailUnlocked && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px]"
-                style={{ background: "rgba(0,229,255,0.06)", border: "1px solid rgba(0,229,255,0.18)", color: "rgba(0,229,255,0.8)" }}
-              >
-                ✦ +{ringsHit} Vibe Orbs earned — ride 6+ rings to unlock Trail Boost!
-              </div>
-            )}
-
-            <div className="flex gap-2 mt-0.5">
-              <button
-                onClick={startGame}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-[0.97]"
-                style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}
-              >
-                <RotateCcw className="w-4 h-4" /> Ride Again
-              </button>
-              <button
-                onClick={() => setPhase("idle")}
-                className="flex items-center justify-center w-12 rounded-full transition-all hover:bg-white/10 active:scale-[0.97]"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      )}
     </AnimatePresence>
   );
 }

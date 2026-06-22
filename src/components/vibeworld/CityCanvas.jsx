@@ -7,7 +7,7 @@ import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
-import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS } from "./HoverboardRingRun";
+import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS } from "./HoverboardRingRun";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -1941,30 +1941,37 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         animateLaunchZone(scene, t, audioBeat, dt);
         animateHoverboardZone(scene, t, audioBeat);
 
-        // Reset rings FIRST (before collision check so fresh start is clean)
+        // Reset orbs when new ride starts
         if (window.__hbResetRings) {
           window.__hbResetRings = false;
-          resetRings(scene);
-          console.log("[HB] Rings reset for new ride");
+          resetOrbs(scene);
         }
 
-        // ─── HOVERBOARD RING COLLISION — only while actively riding ──
-        if (hbRidingRef.current && window.__hbCollectRing && frameRef.current % 3 === 0) {
-          const hbRings = scene.userData.hbRingMeshes;
-          if (hbRings) {
-            for (const r of hbRings) {
-              if (r.collected) continue;
-              const rd = HOVERBOARD_RINGS[r.idx];
-              if (!rd) continue;
-              const sizeHit = rd.size === "xl" ? 3.6 : rd.size === "lg" ? 2.4 : rd.size === "md" ? 1.8 : 1.2;
-              const dx = px - rd.x, dz = pz - rd.z;
-              const dist = Math.sqrt(dx * dx + dz * dz);
-              const vertTolerance = rd.y > 3.0 ? 2.5 : 2.0;
-              if (dist < sizeHit && Math.abs(py - rd.y) < vertTolerance) {
-                r.collected = true;
-                flashRing(scene, r.idx);
-                console.log(`[HB] Ring ${r.idx} collected at dist=${dist.toFixed(2)}`);
-                window.__hbCollectRing(r.idx);
+        // ─── HOVERBOARD ORB COLLECTION — only while actively riding ──
+        if (hbRidingRef.current && frameRef.current % 4 === 0) {
+          const orbMeshes = scene.userData.hbOrbMeshes;
+          if (orbMeshes) {
+            for (const orb of orbMeshes) {
+              if (orb.collected) continue;
+              const od = BEACH_ORBS[orb.id];
+              if (!od) continue;
+              const dx = px - od.x, dz = pz - od.z;
+              if (Math.sqrt(dx * dx + dz * dz) < 1.4) {
+                collectOrb(scene, orb.id);
+                if (window.__hbCollectOrb) window.__hbCollectOrb(orb.id);
+              }
+            }
+          }
+        }
+
+        // ─── BOOST PAD DETECTION — triggers flash in HUD ──────────────
+        if (hbRidingRef.current && frameRef.current % 6 === 0) {
+          for (const pad of BOOST_PADS) {
+            const dx = px - pad.x, dz = pz - pad.z;
+            if (Math.sqrt(dx * dx + dz * dz) < 1.5) {
+              if (!scene.userData._lastBoostTime || performance.now() - scene.userData._lastBoostTime > 2000) {
+                scene.userData._lastBoostTime = performance.now();
+                if (window.__hbBoostTriggered) window.__hbBoostTriggered();
               }
             }
           }
