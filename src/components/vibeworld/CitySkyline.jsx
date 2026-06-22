@@ -376,69 +376,71 @@ export default function createCitySkyline(scene) {
     buildings.add(g);
   }
 
-  // ── NORTH WALL — z=-42 (pushed ~25% farther out) ──────────────
+  // ── NORTH WALL — z=-38, dense continuous skyline ──────────────
   const northTowers = [
-    [-48, -42, 2.0, 1.6, 12, glassBody, neonCyan],
-    [-43, -42, 2.4, 1.5, 15, steelBody, neonPurple],
-    [-38, -42, 2.2, 1.7, 18, silverBody, neonBlue],
-    [-33, -42, 1.8, 1.4, 10, glassBody, neonCyan],
-    [-27, -42, 2.6, 1.6, 14, steelBody, neonPurple],
-    [-21, -42, 2.0, 1.5, 20, glassBody, neonBlue],
-    [-14, -42, 2.8, 1.8, 22, silverBody, neonCyan],
-    [-7,  -42, 2.4, 1.6, 16, steelBody, neonPurple],
-    [0,   -42, 2.2, 1.5, 13, glassBody, neonBlue],
-    [7,   -42, 2.6, 1.7, 19, silverBody, neonCyan],
-    [14,  -42, 2.0, 1.4, 11, glassBody, neonPurple],
-    [21,  -42, 2.8, 1.8, 21, steelBody, neonBlue],
-    [27,  -42, 2.2, 1.6, 15, silverBody, neonCyan],
-    [33,  -42, 2.4, 1.5, 17, glassBody, neonPurple],
-    [38,  -42, 2.2, 1.7, 13, steelBody, neonBlue],
-    [43,  -42, 2.0, 1.6, 12, glassBody, neonCyan],
-    [48,  -42, 2.4, 1.5, 16, steelBody, neonPurple],
+    [-36, -38, 2.2, 1.6, 12, glassBody,  neonCyan],
+    [-32, -38, 2.4, 1.5, 15, steelBody,  neonPurple],
+    [-28, -38, 2.2, 1.7, 18, silverBody, neonBlue],
+    [-24, -38, 1.8, 1.4, 11, glassBody,  neonCyan],
+    [-20, -38, 2.6, 1.6, 14, steelBody,  neonPurple],
+    [-16, -38, 2.0, 1.5, 20, glassBody,  neonBlue],
+    [-12, -38, 2.8, 1.8, 22, silverBody, neonCyan],
+    [-8,  -38, 2.4, 1.6, 16, steelBody,  neonPurple],
+    [-4,  -38, 2.2, 1.5, 13, glassBody,  neonBlue],
+    [0,   -38, 2.6, 1.7, 19, silverBody, neonCyan],
+    [4,   -38, 2.0, 1.4, 11, glassBody,  neonPurple],
+    [8,   -38, 2.8, 1.8, 21, steelBody,  neonBlue],
+    [12,  -38, 2.2, 1.6, 15, silverBody, neonCyan],
+    [16,  -38, 2.4, 1.5, 17, glassBody,  neonPurple],
+    [20,  -38, 2.2, 1.7, 13, steelBody,  neonBlue],
+    [24,  -38, 2.0, 1.6, 12, glassBody,  neonCyan],
+    [28,  -38, 2.4, 1.5, 16, steelBody,  neonPurple],
+    [32,  -38, 2.2, 1.7, 14, silverBody, neonBlue],
+    [36,  -38, 2.0, 1.6, 12, glassBody,  neonCyan],
   ];
   northTowers.forEach((a) => addSkyscraper(...a));
 
-  addSetbackTower(-20, -42, 3.2, 2.0, 3, neonPurple, "Vibe Tower North");
-  addSetbackTower(10,  -42, 3.0, 1.8, 4, neonCyan,   "Aurora Spire");
-  addSetbackTower(-40, -42, 2.6, 1.7, 3, neonBlue,   "Neon Heights");
-  addSetbackTower(34,  -42, 2.8, 1.9, 3, neonBlue,   "Skyline Peak");
+  addSetbackTower(-18, -38, 3.2, 2.0, 3, neonPurple, "Vibe Tower North");
+  addSetbackTower(6,   -38, 3.0, 1.8, 4, neonCyan,   "Aurora Spire");
+  addSetbackTower(-30, -38, 2.6, 1.7, 3, neonBlue,   "Neon Heights");
+  addSetbackTower(26,  -38, 2.8, 1.9, 3, neonBlue,   "Skyline Peak");
 
-  addTwinTower(-10, -42, 1.2, 1.8, 1.6, 22, neonCyan,   "Twin Towers West");
-  addTwinTower(24,  -42, 1.0, 1.6, 1.5, 18, neonPurple, "Twin Towers East");
+  addTwinTower(-8,  -38, 1.2, 1.8, 1.6, 22, neonCyan,   "Twin Towers West");
+  addTwinTower(18,  -38, 1.0, 1.6, 1.5, 18, neonPurple, "Twin Towers East");
 
-  // ── EAST WING — x=50 (pushed ~25% farther out) ─────────────────
+  // ── EAST WING — x=36, inside playable boundary ─────────────────
   const EAST_FACE = -Math.PI / 2;
   const eastTowers = [
-    [50, -34, 2.0, 1.9, 14, glassBody, neonCyan],
-    [50, -28, 2.4, 1.6, 11, steelBody, neonPurple],
-    [50, -22, 1.8, 1.5, 17, silverBody, neonBlue],
-    [50, -16, 2.2, 1.7, 10, glassBody, neonCyan],
-    [50, -10, 2.6, 1.8, 16, steelBody, neonPurple],
-    [50,  -4, 2.0, 1.5, 12, silverBody, neonBlue],
-    [50,   2, 1.8, 1.4,  9, glassBody, neonCyan],
-    [50,   8, 2.2, 1.6, 13, steelBody, neonPurple],
-    [50,  14, 2.0, 1.5, 11, silverBody, neonBlue],
+    [36, -30, 2.0, 1.9, 14, glassBody,  neonCyan],
+    [36, -25, 2.4, 1.6, 11, steelBody,  neonPurple],
+    [36, -20, 1.8, 1.5, 17, silverBody, neonBlue],
+    [36, -15, 2.2, 1.7, 10, glassBody,  neonCyan],
+    [36, -10, 2.6, 1.8, 16, steelBody,  neonPurple],
+    [36,  -5, 2.0, 1.5, 12, silverBody, neonBlue],
+    [36,   0, 1.8, 1.4,  9, glassBody,  neonCyan],
+    [36,   5, 2.2, 1.6, 13, steelBody,  neonPurple],
+    [36,  10, 2.0, 1.5, 11, silverBody, neonBlue],
   ];
   eastTowers.forEach((a) => addSkyscraper(a[0], a[1], a[2], a[3], a[4], a[5], a[6], undefined, EAST_FACE));
-  addSetbackTower(50, -8, 2.4, 2.2, 3, neonCyan, "East Gate Tower", EAST_FACE);
-  addTwinTower(50, -20, 1.0, 1.5, 1.8, 16, neonPurple, "East Twin Towers", EAST_FACE);
+  addSetbackTower(36, -7, 2.4, 2.2, 3, neonCyan,   "East Gate Tower", EAST_FACE);
+  addTwinTower(36, -18, 1.0, 1.5, 1.8, 16, neonPurple, "East Twin Towers", EAST_FACE);
 
-  // ── WEST WING — x=-50 (pushed ~25% farther out) ────────────────
+  // ── WEST WING — x=-36, inside playable boundary ────────────────
   const WEST_FACE = Math.PI / 2;
   const westTowers = [
-    [-50, -34, 2.2, 1.8, 13, steelBody, neonPurple],
-    [-50, -28, 1.8, 1.5, 16, glassBody, neonBlue],
-    [-50, -22, 2.4, 1.7, 10, silverBody, neonCyan],
-    [-50, -16, 2.0, 1.6, 18, glassBody, neonPurple],
-    [-50, -10, 2.6, 1.8, 14, steelBody, neonBlue],
-    [-50,  -4, 1.8, 1.4, 11, silverBody, neonCyan],
-    [-50,   2, 2.2, 1.6,  9, glassBody, neonPurple],
-    [-50,   8, 2.0, 1.5, 12, steelBody, neonBlue],
-    [-50,  14, 2.4, 1.7, 10, silverBody, neonCyan],
+    [-36, -30, 2.2, 1.8, 13, steelBody,  neonPurple],
+    [-36, -25, 1.8, 1.5, 16, glassBody,  neonBlue],
+    [-36, -20, 2.4, 1.7, 10, silverBody, neonCyan],
+    [-36, -15, 2.0, 1.6, 18, glassBody,  neonPurple],
+    [-36, -10, 2.6, 1.8, 14, steelBody,  neonBlue],
+    [-36,  -5, 1.8, 1.4, 11, silverBody, neonCyan],
+    [-36,   0, 2.2, 1.6,  9, glassBody,  neonPurple],
+    [-36,   5, 2.0, 1.5, 12, steelBody,  neonBlue],
+    [-36,  10, 2.4, 1.7, 10, silverBody, neonCyan],
   ];
   westTowers.forEach((a) => addSkyscraper(a[0], a[1], a[2], a[3], a[4], a[5], a[6], undefined, WEST_FACE));
-  addSetbackTower(-50, -9, 2.6, 2.0, 3, neonPurple, "West Gate Tower", WEST_FACE);
-  addTwinTower(-50, -20, 1.0, 1.5, 1.8, 16, neonCyan, "West Twin Towers", WEST_FACE);
+  addSetbackTower(-36, -8, 2.6, 2.0, 3, neonPurple, "West Gate Tower", WEST_FACE);
+  addTwinTower(-36, -18, 1.0, 1.5, 1.8, 16, neonCyan, "West Twin Towers", WEST_FACE);
 
   scene.add(buildings);
 

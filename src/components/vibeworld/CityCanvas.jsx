@@ -206,14 +206,14 @@ function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 2. UVC CENTRAL PLAZA — circular hub at center
   // ═════════════════════════════════════════════════════════════
-  const PLAZA_X = 0, PLAZA_Z = -4, PLAZA_R = 7;
+  const PLAZA_X = 0, PLAZA_Z = -13, PLAZA_R = 7;
 
   const plazaDisc = new Mesh(
     new CircleGeometry(PLAZA_R, 64),
     mat("#141B2D", { roughness: 0.35, metalness: 0.30 })
   );
   plazaDisc.rotation.x = -Math.PI / 2;
-  plazaDisc.position.set(PLAZA_X, 0.001, PLAZA_Z);
+  plazaDisc.position.set(PLAZA_X, 0.001, PLAZA_Z);  // PLAZA_Z=-13
   plazaDisc.receiveShadow = true;
   plazaDisc.name = "plazaDisc";
   scene.add(plazaDisc);
@@ -270,13 +270,13 @@ function buildPark(scene) {
 
   // Riser base
   const stageRiser = new Mesh(new BoxGeometry(10, 1.0, 5.5), mat("#111830", { roughness: 0.3, metalness: 0.6 }));
-  stageRiser.position.set(0, 0.5, -26);
+  stageRiser.position.set(0, 0.5, -32);
   stageRiser.castShadow = true; stageRiser.receiveShadow = true;
   stage.add(stageRiser);
 
   // Top platform deck
   const stagePlat = new Mesh(new BoxGeometry(10, 0.25, 5.5), mat("#1A2050", { roughness: 0.2, metalness: 0.65 }));
-  stagePlat.position.set(0, 1.12, -26);
+  stagePlat.position.set(0, 1.12, -32);
   stagePlat.castShadow = true; stagePlat.receiveShadow = true;
   stage.add(stagePlat);
 
@@ -285,7 +285,7 @@ function buildPark(scene) {
     new BoxGeometry(10.1, 0.08, 0.1),
     new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false })
   );
-  stageEdge.position.set(0, 1.27, -23.2);
+  stageEdge.position.set(0, 1.27, -29.2);
   stage.add(stageEdge);
 
   // Side neon strips
@@ -294,14 +294,14 @@ function buildPark(scene) {
       new BoxGeometry(0.06, 1.0, 0.06),
       new MeshBasicMaterial({ color: new Color(sx < 0 ? "#C43BFF" : "#00D4F0"), depthWrite: false, transparent: true, opacity: 0.7 })
     );
-    sideStrip.position.set(sx, 0.5, -26);
+    sideStrip.position.set(sx, 0.5, -32);
     stage.add(sideStrip);
   }
 
   // Main screen
   const screenMat = mat("#1A1A3A", { roughness: 0.2, metalness: 0.7 });
   const screen = new Mesh(new BoxGeometry(14, 7, 0.2), screenMat);
-  screen.position.set(0, 3.5, -28.4);
+  screen.position.set(0, 3.5, -34.4);
   screen.castShadow = true;
   screen.name = "stageScreen";
   stage.add(screen);
@@ -312,7 +312,7 @@ function buildPark(scene) {
     new BoxGeometry(14.3, 7.3, 0.05),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.65 })
   );
-  screenGlow.position.set(0, 3.5, -28.4);
+  screenGlow.position.set(0, 3.5, -34.4);
   screenGlow.name = "stageScreenGlow";
   stage.add(screenGlow);
 
@@ -325,32 +325,33 @@ function buildPark(scene) {
       new BoxGeometry(0.09, 0.09, 0.15),
       new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, transparent: true, opacity: 0.85 })
     );
-    archSeg.position.set(ax, ay, -28.3);
+    archSeg.position.set(ax, ay, -34.3);
     stage.add(archSeg);
   }
 
   // Stage lights
   const spotL = new PointLight();
   spotL.color = new Color("#A078FF"); spotL.intensity = 5; spotL.distance = 20;
-  spotL.position.set(-6, 4.5, -25); stage.add(spotL);
+  spotL.position.set(-6, 4.5, -31); stage.add(spotL);
 
   const spotR = new PointLight();
   spotR.color = new Color("#00D4F0"); spotR.intensity = 5; spotR.distance = 20;
-  spotR.position.set(6, 4.5, -25); stage.add(spotR);
+  spotR.position.set(6, 4.5, -31); stage.add(spotR);
 
   // Front wash light
   const frontWash = new PointLight();
   frontWash.color = new Color("#9B4FFF"); frontWash.intensity = 3; frontWash.distance = 14;
-  frontWash.position.set(0, 2.5, -23); stage.add(frontWash);
+  frontWash.position.set(0, 2.5, -29); stage.add(frontWash);
 
   scene.add(stage);
-  createNeonSign(scene, 0, 7.5, -26, "MUSIC  STAGE", "#00D4F0");
+  createNeonSign(scene, 0, 7.5, -32, "MUSIC  STAGE", "#00D4F0");
 
   // ═══════════════════════════════════════
   // VIBE LAUNCH ZONE
   // ═══════════════════════════════════════
   buildLaunchZone(scene);
   createNeonSign(scene, 0, 3.2, 4, "VIBE  LAUNCH  ZONE", "#00E5FF");
+  // Note: Vibe Launch Zone stays near z=4 (beach side of plaza)
 
   // ═════════════════════════════════════════════════════════════
   // 5. VIBE LOUNGE — futuristic social hangout, semi-circle seating
@@ -1114,7 +1115,7 @@ function buildPark(scene) {
   plazaFill.color = new Color("#8888DD");
   plazaFill.intensity = 2.0;
   plazaFill.distance = 16;
-  plazaFill.position.set(0, 1.5, -4);
+  plazaFill.position.set(0, 1.5, -13);
   scene.add(plazaFill);
   scene.userData.plazaFill = plazaFill;
 
@@ -1124,10 +1125,10 @@ function buildPark(scene) {
   // adding any new geometry. Performance-friendly: intensity kept low.
   const neonAmbients = [
     // [x, y, z, color, distance, phaseOffset]
-    { pos: [8,  3.5, -14], color: new Color("#0088FF"), distance: 18, phase: 0.0,    baseI: 1.2 }, // electric blue — stage-right
-    { pos: [-8, 3.5, -14], color: new Color("#7C3AED"), distance: 18, phase: 1.6,    baseI: 1.2 }, // deep purple — stage-left
+    { pos: [8,  3.5, -20], color: new Color("#0088FF"), distance: 18, phase: 0.0,    baseI: 1.2 }, // electric blue — stage-right
+    { pos: [-8, 3.5, -20], color: new Color("#7C3AED"), distance: 18, phase: 1.6,    baseI: 1.2 }, // deep purple — stage-left
     { pos: [0,  4.0,   8], color: new Color("#00C8E8"), distance: 16, phase: 3.1,    baseI: 1.0 }, // cyan — beach entrance
-    { pos: [0,  3.5, -24], color: new Color("#9B4FFF"), distance: 14, phase: 4.7,    baseI: 0.9 }, // violet — behind stage
+    { pos: [0,  3.5, -30], color: new Color("#9B4FFF"), distance: 14, phase: 4.7,    baseI: 0.9 }, // violet — behind stage
   ].map(({ pos, color, distance, phase, baseI }) => {
     const light = new PointLight();
     light.color.copy(color);
@@ -1648,7 +1649,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const jDist = Math.sqrt(jdx * jdx + jdz * jdz);
           const nearJukebox = jDist < JUKEBOX_INTERACT_RADIUS;
           const ddx = px;
-          const ddz = pz - (-4);
+          const ddz = pz - (-13);
           const dFloorDist = Math.sqrt(ddx * ddx + ddz * ddz);
           const proximityVol = Math.max(0.1, Math.min(1.0, 1.0 - (dFloorDist - 2) / (DANCE_FLOOR_RADIUS - 2)));
           try { onJukeboxProxRef.current(nearJukebox, proximityVol); } catch {}
@@ -1693,8 +1694,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const finalCamAngle = rot + camYawSmoothRef.current;
 
         // Stage watching mode
-        const STAGE_LOOK_AT = new Vector3(0, 3.5, -28.4);
-        const STAGE_CAM_POS = new Vector3(0, 3.0, -8);
+        const STAGE_LOOK_AT = new Vector3(0, 3.5, -34.4);
+        const STAGE_CAM_POS = new Vector3(0, 3.0, -12);
 
         if (lockedRef.current) {
           camera.position.lerp(STAGE_CAM_POS, Math.min(1, 3.0 * dt));
@@ -2131,15 +2132,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
         // (attribute pixels are scaled by devicePixelRatio on retina/mobile)
         if (stageScreenPosRef) {
-          const ss = new Vector3(0, 3.5, -28.4);
+          const ss = new Vector3(0, 3.5, -34.4);
           const proj = ss.clone().project(camera);
           const rw = renderer.domElement.clientWidth || renderer.domElement.width;
           const rh = renderer.domElement.clientHeight || renderer.domElement.height;
           const cx = (proj.x * 0.5 + 0.5) * rw;
           const cy = (-proj.y * 0.5 + 0.5) * rh;
           // Project corners for size (screen is 14×7 centered at y=3.5)
-          const tl = new Vector3(-7.0, 7.0, -28.4).project(camera);
-          const br = new Vector3(7.0, 0.0, -28.4).project(camera);
+          const tl = new Vector3(-7.0, 7.0, -34.4).project(camera);
+          const br = new Vector3(7.0, 0.0, -34.4).project(camera);
           const sw = Math.abs((br.x - tl.x) * 0.5 * rw);
           const sh = Math.abs((-br.y + tl.y) * 0.5 * rh);
           stageScreenPosRef.current = { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh };

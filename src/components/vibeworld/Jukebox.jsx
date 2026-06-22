@@ -6,7 +6,7 @@ import * as THREE from "three";
 
 // Plaza / dance floor center
 const PLAZA_X = 0;
-const PLAZA_Z = -4;
+const PLAZA_Z = -13;
 
 // DJ Booth sits to the right of the dance floor, just outside its edge
 export const JUKEBOX_POS = { x: PLAZA_X + 8.2, z: PLAZA_Z + 0.5 };
