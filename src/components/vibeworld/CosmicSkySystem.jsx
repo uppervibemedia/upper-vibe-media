@@ -18,19 +18,32 @@ export function createCosmicSky(scene) {
   const skyTex = loader.load(SKY_A);
   skyTex.colorSpace = THREE.SRGBColorSpace;
   skyTex.wrapS = THREE.RepeatWrapping;
-  skyTex.wrapT = THREE.ClampToEdgeWrapping;
+  skyTex.wrapT = THREE.RepeatWrapping; // RepeatWrapping prevents hard clamp line at top/bottom poles
   skyTex.repeat.set(2, 1);
   skyTex.generateMipmaps = false;
   skyTex.minFilter = THREE.LinearFilter;
   skyTex.magFilter = THREE.LinearFilter;
 
+  // More vertical segments (32) to smooth UV distortion near zenith
   const skybox = new THREE.Mesh(
-    new THREE.SphereGeometry(80, 32, 16),
+    new THREE.SphereGeometry(80, 48, 32),
     new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false })
   );
   skybox.name = "skybox";
   skybox.renderOrder = -1;
   scene.add(skybox);
+
+  // ── Zenith cap — covers any polar pinch/seam when looking straight up ──
+  // A solid deep-space color sphere slightly inside the skybox masks the pole artifact.
+  const capMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color("#080E1E"),
+    side: THREE.BackSide,
+    depthWrite: false,
+  });
+  const zenithCap = new THREE.Mesh(new THREE.SphereGeometry(78, 16, 8, 0, Math.PI * 2, 0, 0.55), capMat);
+  zenithCap.name = "zenithCap";
+  zenithCap.renderOrder = -2; // behind skybox texture
+  scene.add(zenithCap);
 
   // ── Shooting stars — pool of 6 ───────────────────────────────────
   const SHOOT_COUNT = 6;
@@ -209,12 +222,14 @@ function spawnArcParams(fast) {
 }
 
 export function animateCosmicSky(scene, camera, t, dt) {
-  // ── Skybox follows camera ────────────────────────────────────────
+  // ── Skybox + zenith cap follow camera ───────────────────────────
   const skybox = scene.getObjectByName("skybox");
   if (skybox) {
     skybox.position.copy(camera.position);
     skybox.rotation.y += dt * 0.007;
   }
+  const zenithCap = scene.getObjectByName("zenithCap");
+  if (zenithCap) zenithCap.position.copy(camera.position);
 
   // ── Star twinkling ───────────────────────────────────────────────
   const starsMesh = scene.userData.stars;
