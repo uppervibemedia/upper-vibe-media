@@ -904,6 +904,7 @@ function buildPark(scene) {
 
   scene.add(academy);
   createNeonSign(scene, ACAD_X, 5.2, ACAD_Z, "VIBE  ACADEMY", "#7C3AED");
+  createNeonSign(scene, -26, 8.5, -12, "CRYSTAL  ENERGY  FIELD", "#C084FC");
 
   // Academy ambient light
   const academyLight = new PointLight();
@@ -917,6 +918,11 @@ function buildPark(scene) {
   // 8.6. ZEN BEACH — meditation zone, left-side beach area
   // ═════════════════════════════════════════════════════════════
   createZenBeach(scene, PLAZA_X, PLAZA_Z);
+
+  // ═════════════════════════════════════════════════════════════
+  // 8.9. CRYSTAL ZONE — electric crystal field, left side of map
+  // ═════════════════════════════════════════════════════════════
+  createCrystalZone(scene);
 
   // ═════════════════════════════════════════════════════════════
   // 8.8. HOVERBOARD RING RUN — right-side beach, action zone
@@ -1231,6 +1237,7 @@ function createStarField(scene) {
 
 // Sky system extracted to CosmicSkySystem.js
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
+import { createCrystalZone, animateCrystalZone, CRYSTAL_ZONE_CENTER, CRYSTAL_ZONE_RADIUS } from "./CrystalZone";
 
 // createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
@@ -1960,6 +1967,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         });
         animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
+        animateCrystalZone(scene, t, audioBeat, px, pz);
         animateJukebox(scene, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──

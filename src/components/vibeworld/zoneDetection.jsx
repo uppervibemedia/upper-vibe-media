@@ -58,6 +58,12 @@ const ZONES = {
     cx: -28, cz: 5, radius: 5,
     icon: "GraduationCap",
   },
+  crystalzone: {
+    name: "Crystal Energy Field",
+    id: "crystalzone",
+    cx: -26, cz: -12, radius: 7.5,
+    icon: "Sparkles",
+  },
   ferriswheel: {
     name: "Neon Vibe Wheel",
     id: "ferriswheel",
