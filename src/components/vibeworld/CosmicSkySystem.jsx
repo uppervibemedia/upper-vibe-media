@@ -67,11 +67,10 @@ export function createCosmicSky(scene) {
   }
   scene.userData.shootingStars = shootingStars;
 
-  // ── Asteroids — 3 fireballs with tails ───────────────────────────
+  // ── Small asteroids — 3 fireballs with tails ─────────────────────
   const ASTEROID_COUNT = 3;
   const asteroids = [];
   for (let i = 0; i < ASTEROID_COUNT; i++) {
-    // Fireball head
     const ac = document.createElement("canvas");
     ac.width = 64; ac.height = 64;
     const actx = ac.getContext("2d");
@@ -93,7 +92,6 @@ export function createCosmicSky(scene) {
     asprite.renderOrder = 5;
     scene.add(asprite);
 
-    // Tail
     const tc = document.createElement("canvas");
     tc.width = 160; tc.height = 4;
     const tctx = tc.getContext("2d");
@@ -122,6 +120,61 @@ export function createCosmicSky(scene) {
     });
   }
   scene.userData.asteroids = asteroids;
+
+  // ── MEGA ASTEROID — one huge slow pass over the beach every ~60s ──
+  // Head: large glowing fireball
+  const mac = document.createElement("canvas");
+  mac.width = 128; mac.height = 128;
+  const mactx = mac.getContext("2d");
+  const mag = mactx.createRadialGradient(64, 64, 0, 64, 64, 60);
+  mag.addColorStop(0,    "rgba(255,255,220,1)");
+  mag.addColorStop(0.15, "rgba(255,210,80,1)");
+  mag.addColorStop(0.4,  "rgba(255,120,20,0.85)");
+  mag.addColorStop(0.72, "rgba(200,50,0,0.35)");
+  mag.addColorStop(1,    "rgba(0,0,0,0)");
+  mactx.fillStyle = mag;
+  mactx.fillRect(0, 0, 128, 128);
+  const matex = new THREE.CanvasTexture(mac);
+  matex.minFilter = THREE.LinearFilter;
+  const mamat = new THREE.SpriteMaterial({
+    map: matex, transparent: true, opacity: 0,
+    depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const masprite = new THREE.Sprite(mamat);
+  masprite.scale.set(6, 6, 1);
+  masprite.renderOrder = 6;
+  scene.add(masprite);
+
+  // Tail: long glowing streak
+  const mtc = document.createElement("canvas");
+  mtc.width = 512; mtc.height = 10;
+  const mtctx = mtc.getContext("2d");
+  const mtg = mtctx.createLinearGradient(0, 0, 512, 0);
+  mtg.addColorStop(0,    "rgba(255,120,20,0)");
+  mtg.addColorStop(0.35, "rgba(255,180,60,0.45)");
+  mtg.addColorStop(0.75, "rgba(255,220,120,0.82)");
+  mtg.addColorStop(1,    "rgba(255,255,200,0.95)");
+  mtctx.fillStyle = mtg;
+  mtctx.fillRect(0, 0, 512, 10);
+  const mttex = new THREE.CanvasTexture(mtc);
+  mttex.minFilter = THREE.LinearFilter;
+  const mtmat = new THREE.SpriteMaterial({
+    map: mttex, transparent: true, opacity: 0,
+    depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const mtail = new THREE.Sprite(mtmat);
+  mtail.scale.set(28, 0.7, 1);
+  mtail.renderOrder = 5;
+  scene.add(mtail);
+
+  scene.userData.megaAsteroid = {
+    asprite: masprite, amat: mamat,
+    tail: mtail, tmat: mtmat,
+    active: false, life: 0, maxLife: 0,
+    vx: 0, vy: 0, vz: 0,
+    // First pass at ~15s after load, then every 60s
+    nextFire: performance.now() * 0.001 + 15,
+  };
 
   scene.fog = new THREE.Fog("#101835", 75, 95);
 }
@@ -202,7 +255,54 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
-  // ── Asteroids ────────────────────────────────────────────────────
+  // ── Mega Asteroid — one huge slow pass over the beach every 60s ──
+  const mega = scene.userData.megaAsteroid;
+  if (mega) {
+    if (!mega.active) {
+      if (t >= mega.nextFire) {
+        // Spawn high on the west side of the sky, arc slowly east across the beach horizon
+        const fromLeft = Math.random() < 0.5;
+        mega.asprite.position.set(fromLeft ? -55 : 55, 18 + Math.random() * 6, 10 + Math.random() * 10);
+        mega.vx = (fromLeft ? 1 : -1) * (5 + Math.random() * 3);  // slow horizontal pass
+        mega.vy = -(1.5 + Math.random() * 1.0);                    // gentle downward arc
+        mega.vz = 2 + Math.random() * 2;                           // drifts slightly toward beach
+        mega.maxLife = 7 + Math.random() * 3;                      // 7–10s visible pass
+        mega.life = mega.maxLife;
+        mega.active = true;
+        mega.amat.opacity = 0;
+        mega.tmat.opacity = 0;
+        const hSpd = Math.sqrt(mega.vx * mega.vx + mega.vz * mega.vz);
+        const rot = Math.atan2(mega.vy, hSpd);
+        mega.asprite.material.rotation = rot;
+        mega.tail.material.rotation    = rot;
+      }
+    } else {
+      mega.life -= dt;
+      if (mega.life <= 0) {
+        mega.active = false;
+        mega.amat.opacity = 0;
+        mega.tmat.opacity = 0;
+        mega.nextFire = t + 60 + Math.random() * 10; // ~every 60s
+      } else {
+        const prog = mega.life / mega.maxLife;
+        // Slow fade in at start, hold bright in middle, fade out at end
+        const envelope = Math.min(prog * 5, 1) * Math.min((1 - prog) * 5, 1);
+        mega.amat.opacity = envelope * 1.0;
+        mega.tmat.opacity = envelope * 0.85;
+        mega.asprite.position.x += mega.vx * dt;
+        mega.asprite.position.y += mega.vy * dt;
+        mega.asprite.position.z += mega.vz * dt;
+        // Tail slightly behind head
+        mega.tail.position.set(
+          mega.asprite.position.x - mega.vx * 0.18,
+          mega.asprite.position.y - mega.vy * 0.18,
+          mega.asprite.position.z - mega.vz * 0.18,
+        );
+      }
+    }
+  }
+
+  // ── Small Asteroids ───────────────────────────────────────────────
   const asteroids = scene.userData.asteroids;
   if (asteroids) {
     for (const ast of asteroids) {
