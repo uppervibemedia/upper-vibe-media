@@ -9,18 +9,18 @@ import * as THREE from "three";
 const PLAZA_X = 0;
 const PLAZA_Z = -4;
 
-// DJ Booth sits to the LEFT (west) of the dance floor, beside it — not behind the stage.
-// Dance floor center is (0, -4), radius 7. Booth placed at (-12, -4) — 5 units clear of the floor edge.
-export const JUKEBOX_POS = { x: -12, z: -4 };
+// DJ Booth sits behind (south of) the dance floor, offset slightly left so the stage is clear.
+// Dance floor center is (0, -4). Booth at (-8, -13) — clear of stage center-line.
+export const JUKEBOX_POS = { x: -8, z: -13 };
 export const JUKEBOX_INTERACT_RADIUS = 6;
 export const DANCE_FLOOR_RADIUS = 7;
 
-// Booth faces toward dance floor center (east, toward +X).
-// Booth is at x=-12, floor center at x=0 → face angle = +90° (Math.PI/2) around Y axis.
-const FACE_ANGLE = Math.PI / 2; // faces +X (toward dance floor center)
+// Booth faces toward dance floor center (0, -4) from (-8, -13).
+// dx=8, dz=9 → angle = atan2(8, 9) ≈ 0.727 rad (northeast toward dance floor)
+const FACE_ANGLE = Math.atan2(8, 9); // faces toward dance floor center
 
-// Scale multiplier — 1.0x (compact secondary attraction)
-const S = 1.0;
+// Scale multiplier — 0.7x (compact secondary attraction, ~30% smaller than 1.0x)
+const S = 0.7;
 
 function mat(hexColor, opts = {}) {
   const m = new THREE.MeshStandardMaterial();
