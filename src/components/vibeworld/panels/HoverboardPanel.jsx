@@ -47,6 +47,7 @@ export default function HoverboardPanel({
   const scoreRef     = useRef(0); // always in sync for endGame closure
   const ringsRef     = useRef(0);
   const comboRef     = useRef(0);
+  const phaseRef     = useRef("idle"); // mirror of phase — always current, no stale closure
   // Stable refs — prevents endGame/startGame from recreating on every render
   const onEndRideRef = useRef(onEndRide);
   const onStartRideRef = useRef(onStartRide);
@@ -55,10 +56,14 @@ export default function HoverboardPanel({
 
   useEffect(() => { if (user?.hb_high_score) setHighScore(user.hb_high_score); }, [user?.hb_high_score]);
 
+  // Keep phaseRef in sync — this is the source of truth for the ring handler
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+
   const endGame = useCallback((finalScore, finalRings) => {
     console.log("[HB] endGame called — score:", finalScore, "rings:", finalRings);
     clearInterval(timerRef.current);
     clearTimeout(comboTimerRef.current);
+    phaseRef.current = "finished";
     setPhase("finished");
     onEndRideRef.current?.(); // use ref so this callback never goes stale
     const didUnlock = finalRings >= 6;
@@ -86,6 +91,7 @@ export default function HoverboardPanel({
     setTimeLeft(GAME_DURATION);
     setShowFlash(false);
     setTrailUnlocked(false);
+    phaseRef.current = "riding";
     window.__hbResetRings = true; // tell CityCanvas to reset ring collected flags
     console.log("[HB] startGame — mounting board");
     onStartRideRef.current?.();
@@ -102,11 +108,18 @@ export default function HoverboardPanel({
     }, 1000);
   }, [endGame]); // onStartRide now uses stable ref
 
-  // Expose ring collector on window so CityCanvas render loop can call it
+  // Expose ring collector ONCE on mount — uses refs so it never goes stale.
+  // phaseRef.current is the source of truth (never a stale closure value).
+  const endGameRef = useRef(endGame);
+  useEffect(() => { endGameRef.current = endGame; }, [endGame]);
+
   useEffect(() => {
     window.__hbCollectRing = (ringIdx) => {
-      console.log(`[HB] __hbCollectRing(${ringIdx}) — phase:`, phase);
-      if (phase !== "riding") { console.warn("[HB] Ignored — not riding"); return; }
+      if (phaseRef.current !== "riding") {
+        console.warn(`[HB] __hbCollectRing(${ringIdx}) ignored — phase: ${phaseRef.current}`);
+        return;
+      }
+      console.log(`[HB] __hbCollectRing(${ringIdx}) — collecting`);
       const basePoints = RING_POINTS[ringIdx] ?? 100;
       const currentCombo = comboRef.current;
       const multiplier = currentCombo >= 5 ? 3 : currentCombo >= 3 ? 2 : 1;
@@ -130,14 +143,14 @@ export default function HoverboardPanel({
       clearTimeout(comboTimerRef.current);
       comboTimerRef.current = setTimeout(() => { setCombo(0); comboRef.current = 0; }, 4000);
 
-      // All 16 rings collected — finish!
+      // All rings collected — finish!
       if (ringIdx + 1 >= RING_COUNT) {
         clearInterval(timerRef.current);
-        setTimeout(() => endGame(scoreRef.current, ringsRef.current), 500);
+        setTimeout(() => endGameRef.current(scoreRef.current, ringsRef.current), 500);
       }
     };
     return () => { window.__hbCollectRing = null; };
-  }, [phase, endGame]);
+  }, []); // ← empty deps: register once, reads phaseRef for gating
 
   useEffect(() => () => {
     clearInterval(timerRef.current);
