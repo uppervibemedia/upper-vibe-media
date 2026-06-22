@@ -3,107 +3,114 @@ import useMobileLayout from "@/hooks/useMobileLayout";
 
 /**
  * MobileJoystick — left-side movement thumbstick for mobile gameplay.
- * Consumes useMobileLayout for real iPhone visual-viewport geometry.
+ *
+ * iOS Safari note: PointerEvents are unreliable for continuous tracking.
+ * This component uses native Touch Events exclusively via useEffect + direct
+ * DOM listeners (passive:false) so preventDefault() actually works and
+ * prevents scroll/rubber-band from stealing the touch.
+ *
+ * The joystick div is z-[62] — above the camera look zone (z-[45]) and
+ * below panels (z-[65]+).
  */
 export default function MobileJoystick({ onMove }) {
   const layout = useMobileLayout(true);
 
-  // Thumb position relative to center
   const [thumbDX, setThumbDX] = useState(0);
   const [thumbDY, setThumbDY] = useState(0);
   const [active, setActive] = useState(false);
 
-  const activePtrId = useRef(null);
-  const activeRef = useRef(false);
+  const divRef = useRef(null);
+  const activeIdRef = useRef(null);   // active touch identifier
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
+  const onMoveRef = useRef(onMove);
+  onMoveRef.current = onMove;
 
-  // Reset on orientation change (layout will update, just clear active state)
+  // Reset state on orientation change
   useEffect(() => {
-    activePtrId.current = null;
-    activeRef.current = false;
+    activeIdRef.current = null;
     setActive(false);
     setThumbDX(0);
     setThumbDY(0);
-    onMove?.(0, 0);
-  }, [layout?.isLandscape, onMove]);
+    onMoveRef.current?.(0, 0);
+  }, [layout?.isLandscape]);
 
-  const haptic = useCallback(() => {
-    try { navigator?.vibrate?.(10); } catch {}
-  }, []);
+  // Attach native (non-passive) touch listeners directly to the DOM node
+  useEffect(() => {
+    const el = divRef.current;
+    if (!el) return;
 
-  const handleDown = useCallback((e) => {
-    if (activePtrId.current !== null) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const ptr = e.nativeEvent?.pointerId ?? e.changedTouches?.[0]?.identifier ?? 0;
-    activePtrId.current = ptr;
-    haptic();
-  }, [haptic]);
+    const onStart = (e) => {
+      if (activeIdRef.current !== null) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const t = e.changedTouches[0];
+      if (!t) return;
+      activeIdRef.current = t.identifier;
+      try { navigator?.vibrate?.(10); } catch {}
+    };
 
-  const handleMove = useCallback((e) => {
-    if (activePtrId.current === null) return;
-    e.preventDefault();
-    const L = layoutRef.current;
-    if (!L) return;
+    const onMove = (e) => {
+      if (activeIdRef.current === null) return;
+      e.preventDefault();
+      const L = layoutRef.current;
+      if (!L) return;
 
-    let clientX, clientY;
-    if (e.nativeEvent?.pointerId !== undefined) {
-      const ptrs = e.nativeEvent.getCoalescedEvents?.() || [e.nativeEvent];
-      const ourPtr = [...ptrs].find(p => p.pointerId === activePtrId.current);
-      if (!ourPtr) return;
-      clientX = ourPtr.clientX;
-      clientY = ourPtr.clientY;
-    } else {
-      const touch = [...e.touches].find(t => t.identifier === activePtrId.current);
+      let touch = null;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === activeIdRef.current) {
+          touch = e.touches[i];
+          break;
+        }
+      }
       if (!touch) return;
-      clientX = touch.clientX;
-      clientY = touch.clientY;
-    }
 
-    // joystick center in screen coords (from top-left)
-    const cx = L.joystick.cx;
-    const cy = L.joystick.cy;
-    const halfSize = L.joystick.halfSize;
+      const cx = L.joystick.cx;
+      const cy = L.joystick.cy;
+      const halfSize = L.joystick.halfSize;
 
-    let dx = (clientX - cx) / halfSize;
-    let dy = (cy - clientY) / halfSize;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 1) { dx /= dist; dy /= dist; }
+      let dx = (touch.clientX - cx) / halfSize;
+      let dy = (cy - touch.clientY) / halfSize;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 1) { dx /= dist; dy /= dist; }
 
-    setThumbDX(dx * L.joystick.maxR);
-    setThumbDY(-dy * L.joystick.maxR);
+      setThumbDX(dx * L.joystick.maxR);
+      setThumbDY(-dy * L.joystick.maxR);
+      setActive(dist > 0.12);
 
-    if (dist > 0.15 && !activeRef.current) {
-      activeRef.current = true;
-      setActive(true);
-      haptic();
-    }
-    if (dist <= 0.15 && activeRef.current) {
-      activeRef.current = false;
+      onMoveRef.current?.(dx, dy);
+    };
+
+    const onEnd = (e) => {
+      if (activeIdRef.current === null) return;
+      let found = false;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === activeIdRef.current) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) return;
+      e.preventDefault();
+      activeIdRef.current = null;
       setActive(false);
-    }
+      setThumbDX(0);
+      setThumbDY(0);
+      onMoveRef.current?.(0, 0);
+    };
 
-    onMove?.(dx, dy);
-  }, [onMove, haptic]);
+    el.addEventListener("touchstart", onStart, { passive: false });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: false });
+    el.addEventListener("touchcancel", onEnd, { passive: false });
 
-  const handleUp = useCallback((e) => {
-    if (activePtrId.current === null) return;
-    let found = false;
-    if (e.nativeEvent?.pointerId !== undefined) {
-      found = e.nativeEvent.pointerId === activePtrId.current;
-    } else {
-      found = [...e.changedTouches].some(t => t.identifier === activePtrId.current);
-    }
-    if (!found) return;
-    e.preventDefault();
-    activePtrId.current = null;
-    activeRef.current = false;
-    setActive(false);
-    setThumbDX(0);
-    setThumbDY(0);
-    onMove?.(0, 0);
-  }, [onMove]);
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, []);  // attach once — handlers read from refs
 
   if (!layout) return null;
 
@@ -111,9 +118,9 @@ export default function MobileJoystick({ onMove }) {
 
   return (
     <div
-      className="fixed z-[60]"
+      ref={divRef}
+      className="fixed z-[62]"
       style={{
-        // Position the joystick ring: top-left corner of the bounding box
         left: joystick.cx - joystick.halfSize,
         top: joystick.cy - joystick.halfSize,
         width: joystick.size,
@@ -127,19 +134,12 @@ export default function MobileJoystick({ onMove }) {
         backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)",
         boxShadow: active ? "0 0 18px rgba(0,180,220,0.25)" : "none",
-        pointerEvents: "auto",
+        // touchAction none is handled by passive:false preventDefault in native listeners
         touchAction: "none",
         userSelect: "none",
         WebkitUserSelect: "none",
+        pointerEvents: "auto",
       }}
-      onPointerDown={handleDown}
-      onPointerMove={handleMove}
-      onPointerUp={handleUp}
-      onPointerCancel={handleUp}
-      onTouchStart={handleDown}
-      onTouchMove={handleMove}
-      onTouchEnd={handleUp}
-      onTouchCancel={handleUp}
     >
       <div
         style={{

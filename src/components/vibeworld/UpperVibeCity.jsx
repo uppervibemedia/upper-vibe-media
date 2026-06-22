@@ -1001,14 +1001,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             <div
               style={{
                 position: "absolute",
-                top: 0,
+                // Camera look zone: right 60% of screen, top portion only.
+                // Must NOT cover the joystick area (bottom-left).
+                // Width: only right side — joystick is always left-anchored.
                 right: 0,
-                // Leave the bottom portion free for joystick + player + buttons
-                // Use mobileLayout to know exactly how much to exclude
-                width: "55%",
-                height: mobileLayout
-                  ? `${mobileLayout.joystick.cy - mobileLayout.joystick.halfSize - 16}px`
+                top: 0,
+                width: mobileLayout
+                  ? `${Math.round(mobileLayout.vw - (mobileLayout.joystick.cx + mobileLayout.joystick.halfSize + 12))}px`
                   : "60%",
+                // Height: stop well above the joystick top edge
+                height: mobileLayout
+                  ? `${mobileLayout.joystick.cy - mobileLayout.joystick.halfSize - 24}px`
+                  : "58%",
                 pointerEvents: "auto",
                 touchAction: "none",
                 userSelect: "none",

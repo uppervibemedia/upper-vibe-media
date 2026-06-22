@@ -86,35 +86,42 @@ function computeLayout() {
   // We place joystick higher in landscape: sa.bottom + 24 + joyHalfSize.
   // But we must ensure it clears any bottom-center player position too.
 
-  // Portrait: joystick bottom edge at sa.bottom + 16 (i.e., center at sa.bottom + 16 + joyHalfSize)
-  // Player sits above that with gap
+  // Joystick bottom edge sits just above the safe-area home bar with a small gap
   const joyCYFromBottom = isLandscape
-    ? sa.bottom + 20 + joyHalfSize
-    : sa.bottom + 16 + joyHalfSize;
+    ? sa.bottom + 16 + joyHalfSize
+    : sa.bottom + 12 + joyHalfSize;
 
   // Absolute cy from top of visual viewport
   const joyCYAbsolute = vh - joyCYFromBottom;
 
   // ── Mini player position ────────────────────────────────────────
-  // Portrait: player sits bottom-left, ABOVE the joystick top edge + 12px gap
-  // Landscape: player sits bottom-center (right of joystick), same row as joystick
+  // Portrait: player sits bottom-LEFT but ABOVE the joystick with 24px gap.
+  //   - Joystick top edge (from bottom) = joyCYFromBottom - joyHalfSize
+  //   - Player bottom = joystick top edge + 24px gap
+  //   - Player left = right of joystick + 12px (so it never overlaps)
+  // Landscape: player goes center-bottom, clear of joystick (far left).
   const playerHeight = 52;
-  const playerWidth = isLandscape ? 220 : 200;
+  const playerWidth = isLandscape ? 220 : 180;
 
   let playerLeft, playerBottom;
 
   if (isLandscape) {
-    // In landscape: player goes center-bottom, clear of joystick (which is far left)
-    // Center it: left = (vw - playerWidth) / 2
-    // Bottom: sa.bottom + 12
-    playerLeft = Math.max(joyCX + joyHalfSize + 20, (vw - playerWidth) / 2);
+    // Center it horizontally but keep it clear of joystick on the left
+    const minLeft = joyCX + joyHalfSize + 20;
+    playerLeft = Math.max(minLeft, (vw - playerWidth) / 2);
     playerBottom = sa.bottom + 12;
   } else {
-    // Portrait: player bottom-left, above joystick
-    // Joystick top edge (from bottom of viewport) = joyCYFromBottom - joyHalfSize
-    const joyTopFromBottom = joyCYFromBottom - joyHalfSize;
-    playerBottom = joyTopFromBottom + 12; // 12px above joystick top edge
-    playerLeft = 12;
+    // Portrait: place player to the RIGHT of the joystick, vertically aligned
+    // so it sits at the same bottom level as the joystick, not above it.
+    // This avoids any vertical clash.
+    const joyRightEdge = joyCX + joyHalfSize;
+    playerLeft = joyRightEdge + 16;
+    // Bottom-align with joystick center minus half player height (centered on joystick)
+    const joyBottomEdge = joyCYFromBottom - joyHalfSize; // from bottom of viewport
+    playerBottom = joyBottomEdge + (joySize - playerHeight) / 2; // vertically centered on joy
+    // Clamp so player doesn't exceed right edge
+    const maxLeft = vw - playerWidth - 8;
+    playerLeft = Math.min(playerLeft, maxLeft);
   }
 
   // ── Zone action buttons ─────────────────────────────────────────

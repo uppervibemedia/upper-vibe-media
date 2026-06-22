@@ -136,7 +136,7 @@ export default function DraggableMediaPlayer({
       style={{
         ...containerStyle,
         pointerEvents: "auto",
-        touchAction: IS_MOBILE ? "manipulation" : "none",
+        touchAction: "manipulation",
         background: "rgba(0,0,0,0.88)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
