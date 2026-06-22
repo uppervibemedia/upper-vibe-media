@@ -349,6 +349,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Movement locked when watching stage, full-screen, or typing ─
   const movementLocked = stageWatching || stageFullScreen || loungeInputFocused;
 
+  // ── World DJ Stream — declared before djAudioRef is referenced in the effect below ──
+  const DJ_BOOTH_X = 8.2, DJ_BOOTH_Z = -3.5;
+  const DJ_FADE_START = 6;
+  const DJ_FADE_END   = 18;
+  const dxDJ = playerPos.x - DJ_BOOTH_X;
+  const dzDJ = playerPos.z - DJ_BOOTH_Z;
+  const distDJ = Math.sqrt(dxDJ * dxDJ + dzDJ * dzDJ);
+  const rawProximity = 1 - Math.max(0, Math.min(1, (distDJ - DJ_FADE_START) / (DJ_FADE_END - DJ_FADE_START)));
+  djProximityVolRef.current = rawProximity;
+  const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, proximityVol: rawProximity });
+
   // ── Audio ducking: reduce personal player + DJ stream to ~25% when voice is active ──
   useEffect(() => {
     const audio = audioRef?.current;
@@ -599,25 +610,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const personalBaseVolRef = useRef(1.0);
   const crossfadeRafRef = useRef(null);
 
-  // ── World DJ Stream — persistent clock-synced stream ────────────────────
-  // Distance from DJ booth (JUKEBOX_POS ≈ {x:8.2, z:-3.5})
-  const DJ_BOOTH_X = 8.2, DJ_BOOTH_Z = -3.5;
-  const DJ_FADE_START = 6;   // full volume within this distance
-  const DJ_FADE_END   = 18;  // fully silent beyond this
-
-  const dxDJ = playerPos.x - DJ_BOOTH_X;
-  const dzDJ = playerPos.z - DJ_BOOTH_Z;
-  const distDJ = Math.sqrt(dxDJ * dxDJ + dzDJ * dzDJ);
-  // Linear proximity: 1.0 at ≤FADE_START, 0.0 at ≥FADE_END
-  const rawProximity = 1 - Math.max(0, Math.min(1, (distDJ - DJ_FADE_START) / (DJ_FADE_END - DJ_FADE_START)));
-
-  // Update proximity ref every render (used by volume applicator)
-  djProximityVolRef.current = rawProximity;
-
-  const { djAudioRef, djTrack } = useWorldDJStream({
-    enabled: true,
-    proximityVol: rawProximity,
-  });
+  // (DJ stream and proximity vars declared above, before voice-ducking useEffect)
 
   // ── Duck personal player when DJ is audible ───────────────────────────────
   useEffect(() => {
