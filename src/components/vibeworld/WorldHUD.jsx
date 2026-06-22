@@ -18,6 +18,7 @@ import ShopPanel from "./panels/ShopPanel";
 import ZenBeachPanel from "./panels/ZenBeachPanel";
 import EmotePanel from "./panels/EmotePanel";
 import JukeboxPanel from "./panels/JukeboxPanel";
+import InWorldSongPage from "./panels/InWorldSongPage";
 import UserInteractionMenu from "./UserInteractionMenu";
 import IncomingChatRequest from "./IncomingChatRequest";
 import ChatWarning from "@/components/vibeworld/ChatWarning";
@@ -118,6 +119,7 @@ export default function WorldHUD({
   const [emotePanelOpen, setEmotePanelOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
   const [jukeboxOpen, setJukeboxOpen] = useState(false);
+  const [djSongPageOpen, setDjSongPageOpen] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -412,6 +414,55 @@ export default function WorldHUD({
       </AnimatePresence>
 
       {/* ── Now Playing (bottom bar in UpperVibeCity handles this) ── */}
+
+      {/* ── DJ Now Playing chip — shows cover when near jukebox ── */}
+      <AnimatePresence>
+        {nearJukebox && djTrack && !jukeboxOpen && (
+          <motion.button
+            key="dj-cover-chip"
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.9 }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={() => { hapticTap(); setDjSongPageOpen(true); }}
+            className="absolute z-[57] flex items-center gap-2 rounded-2xl transition-all hover:brightness-110 active:scale-95 pointer-events-auto"
+            style={{
+              bottom: isMobile
+                ? "calc(env(safe-area-inset-bottom, 0px) + 13rem)"
+                : "calc(env(safe-area-inset-bottom, 0px) + 11rem)",
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: "rgba(5,4,18,0.92)",
+              border: "1px solid rgba(0,229,255,0.25)",
+              backdropFilter: "blur(16px)",
+              boxShadow: "0 0 20px rgba(196,59,255,0.2)",
+              padding: "6px 12px 6px 6px",
+              touchAction: "manipulation",
+              maxWidth: isMobile ? "calc(100vw - 120px)" : "260px",
+            }}
+          >
+            {djTrack.cover_url ? (
+              <img src={djTrack.cover_url} alt={djTrack.title}
+                className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(196,59,255,0.2)" }}>
+                <span style={{ fontSize: "18px" }}>🎧</span>
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: "#FF4FC3" }} />
+                <span className="font-black text-[8px] tracking-widest" style={{ color: "#FF4FC3" }}>LIVE DJ</span>
+              </div>
+              <p className="font-black text-white text-[11px] truncate leading-tight">{djTrack.title}</p>
+              <p className="text-[9px] truncate" style={{ color: "rgba(255,255,255,0.4)" }}>
+                tap for info &amp; download
+              </p>
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* ── Zone-specific action buttons ────────────────────────── */}
       <AnimatePresence>
@@ -949,6 +1000,17 @@ export default function WorldHUD({
         isMobile={isMobile}
         djTrack={djTrack}
       />
+
+      {/* ── DJ Song Info Page (opened from floating cover chip) ── */}
+      <AnimatePresence>
+        {djSongPageOpen && djTrack && (
+          <InWorldSongPage
+            track={djTrack}
+            onClose={() => setDjSongPageOpen(false)}
+            isMobile={isMobile}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Emote Panel (popup) ────────────────────────────────── */}
       <EmotePanel

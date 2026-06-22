@@ -25,7 +25,7 @@ const mainNavItems = [
   { path: "/radio", icon: Radio, label: "Radio" },
   { path: "/academy", icon: GraduationCap, label: "Academy" },
   { path: "/visualizers", icon: Tv2, label: "Visualizers" },
-  { path: "/vibe-world", icon: Compass, label: "Vibe World" },
+  { path: "/vibe-world", icon: Compass, label: "Upper Vibe City" },
   { path: "/my-vibes", icon: Heart, label: "My Vibe Library" },
   { path: "/connections", icon: Users, label: "Connections" },
 ];
@@ -34,7 +34,7 @@ const bottomNavMobile = [
   { path: "/", icon: Home, label: "Home", rootPath: "/" },
   { path: "/music", icon: Music, label: "Music", rootPath: "/music" },
   { path: "/radio", icon: Radio, label: "Radio", rootPath: "/radio" },
-  { path: "/vibe-world", icon: Compass, label: "Vibe World", rootPath: "/vibe-world" },
+  { path: "/vibe-world", icon: Compass, label: "Vibe City", rootPath: "/vibe-world" },
   { path: "/account", icon: User, label: "Account", rootPath: "/account" },
 ];
 

@@ -1741,6 +1741,17 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // avatarEntryRef.current is the same object returned by createAvatar.
         // Its mixer/clips get populated in-place when GLB loads — no reassignment needed.
         const avatarEntry = avatarEntryRef.current;
+        // Sync active emote ID onto entry so applyEmotePose can read it
+        if (avatarEntry && isDancingRef.current) {
+          const emoteId = activeEmoteRef.current?.id || "dance";
+          if (avatarEntry._emote !== emoteId) {
+            avatarEntry._emote = emoteId;
+            avatarEntry._emoteTimer = 0;
+          }
+        } else if (avatarEntry && !isDancingRef.current && avatarEntry._emote) {
+          avatarEntry._emote = null;
+          avatarEntry._emoteTimer = 0;
+        }
         if (avatarEntry) updateAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt, hbRidingRef.current);
 
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──

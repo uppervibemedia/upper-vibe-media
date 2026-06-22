@@ -122,6 +122,110 @@ function crossFade(entry, toKey, duration = 0.22) {
   entry.currentAnim = toKey;
 }
 
+// ─── Procedural emote animation — applied on top of idle pose ─
+// Runs per-frame and manipulates bone rotations directly.
+// Returns nothing; mutates bones in place.
+function applyEmotePose(entry, dt) {
+  if (!entry._emote) return;
+  const t = entry._emoteTimer || 0;
+  entry._emoteTimer = t + dt;
+  const tm = entry._emoteTimer;
+
+  const model = entry.root.getObjectByName("avatarModel");
+  if (!model) return;
+
+  // Helper: find bone by partial name match
+  const getBone = (partialName) => {
+    let found = null;
+    model.traverse((obj) => {
+      if (obj.isBone && obj.name.toLowerCase().includes(partialName.toLowerCase())) found = obj;
+    });
+    return found;
+  };
+
+  const spine = getBone("spine") || getBone("chest") || getBone("upper");
+  const armL  = getBone("leftarm")  || getBone("left_arm")  || getBone("larm");
+  const armR  = getBone("rightarm") || getBone("right_arm") || getBone("rarm");
+  const head  = getBone("head") || getBone("neck");
+
+  const sin = Math.sin;
+  const cos = Math.cos;
+  const PI  = Math.PI;
+
+  switch (entry._emote) {
+    case "wave": {
+      // Right arm waves up and down, head turns slightly
+      if (armR) {
+        armR.rotation.z = -PI * 0.55 + sin(tm * 5.0) * 0.45;
+        armR.rotation.x = sin(tm * 5.0) * 0.15;
+      }
+      if (armL) { armL.rotation.z = 0.1; }
+      if (head) { head.rotation.y = sin(tm * 2.0) * 0.2; }
+      break;
+    }
+    case "clap": {
+      // Both arms swing toward each other rhythmically
+      const clap = Math.abs(sin(tm * 6.0));
+      if (armL) { armL.rotation.z = PI * 0.3 - clap * 0.7; armL.rotation.x = clap * 0.3; }
+      if (armR) { armR.rotation.z = -(PI * 0.3 - clap * 0.7); armR.rotation.x = clap * 0.3; }
+      if (head) { head.rotation.x = sin(tm * 6.0) * 0.06; }
+      break;
+    }
+    case "heart": {
+      // Arms open wide, head tilts lovingly, slight body sway
+      if (armL) { armL.rotation.z = PI * 0.5 + sin(tm * 1.5) * 0.1; armL.rotation.x = 0.2; }
+      if (armR) { armR.rotation.z = -(PI * 0.5 + sin(tm * 1.5) * 0.1); armR.rotation.x = 0.2; }
+      if (head) { head.rotation.z = sin(tm * 1.5) * 0.12; head.rotation.x = -0.08; }
+      if (spine) { spine.rotation.z = sin(tm * 1.5) * 0.04; }
+      break;
+    }
+    case "fire": {
+      // Pump fist up rhythmically, energetic body bounce
+      if (armR) {
+        armR.rotation.z = -PI * 0.35;
+        armR.rotation.x = -PI * 0.4 + sin(tm * 5.5) * PI * 0.35;
+      }
+      if (armL) { armL.rotation.z = 0.2; }
+      if (spine) { spine.rotation.x = sin(tm * 5.5) * 0.06; }
+      if (head) { head.rotation.x = sin(tm * 5.5) * 0.05; }
+      break;
+    }
+    case "peace": {
+      // V sign — arm slightly raised with gentle sway
+      if (armR) {
+        armR.rotation.z = -PI * 0.35 + sin(tm * 1.2) * 0.08;
+        armR.rotation.x = -PI * 0.15;
+      }
+      if (armL) { armL.rotation.z = 0.1; }
+      if (head) { head.rotation.z = sin(tm * 1.0) * 0.08; }
+      if (spine) { spine.rotation.z = sin(tm * 1.0) * 0.03; }
+      break;
+    }
+    case "dance": {
+      // Groove in place: body sway + arm swing + head bob
+      if (spine) {
+        spine.rotation.z = sin(tm * 3.0) * 0.15;
+        spine.rotation.y = sin(tm * 1.5) * 0.12;
+      }
+      if (armL) {
+        armL.rotation.z = PI * 0.2 + sin(tm * 3.0 + PI) * 0.45;
+        armL.rotation.x = cos(tm * 1.5) * 0.2;
+      }
+      if (armR) {
+        armR.rotation.z = -(PI * 0.2 + sin(tm * 3.0) * 0.45);
+        armR.rotation.x = cos(tm * 1.5 + PI) * 0.2;
+      }
+      if (head) {
+        head.rotation.z = sin(tm * 3.0) * 0.08;
+        head.rotation.y = sin(tm * 1.5) * 0.1;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 // ─── PUBLIC: updateAvatarAnimation ───────────────────────────
 // isHoverboarding: when true, locks avatar in idle pose — feet stay planted on board.
 export function updateAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false) {
@@ -141,12 +245,21 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt, isHoverboardi
   }
 
   if (isDancing) {
-    const key = entry.clips.run ? "run" : entry.clips.walk ? "walk" : null;
+    // Lock to idle/walk at slow speed and apply procedural emote pose on top
+    const key = entry.clips.idle ? "idle" : entry.clips.walk ? "walk" : null;
     if (key) {
       crossFade(entry, key, 0.3);
-      entry.clips[key].setEffectiveTimeScale(1.4);
+      // Run idle at 0.6x — subtle body sway from base animation
+      entry.clips[key].setEffectiveTimeScale(0.6);
     }
+    applyEmotePose(entry, dt);
     return;
+  }
+
+  // Reset emote state when not dancing
+  if (entry._emote) {
+    entry._emote = null;
+    entry._emoteTimer = 0;
   }
 
   if (speed > 0.5) {
