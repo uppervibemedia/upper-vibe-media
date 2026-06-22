@@ -165,7 +165,39 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     avatarType: user?.avatar_type || "neutral",
     skinTone: user?.skin_tone || "medium",
     rpmAvatarUrl: user?.rpm_avatar_url || null,
+    outfitColorKey: user?.avatar_outfit_color || "electric-blue",
   };
+
+  // ── Ref to live in-world avatar retint function exposed by CityCanvas ──
+  const retintInWorldRef = useRef(null);
+
+  // Apply saved outfit color once the world finishes loading (covers late user-data case)
+  const appliedInitialColorRef = useRef(false);
+  useEffect(() => {
+    if (loading || !user?.avatar_outfit_color || appliedInitialColorRef.current) return;
+    // Retry a few times until retintRef is populated (GLB load may still be in progress)
+    const COLOR_MAP = {
+      "electric-blue":  "#00AADD",
+      "neon-purple":    "#7B2FFF",
+      "cosmic-black":   "#080A0F",
+      "white-silver":   "#C8D4E0",
+      "pink-rose":      "#CC2288",
+      "gold-yellow":    "#CC9900",
+    };
+    const hex = COLOR_MAP[user.avatar_outfit_color];
+    if (!hex) return;
+    let attempts = 0;
+    const tryApply = () => {
+      if (retintInWorldRef.current) {
+        appliedInitialColorRef.current = true;
+        retintInWorldRef.current(hex);
+      } else if (attempts < 20) {
+        attempts++;
+        setTimeout(tryApply, 300);
+      }
+    };
+    tryApply();
+  }, [loading, user?.avatar_outfit_color]);
 
   // ── Personalized feed continuous playback ──────────────────────────────
   const feedActiveRef = useRef(false);
@@ -719,6 +751,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         <CityCanvas
           onLoaded={() => setLoading(false)}
           onRemoteAvatarClick={handleRemoteAvatarClick}
+          retintRef={retintInWorldRef}
           onPositionChange={(x, z, rot) => {
             const prev = prevPosRef.current;
             const dx = x - prev.x;
@@ -982,7 +1015,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
         isMobile={isMobile}
         user={user}
-        onApply={({ outfitColorKey }) => {
+        onApply={({ outfitColorKey, suitColor }) => {
+          // Apply to live in-world avatar immediately
+          if (retintInWorldRef.current) {
+            retintInWorldRef.current(suitColor);
+          }
           setAvatarVersion((v) => v + 1);
         }}
       />

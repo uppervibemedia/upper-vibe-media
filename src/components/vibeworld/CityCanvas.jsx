@@ -1284,12 +1284,12 @@ function createCosmicSky(scene) {
 }
 
 // createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
-import { createAvatar, createRemoteAvatar, updateAvatarAnimation } from "./AvatarModel.jsx";
+import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar } from "./AvatarModel.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1408,11 +1408,31 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       // every frame. When GLB loads, the model is parented INTO entry.root — it inherits
       // all movement automatically. The same entry object is mutated in-place.
       const entry = createAvatar(scene, avatarConfig || {}, (_entry) => {
-        // GLB done loading — mixer/clips now populated on the same entry object
-        // avatarEntryRef already points to it, nothing to reassign
+        // GLB done loading — apply saved outfit color immediately
+        const savedColor = avatarConfig?.outfitColorKey;
+        if (savedColor) {
+          // Map outfitColorKey to hex — matches OUTFIT_COLORS in AvatarSetup
+          const COLOR_MAP = {
+            "electric-blue":  "#00AADD",
+            "neon-purple":    "#7B2FFF",
+            "cosmic-black":   "#080A0F",
+            "white-silver":   "#C8D4E0",
+            "pink-rose":      "#CC2288",
+            "gold-yellow":    "#CC9900",
+          };
+          const hex = COLOR_MAP[savedColor];
+          if (hex) retintAvatar(_entry, hex);
+        }
       });
       avatarEntryRef.current = entry;
       avatarRef.current = entry.root; // this is what gets moved every frame
+
+      // Expose retint function so UpperVibeCity can update the in-world avatar color after save
+      if (retintRef) {
+        retintRef.current = (hexColor) => {
+          retintAvatar(avatarEntryRef.current, hexColor);
+        };
+      }
 
       // Skybox — must follow camera so sky always feels infinitely far away
       const skybox = scene.getObjectByName("skybox");
