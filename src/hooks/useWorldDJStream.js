@@ -283,17 +283,23 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
 
   // ── Dance floor gating: DJ audio ONLY plays when on dance floor ─────────────
   useEffect(() => {
+    // djAudioRef.current may be null on first render (lazily created in loadAndPlay).
+    // We always set the target volume; loadAndPlay reads danceFloorModeRef.current so
+    // newly started tracks already respect the gate. For an already-running element,
+    // apply the change now.
     const el = djAudioRef.current;
-    if (!el) return;
     if (danceFloorMode) {
-      // On dance floor → fade to full volume
-      fadeCleanupRef.current?.();
-      fadeCleanupRef.current = crossfadeVol(el, MAX_VOL, FADE_DURATION);
+      if (el) {
+        fadeCleanupRef.current?.();
+        fadeCleanupRef.current = crossfadeVol(el, MAX_VOL, FADE_DURATION);
+      }
       setDjVolume(MAX_VOL);
     } else {
-      // Off dance floor → immediately mute (no proximity bleed)
-      fadeCleanupRef.current?.();
-      fadeCleanupRef.current = crossfadeVol(el, 0, 600);
+      if (el) {
+        // Off dance floor → fast mute
+        fadeCleanupRef.current?.();
+        el.volume = 0; // instant silence — no fade bleed
+      }
       setDjVolume(0);
     }
   }, [danceFloorMode]);

@@ -281,8 +281,8 @@ export function createJukebox(scene) {
   const nowPlayingMat = new THREE.SpriteMaterial({ map: nowPlayingTex, transparent: true, depthWrite: false, depthTest: false });
   const nowPlayingSprite = new THREE.Sprite(nowPlayingMat);
   nowPlayingSprite.scale.set(4.2, 0.9, 1);
-  // Position directly above the booth in world space
-  nowPlayingSprite.position.set(JUKEBOX_POS.x, 5.6, JUKEBOX_POS.z);
+  // Position just above the LIVE DJ holo sign (group is scaled 1.5×, holo at y=2.0 local → ~3.0 world + booth offset)
+  nowPlayingSprite.position.set(JUKEBOX_POS.x, 4.0, JUKEBOX_POS.z);
   nowPlayingSprite.renderOrder = 999;
   nowPlayingSprite.name = "djNowPlaying";
   scene.add(nowPlayingSprite);
