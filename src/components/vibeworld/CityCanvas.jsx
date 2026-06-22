@@ -57,8 +57,10 @@ const CAM_DIST = 5.5;         // distance behind avatar
 const CAM_HEIGHT = 2.4;       // above avatar ground position
 const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
 const CAM_FOLLOW_SPEED = 6.0; // how fast camera angle follows avatar
-const CAM_PITCH_MIN = -0.18;  // radians — max look down
-const CAM_PITCH_MAX =  1.1;   // radians — max look up (nearly straight up)
+const CAM_PITCH_MIN = -0.45;  // radians — max look down (city side, shows stage)
+const CAM_PITCH_MAX =  1.45;  // radians — max look up (beach side open sky)
+const CAM_FOV_DEFAULT = 52;
+const CAM_FOV_ZOOM_STAGE = 36; // FOV when zoomed toward stage from beach
 const IDLE_ORBIT_DELAY = 120.0; // seconds before idle orbit starts (2 minutes)
 const IDLE_ORBIT_SPEED = 0.18; // radians/sec for idle orbit (very slow)
 
@@ -1303,6 +1305,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const camYawSmoothRef = useRef(0);    // smoothed camera yaw
   const camPitchRef = useRef(0);        // camera pitch (vertical look, radians)
   const camPitchSmoothRef = useRef(0);  // smoothed pitch
+  const camFovRef = useRef(CAM_FOV_DEFAULT); // current smoothed FOV
   const idleTimerRef = useRef(0);       // seconds since last movement input
   const isOrbitingRef = useRef(false);  // true during idle orbit
   const userTouchingCamRef = useRef(false); // right-click or cam drag active
@@ -1708,6 +1711,20 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           // Look-at shifts up with pitch so the view rotates around the avatar
           const lookY = py + CAM_LOOK_Y + Math.sin(pitch) * 3.5;
           camera.lookAt(px, lookY, pz);
+
+          // ── Dynamic FOV: zoom toward stage when on beach looking city-side ──
+          // Beach zone: pz > 10. Stage zoom: pitch < -0.2 (looking down/back = over city).
+          const onBeach = pz > 10;
+          const lookingBackAtCity = pitch < -0.12;
+          const stageZoomAmount = onBeach && lookingBackAtCity
+            ? Math.max(0, Math.min(1, (-pitch - 0.12) / 0.3)) * Math.max(0, Math.min(1, (pz - 10) / 12))
+            : 0;
+          const targetFov = CAM_FOV_DEFAULT + (CAM_FOV_ZOOM_STAGE - CAM_FOV_DEFAULT) * stageZoomAmount;
+          camFovRef.current += (targetFov - camFovRef.current) * Math.min(1, dt * 2.5);
+          if (Math.abs(camera.fov - camFovRef.current) > 0.1) {
+            camera.fov = camFovRef.current;
+            camera.updateProjectionMatrix();
+          }
         }
 
         // ─── GLB AVATAR ANIMATION ────────────────────────────

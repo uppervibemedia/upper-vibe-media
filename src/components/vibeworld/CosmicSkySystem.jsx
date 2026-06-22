@@ -114,8 +114,7 @@ export function createCosmicSky(scene) {
   }
   scene.userData.shootingStars = shootingStars;
 
-  // ── Asteroids ──────────────────────────────────────────────────
-  // Tiny slow-moving specks — drifting cosmic debris
+  // ── Small background asteroids ─────────────────────────────────
   const ASTEROID_COUNT = 3;
   const asteroids = [];
   for (let i = 0; i < ASTEROID_COUNT; i++) {
@@ -133,6 +132,50 @@ export function createCosmicSky(scene) {
     asteroids.push({ mesh, mat, active: false, life: 0, maxLife: 0, vx: 0, vy: 0, vz: 0, nextFire });
   }
   scene.userData.asteroids = asteroids;
+
+  // ── BIG BEACH ASTEROID — giant rock crossing the open beach sky every ~60s ──
+  // Built from multiple sphere fragments merged into a lumpy irregular shape
+  const bigAstGroup = new THREE.Group();
+  bigAstGroup.renderOrder = 4;
+
+  // Core body
+  const bigCoreMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#B8A898"), transparent: true, opacity: 0, depthWrite: false });
+  const bigCore = new THREE.Mesh(new THREE.SphereGeometry(1.1, 8, 6), bigCoreMat);
+  bigAstGroup.add(bigCore);
+
+  // Lumpy surface chunks
+  const chunkDefs = [
+    [0.55, 4, 3, "#A09080",  0.9,  0.2,  0.6],
+    [0.45, 4, 3, "#C0B0A0", -0.7,  0.5, -0.5],
+    [0.38, 4, 3, "#907060",  0.3, -0.6,  0.8],
+    [0.50, 4, 3, "#B0A090", -0.8, -0.3,  0.4],
+    [0.35, 4, 3, "#A89888",  0.6,  0.7, -0.7],
+  ];
+  const chunkMats = [bigCoreMat];
+  for (const [r, ws, hs, col, cx, cy, cz] of chunkDefs) {
+    const cm = new THREE.MeshBasicMaterial({ color: new THREE.Color(col), transparent: true, opacity: 0, depthWrite: false });
+    const ch = new THREE.Mesh(new THREE.SphereGeometry(r, ws, hs), cm);
+    ch.position.set(cx, cy, cz);
+    bigAstGroup.add(ch);
+    chunkMats.push(cm);
+  }
+
+  // Glow halo around it
+  const haloMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#FF8844"), transparent: true, opacity: 0, depthWrite: false, side: THREE.BackSide });
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(1.6, 8, 6), haloMat);
+  bigAstGroup.add(halo);
+
+  scene.add(bigAstGroup);
+  scene.userData.bigAsteroid = {
+    group: bigAstGroup,
+    mats: chunkMats,
+    haloMat,
+    active: false,
+    life: 0,
+    maxLife: 0,
+    vx: 0, vy: 0, vz: 0,
+    nextFire: performance.now() * 0.001 + 8, // first pass after 8s
+  };
 
   // ── Per-star twinkle phases ────────────────────────────────────
   // Already handled by CityCanvas stars material — we add per-star index phases
@@ -213,13 +256,12 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
-  // ── Asteroids ─────────────────────────────────────────────────
+  // ── Small background asteroids ────────────────────────────────
   const asteroids = scene.userData.asteroids;
   if (asteroids) {
     for (const ast of asteroids) {
       if (!ast.active) {
         if (t >= ast.nextFire) {
-          // Spawn on sky sphere perimeter, drift slowly
           const ang = Math.random() * Math.PI * 2;
           const elev = -0.1 + Math.random() * 0.6;
           const r = 18 + Math.random() * 8;
@@ -228,12 +270,11 @@ export function animateCosmicSky(scene, camera, t, dt) {
             camera.position.y + 4 + elev * 10,
             camera.position.z + Math.sin(ang) * r,
           );
-          // Very slow drift — almost imperceptible
           const driftAng = ang + Math.PI + (Math.random() - 0.5) * 1.0;
           ast.vx = Math.cos(driftAng) * (0.4 + Math.random() * 0.6);
           ast.vy = (Math.random() - 0.5) * 0.15;
           ast.vz = Math.sin(driftAng) * (0.4 + Math.random() * 0.6);
-          ast.maxLife = 18 + Math.random() * 22; // 18–40s drift
+          ast.maxLife = 18 + Math.random() * 22;
           ast.life = ast.maxLife;
           ast.active = true;
           ast.mat.opacity = 0;
@@ -246,16 +287,63 @@ export function animateCosmicSky(scene, camera, t, dt) {
           ast.nextFire = t + 25 + Math.random() * 55;
         } else {
           const progress = ast.life / ast.maxLife;
-          // Gentle fade in/out — very subtle
           const envelope = Math.min(progress / 0.1, 1) * Math.min((1 - progress) / 0.1, 1);
           ast.mat.opacity = envelope * (0.35 + Math.random() * 0.05);
           ast.mesh.position.x += ast.vx * dt;
           ast.mesh.position.y += ast.vy * dt;
           ast.mesh.position.z += ast.vz * dt;
-          // Slow tumble
           ast.mesh.rotation.x += dt * 0.3;
           ast.mesh.rotation.y += dt * 0.2;
         }
+      }
+    }
+  }
+
+  // ── BIG BEACH ASTEROID — crosses open beach sky every ~60s ───────────────
+  const ba = scene.userData.bigAsteroid;
+  if (ba) {
+    if (!ba.active) {
+      if (t >= ba.nextFire) {
+        // Spawn high over the west side of beach, travel east at medium speed
+        // Beach is at z > 15, open sky. Spawn at x=-40, high y, z=28 (mid-beach)
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const startX = side * (38 + Math.random() * 8);
+        const startY = camera.position.y + 10 + Math.random() * 8; // high overhead
+        const startZ = 18 + Math.random() * 18; // over beach/ocean zone
+        ba.group.position.set(startX, startY, startZ);
+        ba.group.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        // Travel across — fast enough to be dramatic, slow enough to watch
+        ba.vx = -side * (5.5 + Math.random() * 3.5);
+        ba.vy = -(0.4 + Math.random() * 0.6); // slight downward arc
+        ba.vz = (Math.random() - 0.5) * 2.0;
+        ba.maxLife = 12 + Math.random() * 5; // ~12–17s crossing
+        ba.life = ba.maxLife;
+        ba.active = true;
+        // Set all chunk mats to 0
+        for (const m of ba.mats) m.opacity = 0;
+        ba.haloMat.opacity = 0;
+      }
+    } else {
+      ba.life -= dt;
+      if (ba.life <= 0) {
+        ba.active = false;
+        for (const m of ba.mats) m.opacity = 0;
+        ba.haloMat.opacity = 0;
+        ba.nextFire = t + 55 + Math.random() * 15; // ~60s cycle
+      } else {
+        const progress = ba.life / ba.maxLife;
+        // Fade in over first 8%, hold, fade out over last 8%
+        const envelope = Math.min(progress / 0.08, 1) * Math.min((1 - progress) / 0.08, 1);
+        const opacity = envelope * 0.92;
+        for (const m of ba.mats) m.opacity = opacity;
+        ba.haloMat.opacity = envelope * 0.18; // subtle atmospheric glow
+        ba.group.position.x += ba.vx * dt;
+        ba.group.position.y += ba.vy * dt;
+        ba.group.position.z += ba.vz * dt;
+        // Slow tumble
+        ba.group.rotation.x += dt * 0.22;
+        ba.group.rotation.y += dt * 0.14;
+        ba.group.rotation.z += dt * 0.08;
       }
     }
   }
