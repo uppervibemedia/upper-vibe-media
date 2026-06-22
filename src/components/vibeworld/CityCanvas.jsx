@@ -80,8 +80,8 @@ function resolveCollisions(px, pz, r, boxes, isHoverboarding = false) {
   }
 
   // Beach shoreline boundary
-  // Normal players stop at shore (z=34); hoverboard riders can go 50% into the ocean (z=59)
-  const maxZ = isHoverboarding ? 59 : 34;
+  // Normal players stop at shore (z=34); hoverboard riders can surf deep into the ocean (z=75)
+  const maxZ = isHoverboarding ? 75 : 34;
   if (z > 0) {
     if (z > maxZ) z = maxZ;
     if (x < -28) x = -28;
@@ -1509,7 +1509,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const moveZ = Math.cos(rot) * inputFwd - Math.sin(rot) * strafeInput;
 
         if (isMoving) {
-          const targetSpeed = (Math.abs(inputFwd) > 0.08 || Math.abs(strafeInput) > 0.04) ? MOVE_SPEED : 0;
+          const boosting = hbRidingRef.current && performance.now() < speedBoostUntilRef.current;
+          const targetSpeed = (Math.abs(inputFwd) > 0.08 || Math.abs(strafeInput) > 0.04)
+            ? (boosting ? MOVE_SPEED * 3.0 : MOVE_SPEED)
+            : 0;
           vel.x += (moveX * targetSpeed - vel.x) * Math.min(1, ACCELERATION * dt);
           vel.z += (moveZ * targetSpeed - vel.z) * Math.min(1, ACCELERATION * dt);
         } else {
@@ -1981,14 +1984,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // Apply active speed boost — multiply target velocity when boosting
-        if (hbRidingRef.current && performance.now() < speedBoostUntilRef.current) {
-          const boostMult = 3.0;
-          if (isMoving) {
-            vel.x += (moveX * MOVE_SPEED * boostMult - vel.x) * Math.min(1, ACCELERATION * dt);
-            vel.z += (moveZ * MOVE_SPEED * boostMult - vel.z) * Math.min(1, ACCELERATION * dt);
-          }
-        }
+
 
         // ─── LAUNCH PAD DETECTION — air launch ───────────────────────
         if (hbRidingRef.current && frameRef.current % 6 === 0) {
