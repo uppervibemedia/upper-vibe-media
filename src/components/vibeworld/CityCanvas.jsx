@@ -194,7 +194,7 @@ function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 1. GROUND — dark urban plaza floor
   // ═════════════════════════════════════════════════════════════
-  const groundGeo = new PlaneGeometry(68, 52);
+  const groundGeo = new PlaneGeometry(84, 64);
   const groundMat = mat("#0B1020", { roughness: 0.55, metalness: 0.15 });
   const ground = new Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
@@ -958,7 +958,7 @@ function buildPark(scene) {
   scene.add(edgeBuildings);
 
   // 10. BEACH — wider sand strip for the hoverboard course
-  const beachGeo = new PlaneGeometry(68, 24);
+  const beachGeo = new PlaneGeometry(84, 28);
   const beach = new Mesh(beachGeo, mat("#D4AA70", { roughness: 0.55, metalness: 0.0 }));
   beach.rotation.x = -Math.PI / 2;
   beach.position.set(0, 0.001, 24);
@@ -970,7 +970,7 @@ function buildPark(scene) {
 
   // 11. OCEAN — waves from shore
   const oceanSegments = 54;
-  const oceanWidth = 68;
+  const oceanWidth = 84;
   const oceanGeo = new PlaneGeometry(oceanWidth, OCEAN_DEPTH, 56, oceanSegments);
   const oceanMat = new MeshBasicMaterial();
   oceanMat.color = new Color("#30B0DC");
@@ -988,7 +988,7 @@ function buildPark(scene) {
   scene.userData._oceanOrig = origArr;
   scene.userData._oceanCenterZ = SHORELINE_Z + OCEAN_DEPTH / 2;
 
-  const foamGeo = new PlaneGeometry(68, 1.5);
+  const foamGeo = new PlaneGeometry(84, 1.5);
   const foamMeshMat = new MeshBasicMaterial();
   foamMeshMat.color = new Color("#FFFFFF");
   foamMeshMat.transparent = true;
@@ -1005,7 +1005,7 @@ function buildPark(scene) {
   scene.userData.shorelineZ = SHORELINE_Z;
 
   // ── Shoreline glow strip — pulses with music beat ──────────
-  const shoreGlowGeo = new PlaneGeometry(68, 0.5);
+  const shoreGlowGeo = new PlaneGeometry(84, 0.5);
   const shoreGlowMat = new MeshBasicMaterial();
   shoreGlowMat.color = new Color("#00D4F0");
   shoreGlowMat.transparent = true;
@@ -1033,10 +1033,10 @@ function buildPark(scene) {
   moon.shadow.mapSize.height = 2048;
   moon.shadow.camera.near = 0.5;
   moon.shadow.camera.far = 80;
-  moon.shadow.camera.left = -36;
-  moon.shadow.camera.right = 36;
-  moon.shadow.camera.top = 30;
-  moon.shadow.camera.bottom = -30;
+  moon.shadow.camera.left = -45;
+  moon.shadow.camera.right = 45;
+  moon.shadow.camera.top = 38;
+  moon.shadow.camera.bottom = -38;
   moon.shadow.bias = -0.0006;
   scene.add(moon);
 
