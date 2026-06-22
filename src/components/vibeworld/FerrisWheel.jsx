@@ -296,17 +296,35 @@ export function createFerrisWheel(scene) {
 
   // ─── Neon spoke tip lights (at rim attachment points) ─────────
   const TIP_COLORS = ["#FF4444","#44AAFF","#44FF88","#FFDD44","#FF44CC","#44DDFF","#AA44FF","#FF8844"];
+  const tipLightMats = [];
   for (let i = 0; i < NUM_CABINS; i++) {
     const angle = (i / NUM_CABINS) * Math.PI * 2;
     const tx = Math.sin(angle) * (WHEEL_RADIUS + 0.02);
     const ty = Math.cos(angle) * (WHEEL_RADIUS + 0.02);
-    const tipLight = new Mesh(
-      new SphereGeometry(0.12, 6, 4),
-      neonMat(TIP_COLORS[i], 0.9)
-    );
+    const tipMat = neonMat(TIP_COLORS[i], 0.9);
+    const tipLight = new Mesh(new SphereGeometry(0.12, 6, 4), tipMat);
     tipLight.position.set(0, ty, tx);
     tipLight.name = `tipLight_${i}`;
+    tipLightMats.push({ mat: tipMat, phase: (i / NUM_CABINS) * Math.PI * 2 });
     wheelGroup.add(tipLight);
+  }
+
+  // ─── Carnival string lights — small bulbs along the outer rim ──
+  const CARNIVAL_COLORS = ["#FFD700","#FF6644","#44FFAA","#FF44CC","#44AAFF","#FFAA44","#AA44FF","#44FFDD",
+                            "#FF4444","#AAFF44","#FF88CC","#44DDFF","#FFB800","#FF6699","#88FF44","#6644FF"];
+  const carnivalMats = [];
+  const carnivalCount = 24; // bulbs evenly spaced around rim
+  for (let i = 0; i < carnivalCount; i++) {
+    const angle = (i / carnivalCount) * Math.PI * 2;
+    const rx = Math.sin(angle) * (WHEEL_RADIUS + 0.25);
+    const ry = Math.cos(angle) * (WHEEL_RADIUS + 0.25);
+    const color = CARNIVAL_COLORS[i % CARNIVAL_COLORS.length];
+    const cMat = neonMat(color, 0.75);
+    const bulb = new Mesh(new SphereGeometry(0.09, 5, 4), cMat);
+    bulb.position.set(0, ry, rx);
+    bulb.name = `carnival_${i}`;
+    carnivalMats.push({ mat: cMat, phase: (i / carnivalCount) * Math.PI * 2, color });
+    wheelGroup.add(bulb);
   }
 
   // ─── Position root in world ────────────────────────────────────
@@ -362,6 +380,8 @@ export function createFerrisWheel(scene) {
     rimNeon,
     hubGlow,
     wheelLight,
+    tipLightMats,
+    carnivalMats,
   };
 
   return { group: root };
@@ -405,6 +425,26 @@ export function animateFerrisWheel(scene, t, audioBeat) {
   const sign = scene.userData.ferrisWheelSign;
   if (sign) {
     sign.material.opacity = 0.75 + Math.sin(t * 1.4) * 0.18;
+  }
+
+  // Carnival string lights — smooth musical pulse with staggered phase
+  const carnivalMats = fw.carnivalMats;
+  if (carnivalMats) {
+    for (const c of carnivalMats) {
+      // Each bulb breathes at slightly different phase — no harsh sync
+      const wave = Math.sin(t * 1.8 + c.phase) * 0.5 + 0.5;
+      const beatLift = audioBeat * 0.35;
+      c.mat.opacity = 0.35 + wave * 0.45 + beatLift;
+    }
+  }
+
+  // Spoke tip lights — gentle sequential chase with beat
+  const tipLightMats = fw.tipLightMats;
+  if (tipLightMats) {
+    for (const tip of tipLightMats) {
+      const wave = Math.sin(t * 2.2 + tip.phase) * 0.5 + 0.5;
+      tip.mat.opacity = 0.5 + wave * 0.45 + audioBeat * 0.2;
+    }
   }
 }
 

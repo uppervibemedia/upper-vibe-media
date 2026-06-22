@@ -280,7 +280,7 @@ export function createJukebox(scene) {
   nowPlayingTex.colorSpace = THREE.SRGBColorSpace;
   const nowPlayingMat = new THREE.SpriteMaterial({ map: nowPlayingTex, transparent: true, depthWrite: false, depthTest: false });
   const nowPlayingSprite = new THREE.Sprite(nowPlayingMat);
-  nowPlayingSprite.scale.set(4.2, 0.9, 1);
+  nowPlayingSprite.scale.set(4.8, 1.1, 1);
   // Position just above the LIVE DJ holo sign (group is scaled 1.5×, holo at y=2.0 local → ~3.0 world + booth offset)
   nowPlayingSprite.position.set(JUKEBOX_POS.x, 4.0, JUKEBOX_POS.z);
   nowPlayingSprite.renderOrder = 999;
@@ -303,42 +303,52 @@ export function createJukebox(scene) {
     ctx.closePath();
   }
 
+  function truncate(ctx, text, maxW) {
+    let t = text;
+    while (ctx.measureText(t).width > maxW && t.length > 4) t = t.slice(0, -4) + "…";
+    return t;
+  }
+
   function drawNowPlaying(title, artist) {
     npCtx.clearRect(0, 0, 512, 96);
+
     // Card background
-    npCtx.fillStyle = "rgba(4,2,20,0.72)";
-    roundRect(npCtx, 6, 6, 500, 84, 18);
+    npCtx.fillStyle = "rgba(4,2,20,0.82)";
+    roundRect(npCtx, 4, 4, 504, 88, 16);
     npCtx.fill();
+
     // Cyan border
-    npCtx.strokeStyle = "rgba(0,229,255,0.45)";
-    npCtx.lineWidth = 1.8;
-    roundRect(npCtx, 6, 6, 500, 84, 18);
+    npCtx.strokeStyle = "rgba(0,229,255,0.5)";
+    npCtx.lineWidth = 1.6;
+    roundRect(npCtx, 4, 4, 504, 88, 16);
     npCtx.stroke();
 
-    // "NOW PLAYING" pill label
+    const MAX_TEXT_W = 460;
+
+    // "◉ NOW PLAYING" label — top row
     npCtx.font = "700 11px 'Inter',sans-serif";
     npCtx.textAlign = "left";
-    npCtx.fillStyle = "rgba(0,229,255,0.8)";
+    npCtx.fillStyle = "rgba(0,229,255,0.85)";
     npCtx.shadowColor = "#00E5FF";
-    npCtx.shadowBlur = 8;
-    npCtx.fillText("◉  NOW PLAYING", 22, 28);
-
-    // Title
-    npCtx.shadowColor = "#ffffff";
     npCtx.shadowBlur = 6;
-    npCtx.font = "bold 22px 'Syne','Inter',sans-serif";
-    npCtx.fillStyle = "#ffffff";
-    let t = title || "Live DJ Mix";
-    const maxW = 350;
-    while (npCtx.measureText(t).width > maxW && t.length > 4) t = t.slice(0, -4) + "…";
-    npCtx.fillText(t, 22, 58);
-
-    // Artist
+    npCtx.fillText("◉  NOW PLAYING", 20, 24);
     npCtx.shadowBlur = 0;
-    npCtx.font = "400 13px 'Inter',sans-serif";
-    npCtx.fillStyle = "rgba(196,180,255,0.65)";
+
+    // Title — second row, bold, white, truncated
+    npCtx.font = "bold 20px 'Syne','Inter',sans-serif";
+    npCtx.fillStyle = "#ffffff";
+    npCtx.shadowColor = "rgba(255,255,255,0.4)";
+    npCtx.shadowBlur = 4;
+    const displayTitle = truncate(npCtx, title || "Live DJ Mix", MAX_TEXT_W);
+    npCtx.fillText(displayTitle, 20, 52);
+    npCtx.shadowBlur = 0;
+
+    // Artist — third row, smaller, muted purple
     if (artist) {
-      npCtx.fillText(`— ${artist}`, 22 + npCtx.measureText(t).width + 8, 58);
+      npCtx.font = "400 13px 'Inter',sans-serif";
+      npCtx.fillStyle = "rgba(196,170,255,0.75)";
+      const displayArtist = truncate(npCtx, artist, MAX_TEXT_W);
+      npCtx.fillText(displayArtist, 20, 76);
     }
 
     nowPlayingTex.needsUpdate = true;
