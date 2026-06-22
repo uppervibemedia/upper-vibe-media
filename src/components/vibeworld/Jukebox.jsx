@@ -9,15 +9,15 @@ import * as THREE from "three";
 const PLAZA_X = 0;
 const PLAZA_Z = -4;
 
-// DJ Booth sits behind (south of) the dance floor, offset slightly left so the stage is clear.
-// Dance floor center is (0, -4). Booth at (-8, -13) — clear of stage center-line.
-export const JUKEBOX_POS = { x: -8, z: -13 };
+// DJ Booth sits to the RIGHT (east) of the dance floor, beside the Music Library.
+// Dance floor center is (0, -4), radius 7. Booth at (12, -4) — beside the floor, east side.
+export const JUKEBOX_POS = { x: 12, z: -4 };
 export const JUKEBOX_INTERACT_RADIUS = 6;
 export const DANCE_FLOOR_RADIUS = 7;
 
-// Booth faces toward dance floor center (0, -4) from (-8, -13).
-// dx=8, dz=9 → angle = atan2(8, 9) ≈ 0.727 rad (northeast toward dance floor)
-const FACE_ANGLE = Math.atan2(8, 9); // faces toward dance floor center
+// Booth faces toward dance floor center (0, -4) from (12, -4).
+// dx=-12, dz=0 → faces -X direction = Math.PI (west, toward dance floor)
+const FACE_ANGLE = Math.PI; // faces -X (toward dance floor center)
 
 // Scale multiplier — 0.7x (compact secondary attraction, ~30% smaller than 1.0x)
 const S = 0.7;

@@ -73,7 +73,7 @@ const ZONES = {
   djbooth: {
     name: "Live DJ Booth",
     id: "djbooth",
-    cx: -8, cz: -13, radius: 5,
+    cx: 12, cz: -4, radius: 5,
     icon: "Music4",
   },
 };
