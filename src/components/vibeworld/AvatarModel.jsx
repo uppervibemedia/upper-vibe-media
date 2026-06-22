@@ -48,23 +48,19 @@ function loadGLTF(gender = "male") {
   return loadSingle(key, GLB_URLS[key]);
 }
 
-// For the player avatar we clone the scene to avoid conflicts with remote avatars
-// that may load the same GLB (e.g. multiple female players sharing Michelle.glb).
-function getModelForPlayer(gltf) {
+// Deep-clone a GLTF scene preserving SkinnedMesh skeleton bindings.
+// THREE's scene.clone(true) re-maps bones correctly within the cloned hierarchy,
+// so this is safe for AnimationMixer targets.
+function cloneScene(gltf) {
   return gltf.scene.clone(true);
 }
 
+function getModelForPlayer(gltf) {
+  return cloneScene(gltf);
+}
+
 function cloneGltfForRemote(gltf) {
-  // Use THREE's built-in ObjectLoader-style clone which handles SkinnedMesh correctly
-  // by serializing to JSON and re-parsing
-  try {
-    const exp = new THREE.ObjectLoader();
-    const json = gltf.scene.toJSON();
-    return exp.parse(json);
-  } catch {
-    // Fallback: simple clone (may have skeleton issues but better than crash)
-    return gltf.scene.clone(true);
-  }
+  return cloneScene(gltf);
 }
 
 function makeNameSprite(text) {
@@ -295,36 +291,46 @@ export function playEmoteAnimation(entry, emoteId) {
 function attachModel(gltf, controllerGroup, opts = {}) {
   // Remove any existing model (handles double-mounts from React StrictMode)
   const existing = controllerGroup.getObjectByName("avatarModel");
-  if (existing) controllerGroup.remove(existing);
+  if (existing) {
+    controllerGroup.remove(existing);
+    // Dispose old mixer if present
+    if (existing.userData._mixer) existing.userData._mixer.stopAllAction();
+  }
 
   const model = opts.isRemote ? cloneGltfForRemote(gltf) : getModelForPlayer(gltf);
   model.name = "avatarModel";
-  // Model lives at local origin — inherits controller position/rotation/scale
-  // Rotate 180° on Y so the model's chest faces +Z (matching movement forward direction)
-  model.position.set(0, 0, 0);
-  model.rotation.set(0, Math.PI, 0);
 
-  // Auto-detect scale: measure bounding box height and normalise to ~1.8m (Soldier's height)
-  // This fixes Michelle.glb which is exported at a different unit scale.
-  {
-    const box = new THREE.Box3().setFromObject(model);
-    const modelHeight = box.max.y - box.min.y;
-    const targetHeight = 1.8;
-    const scaleFactor = modelHeight > 0.1 ? targetHeight / modelHeight : 1.0;
-    model.scale.set(scaleFactor, scaleFactor, scaleFactor);
-    // Re-ground the model: shift Y so feet sit at y=0
-    const newBox = new THREE.Box3().setFromObject(model);
-    model.position.y = -newBox.min.y;
+  // Reset transform before measuring
+  model.position.set(0, 0, 0);
+  model.rotation.set(0, 0, 0);
+  model.scale.set(1, 1, 1);
+
+  // ── ADD TO CONTROLLER — parenting must happen before transform tweaks ──
+  controllerGroup.add(model);
+
+  // ── SCALE + GROUND ────────────────────────────────────────────
+  // Soldier.glb: exported at ~1.8m, scale 1 is correct, feet at y≈0
+  // Michelle.glb: Mixamo export at 1cm units (~170 units tall) → needs scale ~0.0106
+  // We detect by checking for "Ch03" mesh names (Michelle's naming convention).
+  let isMichelle = false;
+  model.traverse((c) => { if (c.name && c.name.startsWith("Ch0")) isMichelle = true; });
+
+  if (isMichelle) {
+    // Michelle.glb: scale to 1.8m. Her skeleton root sits at y=0, tips at ~170.
+    model.scale.set(0.0106, 0.0106, 0.0106);
+    model.position.y = 0;
+  } else {
+    // Soldier.glb (and any standard 1m-unit GLB): already correct
+    model.scale.set(1, 1, 1);
+    model.position.y = 0;
   }
+
+  // Face +Z (chest toward camera behind avatar)
+  model.rotation.set(0, Math.PI, 0);
 
   model.traverse((child) => {
     if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
   });
-
-  // applyStyleTint removed — retintAvatar handles all coloring now
-
-  // MUST add to controller BEFORE creating AnimationMixer
-  controllerGroup.add(model);
 
   // AnimationMixer targets the model skeleton
   const mixer = new THREE.AnimationMixer(model);
@@ -383,17 +389,24 @@ function attachModel(gltf, controllerGroup, opts = {}) {
 
 // ─── PUBLIC: createAvatar ─────────────────────────────────────
 export function createAvatar(scene, opts = {}, onReady) {
-  // This controller Group is the ONLY object CityCanvas ever needs to know about.
-  // Movement loop: avatar.position.set(px, py, pz); avatar.rotation.y = rot;
-  // This works from frame 1, even before the GLB loads.
   const controller = new THREE.Group();
   controller.name = "avatar";
   controller.position.set(SPAWN[0], SPAWN[1], SPAWN[2]);
   controller.add(makeShadow());
   scene.add(controller);
 
+  // Visible capsule placeholder — shown while GLB loads so the player
+  // always sees something moving from frame 1 (not just the shadow disc).
+  const placeholder = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.22, 1.0, 4, 8),
+    new THREE.MeshStandardMaterial({ color: 0x4499dd, roughness: 0.6 })
+  );
+  placeholder.name = "avatarPlaceholder";
+  placeholder.position.y = 0.72;
+  controller.add(placeholder);
+
   const entry = {
-    root: controller,  // ← CityCanvas stores this in avatarRef
+    root: controller,
     mixer: null,
     clips: {},
     currentAnim: "idle",
@@ -407,32 +420,31 @@ export function createAvatar(scene, opts = {}, onReady) {
 
   loadGLTF(opts.gender || "male")
     .then((gltf) => {
+      // Remove placeholder once real model arrives
+      const ph = controller.getObjectByName("avatarPlaceholder");
+      if (ph) controller.remove(ph);
+
       const result = attachModel(gltf, controller, {
         avatarStyle: opts.avatarStyle || "streetwear",
         isRemote: false,
       });
-      // Mutate the SAME entry object that CityCanvas already has a reference to
       entry.mixer = result.mixer;
       entry.clips = result.clips;
       entry.currentAnim = result.currentAnim;
       entry._idleKey = result._idleKey;
       entry._walkKey = result._walkKey;
       entry._runKey  = result._runKey;
-      // Guarantee clean state: not dancing, not emoting
       entry._emoteActive = false;
       entry._isDancing = false;
+
+      console.log("[AvatarModel] Player GLB loaded ✓ gender:", opts.gender || "male",
+        "| idleKey:", result._idleKey, "| walkKey:", result._walkKey);
+
       onReady?.(entry);
     })
     .catch((err) => {
-      console.error("[AvatarModel] GLB load failed:", err);
-      // Capsule fallback — still moves with controller
-      const cap = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.26, 1.1, 4, 8),
-        new THREE.MeshStandardMaterial({ color: 0x4499dd })
-      );
-      cap.name = "avatarModel";
-      cap.position.y = 0.82;
-      controller.add(cap);
+      console.error("[AvatarModel] GLB load FAILED — keeping capsule placeholder:", err);
+      // Placeholder already visible and attached — no extra action needed
       onReady?.(entry);
     });
 

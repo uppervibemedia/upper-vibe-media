@@ -161,18 +161,25 @@ export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "med
       // For human_female the scene is Michelle's original — clone it so preview doesn't conflict with in-world use
       const model = gltf.scene.clone ? gltf.scene.clone(true) : gltf.scene;
       model.name = "previewModel";
-      model.rotation.y = Math.PI;
       model.position.set(0, 0, 0);
+      model.rotation.set(0, 0, 0);
+      model.scale.set(1, 1, 1);
 
-      // Auto-scale to ~1.8m tall so preview is consistent across Soldier and Michelle
-      {
-        const box = new THREE.Box3().setFromObject(model);
-        const h = box.max.y - box.min.y;
-        const sf = h > 0.1 ? 1.8 / h : 1.0;
-        model.scale.set(sf, sf, sf);
-        const newBox = new THREE.Box3().setFromObject(model);
-        model.position.y = -newBox.min.y;
+      // Add to scene
+      scene.add(model);
+
+      // Detect Michelle vs Soldier by mesh naming convention
+      let isMichelle = false;
+      model.traverse((c) => { if (c.name && c.name.startsWith("Ch0")) isMichelle = true; });
+
+      if (isMichelle) {
+        model.scale.set(0.0106, 0.0106, 0.0106);
+        model.position.y = 0;
+      } else {
+        model.scale.set(1, 1, 1);
+        model.position.y = 0;
       }
+      model.rotation.y = Math.PI;
 
       model.traverse((child) => {
         if (!child.isMesh) return;
@@ -180,7 +187,6 @@ export default function AvatarPreviewCanvas({ outfitColorKey, skinToneKey = "med
         mats.forEach((m) => { if (m?.color && !m.userData._origColor) m.userData._origColor = m.color.clone(); });
       });
 
-      scene.add(model);
       s.model = model;
       applyTints(model, outfitRef.current, skinRef.current);
 
