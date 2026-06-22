@@ -13,8 +13,8 @@ export const JUKEBOX_POS = { x: PLAZA_X + 8.2, z: PLAZA_Z + 0.5 };
 export const JUKEBOX_INTERACT_RADIUS = 5.5;
 export const DANCE_FLOOR_RADIUS = 7;
 
-// Scale multiplier
-const SCALE = 1.5;
+// Scale multiplier — 50% larger than original (1.0 * 1.5 * 1.5)
+const SCALE = 2.25;
 
 // Angle from booth toward dance floor center
 // group.rotation.y = FACE_ANGLE makes the local +Z axis point toward the dance floor

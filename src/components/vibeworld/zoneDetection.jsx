@@ -37,7 +37,7 @@ const ZONES = {
   vibecheck: {
     name: "Daily Vibe Check",
     id: "vibecheck",
-    cx: 10, cz: 4, radius: 4,
+    cx: -16, cz: -16, radius: 4,
     icon: "Sparkles",
   },
   zenbeach: {
@@ -55,7 +55,7 @@ const ZONES = {
   academy: {
     name: "Vibe Academy",
     id: "academy",
-    cx: -20, cz: 5, radius: 5,
+    cx: -28, cz: 5, radius: 5,
     icon: "GraduationCap",
   },
   shop: {

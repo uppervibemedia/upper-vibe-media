@@ -206,7 +206,7 @@ function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 2. UVC CENTRAL PLAZA — circular hub at center
   // ═════════════════════════════════════════════════════════════
-  const PLAZA_X = 0, PLAZA_Z = -13, PLAZA_R = 7;
+  const PLAZA_X = 0, PLAZA_Z = -13, PLAZA_R = 10.5; // 50% larger dance floor
 
   const plazaDisc = new Mesh(
     new CircleGeometry(PLAZA_R, 64),
@@ -645,7 +645,7 @@ function buildPark(scene) {
     mat("#142540", { roughness: 0.30, metalness: 0.55 })
   );
   vcPlat.rotation.x = -Math.PI / 2;
-  vcPlat.position.set(10, 0.003, 4);
+  vcPlat.position.set(-16, 0.003, -16);
   vcPlat.receiveShadow = true;
   vibeCheck.add(vcPlat);
 
@@ -655,7 +655,7 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
   );
   vcOuterRing.rotation.x = -Math.PI / 2;
-  vcOuterRing.position.set(10, 0.006, 4);
+  vcOuterRing.position.set(-16, 0.006, -16);
   vcOuterRing.renderOrder = 1;
   vibeCheck.add(vcOuterRing);
 
@@ -665,7 +665,7 @@ function buildPark(scene) {
     mat("#1E2E3E", { roughness: 0.3, metalness: 0.6, transparent: true, opacity: 0.7, depthWrite: true })
   );
   vcStep.rotation.x = -Math.PI / 2;
-  vcStep.position.set(10, 0.06, 4);
+  vcStep.position.set(-16, 0.06, -16);
   vcStep.receiveShadow = true;
   vibeCheck.add(vcStep);
 
@@ -675,16 +675,16 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
   );
   vcStepRing.rotation.x = -Math.PI / 2;
-  vcStepRing.position.set(10, 0.07, 4);
+  vcStepRing.position.set(-16, 0.07, -16);
   vcStepRing.renderOrder = 1;
   vibeCheck.add(vcStepRing);
 
   // Mirror assembly sub-group — rotated to face Central Plaza + Vibe Lounge
   const mirrorGroup = new Group();
   mirrorGroup.name = "vibeMirrorGroup";
-  // Rotate to face the Central Plaza (0,-4) from mirror position (10,4)
-  // Direction vector: dx=-10, dz=-8, angle = atan2(-10,-8) in Three.js
-  mirrorGroup.rotation.y = Math.atan2(-10, -8);
+  // Rotate to face the Central Plaza (0,-13) from mirror position (-16,-16)
+  // Direction vector: dx=16, dz=3
+  mirrorGroup.rotation.y = Math.atan2(16, 3);
 
   // Vibe Mirror — tall glowing vertical panel
   const mirrorMat = mat("#0A1525", { roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.85, depthWrite: true });
@@ -743,11 +743,11 @@ function buildPark(scene) {
   mirrorGroup.add(mirrorDot);
 
   // Place mirror group at the zone center
-  mirrorGroup.position.set(10, 0, 4);
+  mirrorGroup.position.set(-16, 0, -16);
   vibeCheck.add(mirrorGroup);
 
   scene.add(vibeCheck);
-  createNeonSign(scene, 10, 4.4, 4, "DAILY  VIBE  CHECK", "#00E5FF");
+  createNeonSign(scene, -16, 4.4, -16, "DAILY  VIBE  CHECK", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 8.5. UPPER VIBE ACADEMY — futuristic learning cinema, top-left
@@ -755,7 +755,7 @@ function buildPark(scene) {
   const academy = new Group();
   academy.name = "upperVibeAcademy";
 
-  const ACAD_X = -20, ACAD_Z = 5;
+  const ACAD_X = -28, ACAD_Z = 5;
 
   // Base platform — wide, cinematic
   const acadPlat = new Mesh(
@@ -880,6 +880,7 @@ function buildPark(scene) {
   academyLight.intensity = 1.8; academyLight.distance = 12;
   academyLight.position.set(ACAD_X, 2.5, ACAD_Z);
   scene.add(academyLight);
+
 
   // ═════════════════════════════════════════════════════════════
   // 8.6. ZEN BEACH — meditation zone, left-side beach area
@@ -1107,7 +1108,7 @@ function buildPark(scene) {
   const vibeCheckLight = new PointLight();
   vibeCheckLight.color = new Color("#00E5FF");
   vibeCheckLight.intensity = 3.5; vibeCheckLight.distance = 12;
-  vibeCheckLight.position.set(10, 2.5, 4);
+  vibeCheckLight.position.set(-16, 2.5, -16);
   scene.add(vibeCheckLight);
 
   // ── Plaza fill light — soft central glow ──────────────────
