@@ -161,52 +161,29 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
         </div>
       )}
 
-      {/* ── Controls overlay — always pointer-events-auto ── */}
-      <div
-        className="absolute bottom-2 right-2 flex items-center gap-1.5 pointer-events-auto"
-        style={{ zIndex: 72 }}
-      >
-        {/* Manual play button — shown if not yet started (iOS fallback) */}
-        {!started && ready && (
+      {/* iOS fallback play button only — no audio controls on screen */}
+      {!started && ready && (
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-auto"
+          style={{ zIndex: 72 }}
+        >
           <button
             onTouchStart={(e) => e.stopPropagation()}
             onClick={handleManualPlay}
-            className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wide transition-all hover:brightness-110 active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full font-black text-[11px] tracking-wide transition-all hover:brightness-110 active:scale-95"
             style={{
               background: "linear-gradient(135deg,#7C3AED,#9B7EFF)",
               color: "#fff",
               minWidth: 44, minHeight: 44,
-              boxShadow: "0 0 12px rgba(124,58,237,0.5)",
+              boxShadow: "0 0 20px rgba(124,58,237,0.6)",
               touchAction: "manipulation",
             }}
           >
-            <Play className="w-3.5 h-3.5 ml-0.5" />
-            Play
+            <Play className="w-4 h-4 ml-0.5" />
+            Tap to Play
           </button>
-        )}
-
-        {/* Mute/Unmute toggle — safe, doesn't affect view mode */}
-        {ready && (
-          <button
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={handleToggleMute}
-            className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
-            style={{
-              background: muted ? "rgba(255,255,255,0.12)" : "rgba(124,58,237,0.4)",
-              border: `1px solid ${muted ? "rgba(255,255,255,0.2)" : "rgba(155,126,255,0.5)"}`,
-              color: muted ? "rgba(255,255,255,0.6)" : "#fff",
-              width: 44, height: 44, minWidth: 44, minHeight: 44,
-              touchAction: "manipulation",
-            }}
-            title={muted ? "Unmute" : "Mute"}
-          >
-            {muted
-              ? <VolumeX className="w-4 h-4" />
-              : <Volume2 className="w-4 h-4" />
-            }
-          </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 });

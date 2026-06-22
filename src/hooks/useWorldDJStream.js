@@ -13,7 +13,7 @@ import { base44 } from "@/api/base44Client";
 
 const POLL_INTERVAL = 8000;
 const SYNC_TOLERANCE = 2.5;
-const FADE_IN_MS = 900;
+const FADE_IN_MS = 600; // faster fade-in so audio is audible quickly at the edge
 const MAX_VOL = 0.85;
 
 function fadeVolume(audioEl, targetVol, durationMs) {

@@ -1729,14 +1729,17 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const finalCamAngle = rot + camYawSmoothRef.current;
 
         if (ferrisRidingRef.current) {
-          // Outward-facing ride cam: sit just outside the cabin, look away from wheel hub over the city
-          const cp = getCabinWorldPosition(0, t);
-          const wa = t * 0.18, ry = 0.26;
-          const lz = Math.sin(wa) * WHEEL_RADIUS;
-          const owx = -Math.sin(ry) * lz, owz = Math.cos(ry) * lz;
-          const ol = Math.sqrt(owx * owx + owz * owz) || 1;
-          camera.position.lerp(new Vector3(cp.x + owx / ol * 1.5, cp.y + 0.4, cp.z + owz / ol * 1.5), Math.min(1, 5 * dt));
-          camera.lookAt(cp.x + owx / ol * 20, cp.y - 2, cp.z + owz / ol * 20);
+          // Avatar-in-foreground view: camera sits in front of the wheel, looks toward it
+          // so the avatar is visible in the foreground with the wheel rotating behind them.
+          const boardPos = getBoardingPosition();
+          // Camera positioned ~5 units in front of the boarding platform, slightly elevated
+          const camX = WHEEL_X + (boardPos.x - WHEEL_X) * 1.6 + 0.5;
+          const camZ = WHEEL_Z + (boardPos.z - WHEEL_Z) * 1.6;
+          const camY = 2.8 + Math.sin(t * 0.4) * 0.15; // gentle float
+          camera.position.lerp(new Vector3(camX, camY, camZ), Math.min(1, 3.5 * dt));
+          // Look at a point between the avatar and the wheel hub so both are in frame
+          const lookY = 1.8 + Math.sin(t * 0.3) * 0.1;
+          camera.lookAt(WHEEL_X, lookY, WHEEL_Z - 1.0);
         } else if (lockedRef.current) {
           camera.position.lerp(new Vector3(0, 3.0, -12), Math.min(1, 3.0 * dt));
           camera.lookAt(new Vector3(0, 3.5, -34.4));

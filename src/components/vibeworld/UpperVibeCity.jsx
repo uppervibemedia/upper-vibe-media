@@ -397,8 +397,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // because that would trigger the stage-lock camera branch inside CityCanvas.
   const movementLocked = stageWatching || stageFullScreen || loungeInputFocused;
 
-  // ── Dance floor boundary (matches DanceFloor visual zone) ─────────────────
-  const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -13, DANCE_FLOOR_R = 7.0;
+  // ── Dance floor boundary — matches visual plaza edge (r=10.5) ─────────────
+  // Audio fades in at the edge so music is audible as soon as the user reaches the floor.
+  const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -13, DANCE_FLOOR_R = 10.5;
   const dfDx = playerPos.x - DANCE_FLOOR_CX;
   const dfDz = playerPos.z - DANCE_FLOOR_CZ;
   const onDanceFloor = Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_R;
