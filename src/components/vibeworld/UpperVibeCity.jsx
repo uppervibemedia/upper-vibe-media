@@ -349,8 +349,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Movement locked when watching stage, full-screen, or typing ─
   const movementLocked = stageWatching || stageFullScreen || loungeInputFocused;
 
-  // ── Dance floor detection (plaza zone: cx=0, cz=-4, r=7) ─────────────────────
-  const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -4, DANCE_FLOOR_R = 7;
+  // ── Dance floor detection (plaza zone: cx=0, cz=-13, r=7) ─────────────────────
+  const DANCE_FLOOR_CX = 0, DANCE_FLOOR_CZ = -13, DANCE_FLOOR_R = 7;
   const dfDx = playerPos.x - DANCE_FLOOR_CX;
   const dfDz = playerPos.z - DANCE_FLOOR_CZ;
   const onDanceFloor = Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_R;
@@ -535,7 +535,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── Stage proximity: resume global player when walking away from stage ──
   useEffect(() => {
-    const STAGE_X = 0, STAGE_Z = -15;
+    const STAGE_X = 0, STAGE_Z = -32;
     const dx = playerPos.x - STAGE_X;
     const dz = playerPos.z - STAGE_Z;
     const dist = Math.sqrt(dx * dx + dz * dz);
@@ -674,7 +674,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     const timer = setInterval(() => {
       if (stageWatching || stageFullScreen) return; // User is actively using stage
       // Don't rotate if user is near the stage (looking at it)
-      const STAGE_X = 0, STAGE_Z = -15;
+      const STAGE_X = 0, STAGE_Z = -32;
       const dx = playerPos.x - STAGE_X;
       const dz = playerPos.z - STAGE_Z;
       const dist = Math.sqrt(dx * dx + dz * dz);

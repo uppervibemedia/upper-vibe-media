@@ -7,25 +7,25 @@ const ZONES = {
   plaza: {
     name: "UVC Central Plaza",
     id: "plaza",
-    cx: 0, cz: -4, radius: 7,
+    cx: 0, cz: -13, radius: 7,
     icon: "Compass",
   },
   stage: {
     name: "Main Music Stage",
     id: "stage",
-    cx: 0, cz: -15, radius: 5,
+    cx: 0, cz: -32, radius: 6,
     icon: "Music4",
   },
   lounge: {
     name: "Vibe Lounge",
     id: "lounge",
-    cx: -16, cz: -10, radius: 5,
+    cx: -22, cz: -20, radius: 5,
     icon: "MessageCircle",
   },
   library: {
     name: "Music Library",
     id: "library",
-    cx: 16, cz: -10, radius: 5,
+    cx: 22, cz: -20, radius: 5,
     icon: "Library",
   },
   dome: {
