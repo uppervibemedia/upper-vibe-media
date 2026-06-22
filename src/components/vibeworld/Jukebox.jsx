@@ -1,6 +1,6 @@
 /**
- * DJBooth — futuristic Live DJ Booth centered behind the Dance Floor.
- * Positioned directly behind the dance floor (negative Z), facing the dance floor center.
+ * DJBooth — futuristic Live DJ Booth positioned to the LEFT side of the Dance Floor.
+ * Offset so the Music Stage center-line is fully clear for sightlines.
  * Exports same symbols as the old Jukebox so CityCanvas needs no changes.
  */
 import * as THREE from "three";
@@ -9,18 +9,18 @@ import * as THREE from "three";
 const PLAZA_X = 0;
 const PLAZA_Z = -4;
 
-// DJ Booth sits directly behind (north of) the dance floor
-// Dance floor center is at z=-4, radius=7, so booth back edge is at z = -4 - 7 - 2 = -13
-export const JUKEBOX_POS = { x: PLAZA_X, z: PLAZA_Z - 9 };  // z = -13, centered
-export const JUKEBOX_INTERACT_RADIUS = 7;
+// DJ Booth sits to the LEFT (west) of the dance floor, beside it — not behind the stage.
+// Dance floor center is (0, -4), radius 7. Booth placed at (-12, -4) — 5 units clear of the floor edge.
+export const JUKEBOX_POS = { x: -12, z: -4 };
+export const JUKEBOX_INTERACT_RADIUS = 6;
 export const DANCE_FLOOR_RADIUS = 7;
 
-// Booth faces toward dance floor center (positive Z direction from booth)
-// Booth is north of floor, so it faces south (+Z in Three.js)
-const FACE_ANGLE = 0; // faces +Z (toward dance floor)
+// Booth faces toward dance floor center (east, toward +X).
+// Booth is at x=-12, floor center at x=0 → face angle = +90° (Math.PI/2) around Y axis.
+const FACE_ANGLE = Math.PI / 2; // faces +X (toward dance floor center)
 
-// Scale multiplier — 2.5x original
-const S = 2.5;
+// Scale multiplier — 2.0x (slightly smaller as secondary attraction)
+const S = 2.0;
 
 function mat(hexColor, opts = {}) {
   const m = new THREE.MeshStandardMaterial();
@@ -172,71 +172,68 @@ export function createJukebox(scene) {
     group.add(dot);
   }
 
-  // ── Speaker towers — inward-angled toward dance floor center ───────
+  // ── Speaker towers — flanking the console, aimed toward dance floor (+X) ──
   const djTrimMats = [];
   const djBeamMats = [];
 
-  // Position speakers wider and angle them inward toward dance floor
-  for (const [sxRaw, beamAngle] of [[-2.4, 0.22], [2.4, -0.22]]) {
-    const sx = sxRaw * S;
-    const towerH = 3.2 * S;
+  // Booth faces +X (FACE_ANGLE = PI/2). Towers flank on local Z axis (left/right of booth).
+  // Speaker cones face +X (forward face of the booth toward dance floor).
+  for (const [szRaw, beamAngle] of [[-2.4, 0.18], [2.4, -0.18]]) {
+    const sz = szRaw * S;
+    const towerH = 2.8 * S;
 
     const tower = new THREE.Mesh(
       new THREE.BoxGeometry(0.55 * S, towerH, 0.55 * S),
       mat("#0E0E22", { roughness: 0.25, metalness: 0.6 })
     );
-    tower.position.set(sx, platformH + towerH / 2, 0);
+    tower.position.set(0, platformH + towerH / 2, sz);
     tower.castShadow = true;
     group.add(tower);
 
-    // Angle speaker face toward dance floor center
-    // Front face (+Z direction) already faces floor, add slight inward Y rotation
-    tower.rotation.y = beamAngle * 0.5;
-
-    // Speaker cone on front face (toward dance floor)
-    for (const coneY of [platformH + 0.6 * S, platformH + 1.4 * S, platformH + 2.2 * S]) {
+    // Speaker cones face +X (the booth's forward direction after FACE_ANGLE rotation)
+    for (const coneY of [platformH + 0.5 * S, platformH + 1.2 * S, platformH + 2.0 * S]) {
       const cone = new THREE.Mesh(
         new THREE.CylinderGeometry(0.14 * S, 0.2 * S, 0.1 * S, 20),
         mat("#1A1A40", { roughness: 0.4, metalness: 0.5 })
       );
-      cone.rotation.x = Math.PI / 2;
-      cone.rotation.y = beamAngle * 0.5;
-      cone.position.set(sx + Math.sin(beamAngle * 0.5) * 0.28 * S, coneY, 0.28 * S);
+      // Cone faces +X: rotate around Z by -PI/2
+      cone.rotation.z = -Math.PI / 2;
+      cone.position.set(0.28 * S, coneY, sz + Math.sin(beamAngle) * 0.12 * S);
       group.add(cone);
 
       // Speaker ring glow
-      const sRingMat = basicMat(sxRaw < 0 ? "#C43BFF" : "#00D4F0", 0.25);
+      const sRingMat = basicMat(szRaw < 0 ? "#C43BFF" : "#00D4F0", 0.25);
       const sRing = new THREE.Mesh(new THREE.RingGeometry(0.1 * S, 0.16 * S, 24), sRingMat);
-      sRing.rotation.x = Math.PI / 2;
-      sRing.position.set(cone.position.x, coneY, 0.34 * S);
+      sRing.rotation.z = -Math.PI / 2;
+      sRing.position.set(0.34 * S, coneY, sz + Math.sin(beamAngle) * 0.12 * S);
       sRing.renderOrder = 1;
       group.add(sRing);
     }
 
-    // Neon side strip
-    const stripMat = basicMat(sxRaw < 0 ? "#C43BFF" : "#00D4F0", 0.8);
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.04 * S, towerH * 0.9, 0.05 * S), stripMat);
-    strip.position.set(sx + (sxRaw < 0 ? 0.3 : -0.3) * S, platformH + towerH / 2, 0);
+    // Neon side strip (runs along tower height)
+    const stripMat = basicMat(szRaw < 0 ? "#C43BFF" : "#00D4F0", 0.8);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.05 * S, towerH * 0.9, 0.04 * S), stripMat);
+    strip.position.set(0, platformH + towerH / 2, sz + (szRaw < 0 ? -0.3 : 0.3) * S);
     group.add(strip);
     djTrimMats.push(stripMat);
 
     // Tower top glow cap
     const towerTop = new THREE.Mesh(
       new THREE.BoxGeometry(0.52 * S, 0.06 * S, 0.52 * S),
-      basicMat(sxRaw < 0 ? "#C43BFF" : "#00D4F0", 0.6)
+      basicMat(szRaw < 0 ? "#C43BFF" : "#00D4F0", 0.6)
     );
-    towerTop.position.set(sx, platformH + towerH, 0);
+    towerTop.position.set(0, platformH + towerH, sz);
     group.add(towerTop);
 
-    // Light beam angled inward toward dance floor
-    const beamMat = basicMat(sxRaw < 0 ? "#C43BFF" : "#00D4F0", 0.08);
+    // Light beam projecting toward dance floor (+X direction, angled slightly inward)
+    const beamMat = basicMat(szRaw < 0 ? "#C43BFF" : "#00D4F0", 0.08);
     const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04 * S, 0.6 * S, 8 * S, 10, 1, true),
+      new THREE.CylinderGeometry(0.04 * S, 0.55 * S, 7 * S, 10, 1, true),
       beamMat
     );
-    beam.rotation.x = -0.3;
-    beam.rotation.z = beamAngle;
-    beam.position.set(sx * 0.4, platformH + towerH * 0.8, 2.5 * S);
+    beam.rotation.z = -Math.PI / 2 + 0.25; // tilt toward floor
+    beam.rotation.x = beamAngle;
+    beam.position.set(2.2 * S, platformH + towerH * 0.75, sz * 0.4);
     beam.renderOrder = 1;
     group.add(beam);
     djBeamMats.push(beamMat);
@@ -245,19 +242,19 @@ export function createJukebox(scene) {
   scene.userData.djTrimMats = djTrimMats;
   scene.userData.djBeamMats = djBeamMats;
 
-  // ── Point lights projecting toward dance floor ─────────────────────
+  // ── Point lights projecting toward dance floor (+X direction) ────────
   const djLightCyan = new THREE.PointLight();
   djLightCyan.color = new THREE.Color("#00D4F0");
   djLightCyan.intensity = 5;
   djLightCyan.distance = 18;
-  djLightCyan.position.set(0, platformH + 2 * S, 1.5 * S);
+  djLightCyan.position.set(1.5 * S, platformH + 2 * S, 0);
   group.add(djLightCyan);
 
   const djLightPurple = new THREE.PointLight();
   djLightPurple.color = new THREE.Color("#C43BFF");
   djLightPurple.intensity = 3.5;
   djLightPurple.distance = 16;
-  djLightPurple.position.set(0, platformH + 3 * S, 2.5 * S);
+  djLightPurple.position.set(2.5 * S, platformH + 3 * S, 0);
   group.add(djLightPurple);
 
   // ── "LIVE DJ" hologram sign ────────────────────────────────────────
@@ -269,7 +266,7 @@ export function createJukebox(scene) {
   const holoMat = new THREE.SpriteMaterial({ map: liveDJTex, transparent: true, depthWrite: false, depthTest: false });
   const holo = new THREE.Sprite(holoMat);
   holo.scale.set(5 * S, 1.5 * S, 1);
-  holo.position.set(0, platformH + consoleY + 1.2 * S, 0.5 * S);
+  holo.position.set(0.5 * S, platformH + consoleY + 1.2 * S, 0);
   holo.renderOrder = 999;
   holo.name = "djHoloSign";
   group.add(holo);
@@ -300,7 +297,7 @@ export function createJukebox(scene) {
   const npMat = new THREE.SpriteMaterial({ map: npTex, transparent: true, depthWrite: false, depthTest: false });
   const npSprite = new THREE.Sprite(npMat);
   npSprite.scale.set(5 * S, 1.0 * S, 1);
-  npSprite.position.set(0, platformH + consoleY + 2.6 * S, 0.5 * S);
+  npSprite.position.set(0.5 * S, platformH + consoleY + 2.6 * S, 0);
   npSprite.renderOrder = 998;
   npSprite.name = "djNowPlaying";
   group.add(npSprite);
@@ -324,22 +321,22 @@ export function createJukebox(scene) {
   }
   scene.userData.djPulseRingMats = pulseRingMats;
 
-  // ── Rear backdrop arch ─────────────────────────────────────────────
-  const archW = 6 * S;
-  const archH = 4.5 * S;
+  // ── Rear backdrop arch — behind the booth (local -X side) ─────────
+  const archW = 5 * S;
+  const archH = 4.0 * S;
   for (let a = 0; a < 10; a++) {
     const archAngle = -Math.PI / 2 + (a / 9) * Math.PI;
-    const ax = Math.cos(archAngle) * archW * 0.5;
+    const az = Math.cos(archAngle) * archW * 0.5;
     const ay = platformH + archH * 0.5 + Math.sin(archAngle) * archH * 0.5;
     const archSeg = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1 * S, 0.1 * S, 0.15 * S),
+      new THREE.BoxGeometry(0.15 * S, 0.1 * S, 0.1 * S),
       basicMat(a % 2 === 0 ? "#C43BFF" : "#00D4F0", 0.8)
     );
-    archSeg.position.set(ax, ay, -0.5 * S);
+    archSeg.position.set(-0.5 * S, ay, az);
     group.add(archSeg);
   }
 
-  // ── Position: centered behind dance floor, raised ─────────────────
+  // ── Position: left side of dance floor, facing dance floor center ──
   group.position.set(JUKEBOX_POS.x, 0.5, JUKEBOX_POS.z);
   group.rotation.y = FACE_ANGLE;
   scene.add(group);

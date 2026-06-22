@@ -255,6 +255,7 @@ function buildPark(scene) {
   scene.add(ringOuter);
   addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R);
   createJukebox(scene);
+  createNeonSign(scene, -12, 5.0, -4, "LIVE  DJ  BOOTH", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 3. OPEN CONNECTED FLOOR — clean unified plaza surface

@@ -70,6 +70,12 @@ const ZONES = {
     cx: 0, cz: 4, radius: 6,
     icon: "Rocket",
   },
+  djbooth: {
+    name: "Live DJ Booth",
+    id: "djbooth",
+    cx: -12, cz: -4, radius: 5,
+    icon: "Music4",
+  },
 };
 
 export function detectZone(px, pz) {
