@@ -6,7 +6,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Music4, Radio, Disc3 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
 
 const DJ_CYAN = "#00E5FF";
@@ -33,29 +32,16 @@ function EqBars({ active }) {
   );
 }
 
-export default function JukeboxPanel({ open, onClose, isMobile }) {
+export default function JukeboxPanel({ open, onClose, isMobile, djTrack }) {
   const [joined, setJoined] = useState(false);
-  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer() || {};
-  const [featuredTracks, setFeaturedTracks] = useState([]);
-
-  // Fetch a pool of featured tracks on open (for "start mix" when nothing playing)
-  useEffect(() => {
-    if (!open) return;
-    base44.entities.Track.filter({ is_featured: true, status: "published" }, "-display_order", 8)
-      .then((tracks) => { if (tracks.length > 0) setFeaturedTracks(tracks); })
-      .catch(() => {});
-  }, [open]);
+  const { isPlaying } = usePlayer() || {};
 
   // When panel closes, reset joined state
   useEffect(() => { if (!open) setJoined(false); }, [open]);
 
   const handleJoin = () => {
     setJoined(true);
-    // If nothing is playing, start a featured track via global player
-    if (!isPlaying && featuredTracks.length > 0 && playTrack) {
-      const pick = featuredTracks[Math.floor(Math.random() * featuredTracks.length)];
-      playTrack(pick, "song");
-    }
+    // DJ stream is already playing globally — just flag as joined
   };
 
   const handleLeave = () => {
@@ -63,9 +49,9 @@ export default function JukeboxPanel({ open, onClose, isMobile }) {
     onClose?.();
   };
 
-  const trackTitle = currentTrack?.title || "Live DJ Mix";
-  const trackArtist = currentTrack?.artist_display || "Upper Vibe";
-  const trackCover = currentTrack?.cover_url || null;
+  const trackTitle = djTrack?.title || "Live DJ Mix";
+  const trackArtist = djTrack?.artist_display || "Upper Vibe";
+  const trackCover = djTrack?.cover_url || null;
 
   return (
     <AnimatePresence>

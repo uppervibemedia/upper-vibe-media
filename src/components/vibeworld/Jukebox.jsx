@@ -1,18 +1,22 @@
 /**
- * DJBooth (replaces Jukebox) — futuristic Live DJ Booth outside the Dance Floor.
- * Positioned just outside the dance floor edge, facing inward.
- * Exports same symbols as Jukebox so CityCanvas needs no changes.
+ * DJBooth — futuristic Live DJ Booth outside the Dance Floor.
+ * Positioned just outside the dance floor edge, facing the dance floor center.
+ * Exports same symbols as the old Jukebox so CityCanvas needs no changes.
  */
 import * as THREE from "three";
 
-// Plaza center
+// Plaza / dance floor center
 const PLAZA_X = 0;
 const PLAZA_Z = -4;
 
-// DJ Booth sits outside the dance floor edge, facing toward center
-export const JUKEBOX_POS = { x: PLAZA_X + 7.8, z: PLAZA_Z + 1.0 };
+// DJ Booth sits to the right of the dance floor, just outside its edge
+export const JUKEBOX_POS = { x: PLAZA_X + 8.2, z: PLAZA_Z + 0.5 };
 export const JUKEBOX_INTERACT_RADIUS = 5.5;
 export const DANCE_FLOOR_RADIUS = 7;
+
+// Angle from booth toward dance floor center (booth faces left-inward)
+// atan2(dz, dx) where d = (PLAZA - BOOTH)
+const FACE_ANGLE = Math.atan2(PLAZA_Z - JUKEBOX_POS.z, PLAZA_X - JUKEBOX_POS.x) - Math.PI / 2;
 
 function mat(hexColor, opts = {}) {
   const m = new THREE.MeshStandardMaterial();
@@ -37,22 +41,18 @@ export function createJukebox(scene) {
   const group = new THREE.Group();
   group.name = "jukebox";
 
-  const ANGLE = -Math.PI * 0.25; // faces dance floor (slightly inward)
-
   // ── Platform base ──────────────────────────────────────────────────
   const platform = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.8, 2.0, 0.12, 24),
+    new THREE.CylinderGeometry(1.9, 2.1, 0.12, 24),
     mat("#0A0A1E", { roughness: 0.3, metalness: 0.7 })
   );
   platform.position.y = 0.06;
   platform.receiveShadow = true;
   group.add(platform);
 
-  // Platform glow ring
-  const platRing = new THREE.Mesh(
-    new THREE.RingGeometry(1.6, 1.85, 48),
-    basicMat("#00D4F0", 0.28)
-  );
+  // Platform glow ring (faces dance floor)
+  const platRingMat = basicMat("#00D4F0", 0.25);
+  const platRing = new THREE.Mesh(new THREE.RingGeometry(1.65, 1.9, 48), platRingMat);
   platRing.rotation.x = -Math.PI / 2;
   platRing.position.y = 0.13;
   platRing.renderOrder = 1;
@@ -61,156 +61,158 @@ export function createJukebox(scene) {
 
   // ── Console main body ──────────────────────────────────────────────
   const console_ = new THREE.Mesh(
-    new THREE.BoxGeometry(1.8, 0.55, 0.9),
+    new THREE.BoxGeometry(1.85, 0.55, 0.92),
     mat("#12102A", { roughness: 0.2, metalness: 0.75 })
   );
-  console_.position.set(0, 0.4, 0);
+  console_.position.set(0, 0.42, 0);
   console_.castShadow = true;
   group.add(console_);
 
-  // Console front angled face (sloped toward user)
+  // Sloped front face (angled up toward dancer side)
   const slope = new THREE.Mesh(
-    new THREE.BoxGeometry(1.8, 0.06, 0.9),
+    new THREE.BoxGeometry(1.85, 0.06, 0.92),
     mat("#1A1840", { roughness: 0.2, metalness: 0.7 })
   );
-  slope.position.set(0, 0.68, 0);
-  slope.rotation.x = 0.3;
+  slope.position.set(0, 0.70, 0);
+  slope.rotation.x = 0.28;
   group.add(slope);
 
-  // Console top surface glow
-  const topGlowMat = basicMat("#00D4F0", 0.18);
-  const topGlow = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.02, 0.8), topGlowMat);
-  topGlow.position.set(0, 0.69, 0);
+  // Console top glow mat (stored for animation)
+  const topGlowMat = basicMat("#00D4F0", 0.16);
+  const topGlow = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.02, 0.82), topGlowMat);
+  topGlow.position.set(0, 0.70, 0);
   topGlow.name = "djTopGlow";
   group.add(topGlow);
 
-  // ── EQ bars (facing dance floor) ──────────────────────────────────
-  const eqBarCount = 7;
+  // ── EQ bars (face the dance floor — on the front face of the console) ──
+  const eqBarCount = 8;
   const eqBarMats = [];
   const eqBars = [];
   for (let i = 0; i < eqBarCount; i++) {
     const barMat = basicMat(i % 2 === 0 ? "#00E5FF" : "#C43BFF", 0.85);
     const bar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.08, 0.12 + Math.random() * 0.25, 0.06),
+      new THREE.BoxGeometry(0.08, 0.14, 0.05),
       barMat
     );
-    const bx = -0.65 + i * 0.2;
-    bar.position.set(bx, 0.72, 0.46);
+    const bx = -0.72 + i * 0.205;
+    // Place on FRONT face of console (negative Z in local space = toward dance floor)
+    bar.position.set(bx, 0.72, 0.475);
     bar.name = `djEqBar_${i}`;
     group.add(bar);
     eqBarMats.push(barMat);
-    eqBars.push({ mesh: bar, baseX: bx, phase: i * 0.7 });
+    eqBars.push({ mesh: bar, baseX: bx, phase: i * 0.65 });
   }
   scene.userData.djEqBars = eqBars;
   scene.userData.djEqBarMats = eqBarMats;
 
-  // ── DJ deck platters (two spinning circles on console) ──
-  for (const px of [-0.45, 0.45]) {
+  // ── DJ deck platters on top of console ──
+  for (const px of [-0.48, 0.48]) {
     const platter = new THREE.Mesh(
       new THREE.CylinderGeometry(0.3, 0.3, 0.04, 24),
       mat("#1A1A3A", { roughness: 0.15, metalness: 0.85 })
     );
-    platter.position.set(px, 0.72, -0.05);
+    platter.position.set(px, 0.73, -0.06);
     group.add(platter);
 
-    // Platter groove ring
     const groove = new THREE.Mesh(
       new THREE.RingGeometry(0.17, 0.28, 32),
-      basicMat("#00D4F0", 0.35)
+      basicMat("#00D4F0", 0.32)
     );
     groove.rotation.x = -Math.PI / 2;
-    groove.position.set(px, 0.75, -0.05);
+    groove.position.set(px, 0.76, -0.06);
     groove.renderOrder = 1;
     group.add(groove);
 
-    // Center dot
     const dot = new THREE.Mesh(
       new THREE.CylinderGeometry(0.04, 0.04, 0.03, 12),
       basicMat("#FF4FC3", 0.9)
     );
-    dot.position.set(px, 0.76, -0.05);
+    dot.position.set(px, 0.77, -0.06);
     group.add(dot);
   }
 
-  // ── Speaker towers (left and right) ───────────────────────────────
-  for (const sx of [-1.55, 1.55]) {
-    // Tower body
+  // ── Speaker towers — flanking the console, facing the dance floor ──
+  const djTrimMats = [];
+  const djBeamMats = [];
+
+  for (const sx of [-1.6, 1.6]) {
     const tower = new THREE.Mesh(
-      new THREE.BoxGeometry(0.4, 1.65, 0.38),
+      new THREE.BoxGeometry(0.42, 1.7, 0.4),
       mat("#0E0E22", { roughness: 0.25, metalness: 0.6 })
     );
-    tower.position.set(sx, 0.85, 0);
+    tower.position.set(sx, 0.87, 0);
     tower.castShadow = true;
     group.add(tower);
 
-    // Speaker cone (front face)
+    // Speaker cone on FRONT face (positive Z = toward dance floor in local space)
     const cone = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.11, 0.14, 0.08, 16),
+      new THREE.CylinderGeometry(0.11, 0.15, 0.08, 16),
       mat("#1A1A40", { roughness: 0.4, metalness: 0.5 })
     );
     cone.rotation.x = Math.PI / 2;
-    cone.position.set(sx, 0.85, 0.2);
+    cone.position.set(sx, 0.82, 0.22);
     group.add(cone);
 
-    // Tweeter (top cone)
     const tweeter = new THREE.Mesh(
       new THREE.CylinderGeometry(0.05, 0.07, 0.06, 12),
       mat("#111130", { roughness: 0.4, metalness: 0.5 })
     );
     tweeter.rotation.x = Math.PI / 2;
-    tweeter.position.set(sx, 1.28, 0.2);
+    tweeter.position.set(sx, 1.3, 0.22);
     group.add(tweeter);
 
     // Neon side strip
     const stripMat = basicMat(sx < 0 ? "#C43BFF" : "#00D4F0", 0.75);
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.4, 0.04), stripMat);
-    strip.position.set(sx + (sx < 0 ? 0.22 : -0.22), 0.85, 0);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.45, 0.04), stripMat);
+    strip.position.set(sx + (sx < 0 ? 0.23 : -0.23), 0.87, 0);
     group.add(strip);
-    if (!scene.userData.djTrimMats) scene.userData.djTrimMats = [];
-    scene.userData.djTrimMats.push(stripMat);
+    djTrimMats.push(stripMat);
 
-    // Speaker tower top glow
+    // Tower top glow
     const towerTop = new THREE.Mesh(
-      new THREE.BoxGeometry(0.38, 0.04, 0.35),
+      new THREE.BoxGeometry(0.4, 0.04, 0.38),
       basicMat(sx < 0 ? "#C43BFF" : "#00D4F0", 0.55)
     );
-    towerTop.position.set(sx, 1.69, 0);
+    towerTop.position.set(sx, 1.72, 0);
     group.add(towerTop);
 
-    // Light beam toward dance floor
-    const beamMat = basicMat(sx < 0 ? "#C43BFF" : "#00D4F0", 0.08);
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.35, 5.5, 8, 1, true), beamMat);
-    beam.rotation.z = sx < 0 ? 0.35 : -0.35;
-    beam.rotation.x = -0.2;
-    beam.position.set(sx < 0 ? sx + 1.5 : sx - 1.5, 1.8, -1.2);
+    // Light beam — angled TOWARD dance floor (front, positive Z in local = toward floor)
+    const beamMat = basicMat(sx < 0 ? "#C43BFF" : "#00D4F0", 0.07);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.4, 6.0, 8, 1, true), beamMat);
+    // Tilt toward dance floor: rotate on X to aim forward, slight inward angle on Z
+    beam.rotation.x = -0.25;
+    beam.rotation.z = sx < 0 ? 0.18 : -0.18;
+    beam.position.set(sx < 0 ? sx + 0.9 : sx - 0.9, 2.4, 1.8);
     beam.renderOrder = 1;
     group.add(beam);
-    if (!scene.userData.djBeamMats) scene.userData.djBeamMats = [];
-    scene.userData.djBeamMats.push(beamMat);
+    djBeamMats.push(beamMat);
   }
+
+  scene.userData.djTrimMats = djTrimMats;
+  scene.userData.djBeamMats = djBeamMats;
 
   // ── Point lights ───────────────────────────────────────────────────
   const djLightCyan = new THREE.PointLight();
   djLightCyan.color = new THREE.Color("#00D4F0");
   djLightCyan.intensity = 3.5;
-  djLightCyan.distance = 10;
-  djLightCyan.position.set(0, 1.5, 0);
+  djLightCyan.distance = 11;
+  djLightCyan.position.set(0, 1.6, 0.5); // pushed toward dance floor
   group.add(djLightCyan);
 
   const djLightPurple = new THREE.PointLight();
   djLightPurple.color = new THREE.Color("#C43BFF");
-  djLightPurple.intensity = 2.0;
-  djLightPurple.distance = 8;
-  djLightPurple.position.set(-1.6, 1.8, 0);
+  djLightPurple.intensity = 2.2;
+  djLightPurple.distance = 9;
+  djLightPurple.position.set(0, 2.0, 1.5); // further toward dance floor
   group.add(djLightPurple);
 
-  // ── Hologram "LIVE DJ" sign (sprite above console) ────────────────
+  // ── Hologram "LIVE DJ" sign above console ─────────────────────────
   const holoCanvas = document.createElement("canvas");
   holoCanvas.width = 256; holoCanvas.height = 64;
   const hCtx = holoCanvas.getContext("2d");
   hCtx.shadowColor = "#00E5FF";
-  hCtx.shadowBlur = 18;
-  hCtx.font = "bold 24px 'Syne','Inter',sans-serif";
+  hCtx.shadowBlur = 20;
+  hCtx.font = "bold 26px 'Syne','Inter',sans-serif";
   hCtx.textAlign = "center";
   hCtx.textBaseline = "middle";
   hCtx.fillStyle = "#00E5FF";
@@ -221,19 +223,19 @@ export function createJukebox(scene) {
   holoTex.colorSpace = THREE.SRGBColorSpace;
   const holoMat = new THREE.SpriteMaterial({ map: holoTex, transparent: true, depthWrite: false, depthTest: false });
   const holo = new THREE.Sprite(holoMat);
-  holo.scale.set(2.2, 0.55, 1);
-  holo.position.set(0, 1.9, 0);
+  holo.scale.set(2.4, 0.6, 1);
+  holo.position.set(0, 2.05, 0.3); // slightly forward toward dance floor
   holo.renderOrder = 999;
   holo.name = "djHoloSign";
   group.add(holo);
   scene.userData.djHoloMat = holoMat;
 
-  // ── Floating label sprite (visible from further away) ──────────────
+  // ── Floating "DJ BOOTH" label (visible from afar) ─────────────────
   const labelCanvas = document.createElement("canvas");
   labelCanvas.width = 256; labelCanvas.height = 52;
   const lCtx = labelCanvas.getContext("2d");
   lCtx.shadowColor = "#C43BFF";
-  lCtx.shadowBlur = 12;
+  lCtx.shadowBlur = 14;
   lCtx.font = "bold 20px 'Syne','Inter',sans-serif";
   lCtx.textAlign = "center";
   lCtx.textBaseline = "middle";
@@ -245,39 +247,38 @@ export function createJukebox(scene) {
   const labelSprite = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false, depthTest: false })
   );
-  labelSprite.scale.set(2.4, 0.6, 1);
-  labelSprite.position.set(JUKEBOX_POS.x, 3.2, JUKEBOX_POS.z);
+  labelSprite.scale.set(2.6, 0.65, 1);
+  labelSprite.position.set(JUKEBOX_POS.x, 3.3, JUKEBOX_POS.z);
   labelSprite.renderOrder = 999;
   labelSprite.name = "jukeboxLabel";
   scene.add(labelSprite);
 
-  // ── Music pulse rings on the ground toward dance floor ─────────────
+  // ── Music pulse rings radiating TOWARD dance floor ─────────────────
   const pulseRingMats = [];
   for (let r = 0; r < 3; r++) {
-    const pr = new THREE.Mesh(
-      new THREE.RingGeometry(1.0 + r * 1.1, 1.1 + r * 1.1, 48),
-      basicMat(r % 2 === 0 ? "#00D4F0" : "#C43BFF", 0.08 - r * 0.02)
-    );
+    const prMat = basicMat(r % 2 === 0 ? "#00D4F0" : "#C43BFF", 0.07 - r * 0.015);
+    const pr = new THREE.Mesh(new THREE.RingGeometry(1.1 + r * 1.2, 1.22 + r * 1.2, 48), prMat);
     pr.rotation.x = -Math.PI / 2;
     pr.position.y = 0.01;
     pr.renderOrder = 1;
     pr.name = `djPulseRing_${r}`;
     group.add(pr);
-    pulseRingMats.push({ mat: pr.material, base: 0.08 - r * 0.02, phase: r * 1.1 });
+    pulseRingMats.push({ mat: prMat, base: 0.07 - r * 0.015, phase: r * 1.2 });
   }
   scene.userData.djPulseRingMats = pulseRingMats;
 
-  // ── Position + face dance floor ────────────────────────────────────
+  // ── Position and rotate so the FRONT of booth faces the dance floor ──
+  // FACE_ANGLE computed at module top: atan2(dz, dx) from booth → plaza center, minus 90°
   group.position.set(JUKEBOX_POS.x, 0, JUKEBOX_POS.z);
-  group.rotation.y = ANGLE;
+  group.rotation.y = FACE_ANGLE;
   scene.add(group);
 
-  // Store all refs for animation
+  // Store refs for animation
   scene.userData.jukebox = group;
   scene.userData.jukeboxLight = djLightCyan;
   scene.userData.jukeboxScreenMat = topGlowMat;
-  scene.userData.jukeboxGlowRingMat = platRing.material;
-  scene.userData.jukeboxTrimMats = scene.userData.djTrimMats || [];
+  scene.userData.jukeboxGlowRingMat = platRingMat;
+  scene.userData.jukeboxTrimMats = djTrimMats;
   scene.userData.jukeboxGrilleMats = eqBarMats;
   scene.userData.djLightCyan = djLightCyan;
   scene.userData.djLightPurple = djLightPurple;
@@ -286,44 +287,44 @@ export function createJukebox(scene) {
 }
 
 /**
- * animateJukebox — same export name so CityCanvas needs no changes.
+ * animateJukebox — called every frame from CityCanvas render loop.
  */
 export function animateJukebox(scene, t, beat) {
-  // EQ bars — bounce with music
+  // EQ bars bounce with music
   const eqBars = scene.userData.djEqBars;
   if (eqBars) {
     for (const b of eqBars) {
-      const h = 0.1 + Math.abs(Math.sin(t * 3.5 + b.phase)) * 0.28 + beat * 0.35;
-      b.mesh.scale.y = h / 0.12;
-      b.mesh.position.y = 0.72 + (h - 0.12) * 0.5;
+      const h = 0.1 + Math.abs(Math.sin(t * 3.8 + b.phase)) * 0.3 + beat * 0.38;
+      b.mesh.scale.y = Math.max(0.5, h / 0.14);
+      b.mesh.position.y = 0.72 + (h - 0.14) * 0.5;
     }
   }
   const eqMats = scene.userData.djEqBarMats;
   if (eqMats) {
     for (let i = 0; i < eqMats.length; i++) {
-      eqMats[i].opacity = 0.55 + beat * 0.45 + Math.sin(t * 4 + i * 0.6) * 0.15;
+      eqMats[i].opacity = 0.5 + beat * 0.48 + Math.sin(t * 4.2 + i * 0.6) * 0.15;
     }
   }
 
   // Hologram flicker
   const holoMat = scene.userData.djHoloMat;
   if (holoMat) {
-    holoMat.opacity = 0.75 + Math.sin(t * 2.8) * 0.15 + beat * 0.15;
+    holoMat.opacity = 0.72 + Math.sin(t * 3.1) * 0.18 + beat * 0.14;
   }
 
   // Console top glow
   const topGlow = scene.userData.jukeboxScreenMat;
   if (topGlow) {
-    topGlow.opacity = 0.1 + beat * 0.35 + Math.sin(t * 2.2) * 0.06;
+    topGlow.opacity = 0.09 + beat * 0.38 + Math.sin(t * 2.2) * 0.05;
   }
 
   // Platform ring
   const platRing = scene.userData.jukeboxGlowRingMat;
   if (platRing) {
-    platRing.opacity = 0.15 + beat * 0.5 + Math.sin(t * 1.8) * 0.08;
+    platRing.opacity = 0.12 + beat * 0.55 + Math.sin(t * 1.8) * 0.07;
   }
 
-  // Trim strips — color shift cyan ↔ purple
+  // Trim strips color shift cyan ↔ purple
   const trimMats = scene.userData.jukeboxTrimMats;
   if (trimMats) {
     const shift = Math.sin(t * 0.9) * 0.5 + 0.5;
@@ -331,7 +332,7 @@ export function animateJukebox(scene, t, beat) {
     const purple = new THREE.Color("#C43BFF");
     for (let i = 0; i < trimMats.length; i++) {
       trimMats[i].color.copy(i % 2 === 0 ? cyan : purple).lerp(i % 2 === 0 ? purple : cyan, shift);
-      trimMats[i].opacity = 0.55 + beat * 0.4;
+      trimMats[i].opacity = 0.5 + beat * 0.42;
     }
   }
 
@@ -339,23 +340,22 @@ export function animateJukebox(scene, t, beat) {
   const beamMats = scene.userData.djBeamMats;
   if (beamMats) {
     for (let i = 0; i < beamMats.length; i++) {
-      beamMats[i].opacity = 0.04 + beat * 0.12 + Math.sin(t * 1.5 + i) * 0.02;
+      beamMats[i].opacity = 0.04 + beat * 0.14 + Math.sin(t * 1.6 + i) * 0.02;
     }
   }
 
-  // Pulse rings ripple outward
+  // Pulse rings
   const prMats = scene.userData.djPulseRingMats;
   if (prMats) {
     for (const pr of prMats) {
-      pr.mat.opacity = pr.base + beat * 0.25 + Math.sin(t * 2.0 + pr.phase) * 0.04;
+      pr.mat.opacity = Math.max(0, pr.base + beat * 0.28 + Math.sin(t * 2.1 + pr.phase) * 0.04);
     }
   }
 
-  // Cyan light intensity
+  // Lights
   const cl = scene.userData.djLightCyan;
-  if (cl) cl.intensity = 2.5 + beat * 3.5 + Math.sin(t * 2.2) * 0.5;
+  if (cl) cl.intensity = 2.5 + beat * 3.8 + Math.sin(t * 2.2) * 0.5;
 
-  // Purple light
   const pl = scene.userData.djLightPurple;
-  if (pl) pl.intensity = 1.2 + beat * 2.0 + Math.sin(t * 1.7 + 1.2) * 0.4;
+  if (pl) pl.intensity = 1.2 + beat * 2.2 + Math.sin(t * 1.7 + 1.2) * 0.4;
 }

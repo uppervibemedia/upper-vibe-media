@@ -86,6 +86,7 @@ export default function WorldHUD({
   isDancing = false,
   onEditAvatar,
   nearJukebox = false,
+  djTrack = null,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -938,11 +939,12 @@ export default function WorldHUD({
         isMobile={isMobile}
       />
 
-      {/* ── Jukebox Panel ────────────────────────────────────────── */}
+      {/* ── DJ Booth Panel ────────────────────────────────────────── */}
       <JukeboxPanel
         open={jukeboxOpen}
         onClose={() => { setJukeboxOpen(false); onMobileModalChange?.(false); }}
         isMobile={isMobile}
+        djTrack={djTrack}
       />
 
       {/* ── Emote Panel (popup) ────────────────────────────────── */}
