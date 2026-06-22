@@ -19,8 +19,8 @@ export const DANCE_FLOOR_RADIUS = 7;
 // dx=-12, dz=0 → faces -X direction = Math.PI (west, toward dance floor)
 const FACE_ANGLE = Math.PI; // faces -X (toward dance floor center)
 
-// Scale multiplier — 0.7x (compact secondary attraction, ~30% smaller than 1.0x)
-const S = 0.7;
+// Scale multiplier — 0.63x (~10% smaller than previous 0.7x)
+const S = 0.63;
 
 function mat(hexColor, opts = {}) {
   const m = new THREE.MeshStandardMaterial();
@@ -90,14 +90,8 @@ export function createJukebox(scene) {
   pedestal.position.set(0, 0.15 * S, 0);
   group.add(pedestal);
 
-  // Platform glow ring
-  const platRingMat = basicMat("#00D4F0", 0.3);
-  const platRing = new THREE.Mesh(new THREE.RingGeometry(2.0 * S, 2.35 * S, 64), platRingMat);
-  platRing.rotation.x = -Math.PI / 2;
-  platRing.position.y = platformH + 0.01;
-  platRing.renderOrder = 1;
-  platRing.name = "djPlatRing";
-  group.add(platRing);
+  // Platform glow ring — removed for cleaner dance floor integration
+  const platRingMat = basicMat("#00D4F0", 0); // invisible, kept for animation ref
 
   const consoleY = platformH + 0.35 * S;
 
@@ -133,26 +127,27 @@ export function createJukebox(scene) {
   for (let i = 0; i < eqBarCount; i++) {
     const barMat = basicMat(i % 2 === 0 ? "#00E5FF" : "#C43BFF", 0.9);
     const bar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1 * S, 0.16 * S, 0.06 * S),
+      new THREE.BoxGeometry(0.06 * S, 0.16 * S, 0.1 * S),
       barMat
     );
-    const bx = (-1.8 + i * 0.33) * S;
-    bar.position.set(bx, consoleY + 0.3 * S, 0.61 * S);
+    // Bars run along Z axis, front face (+X) faces the dance floor
+    const bz = (-1.8 + i * 0.33) * S;
+    bar.position.set(0.61 * S, consoleY + 0.3 * S, bz);
     bar.name = `djEqBar_${i}`;
     group.add(bar);
     eqBarMats.push(barMat);
-    eqBars.push({ mesh: bar, baseX: bx, baseY: consoleY + 0.3 * S, phase: i * 0.55 });
+    eqBars.push({ mesh: bar, baseX: bz, baseY: consoleY + 0.3 * S, phase: i * 0.55 });
   }
   scene.userData.djEqBars = eqBars;
   scene.userData.djEqBarMats = eqBarMats;
 
-  // ── DJ deck platters on top ────────────────────────────────────────
-  for (const px of [-1.0 * S, 1.0 * S]) {
+  // ── DJ deck platters on top — arranged side-by-side along Z axis (left/right as seen from dance floor) ──
+  for (const pz of [-0.9 * S, 0.9 * S]) {
     const platter = new THREE.Mesh(
       new THREE.CylinderGeometry(0.32 * S, 0.32 * S, 0.05 * S, 32),
       mat("#1A1A3A", { roughness: 0.15, metalness: 0.85 })
     );
-    platter.position.set(px, consoleY + 0.3 * S, -0.1 * S);
+    platter.position.set(0, consoleY + 0.3 * S, pz);
     group.add(platter);
 
     const groove = new THREE.Mesh(
@@ -160,7 +155,7 @@ export function createJukebox(scene) {
       basicMat("#00D4F0", 0.35)
     );
     groove.rotation.x = -Math.PI / 2;
-    groove.position.set(px, consoleY + 0.33 * S, -0.1 * S);
+    groove.position.set(0, consoleY + 0.33 * S, pz);
     groove.renderOrder = 1;
     group.add(groove);
 
@@ -168,7 +163,7 @@ export function createJukebox(scene) {
       new THREE.CylinderGeometry(0.05 * S, 0.05 * S, 0.04 * S, 12),
       basicMat("#FF4FC3", 0.9)
     );
-    dot.position.set(px, consoleY + 0.35 * S, -0.1 * S);
+    dot.position.set(0, consoleY + 0.35 * S, pz);
     group.add(dot);
   }
 
@@ -306,19 +301,8 @@ export function createJukebox(scene) {
   scene.userData.djNowPlayingMat = npMat;
   scene.userData.djCurrentTrackId = null;
 
-  // ── Music pulse rings radiating toward dance floor ─────────────────
-  const pulseRingMats = [];
-  for (let r = 0; r < 4; r++) {
-    const prMat = basicMat(r % 2 === 0 ? "#00D4F0" : "#C43BFF", 0.08 - r * 0.012);
-    const pr = new THREE.Mesh(new THREE.RingGeometry((1.4 + r * 1.4) * S, (1.55 + r * 1.4) * S, 64), prMat);
-    pr.rotation.x = -Math.PI / 2;
-    pr.position.y = 0.01;
-    pr.renderOrder = 1;
-    pr.name = `djPulseRing_${r}`;
-    group.add(pr);
-    pulseRingMats.push({ mat: prMat, base: 0.08 - r * 0.012, phase: r * 1.1 });
-  }
-  scene.userData.djPulseRingMats = pulseRingMats;
+  // Pulse rings removed — booth integrates directly with dance floor
+  scene.userData.djPulseRingMats = [];
 
   // ── Rear backdrop arch — behind the booth (local -X side) ─────────
   const archW = 5 * S;
