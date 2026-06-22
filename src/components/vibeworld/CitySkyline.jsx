@@ -14,6 +14,7 @@ const {
   MeshBasicMaterial,
   Mesh,
   Group,
+  LinearFilter,
 } = THREE;
 
 function mat(hexColor, opts = {}) {
@@ -370,6 +371,54 @@ export default function createCitySkyline(scene) {
   // NW corner
   addSkyscraper(-38, -38, 2.2, 1.8, 13, steelBody, neonPurple, "NW Corner");
   addSkyscraper(-42, -38, 2.0, 1.6, 10, glassBody, neonBlue, "NW Corner B");
+
+  // ══════════════════════════════════════════════════════════════
+  // CITY BRANDING — subtle UVM / UVC / Upper Vibe City signage
+  // Placed on select buildings + wall faces. Tasteful, not excessive.
+  // ══════════════════════════════════════════════════════════════
+  function makeBrandSign(text, colorHex, w, h) {
+    const cw = 512, ch = 96;
+    const c = document.createElement("canvas");
+    c.width = cw; c.height = ch;
+    const ctx = c.getContext("2d");
+    // Backing fill
+    ctx.fillStyle = `${colorHex}22`;
+    ctx.fillRect(0, 0, cw, ch);
+    // Border
+    ctx.strokeStyle = colorHex;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, cw - 4, ch - 4);
+    // Glow text
+    ctx.shadowColor = colorHex;
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = `bold 42px 'Syne','Inter',sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(text, cw / 2, ch / 2);
+    ctx.fillText(text, cw / 2, ch / 2); // double for glow
+    const tex = new THREE.CanvasTexture(c);
+    tex.minFilter = LinearFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return new MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  }
+
+  const brandDefs = [
+    // text, color, x, y, z, rotY, w, h
+    ["UPPER VIBE MEDIA", "#00D4F0",  0,  18, -37, 0,          3.8, 0.72], // North wall center, high up
+    ["UVC",             "#C43BFF", -20,  14, -37, 0,          1.4, 0.72], // North wall left side
+    ["UVC",             "#C43BFF",  20,  14, -37, 0,          1.4, 0.72], // North wall right side
+    ["UPPER VIBE CITY", "#D4A843",  37,   9,  -8, -Math.PI/2, 3.2, 0.72], // East wall mid
+    ["UVM",             "#00D4F0", -37,  12, -18, Math.PI/2,  1.6, 0.72], // West wall
+    ["UPPER VIBE MEDIA", "#A078FF",  37,  15, -28, -Math.PI/2, 3.2, 0.72], // East wall upper
+  ];
+
+  for (const [text, color, x, y, z, rotY, w, h] of brandDefs) {
+    const sign = new Mesh(new PlaneGeometry(w, h), makeBrandSign(text, color, w, h));
+    sign.position.set(x, y, z);
+    sign.rotation.y = rotY;
+    sign.renderOrder = 2;
+    buildings.add(sign);
+  }
 
   scene.add(buildings);
 

@@ -61,7 +61,7 @@ const ZONES = {
   ferriswheel: {
     name: "Neon Vibe Wheel",
     id: "ferriswheel",
-    cx: 22, cz: 5, radius: 6.0,
+    cx: 22, cz: 5, radius: 9.5,
     icon: "Ferris",
   },
   launchzone: {

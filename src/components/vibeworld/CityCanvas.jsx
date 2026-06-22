@@ -372,6 +372,8 @@ function buildPark(scene) {
 
   scene.add(stage);
   createNeonSign(scene, 0, 7.5, -32, "MUSIC  STAGE", "#00D4F0");
+  createNeonSign(scene, -8, 5.5, -28, "UPPER VIBE MEDIA", "#A078FF");
+  createNeonSign(scene, 0, 3.5, 14, "UVC  ·  BEACH  DISTRICT", "#D4A843");
 
   // ═══════════════════════════════════════
   // VIBE LAUNCH ZONE
@@ -1729,13 +1731,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const finalCamAngle = rot + camYawSmoothRef.current;
 
         if (ferrisRidingRef.current) {
-          // Ride camera: follow cabin 0 as it orbits, look outward toward the city
           const cabin = getCabinWorldPosition(0, t);
-          // Camera sits just behind/above the cabin — rider's POV looking out
-          const camTarget = new Vector3(cabin.x, cabin.y + 0.5, cabin.z);
-          camera.position.lerp(camTarget, Math.min(1, 4.0 * dt));
-          // Look toward city center from the cabin position
-          camera.lookAt(0, WHEEL_HUB_Y * 0.5, -10);
+          camera.position.lerp(new Vector3(cabin.x, cabin.y + 0.6, cabin.z), Math.min(1, 4.0 * dt));
+          // Blend look target: city at bottom → beach/ocean at top of wheel
+          const atTop = Math.max(0, Math.min(1, (cabin.y - WHEEL_HUB_Y) / WHEEL_RADIUS));
+          const lookTarget = new Vector3().lerpVectors(new Vector3(0, WHEEL_HUB_Y * 0.4, -10), new Vector3(0, 2, 40), atTop);
+          camera.lookAt(lookTarget);
           // Hide avatar every frame so it never clips into view (GLB may load late)
           if (avatarRef.current) avatarRef.current.visible = false;
         } else if (lockedRef.current) {
@@ -1887,27 +1888,25 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── NEON SKYLINE PULSE + COLOR SHIFT — buildings breathe ──
+        // ─── NEON SKYLINE PULSE + COLOR SHIFT — buildings breathe with music ──
         const neonMats = scene.userData.neonMats;
         if (neonMats) {
-          const pulse = 0.6 + audioBeat * 0.5 + Math.sin(t * 1.7) * 0.1 + Math.sin(t * 0.6) * 0.08;
-          const colorShift = Math.sin(t * 0.4) * 0.5 + 0.5; // slow 0..1 wave
-          for (let i = 0; i < neonMats.length; i++) {
-            const mat = neonMats[i];
-            if (mat?.opacity !== undefined) {
-              mat.opacity = pulse;
-            }
-            // Subtle color shift between cyan ↔ purple ↔ blue
-            if (mat?.color && i === 0) {
-              // neonCyan — shift toward purple
-              mat.color.copy(new Color("#00D4F0")).lerp(new Color("#C43BFF"), colorShift * 0.15);
-            } else if (mat?.color && i === 1) {
-              // neonPurple — shift toward cyan  
-              mat.color.copy(new Color("#A078FF")).lerp(new Color("#00D4F0"), colorShift * 0.15);
-            } else if (mat?.color && i === 2) {
-              // neonBlue — shift toward purple
-              mat.color.copy(new Color("#3088CC")).lerp(new Color("#C43BFF"), colorShift * 0.12);
-            }
+          // Three materials pulse independently at different rates + beat response
+          const colorShift = Math.sin(t * 0.4) * 0.5 + 0.5;
+          // neonCyan — fast beat-driven pulse
+          if (neonMats[0]) {
+            neonMats[0].opacity = Math.max(0.5, 0.65 + audioBeat * 1.1 + Math.sin(t * 2.1) * 0.2);
+            neonMats[0].color.copy(new Color("#00D4F0")).lerp(new Color("#C43BFF"), colorShift * 0.35);
+          }
+          // neonPurple — slower swell, out-of-phase with cyan
+          if (neonMats[1]) {
+            neonMats[1].opacity = Math.max(0.4, 0.55 + audioBeat * 0.9 + Math.sin(t * 1.5 + 1.2) * 0.25);
+            neonMats[1].color.copy(new Color("#A078FF")).lerp(new Color("#00E5FF"), colorShift * 0.4);
+          }
+          // neonBlue — mid-frequency pulse with strong beat lift
+          if (neonMats[2]) {
+            neonMats[2].opacity = Math.max(0.45, 0.6 + audioBeat * 1.0 + Math.sin(t * 1.8 + 2.5) * 0.22);
+            neonMats[2].color.copy(new Color("#40A0EE")).lerp(new Color("#C43BFF"), colorShift * 0.38);
           }
         }
 

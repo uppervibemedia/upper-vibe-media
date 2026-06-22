@@ -14,7 +14,7 @@ const {
 
 export const WHEEL_X = 22;
 export const WHEEL_Z = 5;
-export const WHEEL_INTERACT_RADIUS = 7.0;
+export const WHEEL_INTERACT_RADIUS = 9.5;
 export const WHEEL_RADIUS = 6.0;   // visual radius of the rim
 export const NUM_CABINS = 8;
 // Hub height: legs are 8 units tall, wheel center sits at top of legs
@@ -341,8 +341,8 @@ export function createFerrisWheel(scene) {
   ctx.font = "bold 28px 'Syne','Inter',sans-serif";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillStyle = "#FFFFFF";
-  ctx.fillText("NEON VIBE WHEEL", canvasW / 2, canvasH / 2);
-  ctx.fillText("NEON VIBE WHEEL", canvasW / 2, canvasH / 2);
+  ctx.fillText("UPPER VIBE CITY", canvasW / 2, canvasH / 2);
+  ctx.fillText("UPPER VIBE CITY", canvasW / 2, canvasH / 2);
   const labelTex = new CanvasTexture(labelCanvas);
   labelTex.minFilter = LinearFilter;
   labelTex.colorSpace = THREE.SRGBColorSpace;
