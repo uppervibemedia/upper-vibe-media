@@ -990,8 +990,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                 if (t) {
                   if (mobileInputRef.current._camBaseX !== undefined) {
                     const dx = t.clientX - mobileInputRef.current._camBaseX;
-                    // Negate: drag RIGHT = positive dx = camera rotates right = decrease camYaw
-                    mobileInputRef.current.camDx -= dx * 0.0025;
+                    // drag RIGHT = positive dx = camera turns right = positive camDx
+                    mobileInputRef.current.camDx = Math.max(-0.04, Math.min(0.04, dx * 0.0025));
                     mobileInputRef.current._camBaseX = t.clientX;
                   }
                   if (mobileInputRef.current._camBaseY !== undefined) {
