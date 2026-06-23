@@ -82,20 +82,23 @@ export function createCosmicSky(scene) {
   }
   scene.userData.shootingStars = shootingStars;
 
-  // ── Small asteroids — 3 fireballs with tails ─────────────────────
+  // ── Small asteroids — 3 fireballs with multi-layer burning trails ────
   const ASTEROID_COUNT = 3;
   const asteroids = [];
   for (let i = 0; i < ASTEROID_COUNT; i++) {
+    // Head: bright glowing fireball core
     const ac = document.createElement("canvas");
-    ac.width = 64; ac.height = 64;
+    ac.width = 96; ac.height = 96;
     const actx = ac.getContext("2d");
-    const ag = actx.createRadialGradient(32, 32, 0, 32, 32, 28);
-    ag.addColorStop(0,   "rgba(255,230,160,1)");
-    ag.addColorStop(0.25,"rgba(255,160,50,0.9)");
-    ag.addColorStop(0.6, "rgba(200,70,10,0.4)");
-    ag.addColorStop(1,   "rgba(0,0,0,0)");
+    const ag = actx.createRadialGradient(48, 48, 0, 48, 48, 44);
+    ag.addColorStop(0,    "rgba(255,255,220,1)");
+    ag.addColorStop(0.15, "rgba(255,220,100,1)");
+    ag.addColorStop(0.35, "rgba(255,140,30,0.9)");
+    ag.addColorStop(0.6,  "rgba(220,60,10,0.5)");
+    ag.addColorStop(0.82, "rgba(160,20,0,0.15)");
+    ag.addColorStop(1,    "rgba(0,0,0,0)");
     actx.fillStyle = ag;
-    actx.fillRect(0, 0, 64, 64);
+    actx.fillRect(0, 0, 96, 96);
     const atex = new THREE.CanvasTexture(ac);
     atex.minFilter = THREE.LinearFilter;
     const amat = new THREE.SpriteMaterial({
@@ -103,32 +106,93 @@ export function createCosmicSky(scene) {
       depthWrite: false, blending: THREE.AdditiveBlending,
     });
     const asprite = new THREE.Sprite(amat);
-    asprite.scale.set(1.5, 1.5, 1);
-    asprite.renderOrder = 5;
+    asprite.scale.set(2.2, 2.2, 1);
+    asprite.renderOrder = 6;
     scene.add(asprite);
 
-    const tc = document.createElement("canvas");
-    tc.width = 160; tc.height = 4;
-    const tctx = tc.getContext("2d");
-    const tg = tctx.createLinearGradient(0, 0, 160, 0);
-    tg.addColorStop(0,   "rgba(255,140,40,0)");
-    tg.addColorStop(0.5, "rgba(255,190,80,0.55)");
-    tg.addColorStop(1,   "rgba(255,230,160,0.9)");
-    tctx.fillStyle = tg;
-    tctx.fillRect(0, 0, 160, 4);
-    const ttex = new THREE.CanvasTexture(tc);
-    ttex.minFilter = THREE.LinearFilter;
-    const tmat = new THREE.SpriteMaterial({
-      map: ttex, transparent: true, opacity: 0,
+    // Core streak — tight bright white-orange center line
+    const cc = document.createElement("canvas");
+    cc.width = 220; cc.height = 6;
+    const cctx = cc.getContext("2d");
+    const cg = cctx.createLinearGradient(0, 0, 220, 0);
+    cg.addColorStop(0,    "rgba(255,255,255,0)");
+    cg.addColorStop(0.3,  "rgba(255,230,160,0.4)");
+    cg.addColorStop(0.7,  "rgba(255,200,80,0.85)");
+    cg.addColorStop(0.92, "rgba(255,240,180,0.98)");
+    cg.addColorStop(1,    "rgba(255,255,255,1)");
+    cctx.fillStyle = cg;
+    cctx.fillRect(0, 0, 220, 6);
+    const ctex = new THREE.CanvasTexture(cc);
+    ctex.minFilter = THREE.LinearFilter;
+    const cmat = new THREE.SpriteMaterial({
+      map: ctex, transparent: true, opacity: 0,
       depthWrite: false, blending: THREE.AdditiveBlending,
     });
-    const tail = new THREE.Sprite(tmat);
-    tail.scale.set(6, 0.2, 1);
-    tail.renderOrder = 4;
-    scene.add(tail);
+    const coreStreak = new THREE.Sprite(cmat);
+    coreStreak.scale.set(9, 0.18, 1);
+    coreStreak.renderOrder = 5;
+    scene.add(coreStreak);
+
+    // Glow halo — wide soft orange-red diffuse bloom behind the head
+    const gc = document.createElement("canvas");
+    gc.width = 280; gc.height = 28;
+    const gctx = gc.getContext("2d");
+    const gg = gctx.createLinearGradient(0, 0, 280, 0);
+    gg.addColorStop(0,    "rgba(200,40,0,0)");
+    gg.addColorStop(0.25, "rgba(230,80,10,0.18)");
+    gg.addColorStop(0.6,  "rgba(255,130,30,0.42)");
+    gg.addColorStop(0.85, "rgba(255,180,60,0.55)");
+    gg.addColorStop(1,    "rgba(255,220,120,0.3)");
+    gctx.fillStyle = gg;
+    // Soft vertical falloff — bright center row, fading edges
+    for (let row = 0; row < 28; row++) {
+      const falloff = 1 - Math.abs(row - 14) / 14;
+      gctx.globalAlpha = falloff * falloff;
+      gctx.fillRect(0, row, 280, 1);
+    }
+    const gtex = new THREE.CanvasTexture(gc);
+    gtex.minFilter = THREE.LinearFilter;
+    const gmat = new THREE.SpriteMaterial({
+      map: gtex, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    const glowTrail = new THREE.Sprite(gmat);
+    glowTrail.scale.set(12, 1.4, 1);
+    glowTrail.renderOrder = 4;
+    scene.add(glowTrail);
+
+    // Ember sparks — tiny scattered dots trailing behind
+    const ec = document.createElement("canvas");
+    ec.width = 180; ec.height = 20;
+    const ectx = ec.getContext("2d");
+    for (let s = 0; s < 18; s++) {
+      const ex = Math.random() * 160 + 10;
+      const ey = 4 + Math.random() * 12;
+      const er = 0.8 + Math.random() * 1.4;
+      const eg = ectx.createRadialGradient(ex, ey, 0, ex, ey, er * 2);
+      eg.addColorStop(0, `rgba(255,${180 + Math.floor(Math.random()*60)},${Math.floor(Math.random()*80)},0.9)`);
+      eg.addColorStop(1, "rgba(0,0,0,0)");
+      ectx.fillStyle = eg;
+      ectx.beginPath();
+      ectx.arc(ex, ey, er * 2, 0, Math.PI * 2);
+      ectx.fill();
+    }
+    const etex = new THREE.CanvasTexture(ec);
+    etex.minFilter = THREE.LinearFilter;
+    const emat = new THREE.SpriteMaterial({
+      map: etex, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    const embers = new THREE.Sprite(emat);
+    embers.scale.set(10, 1.0, 1);
+    embers.renderOrder = 4;
+    scene.add(embers);
 
     asteroids.push({
-      asprite, amat, tail, tmat,
+      asprite, amat,
+      tail: coreStreak, tmat: cmat,
+      glowTrail, gmat,
+      embers, emat,
       active: false, life: 0, maxLife: 0,
       vx: 0, vy: 0, vz: 0,
       nextFire: performance.now() * 0.001 + 6 + i * 9 + Math.random() * 4,
@@ -160,17 +224,23 @@ export function createCosmicSky(scene) {
   masprite.renderOrder = 6;
   scene.add(masprite);
 
-  // Tail: long glowing streak
+  // Tail: long glowing streak with soft vertical falloff
   const mtc = document.createElement("canvas");
-  mtc.width = 512; mtc.height = 10;
+  mtc.width = 512; mtc.height = 18;
   const mtctx = mtc.getContext("2d");
   const mtg = mtctx.createLinearGradient(0, 0, 512, 0);
-  mtg.addColorStop(0,    "rgba(255,120,20,0)");
-  mtg.addColorStop(0.35, "rgba(255,180,60,0.45)");
-  mtg.addColorStop(0.75, "rgba(255,220,120,0.82)");
-  mtg.addColorStop(1,    "rgba(255,255,200,0.95)");
+  mtg.addColorStop(0,    "rgba(255,80,10,0)");
+  mtg.addColorStop(0.25, "rgba(255,150,40,0.35)");
+  mtg.addColorStop(0.6,  "rgba(255,200,80,0.75)");
+  mtg.addColorStop(0.88, "rgba(255,235,150,0.95)");
+  mtg.addColorStop(1,    "rgba(255,255,220,1)");
   mtctx.fillStyle = mtg;
-  mtctx.fillRect(0, 0, 512, 10);
+  // Soft vertical glow falloff
+  for (let row = 0; row < 18; row++) {
+    const f = 1 - Math.abs(row - 9) / 9;
+    mtctx.globalAlpha = f * f;
+    mtctx.fillRect(0, row, 512, 1);
+  }
   const mttex = new THREE.CanvasTexture(mtc);
   mttex.minFilter = THREE.LinearFilter;
   const mtmat = new THREE.SpriteMaterial({
@@ -368,10 +438,10 @@ export function animateCosmicSky(scene, camera, t, dt) {
         mega.nextFire = t + 60 + Math.random() * 10; // ~every 60s
       } else {
         const prog = mega.life / mega.maxLife;
-        // Slow fade in at start, hold bright in middle, fade out at end
         const envelope = Math.min(prog * 5, 1) * Math.min((1 - prog) * 5, 1);
-        mega.amat.opacity = envelope * 1.0;
-        mega.tmat.opacity = envelope * 0.85;
+        const megaFlicker = 1.0 + Math.sin(t * 28) * 0.08 + Math.sin(t * 11) * 0.05;
+        mega.amat.opacity = Math.min(1, envelope * 1.0 * megaFlicker);
+        mega.tmat.opacity = Math.min(1, envelope * 0.90 * megaFlicker);
         mega.asprite.position.x += mega.vx * dt;
         mega.asprite.position.y += mega.vy * dt;
         mega.asprite.position.z += mega.vz * dt;
@@ -385,7 +455,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
-  // ── Small Asteroids ───────────────────────────────────────────────
+  // ── Small Asteroids — multi-layer burning trail ───────────────────
   const asteroids = scene.userData.asteroids;
   if (asteroids) {
     for (const ast of asteroids) {
@@ -394,13 +464,19 @@ export function animateCosmicSky(scene, camera, t, dt) {
           const p = spawnArcParams(false);
           ast.asprite.position.set(p.startX, p.startY, p.startZ);
           ast.tail.position.set(p.startX, p.startY, p.startZ);
+          if (ast.glowTrail) ast.glowTrail.position.set(p.startX, p.startY, p.startZ);
+          if (ast.embers)    ast.embers.position.set(p.startX, p.startY, p.startZ);
           ast.vx = p.vx; ast.vy = p.vy; ast.vz = p.vz;
           ast.maxLife = p.life; ast.life = p.life;
           ast.active = true;
           ast.amat.opacity = 0;
           ast.tmat.opacity = 0;
+          if (ast.gmat) ast.gmat.opacity = 0;
+          if (ast.emat) ast.emat.opacity = 0;
           ast.asprite.material.rotation = p.rotation;
           ast.tail.material.rotation    = p.rotation;
+          if (ast.glowTrail) ast.glowTrail.material.rotation = p.rotation;
+          if (ast.embers)    ast.embers.material.rotation    = p.rotation;
         }
       } else {
         ast.life -= dt;
@@ -408,22 +484,48 @@ export function animateCosmicSky(scene, camera, t, dt) {
           ast.active = false;
           ast.amat.opacity = 0;
           ast.tmat.opacity = 0;
-          ast.nextFire = t + 9 + Math.random() * 6; // next in 9–15s
+          if (ast.gmat) ast.gmat.opacity = 0;
+          if (ast.emat) ast.emat.opacity = 0;
+          ast.nextFire = t + 9 + Math.random() * 6;
         } else {
           const prog = ast.life / ast.maxLife;
+          // Bell envelope — full brightness through the middle, fades in/out
           const envelope = Math.sin(Math.PI * (1 - prog));
-          ast.amat.opacity = envelope * 0.98;
-          ast.tmat.opacity = envelope * 0.80;
+          // Flicker: high-freq shimmer makes it look like it's burning
+          const flicker = 1.0 + Math.sin(t * 38 + ast.vx * 10) * 0.12 + Math.sin(t * 17) * 0.07;
+
+          ast.amat.opacity  = Math.min(1, envelope * 1.0  * flicker);
+          ast.tmat.opacity  = Math.min(1, envelope * 0.95 * flicker); // core streak
+          if (ast.gmat) ast.gmat.opacity = Math.min(1, envelope * 0.75);  // glow — no flicker, soft
+          if (ast.emat) ast.emat.opacity = Math.min(1, envelope * 0.65 * flicker); // embers flicker
+
           ast.asprite.position.x += ast.vx * dt;
           ast.asprite.position.y += ast.vy * dt;
           ast.asprite.position.z += ast.vz * dt;
-          // Tail offset: slightly behind the head along travel direction
-          const tailLen = 0.12;
+
+          // Core streak — tight, just behind the head
+          const coreOff = 0.14;
           ast.tail.position.set(
-            ast.asprite.position.x - ast.vx * tailLen,
-            ast.asprite.position.y - ast.vy * tailLen,
-            ast.asprite.position.z - ast.vz * tailLen,
+            ast.asprite.position.x - ast.vx * coreOff,
+            ast.asprite.position.y - ast.vy * coreOff,
+            ast.asprite.position.z - ast.vz * coreOff,
           );
+          // Glow halo — slightly further behind, wider spread
+          if (ast.glowTrail) {
+            ast.glowTrail.position.set(
+              ast.asprite.position.x - ast.vx * 0.28,
+              ast.asprite.position.y - ast.vy * 0.28,
+              ast.asprite.position.z - ast.vz * 0.28,
+            );
+          }
+          // Ember sparks — furthest behind, scattered
+          if (ast.embers) {
+            ast.embers.position.set(
+              ast.asprite.position.x - ast.vx * 0.45,
+              ast.asprite.position.y - ast.vy * 0.45,
+              ast.asprite.position.z - ast.vz * 0.45,
+            );
+          }
         }
       }
     }
