@@ -30,6 +30,7 @@ import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/or
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
+import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -87,6 +88,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [crystalMsg, setCrystalMsg] = useState(false);
   const crystalAuraTimerRef = useRef(null);
   const crystalSceneRef = useRef(null);
+  const rendererRef = useRef(null);
   const [orbBank, setOrbBank] = useState(() => getOrbBank());
 
   const jukeboxFadeRef = useRef(null);        // kept for cleanup compat
@@ -804,6 +806,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           launchRef={launchRef}
           hbRiding={hbRiding}
           ferrisRiding={ferrisRiding}
+          rendererRef={rendererRef}
           onNearPad={(padIdx, airborne, orbs) => {
             setNearLaunchPad(padIdx >= 0 && !airborne);
             setIsAirborne(airborne);
@@ -1156,6 +1159,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
+
+      {/* Performance audit overlay — only visible with ?perf=1 in URL */}
+      <PerfAuditOverlay playerPos={playerPos} rendererRef={rendererRef} />
 
       {/* Mobile debug overlay — only visible with ?debug=mobile in URL */}
       <MobileDebugOverlay
