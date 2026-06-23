@@ -1068,8 +1068,8 @@ function buildPark(scene) {
   moon.intensity = 0.6;
   moon.position.set(15, 22, SHORELINE_Z + 10);
   moon.castShadow = true;
-  moon.shadow.mapSize.width = 2048;
-  moon.shadow.mapSize.height = 2048;
+  moon.shadow.mapSize.width = 1024;
+        moon.shadow.mapSize.height = 1024;
   moon.shadow.camera.near = 0.5;
   moon.shadow.camera.far = 100;
   moon.shadow.camera.left = -55;
@@ -1351,17 +1351,21 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         throw new Error("Three.js MeshStandardMaterial unavailable — check your bundle");
       }
 
+      const isMob = isMobileRef.current;
       const renderer = new WebGLRenderer({
         canvas,
-        antialias: true,
+        antialias: !isMob, // antialias is expensive on mobile — skip it
+        powerPreference: isMob ? "low-power" : "high-performance",
       });
       renderer.setClearColor(0x0A1020); // Deep navy void — bright neon night
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      // Cap pixel ratio lower on mobile — biggest single perf win on retina iOS
+      renderer.setPixelRatio(isMob ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2));
       // Use window dimensions on mobile for reliable viewport sizing
-      const rw = isMobileRef.current ? window.innerWidth : canvas.clientWidth;
-      const rh = isMobileRef.current ? window.innerHeight : canvas.clientHeight;
+      const rw = isMob ? window.innerWidth : canvas.clientWidth;
+      const rh = isMob ? window.innerHeight : canvas.clientHeight;
       renderer.setSize(rw, Math.max(rh, 1));
-      renderer.shadowMap.enabled = true;
+      // Shadows are very expensive on mobile — disable them entirely
+      renderer.shadowMap.enabled = !isMob;
       renderer.shadowMap.type = PCFSoftShadowMap;
 
       const scene = new Scene();
@@ -1717,23 +1721,28 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const finalCamAngle = rot + camYawSmoothRef.current;
         const pitch = camPitchSmoothRef.current;
 
+        if (!scene.userData._camVecs) {
+          scene.userData._camVecs = {
+            cabinPos: new Vector3(), nLook: new Vector3(),
+            cLook: new Vector3(0, 4.5, -34.4),
+            lkPos: new Vector3(0, 3.0, -12), lkLook: new Vector3(0, 3.5, -34.4),
+            fA: new Vector3(0, WHEEL_HUB_Y * 0.4, -10), fB: new Vector3(0, 2, 40),
+          };
+        }
+        const cv = scene.userData._camVecs;
         if (ferrisRidingRef.current) {
           const cabin = getCabinWorldPosition(0, t);
-          camera.position.lerp(new Vector3(cabin.x, cabin.y + 0.6, cabin.z), Math.min(1, 4.0 * dt));
-          // atTop: 0=bottom, 1=peak of wheel
+          cv.cabinPos.set(cabin.x, cabin.y + 0.6, cabin.z);
+          camera.position.lerp(cv.cabinPos, Math.min(1, 4.0 * dt));
           const atTop = Math.max(0, Math.min(1, (cabin.y - WHEEL_HUB_Y) / WHEEL_RADIUS));
-          // Concert window: cabin near the top (0.75–1.0) faces the stage perfectly
           const concertWindow = Math.max(0, (atTop - 0.72) / 0.28);
-          const concertBlend = concertWindow * concertWindow * (3 - 2 * concertWindow); // smooth step
-          // Blend: normal aerial look → zoom in on the music screen for a concert moment
-          const normalLook = new Vector3().lerpVectors(new Vector3(0, WHEEL_HUB_Y * 0.4, -10), new Vector3(0, 2, 40), atTop);
-          const concertLook = new Vector3(0, 4.5, -34.4); // center of stage screen
-          camera.lookAt(normalLook.lerp(concertLook, concertBlend));
-          // Hide avatar every frame so it never clips into view (GLB may load late)
+          const concertBlend = concertWindow * concertWindow * (3 - 2 * concertWindow);
+          cv.nLook.lerpVectors(cv.fA, cv.fB, atTop);
+          camera.lookAt(cv.nLook.lerp(cv.cLook, concertBlend));
           if (avatarRef.current) avatarRef.current.visible = false;
         } else if (lockedRef.current) {
-          camera.position.lerp(new Vector3(0, 3.0, -12), Math.min(1, 3.0 * dt));
-          camera.lookAt(new Vector3(0, 3.5, -34.4));
+          camera.position.lerp(cv.lkPos, Math.min(1, 3.0 * dt));
+          camera.lookAt(cv.lkLook);
         } else {
           // Camera orbits behind avatar at camYaw; pitch lifts camera eye upward
           const camX = px - Math.sin(finalCamAngle) * CAM_DIST * Math.cos(pitch);
@@ -1811,7 +1820,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const waveSpeed = 1.8 + bassEnergy * 4.5 + beatPulse * 2.0;
         const waveT = t * waveSpeed;
 
-        if (oceanMesh && origArr) {
+        // On mobile, only update ocean every 3 frames to reduce vertex shader pressure
+        const skipOcean = isMob && frameRef.current % 3 !== 0;
+        if (oceanMesh && origArr && !skipOcean) {
           const pos = oceanMesh.geometry.attributes.position;
           const arr = pos.array;
 
@@ -1855,10 +1866,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (shoreGlow?.material) {
           const glowOpacity = 0.08 + bassEnergy * 0.25 + beatPulse * 0.35;
           shoreGlow.material.opacity = glowOpacity;
-          // Shift color between cyan and purple based on energy
-          const cyan = new Color("#00D4F0");
-          const purple = new Color("#A078FF");
-          shoreGlow.material.color.copy(cyan).lerp(purple, Math.min(1, bassEnergy * 1.5));
+          // Shift color between cyan and purple — reuse cached Color objects
+          if (!scene.userData._cyanColor) {
+            scene.userData._cyanColor = new Color("#00D4F0");
+            scene.userData._purpleColor = new Color("#A078FF");
+          }
+          shoreGlow.material.color.copy(scene.userData._cyanColor).lerp(scene.userData._purpleColor, Math.min(1, bassEnergy * 1.5));
         }
 
         // ─── STAGE SCREEN GLOW — pulse screen frame with music ──────
@@ -1888,20 +1901,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           // Three materials pulse independently at different rates + beat response
           const colorShift = Math.sin(t * 0.4) * 0.5 + 0.5;
           // neonCyan — fast beat-driven pulse
-          if (neonMats[0]) {
-            neonMats[0].opacity = Math.max(0.5, 0.65 + audioBeat * 1.1 + Math.sin(t * 2.1) * 0.2);
-            neonMats[0].color.copy(new Color("#00D4F0")).lerp(new Color("#C43BFF"), colorShift * 0.35);
+          if (!scene.userData._neonC) {
+            scene.userData._neonC = [new Color("#00D4F0"), new Color("#A078FF"), new Color("#40A0EE")];
+            scene.userData._neonC2 = [new Color("#C43BFF"), new Color("#00E5FF"), new Color("#C43BFF")];
           }
-          // neonPurple — slower swell, out-of-phase with cyan
-          if (neonMats[1]) {
-            neonMats[1].opacity = Math.max(0.4, 0.55 + audioBeat * 0.9 + Math.sin(t * 1.5 + 1.2) * 0.25);
-            neonMats[1].color.copy(new Color("#A078FF")).lerp(new Color("#00E5FF"), colorShift * 0.4);
-          }
-          // neonBlue — mid-frequency pulse with strong beat lift
-          if (neonMats[2]) {
-            neonMats[2].opacity = Math.max(0.45, 0.6 + audioBeat * 1.0 + Math.sin(t * 1.8 + 2.5) * 0.22);
-            neonMats[2].color.copy(new Color("#40A0EE")).lerp(new Color("#C43BFF"), colorShift * 0.38);
-          }
+          const nc = scene.userData._neonC, nc2 = scene.userData._neonC2;
+          if (neonMats[0]) { neonMats[0].opacity = Math.max(0.5, 0.65 + audioBeat * 1.1 + Math.sin(t * 2.1) * 0.2); neonMats[0].color.copy(nc[0]).lerp(nc2[0], colorShift * 0.35); }
+          if (neonMats[1]) { neonMats[1].opacity = Math.max(0.4, 0.55 + audioBeat * 0.9 + Math.sin(t * 1.5 + 1.2) * 0.25); neonMats[1].color.copy(nc[1]).lerp(nc2[1], colorShift * 0.4); }
+          if (neonMats[2]) { neonMats[2].opacity = Math.max(0.45, 0.6 + audioBeat * 1.0 + Math.sin(t * 1.8 + 2.5) * 0.22); neonMats[2].color.copy(nc[2]).lerp(nc2[2], colorShift * 0.38); }
         }
 
         // ─── BUILDING WINDOW FLICKERS — staggered natural on/off cycles ──
@@ -1960,9 +1967,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           pf.intensity = 1.0 + audioBeat * 0.8 + Math.sin(t * 1.2) * 0.2;
         }
 
-        // ─── SHIFTING NEON AMBIENT LIGHTS — slow color/intensity drift ──
-        // Each light breathes and shifts between its two neon colors.
-        // Very low frequency keeps it subtle and mobile-friendly.
+        // ─── SHIFTING NEON AMBIENT LIGHTS ──
         const neonAmbients = scene.userData.neonAmbients;
         if (neonAmbients) {
           for (const na of neonAmbients) {
@@ -1978,10 +1983,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── NEON SIGNS + PATH LIGHTS — color-shift ambient glow ──
         const hueShift = Math.sin(t * 0.25) * 0.5 + 0.5; // slow 0..1 wave
 
+        // On mobile, only update neon signs every 3 frames (billboard lookAt is cheap but adds up)
+        const updateSigns = !isMob || frameRef.current % 3 === 0;
         scene.children.forEach((child) => {
-          // Neon signs — brighter + color-shift ambient glow
           if (child.userData?.isNeonSign) {
-            child.lookAt(camera.position);
+            if (updateSigns) child.lookAt(camera.position);
             const signPhase = child.position.x * 0.5;
             const breathe = 0.22 + Math.sin(t * 1.3 + signPhase) * 0.1 + audioBeat * 0.12;
             child.children.forEach((part) => {
@@ -2019,7 +2025,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             const stripeMat = hbBoard.userData.stripeMat;
             if (stripeMat) {
               stripeMat.opacity = 0.72 + audioBeat * 0.26 + Math.sin(t * 4.5) * 0.10;
-              stripeMat.color.copy(new Color("#00E5FF")).lerp(new Color("#C43BFF"), Math.sin(t * 1.6) * 0.5 + 0.5);
+              if (!scene.userData._hbC1) { scene.userData._hbC1 = new Color("#00E5FF"); scene.userData._hbC2 = new Color("#C43BFF"); }
+              stripeMat.color.copy(scene.userData._hbC1).lerp(scene.userData._hbC2, Math.sin(t * 1.6) * 0.5 + 0.5);
             }
             if (hbBoard.userData.hoverDisc) {
               hbBoard.userData.hoverDisc.opacity = 0.14 + audioBeat * 0.22 + Math.sin(t * 3.0) * 0.07;
