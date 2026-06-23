@@ -1573,7 +1573,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         if (isMoving) {
           const boosting = hbRidingRef.current && performance.now() < speedBoostUntilRef.current;
-          const targetSpeed = Math.abs(inputFwd) > 0.08 || Math.abs(turnInput) > 0.04
+          const targetSpeed = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08
             ? (boosting ? MOVE_SPEED * 3.0 : MOVE_SPEED)
             : 0;
           vel.x += (moveX * targetSpeed - vel.x) * Math.min(1, ACCELERATION * dt);
