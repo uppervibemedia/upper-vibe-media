@@ -1749,8 +1749,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const bassEnergy = audioBassRef?.current ?? 0;
         const beatPulse = audioBeatRef?.current ?? 0;
 
-        // Wave cycle: music-reactive tempo — faster with more energy
-        const waveSpeed = 1.8 + bassEnergy * 4.5 + beatPulse * 2.0;
+        // Wave cycle: steady tempo
+        const waveSpeed = 1.8;
         const waveT = t * waveSpeed;
 
         // Mobile: static ocean — no vertex animation at all
@@ -1771,12 +1771,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
             // Height: waves get taller as they approach shore
             const buildFactor = 1 - Math.max(0, 1 - distFromShore / 20);
-            // Bass drives wave height, beat adds punch
-            const heightBoost = 1 + bassEnergy * 1.4 + beatPulse * 0.6;
-            const height = wave * buildFactor * 0.18 * heightBoost;
+            const height = wave * buildFactor * 0.18;
 
             // Forward surge: water pushes toward shore during wave crest
-            const surge = wave * buildFactor * 0.12 * heightBoost;
+            const surge = wave * buildFactor * 0.12;
 
             arr[i] = origArr[i];
             arr[i + 1] = origArr[i + 1] + height;
@@ -1791,15 +1789,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const foamMesh = scene.userData.foam;
           if (foamMesh?.material) {
             const tide = Math.sin(t * 0.55) * 0.5 + 0.5;
-            const foamBoost = 1 + bassEnergy * 1.2 + beatPulse * 0.8;
-            foamMesh.material.opacity = (0.18 + tide * 0.55) * foamBoost;
+            foamMesh.material.opacity = 0.18 + tide * 0.55;
             foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.7;
           }
           const shoreGlow = scene.userData.shoreGlow;
           if (shoreGlow?.material) {
-            shoreGlow.material.opacity = 0.08 + bassEnergy * 0.25 + beatPulse * 0.35;
-            if (!scene.userData._cyanColor) { scene.userData._cyanColor = new Color("#00D4F0"); scene.userData._purpleColor = new Color("#A078FF"); }
-            shoreGlow.material.color.copy(scene.userData._cyanColor).lerp(scene.userData._purpleColor, Math.min(1, bassEnergy * 1.5));
+            shoreGlow.material.opacity = 0.10;
+            if (!scene.userData._cyanColor) { scene.userData._cyanColor = new Color("#00D4F0"); }
+            shoreGlow.material.color.copy(scene.userData._cyanColor);
           }
         }
 
