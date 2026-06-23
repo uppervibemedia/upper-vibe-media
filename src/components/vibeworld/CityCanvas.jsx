@@ -10,7 +10,7 @@ import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
 import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
-import { createCrystalZone, animateCrystalZone } from "./CrystalZone";
+import { createCrystalZone, animateCrystalZone, activateCrystalZone } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
@@ -857,7 +857,7 @@ function buildPark(scene) {
   // 8.5.5 CRYSTAL ZONE — between Vibe Lounge and Vibe Academy
   // ═════════════════════════════════════════════════════════════
   createCrystalZone(scene);
-  createNeonSign(scene, -26, 4.0, -14, "CRYSTAL  ZONE", "#AA66FF");
+  createNeonSign(scene, -26, 3.2, -14, "CRYSTAL  ZONE", "#AA66FF");
 
   // ═════════════════════════════════════════════════════════════
   // 8.6. ZEN BEACH — meditation zone, left-side beach area
@@ -1323,6 +1323,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const particles = Array.from({ length: SPLASH_COUNT }, () => ({ vx: 0, vy: 0, vz: 0, life: 0, maxLife: 0 }));
         splashParticlesRef.current = { points: splashPoints, particles, pos };
       }
+
+      // ── Crystal Zone activate via custom event ──────────────────
+      const onCrystalActivate = () => activateCrystalZone(scene);
+      window.addEventListener("crystalActivate", onCrystalActivate);
 
       // ── Expose launch trigger ref once (not in animation loop) ──
       if (launchRef) {
@@ -1878,7 +1882,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Distance-gate zone animations on mobile — skip if player is far away
         if (!isMob || nearBeach || frameRef.current % 3 === 0) animateZenBeach(scene, t, audioBeat);
         if (!isMob || nearDanceFloor || frameRef.current % 2 === 0) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
-        if (!isMob || frameRef.current % 2 === 0) animateCrystalZone(scene, t, dt, px, pz);
+        if (!isMob || frameRef.current % 3 === 0) animateCrystalZone(scene, t, dt, px, pz);
         if (!isMob || nearDanceFloor || frameRef.current % 3 === 0) animateJukebox(scene, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──
@@ -2146,6 +2150,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       return () => {
         cancelAnimationFrame(animId);
         window.removeEventListener("resize", onResize);
+        window.removeEventListener("crystalActivate", onCrystalActivate);
         renderer.dispose();
         scene.traverse((obj) => {
           if (obj.geometry) obj.geometry.dispose();
