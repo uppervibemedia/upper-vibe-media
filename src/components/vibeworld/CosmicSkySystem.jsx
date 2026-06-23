@@ -8,10 +8,15 @@
  */
 import * as THREE from "three";
 
-const BASE   = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
+const BASE    = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
 const SKY_A   = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;
 const SATURN1 = `${BASE}/57ae697b0_ChatGPTImageJun19202612_41_07PM.png`;  // ringed planet + nebula
 const SATURN2 = `${BASE}/1dc6343de_ChatGPTImageJun19202612_41_21PM.png`;  // glowing planet + nebula
+// New nebula panorama panels — 4 images tiled across the beach-side horizon
+const NEBULA1 = `${BASE}/58c7cb071_ChatGPTImageJun22202606_35_16PM.png`;  // purple burst nebula
+const NEBULA2 = `${BASE}/b31f18ac4_ChatGPTImageJun22202606_35_39PM.png`;  // orange-blue nebula
+const NEBULA3 = `${BASE}/285d48a42_ChatGPTImageJun22202606_35_45PM.png`;  // Saturn ringed planet
+const NEBULA4 = `${BASE}/e21cf0d5f_ChatGPTImageJun22202606_35_36PM.png`;  // spiral galaxy
 
 export function createCosmicSky(scene) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -315,6 +320,38 @@ export function createCosmicSky(scene) {
     sprite2: sat2, mat2: sat2Mat,
   };
 
+  // ── Nebula horizon panels — 4 large images placed around the beach-facing horizon ──
+  // AdditiveBlending: pure-black areas = 0 contribution, colors bloom seamlessly.
+  // depthTest:false = never occluded by city geometry.
+  // Each panel is placed at a fixed world-space angle, drifting very slowly.
+  const nebulaLoader = new THREE.TextureLoader();
+  const nebulaDefs = [
+    { url: NEBULA1, angle: Math.PI * 0.55,  scale: [70, 42], opacity: 0.72 }, // beach-right (east)
+    { url: NEBULA2, angle: Math.PI * 1.0,   scale: [68, 40], opacity: 0.68 }, // directly behind (west)
+    { url: NEBULA3, angle: Math.PI * 1.45,  scale: [64, 38], opacity: 0.75 }, // beach-left (west)
+    { url: NEBULA4, angle: Math.PI * 0.1,   scale: [72, 44], opacity: 0.65 }, // north (stage side)
+  ];
+  const nebulaPanels = nebulaDefs.map((def) => {
+    const tex = nebulaLoader.load(def.url);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.LinearFilter;
+    tex.generateMipmaps = false;
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      opacity: def.opacity,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(def.scale[0], def.scale[1], 1);
+    sprite.renderOrder = 1; // behind planets (renderOrder 2) and stars (4+)
+    scene.add(sprite);
+    return { sprite, mat, baseAngle: def.angle, baseOpacity: def.opacity };
+  });
+  scene.userData.nebulaPanels = nebulaPanels;
+
   scene.fog = new THREE.Fog("#101835", 75, 95);
 }
 
@@ -392,6 +429,27 @@ export function animateCosmicSky(scene, camera, t, dt) {
       );
       saturnData.mat2.opacity = 0.88 + Math.sin(t * 0.25 + 1.5) * 0.05;
     }
+  }
+
+  // ── Nebula horizon panels — slow drift across the horizon at eye level ──
+  const nebulaPanels = scene.userData.nebulaPanels;
+  if (nebulaPanels && updateSlow) {
+    // Each panel drifts very slowly (full circle ~900s), positioned on the horizon.
+    // r=74 sits just inside the skybox sphere. Y at eye+8 = clearly on the horizon,
+    // visible from beach, east, and west ends.
+    const r = 74;
+    const horizonY = camera.position.y + 8;
+    const driftSpeed = Math.PI * 2 / 900; // full lap in 15 minutes
+    nebulaPanels.forEach((panel, i) => {
+      const a = t * driftSpeed + panel.baseAngle;
+      panel.sprite.position.set(
+        camera.position.x + Math.sin(a) * r,
+        horizonY + Math.sin(t * 0.04 + i * 1.2) * 4, // gentle vertical float
+        camera.position.z + Math.cos(a) * r,
+      );
+      // Gentle opacity breath
+      panel.mat.opacity = panel.baseOpacity + Math.sin(t * 0.18 + i * 0.8) * 0.06;
+    });
   }
 
   // ── Star twinkling — throttled on mobile ────────────────────────
