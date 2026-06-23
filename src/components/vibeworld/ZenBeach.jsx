@@ -89,6 +89,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
 }
 
 export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
+  const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const ZEN_X = -20, ZEN_Z = 22;
 
   // Circular meditation platform
@@ -277,8 +278,6 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
 
   // Neon sign
   createNeonSign(scene, ZEN_X, 3.5, ZEN_Z, "ZEN  BEACH", "#00D4F0");
-
-  const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   // ── WHOLE-BEACH SUNSET GLOW SPRITES — mobile: only 2 sprites; desktop: all 6 ──
   const beachGlowDefs = [
