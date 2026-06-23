@@ -13,8 +13,9 @@ import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 // Avatar type options — "current" is the permanent default; others are TEST only
 const AVATAR_TYPE_OPTIONS = [
   { key: "current", label: "Current Avatar", sub: "Default", icon: "🤖" },
-  { key: "test-male", label: "Male Avatar", sub: "⚠️ Test Only", icon: "👨" },
-  { key: "test-female", label: "Female Avatar", sub: "⚠️ Test Only", icon: "👩" },
+  { key: "test-mixamo", label: "Mixamo Human", sub: "⚠️ Test Only", icon: "🧍" },
+  { key: "test-male", label: "Male (Procedural)", sub: "⚠️ Test Only", icon: "👨" },
+  { key: "test-female", label: "Female (Procedural)", sub: "⚠️ Test Only", icon: "👩" },
 ];
 
 export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) {
