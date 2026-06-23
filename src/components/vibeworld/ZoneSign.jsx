@@ -81,34 +81,34 @@ export function createZoneSign(scene, x, y, z, text, colorHex) {
     cx.closePath();
   }
 
-  // Dark glass panel
+  // Tinted glass panel — semi-transparent with zone color tint
   roundRect(ctx, canvasW, CANVAS_H, rr);
-  ctx.fillStyle = "rgba(5,7,18,0.88)";
+  ctx.fillStyle = `rgba(${colRGB},0.22)`;
   ctx.fill();
 
   // Gloss sheen (top highlight)
   roundRect(ctx, canvasW, CANVAS_H, rr);
-  const gloss = ctx.createLinearGradient(0, 0, 0, CANVAS_H * 0.5);
-  gloss.addColorStop(0, "rgba(255,255,255,0.06)");
+  const gloss = ctx.createLinearGradient(0, 0, 0, CANVAS_H * 0.55);
+  gloss.addColorStop(0, "rgba(255,255,255,0.12)");
   gloss.addColorStop(1, "rgba(255,255,255,0.0)");
   ctx.fillStyle = gloss;
   ctx.fill();
 
-  // Thin neon border
+  // Thin neon border — brighter, more visible
   roundRect(ctx, canvasW, CANVAS_H, rr);
   ctx.save();
   ctx.shadowColor = colorHex;
-  ctx.shadowBlur = 12;
-  ctx.strokeStyle = `rgba(${colRGB},0.88)`;
-  ctx.lineWidth = 1.8;
+  ctx.shadowBlur = 18;
+  ctx.strokeStyle = `rgba(${colRGB},1.0)`;
+  ctx.lineWidth = 2.2;
   ctx.stroke();
   ctx.restore();
 
   // Left accent bar
   const barH = CANVAS_H * 0.50;
   const barY = (CANVAS_H - barH) / 2;
-  ctx.fillStyle = `rgba(${colRGB},0.92)`;
-  ctx.fillRect(6, barY, 2.5, barH);
+  ctx.fillStyle = `rgba(${colRGB},1.0)`;
+  ctx.fillRect(6, barY, 3, barH);
 
   // Icon
   const textStartX = PAD_X + 6;
@@ -116,19 +116,30 @@ export function createZoneSign(scene, x, y, z, text, colorHex) {
   ctx.font = `${ICON_SIZE}px sans-serif`;
   ctx.fillStyle = `rgba(${colRGB},1)`;
   ctx.shadowColor = colorHex;
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 14;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillText(icon, textStartX, CANVAS_H / 2);
   ctx.restore();
 
-  // Label
+  // Label — drawn twice: colored glow pass then sharp white pass
   const labelX = textStartX + iconW + ICON_GAP;
+  // Glow pass
+  ctx.save();
+  ctx.font = `bold ${FONT_SIZE}px 'Syne','Inter',sans-serif`;
+  ctx.fillStyle = `rgba(${colRGB},0.55)`;
+  ctx.shadowColor = colorHex;
+  ctx.shadowBlur = 20;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, labelX, CANVAS_H / 2);
+  ctx.restore();
+  // Sharp white pass
   ctx.save();
   ctx.font = `bold ${FONT_SIZE}px 'Syne','Inter',sans-serif`;
   ctx.fillStyle = "#FFFFFF";
   ctx.shadowColor = colorHex;
-  ctx.shadowBlur = 5;
+  ctx.shadowBlur = 8;
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillText(text, labelX, CANVAS_H / 2);

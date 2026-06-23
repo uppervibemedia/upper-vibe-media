@@ -312,13 +312,6 @@ function buildPark(scene) {
   scene.add(stage);
   // Stage label — just above the arch top, centered, facing spawn path
   createNeonSign(scene, 0, 8.2, -30, "MUSIC  STAGE", "#00D4F0");
-  // Beach district label — eye level at beach entrance
-  createNeonSign(scene, 0, 2.3, 13, "UVC  ·  BEACH  DISTRICT", "#D4A843");
-
-  // ── EYE-LEVEL UPPER VIBE MEDIA BRANDING — placed along user walking paths ──
-  createNeonSign(scene, 0,  2.3,  7,  "UPPER  VIBE  MEDIA", "#A078FF");
-  createNeonSign(scene, -5, 2.3, -22, "UPPER  VIBE  MEDIA", "#A078FF");
-  createNeonSign(scene, 8,  2.3, -11, "UPPER  VIBE  MEDIA", "#A078FF");
 
   // ═══════════════════════════════════════
   // VIBE LAUNCH ZONE
