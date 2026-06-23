@@ -331,36 +331,39 @@ export function createCosmicSky(scene) {
   const STEP = (Math.PI * 2) / 5;
   // horizonY: raised to 28-42 so planets clear the skyline buildings (~7u tall)
   // from normal walking camera height (eye ~1.5-2.5u above ground).
+  // horizonY values raised to clear building tops (~7-8u tall from ground).
+  // North-facing planets (mega, west, crimson) use higher Y so they never
+  // intersect the skyline. Beach-side (east, green) can be slightly lower.
   const PLANET_DEFS = [
     {
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.28)", ringColor: "rgba(200,140,255,0.45)",
-      size: isMobile ? 27.5 : 37.5, angleOffset: 0, horizonY: 38, radius: 55,
+      size: isMobile ? 27.5 : 37.5, angleOffset: 0, horizonY: 52, radius: 55,
     },
     {
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.18)", ringColor: "rgba(120,200,255,0.35)",
-      size: isMobile ? 20.0 : 26.0, angleOffset: STEP * 1, horizonY: 32, radius: 55,
+      size: isMobile ? 20.0 : 26.0, angleOffset: STEP * 1, horizonY: 48, radius: 55,
     },
     {
       id: "east",
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
       glowColor: "rgba(220,140,60,0.18)", ringColor: "rgba(200,160,80,0.30)",
-      size: isMobile ? 17.0 : 22.0, angleOffset: STEP * 2, horizonY: 42, radius: 55,
+      size: isMobile ? 17.0 : 22.0, angleOffset: STEP * 2, horizonY: 46, radius: 55,
     },
     {
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor: "rgba(60,200,100,0.16)", ringColor: "rgba(80,220,120,0.30)",
-      size: isMobile ? 14.0 : 18.0, angleOffset: STEP * 3, horizonY: 34, radius: 55,
+      size: isMobile ? 14.0 : 18.0, angleOffset: STEP * 3, horizonY: 44, radius: 55,
     },
     {
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor: "rgba(220,60,60,0.20)", ringColor: "rgba(200,80,80,0.30)",
-      size: isMobile ? 22.0 : 30.0, angleOffset: STEP * 4, horizonY: 28, radius: 55,
+      size: isMobile ? 22.0 : 30.0, angleOffset: STEP * 4, horizonY: 50, radius: 55,
     },
   ];
 
@@ -665,23 +668,29 @@ export function createCosmicSky(scene) {
   );
 
   const now0 = performance.now() * 0.001;
+  // Beach flyby paths — raised Y and pushed Z deeper into water so planets
+  // pass through the far beach sky, never overlapping the avatar.
+  // X offset: paths are laterally shifted away from center (avatar stands near x≈0)
+  // so planets never cross the avatar's center screen line.
+  // Y≥26 ensures planets stay well above avatar head (~1.8u) from third-person camera.
+  // Z≥52 pushes them far past the shoreline (z≈32) into open ocean sky.
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // Path A: starts left side (x=-55), moves to right (x=55), y≈14–18, z≈38–44 (beach/water)
-    startX: -55, startY: 16, startZ: 42,
-    endX: 55,    endY: 14, endZ: 38,
-    nextFire: now0 + 10 + Math.random() * 20,   // first flyby in 10–30s
+    // Path A: left-to-right, shifted to left side of sky (x: -60→40 avoids center)
+    startX: -60, startY: 28, startZ: 58,
+    endX:    40, endY:   26, endZ: 52,
+    nextFire: now0 + 10 + Math.random() * 20,
     minInterval: 60, maxInterval: 90,
     duration: 14 + Math.random() * 6,
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // Path B: starts right side (x=60), moves to center-left (x=-40), y≈18–22
-    startX: 60, startY: 20, startZ: 46,
-    endX: -40,  endY: 18, endZ: 40,
-    nextFire: now0 + 45 + Math.random() * 30,   // stagger: first fires well after A
+    // Path B: right-to-left, shifted to right side of sky (x: 62→-38 avoids center)
+    startX: 62, startY: 32, startZ: 62,
+    endX: -38,  endY:   30, endZ: 54,
+    nextFire: now0 + 45 + Math.random() * 30,
     minInterval: 90, maxInterval: 140,
     duration: 14 + Math.random() * 6,
   };
