@@ -317,59 +317,62 @@ export function createCosmicSky(scene) {
   // Each is a canvas-drawn planet disc with a soft atmospheric glow halo.
   // They sit just above the beach horizon line (Y≈8, Z=+35) and drift
   // very slowly east↔west so they're always visible from the beach.
+  // 5 planets evenly spaced 72° apart (2π/5 ≈ 1.257 rad) so there's always
+  // at least one near the beach horizon (angle ≈ 0 = south/+Z) at any time.
+  const STEP = (Math.PI * 2) / 5;
   const PLANET_DEFS = [
-    // MEGA planet — huge purple gas giant, center of beach horizon
+    // MEGA — purple gas giant
     {
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor:  "rgba(160,80,255,0.28)",
       ringColor:  "rgba(200,140,255,0.45)",
       size: isMobile ? 27.5 : 37.5,
-      angleOffset: 0,       // evenly spaced: center
+      angleOffset: 0,            // beach side at start
       horizonY: 14,
       radius: 60,
     },
-    // Blue gas giant — left of center
+    // Blue gas giant
     {
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor:  "rgba(80,180,255,0.18)",
       ringColor:  "rgba(120,200,255,0.35)",
       size: isMobile ? 20.0 : 26.0,
-      angleOffset: -1.1,    // ~63° left
+      angleOffset: STEP * 1,     // 72° ahead
       horizonY: 10,
       radius: 60,
     },
-    // Amber planet — right of center
+    // Amber planet
     {
       id: "east",
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
       glowColor:  "rgba(220,140,60,0.18)",
       ringColor:  "rgba(200,160,80,0.30)",
       size: isMobile ? 17.0 : 22.0,
-      angleOffset: 1.1,     // ~63° right
+      angleOffset: STEP * 2,     // 144° ahead
       horizonY: 9,
       radius: 60,
     },
-    // Emerald green planet — further east
+    // Emerald green
     {
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor:  "rgba(60,200,100,0.16)",
       ringColor:  "rgba(80,220,120,0.30)",
       size: isMobile ? 14.0 : 18.0,
-      angleOffset: 2.1,     // ~120° right — always coming from the east
+      angleOffset: STEP * 3,     // 216° ahead
       horizonY: 11,
       radius: 60,
     },
-    // Deep red / crimson planet — far east, large
+    // Crimson
     {
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor:  "rgba(220,60,60,0.20)",
       ringColor:  "rgba(200,80,80,0.30)",
       size: isMobile ? 22.0 : 30.0,
-      angleOffset: 3.0,     // ~172° right — east horizon, appears as others exit west
+      angleOffset: STEP * 4,     // 288° ahead
       horizonY: 8,
       radius: 60,
     },
