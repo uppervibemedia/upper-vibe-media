@@ -15,7 +15,6 @@ import { createCrystalZone, animateCrystalZone, activateCrystalZone } from "./Cr
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
 import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
-import { createRPMAvatar, updateRPMAvatarAnimation } from "./AvatarModelRPM";
 import { createZoneSign } from "./ZoneSign";
 
 // Destructure immediately after namespace import to ensure full module load
@@ -1360,18 +1359,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       scene.add(avatarRimLight);
       scene.userData.avatarRimLight = avatarRimLight;
 
-      // Determine avatar type: "current" (default GLB), "test-rpm", "test-male", or "test-female"
+      // Determine avatar type: "current" (default GLB), "test-male", or "test-female"
       const avatarTypeKey = avatarConfig?.avatarTypeKey || "current";
-      const isTestRPM = avatarTypeKey === "test-rpm";
       const isTestAvatar = avatarTypeKey === "test-male" || avatarTypeKey === "test-female";
       const testGender = avatarTypeKey === "test-female" ? "female" : "male";
 
       let entry;
-      if (isTestRPM) {
-        // RPM TEST avatar — human GLB + official RPM animation library
-        entry = createRPMAvatar(scene, avatarConfig || {}, (_entry) => {});
-        if (retintRef) retintRef.current = () => {}; // RPM has its own materials
-      } else if (isTestAvatar) {
+      if (isTestAvatar) {
         // TEST avatars — procedural geometry, no GLB, instant load
         entry = createTestAvatar(scene, testGender, avatarConfig || {}, (_entry) => {
           const savedColor = avatarConfig?.suitColor;
@@ -1723,10 +1717,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // avatarEntryRef.current is the same object returned by createAvatar.
         // Its mixer/clips get populated in-place when GLB loads — no reassignment needed.
         const avatarEntry = avatarEntryRef.current;
-        if (avatarEntry?._testGender === "rpm") {
-          // RPM avatar — GLB with retargeted animations
-          updateRPMAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt);
-        } else if (avatarEntry?._isTestAvatar) {
+        if (avatarEntry?._isTestAvatar) {
           // Procedural test avatars (male/female) — no mixer/clips
           updateTestAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt);
         } else {
