@@ -96,11 +96,38 @@ export function createCosmicSky(scene) {
   scene.userData._skyboxRef = skybox;
   scene.userData._zenithCapRef = null; // no cap needed — canvas fills everything
 
-  // Shooting stars disabled — removed for visual cleanliness and performance
-  scene.userData.shootingStars = null;
+  // ── Single shooting star — one clean streak every 45s ───────────
+  {
+    const sc = document.createElement("canvas");
+    sc.width = 180; sc.height = 4;
+    const sctx = sc.getContext("2d");
+    const sg = sctx.createLinearGradient(0, 0, 180, 0);
+    sg.addColorStop(0,    "rgba(255,255,255,0)");
+    sg.addColorStop(0.55, "rgba(220,235,255,0.6)");
+    sg.addColorStop(0.85, "rgba(240,248,255,0.95)");
+    sg.addColorStop(1,    "rgba(255,255,255,1)");
+    sctx.fillStyle = sg;
+    sctx.fillRect(0, 0, 180, 4);
+    const stex = new THREE.CanvasTexture(sc);
+    stex.minFilter = THREE.LinearFilter;
+    const smat = new THREE.SpriteMaterial({
+      map: stex, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    const sstar = new THREE.Sprite(smat);
+    sstar.scale.set(10, 0.12, 1);
+    sstar.renderOrder = 5;
+    scene.add(sstar);
+    scene.userData.shootingStar = {
+      sprite: sstar, mat: smat,
+      active: false, life: 0, maxLife: 0,
+      vx: 0, vy: 0, vz: 0,
+      nextFire: performance.now() * 0.001 + 12 + Math.random() * 8, // first one ~12-20s in
+    };
+  }
 
-  // ── Small asteroids — reduced on mobile for perf ─────────────────
-  const ASTEROID_COUNT = isMobile ? 1 : 3;
+  // Small asteroids disabled — only mega asteroid + single shooting star per timing rules
+  const ASTEROID_COUNT = 0;
   const asteroids = [];
   for (let i = 0; i < ASTEROID_COUNT; i++) {
     // Head: bright glowing fireball core
@@ -275,8 +302,8 @@ export function createCosmicSky(scene) {
     tail: mtail, tmat: mtmat,
     active: false, life: 0, maxLife: 0,
     vx: 0, vy: 0, vz: 0,
-    nextFire: performance.now() * 0.001 + (isMobile ? 30 : 15),
-    interval: isMobile ? 120 : 60,
+    nextFire: performance.now() * 0.001 + 20 + Math.random() * 10, // first one ~20-30s in
+    interval: 120, // exactly 2 minutes
   };
   }
 
@@ -703,7 +730,35 @@ export function animateCosmicSky(scene, camera, t, dt) {
     if (!isMobile) starsMesh.material.size = 0.30 + Math.sin(t * 1.1) * 0.05;
   }
 
-  // Shooting stars disabled
+  // ── Single Shooting Star — one clean streak every 45s ───────────
+  const sstar = scene.userData.shootingStar;
+  if (sstar && updateSlow) {
+    if (!sstar.active) {
+      if (t >= sstar.nextFire) {
+        const p = spawnArcParams(true); // fast = shooting star speed
+        sstar.sprite.position.set(p.startX, p.startY, p.startZ);
+        sstar.sprite.material.rotation = p.rotation;
+        sstar.vx = p.vx; sstar.vy = p.vy; sstar.vz = p.vz;
+        sstar.maxLife = p.life; sstar.life = p.life;
+        sstar.active = true;
+        sstar.mat.opacity = 0;
+      }
+    } else {
+      sstar.life -= dt;
+      if (sstar.life <= 0) {
+        sstar.active = false;
+        sstar.mat.opacity = 0;
+        sstar.nextFire = t + 45; // exactly 45 seconds until next one
+      } else {
+        const prog = sstar.life / sstar.maxLife;
+        const envelope = Math.sin(Math.PI * (1 - prog));
+        sstar.mat.opacity = Math.min(1, envelope * 0.92);
+        sstar.sprite.position.x += sstar.vx * dt;
+        sstar.sprite.position.y += sstar.vy * dt;
+        sstar.sprite.position.z += sstar.vz * dt;
+      }
+    }
+  }
 
   // ── Mega Asteroid — throttled on mobile ──────────────────────────
   if (!updateAsteroids) return;
