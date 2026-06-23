@@ -86,7 +86,7 @@ export function createCosmicSky(scene) {
 
   const skySegs = isMobile ? [48, 32] : [64, 48];
   const skybox = new THREE.Mesh(
-    new THREE.SphereGeometry(80, skySegs[0], skySegs[1]),
+    new THREE.SphereGeometry(130, skySegs[0], skySegs[1]),
     new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false })
   );
   skybox.name = "skybox";
@@ -617,7 +617,9 @@ export function createCosmicSky(scene) {
   });
   scene.userData.horizonPlanets = planets;
 
-  scene.fog = new THREE.Fog("#101835", 60, 95);
+  // Fog pushed far back — prevents dark dome/wall artifact over beach.
+  // Color matches the sky horizon so the fade is seamless, not a black band.
+  scene.fog = new THREE.Fog("#0E1A40", 75, 110);
 }
 
 // ── Helper: compute a natural arc spawn toward the beach horizon ─────
