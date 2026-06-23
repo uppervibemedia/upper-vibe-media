@@ -328,9 +328,10 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(160,80,255,0.28)",
       ringColor:  "rgba(200,140,255,0.45)",
       size: isMobile ? 27.5 : 37.5,
-      angleOffset: 0,            // beach side at start
+      angleOffset: 0,
       horizonY: 14,
       radius: 60,
+      setsBelow: true,  // large — sinks behind the ocean horizon
     },
     // Blue gas giant
     {
@@ -339,9 +340,10 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(80,180,255,0.18)",
       ringColor:  "rgba(120,200,255,0.35)",
       size: isMobile ? 20.0 : 26.0,
-      angleOffset: STEP * 1,     // 72° ahead
+      angleOffset: STEP * 1,
       horizonY: 10,
       radius: 60,
+      setsBelow: false,
     },
     // Amber planet
     {
@@ -350,9 +352,10 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(220,140,60,0.18)",
       ringColor:  "rgba(200,160,80,0.30)",
       size: isMobile ? 17.0 : 22.0,
-      angleOffset: STEP * 2,     // 144° ahead
+      angleOffset: STEP * 2,
       horizonY: 9,
       radius: 60,
+      setsBelow: false,
     },
     // Emerald green
     {
@@ -361,9 +364,10 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(60,200,100,0.16)",
       ringColor:  "rgba(80,220,120,0.30)",
       size: isMobile ? 14.0 : 18.0,
-      angleOffset: STEP * 3,     // 216° ahead
+      angleOffset: STEP * 3,
       horizonY: 11,
       radius: 60,
+      setsBelow: false,
     },
     // Crimson
     {
@@ -372,9 +376,10 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(220,60,60,0.20)",
       ringColor:  "rgba(200,80,80,0.30)",
       size: isMobile ? 22.0 : 30.0,
-      angleOffset: STEP * 4,     // 288° ahead
+      angleOffset: STEP * 4,
       horizonY: 8,
       radius: 60,
+      setsBelow: true,  // large — sinks behind the ocean horizon
     },
   ];
 
@@ -452,6 +457,7 @@ export function createCosmicSky(scene) {
       angleOffset: def.angleOffset,
       horizonY: def.horizonY,
       radius: def.radius,
+      setsBelow: def.setsBelow,
     };
   });
   scene.userData.horizonPlanets = planets;
@@ -516,12 +522,13 @@ export function animateCosmicSky(scene, camera, t, dt) {
       const angle = skyAngle + p.angleOffset;
       const cosA = Math.cos(angle); // -1=north, +1=south/beach
 
-      // North side: lift high into sky.
-      // South/beach side: only start sinking once past the midpoint (cosA > 0.5),
-      // so planets stay visible on the horizon until they're well past the beach center.
-      const southDip = Math.max(0, cosA - 0.5) * 2; // 0 until past midpoint, then 0→1
+      // North side: all planets lift high into sky.
+      // South/beach side: only large planets (setsBelow) sink behind the ocean.
+      // They stay on the horizon through the first half of the beach, then drop
+      // well below ground so they look like they're setting behind the water.
       const northLift = Math.max(0, -cosA);
-      const arcY = p.horizonY + northLift * 32 - southDip * 28;
+      const southDip = p.setsBelow ? Math.max(0, cosA - 0.5) * 2 : 0; // 0→1 only past beach midpoint
+      const arcY = p.horizonY + northLift * 32 - southDip * 60; // deep enough to fully hide below horizon
 
       const cx = camera.position.x + Math.sin(angle) * p.radius;
       const cz = camera.position.z + cosA * p.radius;
