@@ -282,16 +282,17 @@ export function createCosmicSky(scene) {
   const sat1Mat = new THREE.SpriteMaterial({
     map: sat1Tex,
     transparent: true,
-    opacity: 0.82,
+    opacity: 0.90,
     depthWrite: false,
-    blending: THREE.AdditiveBlending, // black bg = 0 contribution → perfect seamless blend
+    depthTest: false,   // never occluded by city geometry
+    blending: THREE.AdditiveBlending,
   });
   const sat1 = new THREE.Sprite(sat1Mat);
-  sat1.scale.set(52, 36, 1);
-  sat1.renderOrder = 3;
+  sat1.scale.set(40, 28, 1);
+  sat1.renderOrder = 2;
   scene.add(sat1);
 
-  // Image 2: glowing planet + nebula — upper-right sky region
+  // Image 2: glowing planet + nebula — opposite horizon quadrant
   const sat2Tex = loader2.load(SATURN2);
   sat2Tex.colorSpace = THREE.SRGBColorSpace;
   sat2Tex.minFilter = THREE.LinearFilter;
@@ -299,13 +300,14 @@ export function createCosmicSky(scene) {
   const sat2Mat = new THREE.SpriteMaterial({
     map: sat2Tex,
     transparent: true,
-    opacity: 0.72,
+    opacity: 0.85,
     depthWrite: false,
+    depthTest: false,   // never occluded by city geometry
     blending: THREE.AdditiveBlending,
   });
   const sat2 = new THREE.Sprite(sat2Mat);
-  sat2.scale.set(46, 32, 1);
-  sat2.renderOrder = 3;
+  sat2.scale.set(38, 26, 1);
+  sat2.renderOrder = 2;
   scene.add(sat2);
 
   scene.userData.saturn = {
@@ -365,28 +367,30 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
   const saturnData = scene.userData.saturn;
   if (saturnData && updateSlow) {
-    // Place planets on the skybox sphere surface (r≈70), upper-left and upper-right quadrants
-    // Angles are in world space so they drift slowly with skybox rotation
-    const skyRot = skybox ? skybox.rotation.y : 0;
-    const r = 70;
-    // Planet 1: upper-left quadrant (angle ~210° from forward)
-    const a1 = skyRot + Math.PI * 1.2;
+    // Fixed world-space angles on the horizon so planets are always visible at eye level.
+    // r=72 keeps them just inside the skybox sphere (r=80).
+    // Y: camera eye level + 6 units = just above horizon, easy to see.
+    const r = 72;
+    const eyeY = camera.position.y + 6;
+
+    // Planet 1 — left-side horizon (west, angle 225° = -135° = 3π/4 from +Z)
+    const a1 = Math.PI * 1.25; // fixed world angle, west-southwest
     saturnData.sprite.position.set(
       camera.position.x + Math.sin(a1) * r,
-      camera.position.y + 28,
+      eyeY,
       camera.position.z + Math.cos(a1) * r,
     );
-    saturnData.mat.opacity = 0.95 + Math.sin(t * 0.35) * 0.04;
+    saturnData.mat.opacity = 0.92 + Math.sin(t * 0.3) * 0.05;
 
     if (saturnData.sprite2) {
-      // Planet 2: upper-right quadrant (angle ~330° from forward)
-      const a2 = skyRot + Math.PI * 1.85;
+      // Planet 2 — right-side horizon (east, angle 45° away from planet 1 = opposite quadrant)
+      const a2 = Math.PI * 0.15; // fixed world angle, north-northeast — well separated
       saturnData.sprite2.position.set(
         camera.position.x + Math.sin(a2) * r,
-        camera.position.y + 20,
+        eyeY + 4, // slightly higher than planet 1 for visual variety
         camera.position.z + Math.cos(a2) * r,
       );
-      saturnData.mat2.opacity = 0.90 + Math.sin(t * 0.28 + 1.5) * 0.05;
+      saturnData.mat2.opacity = 0.88 + Math.sin(t * 0.25 + 1.5) * 0.05;
     }
   }
 
