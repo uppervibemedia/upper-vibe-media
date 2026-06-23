@@ -331,7 +331,7 @@ export function createCosmicSky(scene) {
       angleOffset: 0,
       horizonY: 14,
       radius: 60,
-      setsBelow: true,  // large — sinks behind the ocean horizon
+      setsBelow: false,
     },
     // Blue gas giant
     {
@@ -379,7 +379,7 @@ export function createCosmicSky(scene) {
       angleOffset: STEP * 4,
       horizonY: 8,
       radius: 60,
-      setsBelow: true,  // large — sinks behind the ocean horizon
+      setsBelow: false,
     },
   ];
 
