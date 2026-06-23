@@ -1300,8 +1300,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   // camYaw is independent of avatar rotation; avatar rotation is avatarRotRef
   // Third-person camera: camYaw is WORLD-SPACE absolute angle (not relative to avatar)
   // 0 = camera looks from +Z toward avatar (south), increases clockwise
-  const camYawRef = useRef(Math.PI);    // start: camera behind spawn (facing north = π)
-  const camYawSmoothRef = useRef(Math.PI);
+  const camYawRef = useRef(0);    // start: camera at +Z behind avatar, avatar faces stage (-Z)
+  const camYawSmoothRef = useRef(0);
   const camPitchRef = useRef(0.08);    // slight upward default
   const camPitchSmoothRef = useRef(0.08);
   const userTouchingCamRef = useRef(false); // right-click or cam drag active
@@ -1373,12 +1373,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const asp = rw / Math.max(rh, 1);
       const camera = new PerspectiveCamera(52, asp, 0.1, 100);
       cameraRef.current = camera;
-      // Start camera at camYaw=π: camera is at -Z side of avatar (between avatar and stage).
-      // sin(π)=0, cos(π)=-1 → camera at (spX + 0, _, spZ - CAM_DIST)
-      // This matches camYawRef initial value of Math.PI — no jarring snap on frame 1.
+      // Start camera at camYaw=0: camera at +Z side of avatar (ocean side), avatar faces stage.
+      // sin(0)=0, cos(0)=1 → camera at (spX, _, spZ + CAM_DIST) — directly behind avatar.
+      // Matches camYawRef initial value of 0 — no jarring snap on frame 1.
       const [spX, spY, spZ] = effectiveSpawn;
-      const initCamZ = spZ + Math.cos(Math.PI) * CAM_DIST; // spZ - CAM_DIST
-      camera.position.set(spX, spY + CAM_HEIGHT, initCamZ);
+      camera.position.set(spX, spY + CAM_HEIGHT, spZ + CAM_DIST);
       camera.lookAt(spX, spY + CAM_LOOK_Y, spZ);
 
       buildPark(scene);
@@ -1558,7 +1557,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
              // joy.y > 0 (drag up) = inputFwd > 0 = move forward = camYaw + π.
              // joy.x > 0 (drag right) = inputStrafe > 0 = move right = camYaw + π + π/2.
              const moveFwdAngle = camYawRef.current + Math.PI;
-             const moveRightAngle = moveFwdAngle + Math.PI / 2;
+             // Right = 90° clockwise from forward in our sin/cos convention = forward - π/2
+             const moveRightAngle = moveFwdAngle - Math.PI / 2;
              // inputFwd: +1 = forward, -1 = backward (camera-relative)
              // inputStrafe: +1 = strafe right, -1 = strafe left (camera-relative)
              moveX = Math.sin(moveFwdAngle) * inputFwd + Math.sin(moveRightAngle) * inputStrafe;
@@ -2281,8 +2281,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         sceneRef.current = null;
         remoteAvatarsRef.current = {};
         avatarRotRef.current = 0;
-        camYawRef.current = Math.PI;
-        camYawSmoothRef.current = Math.PI;
+        camYawRef.current = 0;
+        camYawSmoothRef.current = 0;
       };
     } catch (e) {
       console.error("[CityCanvas] init error:", e);
