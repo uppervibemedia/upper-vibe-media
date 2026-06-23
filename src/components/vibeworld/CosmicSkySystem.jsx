@@ -507,20 +507,18 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
 
 
-  // ── Horizon planets — locked to skybox rotation, arc high over north, low over beach ──
-  // cos(angle) < 0  → north side (behind buildings) → push high in sky
-  // cos(angle) > 0  → south/beach side → stay low on horizon
+  // ── Horizon planets — full orbital arc: high over north (behind city), below horizon on south (beach side) ──
+  // cosA: -1 = north (high in sky), 0 = east/west (at horizonY), +1 = south/beach (below ground)
   const horizonPlanets = scene.userData.horizonPlanets;
   if (horizonPlanets && skybox) {
     const skyAngle = skybox.rotation.y;
     for (const p of horizonPlanets) {
       const angle = skyAngle + p.angleOffset;
-      const cosA = Math.cos(angle); // -1 = north, +1 = beach/south
+      const cosA = Math.cos(angle); // -1=north, +1=south/beach
 
-      // Height arc: high (30+) over north, low (horizonY) over beach
-      // northFactor goes 0→1 as planet moves to north side
-      const northFactor = Math.max(0, -cosA); // 0 at beach, 1 at full north
-      const arcY = p.horizonY + northFactor * northFactor * 32;
+      // North side: lift high into sky. South/beach side: sink below ground.
+      // arcY = horizonY when cosA=0 (east/west horizon), +high when north, negative when south
+      const arcY = p.horizonY + (-cosA) * 32;
 
       const cx = camera.position.x + Math.sin(angle) * p.radius;
       const cz = camera.position.z + cosA * p.radius;
