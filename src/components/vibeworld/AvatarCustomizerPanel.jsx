@@ -13,6 +13,7 @@ import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 // Avatar type options — "current" is the permanent default; others are TEST only
 const AVATAR_TYPE_OPTIONS = [
   { key: "current", label: "Current Avatar", sub: "Default", icon: "🤖" },
+  { key: "test-rpm", label: "RPM Human", sub: "⚠️ Test Only", icon: "🧑" },
   { key: "test-male", label: "Male Avatar", sub: "⚠️ Test Only", icon: "👨" },
   { key: "test-female", label: "Female Avatar", sub: "⚠️ Test Only", icon: "👩" },
 ];
