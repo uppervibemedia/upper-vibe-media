@@ -1508,7 +1508,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
            vel.z = 0;
          } else if (isMobileRef.current) {
            if (prevLockedRef.current) {
+             // Exiting stage/locked mode — reset camera back behind avatar facing stage
              mobileInputRef.current = { x: 0, y: 0, camDx: 0, camDy: 0 };
+             camYawRef.current = 0;        // camera at +Z side, avatar faces stage
+             camYawSmoothRef.current = 0;
+             avatarRotRef.current = Math.PI; // avatar faces -Z = toward stage
            }
            const joy = mobileInputRef.current;
 
@@ -1534,6 +1538,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
              userTouchingCamRef.current = true;
            }
         } else {
+          if (prevLockedRef.current) {
+            // Desktop: exiting stage mode — snap camera back to stage-facing
+            camYawRef.current = 0;
+            camYawSmoothRef.current = 0;
+            avatarRotRef.current = Math.PI;
+          }
           if (keys.w || keys.arrowup)    { inputFwd =  1; hasAnyInput = true; }
           if (keys.s || keys.arrowdown)  { inputFwd = -1; hasAnyInput = true; }
           if (keys.a || keys.arrowleft)  { inputStrafe = -1; hasAnyInput = true; }
