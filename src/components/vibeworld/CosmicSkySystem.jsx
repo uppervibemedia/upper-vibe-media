@@ -8,12 +8,7 @@
  */
 import * as THREE from "three";
 
-const BASE    = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
-// Four new nebula/galaxy panorama images — used as the sky backdrop panels
-const NEBULA1 = `${BASE}/58c7cb071_ChatGPTImageJun22202606_35_16PM.png`;  // purple burst nebula
-const NEBULA2 = `${BASE}/b31f18ac4_ChatGPTImageJun22202606_35_39PM.png`;  // orange-blue nebula
-const NEBULA3 = `${BASE}/285d48a42_ChatGPTImageJun22202606_35_45PM.png`;  // Saturn ringed planet
-const NEBULA4 = `${BASE}/e21cf0d5f_ChatGPTImageJun22202606_35_36PM.png`;  // spiral galaxy
+
 
 export function createCosmicSky(scene) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -40,54 +35,15 @@ export function createCosmicSky(scene) {
   skyCtx.fillStyle = bgGrad;
   skyCtx.fillRect(0, 0, SKY_W, SKY_H);
 
-  // 2. Milky Way band — broad diagonal smear of nebula color across the equator
-  const mwColors = [
-    { cx: SKY_W * 0.1,  cy: SKY_H * 0.45, rx: SKY_W * 0.35, ry: SKY_H * 0.22, color: "rgba(80,40,130,0.18)" },
-    { cx: SKY_W * 0.4,  cy: SKY_H * 0.50, rx: SKY_W * 0.40, ry: SKY_H * 0.18, color: "rgba(40,60,150,0.14)" },
-    { cx: SKY_W * 0.7,  cy: SKY_H * 0.48, rx: SKY_W * 0.38, ry: SKY_H * 0.20, color: "rgba(100,30,120,0.16)" },
-    { cx: SKY_W * 1.0,  cy: SKY_H * 0.52, rx: SKY_W * 0.30, ry: SKY_H * 0.16, color: "rgba(60,40,160,0.12)" },
-    // Upper hemisphere nebula blobs
-    { cx: SKY_W * 0.2,  cy: SKY_H * 0.18, rx: SKY_W * 0.20, ry: SKY_H * 0.14, color: "rgba(120,40,80,0.12)" },
-    { cx: SKY_W * 0.6,  cy: SKY_H * 0.22, rx: SKY_W * 0.25, ry: SKY_H * 0.16, color: "rgba(30,60,120,0.14)" },
-    { cx: SKY_W * 0.85, cy: SKY_H * 0.15, rx: SKY_W * 0.18, ry: SKY_H * 0.12, color: "rgba(80,20,140,0.11)" },
-    // Zenith coverage — fill the very top so it's never bare
-    { cx: SKY_W * 0.3,  cy: SKY_H * 0.04, rx: SKY_W * 0.28, ry: SKY_H * 0.10, color: "rgba(50,30,110,0.15)" },
-    { cx: SKY_W * 0.75, cy: SKY_H * 0.06, rx: SKY_W * 0.22, ry: SKY_H * 0.09, color: "rgba(70,20,100,0.13)" },
-    { cx: SKY_W * 0.5,  cy: SKY_H * 0.02, rx: SKY_W * 0.32, ry: SKY_H * 0.08, color: "rgba(40,40,130,0.12)" },
-  ];
-  for (const b of mwColors) {
-    const g = skyCtx.createRadialGradient(b.cx, b.cy, 0, b.cx, b.cy, Math.max(b.rx, b.ry));
-    g.addColorStop(0,   b.color);
-    g.addColorStop(0.5, b.color.replace(/[\d.]+\)$/, "0.06)"));
-    g.addColorStop(1,   "rgba(0,0,0,0)");
-    skyCtx.save();
-    skyCtx.scale(1, b.ry / b.rx);
-    skyCtx.fillStyle = g;
-    skyCtx.beginPath();
-    skyCtx.arc(b.cx, b.cy * (b.rx / b.ry), b.rx, 0, Math.PI * 2);
-    skyCtx.fill();
-    skyCtx.restore();
-  }
-
-  // 3. Brighter nebula color pockets — teal, orange, magenta accents
-  const nebulaAccents = [
-    { cx: SKY_W * 0.15, cy: SKY_H * 0.38, r: SKY_W * 0.10, color: "rgba(0,180,200,0.10)" },
-    { cx: SKY_W * 0.55, cy: SKY_H * 0.30, r: SKY_W * 0.08, color: "rgba(200,80,20,0.09)" },
-    { cx: SKY_W * 0.80, cy: SKY_H * 0.42, r: SKY_W * 0.09, color: "rgba(160,40,200,0.11)" },
-    { cx: SKY_W * 0.35, cy: SKY_H * 0.10, r: SKY_W * 0.07, color: "rgba(0,140,220,0.10)" },
-    { cx: SKY_W * 0.65, cy: SKY_H * 0.08, r: SKY_W * 0.08, color: "rgba(180,60,140,0.09)" },
-    { cx: SKY_W * 0.92, cy: SKY_H * 0.20, r: SKY_W * 0.07, color: "rgba(40,120,200,0.10)" },
-    { cx: SKY_W * 0.05, cy: SKY_H * 0.25, r: SKY_W * 0.06, color: "rgba(200,100,40,0.08)" },
-  ];
-  for (const a of nebulaAccents) {
-    const g = skyCtx.createRadialGradient(a.cx, a.cy, 0, a.cx, a.cy, a.r);
-    g.addColorStop(0, a.color);
-    g.addColorStop(1, "rgba(0,0,0,0)");
-    skyCtx.fillStyle = g;
-    skyCtx.beginPath();
-    skyCtx.arc(a.cx, a.cy, a.r, 0, Math.PI * 2);
-    skyCtx.fill();
-  }
+  // 2. Single subtle milky way sweep — one soft diagonal band, very low opacity
+  const mwGrad = skyCtx.createLinearGradient(0, SKY_H * 0.2, SKY_W, SKY_H * 0.7);
+  mwGrad.addColorStop(0,   "rgba(0,0,0,0)");
+  mwGrad.addColorStop(0.3, "rgba(60,40,110,0.07)");
+  mwGrad.addColorStop(0.5, "rgba(80,50,130,0.10)");
+  mwGrad.addColorStop(0.7, "rgba(60,40,110,0.07)");
+  mwGrad.addColorStop(1,   "rgba(0,0,0,0)");
+  skyCtx.fillStyle = mwGrad;
+  skyCtx.fillRect(0, 0, SKY_W, SKY_H);
 
   // 4. Stars — thousands of tiny dots at randomised brightness across entire canvas
   const starCount = isMobile ? 1800 : 4000;
@@ -355,42 +311,7 @@ export function createCosmicSky(scene) {
   };
   }
 
-  // ── Nebula image panels — 8 panels (each image used twice at offset angles)
-  // giving full 360° coverage with healthy overlap so no gaps ever appear.
-  // depthTest:true → land/buildings occlude them at the bottom edge.
-  const nebulaLoader = new THREE.TextureLoader();
-  const nebulaDefs = [
-    // First ring — evenly spread at 45° intervals
-    { url: NEBULA1, angle: Math.PI * 0.0,   scale: [90, 58], opacity: 0.72 },
-    { url: NEBULA2, angle: Math.PI * 0.5,   scale: [88, 56], opacity: 0.68 },
-    { url: NEBULA3, angle: Math.PI * 1.0,   scale: [90, 58], opacity: 0.74 },
-    { url: NEBULA4, angle: Math.PI * 1.5,   scale: [88, 56], opacity: 0.66 },
-    // Second ring — offset by 22.5° to fill the gaps between first ring
-    { url: NEBULA2, angle: Math.PI * 0.25,  scale: [86, 54], opacity: 0.60 },
-    { url: NEBULA3, angle: Math.PI * 0.75,  scale: [84, 52], opacity: 0.62 },
-    { url: NEBULA4, angle: Math.PI * 1.25,  scale: [86, 54], opacity: 0.58 },
-    { url: NEBULA1, angle: Math.PI * 1.75,  scale: [84, 52], opacity: 0.60 },
-  ];
-  const nebulaPanels = nebulaDefs.map((def) => {
-    const tex = nebulaLoader.load(def.url);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.minFilter = THREE.LinearFilter;
-    tex.generateMipmaps = false;
-    const mat = new THREE.SpriteMaterial({
-      map: tex,
-      transparent: true,
-      opacity: def.opacity,
-      depthWrite: false,
-      depthTest: true,
-      blending: THREE.AdditiveBlending,
-    });
-    const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(def.scale[0], def.scale[1], 1);
-    sprite.renderOrder = 1;
-    scene.add(sprite);
-    return { sprite, mat, baseAngle: def.angle, baseOpacity: def.opacity };
-  });
-  scene.userData.nebulaPanels = nebulaPanels;
+  // No separate nebula panels — the canvas skybox handles the full sky.
 
   scene.fog = new THREE.Fog("#101835", 75, 95);
 }
@@ -441,24 +362,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const skyFrame = scene.userData._skyFrame;
   const updateSlow = !isMobile || skyFrame % 3 === 0;
 
-  // ── Nebula panels — 8 panels in full 360° ring high in the sky ──
-  const nebulaPanels = scene.userData.nebulaPanels;
-  if (nebulaPanels && updateSlow) {
-    // r=72: inside the skybox. Y = camera.y + 28: well above all land/buildings
-    // so depthTest:true means land never shows sky bleed through ground.
-    const r = 72;
-    const skyY = camera.position.y + 28;
-    const driftSpeed = Math.PI * 2 / 1200; // very slow — full lap ~20 min
-    nebulaPanels.forEach((panel, i) => {
-      const a = t * driftSpeed + panel.baseAngle;
-      panel.sprite.position.set(
-        camera.position.x + Math.sin(a) * r,
-        skyY + Math.sin(t * 0.03 + i * 0.8) * 3,
-        camera.position.z + Math.cos(a) * r,
-      );
-      panel.mat.opacity = panel.baseOpacity + Math.sin(t * 0.15 + i * 0.7) * 0.05;
-    });
-  }
+
 
   // ── Star twinkling — throttled on mobile ────────────────────────
   const starsMesh = scene.userData.stars;
