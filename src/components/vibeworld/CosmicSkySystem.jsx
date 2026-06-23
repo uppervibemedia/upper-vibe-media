@@ -206,10 +206,8 @@ export function createCosmicSky(scene) {
   }
   scene.userData.asteroids = asteroids;
 
-  // ── MEGA ASTEROID — desktop only (too expensive for mobile) ──────
-  if (isMobile) {
-    scene.userData.megaAsteroid = null;
-  } else {
+  // ── MEGA ASTEROID — every 60s desktop, every 120s mobile ────────
+  {
   // Head: large glowing fireball
   const mac = document.createElement("canvas");
   mac.width = 128; mac.height = 128;
@@ -266,9 +264,10 @@ export function createCosmicSky(scene) {
     tail: mtail, tmat: mtmat,
     active: false, life: 0, maxLife: 0,
     vx: 0, vy: 0, vz: 0,
-    nextFire: performance.now() * 0.001 + 15,
+    nextFire: performance.now() * 0.001 + (isMobile ? 30 : 15),
+    interval: isMobile ? 120 : 60,
   };
-  } // end !isMobile block for mega asteroid
+  }
 
   // ── Saturn planet images — two real photo sprites blended into the dark sky ──
   // Both images have pure-black backgrounds so NormalBlending makes them invisible
@@ -289,7 +288,7 @@ export function createCosmicSky(scene) {
   });
   const sat1 = new THREE.Sprite(sat1Mat);
   sat1.scale.set(52, 36, 1);
-  sat1.renderOrder = 1;
+  sat1.renderOrder = 3;
   scene.add(sat1);
 
   // Image 2: glowing planet + nebula — upper-right sky region
@@ -306,7 +305,7 @@ export function createCosmicSky(scene) {
   });
   const sat2 = new THREE.Sprite(sat2Mat);
   sat2.scale.set(46, 32, 1);
-  sat2.renderOrder = 1;
+  sat2.renderOrder = 3;
   scene.add(sat2);
 
   scene.userData.saturn = {
@@ -366,20 +365,28 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
   const saturnData = scene.userData.saturn;
   if (saturnData && updateSlow) {
+    // Place planets on the skybox sphere surface (r≈70), upper-left and upper-right quadrants
+    // Angles are in world space so they drift slowly with skybox rotation
+    const skyRot = skybox ? skybox.rotation.y : 0;
+    const r = 70;
+    // Planet 1: upper-left quadrant (angle ~210° from forward)
+    const a1 = skyRot + Math.PI * 1.2;
     saturnData.sprite.position.set(
-      camera.position.x - 55,
+      camera.position.x + Math.sin(a1) * r,
       camera.position.y + 28,
-      camera.position.z - 20,
+      camera.position.z + Math.cos(a1) * r,
     );
-    saturnData.mat.opacity = 0.90 + Math.sin(t * 0.35) * 0.06;
+    saturnData.mat.opacity = 0.95 + Math.sin(t * 0.35) * 0.04;
 
     if (saturnData.sprite2) {
+      // Planet 2: upper-right quadrant (angle ~330° from forward)
+      const a2 = skyRot + Math.PI * 1.85;
       saturnData.sprite2.position.set(
-        camera.position.x + 52,
+        camera.position.x + Math.sin(a2) * r,
         camera.position.y + 20,
-        camera.position.z + 15,
+        camera.position.z + Math.cos(a2) * r,
       );
-      saturnData.mat2.opacity = 0.85 + Math.sin(t * 0.28 + 1.5) * 0.07;
+      saturnData.mat2.opacity = 0.90 + Math.sin(t * 0.28 + 1.5) * 0.05;
     }
   }
 
@@ -449,7 +456,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
         mega.active = false;
         mega.amat.opacity = 0;
         mega.tmat.opacity = 0;
-        mega.nextFire = t + 60 + Math.random() * 10; // ~every 60s
+        mega.nextFire = t + (mega.interval || 60) + Math.random() * 10;
       } else {
         const prog = mega.life / mega.maxLife;
         const envelope = Math.min(prog * 5, 1) * Math.min((1 - prog) * 5, 1);
