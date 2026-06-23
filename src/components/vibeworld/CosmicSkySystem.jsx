@@ -324,9 +324,9 @@ export function createCosmicSky(scene) {
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor:  "rgba(80,180,255,0.18)",
       ringColor:  "rgba(120,200,255,0.35)",
-      size: isMobile ? 3.5 : 5.0,
-      startX: -55, startY: 9, startZ: 32,
-      driftSpeed: 0.4, // world units per 100s — very slow
+      size: isMobile ? 7.0 : 10.0,
+      startX: -55, startY: 10, startZ: 32,
+      driftSpeed: 0.4,
     },
     // East planet — warm amber/purple ringed planet
     {
@@ -334,8 +334,8 @@ export function createCosmicSky(scene) {
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
       glowColor:  "rgba(220,140,60,0.18)",
       ringColor:  "rgba(200,160,80,0.30)",
-      size: isMobile ? 3.0 : 4.2,
-      startX: 55, startY: 8, startZ: 30,
+      size: isMobile ? 6.0 : 8.4,
+      startX: 55, startY: 9, startZ: 30,
       driftSpeed: -0.35,
     },
   ];
@@ -469,16 +469,21 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
 
 
-  // ── Horizon planets — slow east/west drift + gentle bob ─────────
+  // ── Horizon planets — continuous drift across the sky + gentle bob ──
   const horizonPlanets = scene.userData.horizonPlanets;
   if (horizonPlanets && updateSlow) {
     for (const p of horizonPlanets) {
-      // Drift slowly along X axis; wrap when they go too far
-      const drift = Math.sin(t * p.driftSpeed * 0.01) * 18;
-      p.sprite.position.x = p.startX + drift;
-      p.sprite.position.y = p.startY + Math.sin(t * 0.08 + p.startX) * 0.5;
-      // Gentle opacity breathe
-      p.mat.opacity = 0.75 + Math.sin(t * 0.12 + p.startX) * 0.08;
+      // True linear drift: moves at ~1.2 world-units per minute, wraps ±70
+      const RANGE = 70;
+      const speed = p.driftSpeed * 0.02; // world units / second
+      if (!p._x) p._x = p.startX;
+      p._x += speed * (isMobile ? 3 : 1) * dt * (isMobile ? 1 : 1);
+      // Wrap to stay within the sky sphere
+      if (p._x > RANGE)  p._x -= RANGE * 2;
+      if (p._x < -RANGE) p._x += RANGE * 2;
+      p.sprite.position.x = p._x;
+      p.sprite.position.y = p.startY + Math.sin(t * 0.07 + p.startX) * 0.8;
+      p.mat.opacity = 0.80 + Math.sin(t * 0.10 + p.startX) * 0.08;
     }
   }
 
