@@ -59,7 +59,7 @@ const CAM_HEIGHT = 2.4;       // above avatar ground position
 const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
 const CAM_FOLLOW_SPEED = 6.0; // how fast camera angle follows avatar
 const CAM_PITCH_MIN = -0.15;  // radians — slight look down only
-const CAM_PITCH_MAX =  0.65;  // radians — look up but never overhead (~37°)
+const CAM_PITCH_MAX =  0.48;  // radians — look up but never near zenith/skybox pole (~27°)
 const IDLE_ORBIT_DELAY = 120.0; // seconds before idle orbit starts (2 minutes)
 const IDLE_ORBIT_SPEED = 0.18; // radians/sec for idle orbit (very slow)
 
@@ -2132,8 +2132,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-
-
         // ─── LAUNCH PAD DETECTION — air launch ───────────────────────
         if (hbRidingRef.current && frameRef.current % 6 === 0) {
           for (const pad of LAUNCH_PADS) {
@@ -2155,17 +2153,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── BEACH STARGAZING ────────────────────────────────────────
+        // ─── BEACH STARGAZING — capped pitch, never reaches skybox pole seam ──
         if (pz > 18 && !lockedRef.current && !ferrisRidingRef.current && !hbRidingRef.current && idleTimerRef.current > 8.0) {
           if (!scene.userData._stargazeBlend) scene.userData._stargazeBlend = 0;
-          scene.userData._stargazeBlend = Math.min(1, scene.userData._stargazeBlend + dt * 0.6);
+          scene.userData._stargazeBlend = Math.min(1, scene.userData._stargazeBlend + dt * 0.45);
           const sg = scene.userData._stargazeBlend;
-          const sp = Math.sin(t * 0.05) * 0.4;
-          const nCamX = px - Math.sin(rot + camYawSmoothRef.current) * CAM_DIST * Math.cos(camPitchSmoothRef.current);
-          const nCamY = py + CAM_HEIGHT + Math.sin(camPitchSmoothRef.current) * CAM_DIST * 1.4;
-          const nCamZ = pz - Math.cos(rot + camYawSmoothRef.current) * CAM_DIST * Math.cos(camPitchSmoothRef.current);
-          camera.position.set(nCamX + (px + Math.sin(sp) * 1.5 - nCamX) * sg, nCamY + (py + 0.6 - nCamY) * sg, nCamZ + (pz + 2.0 - nCamZ) * sg);
-          camera.lookAt(px + Math.sin(sp) * 8 * sg, py + CAM_LOOK_Y + (12 - CAM_LOOK_Y) * sg, pz + Math.cos(sp) * 8 * sg);
+          const sp = Math.sin(t * 0.035) * 0.25;
+          camera.position.set(px + Math.sin(sp) * 0.8 * sg, py + CAM_HEIGHT + 0.35 * sg, pz + 1.5 * sg);
+          camera.lookAt(px + Math.sin(sp) * 5 * sg, py + CAM_LOOK_Y + (5.0 - CAM_LOOK_Y) * sg, pz + Math.cos(sp) * 3 * sg);
         } else {
           if (scene.userData._stargazeBlend > 0) scene.userData._stargazeBlend = Math.max(0, scene.userData._stargazeBlend - dt * 1.5);
         }
