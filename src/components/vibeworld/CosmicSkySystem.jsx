@@ -436,11 +436,11 @@ export function createCosmicSky(scene) {
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0.85,
       depthWrite: false,
-      renderOrder: 3,
+      depthTest: true,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    psprite.renderOrder = 3;
+    psprite.renderOrder = -1;
     scene.add(psprite);
 
     return {
