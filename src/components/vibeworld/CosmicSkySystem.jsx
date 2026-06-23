@@ -324,9 +324,9 @@ export function createCosmicSky(scene) {
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor:  "rgba(80,180,255,0.18)",
       ringColor:  "rgba(120,200,255,0.35)",
-      size: isMobile ? 7.0 : 10.0,
-      startX: -55, startY: 10, startZ: 32,
-      driftSpeed: 0.4,
+      size: isMobile ? 18.0 : 22.0,
+      angle: Math.PI * 0.85, startY: 12, radius: 68,
+      driftSpeed: 0.004,
     },
     // East planet — warm amber/purple ringed planet
     {
@@ -334,9 +334,9 @@ export function createCosmicSky(scene) {
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
       glowColor:  "rgba(220,140,60,0.18)",
       ringColor:  "rgba(200,160,80,0.30)",
-      size: isMobile ? 6.0 : 8.4,
-      startX: 55, startY: 9, startZ: 30,
-      driftSpeed: -0.35,
+      size: isMobile ? 15.0 : 19.0,
+      angle: Math.PI * 0.15, startY: 11, radius: 68,
+      driftSpeed: -0.003,
     },
   ];
 
@@ -403,16 +403,15 @@ export function createCosmicSky(scene) {
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    psprite.position.set(def.startX, def.startY, def.startZ);
     psprite.renderOrder = 3;
     scene.add(psprite);
 
     return {
       sprite: psprite,
       mat: pmat,
-      startX: def.startX,
+      angle: def.angle,
       startY: def.startY,
-      startZ: def.startZ,
+      radius: def.radius,
       driftSpeed: def.driftSpeed,
     };
   });
@@ -469,21 +468,17 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
 
 
-  // ── Horizon planets — continuous drift across the sky + gentle bob ──
+  // ── Horizon planets — orbit camera like skybox, drift slowly ────
   const horizonPlanets = scene.userData.horizonPlanets;
-  if (horizonPlanets && updateSlow) {
+  if (horizonPlanets) {
     for (const p of horizonPlanets) {
-      // True linear drift: moves at ~1.2 world-units per minute, wraps ±70
-      const RANGE = 70;
-      const speed = p.driftSpeed * 0.02; // world units / second
-      if (!p._x) p._x = p.startX;
-      p._x += speed * (isMobile ? 3 : 1) * dt * (isMobile ? 1 : 1);
-      // Wrap to stay within the sky sphere
-      if (p._x > RANGE)  p._x -= RANGE * 2;
-      if (p._x < -RANGE) p._x += RANGE * 2;
-      p.sprite.position.x = p._x;
-      p.sprite.position.y = p.startY + Math.sin(t * 0.07 + p.startX) * 0.8;
-      p.mat.opacity = 0.80 + Math.sin(t * 0.10 + p.startX) * 0.08;
+      // Advance angle — very slow drift
+      p.angle += p.driftSpeed * dt;
+      // Sit at horizon height, orbiting around the camera
+      const cx = camera.position.x + Math.sin(p.angle) * p.radius;
+      const cz = camera.position.z + Math.cos(p.angle) * p.radius;
+      p.sprite.position.set(cx, p.startY + Math.sin(t * 0.05 + p.angle) * 1.0, cz);
+      p.mat.opacity = 0.82 + Math.sin(t * 0.08 + p.angle) * 0.06;
     }
   }
 

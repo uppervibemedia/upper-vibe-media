@@ -1528,7 +1528,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const cdx = joy.camDx || 0;
           const cdy = joy.camDy || 0;
           if (Math.abs(cdx) > 0.0001 || Math.abs(cdy) > 0.0001) {
-            camYawRef.current   -= cdx; // drag right = positive dx = rotate camera right (negative yaw offset)
+            camYawRef.current   += cdx; // drag right = positive dx = rotate camera right (positive yaw offset)
             camPitchRef.current  = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current + cdy));
             userTouchingCamRef.current = true;
             idleTimerRef.current = 0;
