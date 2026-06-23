@@ -869,22 +869,26 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </div>
       )}
 
-      {/* ── Top HUD row: Exit (left) | UVC (right) ── */}
+      {/* ── Top HUD row: Exit (left) | TV Mode + UVC (right) ── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: loading ? 0 : 1 }}
         transition={{ delay: 0.4 }}
-        className="absolute top-0 left-0 right-0 z-[55] flex items-center justify-between px-1.5"
+        className="absolute top-0 left-0 right-0 flex items-center justify-between"
         style={{
+          zIndex: 200,
+          pointerEvents: "none",
           paddingTop: isMobile && mobileLayout
             ? `${mobileLayout.sa.top + 4}px`
-            : "calc(env(safe-area-inset-top, 0px) + 4px)"
+            : "calc(env(safe-area-inset-top, 0px) + 4px)",
+          paddingLeft: "calc(env(safe-area-inset-left, 0px) + 6px)",
+          paddingRight: "calc(env(safe-area-inset-right, 0px) + 6px)",
         }}
       >
-        {/* Left: icon-only Exit */}
+        {/* Left: Exit button */}
         <button
           onClick={onExit}
-          onTouchStart={(e) => e.stopPropagation()}
+          onTouchStart={(e) => { e.stopPropagation(); }}
           className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
           style={{
             background: "rgba(255,255,255,0.1)",
@@ -896,6 +900,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             minWidth: "44px",
             minHeight: "44px",
             touchAction: "manipulation",
+            pointerEvents: "auto",
+            cursor: "pointer",
           }}
           aria-label="Exit Vibe City"
         >
@@ -903,27 +909,34 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </button>
 
         {/* Right: TV Mode toggle + UVC badge */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* TV Mode toggle */}
+        <div className="flex items-center gap-2 flex-shrink-0" style={{ pointerEvents: "auto" }}>
+          {/* TV Mode toggle — 44×44 minimum iOS tap target */}
           <button
             onClick={() => tvMode ? disableTvMode() : enableTvMode()}
-            onTouchStart={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 rounded-full transition-all hover:brightness-110 active:scale-95"
+            onTouchStart={(e) => { e.stopPropagation(); }}
+            className="flex items-center justify-center gap-1 rounded-full transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
             style={{
-              background: tvMode ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.07)",
-              backdropFilter: "blur(10px)",
-              border: tvMode ? "1px solid rgba(0,229,255,0.4)" : "1px solid rgba(255,255,255,0.08)",
-              color: tvMode ? "#00E5FF" : "rgba(255,255,255,0.45)",
-              padding: isMobile ? "4px 7px" : "5px 10px",
-              minHeight: "32px",
+              background: tvMode ? "rgba(0,229,255,0.22)" : "rgba(255,255,255,0.1)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              border: tvMode ? "1.5px solid rgba(0,229,255,0.5)" : "1px solid rgba(255,255,255,0.14)",
+              color: tvMode ? "#00E5FF" : "rgba(255,255,255,0.6)",
+              minWidth: "44px",
+              minHeight: "44px",
+              height: "44px",
+              paddingLeft: isMobile ? "12px" : "12px",
+              paddingRight: isMobile ? "12px" : "12px",
               touchAction: "manipulation",
+              cursor: "pointer",
+              WebkitTapHighlightColor: "rgba(0,229,255,0.2)",
             }}
             title={tvMode ? "Exit TV Mode" : "TV Mode — mirror to TV"}
+            aria-label={tvMode ? "Exit TV Mode" : "Enter TV Mode"}
           >
-            <span style={{ fontSize: isMobile ? 9 : 10 }}>📺</span>
-            <span className="font-black tracking-wider"
-              style={{ fontSize: isMobile ? "7px" : "9px", letterSpacing: "0.1em" }}>
-              {tvMode ? "EXIT TV" : "TV"}
+            <span style={{ fontSize: 13, lineHeight: 1 }}>📺</span>
+            <span className="font-black"
+              style={{ fontSize: isMobile ? "9px" : "10px", letterSpacing: "0.1em" }}>
+              {tvMode ? "EXIT" : "TV"}
             </span>
           </button>
 
@@ -933,12 +946,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
               background: "rgba(255,255,255,0.05)",
               backdropFilter: "blur(10px)",
               border: "1px solid rgba(255,255,255,0.06)",
-              padding: isMobile ? "2px 5px" : "6px 12px",
+              padding: isMobile ? "4px 7px" : "6px 12px",
+              height: "32px",
             }}
           >
             <span className="font-heading font-black text-white/25"
               style={{
-                fontSize: isMobile ? "6px" : "10px",
+                fontSize: isMobile ? "7px" : "10px",
                 letterSpacing: isMobile ? "0.08em" : "0.2em",
               }}
             >
