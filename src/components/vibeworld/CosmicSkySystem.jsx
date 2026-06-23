@@ -617,9 +617,7 @@ export function createCosmicSky(scene) {
   });
   scene.userData.horizonPlanets = planets;
 
-  // Fog pushed far back — prevents dark dome/wall artifact over beach.
-  // Color matches the sky horizon so the fade is seamless, not a black band.
-  scene.fog = new THREE.Fog("#0E1A40", 75, 110);
+  // No fog — keeps beach and ocean fully visible with no dark dome/wall artifact.
 }
 
 // ── Helper: compute a natural arc spawn toward the beach horizon ─────
