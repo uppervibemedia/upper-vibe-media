@@ -33,6 +33,8 @@ function neonMat(hex, opacity = 0.7) {
   return new MeshBasicMaterial({ color: new Color(hex), transparent: true, opacity, depthWrite: false });
 }
 
+const _FW_IS_MOB = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
 export function createFerrisWheel(scene) {
   const root = new Group();
   root.name = "ferrisWheel";
@@ -166,16 +168,16 @@ export function createFerrisWheel(scene) {
 
   // ── Outer structural rim — double ring (front + back) ──────────
   const rimFrontMat = mat("#263244", { metalness: 0.75, roughness: 0.22 });
-  const rimFront = new Mesh(new TorusGeometry(WHEEL_RADIUS, 0.18, 10, 72), rimFrontMat);
+  const rimFront = new Mesh(new TorusGeometry(WHEEL_RADIUS, 0.18, 10, _FW_IS_MOB ? 48 : 72), rimFrontMat);
   rimFront.rotation.y = Math.PI / 2;
   rimFront.position.set(0.42, 0, 0);
-  rimFront.castShadow = true;
+  rimFront.castShadow = !_FW_IS_MOB;
   wheelGroup.add(rimFront);
 
-  const rimBack = new Mesh(new TorusGeometry(WHEEL_RADIUS, 0.18, 10, 72), mat("#222E3C", { metalness: 0.75, roughness: 0.25 }));
+  const rimBack = new Mesh(new TorusGeometry(WHEEL_RADIUS, 0.18, 10, _FW_IS_MOB ? 48 : 72), mat("#222E3C", { metalness: 0.75, roughness: 0.25 }));
   rimBack.rotation.y = Math.PI / 2;
   rimBack.position.set(-0.42, 0, 0);
-  rimBack.castShadow = true;
+  rimBack.castShadow = !_FW_IS_MOB;
   wheelGroup.add(rimBack);
 
   // Outer rim neon strip (subtle — between the two structural rings)
@@ -252,32 +254,35 @@ export function createFerrisWheel(scene) {
       new BoxGeometry(0.85, 0.9, 0.65),
       mat(color, { roughness: 0.45, metalness: 0.2 })
     );
-    body.castShadow = true;
+    body.castShadow = !_FW_IS_MOB;
     gondola.add(body);
 
-    // Gondola roof (slightly wider, flat)
-    const roof = new Mesh(
-      new BoxGeometry(0.92, 0.12, 0.7),
-      mat(color, { roughness: 0.35, metalness: 0.25 })
-    );
-    roof.position.y = 0.5;
-    gondola.add(roof);
+    // Gondola roof — skip on mobile
+    if (!_FW_IS_MOB) {
+      const roof = new Mesh(
+        new BoxGeometry(0.92, 0.12, 0.7),
+        mat(color, { roughness: 0.35, metalness: 0.25 })
+      );
+      roof.position.y = 0.5;
+      gondola.add(roof);
+    }
 
-    // Window — front face lighter panel
-    const windowMesh = new Mesh(
-      new BoxGeometry(0.55, 0.44, 0.04),
-      new MeshBasicMaterial({ color: new Color("#A0D8EF"), transparent: true, opacity: 0.38, depthWrite: false })
-    );
-    windowMesh.position.set(0, 0.02, 0.34);
-    gondola.add(windowMesh);
+    // Window + frame — skip on mobile (saves 16 meshes)
+    if (!_FW_IS_MOB) {
+      const windowMesh = new Mesh(
+        new BoxGeometry(0.55, 0.44, 0.04),
+        new MeshBasicMaterial({ color: new Color("#A0D8EF"), transparent: true, opacity: 0.38, depthWrite: false })
+      );
+      windowMesh.position.set(0, 0.02, 0.34);
+      gondola.add(windowMesh);
 
-    // Window frame
-    const winFrame = new Mesh(
-      new BoxGeometry(0.58, 0.47, 0.03),
-      neonMat(color, 0.55)
-    );
-    winFrame.position.set(0, 0.02, 0.345);
-    gondola.add(winFrame);
+      const winFrame = new Mesh(
+        new BoxGeometry(0.58, 0.47, 0.03),
+        neonMat(color, 0.55)
+      );
+      winFrame.position.set(0, 0.02, 0.345);
+      gondola.add(winFrame);
+    }
 
     // Suspension arm from rim to gondola top
     const arm = new Mesh(
@@ -309,11 +314,11 @@ export function createFerrisWheel(scene) {
     wheelGroup.add(tipLight);
   }
 
-  // ─── Carnival string lights — small bulbs along the outer rim ──
+  // ─── Carnival string lights — 8 on mobile, 24 on desktop ───────
   const CARNIVAL_COLORS = ["#FFD700","#FF6644","#44FFAA","#FF44CC","#44AAFF","#FFAA44","#AA44FF","#44FFDD",
                             "#FF4444","#AAFF44","#FF88CC","#44DDFF","#FFB800","#FF6699","#88FF44","#6644FF"];
   const carnivalMats = [];
-  const carnivalCount = 24; // bulbs evenly spaced around rim
+  const carnivalCount = _FW_IS_MOB ? 8 : 24; // fewer bulbs on mobile
   for (let i = 0; i < carnivalCount; i++) {
     const angle = (i / carnivalCount) * Math.PI * 2;
     const rx = Math.sin(angle) * (WHEEL_RADIUS + 0.25);
@@ -387,38 +392,45 @@ export function createFerrisWheel(scene) {
   return { group: root };
 }
 
+const _FERRIS_IS_MOB = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
 // ─── Animation loop tick ──────────────────────────────────────────
-export function animateFerrisWheel(scene, t, audioBeat) {
+export function animateFerrisWheel(scene, t, audioBeat, playerX, playerZ) {
   const fw = scene.userData.ferrisWheel;
   if (!fw) return;
 
-  // Smooth continuous counter-clockwise rotation — ~35s per revolution
-  // Only rotate the wheelGroup around Z — root stays fixed
-  const angle = -(t * 0.18);
-  fw.wheelGroup.rotation.z = angle;
+  // Mobile: skip rotation entirely when player is >35 units away
+  const dx = (playerX ?? 0) - WHEEL_X;
+  const dz = (playerZ ?? 0) - WHEEL_Z;
+  const playerDist = Math.sqrt(dx * dx + dz * dz);
+  const tooFar = _FERRIS_IS_MOB && playerDist > 35;
 
-  // Counter-rotate each gondola so they always hang straight down
-  // Use absolute angle (baseAngle - wheelAngle) so they don't accumulate
-  for (const child of fw.cabinGroup.children) {
-    if (child.name?.startsWith("cabin_")) {
-      const base = child.userData.baseAngle || 0;
-      child.rotation.z = base - angle;
+  if (!tooFar) {
+    const angle = -(t * 0.18);
+    fw.wheelGroup.rotation.z = angle;
+
+    // Counter-rotate gondolas
+    for (const child of fw.cabinGroup.children) {
+      if (child.name?.startsWith("cabin_")) {
+        const base = child.userData.baseAngle || 0;
+        child.rotation.z = base - angle;
+      }
     }
   }
 
-  // Rim neon subtle pulse
-  if (fw.rimNeon?.material) {
+  // Rim neon subtle pulse — skip when far on mobile
+  if (!tooFar && fw.rimNeon?.material) {
     fw.rimNeon.material.opacity = 0.4 + Math.sin(t * 1.8) * 0.15 + audioBeat * 0.2;
   }
 
-  // Hub glow pulse — warm gold
-  if (fw.hubGlow?.material) {
+  // Hub glow pulse
+  if (!tooFar && fw.hubGlow?.material) {
     fw.hubGlow.material.opacity = 0.6 + Math.sin(t * 2.5) * 0.2 + audioBeat * 0.15;
   }
 
-  // Wheel light warm pulse
+  // Wheel light
   if (fw.wheelLight) {
-    fw.wheelLight.intensity = 2.0 + Math.sin(t * 1.1) * 0.5 + audioBeat * 1.0;
+    fw.wheelLight.intensity = tooFar ? 1.5 : 2.0 + Math.sin(t * 1.1) * 0.5 + audioBeat * 1.0;
   }
 
   // Sign billboard
@@ -427,21 +439,19 @@ export function animateFerrisWheel(scene, t, audioBeat) {
     sign.material.opacity = 0.75 + Math.sin(t * 1.4) * 0.18;
   }
 
-  // Carnival string lights — smooth musical pulse with staggered phase
-  const carnivalMats = fw.carnivalMats;
-  if (carnivalMats) {
-    for (const c of carnivalMats) {
-      // Each bulb breathes at slightly different phase — no harsh sync
+  // Carnival lights — mobile: only animate first 8 bulbs; skip when far
+  if (!tooFar && fw.carnivalMats) {
+    const maxBulbs = _FERRIS_IS_MOB ? 8 : fw.carnivalMats.length;
+    for (let i = 0; i < maxBulbs; i++) {
+      const c = fw.carnivalMats[i];
       const wave = Math.sin(t * 1.8 + c.phase) * 0.5 + 0.5;
-      const beatLift = audioBeat * 0.35;
-      c.mat.opacity = 0.35 + wave * 0.45 + beatLift;
+      c.mat.opacity = 0.35 + wave * 0.45 + audioBeat * 0.35;
     }
   }
 
-  // Spoke tip lights — gentle sequential chase with beat
-  const tipLightMats = fw.tipLightMats;
-  if (tipLightMats) {
-    for (const tip of tipLightMats) {
+  // Spoke tip lights — skip when far on mobile
+  if (!tooFar && fw.tipLightMats) {
+    for (const tip of fw.tipLightMats) {
       const wave = Math.sin(t * 2.2 + tip.phase) * 0.5 + 0.5;
       tip.mat.opacity = 0.5 + wave * 0.45 + audioBeat * 0.2;
     }

@@ -665,6 +665,8 @@ export function animateCosmicSky(scene, camera, t, dt) {
   scene.userData._skyFrame++;
   const skyFrame = scene.userData._skyFrame;
   const updateSlow = !isMobile || skyFrame % 3 === 0;
+  // Mobile: skip asteroid + mega asteroid animation entirely every 3 frames
+  const updateAsteroids = !isMobile || skyFrame % 3 === 0;
 
 
 
@@ -701,7 +703,8 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
   // Shooting stars disabled
 
-  // ── Mega Asteroid — one huge slow pass over the beach every 60s ──
+  // ── Mega Asteroid — throttled on mobile ──────────────────────────
+  if (!updateAsteroids) return;
   const mega = scene.userData.megaAsteroid;
   if (mega) {
     if (!mega.active) {

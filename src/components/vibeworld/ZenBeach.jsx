@@ -155,8 +155,9 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   scene.add(zenOrb);
   scene.userData.zenOrb = zenOrb;
 
-  // Floating calm particles
-  for (let fp = 0; fp < 12; fp++) {
+  // Floating calm particles — reduced on mobile
+  const particleCount = isMob ? 4 : 12;
+  for (let fp = 0; fp < particleCount; fp++) {
     const fAng = (fp / 12) * Math.PI * 2 + Math.random() * 0.5;
     const fR = 2.5 + Math.random() * 2;
     const fY = 0.3 + Math.random() * 1.2;
@@ -222,8 +223,8 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   scene.add(sunsetGlow);
   scene.userData.zenSunsetGlow = sunsetGlow;
 
-  // ── GENTLE FOG PARTICLES — drifting mist ──────────────────
-  const fogCount = 40;
+  // ── GENTLE FOG PARTICLES — fewer on mobile ────────────────
+  const fogCount = isMob ? 0 : 40; // disable fog particles on mobile entirely
   const fogGeo = new BufferGeometry();
   const fogPositions = new Float32Array(fogCount * 3);
   const fogData = []; // per-particle metadata for animation
@@ -276,16 +277,20 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   // Neon sign
   createNeonSign(scene, ZEN_X, 3.5, ZEN_Z, "ZEN  BEACH", "#00D4F0");
 
-  // ── WHOLE-BEACH SUNSET GLOW SPRITES — warm orange/pink/purple radial haze ──
-  // Same effect as Zen Beach but spread across the entire sand strip
-  for (const [gx, gz, sw, sh] of [
+  const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  // ── WHOLE-BEACH SUNSET GLOW SPRITES — mobile: only 2 sprites; desktop: all 6 ──
+  const beachGlowDefs = [
     [  0, 26, 38, 14],   // centre beach — large wide wash
     [-18, 24, 22, 10],   // left side
     [ 18, 24, 22, 10],   // right side
     [-10, 30, 18,  9],   // deep left
     [ 10, 30, 18,  9],   // deep right
     [  0, 32, 28,  9],   // shoreline
-  ]) {
+  ];
+  // On mobile: keep only centre + shoreline (index 0 and 5)
+  const activeGlowDefs = isMob ? [beachGlowDefs[0], beachGlowDefs[5]] : beachGlowDefs;
+  for (const [gx, gz, sw, sh] of activeGlowDefs) {
     const gc = document.createElement("canvas");
     gc.width = 256; gc.height = 256;
     const gctx = gc.getContext("2d");
@@ -337,10 +342,10 @@ export function animateZenBeach(scene, t, audioBeat) {
     sunsetLight.intensity = 0.6 + Math.sin(t * 0.25) * 0.2 + audioBeat * 0.15;
   }
 
-  // ── Fog particles — drift upward, reset when too high ─────
+  // ── Fog particles — desktop only (disabled on mobile) ─────
   const fogPoints = scene.userData.zenFog;
   const fogData = scene.userData.zenFogData;
-  if (fogPoints && fogData) {
+  if (fogPoints && fogData && fogData.length > 0) {
     const pos = fogPoints.geometry.attributes.position;
     const arr = pos.array;
     for (let i = 0; i < fogData.length; i++) {
@@ -352,7 +357,6 @@ export function animateZenBeach(scene, t, audioBeat) {
       arr[i * 3 + 2] = fd.baseZ + Math.cos(t * 0.35 + fd.phase) * fd.driftZ;
     }
     pos.needsUpdate = true;
-    // Opacity sways with breath + beat
     if (fogPoints.material?.opacity !== undefined) {
       fogPoints.material.opacity = 0.22 + Math.sin(t * 0.5) * 0.06 + audioBeat * 0.05;
     }

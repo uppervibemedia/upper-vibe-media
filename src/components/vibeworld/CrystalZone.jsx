@@ -2,17 +2,17 @@
  * CrystalZone — Premium Energy Station
  * Center: (-26, -14)  (matches CityCanvas sign placement)
  *
- * - One dominant faceted centerpiece crystal
- * - 7 organized smaller crystals in a clean ring
- * - Glowing circular energy platform
- * - Proximity interaction trigger
- * - Mobile-safe: no heavy particles, minimal animation
+ * MOBILE PERF: All MeshPhysicalMaterial replaced with MeshStandardMaterial + emissive.
+ * No transmission, ior, or thickness on mobile. Reduced to 2 PointLights total on mobile.
+ * Arc lines throttled on mobile — only update every 6 frames.
  */
 import * as THREE from "three";
 
 export const CRYSTAL_ZONE_X  = -26;
 export const CRYSTAL_ZONE_Z  = -14;
 export const CRYSTAL_ZONE_RADIUS = 6;
+
+const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 // ── Faceted crystal geometry: flat base → tapered body → sharp tip ───
 function crystalGeo(radius, height, sides = 7) {
@@ -53,8 +53,21 @@ function mergeGeos(parts) {
   return out;
 }
 
-// ── Materials ─────────────────────────────────────────────────────────
+// ── Materials — mobile uses MeshStandardMaterial (no transmission/ior/thickness) ──
 function makeCenterMat() {
+  if (IS_MOBILE) {
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color("#C8E8FF"),
+      emissive: new THREE.Color("#5577FF"),
+      emissiveIntensity: 0.7,
+      metalness: 0.1,
+      roughness: 0.05,
+      transparent: true,
+      opacity: 0.88,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+  }
   return new THREE.MeshPhysicalMaterial({
     color: new THREE.Color("#C8E8FF"),
     emissive: new THREE.Color("#5577FF"),
@@ -72,6 +85,19 @@ function makeCenterMat() {
 }
 
 function makeSmallMat(color, emissive, opacity = 0.76) {
+  if (IS_MOBILE) {
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color(color),
+      emissive: new THREE.Color(emissive),
+      emissiveIntensity: 0.65,
+      metalness: 0.05,
+      roughness: 0.08,
+      transparent: true,
+      opacity,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+  }
   return new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(color),
     emissive: new THREE.Color(emissive),
@@ -132,12 +158,11 @@ export function createCrystalZone(scene) {
   group.position.set(CRYSTAL_ZONE_X, 0, CRYSTAL_ZONE_Z);
 
   // ── Energy platform — circular base ────────────────────────────────
-  // Soft ground disc
   const baseMat = new THREE.MeshBasicMaterial({
     color: new THREE.Color("#1A0E44"),
     transparent: true, opacity: 0.30, depthWrite: false, side: THREE.DoubleSide,
   });
-  const baseDisc = new THREE.Mesh(new THREE.CircleGeometry(5.5, 64), baseMat);
+  const baseDisc = new THREE.Mesh(new THREE.CircleGeometry(5.5, IS_MOBILE ? 32 : 64), baseMat);
   baseDisc.rotation.x = -Math.PI / 2;
   baseDisc.position.y = 0.02;
   baseDisc.renderOrder = 1;
@@ -148,7 +173,7 @@ export function createCrystalZone(scene) {
     color: new THREE.Color("#7722FF"),
     transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide,
   });
-  const outerRing = new THREE.Mesh(new THREE.RingGeometry(4.8, 5.1, 64), outerRingMat);
+  const outerRing = new THREE.Mesh(new THREE.RingGeometry(4.8, 5.1, IS_MOBILE ? 32 : 64), outerRingMat);
   outerRing.rotation.x = -Math.PI / 2;
   outerRing.position.y = 0.03;
   outerRing.renderOrder = 2;
@@ -178,18 +203,20 @@ export function createCrystalZone(scene) {
   midRing.renderOrder = 2;
   group.add(midRing);
 
-  // Subtle upward light rays on the platform (3 thin cylinders)
-  for (let i = 0; i < 3; i++) {
-    const ang = (i / 3) * Math.PI * 2;
-    const rayMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(i === 0 ? "#88CCFF" : i === 1 ? "#AA77FF" : "#44DDFF"),
-      transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending,
-    });
-    const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.35, 4.5, 6), rayMat);
-    ray.position.set(Math.cos(ang) * 3.0, 2.25, Math.sin(ang) * 3.0);
-    ray.renderOrder = 1;
-    group.add(ray);
+  // Light rays — skip on mobile (transparent additive cylinders are costly)
+  if (!IS_MOBILE) {
+    for (let i = 0; i < 3; i++) {
+      const ang = (i / 3) * Math.PI * 2;
+      const rayMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(i === 0 ? "#88CCFF" : i === 1 ? "#AA77FF" : "#44DDFF"),
+        transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+      });
+      const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.35, 4.5, 6), rayMat);
+      ray.position.set(Math.cos(ang) * 3.0, 2.25, Math.sin(ang) * 3.0);
+      ray.renderOrder = 1;
+      group.add(ray);
+    }
   }
 
   // ── CENTER CRYSTAL ──────────────────────────────────────────────────
@@ -200,7 +227,7 @@ export function createCrystalZone(scene) {
   center.renderOrder = 5;
   group.add(center);
 
-  // Inner glow core (additive cylinder inside)
+  // Inner glow core
   const coreMat = new THREE.MeshBasicMaterial({
     color: new THREE.Color("#AADDFF"),
     transparent: true, opacity: 0.20, depthWrite: false, side: THREE.DoubleSide,
@@ -218,16 +245,19 @@ export function createCrystalZone(scene) {
   centerGlow.renderOrder = 4;
   group.add(centerGlow);
 
-  // Point lights inside
+  // ── LIGHTS — mobile: 1 main + 1 ambient only; desktop: 2 per center + 7 small ──
   const bigLight = new THREE.PointLight("#88CCFF", 4.5, 20);
   bigLight.position.set(0, 4.5, 0);
   group.add(bigLight);
-  const bigLight2 = new THREE.PointLight("#CC88FF", 1.8, 10);
-  bigLight2.position.set(0.4, 2.0, 0.4);
-  group.add(bigLight2);
+
+  let bigLight2 = null;
+  if (!IS_MOBILE) {
+    bigLight2 = new THREE.PointLight("#CC88FF", 1.8, 10);
+    bigLight2.position.set(0.4, 2.0, 0.4);
+    group.add(bigLight2);
+  }
 
   // ── SMALL CRYSTALS — 7 in a clean ring ──────────────────────────────
-  // [radius_from_center, angle_offset, crystal_rad, height, rotZ, color, emissive, opacity]
   const RING_R = 3.2;
   const SMALL = [
     [RING_R, 0,              0.30, 3.0,  0.07, "#AA77FF", "#6600CC", 0.78],
@@ -265,19 +295,23 @@ export function createCrystalZone(scene) {
     glowMesh.renderOrder = 3;
     group.add(glowMesh);
 
-    // One point light per crystal (low intensity)
-    const pl = new THREE.PointLight(col, 0.7, 7);
-    pl.position.set(sx, h * 0.5, sz);
-    group.add(pl);
+    // On mobile: NO per-small-crystal PointLights (saves 7 lights)
+    let pl = null;
+    if (!IS_MOBILE) {
+      pl = new THREE.PointLight(col, 0.7, 7);
+      pl.position.set(sx, h * 0.5, sz);
+      group.add(pl);
+    }
 
     smallCrystalMeshes.push({ mesh, glowMesh, mat, glowMat: gmat, light: pl, h, baseY: 0 });
     smallCrystalPositions.push(new THREE.Vector3(sx, h * 0.72, sz));
   }
 
-  // ── Electric arcs from center tip to 4 small crystals ───────────────
+  // ── Electric arcs — mobile: 2 arcs only; desktop: 4 ─────────────────
   const ARC_COLORS = ["#88EEFF", "#BB88FF", "#00DDFF", "#AA77FF"];
   const bigTip = new THREE.Vector3(0, 8.0, 0);
-  const arcs = [0, 2, 4, 6].map((idx, i) => {
+  const arcIndices = IS_MOBILE ? [0, 4] : [0, 2, 4, 6];
+  const arcs = arcIndices.map((idx, i) => {
     const arc = makeArcLine(ARC_COLORS[i]);
     group.add(arc.line);
     return { ...arc, targetIdx: idx };
@@ -297,6 +331,7 @@ export function createCrystalZone(scene) {
     proximity: 0,
     activated: false,
     activatedTimer: 0,
+    _arcFrame: 0,
   };
 }
 
@@ -304,6 +339,8 @@ export function createCrystalZone(scene) {
 export function animateCrystalZone(scene, t, dt, playerX, playerZ) {
   const cz = scene.userData.crystalZone;
   if (!cz) return;
+
+  cz._arcFrame = (cz._arcFrame || 0) + 1;
 
   // Proximity
   const dx = playerX - CRYSTAL_ZONE_X;
@@ -324,33 +361,34 @@ export function animateCrystalZone(scene, t, dt, playerX, playerZ) {
 
   // ── Center crystal ────────────────────────────────────────────────
   cz.center.rotation.y = t * 0.07;
-  cz.cMat.emissiveIntensity = 0.30 + idlePulse * 0.15 + prox * 0.55 + actBoost * 0.8;
+  cz.cMat.emissiveIntensity = 0.35 + idlePulse * 0.20 + prox * 0.55 + actBoost * 0.8;
   cz.cMat.opacity = 0.85 + prox * 0.10;
   cz.glowMat.opacity = 0.08 + idlePulse * 0.05 + prox * 0.18 + actBoost * 0.25;
   cz.coreMat.opacity = 0.14 + Math.sin(t * 2.2) * 0.06 + prox * 0.20 + actBoost * 0.35;
 
   cz.bigLight.intensity  = 3.0 + idlePulse * 1.5 + prox * 5.0 + actBoost * 8.0;
   cz.bigLight.distance   = 16  + prox * 10;
-  cz.bigLight2.intensity = 1.2 + Math.sin(t * 1.7) * 0.5 + prox * 2.0 + actBoost * 3.0;
-  const hue = (t * 0.07) % 1;
-  cz.bigLight2.color.setHSL(hue, 1.0, 0.6);
 
-  // ── Small crystals — mostly static, only emissive flicker ────────
-  const isMob = typeof window !== "undefined" && window.innerWidth < 768;
+  if (cz.bigLight2) {
+    cz.bigLight2.intensity = 1.2 + Math.sin(t * 1.7) * 0.5 + prox * 2.0 + actBoost * 3.0;
+    const hue = (t * 0.07) % 1;
+    cz.bigLight2.color.setHSL(hue, 1.0, 0.6);
+  }
+
+  // ── Small crystals — mostly static on mobile ──────────────────
   for (let i = 0; i < cz.smallCrystals.length; i++) {
     const sc = cz.smallCrystals[i];
-    // On mobile: skip float animation, just flicker emissive
-    if (!isMob) {
+    if (!IS_MOBILE) {
       const phase = i * 0.9;
       sc.mesh.position.y = Math.sin(t * 0.7 + phase) * 0.06;
       sc.glowMesh.position.y = sc.mesh.position.y;
     }
-    // Slow emissive pulse — don't animate every frame on mobile
-    if (!isMob || i % 2 === 0) {
+    // Mobile: only update every other crystal, slow pulse
+    if (!IS_MOBILE || i % 2 === 0) {
       const sp = Math.sin(t * 0.9 + i * 0.7) * 0.5 + 0.5;
       sc.mat.emissiveIntensity = 0.40 + sp * 0.20 + prox * 0.55 + actBoost * 0.6;
       sc.glowMat.opacity = 0.05 + sp * 0.05 + prox * 0.12;
-      sc.light.intensity = 0.5 + sp * 0.3 + prox * 1.8 + actBoost * 2.0;
+      if (sc.light) sc.light.intensity = 0.5 + sp * 0.3 + prox * 1.8 + actBoost * 2.0;
     }
   }
 
@@ -359,15 +397,16 @@ export function animateCrystalZone(scene, t, dt, playerX, playerZ) {
   cz.outerRingMat.opacity = 0.32 + idlePulse * 0.12 + prox * 0.30 + actBoost * 0.40;
   cz.innerRingMat.opacity = 0.28 + idlePulse * 0.10 + prox * 0.28 + actBoost * 0.45;
   cz.midRingMat.opacity   = 0.16 + idlePulse * 0.07 + prox * 0.20 + actBoost * 0.30;
-  // Rotate inner hex ring
+
   const innerRing = cz.group.getObjectByName("crystalInnerRing");
   if (innerRing) innerRing.rotation.z = t * 0.15;
 
-  // ── Arcs ──────────────────────────────────────────────────────────
+  // ── Arcs — throttled every 6 frames on mobile, every 3 on desktop ──
+  const arcUpdateRate = IS_MOBILE ? 6 : 3;
   if (!cz._arcTimer) cz._arcTimer = 0;
   cz._arcTimer += dt;
   const arcRate = 0.09 - prox * 0.04;
-  const fireArc = cz._arcTimer >= arcRate;
+  const fireArc = cz._arcTimer >= arcRate && (cz._arcFrame % arcUpdateRate === 0);
   if (fireArc) cz._arcTimer = 0;
 
   for (const arc of cz.arcs) {

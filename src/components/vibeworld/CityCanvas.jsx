@@ -415,30 +415,29 @@ function buildPark(scene) {
     loungeFireMats.push(fGlowMat);
   }
 
-  // ── Neon ambient lighting — floor arcs, vertical pillars, energy ring ──
+  // ── Neon ambient lighting — 3 RingGeometry arcs instead of 96 sphere dots ──
   const loungeNeonMats = [...loungeFireMats];
+  const _isMobLounge = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  // Floor neon arcs — curved strips on the platform perimeter
+  // Replace 96 arc-dot sphere meshes with 3 simple RingGeometry arcs
+  const ARC_COLORS_L = ["#00D4F0", "#A078FF", "#C43BFF"];
+  const arcRingMats = [];
   for (let a = 0; a < 3; a++) {
-    const arcRadius = 3.2 + a * 0.5;
-    const arcAngle = Math.PI * 0.65;
-    const arcStart = Math.PI - arcAngle / 2;
-    const segments = 32;
-    for (let s = 0; s < segments; s++) {
-      const ang = arcStart + (s / (segments - 1)) * arcAngle;
-      const ax = -22 + Math.cos(ang) * arcRadius;
-      const az = -26 + Math.sin(ang) * arcRadius;
-      const arcDot = new Mesh(
-        new SphereGeometry(0.05, 4, 3),
-        new MeshBasicMaterial({
-          color: new Color(a === 0 ? "#00D4F0" : a === 1 ? "#A078FF" : "#C43BFF"),
-          depthWrite: false, transparent: true, opacity: 0.55,
-        })
-      );
-      arcDot.position.set(ax, 0.02, az);
-      lounge.add(arcDot);
-      loungeNeonMats.push(arcDot.material);
-    }
+    const arcR = 3.2 + a * 0.5;
+    const arcMat = new MeshBasicMaterial({
+      color: new Color(ARC_COLORS_L[a]),
+      depthWrite: false, transparent: true, opacity: 0.45, side: THREE.DoubleSide,
+    });
+    const arcRing = new Mesh(
+      new RingGeometry(arcR - 0.07, arcR + 0.07, _isMobLounge ? 32 : 48),
+      arcMat
+    );
+    arcRing.rotation.x = -Math.PI / 2;
+    arcRing.position.set(-22, 0.02, -26);
+    arcRing.renderOrder = 1;
+    lounge.add(arcRing);
+    arcRingMats.push(arcMat);
+    loungeNeonMats.push(arcMat);
   }
 
   // Vertical neon accent pillars — 4 around the lounge
@@ -1101,7 +1100,8 @@ function buildPark(scene) {
     { pos: [0,  4.0,   8], color: new Color("#00C8E8"), distance: 16, phase: 3.1, baseI: 1.0 },
     { pos: [0,  3.5, -30], color: new Color("#9B4FFF"), distance: 14, phase: 4.7, baseI: 0.9 },
   ];
-  const neonAmbients = (_isMobLights ? _allNeonAmb.slice(0, 2) : _allNeonAmb).map(({ pos, color, distance, phase, baseI }) => {
+  // Mobile: only 1 neon ambient light (the front one)
+  const neonAmbients = (_isMobLights ? _allNeonAmb.slice(0, 1) : _allNeonAmb).map(({ pos, color, distance, phase, baseI }) => {
     const light = new PointLight();
     light.color.copy(color); light.intensity = baseI; light.distance = distance; light.position.set(...pos);
     scene.add(light);
@@ -1299,7 +1299,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       const asp = rw / Math.max(rh, 1);
       // Reduce far clip on mobile — less geometry enters view when turning, fewer draw calls
-      const camera = new PerspectiveCamera(52, asp, 0.1, isMob ? 70 : 100);
+      const camera = new PerspectiveCamera(52, asp, 0.1, isMob ? 58 : 100);
       cameraRef.current = camera;
       // Start camera at camYaw=0: camera behind avatar facing stage. Use landscape constants if already landscape.
       const [spX, spY, spZ] = effectiveSpawn;
@@ -1724,7 +1724,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           if (stageTex) {
             const stageTexNow = performance.now();
             const nearStage = pz < -10;
-            const stageFps = (isMob && !nearStage) ? 5 : 15;
+            // Mobile: always 5fps regardless of distance
+            const stageFps = isMob ? 5 : 15;
             const STAGE_TEX_INTERVAL = 1000 / stageFps;
             if (!scene.userData._lastStageTexTime || stageTexNow - scene.userData._lastStageTexTime >= STAGE_TEX_INTERVAL) {
               stageTex.needsUpdate = true;
@@ -1803,8 +1804,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── STAGE SCREEN GLOW + LOUNGE NEON — throttled on mobile ──
-        if (!isMob || frameRef.current % 4 === 0) {
+        // ─── STAGE SCREEN GLOW — only animate when near stage on mobile ──
+        const nearStageForGlow = pz < -8;
+        if (!isMob || (nearStageForGlow && frameRef.current % 4 === 0)) {
           const screenGlowMesh = scene.getObjectByName("stageScreenGlow");
           if (screenGlowMesh?.material) {
             screenGlowMesh.material.opacity = 0.45 + audioBeat * 0.7 + (audioIntensityRef?.current || 0) * 0.3;
@@ -1882,7 +1884,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         });
         // Distance-gate zone animations on mobile — skip if player is far away
         if (!isMob || nearBeach || frameRef.current % 3 === 0) animateZenBeach(scene, t, audioBeat);
-        if (!isMob || nearDanceFloor || frameRef.current % 2 === 0) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
+        // Dance floor — throttle to every 4 frames on mobile, only when near
+        if (!isMob ? true : (nearDanceFloor && frameRef.current % 4 === 0)) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         if (!isMob || frameRef.current % 3 === 0) animateCrystalZone(scene, t, dt, px, pz);
         if (!isMob || nearDanceFloor || frameRef.current % 3 === 0) animateJukebox(scene, t, audioBeat);
 
@@ -1921,7 +1924,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const nearFerris = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z)) < 28;
         if (!isMob || nearLaunch || frameRef.current % 4 === 0) animateLaunchZone(scene, t, audioBeat, dt);
         if (!isMob || nearFerris || frameRef.current % 4 === 0) animateHoverboardZone(scene, t, audioBeat);
-        if (!isMob || ferrisRidingRef.current || nearFerris || frameRef.current % 6 === 0) animateFerrisWheel(scene, t, audioBeat);
+        if (!isMob || ferrisRidingRef.current || nearFerris || frameRef.current % 6 === 0) animateFerrisWheel(scene, t, audioBeat, px, pz);
 
         // ── WATER SPLASH — hoverboard spray when rider is in the ocean zone ──
         const splash = splashParticlesRef.current;
