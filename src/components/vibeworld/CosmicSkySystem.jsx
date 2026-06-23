@@ -35,44 +35,92 @@ export function createCosmicSky(scene) {
   skyCtx.fillStyle = bgGrad;
   skyCtx.fillRect(0, 0, SKY_W, SKY_H);
 
-  // 2. Single subtle milky way sweep — one soft diagonal band, very low opacity
-  const mwGrad = skyCtx.createLinearGradient(0, SKY_H * 0.2, SKY_W, SKY_H * 0.7);
-  mwGrad.addColorStop(0,   "rgba(0,0,0,0)");
-  mwGrad.addColorStop(0.3, "rgba(60,40,110,0.07)");
-  mwGrad.addColorStop(0.5, "rgba(80,50,130,0.10)");
-  mwGrad.addColorStop(0.7, "rgba(60,40,110,0.07)");
-  mwGrad.addColorStop(1,   "rgba(0,0,0,0)");
+  // 2. Galaxy band — wide diagonal sweep with layered nebula clouds
+  // Pass 1: broad soft glow — the galaxy "body"
+  const mwGrad = skyCtx.createLinearGradient(SKY_W * 0.05, SKY_H * 0.08, SKY_W * 0.95, SKY_H * 0.72);
+  mwGrad.addColorStop(0,    "rgba(0,0,0,0)");
+  mwGrad.addColorStop(0.15, "rgba(40,20,80,0.10)");
+  mwGrad.addColorStop(0.30, "rgba(70,30,130,0.18)");
+  mwGrad.addColorStop(0.45, "rgba(50,60,160,0.22)");
+  mwGrad.addColorStop(0.55, "rgba(30,80,150,0.20)");
+  mwGrad.addColorStop(0.70, "rgba(60,30,110,0.15)");
+  mwGrad.addColorStop(0.85, "rgba(20,10,50,0.08)");
+  mwGrad.addColorStop(1,    "rgba(0,0,0,0)");
   skyCtx.fillStyle = mwGrad;
   skyCtx.fillRect(0, 0, SKY_W, SKY_H);
 
-  // 4. Stars — thousands of tiny dots at randomised brightness across entire canvas
-  const starCount = isMobile ? 1800 : 4000;
+  // Pass 2: narrow bright core of the galaxy band
+  const mwCore = skyCtx.createLinearGradient(SKY_W * 0.10, SKY_H * 0.15, SKY_W * 0.90, SKY_H * 0.65);
+  mwCore.addColorStop(0,    "rgba(0,0,0,0)");
+  mwCore.addColorStop(0.35, "rgba(80,50,180,0.08)");
+  mwCore.addColorStop(0.50, "rgba(100,140,220,0.13)");
+  mwCore.addColorStop(0.65, "rgba(80,50,180,0.08)");
+  mwCore.addColorStop(1,    "rgba(0,0,0,0)");
+  skyCtx.fillStyle = mwCore;
+  skyCtx.fillRect(0, 0, SKY_W, SKY_H);
+
+  // Pass 3: scattered nebula cloud blobs along the band (seeded for consistency)
+  const nebRng = (() => { let s = 42; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
+  const nebCount = isMobile ? 8 : 18;
+  for (let n = 0; n < nebCount; n++) {
+    const nx = (0.05 + nebRng() * 0.90) * SKY_W;
+    // Bias toward upper 60% of canvas (the "sky" half of the equirectangular map)
+    const ny = nebRng() * SKY_H * 0.62;
+    const nrx = (0.04 + nebRng() * 0.10) * SKY_W;
+    const nry = nrx * (0.35 + nebRng() * 0.45);
+    const hues = [
+      [80, 40, 180], [40, 80, 200], [100, 30, 160],
+      [30, 100, 180], [60, 20, 140], [20, 60, 200],
+    ];
+    const [r, g, b] = hues[Math.floor(nebRng() * hues.length)];
+    const alpha = 0.05 + nebRng() * 0.09;
+    const ng = skyCtx.createRadialGradient(nx, ny, 0, nx, ny, Math.max(nrx, nry));
+    ng.addColorStop(0,   `rgba(${r},${g},${b},${alpha})`);
+    ng.addColorStop(0.5, `rgba(${r},${g},${b},${(alpha * 0.4).toFixed(3)})`);
+    ng.addColorStop(1,   "rgba(0,0,0,0)");
+    skyCtx.save();
+    skyCtx.scale(1, nry / nrx);
+    skyCtx.fillStyle = ng;
+    skyCtx.beginPath();
+    skyCtx.arc(nx, ny * (nrx / nry), nrx, 0, Math.PI * 2);
+    skyCtx.fill();
+    skyCtx.restore();
+  }
+
+  // 4. Dense distant star field — many tiny 1px dots for depth
+  const starCount = isMobile ? 3000 : 7000;
+  const seededStar = (() => { let s = 99; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
   for (let s = 0; s < starCount; s++) {
-    const sx = Math.random() * SKY_W;
-    const sy = Math.random() * SKY_H;
-    const sr = 0.3 + Math.random() * (Math.random() < 0.04 ? 1.4 : 0.5);
-    const bright = 0.4 + Math.random() * 0.6;
-    // Slightly blue-white tint for most stars, occasional warm/orange star
-    const hue = Math.random() < 0.12 ? `rgba(255,210,160,${bright})` : `rgba(${200 + Math.floor(Math.random()*55)},${210 + Math.floor(Math.random()*45)},255,${bright})`;
+    const sx = seededStar() * SKY_W;
+    const sy = seededStar() * SKY_H;
+    // Tiny distant stars: mostly 0.4–0.8px, a few slightly larger
+    const sr = 0.3 + seededStar() * (seededStar() < 0.05 ? 1.1 : 0.45);
+    const bright = 0.25 + seededStar() * 0.65;
+    const warm = seededStar() < 0.10;
+    const col = warm
+      ? `rgba(255,215,170,${bright.toFixed(2)})`
+      : `rgba(${195 + Math.floor(seededStar() * 60)},${210 + Math.floor(seededStar() * 45)},255,${bright.toFixed(2)})`;
     skyCtx.beginPath();
     skyCtx.arc(sx, sy, sr, 0, Math.PI * 2);
-    skyCtx.fillStyle = hue;
+    skyCtx.fillStyle = col;
     skyCtx.fill();
   }
 
   // 5. Bright hero stars — a handful of large prominent stars
-  const heroStars = isMobile ? 8 : 18;
+  const heroStars = isMobile ? 12 : 28;
+  const seededHero = (() => { let s = 77; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
   for (let h = 0; h < heroStars; h++) {
-    const hx = Math.random() * SKY_W;
-    const hy = Math.random() * SKY_H * 0.85; // avoid very bottom
-    const hr = 1.2 + Math.random() * 2.0;
-    const hg = skyCtx.createRadialGradient(hx, hy, 0, hx, hy, hr * 4);
+    const hx = seededHero() * SKY_W;
+    const hy = seededHero() * SKY_H * 0.80; // keep in upper sky
+    const hr = 1.0 + seededHero() * 1.8;
+    const hg = skyCtx.createRadialGradient(hx, hy, 0, hx, hy, hr * 3.5);
     hg.addColorStop(0,   "rgba(255,255,255,1)");
-    hg.addColorStop(0.2, "rgba(200,230,255,0.5)");
+    hg.addColorStop(0.15,"rgba(220,235,255,0.7)");
+    hg.addColorStop(0.4, "rgba(180,210,255,0.2)");
     hg.addColorStop(1,   "rgba(0,0,0,0)");
     skyCtx.fillStyle = hg;
     skyCtx.beginPath();
-    skyCtx.arc(hx, hy, hr * 4, 0, Math.PI * 2);
+    skyCtx.arc(hx, hy, hr * 3.5, 0, Math.PI * 2);
     skyCtx.fill();
   }
 
