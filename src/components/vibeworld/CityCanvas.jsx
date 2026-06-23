@@ -1723,7 +1723,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const stageTex = scene.userData._stageTex;
           if (stageTex) {
             const stageTexNow = performance.now();
-            const nearStage = pz < -10;
             // Mobile: always 5fps regardless of distance
             const stageFps = isMob ? 5 : 15;
             const STAGE_TEX_INTERVAL = 1000 / stageFps;

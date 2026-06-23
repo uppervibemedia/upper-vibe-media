@@ -223,10 +223,11 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   scene.add(sunsetGlow);
   scene.userData.zenSunsetGlow = sunsetGlow;
 
-  // ── GENTLE FOG PARTICLES — fewer on mobile ────────────────
-  const fogCount = isMob ? 0 : 40; // disable fog particles on mobile entirely
+  // ── GENTLE FOG PARTICLES — desktop only ────────────────
+  const fogCount = isMob ? 0 : 40; // disable fog particles on mobile
   const fogGeo = new BufferGeometry();
-  const fogPositions = new Float32Array(fogCount * 3);
+  // Always allocate at least 1 dummy vertex so Points geometry is valid
+  const fogPositions = new Float32Array(Math.max(fogCount, 1) * 3);
   const fogData = []; // per-particle metadata for animation
   for (let i = 0; i < fogCount; i++) {
     const ang = Math.random() * Math.PI * 2;
