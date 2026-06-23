@@ -149,6 +149,36 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     };
   }, []);
 
+  // ── TV Mode — hides joystick/camera visuals for clean mirrored view ──────────
+  const [tvMode, setTvMode] = useState(false);
+  // In TV mode: auto-hide media player after 4s; tap to reveal temporarily
+  const [tvPlayerVisible, setTvPlayerVisible] = useState(true);
+  const tvPlayerTimerRef = useRef(null);
+
+  const enableTvMode = useCallback(() => {
+    setTvMode(true);
+    setTvPlayerVisible(true);
+    if (tvPlayerTimerRef.current) clearTimeout(tvPlayerTimerRef.current);
+    tvPlayerTimerRef.current = setTimeout(() => setTvPlayerVisible(false), 4000);
+  }, []);
+
+  const disableTvMode = useCallback(() => {
+    setTvMode(false);
+    setTvPlayerVisible(true);
+    if (tvPlayerTimerRef.current) clearTimeout(tvPlayerTimerRef.current);
+  }, []);
+
+  const handleTvPlayerTap = useCallback(() => {
+    if (!tvMode) return;
+    setTvPlayerVisible(true);
+    if (tvPlayerTimerRef.current) clearTimeout(tvPlayerTimerRef.current);
+    tvPlayerTimerRef.current = setTimeout(() => setTvPlayerVisible(false), 5000);
+  }, [tvMode]);
+
+  useEffect(() => {
+    return () => { if (tvPlayerTimerRef.current) clearTimeout(tvPlayerTimerRef.current); };
+  }, []);
+
   const [openPanelOnLoad, setOpenPanelOnLoad] = useState(null);
   // Clear forceOpenPanel after WorldHUD processes it so it doesn't re-trigger
   useEffect(() => {
@@ -872,24 +902,49 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           <ChevronLeft style={{ width: "16px", height: "16px" }} />
         </button>
 
-        {/* Right: tiny UVC badge */}
-        <div
-          className="flex items-center rounded-full flex-shrink-0"
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(10px)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            padding: isMobile ? "2px 5px" : "6px 12px",
-          }}
-        >
-          <span className="font-heading font-black text-white/25"
+        {/* Right: TV Mode toggle + UVC badge */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* TV Mode toggle */}
+          <button
+            onClick={() => tvMode ? disableTvMode() : enableTvMode()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 rounded-full transition-all hover:brightness-110 active:scale-95"
             style={{
-              fontSize: isMobile ? "6px" : "10px",
-              letterSpacing: isMobile ? "0.08em" : "0.2em",
+              background: tvMode ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.07)",
+              backdropFilter: "blur(10px)",
+              border: tvMode ? "1px solid rgba(0,229,255,0.4)" : "1px solid rgba(255,255,255,0.08)",
+              color: tvMode ? "#00E5FF" : "rgba(255,255,255,0.45)",
+              padding: isMobile ? "4px 7px" : "5px 10px",
+              minHeight: "32px",
+              touchAction: "manipulation",
+            }}
+            title={tvMode ? "Exit TV Mode" : "TV Mode — mirror to TV"}
+          >
+            <span style={{ fontSize: isMobile ? 9 : 10 }}>📺</span>
+            <span className="font-black tracking-wider"
+              style={{ fontSize: isMobile ? "7px" : "9px", letterSpacing: "0.1em" }}>
+              {tvMode ? "EXIT TV" : "TV"}
+            </span>
+          </button>
+
+          <div
+            className="flex items-center rounded-full flex-shrink-0"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              padding: isMobile ? "2px 5px" : "6px 12px",
             }}
           >
-            {isMobile ? "UVC" : "UPPER VIBE CITY"}
-          </span>
+            <span className="font-heading font-black text-white/25"
+              style={{
+                fontSize: isMobile ? "6px" : "10px",
+                letterSpacing: isMobile ? "0.08em" : "0.2em",
+              }}
+            >
+              {isMobile ? "UVC" : "UPPER VIBE CITY"}
+            </span>
+          </div>
         </div>
       </motion.div>
 
@@ -979,20 +1034,22 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onClose={handleExitFullScreen}
       />
 
-      {/* MOBILE: Game HUD — joystick + camera look */}
+      {/* MOBILE: Game HUD — joystick + camera look.
+          In TV Mode: components stay mounted (touch still works) but visuals are hidden. */}
       {!loading && isMobile && (
         <>
-          {/* Right-side camera look zone — full right half of screen.
-              Uses touch identifier tracking (not movementX which is unreliable on iOS).
-              Drag right = look right, drag left = look left, drag up = look up, drag down = look down. */}
+          {/* Camera look zone — always mounted and active (no visible UI to hide) */}
           <CameraLookZone mobileInputRef={mobileInputRef} />
 
-          <MobileJoystick
-            onMove={(x, y) => {
-              mobileInputRef.current.x = x;
-              mobileInputRef.current.y = y;
-            }}
-          />
+          {/* Joystick — always mounted; hidden in TV mode */}
+          <div style={{ opacity: tvMode ? 0 : 1, transition: "opacity 0.4s", pointerEvents: "auto" }}>
+            <MobileJoystick
+              onMove={(x, y) => {
+                mobileInputRef.current.x = x;
+                mobileInputRef.current.y = y;
+              }}
+            />
+          </div>
         </>
       )}
 
@@ -1136,25 +1193,34 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         }}
       />
 
-      {/* DESKTOP: Draggable media player — hidden during stage watch (stage has its own controls) */}
+      {/* DESKTOP: Draggable media player — hidden during stage watch */}
       {!loading && !isMobile && currentTrack && !stageWatching && !stageFullScreen && (
-        <DraggableMediaPlayer
-          currentTrack={currentTrack}
-          isPlaying={isPlaying}
-          onTogglePlay={handleGlobalPlayToggle}
-          onSkip={handleGlobalSkip}
-        />
+        <div
+          style={{ opacity: tvMode && !tvPlayerVisible ? 0 : 1, transition: "opacity 0.5s", pointerEvents: tvMode && !tvPlayerVisible ? "none" : "auto" }}
+          onClick={tvMode ? handleTvPlayerTap : undefined}
+        >
+          <DraggableMediaPlayer
+            currentTrack={currentTrack}
+            isPlaying={isPlaying}
+            onTogglePlay={handleGlobalPlayToggle}
+            onSkip={handleGlobalSkip}
+          />
+        </div>
       )}
 
-      {/* MOBILE: mini player — hidden when a modal/panel is open, when watching stage,
-          or in full screen (those modes have their own controls) */}
+      {/* MOBILE: mini player — hidden when modal/panel open, stage, fullscreen, or TV mode auto-hides */}
       {!loading && isMobile && currentTrack && !mobileModalOpen && !stageWatching && !stageFullScreen && (
-        <DraggableMediaPlayer
-          currentTrack={currentTrack}
-          isPlaying={isPlaying}
-          onTogglePlay={handleGlobalPlayToggle}
-          onSkip={handleGlobalSkip}
-        />
+        <div
+          style={{ opacity: tvMode && !tvPlayerVisible ? 0 : 1, transition: "opacity 0.5s", pointerEvents: tvMode && !tvPlayerVisible ? "none" : "auto" }}
+          onClick={tvMode ? handleTvPlayerTap : undefined}
+        >
+          <DraggableMediaPlayer
+            currentTrack={currentTrack}
+            isPlaying={isPlaying}
+            onTogglePlay={handleGlobalPlayToggle}
+            onSkip={handleGlobalSkip}
+          />
+        </div>
       )}
 
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
