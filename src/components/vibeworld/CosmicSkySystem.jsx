@@ -318,35 +318,35 @@ export function createCosmicSky(scene) {
   // They sit just above the beach horizon line (Y≈8, Z=+35) and drift
   // very slowly east↔west so they're always visible from the beach.
   const PLANET_DEFS = [
-    // MEGA planet — enormous gas giant dominating the sky overhead/horizon
+    // MEGA planet — enormous gas giant, positioned directly over the beach (+Z direction)
     {
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor:  "rgba(160,80,255,0.28)",
       ringColor:  "rgba(200,140,255,0.45)",
       size: isMobile ? 55.0 : 75.0,
-      angle: Math.PI * 0.5, startY: 20, radius: 72,
-      driftSpeed: 0.0008,
+      angle: 0, startY: 18, radius: 55,
+      driftSpeed: 0.0004,
     },
-    // West planet — cool teal/blue gas giant
+    // West planet — slightly left of beach horizon
     {
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor:  "rgba(80,180,255,0.18)",
       ringColor:  "rgba(120,200,255,0.35)",
       size: isMobile ? 18.0 : 22.0,
-      angle: Math.PI * 0.85, startY: 12, radius: 68,
-      driftSpeed: 0.004,
+      angle: -0.45, startY: 10, radius: 55,
+      driftSpeed: 0.002,
     },
-    // East planet — warm amber/purple ringed planet
+    // East planet — slightly right of beach horizon
     {
       id: "east",
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
       glowColor:  "rgba(220,140,60,0.18)",
       ringColor:  "rgba(200,160,80,0.30)",
       size: isMobile ? 15.0 : 19.0,
-      angle: Math.PI * 0.15, startY: 11, radius: 68,
-      driftSpeed: -0.003,
+      angle: 0.45, startY: 9, radius: 55,
+      driftSpeed: -0.0015,
     },
   ];
 
