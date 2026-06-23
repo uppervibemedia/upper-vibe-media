@@ -9,10 +9,7 @@
 import * as THREE from "three";
 
 const BASE    = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
-const SKY_A   = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;
-const SATURN1 = `${BASE}/57ae697b0_ChatGPTImageJun19202612_41_07PM.png`;  // ringed planet + nebula
-const SATURN2 = `${BASE}/1dc6343de_ChatGPTImageJun19202612_41_21PM.png`;  // glowing planet + nebula
-// New nebula panorama panels — 4 images tiled across the beach-side horizon
+// Four new nebula/galaxy panorama images — used as the sky backdrop panels
 const NEBULA1 = `${BASE}/58c7cb071_ChatGPTImageJun22202606_35_16PM.png`;  // purple burst nebula
 const NEBULA2 = `${BASE}/b31f18ac4_ChatGPTImageJun22202606_35_39PM.png`;  // orange-blue nebula
 const NEBULA3 = `${BASE}/285d48a42_ChatGPTImageJun22202606_35_45PM.png`;  // Saturn ringed planet
@@ -22,31 +19,18 @@ export function createCosmicSky(scene) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   scene.userData._skyIsMobile = isMobile;
 
-  const loader = new THREE.TextureLoader();
-
-  // ── Seamless sphere skybox ────────────────────────────────────────
-  const skyTex = loader.load(SKY_A);
-  skyTex.colorSpace = THREE.SRGBColorSpace;
-  skyTex.wrapS = THREE.RepeatWrapping;
-  skyTex.wrapT = THREE.RepeatWrapping;
-  skyTex.repeat.set(2, 1);
-  skyTex.generateMipmaps = false;
-  skyTex.minFilter = THREE.LinearFilter;
-  skyTex.magFilter = THREE.LinearFilter;
-
-  // Fewer segments on mobile — still smooth, much cheaper
+  // ── Solid deep-space color skybox (no image texture — nebula panels replace it) ──
   const skySegs = isMobile ? [32, 16] : [48, 32];
   const skybox = new THREE.Mesh(
     new THREE.SphereGeometry(80, skySegs[0], skySegs[1]),
-    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false })
+    new THREE.MeshBasicMaterial({ color: new THREE.Color("#050818"), side: THREE.BackSide, depthWrite: false })
   );
   skybox.name = "skybox";
   skybox.renderOrder = -1;
   scene.add(skybox);
-  scene.userData._skyboxRef = skybox; // cache ref — avoid getObjectByName every frame
+  scene.userData._skyboxRef = skybox;
 
-  // ── Zenith cap — covers any polar pinch/seam when looking straight up ──
-  // A solid deep-space color sphere slightly inside the skybox masks the pole artifact.
+  // ── Zenith cap — solid deep-space fill for the top of the sphere ──
   const capMat = new THREE.MeshBasicMaterial({
     color: new THREE.Color("#080E1E"),
     side: THREE.BackSide,
@@ -56,7 +40,7 @@ export function createCosmicSky(scene) {
   zenithCap.name = "zenithCap";
   zenithCap.renderOrder = -2;
   scene.add(zenithCap);
-  scene.userData._zenithCapRef = zenithCap; // cache ref
+  scene.userData._zenithCapRef = zenithCap;
 
   // ── Shooting stars — fewer on mobile ────────────────────────────
   const SHOOT_COUNT = isMobile ? 3 : 6;
@@ -274,62 +258,15 @@ export function createCosmicSky(scene) {
   };
   }
 
-  // ── Saturn planet images — two real photo sprites blended into the dark sky ──
-  // Both images have pure-black backgrounds so NormalBlending makes them invisible
-  // at the edges and the planets/nebulae float seamlessly in the skybox.
-  const loader2 = new THREE.TextureLoader();
-
-  // Image 1: ringed Saturn + purple nebula — upper-left sky region
-  const sat1Tex = loader2.load(SATURN1);
-  sat1Tex.colorSpace = THREE.SRGBColorSpace;
-  sat1Tex.minFilter = THREE.LinearFilter;
-  sat1Tex.generateMipmaps = false;
-  const sat1Mat = new THREE.SpriteMaterial({
-    map: sat1Tex,
-    transparent: true,
-    opacity: 0.90,
-    depthWrite: false,
-    depthTest: false,   // never occluded by city geometry
-    blending: THREE.AdditiveBlending,
-  });
-  const sat1 = new THREE.Sprite(sat1Mat);
-  sat1.scale.set(40, 28, 1);
-  sat1.renderOrder = 2;
-  scene.add(sat1);
-
-  // Image 2: glowing planet + nebula — opposite horizon quadrant
-  const sat2Tex = loader2.load(SATURN2);
-  sat2Tex.colorSpace = THREE.SRGBColorSpace;
-  sat2Tex.minFilter = THREE.LinearFilter;
-  sat2Tex.generateMipmaps = false;
-  const sat2Mat = new THREE.SpriteMaterial({
-    map: sat2Tex,
-    transparent: true,
-    opacity: 0.85,
-    depthWrite: false,
-    depthTest: false,   // never occluded by city geometry
-    blending: THREE.AdditiveBlending,
-  });
-  const sat2 = new THREE.Sprite(sat2Mat);
-  sat2.scale.set(38, 26, 1);
-  sat2.renderOrder = 2;
-  scene.add(sat2);
-
-  scene.userData.saturn = {
-    sprite: sat1, mat: sat1Mat,
-    sprite2: sat2, mat2: sat2Mat,
-  };
-
-  // ── Nebula horizon panels — 4 large images placed around the beach-facing horizon ──
-  // AdditiveBlending: pure-black areas = 0 contribution, colors bloom seamlessly.
-  // depthTest:false = never occluded by city geometry.
-  // Each panel is placed at a fixed world-space angle, drifting very slowly.
+  // ── Nebula horizon panels — 4 large images drifting across the upper sky ──
+  // depthWrite:false, depthTest:true → land/buildings naturally occlude them.
+  // Placed high above ground (Y ~20+) so they're never visible through terrain.
   const nebulaLoader = new THREE.TextureLoader();
   const nebulaDefs = [
-    { url: NEBULA1, angle: Math.PI * 0.55,  scale: [70, 42], opacity: 0.72 }, // beach-right (east)
-    { url: NEBULA2, angle: Math.PI * 1.0,   scale: [68, 40], opacity: 0.68 }, // directly behind (west)
-    { url: NEBULA3, angle: Math.PI * 1.45,  scale: [64, 38], opacity: 0.75 }, // beach-left (west)
-    { url: NEBULA4, angle: Math.PI * 0.1,   scale: [72, 44], opacity: 0.65 }, // north (stage side)
+    { url: NEBULA1, angle: Math.PI * 0.55,  scale: [80, 50], opacity: 0.80 }, // beach-right (east)
+    { url: NEBULA2, angle: Math.PI * 1.0,   scale: [78, 48], opacity: 0.75 }, // west
+    { url: NEBULA3, angle: Math.PI * 1.45,  scale: [76, 46], opacity: 0.82 }, // beach-left
+    { url: NEBULA4, angle: Math.PI * 0.1,   scale: [80, 50], opacity: 0.70 }, // north (stage side)
   ];
   const nebulaPanels = nebulaDefs.map((def) => {
     const tex = nebulaLoader.load(def.url);
@@ -341,12 +278,12 @@ export function createCosmicSky(scene) {
       transparent: true,
       opacity: def.opacity,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,  // land occludes — sky never bleeds through ground
       blending: THREE.AdditiveBlending,
     });
     const sprite = new THREE.Sprite(mat);
     sprite.scale.set(def.scale[0], def.scale[1], 1);
-    sprite.renderOrder = 1; // behind planets (renderOrder 2) and stars (4+)
+    sprite.renderOrder = 1;
     scene.add(sprite);
     return { sprite, mat, baseAngle: def.angle, baseOpacity: def.opacity };
   });
@@ -402,52 +339,22 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const skyFrame = scene.userData._skyFrame;
   const updateSlow = !isMobile || skyFrame % 3 === 0;
 
-  const saturnData = scene.userData.saturn;
-  if (saturnData && updateSlow) {
-    // Planets drift slowly across the full 360° sky horizon over ~10 minutes each.
-    // r=72 sits just inside the skybox sphere. Y is at eye level so they're visible
-    // from the beach, east, and west ends of the world.
-    const r = 72;
-    const eyeY = camera.position.y + 7;
-
-    // Planet 1 — slow drift, full circle every ~600s, starts west
-    const a1 = t * (Math.PI * 2 / 600) + Math.PI * 1.1;
-    saturnData.sprite.position.set(
-      camera.position.x + Math.sin(a1) * r,
-      eyeY + Math.sin(t * 0.08) * 3,   // gentle vertical bob
-      camera.position.z + Math.cos(a1) * r,
-    );
-    saturnData.mat.opacity = 0.92 + Math.sin(t * 0.3) * 0.05;
-
-    if (saturnData.sprite2) {
-      // Planet 2 — slightly different drift speed (full circle ~480s), starts east — always ~180° apart
-      const a2 = t * (Math.PI * 2 / 480) + Math.PI * 0.1;
-      saturnData.sprite2.position.set(
-        camera.position.x + Math.sin(a2) * r,
-        eyeY + 5 + Math.sin(t * 0.06 + 1.0) * 3,
-        camera.position.z + Math.cos(a2) * r,
-      );
-      saturnData.mat2.opacity = 0.88 + Math.sin(t * 0.25 + 1.5) * 0.05;
-    }
-  }
-
-  // ── Nebula horizon panels — slow drift across the horizon at eye level ──
+  // ── Nebula panels — drift slowly around the full 360° sky, above the ground ──
   const nebulaPanels = scene.userData.nebulaPanels;
   if (nebulaPanels && updateSlow) {
-    // Each panel drifts very slowly (full circle ~900s), positioned on the horizon.
-    // r=74 sits just inside the skybox sphere. Y at eye+8 = clearly on the horizon,
-    // visible from beach, east, and west ends.
+    // r=74: just inside the skybox sphere.
+    // Y = camera.y + 20: always above ground/land — land geometry occludes at bottom.
+    // Visible when looking up toward the horizon and sky.
     const r = 74;
-    const horizonY = camera.position.y + 8;
-    const driftSpeed = Math.PI * 2 / 900; // full lap in 15 minutes
+    const skyY = camera.position.y + 20;
+    const driftSpeed = Math.PI * 2 / 900; // full lap ~15 min
     nebulaPanels.forEach((panel, i) => {
       const a = t * driftSpeed + panel.baseAngle;
       panel.sprite.position.set(
         camera.position.x + Math.sin(a) * r,
-        horizonY + Math.sin(t * 0.04 + i * 1.2) * 4, // gentle vertical float
+        skyY + Math.sin(t * 0.04 + i * 1.2) * 4,
         camera.position.z + Math.cos(a) * r,
       );
-      // Gentle opacity breath
       panel.mat.opacity = panel.baseOpacity + Math.sin(t * 0.18 + i * 0.8) * 0.06;
     });
   }
