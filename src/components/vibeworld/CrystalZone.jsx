@@ -317,6 +317,31 @@ export function createCrystalZone(scene) {
     return { ...arc, targetIdx: idx };
   });
 
+  // ── Avatar energy beam — from crystal tip to player (shown on activation) ──
+  const beamMat = new THREE.LineBasicMaterial({
+    color: new THREE.Color("#44EEFF"),
+    transparent: true, opacity: 0.0, depthWrite: false,
+  });
+  const beamPts = [new THREE.Vector3(0, 8.0, 0), new THREE.Vector3(0, 1.2, 0)];
+  const beamGeo = new THREE.BufferGeometry().setFromPoints(beamPts);
+  const beamLine = new THREE.Line(beamGeo, beamMat);
+  beamLine.name = "crystalBeam";
+  beamLine.renderOrder = 6;
+  beamLine.frustumCulled = false;
+  scene.add(beamLine); // world-space line (not in group, so world coords work directly)
+
+  // Avatar aura — soft glow sphere around avatar
+  const auraMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color("#66CCFF"),
+    transparent: true, opacity: 0.0, depthWrite: false,
+    side: THREE.BackSide, blending: THREE.AdditiveBlending,
+  });
+  const auraMesh = new THREE.Mesh(new THREE.SphereGeometry(0.9, 10, 7), auraMat);
+  auraMesh.name = "crystalAura";
+  auraMesh.renderOrder = 7;
+  auraMesh.frustumCulled = false;
+  scene.add(auraMesh);
+
   scene.add(group);
 
   scene.userData.crystalZone = {
@@ -328,6 +353,8 @@ export function createCrystalZone(scene) {
     smallCrystals: smallCrystalMeshes,
     smallPositions: smallCrystalPositions,
     arcs, bigTip,
+    beamLine, beamMat, beamGeo, beamPts,
+    auraMesh, auraMat,
     proximity: 0,
     activated: false,
     activatedTimer: 0,
@@ -414,6 +441,42 @@ export function animateCrystalZone(scene, t, dt, playerX, playerZ) {
     if (!target) continue;
     arc.mat.opacity = Math.max(0, 0.05 + prox * 0.65 + actBoost * 0.9 + Math.sin(t * 6.0 + arc.targetIdx) * 0.12);
     if (fireArc) updateArc(arc, cz.bigTip, target, 0.18 + prox * 0.55);
+  }
+
+  // ── Avatar energy beam — tracks player world position while activated ──
+  const beamActive = cz.activated && cz.activatedTimer > 0;
+  if (cz.beamLine && cz.beamMat) {
+    if (beamActive) {
+      // Crystal tip in world space (group is offset by CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z)
+      const crystalTipWorld = new THREE.Vector3(CRYSTAL_ZONE_X, 8.0, CRYSTAL_ZONE_Z);
+      const avatarWorld = new THREE.Vector3(playerX, 1.2, playerZ);
+      cz.beamPts[0].copy(crystalTipWorld);
+      cz.beamPts[1].copy(avatarWorld);
+      cz.beamGeo.setFromPoints(cz.beamPts);
+      cz.beamGeo.attributes.position.needsUpdate = true;
+      // Flicker the beam
+      const ratio = cz.activatedTimer / 4.0;
+      const fadeIn  = Math.min(1, (4.0 - cz.activatedTimer) * 3); // fast fade in
+      const fadeOut = Math.min(1, cz.activatedTimer * 1.5);       // fade out at end
+      cz.beamMat.opacity = Math.min(fadeIn, fadeOut) * (0.55 + Math.sin(t * 18) * 0.2);
+      // Shift beam color cyan → purple over duration
+      cz.beamMat.color.setHSL(0.5 + (1 - ratio) * 0.15, 1.0, 0.7);
+    } else {
+      cz.beamMat.opacity = 0;
+    }
+  }
+
+  // ── Avatar aura — follows player while activated ──
+  if (cz.auraMesh && cz.auraMat) {
+    if (beamActive) {
+      cz.auraMesh.position.set(playerX, 1.0, playerZ);
+      const ratio = cz.activatedTimer / 4.0;
+      const fade = Math.min(1, (4.0 - cz.activatedTimer) * 2) * Math.min(1, cz.activatedTimer * 1.5);
+      cz.auraMat.opacity = fade * (0.18 + Math.sin(t * 3.0) * 0.07);
+      cz.auraMesh.scale.setScalar(1.0 + Math.sin(t * 4.0) * 0.08);
+    } else {
+      cz.auraMat.opacity = 0;
+    }
   }
 }
 

@@ -90,7 +90,8 @@ export function createCosmicSky(scene) {
     new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false })
   );
   skybox.name = "skybox";
-  skybox.renderOrder = -1;
+  skybox.renderOrder = -2;
+  skybox.frustumCulled = false;
   scene.add(skybox);
   scene.userData._skyboxRef = skybox;
   scene.userData._zenithCapRef = null; // no cap needed — canvas fills everything
@@ -599,11 +600,12 @@ export function createCosmicSky(scene) {
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0.85,
       depthWrite: false,
-      depthTest: true,
+      depthTest: false,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    psprite.renderOrder = -1;
+    psprite.frustumCulled = false;
+    psprite.renderOrder = 2;
     scene.add(psprite);
 
     return {
