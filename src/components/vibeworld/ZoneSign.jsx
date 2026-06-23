@@ -149,9 +149,8 @@ export function createZoneSign(scene, x, y, z, text, colorHex) {
   tex.minFilter = THREE.LinearFilter;
   tex.colorSpace = THREE.SRGBColorSpace;
 
-  // World-space size — compact, eye-level readable
-  // Max width 2.6 world units (~1m real scale), scales with text length
-  const worldW = Math.max(1.4, Math.min(2.6, (canvasW / 320) * 2.4));
+  // World-space size — 50% larger than compact base
+  const worldW = Math.max(2.1, Math.min(3.9, (canvasW / 320) * 3.6));
   const worldH = worldW * (CANVAS_H / canvasW) * SCALE2X * 0.5; // 0.5 compensates for 2× canvas
 
   const spriteMat = new THREE.SpriteMaterial({
