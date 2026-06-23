@@ -1111,62 +1111,8 @@ function buildPark(scene) {
   });
   scene.userData.neonAmbients = neonAmbients;
 
-  // ═════════════════════════════════════════════════════════════
-  // 13. TWINKLING STARS + PALM TREES
-  // ═════════════════════════════════════════════════════════════
-  createStarField(scene);
-
   // Palm trees removed — hoverboard course runs along the beach
-}
-
-// ═══════════════════════════════════════════════════════════════
-// TWINKLING STAR FIELD — small lights over the sky
-// ═══════════════════════════════════════════════════════════════
-function createStarField(scene) {
-  const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const starCanvas = document.createElement("canvas");
-  starCanvas.width = 32;
-  starCanvas.height = 32;
-  const ctx = starCanvas.getContext("2d");
-  const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-  gradient.addColorStop(0, "rgba(255,255,255,1)");
-  gradient.addColorStop(0.08, "rgba(255,255,255,0.85)");
-  gradient.addColorStop(0.3, "rgba(200,215,255,0.35)");
-  gradient.addColorStop(0.6, "rgba(140,160,255,0.06)");
-  gradient.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 32, 32);
-  const starTex = new THREE.CanvasTexture(starCanvas);
-
-  const starCount = isMob ? 80 : 180;
-  const starGeo = new BufferGeometry();
-  const positions = new Float32Array(starCount * 3);
-  const phases = new Float32Array(starCount); // per-star twinkle phase
-  for (let i = 0; i < starCount; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 14 + Math.random() * 24;
-    positions[i * 3] = Math.cos(angle) * radius;
-    positions[i * 3 + 1] = 22 + Math.random() * 18;
-    positions[i * 3 + 2] = Math.sin(angle) * radius;
-    phases[i] = Math.random() * Math.PI * 2;
-  }
-  starGeo.setAttribute("position", new BufferAttribute(positions, 3));
-  starGeo.userData = { phases };
-
-  const starMat = new PointsMaterial();
-  starMat.map = starTex;
-  starMat.color = new Color("#DDE4FF");
-  starMat.size = 0.35;
-  starMat.transparent = true;
-  starMat.opacity = 0.55;
-  starMat.depthWrite = false;
-  starMat.blending = THREE.AdditiveBlending;
-
-  const stars = new Points(starGeo, starMat);
-  stars.name = "stars";
-  stars.renderOrder = 0;
-  scene.add(stars);
-  scene.userData.stars = stars;
+  // Stars handled entirely by CosmicSkySystem (camera-relative, no ground bleed)
 }
 
 // ═══════════════════════════════════════════════════════════════
