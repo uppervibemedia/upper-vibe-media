@@ -1560,8 +1560,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             const moveRightAngle = moveFwdAngle + Math.PI / 2;
             // inputFwd: +1 = forward (toward where camera is looking)
             // turnInput: +1 = left, -1 = right (strafe relative to camera)
-            moveX = Math.sin(moveFwdAngle) * inputFwd + Math.sin(moveRightAngle) * (-turnInput);
-            moveZ = Math.cos(moveFwdAngle) * inputFwd + Math.cos(moveRightAngle) * (-turnInput);
+            moveX = Math.sin(moveFwdAngle) * inputFwd + Math.sin(moveRightAngle) * turnInput;
+            moveZ = Math.cos(moveFwdAngle) * inputFwd + Math.cos(moveRightAngle) * turnInput;
             // Avatar faces the direction of travel
             const travelAngle = Math.atan2(moveX, moveZ);
             let rotDiff = travelAngle - rot;
