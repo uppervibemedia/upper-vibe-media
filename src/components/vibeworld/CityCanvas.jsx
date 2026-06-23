@@ -1170,7 +1170,7 @@ function createStarField(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1240,6 +1240,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const isMobileRef = useRef(false);
   const _mobileRef = useRef({ x: 0, y: 0, camDx: 0 });
   const mobileInputRef = props.mobileInputRef || _mobileRef;
+  const tvModeRef = useRef(tvMode);
+  tvModeRef.current = tvMode;
+  const tvQualityRef = useRef(tvQuality);
+  tvQualityRef.current = tvQuality;
   const lockedRef = useRef(false);
   const prevLockedRef = useRef(false);
   lockedRef.current = locked;
@@ -1284,8 +1288,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       });
       renderer.setClearColor(0x0A1020); // Deep navy void — bright neon night
       if (rendererRef) rendererRef.current = renderer;
-      // Cap pixel ratio lower on mobile — biggest single perf win on retina iOS
-      renderer.setPixelRatio(isMob ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2));
+      // Cap pixel ratio — lower on mobile, even lower in TV Smooth mode
+      const basePR = isMob ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2);
+      renderer.setPixelRatio(basePR);
       // Use window dimensions on mobile for reliable viewport sizing
       const rw = isMob ? window.innerWidth : canvas.clientWidth;
       const rh = isMob ? window.innerHeight : canvas.clientHeight;
@@ -1402,6 +1407,19 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         lastTimeRef.current = now;
         if (dt > 0.1) dt = 0.1; // Clamp large gaps
         if (dt <= 0) dt = 0.016;
+
+        // ── TV Mode: lower pixel ratio for smoother mirroring ──
+        // Update every 120 frames (~2s) to avoid costly setPixelRatio calls per frame
+        if (frameRef.current % 120 === 0) {
+          const isTv = tvModeRef.current;
+          const isSmooth = tvQualityRef.current === "smooth";
+          const targetPR = isTv && isSmooth
+            ? Math.min(window.devicePixelRatio, 1.25)
+            : isMob ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2);
+          if (Math.abs(renderer.getPixelRatio() - targetPR) > 0.05) {
+            renderer.setPixelRatio(targetPR);
+          }
+        }
 
         const t = now;
         const keys = keysRef.current;
@@ -1802,6 +1820,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
+        // ── TV Smooth mode: skip non-essential pulse animations ──
+        const tvSmooth = tvModeRef.current && tvQualityRef.current === "smooth";
+
         // ─── STAGE SCREEN GLOW — only animate when near stage on mobile ──
         const nearStageForGlow = pz < -8;
         if (!isMob || (nearStageForGlow && frameRef.current % 4 === 0)) {
@@ -1810,7 +1831,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             screenGlowMesh.material.opacity = 0.45 + audioBeat * 0.7 + (audioIntensityRef?.current || 0) * 0.3;
           }
           const loungeNeonMats = scene.userData.loungeNeonMats;
-          if (loungeNeonMats) {
+          if (loungeNeonMats && !tvSmooth) {
             const loungeWave = Math.sin(t * 2.5) * 0.15;
             for (const mat of loungeNeonMats) {
               if (mat?.opacity !== undefined) mat.opacity = Math.min(0.9, 0.4 + audioBeat * 0.6 + loungeWave);
@@ -1820,9 +1841,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── NEON SKYLINE PULSE — throttled on mobile ─────────────
+        // ─── NEON SKYLINE PULSE — throttled on mobile, skipped in TV smooth ──
         const neonMats = scene.userData.neonMats;
-        if (neonMats && (!isMob || frameRef.current % 3 === 0)) {
+        if (neonMats && (!isMob || frameRef.current % 3 === 0) && !tvSmooth) {
           const colorShift = Math.sin(t * 0.4) * 0.5 + 0.5;
           if (!scene.userData._neonC) {
             scene.userData._neonC = [new Color("#00D4F0"), new Color("#A078FF"), new Color("#40A0EE")];
@@ -1843,8 +1864,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           if (pf) pf.intensity = 1.0 + audioBeat * 0.8 + Math.sin(t * 1.2) * 0.2;
         }
 
-        // ─── SHIFTING NEON AMBIENT LIGHTS — throttled on mobile ──
-        if (!isMob || frameRef.current % 3 === 0) {
+        // ─── SHIFTING NEON AMBIENT LIGHTS — throttled on mobile, skipped in TV smooth ──
+        if ((!isMob || frameRef.current % 3 === 0) && !tvSmooth) {
           const neonAmbients = scene.userData.neonAmbients;
           if (neonAmbients) {
             for (const na of neonAmbients) {

@@ -31,6 +31,7 @@ import EmojiEmote from "@/components/vibeworld/EmojiEmote";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
+import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -151,11 +152,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── TV Mode — hides joystick/camera visuals for clean mirrored view ──────────
   const [tvMode, setTvMode] = useState(false);
+  const [tvQuality, setTvQuality] = useState("smooth"); // "smooth" | "normal"
+  const [tvOverlayOpen, setTvOverlayOpen] = useState(false);
   // In TV mode: auto-hide media player after 4s; tap to reveal temporarily
   const [tvPlayerVisible, setTvPlayerVisible] = useState(true);
   const tvPlayerTimerRef = useRef(null);
 
-  const enableTvMode = useCallback(() => {
+  const enableTvMode = useCallback((quality = "smooth") => {
+    setTvQuality(quality);
     setTvMode(true);
     setTvPlayerVisible(true);
     if (tvPlayerTimerRef.current) clearTimeout(tvPlayerTimerRef.current);
@@ -837,6 +841,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           hbRiding={hbRiding}
           ferrisRiding={ferrisRiding}
           rendererRef={rendererRef}
+          tvMode={tvMode}
+          tvQuality={tvQuality}
           onNearPad={(padIdx, airborne, orbs) => {
             setNearLaunchPad(padIdx >= 0 && !airborne);
             setIsAirborne(airborne);
@@ -912,7 +918,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         <div className="flex items-center gap-2 flex-shrink-0" style={{ pointerEvents: "auto" }}>
           {/* TV Mode toggle — 44×44 minimum iOS tap target */}
           <button
-            onClick={() => tvMode ? disableTvMode() : enableTvMode()}
+            onClick={() => tvMode ? disableTvMode() : setTvOverlayOpen(true)}
             onTouchStart={(e) => { e.stopPropagation(); }}
             className="flex items-center justify-center gap-1 rounded-full transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
             style={{
@@ -1242,6 +1248,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* Performance audit overlay — only visible with ?perf=1 in URL */}
       <PerfAuditOverlay playerPos={playerPos} rendererRef={rendererRef} />
+
+      {/* TV Mode AirPlay instructions overlay */}
+      {tvOverlayOpen && (
+        <TvModeOverlay
+          onConfirm={(quality) => { setTvOverlayOpen(false); enableTvMode(quality); }}
+          onCancel={() => setTvOverlayOpen(false)}
+          defaultQuality={tvQuality}
+        />
+      )}
 
       {/* Mobile debug overlay — only visible with ?debug=mobile in URL */}
       <MobileDebugOverlay
