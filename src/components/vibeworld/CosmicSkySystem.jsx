@@ -318,35 +318,38 @@ export function createCosmicSky(scene) {
   // They sit just above the beach horizon line (Y≈8, Z=+35) and drift
   // very slowly east↔west so they're always visible from the beach.
   const PLANET_DEFS = [
-    // MEGA planet — enormous gas giant, positioned directly over the beach (+Z direction)
+    // MEGA planet — huge purple gas giant, center of beach horizon
     {
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor:  "rgba(160,80,255,0.28)",
       ringColor:  "rgba(200,140,255,0.45)",
       size: isMobile ? 55.0 : 75.0,
-      angle: 0, startY: 18, radius: 55,
-      driftSpeed: 0.0004,
+      angleOffset: 0,       // evenly spaced: center
+      horizonY: 14,
+      radius: 60,
     },
-    // West planet — slightly left of beach horizon
+    // Blue gas giant — left of center
     {
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor:  "rgba(80,180,255,0.18)",
       ringColor:  "rgba(120,200,255,0.35)",
-      size: isMobile ? 18.0 : 22.0,
-      angle: -0.45, startY: 10, radius: 55,
-      driftSpeed: 0.002,
+      size: isMobile ? 20.0 : 26.0,
+      angleOffset: -1.1,    // ~63° left
+      horizonY: 10,
+      radius: 60,
     },
-    // East planet — slightly right of beach horizon
+    // Amber ringed planet — right of center
     {
       id: "east",
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
       glowColor:  "rgba(220,140,60,0.18)",
       ringColor:  "rgba(200,160,80,0.30)",
-      size: isMobile ? 15.0 : 19.0,
-      angle: 0.45, startY: 9, radius: 55,
-      driftSpeed: -0.0015,
+      size: isMobile ? 17.0 : 22.0,
+      angleOffset: 1.1,     // ~63° right
+      horizonY: 9,
+      radius: 60,
     },
   ];
 
@@ -419,10 +422,9 @@ export function createCosmicSky(scene) {
     return {
       sprite: psprite,
       mat: pmat,
-      angle: def.angle,
-      startY: def.startY,
+      angleOffset: def.angleOffset,
+      horizonY: def.horizonY,
       radius: def.radius,
-      driftSpeed: def.driftSpeed,
     };
   });
   scene.userData.horizonPlanets = planets;
@@ -478,17 +480,18 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
 
 
-  // ── Horizon planets — orbit camera like skybox, drift slowly ────
+  // ── Horizon planets — locked to skybox rotation so they drift with the sky ──
+  // skybox.rotation.y accumulates at 0.007 rad/s — read it as the shared sky angle.
   const horizonPlanets = scene.userData.horizonPlanets;
-  if (horizonPlanets) {
+  if (horizonPlanets && skybox) {
+    const skyAngle = skybox.rotation.y; // shared rotation angle for all sky elements
     for (const p of horizonPlanets) {
-      // Advance angle — very slow drift
-      p.angle += p.driftSpeed * dt;
-      // Sit at horizon height, orbiting around the camera
-      const cx = camera.position.x + Math.sin(p.angle) * p.radius;
-      const cz = camera.position.z + Math.cos(p.angle) * p.radius;
-      p.sprite.position.set(cx, p.startY + Math.sin(t * 0.05 + p.angle) * 1.0, cz);
-      p.mat.opacity = 0.82 + Math.sin(t * 0.08 + p.angle) * 0.06;
+      // Each planet sits at a fixed angular offset from the skybox angle
+      const angle = skyAngle + p.angleOffset;
+      const cx = camera.position.x + Math.sin(angle) * p.radius;
+      const cz = camera.position.z + Math.cos(angle) * p.radius;
+      p.sprite.position.set(cx, p.horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.8, cz);
+      p.mat.opacity = 0.88 + Math.sin(t * 0.06 + p.angleOffset) * 0.06;
     }
   }
 
