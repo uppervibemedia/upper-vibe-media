@@ -183,6 +183,27 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return () => { if (tvPlayerTimerRef.current) clearTimeout(tvPlayerTimerRef.current); };
   }, []);
 
+  // ── Cinematic zone-transition fade ──────────────────────────────────────
+  // Triggers a brief fade-to-black when the player crosses the city/beach boundary.
+  const ZONE_BOUNDARY_Z = 14; // z > 14 = beach, z < 14 = city
+  const [zoneFading, setZoneFading] = useState(false);
+  const zoneFadeTimerRef = useRef(null);
+  const prevZoneRef = useRef(null); // "city" | "beach" | null
+
+  useEffect(() => {
+    if (loading) return;
+    const currentZone = playerPos.z > ZONE_BOUNDARY_Z ? "beach" : "city";
+    if (prevZoneRef.current !== null && prevZoneRef.current !== currentZone) {
+      // Crossed the boundary — trigger fade
+      if (zoneFadeTimerRef.current) clearTimeout(zoneFadeTimerRef.current);
+      setZoneFading(true);
+      zoneFadeTimerRef.current = setTimeout(() => setZoneFading(false), 700);
+    }
+    prevZoneRef.current = currentZone;
+  }, [playerPos.z, loading]);
+
+  useEffect(() => () => { if (zoneFadeTimerRef.current) clearTimeout(zoneFadeTimerRef.current); }, []);
+
   const [openPanelOnLoad, setOpenPanelOnLoad] = useState(null);
   // Clear forceOpenPanel after WorldHUD processes it so it doesn't re-trigger
   useEffect(() => {
@@ -874,6 +895,19 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           </div>
         </div>
       )}
+
+      {/* ── Cinematic zone-transition fade overlay ── */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 25,
+          background: "#050510",
+          pointerEvents: "none",
+          opacity: zoneFading ? 0.72 : 0,
+          transition: zoneFading ? "opacity 0.18s ease-in" : "opacity 0.52s ease-out",
+        }}
+      />
 
       {/* ── Top HUD row: Exit (left) | TV Mode + UVC (right) ── */}
       <motion.div
