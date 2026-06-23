@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Tv2 } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import CameraLookZone from "@/components/vibeworld/CameraLookZone";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
@@ -920,51 +920,33 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           <button
             onClick={() => tvMode ? disableTvMode() : setTvOverlayOpen(true)}
             onTouchStart={(e) => { e.stopPropagation(); }}
-            className="flex items-center justify-center gap-1 rounded-full transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
+            className="flex items-center justify-center gap-1.5 rounded-full transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
             style={{
-              background: tvMode ? "rgba(0,229,255,0.22)" : "rgba(255,255,255,0.1)",
+              background: tvMode ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.08)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
-              border: tvMode ? "1.5px solid rgba(0,229,255,0.5)" : "1px solid rgba(255,255,255,0.14)",
-              color: tvMode ? "#00E5FF" : "rgba(255,255,255,0.6)",
+              border: tvMode ? "1.5px solid rgba(0,229,255,0.45)" : "1px solid rgba(255,255,255,0.12)",
+              color: tvMode ? "#00E5FF" : "rgba(255,255,255,0.55)",
               minWidth: "44px",
               minHeight: "44px",
               height: "44px",
-              paddingLeft: isMobile ? "12px" : "12px",
-              paddingRight: isMobile ? "12px" : "12px",
+              paddingLeft: "14px",
+              paddingRight: "14px",
               touchAction: "manipulation",
               cursor: "pointer",
               WebkitTapHighlightColor: "rgba(0,229,255,0.2)",
             }}
-            title={tvMode ? "Exit TV Mode" : "TV Mode — mirror to TV"}
+            title={tvMode ? "Exit TV Mode" : "Mirror to TV"}
             aria-label={tvMode ? "Exit TV Mode" : "Enter TV Mode"}
           >
-            <span style={{ fontSize: 13, lineHeight: 1 }}>📺</span>
-            <span className="font-black"
-              style={{ fontSize: isMobile ? "9px" : "10px", letterSpacing: "0.1em" }}>
-              {tvMode ? "EXIT" : "TV"}
+            <Tv2 style={{ width: 14, height: 14, flexShrink: 0 }} />
+            <span className="font-semibold"
+              style={{ fontSize: isMobile ? "10px" : "11px", letterSpacing: "0.04em" }}>
+              {tvMode ? "Exit TV" : "TV Mode"}
             </span>
           </button>
 
-          <div
-            className="flex items-center rounded-full flex-shrink-0"
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              padding: isMobile ? "4px 7px" : "6px 12px",
-              height: "32px",
-            }}
-          >
-            <span className="font-heading font-black text-white/25"
-              style={{
-                fontSize: isMobile ? "7px" : "10px",
-                letterSpacing: isMobile ? "0.08em" : "0.2em",
-              }}
-            >
-              {isMobile ? "UVC" : "UPPER VIBE CITY"}
-            </span>
-          </div>
+
         </div>
       </motion.div>
 
