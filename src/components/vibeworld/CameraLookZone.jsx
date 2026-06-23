@@ -47,11 +47,11 @@ export default function CameraLookZone({ mobileInputRef }) {
       activeTouchRef.current.lastX = touch.clientX;
       activeTouchRef.current.lastY = touch.clientY;
 
-      // Sensitivity: 0.0042 = ~30% less than original 0.006 for comfortable iOS feel.
-      // camDx: right drag = positive = camera moves right (yaw increases clockwise)
-      // camDy: down drag = positive = camera tilts down (pitch decreases)
-      const sensitivity = 0.0042;
-      mobileInputRef.current.camDx = rawDx * sensitivity;
+      // Sensitivity: 0.0072 = responsive mobile third-person feel.
+      // camDx: drag RIGHT = negative = camera yaw moves LEFT (natural follow)
+      // camDy: drag DOWN = positive = camera tilts down (pitch decreases)
+      const sensitivity = 0.0072;
+      mobileInputRef.current.camDx = -rawDx * sensitivity;
       mobileInputRef.current.camDy = rawDy * sensitivity;
     };
 
