@@ -10,7 +10,86 @@
  */
 
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { SPAWN } from "./cityData";
+
+// ─── RobotExpressive GLB — has Idle, Walk, Run animations ────
+const ROBOT_URL = "https://threejs.org/examples/models/gltf/RobotExpressive/RobotExpressive.glb";
+const _robotLoader = new GLTFLoader();
+let _robotCache = null;
+let _robotPromise = null;
+
+function loadRobotGLB() {
+  if (_robotCache) return Promise.resolve(_robotCache);
+  if (_robotPromise) return _robotPromise;
+  _robotPromise = new Promise((resolve, reject) => {
+    _robotLoader.load(ROBOT_URL, (g) => { _robotCache = g; resolve(g); }, undefined, reject);
+  });
+  return _robotPromise;
+}
+
+export function createRobotAvatar(scene, opts = {}, onReady) {
+  const controller = new THREE.Group();
+  controller.name = "avatar";
+  controller.position.set(SPAWN[0], SPAWN[1], SPAWN[2]);
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.28, 12),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false })
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = 0.01;
+  controller.add(shadow);
+  scene.add(controller);
+
+  const entry = { root: controller, mixer: null, clips: {}, currentAnim: "idle", _isTestAvatar: true, _testGender: "robot" };
+
+  loadRobotGLB()
+    .then((gltf) => {
+      const model = gltf.scene.clone(true);
+      model.name = "avatarModel";
+      model.position.set(0, 0, 0);
+      model.rotation.set(0, Math.PI, 0);
+      model.scale.set(1, 1, 1);
+      model.traverse((child) => {
+        if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+      });
+      controller.add(model);
+
+      const mixer = new THREE.AnimationMixer(model);
+      const clips = {};
+      gltf.animations.forEach((clip) => {
+        const key = clip.name.toLowerCase();
+        clips[key] = mixer.clipAction(clip);
+        clips[key].setLoop(THREE.LoopRepeat, Infinity);
+      });
+
+      // RobotExpressive clip names: "Idle", "Walking", "Running"
+      // Normalize to idle/walk/run keys
+      if (clips["walking"] && !clips["walk"]) clips["walk"] = clips["walking"];
+      if (clips["running"] && !clips["run"]) clips["run"] = clips["running"];
+
+      const startKey = clips["idle"] ? "idle" : Object.keys(clips)[0];
+      if (startKey && clips[startKey]) {
+        clips[startKey].reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
+      }
+      entry.mixer = mixer;
+      entry.clips = clips;
+      entry.currentAnim = startKey || "idle";
+      onReady?.(entry);
+    })
+    .catch((err) => {
+      console.error("[RobotAvatar] GLB load failed:", err);
+      const cap = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.26, 1.1, 4, 8),
+        new THREE.MeshStandardMaterial({ color: 0x44aadd })
+      );
+      cap.name = "avatarModel"; cap.position.y = 0.82;
+      controller.add(cap);
+      onReady?.(entry);
+    });
+
+  return entry;
+}
 
 // ─── Palette ──────────────────────────────────────────────────
 const MALE_COLORS = {

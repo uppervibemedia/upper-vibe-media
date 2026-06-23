@@ -10,9 +10,10 @@ import { base44 } from "@/api/base44Client";
 import { OUTFIT_COLORS } from "./AvatarSetup";
 import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 
-// Avatar type options — "current" is the permanent default; male/female are TEST only
+// Avatar type options — "current" is the permanent default; others are TEST only
 const AVATAR_TYPE_OPTIONS = [
   { key: "current", label: "Current Avatar", sub: "Default", icon: "🤖" },
+  { key: "test-robot", label: "Robot Expressive", sub: "⚠️ Test Only", icon: "🦾" },
   { key: "test-male", label: "Male Avatar", sub: "⚠️ Test Only", icon: "👨" },
   { key: "test-female", label: "Female Avatar", sub: "⚠️ Test Only", icon: "👩" },
 ];
