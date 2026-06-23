@@ -1146,7 +1146,7 @@ function createStarField(scene) {
     const angle = Math.random() * Math.PI * 2;
     const radius = 14 + Math.random() * 24;
     positions[i * 3] = Math.cos(angle) * radius;
-    positions[i * 3 + 1] = 7 + Math.random() * 18;
+    positions[i * 3 + 1] = 22 + Math.random() * 18;
     positions[i * 3 + 2] = Math.sin(angle) * radius;
     phases[i] = Math.random() * Math.PI * 2;
   }
