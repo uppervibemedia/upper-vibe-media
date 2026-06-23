@@ -47,12 +47,12 @@ export default function CameraLookZone({ mobileInputRef }) {
       activeTouchRef.current.lastX = touch.clientX;
       activeTouchRef.current.lastY = touch.clientY;
 
-      // Sensitivity tuned for phone pixel density.
-      // These are INCREMENTAL deltas — CityCanvas accumulates them into camYawRef/camPitchRef.
-      // Positive camDx = look right, positive camDy = look up (inverted Y from screen space).
-      const sensitivity = 0.006;
-      mobileInputRef.current.camDx = rawDx * sensitivity;   // right drag → positive yaw
-      mobileInputRef.current.camDy = rawDy * sensitivity;   // down drag → positive pitch (look down)
+      // Sensitivity: 0.0042 = ~30% less than original 0.006 for comfortable iOS feel.
+      // camDx: right drag = positive = camera moves right (yaw increases clockwise)
+      // camDy: down drag = positive = camera tilts down (pitch decreases)
+      const sensitivity = 0.0042;
+      mobileInputRef.current.camDx = rawDx * sensitivity;
+      mobileInputRef.current.camDy = rawDy * sensitivity;
     };
 
     const onEnd = (e) => {

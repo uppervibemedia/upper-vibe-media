@@ -53,15 +53,13 @@ const DECELERATION = 8.0;
 const TURN_SPEED = 2.5;       // radians/sec for A/D turning
 const ROTATION_SMOOTH = 8.0;  // how fast avatar body snaps to move direction
 
-// Camera constants
+// Camera constants — standard third-person
 const CAM_DIST = 5.5;         // distance behind avatar
 const CAM_HEIGHT = 2.4;       // above avatar ground position
 const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
-const CAM_FOLLOW_SPEED = 6.0; // how fast camera angle follows avatar
-const CAM_PITCH_MIN = -0.15;  // radians — slight look down only
-const CAM_PITCH_MAX =  0.48;  // radians — look up but never near zenith/skybox pole (~27°)
-const IDLE_ORBIT_DELAY = 120.0; // seconds before idle orbit starts (2 minutes)
-const IDLE_ORBIT_SPEED = 0.18; // radians/sec for idle orbit (very slow)
+const CAM_PITCH_MIN = -0.10;  // radians — slight look down
+const CAM_PITCH_MAX =  0.42;  // radians — look up limit (never near skybox pole)
+// Idle orbit disabled — causes confusion on mobile
 
 // Tree collisions — radius 0.6 per tree
 const TREE_R = 0.5;
@@ -1300,12 +1298,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const mouseRef = useRef({ down: false, dx: 0, dy: 0, button: 0 });
   // Camera: yaw = angle of camera around avatar (0 = directly behind)
   // camYaw is independent of avatar rotation; avatar rotation is avatarRotRef
-  const camYawRef = useRef(0);          // camera yaw offset (right-click drag)
-  const camYawSmoothRef = useRef(0);    // smoothed camera yaw
-  const camPitchRef = useRef(0);        // camera pitch (vertical look, radians)
-  const camPitchSmoothRef = useRef(0);  // smoothed pitch
-  const idleTimerRef = useRef(0);       // seconds since last movement input
-  const isOrbitingRef = useRef(false);  // true during idle orbit
+  // Third-person camera: camYaw is WORLD-SPACE absolute angle (not relative to avatar)
+  // 0 = camera looks from +Z toward avatar (south), increases clockwise
+  const camYawRef = useRef(Math.PI);    // start: camera behind spawn (facing north = π)
+  const camYawSmoothRef = useRef(Math.PI);
+  const camPitchRef = useRef(0.08);    // slight upward default
+  const camPitchSmoothRef = useRef(0.08);
   const userTouchingCamRef = useRef(false); // right-click or cam drag active
   const remoteAvatarsRef = useRef({}); // userId → { group, prevPos }
   const remoteUsersRef = useRef([]);
@@ -1486,13 +1484,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         let rot = avatarRotRef.current;
         const vel = velocityRef.current;
 
-        // ─── RIGHT-CLICK / CAM DRAG ──────────────────────────
+        // ─── RIGHT-CLICK / CAM DRAG (desktop) ───────────────
         if (mouse.down && mouse.button === 2 && !lockedRef.current) {
-          camYawRef.current -= mouse.dx * 0.006;
-          camPitchRef.current = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current + mouse.dy * 0.005));
+          camYawRef.current   += mouse.dx * 0.004; // world-space yaw
+          camPitchRef.current  = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current - mouse.dy * 0.004));
           userTouchingCamRef.current = true;
-          idleTimerRef.current = 0;
-          isOrbitingRef.current = false;
         } else if (!mouse.down) {
           userTouchingCamRef.current = false;
         }
@@ -1516,33 +1512,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
           const joy = mobileInputRef.current;
 
-          // ── GTA-style: joystick forward moves in camera-facing direction ──
-          // joy.y > 0 = joystick up = forward, joy.x = strafe/turn
+          // Joystick: forward/backward and turn
           if (Math.abs(joy.y) > 0.08) { inputFwd = joy.y; hasAnyInput = true; }
-          // joy.x steers the avatar's facing direction (not raw strafe)
           if (Math.abs(joy.x) > 0.08) { turnInput = -joy.x; hasAnyInput = true; }
 
-          // ── Camera drag: incremental deltas from CameraLookZone ──
-          // camDx/camDy are set each touchmove frame and reset to 0 on touchend.
-          // Apply directly — no accumulation needed, CityCanvas owns the smoothing.
+          // ── Right-thumb camera drag (world-space yaw) ──
+          // cdx/cdy are already sensitivity-scaled in CameraLookZone (0.0042/rad)
           const cdx = joy.camDx || 0;
           const cdy = joy.camDy || 0;
-          if (Math.abs(cdx) > 0.0001 || Math.abs(cdy) > 0.0001) {
-            camYawRef.current   += cdx; // drag right = positive dx = rotate camera right (positive yaw offset)
-            camPitchRef.current  = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current + cdy));
+          if (Math.abs(cdx) > 0.00005 || Math.abs(cdy) > 0.00005) {
+            camYawRef.current  += cdx;  // right drag → camera orbits right (world CW)
+            camPitchRef.current = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current - cdy));
             userTouchingCamRef.current = true;
-            idleTimerRef.current = 0;
-            isOrbitingRef.current = false;
           }
-          // Clear incremental deltas so they don't fire again next frame
           joy.camDx = 0;
           joy.camDy = 0;
 
           if (mobileInputRef.current._camActive) {
-            // Finger still down — suppress orbit even when not moving
             userTouchingCamRef.current = true;
-            idleTimerRef.current = 0;
-            isOrbitingRef.current = false;
           }
         } else {
           if (keys.w || keys.arrowup)    { inputFwd =  1; hasAnyInput = true; }
@@ -1552,33 +1539,39 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         const isMoving = Math.abs(inputFwd) > 0.08 || Math.abs(turnInput) > 0.08;
-        if (Math.abs(turnInput) > 0.08 && Math.abs(inputFwd) < 0.08) hasAnyInput = true; // A/D alone also counts
+        if (Math.abs(turnInput) > 0.08 && Math.abs(inputFwd) < 0.08) hasAnyInput = true;
 
-        // ─── AVATAR TURNING (A/D keyboard / joystick X) ──────────────
-        if (Math.abs(turnInput) > 0.01) {
-          rot += turnInput * TURN_SPEED * dt;
-        }
-
-        // ─── FORWARD/BACKWARD MOVEMENT ────────────────────────────────
-        // GTA-style on mobile: joystick up moves in the camera's facing direction.
-        // On desktop, avatar faces its own rotation as before.
-        let moveX, moveZ;
-        if (isMobileRef.current && Math.abs(inputFwd) > 0.08) {
-          // Camera forward direction in world space (ignore pitch — stay on ground plane)
-          const camFwdAngle = rot + camYawRef.current;
-          const strf = -turnInput * 0.5;
-          moveX = Math.sin(camFwdAngle) * inputFwd + Math.cos(camFwdAngle) * strf;
-          moveZ = Math.cos(camFwdAngle) * inputFwd - Math.sin(camFwdAngle) * strf;
-          // Snap avatar to face the direction of travel
-          if (Math.abs(inputFwd) > 0.15) {
-            const targetRot = camFwdAngle;
-            let rotDiff = targetRot - rot;
+        // ─── MOVEMENT ─────────────────────────────────────────────────
+        // Mobile (GTA/Roblox style):
+        //   - Camera yaw is world-space and controlled by right thumb independently
+        //   - Joystick forward = move in camera-facing direction
+        //   - Avatar body snaps to face direction of travel
+        //   - Joystick X = strafe relative to camera, avatar faces that direction too
+        //   - Camera NEVER auto-rotates to follow avatar (user controls it)
+        // Desktop:
+        //   - A/D turns the avatar; camera pulls behind when moving
+        let moveX = 0, moveZ = 0;
+        if (isMobileRef.current) {
+          if (Math.abs(inputFwd) > 0.08 || Math.abs(turnInput) > 0.08) {
+            // Camera's forward direction in world space (from camYaw world angle)
+            // camYaw: angle of camera position around avatar; camera looks TOWARD avatar
+            // so "forward" for movement = direction FROM camera TO avatar = camYaw + π
+            const moveFwdAngle = camYawRef.current + Math.PI;
+            const moveRightAngle = moveFwdAngle + Math.PI / 2;
+            // inputFwd: +1 = forward (toward where camera is looking)
+            // turnInput: +1 = left, -1 = right (strafe relative to camera)
+            moveX = Math.sin(moveFwdAngle) * inputFwd + Math.sin(moveRightAngle) * (-turnInput);
+            moveZ = Math.cos(moveFwdAngle) * inputFwd + Math.cos(moveRightAngle) * (-turnInput);
+            // Avatar faces the direction of travel
+            const travelAngle = Math.atan2(moveX, moveZ);
+            let rotDiff = travelAngle - rot;
             while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
             while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
             rot += rotDiff * Math.min(1, ROTATION_SMOOTH * dt);
           }
         } else {
-          // Desktop / keyboard: avatar faces its own rotation
+          // Desktop: A/D turns avatar, W/S moves in avatar direction
+          if (Math.abs(turnInput) > 0.01) rot += turnInput * TURN_SPEED * dt;
           const kbStrafe = -turnInput * 0.6;
           moveX = Math.sin(rot) * inputFwd + Math.cos(rot) * kbStrafe;
           moveZ = Math.cos(rot) * inputFwd - Math.sin(rot) * kbStrafe;
@@ -1681,45 +1674,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           try { onJukeboxProxRef.current(nearJukebox, proximityVol); } catch {}
         }
 
-        // ─── IDLE ORBIT + CAMERA ─────────────────────────────
-        // Track idle time
-        if (hasAnyInput || speed > 0.05) {
-          idleTimerRef.current = 0;
-          if (isOrbitingRef.current) {
-            // Just started moving after orbit — smoothly reset camYaw to 0
-            isOrbitingRef.current = false;
-            // camYaw will lerp back to 0 below when moving
-          }
-        } else if (!userTouchingCamRef.current && !lockedRef.current && !isDancingRef.current) {
-          idleTimerRef.current += dt;
+        // ─── CAMERA SMOOTH ───────────────────────────────────
+        // On desktop: when moving, gently pull camera behind avatar
+        if (!isMobileRef.current && speed > 0.05 && !userTouchingCamRef.current) {
+          // Target: camera directly behind avatar (avatar rot + π = camera position angle)
+          const targetYaw = rot + Math.PI;
+          let yawDelta = targetYaw - camYawRef.current;
+          while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
+          while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
+          camYawRef.current += yawDelta * Math.min(1, dt * 2.5);
         }
 
-        // When moving on desktop, gently pull camYaw back behind avatar.
-        // On mobile, NEVER auto-pull — user steers camera manually; joystick movement
-        // should not drag the view at all.
-        if (speed > 0.05 && !userTouchingCamRef.current && !isMobileRef.current) {
-          camYawRef.current += (0 - camYawRef.current) * Math.min(1, CAM_FOLLOW_SPEED * dt * 0.3);
-        }
-
-        // Start idle orbit
-        if (!isOrbitingRef.current && idleTimerRef.current >= IDLE_ORBIT_DELAY && !userTouchingCamRef.current && !lockedRef.current) {
-          isOrbitingRef.current = true;
-        }
-
-        // Idle orbit: advance camYaw
-        if (isOrbitingRef.current) {
-          camYawRef.current += IDLE_ORBIT_SPEED * dt;
-        }
-
-        // Smooth camera yaw + pitch
+        // Smooth camera yaw + pitch (always world-space)
         let yawDiff = camYawRef.current - camYawSmoothRef.current;
         while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
         while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
-        camYawSmoothRef.current += yawDiff * Math.min(1, dt * (isOrbitingRef.current ? 2.0 : 8.0));
-        camPitchSmoothRef.current += (camPitchRef.current - camPitchSmoothRef.current) * Math.min(1, dt * 8.0);
+        camYawSmoothRef.current += yawDiff * Math.min(1, dt * 10.0);
+        camPitchSmoothRef.current += (camPitchRef.current - camPitchSmoothRef.current) * Math.min(1, dt * 10.0);
 
-        // Final camera angle: avatar facing + camYaw offset
-        const finalCamAngle = rot + camYawSmoothRef.current;
         const pitch = camPitchSmoothRef.current;
 
         if (!scene.userData._camVecs) {
@@ -1745,14 +1717,20 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camera.position.lerp(cv.lkPos, Math.min(1, 3.0 * dt));
           camera.lookAt(cv.lkLook);
         } else {
-          // Camera orbits behind avatar at camYaw; pitch lifts camera eye upward
-          const camX = px - Math.sin(finalCamAngle) * CAM_DIST * Math.cos(pitch);
-          const camY = py + CAM_HEIGHT + Math.sin(pitch) * CAM_DIST * 1.4;
-          const camZ = pz - Math.cos(finalCamAngle) * CAM_DIST * Math.cos(pitch);
-          camera.position.set(camX, camY, camZ);
-          // Look-at shifts up with pitch so the view rotates around the avatar
-          const lookY = py + CAM_LOOK_Y + Math.sin(pitch) * 3.5;
-          camera.lookAt(px, lookY, pz);
+          // Standard third-person: camera sits at world-space camYaw angle behind avatar.
+          // camYawSmooth is world-space: camera position = avatar + offset in camYaw direction.
+          // pitch tilts up/down without changing the yaw.
+          const camAngle = camYawSmoothRef.current; // world-space angle of camera around avatar
+          const cosPitch = Math.cos(pitch);
+          const sinPitch = Math.sin(pitch);
+          const camX = px + Math.sin(camAngle) * CAM_DIST * cosPitch;
+          const camY = py + CAM_HEIGHT + sinPitch * CAM_DIST;
+          const camZ = pz + Math.cos(camAngle) * CAM_DIST * cosPitch;
+
+          // Clamp camera above ground
+          const minCamY = py + 0.5;
+          camera.position.set(camX, Math.max(minCamY, camY), camZ);
+          camera.lookAt(px, py + CAM_LOOK_Y, pz);
         }
 
         // ─── GLB AVATAR ANIMATION ────────────────────────────
@@ -2161,18 +2139,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── BEACH STARGAZING — capped pitch, never reaches skybox pole seam ──
-        if (pz > 18 && !lockedRef.current && !ferrisRidingRef.current && !hbRidingRef.current && idleTimerRef.current > 8.0) {
-          if (!scene.userData._stargazeBlend) scene.userData._stargazeBlend = 0;
-          scene.userData._stargazeBlend = Math.min(1, scene.userData._stargazeBlend + dt * 0.45);
-          const sg = scene.userData._stargazeBlend;
-          const sp = Math.sin(t * 0.035) * 0.25;
-          camera.position.set(px + Math.sin(sp) * 0.8 * sg, py + CAM_HEIGHT + 0.35 * sg, pz + 1.5 * sg);
-          camera.lookAt(px + Math.sin(sp) * 5 * sg, py + CAM_LOOK_Y + (5.0 - CAM_LOOK_Y) * sg, pz + Math.cos(sp) * 3 * sg);
-        } else {
-          if (scene.userData._stargazeBlend > 0) scene.userData._stargazeBlend = Math.max(0, scene.userData._stargazeBlend - dt * 1.5);
-        }
-
         // ─── COSMIC SKY — skybox follow, stars twinkle, shooting stars, asteroids ──
         animateCosmicSky(scene, camera, t, dt);
 
@@ -2304,10 +2270,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         sceneRef.current = null;
         remoteAvatarsRef.current = {};
         avatarRotRef.current = 0;
-        camYawRef.current = 0;
-        camYawSmoothRef.current = 0;
-        idleTimerRef.current = 0;
-        isOrbitingRef.current = false;
+        camYawRef.current = Math.PI;
+        camYawSmoothRef.current = Math.PI;
       };
     } catch (e) {
       console.error("[CityCanvas] init error:", e);
