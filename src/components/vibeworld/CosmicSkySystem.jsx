@@ -512,9 +512,18 @@ export function animateCosmicSky(scene, camera, t, dt) {
     for (const p of horizonPlanets) {
       // Each planet sits at a fixed angular offset from the skybox angle
       const angle = skyAngle + p.angleOffset;
+      const worldZ = camera.position.z + Math.cos(angle) * p.radius;
       const cx = camera.position.x + Math.sin(angle) * p.radius;
-      const cz = camera.position.z + Math.cos(angle) * p.radius;
-      p.sprite.position.set(cx, p.horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.8, cz);
+      const cz = worldZ;
+
+      // Dynamic Y: when planet is on the north side (behind buildings, worldZ < 0),
+      // lift it high so it clears rooflines. On the beach side (worldZ > 0) and east/west
+      // extremes, bring it down to eye/horizon level for full visibility.
+      // Blend: northFactor=1 at z=-78, 0 at z=+78
+      const northFactor = Math.max(0, Math.min(1, -worldZ / 78));
+      const horizonY = p.horizonY + northFactor * 18; // up to +18 extra height on north side
+
+      p.sprite.position.set(cx, horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.8, cz);
       p.mat.opacity = 0.88 + Math.sin(t * 0.06 + p.angleOffset) * 0.06;
     }
   }
