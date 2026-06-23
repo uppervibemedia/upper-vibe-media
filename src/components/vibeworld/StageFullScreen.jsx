@@ -150,12 +150,15 @@ export default function StageFullScreen({ open, video, onClose }) {
             />
           </div>
 
-          {/* Mute/Unmute toggle */}
+          {/* Mute/Unmute toggle — positioned above safe-area bottom */}
           {ready && ytId && (
             <button
               onClick={handleToggleMute}
-              className="mt-4 flex items-center gap-1.5 px-4 py-3 rounded-full font-bold text-xs tracking-wide transition-all hover:brightness-110"
+              className="absolute flex items-center gap-1.5 px-4 py-2.5 rounded-full font-bold text-xs tracking-wide transition-all hover:brightness-110"
               style={{
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
+                left: "50%",
+                transform: "translateX(-50%)",
                 background: muted ? "rgba(255,255,255,0.08)" : "rgba(124,58,237,0.3)",
                 border: "1px solid rgba(255,255,255,0.15)",
                 color: muted ? "rgba(255,255,255,0.6)" : "#fff",
@@ -163,6 +166,7 @@ export default function StageFullScreen({ open, video, onClose }) {
                 minHeight: "44px",
                 pointerEvents: "auto",
                 touchAction: "manipulation",
+                zIndex: 10,
               }}
             >
               {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}

@@ -12,19 +12,43 @@ import { useAuth } from "@/lib/AuthContext";
 import SaveHeartButton from "@/components/shared/SaveHeartButton";
 
 function UpgradeView({ track, onBack, onClose, isMobile, onNavigate }) {
-  const handleUpgrade = (e) => {
-    e.stopPropagation();
+  const [confirm, setConfirm] = useState(null); // null | "membership" | "donate"
+
+  const doNavigate = (path) => {
     try { sessionStorage.setItem("vibeworld_return_url", window.location.href); sessionStorage.setItem("vibeworld_return", "1"); } catch {}
     onClose();
-    onNavigate("/membership");
+    onNavigate(path);
   };
 
-  const handleDonate = (e) => {
-    e.stopPropagation();
-    try { sessionStorage.setItem("vibeworld_return_url", window.location.href); sessionStorage.setItem("vibeworld_return", "1"); } catch {}
-    onClose();
-    onNavigate(`/song/${track.id}?donate=1`);
-  };
+  const handleUpgrade = (e) => { e.stopPropagation(); setConfirm("membership"); };
+  const handleDonate = (e) => { e.stopPropagation(); setConfirm("donate"); };
+
+  if (confirm) {
+    return (
+      <div className="flex flex-col items-center justify-center p-6 h-full">
+        <p className="font-heading font-black text-white text-base text-center mb-1">Leave Vibe City?</p>
+        <p className="text-xs text-white/45 text-center mb-5 leading-relaxed">
+          {confirm === "membership"
+            ? "You'll be taken to the membership page."
+            : "You'll be taken to the song page to support the artist."}
+        </p>
+        <button
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={() => doNavigate(confirm === "membership" ? "/membership" : `/song/${track.id}?donate=1`)}
+          className="w-full py-3 rounded-xl font-black text-sm mb-2 transition-all hover:brightness-110 active:scale-95"
+          style={{ background: "linear-gradient(135deg,#D4A843,#F0C040)", color: "#000", touchAction: "manipulation" }}>
+          Continue
+        </button>
+        <button
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={() => setConfirm(null)}
+          className="w-full py-2.5 rounded-xl font-black text-sm transition-all active:scale-95"
+          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", touchAction: "manipulation" }}>
+          Stay in Vibe City
+        </button>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -134,11 +158,12 @@ function UpgradeView({ track, onBack, onClose, isMobile, onNavigate }) {
   );
 }
 
-export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying, sourceComponent = "unknown" }) {
+export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying, sourceComponent = "unknown", tvMode = false }) {
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const { user } = useAuth() || {};
   const navigate = useNavigate();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
 
   if (!track) return null;
 
@@ -166,6 +191,15 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying,
 
   const handleDownloadClick = (e) => {
     e.stopPropagation();
+    if (!isPlus) {
+      setShowUpgrade(true);
+      return;
+    }
+    // Show confirm before navigating away (prevents white screen in TV Mode)
+    setShowDownloadConfirm(true);
+  };
+
+  const handleConfirmDownload = () => {
     saveReturnUrl(sourceComponent);
     onClose();
     navigate(`/song/${track.id}?downloadIntent=true`);
@@ -229,6 +263,31 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying,
         >
           <X className="w-4 h-4" />
         </button>
+
+        {/* Download confirm overlay */}
+        {showDownloadConfirm && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 rounded-[20px]"
+            style={{ background: "rgba(8,8,24,0.97)", backdropFilter: "blur(8px)" }}>
+            <p className="font-heading font-black text-white text-base text-center mb-1">Open Download Page?</p>
+            <p className="text-xs text-white/45 text-center mb-5 leading-relaxed">
+              This will leave Vibe City and open the song page.{tvMode ? " Your TV Mode session will pause." : ""}
+            </p>
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={handleConfirmDownload}
+              className="w-full py-3 rounded-xl font-black text-sm mb-2 transition-all hover:brightness-110 active:scale-95"
+              style={{ background: "linear-gradient(135deg,#D4A843,#F0C040)", color: "#000", touchAction: "manipulation" }}>
+              Yes, Open Download Page
+            </button>
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => setShowDownloadConfirm(false)}
+              className="w-full py-2.5 rounded-xl font-black text-sm transition-all active:scale-95"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", touchAction: "manipulation" }}>
+              Stay in Vibe City
+            </button>
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {showUpgrade ? (

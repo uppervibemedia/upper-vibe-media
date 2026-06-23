@@ -149,16 +149,20 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
       {fullScreen && viewingLesson ? (
         /* ── Full-screen theater view ─────────────────────── */
         <div className="flex-1 flex flex-col bg-black relative">
-          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3"
-            style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%)" }}>
+          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4"
+            style={{
+              background: "linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%)",
+              paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
+              paddingBottom: "12px",
+            }}>
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { setFullScreen(false); setAcademyMuted(true); }}
+              onClick={() => { setFullScreen(false); setViewingLesson(null); setAcademyMuted(true); }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-[10px] text-white/70"
-              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", minHeight: 44, touchAction: "manipulation" }}
             >
               <ArrowLeft className="w-3 h-3" />
-              Back
+              Back to Academy
             </button>
             <p className="text-xs font-bold text-white truncate mx-2">{viewingLesson.title}</p>
             {/* Mute/Unmute in full-screen */}
@@ -405,7 +409,7 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
                       background: "rgba(255,255,255,0.03)",
                       border: "1px solid rgba(255,255,255,0.06)",
                     }}
-                    onClick={() => setViewingLesson(lesson)}
+                    onClick={() => { setViewingLesson(lesson); setFullScreen(true); }}
                   >
                     {/* Thumbnail */}
                     <div className="aspect-video relative overflow-hidden bg-black/40">

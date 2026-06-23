@@ -198,34 +198,39 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
   const [submitError, setSubmitError] = useState(null);
 
   const submitCheckIn = async (finalAnswers) => {
-    if (!user || saving) return;
+    if (saving) return;
     setSaving(true);
     setSubmitError(null);
-    // Calculate score immediately — don't wait on data to be loaded
+    // Calculate score immediately — always show result even if save fails
     const currentStreak = data?.streak ?? 0;
     const ss = streakToScore(currentStreak);
     const score = calcVibeScoreFromAnswers(finalAnswers, ss, !!data?.yesterdayScore);
     const newStreak = currentStreak + 1;
     const cat = vibeCategory(score);
-    try {
-      await base44.entities.VibeCheckIn.create({
-        user_id: user.id,
-        user_email: user.email,
-        check_in_date: todayStr(),
-        mood: cat.moodTag,
-        mood_score: score,
-        streak_days: newStreak,
-        vibe_score: score,
-      });
-      base44.analytics.track({ eventName: "vibe_check_submitted", properties: { vibe_score: score, mood: cat.moodTag } });
-      setResultScore(score);
-      setResultStreak(newStreak);
-      setSaving(false);
-      setPhase("result");
-    } catch (e) {
-      console.error("[VibeCheck] submitCheckIn error:", e);
-      setSubmitError("Could not save your score. Tap Retry to try again.");
-      setSaving(false);
+
+    // Show result immediately — don't block on network
+    setResultScore(score);
+    setResultStreak(newStreak);
+    setSaving(false);
+    setPhase("result");
+
+    // Try to save in background — show non-blocking warning if it fails
+    if (user) {
+      try {
+        await base44.entities.VibeCheckIn.create({
+          user_id: user.id,
+          user_email: user.email,
+          check_in_date: todayStr(),
+          mood: cat.moodTag,
+          mood_score: score,
+          streak_days: newStreak,
+          vibe_score: score,
+        });
+        base44.analytics.track({ eventName: "vibe_check_submitted", properties: { vibe_score: score, mood: cat.moodTag } });
+      } catch (e) {
+        console.error("[VibeCheck] save error (score shown locally):", e);
+        setSubmitError("Score shown locally. Tap Retry to save.");
+      }
     }
   };
 
@@ -358,18 +363,6 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
                 <div className="mt-5 flex items-center justify-center gap-2 text-xs text-white/40">
                   <div className="w-4 h-4 rounded-full animate-spin" style={{ border: "2px solid rgba(0,229,255,0.3)", borderTopColor: "#00E5FF" }} />
                   Calculating your vibe…
-                </div>
-              )}
-              {submitError && !saving && (
-                <div className="mt-5 p-3 rounded-xl text-center"
-                  style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)" }}>
-                  <p className="text-xs text-red-400 mb-2">{submitError}</p>
-                  <button
-                    onClick={() => submitCheckIn(answers)}
-                    className="px-4 py-2 rounded-full font-black text-xs transition-all hover:brightness-110 active:scale-95"
-                    style={{ background: "rgba(248,113,113,0.2)", border: "1px solid rgba(248,113,113,0.4)", color: "#F87171", touchAction: "manipulation" }}>
-                    Retry
-                  </button>
                 </div>
               )}
             </motion.div>
@@ -509,6 +502,18 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
               <Sparkles className="w-4 h-4" />
               {data?.hasTodayCheckIn ? "View Today's Score" : "Check In"}
             </button>
+          )}
+          {phase === "result" && submitError && (
+            <div className="p-3 rounded-xl text-center mb-1"
+              style={{ background: "rgba(248,113,113,0.07)", border: "1px solid rgba(248,113,113,0.2)" }}>
+              <p className="text-[10px] text-red-400 mb-1.5">{submitError}</p>
+              <button
+                onClick={() => { setSubmitError(null); submitCheckIn(answers); }}
+                className="px-4 py-1.5 rounded-full font-black text-[10px] transition-all hover:brightness-110 active:scale-95"
+                style={{ background: "rgba(248,113,113,0.18)", border: "1px solid rgba(248,113,113,0.35)", color: "#F87171", touchAction: "manipulation" }}>
+                Retry Save
+              </button>
+            </div>
           )}
           {phase === "result" && (
             <button

@@ -14,12 +14,16 @@ export default function TvModeOverlay({ onConfirm, onCancel, defaultQuality = "s
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div
-        className="w-full max-w-md rounded-t-2xl overflow-hidden"
+        className="w-full max-w-md rounded-t-2xl flex flex-col"
         style={{
           background: "linear-gradient(180deg,#0d0b1e 0%,#080616 100%)",
           border: "1px solid rgba(0,229,255,0.18)",
           borderBottom: "none",
-          paddingBottom: "env(safe-area-inset-bottom, 16px)",
+          maxHeight: "calc(100dvh - env(safe-area-inset-top, 20px) - env(safe-area-inset-bottom, 0px) - 16px)",
+          paddingTop: "calc(env(safe-area-inset-top, 0px))",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         {/* Header */}
