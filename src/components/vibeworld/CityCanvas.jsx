@@ -57,8 +57,8 @@ const ROTATION_SMOOTH = 8.0;  // how fast avatar body snaps to move direction
 const CAM_DIST = 5.5;         // distance behind avatar
 const CAM_HEIGHT = 2.4;       // above avatar ground position
 const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
-const CAM_PITCH_MIN = -0.10;  // radians — slight look down
-const CAM_PITCH_MAX =  0.42;  // radians — look up limit (never near skybox pole)
+const CAM_PITCH_MIN = -0.35;  // radians — look down (prevent under-map)
+const CAM_PITCH_MAX =  0.50;  // radians — look up (prevent overhead view)
 // Idle orbit disabled — causes confusion on mobile
 
 // Tree collisions — radius 0.6 per tree
@@ -1496,83 +1496,77 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         mouse.dy = 0;
 
         // ─── INPUT (skipped when locked) ────────────────────
-        // avatarFwd = direction the avatar currently faces
-        // W/S move forward/backward in avatar-facing direction
-        // A/D rotate the avatar left/right (and camera follows)
-        let inputFwd = 0; // +1 = forward, -1 = backward
-        let turnInput = 0; // +1 = turn left, -1 = turn right
-        let hasAnyInput = false;
+         // GTA 5 style: idle = full 360° orbit, moving = camera behind avatar
+         let inputFwd = 0; // +1 = forward, -1 = backward
+         let inputStrafe = 0; // +1 = left, -1 = right (relative to camera)
+         let hasAnyInput = false;
 
-        if (lockedRef.current) {
-          vel.x = 0;
-          vel.z = 0;
-        } else if (isMobileRef.current) {
-          if (prevLockedRef.current) {
-            mobileInputRef.current = { x: 0, y: 0, camDx: 0, camDy: 0 };
-          }
-          const joy = mobileInputRef.current;
+         if (lockedRef.current) {
+           vel.x = 0;
+           vel.z = 0;
+         } else if (isMobileRef.current) {
+           if (prevLockedRef.current) {
+             mobileInputRef.current = { x: 0, y: 0, camDx: 0, camDy: 0 };
+           }
+           const joy = mobileInputRef.current;
 
-          // Joystick: forward/backward and turn
-          if (Math.abs(joy.y) > 0.08) { inputFwd = joy.y; hasAnyInput = true; }
-          if (Math.abs(joy.x) > 0.08) { turnInput = -joy.x; hasAnyInput = true; }
+           // Left joystick: forward/backward (world-relative to camera)
+           if (Math.abs(joy.y) > 0.08) { inputFwd = joy.y; hasAnyInput = true; }
+           // Left joystick: left/right strafe (camera-relative)
+           if (Math.abs(joy.x) > 0.08) { inputStrafe = joy.x; hasAnyInput = true; }
 
-          // ── Right-thumb camera drag (world-space yaw) ──
-          // cdx/cdy are already sensitivity-scaled in CameraLookZone (0.0042/rad)
-          const cdx = joy.camDx || 0;
-          const cdy = joy.camDy || 0;
-          if (Math.abs(cdx) > 0.00005 || Math.abs(cdy) > 0.00005) {
-            camYawRef.current  += cdx;  // right drag → camera orbits right (world CW)
-            camPitchRef.current = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current - cdy));
-            userTouchingCamRef.current = true;
-          }
-          joy.camDx = 0;
-          joy.camDy = 0;
+           // ── Right-thumb camera drag (world-space yaw) ──
+           // sensitivity already set in CameraLookZone (0.0072 rad)
+           const cdx = joy.camDx || 0;
+           const cdy = joy.camDy || 0;
+           if (Math.abs(cdx) > 0.00005 || Math.abs(cdy) > 0.00005) {
+             camYawRef.current += cdx;  // camera orbits with camera yaw
+             camPitchRef.current = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current - cdy));
+             userTouchingCamRef.current = true;
+           }
+           joy.camDx = 0;
+           joy.camDy = 0;
 
-          if (mobileInputRef.current._camActive) {
-            userTouchingCamRef.current = true;
-          }
+           if (mobileInputRef.current._camActive) {
+             userTouchingCamRef.current = true;
+           }
         } else {
           if (keys.w || keys.arrowup)    { inputFwd =  1; hasAnyInput = true; }
           if (keys.s || keys.arrowdown)  { inputFwd = -1; hasAnyInput = true; }
-          if (keys.a || keys.arrowleft)  { turnInput =  1; hasAnyInput = true; }
-          if (keys.d || keys.arrowright) { turnInput = -1; hasAnyInput = true; }
+          if (keys.a || keys.arrowleft)  { inputStrafe = -1; hasAnyInput = true; }
+          if (keys.d || keys.arrowright) { inputStrafe =  1; hasAnyInput = true; }
         }
 
-        const isMoving = Math.abs(inputFwd) > 0.08 || Math.abs(turnInput) > 0.08;
-        if (Math.abs(turnInput) > 0.08 && Math.abs(inputFwd) < 0.08) hasAnyInput = true;
+        const isMoving = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08;
+         if (Math.abs(inputStrafe) > 0.08 && Math.abs(inputFwd) < 0.08) hasAnyInput = true;
 
-        // ─── MOVEMENT ─────────────────────────────────────────────────
-        // Mobile (GTA/Roblox style):
-        //   - Camera yaw is world-space and controlled by right thumb independently
-        //   - Joystick forward = move in camera-facing direction
-        //   - Avatar body snaps to face direction of travel
-        //   - Joystick X = strafe relative to camera, avatar faces that direction too
-        //   - Camera NEVER auto-rotates to follow avatar (user controls it)
-        // Desktop:
-        //   - A/D turns the avatar; camera pulls behind when moving
-        let moveX = 0, moveZ = 0;
-        if (isMobileRef.current) {
-          if (Math.abs(inputFwd) > 0.08 || Math.abs(turnInput) > 0.08) {
-            // Camera's forward direction in world space (from camYaw world angle)
-            // camYaw: angle of camera position around avatar; camera looks TOWARD avatar
-            // so "forward" for movement = direction FROM camera TO avatar = camYaw + π
-            const moveFwdAngle = camYawRef.current + Math.PI;
-            const moveRightAngle = moveFwdAngle + Math.PI / 2;
-            // inputFwd: +1 = forward (toward where camera is looking)
-            // turnInput: +1 = left, -1 = right (strafe relative to camera)
-            moveX = Math.sin(moveFwdAngle) * inputFwd + Math.sin(moveRightAngle) * turnInput;
-            moveZ = Math.cos(moveFwdAngle) * inputFwd + Math.cos(moveRightAngle) * turnInput;
-            // Avatar faces the direction of travel
-            const travelAngle = Math.atan2(moveX, moveZ);
-            let rotDiff = travelAngle - rot;
-            while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
-            while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
-            rot += rotDiff * Math.min(1, ROTATION_SMOOTH * dt);
-          }
+         // ─── MOVEMENT (GTA 5 style) ───────────────────────────────────
+         // Camera yaw is world-space and controlled by right thumb independently.
+         // When idle: full 360° orbit around avatar, avatar doesn't turn.
+         // When moving: avatar rotates toward camera heading (0.25-0.5s smooth turn),
+         //             camera repositions behind avatar (0.5-1s smooth transition).
+         let moveX = 0, moveZ = 0;
+         if (isMobileRef.current) {
+           if (isMoving) {
+             // Camera's forward direction in world space (from camYaw world angle)
+             // "forward" = direction the camera is looking (toward avatar from camera's perspective)
+             const moveFwdAngle = camYawRef.current + Math.PI;
+             const moveRightAngle = moveFwdAngle + Math.PI / 2;
+             // inputFwd: +1 = forward, -1 = backward (camera-relative)
+             // inputStrafe: +1 = right, -1 = left (camera-relative)
+             moveX = Math.sin(moveFwdAngle) * inputFwd + Math.sin(moveRightAngle) * inputStrafe;
+             moveZ = Math.cos(moveFwdAngle) * inputFwd + Math.cos(moveRightAngle) * inputStrafe;
+             // Avatar faces the direction of travel (smooth 0.25-0.5s turn)
+             const travelAngle = Math.atan2(moveX, moveZ);
+             let rotDiff = travelAngle - rot;
+             while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
+             while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
+             const turnSpeed = 4.0; // 0.25s to turn 90°
+             rot += rotDiff * Math.min(1, turnSpeed * dt);
+           }
         } else {
-          // Desktop: A/D turns avatar, W/S moves in avatar direction
-          if (Math.abs(turnInput) > 0.01) rot += turnInput * TURN_SPEED * dt;
-          const kbStrafe = -turnInput * 0.6;
+          // Desktop: A/D strafes left/right, W/S moves forward/backward (avatar direction)
+          const kbStrafe = inputStrafe * 0.6;
           moveX = Math.sin(rot) * inputFwd + Math.cos(rot) * kbStrafe;
           moveZ = Math.cos(rot) * inputFwd - Math.sin(rot) * kbStrafe;
         }
@@ -1675,9 +1669,19 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ─── CAMERA SMOOTH ───────────────────────────────────
-        // On desktop: when moving, gently pull camera behind avatar
-        if (!isMobileRef.current && speed > 0.05 && !userTouchingCamRef.current) {
+        // GTA 5 style:
+        // - When moving: smoothly reposition camera behind avatar (0.5-1s) while user's right-stick orbits freely
+        // - When idle: allow full 360° orbit
+        const movingSpeed = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08;
+        if (isMobileRef.current && movingSpeed && !userTouchingCamRef.current) {
           // Target: camera directly behind avatar (avatar rot + π = camera position angle)
+          const targetYaw = rot + Math.PI;
+          let yawDelta = targetYaw - camYawRef.current;
+          while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
+          while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
+          camYawRef.current += yawDelta * Math.min(1, dt * 1.5); // 0.67s to complete 180° turn
+        } else if (!isMobileRef.current && speed > 0.05 && !userTouchingCamRef.current) {
+          // Desktop: maintain camera behind avatar
           const targetYaw = rot + Math.PI;
           let yawDelta = targetYaw - camYawRef.current;
           while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
