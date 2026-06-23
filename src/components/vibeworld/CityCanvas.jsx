@@ -1191,6 +1191,7 @@ function buildPark(scene) {
 // TWINKLING STAR FIELD — small lights over the sky
 // ═══════════════════════════════════════════════════════════════
 function createStarField(scene) {
+  const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const starCanvas = document.createElement("canvas");
   starCanvas.width = 32;
   starCanvas.height = 32;
@@ -1205,7 +1206,7 @@ function createStarField(scene) {
   ctx.fillRect(0, 0, 32, 32);
   const starTex = new THREE.CanvasTexture(starCanvas);
 
-  const starCount = 180;
+  const starCount = isMob ? 80 : 180;
   const starGeo = new BufferGeometry();
   const positions = new Float32Array(starCount * 3);
   const phases = new Float32Array(starCount); // per-star twinkle phase
@@ -1942,7 +1943,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         const windowStates = scene.userData.__windowStates;
-        if (windowStates) {
+        if (windowStates && (!isMob || frameRef.current % 4 === 0)) {
           const LERP_SPEED = 0.85;
           for (const ws of windowStates) {
             if (t >= ws.nextChange) {
@@ -2008,7 +2009,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         });
         animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
-        animateCrystalZone(scene, t, dt, px, pz);
+        if (!isMob || frameRef.current % 2 === 0) animateCrystalZone(scene, t, dt, px, pz);
         animateJukebox(scene, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──

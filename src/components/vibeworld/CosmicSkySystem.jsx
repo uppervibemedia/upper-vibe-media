@@ -14,26 +14,31 @@ const SATURN1 = `${BASE}/57ae697b0_ChatGPTImageJun19202612_41_07PM.png`;  // rin
 const SATURN2 = `${BASE}/1dc6343de_ChatGPTImageJun19202612_41_21PM.png`;  // glowing planet + nebula
 
 export function createCosmicSky(scene) {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  scene.userData._skyIsMobile = isMobile;
+
   const loader = new THREE.TextureLoader();
 
   // ── Seamless sphere skybox ────────────────────────────────────────
   const skyTex = loader.load(SKY_A);
   skyTex.colorSpace = THREE.SRGBColorSpace;
   skyTex.wrapS = THREE.RepeatWrapping;
-  skyTex.wrapT = THREE.RepeatWrapping; // RepeatWrapping prevents hard clamp line at top/bottom poles
+  skyTex.wrapT = THREE.RepeatWrapping;
   skyTex.repeat.set(2, 1);
   skyTex.generateMipmaps = false;
   skyTex.minFilter = THREE.LinearFilter;
   skyTex.magFilter = THREE.LinearFilter;
 
-  // More vertical segments (32) to smooth UV distortion near zenith
+  // Fewer segments on mobile — still smooth, much cheaper
+  const skySegs = isMobile ? [32, 16] : [48, 32];
   const skybox = new THREE.Mesh(
-    new THREE.SphereGeometry(80, 48, 32),
+    new THREE.SphereGeometry(80, skySegs[0], skySegs[1]),
     new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false })
   );
   skybox.name = "skybox";
   skybox.renderOrder = -1;
   scene.add(skybox);
+  scene.userData._skyboxRef = skybox; // cache ref — avoid getObjectByName every frame
 
   // ── Zenith cap — covers any polar pinch/seam when looking straight up ──
   // A solid deep-space color sphere slightly inside the skybox masks the pole artifact.
@@ -42,13 +47,14 @@ export function createCosmicSky(scene) {
     side: THREE.BackSide,
     depthWrite: false,
   });
-  const zenithCap = new THREE.Mesh(new THREE.SphereGeometry(78, 16, 8, 0, Math.PI * 2, 0, 0.55), capMat);
+  const zenithCap = new THREE.Mesh(new THREE.SphereGeometry(78, isMobile ? 8 : 16, isMobile ? 4 : 8, 0, Math.PI * 2, 0, 0.55), capMat);
   zenithCap.name = "zenithCap";
-  zenithCap.renderOrder = -2; // behind skybox texture
+  zenithCap.renderOrder = -2;
   scene.add(zenithCap);
+  scene.userData._zenithCapRef = zenithCap; // cache ref
 
-  // ── Shooting stars — pool of 6 ───────────────────────────────────
-  const SHOOT_COUNT = 6;
+  // ── Shooting stars — fewer on mobile ────────────────────────────
+  const SHOOT_COUNT = isMobile ? 3 : 6;
   const shootingStars = [];
   for (let i = 0; i < SHOOT_COUNT; i++) {
     // Tail streak canvas: bright head fading to transparent tail
@@ -82,8 +88,8 @@ export function createCosmicSky(scene) {
   }
   scene.userData.shootingStars = shootingStars;
 
-  // ── Small asteroids — 3 fireballs with multi-layer burning trails ────
-  const ASTEROID_COUNT = 3;
+  // ── Small asteroids — reduced on mobile for perf ─────────────────
+  const ASTEROID_COUNT = isMobile ? 1 : 3;
   const asteroids = [];
   for (let i = 0; i < ASTEROID_COUNT; i++) {
     // Head: bright glowing fireball core
@@ -200,7 +206,10 @@ export function createCosmicSky(scene) {
   }
   scene.userData.asteroids = asteroids;
 
-  // ── MEGA ASTEROID — one huge slow pass over the beach every ~60s ──
+  // ── MEGA ASTEROID — desktop only (too expensive for mobile) ──────
+  if (isMobile) {
+    scene.userData.megaAsteroid = null;
+  } else {
   // Head: large glowing fireball
   const mac = document.createElement("canvas");
   mac.width = 128; mac.height = 128;
@@ -257,9 +266,9 @@ export function createCosmicSky(scene) {
     tail: mtail, tmat: mtmat,
     active: false, life: 0, maxLife: 0,
     vx: 0, vy: 0, vz: 0,
-    // First pass at ~15s after load, then every 60s
     nextFire: performance.now() * 0.001 + 15,
   };
+  } // end !isMobile block for mega asteroid
 
   // ── Saturn planet images — two real photo sprites blended into the dark sky ──
   // Both images have pure-black backgrounds so NormalBlending makes them invisible
@@ -338,43 +347,47 @@ function spawnArcParams(fast) {
 }
 
 export function animateCosmicSky(scene, camera, t, dt) {
-  // ── Skybox + zenith cap follow camera ───────────────────────────
-  const skybox = scene.getObjectByName("skybox");
+  const isMobile = scene.userData._skyIsMobile;
+
+  // ── Skybox + zenith cap follow camera — use cached refs, not getObjectByName ──
+  const skybox = scene.userData._skyboxRef;
   if (skybox) {
     skybox.position.copy(camera.position);
     skybox.rotation.y += dt * 0.007;
   }
-  const zenithCap = scene.getObjectByName("zenithCap");
+  const zenithCap = scene.userData._zenithCapRef;
   if (zenithCap) zenithCap.position.copy(camera.position);
 
-  // ── Planet images — fixed in world space around the skybox, far apart ──
+  // ── Planet images — throttled position/opacity updates on mobile ──
+  if (!scene.userData._skyFrame) scene.userData._skyFrame = 0;
+  scene.userData._skyFrame++;
+  const skyFrame = scene.userData._skyFrame;
+  const updateSlow = !isMobile || skyFrame % 3 === 0;
+
   const saturnData = scene.userData.saturn;
-  if (saturnData) {
-    // Image 1 (ringed Saturn): upper-LEFT sky — west side, high above horizon
-    // Placed at a fixed world offset from camera so it always appears in the left half of sky
+  if (saturnData && updateSlow) {
     saturnData.sprite.position.set(
-      camera.position.x - 55,  // far left
-      camera.position.y + 28,  // high up
-      camera.position.z - 20,  // slightly ahead
+      camera.position.x - 55,
+      camera.position.y + 28,
+      camera.position.z - 20,
     );
     saturnData.mat.opacity = 0.90 + Math.sin(t * 0.35) * 0.06;
 
-    // Image 2 (glowing planet): upper-RIGHT sky — east side, different height
     if (saturnData.sprite2) {
       saturnData.sprite2.position.set(
-        camera.position.x + 52,  // far right (opposite side)
-        camera.position.y + 20,  // lower than #1 so they're at different heights too
-        camera.position.z + 15,  // slightly behind — totally different quadrant
+        camera.position.x + 52,
+        camera.position.y + 20,
+        camera.position.z + 15,
       );
       saturnData.mat2.opacity = 0.85 + Math.sin(t * 0.28 + 1.5) * 0.07;
     }
   }
 
-  // ── Star twinkling ───────────────────────────────────────────────
+  // ── Star twinkling — throttled on mobile ────────────────────────
   const starsMesh = scene.userData.stars;
-  if (starsMesh?.material) {
+  if (starsMesh?.material && updateSlow) {
     starsMesh.material.opacity = 0.42 + Math.sin(t * 0.85) * 0.08 + Math.cos(t * 0.55) * 0.06;
-    starsMesh.material.size    = 0.30 + Math.sin(t * 1.1)  * 0.05;
+    if (!isMobile) starsMesh.material.size = 0.30 + Math.sin(t * 1.1) * 0.05;
   }
 
   // ── Shooting stars ───────────────────────────────────────────────
