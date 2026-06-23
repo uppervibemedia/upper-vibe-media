@@ -11,6 +11,9 @@ import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DA
 import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
 import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
 import { createCrystalZone, animateCrystalZone } from "./CrystalZone";
+// Sky system and avatar — must be at top of file, not mid-file
+import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
+import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -1239,12 +1242,6 @@ function createStarField(scene) {
   scene.add(stars);
   scene.userData.stars = stars;
 }
-
-// Sky system extracted to CosmicSkySystem.js
-import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
-
-// createCitySkyline lives in ./CitySkyline.jsx, avatars in ./AvatarModel.jsx
-import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
 
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
