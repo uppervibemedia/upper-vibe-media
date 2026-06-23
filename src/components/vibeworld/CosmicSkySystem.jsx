@@ -353,7 +353,7 @@ export function createCosmicSky(scene) {
       ringColor:  "rgba(200,160,80,0.30)",
       size: isMobile ? 17.0 : 22.0,
       angleOffset: STEP * 2,
-      horizonY: 9,
+      horizonY: 16,
       radius: 60,
       setsBelow: false,
     },
