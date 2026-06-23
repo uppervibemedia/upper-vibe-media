@@ -313,6 +313,111 @@ export function createCosmicSky(scene) {
 
   // No separate nebula panels — the canvas skybox handles the full sky.
 
+  // ── Two drifting horizon planets — east and west ends of the sky ──
+  // Each is a canvas-drawn planet disc with a soft atmospheric glow halo.
+  // They sit just above the beach horizon line (Y≈8, Z=+35) and drift
+  // very slowly east↔west so they're always visible from the beach.
+  const PLANET_DEFS = [
+    // West planet — cool teal/blue gas giant
+    {
+      id: "west",
+      bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
+      glowColor:  "rgba(80,180,255,0.18)",
+      ringColor:  "rgba(120,200,255,0.35)",
+      size: isMobile ? 3.5 : 5.0,
+      startX: -55, startY: 9, startZ: 32,
+      driftSpeed: 0.4, // world units per 100s — very slow
+    },
+    // East planet — warm amber/purple ringed planet
+    {
+      id: "east",
+      bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
+      glowColor:  "rgba(220,140,60,0.18)",
+      ringColor:  "rgba(200,160,80,0.30)",
+      size: isMobile ? 3.0 : 4.2,
+      startX: 55, startY: 8, startZ: 30,
+      driftSpeed: -0.35,
+    },
+  ];
+
+  const planets = PLANET_DEFS.map((def) => {
+    const S = 256;
+    const pc = document.createElement("canvas");
+    pc.width = S; pc.height = S;
+    const pctx = pc.getContext("2d");
+
+    // Atmospheric glow halo (drawn first, behind planet)
+    const haloG = pctx.createRadialGradient(S/2, S/2, S*0.28, S/2, S/2, S*0.50);
+    haloG.addColorStop(0, def.glowColor);
+    haloG.addColorStop(1, "rgba(0,0,0,0)");
+    pctx.fillStyle = haloG;
+    pctx.fillRect(0, 0, S, S);
+
+    // Planet body — layered radial gradient for depth
+    const bodyG = pctx.createRadialGradient(S*0.38, S*0.36, S*0.04, S/2, S/2, S*0.30);
+    bodyG.addColorStop(0,   def.bodyColors[4]);
+    bodyG.addColorStop(0.25,def.bodyColors[3]);
+    bodyG.addColorStop(0.55,def.bodyColors[2]);
+    bodyG.addColorStop(0.78,def.bodyColors[1]);
+    bodyG.addColorStop(1,   def.bodyColors[0]);
+    pctx.beginPath();
+    pctx.arc(S/2, S/2, S*0.30, 0, Math.PI * 2);
+    pctx.fillStyle = bodyG;
+    pctx.fill();
+
+    // Horizontal band streaks — subtle atmospheric banding
+    pctx.save();
+    pctx.beginPath();
+    pctx.arc(S/2, S/2, S*0.30, 0, Math.PI * 2);
+    pctx.clip();
+    for (let b = 0; b < 5; b++) {
+      const by = S*0.25 + b * S*0.10;
+      const bandG = pctx.createLinearGradient(0, by - 4, 0, by + 4);
+      bandG.addColorStop(0, "rgba(255,255,255,0)");
+      bandG.addColorStop(0.5, `rgba(255,255,255,${0.04 + b * 0.015})`);
+      bandG.addColorStop(1, "rgba(255,255,255,0)");
+      pctx.fillStyle = bandG;
+      pctx.fillRect(S*0.18, by - 4, S*0.64, 8);
+    }
+    pctx.restore();
+
+    // Ring (elliptical, angled) — drawn over planet
+    pctx.save();
+    pctx.translate(S/2, S/2);
+    pctx.scale(1, 0.28);
+    pctx.beginPath();
+    pctx.arc(0, 0, S*0.44, 0, Math.PI * 2);
+    pctx.strokeStyle = def.ringColor;
+    pctx.lineWidth = S * 0.045;
+    pctx.stroke();
+    pctx.restore();
+
+    const ptex = new THREE.CanvasTexture(pc);
+    ptex.minFilter = THREE.LinearFilter;
+    ptex.generateMipmaps = false;
+
+    const pmat = new THREE.SpriteMaterial({
+      map: ptex, transparent: true, opacity: 0.85,
+      depthWrite: false,
+      renderOrder: 3,
+    });
+    const psprite = new THREE.Sprite(pmat);
+    psprite.scale.set(def.size, def.size, 1);
+    psprite.position.set(def.startX, def.startY, def.startZ);
+    psprite.renderOrder = 3;
+    scene.add(psprite);
+
+    return {
+      sprite: psprite,
+      mat: pmat,
+      startX: def.startX,
+      startY: def.startY,
+      startZ: def.startZ,
+      driftSpeed: def.driftSpeed,
+    };
+  });
+  scene.userData.horizonPlanets = planets;
+
   scene.fog = new THREE.Fog("#101835", 75, 95);
 }
 
@@ -363,6 +468,19 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const updateSlow = !isMobile || skyFrame % 3 === 0;
 
 
+
+  // ── Horizon planets — slow east/west drift + gentle bob ─────────
+  const horizonPlanets = scene.userData.horizonPlanets;
+  if (horizonPlanets && updateSlow) {
+    for (const p of horizonPlanets) {
+      // Drift slowly along X axis; wrap when they go too far
+      const drift = Math.sin(t * p.driftSpeed * 0.01) * 18;
+      p.sprite.position.x = p.startX + drift;
+      p.sprite.position.y = p.startY + Math.sin(t * 0.08 + p.startX) * 0.5;
+      // Gentle opacity breathe
+      p.mat.opacity = 0.75 + Math.sin(t * 0.12 + p.startX) * 0.08;
+    }
+  }
 
   // ── Star twinkling — throttled on mobile ────────────────────────
   const starsMesh = scene.userData.stars;
