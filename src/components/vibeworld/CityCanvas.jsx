@@ -1978,6 +1978,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
+        // Distance flags — declared before any code that uses them
+        const nearBeach = pz > 10;
+        const nearDanceFloor = Math.sqrt(px * px + (pz + 13) * (pz + 13)) < 18;
+
         // Signs: billboarded lookAt every 6 frames on mobile; skip if beyond 45u on mobile
         const updateSigns = !isMob || frameRef.current % 6 === 0;
         const updateZenPart = !isMob || (nearBeach && frameRef.current % 3 === 0);
@@ -2006,8 +2010,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         });
         // Distance-gate zone animations on mobile — skip if player is far away
-        const nearDanceFloor = Math.sqrt(px * px + (pz + 13) * (pz + 13)) < 18;
-        const nearBeach = pz > 10;
         if (!isMob || nearBeach || frameRef.current % 3 === 0) animateZenBeach(scene, t, audioBeat);
         if (!isMob || nearDanceFloor || frameRef.current % 2 === 0) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         if (!isMob || frameRef.current % 2 === 0) animateCrystalZone(scene, t, dt, px, pz);
