@@ -8,8 +8,10 @@
  */
 import * as THREE from "three";
 
-const BASE = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
-const SKY_A = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;
+const BASE   = "https://media.base44.com/images/public/69cd68afb7fe90ae92757154";
+const SKY_A   = `${BASE}/12edd43a9_ChatGPTImageJun19202611_55_16AM.png`;
+const SATURN1 = `${BASE}/57ae697b0_ChatGPTImageJun19202612_41_07PM.png`;  // ringed planet + nebula
+const SATURN2 = `${BASE}/1dc6343de_ChatGPTImageJun19202612_41_21PM.png`;  // glowing planet + nebula
 
 export function createCosmicSky(scene) {
   const loader = new THREE.TextureLoader();
@@ -189,101 +191,49 @@ export function createCosmicSky(scene) {
     nextFire: performance.now() * 0.001 + 15,
   };
 
-  // ── Saturn billboard — canvas-drawn planet that sits in the darker region ──
-  // Rendered as a sprite so it always faces the camera; uses NormalBlending
-  // so it composites naturally (not additive) against the dark sky behind it.
-  const saturnC = document.createElement("canvas");
-  saturnC.width = 256; saturnC.height = 256;
-  const sctx = saturnC.getContext("2d");
+  // ── Saturn planet images — two real photo sprites blended into the dark sky ──
+  // Both images have pure-black backgrounds so NormalBlending makes them invisible
+  // at the edges and the planets/nebulae float seamlessly in the skybox.
+  const loader2 = new THREE.TextureLoader();
 
-  // Body: warm golden sphere with a subtle limb-darkening gradient
-  const bodyGrad = sctx.createRadialGradient(110, 100, 4, 110, 100, 72);
-  bodyGrad.addColorStop(0,    "rgba(255,230,160,0.92)");
-  bodyGrad.addColorStop(0.35, "rgba(220,185,100,0.88)");
-  bodyGrad.addColorStop(0.72, "rgba(160,120,60,0.78)");
-  bodyGrad.addColorStop(1,    "rgba(60,35,10,0)");
-  sctx.fillStyle = bodyGrad;
-  sctx.beginPath();
-  sctx.ellipse(110, 110, 72, 72, 0, 0, Math.PI * 2);
-  sctx.fill();
-
-  // Rings — three elliptical arcs, drawn around the body
-  // Back half of rings (behind planet): drawn first
-  sctx.save();
-  sctx.globalAlpha = 0.52;
-  // Outer ring — back
-  sctx.strokeStyle = "rgba(210,175,95,0.55)";
-  sctx.lineWidth = 7;
-  sctx.beginPath();
-  sctx.ellipse(110, 118, 108, 22, 0, Math.PI, 0);
-  sctx.stroke();
-  // Middle ring — back
-  sctx.strokeStyle = "rgba(240,200,110,0.65)";
-  sctx.lineWidth = 5;
-  sctx.beginPath();
-  sctx.ellipse(110, 116, 88, 17, 0, Math.PI, 0);
-  sctx.stroke();
-  // Inner ring — back
-  sctx.strokeStyle = "rgba(180,145,70,0.4)";
-  sctx.lineWidth = 3;
-  sctx.beginPath();
-  sctx.ellipse(110, 114, 76, 13, 0, Math.PI, 0);
-  sctx.stroke();
-  sctx.restore();
-
-  // Re-draw the body on top to mask back-ring overlap
-  sctx.fillStyle = bodyGrad;
-  sctx.beginPath();
-  sctx.ellipse(110, 110, 72, 72, 0, 0, Math.PI * 2);
-  sctx.fill();
-
-  // Front half of rings (in front of planet): drawn last
-  sctx.save();
-  sctx.globalAlpha = 0.72;
-  sctx.strokeStyle = "rgba(210,175,95,0.60)";
-  sctx.lineWidth = 7;
-  sctx.beginPath();
-  sctx.ellipse(110, 118, 108, 22, 0, 0, Math.PI);
-  sctx.stroke();
-  sctx.strokeStyle = "rgba(240,200,110,0.72)";
-  sctx.lineWidth = 5;
-  sctx.beginPath();
-  sctx.ellipse(110, 116, 88, 17, 0, 0, Math.PI);
-  sctx.stroke();
-  sctx.strokeStyle = "rgba(180,145,70,0.45)";
-  sctx.lineWidth = 3;
-  sctx.beginPath();
-  sctx.ellipse(110, 114, 76, 13, 0, 0, Math.PI);
-  sctx.stroke();
-  sctx.restore();
-
-  // Soft outer glow so edges blend into the dark sky seamlessly
-  const glowGrad = sctx.createRadialGradient(110, 110, 60, 110, 110, 128);
-  glowGrad.addColorStop(0,   "rgba(200,160,80,0)");
-  glowGrad.addColorStop(0.5, "rgba(160,120,50,0.08)");
-  glowGrad.addColorStop(1,   "rgba(0,0,0,0)");
-  sctx.fillStyle = glowGrad;
-  sctx.fillRect(0, 0, 256, 256);
-
-  const saturnTex = new THREE.CanvasTexture(saturnC);
-  saturnTex.minFilter = THREE.LinearFilter;
-
-  const saturnMat = new THREE.SpriteMaterial({
-    map: saturnTex,
+  // Image 1: ringed Saturn + purple nebula — upper-left sky region
+  const sat1Tex = loader2.load(SATURN1);
+  sat1Tex.colorSpace = THREE.SRGBColorSpace;
+  sat1Tex.minFilter = THREE.LinearFilter;
+  sat1Tex.generateMipmaps = false;
+  const sat1Mat = new THREE.SpriteMaterial({
+    map: sat1Tex,
     transparent: true,
-    opacity: 0.78,
+    opacity: 0.82,
     depthWrite: false,
-    // NormalBlending — planet composites as an opaque object against dark sky,
-    // not additive (which would wash out the colours)
-    blending: THREE.NormalBlending,
+    blending: THREE.AdditiveBlending, // black bg = 0 contribution → perfect seamless blend
   });
-  const saturn = new THREE.Sprite(saturnMat);
-  // Position: upper-left region of the sky, high enough to sit in the dark band
-  saturn.position.set(-38, 28, -42);
-  saturn.scale.set(14, 14, 1);
-  saturn.renderOrder = 2; // above skybox, below shooting stars
-  scene.add(saturn);
-  scene.userData.saturn = { sprite: saturn, mat: saturnMat };
+  const sat1 = new THREE.Sprite(sat1Mat);
+  sat1.scale.set(38, 26, 1);
+  sat1.renderOrder = 1;
+  scene.add(sat1);
+
+  // Image 2: glowing planet + nebula — upper-right sky region
+  const sat2Tex = loader2.load(SATURN2);
+  sat2Tex.colorSpace = THREE.SRGBColorSpace;
+  sat2Tex.minFilter = THREE.LinearFilter;
+  sat2Tex.generateMipmaps = false;
+  const sat2Mat = new THREE.SpriteMaterial({
+    map: sat2Tex,
+    transparent: true,
+    opacity: 0.72,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const sat2 = new THREE.Sprite(sat2Mat);
+  sat2.scale.set(34, 24, 1);
+  sat2.renderOrder = 1;
+  scene.add(sat2);
+
+  scene.userData.saturn = {
+    sprite: sat1, mat: sat1Mat,
+    sprite2: sat2, mat2: sat2Mat,
+  };
 
   scene.fog = new THREE.Fog("#101835", 75, 95);
 }
@@ -327,17 +277,26 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const zenithCap = scene.getObjectByName("zenithCap");
   if (zenithCap) zenithCap.position.copy(camera.position);
 
-  // ── Saturn — follow camera so it stays in the sky, gentle opacity drift ──
+  // ── Planet images — follow camera, positioned in opposite sky quadrants ──
   const saturnData = scene.userData.saturn;
   if (saturnData) {
-    // Keep fixed relative to the skybox (which follows camera)
+    // Image 1 (ringed planet): upper-left, behind/above stage area
     saturnData.sprite.position.set(
-      camera.position.x - 38,
-      camera.position.y + 28,
-      camera.position.z - 42,
+      camera.position.x - 42,
+      camera.position.y + 22,
+      camera.position.z - 48,
     );
-    // Soft atmospheric twinkle — very subtle, just enough to feel alive
-    saturnData.mat.opacity = 0.72 + Math.sin(t * 0.4) * 0.06;
+    saturnData.mat.opacity = 0.78 + Math.sin(t * 0.35) * 0.06;
+
+    // Image 2 (glowing planet): upper-right, opposite quadrant
+    if (saturnData.sprite2) {
+      saturnData.sprite2.position.set(
+        camera.position.x + 40,
+        camera.position.y + 18,
+        camera.position.z - 44,
+      );
+      saturnData.mat2.opacity = 0.65 + Math.sin(t * 0.28 + 1.5) * 0.07;
+    }
   }
 
   // ── Star twinkling ───────────────────────────────────────────────
