@@ -87,10 +87,10 @@ export function createCosmicSky(scene) {
   const skySegs = isMobile ? [48, 32] : [64, 48];
   const skybox = new THREE.Mesh(
     new THREE.SphereGeometry(130, skySegs[0], skySegs[1]),
-    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false })
+    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, depthWrite: false, depthTest: false })
   );
   skybox.name = "skybox";
-  skybox.renderOrder = -2;
+  skybox.renderOrder = -10; // render first — planets at renderOrder=10 always draw on top
   skybox.frustumCulled = false;
   scene.add(skybox);
   scene.userData._skyboxRef = skybox;
@@ -628,11 +628,12 @@ export function createCosmicSky(scene) {
       map: ptex, transparent: true, opacity: 0.85,
       depthWrite: false,
       depthTest: false,
+      sizeAttenuation: true,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
     psprite.frustumCulled = false;
-    psprite.renderOrder = 2;
+    psprite.renderOrder = 10; // must be > skybox (-2) and > all world geometry
     scene.add(psprite);
 
     return {
@@ -716,10 +717,12 @@ export function animateCosmicSky(scene, camera, t, dt) {
       const southDip = p.setsBelow ? Math.max(0, cosA - 0.5) * 2 : 0; // 0→1 only past beach midpoint
       const arcY = p.horizonY + northLift * 32 - southDip * 18; // partial set — bottom half hides behind horizon
 
+      // Planets are always camera-relative — they can never be outside the far clip plane
       const cx = camera.position.x + Math.sin(angle) * p.radius;
       const cz = camera.position.z + cosA * p.radius;
       p.sprite.position.set(cx, arcY + Math.sin(t * 0.04 + p.angleOffset) * 0.6, cz);
-      p.mat.opacity = 0.88 + Math.sin(t * 0.06 + p.angleOffset) * 0.06;
+      // depthTest=false + renderOrder=10 means they always draw on top regardless
+      p.mat.opacity = 0.90 + Math.sin(t * 0.06 + p.angleOffset) * 0.05;
     }
   }
 

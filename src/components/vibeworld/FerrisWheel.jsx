@@ -336,27 +336,7 @@ export function createFerrisWheel(scene) {
   root.position.set(WHEEL_X, 0, WHEEL_Z);
   scene.add(root);
 
-  // ─── Neon sign label ─────────────────────────────────────────
-  const canvasW = 512, canvasH = 64;
-  const labelCanvas = document.createElement("canvas");
-  labelCanvas.width = canvasW; labelCanvas.height = canvasH;
-  const ctx = labelCanvas.getContext("2d");
-  ctx.shadowColor = "#00E5FF";
-  ctx.shadowBlur = 14;
-  ctx.font = "bold 28px 'Syne','Inter',sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillText("UPPER VIBE CITY", canvasW / 2, canvasH / 2);
-  ctx.fillText("UPPER VIBE CITY", canvasW / 2, canvasH / 2);
-  const labelTex = new CanvasTexture(labelCanvas);
-  labelTex.minFilter = LinearFilter;
-  labelTex.colorSpace = THREE.SRGBColorSpace;
-  const signSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false, depthTest: false }));
-  signSprite.scale.set(7.5, 7.5 * (canvasH / canvasW), 1);
-  signSprite.renderOrder = 2;
-  signSprite.position.set(WHEEL_X, WHEEL_HUB_Y + WHEEL_RADIUS + 1.6, WHEEL_Z);
-  scene.add(signSprite);
-  scene.userData.ferrisWheelSign = signSprite;
+  // No banner label above the ride — keep it clean
 
   // ─── Entrance ground marker (yellow circle arc) ───────────────
   const entryRing = new Mesh(
@@ -431,12 +411,6 @@ export function animateFerrisWheel(scene, t, audioBeat, playerX, playerZ) {
   // Wheel light
   if (fw.wheelLight) {
     fw.wheelLight.intensity = tooFar ? 1.5 : 2.0 + Math.sin(t * 1.1) * 0.5 + audioBeat * 1.0;
-  }
-
-  // Sign billboard
-  const sign = scene.userData.ferrisWheelSign;
-  if (sign) {
-    sign.material.opacity = 0.75 + Math.sin(t * 1.4) * 0.18;
   }
 
   // Carnival lights — mobile: only animate first 8 bulbs; skip when far

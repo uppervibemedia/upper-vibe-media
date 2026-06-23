@@ -10,7 +10,7 @@ import * as THREE from "three";
 
 export const CRYSTAL_ZONE_X  = -26;
 export const CRYSTAL_ZONE_Z  = -14;
-export const CRYSTAL_ZONE_RADIUS = 6;
+export const CRYSTAL_ZONE_RADIUS = 9;
 
 const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
@@ -488,4 +488,4 @@ export function activateCrystalZone(scene) {
   cz.activatedTimer = 4.0; // 4 seconds
 }
 
-export const CRYSTAL_INTERACT_RADIUS = 3.5;
+export const CRYSTAL_INTERACT_RADIUS = 5.5;
