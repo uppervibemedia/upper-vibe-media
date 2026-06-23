@@ -340,7 +340,7 @@ export function createCosmicSky(scene) {
       horizonY: 10,
       radius: 60,
     },
-    // Amber ringed planet — right of center
+    // Amber planet — right of center
     {
       id: "east",
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
@@ -349,6 +349,28 @@ export function createCosmicSky(scene) {
       size: isMobile ? 17.0 : 22.0,
       angleOffset: 1.1,     // ~63° right
       horizonY: 9,
+      radius: 60,
+    },
+    // Emerald green planet — further east
+    {
+      id: "green",
+      bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
+      glowColor:  "rgba(60,200,100,0.16)",
+      ringColor:  "rgba(80,220,120,0.30)",
+      size: isMobile ? 14.0 : 18.0,
+      angleOffset: 2.1,     // ~120° right — always coming from the east
+      horizonY: 11,
+      radius: 60,
+    },
+    // Deep red / crimson planet — far east, large
+    {
+      id: "crimson",
+      bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
+      glowColor:  "rgba(220,60,60,0.20)",
+      ringColor:  "rgba(200,80,80,0.30)",
+      size: isMobile ? 22.0 : 30.0,
+      angleOffset: 3.0,     // ~172° right — east horizon, appears as others exit west
+      horizonY: 8,
       radius: 60,
     },
   ];
