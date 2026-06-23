@@ -377,15 +377,24 @@ function buildPark(scene) {
   frontWash.position.set(0, 2.5, -29); stage.add(frontWash);
 
   scene.add(stage);
-  createNeonSign(scene, 0, 7.5, -32, "MUSIC  STAGE", "#00D4F0");
-  createNeonSign(scene, -8, 5.5, -28, "UPPER VIBE MEDIA", "#A078FF");
-  createNeonSign(scene, 0, 3.5, 14, "UVC  ·  BEACH  DISTRICT", "#D4A843");
+  // Stage label — lowered to just above the arch, still clearly readable
+  createNeonSign(scene, 0, 4.2, -29.5, "MUSIC  STAGE", "#00D4F0");
+  // Beach district label — eye level at beach entrance
+  createNeonSign(scene, 0, 2.4, 14, "UVC  ·  BEACH  DISTRICT", "#D4A843");
+
+  // ── EYE-LEVEL UPPER VIBE MEDIA BRANDING — placed along user walking paths ──
+  // Spawn area: first thing player sees when entering the world
+  createNeonSign(scene, 0, 2.3, 8, "UPPER  VIBE  MEDIA", "#A078FF");
+  // Stage approach path: facing player as they walk toward the stage
+  createNeonSign(scene, -5, 2.3, -24, "UPPER  VIBE  MEDIA", "#A078FF");
+  // Dance floor east side: visible from central plaza
+  createNeonSign(scene, 8, 2.3, -13, "UPPER  VIBE  MEDIA", "#A078FF");
 
   // ═══════════════════════════════════════
   // VIBE LAUNCH ZONE
   // ═══════════════════════════════════════
   buildLaunchZone(scene);
-  createNeonSign(scene, 0, 3.2, 4, "VIBE  LAUNCH  ZONE", "#00E5FF");
+  createNeonSign(scene, 0, 2.3, 4, "VIBE  LAUNCH  ZONE", "#00E5FF");
   // Note: Vibe Launch Zone stays near z=4 (beach side of plaza)
 
   // ═════════════════════════════════════════════════════════════
@@ -553,7 +562,7 @@ function buildPark(scene) {
   scene.userData.loungeNeonMats = loungeNeonMats;
 
   scene.add(lounge);
-  createNeonSign(scene, -22, 4.5, -26, "VIBE  LOUNGE", "#C43BFF");
+  createNeonSign(scene, -22, 2.4, -22, "VIBE  LOUNGE", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 6. MUSIC LIBRARY — right-back, entrance faces plaza
@@ -620,7 +629,7 @@ function buildPark(scene) {
   library.add(libEntrance);
 
   scene.add(library);
-  createNeonSign(scene, 22, 4.2, -20, "MUSIC  LIBRARY", "#00D4F0");
+  createNeonSign(scene, 22, 2.4, -16, "MUSIC  LIBRARY", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
   // 7. VISUALIZER DOME — lower-left, entrance facing Central Plaza
@@ -666,7 +675,7 @@ function buildPark(scene) {
   dome.add(domeFloor);
 
   scene.add(dome);
-  createNeonSign(scene, -13, 4.2, 3, "VISUALIZER  DOME", "#C43BFF");
+  createNeonSign(scene, -13, 2.4, 6.5, "VISUALIZER  DOME", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 8. DAILY VIBE CHECK — Vibe Mirror reflection zone
@@ -782,7 +791,7 @@ function buildPark(scene) {
   vibeCheck.add(mirrorGroup);
 
   scene.add(vibeCheck);
-  createNeonSign(scene, -16, 4.4, -13, "DAILY  VIBE  CHECK", "#00E5FF");
+  createNeonSign(scene, -16, 2.4, -10, "DAILY  VIBE  CHECK", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 8.5. UPPER VIBE ACADEMY — futuristic learning cinema, top-left
@@ -907,7 +916,7 @@ function buildPark(scene) {
   academy.add(roofDot);
 
   scene.add(academy);
-  createNeonSign(scene, ACAD_X, 5.2, ACAD_Z, "VIBE  ACADEMY", "#7C3AED");
+  createNeonSign(scene, ACAD_X, 2.4, ACAD_Z + 3.5, "VIBE  ACADEMY", "#7C3AED");
 
   // Academy ambient light
   const academyLight = new PointLight();
@@ -921,7 +930,7 @@ function buildPark(scene) {
   // 8.5.5 CRYSTAL ZONE — between Vibe Lounge and Vibe Academy
   // ═════════════════════════════════════════════════════════════
   createCrystalZone(scene);
-  createNeonSign(scene, -28, 6.8, -11, "CRYSTAL  ZONE", "#AA66FF");
+  createNeonSign(scene, -28, 2.4, -8, "CRYSTAL  ZONE", "#AA66FF");
 
   // ═════════════════════════════════════════════════════════════
   // 8.6. ZEN BEACH — meditation zone, left-side beach area
