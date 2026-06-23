@@ -317,59 +317,61 @@ export function createCosmicSky(scene) {
   // Each is a canvas-drawn planet disc with a soft atmospheric glow halo.
   // They sit just above the beach horizon line (Y≈8, Z=+35) and drift
   // very slowly east↔west so they're always visible from the beach.
-  // Planets are placed on the NORTH side of the map (behind the stage, negative Z),
-  // high in the sky, and rendered behind all geometry using renderOrder = -2.
-  // They are embedded inside the skybox sphere so buildings always occlude them.
   const PLANET_DEFS = [
+    // MEGA planet — huge purple gas giant, center of beach horizon
     {
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor:  "rgba(160,80,255,0.28)",
       ringColor:  "rgba(200,140,255,0.45)",
       size: isMobile ? 27.5 : 37.5,
-      angleOffset: Math.PI,       // due north (behind stage)
-      horizonY: 32,
-      radius: 72,
+      angleOffset: 0,       // evenly spaced: center
+      horizonY: 14,
+      radius: 60,
     },
+    // Blue gas giant — left of center
     {
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor:  "rgba(80,180,255,0.18)",
       ringColor:  "rgba(120,200,255,0.35)",
       size: isMobile ? 20.0 : 26.0,
-      angleOffset: Math.PI - 0.9, // northwest
-      horizonY: 28,
-      radius: 72,
+      angleOffset: -1.1,    // ~63° left
+      horizonY: 10,
+      radius: 60,
     },
+    // Amber planet — right of center
     {
       id: "east",
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
       glowColor:  "rgba(220,140,60,0.18)",
       ringColor:  "rgba(200,160,80,0.30)",
       size: isMobile ? 17.0 : 22.0,
-      angleOffset: Math.PI + 0.9, // northeast
-      horizonY: 26,
-      radius: 72,
+      angleOffset: 1.1,     // ~63° right
+      horizonY: 9,
+      radius: 60,
     },
+    // Emerald green planet — further east
     {
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor:  "rgba(60,200,100,0.16)",
       ringColor:  "rgba(80,220,120,0.30)",
       size: isMobile ? 14.0 : 18.0,
-      angleOffset: Math.PI + 1.7, // further northeast
-      horizonY: 30,
-      radius: 72,
+      angleOffset: 2.1,     // ~120° right — always coming from the east
+      horizonY: 11,
+      radius: 60,
     },
+    // Deep red / crimson planet — far east, large
     {
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor:  "rgba(220,60,60,0.20)",
       ringColor:  "rgba(200,80,80,0.30)",
       size: isMobile ? 22.0 : 30.0,
-      angleOffset: Math.PI - 1.7, // further northwest
-      horizonY: 29,
-      radius: 72,
+      angleOffset: 3.0,     // ~172° right — east horizon, appears as others exit west
+      horizonY: 8,
+      radius: 60,
     },
   ];
 
@@ -434,11 +436,11 @@ export function createCosmicSky(scene) {
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0.85,
       depthWrite: false,
-      renderOrder: -2,
+      renderOrder: 3,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    psprite.renderOrder = -2;
+    psprite.renderOrder = 3;
     scene.add(psprite);
 
     return {
