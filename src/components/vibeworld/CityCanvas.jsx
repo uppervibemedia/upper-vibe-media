@@ -1010,24 +1010,20 @@ function buildPark(scene) {
 
   // Beach chairs removed — hoverboard course uses this space
 
-  // 11. OCEAN — waves from shore
-  const oceanSegments = 54;
+  // 11. OCEAN — mobile: flat static low-poly mesh; desktop: animated high-poly
+  const isMobScene = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const oceanWidth = 92;
-  const oceanGeo = new PlaneGeometry(oceanWidth, OCEAN_DEPTH, 56, oceanSegments);
-  const oceanMat = new MeshBasicMaterial();
-  oceanMat.color = new Color("#30B0DC");
-  oceanMat.side = THREE.DoubleSide;
+  const oceanGeo = new PlaneGeometry(oceanWidth, OCEAN_DEPTH, isMobScene ? 4 : 56, isMobScene ? 4 : 54);
+  const oceanMat = new MeshBasicMaterial({ color: new Color(isMobScene ? "#38B8E0" : "#30B0DC"), side: THREE.DoubleSide });
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, 0, SHORELINE_Z + OCEAN_DEPTH / 2);
-  ocean.renderOrder = 0;
-  ocean.name = "ocean";
+  ocean.renderOrder = 0; ocean.name = "ocean";
   scene.add(ocean);
-
-  const origArr = new Float32Array(oceanGeo.attributes.position.array.length);
-  origArr.set(oceanGeo.attributes.position.array);
+  const origArr = isMobScene ? null : (() => { const a = new Float32Array(oceanGeo.attributes.position.array.length); a.set(oceanGeo.attributes.position.array); return a; })();
   scene.userData.ocean = ocean;
   scene.userData._oceanOrig = origArr;
+  scene.userData._oceanStatic = isMobScene;
   scene.userData._oceanCenterZ = SHORELINE_Z + OCEAN_DEPTH / 2;
 
   const foamGeo = new PlaneGeometry(92, 1.5);
@@ -1161,22 +1157,17 @@ function buildPark(scene) {
   scene.add(plazaFill);
   scene.userData.plazaFill = plazaFill;
 
-  // ── Shifting neon ambient lights — 4 roving fill lights ──────
-  // These drift slowly around the city, shifting between electric blue
-  // and deep purple to create the "neon night" atmosphere without
-  // adding any new geometry. Performance-friendly: intensity kept low.
-  const neonAmbients = [
-    // [x, y, z, color, distance, phaseOffset]
-    { pos: [8,  3.5, -20], color: new Color("#0088FF"), distance: 18, phase: 0.0,    baseI: 1.2 }, // electric blue — stage-right
-    { pos: [-8, 3.5, -20], color: new Color("#7C3AED"), distance: 18, phase: 1.6,    baseI: 1.2 }, // deep purple — stage-left
-    { pos: [0,  4.0,   8], color: new Color("#00C8E8"), distance: 16, phase: 3.1,    baseI: 1.0 }, // cyan — beach entrance
-    { pos: [0,  3.5, -30], color: new Color("#9B4FFF"), distance: 14, phase: 4.7,    baseI: 0.9 }, // violet — behind stage
-  ].map(({ pos, color, distance, phase, baseI }) => {
+  // ── Shifting neon ambient lights — 2 on mobile, 4 on desktop ──
+  const _isMobLights = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const _allNeonAmb = [
+    { pos: [8,  3.5, -20], color: new Color("#0088FF"), distance: 18, phase: 0.0, baseI: 1.2 },
+    { pos: [-8, 3.5, -20], color: new Color("#7C3AED"), distance: 18, phase: 1.6, baseI: 1.2 },
+    { pos: [0,  4.0,   8], color: new Color("#00C8E8"), distance: 16, phase: 3.1, baseI: 1.0 },
+    { pos: [0,  3.5, -30], color: new Color("#9B4FFF"), distance: 14, phase: 4.7, baseI: 0.9 },
+  ];
+  const neonAmbients = (_isMobLights ? _allNeonAmb.slice(0, 2) : _allNeonAmb).map(({ pos, color, distance, phase, baseI }) => {
     const light = new PointLight();
-    light.color.copy(color);
-    light.intensity = baseI;
-    light.distance = distance;
-    light.position.set(...pos);
+    light.color.copy(color); light.intensity = baseI; light.distance = distance; light.position.set(...pos);
     scene.add(light);
     return { light, phase, baseI, color1: color.clone(), color2: new Color(phase < 2 ? "#A040FF" : "#00B8D4") };
   });
@@ -1389,28 +1380,17 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       buildPark(scene);
 
-      // ── Water splash particle system — reusable pool of droplet sprites ──
-      {
+      // Water splash particles — desktop only (too costly on mobile)
+      if (!isMob) {
         const SPLASH_COUNT = 28;
         const splashGeo = new BufferGeometry();
         const pos = new Float32Array(SPLASH_COUNT * 3);
         splashGeo.setAttribute("position", new BufferAttribute(pos, 3));
-        const splashMat = new PointsMaterial({
-          color: new Color("#80DFFF"),
-          size: 0.18,
-          transparent: true,
-          opacity: 0,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-        });
+        const splashMat = new PointsMaterial({ color: new Color("#80DFFF"), size: 0.18, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
         const splashPoints = new Points(splashGeo, splashMat);
-        splashPoints.name = "hbSplash";
-        splashPoints.renderOrder = 5;
+        splashPoints.name = "hbSplash"; splashPoints.renderOrder = 5;
         scene.add(splashPoints);
-        // Per-particle state: velocity, life, maxLife
-        const particles = Array.from({ length: SPLASH_COUNT }, () => ({
-          vx: 0, vy: 0, vz: 0, life: 0, maxLife: 0,
-        }));
+        const particles = Array.from({ length: SPLASH_COUNT }, () => ({ vx: 0, vy: 0, vz: 0, life: 0, maxLife: 0 }));
         splashParticlesRef.current = { points: splashPoints, particles, pos };
       }
 
@@ -1804,11 +1784,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             scene.userData._stageTex = tex;
             scene.userData._lastStageTexTime = 0;
           }
-          // Throttle texture upload to ~15fps to prevent GPU flicker
+          // Throttle texture upload — 8fps on mobile when far from stage, 15fps otherwise
           const stageTex = scene.userData._stageTex;
           if (stageTex) {
             const stageTexNow = performance.now();
-            const STAGE_TEX_INTERVAL = 1000 / 15;
+            const nearStage = pz < -10;
+            const stageFps = (isMob && !nearStage) ? 5 : 15;
+            const STAGE_TEX_INTERVAL = 1000 / stageFps;
             if (!scene.userData._lastStageTexTime || stageTexNow - scene.userData._lastStageTexTime >= STAGE_TEX_INTERVAL) {
               stageTex.needsUpdate = true;
               scene.userData._lastStageTexTime = stageTexNow;
@@ -1836,8 +1818,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const waveSpeed = 1.8 + bassEnergy * 4.5 + beatPulse * 2.0;
         const waveT = t * waveSpeed;
 
-        // On mobile, only update ocean every 3 frames to reduce vertex shader pressure
-        const skipOcean = isMob && frameRef.current % 3 !== 0;
+        // Mobile: static ocean — no vertex animation at all
+        const skipOcean = scene.userData._oceanStatic || (isMob && frameRef.current % 3 !== 0);
         if (oceanMesh && origArr && !skipOcean) {
           const pos = oceanMesh.geometry.attributes.position;
           const arr = pos.array;
@@ -1868,26 +1850,22 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           pos.needsUpdate = true;
         }
 
-        // ─── FOAM STRIP — pulses with tide + music ───────────────────
-        const foamMesh = scene.userData.foam;
-        if (foamMesh && foamMesh.material) {
-          const tide = Math.sin(t * 0.55) * 0.5 + 0.5;
-          const foamBoost = 1 + bassEnergy * 1.2 + beatPulse * 0.8;
-          foamMesh.material.opacity = (0.18 + tide * 0.55) * foamBoost;
-          foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.7;
-        }
-
-        // ─── SHORELINE GLOW — pulses with beat ──────────────────
-        const shoreGlow = scene.userData.shoreGlow;
-        if (shoreGlow?.material) {
-          const glowOpacity = 0.08 + bassEnergy * 0.25 + beatPulse * 0.35;
-          shoreGlow.material.opacity = glowOpacity;
-          // Shift color between cyan and purple — reuse cached Color objects
-          if (!scene.userData._cyanColor) {
-            scene.userData._cyanColor = new Color("#00D4F0");
-            scene.userData._purpleColor = new Color("#A078FF");
+        // ─── FOAM + SHORELINE GLOW — skip on mobile when far from beach ──
+        const nearBeachAnim = pz > 8;
+        if (!isMob || (nearBeachAnim && frameRef.current % 3 === 0)) {
+          const foamMesh = scene.userData.foam;
+          if (foamMesh?.material) {
+            const tide = Math.sin(t * 0.55) * 0.5 + 0.5;
+            const foamBoost = 1 + bassEnergy * 1.2 + beatPulse * 0.8;
+            foamMesh.material.opacity = (0.18 + tide * 0.55) * foamBoost;
+            foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.7;
           }
-          shoreGlow.material.color.copy(scene.userData._cyanColor).lerp(scene.userData._purpleColor, Math.min(1, bassEnergy * 1.5));
+          const shoreGlow = scene.userData.shoreGlow;
+          if (shoreGlow?.material) {
+            shoreGlow.material.opacity = 0.08 + bassEnergy * 0.25 + beatPulse * 0.35;
+            if (!scene.userData._cyanColor) { scene.userData._cyanColor = new Color("#00D4F0"); scene.userData._purpleColor = new Color("#A078FF"); }
+            shoreGlow.material.color.copy(scene.userData._cyanColor).lerp(scene.userData._purpleColor, Math.min(1, bassEnergy * 1.5));
+          }
         }
 
         // ─── STAGE SCREEN GLOW + LOUNGE NEON — throttled on mobile ──
@@ -1953,7 +1931,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         const windowStates = scene.userData.__windowStates;
-        if (windowStates && (!isMob || frameRef.current % 4 === 0)) {
+        if (windowStates && (!isMob || frameRef.current % 8 === 0)) {
           const LERP_SPEED = 0.85;
           for (const ws of windowStates) {
             if (t >= ws.nextChange) {
@@ -1972,10 +1950,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── PLAZA FILL LIGHT — soft pulse with music ─────────
-        const pf = scene.userData.plazaFill;
-        if (pf && pf.intensity !== undefined) {
-          pf.intensity = 1.0 + audioBeat * 0.8 + Math.sin(t * 1.2) * 0.2;
+        // ─── PLAZA FILL LIGHT — throttled on mobile ───────────
+        if (!isMob || frameRef.current % 4 === 0) {
+          const pf = scene.userData.plazaFill;
+          if (pf) pf.intensity = 1.0 + audioBeat * 0.8 + Math.sin(t * 1.2) * 0.2;
         }
 
         // ─── SHIFTING NEON AMBIENT LIGHTS — throttled on mobile ──
@@ -1991,24 +1969,27 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // On mobile, update neon signs every 6 frames — reduces per-frame JS work when turning
+        // Signs: billboarded lookAt every 6 frames on mobile; skip if beyond 45u on mobile
         const updateSigns = !isMob || frameRef.current % 6 === 0;
+        const updateZenPart = !isMob || (nearBeach && frameRef.current % 3 === 0);
         scene.children.forEach((child) => {
           if (child.userData?.isNeonSign) {
-            if (updateSigns) child.lookAt(camera.position);
-            const signPhase = child.position.x * 0.5;
-            const breathe = 0.22 + Math.sin(t * 1.3 + signPhase) * 0.1 + audioBeat * 0.12;
-            child.children.forEach((part) => {
-              if (part.name === "neonBack" && part.material?.opacity !== undefined) {
-                part.material.opacity = breathe;
+            if (updateSigns) {
+              if (isMob) {
+                const sdx = child.position.x - px, sdz = child.position.z - pz;
+                if (sdx * sdx + sdz * sdz > 2025) return; // skip signs >45u away on mobile
               }
-              // Pulse the border frame
-              if (part.material?.color && part.material?.opacity !== undefined && part.renderOrder === 1) {
-                part.material.opacity = 0.35 + audioBeat * 0.3 + Math.sin(t * 1.5 + signPhase) * 0.1;
-              }
-            });
+              child.lookAt(camera.position);
+              const signPhase = child.position.x * 0.5;
+              const breathe = 0.22 + Math.sin(t * 1.3 + signPhase) * 0.1 + audioBeat * 0.12;
+              child.children.forEach((part) => {
+                if (part.name === "neonBack" && part.material?.opacity !== undefined) part.material.opacity = breathe;
+                if (part.material?.color && part.material?.opacity !== undefined && part.renderOrder === 1)
+                  part.material.opacity = 0.35 + audioBeat * 0.3 + Math.sin(t * 1.5 + signPhase) * 0.1;
+              });
+            }
           }
-          if (child.userData?.isZenParticle) {
+          if (updateZenPart && child.userData?.isZenParticle) {
             const p = child.userData;
             child.position.y = p.baseY + Math.sin(t * 1.2 + p.phase) * 0.15;
             child.position.x = p.baseX + Math.cos(t * 0.8 + p.phase) * 0.2;
@@ -2053,9 +2034,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const hbBoard = avatarEntryRef.current?._hbBoard;
           if (hbBoard) { hbBoard.rotation.x = 0; hbBoard.rotation.z = 0; }
         }
-        animateLaunchZone(scene, t, audioBeat, dt);
-        animateHoverboardZone(scene, t, audioBeat);
-        animateFerrisWheel(scene, t, audioBeat);
+        // Distance-gate heavy zone animations on mobile
+        const nearLaunch = Math.sqrt(px * px + (pz - 4) * (pz - 4)) < 20;
+        const nearFerris = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z)) < 28;
+        if (!isMob || nearLaunch || frameRef.current % 4 === 0) animateLaunchZone(scene, t, audioBeat, dt);
+        if (!isMob || nearFerris || frameRef.current % 4 === 0) animateHoverboardZone(scene, t, audioBeat);
+        if (!isMob || ferrisRidingRef.current || nearFerris || frameRef.current % 6 === 0) animateFerrisWheel(scene, t, audioBeat);
 
         // ── WATER SPLASH — hoverboard spray when rider is in the ocean zone ──
         const splash = splashParticlesRef.current;
