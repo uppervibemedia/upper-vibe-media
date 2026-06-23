@@ -325,9 +325,9 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(160,80,255,0.28)",
       ringColor:  "rgba(200,140,255,0.45)",
       size: isMobile ? 27.5 : 37.5,
-      angleOffset: 0,
-      horizonY: 22,
-      radius: 78,
+      angleOffset: 0,       // evenly spaced: center
+      horizonY: 14,
+      radius: 60,
     },
     // Blue gas giant — left of center
     {
@@ -336,9 +336,9 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(80,180,255,0.18)",
       ringColor:  "rgba(120,200,255,0.35)",
       size: isMobile ? 20.0 : 26.0,
-      angleOffset: -1.1,
-      horizonY: 20,
-      radius: 78,
+      angleOffset: -1.1,    // ~63° left
+      horizonY: 10,
+      radius: 60,
     },
     // Amber planet — right of center
     {
@@ -347,9 +347,9 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(220,140,60,0.18)",
       ringColor:  "rgba(200,160,80,0.30)",
       size: isMobile ? 17.0 : 22.0,
-      angleOffset: 1.1,
-      horizonY: 20,
-      radius: 78,
+      angleOffset: 1.1,     // ~63° right
+      horizonY: 9,
+      radius: 60,
     },
     // Emerald green planet — further east
     {
@@ -358,9 +358,9 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(60,200,100,0.16)",
       ringColor:  "rgba(80,220,120,0.30)",
       size: isMobile ? 14.0 : 18.0,
-      angleOffset: 2.1,
-      horizonY: 21,
-      radius: 78,
+      angleOffset: 2.1,     // ~120° right — always coming from the east
+      horizonY: 11,
+      radius: 60,
     },
     // Deep red / crimson planet — far east, large
     {
@@ -369,9 +369,9 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(220,60,60,0.20)",
       ringColor:  "rgba(200,80,80,0.30)",
       size: isMobile ? 22.0 : 30.0,
-      angleOffset: 3.0,
-      horizonY: 19,
-      radius: 78,
+      angleOffset: 3.0,     // ~172° right — east horizon, appears as others exit west
+      horizonY: 8,
+      radius: 60,
     },
   ];
 
@@ -436,11 +436,11 @@ export function createCosmicSky(scene) {
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0.85,
       depthWrite: false,
-      depthTest: true,
+      renderOrder: 3,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    psprite.renderOrder = -1;
+    psprite.renderOrder = 3;
     scene.add(psprite);
 
     return {
@@ -512,18 +512,9 @@ export function animateCosmicSky(scene, camera, t, dt) {
     for (const p of horizonPlanets) {
       // Each planet sits at a fixed angular offset from the skybox angle
       const angle = skyAngle + p.angleOffset;
-      const worldZ = camera.position.z + Math.cos(angle) * p.radius;
       const cx = camera.position.x + Math.sin(angle) * p.radius;
-      const cz = worldZ;
-
-      // Dynamic Y: when planet is on the north side (behind buildings, worldZ < 0),
-      // lift it high so it clears rooflines. On the beach side (worldZ > 0) and east/west
-      // extremes, bring it down to eye/horizon level for full visibility.
-      // Blend: northFactor=1 at z=-78, 0 at z=+78
-      const northFactor = Math.max(0, Math.min(1, -worldZ / 78));
-      const horizonY = p.horizonY + northFactor * 18; // up to +18 extra height on north side
-
-      p.sprite.position.set(cx, horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.8, cz);
+      const cz = camera.position.z + Math.cos(angle) * p.radius;
+      p.sprite.position.set(cx, p.horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.8, cz);
       p.mat.opacity = 0.88 + Math.sin(t * 0.06 + p.angleOffset) * 0.06;
     }
   }
