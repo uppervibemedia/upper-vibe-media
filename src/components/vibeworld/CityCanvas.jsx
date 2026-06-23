@@ -1521,7 +1521,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
            const cdx = joy.camDx || 0;
            const cdy = joy.camDy || 0;
            if (Math.abs(cdx) > 0.00005 || Math.abs(cdy) > 0.00005) {
-             camYawRef.current += cdx;  // camera orbits with camera yaw
+             camYawRef.current += cdx;  // drag right = +cdx = camera rotates right
              camPitchRef.current = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current - cdy));
              userTouchingCamRef.current = true;
            }
@@ -1554,7 +1554,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
              const moveFwdAngle = camYawRef.current + Math.PI;
              const moveRightAngle = moveFwdAngle + Math.PI / 2;
              // inputFwd: +1 = forward, -1 = backward (camera-relative)
-             // inputStrafe: +1 = right, -1 = left (camera-relative)
+             // inputStrafe: +1 = strafe right, -1 = strafe left (camera-relative)
              moveX = Math.sin(moveFwdAngle) * inputFwd + Math.sin(moveRightAngle) * inputStrafe;
              moveZ = Math.cos(moveFwdAngle) * inputFwd + Math.cos(moveRightAngle) * inputStrafe;
              // Avatar faces the direction of travel (smooth 0.25-0.5s turn)

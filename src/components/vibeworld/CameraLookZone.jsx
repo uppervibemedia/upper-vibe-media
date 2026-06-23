@@ -48,10 +48,10 @@ export default function CameraLookZone({ mobileInputRef }) {
       activeTouchRef.current.lastY = touch.clientY;
 
       // Sensitivity: 0.0072 = responsive mobile third-person feel.
-      // camDx: drag RIGHT = negative = camera yaw moves LEFT (natural follow)
+      // camDx: drag RIGHT = positive = camYaw increases = camera rotates RIGHT (GTA standard)
       // camDy: drag DOWN = positive = camera tilts down (pitch decreases)
       const sensitivity = 0.0072;
-      mobileInputRef.current.camDx = -rawDx * sensitivity;
+      mobileInputRef.current.camDx = rawDx * sensitivity;
       mobileInputRef.current.camDy = rawDy * sensitivity;
     };
 
