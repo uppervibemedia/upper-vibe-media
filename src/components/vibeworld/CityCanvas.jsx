@@ -14,7 +14,7 @@ import { createCrystalZone, animateCrystalZone, activateCrystalZone } from "./Cr
 // Sky system and avatar — must be at top of file, not mid-file
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
-import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar, createRobotAvatar } from "./AvatarModelTest";
+import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
 import { createZoneSign } from "./ZoneSign";
 
 // Destructure immediately after namespace import to ensure full module load
@@ -1359,19 +1359,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       scene.add(avatarRimLight);
       scene.userData.avatarRimLight = avatarRimLight;
 
-      // Determine avatar type: "current" (default GLB), "test-male", "test-female", or "test-robot"
+      // Determine avatar type: "current" (default GLB), "test-male", or "test-female"
       const avatarTypeKey = avatarConfig?.avatarTypeKey || "current";
-      const isTestAvatar = avatarTypeKey === "test-male" || avatarTypeKey === "test-female" || avatarTypeKey === "test-robot";
+      const isTestAvatar = avatarTypeKey === "test-male" || avatarTypeKey === "test-female";
       const testGender = avatarTypeKey === "test-female" ? "female" : "male";
 
       let entry;
-      if (avatarTypeKey === "test-robot") {
-        // RobotExpressive GLB — real idle/walk/run animations
-        entry = createRobotAvatar(scene, avatarConfig || {}, (_entry) => {});
-        if (retintRef) {
-          retintRef.current = (hexColor) => {}; // robot has no suit to retint
-        }
-      } else if (isTestAvatar) {
+      if (isTestAvatar) {
         // TEST avatars — procedural geometry, no GLB, instant load
         entry = createTestAvatar(scene, testGender, avatarConfig || {}, (_entry) => {
           const savedColor = avatarConfig?.suitColor;
@@ -1723,7 +1717,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // avatarEntryRef.current is the same object returned by createAvatar.
         // Its mixer/clips get populated in-place when GLB loads — no reassignment needed.
         const avatarEntry = avatarEntryRef.current;
-        if (avatarEntry?._isTestAvatar && avatarEntry?._testGender !== "robot") {
+        if (avatarEntry?._isTestAvatar) {
           // Procedural test avatars (male/female) — no mixer/clips
           updateTestAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt);
         } else {
