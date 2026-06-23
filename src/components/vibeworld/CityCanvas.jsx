@@ -1511,7 +1511,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
            const joy = mobileInputRef.current;
 
            // Left joystick: forward/backward (world-relative to camera)
-           if (Math.abs(joy.y) > 0.08) { inputFwd = joy.y; hasAnyInput = true; }
+           // Note: joy.y is already inverted in MobileJoystick, so invert back here (negative = forward)
+           if (Math.abs(joy.y) > 0.08) { inputFwd = -joy.y; hasAnyInput = true; }
            // Left joystick: left/right strafe (camera-relative)
            if (Math.abs(joy.x) > 0.08) { inputStrafe = joy.x; hasAnyInput = true; }
 
