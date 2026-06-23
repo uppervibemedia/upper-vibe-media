@@ -528,7 +528,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
       // well below ground so they look like they're setting behind the water.
       const northLift = Math.max(0, -cosA);
       const southDip = p.setsBelow ? Math.max(0, cosA - 0.5) * 2 : 0; // 0→1 only past beach midpoint
-      const arcY = p.horizonY + northLift * 32 - southDip * 60; // deep enough to fully hide below horizon
+      const arcY = p.horizonY + northLift * 32 - southDip * 18; // partial set — bottom half hides behind horizon
 
       const cx = camera.position.x + Math.sin(angle) * p.radius;
       const cz = camera.position.z + cosA * p.radius;
