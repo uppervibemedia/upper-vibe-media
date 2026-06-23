@@ -448,7 +448,7 @@ export function createCosmicSky(scene) {
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    psprite.renderOrder = 0;
+    psprite.renderOrder = -1;
     scene.add(psprite);
 
     return {
