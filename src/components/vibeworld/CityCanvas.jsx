@@ -53,13 +53,18 @@ const DECELERATION = 8.0;
 const TURN_SPEED = 2.5;       // radians/sec for A/D turning
 const ROTATION_SMOOTH = 8.0;  // how fast avatar body snaps to move direction
 
-// Camera constants — standard third-person
+// Camera constants — standard third-person (portrait / desktop)
 const CAM_DIST = 5.5;         // distance behind avatar
 const CAM_HEIGHT = 2.4;       // above avatar ground position
 const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
 const CAM_PITCH_MIN = -0.35;  // radians — look down (prevent under-map)
 const CAM_PITCH_MAX =  0.50;  // radians — look up (prevent overhead view)
-// Idle orbit disabled — causes confusion on mobile
+// Landscape mobile — closer, more cinematic, immersive third-person
+const CAM_DIST_LS   = 3.5;    // much closer — world feels nearer
+const CAM_HEIGHT_LS = 1.75;   // lower shoulder height
+const CAM_LOOK_Y_LS = 1.35;   // look at avatar upper chest / head
+const FOV_PORTRAIT  = 52;     // default portrait FOV
+const FOV_LANDSCAPE = 60;     // wider FOV in landscape feels immersive
 
 // Tree collisions — radius 0.6 per tree
 const TREE_R = 0.5;
@@ -1373,12 +1378,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const asp = rw / Math.max(rh, 1);
       const camera = new PerspectiveCamera(52, asp, 0.1, 100);
       cameraRef.current = camera;
-      // Start camera at camYaw=0: camera at +Z side of avatar (ocean side), avatar faces stage.
-      // sin(0)=0, cos(0)=1 → camera at (spX, _, spZ + CAM_DIST) — directly behind avatar.
-      // Matches camYawRef initial value of 0 — no jarring snap on frame 1.
+      // Start camera at camYaw=0: camera behind avatar facing stage. Use landscape constants if already landscape.
       const [spX, spY, spZ] = effectiveSpawn;
-      camera.position.set(spX, spY + CAM_HEIGHT, spZ + CAM_DIST);
-      camera.lookAt(spX, spY + CAM_LOOK_Y, spZ);
+      const spawnLS = isMob && window.innerWidth > window.innerHeight;
+      camera.fov = spawnLS ? FOV_LANDSCAPE : FOV_PORTRAIT;
+      camera.updateProjectionMatrix();
+      camera.position.set(spX, spY + (spawnLS ? CAM_HEIGHT_LS : CAM_HEIGHT), spZ + (spawnLS ? CAM_DIST_LS : CAM_DIST));
+      camera.lookAt(spX, spY + (spawnLS ? CAM_LOOK_Y_LS : CAM_LOOK_Y), spZ);
 
       buildPark(scene);
 
@@ -1739,19 +1745,29 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camera.lookAt(cv.lkLook);
         } else {
           // Standard third-person: camera sits at world-space camYaw angle behind avatar.
-          // camYawSmooth is world-space: camera position = avatar + offset in camYaw direction.
-          // pitch tilts up/down without changing the yaw.
-          const camAngle = camYawSmoothRef.current; // world-space angle of camera around avatar
+          // Pick landscape vs portrait camera constants based on current orientation.
+          const isLandscape = isMobileRef.current && window.innerWidth > window.innerHeight;
+          const camDist   = isLandscape ? CAM_DIST_LS   : CAM_DIST;
+          const camHeight = isLandscape ? CAM_HEIGHT_LS : CAM_HEIGHT;
+          const camLookY  = isLandscape ? CAM_LOOK_Y_LS : CAM_LOOK_Y;
+          const targetFov = isLandscape ? FOV_LANDSCAPE  : FOV_PORTRAIT;
+          // Smoothly update FOV so transitions don't snap
+          if (Math.abs(camera.fov - targetFov) > 0.1) {
+            camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6);
+            camera.updateProjectionMatrix();
+          }
+
+          const camAngle = camYawSmoothRef.current;
           const cosPitch = Math.cos(pitch);
           const sinPitch = Math.sin(pitch);
-          const camX = px + Math.sin(camAngle) * CAM_DIST * cosPitch;
-          const camY = py + CAM_HEIGHT + sinPitch * CAM_DIST;
-          const camZ = pz + Math.cos(camAngle) * CAM_DIST * cosPitch;
+          const camX = px + Math.sin(camAngle) * camDist * cosPitch;
+          const camY = py + camHeight + sinPitch * camDist;
+          const camZ = pz + Math.cos(camAngle) * camDist * cosPitch;
 
           // Clamp camera above ground
           const minCamY = py + 0.5;
           camera.position.set(camX, Math.max(minCamY, camY), camZ);
-          camera.lookAt(px, py + CAM_LOOK_Y, pz);
+          camera.lookAt(px, py + camLookY, pz);
         }
 
         // ─── GLB AVATAR ANIMATION ────────────────────────────
@@ -1979,9 +1995,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             na.light.color.copy(na.color1).lerp(na.color2, blend * 0.45);
           }
         }
-
-        // ─── NEON SIGNS + PATH LIGHTS — color-shift ambient glow ──
-        const hueShift = Math.sin(t * 0.25) * 0.5 + 0.5; // slow 0..1 wave
 
         // On mobile, only update neon signs every 3 frames (billboard lookAt is cheap but adds up)
         const updateSigns = !isMob || frameRef.current % 3 === 0;
