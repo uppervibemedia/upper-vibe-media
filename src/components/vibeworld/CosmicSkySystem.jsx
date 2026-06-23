@@ -367,27 +367,27 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
   const saturnData = scene.userData.saturn;
   if (saturnData && updateSlow) {
-    // Fixed world-space angles on the horizon so planets are always visible at eye level.
-    // r=72 keeps them just inside the skybox sphere (r=80).
-    // Y: camera eye level + 6 units = just above horizon, easy to see.
+    // Planets drift slowly across the full 360° sky horizon over ~10 minutes each.
+    // r=72 sits just inside the skybox sphere. Y is at eye level so they're visible
+    // from the beach, east, and west ends of the world.
     const r = 72;
-    const eyeY = camera.position.y + 6;
+    const eyeY = camera.position.y + 7;
 
-    // Planet 1 — left-side horizon (west, angle 225° = -135° = 3π/4 from +Z)
-    const a1 = Math.PI * 1.25; // fixed world angle, west-southwest
+    // Planet 1 — slow drift, full circle every ~600s, starts west
+    const a1 = t * (Math.PI * 2 / 600) + Math.PI * 1.1;
     saturnData.sprite.position.set(
       camera.position.x + Math.sin(a1) * r,
-      eyeY,
+      eyeY + Math.sin(t * 0.08) * 3,   // gentle vertical bob
       camera.position.z + Math.cos(a1) * r,
     );
     saturnData.mat.opacity = 0.92 + Math.sin(t * 0.3) * 0.05;
 
     if (saturnData.sprite2) {
-      // Planet 2 — right-side horizon (east, angle 45° away from planet 1 = opposite quadrant)
-      const a2 = Math.PI * 0.15; // fixed world angle, north-northeast — well separated
+      // Planet 2 — slightly different drift speed (full circle ~480s), starts east — always ~180° apart
+      const a2 = t * (Math.PI * 2 / 480) + Math.PI * 0.1;
       saturnData.sprite2.position.set(
         camera.position.x + Math.sin(a2) * r,
-        eyeY + 4, // slightly higher than planet 1 for visual variety
+        eyeY + 5 + Math.sin(t * 0.06 + 1.0) * 3,
         camera.position.z + Math.cos(a2) * r,
       );
       saturnData.mat2.opacity = 0.88 + Math.sin(t * 0.25 + 1.5) * 0.05;
