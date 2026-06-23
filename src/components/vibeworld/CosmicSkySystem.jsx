@@ -318,6 +318,16 @@ export function createCosmicSky(scene) {
   // They sit just above the beach horizon line (Y≈8, Z=+35) and drift
   // very slowly east↔west so they're always visible from the beach.
   const PLANET_DEFS = [
+    // MEGA planet — enormous gas giant dominating the sky overhead/horizon
+    {
+      id: "mega",
+      bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
+      glowColor:  "rgba(160,80,255,0.28)",
+      ringColor:  "rgba(200,140,255,0.45)",
+      size: isMobile ? 55.0 : 75.0,
+      angle: Math.PI * 0.5, startY: 20, radius: 72,
+      driftSpeed: 0.0008,
+    },
     // West planet — cool teal/blue gas giant
     {
       id: "west",

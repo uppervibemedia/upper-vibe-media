@@ -1694,11 +1694,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           idleTimerRef.current += dt;
         }
 
-        // When moving, pull camYaw back toward 0 (behind avatar) smoothly.
-        // On mobile pull is gentler so the user's camera drag isn't yanked away.
-        if (speed > 0.05 && !userTouchingCamRef.current) {
-          const followRate = isMobileRef.current ? 0.15 : 0.5;
-          camYawRef.current += (0 - camYawRef.current) * Math.min(1, CAM_FOLLOW_SPEED * dt * followRate);
+        // When moving on desktop, gently pull camYaw back behind avatar.
+        // On mobile, NEVER auto-pull — user steers camera manually; joystick movement
+        // should not drag the view at all.
+        if (speed > 0.05 && !userTouchingCamRef.current && !isMobileRef.current) {
+          camYawRef.current += (0 - camYawRef.current) * Math.min(1, CAM_FOLLOW_SPEED * dt * 0.3);
         }
 
         // Start idle orbit
