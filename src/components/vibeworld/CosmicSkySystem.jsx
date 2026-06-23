@@ -189,6 +189,102 @@ export function createCosmicSky(scene) {
     nextFire: performance.now() * 0.001 + 15,
   };
 
+  // ── Saturn billboard — canvas-drawn planet that sits in the darker region ──
+  // Rendered as a sprite so it always faces the camera; uses NormalBlending
+  // so it composites naturally (not additive) against the dark sky behind it.
+  const saturnC = document.createElement("canvas");
+  saturnC.width = 256; saturnC.height = 256;
+  const sctx = saturnC.getContext("2d");
+
+  // Body: warm golden sphere with a subtle limb-darkening gradient
+  const bodyGrad = sctx.createRadialGradient(110, 100, 4, 110, 100, 72);
+  bodyGrad.addColorStop(0,    "rgba(255,230,160,0.92)");
+  bodyGrad.addColorStop(0.35, "rgba(220,185,100,0.88)");
+  bodyGrad.addColorStop(0.72, "rgba(160,120,60,0.78)");
+  bodyGrad.addColorStop(1,    "rgba(60,35,10,0)");
+  sctx.fillStyle = bodyGrad;
+  sctx.beginPath();
+  sctx.ellipse(110, 110, 72, 72, 0, 0, Math.PI * 2);
+  sctx.fill();
+
+  // Rings — three elliptical arcs, drawn around the body
+  // Back half of rings (behind planet): drawn first
+  sctx.save();
+  sctx.globalAlpha = 0.52;
+  // Outer ring — back
+  sctx.strokeStyle = "rgba(210,175,95,0.55)";
+  sctx.lineWidth = 7;
+  sctx.beginPath();
+  sctx.ellipse(110, 118, 108, 22, 0, Math.PI, 0);
+  sctx.stroke();
+  // Middle ring — back
+  sctx.strokeStyle = "rgba(240,200,110,0.65)";
+  sctx.lineWidth = 5;
+  sctx.beginPath();
+  sctx.ellipse(110, 116, 88, 17, 0, Math.PI, 0);
+  sctx.stroke();
+  // Inner ring — back
+  sctx.strokeStyle = "rgba(180,145,70,0.4)";
+  sctx.lineWidth = 3;
+  sctx.beginPath();
+  sctx.ellipse(110, 114, 76, 13, 0, Math.PI, 0);
+  sctx.stroke();
+  sctx.restore();
+
+  // Re-draw the body on top to mask back-ring overlap
+  sctx.fillStyle = bodyGrad;
+  sctx.beginPath();
+  sctx.ellipse(110, 110, 72, 72, 0, 0, Math.PI * 2);
+  sctx.fill();
+
+  // Front half of rings (in front of planet): drawn last
+  sctx.save();
+  sctx.globalAlpha = 0.72;
+  sctx.strokeStyle = "rgba(210,175,95,0.60)";
+  sctx.lineWidth = 7;
+  sctx.beginPath();
+  sctx.ellipse(110, 118, 108, 22, 0, 0, Math.PI);
+  sctx.stroke();
+  sctx.strokeStyle = "rgba(240,200,110,0.72)";
+  sctx.lineWidth = 5;
+  sctx.beginPath();
+  sctx.ellipse(110, 116, 88, 17, 0, 0, Math.PI);
+  sctx.stroke();
+  sctx.strokeStyle = "rgba(180,145,70,0.45)";
+  sctx.lineWidth = 3;
+  sctx.beginPath();
+  sctx.ellipse(110, 114, 76, 13, 0, 0, Math.PI);
+  sctx.stroke();
+  sctx.restore();
+
+  // Soft outer glow so edges blend into the dark sky seamlessly
+  const glowGrad = sctx.createRadialGradient(110, 110, 60, 110, 110, 128);
+  glowGrad.addColorStop(0,   "rgba(200,160,80,0)");
+  glowGrad.addColorStop(0.5, "rgba(160,120,50,0.08)");
+  glowGrad.addColorStop(1,   "rgba(0,0,0,0)");
+  sctx.fillStyle = glowGrad;
+  sctx.fillRect(0, 0, 256, 256);
+
+  const saturnTex = new THREE.CanvasTexture(saturnC);
+  saturnTex.minFilter = THREE.LinearFilter;
+
+  const saturnMat = new THREE.SpriteMaterial({
+    map: saturnTex,
+    transparent: true,
+    opacity: 0.78,
+    depthWrite: false,
+    // NormalBlending — planet composites as an opaque object against dark sky,
+    // not additive (which would wash out the colours)
+    blending: THREE.NormalBlending,
+  });
+  const saturn = new THREE.Sprite(saturnMat);
+  // Position: upper-left region of the sky, high enough to sit in the dark band
+  saturn.position.set(-38, 28, -42);
+  saturn.scale.set(14, 14, 1);
+  saturn.renderOrder = 2; // above skybox, below shooting stars
+  scene.add(saturn);
+  scene.userData.saturn = { sprite: saturn, mat: saturnMat };
+
   scene.fog = new THREE.Fog("#101835", 75, 95);
 }
 
@@ -230,6 +326,19 @@ export function animateCosmicSky(scene, camera, t, dt) {
   }
   const zenithCap = scene.getObjectByName("zenithCap");
   if (zenithCap) zenithCap.position.copy(camera.position);
+
+  // ── Saturn — follow camera so it stays in the sky, gentle opacity drift ──
+  const saturnData = scene.userData.saturn;
+  if (saturnData) {
+    // Keep fixed relative to the skybox (which follows camera)
+    saturnData.sprite.position.set(
+      camera.position.x - 38,
+      camera.position.y + 28,
+      camera.position.z - 42,
+    );
+    // Soft atmospheric twinkle — very subtle, just enough to feel alive
+    saturnData.mat.opacity = 0.72 + Math.sin(t * 0.4) * 0.06;
+  }
 
   // ── Star twinkling ───────────────────────────────────────────────
   const starsMesh = scene.userData.stars;
