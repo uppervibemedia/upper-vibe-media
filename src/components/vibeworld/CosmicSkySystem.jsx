@@ -436,12 +436,11 @@ export function createCosmicSky(scene) {
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0.85,
       depthWrite: false,
+      depthTest: true,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    // Render behind all world geometry so planets never overlap buildings
-    psprite.renderOrder = -2;
-    pmat.depthTest = false;
+    psprite.renderOrder = 0;
     scene.add(psprite);
 
     return {
