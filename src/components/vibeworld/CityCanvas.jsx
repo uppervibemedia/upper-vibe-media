@@ -1373,9 +1373,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const asp = rw / Math.max(rh, 1);
       const camera = new PerspectiveCamera(52, asp, 0.1, 100);
       cameraRef.current = camera;
-      // Start directly BEHIND avatar — use spawnOverride position if provided
+      // Start camera at camYaw=π: camera is at -Z side of avatar (between avatar and stage).
+      // sin(π)=0, cos(π)=-1 → camera at (spX + 0, _, spZ - CAM_DIST)
+      // This matches camYawRef initial value of Math.PI — no jarring snap on frame 1.
       const [spX, spY, spZ] = effectiveSpawn;
-      camera.position.set(spX, spY + CAM_HEIGHT, spZ + CAM_DIST);
+      const initCamZ = spZ + Math.cos(Math.PI) * CAM_DIST; // spZ - CAM_DIST
+      camera.position.set(spX, spY + CAM_HEIGHT, initCamZ);
       camera.lookAt(spX, spY + CAM_LOOK_Y, spZ);
 
       buildPark(scene);
