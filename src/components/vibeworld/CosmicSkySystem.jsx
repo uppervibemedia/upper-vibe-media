@@ -325,9 +325,9 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(160,80,255,0.28)",
       ringColor:  "rgba(200,140,255,0.45)",
       size: isMobile ? 27.5 : 37.5,
-      angleOffset: 0,       // evenly spaced: center
-      horizonY: 14,
-      radius: 60,
+      angleOffset: 0,
+      horizonY: 22,
+      radius: 78,
     },
     // Blue gas giant — left of center
     {
@@ -336,9 +336,9 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(80,180,255,0.18)",
       ringColor:  "rgba(120,200,255,0.35)",
       size: isMobile ? 20.0 : 26.0,
-      angleOffset: -1.1,    // ~63° left
-      horizonY: 10,
-      radius: 60,
+      angleOffset: -1.1,
+      horizonY: 20,
+      radius: 78,
     },
     // Amber planet — right of center
     {
@@ -347,9 +347,9 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(220,140,60,0.18)",
       ringColor:  "rgba(200,160,80,0.30)",
       size: isMobile ? 17.0 : 22.0,
-      angleOffset: 1.1,     // ~63° right
-      horizonY: 9,
-      radius: 60,
+      angleOffset: 1.1,
+      horizonY: 20,
+      radius: 78,
     },
     // Emerald green planet — further east
     {
@@ -358,9 +358,9 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(60,200,100,0.16)",
       ringColor:  "rgba(80,220,120,0.30)",
       size: isMobile ? 14.0 : 18.0,
-      angleOffset: 2.1,     // ~120° right — always coming from the east
-      horizonY: 11,
-      radius: 60,
+      angleOffset: 2.1,
+      horizonY: 21,
+      radius: 78,
     },
     // Deep red / crimson planet — far east, large
     {
@@ -369,9 +369,9 @@ export function createCosmicSky(scene) {
       glowColor:  "rgba(220,60,60,0.20)",
       ringColor:  "rgba(200,80,80,0.30)",
       size: isMobile ? 22.0 : 30.0,
-      angleOffset: 3.0,     // ~172° right — east horizon, appears as others exit west
-      horizonY: 8,
-      radius: 60,
+      angleOffset: 3.0,
+      horizonY: 19,
+      radius: 78,
     },
   ];
 
