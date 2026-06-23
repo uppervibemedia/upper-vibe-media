@@ -557,6 +557,134 @@ export function createCosmicSky(scene) {
     };
   });
   scene.userData.horizonPlanets = planets;
+
+  // ── 6. BEACH FLYBY PLANETS — A & B ───────────────────────────────────────────
+  // Two planets that fly slowly over Neon Surf Beach at low altitude.
+  // Same visual pipeline as horizon planets: Sprite, depthTest=false, renderOrder=20.
+  // Positions are WORLD-SPACE (not camera-relative) so they actually cross the beach.
+  // They are large enough to feel close but placed high enough (y≈14-22) to stay sky-level.
+
+  // Reuse planet canvas builder — Planet A: teal/cyan, Planet B: warm amber/orange
+  function buildFlybyPlanet(colors, glowColor, size) {
+    const S = 256;
+    const pc = document.createElement("canvas");
+    pc.width = S; pc.height = S;
+    const pctx = pc.getContext("2d");
+    const R = S * 0.30;
+    const cx = S / 2, cy = S / 2;
+
+    const haloG = pctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.65);
+    haloG.addColorStop(0, glowColor);
+    haloG.addColorStop(1, "rgba(0,0,0,0)");
+    pctx.fillStyle = haloG;
+    pctx.fillRect(0, 0, S, S);
+
+    const bodyG = pctx.createRadialGradient(cx - R*0.28, cy - R*0.26, R*0.04, cx, cy, R);
+    bodyG.addColorStop(0,    colors[4]);
+    bodyG.addColorStop(0.25, colors[3]);
+    bodyG.addColorStop(0.55, colors[2]);
+    bodyG.addColorStop(0.78, colors[1]);
+    bodyG.addColorStop(1,    colors[0]);
+    pctx.beginPath();
+    pctx.arc(cx, cy, R, 0, Math.PI * 2);
+    pctx.fillStyle = bodyG;
+    pctx.fill();
+
+    // Simple band texture
+    pctx.save();
+    pctx.beginPath();
+    pctx.arc(cx, cy, R, 0, Math.PI * 2);
+    pctx.clip();
+    for (let b = 0; b < 7; b++) {
+      const by = cy - R + (b / 6) * R * 2;
+      const bw = R * (0.04 + Math.sin(b * 1.7) * 0.03 + 0.02);
+      const alpha = 0.06 + Math.abs(Math.sin(b * 0.9)) * 0.08;
+      const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
+      bandG.addColorStop(0, "rgba(0,0,0,0)");
+      bandG.addColorStop(0.5, `rgba(255,255,255,${alpha.toFixed(3)})`);
+      bandG.addColorStop(1, "rgba(0,0,0,0)");
+      pctx.fillStyle = bandG;
+      pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
+    }
+    pctx.restore();
+
+    // Terminator shadow
+    pctx.save();
+    pctx.beginPath();
+    pctx.arc(cx, cy, R, 0, Math.PI * 2);
+    pctx.clip();
+    const shadowG = pctx.createRadialGradient(cx + R*0.45, cy + R*0.45, R*0.05, cx + R*0.65, cy + R*0.65, R*1.1);
+    shadowG.addColorStop(0, "rgba(0,0,0,0)");
+    shadowG.addColorStop(0.55, "rgba(0,0,0,0.18)");
+    shadowG.addColorStop(1, "rgba(0,0,0,0.62)");
+    pctx.fillStyle = shadowG;
+    pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+    pctx.restore();
+
+    // Specular
+    pctx.save();
+    pctx.beginPath();
+    pctx.arc(cx, cy, R, 0, Math.PI * 2);
+    pctx.clip();
+    const specG = pctx.createRadialGradient(cx - R*0.38, cy - R*0.34, 0, cx - R*0.38, cy - R*0.34, R*0.45);
+    specG.addColorStop(0, "rgba(255,255,255,0.18)");
+    specG.addColorStop(1, "rgba(0,0,0,0)");
+    pctx.fillStyle = specG;
+    pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+    pctx.restore();
+
+    const ptex = new THREE.CanvasTexture(pc);
+    ptex.minFilter = THREE.LinearFilter;
+    ptex.generateMipmaps = false;
+
+    const pmat = new THREE.SpriteMaterial({
+      map: ptex, transparent: true, opacity: 0,
+      depthWrite: false, depthTest: false,
+    });
+    const psprite = new THREE.Sprite(pmat);
+    psprite.scale.set(size, size, 1);
+    psprite.frustumCulled = false;
+    psprite.renderOrder = 20;
+    scene.add(psprite);
+    // Park off-screen initially
+    psprite.position.set(9999, 9999, 9999);
+    return { sprite: psprite, mat: pmat };
+  }
+
+  // Planet A: teal — low left→right path over beach, every 60–90s
+  const flybyA = buildFlybyPlanet(
+    ["#041820", "#0A3840", "#1A6860", "#2A9888", "#50D8C0"],
+    "rgba(50,200,180,0.22)",
+    isMobile ? 22 : 30
+  );
+  // Planet B: amber — right→left path slightly higher, every 90–140s
+  const flybyB = buildFlybyPlanet(
+    ["#1A0E02", "#3A2004", "#7A4010", "#C07030", "#E8B060"],
+    "rgba(220,140,50,0.20)",
+    isMobile ? 19 : 26
+  );
+
+  const now0 = performance.now() * 0.001;
+  scene.userData.beachFlybyA = {
+    ...flybyA,
+    active: false, life: 0, maxLife: 0,
+    // Path A: starts left side (x=-55), moves to right (x=55), y≈14–18, z≈38–44 (beach/water)
+    startX: -55, startY: 16, startZ: 42,
+    endX: 55,    endY: 14, endZ: 38,
+    nextFire: now0 + 10 + Math.random() * 20,   // first flyby in 10–30s
+    minInterval: 60, maxInterval: 90,
+    duration: 14 + Math.random() * 6,
+  };
+  scene.userData.beachFlybyB = {
+    ...flybyB,
+    active: false, life: 0, maxLife: 0,
+    // Path B: starts right side (x=60), moves to center-left (x=-40), y≈18–22
+    startX: 60, startY: 20, startZ: 46,
+    endX: -40,  endY: 18, endZ: 40,
+    nextFire: now0 + 45 + Math.random() * 30,   // stagger: first fires well after A
+    minInterval: 90, maxInterval: 140,
+    duration: 14 + Math.random() * 6,
+  };
 }
 
 // ── Helper: natural arc spawn ─────────────────────────────────────────────────
@@ -664,6 +792,59 @@ export function animateCosmicSky(scene, camera, t, dt) {
         sstar.sprite.position.y += sstar.vy * dt;
         sstar.sprite.position.z += sstar.vz * dt;
       }
+    }
+  }
+
+  // ── Beach Flyby Planets A & B ─────────────────────────────────────────────────
+  function animateFlyby(fb, otherFb) {
+    if (!fb) return;
+    if (!fb.active) {
+      if (t >= fb.nextFire) {
+        // Enforce minimum 20s gap from the other flyby ending
+        const otherRecently = otherFb && otherFb.active;
+        if (otherRecently) {
+          // Delay until the other flyby is done + 20s buffer
+          fb.nextFire = t + 20;
+          return;
+        }
+        // Begin flyby
+        fb.active = true;
+        fb.life = 0;
+        fb.maxLife = fb.duration;
+        fb.mat.opacity = 0;
+      }
+    } else {
+      fb.life += dt;
+      const prog = Math.min(fb.life / fb.maxLife, 1);
+      // Smooth in/out envelope
+      const envelope = Math.min(prog * 5, 1) * Math.min((1 - prog) * 5, 1);
+      fb.mat.opacity = Math.min(0.88, envelope * 0.88);
+
+      // Lerp position from start to end
+      fb.sprite.position.set(
+        fb.startX + (fb.endX - fb.startX) * prog,
+        fb.startY + (fb.endY - fb.startY) * prog,
+        fb.startZ + (fb.endZ - fb.startZ) * prog
+      );
+
+      if (prog >= 1) {
+        fb.active = false;
+        fb.mat.opacity = 0;
+        fb.sprite.position.set(9999, 9999, 9999);
+        fb.duration = 14 + Math.random() * 6;
+        fb.nextFire = t + fb.minInterval + Math.random() * (fb.maxInterval - fb.minInterval);
+      }
+    }
+  }
+
+  const fba = scene.userData.beachFlybyA;
+  const fbb = scene.userData.beachFlybyB;
+  if (fba || fbb) {
+    // Only run flyby updates while player is near beach (z > 5) or always on desktop
+    const playerNearBeach = !isMobile || (scene.userData._playerZ !== undefined ? scene.userData._playerZ > 5 : true);
+    if (playerNearBeach && updateSlow) {
+      animateFlyby(fba, fbb);
+      animateFlyby(fbb, fba);
     }
   }
 
