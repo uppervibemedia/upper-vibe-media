@@ -95,40 +95,8 @@ export function createCosmicSky(scene) {
   scene.userData._skyboxRef = skybox;
   scene.userData._zenithCapRef = null; // no cap needed — canvas fills everything
 
-  // ── Shooting stars — fewer on mobile ────────────────────────────
-  const SHOOT_COUNT = isMobile ? 3 : 6;
-  const shootingStars = [];
-  for (let i = 0; i < SHOOT_COUNT; i++) {
-    // Tail streak canvas: bright head fading to transparent tail
-    const c = document.createElement("canvas");
-    c.width = 200; c.height = 4;
-    const ctx = c.getContext("2d");
-    const grad = ctx.createLinearGradient(0, 0, 200, 0);
-    grad.addColorStop(0,    "rgba(255,255,255,0)");
-    grad.addColorStop(0.4,  "rgba(200,230,255,0.5)");
-    grad.addColorStop(0.82, "rgba(240,250,255,0.95)");
-    grad.addColorStop(1,    "rgba(255,255,255,1)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 200, 4);
-    const tex = new THREE.CanvasTexture(c);
-    tex.minFilter = THREE.LinearFilter;
-    const mat = new THREE.SpriteMaterial({
-      map: tex, transparent: true, opacity: 0,
-      depthWrite: false, blending: THREE.AdditiveBlending,
-    });
-    const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(9 + Math.random() * 4, 0.25, 1);
-    sprite.renderOrder = 4;
-    scene.add(sprite);
-    // Stagger so no two fire at the same time
-    shootingStars.push({
-      sprite, mat,
-      active: false, life: 0, maxLife: 0,
-      vx: 0, vy: 0, vz: 0,
-      nextFire: performance.now() * 0.001 + 2 + i * 1.8 + Math.random() * 3,
-    });
-  }
-  scene.userData.shootingStars = shootingStars;
+  // Shooting stars disabled — removed for visual cleanliness and performance
+  scene.userData.shootingStars = null;
 
   // ── Small asteroids — reduced on mobile for perf ─────────────────
   const ASTEROID_COUNT = isMobile ? 1 : 3;
@@ -731,37 +699,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
     if (!isMobile) starsMesh.material.size = 0.30 + Math.sin(t * 1.1) * 0.05;
   }
 
-  // ── Shooting stars ───────────────────────────────────────────────
-  const shootingStars = scene.userData.shootingStars;
-  if (shootingStars) {
-    for (const ss of shootingStars) {
-      if (!ss.active) {
-        if (t >= ss.nextFire) {
-          const p = spawnArcParams(true);
-          ss.sprite.position.set(p.startX, p.startY, p.startZ);
-          ss.vx = p.vx; ss.vy = p.vy; ss.vz = p.vz;
-          ss.maxLife = p.life; ss.life = p.life;
-          ss.active = true;
-          ss.mat.opacity = 0;
-          ss.sprite.material.rotation = p.rotation;
-        }
-      } else {
-        ss.life -= dt;
-        if (ss.life <= 0) {
-          ss.active = false;
-          ss.mat.opacity = 0;
-          ss.nextFire = t + 8 + Math.random() * 5; // next in 8–13s
-        } else {
-          const prog = ss.life / ss.maxLife; // 1→0 as it travels
-          // Bell envelope: bright through middle, fades at start and end
-          ss.mat.opacity = Math.sin(Math.PI * (1 - prog)) * 0.95;
-          ss.sprite.position.x += ss.vx * dt;
-          ss.sprite.position.y += ss.vy * dt;
-          ss.sprite.position.z += ss.vz * dt;
-        }
-      }
-    }
-  }
+  // Shooting stars disabled
 
   // ── Mega Asteroid — one huge slow pass over the beach every 60s ──
   const mega = scene.userData.megaAsteroid;

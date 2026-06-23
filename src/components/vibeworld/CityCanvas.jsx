@@ -156,10 +156,10 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   const textW = tmpCtx.measureText(text).width;
   const canvasW = Math.max(512, Math.ceil(textW) + 80);
   const canvasH = 72;
-  const worldW = Math.max(6, (canvasW / 512) * 7.5); // scale world width with text length
+  const worldW = Math.max(3.8, (canvasW / 512) * 4.8); // ~35% smaller than before
 
   // Glowing backing plate
-  const backGeo = new PlaneGeometry(worldW, 1.8);
+  const backGeo = new PlaneGeometry(worldW, 1.15);
   const backMat = new MeshBasicMaterial({
     color: new Color(colorHex),
     transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide,
@@ -169,7 +169,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   group.add(back);
 
   // Neon border frame
-  const borderGeo = new PlaneGeometry(worldW + 0.1, 1.9);
+  const borderGeo = new PlaneGeometry(worldW + 0.08, 1.22);
   const borderMat = new MeshBasicMaterial({
     color: new Color(colorHex),
     transparent: true, opacity: 0.50, depthWrite: false, side: THREE.DoubleSide,
@@ -201,7 +201,7 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
     transparent: true, depthWrite: false, depthTest: false,
   });
   const sprite = new THREE.Sprite(spriteMat);
-  sprite.scale.set(worldW, worldW * (canvasH / canvasW), 1);
+  sprite.scale.set(worldW, worldW * (canvasH / canvasW) * 1.1, 1);
   sprite.renderOrder = 2;
   group.add(sprite);
 
@@ -380,8 +380,8 @@ function buildPark(scene) {
   frontWash.position.set(0, 2.5, -29); stage.add(frontWash);
 
   scene.add(stage);
-  // Stage label — lowered to just above the arch, still clearly readable
-  createNeonSign(scene, 0, 4.2, -29.5, "MUSIC  STAGE", "#00D4F0");
+  // Stage label — centered above the stage, facing the player at spawn
+  createNeonSign(scene, 0, 8.5, -32, "MUSIC  STAGE", "#00D4F0");
   // Beach district label — eye level at beach entrance
   createNeonSign(scene, 0, 2.4, 14, "UVC  ·  BEACH  DISTRICT", "#D4A843");
 
@@ -1906,55 +1906,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
 
-        // ─── BUILDING WINDOW FLICKERS — staggered natural on/off cycles ──
-        // Each window independently stays lit or dim for several seconds
-        // before slowly transitioning to the opposite state.
-        const buildingsGroup = scene.getObjectByName("cityBuildings");
-        if (!scene.userData.__windowFlickerInit && buildingsGroup) {
-          // One-time: collect all window meshes and assign per-window timers
-          const allWindows = [];
-          buildingsGroup.traverse((child) => {
-            if (child.isMesh && child.material?.isMeshBasicMaterial &&
-                child.material.color?.getHex && child.material.transparent &&
-                child.geometry?.type === "PlaneGeometry" &&
-                child.material.color.getHex() !== 0x00D4F0 &&
-                child.material.color.getHex() !== 0xA078FF &&
-                child.material.color.getHex() !== 0x3088CC) {
-              allWindows.push(child);
-            }
-          });
-          // Each window gets: current opacity, target opacity, next change time
-          scene.userData.__windowStates = allWindows.map((w) => ({
-            mesh: w,
-            current: w.material.opacity || 0.6,
-            target: w.material.opacity || 0.6,
-            nextChange: t + 1.0 + Math.random() * 8.0,
-            pulseSpeed: 0.25 + Math.random() * 0.5,
-            pulsePhase: Math.random() * Math.PI * 2,
-            isStore: w.position.y < 2.5,
-          }));
-          scene.userData.__windowFlickerInit = true;
-        }
-
-        const windowStates = scene.userData.__windowStates;
-        if (windowStates && (!isMob || frameRef.current % 8 === 0)) {
-          const LERP_SPEED = 0.85;
-          for (const ws of windowStates) {
-            if (t >= ws.nextChange) {
-              const brightChance = ws.isStore ? 0.82 : 0.73;
-              ws.target = Math.random() < brightChance
-                ? 0.5 + Math.random() * 0.5
-                : 0.25 + Math.random() * 0.2;
-              ws.nextChange = t + (ws.isStore ? 3.5 : 2.5) + Math.random() * 5.0;
-            }
-            ws.current += (ws.target - ws.current) * Math.min(1, LERP_SPEED * dt);
-            const microPulse = Math.sin(t * ws.pulseSpeed + ws.pulsePhase) * 0.04;
-            const finalOpacity = Math.max(0.2, Math.min(1.0, ws.current + microPulse));
-            if (ws.mesh?.material) {
-              ws.mesh.material.opacity = finalOpacity;
-            }
-          }
-        }
+        // Building window flickers removed — static windows for performance
 
         // ─── PLAZA FILL LIGHT — throttled on mobile ───────────
         if (!isMob || frameRef.current % 4 === 0) {
