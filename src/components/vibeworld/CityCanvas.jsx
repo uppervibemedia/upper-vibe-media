@@ -1299,7 +1299,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       const asp = rw / Math.max(rh, 1);
       // Reduce far clip on mobile — less geometry enters view when turning, fewer draw calls
-      const camera = new PerspectiveCamera(52, asp, 0.1, isMob ? 58 : 100);
+      // Far clip: planets are camera-relative at radius=55 — must be > 55+margin.
+      // Stars (Points) also follow camera at r≈105 — must be > 105. Use 130 for both.
+      const camera = new PerspectiveCamera(52, asp, 0.1, isMob ? 130 : 160);
       cameraRef.current = camera;
       // Start camera at camYaw=0: camera behind avatar facing stage. Use landscape constants if already landscape.
       const [spX, spY, spZ] = effectiveSpawn;
@@ -2037,7 +2039,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── COSMIC SKY — skybox follow, stars twinkle, shooting stars, asteroids ──
+        // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──
         animateCosmicSky(scene, camera, t, dt);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
