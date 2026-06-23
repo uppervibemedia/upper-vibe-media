@@ -324,7 +324,7 @@ export function createCosmicSky(scene) {
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor:  "rgba(160,80,255,0.28)",
       ringColor:  "rgba(200,140,255,0.45)",
-      size: isMobile ? 55.0 : 75.0,
+      size: isMobile ? 27.5 : 37.5,
       angleOffset: 0,       // evenly spaced: center
       horizonY: 14,
       radius: 60,
@@ -394,16 +394,18 @@ export function createCosmicSky(scene) {
     }
     pctx.restore();
 
-    // Ring (elliptical, angled) — drawn over planet
-    pctx.save();
-    pctx.translate(S/2, S/2);
-    pctx.scale(1, 0.28);
-    pctx.beginPath();
-    pctx.arc(0, 0, S*0.44, 0, Math.PI * 2);
-    pctx.strokeStyle = def.ringColor;
-    pctx.lineWidth = S * 0.045;
-    pctx.stroke();
-    pctx.restore();
+    // Ring (elliptical, angled) — only on purple mega planet
+    if (def.id === "mega") {
+      pctx.save();
+      pctx.translate(S/2, S/2);
+      pctx.scale(1, 0.28);
+      pctx.beginPath();
+      pctx.arc(0, 0, S*0.44, 0, Math.PI * 2);
+      pctx.strokeStyle = def.ringColor;
+      pctx.lineWidth = S * 0.045;
+      pctx.stroke();
+      pctx.restore();
+    }
 
     const ptex = new THREE.CanvasTexture(pc);
     ptex.minFilter = THREE.LinearFilter;
