@@ -14,6 +14,7 @@ import { createCrystalZone, animateCrystalZone } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
+import { createZoneSign } from "./ZoneSign";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -144,79 +145,8 @@ function mat(hexColor, opts = {}) {
 // ═══════════════════════════════════════════════════════════════
 // BUILD SCENE — Upper Vibe City: 6-zone social hub
 // ═══════════════════════════════════════════════════════════════
-// ─── Neon zone sign — glowing border + floating text ───────────
-function createNeonSign(scene, x, y, z, text, colorHex) {
-  const group = new Group();
-  group.name = "neonSign_" + text.replace(/\s+/g, "");
-
-  // Measure text width to size everything responsively
-  const tmpCanvas = document.createElement("canvas");
-  const tmpCtx = tmpCanvas.getContext("2d");
-  tmpCtx.font = "bold 28px 'Syne', 'Inter', sans-serif";
-  const textW = tmpCtx.measureText(text).width;
-  const canvasW = Math.max(512, Math.ceil(textW) + 80);
-  const canvasH = 72;
-  const worldW = Math.max(3.8, (canvasW / 512) * 4.8); // ~35% smaller than before
-
-  // Glowing backing plate
-  const backGeo = new PlaneGeometry(worldW, 1.15);
-  const backMat = new MeshBasicMaterial({
-    color: new Color(colorHex),
-    transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide,
-  });
-  const back = new Mesh(backGeo, backMat);
-  back.name = "neonBack";
-  group.add(back);
-
-  // Neon border frame
-  const borderGeo = new PlaneGeometry(worldW + 0.08, 1.22);
-  const borderMat = new MeshBasicMaterial({
-    color: new Color(colorHex),
-    transparent: true, opacity: 0.50, depthWrite: false, side: THREE.DoubleSide,
-  });
-  const borderFrame = new Mesh(borderGeo, borderMat);
-  borderFrame.renderOrder = 1;
-  group.add(borderFrame);
-
-  // Text sprite — dynamically sized canvas so nothing is cut off
-  const canvas = document.createElement("canvas");
-  canvas.width = canvasW;
-  canvas.height = canvasH;
-  const ctx = canvas.getContext("2d");
-  ctx.shadowColor = colorHex;
-  ctx.shadowBlur = 14;
-  ctx.font = "bold 28px 'Syne', 'Inter', sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillText(text, canvasW / 2, canvasH / 2);
-  ctx.fillText(text, canvasW / 2, canvasH / 2); // double-draw for glow
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.minFilter = THREE.LinearFilter;
-  tex.colorSpace = THREE.SRGBColorSpace;
-
-  const spriteMat = new THREE.SpriteMaterial({
-    map: tex,
-    transparent: true, depthWrite: false, depthTest: false,
-  });
-  const sprite = new THREE.Sprite(spriteMat);
-  sprite.scale.set(worldW, worldW * (canvasH / canvasW) * 1.1, 1);
-  sprite.renderOrder = 2;
-  group.add(sprite);
-
-  // Small top accent dot
-  const dot = new Mesh(
-    new SphereGeometry(0.12, 8, 6),
-    new MeshBasicMaterial({ color: new Color("#FFFFFF"), depthWrite: false })
-  );
-  dot.position.set(0, 1.1, 0);
-  group.add(dot);
-
-  group.position.set(x, y, z);
-  group.userData = { isNeonSign: true, baseOpacity: 0.50, colorHex };
-  scene.add(group);
-}
+// Alias — all sign creation delegated to ZoneSign.js
+const createNeonSign = createZoneSign;
 
 
 
@@ -380,25 +310,21 @@ function buildPark(scene) {
   frontWash.position.set(0, 2.5, -29); stage.add(frontWash);
 
   scene.add(stage);
-  // Stage label — centered above the stage, facing the player at spawn
-  createNeonSign(scene, 0, 8.5, -32, "MUSIC  STAGE", "#00D4F0");
+  // Stage label — just above the arch top, centered, facing spawn path
+  createNeonSign(scene, 0, 8.2, -30, "MUSIC  STAGE", "#00D4F0");
   // Beach district label — eye level at beach entrance
-  createNeonSign(scene, 0, 2.4, 14, "UVC  ·  BEACH  DISTRICT", "#D4A843");
+  createNeonSign(scene, 0, 2.3, 13, "UVC  ·  BEACH  DISTRICT", "#D4A843");
 
   // ── EYE-LEVEL UPPER VIBE MEDIA BRANDING — placed along user walking paths ──
-  // Spawn area: first thing player sees when entering the world
-  createNeonSign(scene, 0, 2.3, 8, "UPPER  VIBE  MEDIA", "#A078FF");
-  // Stage approach path: facing player as they walk toward the stage
-  createNeonSign(scene, -5, 2.3, -24, "UPPER  VIBE  MEDIA", "#A078FF");
-  // Dance floor east side: visible from central plaza
-  createNeonSign(scene, 8, 2.3, -13, "UPPER  VIBE  MEDIA", "#A078FF");
+  createNeonSign(scene, 0,  2.3,  7,  "UPPER  VIBE  MEDIA", "#A078FF");
+  createNeonSign(scene, -5, 2.3, -22, "UPPER  VIBE  MEDIA", "#A078FF");
+  createNeonSign(scene, 8,  2.3, -11, "UPPER  VIBE  MEDIA", "#A078FF");
 
   // ═══════════════════════════════════════
   // VIBE LAUNCH ZONE
   // ═══════════════════════════════════════
   buildLaunchZone(scene);
-  createNeonSign(scene, 0, 2.3, 4, "VIBE  LAUNCH  ZONE", "#00E5FF");
-  // Note: Vibe Launch Zone stays near z=4 (beach side of plaza)
+  createNeonSign(scene, 0, 2.3, 3, "VIBE  LAUNCH  ZONE", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 5. VIBE LOUNGE — futuristic social hangout, semi-circle seating
@@ -565,7 +491,8 @@ function buildPark(scene) {
   scene.userData.loungeNeonMats = loungeNeonMats;
 
   scene.add(lounge);
-  createNeonSign(scene, -22, 2.4, -22, "VIBE  LOUNGE", "#C43BFF");
+  // Lounge sign — south-east face toward plaza approach path
+  createNeonSign(scene, -20, 2.3, -21, "VIBE  LOUNGE", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 6. MUSIC LIBRARY — right-back, entrance faces plaza
@@ -632,7 +559,8 @@ function buildPark(scene) {
   library.add(libEntrance);
 
   scene.add(library);
-  createNeonSign(scene, 22, 2.4, -16, "MUSIC  LIBRARY", "#00D4F0");
+  // Library sign — west face toward plaza
+  createNeonSign(scene, 20, 2.3, -15, "MUSIC  LIBRARY", "#00D4F0");
 
   // ═════════════════════════════════════════════════════════════
   // 7. VISUALIZER DOME — lower-left, entrance facing Central Plaza
@@ -678,7 +606,8 @@ function buildPark(scene) {
   dome.add(domeFloor);
 
   scene.add(dome);
-  createNeonSign(scene, -13, 2.4, 6.5, "VISUALIZER  DOME", "#C43BFF");
+  // Dome sign — at entrance, facing south-east toward plaza
+  createNeonSign(scene, -13, 2.3, 5.8, "VISUALIZER  DOME", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 8. DAILY VIBE CHECK — Vibe Mirror reflection zone
@@ -794,7 +723,8 @@ function buildPark(scene) {
   vibeCheck.add(mirrorGroup);
 
   scene.add(vibeCheck);
-  createNeonSign(scene, -16, 2.4, -10, "DAILY  VIBE  CHECK", "#00E5FF");
+  // Vibe Check sign — east face toward player path from plaza
+  createNeonSign(scene, -14, 2.3, -10, "DAILY  VIBE  CHECK", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 8.5. UPPER VIBE ACADEMY — futuristic learning cinema, top-left
@@ -919,7 +849,8 @@ function buildPark(scene) {
   academy.add(roofDot);
 
   scene.add(academy);
-  createNeonSign(scene, ACAD_X, 2.4, ACAD_Z + 3.5, "VIBE  ACADEMY", "#7C3AED");
+  // Academy sign — south face toward the plaza approach
+  createNeonSign(scene, ACAD_X + 1, 2.3, ACAD_Z + 3.2, "VIBE  ACADEMY", "#7C3AED");
 
   // Academy ambient light
   const academyLight = new PointLight();
@@ -933,7 +864,7 @@ function buildPark(scene) {
   // 8.5.5 CRYSTAL ZONE — between Vibe Lounge and Vibe Academy
   // ═════════════════════════════════════════════════════════════
   createCrystalZone(scene);
-  createNeonSign(scene, -28, 2.4, -8, "CRYSTAL  ZONE", "#AA66FF");
+  createNeonSign(scene, -26, 2.3, -7, "CRYSTAL  ZONE", "#AA66FF");
 
   // ═════════════════════════════════════════════════════════════
   // 8.6. ZEN BEACH — meditation zone, left-side beach area
@@ -1931,7 +1862,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const nearBeach = pz > 10;
         const nearDanceFloor = Math.sqrt(px * px + (pz + 13) * (pz + 13)) < 18;
 
-        // Signs: billboarded lookAt every 6 frames on mobile; skip if beyond 45u on mobile
+        // Signs: billboard toward camera — every 6 frames on mobile, skip if far
         const updateSigns = !isMob || frameRef.current % 6 === 0;
         const updateZenPart = !isMob || (nearBeach && frameRef.current % 3 === 0);
         scene.children.forEach((child) => {
@@ -1942,13 +1873,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
                 if (sdx * sdx + sdz * sdz > 2025) return; // skip signs >45u away on mobile
               }
               child.lookAt(camera.position);
-              const signPhase = child.position.x * 0.5;
-              const breathe = 0.22 + Math.sin(t * 1.3 + signPhase) * 0.1 + audioBeat * 0.12;
-              child.children.forEach((part) => {
-                if (part.name === "neonBack" && part.material?.opacity !== undefined) part.material.opacity = breathe;
-                if (part.material?.color && part.material?.opacity !== undefined && part.renderOrder === 1)
-                  part.material.opacity = 0.35 + audioBeat * 0.3 + Math.sin(t * 1.5 + signPhase) * 0.1;
-              });
             }
           }
           if (updateZenPart && child.userData?.isZenParticle) {
