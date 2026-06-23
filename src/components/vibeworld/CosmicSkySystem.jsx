@@ -590,6 +590,21 @@ export function createCosmicSky(scene) {
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
+    // ── Atmospheric horizon haze — fades the bottom of the planet into the sky ──
+    // Simulates atmospheric scattering so the planet dissolves into the horizon
+    // rather than having a hard edge where it meets the water.
+    pctx.save();
+    pctx.beginPath();
+    pctx.arc(cx, cy, R * 1.05, 0, Math.PI * 2);
+    pctx.clip();
+    const hazeG = pctx.createLinearGradient(0, cy, 0, cy + R * 1.1);
+    hazeG.addColorStop(0,   "rgba(0,0,0,0)");
+    hazeG.addColorStop(0.5, def.glowColor.replace(/[\d.]+\)$/, "0.12)"));
+    hazeG.addColorStop(1,   def.glowColor.replace(/[\d.]+\)$/, "0.55)"));
+    pctx.fillStyle = hazeG;
+    pctx.fillRect(0, cy, S, S);
+    pctx.restore();
+
     // Ring (elliptical, angled) — only on purple mega planet
     if (def.id === "mega") {
       pctx.save();
@@ -634,7 +649,7 @@ export function createCosmicSky(scene) {
   });
   scene.userData.horizonPlanets = planets;
 
-  scene.fog = new THREE.Fog("#101835", 75, 95);
+  scene.fog = new THREE.Fog("#101835", 60, 95);
 }
 
 // ── Helper: compute a natural arc spawn toward the beach horizon ─────
