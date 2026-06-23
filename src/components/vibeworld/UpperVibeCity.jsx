@@ -252,11 +252,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
 
   // ── Avatar config derived from user data ──────────────────────────────
+  // avatarTypeKey is session-only test state — not persisted to user account
+  const [testAvatarTypeKey, setTestAvatarTypeKey] = useState(() => {
+    try { return sessionStorage.getItem("uvc_test_avatar") || "current"; } catch { return "current"; }
+  });
+
   const avatarConfig = {
     avatarType: user?.avatar_type || "neutral",
     skinTone: user?.skin_tone || "medium",
     rpmAvatarUrl: user?.rpm_avatar_url || null,
     outfitColorKey: user?.avatar_outfit_color || "electric-blue",
+    avatarTypeKey: testAvatarTypeKey,
   };
 
   // ── Ref to live in-world avatar retint function exposed by CityCanvas ──
@@ -790,8 +796,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   return (
     <div className="fixed inset-0 z-[60] overflow-hidden" style={{ background: "#050510" }}>
-      {/* 3D Park */}
-      <div className="absolute inset-0">
+      {/* 3D Park — key on testAvatarTypeKey forces full remount when avatar type changes */}
+      <div className="absolute inset-0" key={`city-${testAvatarTypeKey}`}>
         <CityCanvas
           spawnOverride={returnState.current ? { x: returnState.current.x, z: returnState.current.z, rot: returnState.current.rot } : null}
           onLoaded={() => {
@@ -1186,12 +1192,19 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
         isMobile={isMobile}
         user={user}
-        onApply={({ outfitColorKey, suitColor }) => {
-          // Apply to live in-world avatar immediately
-          if (retintInWorldRef.current) {
-            retintInWorldRef.current(suitColor);
+        onApply={({ outfitColorKey, suitColor, avatarTypeKey: newTypeKey }) => {
+          // If avatar type changed, update state so avatarConfig re-renders with new type
+          if (newTypeKey && newTypeKey !== testAvatarTypeKey) {
+            setTestAvatarTypeKey(newTypeKey);
+            setLoading(true); // show loading screen while world remounts
+            setAvatarVersion((v) => v + 1);
+          } else {
+            // Just a color change — retint in place
+            if (retintInWorldRef.current && suitColor) {
+              retintInWorldRef.current(suitColor);
+            }
+            setAvatarVersion((v) => v + 1);
           }
-          setAvatarVersion((v) => v + 1);
         }}
       />
 

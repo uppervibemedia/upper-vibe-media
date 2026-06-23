@@ -5,17 +5,35 @@
  */
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Check, Zap, Lock } from "lucide-react";
+import { X, Sparkles, Check, Zap, Lock, User, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { OUTFIT_COLORS } from "./AvatarSetup";
 import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 
+// Avatar type options — "current" is the permanent default; male/female are TEST only
+const AVATAR_TYPE_OPTIONS = [
+  { key: "current", label: "Current Avatar", sub: "Default", icon: "🤖" },
+  { key: "test-male", label: "Male Avatar", sub: "⚠️ Test Only", icon: "👨" },
+  { key: "test-female", label: "Female Avatar", sub: "⚠️ Test Only", icon: "👩" },
+];
+
 export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) {
   const [outfitColorKey, setOutfitColorKey] = useState(user?.avatar_outfit_color || "cosmic-blue");
+  // Read saved test avatar type from sessionStorage (not persisted to account — test only)
+  const [avatarTypeKey, setAvatarTypeKey] = useState(() => {
+    try { return sessionStorage.getItem("uvc_test_avatar") || "current"; } catch { return "current"; }
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const trailUnlocked = !!user?.trail_boost_unlocked;
   const isMember = !!(user?.isPlus || user?.tier === "plus" || user?.tier === "premium" || user?.role === "admin");
+
+  const handleAvatarTypeChange = (key) => {
+    setAvatarTypeKey(key);
+    try { sessionStorage.setItem("uvc_test_avatar", key); } catch {}
+    // Notify parent immediately so the 3D world can swap the avatar
+    onApply?.({ avatarTypeKey: key, outfitColorKey, suitColor: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.hex });
+  };
 
   const handleApply = async () => {
     setSaving(true);
@@ -24,6 +42,7 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
       await base44.auth.updateMe({ avatar_outfit_color: outfitColorKey });
       onApply?.({
         outfitColorKey,
+        avatarTypeKey,
         suitColor: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.hex,
       });
       onClose?.();
@@ -111,7 +130,46 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                   className="flex flex-col flex-1 overflow-y-auto px-5 py-5 lg:border-l"
                   style={{ borderColor: "rgba(255,255,255,0.06)" }}
                 >
-                  <div className="mb-4">
+                  {/* Avatar Type Selector — TEST MODE */}
+                  <div className="mb-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.3)" }}>
+                        Avatar Type
+                      </span>
+                      <span className="text-[9px] px-2 py-0.5 rounded-full font-black" style={{ background: "rgba(255,180,0,0.12)", color: "#FFB800", border: "1px solid rgba(255,180,0,0.25)" }}>
+                        TEST
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {AVATAR_TYPE_OPTIONS.map((opt) => {
+                        const active = avatarTypeKey === opt.key;
+                        return (
+                          <button
+                            key={opt.key}
+                            onClick={() => handleAvatarTypeChange(opt.key)}
+                            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.98]"
+                            style={{
+                              background: active ? "rgba(155,126,255,0.14)" : "rgba(255,255,255,0.04)",
+                              border: active ? "1.5px solid rgba(155,126,255,0.6)" : "1px solid rgba(255,255,255,0.08)",
+                              boxShadow: active ? "0 0 14px rgba(155,126,255,0.2)" : "none",
+                            }}
+                          >
+                            <span style={{ fontSize: 18, lineHeight: 1 }}>{opt.icon}</span>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-[11px] font-black text-white">{opt.label}</span>
+                              <span className="text-[9px]" style={{ color: opt.key === "current" ? "rgba(255,255,255,0.25)" : "rgba(255,180,0,0.6)" }}>{opt.sub}</span>
+                            </div>
+                            {active && <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#9B7EFF" }} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[9px] mt-1.5" style={{ color: "rgba(255,255,255,0.18)" }}>
+                      Test avatars are session-only. Current avatar is the permanent default.
+                    </p>
+                  </div>
+
+                  <div className="mb-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14 }}>
                     <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.3)" }}>
                       Suit Color
                     </span>

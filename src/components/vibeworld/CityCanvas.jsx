@@ -14,6 +14,7 @@ import { createCrystalZone, animateCrystalZone, activateCrystalZone } from "./Cr
 // Sky system and avatar — must be at top of file, not mid-file
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
+import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
 import { createZoneSign } from "./ZoneSign";
 
 // Destructure immediately after namespace import to ensure full module load
@@ -1358,41 +1359,48 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       scene.add(avatarRimLight);
       scene.userData.avatarRimLight = avatarRimLight;
 
-      // createAvatar returns an entry immediately. entry.root is the controller Group
-      // already in the scene. CityCanvas stores entry.root in avatarRef and moves it
-      // every frame. When GLB loads, the model is parented INTO entry.root — it inherits
-      // all movement automatically. The same entry object is mutated in-place.
-      const entry = createAvatar(scene, avatarConfig || {}, (_entry) => {
-        // GLB done loading — apply saved outfit color immediately
-        const savedColor = avatarConfig?.outfitColorKey;
-        if (savedColor) {
-          // Map outfitColorKey to hex — matches OUTFIT_COLORS in AvatarSetup
-          const COLOR_MAP = {
-            "cosmic-blue":    "#00AADD",
-            "neon-purple":    "#7B2FFF",
-            "shadow-black":   "#080A0F",
-            "rose-glow":      "#CC2288",
-            "gold-aura":      "#CC9900",
-            // legacy keys
-            "electric-blue":  "#00AADD",
-            "cosmic-black":   "#080A0F",
-            "white-silver":   "#C8D4E0",
-            "pink-rose":      "#CC2288",
-            "gold-yellow":    "#CC9900",
-          };
-          const hex = COLOR_MAP[savedColor];
-          if (hex) retintAvatar(_entry, hex);
-        }
-      });
-      avatarEntryRef.current = entry;
-      avatarRef.current = entry.root; // this is what gets moved every frame
+      // Determine avatar type: "current" (default GLB), "test-male", or "test-female"
+      const avatarTypeKey = avatarConfig?.avatarTypeKey || "current";
+      const isTestAvatar = avatarTypeKey === "test-male" || avatarTypeKey === "test-female";
+      const testGender = avatarTypeKey === "test-female" ? "female" : "male";
 
-      // Expose retint function so UpperVibeCity can update the in-world avatar color after save
-      if (retintRef) {
-        retintRef.current = (hexColor) => {
-          retintAvatar(avatarEntryRef.current, hexColor);
-        };
+      let entry;
+      if (isTestAvatar) {
+        // TEST avatars — procedural geometry, no GLB, instant load
+        entry = createTestAvatar(scene, testGender, avatarConfig || {}, (_entry) => {
+          const savedColor = avatarConfig?.suitColor;
+          if (savedColor) retintTestAvatar(_entry, savedColor);
+        });
+        if (retintRef) {
+          retintRef.current = (hexColor) => retintTestAvatar(avatarEntryRef.current, hexColor);
+        }
+      } else {
+        // CURRENT avatar — original GLB-based system, completely unchanged
+        entry = createAvatar(scene, avatarConfig || {}, (_entry) => {
+          const savedColor = avatarConfig?.outfitColorKey;
+          if (savedColor) {
+            const COLOR_MAP = {
+              "cosmic-blue":    "#00AADD",
+              "neon-purple":    "#7B2FFF",
+              "shadow-black":   "#080A0F",
+              "rose-glow":      "#CC2288",
+              "gold-aura":      "#CC9900",
+              "electric-blue":  "#00AADD",
+              "cosmic-black":   "#080A0F",
+              "white-silver":   "#C8D4E0",
+              "pink-rose":      "#CC2288",
+              "gold-yellow":    "#CC9900",
+            };
+            const hex = COLOR_MAP[savedColor];
+            if (hex) retintAvatar(_entry, hex);
+          }
+        });
+        if (retintRef) {
+          retintRef.current = (hexColor) => retintAvatar(avatarEntryRef.current, hexColor);
+        }
       }
+      avatarEntryRef.current = entry;
+      avatarRef.current = entry.root;
 
       // Skybox is managed by animateCosmicSky each frame
 
@@ -1709,18 +1717,23 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // avatarEntryRef.current is the same object returned by createAvatar.
         // Its mixer/clips get populated in-place when GLB loads — no reassignment needed.
         const avatarEntry = avatarEntryRef.current;
-        // Sync active emote ID onto entry so applyEmotePose can read it
-        if (avatarEntry && isDancingRef.current) {
-          const emoteId = activeEmoteRef.current?.id || "dance";
-          if (avatarEntry._emote !== emoteId) {
-            avatarEntry._emote = emoteId;
+        if (avatarEntry?._isTestAvatar) {
+          // Test avatars use procedural animation — no mixer/clips
+          updateTestAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt);
+        } else {
+          // Current avatar — original GLB animation system, completely unchanged
+          if (avatarEntry && isDancingRef.current) {
+            const emoteId = activeEmoteRef.current?.id || "dance";
+            if (avatarEntry._emote !== emoteId) {
+              avatarEntry._emote = emoteId;
+              avatarEntry._emoteTimer = 0;
+            }
+          } else if (avatarEntry && !isDancingRef.current && avatarEntry._emote) {
+            avatarEntry._emote = null;
             avatarEntry._emoteTimer = 0;
           }
-        } else if (avatarEntry && !isDancingRef.current && avatarEntry._emote) {
-          avatarEntry._emote = null;
-          avatarEntry._emoteTimer = 0;
+          if (avatarEntry) updateAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt, hbRidingRef.current);
         }
-        if (avatarEntry) updateAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt, hbRidingRef.current);
 
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
         const audioBeat = audioIntensityRef?.current ?? 0;
