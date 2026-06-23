@@ -279,7 +279,7 @@ export function createCosmicSky(scene) {
     blending: THREE.AdditiveBlending, // black bg = 0 contribution → perfect seamless blend
   });
   const sat1 = new THREE.Sprite(sat1Mat);
-  sat1.scale.set(38, 26, 1);
+  sat1.scale.set(52, 36, 1);
   sat1.renderOrder = 1;
   scene.add(sat1);
 
@@ -296,7 +296,7 @@ export function createCosmicSky(scene) {
     blending: THREE.AdditiveBlending,
   });
   const sat2 = new THREE.Sprite(sat2Mat);
-  sat2.scale.set(34, 24, 1);
+  sat2.scale.set(46, 32, 1);
   sat2.renderOrder = 1;
   scene.add(sat2);
 
@@ -347,25 +347,26 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const zenithCap = scene.getObjectByName("zenithCap");
   if (zenithCap) zenithCap.position.copy(camera.position);
 
-  // ── Planet images — follow camera, positioned in opposite sky quadrants ──
+  // ── Planet images — fixed in world space around the skybox, far apart ──
   const saturnData = scene.userData.saturn;
   if (saturnData) {
-    // Image 1 (ringed planet): upper-left, behind/above stage area
+    // Image 1 (ringed Saturn): upper-LEFT sky — west side, high above horizon
+    // Placed at a fixed world offset from camera so it always appears in the left half of sky
     saturnData.sprite.position.set(
-      camera.position.x - 42,
-      camera.position.y + 22,
-      camera.position.z - 48,
+      camera.position.x - 55,  // far left
+      camera.position.y + 28,  // high up
+      camera.position.z - 20,  // slightly ahead
     );
-    saturnData.mat.opacity = 0.78 + Math.sin(t * 0.35) * 0.06;
+    saturnData.mat.opacity = 0.90 + Math.sin(t * 0.35) * 0.06;
 
-    // Image 2 (glowing planet): upper-right, opposite quadrant
+    // Image 2 (glowing planet): upper-RIGHT sky — east side, different height
     if (saturnData.sprite2) {
       saturnData.sprite2.position.set(
-        camera.position.x + 40,
-        camera.position.y + 18,
-        camera.position.z - 44,
+        camera.position.x + 52,  // far right (opposite side)
+        camera.position.y + 20,  // lower than #1 so they're at different heights too
+        camera.position.z + 15,  // slightly behind — totally different quadrant
       );
-      saturnData.mat2.opacity = 0.65 + Math.sin(t * 0.28 + 1.5) * 0.07;
+      saturnData.mat2.opacity = 0.85 + Math.sin(t * 0.28 + 1.5) * 0.07;
     }
   }
 
