@@ -1510,11 +1510,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
            }
            const joy = mobileInputRef.current;
 
-           // Left joystick: forward/backward (world-relative to camera)
-           // Note: joy.y is already inverted in MobileJoystick, so invert back here (negative = forward)
-           if (Math.abs(joy.y) > 0.08) { inputFwd = -joy.y; hasAnyInput = true; }
-           // Left joystick: left/right strafe (camera-relative)
-           if (Math.abs(joy.x) > 0.08) { inputStrafe = joy.x; hasAnyInput = true; }
+           // Left joystick: forward/backward
+            // MobileJoystick: dy = (cy - touchY)/halfSize, so drag UP → dy>0 → joy.y>0 = forward
+            if (Math.abs(joy.y) > 0.08) { inputFwd = joy.y; hasAnyInput = true; }
+            // Left joystick: left/right strafe — joy.x>0 = right
+            if (Math.abs(joy.x) > 0.08) { inputStrafe = joy.x; hasAnyInput = true; }
 
            // ── Right-thumb camera drag (world-space yaw) ──
            // sensitivity already set in CameraLookZone (0.0072 rad)
@@ -1549,8 +1549,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
          let moveX = 0, moveZ = 0;
          if (isMobileRef.current) {
            if (isMoving) {
-             // Camera's forward direction in world space (from camYaw world angle)
-             // "forward" = direction the camera is looking (toward avatar from camera's perspective)
+             // Movement directions relative to camera:
+             // camYaw is the world-space angle where camera sits around avatar.
+             // Camera at camYaw → looks toward avatar → "screen forward" = camYaw + π direction.
+             // joy.y > 0 (drag up) = inputFwd > 0 = move forward = camYaw + π.
+             // joy.x > 0 (drag right) = inputStrafe > 0 = move right = camYaw + π + π/2.
              const moveFwdAngle = camYawRef.current + Math.PI;
              const moveRightAngle = moveFwdAngle + Math.PI / 2;
              // inputFwd: +1 = forward, -1 = backward (camera-relative)
