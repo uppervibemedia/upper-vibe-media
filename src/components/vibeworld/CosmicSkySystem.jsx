@@ -495,7 +495,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const skybox = scene.userData._skyboxRef;
   if (skybox) {
     skybox.position.copy(camera.position);
-    skybox.rotation.y += dt * 0.007;
+    skybox.rotation.y += dt * 0.04;
   }
   // (zenith cap removed — galaxy canvas fills entire sphere)
 
