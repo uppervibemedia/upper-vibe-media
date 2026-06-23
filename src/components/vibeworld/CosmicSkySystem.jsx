@@ -516,9 +516,12 @@ export function animateCosmicSky(scene, camera, t, dt) {
       const angle = skyAngle + p.angleOffset;
       const cosA = Math.cos(angle); // -1=north, +1=south/beach
 
-      // North side: lift high into sky. South/beach side: sink below ground.
-      // arcY = horizonY when cosA=0 (east/west horizon), +high when north, negative when south
-      const arcY = p.horizonY + (-cosA) * 32;
+      // North side: lift high into sky.
+      // South/beach side: only start sinking once past the midpoint (cosA > 0.5),
+      // so planets stay visible on the horizon until they're well past the beach center.
+      const southDip = Math.max(0, cosA - 0.5) * 2; // 0 until past midpoint, then 0→1
+      const northLift = Math.max(0, -cosA);
+      const arcY = p.horizonY + northLift * 32 - southDip * 28;
 
       const cx = camera.position.x + Math.sin(angle) * p.radius;
       const cz = camera.position.z + cosA * p.radius;
