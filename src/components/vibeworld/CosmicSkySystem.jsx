@@ -383,56 +383,228 @@ export function createCosmicSky(scene) {
     },
   ];
 
-  const planets = PLANET_DEFS.map((def) => {
+  // Seeded pseudo-random per planet for consistent texture
+  function seededRand(seed) {
+    let s = seed;
+    return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
+  }
+
+  const planets = PLANET_DEFS.map((def, defIdx) => {
     const S = 256;
     const pc = document.createElement("canvas");
     pc.width = S; pc.height = S;
     const pctx = pc.getContext("2d");
+    const rng = seededRand(defIdx * 7919 + 1337);
+    const R = S * 0.30; // planet radius in pixels
+    const cx = S / 2, cy = S / 2;
 
     // Atmospheric glow halo (drawn first, behind planet)
-    const haloG = pctx.createRadialGradient(S/2, S/2, S*0.28, S/2, S/2, S*0.50);
+    const haloG = pctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.65);
     haloG.addColorStop(0, def.glowColor);
     haloG.addColorStop(1, "rgba(0,0,0,0)");
     pctx.fillStyle = haloG;
     pctx.fillRect(0, 0, S, S);
 
     // Planet body — layered radial gradient for depth
-    const bodyG = pctx.createRadialGradient(S*0.38, S*0.36, S*0.04, S/2, S/2, S*0.30);
+    const bodyG = pctx.createRadialGradient(cx - R*0.28, cy - R*0.26, R*0.04, cx, cy, R);
     bodyG.addColorStop(0,   def.bodyColors[4]);
     bodyG.addColorStop(0.25,def.bodyColors[3]);
     bodyG.addColorStop(0.55,def.bodyColors[2]);
     bodyG.addColorStop(0.78,def.bodyColors[1]);
     bodyG.addColorStop(1,   def.bodyColors[0]);
     pctx.beginPath();
-    pctx.arc(S/2, S/2, S*0.30, 0, Math.PI * 2);
+    pctx.arc(cx, cy, R, 0, Math.PI * 2);
     pctx.fillStyle = bodyG;
     pctx.fill();
 
-    // Horizontal band streaks — subtle atmospheric banding
+    // ── Per-planet surface texture ──────────────────────────────────
     pctx.save();
     pctx.beginPath();
-    pctx.arc(S/2, S/2, S*0.30, 0, Math.PI * 2);
+    pctx.arc(cx, cy, R, 0, Math.PI * 2);
     pctx.clip();
-    for (let b = 0; b < 5; b++) {
-      const by = S*0.25 + b * S*0.10;
-      const bandG = pctx.createLinearGradient(0, by - 4, 0, by + 4);
-      bandG.addColorStop(0, "rgba(255,255,255,0)");
-      bandG.addColorStop(0.5, `rgba(255,255,255,${0.04 + b * 0.015})`);
-      bandG.addColorStop(1, "rgba(255,255,255,0)");
-      pctx.fillStyle = bandG;
-      pctx.fillRect(S*0.18, by - 4, S*0.64, 8);
+
+    if (def.id === "mega") {
+      // Purple gas giant — thick swirling storm bands + great spot
+      for (let b = 0; b < 9; b++) {
+        const by = cy - R + (b / 8) * R * 2;
+        const bw = R * (0.06 + rng() * 0.10);
+        const alpha = 0.06 + rng() * 0.10;
+        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
+        bandG.addColorStop(0, "rgba(0,0,0,0)");
+        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${80 + Math.floor(rng()*40)},255,${alpha})`);
+        bandG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = bandG;
+        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
+      }
+      // Great storm oval
+      pctx.save();
+      pctx.translate(cx + R * 0.15, cy + R * 0.12);
+      pctx.scale(1, 0.55);
+      pctx.beginPath();
+      pctx.arc(0, 0, R * 0.16, 0, Math.PI * 2);
+      pctx.fillStyle = "rgba(255,180,255,0.18)";
+      pctx.fill();
+      pctx.strokeStyle = "rgba(220,140,255,0.22)";
+      pctx.lineWidth = 2;
+      pctx.stroke();
+      pctx.restore();
+
+    } else if (def.id === "west") {
+      // Blue gas giant — horizontal jet-stream bands with subtle turbulence
+      for (let b = 0; b < 8; b++) {
+        const by = cy - R + (b / 7) * R * 2;
+        const bw = R * (0.05 + rng() * 0.09);
+        const alpha = 0.07 + rng() * 0.09;
+        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
+        bandG.addColorStop(0, "rgba(0,0,0,0)");
+        bandG.addColorStop(0.5, `rgba(${80 + Math.floor(rng()*60)},${180 + Math.floor(rng()*60)},255,${alpha})`);
+        bandG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = bandG;
+        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
+      }
+      // Polar ice cap glow
+      const iceG = pctx.createRadialGradient(cx, cy - R * 0.8, 0, cx, cy - R * 0.8, R * 0.4);
+      iceG.addColorStop(0, "rgba(200,240,255,0.22)");
+      iceG.addColorStop(1, "rgba(0,0,0,0)");
+      pctx.fillStyle = iceG;
+      pctx.fillRect(cx - R, cy - R, R * 2, R);
+
+    } else if (def.id === "east") {
+      // Amber — rocky desert world: irregular terrain patches + dust storms
+      for (let p = 0; p < 14; p++) {
+        const px = cx + (rng() - 0.5) * R * 1.7;
+        const py = cy + (rng() - 0.5) * R * 1.7;
+        const pr = R * (0.06 + rng() * 0.18);
+        const pG = pctx.createRadialGradient(px, py, 0, px, py, pr);
+        const alpha = 0.06 + rng() * 0.11;
+        pG.addColorStop(0, `rgba(${180 + Math.floor(rng()*60)},${100 + Math.floor(rng()*60)},${20 + Math.floor(rng()*40)},${alpha})`);
+        pG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = pG;
+        pctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+      }
+      // Subtle craters — only on rocky planets
+      for (let cr = 0; cr < 5; cr++) {
+        const crx = cx + (rng() - 0.5) * R * 1.4;
+        const cry = cy + (rng() - 0.5) * R * 1.4;
+        const crr = R * (0.04 + rng() * 0.09);
+        pctx.beginPath();
+        pctx.arc(crx, cry, crr, 0, Math.PI * 2);
+        pctx.strokeStyle = `rgba(80,40,10,${0.12 + rng() * 0.10})`;
+        pctx.lineWidth = 1.5;
+        pctx.stroke();
+        const crG = pctx.createRadialGradient(crx - crr*0.25, cry - crr*0.25, 0, crx, cry, crr);
+        crG.addColorStop(0, `rgba(255,200,120,0.08)`);
+        crG.addColorStop(0.5, `rgba(100,50,10,0.10)`);
+        crG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = crG;
+        pctx.fill();
+      }
+
+    } else if (def.id === "green") {
+      // Emerald — jungle/ocean world: continent blobs + cloud wisps
+      for (let p = 0; p < 8; p++) {
+        const px = cx + (rng() - 0.5) * R * 1.4;
+        const py = cy + (rng() - 0.5) * R * 1.4;
+        const pr = R * (0.10 + rng() * 0.22);
+        const pG = pctx.createRadialGradient(px, py, 0, px, py, pr);
+        pG.addColorStop(0, `rgba(${20 + Math.floor(rng()*40)},${160 + Math.floor(rng()*60)},${40 + Math.floor(rng()*40)},${0.14 + rng()*0.10})`);
+        pG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = pG;
+        pctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+      }
+      // Cloud wisps
+      for (let cl = 0; cl < 5; cl++) {
+        const clx = cx + (rng() - 0.5) * R * 1.6;
+        const cly = cy + (rng() - 0.5) * R * 1.6;
+        const clw = R * (0.12 + rng() * 0.16);
+        const clG = pctx.createRadialGradient(clx, cly, 0, clx, cly, clw);
+        clG.addColorStop(0, `rgba(200,255,220,${0.08 + rng()*0.08})`);
+        clG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = clG;
+        pctx.fillRect(clx - clw, cly - clw * 0.4, clw * 2, clw * 0.8);
+      }
+
+    } else if (def.id === "crimson") {
+      // Crimson — volcanic world: lava cracks + hotspot glows + craters
+      for (let b = 0; b < 7; b++) {
+        const by = cy - R + (b / 6) * R * 2;
+        const bw = R * (0.03 + rng() * 0.06);
+        const alpha = 0.08 + rng() * 0.12;
+        pctx.fillStyle = `rgba(255,${60 + Math.floor(rng()*60)},0,${alpha})`;
+        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
+      }
+      // Lava hotspots
+      for (let h = 0; h < 6; h++) {
+        const hx = cx + (rng() - 0.5) * R * 1.5;
+        const hy = cy + (rng() - 0.5) * R * 1.5;
+        const hr = R * (0.04 + rng() * 0.10);
+        const hG = pctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
+        hG.addColorStop(0, `rgba(255,${120 + Math.floor(rng()*100)},0,${0.18 + rng()*0.14})`);
+        hG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = hG;
+        pctx.arc(hx, hy, hr, 0, Math.PI * 2);
+        pctx.fill();
+      }
+      // Dark craters
+      for (let cr = 0; cr < 4; cr++) {
+        const crx = cx + (rng() - 0.5) * R * 1.3;
+        const cry = cy + (rng() - 0.5) * R * 1.3;
+        const crr = R * (0.05 + rng() * 0.10);
+        pctx.beginPath();
+        pctx.arc(crx, cry, crr, 0, Math.PI * 2);
+        pctx.strokeStyle = `rgba(20,0,0,${0.18 + rng() * 0.14})`;
+        pctx.lineWidth = 2;
+        pctx.stroke();
+        const crG = pctx.createRadialGradient(crx, cry, 0, crx, cry, crr);
+        crG.addColorStop(0, "rgba(10,0,0,0.18)");
+        crG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = crG;
+        pctx.fill();
+      }
     }
+
+    pctx.restore();
+
+    // ── Terminator shadow (dark side) — consistent light from upper-left ──
+    pctx.save();
+    pctx.beginPath();
+    pctx.arc(cx, cy, R, 0, Math.PI * 2);
+    pctx.clip();
+    const shadowG = pctx.createRadialGradient(cx + R * 0.45, cy + R * 0.45, R * 0.05, cx + R * 0.65, cy + R * 0.65, R * 1.1);
+    shadowG.addColorStop(0, "rgba(0,0,0,0)");
+    shadowG.addColorStop(0.55, "rgba(0,0,0,0.18)");
+    shadowG.addColorStop(1, "rgba(0,0,0,0.62)");
+    pctx.fillStyle = shadowG;
+    pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+    pctx.restore();
+
+    // ── Specular highlight (light glint upper-left) ──
+    pctx.save();
+    pctx.beginPath();
+    pctx.arc(cx, cy, R, 0, Math.PI * 2);
+    pctx.clip();
+    const specG = pctx.createRadialGradient(cx - R * 0.38, cy - R * 0.34, 0, cx - R * 0.38, cy - R * 0.34, R * 0.45);
+    specG.addColorStop(0, "rgba(255,255,255,0.18)");
+    specG.addColorStop(1, "rgba(0,0,0,0)");
+    pctx.fillStyle = specG;
+    pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
     // Ring (elliptical, angled) — only on purple mega planet
     if (def.id === "mega") {
       pctx.save();
-      pctx.translate(S/2, S/2);
+      pctx.translate(cx, cy);
       pctx.scale(1, 0.28);
       pctx.beginPath();
-      pctx.arc(0, 0, S*0.44, 0, Math.PI * 2);
+      pctx.arc(0, 0, R * 1.46, 0, Math.PI * 2);
       pctx.strokeStyle = def.ringColor;
       pctx.lineWidth = S * 0.045;
+      pctx.stroke();
+      // Second faint ring
+      pctx.beginPath();
+      pctx.arc(0, 0, R * 1.65, 0, Math.PI * 2);
+      pctx.strokeStyle = "rgba(200,140,255,0.18)";
+      pctx.lineWidth = S * 0.022;
       pctx.stroke();
       pctx.restore();
     }
