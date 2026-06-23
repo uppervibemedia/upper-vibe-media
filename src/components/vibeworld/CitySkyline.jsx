@@ -372,57 +372,41 @@ export default function createCitySkyline(scene) {
   addSkyscraper(-38, -38, 2.2, 1.8, 13, steelBody, neonPurple, "NW Corner");
   addSkyscraper(-42, -38, 2.0, 1.6, 10, glassBody, neonBlue, "NW Corner B");
 
-  // ══════════════════════════════════════════════════════════════
-  // CITY BRANDING — subtle UVM / UVC / Upper Vibe City signage
-  // Placed on select buildings + wall faces. Tasteful, not excessive.
-  // ══════════════════════════════════════════════════════════════
-  function makeBrandSign(text, colorHex, w, h) {
-    const cw = 512, ch = 96;
-    const c = document.createElement("canvas");
-    c.width = cw; c.height = ch;
-    const ctx = c.getContext("2d");
-    // Backing fill
-    ctx.fillStyle = `${colorHex}22`;
-    ctx.fillRect(0, 0, cw, ch);
-    // Border
-    ctx.strokeStyle = colorHex;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(2, 2, cw - 4, ch - 4);
-    // Glow text
-    ctx.shadowColor = colorHex;
-    ctx.shadowBlur = 18;
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = `bold 42px 'Syne','Inter',sans-serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(text, cw / 2, ch / 2);
-    ctx.fillText(text, cw / 2, ch / 2); // double for glow
-    const tex = new THREE.CanvasTexture(c);
-    tex.minFilter = LinearFilter;
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return new MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
-  }
-
-  const brandDefs = [
-    // text, color, x, y, z, rotY, w, h
-    ["UPPER VIBE MEDIA", "#00D4F0",  0,  18, -37, 0,          3.8, 0.72], // North wall center, high up
-    ["UVC",             "#C43BFF", -20,  14, -37, 0,          1.4, 0.72], // North wall left side
-    ["UVC",             "#C43BFF",  20,  14, -37, 0,          1.4, 0.72], // North wall right side
-    ["UPPER VIBE CITY", "#D4A843",  37,   9,  -8, -Math.PI/2, 3.2, 0.72], // East wall mid
-    ["UVM",             "#00D4F0", -37,  12, -18, Math.PI/2,  1.6, 0.72], // West wall
-    ["UPPER VIBE MEDIA", "#A078FF",  37,  15, -28, -Math.PI/2, 3.2, 0.72], // East wall upper
-  ];
-
-  for (const [text, color, x, y, z, rotY, w, h] of brandDefs) {
-    const sign = new Mesh(new PlaneGeometry(w, h), makeBrandSign(text, color, w, h));
-    sign.position.set(x, y, z);
-    sign.rotation.y = rotY;
-    sign.renderOrder = 2;
-    buildings.add(sign);
-  }
+  // ── Skyline branding signs removed — all UVM/UVC branding is at player eye level ──
 
   scene.add(buildings);
 
-  // Expose neon materials for audio-reactive pulsing
-  scene.userData.neonMats = [neonCyan, neonPurple, neonBlue];
-  scene.userData._neonBaseOpacities = { neonCyan: 1, neonPurple: 1, neonBlue: 1 };
+  // ── Only 4 north-skyline buildings pulsate — spread out, stage center excluded ──
+  // x=0 (directly behind stage) stays static. Chosen: x=-28, x=-8, x=12, x=32
+  // These are well-spread across the north wall and away from stage center.
+  const pulseNeonCyan   = new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.9 });
+  const pulseNeonPurple = new MeshBasicMaterial({ color: new Color("#C43BFF"), depthWrite: false, transparent: true, opacity: 0.9 });
+  const pulseNeonBlue   = new MeshBasicMaterial({ color: new Color("#40A0EE"), depthWrite: false, transparent: true, opacity: 0.9 });
+  const pulseNeonCyan2  = new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.9 });
+
+  // Expose only these 4 materials for pulsing — everything else stays static
+  scene.userData.neonMats = [pulseNeonCyan, pulseNeonPurple, pulseNeonBlue, pulseNeonCyan2];
+
+  // Override accent material on the 4 chosen buildings post-construction
+  // Each material targets the corner strips + crown of its specific building group
+  const PULSE_BUILDINGS = [
+    { x: -28, mat: pulseNeonBlue   }, // far-left north
+    { x:  -8, mat: pulseNeonCyan   }, // left-center north (Twin Towers West uses this)
+    { x:  12, mat: pulseNeonCyan2  }, // right-center north
+    { x:  32, mat: pulseNeonPurple }, // far-right north
+  ];
+  buildings.children.forEach((child) => {
+    if (!child.position) return;
+    const cx = Math.round(child.position.x);
+    const cz = Math.round(child.position.z);
+    // Only apply to north wall (z ≈ -38) buildings at the 4 chosen x positions
+    if (cz !== -38) return;
+    const pulse = PULSE_BUILDINGS.find((p) => p.x === cx);
+    if (!pulse) return;
+    child.traverse((obj) => {
+      if (obj.isMesh && obj.material === neonCyan)   obj.material = pulse.mat;
+      if (obj.isMesh && obj.material === neonPurple) obj.material = pulse.mat;
+      if (obj.isMesh && obj.material === neonBlue)   obj.material = pulse.mat;
+    });
+  });
 }
