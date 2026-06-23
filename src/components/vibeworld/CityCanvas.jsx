@@ -1376,7 +1376,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       sceneRef.current = scene;
 
       const asp = rw / Math.max(rh, 1);
-      const camera = new PerspectiveCamera(52, asp, 0.1, 100);
+      // Reduce far clip on mobile — less geometry enters view when turning, fewer draw calls
+      const camera = new PerspectiveCamera(52, asp, 0.1, isMob ? 70 : 100);
       cameraRef.current = camera;
       // Start camera at camYaw=0: camera behind avatar facing stage. Use landscape constants if already landscape.
       const [spX, spY, spZ] = effectiveSpawn;
@@ -1691,18 +1692,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           try { onJukeboxProxRef.current(nearJukebox, proximityVol); } catch {}
         }
 
-        // ─── CAMERA SMOOTH ───────────────────────────────────
-        // GTA 5 style:
-        // - When moving: smoothly reposition camera behind avatar (0.5-1s) while user's right-stick orbits freely
-        // - When idle: allow full 360° orbit
+        // ─── CAMERA RECENTERING ──────────────────────────────
         const movingSpeed = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08;
         if (isMobileRef.current && movingSpeed && !userTouchingCamRef.current) {
-          // Target: camera directly behind avatar (avatar rot + π = camera position angle)
           const targetYaw = rot + Math.PI;
           let yawDelta = targetYaw - camYawRef.current;
           while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
           while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
-          camYawRef.current += yawDelta * Math.min(1, dt * 1.5); // 0.67s to complete 180° turn
+          // Cap per-frame step to 0.06 rad — prevents frame spikes on 180° turns
+          const step = Math.min(Math.abs(yawDelta) * Math.min(1, dt * 0.8), 0.06) * Math.sign(yawDelta);
+          camYawRef.current += step;
         } else if (!isMobileRef.current && speed > 0.05 && !userTouchingCamRef.current) {
           // Desktop: maintain camera behind avatar
           const targetYaw = rot + Math.PI;
@@ -1712,12 +1711,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camYawRef.current += yawDelta * Math.min(1, dt * 2.5);
         }
 
-        // Smooth camera yaw + pitch (always world-space)
+        // Smooth camera yaw + pitch — slower on mobile avoids jerky geometry pop-in
         let yawDiff = camYawRef.current - camYawSmoothRef.current;
         while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
         while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
-        camYawSmoothRef.current += yawDiff * Math.min(1, dt * 10.0);
-        camPitchSmoothRef.current += (camPitchRef.current - camPitchSmoothRef.current) * Math.min(1, dt * 10.0);
+        const yawSmoothSpeed = isMobileRef.current ? 6.0 : 10.0;
+        camYawSmoothRef.current += yawDiff * Math.min(1, dt * yawSmoothSpeed);
+        camPitchSmoothRef.current += (camPitchRef.current - camPitchSmoothRef.current) * Math.min(1, dt * 8.0);
 
         const pitch = camPitchSmoothRef.current;
 
@@ -1890,33 +1890,27 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           shoreGlow.material.color.copy(scene.userData._cyanColor).lerp(scene.userData._purpleColor, Math.min(1, bassEnergy * 1.5));
         }
 
-        // ─── STAGE SCREEN GLOW — pulse screen frame with music ──────
-        const screenGlowMesh = scene.getObjectByName("stageScreenGlow");
-        if (screenGlowMesh?.material) {
-          screenGlowMesh.material.opacity = 0.45 + audioBeat * 0.7 + (audioIntensityRef?.current || 0) * 0.3;
-        }
-
-        // ─── VIBE LOUNGE NEON AMBIENT — stronger pulse with music ──
-        const loungeNeonMats = scene.userData.loungeNeonMats;
-        if (loungeNeonMats) {
-          const loungeWave = Math.sin(t * 2.5) * 0.15;
-          for (const mat of loungeNeonMats) {
-            if (mat?.opacity !== undefined) {
-              mat.opacity = Math.min(0.9, 0.4 + audioBeat * 0.6 + loungeWave);
+        // ─── STAGE SCREEN GLOW + LOUNGE NEON — throttled on mobile ──
+        if (!isMob || frameRef.current % 4 === 0) {
+          const screenGlowMesh = scene.getObjectByName("stageScreenGlow");
+          if (screenGlowMesh?.material) {
+            screenGlowMesh.material.opacity = 0.45 + audioBeat * 0.7 + (audioIntensityRef?.current || 0) * 0.3;
+          }
+          const loungeNeonMats = scene.userData.loungeNeonMats;
+          if (loungeNeonMats) {
+            const loungeWave = Math.sin(t * 2.5) * 0.15;
+            for (const mat of loungeNeonMats) {
+              if (mat?.opacity !== undefined) mat.opacity = Math.min(0.9, 0.4 + audioBeat * 0.6 + loungeWave);
             }
-          }
-          const ll = scene.userData.loungeLight;
-          if (ll && ll.intensity !== undefined) {
-            ll.intensity = 1.5 + audioBeat * 1.2;
+            const ll = scene.userData.loungeLight;
+            if (ll) ll.intensity = 1.5 + audioBeat * 1.2;
           }
         }
 
-        // ─── NEON SKYLINE PULSE + COLOR SHIFT — buildings breathe with music ──
+        // ─── NEON SKYLINE PULSE — throttled on mobile ─────────────
         const neonMats = scene.userData.neonMats;
-        if (neonMats) {
-          // Three materials pulse independently at different rates + beat response
+        if (neonMats && (!isMob || frameRef.current % 3 === 0)) {
           const colorShift = Math.sin(t * 0.4) * 0.5 + 0.5;
-          // neonCyan — fast beat-driven pulse
           if (!scene.userData._neonC) {
             scene.userData._neonC = [new Color("#00D4F0"), new Color("#A078FF"), new Color("#40A0EE")];
             scene.userData._neonC2 = [new Color("#C43BFF"), new Color("#00E5FF"), new Color("#C43BFF")];
@@ -1926,6 +1920,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           if (neonMats[1]) { neonMats[1].opacity = Math.max(0.4, 0.55 + audioBeat * 0.9 + Math.sin(t * 1.5 + 1.2) * 0.25); neonMats[1].color.copy(nc[1]).lerp(nc2[1], colorShift * 0.4); }
           if (neonMats[2]) { neonMats[2].opacity = Math.max(0.45, 0.6 + audioBeat * 1.0 + Math.sin(t * 1.8 + 2.5) * 0.22); neonMats[2].color.copy(nc[2]).lerp(nc2[2], colorShift * 0.38); }
         }
+
 
         // ─── BUILDING WINDOW FLICKERS — staggered natural on/off cycles ──
         // Each window independently stays lit or dim for several seconds
@@ -1983,21 +1978,21 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           pf.intensity = 1.0 + audioBeat * 0.8 + Math.sin(t * 1.2) * 0.2;
         }
 
-        // ─── SHIFTING NEON AMBIENT LIGHTS ──
-        const neonAmbients = scene.userData.neonAmbients;
-        if (neonAmbients) {
-          for (const na of neonAmbients) {
-            const wave = Math.sin(t * 0.35 + na.phase); // ~18s full cycle — very slow
-            // Intensity: gentle breath + slight music lift
-            na.light.intensity = na.baseI * (0.7 + wave * 0.3) + audioBeat * 0.4;
-            // Color: lerp between color1 (blue/purple) and color2 (opposite) smoothly
-            const blend = wave * 0.5 + 0.5; // 0..1
-            na.light.color.copy(na.color1).lerp(na.color2, blend * 0.45);
+        // ─── SHIFTING NEON AMBIENT LIGHTS — throttled on mobile ──
+        if (!isMob || frameRef.current % 3 === 0) {
+          const neonAmbients = scene.userData.neonAmbients;
+          if (neonAmbients) {
+            for (const na of neonAmbients) {
+              const wave = Math.sin(t * 0.35 + na.phase);
+              na.light.intensity = na.baseI * (0.7 + wave * 0.3) + audioBeat * 0.4;
+              const blend = wave * 0.5 + 0.5;
+              na.light.color.copy(na.color1).lerp(na.color2, blend * 0.45);
+            }
           }
         }
 
-        // On mobile, only update neon signs every 3 frames (billboard lookAt is cheap but adds up)
-        const updateSigns = !isMob || frameRef.current % 3 === 0;
+        // On mobile, update neon signs every 6 frames — reduces per-frame JS work when turning
+        const updateSigns = !isMob || frameRef.current % 6 === 0;
         scene.children.forEach((child) => {
           if (child.userData?.isNeonSign) {
             if (updateSigns) child.lookAt(camera.position);
@@ -2020,9 +2015,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             child.position.z = p.baseZ + Math.sin(t * 0.6 + p.phase) * 0.2;
           }
         });
-        animateZenBeach(scene, t, audioBeat); animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
+        // Distance-gate zone animations on mobile — skip if player is far away
+        const nearDanceFloor = Math.sqrt(px * px + (pz + 13) * (pz + 13)) < 18;
+        const nearBeach = pz > 10;
+        if (!isMob || nearBeach || frameRef.current % 3 === 0) animateZenBeach(scene, t, audioBeat);
+        if (!isMob || nearDanceFloor || frameRef.current % 2 === 0) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         if (!isMob || frameRef.current % 2 === 0) animateCrystalZone(scene, t, dt, px, pz);
-        animateJukebox(scene, t, audioBeat);
+        if (!isMob || nearDanceFloor || frameRef.current % 3 === 0) animateJukebox(scene, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──
         if (hbRidingRef.current && avatarEntryRef.current && !avatarEntryRef.current._hbBoard) {
