@@ -436,11 +436,12 @@ export function createCosmicSky(scene) {
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0.85,
       depthWrite: false,
-      renderOrder: 3,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    psprite.renderOrder = 3;
+    // Render behind all world geometry so planets never overlap buildings
+    psprite.renderOrder = -2;
+    pmat.depthTest = false;
     scene.add(psprite);
 
     return {
@@ -504,17 +505,24 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
 
 
-  // ── Horizon planets — locked to skybox rotation so they drift with the sky ──
-  // skybox.rotation.y accumulates at 0.007 rad/s — read it as the shared sky angle.
+  // ── Horizon planets — locked to skybox rotation, arc high over north, low over beach ──
+  // cos(angle) < 0  → north side (behind buildings) → push high in sky
+  // cos(angle) > 0  → south/beach side → stay low on horizon
   const horizonPlanets = scene.userData.horizonPlanets;
   if (horizonPlanets && skybox) {
-    const skyAngle = skybox.rotation.y; // shared rotation angle for all sky elements
+    const skyAngle = skybox.rotation.y;
     for (const p of horizonPlanets) {
-      // Each planet sits at a fixed angular offset from the skybox angle
       const angle = skyAngle + p.angleOffset;
+      const cosA = Math.cos(angle); // -1 = north, +1 = beach/south
+
+      // Height arc: high (30+) over north, low (horizonY) over beach
+      // northFactor goes 0→1 as planet moves to north side
+      const northFactor = Math.max(0, -cosA); // 0 at beach, 1 at full north
+      const arcY = p.horizonY + northFactor * northFactor * 32;
+
       const cx = camera.position.x + Math.sin(angle) * p.radius;
-      const cz = camera.position.z + Math.cos(angle) * p.radius;
-      p.sprite.position.set(cx, p.horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.8, cz);
+      const cz = camera.position.z + cosA * p.radius;
+      p.sprite.position.set(cx, arcY + Math.sin(t * 0.04 + p.angleOffset) * 0.6, cz);
       p.mat.opacity = 0.88 + Math.sin(t * 0.06 + p.angleOffset) * 0.06;
     }
   }
