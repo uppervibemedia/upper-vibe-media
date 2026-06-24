@@ -808,14 +808,11 @@ export function animateCosmicSky(scene, camera, t, dt) {
       const cy = camera.position.y + p.camHeightOffset + Math.sin(t * 0.018 + p.angleOffset) * 0.6;
       p.sprite.position.set(cx, cy, cz);
 
-      // LAYER C (high): fade out when player is at beach to keep them city-sky only
-      if (p.layer === "high") {
-        const targetOpacity = isAtBeach ? 0.0 : 1.0;
-        p.mat.opacity += (targetOpacity - p.mat.opacity) * Math.min(1, dt * 1.2);
-      } else {
-        // LAYER B (mid): always visible, gentle fade
-        p.mat.opacity = Math.min(p.mat.opacity + dt * 0.5, 1.0);
-      }
+      // LAYER B (mid) + LAYER C (high): both use the same zone gate as beach flybys
+      // but inverted — only visible when player is NOT at the beach (city/north zone).
+      // This prevents them from ever appearing above or through the skyline buildings.
+      const targetOpacity = isAtBeach ? 0.0 : 1.0;
+      p.mat.opacity += (targetOpacity - p.mat.opacity) * Math.min(1, dt * 1.5);
     }
   }
 
