@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { Music4, Users, Zap, Tv2, GraduationCap, Waves, MapPin } from "lucide-react";
+import CityLiveFeed from "@/components/vibeworld/CityLiveFeed";
 
 const FEATURE_BADGES = [
   { icon: Music4,       label: "Music Stage",    color: "#00D4F0" },
@@ -178,72 +179,53 @@ export default function UpperVibeCityPreview({ variant = "home" }) {
           boxShadow: "0 0 60px rgba(0,212,240,0.06), 0 0 100px rgba(155,126,255,0.04)",
         }}
       >
-        {/* ── Cinematic preview frame ── */}
-        <div className="relative w-full" style={{ paddingBottom: isHome ? "42%" : "56.25%", minHeight: isHome ? 160 : 200 }}>
-          <div className="absolute inset-0">
-            <FloatingOrbs />
-            <CitySilhouette />
+        {/* ── Live 3D aerial feed ── */}
+        <div className="relative w-full" style={{ paddingBottom: isHome ? "42%" : "52%", minHeight: isHome ? 180 : 220 }}>
+          <div className="absolute inset-0 overflow-hidden rounded-t-2xl md:rounded-t-3xl">
+            <CityLiveFeed />
 
-            {/* Stars */}
-            <div className="absolute inset-0 pointer-events-none">
-              {Array.from({ length: 30 }).map((_, i) => (
-                <motion.div
-                  key={i}
-                  animate={{ opacity: [0.2, 0.8, 0.2] }}
-                  transition={{ duration: 2 + (i % 5) * 0.6, repeat: Infinity, delay: i * 0.15 }}
-                  className="absolute rounded-full"
-                  style={{
-                    width: i % 4 === 0 ? 2 : 1,
-                    height: i % 4 === 0 ? 2 : 1,
-                    top: `${5 + (i * 31 % 55)}%`,
-                    left: `${(i * 37 % 85) + 5}%`,
-                    background: i % 3 === 0 ? "#00D4F0" : i % 3 === 1 ? "#C43BFF" : "#ffffff",
-                  }}
+            {/* HUD overlay */}
+            <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 pt-3 z-10 pointer-events-none">
+              {/* LIVE badge */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(0,212,240,0.35)", backdropFilter: "blur(10px)" }}>
+                <motion.span
+                  animate={{ opacity: [1, 0.3, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity }}
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ background: "#00E5FF" }}
                 />
-              ))}
-            </div>
+                <span className="text-[9px] font-black tracking-widest uppercase" style={{ color: "#00E5FF" }}>
+                  Live Aerial · Upper Vibe City
+                </span>
+              </div>
 
-            {/* Overhead text overlay */}
-            <div className="absolute inset-x-0 top-0 flex flex-col items-center pt-4 z-10 pointer-events-none">
-              {/* LIVE badge + online count */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                  style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(0,212,240,0.3)", backdropFilter: "blur(8px)" }}>
-                  <motion.span
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 1.2, repeat: Infinity }}
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ background: "#00E5FF" }}
-                  />
-                  <span className="text-[9px] font-black tracking-widest uppercase" style={{ color: "#00E5FF" }}>
-                    Upper Vibe City
+              {/* Online count */}
+              {onlineCount !== null && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-full"
+                  style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(8px)" }}>
+                  <Users style={{ width: 9, height: 9, color: "rgba(255,255,255,0.5)" }} />
+                  <span className="text-[9px] font-bold" style={{ color: "rgba(255,255,255,0.6)" }}>
+                    {onlineCount} online
                   </span>
                 </div>
-                {onlineCount !== null && (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-full"
-                    style={{ background: "rgba(0,0,0,0.45)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(6px)" }}>
-                    <Users style={{ width: 9, height: 9, color: "rgba(255,255,255,0.5)" }} />
-                    <span className="text-[9px] font-bold" style={{ color: "rgba(255,255,255,0.55)" }}>
-                      {onlineCount} online
-                    </span>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
-            {/* Center Enter button overlay */}
-            <div className="absolute inset-0 flex items-center justify-center z-10">
+            {/* Center Enter button */}
+            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
               <button
                 onClick={handleEnter}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-95"
                 style={{
-                  background: "linear-gradient(135deg,rgba(0,184,212,0.85),rgba(155,79,255,0.85))",
+                  background: "linear-gradient(135deg,rgba(0,184,212,0.88),rgba(155,79,255,0.88))",
                   color: "#fff",
-                  backdropFilter: "blur(12px)",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  boxShadow: "0 0 32px rgba(0,212,240,0.4), 0 4px 20px rgba(0,0,0,0.5)",
+                  backdropFilter: "blur(14px)",
+                  border: "1px solid rgba(255,255,255,0.22)",
+                  boxShadow: "0 0 36px rgba(0,212,240,0.45), 0 4px 20px rgba(0,0,0,0.55)",
                   touchAction: "manipulation",
                   fontSize: "13px",
+                  pointerEvents: "auto",
                 }}
               >
                 <MapPin style={{ width: 14, height: 14 }} />
@@ -251,8 +233,8 @@ export default function UpperVibeCityPreview({ variant = "home" }) {
               </button>
             </div>
 
-            {/* Bottom gradient fade into content */}
-            <div className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
+            {/* Bottom gradient fade */}
+            <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
               style={{ background: "linear-gradient(to top, #060614, transparent)" }} />
           </div>
         </div>
