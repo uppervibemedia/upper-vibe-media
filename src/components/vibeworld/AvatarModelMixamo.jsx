@@ -51,6 +51,144 @@ function makeShadow() {
   return m;
 }
 
+// ── Shared hair builder for in-world male avatar ──────────────────────────────
+function buildMaleHairInWorld(style, HAIR, headGroup) {
+  const mh = (hex, rough) => new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: 0.02 });
+
+  switch (style) {
+    case "fade": {
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.164, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.50), mh(HAIR, 0.90));
+      top.position.y = 0.048; headGroup.add(top);
+      const sideGeo = new THREE.CapsuleGeometry(0.028, 0.18, 3, 6);
+      const sL = new THREE.Mesh(sideGeo, mh(HAIR, 0.92));
+      sL.position.set(0.145, -0.02, -0.02); sL.rotation.z = 0.5; headGroup.add(sL);
+      const sR = new THREE.Mesh(sideGeo, mh(HAIR, 0.92));
+      sR.position.set(-0.145, -0.02, -0.02); sR.rotation.z = -0.5; headGroup.add(sR);
+      const back = new THREE.Mesh(new THREE.CapsuleGeometry(0.032, 0.14, 3, 6), mh(HAIR, 0.92));
+      back.position.set(0, -0.06, -0.135); back.rotation.x = 0.4; headGroup.add(back);
+      break;
+    }
+    case "locs": {
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.168, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.60), mh(HAIR, 0.82));
+      cap.position.y = 0.030; headGroup.add(cap);
+      const locDefs = [
+        { x:  0.00, y: -0.10, z: -0.13, len: 0.26 },
+        { x:  0.06, y: -0.08, z: -0.13, len: 0.22 },
+        { x: -0.06, y: -0.08, z: -0.13, len: 0.22 },
+        { x:  0.13, y: -0.06, z: -0.08, len: 0.20 },
+        { x:  0.14, y: -0.02, z: -0.04, len: 0.18 },
+        { x:  0.13, y: -0.08, z:  0.02, len: 0.16 },
+        { x: -0.13, y: -0.06, z: -0.08, len: 0.20 },
+        { x: -0.14, y: -0.02, z: -0.04, len: 0.18 },
+        { x: -0.13, y: -0.08, z:  0.02, len: 0.16 },
+        { x:  0.04, y: -0.04, z: -0.15, len: 0.24 },
+        { x: -0.04, y: -0.04, z: -0.15, len: 0.24 },
+      ];
+      locDefs.forEach(({ x, y, z, len }) => {
+        const loc = new THREE.Mesh(new THREE.CapsuleGeometry(0.020, len, 3, 6), mh(HAIR, 0.86));
+        loc.position.set(x, y, z);
+        loc.rotation.x = Math.atan2(-y - len * 0.5, -z) * 0.4;
+        loc.rotation.z = Math.atan2(x, 0.16) * 0.35;
+        headGroup.add(loc);
+      });
+      break;
+    }
+    case "hat": {
+      const buzz = new THREE.Mesh(new THREE.SphereGeometry(0.162, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), mh(HAIR, 0.92));
+      buzz.position.y = 0.048; headGroup.add(buzz);
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.240, 0.240, 0.018, 16), mh(0x111111, 0.85));
+      brim.position.set(0, 0.135, 0.020); headGroup.add(brim);
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.172, 0.178, 0.145, 14), mh(0x111111, 0.80));
+      crown.position.set(0, 0.218, 0); headGroup.add(crown);
+      const topCap = new THREE.Mesh(new THREE.SphereGeometry(0.172, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.52), mh(0x111111, 0.78));
+      topCap.position.set(0, 0.290, 0); headGroup.add(topCap);
+      const logo = new THREE.Mesh(new THREE.BoxGeometry(0.060, 0.028, 0.010), mh(0x9B7EFF, 0.6));
+      logo.position.set(0, 0.220, 0.175); headGroup.add(logo);
+      break;
+    }
+    default: { // "short"
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.50), mh(HAIR, 0.88));
+      hair.position.y = 0.048; headGroup.add(hair);
+    }
+  }
+}
+
+// ── Shared hair builder for in-world female avatar ────────────────────────────
+function buildFemaleHairInWorld(style, HAIR, ACCENT, headGroup) {
+  const mh = (hex, rough) => new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: 0.02 });
+  const mb = (hex, op) => new THREE.MeshBasicMaterial({ color: hex, transparent: op < 1, opacity: op, depthWrite: false });
+
+  function addSidePanels(radius, yOffset, zOffset) {
+    const sGeo = new THREE.CapsuleGeometry(radius, 0.14, 3, 6);
+    const sL = new THREE.Mesh(sGeo, mh(HAIR, 0.82));
+    sL.position.set( 0.130, yOffset, zOffset); sL.rotation.z =  0.55; headGroup.add(sL);
+    const sR = new THREE.Mesh(sGeo, mh(HAIR, 0.82));
+    sR.position.set(-0.130, yOffset, zOffset); sR.rotation.z = -0.55; headGroup.add(sR);
+  }
+
+  switch (style) {
+    case "long": {
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.156, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.52), mh(HAIR, 0.78));
+      top.position.y = 0.038; headGroup.add(top);
+      const sideGeo = new THREE.CapsuleGeometry(0.055, 0.42, 4, 6);
+      const sL = new THREE.Mesh(sideGeo, mh(HAIR, 0.80));
+      sL.position.set(0.118, -0.15, 0.012); sL.rotation.z = 0.18; headGroup.add(sL);
+      const sR = new THREE.Mesh(sideGeo, mh(HAIR, 0.80));
+      sR.position.set(-0.118, -0.15, 0.012); sR.rotation.z = -0.18; headGroup.add(sR);
+      const back = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.48, 4, 8), mh(HAIR, 0.80));
+      back.position.set(0, -0.20, -0.072); back.rotation.x = 0.08; headGroup.add(back);
+      const frL = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.12, 3, 5), mh(HAIR, 0.82));
+      frL.position.set(0.095, -0.048, 0.115); frL.rotation.z = 0.30; headGroup.add(frL);
+      const frR = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.12, 3, 5), mh(HAIR, 0.82));
+      frR.position.set(-0.095, -0.048, 0.115); frR.rotation.z = -0.30; headGroup.add(frR);
+      break;
+    }
+    case "bob": {
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.156, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.52), mh(HAIR, 0.80));
+      top.position.y = 0.038; headGroup.add(top);
+      const bobGeo = new THREE.CapsuleGeometry(0.062, 0.24, 4, 6);
+      const bL = new THREE.Mesh(bobGeo, mh(HAIR, 0.80));
+      bL.position.set( 0.112, -0.12, 0.00); bL.rotation.z =  0.12; headGroup.add(bL);
+      const bR = new THREE.Mesh(bobGeo, mh(HAIR, 0.80));
+      bR.position.set(-0.112, -0.12, 0.00); bR.rotation.z = -0.12; headGroup.add(bR);
+      const bBack = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.22, 4, 6), mh(HAIR, 0.80));
+      bBack.position.set(0, -0.10, -0.090); headGroup.add(bBack);
+      break;
+    }
+    case "bun": {
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.156, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.50), mh(HAIR, 0.80));
+      top.position.y = 0.038; headGroup.add(top);
+      addSidePanels(0.040, -0.030, -0.025);
+      const gather = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.18, 3, 6), mh(HAIR, 0.80));
+      gather.position.set(0, -0.05, -0.115); gather.rotation.x = -0.18; headGroup.add(gather);
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.072, 8, 6), mh(HAIR, 0.76));
+      bun.position.set(0, 0.215, -0.042); headGroup.add(bun);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.011, 6, 12), mb(ACCENT, 0.88));
+      band.position.set(0, 0.168, -0.042); band.rotation.x = Math.PI / 2; headGroup.add(band);
+      break;
+    }
+    case "short": {
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.155, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.50), mh(HAIR, 0.84));
+      top.position.y = 0.040; headGroup.add(top);
+      addSidePanels(0.036, -0.022, -0.018);
+      const backN = new THREE.Mesh(new THREE.CapsuleGeometry(0.038, 0.12, 3, 6), mh(HAIR, 0.86));
+      backN.position.set(0, -0.055, -0.128); backN.rotation.x = 0.35; headGroup.add(backN);
+      break;
+    }
+    default: { // "ponytail"
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.156, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.50), mh(HAIR, 0.80));
+      top.position.y = 0.038; headGroup.add(top);
+      addSidePanels(0.040, -0.030, -0.020);
+      const back = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.30, 4, 6), mh(HAIR, 0.80));
+      back.position.set(0, -0.10, -0.105); headGroup.add(back);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.012, 6, 12), mb(ACCENT, 0.88));
+      band.position.set(0, -0.175, -0.105); band.rotation.x = Math.PI / 2; headGroup.add(band);
+      const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.032, 0.22, 3, 6), mh(HAIR, 0.80));
+      tail.position.set(0, -0.30, -0.105); tail.rotation.x = 0.12; headGroup.add(tail);
+    }
+  }
+}
+
 // ── Male casual body ───────────────────────────────────────────────────────────
 // Same hip-pivot architecture as female to prevent leg/hip clipping.
 function buildMaleCasual(C) {
@@ -137,12 +275,8 @@ function buildMaleCasual(C) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.160, 12, 10), mat(C.skin));
   head.castShadow = true; headGroup.add(head);
 
-  // Hair — short top, raised so it doesn't spill over the face
-  const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.44),
-    mat(C.hair, { roughness: 0.88 })
-  );
-  hair.position.y = 0.055; headGroup.add(hair);
+  // Hair — built by shared builder, reads opts.hairStyle
+  buildMaleHairInWorld(C._hairStyle || "short", C.hair, headGroup);
 
   // Eyes — white sclera + dark pupil, properly positioned mid-face
   const scleraGeo = new THREE.SphereGeometry(0.020, 8, 6);
@@ -268,25 +402,8 @@ function buildFemaleCasual(C) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.148, 12, 10), mat(C.skin));
   head.castShadow = true; headGroup.add(head);
 
-  // Hair — long with ponytail, raised off the face
-  const hairTop = new THREE.Mesh(
-    new THREE.SphereGeometry(0.155, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.48),
-    mat(C.hair, { roughness: 0.80 })
-  );
-  hairTop.position.y = 0.045; headGroup.add(hairTop);
-
-  const hairBack = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.055, 0.30, 4, 6),
-    mat(C.hair, { roughness: 0.80 })
-  );
-  hairBack.position.set(0, -0.12, -0.10); headGroup.add(hairBack);
-
-  // Ponytail holder
-  const ponyBand = new THREE.Mesh(
-    new THREE.TorusGeometry(0.04, 0.012, 6, 12),
-    new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.85, depthWrite: false })
-  );
-  ponyBand.position.set(0, -0.18, -0.10); ponyBand.rotation.x = Math.PI / 2; headGroup.add(ponyBand);
+  // Hair — built by shared builder, reads C._hairStyle
+  buildFemaleHairInWorld(C._hairStyle || "ponytail", C.hair, C.accent, headGroup);
 
   // Eyes — white sclera + dark pupil, mid-face position
   const fScleraGeo = new THREE.SphereGeometry(0.018, 8, 6);
@@ -542,7 +659,7 @@ function animateCasual(entry, speed, isDancing, dt, emoteId) {
 // ── PUBLIC API ─────────────────────────────────────────────────────────────────
 export function createMixamoAvatar(scene, opts = {}, onReady) {
   const gender = opts.gender || "male";
-  const C = gender === "female" ? FEMALE_CASUAL : MALE_CASUAL;
+  const C = { ...(gender === "female" ? FEMALE_CASUAL : MALE_CASUAL), _hairStyle: opts.hairStyle || "" };
 
   const controller = new THREE.Group();
   controller.name = "avatar";

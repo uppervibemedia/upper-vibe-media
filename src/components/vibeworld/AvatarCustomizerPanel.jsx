@@ -19,14 +19,16 @@ const AVATAR_TYPE_OPTIONS = [
 
 // Hair style options per gender
 export const MALE_HAIR_STYLES = [
-  { key: "short",   label: "Short",   icon: "✂️" },
-  { key: "fade",    label: "Fade",    icon: "🔲" },
-  { key: "locs",    label: "Locs",    icon: "🌿" },
-  { key: "bald",    label: "Bald",    icon: "👨‍🦲" },
+  { key: "short", label: "Short",  icon: "✂️" },
+  { key: "fade",  label: "Fade",   icon: "💈" },
+  { key: "locs",  label: "Locs",   icon: "🌿" },
+  { key: "hat",   label: "Hat",    icon: "🧢" },
+  { key: "bald",  label: "Bald",   icon: "👨‍🦲" },
 ];
 export const FEMALE_HAIR_STYLES = [
   { key: "ponytail", label: "Ponytail", icon: "🎀" },
   { key: "long",     label: "Long",     icon: "💇‍♀️" },
+  { key: "bob",      label: "Bob",      icon: "✨" },
   { key: "bun",      label: "Bun",      icon: "🌸" },
   { key: "short",    label: "Short",    icon: "✂️" },
 ];
@@ -230,7 +232,7 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                       <span className="text-[10px] font-black tracking-[0.2em] uppercase mb-2 block" style={{ color: "rgba(255,255,255,0.3)" }}>
                         Hair Style
                       </span>
-                      <div className="grid grid-cols-4 gap-1.5">
+                      <div className="grid grid-cols-5 gap-1.5">
                         {hairStyles.map((h) => {
                           const active = hairStyleKey === h.key;
                           return (
