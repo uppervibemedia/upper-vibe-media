@@ -499,20 +499,60 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   scene.add(controller);
 
   const entry = { root: controller, mixer: null, clips: {}, currentAnim: "idle" };
-  controller.userData._avatarEntry = entry; // available immediately for animation loop
+  controller.userData._avatarEntry = entry;
 
-  loadGLTF()
-    .then((gltf) => {
-      const { mixer, clips, currentAnim } = attachModel(gltf, controller, {
-        avatarStyle: avatarStyle || "streetwear",
-        username,
-        isRemote: true,
+  const isMixamo = avatarType === "test-mixamo" || avatarType === "test-mixamo-female";
+
+  if (isMixamo) {
+    // Use procedural Mixamo-style avatar — matches what the remote user actually looks like
+    import("./AvatarModelMixamo").then(({ createMixamoAvatar }) => {
+      const gender = avatarType === "test-mixamo-female" ? "female" : "male";
+      const remoteEntry = createMixamoAvatar(scene, {
+        spawnX: controller.position.x,
+        spawnY: controller.position.y,
+        spawnZ: controller.position.z,
+        gender,
+        hairStyle: gender === "female" ? "ponytail" : "short",
+        outfitColorKey: avatarStyle || "cosmic-blue",
+        skinToneKey: skinTone || "medium",
+      }, (_e) => {
+        // Move root under our controller
+        scene.remove(_e.root);
+        controller.add(_e.root.children[0] || _e.root);
       });
-      entry.mixer = mixer;
-      entry.clips = clips;
-      entry.currentAnim = currentAnim;
-    })
-    .catch((err) => console.error("[AvatarModel] Remote GLB load failed:", err));
+
+      // Add nameplate
+      const sprite = makeNameSprite(username);
+      sprite.position.y = 2.5;
+      controller.add(sprite);
+
+      entry._isMixamo = true;
+      entry._mixamoEntry = remoteEntry;
+      controller.userData._avatarEntry = entry;
+    }).catch(() => {
+      // Fallback capsule if import fails
+      const cap = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.26, 1.1, 4, 8),
+        new THREE.MeshStandardMaterial({ color: 0x4499dd })
+      );
+      cap.name = "avatarModel"; cap.position.y = 0.82;
+      controller.add(cap);
+    });
+  } else {
+    // Default: GLB Soldier
+    loadGLTF()
+      .then((gltf) => {
+        const { mixer, clips, currentAnim } = attachModel(gltf, controller, {
+          avatarStyle: avatarStyle || "streetwear",
+          username,
+          isRemote: true,
+        });
+        entry.mixer = mixer;
+        entry.clips = clips;
+        entry.currentAnim = currentAnim;
+      })
+      .catch((err) => console.error("[AvatarModel] Remote GLB load failed:", err));
+  }
 
   return controller;
 }

@@ -2083,9 +2083,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             const group = createRemoteAvatar(
               scene, remote.user_id,
               remote.username || "User",
-              remote.avatar_type || "neutral",
+              remote.avatar_type || "current",
               remote.skin_tone || "medium",
-              remote.avatar_style || "streetwear"
+              remote.outfit_color || remote.avatar_style || "cosmic-blue"
             );
             entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 } };
             remoteMap[remote.user_id] = entry;
@@ -2113,10 +2113,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const vel = Math.sqrt(dx * dx + dz * dz);
           entry.prevPos = { x: g.position.x, z: g.position.z };
 
-          // ─── Remote GLB avatar animation ────────────────────
-          // _avatarEntry is set immediately on the controller group, updated when GLB loads
+          // ─── Remote avatar animation ─────────────────────────
           const remoteEntry = g.userData._avatarEntry;
-          if (remoteEntry) updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
+          if (remoteEntry) {
+            if (remoteEntry._isMixamo && remoteEntry._mixamoEntry) {
+              updateMixamoAvatarAnimation(remoteEntry._mixamoEntry, vel * 15, false, dt);
+            } else {
+              updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
+            }
+          }
         }
 
         // Despawn avatars that are no longer present
