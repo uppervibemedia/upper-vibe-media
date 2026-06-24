@@ -143,20 +143,23 @@ function buildMaleHair(style, HAIR, headG) {
     }
 
     case "hat": {
-      const shell = fullShell(0.164, Math.PI * 0.72, HAIR, 0.90);
-      shell.position.set(0, 0.020, -0.018); headG.add(shell);
-      // Cap brim — flat cylinder ring
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.244, 0.244, 0.016, 16), mh(0x0d0d0d, 0.82));
-      brim.position.set(0, 0.128, 0.018); headG.add(brim);
-      // Cap crown body
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.174, 0.180, 0.148, 14), mh(0x111111, 0.78));
-      crown.position.set(0, 0.215, 0); headG.add(crown);
-      // Dome top
-      const dome = fullShell(0.174, Math.PI * 0.50, 0x111111, 0.76);
-      dome.position.set(0, 0.288, 0); headG.add(dome);
-      // Purple logo patch
-      const logo = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.026, 0.008), mh(0x9B7EFF, 0.55));
-      logo.position.set(0, 0.218, 0.178); headG.add(logo);
+      const shell = fullShell(0.162, Math.PI * 0.72, HAIR, 0.90);
+      shell.position.set(0, 0.010, -0.018); headG.add(shell);
+      const CAP = 0x1a1a2e, BRIM_COL = 0x111122;
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.166, 0.166, 0.038, 16), mh(CAP, 0.80));
+      band.position.set(0, 0.068, 0); headG.add(band);
+      // Rounded dome crown
+      const crown = fullShell(0.164, Math.PI * 0.52, CAP, 0.76);
+      crown.position.set(0, 0.095, -0.008); headG.add(crown);
+      // Front brim only — flat box sticking forward
+      const brimFlat = new THREE.Mesh(new THREE.BoxGeometry(0.200, 0.014, 0.090), mh(BRIM_COL, 0.82));
+      brimFlat.position.set(0, 0.058, 0.118); brimFlat.rotation.x = 0.18; headG.add(brimFlat);
+      // Logo on front crown
+      const logo = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.022, 0.008), mh(0x9B7EFF, 0.55));
+      logo.position.set(0, 0.108, 0.162); headG.add(logo);
+      // Back strap
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.060, 0.018, 0.012), mh(0x222233, 0.85));
+      strap.position.set(0, 0.062, -0.164); headG.add(strap);
       break;
     }
 

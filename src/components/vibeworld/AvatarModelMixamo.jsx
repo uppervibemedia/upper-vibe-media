@@ -109,16 +109,46 @@ function buildMaleHairInWorld(style, HAIR, headGroup) {
     }
 
     case "hat": {
-      const shell = iwShell(0.164, Math.PI * 0.72, HAIR, 0.90);
-      shell.position.set(0, 0.020, -0.018); headGroup.add(shell);
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.244, 0.244, 0.016, 16), iwMh(0x0d0d0d, 0.82));
-      brim.position.set(0, 0.128, 0.018); headGroup.add(brim);
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.174, 0.180, 0.148, 14), iwMh(0x111111, 0.78));
-      crown.position.set(0, 0.215, 0); headGroup.add(crown);
-      const dome = iwShell(0.174, Math.PI * 0.50, 0x111111, 0.76);
-      dome.position.set(0, 0.288, 0); headGroup.add(dome);
-      const logo = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.026, 0.008), iwMh(0x9B7EFF, 0.55));
-      logo.position.set(0, 0.218, 0.178); headGroup.add(logo);
+      // Hair underneath — full coverage shell shifted back off face
+      const shell = iwShell(0.162, Math.PI * 0.72, HAIR, 0.90);
+      shell.position.set(0, 0.010, -0.018); headGroup.add(shell);
+
+      const CAP = 0x1a1a2e;   // dark navy cap
+      const BRIM_COL = 0x111122;
+
+      // Cap band — thin cylinder sitting just above the ears, hugging the head
+      const band = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.166, 0.166, 0.038, 16),
+        iwMh(CAP, 0.80)
+      );
+      band.position.set(0, 0.068, 0); headGroup.add(band);
+
+      // Cap crown — rounded dome sitting on top of band
+      const crown = iwShell(0.164, Math.PI * 0.52, CAP, 0.76);
+      crown.position.set(0, 0.095, -0.008); headGroup.add(crown);
+
+      // Front brim — flat oval panel sticking out forward only (NOT a full ring)
+      const brimGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.200, 4, 1, false, -Math.PI * 0.38, Math.PI * 0.76);
+      // Use a BoxGeometry instead for a clean flat brim shape
+      const brimFlat = new THREE.Mesh(
+        new THREE.BoxGeometry(0.200, 0.014, 0.090),
+        iwMh(BRIM_COL, 0.82)
+      );
+      // Angle brim slightly downward from front of cap band
+      brimFlat.position.set(0, 0.058, 0.118);
+      brimFlat.rotation.x = 0.18; // slight downward tilt
+      headGroup.add(brimFlat);
+
+      // Logo detail on front of crown
+      const logo = new THREE.Mesh(new THREE.BoxGeometry(0.044, 0.022, 0.008), iwMh(0x9B7EFF, 0.55));
+      logo.position.set(0, 0.108, 0.162); headGroup.add(logo);
+
+      // Back strap — small strip at rear
+      const strap = new THREE.Mesh(
+        new THREE.BoxGeometry(0.060, 0.018, 0.012),
+        iwMh(0x222233, 0.85)
+      );
+      strap.position.set(0, 0.062, -0.164); headGroup.add(strap);
       break;
     }
 
