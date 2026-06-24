@@ -1257,7 +1257,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
 
       {/* Performance audit overlay — only visible with ?perf=1 in URL */}
-      <PerfAuditOverlay playerPos={playerPos} rendererRef={rendererRef} />
+      <PerfAuditOverlay
+        playerPos={playerPos}
+        rendererRef={rendererRef}
+        tvMode={tvMode}
+        tvQuality={tvQuality}
+      />
 
       {/* TV Mode AirPlay instructions overlay */}
       {tvOverlayOpen && (
