@@ -375,21 +375,23 @@ export function createFerrisWheel(scene) {
 const _FERRIS_IS_MOB = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 // ─── Animation loop tick ──────────────────────────────────────────
-export function animateFerrisWheel(scene, t, audioBeat, playerX, playerZ) {
+export function animateFerrisWheel(scene, t, audioBeat, playerX, playerZ, tvSmooth = false) {
   const fw = scene.userData.ferrisWheel;
   if (!fw) return;
 
-  // Mobile: skip rotation entirely when player is >35 units away
   const dx = (playerX ?? 0) - WHEEL_X;
   const dz = (playerZ ?? 0) - WHEEL_Z;
   const playerDist = Math.sqrt(dx * dx + dz * dz);
-  const tooFar = _FERRIS_IS_MOB && playerDist > 35;
+
+  // TV Smooth: tighter 30u gate; mobile: 35u gate; desktop: always animate
+  const distThreshold = tvSmooth ? 30 : 35;
+  const tooFar = (_FERRIS_IS_MOB || tvSmooth) && playerDist > distThreshold;
 
   if (!tooFar) {
     const angle = -(t * 0.18);
     fw.wheelGroup.rotation.z = angle;
 
-    // Counter-rotate gondolas
+    // Counter-rotate gondolas so they hang straight
     for (const child of fw.cabinGroup.children) {
       if (child.name?.startsWith("cabin_")) {
         const base = child.userData.baseAngle || 0;
@@ -398,36 +400,56 @@ export function animateFerrisWheel(scene, t, audioBeat, playerX, playerZ) {
     }
   }
 
-  // Rim neon subtle pulse — skip when far on mobile
-  if (!tooFar && fw.rimNeon?.material) {
-    fw.rimNeon.material.opacity = 0.4 + Math.sin(t * 1.8) * 0.15 + audioBeat * 0.2;
-  }
-
-  // Hub glow pulse
-  if (!tooFar && fw.hubGlow?.material) {
-    fw.hubGlow.material.opacity = 0.6 + Math.sin(t * 2.5) * 0.2 + audioBeat * 0.15;
-  }
-
-  // Wheel light
-  if (fw.wheelLight) {
-    fw.wheelLight.intensity = tooFar ? 1.5 : 2.0 + Math.sin(t * 1.1) * 0.5 + audioBeat * 1.0;
-  }
-
-  // Carnival lights — mobile: only animate first 8 bulbs; skip when far
-  if (!tooFar && fw.carnivalMats) {
-    const maxBulbs = _FERRIS_IS_MOB ? 8 : fw.carnivalMats.length;
-    for (let i = 0; i < maxBulbs; i++) {
-      const c = fw.carnivalMats[i];
-      const wave = Math.sin(t * 1.8 + c.phase) * 0.5 + 0.5;
-      c.mat.opacity = 0.35 + wave * 0.45 + audioBeat * 0.35;
+  // Rim neon — TV Smooth: static opacity, no sin write
+  if (fw.rimNeon?.material) {
+    if (tooFar) {
+      fw.rimNeon.material.opacity = 0.25;
+    } else if (tvSmooth) {
+      fw.rimNeon.material.opacity = 0.45;
+    } else {
+      fw.rimNeon.material.opacity = 0.4 + Math.sin(t * 1.8) * 0.15 + audioBeat * 0.2;
     }
   }
 
-  // Spoke tip lights — skip when far on mobile
-  if (!tooFar && fw.tipLightMats) {
+  // Hub glow — TV Smooth: static when near, skip when far
+  if (fw.hubGlow?.material) {
+    if (tooFar) {
+      fw.hubGlow.material.opacity = 0.4;
+    } else if (tvSmooth) {
+      fw.hubGlow.material.opacity = 0.65;
+    } else {
+      fw.hubGlow.material.opacity = 0.6 + Math.sin(t * 2.5) * 0.2 + audioBeat * 0.15;
+    }
+  }
+
+  // Wheel light — dim when far
+  if (fw.wheelLight) {
+    fw.wheelLight.intensity = tooFar ? 0.8 : (tvSmooth ? 2.0 : 2.0 + Math.sin(t * 1.1) * 0.5 + audioBeat * 1.0);
+  }
+
+  // Carnival lights — TV Smooth: skip all when far; near: only 4 bulbs, no per-frame sin
+  if (fw.carnivalMats && !tooFar) {
+    const maxBulbs = tvSmooth ? 4 : (_FERRIS_IS_MOB ? 8 : fw.carnivalMats.length);
+    for (let i = 0; i < maxBulbs; i++) {
+      const c = fw.carnivalMats[i];
+      if (tvSmooth) {
+        c.mat.opacity = 0.55; // static — no sin
+      } else {
+        const wave = Math.sin(t * 1.8 + c.phase) * 0.5 + 0.5;
+        c.mat.opacity = 0.35 + wave * 0.45 + audioBeat * 0.35;
+      }
+    }
+  }
+
+  // Spoke tip lights — TV Smooth: static when near, skip when far
+  if (fw.tipLightMats && !tooFar) {
     for (const tip of fw.tipLightMats) {
-      const wave = Math.sin(t * 2.2 + tip.phase) * 0.5 + 0.5;
-      tip.mat.opacity = 0.5 + wave * 0.45 + audioBeat * 0.2;
+      if (tvSmooth) {
+        tip.mat.opacity = 0.6; // static — no per-frame sin
+      } else {
+        const wave = Math.sin(t * 2.2 + tip.phase) * 0.5 + 0.5;
+        tip.mat.opacity = 0.5 + wave * 0.45 + audioBeat * 0.2;
+      }
     }
   }
 }

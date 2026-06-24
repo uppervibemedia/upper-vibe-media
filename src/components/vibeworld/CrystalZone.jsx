@@ -363,7 +363,8 @@ export function createCrystalZone(scene) {
 }
 
 // ── Animation ──────────────────────────────────────────────────────────
-export function animateCrystalZone(scene, t, dt, playerX, playerZ) {
+// tvSmooth: when true, reduce material writes and skip heavy effects when far
+export function animateCrystalZone(scene, t, dt, playerX, playerZ, tvSmooth = false) {
   const cz = scene.userData.crystalZone;
   if (!cz) return;
 
@@ -377,74 +378,99 @@ export function animateCrystalZone(scene, t, dt, playerX, playerZ) {
   cz.proximity += (targetProx - cz.proximity) * Math.min(1, dt * 2.5);
   const prox = cz.proximity;
 
-  // Activation timer
+  // Activation timer — always run so activation never gets stuck
   if (cz.activated) {
     cz.activatedTimer -= dt;
     if (cz.activatedTimer <= 0) cz.activated = false;
   }
   const actBoost = cz.activated ? 1.0 : 0.0;
+  const beamActive = cz.activated && cz.activatedTimer > 0;
 
-  const idlePulse = Math.sin(t * 1.1) * 0.5 + 0.5;
+  // TV Smooth far-zone: only do cheap slow rotation + keep beam/aura running if active
+  const tvFar = tvSmooth && dist > 18 && !beamActive;
 
-  // ── Center crystal ────────────────────────────────────────────────
-  cz.center.rotation.y = t * 0.07;
-  cz.cMat.emissiveIntensity = 0.35 + idlePulse * 0.20 + prox * 0.55 + actBoost * 0.8;
-  cz.cMat.opacity = 0.85 + prox * 0.10;
-  cz.glowMat.opacity = 0.08 + idlePulse * 0.05 + prox * 0.18 + actBoost * 0.25;
-  cz.coreMat.opacity = 0.14 + Math.sin(t * 2.2) * 0.06 + prox * 0.20 + actBoost * 0.35;
+  if (tvFar) {
+    // Just rotate center crystal — no material writes, no light updates
+    cz.center.rotation.y = t * 0.07;
+    // Ensure arcs stay hidden when far in TV smooth
+    for (const arc of cz.arcs) { arc.mat.opacity = 0; }
+  } else {
+    const idlePulse = Math.sin(t * 1.1) * 0.5 + 0.5;
 
-  cz.bigLight.intensity  = 3.0 + idlePulse * 1.5 + prox * 5.0 + actBoost * 8.0;
-  cz.bigLight.distance   = 16  + prox * 10;
+    // ── Center crystal ────────────────────────────────────────────────
+    cz.center.rotation.y = t * 0.07;
+    cz.cMat.emissiveIntensity = 0.35 + idlePulse * 0.20 + prox * 0.55 + actBoost * 0.8;
+    cz.cMat.opacity = 0.85 + prox * 0.10;
+    cz.glowMat.opacity = 0.08 + idlePulse * 0.05 + prox * 0.18 + actBoost * 0.25;
+    cz.coreMat.opacity = 0.14 + Math.sin(t * 2.2) * 0.06 + prox * 0.20 + actBoost * 0.35;
 
-  if (cz.bigLight2) {
-    cz.bigLight2.intensity = 1.2 + Math.sin(t * 1.7) * 0.5 + prox * 2.0 + actBoost * 3.0;
-    const hue = (t * 0.07) % 1;
-    cz.bigLight2.color.setHSL(hue, 1.0, 0.6);
-  }
+    cz.bigLight.intensity  = 3.0 + idlePulse * 1.5 + prox * 5.0 + actBoost * 8.0;
+    cz.bigLight.distance   = 16  + prox * 10;
 
-  // ── Small crystals — mostly static on mobile ──────────────────
-  for (let i = 0; i < cz.smallCrystals.length; i++) {
-    const sc = cz.smallCrystals[i];
-    if (!IS_MOBILE) {
-      const phase = i * 0.9;
-      sc.mesh.position.y = Math.sin(t * 0.7 + phase) * 0.06;
-      sc.glowMesh.position.y = sc.mesh.position.y;
+    if (cz.bigLight2) {
+      // TV Smooth: skip color cycling on secondary light
+      if (!tvSmooth) {
+        cz.bigLight2.intensity = 1.2 + Math.sin(t * 1.7) * 0.5 + prox * 2.0 + actBoost * 3.0;
+        const hue = (t * 0.07) % 1;
+        cz.bigLight2.color.setHSL(hue, 1.0, 0.6);
+      } else {
+        cz.bigLight2.intensity = 1.2 + prox * 2.0 + actBoost * 3.0;
+      }
     }
-    // Mobile: only update every other crystal, slow pulse
-    if (!IS_MOBILE || i % 2 === 0) {
-      const sp = Math.sin(t * 0.9 + i * 0.7) * 0.5 + 0.5;
-      sc.mat.emissiveIntensity = 0.40 + sp * 0.20 + prox * 0.55 + actBoost * 0.6;
-      sc.glowMat.opacity = 0.05 + sp * 0.05 + prox * 0.12;
-      if (sc.light) sc.light.intensity = 0.5 + sp * 0.3 + prox * 1.8 + actBoost * 2.0;
+
+    // ── Small crystals — mostly static on mobile / TV smooth ──────────────────
+    for (let i = 0; i < cz.smallCrystals.length; i++) {
+      const sc = cz.smallCrystals[i];
+      if (!IS_MOBILE && !tvSmooth) {
+        const phase = i * 0.9;
+        sc.mesh.position.y = Math.sin(t * 0.7 + phase) * 0.06;
+        sc.glowMesh.position.y = sc.mesh.position.y;
+      }
+      // TV Smooth: only update every other crystal, no sin pulse
+      const shouldUpdate = tvSmooth ? (i % 2 === 0) : (!IS_MOBILE || i % 2 === 0);
+      if (shouldUpdate) {
+        const sp = tvSmooth ? 0.5 : (Math.sin(t * 0.9 + i * 0.7) * 0.5 + 0.5);
+        sc.mat.emissiveIntensity = 0.40 + sp * 0.20 + prox * 0.55 + actBoost * 0.6;
+        sc.glowMat.opacity = 0.05 + sp * 0.05 + prox * 0.12;
+        if (sc.light) sc.light.intensity = 0.5 + sp * 0.3 + prox * 1.8 + actBoost * 2.0;
+      }
     }
-  }
 
-  // ── Ground rings ──────────────────────────────────────────────────
-  cz.baseMat.opacity      = 0.20 + idlePulse * 0.06 + prox * 0.18 + actBoost * 0.22;
-  cz.outerRingMat.opacity = 0.32 + idlePulse * 0.12 + prox * 0.30 + actBoost * 0.40;
-  cz.innerRingMat.opacity = 0.28 + idlePulse * 0.10 + prox * 0.28 + actBoost * 0.45;
-  cz.midRingMat.opacity   = 0.16 + idlePulse * 0.07 + prox * 0.20 + actBoost * 0.30;
+    // ── Ground rings ──────────────────────────────────────────────────
+    // TV Smooth: static values — no sin writes
+    if (tvSmooth) {
+      cz.baseMat.opacity      = 0.22 + prox * 0.18 + actBoost * 0.22;
+      cz.outerRingMat.opacity = 0.35 + prox * 0.30 + actBoost * 0.40;
+      cz.innerRingMat.opacity = 0.30 + prox * 0.28 + actBoost * 0.45;
+      cz.midRingMat.opacity   = 0.18 + prox * 0.20 + actBoost * 0.30;
+    } else {
+      const idlePulse2 = Math.sin(t * 1.1) * 0.5 + 0.5;
+      cz.baseMat.opacity      = 0.20 + idlePulse2 * 0.06 + prox * 0.18 + actBoost * 0.22;
+      cz.outerRingMat.opacity = 0.32 + idlePulse2 * 0.12 + prox * 0.30 + actBoost * 0.40;
+      cz.innerRingMat.opacity = 0.28 + idlePulse2 * 0.10 + prox * 0.28 + actBoost * 0.45;
+      cz.midRingMat.opacity   = 0.16 + idlePulse2 * 0.07 + prox * 0.20 + actBoost * 0.30;
+    }
 
-  const innerRing = cz.group.getObjectByName("crystalInnerRing");
-  if (innerRing) innerRing.rotation.z = t * 0.15;
+    const innerRing = cz.group.getObjectByName("crystalInnerRing");
+    if (innerRing) innerRing.rotation.z = t * 0.15;
 
-  // ── Arcs — throttled every 6 frames on mobile, every 3 on desktop ──
-  const arcUpdateRate = IS_MOBILE ? 6 : 3;
-  if (!cz._arcTimer) cz._arcTimer = 0;
-  cz._arcTimer += dt;
-  const arcRate = 0.09 - prox * 0.04;
-  const fireArc = cz._arcTimer >= arcRate && (cz._arcFrame % arcUpdateRate === 0);
-  if (fireArc) cz._arcTimer = 0;
+    // ── Arcs — throttled every 6 frames on mobile/TV smooth, every 3 on desktop ──
+    const arcUpdateRate = (IS_MOBILE || tvSmooth) ? 6 : 3;
+    if (!cz._arcTimer) cz._arcTimer = 0;
+    cz._arcTimer += dt;
+    const arcRate = 0.09 - prox * 0.04;
+    const fireArc = cz._arcTimer >= arcRate && (cz._arcFrame % arcUpdateRate === 0);
+    if (fireArc) cz._arcTimer = 0;
 
-  for (const arc of cz.arcs) {
-    const target = cz.smallPositions[arc.targetIdx];
-    if (!target) continue;
-    arc.mat.opacity = Math.max(0, 0.05 + prox * 0.65 + actBoost * 0.9 + Math.sin(t * 6.0 + arc.targetIdx) * 0.12);
-    if (fireArc) updateArc(arc, cz.bigTip, target, 0.18 + prox * 0.55);
+    for (const arc of cz.arcs) {
+      const target = cz.smallPositions[arc.targetIdx];
+      if (!target) continue;
+      arc.mat.opacity = Math.max(0, 0.05 + prox * 0.65 + actBoost * 0.9 + Math.sin(t * 6.0 + arc.targetIdx) * 0.12);
+      if (fireArc) updateArc(arc, cz.bigTip, target, 0.18 + prox * 0.55);
+    }
   }
 
   // ── Avatar energy beam — tracks player world position while activated ──
-  const beamActive = cz.activated && cz.activatedTimer > 0;
   if (cz.beamLine && cz.beamMat) {
     if (beamActive) {
       // Crystal tip in world space (group is offset by CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z)

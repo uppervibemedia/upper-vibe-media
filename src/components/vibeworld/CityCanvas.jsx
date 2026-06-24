@@ -1726,16 +1726,20 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             scene.userData._stageTex = tex;
             scene.userData._lastStageTexTime = 0;
           }
-          // Throttle texture upload — 8fps on mobile when far from stage, 15fps otherwise
+          // Throttle texture upload — TV Smooth: 3fps | mobile: 5fps | desktop: 15fps
+          // Also skip uploads entirely when stage fullscreen iframe is covering the canvas
           const stageTex = scene.userData._stageTex;
           if (stageTex) {
             const stageTexNow = performance.now();
-            // Mobile: always 5fps regardless of distance
-            const stageFps = isMob ? 5 : 15;
-            const STAGE_TEX_INTERVAL = 1000 / stageFps;
-            if (!scene.userData._lastStageTexTime || stageTexNow - scene.userData._lastStageTexTime >= STAGE_TEX_INTERVAL) {
-              stageTex.needsUpdate = true;
-              scene.userData._lastStageTexTime = stageTexNow;
+            const isFullscreenActive = lockedRef.current; // locked = stage fullscreen/watch
+            if (!isFullscreenActive) {
+              const stageFps = (tvModeRef.current && tvQualityRef.current === "smooth") ? 3
+                : isMob ? 5 : 15;
+              const STAGE_TEX_INTERVAL = 1000 / stageFps;
+              if (!scene.userData._lastStageTexTime || stageTexNow - scene.userData._lastStageTexTime >= STAGE_TEX_INTERVAL) {
+                stageTex.needsUpdate = true;
+                scene.userData._lastStageTexTime = stageTexNow;
+              }
             }
           }
         } else if (stageScreen && scene.userData._stageCanvasApplied) {
@@ -1815,7 +1819,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (!isMob || (nearStageForGlow && frameRef.current % 4 === 0)) {
           const screenGlowMesh = scene.getObjectByName("stageScreenGlow");
           if (screenGlowMesh?.material) {
-            screenGlowMesh.material.opacity = 0.45 + audioBeat * 0.7 + (audioIntensityRef?.current || 0) * 0.3;
+            // TV Smooth: reduce screen glow overdraw when far from stage
+            if (tvSmooth && pz > -12) {
+              screenGlowMesh.material.opacity = 0.08;
+            } else {
+              screenGlowMesh.material.opacity = 0.45 + audioBeat * 0.7 + (audioIntensityRef?.current || 0) * 0.3;
+            }
           }
           const loungeNeonMats = scene.userData.loungeNeonMats;
           if (loungeNeonMats && !tvSmooth) {
@@ -1825,6 +1834,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             }
             const ll = scene.userData.loungeLight;
             if (ll) ll.intensity = 1.5 + audioBeat * 1.2;
+          } else if (tvSmooth) {
+            // TV Smooth: hold lounge neon at a fixed low opacity — no per-frame writes
+            const ll = scene.userData.loungeLight;
+            if (ll) ll.intensity = 1.5; // static, no pulse
           }
         }
 
@@ -1864,6 +1877,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
+        // ─── TV SMOOTH: distance-gate far zone lights ────────────────────
+        // Reduce PointLight intensity for zones the player is far from,
+        // cutting draw cost without removing the lights entirely.
+        if (tvSmooth && frameRef.current % 60 === 0) {
+          const zoneDistCheck = [
+            { key: "loungeLight",       zx: -22, zz: -26 },
+            { key: "ferrisWheelLight",  zx: WHEEL_X, zz: WHEEL_Z },
+          ];
+          for (const { key, zx, zz } of zoneDistCheck) {
+            const light = scene.userData[key];
+            if (!light) continue;
+            const ldx = px - zx, ldz = pz - zz;
+            const ldist = Math.sqrt(ldx * ldx + ldz * ldz);
+            // Dim lights when player is >20u away
+            light.intensity = ldist > 20 ? 0.4 : light.intensity;
+          }
+        }
+
         // Distance flags — declared before any code that uses them
         const nearBeach = pz > 10;
         const nearDanceFloor = Math.sqrt(px * px + (pz + 13) * (pz + 13)) < 18;
@@ -1892,7 +1923,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (!isMob || nearBeach || frameRef.current % 3 === 0) animateZenBeach(scene, t, audioBeat);
         // Dance floor — throttle to every 4 frames on mobile, only when near
         if (!isMob ? true : (nearDanceFloor && frameRef.current % 4 === 0)) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
-        if (!isMob || frameRef.current % 3 === 0) animateCrystalZone(scene, t, dt, px, pz);
+        // Crystal Zone — TV Smooth: skip when >25u away; always animate when active
+        const crystalDx = px - (-26), crystalDz = pz - (-14);
+        const crystalDist = Math.sqrt(crystalDx * crystalDx + crystalDz * crystalDz);
+        const crystalGate = tvSmooth
+          ? (crystalDist < 25 || scene.userData.crystalZone?.activated)
+          : (!isMob || frameRef.current % 3 === 0);
+        if (crystalGate) animateCrystalZone(scene, t, dt, px, pz, tvSmooth);
         if (!isMob || nearDanceFloor || frameRef.current % 3 === 0) animateJukebox(scene, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──
@@ -1930,7 +1967,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const nearFerris = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z)) < 28;
         if (!isMob || nearLaunch || frameRef.current % 4 === 0) animateLaunchZone(scene, t, audioBeat, dt);
         if (!isMob || nearFerris || frameRef.current % 4 === 0) animateHoverboardZone(scene, t, audioBeat);
-        if (!isMob || ferrisRidingRef.current || nearFerris || frameRef.current % 6 === 0) animateFerrisWheel(scene, t, audioBeat, px, pz);
+        // Ferris Wheel — TV Smooth: skip when >30u away (unless riding)
+        const ferrisDist = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z));
+        const ferrisGate = tvSmooth
+          ? (ferrisRidingRef.current || ferrisDist < 30)
+          : (!isMob || ferrisRidingRef.current || nearFerris || frameRef.current % 6 === 0);
+        if (ferrisGate) animateFerrisWheel(scene, t, audioBeat, px, pz, tvSmooth);
 
         // ── WATER SPLASH — hoverboard spray when rider is in the ocean zone ──
         const splash = splashParticlesRef.current;
