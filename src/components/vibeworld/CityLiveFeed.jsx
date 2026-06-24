@@ -121,28 +121,11 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       ocean.position.set(0, 0.002, 52);
       scene.add(ocean);
 
-      // ── Plaza disc ────────────────────────────────────────────
-      const plaza = new THREE.Mesh(
-        new THREE.CircleGeometry(10.5, 48),
-        new THREE.MeshStandardMaterial({ color: 0x141B2D, roughness: 0.35, metalness: 0.3 })
-      );
-      plaza.rotation.x = -Math.PI / 2;
-      plaza.position.set(0, 0.002, -13);
-      scene.add(plaza);
-
-      const plazaRing = new THREE.Mesh(
-        new THREE.RingGeometry(10.0, 10.3, 48),
-        new THREE.MeshBasicMaterial({ color: 0xA078FF, side: THREE.DoubleSide })
-      );
-      plazaRing.rotation.x = -Math.PI / 2;
-      plazaRing.position.set(0, 0.005, -13);
-      scene.add(plazaRing);
-
-      // ── Music Stage ───────────────────────────────────────────
-      function box(w, h, d, color, x, y, z) {
+      // ── Helper functions ──────────────────────────────────────
+      function box(w, h, d, color, x, y, z, rough = 0.3, metal = 0.6) {
         const m = new THREE.Mesh(
           new THREE.BoxGeometry(w, h, d),
-          new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.6 })
+          new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal })
         );
         m.position.set(x, y, z);
         scene.add(m);
@@ -157,10 +140,90 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         scene.add(m);
         return m;
       }
+      function glowRing(innerR, outerR, color, x, y, z, opacity = 0.7) {
+        const m = new THREE.Mesh(
+          new THREE.RingGeometry(innerR, outerR, 48),
+          new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity })
+        );
+        m.rotation.x = -Math.PI / 2;
+        m.position.set(x, y, z);
+        scene.add(m);
+        return m;
+      }
+      // Floating neon label sprite
+      function neonLabel(text, color, x, y, z) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256; canvas.height = 48;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = color;
+        ctx.font = "bold 22px 'Arial',sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.shadowColor = color; ctx.shadowBlur = 10;
+        ctx.fillText(text, 128, 24);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.minFilter = THREE.LinearFilter;
+        const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.9, depthWrite: false });
+        const sprite = new THREE.Sprite(mat);
+        sprite.scale.set(5, 0.95, 1);
+        sprite.position.set(x, y, z);
+        scene.add(sprite);
+        return sprite;
+      }
 
+      // ── Plaza disc ────────────────────────────────────────────
+      const plaza = new THREE.Mesh(
+        new THREE.CircleGeometry(10.5, 48),
+        new THREE.MeshStandardMaterial({ color: 0x141B2D, roughness: 0.35, metalness: 0.3 })
+      );
+      plaza.rotation.x = -Math.PI / 2;
+      plaza.position.set(0, 0.002, -13);
+      scene.add(plaza);
+
+      glowRing(10.0, 10.3, 0xA078FF, 0, 0.005, -13, 0.6);
+      glowRing(1.8, 2.1, 0x00D4F0, 0, 0.006, -13, 0.8); // center branding ring
+
+      // UVC text disc
+      {
+        const c = document.createElement("canvas"); c.width = 128; c.height = 128;
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#00D4F0"; ctx.font = "bold 36px Arial";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.shadowColor = "#00D4F0"; ctx.shadowBlur = 8;
+        ctx.fillText("UVC", 64, 64);
+        const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
+        const disc = new THREE.Mesh(new THREE.CircleGeometry(1.4, 32),
+          new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, depthWrite: false }));
+        disc.rotation.x = -Math.PI / 2; disc.position.set(0, 0.007, -13); disc.renderOrder = 1;
+        scene.add(disc);
+      }
+
+      // ── Jukebox in plaza ──────────────────────────────────────
+      box(1.0, 2.2, 0.6, 0x1A1040, 0, 1.1, -5, 0.2, 0.5);
+      glowBox(1.05, 0.06, 0.65, 0xC43BFF, 0, 2.2, -5, 0.7);
+      glowBox(0.75, 1.0, 0.05, 0x00D4F0, 0, 1.5, -4.68, 0.5); // screen
+
+      // ── Dance floor tiles ─────────────────────────────────────
+      const TILE_COLORS = [0x00D4F0, 0xC43BFF, 0xA078FF, 0x00E5FF, 0xFF00FF, 0x0088FF];
+      for (let tx = -4; tx <= 4; tx += 2) {
+        for (let tz = -17; tz <= -9; tz += 2) {
+          const c = TILE_COLORS[Math.abs(tx + tz) % TILE_COLORS.length];
+          const tile = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.85, 1.85),
+            new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.12, depthWrite: false })
+          );
+          tile.rotation.x = -Math.PI / 2;
+          tile.position.set(tx, 0.003, tz);
+          scene.add(tile);
+        }
+      }
+
+      // ── Music Stage ───────────────────────────────────────────
       box(10, 1.0, 5.5, 0x111830, 0, 0.5, -32);
       box(10, 0.25, 5.5, 0x1A2050, 0, 1.12, -32);
       glowBox(10.1, 0.08, 0.1, 0x00D4F0, 0, 1.27, -29.2);
+      // Side neon strips
+      glowBox(0.06, 1.0, 0.06, 0xC43BFF, -5.05, 0.5, -32, 0.7);
+      glowBox(0.06, 1.0, 0.06, 0x00D4F0, 5.05, 0.5, -32, 0.7);
 
       // Screen
       const screen = new THREE.Mesh(
@@ -170,8 +233,8 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       screen.position.set(0, 3.5, -34.4);
       scene.add(screen);
 
-      // Screen glow
       glowBox(14.3, 7.3, 0.05, 0x00E5FF, 0, 3.5, -34.4, 0.55);
+      neonLabel("MUSIC STAGE", "#00D4F0", 0, 7.6, -34.0);
 
       // Arch
       for (let a = 0; a < 10; a++) {
@@ -190,15 +253,21 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       loungePlat.position.set(-22, 0.003, -26);
       scene.add(loungePlat);
 
-      const loungeRing = new THREE.Mesh(
-        new THREE.RingGeometry(4.2, 4.5, 48),
-        new THREE.MeshBasicMaterial({ color: 0xC43BFF, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
-      );
-      loungeRing.rotation.x = -Math.PI / 2;
-      loungeRing.position.set(-22, 0.006, -26);
-      scene.add(loungeRing);
+      glowRing(4.2, 4.5, 0xC43BFF, -22, 0.006, -26, 0.5);
+      glowRing(2.8, 3.0, 0xA078FF, -22, 0.007, -26, 0.25); // inner ring
 
-      // Lounge pillars
+      // Fire pit
+      box(0.5, 0.25, 0.5, 0x3A2A5A, -22, 0.14, -26, 0.2, 0.6);
+      glowBox(0.55, 0.05, 0.55, 0xE040FB, -22, 0.32, -26, 0.7);
+
+      // Lounge seats
+      for (let i = 0; i < 5; i++) {
+        const ang = Math.PI + (i / 4) * Math.PI * 0.65;
+        const sx = -22 + Math.cos(ang) * 2.8, sz = -26 + Math.sin(ang) * 2.8;
+        box(0.75, 0.18, 0.55, 0x2E1E4A, sx, 0.15, sz, 0.3, 0.3);
+      }
+
+      // Pillars
       for (let p = 0; p < 4; p++) {
         const ang = Math.PI + (p / 3) * Math.PI * 0.65;
         const px2 = -22 + Math.cos(ang) * 3.0;
@@ -210,6 +279,7 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         pillar.position.set(px2, 1.1, pz2);
         scene.add(pillar);
       }
+      neonLabel("VIBE LOUNGE", "#C43BFF", -22, 4.0, -26);
 
       // ── Music Library ─────────────────────────────────────────
       const libPlat = new THREE.Mesh(
@@ -236,6 +306,19 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         libRing.position.set(22, ry, -20);
         scene.add(libRing);
       }
+      // Headphone icon disc on top
+      {
+        const c = document.createElement("canvas"); c.width = 64; c.height = 64;
+        const ctx = c.getContext("2d");
+        ctx.font = "38px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("🎧", 32, 32);
+        const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
+        const d = new THREE.Mesh(new THREE.CircleGeometry(1.1, 16),
+          new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, depthWrite: false }));
+        d.rotation.x = -Math.PI / 2; d.position.set(22, 3.25, -20); d.renderOrder = 1;
+        scene.add(d);
+      }
+      neonLabel("MUSIC LIBRARY", "#00D4F0", 22, 3.8, -20);
 
       // ── Visualizer Dome ───────────────────────────────────────
       const domeMesh = new THREE.Mesh(
@@ -244,8 +327,68 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       );
       domeMesh.position.set(-13, 0.05, 3);
       scene.add(domeMesh);
+      // Dome LED dots
+      for (let d = 0; d < 12; d++) {
+        const dAng = (d / 12) * Math.PI * 2;
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 3),
+          new THREE.MeshBasicMaterial({ color: [0xC43BFF, 0x00D4F0, 0xFF00FF][d % 3] }));
+        dot.position.set(-13 + Math.cos(dAng) * 3.2, 1.5 + (d % 3) * 0.6, 3 + Math.sin(dAng) * 3.2);
+        scene.add(dot);
+      }
+      neonLabel("VISUALIZER DOME", "#C43BFF", -13, 4.0, 3);
 
-      // ── Ferris Wheel (simplified) ─────────────────────────────
+      // ── Vibe Check Mirror zone ─────────────────────────────────
+      const vcPlat = new THREE.Mesh(new THREE.CircleGeometry(3, 32),
+        new THREE.MeshStandardMaterial({ color: 0x142540, roughness: 0.3, metalness: 0.55 }));
+      vcPlat.rotation.x = -Math.PI / 2; vcPlat.position.set(-16, 0.003, -13);
+      scene.add(vcPlat);
+      glowRing(2.85, 3.0, 0x00E5FF, -16, 0.006, -13, 0.5);
+      // Mirror panel
+      box(1.6, 3.5, 0.15, 0x0A1525, -16, 1.85, -13, 0.1, 0.8);
+      glowBox(0.04, 3.6, 0.18, 0x00E5FF, -16 - 0.82, 1.85, -13, 0.7);
+      glowBox(0.04, 3.6, 0.18, 0x00E5FF, -16 + 0.82, 1.85, -13, 0.7);
+      neonLabel("VIBE CHECK", "#00E5FF", -16, 4.2, -13);
+
+      // ── Vibe Academy ──────────────────────────────────────────
+      box(6, 3.5, 4.5, 0x1A1030, -28, 1.9, 5, 0.3, 0.4);
+      box(6.6, 0.2, 1.2, 0x7C3AED, -28, 3.7, 5 + 2.0, 0.2, 0.3);
+      glowBox(6.6, 0.05, 0.06, 0x00D4F0, -28, 3.7, 5 + 2.55, 0.8);
+      glowBox(6.6, 0.05, 0.06, 0x00D4F0, -28, 3.7, 5 + 1.45, 0.8);
+      // Roof dome
+      const acadRoof = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: 0x2A1A5A, roughness: 0.25, metalness: 0.6 }));
+      acadRoof.position.set(-28, 3.85, 5); scene.add(acadRoof);
+      neonLabel("VIBE ACADEMY", "#9B7EFF", -28, 4.8, 5);
+
+      // ── Crystal Zone ──────────────────────────────────────────
+      // Central crystal cluster
+      for (let ci = 0; ci < 5; ci++) {
+        const cAng = (ci / 5) * Math.PI * 2;
+        const cr = ci === 0 ? 0 : 1.2;
+        const ch = ci === 0 ? 3.5 : 1.5 + Math.random() * 1.0;
+        const crystal = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.0, 0.35, ch, 6),
+          new THREE.MeshStandardMaterial({ color: 0xAA66FF, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.85 })
+        );
+        crystal.position.set(-26 + Math.cos(cAng) * cr, ch / 2, -14 + Math.sin(cAng) * cr);
+        scene.add(crystal);
+      }
+      glowRing(2.0, 2.2, 0xAA66FF, -26, 0.006, -14, 0.5);
+      neonLabel("CRYSTAL ZONE", "#AA66FF", -26, 4.0, -14);
+
+      // ── Zen Beach zone ────────────────────────────────────────
+      // Palm trees
+      for (const [px2, pz2] of [[-20, 18], [-16, 22], [-24, 26]]) {
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 3, 6),
+          new THREE.MeshStandardMaterial({ color: 0x8B6914, roughness: 0.8 }));
+        trunk.position.set(px2, 1.5, pz2); scene.add(trunk);
+        const fronds = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 6),
+          new THREE.MeshStandardMaterial({ color: 0x2D6A1A, roughness: 0.7 }));
+        fronds.position.set(px2, 3.2, pz2); scene.add(fronds);
+      }
+      neonLabel("ZEN BEACH", "#00E5FF", -20, 4.5, 22);
+
+      // ── Ferris Wheel ─────────────────────────────────────────
       const WHEEL_X = 22, WHEEL_Z = 22, WHEEL_R = 7;
       const wheelHub = new THREE.Mesh(
         new THREE.CylinderGeometry(0.4, 0.4, 0.4, 8),
@@ -262,6 +405,31 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       wheelRim.rotation.y = Math.PI / 2;
       scene.add(wheelRim);
 
+      // Inner rim
+      const wheelRim2 = new THREE.Mesh(
+        new THREE.TorusGeometry(WHEEL_R * 0.6, 0.07, 6, 24),
+        new THREE.MeshBasicMaterial({ color: 0xC43BFF, transparent: true, opacity: 0.6 })
+      );
+      wheelRim2.position.set(WHEEL_X, WHEEL_R + 1, WHEEL_Z);
+      wheelRim2.rotation.y = Math.PI / 2;
+      scene.add(wheelRim2);
+
+      // Cabins
+      const cabinColors = [0x00D4F0, 0xC43BFF, 0xA078FF, 0x00E5FF, 0xF5A800, 0xFF00FF, 0x00FF88, 0x00B8FF];
+      const cabinMeshes = [];
+      for (let ci = 0; ci < 8; ci++) {
+        const ang = (ci / 8) * Math.PI * 2;
+        const cabin = new THREE.Mesh(
+          new THREE.BoxGeometry(0.6, 0.5, 0.6),
+          new THREE.MeshBasicMaterial({ color: cabinColors[ci], transparent: true, opacity: 0.85 })
+        );
+        const cx = WHEEL_X + Math.sin(ang) * WHEEL_R;
+        const cy = (WHEEL_R + 1) + Math.cos(ang) * WHEEL_R;
+        cabin.position.set(cx, cy, WHEEL_Z);
+        scene.add(cabin);
+        cabinMeshes.push({ mesh: cabin, baseAng: ang });
+      }
+
       // Support columns
       for (const side of [-1, 1]) {
         const col = new THREE.Mesh(
@@ -271,8 +439,19 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         col.position.set(WHEEL_X + side * 1.2, (WHEEL_R + 1) / 2, WHEEL_Z);
         scene.add(col);
       }
+      neonLabel("NEON VIBE WHEEL", "#F5A800", WHEEL_X, WHEEL_R + 9.5, WHEEL_Z);
 
-      // ── Skyline buildings (simplified) ────────────────────────
+      // ── Hoverboard zone sign ──────────────────────────────────
+      box(1.5, 0.1, 6, 0x1A1030, 28, 0.1, 23, 0.3, 0.4);
+      glowBox(1.55, 0.05, 6.1, 0xF5A800, 28, 0.17, 23, 0.4);
+      neonLabel("NEON SURF BEACH", "#F5A800", 28, 3.5, 23);
+
+      // ── Launch Zone pad ───────────────────────────────────────
+      glowRing(1.8, 2.1, 0x00E5FF, 0, 0.01, 4, 0.6);
+      glowBox(0.06, 3.5, 0.06, 0x00E5FF, 0, 1.75, 4, 0.4);
+      neonLabel("LAUNCH ZONE", "#00E5FF", 0, 3.8, 4);
+
+      // ── Skyline buildings ─────────────────────────────────────
       const bldgDefs = [
         // North wall
         { x: -30, z: -35, w: 5, h: 14, d: 4, color: 0x0E1428 },
@@ -300,6 +479,16 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         );
         bldg.position.set(b.x, b.h / 2, b.z);
         scene.add(bldg);
+
+        // Window lights — denser grid
+        for (let wy = 1.0; wy < b.h - 0.5; wy += 1.6) {
+          for (let wx = -b.w / 2 + 0.6; wx < b.w / 2 - 0.3; wx += 1.2) {
+            const win = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.55),
+              new THREE.MeshBasicMaterial({ color: neonColors[(i + Math.floor(wy) + Math.floor(wx)) % neonColors.length], transparent: true, opacity: 0.45 + Math.random() * 0.3 }));
+            win.position.set(b.x + wx, wy, b.z - b.d / 2 - 0.01);
+            scene.add(win);
+          }
+        }
 
         // Neon top edge glow
         const topGlow = new THREE.Mesh(
@@ -418,8 +607,13 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         loungeLight.intensity = 2.5 + Math.sin(t * 1.7 + 1.0) * 0.6;
         plazaFill.intensity = 1.8 + Math.sin(t * 1.3 + 2.0) * 0.4;
 
-        // Wheel rotation
+        // Wheel + cabin rotation
         if (wheelRim) wheelRim.rotation.z = t * 0.25;
+        if (wheelRim2) wheelRim2.rotation.z = -t * 0.18;
+        for (const { mesh, baseAng } of cabinMeshes) {
+          const ang = baseAng + t * 0.25;
+          mesh.position.set(WHEEL_X + Math.sin(ang) * WHEEL_R, (WHEEL_R + 1) + Math.cos(ang) * WHEEL_R, WHEEL_Z);
+        }
 
         frame++;
         if (frame === 2) setReady(true);
