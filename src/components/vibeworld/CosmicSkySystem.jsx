@@ -870,7 +870,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
     // stay visually above the skyline. pitch > 0 = looking up.
     // pitchBoost scales with both pitch angle and orbit radius so all planets lift equally.
     const camPitch = scene.userData._camPitch ?? 0;
-    const pitchBoost = Math.max(0, camPitch) * 80; // 0 at flat, ~18u at max pitch (0.22 rad)
+    const pitchBoost = Math.max(0, -camPitch) * 80; // negative pitch = looking up → boost planets up
 
     for (const p of horizonPlanets) {
       const angle = t * p.orbitSpeed + p.angleOffset;
@@ -1003,9 +1003,10 @@ export function animateCosmicSky(scene, camera, t, dt) {
       const centerProximity = Math.max(0, 1 - Math.abs(ox) / 30);
       const buildingLift = centerProximity * centerProximity * 18; // max +18u at center
 
-      // Pitch compensation: camera tilted up pushes planet above the avatar's screen column
+      // Pitch compensation: when camera tilts up (negative pitch = looking up),
+      // push the planet higher so it stays above the avatar's screen column.
       const camPitch = scene.userData._camPitch ?? 0;
-      const pitchLift = Math.max(0, camPitch) * 60; // max ~13u at pitch=0.22 rad
+      const pitchLift = Math.max(0, -camPitch) * 60; // negative pitch = looking up → lift planet
 
       fb.sprite.position.set(
         camera.position.x + ox,
