@@ -795,7 +795,7 @@ export function createCosmicSky(scene) {
     active: false, life: 0, maxLife: 0,
     startCX: -38, startCY: 18, startCZ: -90,
     endCX:   -22, endCY:   18, endCZ:  -90,
-    _fadeInEnd: 0.10, _fadeOutStart: 0.80,
+    _fadeInEnd: 0.20, _fadeOutStart: 0.70,
     duration: DURATION_A,
     nextFire: now0 + 5,
     _gapAfter: GAP_AFTER,
@@ -806,7 +806,7 @@ export function createCosmicSky(scene) {
     active: false, life: 0, maxLife: 0,
     startCX:  38, startCY: 18, startCZ: -90,
     endCX:    22, endCY:   18, endCZ:  -90,
-    _fadeInEnd: 0.10, _fadeOutStart: 0.80,
+    _fadeInEnd: 0.20, _fadeOutStart: 0.70,
     duration: DURATION_B,
     nextFire: now0 + DURATION_A + GAP_AFTER + 5,
     _gapAfter: GAP_AFTER,
@@ -934,17 +934,31 @@ export function animateCosmicSky(scene, camera, t, dt) {
   function animateFlyby(fb, inBeachZone) {
     if (!fb) return;
 
-    // Hard gate: hide and park if not in beach zone
+    // Hard gate: fade out gracefully if player leaves beach zone
     if (!inBeachZone) {
       if (fb.active) {
-        // Cancel the active flight; reschedule after a gap so it restarts clean
-        fb.active = false;
-        fb.life = 0;
-        fb.mat.opacity = 0;
-        fb.sprite.position.set(9999, 9999, 9999);
-        fb.nextFire = t + 5; // small gap before it can fire again when player returns
+        // Initiate a 2s exit fade if not already fading out
+        if (!fb._exitFading) {
+          fb._exitFading = true;
+          fb._exitFadeStart = t;
+          fb._exitOpacityFrom = fb.mat.opacity;
+        }
+        const exitProg = Math.min((t - fb._exitFadeStart) / 2.0, 1);
+        fb.mat.opacity = fb._exitOpacityFrom * (1 - exitProg);
+        if (exitProg >= 1) {
+          fb.active = false;
+          fb._exitFading = false;
+          fb.life = 0;
+          fb.mat.opacity = 0;
+          fb.sprite.position.set(9999, 9999, 9999);
+          fb.nextFire = t + 5;
+        }
       }
       return;
+    }
+    // Reset exit-fade state when back in beach zone
+    if (fb._exitFading) {
+      fb._exitFading = false;
     }
 
     if (!fb.active) {
