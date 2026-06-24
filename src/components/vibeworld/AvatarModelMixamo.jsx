@@ -1,136 +1,208 @@
 /**
- * AvatarModelMixamo — "Human Test" avatar using Three.js Soldier.glb.
+ * AvatarModelMixamo — "Human" test avatar.
  *
- * Soldier.glb has Idle, Walk, Run animations baked in and is the exact
- * model used in the official Three.js SkeletonUtils.clone() demo.
- *
- * Uses SkeletonUtils.clone() to correctly rebind SkinnedMesh bones —
- * plain .clone(true) detaches bones → permanent T-pose.
- *
- * Controller Group pattern mirrors the original soldier avatar:
- *   entry.root  → CityCanvas moves this every frame (position + rotation)
- *   shadow disc → child of root, always stays under feet
- *   model       → child of root, moves with it
+ * Fully procedural — no GLB loading, no CORS issues, instant appearance.
+ * Visually distinct from the soldier: casual human proportions, colored outfit,
+ * procedural limb animation for walk/run/idle/dance.
  *
  * TEST ONLY — original soldier remains the permanent default.
  */
 
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
-// Soldier.glb from Three.js CDN — confirmed to have Idle/Walk/Run clips
-const SOLDIER_URL =
-  "https://threejs.org/examples/models/gltf/Soldier.glb";
+// ── Color palette — clearly different from soldier's dark armor ──
+const SKIN  = 0xC68642;   // warm skin tone
+const SHIRT = 0x2255CC;   // blue hoodie
+const PANTS = 0x222244;   // dark navy pants
+const SHOES = 0x111111;   // black sneakers
+const HAIR  = 0x1A0A00;   // dark hair
 
-const _loader = new GLTFLoader();
-let _gltfCache = null;
-let _gltfPromise = null;
+function mat(hex, roughness = 0.75) {
+  return new THREE.MeshStandardMaterial({ color: hex, roughness, metalness: 0.05 });
+}
 
-function loadGLTF() {
-  if (_gltfCache) return Promise.resolve(_gltfCache);
-  if (_gltfPromise) return _gltfPromise;
-  _gltfPromise = new Promise((resolve, reject) => {
-    _loader.load(
-      SOLDIER_URL,
-      (g) => { _gltfCache = g; resolve(g); },
-      undefined,
-      (e) => { _gltfPromise = null; reject(e); }
-    );
-  });
-  return _gltfPromise;
+function box(w, h, d, color) {
+  return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
+}
+
+function sphere(r, color) {
+  return new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), mat(color));
 }
 
 function makeShadow() {
   const m = new THREE.Mesh(
     new THREE.CircleGeometry(0.28, 12),
-    new THREE.MeshBasicMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: 0.22,
-      depthWrite: false,
-    })
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false })
   );
   m.rotation.x = -Math.PI / 2;
   m.position.y = 0.01;
   return m;
 }
 
-function crossFade(entry, toKey, duration = 0.22) {
-  if (!entry.clips[toKey] || entry.currentAnim === toKey) return;
-  const from = entry.clips[entry.currentAnim];
-  const to   = entry.clips[toKey];
-  to.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-  if (from) from.crossFadeTo(to, duration, true);
-  entry.currentAnim = toKey;
+// ── Build humanoid skeleton as parented groups ──────────────────────────
+function buildHuman() {
+  // Root (at feet level — matches controller position)
+  const root = new THREE.Group();
+  root.name = "avatarModel";
+
+  // ── Legs ──
+  const leftLeg  = new THREE.Group(); // pivot at hip
+  const rightLeg = new THREE.Group();
+
+  // Upper legs
+  const lUpper = box(0.14, 0.38, 0.13, PANTS);
+  lUpper.position.y = -0.19;
+  leftLeg.add(lUpper);
+
+  const rUpper = box(0.14, 0.38, 0.13, PANTS);
+  rUpper.position.y = -0.19;
+  rightLeg.add(rUpper);
+
+  // Lower leg pivots (at knee)
+  const leftKnee  = new THREE.Group();
+  const rightKnee = new THREE.Group();
+  leftKnee.position.y  = -0.38;
+  rightKnee.position.y = -0.38;
+
+  const lLower = box(0.12, 0.36, 0.12, PANTS);
+  lLower.position.y = -0.18;
+  leftKnee.add(lLower);
+
+  const rLower = box(0.12, 0.36, 0.12, PANTS);
+  rLower.position.y = -0.18;
+  rightKnee.add(rLower);
+
+  // Feet
+  const lFoot = box(0.12, 0.08, 0.22, SHOES);
+  lFoot.position.set(0, -0.38, 0.04);
+  leftKnee.add(lFoot);
+  const rFoot = box(0.12, 0.08, 0.22, SHOES);
+  rFoot.position.set(0, -0.38, 0.04);
+  rightKnee.add(rFoot);
+
+  leftLeg.add(leftKnee);
+  rightLeg.add(rightKnee);
+
+  leftLeg.position.set(-0.10, 0.88, 0);
+  rightLeg.position.set( 0.10, 0.88, 0);
+  root.add(leftLeg, rightLeg);
+
+  // ── Torso ──
+  const torso = box(0.38, 0.44, 0.20, SHIRT);
+  torso.position.y = 1.10;
+  root.add(torso);
+
+  // ── Arms ──
+  const leftArm  = new THREE.Group();  // pivot at shoulder
+  const rightArm = new THREE.Group();
+
+  const lUpperArm = box(0.10, 0.30, 0.10, SHIRT);
+  lUpperArm.position.y = -0.15;
+  leftArm.add(lUpperArm);
+  const rUpperArm = box(0.10, 0.30, 0.10, SHIRT);
+  rUpperArm.position.y = -0.15;
+  rightArm.add(rUpperArm);
+
+  // Elbows
+  const leftElbow  = new THREE.Group();
+  const rightElbow = new THREE.Group();
+  leftElbow.position.y  = -0.30;
+  rightElbow.position.y = -0.30;
+
+  const lForearm = box(0.09, 0.28, 0.09, SKIN);
+  lForearm.position.y = -0.14;
+  leftElbow.add(lForearm);
+  const rForearm = box(0.09, 0.28, 0.09, SKIN);
+  rForearm.position.y = -0.14;
+  rightElbow.add(rForearm);
+
+  // Hands
+  const lHand = sphere(0.065, SKIN);
+  lHand.position.y = -0.30;
+  leftElbow.add(lHand);
+  const rHand = sphere(0.065, SKIN);
+  rHand.position.y = -0.30;
+  rightElbow.add(rHand);
+
+  leftArm.add(leftElbow);
+  rightArm.add(rightElbow);
+
+  leftArm.position.set(-0.24, 1.28, 0);
+  rightArm.position.set( 0.24, 1.28, 0);
+  root.add(leftArm, rightArm);
+
+  // ── Neck + Head ──
+  const neck = box(0.10, 0.10, 0.10, SKIN);
+  neck.position.y = 1.37;
+  root.add(neck);
+
+  const head = sphere(0.155, SKIN);
+  head.position.y = 1.58;
+  root.add(head);
+
+  // Hair (cap on top of head)
+  const hair = box(0.32, 0.10, 0.32, HAIR);
+  hair.position.y = 1.68;
+  root.add(hair);
+
+  // Eyes
+  for (const sx of [-0.055, 0.055]) {
+    const eye = sphere(0.025, 0x111111);
+    eye.position.set(sx, 1.60, -0.145);
+    root.add(eye);
+  }
+
+  // Store limb refs for animation
+  root.userData.limbs = { leftLeg, rightLeg, leftKnee, rightKnee, leftArm, rightArm, leftElbow, rightElbow };
+
+  return root;
 }
 
-function attachModel(gltf, controllerGroup) {
-  // Remove stale model if re-attaching
-  const existing = controllerGroup.getObjectByName("avatarModel");
-  if (existing) {
-    existing.traverse(o => {
-      if (o.geometry) o.geometry.dispose();
-      if (o.material) {
-        if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
-        else o.material.dispose();
-      }
-    });
-    controllerGroup.remove(existing);
+// ── Procedural animation state ─────────────────────────────────────────
+function animateLimbs(model, speed, isDancing, dt, t) {
+  const limbs = model.userData.limbs;
+  if (!limbs) return;
+
+  const { leftLeg, rightLeg, leftKnee, rightKnee, leftArm, rightArm, leftElbow, rightElbow } = limbs;
+
+  if (isDancing) {
+    // Dance: hips bounce, arms wave
+    const d = Math.sin(t * 5.5);
+    leftLeg.rotation.x  =  d * 0.35;
+    rightLeg.rotation.x = -d * 0.35;
+    leftKnee.rotation.x  = Math.max(0, -d * 0.3);
+    rightKnee.rotation.x = Math.max(0,  d * 0.3);
+    leftArm.rotation.x  = -d * 0.5;
+    rightArm.rotation.x =  d * 0.5;
+    leftArm.rotation.z  =  Math.sin(t * 3.0) * 0.3 + 0.3;
+    rightArm.rotation.z = -Math.sin(t * 3.0) * 0.3 - 0.3;
+    leftElbow.rotation.x  = Math.abs(d) * 0.5;
+    rightElbow.rotation.x = Math.abs(d) * 0.5;
+    return;
   }
 
-  // SkeletonUtils.clone rebinds bones correctly — fixes T-pose
-  const model = SkeletonUtils.clone(gltf.scene);
-  model.name = "avatarModel";
-  model.position.set(0, 0, 0);
-  // Soldier faces +Z by default; rotate 180° so it faces -Z (toward stage, matching spawn)
-  model.rotation.set(0, Math.PI, 0);
-  // Soldier is ~1.8m — scale up slightly so it matches scene scale
-  model.scale.setScalar(1.0);
+  const walkSpeed = Math.min(speed * 1.5, 8.0);
+  const swing = speed > 0.07 ? Math.sin(t * walkSpeed) : Math.sin(t * 0.8) * 0.04;
+  const swingAmt = speed > 0.5 ? 0.7 : speed > 0.07 ? 0.5 : 0.04;
 
-  model.traverse((child) => {
-    if (!child.isMesh) return;
-    child.castShadow = true;
-    child.receiveShadow = true;
-    // Tint the model slightly to distinguish from default soldier
-    if (child.material) {
-      const mats = Array.isArray(child.material) ? child.material : [child.material];
-      mats.forEach(mat => {
-        if (mat.color) mat.color.multiplyScalar(1.1); // slightly brighter
-      });
-    }
-  });
+  // Legs swing opposite each other
+  leftLeg.rotation.x  =  swing * swingAmt;
+  rightLeg.rotation.x = -swing * swingAmt;
 
-  // Add to controller BEFORE creating mixer
-  controllerGroup.add(model);
+  // Knees bend on back-swing
+  leftKnee.rotation.x  = Math.max(0,  swing * swingAmt * 0.55);
+  rightKnee.rotation.x = Math.max(0, -swing * swingAmt * 0.55);
 
-  const mixer = new THREE.AnimationMixer(model);
-  const clips = {};
-
-  for (const clip of gltf.animations) {
-    const n = clip.name.toLowerCase();
-    let key = null;
-    if      (n.includes("idle"))  key = "idle";
-    else if (n.includes("walk"))  key = "walk";
-    else if (n.includes("run"))   key = "run";
-    if (key && !clips[key]) {
-      const action = mixer.clipAction(clip);
-      action.setLoop(THREE.LoopRepeat, Infinity);
-      clips[key] = action;
-    }
-  }
-
-  // Start idle immediately — never leave in T-pose
-  const startKey = clips.idle ? "idle" : clips.walk ? "walk" : Object.keys(clips)[0];
-  if (startKey && clips[startKey]) {
-    clips[startKey].reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
-  }
-
-  console.log("[AvatarModelMixamo] loaded clips:", Object.keys(clips), "starting:", startKey);
-  return { mixer, clips, currentAnim: startKey || "idle" };
+  // Arms swing opposite to legs
+  leftArm.rotation.x  = -swing * swingAmt * 0.6;
+  rightArm.rotation.x =  swing * swingAmt * 0.6;
+  leftArm.rotation.z  =  0.15;
+  rightArm.rotation.z = -0.15;
+  leftElbow.rotation.x  = speed > 0.07 ? Math.abs(swing) * 0.3 : 0;
+  rightElbow.rotation.x = speed > 0.07 ? Math.abs(swing) * 0.3 : 0;
 }
 
-// ── PUBLIC: createMixamoAvatar ────────────────────────────────────────────
+// ── PUBLIC API ─────────────────────────────────────────────────────────
 export function createMixamoAvatar(scene, opts = {}, onReady) {
   const sx = opts.spawnX ?? 0;
   const sy = opts.spawnY ?? 0;
@@ -142,79 +214,45 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
   controller.add(makeShadow());
   scene.add(controller);
 
+  const model = buildHuman();
+  controller.add(model);
+
   const entry = {
     root: controller,
-    mixer: null,
+    mixer: null,   // no GLB mixer — procedural only
     clips: {},
     currentAnim: "idle",
     _isMixamo: true,
+    _model: model,
+    _t: 0,
+    _speed: 0,
+    _isDancing: false,
   };
 
-  loadGLTF()
-    .then((gltf) => {
-      const { mixer, clips, currentAnim } = attachModel(gltf, controller);
-      entry.mixer = mixer;
-      entry.clips = clips;
-      entry.currentAnim = currentAnim;
-      onReady?.(entry);
-    })
-    .catch((err) => {
-      console.warn("[AvatarModelMixamo] GLB load failed:", err);
-      // Capsule fallback so movement still works
-      const cap = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.26, 1.1, 4, 8),
-        new THREE.MeshStandardMaterial({ color: 0x44aadd })
-      );
-      cap.name = "avatarModel";
-      cap.position.y = 0.82;
-      controller.add(cap);
-      onReady?.(entry);
-    });
+  // Immediately ready — no async load
+  setTimeout(() => onReady?.(entry), 0);
 
   return entry;
 }
 
-// ── PUBLIC: updateMixamoAvatarAnimation ──────────────────────────────────
 export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false) {
-  if (!entry?.mixer) return;
-  entry.mixer.update(dt);
+  if (!entry?._model) return;
+
+  entry._t = (entry._t || 0) + dt;
+  entry._speed = speed;
+  entry._isDancing = isDancing;
 
   if (isHoverboarding) {
-    if (entry.clips.idle) {
-      crossFade(entry, "idle", 0.35);
-      entry.clips.idle.setEffectiveTimeScale(0.0);
-    } else if (entry.clips.walk) {
-      crossFade(entry, "walk", 0.35);
-      entry.clips.walk.setEffectiveTimeScale(0.0);
-    }
+    // Frozen surf pose — arms slightly out
+    const { leftArm, rightArm, leftLeg, rightLeg, leftKnee, rightKnee } = entry._model.userData.limbs || {};
+    if (leftArm) { leftArm.rotation.z = 0.5; leftArm.rotation.x = -0.2; }
+    if (rightArm) { rightArm.rotation.z = -0.5; rightArm.rotation.x = -0.2; }
+    if (leftLeg) leftLeg.rotation.x = 0.15;
+    if (rightLeg) rightLeg.rotation.x = 0.15;
+    if (leftKnee) leftKnee.rotation.x = 0.3;
+    if (rightKnee) rightKnee.rotation.x = 0.3;
     return;
   }
 
-  if (isDancing) {
-    if (entry.clips.idle) {
-      crossFade(entry, "idle", 0.3);
-      entry.clips.idle.setEffectiveTimeScale(0.6);
-    }
-    return;
-  }
-
-  if (speed > 0.5) {
-    const key = entry.clips.run ? "run" : "walk";
-    if (entry.clips[key]) {
-      crossFade(entry, key, 0.2);
-      entry.clips[key].setEffectiveTimeScale(Math.min(2.4, speed * 0.9));
-    }
-  } else if (speed > 0.07) {
-    if (entry.clips.walk) {
-      crossFade(entry, "walk", 0.2);
-      entry.clips.walk.setEffectiveTimeScale(0.75 + speed * 0.45);
-    }
-  } else {
-    if (entry.clips.idle) {
-      crossFade(entry, "idle", 0.3);
-    } else if (entry.clips.walk) {
-      crossFade(entry, "walk", 0.3);
-      entry.clips.walk.setEffectiveTimeScale(0.0);
-    }
-  }
+  animateLimbs(entry._model, speed, isDancing, dt, entry._t);
 }
