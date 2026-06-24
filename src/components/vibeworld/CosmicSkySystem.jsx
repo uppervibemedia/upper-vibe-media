@@ -717,22 +717,22 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // LEFT side sweep — planet stays on left, never enters avatar center zone (cameraX > -15)
-    startCX: -80, startCY: 13, startCZ: -85,
-    endCX:   -18, endCY:   11, endCZ: -78,
+    // LEFT side sweep — well within far clip (max dist ~55u from camera)
+    startCX: -45, startCY: 18, startCZ: -40,
+    endCX:   -15, endCY:   14, endCZ: -35,
     duration: DURATION_A,
-    nextFire: now0 + 2,
+    nextFire: now0 + 1,
     _gapAfter: GAP_AFTER_A,
     _partner: null,
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // RIGHT side sweep — planet stays on right, never enters avatar center zone (cameraX < +15)
-    startCX:  80, startCY: 14, startCZ: -88,
-    endCX:    18, endCY:   12, endCZ: -80,
+    // RIGHT side sweep — well within far clip (max dist ~55u from camera)
+    startCX:  45, startCY: 18, startCZ: -40,
+    endCX:    15, endCY:   14, endCZ: -35,
     duration: DURATION_B,
-    nextFire: now0 + DURATION_A + GAP_AFTER_A + 2,
+    nextFire: now0 + DURATION_A + GAP_AFTER_A + 1,
     _gapAfter: GAP_AFTER_B,
     _partner: null,
   };
