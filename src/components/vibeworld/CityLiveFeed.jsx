@@ -7,12 +7,26 @@
 import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 
-// Slow cinematic orbit — no user interaction
-const ORBIT_SPEED = 0.04; // radians/sec
-const CAM_HEIGHT = 28;
-const CAM_RADIUS = 22;
-const CAM_LOOK_Y = 2;
-const CAM_LOOK_Z = -12;
+// Cinematic waypoint tour — camera moves between key zones
+// Each shot: { pos: [x,y,z], look: [x,y,z], duration: seconds }
+const SHOTS = [
+  // Wide overview — whole city from south
+  { pos: [0,  38, 28],   look: [0,  0, -8],   duration: 5 },
+  // Music Stage close-up — from the front
+  { pos: [0,  14, -18],  look: [0,  3, -34],  duration: 5 },
+  // Vibe Lounge — swooping left side
+  { pos: [-30, 16, -18], look: [-22, 1, -26], duration: 5 },
+  // Music Library cylinder — right side
+  { pos: [35,  14, -12], look: [22,  2, -20], duration: 5 },
+  // Ferris Wheel + beach — from south-east
+  { pos: [38,  20, 32],  look: [22,  8,  22], duration: 5 },
+  // Visualizer Dome — low angle from plaza
+  { pos: [-8,  8,  12],  look: [-13, 2,   3], duration: 4 },
+  // Wide north — stage skyline reveal
+  { pos: [20,  22, 10],  look: [0,   4, -30], duration: 5 },
+  // Beach aerial — ocean view
+  { pos: [0,   22, 48],  look: [0,   0,  20], duration: 4 },
+];
 
 export default function CityLiveFeed({ width = "100%", height = "100%", className = "" }) {
   const canvasRef = useRef(null);
@@ -351,18 +365,42 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
 
       // ── Animate ────────────────────────────────────────────────
       let frame = 0;
+      // Shot tour state
+      let shotIdx = 0;
+      let shotElapsed = 0;
+      // Smooth camera interpolation targets
+      const camTarget = new THREE.Vector3(...SHOTS[0].pos);
+      const lookTarget = new THREE.Vector3(...SHOTS[0].look);
+      const camSmooth = new THREE.Vector3(...SHOTS[0].pos);
+      const lookSmooth = new THREE.Vector3(...SHOTS[0].look);
+      let lastT = performance.now() * 0.001;
+
       const animate = () => {
         if (disposed) return;
         animId = requestAnimationFrame(animate);
 
         const t = performance.now() * 0.001;
+        const dt = Math.min(t - lastT, 0.1);
+        lastT = t;
 
-        // Slow cinematic orbit around the city center
-        const angle = t * ORBIT_SPEED;
-        const camX = Math.sin(angle) * CAM_RADIUS;
-        const camZ = CAM_LOOK_Z + Math.cos(angle) * CAM_RADIUS;
-        camera.position.set(camX, CAM_HEIGHT, camZ);
-        camera.lookAt(0, CAM_LOOK_Y, CAM_LOOK_Z);
+        // Advance shot timer
+        shotElapsed += dt;
+        const shot = SHOTS[shotIdx];
+        if (shotElapsed >= shot.duration) {
+          shotElapsed -= shot.duration;
+          shotIdx = (shotIdx + 1) % SHOTS.length;
+          const next = SHOTS[shotIdx];
+          camTarget.set(...next.pos);
+          lookTarget.set(...next.look);
+        }
+
+        // Smooth lerp camera toward current shot target (speed 1.2 = gentle ~1s blend)
+        const lerpSpeed = 1.2;
+        camSmooth.lerp(camTarget, Math.min(1, lerpSpeed * dt));
+        lookSmooth.lerp(lookTarget, Math.min(1, lerpSpeed * dt));
+
+        camera.position.copy(camSmooth);
+        camera.lookAt(lookSmooth);
 
         // Stars follow camera
         stars.position.copy(camera.position);
