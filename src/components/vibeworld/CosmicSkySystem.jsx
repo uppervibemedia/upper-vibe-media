@@ -660,48 +660,57 @@ export function createCosmicSky(scene) {
     return { sprite: psprite, mat: pmat };
   }
 
-  // Planet A: teal — low left→right path over beach, every 60–90s
+  // Planet A: teal/cyan — left→right cinematic sweep
   const flybyA = buildFlybyPlanet(
     ["#041820", "#0A3840", "#1A6860", "#2A9888", "#50D8C0"],
-    "rgba(50,200,180,0.22)",
-    isMobile ? 22 : 30
+    "rgba(50,200,180,0.35)",
+    isMobile ? 28 : 38
   );
-  // Planet B: amber — right→left path slightly higher, every 90–140s
+  // Planet B: amber/orange — right→left sweep, slightly different Y
   const flybyB = buildFlybyPlanet(
     ["#1A0E02", "#3A2004", "#7A4010", "#C07030", "#E8B060"],
-    "rgba(220,140,50,0.20)",
-    isMobile ? 19 : 26
+    "rgba(220,140,50,0.32)",
+    isMobile ? 25 : 34
   );
 
   const now0 = performance.now() * 0.001;
-  // Beach flyby planets — cinematic low-sky paths over Neon Surf Beach.
-  // Y=12–18: low enough to be clearly visible in normal landscape camera view
-  //   without tilting up. Camera looks at avatar chest (~y=0.9), planets at y=12–18
-  //   appear in the upper portion of the viewport naturally.
-  // Z=42–55: past the beach (z≈32) into the ocean sky, behind the playable area.
-  // X: wide lateral paths so planets never pass directly over the avatar.
-  // Duration 18–26s: slow cinematic drift.
-  // nextFire starts at 4–6s for immediate visibility on beach arrival.
+
+  // ── Alternating beach flyby system ─────────────────────────────────────────
+  // Only ONE planet active at a time. They alternate: A → gap → B → gap → A ...
+  // Y=10–14: low enough to sit in normal third-person beach camera view.
+  // Z=44–52: behind the playable beach (z≈32), clearly in ocean sky.
+  // X paths are wide and laterally offset so they never cross avatar screen center.
+  // DURATION_A/B: how long the planet is crossing.
+  // GAP: pause between one ending and the next starting.
+
+  const DURATION_A  = 22;   // seconds Planet A is visible
+  const DURATION_B  = 20;   // seconds Planet B is visible
+  const GAP_AFTER_A = 8;    // gap after A before B fires
+  const GAP_AFTER_B = 6;    // gap after B before A fires
+
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // Path A: left-to-right, low cinematic sweep
-    startX: -70, startY: 14, startZ: 48,
-    endX:    55, endY:   12, endZ: 42,
-    nextFire: now0 + 4 + Math.random() * 6,
-    minInterval: 30, maxInterval: 48,
-    duration: 20 + Math.random() * 6,
+    startX: -75, startY: 12, startZ: 46,
+    endX:    60, endY:   10, endZ: 42,
+    duration: DURATION_A,
+    nextFire: now0 + 3,          // fires quickly on load
+    _gapAfter: GAP_AFTER_A,
+    _partner: null,              // set below
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // Path B: right-to-left, slightly higher for variety
-    startX: 72, startY: 18, startZ: 54,
-    endX: -55,  endY:   16, endZ: 44,
-    nextFire: now0 + 22 + Math.random() * 12,
-    minInterval: 35, maxInterval: 55,
-    duration: 20 + Math.random() * 6,
+    startX:  75, startY: 14, startZ: 50,
+    endX:   -60, endY:   12, endZ: 44,
+    duration: DURATION_B,
+    nextFire: now0 + DURATION_A + GAP_AFTER_A + 3,  // starts after A completes
+    _gapAfter: GAP_AFTER_B,
+    _partner: null,
   };
+  // Cross-link partners so each knows when the other is done
+  scene.userData.beachFlybyA._partner = scene.userData.beachFlybyB;
+  scene.userData.beachFlybyB._partner = scene.userData.beachFlybyA;
 }
 
 // ── Helper: natural arc spawn ─────────────────────────────────────────────────
@@ -812,19 +821,18 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
-  // ── Beach Flyby Planets A & B ─────────────────────────────────────────────────
-  function animateFlyby(fb, otherFb) {
+  // ── Beach Flyby Planets — alternating A → B → A loop ─────────────────────────
+  // Runs EVERY frame (not throttled) so timing is accurate on all devices.
+  // Only one planet is active at a time. When one finishes, the other fires after _gapAfter.
+  const fba = scene.userData.beachFlybyA;
+  const fbb = scene.userData.beachFlybyB;
+
+  function animateFlyby(fb) {
     if (!fb) return;
     if (!fb.active) {
       if (t >= fb.nextFire) {
-        // Enforce minimum 20s gap from the other flyby ending
-        const otherRecently = otherFb && otherFb.active;
-        if (otherRecently) {
-          // Delay until the other flyby is done + 20s buffer
-          fb.nextFire = t + 20;
-          return;
-        }
-        // Begin flyby
+        // Don't fire if partner is still active — wait for it to finish first
+        if (fb._partner && fb._partner.active) return;
         fb.active = true;
         fb.life = 0;
         fb.maxLife = fb.duration;
@@ -833,11 +841,13 @@ export function animateCosmicSky(scene, camera, t, dt) {
     } else {
       fb.life += dt;
       const prog = Math.min(fb.life / fb.maxLife, 1);
-      // Smooth in/out envelope
-      const envelope = Math.min(prog * 5, 1) * Math.min((1 - prog) * 5, 1);
-      fb.mat.opacity = Math.min(0.88, envelope * 0.88);
 
-      // Lerp position from start to end
+      // Fast fade-in (first 8% of duration), slow fade-out (last 10%)
+      const fadeIn  = Math.min(prog / 0.08, 1);
+      const fadeOut = Math.min((1 - prog) / 0.10, 1);
+      fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.92;
+
+      // Smooth lerp across the beach sky
       fb.sprite.position.set(
         fb.startX + (fb.endX - fb.startX) * prog,
         fb.startY + (fb.endY - fb.startY) * prog,
@@ -848,21 +858,21 @@ export function animateCosmicSky(scene, camera, t, dt) {
         fb.active = false;
         fb.mat.opacity = 0;
         fb.sprite.position.set(9999, 9999, 9999);
-        fb.duration = 14 + Math.random() * 6;
-        fb.nextFire = t + fb.minInterval + Math.random() * (fb.maxInterval - fb.minInterval);
+        // Schedule partner to fire after the gap
+        if (fb._partner) {
+          fb._partner.nextFire = t + fb._gapAfter;
+        }
+        // Re-schedule self to fire after partner's duration + partner's gap
+        const partner = fb._partner;
+        fb.nextFire = partner
+          ? t + fb._gapAfter + (partner.duration || 20) + (partner._gapAfter || 6)
+          : t + 40;
       }
     }
   }
 
-  const fba = scene.userData.beachFlybyA;
-  const fbb = scene.userData.beachFlybyB;
-  if (fba || fbb) {
-    // Always run flyby — planets are part of the sky and should be visible from anywhere
-    if (updateSlow) {
-      animateFlyby(fba, fbb);
-      animateFlyby(fbb, fba);
-    }
-  }
+  animateFlyby(fba);
+  animateFlyby(fbb);
 
   // ── Mega Asteroid — every 120s ────────────────────────────────────────────────
   if (!updateSlow && isMobile) return;
