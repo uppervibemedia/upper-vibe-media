@@ -872,6 +872,13 @@ export function animateCosmicSky(scene, camera, t, dt) {
       fb.life += dt;
       const prog = Math.min(fb.life / fb.maxLife, 1);
 
+      // Hard gate every frame — if player leaves beach zone, hide immediately
+      if (playerZ <= 8) {
+        fb.mat.opacity = 0;
+        fb.sprite.position.set(9999, 9999, 9999);
+        return;
+      }
+
       // Per-flyby fade envelope
       const fadeInEnd    = fb._fadeInEnd    ?? 0.08;
       const fadeOutStart = fb._fadeOutStart ?? 0.82;
