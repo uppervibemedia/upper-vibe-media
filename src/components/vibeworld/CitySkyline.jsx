@@ -420,45 +420,45 @@ export default function createCitySkyline(scene) {
     return panel;
   }
 
-  // ── WEST SIGNS (x=-38 face, showing east = positive X face toward plaza) ──
+  // ── WEST SIGNS — storefront level, just above awning (~y=2.8) ──
+  // The storefront awning sits at y=2.05 on each building. Signs mount just above it
+  // at y≈2.8–3.2 so they sit directly above the doors at walking eye level.
 
-  // Sign 1: "UPPER VIBE MEDIA" — horizontal on mid-height west building at z=-32, h=17
-  // Mounted on the east face (toward plaza) at x = -38 + 1.2 (depth/2 + offset)
-  const wSign1 = makeFacadeSign("UPPER VIBE MEDIA", "#00E5FF", "#00AADD", 5.5, 1.1);
-  wSign1.position.set(-38 + 0.85 + 0.04, 10.5, -32);
-  wSign1.rotation.y = Math.PI / 2; // face east
+  // Sign 1: "UPPER VIBE MEDIA" — west building at z=-32, storefront face
+  const wSign1 = makeFacadeSign("UPPER VIBE MEDIA", "#00E5FF", "#00AADD", 5.5, 0.9);
+  wSign1.position.set(-38 + 0.85 + 0.04, 2.9, -32);
+  wSign1.rotation.y = Math.PI / 2; // face east toward plaza
   scene.add(wSign1);
 
-  // Sign 2: "VIBE HIGHER" — vertical-style sign on taller west building z=-26, h=19
-  // Mounted high up on east face
-  const wSign2 = makeFacadeSign("VIBE HIGHER", "#C43BFF", "#9B00FF", 4.2, 1.0);
-  wSign2.position.set(-38 + 0.85 + 0.04, 14.5, -26);
+  // Sign 2: "VIBE HIGHER" — west building at z=-26
+  const wSign2 = makeFacadeSign("VIBE HIGHER", "#C43BFF", "#9B00FF", 4.2, 0.85);
+  wSign2.position.set(-38 + 0.85 + 0.04, 2.85, -26);
   wSign2.rotation.y = Math.PI / 2;
   scene.add(wSign2);
 
-  // Sign 3: "432 HZ LIVE" — compact sign at mid-level z=-20
-  const wSign3 = makeFacadeSign("432 HZ LIVE", "#FF4FC3", "#CC0099", 3.8, 1.0);
-  wSign3.position.set(-38 + 0.85 + 0.04, 7.5, -20);
+  // Sign 3: "432 HZ LIVE" — west building at z=-20
+  const wSign3 = makeFacadeSign("432 HZ LIVE", "#FF4FC3", "#CC0099", 3.8, 0.85);
+  wSign3.position.set(-38 + 0.85 + 0.04, 2.85, -20);
   wSign3.rotation.y = Math.PI / 2;
   scene.add(wSign3);
 
-  // ── EAST SIGNS (x=+38 face, showing west = negative X face toward plaza) ──
+  // ── EAST SIGNS — storefront level, just above awning (~y=2.8) ──
 
-  // Sign 4: "HIGH VIBE MUSIC" — horizontal on east building z=-32, h=12
-  const eSign1 = makeFacadeSign("HIGH VIBE MUSIC", "#00E5FF", "#0088FF", 5.2, 1.1);
-  eSign1.position.set(38 - 0.85 - 0.04, 9.0, -32);
-  eSign1.rotation.y = -Math.PI / 2; // face west
+  // Sign 4: "HIGH VIBE MUSIC" — east building at z=-32
+  const eSign1 = makeFacadeSign("HIGH VIBE MUSIC", "#00E5FF", "#0088FF", 5.2, 0.9);
+  eSign1.position.set(38 - 0.85 - 0.04, 2.9, -32);
+  eSign1.rotation.y = -Math.PI / 2; // face west toward plaza
   scene.add(eSign1);
 
-  // Sign 5: "FREQUENCY OF THE FUTURE" — long banner on tall east building z=-23, h=16
-  const eSign2 = makeFacadeSign("FREQUENCY OF THE FUTURE", "#A078FF", "#7C3AED", 7.0, 1.0);
-  eSign2.position.set(38 - 0.85 - 0.04, 13.0, -23);
+  // Sign 5: "FREQUENCY OF THE FUTURE" — east building at z=-23
+  const eSign2 = makeFacadeSign("FREQUENCY OF THE FUTURE", "#A078FF", "#7C3AED", 7.0, 0.85);
+  eSign2.position.set(38 - 0.85 - 0.04, 2.85, -23);
   eSign2.rotation.y = -Math.PI / 2;
   scene.add(eSign2);
 
-  // Sign 6: "UPPER VIBE CITY" — on east building z=-17, h=10
-  const eSign3 = makeFacadeSign("UPPER VIBE CITY", "#FF6B35", "#DD4400", 5.0, 1.0);
-  eSign3.position.set(38 - 0.85 - 0.04, 7.5, -17);
+  // Sign 6: "UPPER VIBE CITY" — east building at z=-17
+  const eSign3 = makeFacadeSign("UPPER VIBE CITY", "#FF6B35", "#DD4400", 5.0, 0.85);
+  eSign3.position.set(38 - 0.85 - 0.04, 2.85, -17);
   eSign3.rotation.y = -Math.PI / 2;
   scene.add(eSign3);
 
