@@ -706,44 +706,54 @@ export function createCosmicSky(scene) {
 
   const now0 = performance.now() * 0.001;
 
-  // ── Layer A flyby path rules ──────────────────────────────────────────────
-  // Duration: 18s per pass — slow drift across beach sky
-  // cameraZ: -150 → deep background, never inside playable space
-  // cameraY: +5 → low sky, feels like it's passing over the beach horizon
-  // cameraX (A): -55 → -18 (left lane only, fades before center)
-  // cameraX (B): +55 → +18 (right lane only, fades before center)
-  // Fade envelope: fade IN first 8% of duration, fade OUT last 15%
-  //   → guarantees planet is invisible before/after beach X-zone conflict
+  // ── Beach Flyby Path Rules ────────────────────────────────────────────────
+  // Planets sweep strictly across the BEACH sky only.
+  // Path is entirely camera-relative so they never drift into the skyline.
+  //
+  // X range: ±38 → ±12 (outer edge → inner edge, stopping well before center/buildings)
+  // Y: camera + 6  → camera + 5  (low sky, visible in normal beach view)
+  // Z: camera - 160 (deep background — never inside playable space)
+  //
+  // Fade envelope:
+  //   fade IN:  first 12% of duration  (smooth appear from off-screen edge)
+  //   fade OUT: last  18% of duration  (smooth disappear before building conflict)
+  //   → planet is fully invisible before/after the safe beach X zone
+  //
+  // Timing: 18s pass + 7s gap = ~25s cycle, well under the 30s max rule.
+  // Planet A: left→right  (-38 → +38)
+  // Planet B: right→left  (+38 → -38)
+  // Only one active at a time, strict alternation.
+
   const DURATION_A  = 18;
   const DURATION_B  = 18;
-  const GAP_AFTER_A = 8;   // gap after A finishes before B starts
-  const GAP_AFTER_B = 8;
+  const GAP_AFTER_A = 7;
+  const GAP_AFTER_B = 7;
 
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // Left lane: enters far left, exits mid-left — never crosses center
-    startCX: -55, startCY: 5, startCZ: -150,
-    endCX:   -18, endCY:   4, endCZ: -145,
+    // Left → Right sweep across beach sky
+    startCX: -38, startCY: 6, startCZ: -160,
+    endCX:    38, endCY:   5, endCZ: -155,
     duration: DURATION_A,
-    nextFire: now0 + 2,
+    nextFire: now0 + 3,          // first pass starts after 3s
     _gapAfter: GAP_AFTER_A,
     _partner: null,
-    _fadeInEnd: 0.08,    // fade-in completes at 8% of duration
-    _fadeOutStart: 0.82, // fade-out begins at 82% of duration
+    _fadeInEnd: 0.12,            // fully visible by 12% into pass
+    _fadeOutStart: 0.80,         // starts fading at 80% — gone well before right edge buildings
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // Right lane: enters far right, exits mid-right — never crosses center
-    startCX:  55, startCY: 5, startCZ: -150,
-    endCX:    18, endCY:   4, endCZ: -145,
+    // Right → Left sweep across beach sky
+    startCX:  38, startCY: 6, startCZ: -160,
+    endCX:   -38, endCY:   5, endCZ: -155,
     duration: DURATION_B,
-    nextFire: now0 + DURATION_A + GAP_AFTER_A + 2,
+    nextFire: now0 + DURATION_A + GAP_AFTER_A + 3,
     _gapAfter: GAP_AFTER_B,
     _partner: null,
-    _fadeInEnd: 0.08,
-    _fadeOutStart: 0.82,
+    _fadeInEnd: 0.12,
+    _fadeOutStart: 0.80,
   };
   scene.userData.beachFlybyA._partner = scene.userData.beachFlybyB;
   scene.userData.beachFlybyB._partner = scene.userData.beachFlybyA;
@@ -898,11 +908,13 @@ export function animateCosmicSky(scene, camera, t, dt) {
         fb.active = false;
         fb.mat.opacity = 0;
         fb.sprite.position.set(9999, 9999, 9999);
-        if (fb._partner) fb._partner.nextFire = t + fb._gapAfter;
+        // Partner fires after the gap — strict alternation, total cycle ≤ 30s
+        if (fb._partner) {
+          fb._partner.nextFire = t + fb._gapAfter;
+        }
+        // Self fires after partner's full pass + partner's gap
         const partner = fb._partner;
-        fb.nextFire = partner
-          ? t + fb._gapAfter + (partner.duration || 18) + (partner._gapAfter || 8)
-          : t + 44;
+        fb.nextFire = t + fb._gapAfter + (partner ? partner.duration : 18) + (partner ? partner._gapAfter : 7);
       }
     }
   }
