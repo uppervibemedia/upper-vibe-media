@@ -61,24 +61,47 @@ function cloneGltfForRemote(gltf) {
 }
 
 function makeNameSprite(text) {
+  const label = (text || "User").slice(0, 20);
   const c = document.createElement("canvas");
-  c.width = 256; c.height = 48;
+  c.width = 320; c.height = 64;
   const ctx = c.getContext("2d");
-  ctx.font = "bold 17px Inter,sans-serif";
+
+  // Measure text first for pill width
+  ctx.font = "bold 20px Inter,sans-serif";
+  const tw = ctx.measureText(label).width;
+  const pw = Math.min(tw + 28, 310);
+  const px = (320 - pw) / 2;
+
+  // Pill background
+  ctx.clearRect(0, 0, 320, 64);
+  ctx.fillStyle = "rgba(10,8,28,0.78)";
+  ctx.beginPath();
+  ctx.roundRect(px, 10, pw, 40, 12);
+  ctx.fill();
+
+  // Pill border
+  ctx.strokeStyle = "rgba(155,126,255,0.55)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(px, 10, pw, 40, 12);
+  ctx.stroke();
+
+  // Text
+  ctx.font = "bold 20px Inter,sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.shadowColor = "rgba(0,0,0,0.8)";
-  ctx.shadowBlur = 5;
   ctx.fillStyle = "#ffffff";
-  ctx.fillText((text || "User").slice(0, 18), 128, 24);
+  ctx.fillText(label, 160, 31);
+
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
   tex.colorSpace = THREE.SRGBColorSpace;
   const sprite = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false })
   );
-  sprite.scale.set(1.4, 0.32, 1);
+  sprite.scale.set(1.8, 0.45, 1);
   sprite.renderOrder = 999;
+  sprite.name = "nameSprite";
   return sprite;
 }
 
@@ -305,8 +328,11 @@ function attachModel(gltf, controllerGroup, opts = {}) {
   }
 
   if (opts.username) {
+    // Remove any existing name sprite first (re-attach after GLB loads)
+    const existingSprite = controllerGroup.getObjectByName("nameSprite");
+    if (existingSprite) controllerGroup.remove(existingSprite);
     const sprite = makeNameSprite(opts.username);
-    sprite.position.y = 2.25;
+    sprite.position.y = 2.8; // above avatar head for both Soldier and Mixamo heights
     controllerGroup.add(sprite);
   }
 
@@ -496,6 +522,12 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   controller.name = `remote_${userId}`;
   controller.userData = { userId };
   controller.add(makeShadow());
+  // Add name sprite immediately — visible even before GLB finishes loading
+  if (username) {
+    const sprite = makeNameSprite(username);
+    sprite.position.y = 2.8;
+    controller.add(sprite);
+  }
   scene.add(controller);
 
   const entry = { root: controller, mixer: null, clips: {}, currentAnim: "idle" };

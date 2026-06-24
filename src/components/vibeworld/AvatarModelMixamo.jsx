@@ -10,6 +10,42 @@
 import * as THREE from "three";
 import { SPAWN } from "./cityData";
 
+function makeNameSpriteMixamo(text) {
+  const label = (text || "User").slice(0, 20);
+  const c = document.createElement("canvas");
+  c.width = 320; c.height = 64;
+  const ctx = c.getContext("2d");
+  ctx.font = "bold 20px Inter,sans-serif";
+  const tw = ctx.measureText(label).width;
+  const pw = Math.min(tw + 28, 310);
+  const px = (320 - pw) / 2;
+  ctx.clearRect(0, 0, 320, 64);
+  ctx.fillStyle = "rgba(10,8,28,0.78)";
+  ctx.beginPath();
+  ctx.roundRect(px, 10, pw, 40, 12);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(155,126,255,0.55)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(px, 10, pw, 40, 12);
+  ctx.stroke();
+  ctx.font = "bold 20px Inter,sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(label, 160, 31);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false })
+  );
+  sprite.scale.set(1.8, 0.45, 1);
+  sprite.renderOrder = 999;
+  sprite.name = "nameSprite";
+  return sprite;
+}
+
 // ── Color palettes ─────────────────────────────────────────────────────────────
 const MALE_CASUAL = {
   skin:    0xC68642,
@@ -752,8 +788,15 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
   };
 
   const controller = new THREE.Group();
-  controller.name = "avatar";
+  controller.name = opts.isRemote ? `remote_${opts.userId || ""}` : "avatar";
   controller.position.set(opts.spawnX ?? SPAWN[0], opts.spawnY ?? SPAWN[1], opts.spawnZ ?? SPAWN[2]);
+  if (opts.isRemote && opts.userId) controller.userData = { userId: opts.userId };
+  // Add name sprite immediately for remote users
+  if (opts.isRemote && opts.username) {
+    const nameSprite = makeNameSpriteMixamo(opts.username);
+    nameSprite.position.y = 2.8; // above Mixamo avatar head
+    controller.add(nameSprite);
+  }
   scene.add(controller);
 
   const model = gender === "female" ? buildFemaleCasual(C) : buildMaleCasual(C);

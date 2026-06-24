@@ -2146,8 +2146,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
                 username: remote.username || "User",
               }, null);
               group = remoteEntry.root;
-              group.name = `remote_${remote.user_id}`;
-              group.userData = { userId: remote.user_id };
+              // name and userData already set by createMixamoAvatar (isRemote=true)
               group.userData._avatarEntry = remoteEntry;
             } else {
               // Default: Soldier GLB remote avatar
@@ -2185,10 +2184,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const vel = Math.sqrt(dx * dx + dz * dz);
           entry.prevPos = { x: g.position.x, z: g.position.z };
 
-          // ─── Remote GLB avatar animation ────────────────────
-          // _avatarEntry is set immediately on the controller group, updated when GLB loads
+          // ─── Remote avatar animation ────────────────────
           const remoteEntry = g.userData._avatarEntry;
-          if (remoteEntry) updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
+          if (remoteEntry) {
+            if (remoteEntry._isMixamo) {
+              updateMixamoAvatarAnimation(remoteEntry, vel * 15, false, dt, false, null);
+            } else {
+              updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
+            }
+          }
         }
 
         // Despawn avatars that are no longer present

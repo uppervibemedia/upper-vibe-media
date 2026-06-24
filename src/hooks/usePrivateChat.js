@@ -58,8 +58,17 @@ export default function usePrivateChat(user) {
       return { error: "No target user" };
     }
 
-    // Check block
+    // Check: have I blocked them?
     if (blockedUsersRef.current[toUserId]) return { error: "User is blocked" };
+
+    // Check: have they blocked me? Query UserBlock where they are the blocker
+    try {
+      const theyBlockedMe = await base44.entities.UserBlock.filter({
+        blocker_user_id: toUserId,
+        blocked_user_id: user.id,
+      });
+      if (theyBlockedMe.length > 0) return { error: "You cannot contact this user." };
+    } catch {}
 
     // Check existing pending request
     try {
@@ -184,11 +193,13 @@ export default function usePrivateChat(user) {
       if (!event.data) return;
       const data = event.data;
 
-      // Only care about requests addressed to me
+      // Only care about new requests addressed to me
       if (data.to_user_id !== myId) return;
 
+      // Don't show requests from blocked users (in either direction)
       const blocked = blockedUsersRef.current || {};
       if (blocked[data.from_user_id]) return;
+      // Note: if they blocked us, sendChatRequest already prevents creation
 
       // New pending request — show notification
       if (event.type === "create" && data.status === "pending") {
@@ -239,6 +250,9 @@ export default function usePrivateChat(user) {
     const unsubscribe = base44.entities.PrivateChatMessage.subscribe((event) => {
       if (event.type !== "create" || !event.data) return;
       if (event.data.chat_id !== chatId) return;
+      // Don't show messages from blocked users
+      const senderId = event.data.sender_user_id;
+      if (senderId && blockedUsersRef.current[senderId]) return;
       setChatMessages((prev) => [...prev, event.data]);
     });
 

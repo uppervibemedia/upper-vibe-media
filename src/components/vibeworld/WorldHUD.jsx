@@ -305,10 +305,10 @@ export default function WorldHUD({
             color={zoneChatOpen ? "#C43BFF" : "rgba(255,255,255,0.4)"} />
         </button>
 
-        {/* Chat requests bell */}
+        {/* Chat requests bell — vibrate on new notification */}
         <button
           onTouchStart={(e) => e.stopPropagation()}
-          onClick={() => { setRequestsOpen((v) => !v); }}
+          onClick={() => { setRequestsOpen((v) => !v); if (!requestsOpen) try { navigator?.vibrate?.(15); } catch {} }}
           className="relative flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
           style={{
             background: pendingRequestsCount > 0 ? "rgba(0,212,240,0.15)" : "rgba(255,255,255,0.06)",
@@ -400,7 +400,7 @@ export default function WorldHUD({
         )}
       </motion.div>
 
-      {/* ── Pending Requests dropdown ───────────────────────── */}
+      {/* ── Notification Bell Dropdown ───────────────────────── */}
       <AnimatePresence>
         {requestsOpen && (
           <motion.div
@@ -412,57 +412,96 @@ export default function WorldHUD({
             className="absolute right-1 z-[57] pointer-events-auto"
             style={{
               top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 5.5rem)" : "7rem",
-              width: isMobile ? "calc(100vw - 3rem)" : "280px",
-              maxHeight: "220px",
+              width: isMobile ? "min(calc(100vw - 2rem), 310px)" : "300px",
+              maxHeight: "320px",
               overflow: "auto",
               borderRadius: "16px",
-              background: "rgba(20,16,40,0.95)",
-              border: "1px solid rgba(124,58,237,0.2)",
-              backdropFilter: "blur(16px)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+              background: "rgba(14,10,32,0.97)",
+              border: "1px solid rgba(124,58,237,0.25)",
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
             }}
+            onTouchStart={(e) => e.stopPropagation()}
           >
-            <div className="p-3 border-b border-white/5">
-              <p className="text-[10px] font-black text-white/40 tracking-wider uppercase">
-                Chat Requests
-              </p>
+            {/* Header */}
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/5">
+              <div className="flex items-center gap-1.5">
+                <Bell style={{ width: 11, height: 11, color: "#00D4F0" }} />
+                <p className="text-[10px] font-black text-white/60 tracking-wider uppercase">
+                  Notifications
+                </p>
+                {pendingRequestsCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black"
+                    style={{ background: "rgba(0,212,240,0.2)", color: "#00D4F0" }}>
+                    {pendingRequestsCount}
+                  </span>
+                )}
+              </div>
+              <button
+                onTouchStart={(e) => e.stopPropagation()}
+                onClick={() => setRequestsOpen(false)}
+                className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/10"
+                style={{ color: "rgba(255,255,255,0.4)", touchAction: "manipulation" }}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
+
             {(!pendingRequests || pendingRequests.length === 0) ? (
               <div className="p-6 text-center">
-                <p className="text-xs text-white/30">No pending chat requests</p>
-                <p className="text-[9px] text-white/15 mt-1">Requests appear here in real-time</p>
+                <Bell style={{ width: 20, height: 20, color: "rgba(255,255,255,0.1)", margin: "0 auto 8px" }} />
+                <p className="text-xs text-white/25">No notifications</p>
               </div>
             ) : (
-              <div className="p-2 space-y-1">
+              <div className="p-2 space-y-1.5">
                 {pendingRequests.map((req) => (
-                  <div key={req.id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold text-white/80 truncate">{req.fromUsername}</p>
-                      <p className="text-[9px] text-white/30">wants to chat</p>
+                  <div key={req.id} className="p-2.5 rounded-xl"
+                    style={{ background: "rgba(155,126,255,0.05)", border: "1px solid rgba(155,126,255,0.12)" }}>
+                    {/* User info */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 font-black text-[11px]"
+                        style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.3),rgba(0,200,220,0.2))", color: "#c4aaff" }}>
+                        {(req.fromUsername || "?")[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-black text-white truncate">{req.fromUsername}</p>
+                        <p className="text-[9px] text-white/35">wants to start a private chat</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    {/* Actions */}
+                    <div className="flex items-center gap-1">
                       <button
                         onTouchStart={(e) => e.stopPropagation()}
                         onClick={() => { onAcceptChat?.(req.id, req.fromUserId, req.fromUsername); setRequestsOpen(false); }}
-                        className="px-2 py-1 rounded-full font-black text-[9px] transition-all hover:brightness-110"
+                        className="flex-1 py-1.5 rounded-lg font-black text-[9px] transition-all hover:brightness-110 active:scale-95"
                         style={{
-                          background: "rgba(0,200,83,0.15)", border: "1px solid rgba(0,200,83,0.3)", color: "#00C853",
-                          minHeight: "28px", touchAction: "manipulation",
+                          background: "rgba(0,200,83,0.18)", border: "1px solid rgba(0,200,83,0.35)", color: "#00C853",
+                          minHeight: 30, touchAction: "manipulation",
                         }}
                       >
-                        Accept
+                        ✓ Accept
                       </button>
                       <button
                         onTouchStart={(e) => e.stopPropagation()}
                         onClick={() => { onDeclineChat?.(req.id, req.fromUserId); }}
-                        className="px-2 py-1 rounded-full font-black text-[9px] transition-all hover:brightness-110"
+                        className="flex-1 py-1.5 rounded-lg font-black text-[9px] transition-all hover:brightness-110 active:scale-95"
                         style={{
-                          background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)",
-                          minHeight: "28px", touchAction: "manipulation",
+                          background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)",
+                          minHeight: 30, touchAction: "manipulation",
                         }}
                       >
                         Decline
+                      </button>
+                      <button
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onClick={() => { onBlockUser?.(req.fromUserId); onDeclineChat?.(req.id, req.fromUserId); }}
+                        className="py-1.5 px-2 rounded-lg font-black text-[9px] transition-all hover:brightness-110 active:scale-95"
+                        style={{
+                          background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "rgba(239,68,68,0.8)",
+                          minHeight: 30, touchAction: "manipulation",
+                        }}
+                      >
+                        Block
                       </button>
                     </div>
                   </div>
@@ -479,67 +518,55 @@ export default function WorldHUD({
         onDismiss={() => setChatWarningVisible(false)}
       />
 
-      {/* ── Outgoing chat request status ─────────────────────── */}
+      {/* ── Outgoing chat request status toast — bottom-right, compact, non-blocking ── */}
       <AnimatePresence>
         {outgoingStatus && (
           <motion.div
             key={`out-${outgoingStatus.status}`}
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            transition={{ duration: 0.3 }}
-            className="fixed left-1/2 z-[86] pointer-events-auto"
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.25 }}
+            className="fixed z-[58] pointer-events-auto"
             style={{
-              transform: "translateX(-50%)",
-              top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 90px)" : "100px",
+              bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 90px)" : "100px",
+              right: isMobile ? "12px" : "20px",
+              maxWidth: "220px",
             }}
           >
             <div
-              className="rounded-xl px-4 py-2 shadow-lg max-w-[85vw] relative"
+              className="rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 relative"
               style={{
-                background: outgoingStatus.status === "pending"
-                  ? "rgba(0,200,83,0.12)"
-                  : outgoingStatus.status === "accepted"
-                  ? "rgba(0,200,83,0.15)"
-                  : outgoingStatus.status === "expired"
-                  ? "rgba(100,100,100,0.12)"
-                  : "rgba(239,68,68,0.12)",
+                background: "rgba(10,8,28,0.92)",
                 border: `1px solid ${
-                  outgoingStatus.status === "pending"
-                    ? "rgba(0,200,83,0.3)"
-                    : outgoingStatus.status === "accepted"
-                    ? "rgba(0,200,83,0.4)"
-                    : outgoingStatus.status === "expired"
-                    ? "rgba(150,150,150,0.2)"
-                    : "rgba(239,68,68,0.2)"
+                  outgoingStatus.status === "pending" ? "rgba(0,200,83,0.35)"
+                  : outgoingStatus.status === "accepted" ? "rgba(0,200,83,0.45)"
+                  : outgoingStatus.status === "blocked" ? "rgba(239,68,68,0.35)"
+                  : "rgba(150,150,150,0.2)"
                 }`,
-                backdropFilter: "blur(12px)",
+                backdropFilter: "blur(14px)",
               }}
             >
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-white leading-tight truncate">
+                  {outgoingStatus.status === "pending" && "Request Sent ✓"}
+                  {outgoingStatus.status === "accepted" && "Chat Accepted! 🎉"}
+                  {outgoingStatus.status === "declined" && "Request Declined"}
+                  {outgoingStatus.status === "expired" && "Request Expired"}
+                  {outgoingStatus.status === "blocked" && "Cannot Send Request"}
+                </p>
+                <p className="text-[9px] text-white/40 truncate">
+                  {outgoingStatus.toUsername || "User"}
+                </p>
+              </div>
               <button
                 onTouchStart={(e) => e.stopPropagation()}
                 onClick={() => onClearOutgoingStatus?.()}
-                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
-                style={{
-                  color: "rgba(255,255,255,0.4)",
-                  minWidth: 24,
-                  minHeight: 24,
-                  touchAction: "manipulation",
-                }}
+                className="w-5 h-5 flex-shrink-0 rounded-full flex items-center justify-center hover:bg-white/10"
+                style={{ color: "rgba(255,255,255,0.4)", touchAction: "manipulation", minWidth: 20, minHeight: 20 }}
               >
                 <X className="w-3 h-3" />
               </button>
-              <p className="text-xs font-bold text-white pr-5">
-                {outgoingStatus.status === "pending" && `Request sent to ${outgoingStatus.toUsername || "user"}...`}
-                {outgoingStatus.status === "accepted" && `${outgoingStatus.toUsername || "User"} accepted! Opening chat.`}
-                {outgoingStatus.status === "declined" && `${outgoingStatus.toUsername || "User"} declined.`}
-                {outgoingStatus.status === "expired" && `Request to ${outgoingStatus.toUsername || "user"} expired.`}
-                {outgoingStatus.status === "blocked" && `Cannot send request to ${outgoingStatus.toUsername || "user"}.`}
-              </p>
-              <p className="text-[9px] text-white/40 mt-0.5 pr-5">
-                {outgoingStatus.status === "pending" && "Waiting for response..."}
-                {outgoingStatus.status === "expired" && "No response received"}
-              </p>
             </div>
           </motion.div>
         )}
@@ -1228,21 +1255,7 @@ export default function WorldHUD({
         )}
       </AnimatePresence>
 
-      {/* ── Incoming Chat Request ──────────────────────────────── */}
-      <IncomingChatRequest
-        request={incomingRequest}
-        onAccept={() => {
-          if (incomingRequest) {
-            onAcceptChat(incomingRequest.id, incomingRequest.fromUserId, incomingRequest.fromUsername);
-          }
-        }}
-        onDecline={() => {
-          if (incomingRequest) {
-            onDeclineChat(incomingRequest.id, incomingRequest.fromUserId);
-          }
-        }}
-        isMobile={isMobile}
-      />
+      {/* Incoming chat requests now routed to bell notification dropdown only — no floating modal */}
 
       {/* ── Private Chat Panel ──────────────────────────────────── */}
       <PrivateChatPanel
