@@ -341,48 +341,48 @@ export function createCosmicSky(scene) {
   //  - Size boosted vs previous values so they read clearly from gameplay distance.
   const PLANET_DEFS = [
     {
-      // MEGA — large purple ringed planet. NW upper sky. Faster drift (shows movement).
+      // MEGA — large purple ringed planet. Left sky.
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
-      size: isMobile ? 52 : 72,
-      angleOffset: Math.PI * 0.80,   // NW arc
-      horizonY: 50,                  // high in sky — well above buildings
-      radius: 58,                    // close enough to be large on screen
-      orbitSpeed: (Math.PI * 2) / 90, // 1 revolution per 90s
+      size: isMobile ? 60 : 85,
+      angleOffset: Math.PI * 0.80,
+      horizonY: 18,   // 18 units above camera eye — clearly in upper viewport
+      radius: 55,
+      orbitSpeed: (Math.PI * 2) / 90,
     },
     {
-      // WEST — blue gas giant. NE upper sky. Slower drift (feels fixed).
+      // WEST — blue gas giant. Right sky.
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
-      size: isMobile ? 38 : 54,
-      angleOffset: Math.PI * 0.30,   // NE arc — opposite side from mega
-      horizonY: 44,                  // slightly lower than mega but still upper sky
-      radius: 70,                    // farther = slightly smaller on screen
-      orbitSpeed: (Math.PI * 2) / 180, // very slow — 1 rev per 3 minutes
+      size: isMobile ? 44 : 62,
+      angleOffset: Math.PI * 0.30,
+      horizonY: 14,   // slightly lower — feels layered
+      radius: 60,
+      orbitSpeed: (Math.PI * 2) / 180,
     },
     {
-      // GREEN — emerald planet. SE-to-north arc. Visible from beach + plaza.
+      // GREEN — emerald planet. Back-right sky.
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
-      size: isMobile ? 34 : 46,
-      angleOffset: Math.PI * 1.55,   // SE arc — visible from beach looking up
-      horizonY: 48,
-      radius: 62,
-      orbitSpeed: (Math.PI * 2) / 150, // medium drift
+      size: isMobile ? 38 : 52,
+      angleOffset: Math.PI * 1.55,
+      horizonY: 16,
+      radius: 58,
+      orbitSpeed: (Math.PI * 2) / 150,
     },
     {
-      // CRIMSON — red storm planet. SW upper sky. Slower fixed presence.
+      // CRIMSON — red storm planet. Back-left sky.
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
-      size: isMobile ? 42 : 58,
-      angleOffset: Math.PI * 1.20,   // SW arc — completes the 4-quadrant spread
-      horizonY: 54,                  // highest of the 4 — deep upper sky
-      radius: 65,
-      orbitSpeed: (Math.PI * 2) / 200, // slowest — feels like a fixed star
+      size: isMobile ? 48 : 68,
+      angleOffset: Math.PI * 1.20,
+      horizonY: 20,   // highest of the 4
+      radius: 62,
+      orbitSpeed: (Math.PI * 2) / 200,
     },
   ];
 
