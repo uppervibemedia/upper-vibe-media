@@ -12,7 +12,7 @@ import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs
 import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
 import { createCrystalZone, animateCrystalZone, activateCrystalZone } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
-import { createCosmicSky, animateCosmicSky, drawFlybyOverlay } from "./CosmicSkySystem";
+import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
 import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
 import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
@@ -1120,7 +1120,6 @@ function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
   const canvasRef = useRef(null);
-  const overlayCanvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileResetKey, setMobileResetKey] = useState(0);
@@ -2139,19 +2138,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         renderer.render(scene, camera);
-
-        // ─── 2D FLYBY OVERLAY — drawn after WebGL render, zero 3D depth conflict ──
-        const oc = overlayCanvasRef.current;
-        if (oc) {
-          const cw = renderer.domElement.clientWidth || renderer.domElement.width || window.innerWidth;
-          const ch = renderer.domElement.clientHeight || renderer.domElement.height || window.innerHeight;
-          if (cw > 0 && ch > 0 && (oc.width !== cw || oc.height !== ch)) {
-            oc.width = cw;
-            oc.height = ch;
-          }
-          drawFlybyOverlay(scene, oc);
-        }
-
         frameRef.current++;
 
         // Track lock transitions for cleanup
@@ -2380,16 +2366,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         ref={canvasRef}
         className="w-full h-full block"
         style={{ touchAction: "none" }}
-      />
-      {/* 2D overlay for beach flyby planets — drawn in screen-space, never in 3D depth */}
-      <canvas
-        ref={overlayCanvasRef}
-        style={{
-          position: "absolute", inset: 0,
-          width: "100%", height: "100%",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
       />
       {/* Mobile controls rendered by parent (UpperVibeCity) */}
     </div>
