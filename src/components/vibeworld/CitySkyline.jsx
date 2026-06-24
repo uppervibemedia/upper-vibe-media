@@ -447,7 +447,7 @@ export default function createCitySkyline(scene) {
   // ── Spread-out signs — evenly distributed across the skyline ───
   // West wall runs z=-35 to z=+11. Stage pair is at z=-32.
   // Mid-west: z=-11 (halfway along wall), Far-west end: z=+7
-  const wMid = makeFacadeSign("VIBE HIGHER", "#C43BFF", "#9B00FF", 4.2, 0.85);
+  const wMid = makeFacadeSign("Manifest Mode", "#C43BFF", "#9B00FF", 4.2, 0.85);
   wMid.position.set(W_FACE_X, SIGN_Y, -11);
   wMid.rotation.y = Math.PI / 2;
   scene.add(wMid);
@@ -459,7 +459,7 @@ export default function createCitySkyline(scene) {
 
   // East wall runs z=-35 to z=+11. Stage pair is at z=-32.
   // Mid-east: z=-11 (halfway along wall), Far-east end: z=+7
-  const eMid = makeFacadeSign("FREQUENCY OF THE FUTURE", "#A078FF", "#7C3AED", 6.5, 0.85);
+  const eMid = makeFacadeSign("Vibe Aware", "#A078FF", "#7C3AED", 4.0, 0.85);
   eMid.position.set(E_FACE_X, SIGN_Y, -11);
   eMid.rotation.y = -Math.PI / 2;
   scene.add(eMid);
