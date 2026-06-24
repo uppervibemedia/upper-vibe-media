@@ -206,11 +206,10 @@ function buildFemaleCasual(C) {
 
   // Arms
   const armGeo = new THREE.CapsuleGeometry(0.056, 0.37, 4, 8);
-  // Move arm pivot outward so hands naturally hang clear of the torso
-  const armL = new THREE.Group(); armL.name = "armL"; armL.position.set(0.215, 0.10, 0);
+  const armL = new THREE.Group(); armL.name = "armL"; armL.position.set(0.215, -0.02, 0);
   const armLMesh = new THREE.Mesh(armGeo, mat(C.shirt, { roughness: 0.65 }));
   armLMesh.rotation.z = 0.08; armLMesh.castShadow = true; armL.add(armLMesh);
-  const armR = new THREE.Group(); armR.name = "armR"; armR.position.set(-0.215, 0.10, 0);
+  const armR = new THREE.Group(); armR.name = "armR"; armR.position.set(-0.215, -0.02, 0);
   const armRMesh = new THREE.Mesh(armGeo, mat(C.shirt, { roughness: 0.65 }));
   armRMesh.rotation.z = -0.08; armRMesh.castShadow = true; armR.add(armRMesh);
   torsoGroup.add(armL, armR);
