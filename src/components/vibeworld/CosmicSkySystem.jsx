@@ -392,191 +392,314 @@ export function createCosmicSky(scene) {
   }
 
   const planets = PLANET_DEFS.map((def, defIdx) => {
-    const S = 256;
+    // High-res 512px canvas texture
+    const S = 512;
     const pc = document.createElement("canvas");
     pc.width = S; pc.height = S;
     const pctx = pc.getContext("2d");
     const rng = seededRand(defIdx * 7919 + 1337);
-    const R = S * 0.30;
+    const R = S * 0.32;
     const cx = S / 2, cy = S / 2;
 
-    // Atmospheric halo
-    const haloG = pctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.65);
-    haloG.addColorStop(0, def.glowColor);
-    haloG.addColorStop(1, "rgba(0,0,0,0)");
+    // ── Wide atmospheric halo (glow corona) ──
+    const haloG = pctx.createRadialGradient(cx, cy, R * 0.85, cx, cy, R * 2.0);
+    haloG.addColorStop(0,   def.glowColor);
+    haloG.addColorStop(0.4, def.glowColor.replace(/[\d.]+\)$/, "0.22)"));
+    haloG.addColorStop(1,   "rgba(0,0,0,0)");
     pctx.fillStyle = haloG;
     pctx.fillRect(0, 0, S, S);
 
-    // Planet body
-    const bodyG = pctx.createRadialGradient(cx - R*0.28, cy - R*0.26, R*0.04, cx, cy, R);
+    // ── Deep space rim glow (secondary outer halo) ──
+    const rimG = pctx.createRadialGradient(cx, cy, R * 1.1, cx, cy, R * 1.7);
+    rimG.addColorStop(0,   def.glowColor.replace(/[\d.]+\)$/, "0.12)"));
+    rimG.addColorStop(1,   "rgba(0,0,0,0)");
+    pctx.fillStyle = rimG;
+    pctx.fillRect(0, 0, S, S);
+
+    // ── Planet body — multi-stop radial for photorealistic depth ──
+    const bodyG = pctx.createRadialGradient(cx - R*0.30, cy - R*0.28, R*0.02, cx + R*0.08, cy + R*0.08, R * 1.02);
     bodyG.addColorStop(0,    def.bodyColors[4]);
-    bodyG.addColorStop(0.25, def.bodyColors[3]);
-    bodyG.addColorStop(0.55, def.bodyColors[2]);
-    bodyG.addColorStop(0.78, def.bodyColors[1]);
-    bodyG.addColorStop(1,    def.bodyColors[0]);
+    bodyG.addColorStop(0.18, def.bodyColors[4]);
+    bodyG.addColorStop(0.38, def.bodyColors[3]);
+    bodyG.addColorStop(0.60, def.bodyColors[2]);
+    bodyG.addColorStop(0.80, def.bodyColors[1]);
+    bodyG.addColorStop(1.0,  def.bodyColors[0]);
     pctx.beginPath();
     pctx.arc(cx, cy, R, 0, Math.PI * 2);
     pctx.fillStyle = bodyG;
     pctx.fill();
 
-    // Surface texture per planet
+    // ── Surface detail — clipped to sphere ──
     pctx.save();
     pctx.beginPath();
     pctx.arc(cx, cy, R, 0, Math.PI * 2);
     pctx.clip();
 
     if (def.id === "mega") {
-      for (let b = 0; b < 9; b++) {
-        const by = cy - R + (b / 8) * R * 2;
-        const bw = R * (0.06 + rng() * 0.10);
-        const alpha = 0.06 + rng() * 0.10;
+      // Gas giant bands — 14 varied bands with width jitter
+      for (let b = 0; b < 14; b++) {
+        const by = cy - R + (b / 13) * R * 2;
+        const bw = R * (0.028 + rng() * 0.065);
+        const alpha = 0.10 + rng() * 0.18;
+        const r2 = 160 + Math.floor(rng() * 95);
+        const g2 =  60 + Math.floor(rng() * 50);
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
-        bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${80 + Math.floor(rng()*40)},255,${alpha})`);
-        bandG.addColorStop(1, "rgba(0,0,0,0)");
+        bandG.addColorStop(0,   "rgba(0,0,0,0)");
+        bandG.addColorStop(0.35, `rgba(${r2},${g2},255,${alpha})`);
+        bandG.addColorStop(0.65, `rgba(${r2},${g2},255,${alpha * 0.7})`);
+        bandG.addColorStop(1,   "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
+      // Great storm oval
       pctx.save();
-      pctx.translate(cx + R * 0.15, cy + R * 0.12);
+      pctx.translate(cx - R * 0.18, cy + R * 0.08);
       pctx.scale(1, 0.55);
+      const stormG = pctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.22);
+      stormG.addColorStop(0, "rgba(255,210,255,0.55)");
+      stormG.addColorStop(0.5, "rgba(200,100,255,0.28)");
+      stormG.addColorStop(1, "rgba(0,0,0,0)");
+      pctx.fillStyle = stormG;
       pctx.beginPath();
-      pctx.arc(0, 0, R * 0.16, 0, Math.PI * 2);
-      pctx.fillStyle = "rgba(255,180,255,0.18)";
+      pctx.arc(0, 0, R * 0.22, 0, Math.PI * 2);
       pctx.fill();
-      pctx.strokeStyle = "rgba(220,140,255,0.22)";
-      pctx.lineWidth = 2;
-      pctx.stroke();
       pctx.restore();
+      // Swirl wisps
+      for (let w = 0; w < 5; w++) {
+        const wx = cx + (rng() - 0.5) * R * 1.6;
+        const wy = cy + (rng() - 0.5) * R * 1.4;
+        const wr = R * (0.06 + rng() * 0.10);
+        const wg = pctx.createRadialGradient(wx, wy, 0, wx, wy, wr);
+        wg.addColorStop(0, `rgba(220,180,255,${0.12 + rng() * 0.10})`);
+        wg.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = wg;
+        pctx.beginPath();
+        pctx.ellipse(wx, wy, wr, wr * 0.4, rng() * Math.PI, 0, Math.PI * 2);
+        pctx.fill();
+      }
     } else if (def.id === "west") {
-      for (let b = 0; b < 8; b++) {
-        const by = cy - R + (b / 7) * R * 2;
-        const bw = R * (0.05 + rng() * 0.09);
-        const alpha = 0.07 + rng() * 0.09;
+      // Blue gas giant — banded + polar vortex
+      for (let b = 0; b < 12; b++) {
+        const by = cy - R + (b / 11) * R * 2;
+        const bw = R * (0.032 + rng() * 0.055);
+        const alpha = 0.08 + rng() * 0.14;
+        const g2 = 160 + Math.floor(rng() * 80);
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
-        bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(${80 + Math.floor(rng()*60)},${180 + Math.floor(rng()*60)},255,${alpha})`);
-        bandG.addColorStop(1, "rgba(0,0,0,0)");
+        bandG.addColorStop(0,   "rgba(0,0,0,0)");
+        bandG.addColorStop(0.4, `rgba(80,${g2},255,${alpha})`);
+        bandG.addColorStop(1,   "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
-    } else if (def.id === "east") {
-      for (let p = 0; p < 14; p++) {
-        const px2 = cx + (rng() - 0.5) * R * 1.7;
-        const py2 = cy + (rng() - 0.5) * R * 1.7;
-        const pr = R * (0.06 + rng() * 0.18);
-        const pG = pctx.createRadialGradient(px2, py2, 0, px2, py2, pr);
-        pG.addColorStop(0, `rgba(${180 + Math.floor(rng()*60)},${100 + Math.floor(rng()*60)},${20 + Math.floor(rng()*40)},${0.06 + rng() * 0.11})`);
-        pG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = pG;
-        pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
+      // Polar ice cap — north pole bright
+      const polarG = pctx.createRadialGradient(cx, cy - R * 0.72, 0, cx, cy - R * 0.72, R * 0.38);
+      polarG.addColorStop(0, "rgba(200,230,255,0.38)");
+      polarG.addColorStop(1, "rgba(0,0,0,0)");
+      pctx.fillStyle = polarG;
+      pctx.fillRect(0, 0, S, S);
+      // Cyclone swirls
+      for (let w = 0; w < 4; w++) {
+        const wx = cx + (rng() - 0.5) * R * 1.4;
+        const wy = cy + (rng() - 0.5) * R * 1.2;
+        const wr = R * (0.05 + rng() * 0.09);
+        const wg = pctx.createRadialGradient(wx, wy, 0, wx, wy, wr);
+        wg.addColorStop(0, `rgba(150,220,255,${0.18 + rng() * 0.14})`);
+        wg.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = wg;
+        pctx.beginPath();
+        pctx.ellipse(wx, wy, wr, wr * 0.5, rng() * Math.PI, 0, Math.PI * 2);
+        pctx.fill();
       }
     } else if (def.id === "green") {
-      for (let p = 0; p < 8; p++) {
-        const px2 = cx + (rng() - 0.5) * R * 1.4;
-        const py2 = cy + (rng() - 0.5) * R * 1.4;
-        const pr = R * (0.10 + rng() * 0.22);
-        const pG = pctx.createRadialGradient(px2, py2, 0, px2, py2, pr);
-        pG.addColorStop(0, `rgba(${20 + Math.floor(rng()*40)},${160 + Math.floor(rng()*60)},${40 + Math.floor(rng()*40)},${0.14 + rng()*0.10})`);
-        pG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = pG;
-        pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
+      // Emerald world — continents + cloud swirls
+      for (let c = 0; c < 7; c++) {
+        const lx = cx + (rng() - 0.5) * R * 1.5;
+        const ly = cy + (rng() - 0.5) * R * 1.5;
+        const lr = R * (0.12 + rng() * 0.24);
+        const landG = pctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
+        landG.addColorStop(0, `rgba(${30 + Math.floor(rng()*40)},${180 + Math.floor(rng()*60)},${50 + Math.floor(rng()*40)},${0.28 + rng()*0.22})`);
+        landG.addColorStop(0.6, `rgba(20,${140 + Math.floor(rng()*50)},30,${0.12 + rng()*0.10})`);
+        landG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = landG;
+        pctx.beginPath();
+        pctx.ellipse(lx, ly, lr, lr * (0.5 + rng() * 0.5), rng() * Math.PI, 0, Math.PI * 2);
+        pctx.fill();
+      }
+      // Ocean shimmer
+      for (let o = 0; o < 4; o++) {
+        const ox = cx + (rng() - 0.5) * R * 1.6;
+        const oy = cy + (rng() - 0.5) * R * 1.6;
+        const or2 = R * (0.08 + rng() * 0.14);
+        const og = pctx.createRadialGradient(ox, oy, 0, ox, oy, or2);
+        og.addColorStop(0, `rgba(40,160,200,${0.22 + rng()*0.14})`);
+        og.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = og;
+        pctx.beginPath();
+        pctx.arc(ox, oy, or2, 0, Math.PI * 2);
+        pctx.fill();
+      }
+      // Cloud wisps
+      for (let w = 0; w < 5; w++) {
+        const wx = cx + (rng() - 0.5) * R * 1.5;
+        const wy = cy + (rng() - 0.5) * R * 1.3;
+        const wr = R * (0.06 + rng() * 0.10);
+        const wg = pctx.createRadialGradient(wx, wy, 0, wx, wy, wr);
+        wg.addColorStop(0, `rgba(220,255,240,${0.16 + rng()*0.12})`);
+        wg.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = wg;
+        pctx.beginPath();
+        pctx.ellipse(wx, wy, wr, wr * 0.35, rng() * Math.PI, 0, Math.PI * 2);
+        pctx.fill();
       }
     } else if (def.id === "crimson") {
-      for (let b = 0; b < 7; b++) {
-        const by = cy - R + (b / 6) * R * 2;
-        const bw = R * (0.03 + rng() * 0.06);
-        pctx.fillStyle = `rgba(255,${60 + Math.floor(rng()*60)},0,${0.08 + rng() * 0.12})`;
+      // Red storm world — lava cracks + hurricane storms
+      for (let b = 0; b < 10; b++) {
+        const by = cy - R + (b / 9) * R * 2;
+        const bw = R * (0.025 + rng() * 0.055);
+        const alpha = 0.10 + rng() * 0.16;
+        const r2 = 200 + Math.floor(rng() * 55);
+        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
+        bandG.addColorStop(0,   "rgba(0,0,0,0)");
+        bandG.addColorStop(0.4, `rgba(${r2},${40 + Math.floor(rng()*40)},10,${alpha})`);
+        bandG.addColorStop(1,   "rgba(0,0,0,0)");
+        pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
-      for (let h = 0; h < 6; h++) {
-        const hx = cx + (rng() - 0.5) * R * 1.5;
-        const hy = cy + (rng() - 0.5) * R * 1.5;
-        const hr = R * (0.04 + rng() * 0.10);
-        const hG = pctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
-        hG.addColorStop(0, `rgba(255,${120 + Math.floor(rng()*100)},0,${0.18 + rng()*0.14})`);
-        hG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = hG;
+      // Lava crack veins
+      for (let v = 0; v < 8; v++) {
+        const vx1 = cx + (rng() - 0.5) * R * 1.8;
+        const vy1 = cy + (rng() - 0.5) * R * 1.8;
+        const vx2 = vx1 + (rng() - 0.5) * R * 0.6;
+        const vy2 = vy1 + (rng() - 0.5) * R * 0.6;
+        pctx.strokeStyle = `rgba(255,${100 + Math.floor(rng()*80)},0,${0.20 + rng()*0.18})`;
+        pctx.lineWidth = 0.8 + rng() * 1.4;
         pctx.beginPath();
-        pctx.arc(hx, hy, hr, 0, Math.PI * 2);
+        pctx.moveTo(vx1, vy1);
+        pctx.quadraticCurveTo(cx + (rng() - 0.5) * R, cy + (rng() - 0.5) * R, vx2, vy2);
+        pctx.stroke();
+      }
+      // Hurricane eye
+      for (let h = 0; h < 4; h++) {
+        const hx2 = cx + (rng() - 0.5) * R * 1.2;
+        const hy2 = cy + (rng() - 0.5) * R * 1.2;
+        const hr2 = R * (0.06 + rng() * 0.12);
+        const hG2 = pctx.createRadialGradient(hx2, hy2, 0, hx2, hy2, hr2);
+        hG2.addColorStop(0, `rgba(255,${180 + Math.floor(rng()*75)},50,${0.30 + rng()*0.20})`);
+        hG2.addColorStop(0.5, `rgba(200,60,0,${0.14 + rng()*0.10})`);
+        hG2.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = hG2;
+        pctx.beginPath();
+        pctx.arc(hx2, hy2, hr2, 0, Math.PI * 2);
         pctx.fill();
       }
     }
     pctx.restore();
 
-    // Terminator shadow
+    // ── Deep terminator shadow (day/night boundary) ──
     pctx.save();
     pctx.beginPath();
     pctx.arc(cx, cy, R, 0, Math.PI * 2);
     pctx.clip();
-    const shadowG = pctx.createRadialGradient(cx + R*0.45, cy + R*0.45, R*0.05, cx + R*0.65, cy + R*0.65, R*1.1);
-    shadowG.addColorStop(0, "rgba(0,0,0,0)");
-    shadowG.addColorStop(0.55, "rgba(0,0,0,0.18)");
-    shadowG.addColorStop(1, "rgba(0,0,0,0.62)");
+    const shadowG = pctx.createRadialGradient(
+      cx + R * 0.38, cy + R * 0.40, R * 0.02,
+      cx + R * 0.60, cy + R * 0.62, R * 1.15
+    );
+    shadowG.addColorStop(0,    "rgba(0,0,0,0)");
+    shadowG.addColorStop(0.45, "rgba(0,0,0,0.12)");
+    shadowG.addColorStop(0.72, "rgba(0,0,0,0.45)");
+    shadowG.addColorStop(1,    "rgba(0,0,0,0.82)");
     pctx.fillStyle = shadowG;
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
-    // Specular highlight
+    // ── Specular highlight (sunlit limb) ──
     pctx.save();
     pctx.beginPath();
     pctx.arc(cx, cy, R, 0, Math.PI * 2);
     pctx.clip();
-    const specG = pctx.createRadialGradient(cx - R*0.38, cy - R*0.34, 0, cx - R*0.38, cy - R*0.34, R*0.45);
-    specG.addColorStop(0, "rgba(255,255,255,0.18)");
-    specG.addColorStop(1, "rgba(0,0,0,0)");
+    const specG = pctx.createRadialGradient(cx - R*0.40, cy - R*0.36, 0, cx - R*0.40, cy - R*0.36, R*0.55);
+    specG.addColorStop(0,   "rgba(255,255,255,0.28)");
+    specG.addColorStop(0.4, "rgba(255,255,255,0.10)");
+    specG.addColorStop(1,   "rgba(0,0,0,0)");
     pctx.fillStyle = specG;
+    pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+    // Limb brightening — thin bright edge on lit side
+    const limbG = pctx.createRadialGradient(cx, cy, R * 0.88, cx, cy, R);
+    limbG.addColorStop(0, "rgba(0,0,0,0)");
+    limbG.addColorStop(1, "rgba(255,255,255,0.06)");
+    pctx.fillStyle = limbG;
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
-    // Ring for mega planet
+    // ── Ring system (mega planet + subtle ring on crimson) ──
     if (def.id === "mega") {
+      // Draw 3-band ring system
+      const ringData = [
+        { r: R * 1.38, w: S * 0.032, color: "rgba(200,140,255,0.60)" },
+        { r: R * 1.56, w: S * 0.018, color: "rgba(180,110,255,0.35)" },
+        { r: R * 1.70, w: S * 0.012, color: "rgba(220,180,255,0.22)" },
+      ];
+      for (const ring of ringData) {
+        pctx.save();
+        pctx.translate(cx, cy);
+        pctx.scale(1, 0.26);
+        pctx.beginPath();
+        pctx.arc(0, 0, ring.r, 0, Math.PI * 2);
+        pctx.strokeStyle = ring.color;
+        pctx.lineWidth = ring.w;
+        pctx.stroke();
+        pctx.restore();
+      }
+    }
+    if (def.id === "crimson") {
       pctx.save();
       pctx.translate(cx, cy);
-      pctx.scale(1, 0.28);
+      pctx.scale(1, 0.20);
       pctx.beginPath();
-      pctx.arc(0, 0, R * 1.46, 0, Math.PI * 2);
-      pctx.strokeStyle = def.ringColor;
-      pctx.lineWidth = S * 0.045;
-      pctx.stroke();
-      pctx.beginPath();
-      pctx.arc(0, 0, R * 1.65, 0, Math.PI * 2);
-      pctx.strokeStyle = "rgba(200,140,255,0.18)";
-      pctx.lineWidth = S * 0.022;
+      pctx.arc(0, 0, R * 1.30, 0, Math.PI * 2);
+      pctx.strokeStyle = "rgba(200,80,20,0.30)";
+      pctx.lineWidth = S * 0.012;
       pctx.stroke();
       pctx.restore();
     }
 
     const ptex = new THREE.CanvasTexture(pc);
-    ptex.minFilter = THREE.LinearFilter;
-    ptex.generateMipmaps = false;
+    ptex.minFilter = THREE.LinearMipmapLinearFilter;
+    ptex.magFilter = THREE.LinearFilter;
+    ptex.generateMipmaps = true;
+    ptex.colorSpace = THREE.SRGBColorSpace;
 
-    const pmat = new THREE.SpriteMaterial({
+    // ── Use Mesh+PlaneGeometry instead of Sprite for manual billboarding + self-rotation ──
+    const pmat = new THREE.MeshBasicMaterial({
       map: ptex,
       transparent: true,
       opacity: 1.0,
       depthWrite: false,
-      depthTest: false,   // always draw — never hidden by depth buffer
-      sizeAttenuation: true,
+      depthTest: false,
+      side: THREE.FrontSide,
     });
-    const psprite = new THREE.Sprite(pmat);
-    psprite.scale.set(def.size, def.size, 1);
-    psprite.frustumCulled = false;  // never culled by frustum
-    psprite.renderOrder = 20;       // above skybox(-10), above starfield(1), above world
-    scene.add(psprite);
+    const pmesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(def.size, def.size),
+      pmat
+    );
+    pmesh.frustumCulled = false;
+    pmesh.renderOrder = 20;
+    scene.add(pmesh);
 
     if (SKY_DEBUG) {
-      console.log(`[SkyDebug] Planet "${def.id}" created — renderOrder:20, frustumCulled:false, depthTest:false`);
+      console.log(`[SkyDebug] Planet "${def.id}" created — Mesh/Plane, renderOrder:20, frustumCulled:false`);
     }
 
     return {
-      sprite: psprite,
+      mesh: pmesh,
       mat: pmat,
       angleOffset: def.angleOffset,
       horizonY: def.horizonY,
       radius: def.radius,
       orbitSpeed: def.orbitSpeed,
+      spinSpeed: def.orbitSpeed * (0.8 + defIdx * 0.4), // unique self-rotation speed
       id: def.id,
+      size: def.size,
     };
   });
   scene.userData.horizonPlanets = planets;
@@ -776,35 +899,31 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const skyFrame = scene.userData._skyFrame;
   const updateSlow = !isMobile || skyFrame % 3 === 0;
 
-  // ── Upper Sky Planets — camera-relative, always inside far clip ──────────────
-  // Each planet uses its own orbitSpeed so they drift independently.
-  // horizonY is camera-relative so they stay at a fixed apparent sky height
-  // regardless of player position or terrain elevation.
+  // ── Upper Sky Planets — camera-relative, billboarded, self-rotating ──────────
   const horizonPlanets = scene.userData.horizonPlanets;
   if (horizonPlanets) {
     for (const p of horizonPlanets) {
       const angle = t * p.orbitSpeed + p.angleOffset;
 
-      // Camera-relative position — ALWAYS inside far clip plane.
-      // Y offset keeps planet clearly above buildings from any viewpoint.
-      const cx = camera.position.x + Math.sin(angle) * p.radius;
-      const cz = camera.position.z + Math.cos(angle) * p.radius;
-      // Gentle vertical bob (0.8u amplitude) so planet feels alive, not locked
-      const cy = camera.position.y + p.horizonY + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
-      p.sprite.position.set(cx, cy, cz);
+      // Camera-relative position — always inside far clip plane
+      const px2 = camera.position.x + Math.sin(angle) * p.radius;
+      const pz2 = camera.position.z + Math.cos(angle) * p.radius;
+      const py2 = camera.position.y + p.horizonY + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
+      p.mesh.position.set(px2, py2, pz2);
+
+      // Billboard: face the camera (copy camera quaternion so plane always faces us)
+      p.mesh.quaternion.copy(camera.quaternion);
+
+      // Self-rotation on Z axis (spin the planet texture slowly)
+      p.mesh.rotateZ(p.spinSpeed * dt * 0.5);
+
       p.mat.opacity = 1.0;
     }
 
     if (SKY_DEBUG && skyFrame % 120 === 0) {
-      const cam = camera;
-      console.log("[SkyDebug] Camera position:", cam.position.x.toFixed(1), cam.position.y.toFixed(1), cam.position.z.toFixed(1));
-      console.log("[SkyDebug] Camera far:", cam.far);
       for (const p of horizonPlanets) {
-        const d = p.sprite.position.distanceTo(cam.position);
-        console.log(`[SkyDebug] Planet "${p.id}" world pos:`,
-          p.sprite.position.x.toFixed(1), p.sprite.position.y.toFixed(1), p.sprite.position.z.toFixed(1),
-          "dist from cam:", d.toFixed(1), "renderOrder:", p.sprite.renderOrder,
-          "frustumCulled:", p.sprite.frustumCulled, "opacity:", p.mat.opacity.toFixed(2));
+        const d = p.mesh.position.distanceTo(camera.position);
+        console.log(`[SkyDebug] Planet "${p.id}" dist:`, d.toFixed(1), "renderOrder:", p.mesh.renderOrder);
       }
     }
   }
