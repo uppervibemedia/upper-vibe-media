@@ -17,6 +17,7 @@ import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 
 import RecentlyPlayedRow from "../components/home/RecentlyPlayedRow";
+import UpperVibeCityPreview from "../components/vibeworld/UpperVibeCityPreview";
 import LatestMusicSection from "../components/home/LatestMusicSection";
 import YourFrequencyFeed from "../components/home/YourFrequencyFeed";
 import ListenerFrequencyDashboard from "../components/home/ListenerFrequencyDashboard";
@@ -434,6 +435,11 @@ export default function Home() {
 
           </div>
         </div>
+      </section>
+
+      {/* ── UPPER VIBE CITY PREVIEW ── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-6">
+        <UpperVibeCityPreview variant="home" />
       </section>
 
       {/* ── RECENTLY PLAYED — only for logged-in users with history ── */}
