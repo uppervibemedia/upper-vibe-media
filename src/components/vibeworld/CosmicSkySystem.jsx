@@ -319,7 +319,7 @@ export function createCosmicSky(scene) {
       active: false, life: 0, maxLife: 0,
       vx: 0, vy: 0, vz: 0,
       nextFire: performance.now() * 0.001 + 20 + Math.random() * 10,
-      interval: 120,
+      interval: 70,
     };
   }
 
@@ -1047,28 +1047,36 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const mega = scene.userData.megaAsteroid;
   if (mega) {
     if (!mega.active) {
-      if (t >= mega.nextFire) {
-        const fromLeft = Math.random() < 0.5;
-        mega.asprite.position.set(fromLeft ? -55 : 55, 18 + Math.random() * 6, 10 + Math.random() * 10);
-        mega.vx = (fromLeft ? 1 : -1) * (5 + Math.random() * 3);
-        mega.vy = -(1.5 + Math.random() * 1.0);
-        mega.vz = 2 + Math.random() * 2;
-        mega.maxLife = 7 + Math.random() * 3;
-        mega.life = mega.maxLife;
-        mega.active = true;
-        mega.amat.opacity = 0;
-        mega.tmat.opacity = 0;
-        const hSpd = Math.sqrt(mega.vx * mega.vx + mega.vz * mega.vz);
-        mega.asprite.material.rotation = Math.atan2(mega.vy, hSpd);
-        mega.tail.material.rotation    = mega.asprite.material.rotation;
-      }
+    if (t >= mega.nextFire) {
+      const fromLeft = Math.random() < 0.5;
+      // Start high in the sky above the city, dive toward the beach water (z ~38)
+      const startX = (fromLeft ? -1 : 1) * (50 + Math.random() * 15);
+      const startY = 55 + Math.random() * 20;  // very high — deep sky entry
+      const startZ = -30 + Math.random() * 20; // above city/stage
+      const targetX = (Math.random() - 0.5) * 30; // land near center beach
+      const targetZ = 38 + Math.random() * 8;      // splashdown in water
+      const targetY = -2;                           // below water line — disappears
+      const life = 5.5 + Math.random() * 1.5;
+      mega.asprite.position.set(startX, startY, startZ);
+      mega.vx = (targetX - startX) / life;
+      mega.vy = (targetY - startY) / life;
+      mega.vz = (targetZ - startZ) / life;
+      mega.maxLife = life;
+      mega.life = life;
+      mega.active = true;
+      mega.amat.opacity = 0;
+      mega.tmat.opacity = 0;
+      const hSpd = Math.sqrt(mega.vx * mega.vx + mega.vz * mega.vz);
+      mega.asprite.material.rotation = Math.atan2(mega.vy, hSpd);
+      mega.tail.material.rotation    = mega.asprite.material.rotation;
+    }
     } else {
       mega.life -= dt;
       if (mega.life <= 0) {
         mega.active = false;
         mega.amat.opacity = 0;
         mega.tmat.opacity = 0;
-        mega.nextFire = t + (mega.interval || 120) + Math.random() * 10;
+        mega.nextFire = t + (mega.interval || 70) + Math.random() * 8;
       } else {
         const prog = mega.life / mega.maxLife;
         const envelope = Math.min(prog * 5, 1) * Math.min((1 - prog) * 5, 1);

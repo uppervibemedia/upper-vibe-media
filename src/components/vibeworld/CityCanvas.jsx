@@ -2080,14 +2080,37 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
           let entry = remoteMap[remote.user_id];
           if (!entry) {
-            // Spawn new remote avatar — returns a controller Group immediately
-            const group = createRemoteAvatar(
-              scene, remote.user_id,
-              remote.username || "User",
-              remote.avatar_type || "neutral",
-              remote.skin_tone || "medium",
-              remote.avatar_style || "streetwear"
-            );
+            // Spawn new remote avatar using the same avatar type the remote user has selected
+            const remoteAvatarType = remote.avatar_type || "current";
+            let group;
+            if (remoteAvatarType === "test-mixamo" || remoteAvatarType === "test-mixamo-female") {
+              // Use Mixamo procedural avatar matching their chosen type
+              const remoteGender = remoteAvatarType === "test-mixamo-female" ? "female" : "male";
+              const remoteEntry = createMixamoAvatar(scene, {
+                spawnX: remote.pos_x || 0,
+                spawnY: SPAWN[1],
+                spawnZ: remote.pos_z || 0,
+                gender: remoteGender,
+                hairStyle: remoteGender === "female" ? "ponytail" : "short",
+                outfitColorKey: remote.outfit_color || null,
+                skinToneKey: remote.skin_tone || "medium",
+                isRemote: true,
+                username: remote.username || "User",
+              }, null);
+              group = remoteEntry.root;
+              group.name = `remote_${remote.user_id}`;
+              group.userData = { userId: remote.user_id };
+              group.userData._avatarEntry = remoteEntry;
+            } else {
+              // Default: Soldier GLB remote avatar
+              group = createRemoteAvatar(
+                scene, remote.user_id,
+                remote.username || "User",
+                remoteAvatarType,
+                remote.skin_tone || "medium",
+                remote.avatar_style || "streetwear"
+              );
+            }
             entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 } };
             remoteMap[remote.user_id] = entry;
           }
