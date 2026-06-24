@@ -692,19 +692,7 @@ export default function WorldHUD({
                 pointerEvents: !stageWatching || stageControlsVisible ? "auto" : "none",
               }}
             >
-              {/* Title pill — only when not watching and not in fullscreen (fullscreen has its own title) */}
-              {!stageWatching && !stageFullScreen && stageVideoTitle && (
-                <div
-                  className="px-3 py-1 rounded-full pointer-events-none"
-                  style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.08)" }}
-                >
-                  <p className="text-[9px] text-white/50 font-medium tracking-wider truncate max-w-[60vw] text-center">
-                    {isMobile
-                      ? stageVideoTitle.substring(0, 30) + (stageVideoTitle.length > 30 ? "…" : "")
-                      : `Now Showing: ${stageVideoTitle.substring(0, 44)}${stageVideoTitle.length > 44 ? "…" : ""}`}
-                  </p>
-                </div>
-              )}
+
 
               {/* Control bar */}
               <div
