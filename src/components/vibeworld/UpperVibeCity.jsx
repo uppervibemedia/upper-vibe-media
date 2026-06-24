@@ -478,7 +478,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // stageWatching does NOT lock movement — user should be able to walk away from the stage
   // even while the in-world embed is playing. Camera and joystick must remain active.
   const [ferrisRiding, setFerrisRiding] = useState(false);
-  const movementLocked = loungeInputFocused;
+  const movementLocked = loungeInputFocused || stageWatching;
 
   // ── Dance floor boundary — matches visual plaza edge (r=10.5) ─────────────
   // Audio fades in at the edge so music is audible as soon as the user reaches the floor.
