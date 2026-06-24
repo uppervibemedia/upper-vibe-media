@@ -226,11 +226,15 @@ function retintSkin(model, skinHex) {
   });
 }
 
-// View rotations
-// Procedural models face +Z by default (rotation.y=0 = front facing camera)
-const VIEW_ROT = { front: 0, side: Math.PI * 0.5, back: Math.PI };
-// Soldier GLB built with rotation.y=PI to face camera
-const VIEW_ROT_SOLDIER = { front: Math.PI, side: Math.PI * 1.5, back: 0 };
+// View rotations — world-space rotation.y values for the avatar model
+// The camera is fixed at +Z looking at origin (front of scene = +Z direction).
+// "Front view" = player sees avatar's FACE = avatar faces camera (+Z direction).
+// "Back view"  = player sees avatar's BACK = avatar faces away (-Z direction).
+//
+// Procedural models: default rotation.y=0 → model faces +Z (face toward camera = front).
+// Soldier GLB: default rotation.y=Math.PI → model faces -Z; so face toward camera = Math.PI.
+const VIEW_ROT          = { front: 0,        side: Math.PI * 0.5, back: Math.PI };
+const VIEW_ROT_SOLDIER  = { front: Math.PI,  side: Math.PI * 1.5, back: 0 };
 
 export default function AvatarPreviewCanvas({
   outfitColorKey,
@@ -275,13 +279,19 @@ export default function AvatarPreviewCanvas({
     glow.rotation.x = -Math.PI / 2; glow.position.y = 0.002; scene.add(glow);
     state.glowMat = glowMat;
 
-    state.yaw = 0;
+    // isSoldier: uses GLB with internal Math.PI offset; all others are procedural (offset=0)
+    state.isSoldier = avatarTypeKey === "current";
+    state.viewRots  = state.isSoldier ? VIEW_ROT_SOLDIER : VIEW_ROT;
+    // baseRot = the rotation.y that shows the avatar's BACK to the camera (third-person default)
+    // Soldier has internal rotation.y=Math.PI already; controller starts at 0 → back = 0.
+    // But in preview we control the model directly so:
+    //   Soldier model faces -Z at rotation.y=Math.PI → back = 0 → but preview shows back, not face.
+    // We start auto-rotate from "back" so the first spin shows the back (like in-world default).
+    state.baseRot = state.isSoldier ? VIEW_ROT_SOLDIER.back : VIEW_ROT.back;
+    state.yaw = 0; // yaw is accumulator relative to baseRot
     state.autoRotate = true;
     state.model = null;
     state.mixer = null;
-    state.isSoldier = avatarTypeKey === "current";
-    state.viewRots = state.isSoldier ? VIEW_ROT_SOLDIER : VIEW_ROT;
-    state.baseRot = state.isSoldier ? Math.PI : 0;
     // Reset view when avatar type changes
     setActiveView("auto");
 
@@ -291,17 +301,21 @@ export default function AvatarPreviewCanvas({
 
     if (avatarTypeKey === "test-mixamo-female") {
       const { root } = buildFemale(skinTone.hex, outfitHex);
+      root.rotation.y = VIEW_ROT.back; // start at back-view
       scene.add(root);
       state.model = root;
     } else if (avatarTypeKey === "test-mixamo") {
       const { root } = buildMale(skinTone.hex, outfitHex);
+      root.rotation.y = VIEW_ROT.back; // start at back-view
       scene.add(root);
       state.model = root;
     } else {
       // Soldier GLB
       loadGLTF().then((gltf) => {
         const model = gltf.scene.clone(true);
-        model.rotation.y = Math.PI;
+        // Start at back-view position (rotation.y = VIEW_ROT_SOLDIER.back = 0)
+        // so auto-rotate begins from behind, matching the in-world default view.
+        model.rotation.y = VIEW_ROT_SOLDIER.back;
         model.traverse((child) => {
           if (!child.isMesh) return;
           const mats = Array.isArray(child.material) ? child.material : [child.material];
@@ -334,16 +348,18 @@ export default function AvatarPreviewCanvas({
 
       if (state.model) {
         if (state.autoRotate) {
-          state.yaw += dt * 0.25;
+          state.yaw += dt * 0.28;
           state.model.rotation.y = state.baseRot + state.yaw;
         } else if (state.targetRot !== undefined) {
           const curr = state.model.rotation.y;
-          const diff = state.targetRot - curr;
-          // Snap when close enough
-          if (Math.abs(diff) < 0.002) {
+          let diff = state.targetRot - curr;
+          // Normalize diff to shortest arc
+          while (diff > Math.PI)  diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          if (Math.abs(diff) < 0.003) {
             state.model.rotation.y = state.targetRot;
           } else {
-            state.model.rotation.y += diff * Math.min(1, dt * 8);
+            state.model.rotation.y += diff * Math.min(1, dt * 9);
           }
         }
       }
@@ -390,36 +406,61 @@ export default function AvatarPreviewCanvas({
     const state = s.current;
     clearTimeout(state.viewTimer);
     setActiveView(viewName);
-    // Snap current rotation to a clean base before setting target,
-    // so the lerp always starts from a predictable position
-    if (state.autoRotate && state.model) {
-      // Freeze yaw accumulation at the current rendered rotation
+    // Freeze yaw accumulation at the current rendered rotation so lerp starts correctly
+    if (state.model) {
       state.yaw = state.model.rotation.y - state.baseRot;
     }
     state.autoRotate = false;
     const rots = state.viewRots || VIEW_ROT_SOLDIER;
-    state.targetRot = rots[viewName] ?? state.baseRot ?? Math.PI;
+    state.targetRot = rots[viewName] ?? state.baseRot;
     state.viewTimer = setTimeout(() => {
+      // Re-sync yaw before resuming so auto-rotate continues smoothly from target angle
+      if (state.model) state.yaw = state.targetRot - state.baseRot;
       state.autoRotate = true;
-      // Re-sync yaw so auto-rotate resumes smoothly from current angle
-      if (state.model) state.yaw = state.model.rotation.y - state.baseRot;
       setActiveView("auto");
-    }, 10000);
+    }, 8000);
   }, []);
 
   const btnBase = { padding: "5px 16px", borderRadius: 20, fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", cursor: "pointer", transition: "all 0.15s", userSelect: "none", border: "none" };
   const btnActive = { ...btnBase, background: "rgba(155,126,255,0.28)", border: "1px solid rgba(155,126,255,0.8)", color: "#c4aaff" };
   const btnIdle   = { ...btnBase, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.45)" };
 
+  // Add right-side view (= left-side + 180°)
+  const extraSetView = useCallback((viewName) => {
+    if (viewName === "right") {
+      const state = s.current;
+      clearTimeout(state.viewTimer);
+      setActiveView("right");
+      if (state.model) state.yaw = state.model.rotation.y - state.baseRot;
+      state.autoRotate = false;
+      const rots = state.viewRots || VIEW_ROT_SOLDIER;
+      state.targetRot = (rots.side ?? Math.PI * 0.5) + Math.PI;
+      state.viewTimer = setTimeout(() => {
+        if (state.model) state.yaw = state.targetRot - state.baseRot;
+        state.autoRotate = true;
+        setActiveView("auto");
+      }, 8000);
+    } else {
+      setView(viewName);
+    }
+  }, [setView]);
+
+  const VIEWS = [
+    { key: "front", label: "FRONT" },
+    { key: "side",  label: "LEFT" },
+    { key: "right", label: "RIGHT" },
+    { key: "back",  label: "BACK" },
+  ];
+
   return (
     <div className="flex flex-col items-center gap-2 w-full">
       <div style={{ width: "100%", maxWidth: width, height, borderRadius: 20, overflow: "hidden", background: "linear-gradient(180deg, #0d0a1e 0%, #060610 100%)", border: "1px solid rgba(155,126,255,0.18)", boxShadow: "0 0 40px rgba(155,126,255,0.07)" }}>
         <canvas ref={canvasRef} style={{ display: "block", width: "100%", height: "100%" }} />
       </div>
-      <div className="flex items-center gap-2">
-        {["front","side","back"].map(v => (
-          <button key={v} style={activeView === v ? btnActive : btnIdle} onClick={() => setView(v)}>
-            {v.toUpperCase()}
+      <div className="flex items-center gap-1.5">
+        {VIEWS.map(({ key, label }) => (
+          <button key={key} style={activeView === key ? btnActive : btnIdle} onClick={() => extraSetView(key)}>
+            {label}
           </button>
         ))}
       </div>

@@ -1313,10 +1313,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const testGender = avatarTypeKey === "test-female" ? "female" : "male";
       const mixamoGender = avatarTypeKey === "test-mixamo-female" ? "female" : "male";
 
+      // For Mixamo procedural avatars the controller is pre-rotated to Math.PI so the
+      // avatar faces -Z (toward stage) at spawn. We must sync avatarRotRef to match.
+      if (isMixamoAvatar) {
+        avatarRotRef.current = Math.PI;
+        avatarPosRef.current = [effectiveSpawn[0], effectiveSpawn[1], effectiveSpawn[2], Math.PI];
+      }
+
       let entry;
       if (isMixamoAvatar) {
-        // Mixamo Xbot GLB — full human with baked Idle/Walk/Run/Dance
-        // Pass spawn position so controller Group starts at the correct location
+        // Procedural casual human avatar — pre-rotated to face stage
         entry = createMixamoAvatar(scene, {
           spawnX: effectiveSpawn[0],
           spawnY: effectiveSpawn[1],
