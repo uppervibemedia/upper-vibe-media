@@ -390,14 +390,14 @@ export function createCosmicSky(scene) {
     },
     // ── 4 NEW PLANETS (same system, extended) ───────────────────────────────────
     {
-      // HIGH-1 — ice blue, FAR RIGHT end of world — bigger support planet
+      // HIGH-1 — LARGE RINGED PURPLE — FAR RIGHT end of world, very high in sky
       id: "ice",
-      bodyColors: ["#050F1A", "#0A2035", "#164A70", "#2A80B0", "#70C0F0"],
-      glowColor: "rgba(100,200,255,0.50)",
-      size: isMobile ? 22 : 34,          // upgraded: was 13/19
+      bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
+      glowColor: "rgba(160,80,255,0.60)", ringColor: "rgba(200,140,255,0.70)",
+      size: isMobile ? 38 : 58,          // very large — prominent sky feature
       angleOffset: Math.PI * 0.45,       // right end of world
-      horizonY: 52,                      // high upper sky — safe above buildings
-      radius: 98,
+      horizonY: 68,                      // very high — deep upper sky, never near buildings
+      radius: 95,
       orbitSpeed: (Math.PI * 2) / 280,
     },
     {
@@ -423,14 +423,14 @@ export function createCosmicSky(scene) {
       orbitSpeed: (Math.PI * 2) / 260,
     },
     {
-      // MID-HIGH-2 — teal-green, FAR LEFT end of world — bigger support planet
+      // MID-HIGH-2 — LARGE TEAL GAS GIANT — FAR LEFT end of world, very high in sky
       id: "teal",
       bodyColors: ["#021410", "#053028", "#0A5840", "#189060", "#40D098"],
-      glowColor: "rgba(50,200,140,0.52)",
-      size: isMobile ? 20 : 32,          // upgraded: was 11/16
-      angleOffset: Math.PI * 1.75,       // left end of world — opposite of ice
-      horizonY: 50,                      // high upper sky — safe above buildings
-      radius: 96,
+      glowColor: "rgba(50,200,140,0.58)",
+      size: isMobile ? 34 : 52,          // very large — prominent sky feature
+      angleOffset: Math.PI * 1.75,       // left end of world — opposite of purple ringed
+      horizonY: 65,                      // very high — deep upper sky, never near buildings
+      radius: 94,
       orbitSpeed: (Math.PI * 2) / 230,
     },
   ];
@@ -531,8 +531,21 @@ export function createCosmicSky(scene) {
         pctx.fillStyle = pG;
         pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
       }
-    } else if (def.id === "ice" || def.id === "teal") {
-      // Ice/teal: smooth horizontal bands
+    } else if (def.id === "ice") {
+      // Ice (now large purple ringed): same band style as mega
+      for (let b = 0; b < 9; b++) {
+        const by = cy - R + (b / 8) * R * 2;
+        const bw = R * (0.06 + rng() * 0.10);
+        const alpha = 0.06 + rng() * 0.10;
+        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
+        bandG.addColorStop(0, "rgba(0,0,0,0)");
+        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${80 + Math.floor(rng()*40)},255,${alpha})`);
+        bandG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = bandG;
+        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
+      }
+    } else if (def.id === "teal") {
+      // Teal: smooth horizontal bands
       for (let b = 0; b < 6; b++) {
         const by = cy - R + (b / 5) * R * 2;
         const bw = R * (0.04 + rng() * 0.07);
@@ -616,8 +629,8 @@ export function createCosmicSky(scene) {
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
-    // Ring for mega planet
-    if (def.id === "mega") {
+    // Ring for mega planet and ice (large purple ringed) planet
+    if (def.id === "mega" || def.id === "ice") {
       pctx.save();
       pctx.translate(cx, cy);
       pctx.scale(1, 0.28);
