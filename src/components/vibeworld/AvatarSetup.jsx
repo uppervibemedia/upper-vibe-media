@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Sparkles, Check } from "lucide-react";
+
 import { base44 } from "@/api/base44Client";
 import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
 
@@ -23,23 +24,35 @@ export const OUTFIT_COLORS = [
 export const AVATAR_TYPES = [];
 export const SKIN_TONES = [];
 
+const AVATAR_CHOICES = [
+  { key: "test-mixamo-female", label: "Female", icon: "👩", color: "#C43BFF" },
+  { key: "test-mixamo",        label: "Male",   icon: "👨", color: "#00D4F0" },
+  { key: "current",            label: "Soldier", icon: "🪖", color: "#9B7EFF" },
+];
+
 export default function AvatarSetup({ onComplete, existingOutfitColor, existingStyle }) {
   const [outfitColorKey, setOutfitColorKey] = useState(existingOutfitColor || "cosmic-blue");
   const [vibeStyle, setVibeStyle] = useState(existingStyle || "cosmic-explorer");
+  const [avatarTypeKey, setAvatarTypeKey] = useState("test-mixamo-female");
   const [saving, setSaving] = useState(false);
 
   const handleContinue = async () => {
     setSaving(true);
     try {
+      const defaultHair = avatarTypeKey === "test-mixamo-female" ? "ponytail" : avatarTypeKey === "test-mixamo" ? "short" : "";
       await base44.auth.updateMe({
         avatar_outfit_color: outfitColorKey,
         avatar_style: vibeStyle,
-        avatar_type: "neutral",
+        avatar_type: avatarTypeKey,
         skin_tone: "medium",
       });
-      onComplete({ avatarType: "neutral", skinTone: "medium", avatarStyle: vibeStyle, outfitColorKey });
+      try {
+        sessionStorage.setItem("uvc_test_avatar", avatarTypeKey);
+        sessionStorage.setItem("uvc_hair_style", defaultHair);
+      } catch {}
+      onComplete({ avatarType: avatarTypeKey, skinTone: "medium", avatarStyle: vibeStyle, outfitColorKey });
     } catch {
-      onComplete({ avatarType: "neutral", skinTone: "medium", avatarStyle: vibeStyle, outfitColorKey });
+      onComplete({ avatarType: avatarTypeKey, skinTone: "medium", avatarStyle: vibeStyle, outfitColorKey });
     }
   };
 
@@ -56,7 +69,7 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingS
             <Sparkles className="w-3.5 h-3.5" style={{ color: "#9B7EFF" }} />
             <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>Live Preview</span>
           </div>
-          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={220} height={360} />
+          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} avatarTypeKey={avatarTypeKey} width={220} height={360} />
         </div>
 
         {/* Options */}
@@ -66,6 +79,34 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingS
             <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
               Your futuristic identity in Upper Vibe City.
             </p>
+          </div>
+
+          {/* Avatar Choice */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-3.5 h-3.5" style={{ color: "rgba(255,255,255,0.3)" }} />
+              <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.3)" }}>
+                Choose Avatar
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {AVATAR_CHOICES.map((a) => (
+                <button
+                  key={a.key}
+                  onClick={() => setAvatarTypeKey(a.key)}
+                  className="flex-1 flex flex-col items-center gap-1.5 px-3 py-3 rounded-2xl text-center transition-all hover:brightness-110 active:scale-[0.98]"
+                  style={{
+                    background: avatarTypeKey === a.key ? `${a.color}18` : "rgba(255,255,255,0.04)",
+                    border: avatarTypeKey === a.key ? `2px solid ${a.color}` : "1px solid rgba(255,255,255,0.08)",
+                    boxShadow: avatarTypeKey === a.key ? `0 0 16px ${a.color}30` : "none",
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>{a.icon}</span>
+                  <span className="text-[11px] font-black" style={{ color: avatarTypeKey === a.key ? "#fff" : "rgba(255,255,255,0.5)" }}>{a.label}</span>
+                  {avatarTypeKey === a.key && <Check className="w-3 h-3" style={{ color: a.color }} />}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Suit Color */}
@@ -116,7 +157,7 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingS
           </button>
 
           <p className="text-[10px] text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
-            Human avatars and premium styles coming soon.
+            You can change your avatar anytime in the customizer.
           </p>
         </div>
 
@@ -126,7 +167,7 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingS
             <Sparkles className="w-3.5 h-3.5" style={{ color: "#9B7EFF" }} />
             <span className="text-[10px] font-black tracking-[0.25em] uppercase" style={{ color: "#9B7EFF" }}>Live Preview</span>
           </div>
-          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={280} height={460} />
+          <AvatarPreviewCanvas outfitColorKey={outfitColorKey} avatarTypeKey={avatarTypeKey} width={280} height={460} />
           <p className="text-[9px]" style={{ color: "rgba(255,255,255,0.2)" }}>Updates instantly as you choose.</p>
         </div>
 

@@ -454,9 +454,10 @@ export default function AvatarPreviewCanvas({
     state.model = null;
     state.mixer = null;
     state.isSoldier = avatarTypeKey === "current";
-    state.viewRots = state.isSoldier ? VIEW_ROT_SOLDIER : VIEW_ROT;
-    // Soldier faces -Z so needs PI offset; procedural faces +Z so starts at 0
+    // Soldier faces -Z; front view = PI rotation. Procedural faces +Z; front view = 0.
+    // baseRot is the starting yaw offset so auto-rotate begins facing front.
     state.baseRot = state.isSoldier ? Math.PI : 0;
+    state.viewRots = state.isSoldier ? VIEW_ROT_SOLDIER : VIEW_ROT;
     // Reset view when avatar type changes
     setActiveView("auto");
 

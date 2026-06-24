@@ -1313,15 +1313,18 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const testGender = avatarTypeKey === "test-female" ? "female" : "male";
       const mixamoGender = avatarTypeKey === "test-mixamo-female" ? "female" : "male";
 
+      // Read hair style from sessionStorage (set by customizer)
+      const savedHairStyle = (() => { try { return sessionStorage.getItem("uvc_hair_style") || ""; } catch { return ""; } })();
+
       let entry;
       if (isMixamoAvatar) {
-        // Mixamo Xbot GLB — full human with baked Idle/Walk/Run/Dance
-        // Pass spawn position so controller Group starts at the correct location
+        // Casual human avatar — pass spawn position and hair style
         entry = createMixamoAvatar(scene, {
           spawnX: effectiveSpawn[0],
           spawnY: effectiveSpawn[1],
           spawnZ: effectiveSpawn[2],
           gender: mixamoGender,
+          hairStyle: savedHairStyle || (mixamoGender === "female" ? "ponytail" : "short"),
         }, (_entry) => {
           avatarEntryRef.current = _entry;
         });

@@ -10,11 +10,11 @@ import { base44 } from "@/api/base44Client";
 import { OUTFIT_COLORS } from "./AvatarSetup";
 import AvatarPreviewCanvas, { SKIN_TONES } from "./AvatarPreviewCanvas";
 
-// Avatar type options — "current" is the permanent default; others are TEST only
+// Avatar type options — Female/Male are official; Soldier is optional
 const AVATAR_TYPE_OPTIONS = [
-  { key: "current", label: "Current Avatar", sub: "Default", icon: "🤖" },
-  { key: "test-mixamo", label: "Male Casual", sub: "⚠️ Test Only", icon: "👨" },
-  { key: "test-mixamo-female", label: "Female Casual", sub: "⚠️ Test Only", icon: "👩" },
+  { key: "test-mixamo-female", label: "Female", sub: "Official", icon: "👩" },
+  { key: "test-mixamo", label: "Male", sub: "Official", icon: "👨" },
+  { key: "current", label: "Soldier", sub: "Classic", icon: "🪖" },
 ];
 
 // Hair style options per gender
@@ -37,7 +37,7 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
   const [skinColorKey, setSkinColorKey] = useState("brown");
   // Read saved test avatar type from sessionStorage (not persisted to account — test only)
   const [avatarTypeKey, setAvatarTypeKey] = useState(() => {
-    try { return sessionStorage.getItem("uvc_test_avatar") || "current"; } catch { return "current"; }
+    try { return sessionStorage.getItem("uvc_test_avatar") || "test-mixamo-female"; } catch { return "test-mixamo-female"; }
   });
   const [hairStyleKey, setHairStyleKey] = useState(() => {
     try { return sessionStorage.getItem("uvc_hair_style") || ""; } catch { return ""; }
@@ -52,11 +52,10 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
 
   const handleAvatarTypeChange = (key) => {
     setAvatarTypeKey(key);
-    // Reset hair style when switching genders
-    const defaultHair = key === "test-mixamo-female" ? "ponytail" : "short";
+    // Reset hair style when switching types
+    const defaultHair = key === "test-mixamo-female" ? "ponytail" : key === "test-mixamo" ? "short" : "";
     setHairStyleKey(defaultHair);
     try { sessionStorage.setItem("uvc_test_avatar", key); sessionStorage.setItem("uvc_hair_style", defaultHair); } catch {}
-    onApply?.({ avatarTypeKey: key, outfitColorKey, suitColor: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.hex });
   };
 
   const handleHairChange = (key) => {
@@ -68,7 +67,14 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
     setSaving(true);
     setError(null);
     try {
-      await base44.auth.updateMe({ avatar_outfit_color: outfitColorKey });
+      await base44.auth.updateMe({
+        avatar_outfit_color: outfitColorKey,
+        avatar_type: avatarTypeKey,
+      });
+      try {
+        sessionStorage.setItem("uvc_test_avatar", avatarTypeKey);
+        sessionStorage.setItem("uvc_hair_style", hairStyleKey);
+      } catch {}
       onApply?.({
         outfitColorKey,
         avatarTypeKey,
@@ -160,14 +166,11 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                   className="flex flex-col flex-1 overflow-y-auto px-5 py-4 lg:border-l"
                   style={{ borderColor: "rgba(255,255,255,0.06)" }}
                 >
-                  {/* Avatar Type Selector — TEST MODE */}
+                  {/* Avatar Type Selector */}
                   <div className="mb-3">
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.3)" }}>
-                        Avatar Type
-                      </span>
-                      <span className="text-[9px] px-2 py-0.5 rounded-full font-black" style={{ background: "rgba(255,180,0,0.12)", color: "#FFB800", border: "1px solid rgba(255,180,0,0.25)" }}>
-                        TEST
+                        Choose Avatar
                       </span>
                     </div>
                     <div className="flex gap-1.5">
@@ -340,7 +343,7 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                       {saving ? "Saving..." : "Apply Vibe Suit"}
                     </button>
                     <p className="text-[9px] text-center mt-2" style={{ color: "rgba(255,255,255,0.18)" }}>
-                      Human avatars and premium styles coming soon.
+                      Changes take effect when you re-enter the world.
                     </p>
                   </div>
                 </div>

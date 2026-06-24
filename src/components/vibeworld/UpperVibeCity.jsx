@@ -253,7 +253,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       const stored = sessionStorage.getItem("uvc_test_avatar");
       if (stored) return stored;
     } catch {}
-    return "test-mixamo-female"; // new default: female avatar
+    return "test-mixamo-female"; // default: female avatar
   });
 
   const avatarConfig = {
@@ -1210,19 +1210,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentSuitColor={user?.avatar_suit_color || "#4a5c3a"}
         isMobile={isMobile}
         user={user}
-        onApply={({ outfitColorKey, suitColor, avatarTypeKey: newTypeKey }) => {
-          // If avatar type changed, update state so avatarConfig re-renders with new type
-          if (newTypeKey && newTypeKey !== testAvatarTypeKey) {
+        onApply={({ outfitColorKey, suitColor, avatarTypeKey: newTypeKey, hairStyleKey: newHairStyle }) => {
+          const typeChanged = newTypeKey && newTypeKey !== testAvatarTypeKey;
+          if (typeChanged) {
             setTestAvatarTypeKey(newTypeKey);
-            setLoading(true); // show loading screen while world remounts
-            setAvatarVersion((v) => v + 1);
-          } else {
-            // Just a color change — retint in place
-            if (retintInWorldRef.current && suitColor) {
-              retintInWorldRef.current(suitColor);
-            }
-            setAvatarVersion((v) => v + 1);
           }
+          // Always remount the world so hair style + avatar type take effect
+          setLoading(true);
+          setAvatarVersion((v) => v + 1);
         }}
       />
 
