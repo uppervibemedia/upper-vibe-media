@@ -73,69 +73,71 @@ function tagMesh(mesh, tag) {
 }
 
 // ── Build Male Casual procedural model ────────────────────────────────────────
-// Returns { root, clothesMats, skinMats } for live re-tinting
+// Same hip-pivot architecture as female to prevent leg/hip clipping.
 function buildMale(skinHex, outfitHex) {
   const root = new THREE.Group();
-  const skin = skinHex;
-  const clothes = outfitHex;
   const HAIR = 0x1A0800;
-  const SHOES = 0x1A1A1A;
   const ACCENT = 0xE63946;
 
-  const clothesMat1 = mstd(clothes, 0.75); // shirt / arms
-  const clothesMat2 = mstd(SHOES);         // shoes (black — not re-tinted with suit color)
-  const pantsMat    = mstd(0x2B2D42);      // pants — also not re-tinted (they're dark charcoal)
-  const skinMat     = mstd(skin);
+  const clothesMat = mstd(outfitHex, 0.75);
+  const pantsMat   = mstd(0x2B2D42);
+  const skinMat    = mstd(skinHex);
 
-  // Legs
-  const legGeo = new THREE.CapsuleGeometry(0.088, 0.44, 4, 8);
-  const legL = tagMesh(new THREE.Mesh(legGeo, pantsMat), "pants"); legL.position.set(0.108, 0.62, 0); root.add(legL);
-  const legR = legL.clone(); legR.position.set(-0.108, 0.62, 0); root.add(legR);
+  // Hip block
+  const hipBlock = tagMesh(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.20, 0.22), pantsMat), "pants");
+  hipBlock.position.set(0, 0.66, 0); root.add(hipBlock);
 
-  // Shoes
+  // Legs — pivot groups
+  const legGeo = new THREE.CapsuleGeometry(0.088, 0.46, 4, 8);
+  const legL = new THREE.Group(); legL.position.set(0.108, 0.66, 0); root.add(legL);
+  const legLMesh = tagMesh(new THREE.Mesh(legGeo, pantsMat), "pants"); legLMesh.position.y = -0.30; legL.add(legLMesh);
+  const legR = new THREE.Group(); legR.position.set(-0.108, 0.66, 0); root.add(legR);
+  const legRMesh = tagMesh(new THREE.Mesh(legGeo, pantsMat), "pants"); legRMesh.position.y = -0.30; legR.add(legRMesh);
+
+  // Shoes — parented to leg pivots
   const shoeGeo = new THREE.BoxGeometry(0.12, 0.10, 0.20);
-  const bootL = tagMesh(new THREE.Mesh(shoeGeo, clothesMat1), "suit"); bootL.position.set(0.108, 0.33, 0.018); root.add(bootL);
-  const bootR = bootL.clone(); bootR.position.set(-0.108, 0.33, 0.018); root.add(bootR);
-  for (const bx of [0.108, -0.108]) {
+  const bootL = tagMesh(new THREE.Mesh(shoeGeo, clothesMat), "suit"); bootL.position.set(0, -0.62, 0.018); legL.add(bootL);
+  const bootR = tagMesh(new THREE.Mesh(shoeGeo, clothesMat), "suit"); bootR.position.set(0, -0.62, 0.018); legR.add(bootR);
+  for (const lg of [legL, legR]) {
     const s = new THREE.Mesh(new THREE.BoxGeometry(0.122, 0.014, 0.14), mbasic(ACCENT, 0.55));
-    s.position.set(bx, 0.282, 0.012); root.add(s);
+    s.position.set(0, -0.668, 0.012); lg.add(s);
   }
 
   // Torso
-  const torsoG = new THREE.Group(); torsoG.position.set(0, 1.12, 0); root.add(torsoG);
-  torsoG.add(tagMesh(new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.46, 0.24), clothesMat1), "suit"));
+  const torsoG = new THREE.Group(); torsoG.position.set(0, 0.82, 0); root.add(torsoG);
+  torsoG.add(tagMesh(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.48, 0.24), clothesMat), "suit"));
   const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.012), mbasic(ACCENT, 0.45));
   pocket.position.set(0, -0.14, 0.122); torsoG.add(pocket);
 
-  // Arms
+  // Arms — pivot at shoulder, straight down
   const armGeo = new THREE.CapsuleGeometry(0.068, 0.40, 4, 8);
-  const armL = new THREE.Group(); armL.position.set(0.235, -0.05, 0); torsoG.add(armL);
-  const armLMesh = tagMesh(new THREE.Mesh(armGeo, clothesMat1), "suit"); armLMesh.rotation.z = 0.12; armL.add(armLMesh);
-  const armR = new THREE.Group(); armR.position.set(-0.235, -0.05, 0); torsoG.add(armR);
-  const armRMesh = tagMesh(new THREE.Mesh(armGeo, clothesMat1), "suit"); armRMesh.rotation.z = -0.12; armR.add(armRMesh);
+  const armL = new THREE.Group(); armL.position.set(0.245, -0.02, 0); torsoG.add(armL);
+  const armLMesh = tagMesh(new THREE.Mesh(armGeo, clothesMat), "suit"); armLMesh.rotation.z = 0.10; armL.add(armLMesh);
+  const armR = new THREE.Group(); armR.position.set(-0.245, -0.02, 0); torsoG.add(armR);
+  const armRMesh = tagMesh(new THREE.Mesh(armGeo, clothesMat), "suit"); armRMesh.rotation.z = -0.10; armR.add(armRMesh);
 
-  // Hands (skin)
+  // Hands — straight down, no lateral offset
   const hG = new THREE.SphereGeometry(0.068, 8, 6);
-  const hL = tagMesh(new THREE.Mesh(hG, skinMat), "skin"); hL.position.set(0.05, -0.28, 0); armL.add(hL);
-  const hR = hL.clone(); armR.add(hR);
+  const hL = tagMesh(new THREE.Mesh(hG, skinMat), "skin"); hL.position.set(0, -0.26, 0); armL.add(hL);
+  const hR = tagMesh(new THREE.Mesh(hG, skinMat), "skin"); hR.position.set(0, -0.26, 0); armR.add(hR);
 
   // Neck
-  const neckM = tagMesh(new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.082, 0.13, 8), skinMat), "skin");
+  const neckM = tagMesh(new THREE.Mesh(new THREE.CylinderGeometry(0.076, 0.086, 0.13, 8), skinMat), "skin");
   neckM.position.set(0, 0.30, 0); torsoG.add(neckM);
 
   // Head
   const headG = new THREE.Group(); headG.position.set(0, 0.44, 0); torsoG.add(headG);
-  headG.add(tagMesh(new THREE.Mesh(new THREE.SphereGeometry(0.158, 12, 10), skinMat), "skin"));
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.163, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.52), mstd(HAIR, 0.88));
+  headG.add(tagMesh(new THREE.Mesh(new THREE.SphereGeometry(0.160, 12, 10), skinMat), "skin"));
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.52), mstd(HAIR, 0.88));
   hair.position.y = 0.02; headG.add(hair);
   const eM = mbasic(0x111111);
-  for (const [ex, ez] of [[0.055, 0.148], [-0.055, 0.148]]) {
+  for (const [ex, ez] of [[0.055, 0.150], [-0.055, 0.150]]) {
     const e = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 4), eM);
     e.position.set(ex, 0.032, ez); headG.add(e);
   }
 
   root.position.y = -0.28;
-  return { root, clothesMat: clothesMat1, skinMat };
+  return { root, clothesMat, skinMat };
 }
 
 // ── Build Female Casual procedural model ──────────────────────────────────────
@@ -292,10 +294,12 @@ export default function AvatarPreviewCanvas({
 
     if (avatarTypeKey === "test-mixamo-female") {
       const { root } = buildFemale(skinTone.hex, outfitHex);
+      root.scale.set(1.16, 1.16, 1.16);
       scene.add(root);
       state.model = root;
     } else if (avatarTypeKey === "test-mixamo") {
       const { root } = buildMale(skinTone.hex, outfitHex);
+      root.scale.set(1.16, 1.16, 1.16);
       scene.add(root);
       state.model = root;
     } else {

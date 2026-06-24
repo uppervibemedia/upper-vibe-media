@@ -52,41 +52,55 @@ function makeShadow() {
 }
 
 // ── Male casual body ───────────────────────────────────────────────────────────
+// Same hip-pivot architecture as female to prevent leg/hip clipping.
 function buildMaleCasual(C) {
   const root = new THREE.Group();
   root.name = "avatarModel";
   root.add(makeShadow());
 
-  // Legs
-  const legGeo = new THREE.CapsuleGeometry(0.088, 0.44, 4, 8);
-  const legL = new THREE.Mesh(legGeo, mat(C.pants));
-  legL.name = "legL"; legL.position.set(0.108, 0.36, 0); legL.castShadow = true;
-  const legR = legL.clone(); legR.name = "legR"; legR.position.set(-0.108, 0.36, 0);
+  // Hip/pelvis block — bridges torso-bottom to leg-tops, hides seam at all rotations
+  const hipBlock = new THREE.Mesh(
+    new THREE.BoxGeometry(0.34, 0.20, 0.22),
+    mat(C.pants, { roughness: 0.75 })
+  );
+  hipBlock.position.set(0, 0.66, 0);
+  hipBlock.castShadow = true;
+  root.add(hipBlock);
+
+  // Legs — pivot groups at hip joint (y=0.66), capsule mesh hangs downward
+  const legGeo = new THREE.CapsuleGeometry(0.088, 0.46, 4, 8);
+  const legMat = mat(C.pants);
+
+  const legL = new THREE.Group(); legL.name = "legL"; legL.position.set(0.108, 0.66, 0);
+  const legLMesh = new THREE.Mesh(legGeo, legMat); legLMesh.position.y = -0.30; legLMesh.castShadow = true; legL.add(legLMesh);
+
+  const legR = new THREE.Group(); legR.name = "legR"; legR.position.set(-0.108, 0.66, 0);
+  const legRMesh = new THREE.Mesh(legGeo, legMat); legRMesh.position.y = -0.30; legRMesh.castShadow = true; legR.add(legRMesh);
+
   root.add(legL, legR);
 
-  // Shoes
+  // Shoes — parented to leg pivot groups so they follow the leg swing
   const shoeGeo = new THREE.BoxGeometry(0.12, 0.10, 0.20);
   const bootL = new THREE.Mesh(shoeGeo, mat(C.shoes));
-  bootL.name = "bootL"; bootL.position.set(0.108, 0.080, 0.018); bootL.castShadow = true;
-  const bootR = bootL.clone(); bootR.name = "bootR"; bootR.position.set(-0.108, 0.080, 0.018);
-  root.add(bootL, bootR);
+  bootL.name = "bootL"; bootL.position.set(0, -0.62, 0.018); bootL.castShadow = true; legL.add(bootL);
+  const bootR = new THREE.Mesh(shoeGeo, mat(C.shoes));
+  bootR.name = "bootR"; bootR.position.set(0, -0.62, 0.018); bootR.castShadow = true; legR.add(bootR);
 
-  // Shoe sole glow accent (subtle)
+  // Shoe sole glow — also parented to leg pivots
   const soleMat = new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.55, depthWrite: false });
-  for (const bx of [0.108, -0.108]) {
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.122, 0.014, 0.14), soleMat);
-    sole.position.set(bx, 0.033, 0.012);
-    root.add(sole);
-  }
+  const soleL = new THREE.Mesh(new THREE.BoxGeometry(0.122, 0.014, 0.14), soleMat);
+  soleL.position.set(0, -0.668, 0.012); legL.add(soleL);
+  const soleR = new THREE.Mesh(new THREE.BoxGeometry(0.122, 0.014, 0.14), soleMat);
+  soleR.position.set(0, -0.668, 0.012); legR.add(soleR);
 
-  // Torso
+  // Torso — lowered so bottom overlaps hip block
   const torsoGroup = new THREE.Group();
   torsoGroup.name = "torso";
-  torsoGroup.position.set(0, 0.84, 0);
+  torsoGroup.position.set(0, 0.82, 0);
   root.add(torsoGroup);
 
   // Hoodie body
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.46, 0.24), mat(C.shirt, { roughness: 0.75 }));
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.48, 0.24), mat(C.shirt, { roughness: 0.75 }));
   torso.castShadow = true;
   torsoGroup.add(torso);
 
@@ -96,35 +110,36 @@ function buildMaleCasual(C) {
   pocket.position.set(0, -0.14, 0.122);
   torsoGroup.add(pocket);
 
-  // Arms
+  // Arms — pivot at shoulder, arm hangs downward (matching female pattern)
   const armGeo = new THREE.CapsuleGeometry(0.068, 0.40, 4, 8);
-  const armL = new THREE.Group(); armL.name = "armL"; armL.position.set(0.235, 0.11, 0);
+  const armL = new THREE.Group(); armL.name = "armL"; armL.position.set(0.245, -0.02, 0);
   const armLMesh = new THREE.Mesh(armGeo, mat(C.shirt, { roughness: 0.75 }));
-  armLMesh.rotation.z = 0.12; armLMesh.castShadow = true; armL.add(armLMesh);
-  const armR = new THREE.Group(); armR.name = "armR"; armR.position.set(-0.235, 0.11, 0);
+  armLMesh.rotation.z = 0.10; armLMesh.castShadow = true; armL.add(armLMesh);
+  const armR = new THREE.Group(); armR.name = "armR"; armR.position.set(-0.245, -0.02, 0);
   const armRMesh = new THREE.Mesh(armGeo, mat(C.shirt, { roughness: 0.75 }));
-  armRMesh.rotation.z = -0.12; armRMesh.castShadow = true; armR.add(armRMesh);
+  armRMesh.rotation.z = -0.10; armRMesh.castShadow = true; armR.add(armRMesh);
   torsoGroup.add(armL, armR);
 
-  // Hands (skin)
+  // Hands — straight down from arm pivot (no lateral offset → no torso clipping)
   const handGeo = new THREE.SphereGeometry(0.068, 8, 6);
   const handL = new THREE.Mesh(handGeo, mat(C.skin)); handL.name = "gloveL";
-  handL.position.set(0.28, -0.26, 0); armL.add(handL);
-  const handR = handL.clone(); handR.name = "gloveR"; armR.add(handR);
+  handL.position.set(0, -0.26, 0); armL.add(handL);
+  const handR = new THREE.Mesh(handGeo, mat(C.skin)); handR.name = "gloveR";
+  handR.position.set(0, -0.26, 0); armR.add(handR);
 
   // Neck
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.082, 0.13, 8), mat(C.skin));
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.076, 0.086, 0.13, 8), mat(C.skin));
   neck.position.set(0, 0.30, 0); neck.castShadow = true; torsoGroup.add(neck);
 
   // Head
   const headGroup = new THREE.Group(); headGroup.name = "head"; headGroup.position.set(0, 0.44, 0);
   torsoGroup.add(headGroup);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.158, 12, 10), mat(C.skin));
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.160, 12, 10), mat(C.skin));
   head.castShadow = true; headGroup.add(head);
 
   // Hair — short top
   const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.163, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.52),
+    new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.52),
     mat(C.hair, { roughness: 0.88 })
   );
   hair.position.y = 0.02; headGroup.add(hair);
@@ -132,10 +147,10 @@ function buildMaleCasual(C) {
   // Eyes
   const eyeGeo = new THREE.SphereGeometry(0.022, 6, 4);
   const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(0.055, 0.032, 0.148); headGroup.add(eyeL);
-  const eyeR = eyeL.clone(); eyeR.position.set(-0.055, 0.032, 0.148); headGroup.add(eyeR);
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(0.055, 0.032, 0.150); headGroup.add(eyeL);
+  const eyeR = eyeL.clone(); eyeR.position.set(-0.055, 0.032, 0.150); headGroup.add(eyeR);
 
-  root.userData._animParts = { legL, legR, armL, armR, headGroup, torsoGroup, bootL, bootR, gloveL: handL, gloveR: handR };
+  root.userData._animParts = { legL, legR, armL, armR, headGroup, torsoGroup };
   root.userData._animTime = 0;
   return root;
 }
@@ -358,7 +373,7 @@ function animateCasual(entry, speed, isDancing, dt) {
 
   // ── Torso: hip sway + shoulder counter-rotation + bob ────────────────────────
   if (p.torsoGroup) {
-    const baseY = isFemale ? 0.82 : 0.84;
+    const baseY = 0.82; // same for both genders — torso pivot is at 0.82 in both builds
 
     // Vertical bob: body drops slightly on each step contact (2× per stride cycle)
     const bobAmpWalk = 0.010;
@@ -408,11 +423,10 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
 
   const model = gender === "female" ? buildFemaleCasual(C) : buildMaleCasual(C);
   model.rotation.y = 0; // face is +Z; camera starts at +Z behind avatar, sees back
-  if (gender === "female") {
-    // Scale to match soldier GLB height (~1.8u). Female geometry top ≈ 1.55u → scale = 1.8/1.55 ≈ 1.16
-    model.scale.set(1.16, 1.16, 1.16);
-    model.position.y = 0; // feet origin stays at ground
-  }
+  // Scale both genders to match soldier GLB height (~1.8u).
+  // Both procedural geometries top out at ~1.55u → scale = 1.8/1.55 ≈ 1.16
+  model.scale.set(1.16, 1.16, 1.16);
+  model.position.y = 0; // feet origin stays at ground
   controller.add(model);
 
   const entry = {
