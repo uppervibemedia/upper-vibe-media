@@ -84,8 +84,9 @@ export default function StageFullScreen({
               title="Stage Video"
               className="w-full h-full"
               style={{ border: "none", display: "block" }}
-              allow="autoplay; encrypted-media"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
               referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
               onLoad={handleIframeLoad}
             />
             {/* No blocking overlay — YouTube's native controls (including ad Skip/Learn More) must remain clickable */}
@@ -100,13 +101,16 @@ export default function StageFullScreen({
         )}
       </div>
 
-      {/* ── Top bar: Mute (left) + Exit (right) — NO title here ── */}
-      <div
+      {/* ── Top bar: Mute (left) + Exit (right) — auto-hides so YouTube ad UI is never covered ── */}
+      <motion.div
+        animate={{ opacity: controlsVisible ? 1 : 0, y: controlsVisible ? 0 : -8 }}
+        transition={{ duration: 0.2 }}
         className="absolute left-0 right-0 z-[10] flex items-center justify-between"
         style={{
           top: saTop + 8,
           paddingLeft: `max(env(safe-area-inset-left, 0px), 12px)`,
           paddingRight: `max(env(safe-area-inset-right, 0px), 12px)`,
+          pointerEvents: controlsVisible ? "auto" : "none",
         }}
       >
         {/* Mute */}
@@ -143,7 +147,7 @@ export default function StageFullScreen({
           <X className="w-3.5 h-3.5" />
           <span>Exit</span>
         </button>
-      </div>
+      </motion.div>
 
       {/* ── Bottom controls — auto-hide; title lives HERE only ── */}
       <motion.div
