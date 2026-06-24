@@ -1,183 +1,210 @@
 /**
- * AvatarModelMixamo — loads the Three.js Xbot (Mixamo-rigged) GLB which already
- * contains Idle, Walk, Run and Dance animations baked in.
- * URL is raw.githubusercontent.com (CORS-open).
+ * AvatarModelMixamo — Mixamo Xbot test avatar.
+ * Uses the EXACT same animation logic as the soldier avatar (AvatarModel.js).
+ * Movement, camera, hoverboard, zones — all identical to the soldier.
  *
- * Exported API matches AvatarModelTest so CityCanvas can swap seamlessly:
- *   createMixamoAvatar(scene, config, onReady) → entry
- *   updateMixamoAvatarAnimation(entry, speed, isDancing, dt)
+ * The soldier avatar remains the default. This is a TEST option only.
+ * Do NOT set as default until explicitly approved.
  */
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { SPAWN } from "./cityData";
 
-// The Three.js team hosts this Mixamo Xbot with Idle/Walk/Run/Dance clips.
+// Xbot GLB — hosted by Three.js team, CORS-open, has Idle/Walk/Run/Dance baked in
 const XBOT_URL =
   "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Xbot.glb";
 
 const _loader = new GLTFLoader();
-let _cached = null; // cache the parsed GLTF so multiple remounts don't re-download
+let _gltfCache = null;
+let _gltfPromise = null;
 
-// ── Cross-fade helper ──────────────────────────────────────────
-function crossFade(from, to, duration) {
-  if (from === to) return;
-  to.reset();
-  to.play();
-  if (from) from.crossFadeTo(to, duration, true);
-}
-
-// ── Shadow disc ───────────────────────────────────────────────
-function makeShadowDisc() {
-  const geo = new THREE.CircleGeometry(0.35, 16);
-  const mat = new THREE.MeshBasicMaterial({
-    color: 0x000000,
-    transparent: true,
-    opacity: 0.35,
-    depthWrite: false,
-  });
-  const disc = new THREE.Mesh(geo, mat);
-  disc.rotation.x = -Math.PI / 2;
-  disc.position.y = 0.005;
-  disc.renderOrder = 1;
-  return disc;
-}
-
-// ── Nameplate sprite ──────────────────────────────────────────
-function makeNameplate(label) {
-  const cvs = document.createElement("canvas");
-  cvs.width = 256; cvs.height = 48;
-  const ctx = cvs.getContext("2d");
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
-  ctx.roundRect?.(4, 4, 248, 40, 8) ||
-    ctx.fillRect(4, 4, 248, 40);
-  ctx.fill();
-  ctx.fillStyle = "#00E5FF";
-  ctx.font = "bold 22px Inter,sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(label || "Avatar", 128, 24);
-  const tex = new THREE.CanvasTexture(cvs);
-  tex.minFilter = THREE.LinearFilter;
-  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
-  const sprite = new THREE.Sprite(mat);
-  sprite.scale.set(1.6, 0.3, 1);
-  sprite.position.y = 2.1; // above head
-  sprite.renderOrder = 10;
-  return sprite;
-}
-
-/**
- * createMixamoAvatar
- * @param {THREE.Scene} scene
- * @param {object} config  — { label }
- * @param {function} onReady  — called with entry once loaded
- * @returns entry — controller object (root placed immediately, model attaches async)
- */
-export function createMixamoAvatar(scene, config = {}, onReady = () => {}) {
-  const root = new THREE.Group();
-  root.name = "mixamoAvatarRoot";
-  scene.add(root);
-  root.add(makeShadowDisc());
-
-  const nameLabel = config.label || "";
-  if (nameLabel) root.add(makeNameplate(nameLabel));
-
-  const entry = {
-    root,
-    mixer: null,
-    clips: {},          // { idle, walk, run, dance }
-    _activeClip: null,
-    _isTestAvatar: true, // flag so CityCanvas calls updateMixamoAvatarAnimation
-    _isMixamo: true,
-  };
-
-  // Use cached GLTF to avoid double-download
-  const onGltf = (gltf) => {
-    _cached = gltf;
-    const model = gltf.scene.clone(true);
-
-    // Xbot is huge — scale to ~1.75m humanoid
-    model.scale.setScalar(0.011);
-    model.position.y = 0;
-    model.traverse((obj) => {
-      if (obj.isMesh) {
-        obj.castShadow = true;
-        obj.receiveShadow = true;
-      }
-    });
-    root.add(model);
-
-    // Build mixer + clip map
-    const mixer = new THREE.AnimationMixer(model);
-    entry.mixer = mixer;
-
-    // Xbot baked clips — names vary slightly; match by prefix
-    const names = { idle: null, walk: null, run: null, dance: null };
-    for (const clip of gltf.animations) {
-      const n = clip.name.toLowerCase();
-      if (n.includes("idle"))  names.idle  = clip;
-      if (n.includes("walk"))  names.walk  = clip;
-      if (n.includes("run"))   names.run   = clip;
-      if (n.includes("dance") || n.includes("hip hop")) names.dance = clip;
-    }
-
-    for (const [key, clip] of Object.entries(names)) {
-      if (clip) {
-        const action = mixer.clipAction(clip);
-        action.setLoop(THREE.LoopRepeat);
-        entry.clips[key] = action;
-      }
-    }
-
-    // Start with idle
-    if (entry.clips.idle) {
-      entry.clips.idle.play();
-      entry._activeClip = "idle";
-    }
-
-    onReady(entry);
-  };
-
-  if (_cached) {
-    onGltf(_cached);
-  } else {
+function loadGLTF() {
+  if (_gltfCache) return Promise.resolve(_gltfCache);
+  if (_gltfPromise) return _gltfPromise;
+  _gltfPromise = new Promise((resolve, reject) => {
     _loader.load(
       XBOT_URL,
-      onGltf,
+      (g) => { _gltfCache = g; resolve(g); },
       undefined,
-      (err) => console.warn("[AvatarModelMixamo] load error:", err)
+      (e) => { _gltfPromise = null; reject(e); }
     );
+  });
+  return _gltfPromise;
+}
+
+// ── Shadow disc (same as soldier) ────────────────────────────
+function makeShadow() {
+  const m = new THREE.Mesh(
+    new THREE.CircleGeometry(0.28, 12),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false })
+  );
+  m.rotation.x = -Math.PI / 2;
+  m.position.y = 0.01;
+  return m;
+}
+
+// ── Cross-fade helper — IDENTICAL to soldier's crossFade ─────
+function crossFade(entry, toKey, duration = 0.22) {
+  if (!entry.clips[toKey] || entry.currentAnim === toKey) return;
+  const from = entry.clips[entry.currentAnim];
+  const to   = entry.clips[toKey];
+  to.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
+  if (from) from.crossFadeTo(to, duration, true);
+  entry.currentAnim = toKey;
+}
+
+// ── Attach Xbot model as child of controller ─────────────────
+function attachMixamoModel(gltf, controllerGroup) {
+  const existing = controllerGroup.getObjectByName("avatarModel");
+  if (existing) controllerGroup.remove(existing);
+
+  // Clone scene for Xbot (unlike soldier which uses scene directly — Xbot needs clone
+  // because it's called once and we want clean state)
+  const model = gltf.scene.clone(true);
+  model.name = "avatarModel";
+  model.position.set(0, 0, 0);
+  // Xbot faces +Z by default; rotate 180° so it faces same direction as soldier
+  model.rotation.set(0, Math.PI, 0);
+  // Scale: Xbot is huge (220cm), scale to ~1.75m to match soldier height
+  model.scale.setScalar(0.011);
+
+  model.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+      // Mobile perf: downgrade to standard material if physics-heavy
+      if (child.material?.type === "MeshPhysicalMaterial") {
+        const old = child.material;
+        const std = new THREE.MeshStandardMaterial({
+          color: old.color,
+          map: old.map,
+          roughness: 0.6,
+          metalness: 0.1,
+        });
+        child.material = std;
+        old.dispose();
+      }
+    }
+  });
+
+  controllerGroup.add(model);
+
+  // Build AnimationMixer — target the model (same as soldier pattern)
+  const mixer = new THREE.AnimationMixer(model);
+  const clips = {};
+
+  for (const clip of gltf.animations) {
+    const n = clip.name.toLowerCase();
+    let key = null;
+    if (n.includes("idle"))  key = "idle";
+    else if (n.includes("walk"))  key = "walk";
+    else if (n.includes("run"))   key = "run";
+    else if (n.includes("dance") || n.includes("hip")) key = "dance";
+    if (key) {
+      const action = mixer.clipAction(clip);
+      action.setLoop(THREE.LoopRepeat, Infinity);
+      clips[key] = action;
+    }
   }
+
+  // Play idle immediately — never leave in T/A-pose
+  const startKey = clips.idle ? "idle" : clips.walk ? "walk" : Object.keys(clips)[0];
+  if (startKey && clips[startKey]) {
+    clips[startKey].reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
+  }
+
+  return { mixer, clips, currentAnim: startKey || "idle" };
+}
+
+// ── PUBLIC: createMixamoAvatar ────────────────────────────────
+// Mirrors createAvatar() from AvatarModel.js exactly.
+// Returns entry immediately; model loads async.
+export function createMixamoAvatar(scene, opts = {}, onReady) {
+  const controller = new THREE.Group();
+  controller.name = "avatar";
+  controller.position.set(SPAWN[0], SPAWN[1], SPAWN[2]);
+  controller.add(makeShadow());
+  scene.add(controller);
+
+  const entry = {
+    root: controller,   // CityCanvas stores this in avatarRef — same contract as soldier
+    mixer: null,
+    clips: {},
+    currentAnim: "idle",
+    _isMixamo: true,    // flag so CityCanvas calls updateMixamoAvatarAnimation
+  };
+
+  loadGLTF()
+    .then((gltf) => {
+      const { mixer, clips, currentAnim } = attachMixamoModel(gltf, controller);
+      entry.mixer = mixer;
+      entry.clips = clips;
+      entry.currentAnim = currentAnim;
+      onReady?.(entry);
+    })
+    .catch((err) => {
+      console.warn("[AvatarModelMixamo] GLB load failed:", err);
+      // Capsule fallback — controller still moves correctly
+      const cap = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.26, 1.1, 4, 8),
+        new THREE.MeshStandardMaterial({ color: 0x44aadd })
+      );
+      cap.name = "avatarModel";
+      cap.position.y = 0.82;
+      controller.add(cap);
+      onReady?.(entry);
+    });
 
   return entry;
 }
 
-/**
- * updateMixamoAvatarAnimation
- * Called every frame from CityCanvas animate loop.
- */
-export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt) {
-  if (!entry?.mixer) return;
+// ── PUBLIC: updateMixamoAvatarAnimation ──────────────────────
+// IDENTICAL logic to updateAvatarAnimation() in AvatarModel.js.
+// Speed thresholds, hoverboard freeze, dance handling — all the same.
+export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false) {
+  if (!entry || !entry.mixer) return;
   entry.mixer.update(dt);
 
-  const { clips, _activeClip } = entry;
-
-  let desired;
-  if (isDancing && clips.dance) {
-    desired = "dance";
-  } else if (speed > 2.5 && clips.run) {
-    desired = "run";
-  } else if (speed > 0.2 && clips.walk) {
-    desired = "walk";
-  } else {
-    desired = "idle";
+  // Hoverboard: freeze in idle — feet planted on board (same as soldier)
+  if (isHoverboarding) {
+    if (entry.clips.idle) {
+      crossFade(entry, "idle", 0.35);
+      entry.clips.idle.setEffectiveTimeScale(0.0);
+    } else if (entry.clips.walk) {
+      crossFade(entry, "walk", 0.35);
+      entry.clips.walk.setEffectiveTimeScale(0.0);
+    }
+    return;
   }
 
-  if (!clips[desired]) desired = "idle";
-  if (!clips[desired]) return; // nothing loaded yet
+  if (isDancing) {
+    const key = entry.clips.idle ? "idle" : entry.clips.walk ? "walk" : null;
+    if (key) {
+      crossFade(entry, key, 0.3);
+      entry.clips[key].setEffectiveTimeScale(0.6);
+    }
+    return;
+  }
 
-  if (_activeClip !== desired) {
-    crossFade(clips[_activeClip] || null, clips[desired], 0.25);
-    entry._activeClip = desired;
+  // Locomotion — same thresholds as soldier
+  if (speed > 0.5) {
+    const key = entry.clips.run ? "run" : "walk";
+    if (entry.clips[key]) {
+      crossFade(entry, key, 0.2);
+      entry.clips[key].setEffectiveTimeScale(Math.min(2.4, speed * 0.9));
+    }
+  } else if (speed > 0.07) {
+    if (entry.clips.walk) {
+      crossFade(entry, "walk", 0.2);
+      entry.clips.walk.setEffectiveTimeScale(0.75 + speed * 0.45);
+    }
+  } else {
+    if (entry.clips.idle) {
+      crossFade(entry, "idle", 0.3);
+    } else if (entry.clips.walk) {
+      crossFade(entry, "walk", 0.3);
+      entry.clips.walk.setEffectiveTimeScale(0.0);
+    }
   }
 }

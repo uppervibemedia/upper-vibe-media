@@ -1672,8 +1672,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Its mixer/clips get populated in-place when GLB loads — no reassignment needed.
         const avatarEntry = avatarEntryRef.current;
         if (avatarEntry?._isMixamo) {
-          // Mixamo Xbot GLB avatar
-          updateMixamoAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt);
+          // Mixamo Xbot GLB avatar — same logic as soldier, including hoverboard freeze
+          updateMixamoAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt, hbRidingRef.current);
         } else if (avatarEntry?._isTestAvatar) {
           // Procedural test avatars (male/female) — no mixer/clips
           updateTestAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt);
