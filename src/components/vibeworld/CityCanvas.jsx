@@ -1315,7 +1315,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       let entry;
       if (isMixamoAvatar) {
         // Mixamo Xbot GLB — full human with baked Idle/Walk/Run/Dance
-        entry = createMixamoAvatar(scene, { label: "" }, (_entry) => {
+        // Pass spawn position so controller Group starts at the correct location
+        entry = createMixamoAvatar(scene, {
+          spawnX: effectiveSpawn[0],
+          spawnY: effectiveSpawn[1],
+          spawnZ: effectiveSpawn[2],
+        }, (_entry) => {
           avatarEntryRef.current = _entry;
         });
         if (retintRef) retintRef.current = () => {};

@@ -1,24 +1,20 @@
 /**
  * AvatarModelMixamo — Mixamo Xbot test avatar.
  *
- * Uses the EXACT same movement system, animation logic, hoverboard, and
- * controller Group pattern as the soldier avatar (AvatarModel.js).
+ * Uses the EXACT same controller Group pattern as the soldier (AvatarModel.js).
+ * The controller Group IS the movement root — CityCanvas moves it via
+ *   avatar.position.set(px, py, pz) and avatar.rotation.y = rot
+ * every frame, exactly like the soldier.
  *
- * This is a TEST option only. The soldier remains the default.
- * Do NOT set as default until explicitly approved.
+ * KEY FIX: We always clone gltf.scene (not use it directly) so that
+ * re-mounts from sessionStorage switching don't leave the model
+ * orphaned in the old controller.
  *
- * Key design decisions matching soldier:
- * - Returns entry { root (Group), mixer, clips, currentAnim } immediately
- * - GLB loads async, attaches as child of controller Group
- * - Uses gltf.scene directly (no clone) for player — same as soldier pattern
- * - model.rotation.y = Math.PI so it faces the same direction as soldier
- * - attachHoverboard / detachHoverboard imported from AvatarModel (shared)
- * - updateMixamoAvatarAnimation mirrors updateAvatarAnimation exactly
+ * TEST ONLY — soldier remains the default.
  */
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { SPAWN } from "./cityData";
 
 // Three.js-hosted Xbot — CORS-open, has Idle/Walk/Run/Dance baked in
 const XBOT_URL =
@@ -42,11 +38,17 @@ function loadGLTF() {
   return _gltfPromise;
 }
 
-// ── Shadow disc — identical to soldier ───────────────────────
+// ── Shadow disc — IDENTICAL to soldier's makeShadow() ────────
+// This is the black circle under the avatar's feet.
 function makeShadow() {
   const m = new THREE.Mesh(
     new THREE.CircleGeometry(0.28, 12),
-    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false })
+    new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.22,
+      depthWrite: false,
+    })
   );
   m.rotation.x = -Math.PI / 2;
   m.position.y = 0.01;
@@ -63,19 +65,21 @@ function crossFade(entry, toKey, duration = 0.22) {
   entry.currentAnim = toKey;
 }
 
-// ── attachMixamoModel — mirrors soldier's attachModel ────────
+// ── Attach Xbot model as child of the controller Group ───────
 function attachMixamoModel(gltf, controllerGroup) {
-  // Remove any existing model (handles React StrictMode double-mount)
+  // Remove any stale model first (handles React StrictMode double-mount)
   const existing = controllerGroup.getObjectByName("avatarModel");
   if (existing) controllerGroup.remove(existing);
 
-  // Use gltf.scene directly — same pattern as soldier (avoids SkinnedMesh clone issues)
-  const model = gltf.scene;
+  // ALWAYS clone — gltf.scene may already be parented somewhere else
+  // (soldier avoids this by using scene directly since only 1 instance exists,
+  //  but Mixamo can be remounted so we must clone)
+  const model = gltf.scene.clone(true);
   model.name = "avatarModel";
   model.position.set(0, 0, 0);
-  // Rotate 180° on Y — Xbot faces +Z, soldier faces -Z; match the soldier's facing
+  // Xbot faces +Z; rotate 180° so it faces -Z like the soldier
   model.rotation.set(0, Math.PI, 0);
-  // Scale Xbot from its huge size (~200cm) down to ~1.75m to match soldier
+  // Scale Xbot from ~200cm down to ~1.75m to match soldier height
   model.scale.setScalar(0.011);
 
   model.traverse((child) => {
@@ -95,19 +99,19 @@ function attachMixamoModel(gltf, controllerGroup) {
     }
   });
 
-  // Add to controller BEFORE creating AnimationMixer (required for Three.js)
+  // Add to controller BEFORE creating AnimationMixer (Three.js requirement)
   controllerGroup.add(model);
 
-  // AnimationMixer targets the model — same as soldier
+  // AnimationMixer targets the cloned model
   const mixer = new THREE.AnimationMixer(model);
   const clips = {};
 
   for (const clip of gltf.animations) {
     const n = clip.name.toLowerCase();
     let key = null;
-    if (n.includes("idle"))                         key = "idle";
-    else if (n.includes("walk"))                    key = "walk";
-    else if (n.includes("run"))                     key = "run";
+    if (n.includes("idle"))                               key = "idle";
+    else if (n.includes("walk"))                          key = "walk";
+    else if (n.includes("run"))                           key = "run";
     else if (n.includes("dance") || n.includes("hip hop")) key = "dance";
     if (key && !clips[key]) {
       const action = mixer.clipAction(clip);
@@ -117,7 +121,9 @@ function attachMixamoModel(gltf, controllerGroup) {
   }
 
   // Play idle immediately — never leave in T/A-pose
-  const startKey = clips.idle ? "idle" : clips.walk ? "walk" : Object.keys(clips)[0];
+  const startKey = clips.idle ? "idle"
+    : clips.walk ? "walk"
+    : Object.keys(clips)[0];
   if (startKey && clips[startKey]) {
     clips[startKey].reset().setEffectiveTimeScale(1).setEffectiveWeight(1).play();
   }
@@ -127,21 +133,37 @@ function attachMixamoModel(gltf, controllerGroup) {
 
 // ── PUBLIC: createMixamoAvatar ────────────────────────────────
 // Mirrors createAvatar() from AvatarModel.js exactly.
-// CityCanvas receives entry immediately; model attaches async.
+//
+// The controller Group is added to the scene at spawnPos and becomes
+// entry.root — which CityCanvas stores in avatarRef.current.
+// Every frame: avatar.position.set(px,py,pz) and avatar.rotation.y = rot
+// moves this controller, pulling the model AND shadow disc with it.
+//
+// spawnPos is passed from CityCanvas so the controller starts at the
+// correct effectiveSpawn position (not just the default SPAWN constant).
 export function createMixamoAvatar(scene, opts = {}, onReady) {
+  // Use spawn position from opts if provided, otherwise default to origin
+  const sx = opts.spawnX ?? 0;
+  const sy = opts.spawnY ?? 0;
+  const sz = opts.spawnZ ?? 5;
+
   const controller = new THREE.Group();
-  controller.name = "avatar";
-  controller.position.set(SPAWN[0], SPAWN[1], SPAWN[2]);
-  controller.add(makeShadow());
+  controller.name = "avatar";           // same name as soldier controller
+  controller.position.set(sx, sy, sz);  // start at correct spawn position
+  controller.add(makeShadow());         // black ground circle — child of controller
   scene.add(controller);
 
-  // Same entry contract as soldier — CityCanvas stores root in avatarRef
+  // Same entry contract as soldier:
+  //   entry.root   → CityCanvas avatarRef.current (moved every frame)
+  //   entry.mixer  → populated async when GLB loads
+  //   entry.clips  → populated async when GLB loads
+  //   entry._isMixamo → tells CityCanvas to call updateMixamoAvatarAnimation
   const entry = {
     root: controller,
     mixer: null,
     clips: {},
     currentAnim: "idle",
-    _isMixamo: true,   // tells CityCanvas to call updateMixamoAvatarAnimation
+    _isMixamo: true,
   };
 
   loadGLTF()
@@ -170,7 +192,7 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
 
 // ── PUBLIC: updateMixamoAvatarAnimation ──────────────────────
 // IDENTICAL logic to updateAvatarAnimation() in AvatarModel.js.
-// Same speed thresholds, hoverboard freeze, dance, timeScale math.
+// Same speed thresholds, hoverboard freeze, dance handling, timeScale math.
 export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false) {
   if (!entry?.mixer) return;
   entry.mixer.update(dt);
