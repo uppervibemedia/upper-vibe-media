@@ -98,15 +98,15 @@ export function createCosmicSky(scene) {
     skyCtx.restore();
   }
 
-  // Baked canvas stars — larger dots so they're actually visible on the sphere
-  const canvasStarCount = isMobile ? 600 : 1400;
+  // Baked canvas stars — small dots on the sphere texture
+  const canvasStarCount = isMobile ? 400 : 900;
   const seededStar = (() => { let s = 99; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
   for (let i = 0; i < canvasStarCount; i++) {
-    const sx = seededStar() * SKY_W;
-    const sy = seededStar() * SKY_H;
-    // Larger radius so stars are visible when texture is mapped to sphere
-    const sr = 1.2 + seededStar() * (seededStar() < 0.08 ? 3.0 : 1.2);
-    const bright = SKY_DEBUG ? 1.0 : (0.55 + seededStar() * 0.45);
+  const sx = seededStar() * SKY_W;
+  const sy = seededStar() * SKY_H;
+  // Smaller radius for a less cluttered sky
+  const sr = 0.5 + seededStar() * (seededStar() < 0.08 ? 1.2 : 0.5);
+  const bright = SKY_DEBUG ? 1.0 : (0.45 + seededStar() * 0.35);
     const warm = seededStar() < 0.12;
     const col = warm
       ? `rgba(255,215,170,${bright.toFixed(2)})`
@@ -117,21 +117,21 @@ export function createCosmicSky(scene) {
     skyCtx.fill();
   }
 
-  // Hero stars — bright glowing prominent stars
-  const heroStarCount = isMobile ? 15 : 35;
+  // Hero stars — smaller glowing stars (reduced 60%)
+  const heroStarCount = isMobile ? 8 : 18;
   const seededHero = (() => { let s = 77; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
   for (let h = 0; h < heroStarCount; h++) {
     const hx = seededHero() * SKY_W;
     const hy = seededHero() * SKY_H * 0.80;
-    const hr = 2.0 + seededHero() * 3.0;
-    const hg = skyCtx.createRadialGradient(hx, hy, 0, hx, hy, hr * 3.0);
-    hg.addColorStop(0,    "rgba(255,255,255,1)");
-    hg.addColorStop(0.15, "rgba(220,235,255,0.85)");
-    hg.addColorStop(0.4,  "rgba(180,210,255,0.35)");
+    const hr = 0.8 + seededHero() * 1.2;
+    const hg = skyCtx.createRadialGradient(hx, hy, 0, hx, hy, hr * 2.0);
+    hg.addColorStop(0,    "rgba(255,255,255,0.9)");
+    hg.addColorStop(0.2,  "rgba(220,235,255,0.5)");
+    hg.addColorStop(0.6,  "rgba(180,210,255,0.15)");
     hg.addColorStop(1,    "rgba(0,0,0,0)");
     skyCtx.fillStyle = hg;
     skyCtx.beginPath();
-    skyCtx.arc(hx, hy, hr * 3.0, 0, Math.PI * 2);
+    skyCtx.arc(hx, hy, hr * 2.0, 0, Math.PI * 2);
     skyCtx.fill();
   }
 
