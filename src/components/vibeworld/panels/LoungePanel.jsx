@@ -180,7 +180,8 @@ export default function LoungePanel({
       className="fixed inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
       style={{
         zIndex: 70,
-        height: isMobile ? "80dvh" : "65vh",
+        height: isMobile ? "min(80dvh, 100dvh)" : "65vh",
+        maxHeight: "100dvh",
         background: "rgba(12,10,24,0.97)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",

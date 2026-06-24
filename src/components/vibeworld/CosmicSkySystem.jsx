@@ -339,37 +339,41 @@ export function createCosmicSky(scene) {
   // horizonY lifted to 75–90 so they clear building tops (~7-8u) even from close range.
   // angleOffset spread keeps them in the north arc (front/sides of city, never south/beach).
   // Beach planets are handled separately by the beachFlyby system below.
-  const NORTH_STEP = Math.PI / 5; // spread across front 180° arc (north semicircle)
+  // Horizon planets spread evenly around the compass.
+  // horizonY: vertical world units above ground level as seen from camera.
+  // Camera eye is at ~Y=8; planets at Y=22-32 appear in the upper 1/3 of the screen
+  // without requiring the user to tilt up. radius=65 keeps them inside far clip (200u).
+  const NORTH_STEP = (Math.PI * 2) / 5; // evenly spaced around full 360° orbit
   const PLANET_DEFS = [
     {
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
-      glowColor: "rgba(160,80,255,0.35)", ringColor: "rgba(200,140,255,0.55)",
-      size: isMobile ? 32 : 46, angleOffset: Math.PI + NORTH_STEP * 0, horizonY: 88, radius: 55,
+      glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
+      size: isMobile ? 40 : 56, angleOffset: Math.PI + NORTH_STEP * 0, horizonY: 28, radius: 65,
     },
     {
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
-      glowColor: "rgba(80,180,255,0.25)", ringColor: "rgba(120,200,255,0.45)",
-      size: isMobile ? 24 : 32, angleOffset: Math.PI + NORTH_STEP * 1, horizonY: 82, radius: 55,
+      glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
+      size: isMobile ? 30 : 40, angleOffset: Math.PI + NORTH_STEP * 1, horizonY: 24, radius: 65,
     },
     {
       id: "east",
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
-      glowColor: "rgba(220,140,60,0.25)", ringColor: "rgba(200,160,80,0.40)",
-      size: isMobile ? 20 : 28, angleOffset: Math.PI + NORTH_STEP * 2, horizonY: 78, radius: 55,
+      glowColor: "rgba(220,140,60,0.45)", ringColor: "rgba(200,160,80,0.55)",
+      size: isMobile ? 26 : 34, angleOffset: Math.PI + NORTH_STEP * 2, horizonY: 22, radius: 65,
     },
     {
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
-      glowColor: "rgba(60,200,100,0.22)", ringColor: "rgba(80,220,120,0.40)",
-      size: isMobile ? 18 : 24, angleOffset: Math.PI + NORTH_STEP * 3, horizonY: 80, radius: 55,
+      glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
+      size: isMobile ? 24 : 30, angleOffset: Math.PI + NORTH_STEP * 3, horizonY: 26, radius: 65,
     },
     {
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
-      glowColor: "rgba(220,60,60,0.28)", ringColor: "rgba(200,80,80,0.40)",
-      size: isMobile ? 26 : 36, angleOffset: Math.PI + NORTH_STEP * 4, horizonY: 85, radius: 55,
+      glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
+      size: isMobile ? 32 : 44, angleOffset: Math.PI + NORTH_STEP * 4, horizonY: 25, radius: 65,
     },
   ];
 
@@ -660,55 +664,62 @@ export function createCosmicSky(scene) {
     return { sprite: psprite, mat: pmat };
   }
 
-  // Planet A: teal/cyan — left→right cinematic sweep
+  // Planet A: teal/cyan — left→right cinematic sweep, CAMERA-RELATIVE
   const flybyA = buildFlybyPlanet(
     ["#041820", "#0A3840", "#1A6860", "#2A9888", "#50D8C0"],
-    "rgba(50,200,180,0.35)",
-    isMobile ? 28 : 38
+    "rgba(50,200,180,0.55)",
+    isMobile ? 36 : 48
   );
-  // Planet B: amber/orange — right→left sweep, slightly different Y
+  // Planet B: amber/orange — right→left sweep, CAMERA-RELATIVE
   const flybyB = buildFlybyPlanet(
     ["#1A0E02", "#3A2004", "#7A4010", "#C07030", "#E8B060"],
-    "rgba(220,140,50,0.32)",
-    isMobile ? 25 : 34
+    "rgba(220,140,50,0.52)",
+    isMobile ? 32 : 44
   );
 
   const now0 = performance.now() * 0.001;
 
-  // ── Alternating beach flyby system ─────────────────────────────────────────
-  // Only ONE planet active at a time. They alternate: A → gap → B → gap → A ...
-  // Y=10–14: low enough to sit in normal third-person beach camera view.
-  // Z=44–52: behind the playable beach (z≈32), clearly in ocean sky.
-  // X paths are wide and laterally offset so they never cross avatar screen center.
-  // DURATION_A/B: how long the planet is crossing.
+  // ── Alternating beach flyby system — CAMERA-RELATIVE ────────────────────
+  // Positions are camera offsets, not world-space coordinates.
+  // This guarantees the planets are always inside the far clip plane
+  // and always appear in the correct sky direction regardless of player position.
+  //
+  // Beach is at world Z≈+32 (south of plaza origin).
+  // Camera-relative Z: negative Z = in front of camera (toward beach horizon).
+  // We place them at cameraZ -50 to -65 so they sit in the distant sky behind the beach.
+  // cameraX ±60 sweeps wide across the screen — offset from center so avatar is never obscured.
+  // cameraY +20: ~20 units above camera eye → appears in upper third of viewport.
+  //
+  // DURATION_A/B: seconds the planet crosses the screen.
   // GAP: pause between one ending and the next starting.
 
-  const DURATION_A  = 22;   // seconds Planet A is visible
-  const DURATION_B  = 20;   // seconds Planet B is visible
-  const GAP_AFTER_A = 8;    // gap after A before B fires
-  const GAP_AFTER_B = 6;    // gap after B before A fires
+  const DURATION_A  = 24;   // seconds Planet A is visible
+  const DURATION_B  = 22;   // seconds Planet B is visible
+  const GAP_AFTER_A = 7;    // gap after A before B fires
+  const GAP_AFTER_B = 5;    // gap after B before A fires
 
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    startX: -75, startY: 12, startZ: 46,
-    endX:    60, endY:   10, endZ: 42,
+    // Camera-relative offsets: sweep left→right across the south sky
+    startCX: -65, startCY: 20, startCZ: -58,
+    endCX:    65, endCY:   18, endCZ: -52,
     duration: DURATION_A,
-    nextFire: now0 + 3,          // fires quickly on load
+    nextFire: now0 + 2,          // fires 2s after world loads
     _gapAfter: GAP_AFTER_A,
-    _partner: null,              // set below
+    _partner: null,
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    startX:  75, startY: 14, startZ: 50,
-    endX:   -60, endY:   12, endZ: 44,
+    // Camera-relative: sweep right→left, slightly higher
+    startCX:  68, startCY: 22, startCZ: -60,
+    endCX:   -68, endCY:   20, endCZ: -54,
     duration: DURATION_B,
-    nextFire: now0 + DURATION_A + GAP_AFTER_A + 3,  // starts after A completes
+    nextFire: now0 + DURATION_A + GAP_AFTER_A + 2,
     _gapAfter: GAP_AFTER_B,
     _partner: null,
   };
-  // Cross-link partners so each knows when the other is done
   scene.userData.beachFlybyA._partner = scene.userData.beachFlybyB;
   scene.userData.beachFlybyB._partner = scene.userData.beachFlybyA;
 }
@@ -766,9 +777,12 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
       // Camera-relative: planet is always at fixed offset from camera,
       // so it can NEVER be outside the far clipping plane.
+      // Y is also camera-relative: camera.position.y + horizonY keeps the planet
+      // at a consistent sky position regardless of terrain height.
       const cx = camera.position.x + Math.sin(angle) * p.radius;
       const cz = camera.position.z + Math.cos(angle) * p.radius;
-      p.sprite.position.set(cx, p.horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.5, cz);
+      const cy = camera.position.y + p.horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.5;
+      p.sprite.position.set(cx, cy, cz);
       p.mat.opacity = 1.0;
     }
 
@@ -831,8 +845,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
     if (!fb) return;
     if (!fb.active) {
       if (t >= fb.nextFire) {
-        // Don't fire if partner is still active — wait for it to finish first
-        if (fb._partner && fb._partner.active) return;
+        if (fb._partner && fb._partner.active) return; // wait for partner to finish
         fb.active = true;
         fb.life = 0;
         fb.maxLife = fb.duration;
@@ -842,31 +855,32 @@ export function animateCosmicSky(scene, camera, t, dt) {
       fb.life += dt;
       const prog = Math.min(fb.life / fb.maxLife, 1);
 
-      // Fast fade-in (first 8% of duration), slow fade-out (last 10%)
-      const fadeIn  = Math.min(prog / 0.08, 1);
-      const fadeOut = Math.min((1 - prog) / 0.10, 1);
-      fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.92;
+      // Fast fade-in (6% of duration ~1.5s), gentle fade-out (12%)
+      const fadeIn  = Math.min(prog / 0.06, 1);
+      const fadeOut = Math.min((1 - prog) / 0.12, 1);
+      fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.95;
 
-      // Smooth lerp across the beach sky
+      // Camera-relative positioning — ALWAYS inside far clip, always in sky
+      const cx = fb.startCX + (fb.endCX - fb.startCX) * prog;
+      const cy = fb.startCY + (fb.endCY - fb.startCY) * prog;
+      const cz = fb.startCZ + (fb.endCZ - fb.startCZ) * prog;
       fb.sprite.position.set(
-        fb.startX + (fb.endX - fb.startX) * prog,
-        fb.startY + (fb.endY - fb.startY) * prog,
-        fb.startZ + (fb.endZ - fb.startZ) * prog
+        camera.position.x + cx,
+        camera.position.y + cy,
+        camera.position.z + cz
       );
 
       if (prog >= 1) {
         fb.active = false;
         fb.mat.opacity = 0;
         fb.sprite.position.set(9999, 9999, 9999);
-        // Schedule partner to fire after the gap
         if (fb._partner) {
           fb._partner.nextFire = t + fb._gapAfter;
         }
-        // Re-schedule self to fire after partner's duration + partner's gap
         const partner = fb._partner;
         fb.nextFire = partner
-          ? t + fb._gapAfter + (partner.duration || 20) + (partner._gapAfter || 6)
-          : t + 40;
+          ? t + fb._gapAfter + (partner.duration || 22) + (partner._gapAfter || 6)
+          : t + 45;
       }
     }
   }

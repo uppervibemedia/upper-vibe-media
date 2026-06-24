@@ -10,9 +10,10 @@ import { useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import SaveHeartButton from "@/components/shared/SaveHeartButton";
+import SupportModal from "@/components/shared/SupportModal";
 
-function UpgradeView({ track, onBack, onClose, isMobile, onNavigate }) {
-  const [confirm, setConfirm] = useState(null); // null | "membership" | "donate"
+function UpgradeView({ track, onBack, onClose, isMobile, onNavigate, onOpenSupportModal }) {
+  const [confirm, setConfirm] = useState(null); // null | "membership"
 
   const doNavigate = (path) => {
     try { sessionStorage.setItem("vibeworld_return_url", window.location.href); sessionStorage.setItem("vibeworld_return", "1"); } catch {}
@@ -21,20 +22,19 @@ function UpgradeView({ track, onBack, onClose, isMobile, onNavigate }) {
   };
 
   const handleUpgrade = (e) => { e.stopPropagation(); setConfirm("membership"); };
-  const handleDonate = (e) => { e.stopPropagation(); setConfirm("donate"); };
+  // Donate opens in-world modal — no navigation away
+  const handleDonate = (e) => { e.stopPropagation(); onOpenSupportModal?.(); };
 
   if (confirm) {
     return (
       <div className="flex flex-col items-center justify-center p-6 h-full">
         <p className="font-heading font-black text-white text-base text-center mb-1">Leave Vibe City?</p>
         <p className="text-xs text-white/45 text-center mb-5 leading-relaxed">
-          {confirm === "membership"
-            ? "You'll be taken to the membership page."
-            : "You'll be taken to the song page to support the artist."}
+          You'll be taken to the membership page.
         </p>
         <button
           onTouchStart={(e) => e.stopPropagation()}
-          onClick={() => doNavigate(confirm === "membership" ? "/membership" : `/song/${track.id}?donate=1`)}
+          onClick={() => doNavigate("/membership")}
           className="w-full py-3 rounded-xl font-black text-sm mb-2 transition-all hover:brightness-110 active:scale-95"
           style={{ background: "linear-gradient(135deg,#D4A843,#F0C040)", color: "#000", touchAction: "manipulation" }}>
           Continue
@@ -164,6 +164,7 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying,
   const navigate = useNavigate();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showDownloadConfirm, setShowDownloadConfirm] = useState(false);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
 
   if (!track) return null;
 
@@ -298,6 +299,7 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying,
               onClose={onClose}
               isMobile={isMobile}
               onNavigate={navigate}
+              onOpenSupportModal={() => setSupportModalOpen(true)}
             />
           ) : (
             <motion.div
@@ -434,6 +436,13 @@ export default function InWorldSongPage({ track, onClose, isMobile, isDJPlaying,
           )}
         </AnimatePresence>
       </div>
+
+      {/* In-world support/donate modal — stays inside Vibe City */}
+      <SupportModal
+        open={supportModalOpen}
+        onClose={() => setSupportModalOpen(false)}
+        track={track}
+      />
     </motion.div>
   );
 }

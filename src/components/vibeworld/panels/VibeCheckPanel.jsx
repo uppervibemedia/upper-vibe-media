@@ -256,7 +256,8 @@ export default function VibeCheckPanel({ open, onClose, isMobile }) {
       className="fixed inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
       style={{
         zIndex: 70,
-        height: isMobile ? "90dvh" : "75vh",
+        height: isMobile ? "min(90dvh, 100dvh)" : "75vh",
+        maxHeight: "100dvh",
         background: "rgba(10,12,22,0.98)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",

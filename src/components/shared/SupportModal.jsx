@@ -88,8 +88,11 @@ export default function SupportModal({ open, onClose, track }) {
             exit={{ scale: 0.92, opacity: 0, y: 16 }}
             transition={{ type: "spring", damping: 22, stiffness: 280 }}
             className="relative w-full max-w-md rounded-3xl overflow-y-auto"
-            style={{ maxHeight: "calc(100vh - env(safe-area-inset-top, 16px) - env(safe-area-inset-bottom, 0px) - 112px)" }}
-            style={{ background: "linear-gradient(160deg, #06061a 0%, #0a0a22 100%)", border: "1px solid rgba(0,229,255,0.2)" }}
+            style={{
+              maxHeight: "min(calc(100dvh - 80px), 600px)",
+              background: "linear-gradient(160deg, #06061a 0%, #0a0a22 100%)",
+              border: "1px solid rgba(0,229,255,0.2)"
+            }}
           >
             {/* Glow accent */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 rounded-full opacity-20 pointer-events-none"
