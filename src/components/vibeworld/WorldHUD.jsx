@@ -632,7 +632,7 @@ export default function WorldHUD({
           </motion.div>
         )}
 
-        {zone?.id === "stage" && !stageFullScreen && (
+        {zone?.id === "stage" && (
           <motion.div
             key="stage-actions"
             initial={{ opacity: 0, y: 10 }}
@@ -712,8 +712,8 @@ export default function WorldHUD({
                 </button>
               )}
 
-              {/* Full Screen */}
-              {onStageFullScreen && (
+              {/* Full Screen — only show when NOT already in fullscreen */}
+              {onStageFullScreen && !stageFullScreen && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={() => { hapticTap(); onStageFullScreen(); }}
