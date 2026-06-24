@@ -184,53 +184,32 @@ export default function UpperVibeCityPreview({ variant = "home" }) {
           <div className="absolute inset-0 overflow-hidden rounded-t-2xl md:rounded-t-3xl">
             <CityLiveFeed />
 
-            {/* HUD overlay — top bar with LIVE badge, online count, and Enter button */}
-            <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 pt-3 z-10" style={{ pointerEvents: "none" }}>
-              <div className="flex items-center gap-2">
-                {/* LIVE badge */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                  style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(0,212,240,0.35)", backdropFilter: "blur(10px)" }}>
-                  <motion.span
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 1.2, repeat: Infinity }}
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ background: "#00E5FF" }}
-                  />
-                  <span className="text-[9px] font-black tracking-widest uppercase" style={{ color: "#00E5FF" }}>
-                    Live Aerial · Upper Vibe City
-                  </span>
-                </div>
-
-                {/* Online count */}
-                {onlineCount !== null && (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-full"
-                    style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(8px)" }}>
-                    <Users style={{ width: 9, height: 9, color: "rgba(255,255,255,0.5)" }} />
-                    <span className="text-[9px] font-bold" style={{ color: "rgba(255,255,255,0.6)" }}>
-                      {onlineCount} online
-                    </span>
-                  </div>
-                )}
+            {/* HUD overlay — LIVE badge + online count only */}
+            <div className="absolute inset-x-0 top-0 flex items-center gap-2 px-3 pt-3 z-10 pointer-events-none">
+              {/* LIVE badge */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(0,212,240,0.35)", backdropFilter: "blur(10px)" }}>
+                <motion.span
+                  animate={{ opacity: [1, 0.3, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity }}
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ background: "#00E5FF" }}
+                />
+                <span className="text-[9px] font-black tracking-widest uppercase" style={{ color: "#00E5FF" }}>
+                  Live Aerial · Upper Vibe City
+                </span>
               </div>
 
-              {/* Enter button — top right above the feed */}
-              <button
-                onClick={handleEnter}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-                style={{
-                  background: "linear-gradient(135deg,rgba(0,184,212,0.9),rgba(155,79,255,0.9))",
-                  color: "#fff",
-                  backdropFilter: "blur(14px)",
-                  border: "1px solid rgba(255,255,255,0.22)",
-                  boxShadow: "0 0 24px rgba(0,212,240,0.4), 0 2px 12px rgba(0,0,0,0.5)",
-                  touchAction: "manipulation",
-                  pointerEvents: "auto",
-                  minHeight: "34px",
-                }}
-              >
-                <MapPin style={{ width: 12, height: 12 }} />
-                Enter Upper Vibe City
-              </button>
+              {/* Online count */}
+              {onlineCount !== null && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-full"
+                  style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(8px)" }}>
+                  <Users style={{ width: 9, height: 9, color: "rgba(255,255,255,0.5)" }} />
+                  <span className="text-[9px] font-bold" style={{ color: "rgba(255,255,255,0.6)" }}>
+                    {onlineCount} online
+                  </span>
+                </div>
+              )}
             </div>
 
 
@@ -264,7 +243,7 @@ export default function UpperVibeCityPreview({ variant = "home" }) {
             {/* Enter button (desktop right side) */}
             <button
               onClick={handleEnter}
-              className="hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-sm tracking-wider transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
+              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
               style={{
                 background: "linear-gradient(135deg,#00B8D4,#9B4FFF)",
                 color: "#fff",
