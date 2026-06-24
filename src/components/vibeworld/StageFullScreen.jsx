@@ -1,19 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { X, Volume2, VolumeX, Music4, SkipForward } from "lucide-react";
 
-/**
- * StageFullScreen — full-screen cinematic video player overlay.
- *
- * Single source of truth for mute state: `isMuted` lives here only.
- * Parent's stageMuted prop is intentionally ignored to avoid state fights.
- *
- * UI:
- *  - Top bar (always visible): Mute left | Title center | Exit right
- *  - Bottom bar (auto-hide 3s): Exit Watch | Next | Play Song
- *  - Tap anywhere on the dark area to show bottom controls again
- *  - Buttons call stopPropagation so taps don't double-fire
- */
 export default function StageFullScreen({
   open, video, onClose,
   onStageExitWatchMode, onStageNextVideo, onStagePlaySong,
@@ -29,11 +17,12 @@ export default function StageFullScreen({
   const thumbnailUrl = video?.thumbnail_url
     || (ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null);
 
+  // controls=0 prevents YouTube UI; disablekb=1 stops keyboard shortcuts that open YT
+  // rel=0, modestbranding=1 minimize YouTube branding
   const embedUrl = ytId
-    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&controls=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`
+    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&controls=0&disablekb=1&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`
     : "";
 
-  // Reset mute + controls on open; clear timer on close
   useEffect(() => {
     if (open) {
       setIsMuted(true);
@@ -51,15 +40,6 @@ export default function StageFullScreen({
     clearTimer();
     const delay = tvMode ? 2000 : 3000;
     hideTimerRef.current = setTimeout(() => setControlsVisible(false), delay);
-  }, [tvMode]);
-
-  // Sync hide delay when tvMode changes while overlay is open
-  useEffect(() => {
-    if (open && controlsVisible) {
-      clearTimer();
-      const delay = tvMode ? 2000 : 3000;
-      hideTimerRef.current = setTimeout(() => setControlsVisible(false), delay);
-    }
   }, [tvMode]);
 
   const postToIframe = useCallback((func) => {
@@ -83,12 +63,6 @@ export default function StageFullScreen({
     postToIframe("playVideo");
   }, [postToIframe]);
 
-  // Tap handler for the dark background — shows controls without triggering anything else
-  const handleBackgroundTap = useCallback((e) => {
-    // Only fire if the tap was directly on this element (not bubbled from a button)
-    if (e.target === e.currentTarget) showControls();
-  }, [showControls]);
-
   const saTop = (isMobile && mobileLayout?.sa?.top) ? mobileLayout.sa.top : 0;
   const saBottom = (isMobile && mobileLayout?.sa?.bottom) ? mobileLayout.sa.bottom : 0;
 
@@ -98,29 +72,31 @@ export default function StageFullScreen({
     <div
       className="fixed inset-0 z-[300] flex flex-col"
       style={{ background: "#000" }}
+      onPointerDown={showControls}
     >
-      {/* ── Tap zone: covers the whole screen but passes pointer events to children ── */}
-      {/* Use onPointerDown on the outer div; children stop propagation so only blank taps fire */}
-      <div
-        className="absolute inset-0 z-0"
-        onPointerDown={showControls}
-        style={{ touchAction: "manipulation" }}
-      />
-
       {/* ── Video fills the screen ── */}
       <div className="absolute inset-0 z-[1]">
         {ytId ? (
-          <iframe
-            ref={iframeRef}
-            src={embedUrl}
-            title={title || "Stage Video"}
-            className="w-full h-full"
-            style={{ border: "none", display: "block" }}
-            allow="autoplay; encrypted-media; picture-in-picture"
-            referrerPolicy="strict-origin-when-cross-origin"
-            allowFullScreen
-            onLoad={handleIframeLoad}
-          />
+          <>
+            <iframe
+              ref={iframeRef}
+              src={embedUrl}
+              title="Stage Video"
+              className="w-full h-full"
+              style={{ border: "none", display: "block" }}
+              allow="autoplay; encrypted-media"
+              referrerPolicy="strict-origin-when-cross-origin"
+              onLoad={handleIframeLoad}
+            />
+            {/* Transparent overlay blocks mouse hover from reaching the iframe,
+                preventing YouTube's own title/control overlays from appearing.
+                Pointer events on our own UI buttons are set explicitly above z-[1]. */}
+            <div
+              className="absolute inset-0"
+              style={{ zIndex: 2, background: "transparent" }}
+              onPointerDown={(e) => { e.stopPropagation(); showControls(); }}
+            />
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-black">
             {thumbnailUrl
@@ -131,18 +107,16 @@ export default function StageFullScreen({
         )}
       </div>
 
-      {/* ── Top bar: always visible, above video ── */}
+      {/* ── Top bar: Mute (left) + Exit (right) — NO title here ── */}
       <div
-        className="absolute left-0 right-0 z-[10] flex items-center"
+        className="absolute left-0 right-0 z-[10] flex items-center justify-between"
         style={{
           top: saTop + 8,
           paddingLeft: `max(env(safe-area-inset-left, 0px), 12px)`,
           paddingRight: `max(env(safe-area-inset-right, 0px), 12px)`,
-          gap: 8,
-          pointerEvents: "none", // children handle their own pointer events
         }}
       >
-        {/* Mute — left */}
+        {/* Mute */}
         <button
           onPointerDown={(e) => { e.stopPropagation(); toggleMute(); }}
           className="flex-shrink-0 flex items-center justify-center rounded-full active:scale-95"
@@ -153,23 +127,13 @@ export default function StageFullScreen({
             color: isMuted ? "rgba(255,255,255,0.6)" : "#fff",
             width: 44, height: 44, minWidth: 44, minHeight: 44,
             touchAction: "manipulation",
-            pointerEvents: "auto",
           }}
           aria-label={isMuted ? "Unmute" : "Mute"}
         >
           {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
         </button>
 
-        {/* Title — center, single line, truncated */}
-        <div className="flex-1 min-w-0 px-1 text-center pointer-events-none overflow-hidden">
-          {title && (
-            <p className="text-white/75 font-bold truncate" style={{ fontSize: 12, lineHeight: 1.3 }}>
-              {title}
-            </p>
-          )}
-        </div>
-
-        {/* Exit — right */}
+        {/* Exit */}
         <button
           onPointerDown={(e) => { e.stopPropagation(); onClose?.(); }}
           className="flex-shrink-0 flex items-center gap-1.5 px-4 rounded-full font-black text-xs tracking-wider active:scale-95"
@@ -180,7 +144,6 @@ export default function StageFullScreen({
             color: "rgba(255,255,255,0.9)",
             height: 44, minHeight: 44, minWidth: 44,
             touchAction: "manipulation",
-            pointerEvents: "auto",
           }}
           aria-label="Exit full screen"
         >
@@ -189,11 +152,11 @@ export default function StageFullScreen({
         </button>
       </div>
 
-      {/* ── Bottom controls — auto-hide, tap to show ── */}
+      {/* ── Bottom controls — auto-hide; title lives HERE only ── */}
       <motion.div
         animate={{ opacity: controlsVisible ? 1 : 0, y: controlsVisible ? 0 : 16 }}
         transition={{ duration: 0.2 }}
-        className="absolute left-0 right-0 z-[10] flex items-center justify-center"
+        className="absolute left-0 right-0 z-[10] flex flex-col items-center gap-1.5"
         style={{
           bottom: saBottom + 16,
           paddingLeft: `max(env(safe-area-inset-left, 0px), 16px)`,
@@ -201,6 +164,16 @@ export default function StageFullScreen({
           pointerEvents: controlsVisible ? "auto" : "none",
         }}
       >
+        {/* Song title — only shown here, never duplicated */}
+        {title && (
+          <p
+            className="text-white/70 font-bold truncate text-center max-w-[80vw]"
+            style={{ fontSize: 12, lineHeight: 1.3, pointerEvents: "none" }}
+          >
+            {title}
+          </p>
+        )}
+
         <div
           className="flex items-center gap-2 px-3 py-2 rounded-2xl flex-wrap justify-center"
           style={{
