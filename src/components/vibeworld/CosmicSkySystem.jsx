@@ -714,10 +714,11 @@ export function createCosmicSky(scene) {
   // DURATION_A/B: seconds the planet crosses the screen.
   // GAP: pause between one ending and the next starting.
 
-  const DURATION_A  = 24;   // seconds Planet A is visible
-  const DURATION_B  = 22;   // seconds Planet B is visible
-  const GAP_AFTER_A = 7;    // gap after A before B fires
-  const GAP_AFTER_B = 5;    // gap after B before A fires
+  const DURATION_A  = 12;   // seconds Planet A is visible
+  const DURATION_B  = 11;   // seconds Planet B is visible
+  const GAP_AFTER_A = 4;    // gap after A before B fires
+  const GAP_AFTER_B = 3;    // gap after B before A fires
+  // Total cycle: 12 + 4 + 11 + 3 = 30s
 
   // Beach flyby paths — camera-relative offsets.
   // Avatar occupies roughly cameraX -8 to +8, cameraY -5 to +8 in normal third-person view.
