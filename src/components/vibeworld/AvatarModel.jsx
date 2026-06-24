@@ -246,12 +246,12 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt, isHoverboardi
     const key = entry.clips.run ? "run" : "walk";
     if (entry.clips[key]) {
       crossFade(entry, key, 0.2);
-      entry.clips[key].setEffectiveTimeScale(Math.min(2.4, speed * 0.9));
+      entry.clips[key].setEffectiveTimeScale(Math.min(3.0, speed * 1.12));
     }
   } else if (speed > 0.07) {
     if (entry.clips.walk) {
       crossFade(entry, "walk", 0.2);
-      entry.clips.walk.setEffectiveTimeScale(0.75 + speed * 0.45);
+      entry.clips.walk.setEffectiveTimeScale(1.01 + speed * 0.56);
     }
   } else {
     if (entry.clips.idle) {

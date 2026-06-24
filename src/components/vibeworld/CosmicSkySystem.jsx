@@ -335,36 +335,41 @@ export function createCosmicSky(scene) {
   // horizonY values raised to clear building tops (~7-8u tall from ground).
   // North-facing planets (mega, west, crimson) use higher Y so they never
   // intersect the skyline. Beach-side (east, green) can be slightly lower.
+  // North skyline planets — all 5 orbit high above the north buildings.
+  // horizonY lifted to 75–90 so they clear building tops (~7-8u) even from close range.
+  // angleOffset spread keeps them in the north arc (front/sides of city, never south/beach).
+  // Beach planets are handled separately by the beachFlyby system below.
+  const NORTH_STEP = Math.PI / 5; // spread across front 180° arc (north semicircle)
   const PLANET_DEFS = [
     {
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.35)", ringColor: "rgba(200,140,255,0.55)",
-      size: isMobile ? 32 : 46, angleOffset: 0, horizonY: 62, radius: 55,
+      size: isMobile ? 32 : 46, angleOffset: Math.PI + NORTH_STEP * 0, horizonY: 88, radius: 55,
     },
     {
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.25)", ringColor: "rgba(120,200,255,0.45)",
-      size: isMobile ? 24 : 32, angleOffset: STEP * 1, horizonY: 58, radius: 55,
+      size: isMobile ? 24 : 32, angleOffset: Math.PI + NORTH_STEP * 1, horizonY: 82, radius: 55,
     },
     {
       id: "east",
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
       glowColor: "rgba(220,140,60,0.25)", ringColor: "rgba(200,160,80,0.40)",
-      size: isMobile ? 20 : 28, angleOffset: STEP * 2, horizonY: 56, radius: 55,
+      size: isMobile ? 20 : 28, angleOffset: Math.PI + NORTH_STEP * 2, horizonY: 78, radius: 55,
     },
     {
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor: "rgba(60,200,100,0.22)", ringColor: "rgba(80,220,120,0.40)",
-      size: isMobile ? 18 : 24, angleOffset: STEP * 3, horizonY: 54, radius: 55,
+      size: isMobile ? 18 : 24, angleOffset: Math.PI + NORTH_STEP * 3, horizonY: 80, radius: 55,
     },
     {
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor: "rgba(220,60,60,0.28)", ringColor: "rgba(200,80,80,0.40)",
-      size: isMobile ? 26 : 36, angleOffset: STEP * 4, horizonY: 60, radius: 55,
+      size: isMobile ? 26 : 36, angleOffset: Math.PI + NORTH_STEP * 4, horizonY: 85, radius: 55,
     },
   ];
 
@@ -669,31 +674,32 @@ export function createCosmicSky(scene) {
   );
 
   const now0 = performance.now() * 0.001;
-  // Beach flyby paths — raised Y and pushed Z deeper into water so planets
-  // pass through the far beach sky, never overlapping the avatar.
-  // X offset: paths are laterally shifted away from center (avatar stands near x≈0)
-  // so planets never cross the avatar's center screen line.
-  // Y≥26 ensures planets stay well above avatar head (~1.8u) from third-person camera.
-  // Z≥52 pushes them far past the shoreline (z≈32) into open ocean sky.
+  // Beach flyby planets — cinematic paths over Neon Surf Beach.
+  // Y=38–44: high enough to stay sky-level and never overlap avatar head
+  //   (camera eye is ~2.4u above ground; planets at y=38+ are well above).
+  // Z=50–65: past the shoreline (z≈32) deep into the ocean sky.
+  // X paths are wide and offset from center so planets never cross avatar center.
+  // Duration 20–30s: slow cinematic drift, clearly visible.
+  // nextFire starts at 5–8s so they appear quickly on first beach visit.
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // Path A: left-to-right, shifted to left side of sky (x: -60→40 avoids center)
-    startX: -60, startY: 28, startZ: 58,
-    endX:    40, endY:   26, endZ: 52,
-    nextFire: now0 + 10 + Math.random() * 20,
-    minInterval: 60, maxInterval: 90,
-    duration: 14 + Math.random() * 6,
+    // Path A: left-to-right sweep across the upper beach sky
+    startX: -65, startY: 40, startZ: 58,
+    endX:    50, endY:   38, endZ: 50,
+    nextFire: now0 + 5 + Math.random() * 8,
+    minInterval: 35, maxInterval: 55,
+    duration: 22 + Math.random() * 8,
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // Path B: right-to-left, shifted to right side of sky (x: 62→-38 avoids center)
-    startX: 62, startY: 32, startZ: 62,
-    endX: -38,  endY:   30, endZ: 54,
-    nextFire: now0 + 45 + Math.random() * 30,
-    minInterval: 90, maxInterval: 140,
-    duration: 14 + Math.random() * 6,
+    // Path B: right-to-left, slightly higher arc
+    startX: 68, startY: 44, startZ: 64,
+    endX: -50,  endY:   42, endZ: 52,
+    nextFire: now0 + 30 + Math.random() * 15,
+    minInterval: 40, maxInterval: 65,
+    duration: 22 + Math.random() * 8,
   };
 }
 
@@ -850,9 +856,8 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const fba = scene.userData.beachFlybyA;
   const fbb = scene.userData.beachFlybyB;
   if (fba || fbb) {
-    // Only run flyby updates while player is near beach (z > 5) or always on desktop
-    const playerNearBeach = !isMobile || (scene.userData._playerZ !== undefined ? scene.userData._playerZ > 5 : true);
-    if (playerNearBeach && updateSlow) {
+    // Always run flyby — planets are part of the sky and should be visible from anywhere
+    if (updateSlow) {
       animateFlyby(fba, fbb);
       animateFlyby(fbb, fba);
     }

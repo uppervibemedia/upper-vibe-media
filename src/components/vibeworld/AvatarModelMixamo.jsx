@@ -646,8 +646,8 @@ function animateCasual(entry, speed, isDancing, dt, emoteId) {
   ud._runBlend = Math.min(1, (ud._runBlend || 0) + (runTarget - (ud._runBlend || 0)) * Math.min(1, 4.0 * dt));
   const runBlend = ud._runBlend;
 
-  const walkCycleSpeed = isFemale ? 3.9 : 3.2;
-  const runCycleSpeed  = isFemale ? 6.6 : 5.4;
+  const walkCycleSpeed = isFemale ? 5.85 : 4.8;  // +50% from 3.9 / 3.2
+  const runCycleSpeed  = isFemale ? 8.25 : 6.75; // +25% on top of walk increase
   const cycleSpeed = walkCycleSpeed + (runCycleSpeed - walkCycleSpeed) * runBlend;
 
   if (speed > 0.06) {

@@ -53,9 +53,9 @@ const {
 } = THREE;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
-const MOVE_SPEED = 3.0;
-const ACCELERATION = 10.0;
-const DECELERATION = 8.0;
+const MOVE_SPEED = 4.5;    // +50% from 3.0
+const ACCELERATION = 14.0; // +40% so movement feels snappy at new speed
+const DECELERATION = 11.0; // +37.5% so stopping stays proportional
 const TURN_SPEED = 2.5;       // radians/sec for A/D turning
 const ROTATION_SMOOTH = 8.0;  // how fast avatar body snaps to move direction
 
