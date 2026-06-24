@@ -44,18 +44,13 @@ export default function Admin() {
 
   const loadAll = async () => {
     setLoading(true);
-    try {
-      const t = await base44.entities.Track.list("-created_date", 100);
-      setTracks(t);
-      await new Promise((r) => setTimeout(r, 300));
-      const a = await base44.entities.Artist.list("name", 50);
-      setArtists(a);
-      await new Promise((r) => setTimeout(r, 300));
-      const c = await base44.entities.Category.list("display_order", 50);
-      setCategories(c);
-    } finally {
-      setLoading(false);
-    }
+    const t = await base44.entities.Track.list("-created_date", 100);
+    setTracks(t);
+    const a = await base44.entities.Artist.list("name", 50);
+    setArtists(a);
+    const c = await base44.entities.Category.list("display_order", 50);
+    setCategories(c);
+    setLoading(false);
   };
 
   useEffect(() => { loadAll(); }, []);

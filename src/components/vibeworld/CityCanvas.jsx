@@ -65,17 +65,6 @@ const CAM_HEIGHT = 2.4;       // above avatar ground position
 const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
 const CAM_PITCH_MIN = -0.35;  // radians — look down (prevent under-map)
 const CAM_PITCH_MAX =  0.50;  // radians — look up (prevent overhead view)
-
-// Zone-aware camera pitch limits:
-// Beach (pz > 8): restrict upward tilt so low/mid planets stay in sky, not overhead
-// City (pz -15 to 8): moderate tilt — mid planets visible, high planets accessible
-// North city (pz < -15): more upward freedom to see high north-sky planets
-function getZonePitchMax(pz) {
-  if (pz > 18)  return 0.20;  // deep beach — minimal upward tilt
-  if (pz > 8)   return 0.28;  // beach edge — slightly more
-  if (pz > -15) return 0.42;  // city/plaza — medium, can see mid planets
-  return 0.55;                  // north city — look up toward high planets
-}
 // Landscape mobile — closer, more cinematic, immersive third-person
 const CAM_DIST_LS   = 3.5;    // much closer — world feels nearer
 const CAM_HEIGHT_LS = 1.75;   // lower shoulder height
@@ -1418,8 +1407,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── RIGHT-CLICK / CAM DRAG (desktop) ───────────────
         if (mouse.down && mouse.button === 2 && !lockedRef.current) {
           camYawRef.current   += mouse.dx * 0.004; // world-space yaw
-          const pitchMax = getZonePitchMax(avatarPosRef.current[2]);
-          camPitchRef.current  = Math.max(CAM_PITCH_MIN, Math.min(pitchMax, camPitchRef.current - mouse.dy * 0.004));
+          camPitchRef.current  = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current - mouse.dy * 0.004));
           userTouchingCamRef.current = true;
         } else if (!mouse.down) {
           userTouchingCamRef.current = false;
@@ -1457,9 +1445,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
            const cdx = joy.camDx || 0;
            const cdy = joy.camDy || 0;
            if (Math.abs(cdx) > 0.00005 || Math.abs(cdy) > 0.00005) {
-             camYawRef.current += cdx;
-             const pitchMaxM = getZonePitchMax(avatarPosRef.current[2]);
-             camPitchRef.current = Math.max(CAM_PITCH_MIN, Math.min(pitchMaxM, camPitchRef.current - cdy));
+             camYawRef.current += cdx;  // drag right = +cdx = camera rotates right
+             camPitchRef.current = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, camPitchRef.current - cdy));
              userTouchingCamRef.current = true;
            }
            joy.camDx = 0;
@@ -1633,12 +1620,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
           while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
           camYawRef.current += yawDelta * Math.min(1, dt * 2.5);
-        }
-
-        // Zone-aware pitch clamp — smoothly corrects pitch as player moves between zones
-        const zonePitchMax = getZonePitchMax(pz);
-        if (camPitchRef.current > zonePitchMax) {
-          camPitchRef.current += (zonePitchMax - camPitchRef.current) * Math.min(1, dt * 3.0);
         }
 
         // Smooth camera yaw + pitch — slower on mobile avoids jerky geometry pop-in

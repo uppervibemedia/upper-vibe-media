@@ -326,74 +326,82 @@ export function createCosmicSky(scene) {
   // No small asteroids — only mega asteroid per timing rules
   scene.userData.asteroids = [];
 
-  // ── 5. THREE-LAYER PLANET SYSTEM ─────────────────────────────────────────────
+  // ── 5. UPPER SKY PLANETS — 4 background planets, always visible ──────────────
+  // These are the HIGH background planets — NOT the 2 low beach flyby planets.
+  // They live in the upper sky, well above the city skyline.
   //
-  // LAYER A: LOW BEACH PLANETS (2) — handled separately as beachFlybyA/B below
-  //          Fly across beach only, alternate, fade out before skyline walls.
-  //
-  // LAYER B: MID-HIGH CITY PLANETS (2) — camera-relative, angle 0.3 & 0.7 (NE/NW)
-  //          Visible from city and beach looking north. Never path through building faces.
-  //          worldY = camera.y + 8 → always above city roofline (~6u tall).
-  //          radius: 180–200 → far enough to read as background sky.
-  //
-  // LAYER C: HIGH NORTH-SKY PLANETS (2) — camera-relative, angle 0.5 (due north)
-  //          Highest. Only visible from city by looking up toward north.
-  //          worldY = camera.y + 18 → well above anything.
-  //          radius: 240–280 → deepest background.
-  //
-  // All: frustumCulled=false, depthTest=false, renderOrder=20.
-  // sizeAttenuation=true — larger radius = smaller apparent size = feels distant.
-
+  // Design rules:
+  //  - horizonY: 42–58 camera-relative units → clearly above buildings (tops ~8u)
+  //    and visible in normal landscape view without tilting camera up.
+  //  - radius: 55–75 — spread so they don't stack. Smaller radius = closer/bigger.
+  //  - orbitSpeed: varied per planet so they drift independently.
+  //    2 faster (complete ~1 rev per 90s) and 2 slower (1 rev per 180s).
+  //  - angleOffset: evenly spread at 90° apart so they appear in all 4 sky quadrants.
+  //  - All: frustumCulled=false, depthTest=false, renderOrder=20 — never hidden.
+  //  - Size boosted vs previous values so they read clearly from gameplay distance.
+  // ── Planet sizing & depth philosophy ────────────────────────────────────────
+  // sizeAttenuation=true means sprites shrink with distance, so size × distance = constant angular size.
+  // To feel "distant sky":
+  //   - radius: 200–350 world units from player (well beyond playable space)
+  //   - size: 18–36 world units sprite scale (keeps angular size small at that distance)
+  //   - horizonY: 12–40 camera-relative — controls vertical screen position
+  //   - angleOffset: kept to NE/NW/N quadrants, never directly behind avatar (S = PI)
+  //   - All orbits are slow (1 rev / 180–400s) so planets feel like sky features, not objects
   const PLANET_DEFS = [
-    // ── LAYER B: MID-HIGH CITY PLANETS ──────────────────────────────────────
     {
-      id: "west",    // Blue gas giant — NE mid sky
-      layer: "mid",
+      // MEGA — large purple ringed. NW background sky.
+      id: "mega",
+      bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
+      glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
+      size: isMobile ? 32 : 44,
+      angleOffset: Math.PI * 0.72,
+      horizonY: 4,   // camera-relative: visible in upper portion of normal view
+      radius: 200,
+      orbitSpeed: (Math.PI * 2) / 320,
+    },
+    {
+      // VIOLET — small purple ringed.
+      id: "violet",
+      bodyColors: ["#120820", "#2A1245", "#4A2070", "#7040A0", "#AA70E0"],
+      glowColor: "rgba(130,60,220,0.40)", ringColor: "rgba(170,110,240,0.45)",
+      size: isMobile ? 18 : 24,
+      angleOffset: Math.PI * 0.58,
+      horizonY: 3,
+      radius: 180,
+      orbitSpeed: (Math.PI * 2) / 260,
+    },
+    {
+      // BLUE — gas giant. NE lane.
+      id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
-      size: isMobile ? 22 : 30,
-      angleOffset: Math.PI * 0.30,
-      // worldY = camera.y + camHeightOffset
-      // Buildings top out ~8u above ground; camera eye is ~2.4u above ground.
-      // So camera.y ≈ 2.4. To clear an 8u rooftop: need offset > 8 - 2.4 = 5.6.
-      // Use 14 so the planet centre sits ~16.4u world-Y — clearly above all rooflines.
-      camHeightOffset: 14,
-      radius: 185,
+      size: isMobile ? 26 : 36,
+      angleOffset: Math.PI * 0.32,
+      horizonY: 5,
+      radius: 190,
       orbitSpeed: (Math.PI * 2) / 380,
     },
     {
-      id: "green",   // Emerald — NW mid sky
-      layer: "mid",
+      // GREEN — emerald. Deep NW background.
+      id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
-      size: isMobile ? 20 : 28,
-      angleOffset: Math.PI * 0.78,
-      camHeightOffset: 16,
-      radius: 195,
+      size: isMobile ? 22 : 30,
+      angleOffset: Math.PI * 0.85,
+      horizonY: 6,
+      radius: 210,
       orbitSpeed: (Math.PI * 2) / 300,
     },
-    // ── LAYER C: HIGH NORTH-SKY PLANETS ─────────────────────────────────────
     {
-      id: "mega",    // Large purple ringed — high north sky
-      layer: "high",
-      bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
-      glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
-      size: isMobile ? 36 : 50,
-      angleOffset: Math.PI * 0.88,
-      camHeightOffset: 28,
-      radius: 250,
-      orbitSpeed: (Math.PI * 2) / 480,
-    },
-    {
-      id: "crimson", // Red storm — high north-northeast sky
-      layer: "high",
+      // CRIMSON — red storm. Deep NE background.
+      id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
-      size: isMobile ? 30 : 42,
-      angleOffset: Math.PI * 0.12,
-      camHeightOffset: 30,
-      radius: 265,
-      orbitSpeed: (Math.PI * 2) / 560,
+      size: isMobile ? 28 : 38,
+      angleOffset: Math.PI * 0.15,
+      horizonY: 4,
+      radius: 220,
+      orbitSpeed: (Math.PI * 2) / 400,
     },
   ];
 
@@ -562,47 +570,43 @@ export function createCosmicSky(scene) {
     ptex.minFilter = THREE.LinearFilter;
     ptex.generateMipmaps = false;
 
-    // Mid/high city planets: depthTest=true so skyline buildings occlude them.
-    // renderOrder=2 ensures opaque building geometry fills the depth buffer first.
     const pmat = new THREE.SpriteMaterial({
       map: ptex,
       transparent: true,
       opacity: 1.0,
       depthWrite: false,
-      depthTest: true,
+      depthTest: false,   // always draw — never hidden by depth buffer
       sizeAttenuation: true,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    psprite.frustumCulled = false;
-    psprite.renderOrder = 2;
+    psprite.frustumCulled = false;  // never culled by frustum
+    psprite.renderOrder = 20;       // above skybox(-10), above starfield(1), above world
     scene.add(psprite);
+
+    if (SKY_DEBUG) {
+      console.log(`[SkyDebug] Planet "${def.id}" created — renderOrder:20, frustumCulled:false, depthTest:false`);
+    }
 
     return {
       sprite: psprite,
       mat: pmat,
       angleOffset: def.angleOffset,
-      camHeightOffset: def.camHeightOffset,
+      horizonY: def.horizonY,
       radius: def.radius,
       orbitSpeed: def.orbitSpeed,
       id: def.id,
-      layer: def.layer,
     };
   });
   scene.userData.horizonPlanets = planets;
 
-  // ── 6. LAYER A: LOW BEACH FLYBY PLANETS — A & B (alternating) ───────────────
-  // These are the ONLY low planets. They fly across the BEACH side of the sky only.
-  // Rules:
-  //  - Camera-relative: offset from camera position so they track correctly
-  //  - cameraZ offset: -150 → far behind horizon, never inside playable space
-  //  - cameraY offset: +5 → just above avatar eye-level, feels low sky not overhead
-  //  - cameraX: left lane (-50 → -20) for A, right lane (+50 → +20) for B
-  //  - Fade out at x limit ±22 (before hitting east/west skyline walls at ±36 world)
-  //  - Only one active at a time — strict alternation
-  //  - Only visible when player pz > 8 (beach/southern area)
-  //  - Duration: 18s per pass
+  // ── 6. BEACH FLYBY PLANETS — A & B ───────────────────────────────────────────
+  // Two planets that fly slowly over Neon Surf Beach at low altitude.
+  // Same visual pipeline as horizon planets: Sprite, depthTest=false, renderOrder=20.
+  // Positions are WORLD-SPACE (not camera-relative) so they actually cross the beach.
+  // They are large enough to feel close but placed high enough (y≈14-22) to stay sky-level.
 
+  // Reuse planet canvas builder — Planet A: teal/cyan, Planet B: warm amber/orange
   function buildFlybyPlanet(colors, glowColor, size) {
     const S = 256;
     const pc = document.createElement("canvas");
@@ -675,8 +679,6 @@ export function createCosmicSky(scene) {
     ptex.minFilter = THREE.LinearFilter;
     ptex.generateMipmaps = false;
 
-    // Beach flyby planets: open sky zone — no buildings to occlude them.
-    // depthTest=false + renderOrder=15 keeps them always visible in the beach sky.
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0,
       depthWrite: false, depthTest: false,
@@ -684,7 +686,7 @@ export function createCosmicSky(scene) {
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(size, size, 1);
     psprite.frustumCulled = false;
-    psprite.renderOrder = 15;
+    psprite.renderOrder = 20;
     scene.add(psprite);
     // Park off-screen initially
     psprite.position.set(9999, 9999, 9999);
@@ -706,63 +708,38 @@ export function createCosmicSky(scene) {
 
   const now0 = performance.now() * 0.001;
 
-  // ── Beach Flyby Path Rules ────────────────────────────────────────────────
-  // Planets sweep strictly across the BEACH sky only.
-  // Path is entirely camera-relative so they never drift into the skyline.
-  //
-  // X range: ±38 → ±12 (outer edge → inner edge, stopping well before center/buildings)
-  // Y: camera + 6  → camera + 5  (low sky, visible in normal beach view)
-  // Z: camera - 160 (deep background — never inside playable space)
-  //
-  // Fade envelope:
-  //   fade IN:  first 12% of duration  (smooth appear from off-screen edge)
-  //   fade OUT: last  18% of duration  (smooth disappear before building conflict)
-  //   → planet is fully invisible before/after the safe beach X zone
-  //
-  // Timing: 18s pass + 7s gap = ~25s cycle, well under the 30s max rule.
-  // Planet A: left→right  (-38 → +38)
-  // Planet B: right→left  (+38 → -38)
-  // Only one active at a time, strict alternation.
+  const DURATION_A  = 12;
+  const DURATION_B  = 11;
+  const GAP_AFTER_A = 4;
+  const GAP_AFTER_B = 3;
 
-  // Each planet sweeps ONLY its own side of the beach sky:
-  //   A: enters from far LEFT (-44), drifts right, fades out at center (-8)
-  //   B: enters from far RIGHT (+44), drifts left, fades out at center (+8)
-  // This means they NEVER overlap and NEVER cross into the north skyline.
-  // Z: camera - 155  (deep background, behind beach horizon, never near buildings)
-  // Y: camera + 5.5  (low enough to see in normal beach view, not overhead)
-  // Duration 16s + 8s gap = 24s cycle per planet, ~48s total before same planet repeats.
-  // Only one active at a time — strict alternation enforced by _partner check.
-
-  const DURATION_A  = 16;
-  const DURATION_B  = 16;
-  const GAP_AFTER_A = 8;
-  const GAP_AFTER_B = 8;
-
+  // ── Flyby paths — camera-relative offsets ──────────────────────────────────
+  // KEY RULES:
+  //  • cameraZ: -160 to -180 → planets sit FAR behind the horizon, not in playable space
+  //  • cameraY: +8 to +12 → low in sky (visible in normal view) but not overlapping avatar
+  //  • cameraX: stays in hard left/right lanes, NEVER within ±20 of center (avatar zone)
+  //    Planet A: sweeps from far-left to mid-left  (cameraX -80 → -28)
+  //    Planet B: sweeps from far-right to mid-right (cameraX +80 → +28)
+  //  • Avatar occupies roughly cameraX -8 to +8 in third-person view — safe zone = ±25
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // Sweeps left-side only: far left → just past center-left, then fades out
-    startCX: -44, startCY: 5.5, startCZ: -155,
-    endCX:    -6, endCY:   5.0, endCZ: -150,
+    startCX: -80, startCY: 10, startCZ: -175,
+    endCX:   -28, endCY:    8, endCZ: -165,
     duration: DURATION_A,
-    nextFire: now0 + 3,
+    nextFire: now0 + 1,
     _gapAfter: GAP_AFTER_A,
     _partner: null,
-    _fadeInEnd: 0.10,       // fades in over first 10% (fast appear from edge)
-    _fadeOutStart: 0.78,    // starts fading at 78%, fully gone by 100%
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // Sweeps right-side only: far right → just past center-right, then fades out
-    startCX:  44, startCY: 5.5, startCZ: -155,
-    endCX:     6, endCY:   5.0, endCZ: -150,
+    startCX:  80, startCY: 10, startCZ: -175,
+    endCX:    28, endCY:    8, endCZ: -165,
     duration: DURATION_B,
-    nextFire: now0 + DURATION_A + GAP_AFTER_A + 3,
+    nextFire: now0 + DURATION_A + GAP_AFTER_A + 1,
     _gapAfter: GAP_AFTER_B,
     _partner: null,
-    _fadeInEnd: 0.10,
-    _fadeOutStart: 0.78,
   };
   scene.userData.beachFlybyA._partner = scene.userData.beachFlybyB;
   scene.userData.beachFlybyB._partner = scene.userData.beachFlybyA;
@@ -809,29 +786,36 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const skyFrame = scene.userData._skyFrame;
   const updateSlow = !isMobile || skyFrame % 3 === 0;
 
-  // ── Layer B & C Planets — camera-relative orbital positioning ────────────────
-  // playerZ is set by CityCanvas each frame: scene.userData._playerZ = pz
-  const playerZ = scene.userData._playerZ ?? 0;
-  // Beach zone: pz > 8. City zone: pz < 8.
-  const isAtBeach = playerZ > 8;
-
+  // ── Upper Sky Planets — camera-relative, always inside far clip ──────────────
+  // Each planet uses its own orbitSpeed so they drift independently.
+  // horizonY is camera-relative so they stay at a fixed apparent sky height
+  // regardless of player position or terrain elevation.
   const horizonPlanets = scene.userData.horizonPlanets;
   if (horizonPlanets) {
     for (const p of horizonPlanets) {
       const angle = t * p.orbitSpeed + p.angleOffset;
 
-      // All orbits are NORTH-biased: Math.cos(angle)*radius pushes planet northward (−Z)
-      // sin(angle) sweeps left/right. For north-sky planets, we clamp the sweep.
+      // Camera-relative position — ALWAYS inside far clip plane.
+      // Y offset keeps planet clearly above buildings from any viewpoint.
       const cx = camera.position.x + Math.sin(angle) * p.radius;
       const cz = camera.position.z + Math.cos(angle) * p.radius;
-      const cy = camera.position.y + p.camHeightOffset + Math.sin(t * 0.018 + p.angleOffset) * 0.6;
+      // Gentle vertical bob (0.8u amplitude) so planet feels alive, not locked
+      const cy = camera.position.y + p.horizonY + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
+      p.mat.opacity = 1.0;
+    }
 
-      // LAYER B (mid) + LAYER C (high): both use the same zone gate as beach flybys
-      // but inverted — only visible when player is NOT at the beach (city/north zone).
-      // This prevents them from ever appearing above or through the skyline buildings.
-      const targetOpacity = isAtBeach ? 0.0 : 1.0;
-      p.mat.opacity += (targetOpacity - p.mat.opacity) * Math.min(1, dt * 1.5);
+    if (SKY_DEBUG && skyFrame % 120 === 0) {
+      const cam = camera;
+      console.log("[SkyDebug] Camera position:", cam.position.x.toFixed(1), cam.position.y.toFixed(1), cam.position.z.toFixed(1));
+      console.log("[SkyDebug] Camera far:", cam.far);
+      for (const p of horizonPlanets) {
+        const d = p.sprite.position.distanceTo(cam.position);
+        console.log(`[SkyDebug] Planet "${p.id}" world pos:`,
+          p.sprite.position.x.toFixed(1), p.sprite.position.y.toFixed(1), p.sprite.position.z.toFixed(1),
+          "dist from cam:", d.toFixed(1), "renderOrder:", p.sprite.renderOrder,
+          "frustumCulled:", p.sprite.frustumCulled, "opacity:", p.mat.opacity.toFixed(2));
+      }
     }
   }
 
@@ -870,40 +854,32 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
-  // ── Layer A: Beach Flyby Planets — strict alternation, beach-only ────────────
-  // Only rendered when player is at the beach (pz > 8).
-  // Fade envelope uses _fadeInEnd / _fadeOutStart for clean appear/disappear.
+  // ── Beach Flyby Planets — alternating A → B → A loop ─────────────────────────
+  // Runs EVERY frame (not throttled) so timing is accurate on all devices.
+  // Only one planet is active at a time. When one finishes, the other fires after _gapAfter.
   const fba = scene.userData.beachFlybyA;
   const fbb = scene.userData.beachFlybyB;
 
   function animateFlyby(fb) {
     if (!fb) return;
     if (!fb.active) {
-      // Only fire when player is at beach AND no partner is active
-      if (t >= fb.nextFire && isAtBeach) {
-        if (fb._partner && fb._partner.active) return;
+      if (t >= fb.nextFire) {
+        if (fb._partner && fb._partner.active) return; // wait for partner to finish
         fb.active = true;
         fb.life = 0;
         fb.maxLife = fb.duration;
         fb.mat.opacity = 0;
-        fb.sprite.position.set(9999, 9999, 9999);
       }
     } else {
       fb.life += dt;
       const prog = Math.min(fb.life / fb.maxLife, 1);
 
-      // Fade in during first _fadeInEnd%, fade out during last (1-_fadeOutStart)%
-      const fadeInEnd = fb._fadeInEnd ?? 0.08;
-      const fadeOutStart = fb._fadeOutStart ?? 0.82;
-      let env = 1.0;
-      if (prog < fadeInEnd) env = prog / fadeInEnd;
-      else if (prog > fadeOutStart) env = Math.max(0, (1 - prog) / (1 - fadeOutStart));
+      // Fast fade-in (6% of duration ~1.5s), gentle fade-out (12%)
+      const fadeIn  = Math.min(prog / 0.06, 1);
+      const fadeOut = Math.min((1 - prog) / 0.12, 1);
+      fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.95;
 
-      // Beach-only: if player walked away from beach, fade out immediately
-      const beachVisible = isAtBeach ? 1.0 : 0.0;
-      fb.mat.opacity = env * beachVisible * 0.92;
-
-      // Camera-relative — deep background, left/right sky lanes only
+      // Camera-relative positioning — ALWAYS inside far clip, always in sky
       const cx = fb.startCX + (fb.endCX - fb.startCX) * prog;
       const cy = fb.startCY + (fb.endCY - fb.startCY) * prog;
       const cz = fb.startCZ + (fb.endCZ - fb.startCZ) * prog;
@@ -917,13 +893,13 @@ export function animateCosmicSky(scene, camera, t, dt) {
         fb.active = false;
         fb.mat.opacity = 0;
         fb.sprite.position.set(9999, 9999, 9999);
-        // Partner fires after the gap — strict alternation, total cycle ≤ 30s
         if (fb._partner) {
           fb._partner.nextFire = t + fb._gapAfter;
         }
-        // Self fires after partner's full pass + partner's gap
         const partner = fb._partner;
-        fb.nextFire = t + fb._gapAfter + (partner ? partner.duration : 18) + (partner ? partner._gapAfter : 7);
+        fb.nextFire = partner
+          ? t + fb._gapAfter + (partner.duration || 22) + (partner._gapAfter || 6)
+          : t + 45;
       }
     }
   }
