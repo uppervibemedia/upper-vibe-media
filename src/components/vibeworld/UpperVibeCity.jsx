@@ -252,9 +252,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
 
   // ── Avatar config derived from user data ──────────────────────────────
-  // avatarTypeKey is session-only test state — not persisted to user account
+  // avatarTypeKey: read from sessionStorage (set by AvatarSetup or WorldGate on entry)
+  // Falls back to user.avatar_type from profile, then "test-mixamo-female" as new default
   const [testAvatarTypeKey, setTestAvatarTypeKey] = useState(() => {
-    try { return sessionStorage.getItem("uvc_test_avatar") || "current"; } catch { return "current"; }
+    try {
+      const stored = sessionStorage.getItem("uvc_test_avatar");
+      if (stored) return stored;
+    } catch {}
+    return "test-mixamo-female"; // new default: female avatar
   });
 
   const avatarConfig = {
@@ -264,6 +269,21 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     outfitColorKey: user?.avatar_outfit_color || "electric-blue",
     avatarTypeKey: testAvatarTypeKey,
   };
+
+  // Sync avatar type from user profile when user data arrives (returning users)
+  const syncedAvatarRef = useRef(false);
+  useEffect(() => {
+    if (!user?.avatar_type || syncedAvatarRef.current) return;
+    syncedAvatarRef.current = true;
+    // Only override if sessionStorage doesn't already have a value (meaning WorldGate already set it)
+    try {
+      const stored = sessionStorage.getItem("uvc_test_avatar");
+      if (!stored) {
+        sessionStorage.setItem("uvc_test_avatar", user.avatar_type);
+        setTestAvatarTypeKey(user.avatar_type);
+      }
+    } catch {}
+  }, [user?.avatar_type]);
 
   // ── Ref to live in-world avatar retint function exposed by CityCanvas ──
   const retintInWorldRef = useRef(null);
