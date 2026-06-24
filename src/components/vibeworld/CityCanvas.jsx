@@ -2050,6 +2050,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──
         scene.userData._playerZ = pz;
         scene.userData._camPitch = camPitchSmoothRef.current; // pass live pitch for planet compensation
+        // Hide all horizon planets while on the Ferris ride (they bleed through the structure)
+        // or while the player is in the city/skyline zone (z < 15) — only show over the beach.
+        scene.userData._hidePlanets = ferrisRidingRef.current || pz < 15;
         animateCosmicSky(scene, camera, t, dt);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────

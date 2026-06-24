@@ -885,6 +885,14 @@ export function animateCosmicSky(scene, camera, t, dt) {
     const camPitch = scene.userData._camPitch ?? 0;
     const pitchBoost = Math.max(0, -camPitch) * 80; // negative pitch = looking up → boost planets up
 
+    // Hide planets while on Ferris ride or in the city/skyline zone (z < 15).
+    // Smooth fade over ~0.5s so the transition isn't jarring.
+    const hidePlanets = scene.userData._hidePlanets ?? false;
+    if (!scene.userData._planetOpacity) scene.userData._planetOpacity = 1.0;
+    const opacityTarget = hidePlanets ? 0.0 : 1.0;
+    scene.userData._planetOpacity += (opacityTarget - scene.userData._planetOpacity) * Math.min(1, dt * 2.0);
+    const planetOpacity = scene.userData._planetOpacity;
+
     for (const p of horizonPlanets) {
       const angle = t * p.orbitSpeed + p.angleOffset;
 
@@ -900,7 +908,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
       const cy = camera.position.y + p.horizonY + buildingArc + pitchBoost + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
-      p.mat.opacity = 1.0;
+      p.mat.opacity = planetOpacity;
     }
 
     if (SKY_DEBUG && skyFrame % 120 === 0) {
@@ -1038,7 +1046,8 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
-  const inBeachZone = camera.position.z > 8;
+  // Beach flyby planets: suppress during Ferris ride AND in city zone (z < 8)
+  const inBeachZone = !scene.userData._hidePlanets && camera.position.z > 8;
   animateFlyby(fba, inBeachZone);
   animateFlyby(fbb, inBeachZone);
 
