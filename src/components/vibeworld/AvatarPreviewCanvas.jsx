@@ -72,9 +72,71 @@ function tagMesh(mesh, tag) {
   return mesh;
 }
 
+// ── Hair geometry builders ────────────────────────────────────────────────────
+function buildMaleHair(style, HAIR, headG) {
+  const mh = (hex, rough) => new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: 0.02 });
+  switch (style) {
+    case "fade": {
+      // Very short buzz on top only
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.163, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.30), mh(HAIR, 0.92));
+      top.position.y = 0.075; headG.add(top); break;
+    }
+    case "locs": {
+      // Crown cap + hanging loc capsules
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), mh(HAIR, 0.85));
+      cap.position.y = 0.055; headG.add(cap);
+      for (const [ax, az, bx, bz] of [[0.09,-0.09,-0.14],[0,-0.13,-0.12],[-0.09,-0.09,-0.14],[0.13,0,-0.09],[-0.13,0,-0.09]]) {
+        const loc = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, ax < 0 ? 0.18 : 0.22, 3, 6), mh(HAIR, 0.88));
+        loc.position.set(ax ?? 0, az ?? -0.09, bx ?? -0.12); headG.add(loc);
+      }
+      break;
+    }
+    case "bald":
+      // No hair — just bare head
+      break;
+    default: { // "short"
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.44), mh(HAIR, 0.88));
+      hair.position.y = 0.055; headG.add(hair);
+    }
+  }
+}
+
+function buildFemaleHair(style, HAIR, ACCENT, headG) {
+  const mh = (hex, rough) => new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: 0.02 });
+  const mb = (hex, op) => new THREE.MeshBasicMaterial({ color: hex, transparent: op < 1, opacity: op, depthWrite: false });
+  switch (style) {
+    case "long": {
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.48), mh(HAIR, 0.80));
+      top.position.y = 0.045; headG.add(top);
+      const sides = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.55, 4, 6), mh(HAIR, 0.82));
+      sides.position.set(0, -0.18, -0.02); headG.add(sides); break;
+    }
+    case "bun": {
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), mh(HAIR, 0.80));
+      top.position.y = 0.045; headG.add(top);
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), mh(HAIR, 0.78));
+      bun.position.set(0, 0.21, -0.04); headG.add(bun);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.010, 6, 12), mb(ACCENT, 0.85));
+      band.position.set(0, 0.17, -0.04); band.rotation.x = Math.PI / 2; headG.add(band); break;
+    }
+    case "short": {
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.152, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.42), mh(HAIR, 0.85));
+      top.position.y = 0.060; headG.add(top); break;
+    }
+    default: { // "ponytail"
+      const top = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.48), mh(HAIR, 0.80));
+      top.position.y = 0.045; headG.add(top);
+      const back = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.30, 4, 6), mh(HAIR, 0.80));
+      back.position.set(0, -0.12, -0.10); headG.add(back);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 12), mb(ACCENT, 0.85));
+      band.position.set(0, -0.18, -0.10); band.rotation.x = Math.PI / 2; headG.add(band);
+    }
+  }
+}
+
 // ── Build Male Casual procedural model ────────────────────────────────────────
 // Same hip-pivot architecture as female to prevent leg/hip clipping.
-function buildMale(skinHex, outfitHex) {
+function buildMale(skinHex, outfitHex, hairStyle = "short") {
   const root = new THREE.Group();
   const HAIR = 0x1A0800;
   const ACCENT = 0xE63946;
@@ -128,8 +190,7 @@ function buildMale(skinHex, outfitHex) {
   // Head
   const headG = new THREE.Group(); headG.position.set(0, 0.44, 0); torsoG.add(headG);
   headG.add(tagMesh(new THREE.Mesh(new THREE.SphereGeometry(0.160, 12, 10), skinMat), "skin"));
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.44), mstd(HAIR, 0.88));
-  hair.position.y = 0.055; headG.add(hair);
+  buildMaleHair(hairStyle, HAIR, headG);
   // Sclera + pupil eyes — properly placed mid-face
   for (const ex of [0.040, -0.040]) {
     const sc = new THREE.Mesh(new THREE.SphereGeometry(0.020, 8, 6), mbasic(0xF2EDE4));
@@ -145,7 +206,7 @@ function buildMale(skinHex, outfitHex) {
 }
 
 // ── Build Female Casual procedural model ──────────────────────────────────────
-function buildFemale(skinHex, outfitHex) {
+function buildFemale(skinHex, outfitHex, hairStyle = "ponytail") {
   const root = new THREE.Group();
   const skin = skinHex;
   const clothes = outfitHex;
@@ -198,12 +259,7 @@ function buildFemale(skinHex, outfitHex) {
   // Head
   const headG = new THREE.Group(); headG.position.set(0, 0.42, 0); torsoG.add(headG);
   headG.add(tagMesh(new THREE.Mesh(new THREE.SphereGeometry(0.148, 12, 10), skinMat), "skin"));
-  const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.48), mstd(HAIR, 0.80));
-  hairTop.position.y = 0.045; headG.add(hairTop);
-  const hairBack = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.30, 4, 6), mstd(HAIR, 0.80));
-  hairBack.position.set(0, -0.12, -0.10); headG.add(hairBack);
-  const band = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 12), mbasic(ACCENT, 0.85));
-  band.position.set(0, -0.18, -0.10); band.rotation.x = Math.PI / 2; headG.add(band);
+  buildFemaleHair(hairStyle, HAIR, ACCENT, headG);
   // Sclera + pupil eyes — properly placed mid-face
   for (const ex of [0.038, -0.038]) {
     const sc = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), mbasic(0xF2EDE4));
@@ -246,6 +302,7 @@ export default function AvatarPreviewCanvas({
   outfitColorKey,
   skinColorKey = "brown",
   avatarTypeKey = "current",
+  hairStyleKey = "",
   width = 300,
   height = 460,
 }) {
@@ -301,12 +358,12 @@ export default function AvatarPreviewCanvas({
     const outfitHex = outfit ? parseInt(outfit.hex.replace("#", ""), 16) : 0x1D3557;
 
     if (avatarTypeKey === "test-mixamo-female") {
-      const { root } = buildFemale(skinTone.hex, outfitHex);
+      const { root } = buildFemale(skinTone.hex, outfitHex, hairStyleKey || "ponytail");
       root.scale.set(1.16, 1.16, 1.16);
       scene.add(root);
       state.model = root;
     } else if (avatarTypeKey === "test-mixamo") {
-      const { root } = buildMale(skinTone.hex, outfitHex);
+      const { root } = buildMale(skinTone.hex, outfitHex, hairStyleKey || "short");
       root.scale.set(1.16, 1.16, 1.16);
       scene.add(root);
       state.model = root;
@@ -377,7 +434,7 @@ export default function AvatarPreviewCanvas({
       clearTimeout(state.viewTimer);
       renderer.dispose();
     };
-  }, [avatarTypeKey, width, height]);
+  }, [avatarTypeKey, hairStyleKey, width, height]);
 
   // Re-tint clothes on outfit color change (procedural only)
   useEffect(() => {

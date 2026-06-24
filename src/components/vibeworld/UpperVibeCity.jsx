@@ -28,6 +28,7 @@ import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibew
 import { CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_INTERACT_RADIUS } from "@/components/vibeworld/CrystalZone";
 import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/orbBank";
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
+import EmotePanel from "@/components/vibeworld/panels/EmotePanel";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
@@ -150,6 +151,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
     };
   }, []);
+
+  // ── Emote panel open state ────────────────────────────────────────────────────
+  const [emotePanelOpen, setEmotePanelOpen] = useState(false);
 
   // ── TV Mode — hides joystick/camera visuals for clean mirrored view ──────────
   const [tvMode, setTvMode] = useState(false);
@@ -1259,16 +1263,16 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </div>
       )}
 
-      {/* ── Dance Floor Emote Bar — inline quick-emotes, visible only on dance floor ── */}
+      {/* ── Dance Floor Emote Button — single compact button, opens EmotePanel ── */}
       <AnimatePresence>
         {!loading && onDanceFloor && !hbRiding && !stageWatching && !stageFullScreen && (
           <motion.div
-            key="dance-floor-emotes"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
+            key="dance-floor-emote-btn"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
             transition={{ type: "spring", damping: 26, stiffness: 320 }}
-            className="fixed z-[62] flex flex-col items-center gap-2 pointer-events-none"
+            className="fixed z-[62] pointer-events-auto"
             style={{
               left: "50%",
               transform: "translateX(-50%)",
@@ -1277,74 +1281,48 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                 : isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 148px)" : "5.5rem",
             }}
           >
-            {/* Label */}
-            <span
-              className="px-3 py-0.5 rounded-full font-black tracking-[0.18em] pointer-events-none"
-              style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.2)" }}
-            >
-              DANCE FLOOR
-            </span>
-
-            {/* Emote pill row */}
-            <div
-              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl pointer-events-auto"
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => {
+                try { navigator?.vibrate?.(10); } catch {}
+                if (isDancing) { handleStopDance(); } else { setEmotePanelOpen(true); }
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full font-black transition-all hover:brightness-110 active:scale-95"
               style={{
-                background: "rgba(8,6,20,0.88)",
-                border: "1px solid rgba(196,59,255,0.18)",
+                background: isDancing ? "rgba(196,59,255,0.22)" : "rgba(8,6,20,0.88)",
+                border: `1.5px solid ${isDancing ? "rgba(196,59,255,0.6)" : "rgba(196,59,255,0.25)"}`,
                 backdropFilter: "blur(18px)",
-                boxShadow: "0 4px 24px rgba(0,0,0,0.5), 0 0 30px rgba(196,59,255,0.08)",
+                boxShadow: isDancing ? "0 0 20px rgba(196,59,255,0.35)" : "0 4px 16px rgba(0,0,0,0.4)",
+                color: isDancing ? "#e07fff" : "rgba(255,255,255,0.75)",
+                fontSize: 13,
+                touchAction: "manipulation",
+                minHeight: 44,
               }}
             >
-              {[
-                { id: "dance",     label: "Dance",     emoji: "💃", color: "#C43BFF" },
-                { id: "wave",      label: "Wave",      emoji: "👋", color: "#00D4F0" },
-                { id: "heart",     label: "Heart",     emoji: "❤️", color: "#FF4081" },
-                { id: "fire",      label: "Fire",      emoji: "🔥", color: "#FF6D00" },
-                { id: "peace",     label: "Peace",     emoji: "✌️", color: "#A078FF" },
-              ].map((emote) => {
-                const isActive = isDancing && activeEmote?.id === emote.id;
-                return (
-                  <button
-                    key={emote.id}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onClick={() => {
-                      try { navigator?.vibrate?.(10); } catch {}
-                      if (isActive) {
-                        handleStopDance();
-                      } else {
-                        handleEmote(emote);
-                      }
-                    }}
-                    className="flex flex-col items-center justify-center gap-0.5 rounded-xl transition-all hover:brightness-110 active:scale-90"
-                    style={{
-                      background: isActive ? `${emote.color}20` : "rgba(255,255,255,0.04)",
-                      border: `1.5px solid ${isActive ? emote.color + "66" : "rgba(255,255,255,0.08)"}`,
-                      boxShadow: isActive ? `0 0 12px ${emote.color}44` : "none",
-                      width: isMobile ? 44 : 52,
-                      height: isMobile ? 44 : 52,
-                      minWidth: 44,
-                      minHeight: 44,
-                      touchAction: "manipulation",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <span style={{ fontSize: isMobile ? 18 : 20, lineHeight: 1 }}>{emote.emoji}</span>
-                    <span
-                      className="font-black tracking-wider"
-                      style={{ fontSize: 7, color: isActive ? emote.color : "rgba(255,255,255,0.35)" }}
-                    >
-                      {isActive ? "Stop" : emote.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+              <span style={{ fontSize: 18 }}>{isDancing ? activeEmote?.emoji || "💃" : "🎭"}</span>
+              <span>{isDancing ? "Stop" : "Emote"}</span>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
+
+      {/* Emote panel — opens from dance floor button */}
+      <AnimatePresence>
+        {emotePanelOpen && (
+          <EmotePanel
+            open={emotePanelOpen}
+            onClose={() => setEmotePanelOpen(false)}
+            onEmote={(emote) => { handleEmote(emote); setEmotePanelOpen(false); }}
+            onStopDance={handleStopDance}
+            isDancing={isDancing}
+            activeEmote={activeEmote}
+            isMobile={isMobile}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Performance audit overlay — only visible with ?perf=1 in URL */}
       <PerfAuditOverlay playerPos={playerPos} rendererRef={rendererRef} />

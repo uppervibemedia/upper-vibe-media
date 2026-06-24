@@ -17,6 +17,20 @@ const AVATAR_TYPE_OPTIONS = [
   { key: "test-mixamo-female", label: "Female Casual", sub: "⚠️ Test Only", icon: "👩" },
 ];
 
+// Hair style options per gender
+export const MALE_HAIR_STYLES = [
+  { key: "short",   label: "Short",   icon: "✂️" },
+  { key: "fade",    label: "Fade",    icon: "🔲" },
+  { key: "locs",    label: "Locs",    icon: "🌿" },
+  { key: "bald",    label: "Bald",    icon: "👨‍🦲" },
+];
+export const FEMALE_HAIR_STYLES = [
+  { key: "ponytail", label: "Ponytail", icon: "🎀" },
+  { key: "long",     label: "Long",     icon: "💇‍♀️" },
+  { key: "bun",      label: "Bun",      icon: "🌸" },
+  { key: "short",    label: "Short",    icon: "✂️" },
+];
+
 export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) {
   const [outfitColorKey, setOutfitColorKey] = useState(user?.avatar_outfit_color || "cosmic-blue");
   const [skinColorKey, setSkinColorKey] = useState("brown");
@@ -24,17 +38,29 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
   const [avatarTypeKey, setAvatarTypeKey] = useState(() => {
     try { return sessionStorage.getItem("uvc_test_avatar") || "current"; } catch { return "current"; }
   });
+  const [hairStyleKey, setHairStyleKey] = useState(() => {
+    try { return sessionStorage.getItem("uvc_hair_style") || ""; } catch { return ""; }
+  });
   const [saving, setSaving] = useState(false);
   const isProcedural = avatarTypeKey !== "current";
+  const isFemale = avatarTypeKey === "test-mixamo-female";
+  const hairStyles = isFemale ? FEMALE_HAIR_STYLES : MALE_HAIR_STYLES;
   const [error, setError] = useState(null);
   const trailUnlocked = !!user?.trail_boost_unlocked;
   const isMember = !!(user?.isPlus || user?.tier === "plus" || user?.tier === "premium" || user?.role === "admin");
 
   const handleAvatarTypeChange = (key) => {
     setAvatarTypeKey(key);
-    try { sessionStorage.setItem("uvc_test_avatar", key); } catch {}
-    // Notify parent immediately so the 3D world can swap the avatar
+    // Reset hair style when switching genders
+    const defaultHair = key === "test-mixamo-female" ? "ponytail" : "short";
+    setHairStyleKey(defaultHair);
+    try { sessionStorage.setItem("uvc_test_avatar", key); sessionStorage.setItem("uvc_hair_style", defaultHair); } catch {}
     onApply?.({ avatarTypeKey: key, outfitColorKey, suitColor: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.hex });
+  };
+
+  const handleHairChange = (key) => {
+    setHairStyleKey(key);
+    try { sessionStorage.setItem("uvc_hair_style", key); } catch {}
   };
 
   const handleApply = async () => {
@@ -45,6 +71,7 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
       onApply?.({
         outfitColorKey,
         avatarTypeKey,
+        hairStyleKey,
         suitColor: OUTFIT_COLORS.find(c => c.key === outfitColorKey)?.hex,
       });
       onClose?.();
@@ -116,11 +143,11 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                 >
                   {/* Mobile: compact preview */}
                   <div className="block lg:hidden w-full">
-                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} skinColorKey={skinColorKey} avatarTypeKey={avatarTypeKey} width={300} height={240} />
+                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} skinColorKey={skinColorKey} avatarTypeKey={avatarTypeKey} hairStyleKey={hairStyleKey} width={300} height={240} />
                   </div>
                   {/* Desktop: tall preview */}
                   <div className="hidden lg:block w-full">
-                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} skinColorKey={skinColorKey} avatarTypeKey={avatarTypeKey} width={280} height={400} />
+                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} skinColorKey={skinColorKey} avatarTypeKey={avatarTypeKey} hairStyleKey={hairStyleKey} width={280} height={400} />
                   </div>
                   <p className="text-[9px] mt-2 text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
                     Click a color to preview instantly
@@ -190,6 +217,35 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                                 }}
                               />
                               <span className="text-[9px]" style={{ color: active ? "#fff" : "rgba(255,255,255,0.3)" }}>{t.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hair Style — only for procedural avatars */}
+                  {isProcedural && (
+                    <div className="mb-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14 }}>
+                      <span className="text-[10px] font-black tracking-[0.2em] uppercase mb-2 block" style={{ color: "rgba(255,255,255,0.3)" }}>
+                        Hair Style
+                      </span>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {hairStyles.map((h) => {
+                          const active = hairStyleKey === h.key;
+                          return (
+                            <button
+                              key={h.key}
+                              onClick={() => handleHairChange(h.key)}
+                              className="flex flex-col items-center gap-1 py-2 rounded-xl transition-all hover:brightness-110 active:scale-95"
+                              style={{
+                                background: active ? "rgba(0,212,240,0.14)" : "rgba(255,255,255,0.04)",
+                                border: active ? "1.5px solid rgba(0,212,240,0.6)" : "1px solid rgba(255,255,255,0.08)",
+                                boxShadow: active ? "0 0 10px rgba(0,212,240,0.2)" : "none",
+                              }}
+                            >
+                              <span style={{ fontSize: 16 }}>{h.icon}</span>
+                              <span className="text-[9px] font-black" style={{ color: active ? "#00D4F0" : "rgba(255,255,255,0.4)" }}>{h.label}</span>
                             </button>
                           );
                         })}
