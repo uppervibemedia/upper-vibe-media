@@ -372,7 +372,95 @@ export default function createCitySkyline(scene) {
   addSkyscraper(-38, -38, 2.2, 1.8, 13, steelBody, neonPurple, "NW Corner");
   addSkyscraper(-42, -38, 2.0, 1.6, 10, glassBody, neonBlue, "NW Corner B");
 
-  // ── Skyline branding signs removed — all UVM/UVC branding is at player eye level ──
+  // ══════════════════════════════════════════════════════════════
+  // NEON BUILDING SIGNS — 6 architectural facade signs
+  // Mounted directly onto east/west building faces flanking the stage.
+  // These are 3D panels flush against building surfaces, not floating sprites.
+  // West (x≈-38): 3 signs | East (x≈+38): 3 signs
+  // ══════════════════════════════════════════════════════════════
+  function makeFacadeSign(text, colorHex, glowHex, width, height) {
+    const W = 256 * Math.ceil(width / 1.5);
+    const H = 128;
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+
+    // Dark base — architectural backing panel
+    ctx.fillStyle = "rgba(4,4,18,0.92)";
+    ctx.fillRect(0, 0, W, H);
+
+    // Neon border — 3px inset
+    ctx.strokeStyle = glowHex;
+    ctx.lineWidth = 6;
+    ctx.shadowColor = glowHex;
+    ctx.shadowBlur = 18;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+
+    // Glow text
+    const fontSize = Math.min(52, Math.floor(H * 0.52));
+    ctx.font = `900 ${fontSize}px 'Syne','Inter',sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = glowHex;
+    ctx.shadowBlur = 28;
+    ctx.fillStyle = colorHex;
+    ctx.fillText(text, W / 2, H / 2 + 2);
+    // Second pass for stronger glow
+    ctx.shadowBlur = 10;
+    ctx.fillText(text, W / 2, H / 2 + 2);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = LinearFilter;
+    tex.colorSpace = THREE.SRGBColorSpace;
+
+    const panel = new Mesh(
+      new BoxGeometry(width, height, 0.08),
+      new MeshBasicMaterial({ map: tex, depthWrite: true })
+    );
+    return panel;
+  }
+
+  // ── WEST SIGNS (x=-38 face, showing east = positive X face toward plaza) ──
+
+  // Sign 1: "UPPER VIBE MEDIA" — horizontal on mid-height west building at z=-32, h=17
+  // Mounted on the east face (toward plaza) at x = -38 + 1.2 (depth/2 + offset)
+  const wSign1 = makeFacadeSign("UPPER VIBE MEDIA", "#00E5FF", "#00AADD", 5.5, 1.1);
+  wSign1.position.set(-38 + 0.85 + 0.04, 10.5, -32);
+  wSign1.rotation.y = Math.PI / 2; // face east
+  scene.add(wSign1);
+
+  // Sign 2: "VIBE HIGHER" — vertical-style sign on taller west building z=-26, h=19
+  // Mounted high up on east face
+  const wSign2 = makeFacadeSign("VIBE HIGHER", "#C43BFF", "#9B00FF", 4.2, 1.0);
+  wSign2.position.set(-38 + 0.85 + 0.04, 14.5, -26);
+  wSign2.rotation.y = Math.PI / 2;
+  scene.add(wSign2);
+
+  // Sign 3: "432 HZ LIVE" — compact sign at mid-level z=-20
+  const wSign3 = makeFacadeSign("432 HZ LIVE", "#FF4FC3", "#CC0099", 3.8, 1.0);
+  wSign3.position.set(-38 + 0.85 + 0.04, 7.5, -20);
+  wSign3.rotation.y = Math.PI / 2;
+  scene.add(wSign3);
+
+  // ── EAST SIGNS (x=+38 face, showing west = negative X face toward plaza) ──
+
+  // Sign 4: "HIGH VIBE MUSIC" — horizontal on east building z=-32, h=12
+  const eSign1 = makeFacadeSign("HIGH VIBE MUSIC", "#00E5FF", "#0088FF", 5.2, 1.1);
+  eSign1.position.set(38 - 0.85 - 0.04, 9.0, -32);
+  eSign1.rotation.y = -Math.PI / 2; // face west
+  scene.add(eSign1);
+
+  // Sign 5: "FREQUENCY OF THE FUTURE" — long banner on tall east building z=-23, h=16
+  const eSign2 = makeFacadeSign("FREQUENCY OF THE FUTURE", "#A078FF", "#7C3AED", 7.0, 1.0);
+  eSign2.position.set(38 - 0.85 - 0.04, 13.0, -23);
+  eSign2.rotation.y = -Math.PI / 2;
+  scene.add(eSign2);
+
+  // Sign 6: "UPPER VIBE CITY" — on east building z=-17, h=10
+  const eSign3 = makeFacadeSign("UPPER VIBE CITY", "#FF6B35", "#DD4400", 5.0, 1.0);
+  eSign3.position.set(38 - 0.85 - 0.04, 7.5, -17);
+  eSign3.rotation.y = -Math.PI / 2;
+  scene.add(eSign3);
 
   scene.add(buildings);
 
