@@ -794,9 +794,9 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // left → right, low in front over the beach water
-    startCX: -55, startCY: 6, startCZ: 55,
-    endCX:    55, endCY:   6, endCZ:  55,
+    // left → right — raised to CY=12 so it clears the avatar at all camera angles
+    startCX: -55, startCY: 12, startCZ: 55,
+    endCX:    55, endCY:   12, endCZ:  55,
     _fadeInEnd: 0.15, _fadeOutStart: 0.82,
     duration: DURATION_A,
     nextFire: now0 + 5,
@@ -806,9 +806,9 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // right → left (opposite direction), same beach-front plane
-    startCX:  55, startCY: 6, startCZ: 55,
-    endCX:   -55, endCY:   6, endCZ:  55,
+    // right → left — raised to CY=12 so it clears the avatar at all camera angles
+    startCX:  55, startCY: 12, startCZ: 55,
+    endCX:   -55, endCY:   12, endCZ:  55,
     _fadeInEnd: 0.15, _fadeOutStart: 0.82,
     duration: DURATION_B,
     nextFire: now0 + DURATION_A + GAP_AFTER + 5,
@@ -994,13 +994,22 @@ export function animateCosmicSky(scene, camera, t, dt) {
       const fadeOut = prog > fadeOutStart ? Math.max(0, 1 - (prog - fadeOutStart) / (1 - fadeOutStart)) : 1;
       fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.88;
 
-      // Camera-relative positioning — CZ offset keeps it far behind beach horizon
+      // Camera-relative positioning
       const ox = fb.startCX + (fb.endCX - fb.startCX) * prog;
       const oy = fb.startCY + (fb.endCY - fb.startCY) * prog;
       const oz = fb.startCZ + (fb.endCZ - fb.startCZ) * prog;
+
+      // Building arc: lift over the skyline when near center X, lower back on beach sides
+      const centerProximity = Math.max(0, 1 - Math.abs(ox) / 30);
+      const buildingLift = centerProximity * centerProximity * 18; // max +18u at center
+
+      // Pitch compensation: camera tilted up pushes planet above the avatar's screen column
+      const camPitch = scene.userData._camPitch ?? 0;
+      const pitchLift = Math.max(0, camPitch) * 60; // max ~13u at pitch=0.22 rad
+
       fb.sprite.position.set(
         camera.position.x + ox,
-        camera.position.y + oy,
+        camera.position.y + oy + buildingLift + pitchLift,
         camera.position.z + oz
       );
 
