@@ -703,23 +703,25 @@ export function createCosmicSky(scene) {
   // DURATION_A/B: seconds the planet crosses the screen.
   // GAP: pause between one ending and the next starting.
 
-  const DURATION_A  = 24;   // seconds Planet A is visible
-  const DURATION_B  = 22;   // seconds Planet B is visible
-  const GAP_AFTER_A = 7;    // gap after A before B fires
-  const GAP_AFTER_B = 5;    // gap after B before A fires
+  const DURATION_A  = 28;   // seconds Planet A is visible
+  const DURATION_B  = 26;   // seconds Planet B is visible
+  const GAP_AFTER_A = 8;    // gap after A before B fires
+  const GAP_AFTER_B = 6;    // gap after B before A fires
 
-  // Beach flyby paths — camera-relative offsets.
-  // Avatar occupies roughly cameraX -8 to +8, cameraY -5 to +8 in normal third-person view.
-  // Planet A sweeps LEFT side: starts far left, ends left-center — never crosses center.
-  // Planet B sweeps RIGHT side: starts far right, ends right-center — never crosses center.
-  // cameraZ -80 to -90: far back in depth so planet reads as sky, not foreground.
-  // cameraY 10–14: above beach props/pads, below upper sky planets, avatar head at ~cameraY 5.
+  // Beach flyby paths — WORLD-SPACE coordinates.
+  // Beach is at world Z ≈ +30 to +75 (south of plaza origin).
+  // Planets fly through the beach sky at world Y ≈ 22 (well above beach props ~3u, avatar head ~7u).
+  // Planet A sweeps west→east (negative X to positive X) across the beach.
+  // Planet B sweeps east→west (positive X to negative X) across the beach.
+  // They fade in from beyond the beach edge and fade out as they clear the other side.
+  // useWorldSpace=true tells animateFlyby to set absolute position, not camera-relative.
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // LEFT side sweep — planet stays on left, never enters avatar center zone (cameraX > -15)
-    startCX: -80, startCY: 13, startCZ: -85,
-    endCX:   -18, endCY:   11, endCZ: -78,
+    useWorldSpace: true,
+    // West→East sweep, over the beach (Z≈55), left of center fading to right-off-screen
+    startX: -90, startY: 22, startZ: 55,
+    endX:    90, endY:   20, endZ:  52,
     duration: DURATION_A,
     nextFire: now0 + 2,
     _gapAfter: GAP_AFTER_A,
@@ -728,9 +730,10 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // RIGHT side sweep — planet stays on right, never enters avatar center zone (cameraX < +15)
-    startCX:  80, startCY: 14, startCZ: -88,
-    endCX:    18, endCY:   12, endCZ: -80,
+    useWorldSpace: true,
+    // East→West sweep, over the beach (Z≈60), right of center fading to left-off-screen
+    startX:  90, startY: 23, startZ: 60,
+    endX:   -90, endY:   21, endZ:  57,
     duration: DURATION_B,
     nextFire: now0 + DURATION_A + GAP_AFTER_A + 2,
     _gapAfter: GAP_AFTER_B,
@@ -869,20 +872,28 @@ export function animateCosmicSky(scene, camera, t, dt) {
       fb.life += dt;
       const prog = Math.min(fb.life / fb.maxLife, 1);
 
-      // Fast fade-in (6% of duration ~1.5s), gentle fade-out (12%)
-      const fadeIn  = Math.min(prog / 0.06, 1);
-      const fadeOut = Math.min((1 - prog) / 0.12, 1);
-      fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.95;
+      // Fade in over first 10% of flight, fade out over last 15% — smooth disappear at end
+      const fadeIn  = Math.min(prog / 0.10, 1);
+      const fadeOut = Math.min((1 - prog) / 0.15, 1);
+      fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.92;
 
-      // Camera-relative positioning — ALWAYS inside far clip, always in sky
-      const cx = fb.startCX + (fb.endCX - fb.startCX) * prog;
-      const cy = fb.startCY + (fb.endCY - fb.startCY) * prog;
-      const cz = fb.startCZ + (fb.endCZ - fb.startCZ) * prog;
-      fb.sprite.position.set(
-        camera.position.x + cx,
-        camera.position.y + cy,
-        camera.position.z + cz
-      );
+      if (fb.useWorldSpace) {
+        // World-space: planet moves through actual beach coordinates
+        const wx = fb.startX + (fb.endX - fb.startX) * prog;
+        const wy = fb.startY + (fb.endY - fb.startY) * prog;
+        const wz = fb.startZ + (fb.endZ - fb.startZ) * prog;
+        fb.sprite.position.set(wx, wy, wz);
+      } else {
+        // Camera-relative fallback
+        const cx = fb.startCX + (fb.endCX - fb.startCX) * prog;
+        const cy = fb.startCY + (fb.endCY - fb.startCY) * prog;
+        const cz = fb.startCZ + (fb.endCZ - fb.startCZ) * prog;
+        fb.sprite.position.set(
+          camera.position.x + cx,
+          camera.position.y + cy,
+          camera.position.z + cz
+        );
+      }
 
       if (prog >= 1) {
         fb.active = false;
