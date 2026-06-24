@@ -17,10 +17,10 @@ export default function StageFullScreen({
   const thumbnailUrl = video?.thumbnail_url
     || (ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null);
 
-  // controls=0 prevents YouTube UI; disablekb=1 stops keyboard shortcuts that open YT
-  // rel=0, modestbranding=1 minimize YouTube branding
+  // Keep controls=1 (default) so YouTube's native ad UI (Skip Ad, Learn More) stays fully interactive.
+  // Do NOT add controls=0 or disablekb=1 — they suppress YouTube's ad system.
   const embedUrl = ytId
-    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&controls=0&disablekb=1&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`
+    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`
     : "";
 
   useEffect(() => {
@@ -88,14 +88,7 @@ export default function StageFullScreen({
               referrerPolicy="strict-origin-when-cross-origin"
               onLoad={handleIframeLoad}
             />
-            {/* Transparent overlay blocks mouse hover from reaching the iframe,
-                preventing YouTube's own title/control overlays from appearing.
-                Pointer events on our own UI buttons are set explicitly above z-[1]. */}
-            <div
-              className="absolute inset-0"
-              style={{ zIndex: 2, background: "transparent" }}
-              onPointerDown={(e) => { e.stopPropagation(); showControls(); }}
-            />
+            {/* No blocking overlay — YouTube's native controls (including ad Skip/Learn More) must remain clickable */}
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-black">
