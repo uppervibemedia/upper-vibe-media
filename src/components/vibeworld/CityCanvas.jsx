@@ -1251,10 +1251,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       sceneRef.current = scene;
 
       const asp = rw / Math.max(rh, 1);
-      // Reduce far clip on mobile — less geometry enters view when turning, fewer draw calls
-      // Far clip: planets are camera-relative at radius=55 — must be > 55+margin.
-      // Stars (Points) also follow camera at r≈105 — must be > 105. Use 130 for both.
-      const camera = new PerspectiveCamera(52, asp, 0.1, isMob ? 130 : 160);
+      // Far clip must cover camera-relative planet orbits (up to radius ~320) + star field (r≈105).
+      // Planets use depthTest=false so they render regardless, but frustumCulled=false means
+      // the far clip still clips them if they're beyond it. Set 400 on both to be safe.
+      const camera = new PerspectiveCamera(52, asp, 0.1, 400);
       cameraRef.current = camera;
       // Start camera at camYaw=0: camera behind avatar facing stage. Use landscape constants if already landscape.
       const [spX, spY, spZ] = effectiveSpawn;
