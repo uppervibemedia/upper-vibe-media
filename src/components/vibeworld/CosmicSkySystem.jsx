@@ -388,6 +388,51 @@ export function createCosmicSky(scene) {
       radius: 90,
       orbitSpeed: (Math.PI * 2) / 320,
     },
+    // ── 4 NEW PLANETS (same system, extended) ───────────────────────────────────
+    {
+      // HIGH-1 — ice blue, far upper-right, highest of all planets
+      id: "ice",
+      bodyColors: ["#050F1A", "#0A2035", "#164A70", "#2A80B0", "#70C0F0"],
+      glowColor: "rgba(100,200,255,0.42)",
+      size: isMobile ? 13 : 19,
+      angleOffset: Math.PI * 0.55,       // upper-right quadrant
+      horizonY: 58,                      // highest horizonY — deep upper sky
+      radius: 100,
+      orbitSpeed: (Math.PI * 2) / 280,
+    },
+    {
+      // HIGH-2 — golden nebula, upper-left back, very high
+      id: "gold",
+      bodyColors: ["#1A1000", "#382000", "#704010", "#B07020", "#E0C060"],
+      glowColor: "rgba(220,180,60,0.40)",
+      size: isMobile ? 11 : 17,
+      angleOffset: Math.PI * 1.45,       // upper-left back quadrant
+      horizonY: 55,                      // second highest
+      radius: 108,                       // farthest of all — tiny and distant
+      orbitSpeed: (Math.PI * 2) / 350,
+    },
+    {
+      // MID-HIGH-1 — violet storm, right-mid sky
+      id: "violet",
+      bodyColors: ["#150A28", "#2A1450", "#4A2488", "#7A44C0", "#B080F0"],
+      glowColor: "rgba(150,100,255,0.44)",
+      size: isMobile ? 14 : 20,
+      angleOffset: Math.PI * 0.10,       // near-right, mid quadrant
+      horizonY: 30,                      // mid-high — visible with slight upward look
+      radius: 88,
+      orbitSpeed: (Math.PI * 2) / 260,
+    },
+    {
+      // MID-HIGH-2 — teal-green, left-mid sky
+      id: "teal",
+      bodyColors: ["#021410", "#053028", "#0A5840", "#189060", "#40D098"],
+      glowColor: "rgba(50,200,140,0.42)",
+      size: isMobile ? 12 : 18,
+      angleOffset: Math.PI * 1.88,       // near-left, mid quadrant
+      horizonY: 28,                      // mid-high
+      radius: 92,
+      orbitSpeed: (Math.PI * 2) / 230,
+    },
   ];
 
   function seededRand(seed) {
@@ -485,6 +530,44 @@ export function createCosmicSky(scene) {
         pG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = pG;
         pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
+      }
+    } else if (def.id === "ice" || def.id === "teal") {
+      // Ice/teal: smooth horizontal bands
+      for (let b = 0; b < 6; b++) {
+        const by = cy - R + (b / 5) * R * 2;
+        const bw = R * (0.04 + rng() * 0.07);
+        const alpha = 0.05 + rng() * 0.08;
+        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
+        bandG.addColorStop(0, "rgba(0,0,0,0)");
+        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${220 + Math.floor(rng()*35)},255,${alpha})`);
+        bandG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = bandG;
+        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
+      }
+    } else if (def.id === "gold") {
+      // Gold: swirling blob patches
+      for (let p = 0; p < 8; p++) {
+        const px2 = cx + (rng() - 0.5) * R * 1.5;
+        const py2 = cy + (rng() - 0.5) * R * 1.5;
+        const pr = R * (0.08 + rng() * 0.18);
+        const pG = pctx.createRadialGradient(px2, py2, 0, px2, py2, pr);
+        pG.addColorStop(0, `rgba(255,${200 + Math.floor(rng()*55)},${40 + Math.floor(rng()*40)},${0.08 + rng()*0.10})`);
+        pG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = pG;
+        pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
+      }
+    } else if (def.id === "violet") {
+      // Violet: bands + storm spot
+      for (let b = 0; b < 7; b++) {
+        const by = cy - R + (b / 6) * R * 2;
+        const bw = R * (0.04 + rng() * 0.08);
+        const alpha = 0.06 + rng() * 0.09;
+        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
+        bandG.addColorStop(0, "rgba(0,0,0,0)");
+        bandG.addColorStop(0.5, `rgba(${160 + Math.floor(rng()*60)},${80 + Math.floor(rng()*40)},255,${alpha})`);
+        bandG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = bandG;
+        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
     } else if (def.id === "crimson") {
       for (let b = 0; b < 7; b++) {
