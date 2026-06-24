@@ -128,13 +128,17 @@ function buildMale(skinHex, outfitHex) {
   // Head
   const headG = new THREE.Group(); headG.position.set(0, 0.44, 0); torsoG.add(headG);
   headG.add(tagMesh(new THREE.Mesh(new THREE.SphereGeometry(0.160, 12, 10), skinMat), "skin"));
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.52), mstd(HAIR, 0.88));
-  hair.position.y = 0.02; headG.add(hair);
-  const eM = mbasic(0x111111);
-  for (const [ex, ez] of [[0.055, 0.150], [-0.055, 0.150]]) {
-    const e = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 4), eM);
-    e.position.set(ex, 0.032, ez); headG.add(e);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.44), mstd(HAIR, 0.88));
+  hair.position.y = 0.055; headG.add(hair);
+  // Sclera + pupil eyes — properly placed mid-face
+  for (const ex of [0.040, -0.040]) {
+    const sc = new THREE.Mesh(new THREE.SphereGeometry(0.020, 8, 6), mbasic(0xF2EDE4));
+    sc.position.set(ex, -0.008, 0.148); headG.add(sc);
+    const pu = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), mbasic(0x111111));
+    pu.position.set(ex, -0.008, 0.168); headG.add(pu);
   }
+  const mouthM = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.012, 0.010), mbasic(0x5C2A1A));
+  mouthM.position.set(0, -0.072, 0.152); headG.add(mouthM);
 
   root.position.y = -0.28;
   return { root, clothesMat, skinMat };
@@ -194,17 +198,21 @@ function buildFemale(skinHex, outfitHex) {
   // Head
   const headG = new THREE.Group(); headG.position.set(0, 0.42, 0); torsoG.add(headG);
   headG.add(tagMesh(new THREE.Mesh(new THREE.SphereGeometry(0.148, 12, 10), skinMat), "skin"));
-  const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.62), mstd(HAIR, 0.80));
-  hairTop.position.y = 0.02; headG.add(hairTop);
+  const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.155, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.48), mstd(HAIR, 0.80));
+  hairTop.position.y = 0.045; headG.add(hairTop);
   const hairBack = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.30, 4, 6), mstd(HAIR, 0.80));
   hairBack.position.set(0, -0.12, -0.10); headG.add(hairBack);
   const band = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 12), mbasic(ACCENT, 0.85));
   band.position.set(0, -0.18, -0.10); band.rotation.x = Math.PI / 2; headG.add(band);
-  const eM = mbasic(0x111111);
-  for (const [ex, ez] of [[0.048, 0.138], [-0.048, 0.138]]) {
-    const e = new THREE.Mesh(new THREE.SphereGeometry(0.020, 6, 4), eM);
-    e.position.set(ex, 0.028, ez); headG.add(e);
+  // Sclera + pupil eyes — properly placed mid-face
+  for (const ex of [0.038, -0.038]) {
+    const sc = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), mbasic(0xF2EDE4));
+    sc.position.set(ex, -0.006, 0.134); headG.add(sc);
+    const pu = new THREE.Mesh(new THREE.SphereGeometry(0.011, 8, 6), mbasic(0x111111));
+    pu.position.set(ex, -0.006, 0.152); headG.add(pu);
   }
+  const fMouthPrev = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.011, 0.009), mbasic(0x7A3020));
+  fMouthPrev.position.set(0, -0.068, 0.140); headG.add(fMouthPrev);
 
   root.position.y = -0.28;
   return { root, clothesMat, skinMat };

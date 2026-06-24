@@ -137,37 +137,38 @@ function buildMaleCasual(C) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.160, 12, 10), mat(C.skin));
   head.castShadow = true; headGroup.add(head);
 
-  // Hair — short top
+  // Hair — short top, raised so it doesn't spill over the face
   const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.52),
+    new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.44),
     mat(C.hair, { roughness: 0.88 })
   );
-  hair.position.y = 0.02; headGroup.add(hair);
+  hair.position.y = 0.055; headGroup.add(hair);
 
-  // Eyes — white sclera protruding from head surface, dark pupil on top
-  const scleraGeo = new THREE.SphereGeometry(0.028, 8, 6);
-  const scleraMat = new THREE.MeshBasicMaterial({ color: 0xF5F0E8 });
-  const pupilGeo  = new THREE.SphereGeometry(0.016, 8, 6);
+  // Eyes — white sclera + dark pupil, properly positioned mid-face
+  const scleraGeo = new THREE.SphereGeometry(0.020, 8, 6);
+  const scleraMat = new THREE.MeshBasicMaterial({ color: 0xF2EDE4 });
+  const pupilGeo  = new THREE.SphereGeometry(0.012, 8, 6);
   const pupilMat  = new THREE.MeshBasicMaterial({ color: 0x111111 });
 
+  // Eye Y=-0.008 = just below center of head sphere = natural eye socket position
   const eyeScleraL = new THREE.Mesh(scleraGeo, scleraMat);
-  eyeScleraL.position.set(0.055, 0.034, 0.148);
+  eyeScleraL.position.set(0.040, -0.008, 0.148);
   headGroup.add(eyeScleraL);
   const eyePupilL = new THREE.Mesh(pupilGeo, pupilMat);
-  eyePupilL.position.set(0.055, 0.034, 0.172);
+  eyePupilL.position.set(0.040, -0.008, 0.168);
   headGroup.add(eyePupilL);
 
   const eyeScleraR = new THREE.Mesh(scleraGeo, scleraMat);
-  eyeScleraR.position.set(-0.055, 0.034, 0.148);
+  eyeScleraR.position.set(-0.040, -0.008, 0.148);
   headGroup.add(eyeScleraR);
   const eyePupilR = new THREE.Mesh(pupilGeo, pupilMat);
-  eyePupilR.position.set(-0.055, 0.034, 0.172);
+  eyePupilR.position.set(-0.040, -0.008, 0.168);
   headGroup.add(eyePupilR);
 
-  // Mouth — dark flat box protruding from face
+  // Mouth — dark flat box, lower third of face
   const mouthMat = new THREE.MeshBasicMaterial({ color: 0x5C2A1A });
-  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.014, 0.012), mouthMat);
-  mouth.position.set(0, -0.040, 0.156);
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.012, 0.010), mouthMat);
+  mouth.position.set(0, -0.072, 0.152);
   headGroup.add(mouth);
 
   root.userData._animParts = { legL, legR, armL, armR, headGroup, torsoGroup };
@@ -267,12 +268,12 @@ function buildFemaleCasual(C) {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.148, 12, 10), mat(C.skin));
   head.castShadow = true; headGroup.add(head);
 
-  // Hair — long with ponytail
+  // Hair — long with ponytail, raised off the face
   const hairTop = new THREE.Mesh(
-    new THREE.SphereGeometry(0.155, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.62),
+    new THREE.SphereGeometry(0.155, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.48),
     mat(C.hair, { roughness: 0.80 })
   );
-  hairTop.position.y = 0.02; headGroup.add(hairTop);
+  hairTop.position.y = 0.045; headGroup.add(hairTop);
 
   const hairBack = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.055, 0.30, 4, 6),
@@ -287,30 +288,30 @@ function buildFemaleCasual(C) {
   );
   ponyBand.position.set(0, -0.18, -0.10); ponyBand.rotation.x = Math.PI / 2; headGroup.add(ponyBand);
 
-  // Eyes — white sclera protruding from head surface, dark pupil on top
-  const fScleraGeo = new THREE.SphereGeometry(0.025, 8, 6);
-  const fScleraMat = new THREE.MeshBasicMaterial({ color: 0xF5F0E8 });
-  const fPupilGeo  = new THREE.SphereGeometry(0.014, 8, 6);
+  // Eyes — white sclera + dark pupil, mid-face position
+  const fScleraGeo = new THREE.SphereGeometry(0.018, 8, 6);
+  const fScleraMat = new THREE.MeshBasicMaterial({ color: 0xF2EDE4 });
+  const fPupilGeo  = new THREE.SphereGeometry(0.011, 8, 6);
   const fPupilMat  = new THREE.MeshBasicMaterial({ color: 0x111111 });
 
   const fEyeScleraL = new THREE.Mesh(fScleraGeo, fScleraMat);
-  fEyeScleraL.position.set(0.048, 0.030, 0.134);
+  fEyeScleraL.position.set(0.038, -0.006, 0.134);
   headGroup.add(fEyeScleraL);
   const fEyePupilL = new THREE.Mesh(fPupilGeo, fPupilMat);
-  fEyePupilL.position.set(0.048, 0.030, 0.156);
+  fEyePupilL.position.set(0.038, -0.006, 0.152);
   headGroup.add(fEyePupilL);
 
   const fEyeScleraR = new THREE.Mesh(fScleraGeo, fScleraMat);
-  fEyeScleraR.position.set(-0.048, 0.030, 0.134);
+  fEyeScleraR.position.set(-0.038, -0.006, 0.134);
   headGroup.add(fEyeScleraR);
   const fEyePupilR = new THREE.Mesh(fPupilGeo, fPupilMat);
-  fEyePupilR.position.set(-0.048, 0.030, 0.156);
+  fEyePupilR.position.set(-0.038, -0.006, 0.152);
   headGroup.add(fEyePupilR);
 
-  // Mouth — subtle dark line protruding from face
+  // Mouth — subtle dark line, lower third of face
   const fMouthMat = new THREE.MeshBasicMaterial({ color: 0x7A3020 });
-  const fMouth = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.012, 0.010), fMouthMat);
-  fMouth.position.set(0, -0.036, 0.144);
+  const fMouth = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.011, 0.009), fMouthMat);
+  fMouth.position.set(0, -0.068, 0.140);
   headGroup.add(fMouth);
 
   root.userData._animParts = { legL, legR, armL, armR, headGroup, torsoGroup };
