@@ -72,174 +72,175 @@ function tagMesh(mesh, tag) {
   return mesh;
 }
 
-// ── Hair geometry builders ────────────────────────────────────────────────────
-function buildMaleHair(style, HAIR, headG) {
-  const mh = (hex, rough) => new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: 0.02 });
+// ── Hair geometry builders — rebuilt from scratch with full-head coverage ──────
+// FOUNDATION RULE: Every style starts with a full-head shell (whole-sphere),
+// so the head is NEVER bare on the sides or back. Extra geometry adds shape on top.
 
+function mh(hex, rough) {
+  return new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: 0.02 });
+}
+function mb(hex, op) {
+  return new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: op, depthWrite: false });
+}
+
+// Full-head shell — covers top, sides, back. phiEnd controls how far down (0=top only, PI=full).
+// We always use phiEnd >= 0.72*PI so sides are never bare.
+function fullShell(r, phiEnd, matHex, rough) {
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(r, 12, 10, 0, Math.PI * 2, 0, phiEnd),
+    mh(matHex, rough)
+  );
+  return m;
+}
+
+function buildMaleHair(style, HAIR, headG) {
   switch (style) {
-    case "fade": {
-      // Full top coverage + sides taper — not bald, clear hairline
-      const top = new THREE.Mesh(new THREE.SphereGeometry(0.164, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.50), mh(HAIR, 0.90));
-      top.position.y = 0.048; headG.add(top);
-      // Side strips — left & right coverage above the ears
-      const sideGeo = new THREE.CapsuleGeometry(0.028, 0.18, 3, 6);
-      const sL = new THREE.Mesh(sideGeo, mh(HAIR, 0.92));
-      sL.position.set(0.145, -0.02, -0.02); sL.rotation.z = 0.5; headG.add(sL);
-      const sR = new THREE.Mesh(sideGeo, mh(HAIR, 0.92));
-      sR.position.set(-0.145, -0.02, -0.02); sR.rotation.z = -0.5; headG.add(sR);
-      // Back neckline coverage
-      const back = new THREE.Mesh(new THREE.CapsuleGeometry(0.032, 0.14, 3, 6), mh(HAIR, 0.92));
-      back.position.set(0, -0.06, -0.135); back.rotation.x = 0.4; headG.add(back);
-      break;
-    }
+
     case "locs": {
-      // Full crown cap — covers top and sides
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.168, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.60), mh(HAIR, 0.82));
-      cap.position.y = 0.030; headG.add(cap);
-      // Locs arranged around the head: sides, back, and a few top-back — NOT falling forward
-      const locDefs = [
-        // Back locs
-        { x:  0.00, y: -0.10, z: -0.13, len: 0.26 },
-        { x:  0.06, y: -0.08, z: -0.13, len: 0.22 },
-        { x: -0.06, y: -0.08, z: -0.13, len: 0.22 },
-        // Side locs — left
-        { x:  0.13, y: -0.06, z: -0.08, len: 0.20 },
-        { x:  0.14, y: -0.02, z: -0.04, len: 0.18 },
-        { x:  0.13, y: -0.08, z:  0.02, len: 0.16 },
-        // Side locs — right
-        { x: -0.13, y: -0.06, z: -0.08, len: 0.20 },
-        { x: -0.14, y: -0.02, z: -0.04, len: 0.18 },
-        { x: -0.13, y: -0.08, z:  0.02, len: 0.16 },
-        // Back-top locs
-        { x:  0.04, y: -0.04, z: -0.15, len: 0.24 },
-        { x: -0.04, y: -0.04, z: -0.15, len: 0.24 },
+      // 1. Full-head shell — covers every angle
+      const shell = fullShell(0.170, Math.PI * 0.78, HAIR, 0.80);
+      shell.position.y = 0.018; headG.add(shell);
+      // 2. Dense loc capsules radiating outward from shell — sides, back, top-back
+      // NO locs in front of face (z > 0.05 is face-side, keep locs at z <= 0.04)
+      const locs = [
+        // Back centre
+        { x:  0.00, y:-0.08, z:-0.160, len:0.28, r:0.022 },
+        { x:  0.04, y:-0.06, z:-0.158, len:0.25, r:0.021 },
+        { x: -0.04, y:-0.06, z:-0.158, len:0.25, r:0.021 },
+        // Back sides
+        { x:  0.10, y:-0.06, z:-0.130, len:0.24, r:0.021 },
+        { x: -0.10, y:-0.06, z:-0.130, len:0.24, r:0.021 },
+        // Left side (temple + below ear)
+        { x:  0.155, y: 0.00, z:-0.060, len:0.22, r:0.020 },
+        { x:  0.158, y:-0.04, z:-0.020, len:0.20, r:0.019 },
+        { x:  0.152, y:-0.06, z: 0.030, len:0.18, r:0.019 },
+        // Right side
+        { x: -0.155, y: 0.00, z:-0.060, len:0.22, r:0.020 },
+        { x: -0.158, y:-0.04, z:-0.020, len:0.20, r:0.019 },
+        { x: -0.152, y:-0.06, z: 0.030, len:0.18, r:0.019 },
+        // Top-back
+        { x:  0.06, y: 0.02, z:-0.150, len:0.22, r:0.020 },
+        { x: -0.06, y: 0.02, z:-0.150, len:0.22, r:0.020 },
       ];
-      locDefs.forEach(({ x, y, z, len }) => {
-        const loc = new THREE.Mesh(new THREE.CapsuleGeometry(0.020, len, 3, 6), mh(HAIR, 0.86));
+      locs.forEach(({ x, y, z, len, r }) => {
+        const loc = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 3, 6), mh(HAIR, 0.84));
         loc.position.set(x, y, z);
-        // Tilt each loc outward/downward from head center
-        loc.rotation.x = Math.atan2(-y - len * 0.5, -z) * 0.4;
-        loc.rotation.z = Math.atan2(x, 0.16) * 0.35;
+        // Point each loc away from head centre, angled downward
+        const outX = x * 1.5, outZ = z < 0 ? z * 1.2 : z * 0.5;
+        loc.rotation.z = Math.atan2(outX, 0.18) * 0.5;
+        loc.rotation.x = Math.atan2(0.12 + len * 0.4, -outZ) * 0.3 - 0.15;
         headG.add(loc);
       });
       break;
     }
-    case "hat": {
-      // Short buzz under the hat
-      const buzz = new THREE.Mesh(new THREE.SphereGeometry(0.162, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), mh(HAIR, 0.92));
-      buzz.position.y = 0.048; headG.add(buzz);
-      // Hat brim — flat disc
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.240, 0.240, 0.018, 16), mh(0x111111, 0.85));
-      brim.position.set(0, 0.135, 0.020); headG.add(brim);
-      // Hat crown — rounded cylinder
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.172, 0.178, 0.145, 14), mh(0x111111, 0.80));
-      crown.position.set(0, 0.218, 0); headG.add(crown);
-      // Hat top cap — dome
-      const top = new THREE.Mesh(new THREE.SphereGeometry(0.172, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.52), mh(0x111111, 0.78));
-      top.position.set(0, 0.290, 0); headG.add(top);
-      // Visor brim peak — smaller front piece
-      const visor = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.010, 0.220, 3, 1, false, -Math.PI * 0.20, Math.PI * 0.40), mh(0x0a0a0a, 0.88));
-      visor.position.set(0, 0.128, 0.120); visor.rotation.x = -0.32; headG.add(visor);
-      // Logo detail on front
-      const logo = new THREE.Mesh(new THREE.BoxGeometry(0.060, 0.028, 0.010), mh(0x9B7EFF, 0.6));
-      logo.position.set(0, 0.220, 0.175); headG.add(logo);
+
+    case "fade": {
+      // Full-head shell — the "fade" is just a shorter shell, still covers sides
+      const shell = fullShell(0.166, Math.PI * 0.75, HAIR, 0.88);
+      shell.position.y = 0.020; headG.add(shell);
+      // Slightly thicker top dome for texture
+      const topDome = fullShell(0.162, Math.PI * 0.42, HAIR, 0.85);
+      topDome.position.y = 0.035; headG.add(topDome);
       break;
     }
-    case "bald":
+
+    case "hat": {
+      // Full buzz under hat — still covers sides so it doesn't look bald
+      const shell = fullShell(0.164, Math.PI * 0.72, HAIR, 0.90);
+      shell.position.y = 0.020; headG.add(shell);
+      // Cap brim — flat cylinder ring
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.244, 0.244, 0.016, 16), mh(0x0d0d0d, 0.82));
+      brim.position.set(0, 0.128, 0.018); headG.add(brim);
+      // Cap crown body
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.174, 0.180, 0.148, 14), mh(0x111111, 0.78));
+      crown.position.set(0, 0.215, 0); headG.add(crown);
+      // Dome top
+      const dome = fullShell(0.174, Math.PI * 0.50, 0x111111, 0.76);
+      dome.position.set(0, 0.288, 0); headG.add(dome);
+      // Purple logo patch
+      const logo = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.026, 0.008), mh(0x9B7EFF, 0.55));
+      logo.position.set(0, 0.218, 0.178); headG.add(logo);
       break;
-    default: { // "short"
-      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.165, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.50), mh(HAIR, 0.88));
-      hair.position.y = 0.048; headG.add(hair);
+    }
+
+    case "bald":
+      // No hair — intentional
+      break;
+
+    default: { // "short" — full round cut, covers all angles
+      const shell = fullShell(0.167, Math.PI * 0.76, HAIR, 0.86);
+      shell.position.y = 0.018; headG.add(shell);
+      break;
     }
   }
 }
 
 function buildFemaleHair(style, HAIR, ACCENT, headG) {
-  const mh = (hex, rough) => new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: 0.02 });
-  const mb = (hex, op) => new THREE.MeshBasicMaterial({ color: hex, transparent: op < 1, opacity: op, depthWrite: false });
-
-  // Helper: add side-hair panels so no style looks bald from the sides
-  function addSidePanels(radius, yOffset, zOffset) {
-    const sGeo = new THREE.CapsuleGeometry(radius, 0.14, 3, 6);
-    const sL = new THREE.Mesh(sGeo, mh(HAIR, 0.82));
-    sL.position.set( 0.130, yOffset, zOffset); sL.rotation.z =  0.55; headG.add(sL);
-    const sR = new THREE.Mesh(sGeo, mh(HAIR, 0.82));
-    sR.position.set(-0.130, yOffset, zOffset); sR.rotation.z = -0.55; headG.add(sR);
-  }
-
   switch (style) {
+
     case "long": {
-      // Full top cap
-      const top = new THREE.Mesh(new THREE.SphereGeometry(0.156, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.52), mh(HAIR, 0.78));
-      top.position.y = 0.038; headG.add(top);
-      // Side curtains — left and right panels flowing down
-      const sideGeo = new THREE.CapsuleGeometry(0.055, 0.42, 4, 6);
-      const sL = new THREE.Mesh(sideGeo, mh(HAIR, 0.80));
-      sL.position.set(0.118, -0.15, 0.012); sL.rotation.z = 0.18; headG.add(sL);
-      const sR = new THREE.Mesh(sideGeo, mh(HAIR, 0.80));
-      sR.position.set(-0.118, -0.15, 0.012); sR.rotation.z = -0.18; headG.add(sR);
-      // Back volume — thick capsule
-      const back = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.48, 4, 8), mh(HAIR, 0.80));
-      back.position.set(0, -0.20, -0.072); back.rotation.x = 0.08; headG.add(back);
-      // Slight front framing strands (short, don't cover eyes)
-      const frL = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.12, 3, 5), mh(HAIR, 0.82));
-      frL.position.set(0.095, -0.048, 0.115); frL.rotation.z = 0.30; headG.add(frL);
-      const frR = new THREE.Mesh(new THREE.CapsuleGeometry(0.022, 0.12, 3, 5), mh(HAIR, 0.82));
-      frR.position.set(-0.095, -0.048, 0.115); frR.rotation.z = -0.30; headG.add(frR);
+      // Full-head shell — foundation, covers top + sides + upper back
+      const shell = fullShell(0.158, Math.PI * 0.80, HAIR, 0.76);
+      shell.position.y = 0.016; headG.add(shell);
+      // Side curtains — thick flowing panels down to chin/neck level
+      const sGeo = new THREE.CapsuleGeometry(0.058, 0.46, 4, 7);
+      const sL = new THREE.Mesh(sGeo, mh(HAIR, 0.78)); sL.position.set( 0.115, -0.17, -0.010); sL.rotation.z =  0.14; headG.add(sL);
+      const sR = new THREE.Mesh(sGeo, mh(HAIR, 0.78)); sR.position.set(-0.115, -0.17, -0.010); sR.rotation.z = -0.14; headG.add(sR);
+      // Back mass — wide and long
+      const back = new THREE.Mesh(new THREE.CapsuleGeometry(0.078, 0.52, 4, 8), mh(HAIR, 0.77));
+      back.position.set(0, -0.22, -0.075); back.rotation.x = 0.06; headG.add(back);
+      // Front face-framing strands — stay above eye level (y > -0.02)
+      const frGeo = new THREE.CapsuleGeometry(0.024, 0.14, 3, 5);
+      const frL = new THREE.Mesh(frGeo, mh(HAIR, 0.80)); frL.position.set( 0.098, -0.038, 0.110); frL.rotation.z =  0.28; headG.add(frL);
+      const frR = new THREE.Mesh(frGeo, mh(HAIR, 0.80)); frR.position.set(-0.098, -0.038, 0.110); frR.rotation.z = -0.28; headG.add(frR);
       break;
     }
+
     case "bob": {
-      // Full cap
-      const top = new THREE.Mesh(new THREE.SphereGeometry(0.156, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.52), mh(HAIR, 0.80));
-      top.position.y = 0.038; headG.add(top);
-      // Bob shape — volume around chin level, flat bottom
-      const bobGeo = new THREE.CapsuleGeometry(0.062, 0.24, 4, 6);
-      const bL = new THREE.Mesh(bobGeo, mh(HAIR, 0.80));
-      bL.position.set( 0.112, -0.12, 0.00); bL.rotation.z =  0.12; headG.add(bL);
-      const bR = new THREE.Mesh(bobGeo, mh(HAIR, 0.80));
-      bR.position.set(-0.112, -0.12, 0.00); bR.rotation.z = -0.12; headG.add(bR);
-      const bBack = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.22, 4, 6), mh(HAIR, 0.80));
-      bBack.position.set(0, -0.10, -0.090); headG.add(bBack);
-      // Front sweep — slightly over forehead but NOT eyes
-      const sweep = new THREE.Mesh(new THREE.CapsuleGeometry(0.040, 0.18, 3, 5), mh(HAIR, 0.82));
-      sweep.position.set(0.04, 0.04, 0.138); sweep.rotation.z = 0.55; sweep.rotation.x = -0.22; headG.add(sweep);
+      // Full-head shell — medium length, wraps around head
+      const shell = fullShell(0.158, Math.PI * 0.78, HAIR, 0.78);
+      shell.position.y = 0.016; headG.add(shell);
+      // Bob side curtains — end at chin level
+      const bGeo = new THREE.CapsuleGeometry(0.062, 0.26, 4, 6);
+      const bL = new THREE.Mesh(bGeo, mh(HAIR, 0.78)); bL.position.set( 0.110, -0.12, -0.004); bL.rotation.z =  0.10; headG.add(bL);
+      const bR = new THREE.Mesh(bGeo, mh(HAIR, 0.78)); bR.position.set(-0.110, -0.12, -0.004); bR.rotation.z = -0.10; headG.add(bR);
+      // Back fill
+      const bBack = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.24, 4, 6), mh(HAIR, 0.78));
+      bBack.position.set(0, -0.11, -0.085); headG.add(bBack);
+      // Slight front sweep (forehead, NOT eyes)
+      const sweep = new THREE.Mesh(new THREE.CapsuleGeometry(0.036, 0.16, 3, 5), mh(HAIR, 0.80));
+      sweep.position.set(0.045, 0.040, 0.138); sweep.rotation.z = 0.52; sweep.rotation.x = -0.20; headG.add(sweep);
       break;
     }
-    case "bun": {
-      // Full cap with sides
-      const top = new THREE.Mesh(new THREE.SphereGeometry(0.156, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.50), mh(HAIR, 0.80));
-      top.position.y = 0.038; headG.add(top);
-      addSidePanels(0.040, -0.030, -0.025);
-      // Back gathered before bun
-      const gather = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.18, 3, 6), mh(HAIR, 0.80));
-      gather.position.set(0, -0.05, -0.115); gather.rotation.x = -0.18; headG.add(gather);
-      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.072, 8, 6), mh(HAIR, 0.76));
-      bun.position.set(0, 0.215, -0.042); headG.add(bun);
-      const band = new THREE.Mesh(new THREE.TorusGeometry(0.062, 0.011, 6, 12), mb(ACCENT, 0.88));
-      band.position.set(0, 0.168, -0.042); band.rotation.x = Math.PI / 2; headG.add(band);
-      break;
-    }
+
     case "short": {
-      // Short textured cut — full coverage top + sides
-      const top = new THREE.Mesh(new THREE.SphereGeometry(0.155, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.50), mh(HAIR, 0.84));
-      top.position.y = 0.040; headG.add(top);
-      addSidePanels(0.036, -0.022, -0.018);
+      // Full-head shell — covers everything, shorter than long
+      const shell = fullShell(0.157, Math.PI * 0.76, HAIR, 0.82);
+      shell.position.y = 0.018; headG.add(shell);
+      // Extra side puff for feminine fullness
+      const pGeo = new THREE.CapsuleGeometry(0.042, 0.12, 3, 6);
+      const pL = new THREE.Mesh(pGeo, mh(HAIR, 0.82)); pL.position.set( 0.140, -0.025, -0.028); pL.rotation.z =  0.60; headG.add(pL);
+      const pR = new THREE.Mesh(pGeo, mh(HAIR, 0.82)); pR.position.set(-0.140, -0.025, -0.028); pR.rotation.z = -0.60; headG.add(pR);
       // Back neckline
-      const backN = new THREE.Mesh(new THREE.CapsuleGeometry(0.038, 0.12, 3, 6), mh(HAIR, 0.86));
-      backN.position.set(0, -0.055, -0.128); backN.rotation.x = 0.35; headG.add(backN);
+      const bkN = new THREE.Mesh(new THREE.CapsuleGeometry(0.044, 0.14, 3, 5), mh(HAIR, 0.84));
+      bkN.position.set(0, -0.062, -0.130); bkN.rotation.x = 0.30; headG.add(bkN);
       break;
     }
+
     default: { // "ponytail"
-      const top = new THREE.Mesh(new THREE.SphereGeometry(0.156, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.50), mh(HAIR, 0.80));
-      top.position.y = 0.038; headG.add(top);
-      addSidePanels(0.040, -0.030, -0.020);
-      const back = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.30, 4, 6), mh(HAIR, 0.80));
-      back.position.set(0, -0.10, -0.105); headG.add(back);
-      const band = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.012, 6, 12), mb(ACCENT, 0.88));
-      band.position.set(0, -0.175, -0.105); band.rotation.x = Math.PI / 2; headG.add(band);
-      // Ponytail strand
-      const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.032, 0.22, 3, 6), mh(HAIR, 0.80));
-      tail.position.set(0, -0.30, -0.105); tail.rotation.x = 0.12; headG.add(tail);
+      // Full-head shell
+      const shell = fullShell(0.158, Math.PI * 0.78, HAIR, 0.78);
+      shell.position.y = 0.016; headG.add(shell);
+      // Gathered back volume before tie
+      const gather = new THREE.Mesh(new THREE.CapsuleGeometry(0.056, 0.20, 3, 6), mh(HAIR, 0.78));
+      gather.position.set(0, -0.06, -0.118); gather.rotation.x = -0.15; headG.add(gather);
+      // Hair tie band
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.044, 0.013, 6, 12), mb(ACCENT, 0.90));
+      band.position.set(0, -0.178, -0.118); band.rotation.x = Math.PI / 2; headG.add(band);
+      // Ponytail strand hanging down
+      const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.034, 0.26, 3, 6), mh(HAIR, 0.78));
+      tail.position.set(0, -0.320, -0.100); tail.rotation.x = 0.10; headG.add(tail);
+      break;
     }
   }
 }
