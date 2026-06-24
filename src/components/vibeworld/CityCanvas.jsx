@@ -2092,9 +2092,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──
         scene.userData._playerZ = pz;
         scene.userData._camPitch = camPitchSmoothRef.current; // pass live pitch for planet compensation
-        // Hide planets only during Ferris ride or stage fullscreen/watch mode.
-        // Planets are visible everywhere else including the city zone.
-        scene.userData._hidePlanets = ferrisRidingRef.current || lockedRef.current;
+        // During Ferris ride: only hide city-side (front/stage-facing) planets.
+        // During stage fullscreen/watch (locked): hide all planets.
+        scene.userData._hidePlanets = lockedRef.current;
+        scene.userData._ferrisRiding = ferrisRidingRef.current;
         animateCosmicSky(scene, camera, t, dt);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────

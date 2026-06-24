@@ -885,13 +885,14 @@ export function animateCosmicSky(scene, camera, t, dt) {
     const camPitch = scene.userData._camPitch ?? 0;
     const pitchBoost = Math.max(0, -camPitch) * 80; // negative pitch = looking up → boost planets up
 
-    // Hide planets while on Ferris ride or in the city/skyline zone (z < 15).
-    // Smooth fade over ~0.5s so the transition isn't jarring.
+    // Hide all planets during stage fullscreen/watch mode.
+    // During Ferris ride: only hide city-side (front/stage-facing) planets; beach-side stay visible.
     const hidePlanets = scene.userData._hidePlanets ?? false;
+    const ferrisRiding = scene.userData._ferrisRiding ?? false;
     if (!scene.userData._planetOpacity) scene.userData._planetOpacity = 1.0;
-    const opacityTarget = hidePlanets ? 0.0 : 1.0;
-    scene.userData._planetOpacity += (opacityTarget - scene.userData._planetOpacity) * Math.min(1, dt * 2.0);
-    const planetOpacity = scene.userData._planetOpacity;
+    const globalOpacityTarget = hidePlanets ? 0.0 : 1.0;
+    scene.userData._planetOpacity += (globalOpacityTarget - scene.userData._planetOpacity) * Math.min(1, dt * 2.0);
+    const globalPlanetOpacity = scene.userData._planetOpacity;
 
     for (const p of horizonPlanets) {
       const angle = t * p.orbitSpeed + p.angleOffset;
@@ -908,7 +909,21 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
       const cy = camera.position.y + p.horizonY + buildingArc + pitchBoost + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
-      p.mat.opacity = planetOpacity;
+
+      // Per-planet Ferris ride opacity: city-side = cos(angle) > 0.2 → fade out.
+      // Beach-side planets (behind camera relative to stage) stay fully visible.
+      let opacity = globalPlanetOpacity;
+      if (ferrisRiding && !hidePlanets) {
+        const isCitySide = frontFactor > 0.2; // planet is in front / stage-facing half
+        const ferrisTarget = isCitySide ? 0.0 : 1.0;
+        if (!p._ferrisOpacity) p._ferrisOpacity = 1.0;
+        p._ferrisOpacity += (ferrisTarget - p._ferrisOpacity) * Math.min(1, dt * 2.0);
+        opacity = p._ferrisOpacity;
+      } else {
+        // Reset per-planet fade when not on ride
+        if (p._ferrisOpacity !== undefined) p._ferrisOpacity = 1.0;
+      }
+      p.mat.opacity = opacity;
     }
 
     if (SKY_DEBUG && skyFrame % 120 === 0) {
