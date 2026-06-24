@@ -319,7 +319,7 @@ export function createCosmicSky(scene) {
       active: false, life: 0, maxLife: 0,
       vx: 0, vy: 0, vz: 0,
       nextFire: performance.now() * 0.001 + 20 + Math.random() * 10,
-      interval: 120,
+      interval: 70,
     };
   }
 
@@ -1145,7 +1145,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
         mega.active = false;
         mega.amat.opacity = 0;
         mega.tmat.opacity = 0;
-        mega.nextFire = t + (mega.interval || 120) + Math.random() * 10;
+        mega.nextFire = t + (mega.interval || 70) + Math.random() * 10;
       } else {
         const prog = mega.life / mega.maxLife;
         const envelope = Math.min(prog * 5, 1) * Math.min((1 - prog) * 5, 1);

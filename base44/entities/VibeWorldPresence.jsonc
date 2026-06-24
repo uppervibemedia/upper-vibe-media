@@ -12,17 +12,8 @@
     },
     "avatar_type": {
       "type": "string",
-      "enum": [
-        "masculine",
-        "feminine",
-        "nonbinary",
-        "neutral",
-        "default",
-        "cyber",
-        "cosmic",
-        "neon"
-      ],
-      "default": "neutral"
+      "description": "Avatar type key \u2014 matches uvc_test_avatar sessionStorage value",
+      "default": "test-mixamo-female"
     },
     "skin_tone": {
       "type": "string",
@@ -32,9 +23,17 @@
         "medium",
         "medium-dark",
         "dark",
-        "deep"
+        "deep",
+        "brown",
+        "tan",
+        "deep-brown"
       ],
       "default": "medium"
+    },
+    "avatar_outfit_color": {
+      "type": "string",
+      "description": "Outfit color key e.g. cosmic-blue, neon-purple",
+      "default": "cosmic-blue"
     },
     "avatar_style": {
       "type": "string",

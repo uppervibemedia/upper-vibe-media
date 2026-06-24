@@ -90,11 +90,16 @@ export default function useVibeWorldPresence(user, currentZone, position) {
     if (!user?.id || !mountedRef.current) return;
     const now = new Date().toISOString();
 
+    // Read live avatar type from sessionStorage (set by customizer — may differ from user.avatar_type)
+    const liveAvatarType = (() => { try { return sessionStorage.getItem("uvc_test_avatar") || user.avatar_type || "test-mixamo-female"; } catch { return user.avatar_type || "test-mixamo-female"; } })();
+    const liveSkinTone   = (() => { try { return sessionStorage.getItem("uvc_skin_tone") || user.skin_tone || "medium"; } catch { return user.skin_tone || "medium"; } })();
+
     const payload = {
       user_id: user.id,
       username: user.full_name || "Vibe Citizen",
-      avatar_type: user.avatar_type || "neutral",
-      skin_tone: user.skin_tone || "medium",
+      avatar_type: liveAvatarType,
+      skin_tone: liveSkinTone,
+      avatar_outfit_color: user.avatar_outfit_color || "cosmic-blue",
       avatar_style: user.avatar_style || "streetwear",
       current_zone: zoneRef.current,
       pos_x: posRef.current.x,
