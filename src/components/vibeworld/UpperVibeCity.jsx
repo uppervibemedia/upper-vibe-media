@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Tv2 } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import CameraLookZone from "@/components/vibeworld/CameraLookZone";
@@ -1237,6 +1237,90 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           />
         </div>
       )}
+
+      {/* ── Dance Floor Emote Bar — inline quick-emotes, visible only on dance floor ── */}
+      <AnimatePresence>
+        {!loading && onDanceFloor && !hbRiding && !stageWatching && !stageFullScreen && !tvMode && (
+          <motion.div
+            key="dance-floor-emotes"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ type: "spring", damping: 26, stiffness: 320 }}
+            className="fixed z-[62] flex flex-col items-center gap-2 pointer-events-none"
+            style={{
+              left: "50%",
+              transform: "translateX(-50%)",
+              bottom: isMobile && mobileLayout
+                ? mobileLayout.sa.bottom + (mobileLayout.isLandscape ? 88 : 148)
+                : isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 148px)" : "5.5rem",
+            }}
+          >
+            {/* Label */}
+            <span
+              className="px-3 py-0.5 rounded-full font-black tracking-[0.18em] pointer-events-none"
+              style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", background: "rgba(0,0,0,0.2)" }}
+            >
+              DANCE FLOOR
+            </span>
+
+            {/* Emote pill row */}
+            <div
+              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl pointer-events-auto"
+              style={{
+                background: "rgba(8,6,20,0.88)",
+                border: "1px solid rgba(196,59,255,0.18)",
+                backdropFilter: "blur(18px)",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.5), 0 0 30px rgba(196,59,255,0.08)",
+              }}
+            >
+              {[
+                { id: "dance",     label: "Dance",     emoji: "💃", color: "#C43BFF" },
+                { id: "wave",      label: "Wave",      emoji: "👋", color: "#00D4F0" },
+                { id: "heart",     label: "Heart",     emoji: "❤️", color: "#FF4081" },
+                { id: "fire",      label: "Fire",      emoji: "🔥", color: "#FF6D00" },
+                { id: "peace",     label: "Peace",     emoji: "✌️", color: "#A078FF" },
+              ].map((emote) => {
+                const isActive = isDancing && activeEmote?.id === emote.id;
+                return (
+                  <button
+                    key={emote.id}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={() => {
+                      try { navigator?.vibrate?.(10); } catch {}
+                      if (isActive) {
+                        handleStopDance();
+                      } else {
+                        handleEmote(emote);
+                      }
+                    }}
+                    className="flex flex-col items-center justify-center gap-0.5 rounded-xl transition-all hover:brightness-110 active:scale-90"
+                    style={{
+                      background: isActive ? `${emote.color}20` : "rgba(255,255,255,0.04)",
+                      border: `1.5px solid ${isActive ? emote.color + "66" : "rgba(255,255,255,0.08)"}`,
+                      boxShadow: isActive ? `0 0 12px ${emote.color}44` : "none",
+                      width: isMobile ? 44 : 52,
+                      height: isMobile ? 44 : 52,
+                      minWidth: 44,
+                      minHeight: 44,
+                      touchAction: "manipulation",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ fontSize: isMobile ? 18 : 20, lineHeight: 1 }}>{emote.emoji}</span>
+                    <span
+                      className="font-black tracking-wider"
+                      style={{ fontSize: 7, color: isActive ? emote.color : "rgba(255,255,255,0.35)" }}
+                    >
+                      {isActive ? "Stop" : emote.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
