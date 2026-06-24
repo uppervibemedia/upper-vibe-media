@@ -15,7 +15,7 @@ import { createCrystalZone, animateCrystalZone, activateCrystalZone } from "./Cr
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
 import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
-import { createMixamoAvatar, updateMixamoAvatarAnimation } from "./AvatarModelMixamo";
+import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
 import { createZoneSign } from "./ZoneSign";
 
 // Destructure immediately after namespace import to ensure full module load
@@ -1318,17 +1318,21 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       let entry;
       if (isMixamoAvatar) {
-        // Casual human avatar — pass spawn position and hair style
+        // Casual human avatar — pass spawn position, hair style, outfit color, and skin tone
         entry = createMixamoAvatar(scene, {
           spawnX: effectiveSpawn[0],
           spawnY: effectiveSpawn[1],
           spawnZ: effectiveSpawn[2],
           gender: mixamoGender,
           hairStyle: savedHairStyle || (mixamoGender === "female" ? "ponytail" : "short"),
+          outfitColorKey: avatarConfig?.outfitColorKey || null,
+          skinToneKey: (() => { try { return sessionStorage.getItem("uvc_skin_tone") || null; } catch { return null; } })() || avatarConfig?.skinTone || "medium",
         }, (_entry) => {
           avatarEntryRef.current = _entry;
         });
-        if (retintRef) retintRef.current = () => {};
+        if (retintRef) {
+          retintRef.current = (hexColor) => retintMixamoAvatar(avatarEntryRef.current, hexColor);
+        }
       } else if (isTestAvatar) {
         // TEST avatars — procedural geometry, no GLB, instant load
         entry = createTestAvatar(scene, testGender, avatarConfig || {}, (_entry) => {

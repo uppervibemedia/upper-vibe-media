@@ -683,10 +683,73 @@ function animateCasual(entry, speed, isDancing, dt, emoteId) {
   }
 }
 
+// ── Outfit color map (matches OUTFIT_COLORS in AvatarSetup) ──────────────────
+const OUTFIT_COLOR_MAP = {
+  "cosmic-blue":    0x00AADD,
+  "neon-purple":    0x7B2FFF,
+  "shadow-black":   0x080A0F,
+  "rose-glow":      0xCC2288,
+  "gold-aura":      0xCC9900,
+  // legacy keys
+  "electric-blue":  0x00AADD,
+  "cosmic-black":   0x080A0F,
+  "white-silver":   0xC8D4E0,
+  "pink-rose":      0xCC2288,
+  "gold-yellow":    0xCC9900,
+};
+
+// Skin tone palette (matches AvatarPreviewCanvas SKIN_TONES)
+const SKIN_TONE_MAP = {
+  "brown":       0xC68642,
+  "light":       0xF5CBA7,
+  "tan":         0xD4956A,
+  "deep-brown":  0x8D5524,
+  "dark":        0x5C3317,
+  "medium":      0xC68642, // default fallback
+};
+
+// Tag a mesh so retinting can find it later
+function tagClothes(mesh) { mesh.userData.customTag = "suit"; return mesh; }
+function tagSkin(mesh)    { mesh.userData.customTag = "skin"; return mesh; }
+
+// ── Retint function for Mixamo avatars ────────────────────────────────────────
+export function retintMixamoAvatar(entry, outfitHex) {
+  if (!entry?.root) return;
+  const color = new THREE.Color(outfitHex);
+  entry.root.traverse((child) => {
+    if (child.isMesh && child.userData.customTag === "suit") {
+      child.material.color.copy(color);
+    }
+  });
+}
+
 // ── PUBLIC API ─────────────────────────────────────────────────────────────────
 export function createMixamoAvatar(scene, opts = {}, onReady) {
   const gender = opts.gender || "male";
-  const C = { ...(gender === "female" ? FEMALE_CASUAL : MALE_CASUAL), _hairStyle: opts.hairStyle || "" };
+
+  // Resolve outfit color from key or direct hex
+  let outfitHex = null;
+  if (opts.outfitColorHex) {
+    outfitHex = typeof opts.outfitColorHex === "number"
+      ? opts.outfitColorHex
+      : parseInt(String(opts.outfitColorHex).replace("#", ""), 16);
+  } else if (opts.outfitColorKey) {
+    outfitHex = OUTFIT_COLOR_MAP[opts.outfitColorKey] ?? null;
+  }
+
+  // Resolve skin hex
+  let skinHex = null;
+  if (opts.skinToneKey) {
+    skinHex = SKIN_TONE_MAP[opts.skinToneKey] ?? null;
+  }
+
+  const base = gender === "female" ? FEMALE_CASUAL : MALE_CASUAL;
+  const C = {
+    ...base,
+    _hairStyle: opts.hairStyle || "",
+    ...(outfitHex != null ? { shirt: outfitHex, shoes: outfitHex } : {}),
+    ...(skinHex   != null ? { skin: skinHex } : {}),
+  };
 
   const controller = new THREE.Group();
   controller.name = "avatar";
@@ -696,9 +759,31 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
   const model = gender === "female" ? buildFemaleCasual(C) : buildMaleCasual(C);
   model.rotation.y = 0; // face is +Z; camera starts at +Z behind avatar, sees back
   // Scale both genders to match soldier GLB height (~1.8u).
-  // Both procedural geometries top out at ~1.55u → scale = 1.8/1.55 ≈ 1.16
   model.scale.set(1.16, 1.16, 1.16);
-  model.position.y = 0; // feet origin stays at ground
+  model.position.y = 0;
+
+  // Tag clothing meshes for future retinting
+  model.traverse((child) => {
+    if (!child.isMesh) return;
+    const n = child.name.toLowerCase();
+    // Shadow disc = skip; eyes/mouth/hair = skip (no customTag = never retinted)
+    if (n === "glovel" || n === "glover" || n === "bootl" || n === "bootr") {
+      // Hands use skin color; boots use outfit color
+      if (n === "bootl" || n === "bootr") child.userData.customTag = "suit";
+    }
+    // Tag by material color proximity: if color matches shirt/pants, tag as suit
+    if (child.material?.color) {
+      const mc = child.material.color;
+      const shirtC = new THREE.Color(C.shirt);
+      const pantsC = new THREE.Color(C.pants);
+      const skinC  = new THREE.Color(C.skin);
+      const d = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b);
+      if (d(mc, shirtC) < 0.05) child.userData.customTag = "suit";
+      else if (d(mc, pantsC) < 0.05) child.userData.customTag = "pants";
+      else if (d(mc, skinC) < 0.05)  child.userData.customTag = "skin";
+    }
+  });
+
   controller.add(model);
 
   const entry = {

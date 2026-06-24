@@ -49,6 +49,7 @@ export default function AvatarSetup({ onComplete, existingOutfitColor, existingS
       try {
         sessionStorage.setItem("uvc_test_avatar", avatarTypeKey);
         sessionStorage.setItem("uvc_hair_style", defaultHair);
+        sessionStorage.setItem("uvc_skin_tone", "medium");
       } catch {}
       onComplete({ avatarType: avatarTypeKey, skinTone: "medium", avatarStyle: vibeStyle, outfitColorKey });
     } catch {

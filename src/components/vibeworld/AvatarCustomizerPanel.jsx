@@ -34,7 +34,9 @@ export const FEMALE_HAIR_STYLES = [
 
 export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) {
   const [outfitColorKey, setOutfitColorKey] = useState(user?.avatar_outfit_color || "cosmic-blue");
-  const [skinColorKey, setSkinColorKey] = useState("brown");
+  const [skinColorKey, setSkinColorKey] = useState(() => {
+    try { return sessionStorage.getItem("uvc_skin_tone") || user?.skin_tone || "brown"; } catch { return "brown"; }
+  });
   // Read saved test avatar type from sessionStorage (not persisted to account — test only)
   const [avatarTypeKey, setAvatarTypeKey] = useState(() => {
     try { return sessionStorage.getItem("uvc_test_avatar") || "test-mixamo-female"; } catch { return "test-mixamo-female"; }
@@ -70,10 +72,12 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
       await base44.auth.updateMe({
         avatar_outfit_color: outfitColorKey,
         avatar_type: avatarTypeKey,
+        skin_tone: skinColorKey,
       });
       try {
         sessionStorage.setItem("uvc_test_avatar", avatarTypeKey);
         sessionStorage.setItem("uvc_hair_style", hairStyleKey);
+        sessionStorage.setItem("uvc_skin_tone", skinColorKey);
       } catch {}
       onApply?.({
         outfitColorKey,
