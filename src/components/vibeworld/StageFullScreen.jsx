@@ -17,10 +17,10 @@ export default function StageFullScreen({
   const thumbnailUrl = video?.thumbnail_url
     || (ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null);
 
-  // Keep controls=1 (default) so YouTube's native ad UI (Skip Ad, Learn More) stays fully interactive.
-  // Do NOT add controls=0 or disablekb=1 — they suppress YouTube's ad system.
+  // controls=0 prevents YouTube UI; disablekb=1 stops keyboard shortcuts that open YT
+  // rel=0, modestbranding=1 minimize YouTube branding
   const embedUrl = ytId
-    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`
+    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&controls=0&disablekb=1&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`
     : "";
 
   useEffect(() => {
@@ -84,12 +84,18 @@ export default function StageFullScreen({
               title="Stage Video"
               className="w-full h-full"
               style={{ border: "none", display: "block" }}
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allow="autoplay; encrypted-media"
               referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
               onLoad={handleIframeLoad}
             />
-            {/* No blocking overlay — YouTube's native controls (including ad Skip/Learn More) must remain clickable */}
+            {/* Transparent overlay blocks mouse hover from reaching the iframe,
+                preventing YouTube's own title/control overlays from appearing.
+                Pointer events on our own UI buttons are set explicitly above z-[1]. */}
+            <div
+              className="absolute inset-0"
+              style={{ zIndex: 2, background: "transparent" }}
+              onPointerDown={(e) => { e.stopPropagation(); showControls(); }}
+            />
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-black">
@@ -101,16 +107,13 @@ export default function StageFullScreen({
         )}
       </div>
 
-      {/* ── Top bar: Mute (left) + Exit (right) — auto-hides so YouTube ad UI is never covered ── */}
-      <motion.div
-        animate={{ opacity: controlsVisible ? 1 : 0, y: controlsVisible ? 0 : -8 }}
-        transition={{ duration: 0.2 }}
+      {/* ── Top bar: Mute (left) + Exit (right) — NO title here ── */}
+      <div
         className="absolute left-0 right-0 z-[10] flex items-center justify-between"
         style={{
           top: saTop + 8,
           paddingLeft: `max(env(safe-area-inset-left, 0px), 12px)`,
           paddingRight: `max(env(safe-area-inset-right, 0px), 12px)`,
-          pointerEvents: controlsVisible ? "auto" : "none",
         }}
       >
         {/* Mute */}
@@ -147,7 +150,7 @@ export default function StageFullScreen({
           <X className="w-3.5 h-3.5" />
           <span>Exit</span>
         </button>
-      </motion.div>
+      </div>
 
       {/* ── Bottom controls — auto-hide; title lives HERE only ── */}
       <motion.div

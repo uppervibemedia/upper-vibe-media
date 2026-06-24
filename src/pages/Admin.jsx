@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2, Mic2, FlaskConical, Wrench, DollarSign } from "lucide-react";
-import YouTubeMonetizationChecklist from "../components/admin/YouTubeMonetizationChecklist";
+import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2, Mic2, FlaskConical, Wrench } from "lucide-react";
 import AnalyticsDashboard from "../components/admin/AnalyticsDashboard";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
@@ -31,7 +30,6 @@ const TABS = [
   { id: "ai_organizer", label: "AI Organizer", icon: Brain },
   { id: "stripe_test",  label: "Stripe Test",  icon: FlaskConical },
   { id: "stripe_repair", label: "Stripe Repair", icon: Wrench },
-  { id: "yt_monetize", label: "YT Monetization", icon: DollarSign },
 ];
 
 export default function Admin() {
@@ -223,18 +221,6 @@ export default function Admin() {
               <p className="text-sm text-muted-foreground mt-1">Run safe end-to-end payment tests with no real charges. Requires <code className="text-yellow-300/70">STRIPE_TEST_SECRET_KEY</code> secret.</p>
             </div>
             <StripeTestPanel />
-          </div>
-        )}
-
-        {/* YouTube Monetization Checklist */}
-        {tab === "yt_monetize" && (
-          <div>
-            <div className="mb-6">
-              <p className="text-xs tracking-[0.3em] uppercase text-red-400 mb-1">YouTube Ads</p>
-              <h2 className="font-heading font-bold text-2xl">YouTube Monetization Checklist</h2>
-              <p className="text-sm text-muted-foreground mt-1">Verify your channel and videos are correctly set up so YouTube can serve ads in Vibe City embeds.</p>
-            </div>
-            <YouTubeMonetizationChecklist />
           </div>
         )}
 

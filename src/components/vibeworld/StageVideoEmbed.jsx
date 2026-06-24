@@ -81,10 +81,8 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
     setStarted(false);
   }, [open, ytId]);
 
-  // controls=1: keep YouTube native controls so ads (Skip Ad, Learn More) are fully interactive.
-  // Do NOT add controls=0 — it suppresses YouTube's ad UI.
   const embedUrl = ytId
-    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`
+    ? `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&playsinline=1&enablejsapi=1&rel=0&controls=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`
     : "";
 
   const handleIframeLoad = useCallback(() => {
@@ -123,7 +121,7 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
 
   return (
     <div
-      className="fixed z-[70] overflow-hidden"
+      className="fixed z-[70] pointer-events-none overflow-hidden"
       style={{
         left: pos.x,
         top: pos.y,
@@ -149,7 +147,7 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
           src={embedUrl}
           title={video?.title || "Stage Video"}
           className="w-full h-full"
-          style={{ border: "none", background: "#000", pointerEvents: "auto" }}
+          style={{ border: "none", background: "#000" }}
           allow="autoplay; encrypted-media; picture-in-picture"
           referrerPolicy="strict-origin-when-cross-origin"
           allowFullScreen
