@@ -190,6 +190,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [stageVideoIdx, setStageVideoIdx] = useState(0);
   const [stageWatching, setStageWatching] = useState(false);
   const [stageFullScreen, setStageFullScreen] = useState(false);
+  // stageMuted: single source of truth for stage audio state.
+  // Only changed by user action (toggle button) or explicit exit. Never reset by proximity/render.
   const [stageMuted, setStageMuted] = useState(true);
   const stagePausedPlayerRef = useRef(false);
   const stageEmbedRef = useRef(null);
@@ -198,6 +200,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const fullscreenPausedPlayerRef = useRef(false);
   const stageIsPlayingRef = useRef(false);
   const stageTogglePlayRef = useRef(null);
+  // Exit cooldown: prevent watch mode from re-triggering immediately after user exits
+  const exitCooldownRef = useRef(false);
+  const exitCooldownTimerRef = useRef(null);
 
   useEffect(() => {
     setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
@@ -353,17 +358,19 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   /** Mute stage embed + exit watch state. Safe to call anytime. */
   const muteStage = useCallback(() => {
     setStageWatching(false);
-    setStageMuted(true);
+    // Do NOT reset stageMuted here — preserve user's audio preference for next session
     if (stageEmbedRef.current) {
       stageEmbedRef.current.mute();
       stageEmbedRef.current.pause();
     }
   }, []);
 
-  /** Toggle mute on the stage embed without affecting watch mode or movement. */
+  /** Toggle mute on the stage embed without affecting watch mode or movement.
+   *  This is the ONLY place stageMuted should change via user interaction. */
   const handleStageMuteToggle = useCallback(() => {
     setStageMuted((prev) => {
       const next = !prev;
+      // Apply to embed immediately
       if (next) {
         stageEmbedRef.current?.mute();
       } else {
@@ -391,20 +398,28 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, [isPlaying, togglePlay]);
 
   const handleWatchOnStage = useCallback(() => {
-    // 1) Close fullscreen if it's open (mute its audio via unmount)
+    // Respect exit cooldown — ignore proximity-triggered calls within 2.5s of exit
+    if (exitCooldownRef.current) return;
+
+    // 1) Close fullscreen if it's open
     if (stageFullScreen) setStageFullScreen(false);
 
-    // 2) Mute all other sources
+    // 2) Pause global player
     pauseGlobal();
     stagePausedPlayerRef.current = true;
 
-    // 3) Start stage audio — start muted (iOS), user can unmute via button
+    // 3) Enter watch mode — preserve the user's existing stageMuted preference.
+    //    If they unmuted last time, keep it unmuted. iOS autoplay requires muted start,
+    //    so we always start muted technically but respect the user's button state.
     setStageWatching(true);
-    setStageMuted(true); // starts muted per iOS autoplay rules; button unmutes
     setTimeout(() => {
       stageEmbedRef.current?.play();
+      // Apply current muted state to embed (user may have left it unmuted previously)
+      if (!stageMuted) {
+        stageEmbedRef.current?.unmute();
+      }
     }, 300);
-  }, [stageFullScreen, pauseGlobal]);
+  }, [stageFullScreen, pauseGlobal, stageMuted]);
 
   const handleExitWatchMode = useCallback(() => {
     muteStage();
@@ -412,9 +427,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     if (!stageFullScreen) {
       resumeGlobalIfNeeded(stagePausedPlayerRef);
     }
-    // Always clear the stage-paused flag so subsequent dance floor enter/exit
-    // does not try to double-resume from a stale "was watching stage" state
     stagePausedPlayerRef.current = false;
+
+    // 2.5s cooldown — prevents proximity from immediately re-triggering watch mode
+    exitCooldownRef.current = true;
+    if (exitCooldownTimerRef.current) clearTimeout(exitCooldownTimerRef.current);
+    exitCooldownTimerRef.current = setTimeout(() => {
+      exitCooldownRef.current = false;
+    }, 2500);
   }, [muteStage, stageFullScreen, resumeGlobalIfNeeded]);
 
   const handleStageFullScreen = useCallback(() => {
@@ -438,15 +458,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
     // Restore previous audio state
     if (preFullscreenWasWatchingRef.current) {
-      // Resume stage watching (muted — user taps to unmute)
       setStageWatching(true);
-      setStageMuted(true);
-      setTimeout(() => {
-        stageEmbedRef.current?.play();
-      }, 300);
+      setTimeout(() => { stageEmbedRef.current?.play(); }, 300);
     } else {
-      // Resume global player if fullscreen had paused it
       resumeGlobalIfNeeded(fullscreenPausedPlayerRef);
+      // Set cooldown so proximity doesn't re-open watch mode immediately
+      exitCooldownRef.current = true;
+      if (exitCooldownTimerRef.current) clearTimeout(exitCooldownTimerRef.current);
+      exitCooldownTimerRef.current = setTimeout(() => { exitCooldownRef.current = false; }, 2500);
     }
   }, [resumeGlobalIfNeeded]);
 
@@ -648,19 +667,22 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     togglePlay?.();
   }, [isPlaying, currentTrack, togglePlay, sortedTracks, allTracks, playTrack]);
 
-  // ── Stage proximity: resume global player when walking away from stage ──
+  // ── Stage proximity: auto-exit watch mode when player walks far away ──
   useEffect(() => {
     const STAGE_X = 0, STAGE_Z = -32;
     const dx = playerPos.x - STAGE_X;
     const dz = playerPos.z - STAGE_Z;
     const dist = Math.sqrt(dx * dx + dz * dz);
-
     const OUTER = 18;
 
-    // Only auto-exit stage audio when stageWatchMode is the active source
+    // Only auto-exit if user explicitly chose Watch Stage and walked away
     if (dist > OUTER && stageWatching && !stageFullScreen) {
       muteStage();
       resumeGlobalIfNeeded(stagePausedPlayerRef);
+      // Apply cooldown so they don't get snapped back in
+      exitCooldownRef.current = true;
+      if (exitCooldownTimerRef.current) clearTimeout(exitCooldownTimerRef.current);
+      exitCooldownTimerRef.current = setTimeout(() => { exitCooldownRef.current = false; }, 2500);
     }
   }, [playerPos.x, playerPos.z, stageWatching, stageFullScreen, muteStage, resumeGlobalIfNeeded]);
 

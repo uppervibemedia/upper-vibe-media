@@ -660,11 +660,17 @@ export default function WorldHUD({
 
         {zone?.id === "stage" && !stageFullScreen && (
           <>
-            {/* ── Tap-to-show invisible overlay (when watching, not fullscreen) ── */}
+            {/* ── Tap-to-show ghost layer (when watching) — sits BEHIND joystick/camera zones ── */}
             {stageWatching && (
               <div
-                className="fixed inset-0 z-[195]"
-                style={{ pointerEvents: "auto", background: "transparent" }}
+                className="fixed z-[195]"
+                style={{
+                  // Cover only the upper 60% of the screen — leaves joystick area free
+                  top: 0, left: 0, right: 0,
+                  height: "60%",
+                  pointerEvents: "auto",
+                  background: "transparent",
+                }}
                 onClick={() => showStageControls()}
                 onTouchStart={() => showStageControls()}
               />
