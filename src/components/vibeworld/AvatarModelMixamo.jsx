@@ -143,9 +143,9 @@ function buildFemaleHairInWorld(style, HAIR, ACCENT, headGroup) {
       const sR = new THREE.Mesh(sGeo, iwMh(HAIR, 0.78)); sR.position.set(-0.115, -0.17, -0.010); sR.rotation.z = -0.14; headGroup.add(sR);
       const back = new THREE.Mesh(new THREE.CapsuleGeometry(0.078, 0.52, 4, 8), iwMh(HAIR, 0.77));
       back.position.set(0, -0.22, -0.075); back.rotation.x = 0.06; headGroup.add(back);
-      const frGeo = new THREE.CapsuleGeometry(0.024, 0.14, 3, 5);
-      const frL = new THREE.Mesh(frGeo, iwMh(HAIR, 0.80)); frL.position.set( 0.098, -0.038, 0.110); frL.rotation.z =  0.28; headGroup.add(frL);
-      const frR = new THREE.Mesh(frGeo, iwMh(HAIR, 0.80)); frR.position.set(-0.098, -0.038, 0.110); frR.rotation.z = -0.28; headGroup.add(frR);
+      const frGeo = new THREE.CapsuleGeometry(0.020, 0.10, 3, 5);
+      const frL = new THREE.Mesh(frGeo, iwMh(HAIR, 0.80)); frL.position.set( 0.090, 0.030, 0.118); frL.rotation.z =  0.22; headGroup.add(frL);
+      const frR = new THREE.Mesh(frGeo, iwMh(HAIR, 0.80)); frR.position.set(-0.090, 0.030, 0.118); frR.rotation.z = -0.22; headGroup.add(frR);
       break;
     }
 

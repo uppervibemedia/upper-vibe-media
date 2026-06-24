@@ -189,10 +189,10 @@ function buildFemaleHair(style, HAIR, ACCENT, headG) {
       // Back mass — wide and long
       const back = new THREE.Mesh(new THREE.CapsuleGeometry(0.078, 0.52, 4, 8), mh(HAIR, 0.77));
       back.position.set(0, -0.22, -0.075); back.rotation.x = 0.06; headG.add(back);
-      // Front face-framing strands — stay above eye level (y > -0.02)
-      const frGeo = new THREE.CapsuleGeometry(0.024, 0.14, 3, 5);
-      const frL = new THREE.Mesh(frGeo, mh(HAIR, 0.80)); frL.position.set( 0.098, -0.038, 0.110); frL.rotation.z =  0.28; headG.add(frL);
-      const frR = new THREE.Mesh(frGeo, mh(HAIR, 0.80)); frR.position.set(-0.098, -0.038, 0.110); frR.rotation.z = -0.28; headG.add(frR);
+      // Front face-framing strands — forehead only, well above eyes (y > 0.02)
+      const frGeo = new THREE.CapsuleGeometry(0.020, 0.10, 3, 5);
+      const frL = new THREE.Mesh(frGeo, mh(HAIR, 0.80)); frL.position.set( 0.090, 0.030, 0.118); frL.rotation.z =  0.22; headG.add(frL);
+      const frR = new THREE.Mesh(frGeo, mh(HAIR, 0.80)); frR.position.set(-0.090, 0.030, 0.118); frR.rotation.z = -0.22; headG.add(frR);
       break;
     }
 
@@ -207,9 +207,9 @@ function buildFemaleHair(style, HAIR, ACCENT, headG) {
       // Back fill
       const bBack = new THREE.Mesh(new THREE.CapsuleGeometry(0.068, 0.24, 4, 6), mh(HAIR, 0.78));
       bBack.position.set(0, -0.11, -0.085); headG.add(bBack);
-      // Slight front sweep (forehead, NOT eyes)
-      const sweep = new THREE.Mesh(new THREE.CapsuleGeometry(0.036, 0.16, 3, 5), mh(HAIR, 0.80));
-      sweep.position.set(0.045, 0.040, 0.138); sweep.rotation.z = 0.52; sweep.rotation.x = -0.20; headG.add(sweep);
+      // Slight front sweep — forehead only, well above eye level
+      const sweep = new THREE.Mesh(new THREE.CapsuleGeometry(0.030, 0.12, 3, 5), mh(HAIR, 0.80));
+      sweep.position.set(0.040, 0.052, 0.140); sweep.rotation.z = 0.45; sweep.rotation.x = -0.15; headG.add(sweep);
       break;
     }
 
