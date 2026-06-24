@@ -277,6 +277,7 @@ function animateCasual(entry, speed, isDancing, dt) {
   const ud = model.userData;
   const sin = Math.sin;
   const cos = Math.cos;
+  const isFemale = entry._gender === "female";
 
   // ── Smooth blend weight (0=idle, 1=full walk/run) with asymmetric lag ───────
   // Ease in fast (0.18s) so movement feels responsive; ease out slower (0.35s)
@@ -294,8 +295,9 @@ function animateCasual(entry, speed, isDancing, dt) {
   // ── Phase accumulator: advance proportional to actual speed ──────────────────
   // Walk cycle stride at 3.0 m/s → one full step (2π) per ~0.9m of travel.
   // Run cycle is faster — scaled up smoothly.
-  const walkCycleSpeed = 3.2;  // rad/s — increased 23% for snappier walk
-  const runCycleSpeed  = 5.4;  // rad/s at full run
+  // Female gets 22% faster cycle to match her longer stride from the 1.16 height scale.
+  const walkCycleSpeed = isFemale ? 3.9 : 3.2;
+  const runCycleSpeed  = isFemale ? 6.6 : 5.4;
   const cycleSpeed = walkCycleSpeed + (runCycleSpeed - walkCycleSpeed) * runBlend;
 
   // Only advance phase when actually moving — prevents sliding when stopped
@@ -342,7 +344,6 @@ function animateCasual(entry, speed, isDancing, dt) {
   // Arms also have a slight inward-outward Z swing for shoulder feel.
   const armSinFwd = -legSin; // counter to left leg
   // Female arms stay strictly on X axis with minimal Z drift to prevent clipping
-  const isFemale = entry._gender === "female";
   const armZBase = isFemale ? 0.08 : 0.10;
   const armZSwing = isFemale ? 0.03 : 0.06; // reduced for female to keep arms clear of body
 
