@@ -392,8 +392,8 @@ export function createCosmicSky(scene) {
     {
       // HIGH-1 — LARGE RINGED PURPLE — FAR RIGHT end of world, very high in sky
       id: "ice",
-      bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
-      glowColor: "rgba(160,80,255,0.60)", ringColor: "rgba(200,140,255,0.70)",
+      bodyColors: ["#2A1000", "#5A2800", "#A05018", "#D08030", "#FFB860"],
+      glowColor: "rgba(255,160,40,0.60)", ringColor: "rgba(255,200,80,0.70)",
       size: isMobile ? 38 : 58,          // very large — prominent sky feature
       angleOffset: Math.PI * 0.45,       // right end of world
       horizonY: 45,                      // brought down — clearly visible in sky

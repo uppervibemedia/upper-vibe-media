@@ -293,13 +293,13 @@ function buildMaleCasual(C) {
   handR.position.set(0, -0.26, 0); armR.add(handR);
 
   // Neck
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.076, 0.086, 0.13, 8), mat(C.skin));
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.076, 0.086, 0.13, 8), mat(C.skin, { emissive: C.skin, emissiveIntensity: 0.22 }));
   neck.position.set(0, 0.30, 0); neck.castShadow = true; torsoGroup.add(neck);
 
   // Head
   const headGroup = new THREE.Group(); headGroup.name = "head"; headGroup.position.set(0, 0.44, 0);
   torsoGroup.add(headGroup);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.160, 12, 10), mat(C.skin));
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.160, 12, 10), mat(C.skin, { emissive: C.skin, emissiveIntensity: 0.28 }));
   head.castShadow = true; headGroup.add(head);
 
   // Hair — built by shared builder, reads opts.hairStyle
@@ -420,13 +420,13 @@ function buildFemaleCasual(C) {
   handR.position.set(0, -0.24, 0); armR.add(handR);
 
   // Neck
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.070, 0.11, 8), mat(C.skin));
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.070, 0.11, 8), mat(C.skin, { emissive: C.skin, emissiveIntensity: 0.22 }));
   neck.position.set(0, 0.28, 0); neck.castShadow = true; torsoGroup.add(neck);
 
   // Head
   const headGroup = new THREE.Group(); headGroup.name = "head"; headGroup.position.set(0, 0.42, 0);
   torsoGroup.add(headGroup);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.148, 12, 10), mat(C.skin));
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.148, 12, 10), mat(C.skin, { emissive: C.skin, emissiveIntensity: 0.28 }));
   head.castShadow = true; headGroup.add(head);
 
   // Hair — built by shared builder, reads C._hairStyle
