@@ -299,38 +299,132 @@ export function createFerrisWheel(scene) {
     cabinGroup.add(gondola);
   }
 
+  // ─── LED rim outer ring — bright, visible from plaza ──────────
+  // A brighter, thicker neon torus layered outside the structural rim
+  const ledRimMat = neonMat("#00E5FF", 0.9);
+  const ledRim = new Mesh(
+    new TorusGeometry(WHEEL_RADIUS + 0.18, 0.07, 6, _FW_IS_MOB ? 48 : 72),
+    ledRimMat
+  );
+  ledRim.rotation.y = Math.PI / 2;
+  ledRim.name = "ledRim";
+  wheelGroup.add(ledRim);
+
+  // Second rim ring — purple offset layer for depth
+  const ledRimMat2 = neonMat("#A078FF", 0.65);
+  const ledRim2 = new Mesh(
+    new TorusGeometry(WHEEL_RADIUS - 0.15, 0.05, 6, _FW_IS_MOB ? 40 : 60),
+    ledRimMat2
+  );
+  ledRim2.rotation.y = Math.PI / 2;
+  ledRim2.name = "ledRim2";
+  wheelGroup.add(ledRim2);
+
+  // ─── Spoke neon strips — alternating spokes only (performance safe) ──
+  const spokeNeonMats = [];
+  const SPOKE_COLORS = ["#00E5FF", "#A078FF", "#00C8FF", "#C43BFF"];
+  for (let i = 0; i < NUM_CABINS; i++) {
+    if (i % 2 !== 0) continue; // only every other spoke
+    const angle = (i / NUM_CABINS) * Math.PI * 2;
+    const halfR = WHEEL_RADIUS / 2;
+    const sx = Math.sin(angle) * halfR;
+    const sy = Math.cos(angle) * halfR;
+    const color = SPOKE_COLORS[(i / 2) % SPOKE_COLORS.length];
+    const snMat = neonMat(color, 0.7);
+    const spokeNeon = new Mesh(
+      new CylinderGeometry(0.04, 0.04, WHEEL_RADIUS - 0.8, 5),
+      snMat
+    );
+    spokeNeon.rotation.x = Math.PI / 2;
+    spokeNeon.rotation.z = angle;
+    spokeNeon.position.set(0, sy, sx);
+    spokeNeon.name = `spokeNeon_${i}`;
+    wheelGroup.add(spokeNeon);
+    spokeNeonMats.push({ mat: snMat, phase: (i / NUM_CABINS) * Math.PI * 2 });
+  }
+
   // ─── Neon spoke tip lights (at rim attachment points) ─────────
-  const TIP_COLORS = ["#FF4444","#44AAFF","#44FF88","#FFDD44","#FF44CC","#44DDFF","#AA44FF","#FF8844"];
+  const TIP_COLORS = ["#00E5FF","#A078FF","#00C8FF","#C43BFF","#40AAFF","#AA60FF","#00FFCC","#FF60CC"];
   const tipLightMats = [];
   for (let i = 0; i < NUM_CABINS; i++) {
     const angle = (i / NUM_CABINS) * Math.PI * 2;
     const tx = Math.sin(angle) * (WHEEL_RADIUS + 0.02);
     const ty = Math.cos(angle) * (WHEEL_RADIUS + 0.02);
-    const tipMat = neonMat(TIP_COLORS[i], 0.9);
-    const tipLight = new Mesh(new SphereGeometry(0.12, 6, 4), tipMat);
+    const tipMat = neonMat(TIP_COLORS[i], 0.95);
+    const tipLight = new Mesh(new SphereGeometry(0.14, 6, 4), tipMat);
     tipLight.position.set(0, ty, tx);
     tipLight.name = `tipLight_${i}`;
     tipLightMats.push({ mat: tipMat, phase: (i / NUM_CABINS) * Math.PI * 2 });
     wheelGroup.add(tipLight);
   }
 
-  // ─── Carnival string lights — 8 on mobile, 24 on desktop ───────
-  const CARNIVAL_COLORS = ["#FFD700","#FF6644","#44FFAA","#FF44CC","#44AAFF","#FFAA44","#AA44FF","#44FFDD",
-                            "#FF4444","#AAFF44","#FF88CC","#44DDFF","#FFB800","#FF6699","#88FF44","#6644FF"];
+  // ─── Cabin underglow — small neon disc under each gondola ──────
+  const cabinGlowMats = [];
+  for (let i = 0; i < NUM_CABINS; i++) {
+    const angle = (i / NUM_CABINS) * Math.PI * 2;
+    const cx = Math.sin(angle) * WHEEL_RADIUS;
+    const cy = Math.cos(angle) * WHEEL_RADIUS;
+    const glowColor = i % 2 === 0 ? "#00D4F0" : "#A078FF";
+    const cgMat = neonMat(glowColor, 0.6);
+    // Small glowing strip under gondola body
+    const underglow = new Mesh(new BoxGeometry(0.8, 0.04, 0.6), cgMat);
+    underglow.position.set(0, cy - 0.52, cx); // just below gondola body
+    underglow.name = `cabinGlow_${i}`;
+    wheelGroup.add(underglow);
+    cabinGlowMats.push({ mat: cgMat, phase: (i / NUM_CABINS) * Math.PI * 2 });
+  }
+
+  // ─── LED chase bulbs — cyan/purple, evenly spaced around rim ───
+  const CHASE_COLORS = ["#00E5FF","#A078FF","#40C8FF","#C43BFF","#00AAFF","#8844FF","#44EEFF","#FF44CC"];
   const carnivalMats = [];
-  const carnivalCount = _FW_IS_MOB ? 8 : 24; // fewer bulbs on mobile
+  const carnivalCount = _FW_IS_MOB ? 12 : 32;
   for (let i = 0; i < carnivalCount; i++) {
     const angle = (i / carnivalCount) * Math.PI * 2;
-    const rx = Math.sin(angle) * (WHEEL_RADIUS + 0.25);
-    const ry = Math.cos(angle) * (WHEEL_RADIUS + 0.25);
-    const color = CARNIVAL_COLORS[i % CARNIVAL_COLORS.length];
-    const cMat = neonMat(color, 0.75);
-    const bulb = new Mesh(new SphereGeometry(0.09, 5, 4), cMat);
+    const rx = Math.sin(angle) * (WHEEL_RADIUS + 0.3);
+    const ry = Math.cos(angle) * (WHEEL_RADIUS + 0.3);
+    const color = CHASE_COLORS[i % CHASE_COLORS.length];
+    const cMat = neonMat(color, 0.85);
+    const bulb = new Mesh(new SphereGeometry(0.10, 5, 4), cMat);
     bulb.position.set(0, ry, rx);
     bulb.name = `carnival_${i}`;
     carnivalMats.push({ mat: cMat, phase: (i / carnivalCount) * Math.PI * 2, color });
     wheelGroup.add(bulb);
   }
+
+  // ─── Base platform LED trim ───────────────────────────────────
+  // Bright ring around the platform edge
+  const baseLedMat = neonMat("#00D4F0", 0.8);
+  const baseLedRing = new Mesh(
+    new TorusGeometry(4.55, 0.07, 6, _FW_IS_MOB ? 32 : 48),
+    baseLedMat
+  );
+  baseLedRing.rotation.x = Math.PI / 2;
+  baseLedRing.position.set(0, 0.25, 0);
+  baseLedRing.name = "baseLedRing";
+  root.add(baseLedRing);
+
+  // Inner accent ring — purple
+  const baseLedMat2 = neonMat("#C43BFF", 0.6);
+  const baseLedRing2 = new Mesh(
+    new TorusGeometry(3.2, 0.05, 6, _FW_IS_MOB ? 28 : 40),
+    baseLedMat2
+  );
+  baseLedRing2.rotation.x = Math.PI / 2;
+  baseLedRing2.position.set(0, 0.24, 0);
+  baseLedRing2.name = "baseLedRing2";
+  root.add(baseLedRing2);
+
+  // Ground glow disc — soft circle on the floor under the ride
+  const groundGlowMat = new MeshBasicMaterial({
+    color: new Color("#0044AA"), transparent: true, opacity: 0.22,
+    depthWrite: false, side: THREE.DoubleSide,
+  });
+  const groundGlow = new Mesh(new CircleGeometry(5.5, 32), groundGlowMat);
+  groundGlow.rotation.x = -Math.PI / 2;
+  groundGlow.position.set(0, 0.01, 0);
+  groundGlow.renderOrder = 1;
+  groundGlow.name = "ferrisGroundGlow";
+  root.add(groundGlow);
 
   // ─── Position root in world ────────────────────────────────────
   root.position.set(WHEEL_X, 0, WHEEL_Z);
@@ -338,24 +432,33 @@ export function createFerrisWheel(scene) {
 
   // No banner label above the ride — keep it clean
 
-  // ─── Entrance ground marker (yellow circle arc) ───────────────
+  // ─── Entrance ground marker (cyan ring — upgraded) ────────────
   const entryRing = new Mesh(
-    new RingGeometry(1.1, 1.35, 32),
-    new MeshBasicMaterial({ color: new Color("#FFD700"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.55 })
+    new RingGeometry(1.1, 1.45, 32),
+    new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
   );
   entryRing.rotation.x = -Math.PI / 2;
   entryRing.position.set(WHEEL_X, 0.01, WHEEL_Z + WHEEL_RADIUS + 0.2);
   entryRing.renderOrder = 1;
   scene.add(entryRing);
 
-  // ─── Ambient point light ─────────────────────────────────────
+  // ─── Two point lights only — hub + base splash ────────────────
+  // Hub light — brighter cyan, visible from plaza
   const wheelLight = new PointLight();
-  wheelLight.color = new Color("#FFD080");
-  wheelLight.intensity = 2.5;
-  wheelLight.distance = 20;
-  wheelLight.position.set(WHEEL_X, WHEEL_HUB_Y + 2, WHEEL_Z);
+  wheelLight.color = new Color("#00BBFF");
+  wheelLight.intensity = 4.0;
+  wheelLight.distance = 28;
+  wheelLight.position.set(WHEEL_X, WHEEL_HUB_Y + 1, WHEEL_Z);
   scene.add(wheelLight);
   scene.userData.ferrisWheelLight = wheelLight;
+
+  // Base splash light — purple ground glow
+  const baseSplashLight = new PointLight();
+  baseSplashLight.color = new Color("#7C3AED");
+  baseSplashLight.intensity = 2.5;
+  baseSplashLight.distance = 14;
+  baseSplashLight.position.set(WHEEL_X, 0.8, WHEEL_Z);
+  scene.add(baseSplashLight);
 
   // ─── Store for animation ──────────────────────────────────────
   scene.userData.ferrisWheel = {
@@ -364,9 +467,17 @@ export function createFerrisWheel(scene) {
     cabinGroup,
     rimNeon,
     hubGlow,
+    ledRimMat,
+    ledRimMat2,
     wheelLight,
+    baseSplashLight,
+    baseLedMat,
+    baseLedMat2,
+    groundGlowMat,
     tipLightMats,
     carnivalMats,
+    spokeNeonMats,
+    cabinGlowMats,
   };
 
   return { group: root };
@@ -400,56 +511,75 @@ export function animateFerrisWheel(scene, t, audioBeat, playerX, playerZ, tvSmoo
     }
   }
 
-  // Rim neon — TV Smooth: static opacity, no sin write
+  // ── Rim neon layers ──────────────────────────────────────────
   if (fw.rimNeon?.material) {
-    if (tooFar) {
-      fw.rimNeon.material.opacity = 0.25;
-    } else if (tvSmooth) {
-      fw.rimNeon.material.opacity = 0.45;
-    } else {
-      fw.rimNeon.material.opacity = 0.4 + Math.sin(t * 1.8) * 0.15 + audioBeat * 0.2;
-    }
+    fw.rimNeon.material.opacity = tooFar ? 0.25 : (tvSmooth ? 0.5 : 0.45 + Math.sin(t * 1.8) * 0.15 + audioBeat * 0.25);
+  }
+  if (fw.ledRimMat) {
+    fw.ledRimMat.opacity = tooFar ? 0.55 : (tvSmooth ? 0.85 : 0.75 + Math.sin(t * 1.4) * 0.15 + audioBeat * 0.2);
+  }
+  if (fw.ledRimMat2) {
+    fw.ledRimMat2.opacity = tooFar ? 0.35 : (tvSmooth ? 0.6 : 0.5 + Math.sin(t * 1.9 + 1.2) * 0.12 + audioBeat * 0.15);
   }
 
-  // Hub glow — TV Smooth: static when near, skip when far
+  // ── Hub glow ─────────────────────────────────────────────────
   if (fw.hubGlow?.material) {
-    if (tooFar) {
-      fw.hubGlow.material.opacity = 0.4;
-    } else if (tvSmooth) {
-      fw.hubGlow.material.opacity = 0.65;
-    } else {
-      fw.hubGlow.material.opacity = 0.6 + Math.sin(t * 2.5) * 0.2 + audioBeat * 0.15;
+    fw.hubGlow.material.opacity = tooFar ? 0.4 : (tvSmooth ? 0.7 : 0.65 + Math.sin(t * 2.5) * 0.2 + audioBeat * 0.15);
+  }
+
+  // ── Point lights ──────────────────────────────────────────────
+  if (fw.wheelLight) {
+    fw.wheelLight.intensity = tooFar ? 1.5 : (tvSmooth ? 3.5 : 3.5 + Math.sin(t * 1.1) * 0.7 + audioBeat * 1.2);
+  }
+  if (fw.baseSplashLight) {
+    fw.baseSplashLight.intensity = tooFar ? 0.5 : (tvSmooth ? 2.0 : 2.0 + Math.sin(t * 0.9 + 0.8) * 0.5 + audioBeat * 0.8);
+  }
+
+  // ── Base LED rings ────────────────────────────────────────────
+  if (fw.baseLedMat) {
+    fw.baseLedMat.opacity = tooFar ? 0.4 : (tvSmooth ? 0.7 : 0.6 + Math.sin(t * 1.2) * 0.18 + audioBeat * 0.2);
+  }
+  if (fw.baseLedMat2) {
+    fw.baseLedMat2.opacity = tooFar ? 0.25 : (tvSmooth ? 0.5 : 0.4 + Math.sin(t * 1.6 + 2.0) * 0.15 + audioBeat * 0.18);
+  }
+  if (fw.groundGlowMat) {
+    fw.groundGlowMat.opacity = tooFar ? 0.08 : (tvSmooth ? 0.18 : 0.16 + Math.sin(t * 0.8) * 0.06 + audioBeat * 0.08);
+  }
+
+  // ── Spoke neon strips — slow pulse, offset per spoke ─────────
+  if (fw.spokeNeonMats && !tooFar) {
+    for (const sn of fw.spokeNeonMats) {
+      sn.mat.opacity = tvSmooth ? 0.6 : (0.5 + Math.sin(t * 1.3 + sn.phase) * 0.2 + audioBeat * 0.15);
     }
   }
 
-  // Wheel light — dim when far
-  if (fw.wheelLight) {
-    fw.wheelLight.intensity = tooFar ? 0.8 : (tvSmooth ? 2.0 : 2.0 + Math.sin(t * 1.1) * 0.5 + audioBeat * 1.0);
+  // ── Cabin underglows — gentle alternating pulse ───────────────
+  if (fw.cabinGlowMats && !tooFar) {
+    for (const cg of fw.cabinGlowMats) {
+      cg.mat.opacity = tvSmooth ? 0.5 : (0.4 + Math.sin(t * 1.5 + cg.phase) * 0.18 + audioBeat * 0.12);
+    }
   }
 
-  // Carnival lights — TV Smooth: skip all when far; near: only 4 bulbs, no per-frame sin
+  // ── Chase bulbs — slow sweep around the rim (not strobe) ─────
   if (fw.carnivalMats && !tooFar) {
-    const maxBulbs = tvSmooth ? 4 : (_FERRIS_IS_MOB ? 8 : fw.carnivalMats.length);
+    const maxBulbs = tvSmooth ? 6 : (_FERRIS_IS_MOB ? 12 : fw.carnivalMats.length);
     for (let i = 0; i < maxBulbs; i++) {
       const c = fw.carnivalMats[i];
       if (tvSmooth) {
-        c.mat.opacity = 0.55; // static — no sin
+        c.mat.opacity = 0.65;
       } else {
-        const wave = Math.sin(t * 1.8 + c.phase) * 0.5 + 0.5;
-        c.mat.opacity = 0.35 + wave * 0.45 + audioBeat * 0.35;
+        // Chase effect: a bright wave sweeps around the ring slowly
+        const chaseWave = Math.sin(t * 0.9 - c.phase) * 0.5 + 0.5;
+        c.mat.opacity = 0.45 + chaseWave * 0.5 + audioBeat * 0.25;
       }
     }
   }
 
-  // Spoke tip lights — TV Smooth: static when near, skip when far
+  // ── Spoke tip lights — slow sequential glow ───────────────────
   if (fw.tipLightMats && !tooFar) {
     for (const tip of fw.tipLightMats) {
-      if (tvSmooth) {
-        tip.mat.opacity = 0.6; // static — no per-frame sin
-      } else {
-        const wave = Math.sin(t * 2.2 + tip.phase) * 0.5 + 0.5;
-        tip.mat.opacity = 0.5 + wave * 0.45 + audioBeat * 0.2;
-      }
+      const wave = tvSmooth ? 0.5 : (Math.sin(t * 1.6 + tip.phase) * 0.5 + 0.5);
+      tip.mat.opacity = 0.6 + wave * 0.35 + audioBeat * 0.2;
     }
   }
 }
