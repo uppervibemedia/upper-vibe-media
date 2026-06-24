@@ -1240,7 +1240,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* ── Dance Floor Emote Bar — inline quick-emotes, visible only on dance floor ── */}
       <AnimatePresence>
-        {!loading && onDanceFloor && !hbRiding && !stageWatching && !stageFullScreen && !tvMode && (
+        {!loading && onDanceFloor && !hbRiding && !stageWatching && !stageFullScreen && (
           <motion.div
             key="dance-floor-emotes"
             initial={{ opacity: 0, y: 16 }}
