@@ -146,7 +146,17 @@ function buildFemaleCasual(C) {
   root.name = "avatarModel";
   root.add(makeShadow());
 
-  // Legs (slimmer)
+  // Hip/pelvis block — static mesh that bridges the gap between torso bottom and leg tops.
+  // Positioned to overlap both so the seam is always hidden regardless of leg rotation.
+  const hipBlock = new THREE.Mesh(
+    new THREE.BoxGeometry(0.30, 0.18, 0.20),
+    mat(C.pants, { roughness: 0.75 })
+  );
+  hipBlock.position.set(0, 0.66, 0);
+  hipBlock.castShadow = true;
+  root.add(hipBlock);
+
+  // Legs (slimmer) — pivot at top (y=0.36 centers the capsule so top is at ~0.62)
   const legGeo = new THREE.CapsuleGeometry(0.072, 0.46, 4, 8);
   const legL = new THREE.Mesh(legGeo, mat(C.pants));
   legL.name = "legL"; legL.position.set(0.090, 0.36, 0); legL.castShadow = true;
@@ -168,14 +178,14 @@ function buildFemaleCasual(C) {
     root.add(sole);
   }
 
-  // Torso
+  // Torso — lowered slightly so bottom edge overlaps hip block top
   const torsoGroup = new THREE.Group();
   torsoGroup.name = "torso";
-  torsoGroup.position.set(0, 0.86, 0);
+  torsoGroup.position.set(0, 0.82, 0);
   root.add(torsoGroup);
 
-  // Crop top + high-waist pants seam
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.40, 0.20), mat(C.shirt, { roughness: 0.65 }));
+  // Crop top — taller to reach down into hip block
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.46, 0.20), mat(C.shirt, { roughness: 0.65 }));
   torso.castShadow = true; torsoGroup.add(torso);
 
   const accentMat = new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.70, depthWrite: false });
@@ -353,7 +363,7 @@ function animateCasual(entry, speed, isDancing, dt) {
 
   // ── Torso: hip sway + shoulder counter-rotation + bob ────────────────────────
   if (p.torsoGroup) {
-    const baseY = isFemale ? 0.86 : 0.84;
+    const baseY = isFemale ? 0.82 : 0.84;
 
     // Vertical bob: body drops slightly on each step contact (2× per stride cycle)
     const bobAmpWalk = 0.010;
