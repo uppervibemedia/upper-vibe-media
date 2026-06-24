@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Sparkles, Check, Zap, Lock, User, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { OUTFIT_COLORS } from "./AvatarSetup";
-import AvatarPreviewCanvas from "./AvatarPreviewCanvas";
+import AvatarPreviewCanvas, { SKIN_TONES } from "./AvatarPreviewCanvas";
 
 // Avatar type options — "current" is the permanent default; others are TEST only
 const AVATAR_TYPE_OPTIONS = [
@@ -19,11 +19,13 @@ const AVATAR_TYPE_OPTIONS = [
 
 export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) {
   const [outfitColorKey, setOutfitColorKey] = useState(user?.avatar_outfit_color || "cosmic-blue");
+  const [skinColorKey, setSkinColorKey] = useState("brown");
   // Read saved test avatar type from sessionStorage (not persisted to account — test only)
   const [avatarTypeKey, setAvatarTypeKey] = useState(() => {
     try { return sessionStorage.getItem("uvc_test_avatar") || "current"; } catch { return "current"; }
   });
   const [saving, setSaving] = useState(false);
+  const isProcedural = avatarTypeKey !== "current";
   const [error, setError] = useState(null);
   const trailUnlocked = !!user?.trail_boost_unlocked;
   const isMember = !!(user?.isPlus || user?.tier === "plus" || user?.tier === "premium" || user?.role === "admin");
@@ -114,11 +116,11 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                 >
                   {/* Mobile: compact preview */}
                   <div className="block lg:hidden w-full">
-                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} avatarTypeKey={avatarTypeKey} width={300} height={240} />
+                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} skinColorKey={skinColorKey} avatarTypeKey={avatarTypeKey} width={300} height={240} />
                   </div>
                   {/* Desktop: tall preview */}
                   <div className="hidden lg:block w-full">
-                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} avatarTypeKey={avatarTypeKey} width={280} height={400} />
+                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} skinColorKey={skinColorKey} avatarTypeKey={avatarTypeKey} width={280} height={400} />
                   </div>
                   <p className="text-[9px] mt-2 text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
                     Click a color to preview instantly
@@ -162,6 +164,38 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                       })}
                     </div>
                   </div>
+
+                  {/* Skin Color — only for procedural avatars */}
+                  {isProcedural && (
+                    <div className="mb-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14 }}>
+                      <span className="text-[10px] font-black tracking-[0.2em] uppercase mb-2 block" style={{ color: "rgba(255,255,255,0.3)" }}>
+                        Skin Tone
+                      </span>
+                      <div className="flex gap-2">
+                        {SKIN_TONES.map((t) => {
+                          const active = skinColorKey === t.key;
+                          return (
+                            <button
+                              key={t.key}
+                              title={t.label}
+                              onClick={() => setSkinColorKey(t.key)}
+                              className="flex flex-col items-center gap-1 transition-all hover:scale-110 active:scale-95"
+                            >
+                              <div
+                                className="w-8 h-8 rounded-full"
+                                style={{
+                                  background: `#${t.hex.toString(16).padStart(6, "0")}`,
+                                  border: active ? "2.5px solid #fff" : "2px solid rgba(255,255,255,0.15)",
+                                  boxShadow: active ? "0 0 10px rgba(255,255,255,0.4)" : "none",
+                                }}
+                              />
+                              <span className="text-[9px]" style={{ color: active ? "#fff" : "rgba(255,255,255,0.3)" }}>{t.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mb-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14 }}>
                     <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.3)" }}>
