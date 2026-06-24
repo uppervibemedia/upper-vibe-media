@@ -834,7 +834,7 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
   // Add name sprite immediately for remote users
   if (opts.isRemote && opts.username) {
     const nameSprite = makeNameSpriteMixamo(opts.username, opts.outfitColorKey);
-    nameSprite.position.y = 2.35; // just above head (scaled height ~2.0)
+    nameSprite.position.y = 1.9; // close above head
     controller.add(nameSprite);
 
     // Large invisible hitbox for reliable mobile tap detection
@@ -844,6 +844,7 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
     );
     hitbox.position.y = 1.0;
     hitbox.name = "avatarHitbox";
+    hitbox.userData = { userId: opts.userId };
     controller.add(hitbox);
   }
   scene.add(controller);

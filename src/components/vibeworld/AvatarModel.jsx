@@ -549,7 +549,7 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
   // Add name sprite immediately — visible even before GLB finishes loading
   if (username) {
     const sprite = makeNameSprite(username, outfitColorKey);
-    sprite.position.y = 2.35; // just above head
+    sprite.position.y = 1.9; // close above head
     controller.add(sprite);
 
     // Large invisible hitbox for reliable mobile tap detection
@@ -559,6 +559,7 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
     );
     hitbox.position.y = 1.0;
     hitbox.name = "avatarHitbox";
+    hitbox.userData = { userId };
     controller.add(hitbox);
   }
   scene.add(controller);

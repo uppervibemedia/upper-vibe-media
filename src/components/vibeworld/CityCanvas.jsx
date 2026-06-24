@@ -2140,9 +2140,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
                 spawnZ: remote.pos_z || 0,
                 gender: remoteGender,
                 hairStyle: remoteGender === "female" ? "ponytail" : "short",
-                outfitColorKey: remote.outfit_color || null,
+                outfitColorKey: remote.avatar_outfit_color || null,
                 skinToneKey: remote.skin_tone || "medium",
                 isRemote: true,
+                userId: remote.user_id,
                 username: remote.username || "User",
               }, null);
               group = remoteEntry.root;
@@ -2382,14 +2383,19 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const intersects = raycaster.intersectObjects(remoteGroups, true);
 
       if (intersects.length > 0) {
-        // Walk up to find the root remote avatar group
+        // Walk up to find the root remote avatar group or check hitbox userData directly
         let obj = intersects[0].object;
-        while (obj && !obj.name?.startsWith("remote_")) {
-          obj = obj.parent;
+        // First: check if the directly hit object has userId (hitbox)
+        let hitUserId = obj.userData?.userId;
+        if (!hitUserId) {
+          // Walk up to find the remote_ root group
+          let cur = obj;
+          while (cur && !cur.name?.startsWith("remote_")) {
+            cur = cur.parent;
+          }
+          if (cur) hitUserId = cur.userData?.userId;
         }
-        if (obj && obj.userData?.userId) {
-          const hitUserId = obj.userData.userId;
-          // Find the remote user data
+        if (hitUserId) {
           const remoteUser = remoteUsersRef.current.find(
             (u) => u.user_id === hitUserId
           );

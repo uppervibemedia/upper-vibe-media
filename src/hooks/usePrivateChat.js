@@ -122,6 +122,8 @@ export default function usePrivateChat(user) {
     try {
       await base44.entities.PrivateChatRequest.update(requestId, { status: "accepted" });
       setIncomingRequest(null);
+      setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
+      setPendingRequestsCount((c) => Math.max(0, c - 1));
       setActiveChatPeer({ userId: fromUserId, username: fromUsername });
       await loadMessages(fromUserId);
     } catch {}
@@ -231,15 +233,18 @@ export default function usePrivateChat(user) {
         }, REQUEST_EXPIRY_MS);
       }
 
-      // Request was accepted — open chat if outgoing
+      // Request was accepted — open chat panel for the requester
       if (event.type === "update" && data.status === "accepted" && data.from_user_id === myId) {
         setOutgoingStatus({ toUsername: data.to_username, status: "accepted" });
+        // Open chat panel automatically
+        setActiveChatPeer({ userId: data.to_user_id, username: data.to_username });
+        loadMessages(data.to_user_id);
       }
     });
 
     requestSubRef.current = unsubscribe;
     return () => unsubscribe();
-  }, [user?.id]);
+  }, [user?.id, loadMessages]);
 
   // ── Subscribe to messages in active chat ─────────────────────
   useEffect(() => {
