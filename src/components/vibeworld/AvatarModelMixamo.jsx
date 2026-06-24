@@ -302,7 +302,7 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
   scene.add(controller);
 
   const model = gender === "female" ? buildFemaleCasual(C) : buildMaleCasual(C);
-  model.rotation.y = Math.PI; // face forward (toward stage)
+  model.rotation.y = 0; // face is +Z; camera starts at +Z behind avatar, sees back
   controller.add(model);
 
   const entry = {
