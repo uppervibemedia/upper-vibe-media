@@ -938,40 +938,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           <ChevronLeft style={{ width: "16px", height: "16px" }} />
         </button>
 
-        {/* Right: TV Mode toggle + UVC badge */}
-        <div className="flex items-center gap-2 flex-shrink-0" style={{ pointerEvents: "auto" }}>
-          {/* TV Mode toggle — 44×44 minimum iOS tap target */}
-          <button
-            onClick={() => tvMode ? disableTvMode() : setTvOverlayOpen(true)}
-            onTouchStart={(e) => { e.stopPropagation(); }}
-            className="flex items-center justify-center gap-1.5 rounded-full transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
-            style={{
-              background: tvMode ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.08)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              border: tvMode ? "1.5px solid rgba(0,229,255,0.45)" : "1px solid rgba(255,255,255,0.12)",
-              color: tvMode ? "#00E5FF" : "rgba(255,255,255,0.55)",
-              minWidth: "44px",
-              minHeight: "44px",
-              height: "44px",
-              paddingLeft: "14px",
-              paddingRight: "14px",
-              touchAction: "manipulation",
-              cursor: "pointer",
-              WebkitTapHighlightColor: "rgba(0,229,255,0.2)",
-            }}
-            title={tvMode ? "Exit TV Mode" : "Mirror to TV"}
-            aria-label={tvMode ? "Exit TV Mode" : "Enter TV Mode"}
-          >
-            <Tv2 style={{ width: 14, height: 14, flexShrink: 0 }} />
-            <span className="font-semibold"
-              style={{ fontSize: isMobile ? "10px" : "11px", letterSpacing: "0.04em" }}>
-              {tvMode ? "Exit TV" : "TV Mode"}
-            </span>
-          </button>
-
-
-        </div>
+        {/* Right: spacer (TV Mode button removed) */}
+        <div />
       </motion.div>
 
       {/* World HUD */}
