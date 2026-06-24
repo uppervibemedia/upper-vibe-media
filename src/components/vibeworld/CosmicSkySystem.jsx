@@ -416,10 +416,10 @@ export function createCosmicSky(scene) {
       id: "violet",
       bodyColors: ["#150A28", "#2A1450", "#4A2488", "#7A44C0", "#B080F0"],
       glowColor: "rgba(150,100,255,0.44)",
-      size: isMobile ? 14 : 20,
+      size: isMobile ? 13 : 18,
       angleOffset: Math.PI * 0.10,       // near-right, mid quadrant
-      horizonY: 30,                      // mid-high — visible with slight upward look
-      radius: 88,
+      horizonY: 38,                      // raised above buildings (was 30)
+      radius: 100,                       // pushed further out (was 88)
       orbitSpeed: (Math.PI * 2) / 260,
     },
     {
@@ -427,10 +427,10 @@ export function createCosmicSky(scene) {
       id: "teal",
       bodyColors: ["#021410", "#053028", "#0A5840", "#189060", "#40D098"],
       glowColor: "rgba(50,200,140,0.42)",
-      size: isMobile ? 12 : 18,
+      size: isMobile ? 11 : 16,
       angleOffset: Math.PI * 1.88,       // near-left, mid quadrant
-      horizonY: 28,                      // mid-high
-      radius: 92,
+      horizonY: 36,                      // raised above buildings (was 28)
+      radius: 98,                        // pushed further out (was 92)
       orbitSpeed: (Math.PI * 2) / 230,
     },
   ];
