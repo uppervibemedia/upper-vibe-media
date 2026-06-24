@@ -227,9 +227,9 @@ function retintSkin(model, skinHex) {
 }
 
 // View rotations
-// Procedural models face -Z by default so base is PI to face camera
-const VIEW_ROT = { front: Math.PI, side: Math.PI * 1.5, back: 0 };
-// Soldier GLB built with rotation.y=PI to face camera
+// Procedural models face +Z by default (eyes at +Z), so front = 0 (no rotation needed)
+const VIEW_ROT = { front: 0, side: Math.PI * 0.5, back: Math.PI };
+// Soldier GLB faces -Z by default, so front = PI to flip it toward camera
 const VIEW_ROT_SOLDIER = { front: Math.PI, side: Math.PI * 1.5, back: 0 };
 
 export default function AvatarPreviewCanvas({
@@ -281,7 +281,8 @@ export default function AvatarPreviewCanvas({
     state.mixer = null;
     state.isSoldier = avatarTypeKey === "current";
     state.viewRots = state.isSoldier ? VIEW_ROT_SOLDIER : VIEW_ROT;
-    state.baseRot = Math.PI; // both soldier and procedural start facing camera
+    // Soldier faces -Z so needs PI offset; procedural faces +Z so starts at 0
+    state.baseRot = state.isSoldier ? Math.PI : 0;
     // Reset view when avatar type changes
     setActiveView("auto");
 
