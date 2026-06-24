@@ -567,13 +567,13 @@ export function createCosmicSky(scene) {
       transparent: true,
       opacity: 1.0,
       depthWrite: false,
-      depthTest: false,   // always draw — never hidden by depth buffer
-      sizeAttenuation: true,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    psprite.frustumCulled = false;  // never culled by frustum
-    psprite.renderOrder = 20;       // above skybox(-10), above starfield(1), above world
+    psprite.frustumCulled = false;
+    psprite.renderOrder = 15;
     scene.add(psprite);
 
     if (SKY_DEBUG) {
@@ -674,11 +674,12 @@ export function createCosmicSky(scene) {
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0,
       depthWrite: false, depthTest: false,
+      blending: THREE.AdditiveBlending,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(size, size, 1);
     psprite.frustumCulled = false;
-    psprite.renderOrder = 20;
+    psprite.renderOrder = 15;
     scene.add(psprite);
     // Park off-screen initially
     psprite.position.set(9999, 9999, 9999);
