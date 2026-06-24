@@ -1,37 +1,49 @@
 /**
- * AvatarModelMixamo — "Human" test avatar.
+ * AvatarModelMixamo — "Casual Human" avatars (Male & Female).
  *
- * Fully procedural — no GLB loading, no CORS issues, instant appearance.
- * Visually distinct from the soldier: casual human proportions, colored outfit,
- * procedural limb animation for walk/run/idle/dance.
+ * Fully procedural — no GLB, no CORS, instant load.
+ * Uses the same high-quality geometry system as AvatarModelTest but
+ * with casual street clothes instead of the neon suit.
  *
  * TEST ONLY — original soldier remains the permanent default.
  */
-
 import * as THREE from "three";
+import { SPAWN } from "./cityData";
 
-// ── Color palette — clearly different from soldier's dark armor ──
-const SKIN  = 0xC68642;   // warm skin tone
-const SHIRT = 0x2255CC;   // blue hoodie
-const PANTS = 0x222244;   // dark navy pants
-const SHOES = 0x111111;   // black sneakers
-const HAIR  = 0x1A0A00;   // dark hair
+// ── Color palettes ─────────────────────────────────────────────────────────────
+const MALE_CASUAL = {
+  skin:    0xC68642,
+  hair:    0x1A0800,
+  shirt:   0x1D3557,   // navy hoodie
+  pants:   0x2B2D42,   // dark charcoal
+  shoes:   0x1A1A1A,   // black
+  accent:  0xE63946,   // red logo detail
+  glow:    0xFF6B6B,
+};
 
-function mat(hex, roughness = 0.75) {
-  return new THREE.MeshStandardMaterial({ color: hex, roughness, metalness: 0.05 });
-}
+const FEMALE_CASUAL = {
+  skin:    0xD4956A,
+  hair:    0x3D0C02,   // deep auburn
+  shirt:   0x6A0572,   // purple crop top
+  pants:   0x1B1B2F,   // dark navy
+  shoes:   0xF72585,   // hot pink
+  accent:  0xF72585,
+  glow:    0xFF9EF5,
+};
 
-function box(w, h, d, color) {
-  return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color));
-}
-
-function sphere(r, color) {
-  return new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), mat(color));
+// ── Shared helpers ─────────────────────────────────────────────────────────────
+function mat(hex, opts = {}) {
+  return new THREE.MeshStandardMaterial({
+    color: hex,
+    roughness: opts.roughness ?? 0.65,
+    metalness: opts.metalness ?? 0.04,
+    ...(opts.emissive ? { emissive: new THREE.Color(opts.emissive), emissiveIntensity: opts.emissiveIntensity ?? 0.35 } : {}),
+  });
 }
 
 function makeShadow() {
   const m = new THREE.Mesh(
-    new THREE.CircleGeometry(0.28, 12),
+    new THREE.CircleGeometry(0.27, 12),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false })
   );
   m.rotation.x = -Math.PI / 2;
@@ -39,220 +51,287 @@ function makeShadow() {
   return m;
 }
 
-// ── Build humanoid skeleton as parented groups ──────────────────────────
-function buildHuman() {
-  // Root (at feet level — matches controller position)
+// ── Male casual body ───────────────────────────────────────────────────────────
+function buildMaleCasual(C) {
   const root = new THREE.Group();
   root.name = "avatarModel";
+  root.add(makeShadow());
 
-  // ── Legs ──
-  const leftLeg  = new THREE.Group(); // pivot at hip
-  const rightLeg = new THREE.Group();
+  // Legs
+  const legGeo = new THREE.CapsuleGeometry(0.088, 0.44, 4, 8);
+  const legL = new THREE.Mesh(legGeo, mat(C.pants));
+  legL.name = "legL"; legL.position.set(0.108, 0.36, 0); legL.castShadow = true;
+  const legR = legL.clone(); legR.name = "legR"; legR.position.set(-0.108, 0.36, 0);
+  root.add(legL, legR);
 
-  // Upper legs
-  const lUpper = box(0.14, 0.38, 0.13, PANTS);
-  lUpper.position.y = -0.19;
-  leftLeg.add(lUpper);
+  // Shoes
+  const shoeGeo = new THREE.BoxGeometry(0.12, 0.10, 0.20);
+  const bootL = new THREE.Mesh(shoeGeo, mat(C.shoes));
+  bootL.name = "bootL"; bootL.position.set(0.108, 0.080, 0.018); bootL.castShadow = true;
+  const bootR = bootL.clone(); bootR.name = "bootR"; bootR.position.set(-0.108, 0.080, 0.018);
+  root.add(bootL, bootR);
 
-  const rUpper = box(0.14, 0.38, 0.13, PANTS);
-  rUpper.position.y = -0.19;
-  rightLeg.add(rUpper);
-
-  // Lower leg pivots (at knee)
-  const leftKnee  = new THREE.Group();
-  const rightKnee = new THREE.Group();
-  leftKnee.position.y  = -0.38;
-  rightKnee.position.y = -0.38;
-
-  const lLower = box(0.12, 0.36, 0.12, PANTS);
-  lLower.position.y = -0.18;
-  leftKnee.add(lLower);
-
-  const rLower = box(0.12, 0.36, 0.12, PANTS);
-  rLower.position.y = -0.18;
-  rightKnee.add(rLower);
-
-  // Feet
-  const lFoot = box(0.12, 0.08, 0.22, SHOES);
-  lFoot.position.set(0, -0.38, 0.04);
-  leftKnee.add(lFoot);
-  const rFoot = box(0.12, 0.08, 0.22, SHOES);
-  rFoot.position.set(0, -0.38, 0.04);
-  rightKnee.add(rFoot);
-
-  leftLeg.add(leftKnee);
-  rightLeg.add(rightKnee);
-
-  leftLeg.position.set(-0.10, 0.88, 0);
-  rightLeg.position.set( 0.10, 0.88, 0);
-  root.add(leftLeg, rightLeg);
-
-  // ── Torso ──
-  const torso = box(0.38, 0.44, 0.20, SHIRT);
-  torso.position.y = 1.10;
-  root.add(torso);
-
-  // ── Arms ──
-  const leftArm  = new THREE.Group();  // pivot at shoulder
-  const rightArm = new THREE.Group();
-
-  const lUpperArm = box(0.10, 0.30, 0.10, SHIRT);
-  lUpperArm.position.y = -0.15;
-  leftArm.add(lUpperArm);
-  const rUpperArm = box(0.10, 0.30, 0.10, SHIRT);
-  rUpperArm.position.y = -0.15;
-  rightArm.add(rUpperArm);
-
-  // Elbows
-  const leftElbow  = new THREE.Group();
-  const rightElbow = new THREE.Group();
-  leftElbow.position.y  = -0.30;
-  rightElbow.position.y = -0.30;
-
-  const lForearm = box(0.09, 0.28, 0.09, SKIN);
-  lForearm.position.y = -0.14;
-  leftElbow.add(lForearm);
-  const rForearm = box(0.09, 0.28, 0.09, SKIN);
-  rForearm.position.y = -0.14;
-  rightElbow.add(rForearm);
-
-  // Hands
-  const lHand = sphere(0.065, SKIN);
-  lHand.position.y = -0.30;
-  leftElbow.add(lHand);
-  const rHand = sphere(0.065, SKIN);
-  rHand.position.y = -0.30;
-  rightElbow.add(rHand);
-
-  leftArm.add(leftElbow);
-  rightArm.add(rightElbow);
-
-  leftArm.position.set(-0.24, 1.28, 0);
-  rightArm.position.set( 0.24, 1.28, 0);
-  root.add(leftArm, rightArm);
-
-  // ── Neck + Head ──
-  const neck = box(0.10, 0.10, 0.10, SKIN);
-  neck.position.y = 1.37;
-  root.add(neck);
-
-  const head = sphere(0.155, SKIN);
-  head.position.y = 1.58;
-  root.add(head);
-
-  // Hair (cap on top of head)
-  const hair = box(0.32, 0.10, 0.32, HAIR);
-  hair.position.y = 1.68;
-  root.add(hair);
-
-  // Eyes
-  for (const sx of [-0.055, 0.055]) {
-    const eye = sphere(0.025, 0x111111);
-    eye.position.set(sx, 1.60, -0.145);
-    root.add(eye);
+  // Shoe sole glow accent (subtle)
+  const soleMat = new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.55, depthWrite: false });
+  for (const bx of [0.108, -0.108]) {
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.122, 0.014, 0.14), soleMat);
+    sole.position.set(bx, 0.033, 0.012);
+    root.add(sole);
   }
 
-  // Store limb refs for animation
-  root.userData.limbs = { leftLeg, rightLeg, leftKnee, rightKnee, leftArm, rightArm, leftElbow, rightElbow };
+  // Torso
+  const torsoGroup = new THREE.Group();
+  torsoGroup.name = "torso";
+  torsoGroup.position.set(0, 0.84, 0);
+  root.add(torsoGroup);
 
+  // Hoodie body
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.46, 0.24), mat(C.shirt, { roughness: 0.75 }));
+  torso.castShadow = true;
+  torsoGroup.add(torso);
+
+  // Hoodie pocket detail
+  const pocketMat = new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.45, depthWrite: false });
+  const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.012), pocketMat);
+  pocket.position.set(0, -0.14, 0.122);
+  torsoGroup.add(pocket);
+
+  // Arms
+  const armGeo = new THREE.CapsuleGeometry(0.068, 0.40, 4, 8);
+  const armL = new THREE.Group(); armL.name = "armL"; armL.position.set(0.235, 0.11, 0);
+  const armLMesh = new THREE.Mesh(armGeo, mat(C.shirt, { roughness: 0.75 }));
+  armLMesh.rotation.z = 0.12; armLMesh.castShadow = true; armL.add(armLMesh);
+  const armR = new THREE.Group(); armR.name = "armR"; armR.position.set(-0.235, 0.11, 0);
+  const armRMesh = new THREE.Mesh(armGeo, mat(C.shirt, { roughness: 0.75 }));
+  armRMesh.rotation.z = -0.12; armRMesh.castShadow = true; armR.add(armRMesh);
+  torsoGroup.add(armL, armR);
+
+  // Hands (skin)
+  const handGeo = new THREE.SphereGeometry(0.068, 8, 6);
+  const handL = new THREE.Mesh(handGeo, mat(C.skin)); handL.name = "gloveL";
+  handL.position.set(0.28, -0.26, 0); armL.add(handL);
+  const handR = handL.clone(); handR.name = "gloveR"; armR.add(handR);
+
+  // Neck
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.082, 0.13, 8), mat(C.skin));
+  neck.position.set(0, 0.30, 0); neck.castShadow = true; torsoGroup.add(neck);
+
+  // Head
+  const headGroup = new THREE.Group(); headGroup.name = "head"; headGroup.position.set(0, 0.44, 0);
+  torsoGroup.add(headGroup);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.158, 12, 10), mat(C.skin));
+  head.castShadow = true; headGroup.add(head);
+
+  // Hair — short top
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(0.163, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.52),
+    mat(C.hair, { roughness: 0.88 })
+  );
+  hair.position.y = 0.02; headGroup.add(hair);
+
+  // Eyes
+  const eyeGeo = new THREE.SphereGeometry(0.022, 6, 4);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(0.055, 0.032, 0.148); headGroup.add(eyeL);
+  const eyeR = eyeL.clone(); eyeR.position.set(-0.055, 0.032, 0.148); headGroup.add(eyeR);
+
+  root.userData._animParts = { legL, legR, armL, armR, headGroup, torsoGroup, bootL, bootR, gloveL: handL, gloveR: handR };
+  root.userData._animTime = 0;
   return root;
 }
 
-// ── Procedural animation state ─────────────────────────────────────────
-function animateLimbs(model, speed, isDancing, dt, t) {
-  const limbs = model.userData.limbs;
-  if (!limbs) return;
+// ── Female casual body ─────────────────────────────────────────────────────────
+function buildFemaleCasual(C) {
+  const root = new THREE.Group();
+  root.name = "avatarModel";
+  root.add(makeShadow());
 
-  const { leftLeg, rightLeg, leftKnee, rightKnee, leftArm, rightArm, leftElbow, rightElbow } = limbs;
+  // Legs (slimmer)
+  const legGeo = new THREE.CapsuleGeometry(0.072, 0.46, 4, 8);
+  const legL = new THREE.Mesh(legGeo, mat(C.pants));
+  legL.name = "legL"; legL.position.set(0.090, 0.36, 0); legL.castShadow = true;
+  const legR = legL.clone(); legR.name = "legR"; legR.position.set(-0.090, 0.36, 0);
+  root.add(legL, legR);
 
-  if (isDancing) {
-    // Dance: hips bounce, arms wave
-    const d = Math.sin(t * 5.5);
-    leftLeg.rotation.x  =  d * 0.35;
-    rightLeg.rotation.x = -d * 0.35;
-    leftKnee.rotation.x  = Math.max(0, -d * 0.3);
-    rightKnee.rotation.x = Math.max(0,  d * 0.3);
-    leftArm.rotation.x  = -d * 0.5;
-    rightArm.rotation.x =  d * 0.5;
-    leftArm.rotation.z  =  Math.sin(t * 3.0) * 0.3 + 0.3;
-    rightArm.rotation.z = -Math.sin(t * 3.0) * 0.3 - 0.3;
-    leftElbow.rotation.x  = Math.abs(d) * 0.5;
-    rightElbow.rotation.x = Math.abs(d) * 0.5;
-    return;
+  // Sneakers (pink)
+  const shoeGeo = new THREE.BoxGeometry(0.10, 0.10, 0.185);
+  const bootL = new THREE.Mesh(shoeGeo, mat(C.shoes));
+  bootL.name = "bootL"; bootL.position.set(0.090, 0.078, 0.015); bootL.castShadow = true;
+  const bootR = bootL.clone(); bootR.name = "bootR"; bootR.position.set(-0.090, 0.078, 0.015);
+  root.add(bootL, bootR);
+
+  // Shoe glow
+  const soleMat = new THREE.MeshBasicMaterial({ color: C.glow, transparent: true, opacity: 0.60, depthWrite: false });
+  for (const bx of [0.090, -0.090]) {
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.102, 0.012, 0.13), soleMat);
+    sole.position.set(bx, 0.030, 0.010);
+    root.add(sole);
   }
 
-  const walkSpeed = Math.min(speed * 1.5, 8.0);
-  const swing = speed > 0.07 ? Math.sin(t * walkSpeed) : Math.sin(t * 0.8) * 0.04;
-  const swingAmt = speed > 0.5 ? 0.7 : speed > 0.07 ? 0.5 : 0.04;
+  // Torso
+  const torsoGroup = new THREE.Group();
+  torsoGroup.name = "torso";
+  torsoGroup.position.set(0, 0.86, 0);
+  root.add(torsoGroup);
 
-  // Legs swing opposite each other
-  leftLeg.rotation.x  =  swing * swingAmt;
-  rightLeg.rotation.x = -swing * swingAmt;
+  // Crop top + high-waist pants seam
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.40, 0.20), mat(C.shirt, { roughness: 0.65 }));
+  torso.castShadow = true; torsoGroup.add(torso);
 
-  // Knees bend on back-swing
-  leftKnee.rotation.x  = Math.max(0,  swing * swingAmt * 0.55);
-  rightKnee.rotation.x = Math.max(0, -swing * swingAmt * 0.55);
+  const accentMat = new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.70, depthWrite: false });
 
-  // Arms swing opposite to legs
-  leftArm.rotation.x  = -swing * swingAmt * 0.6;
-  rightArm.rotation.x =  swing * swingAmt * 0.6;
-  leftArm.rotation.z  =  0.15;
-  rightArm.rotation.z = -0.15;
-  leftElbow.rotation.x  = speed > 0.07 ? Math.abs(swing) * 0.3 : 0;
-  rightElbow.rotation.x = speed > 0.07 ? Math.abs(swing) * 0.3 : 0;
+  // Waist band
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.025, 0.21), accentMat);
+  belt.position.set(0, -0.13, 0); torsoGroup.add(belt);
+
+  // V-neck detail
+  const vL = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.20, 0.011), accentMat);
+  vL.position.set(0.038, 0.08, 0.102); vL.rotation.z = 0.28; torsoGroup.add(vL);
+  const vR = vL.clone(); vR.position.set(-0.038, 0.08, 0.102); vR.rotation.z = -0.28; torsoGroup.add(vR);
+
+  // Arms
+  const armGeo = new THREE.CapsuleGeometry(0.056, 0.37, 4, 8);
+  const armL = new THREE.Group(); armL.name = "armL"; armL.position.set(0.200, 0.10, 0);
+  const armLMesh = new THREE.Mesh(armGeo, mat(C.shirt, { roughness: 0.65 }));
+  armLMesh.rotation.z = 0.10; armLMesh.castShadow = true; armL.add(armLMesh);
+  const armR = new THREE.Group(); armR.name = "armR"; armR.position.set(-0.200, 0.10, 0);
+  const armRMesh = new THREE.Mesh(armGeo, mat(C.shirt, { roughness: 0.65 }));
+  armRMesh.rotation.z = -0.10; armRMesh.castShadow = true; armR.add(armRMesh);
+  torsoGroup.add(armL, armR);
+
+  // Hands
+  const handGeo = new THREE.SphereGeometry(0.058, 8, 6);
+  const handL = new THREE.Mesh(handGeo, mat(C.skin)); handL.name = "gloveL";
+  handL.position.set(0.215, -0.22, 0); armL.add(handL);
+  const handR = handL.clone(); handR.name = "gloveR"; armR.add(handR);
+
+  // Neck
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.070, 0.11, 8), mat(C.skin));
+  neck.position.set(0, 0.28, 0); neck.castShadow = true; torsoGroup.add(neck);
+
+  // Head
+  const headGroup = new THREE.Group(); headGroup.name = "head"; headGroup.position.set(0, 0.42, 0);
+  torsoGroup.add(headGroup);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.148, 12, 10), mat(C.skin));
+  head.castShadow = true; headGroup.add(head);
+
+  // Hair — long with ponytail
+  const hairTop = new THREE.Mesh(
+    new THREE.SphereGeometry(0.155, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.62),
+    mat(C.hair, { roughness: 0.80 })
+  );
+  hairTop.position.y = 0.02; headGroup.add(hairTop);
+
+  const hairBack = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.055, 0.30, 4, 6),
+    mat(C.hair, { roughness: 0.80 })
+  );
+  hairBack.position.set(0, -0.12, -0.10); headGroup.add(hairBack);
+
+  // Ponytail holder
+  const ponyBand = new THREE.Mesh(
+    new THREE.TorusGeometry(0.04, 0.012, 6, 12),
+    new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: 0.85, depthWrite: false })
+  );
+  ponyBand.position.set(0, -0.18, -0.10); ponyBand.rotation.x = Math.PI / 2; headGroup.add(ponyBand);
+
+  // Eyes
+  const eyeGeo = new THREE.SphereGeometry(0.020, 6, 4);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(0.048, 0.028, 0.138); headGroup.add(eyeL);
+  const eyeR = eyeL.clone(); eyeR.position.set(-0.048, 0.028, 0.138); headGroup.add(eyeR);
+
+  root.userData._animParts = { legL, legR, armL, armR, headGroup, torsoGroup, bootL, bootR };
+  root.userData._animTime = 0;
+  return root;
 }
 
-// ── PUBLIC API ─────────────────────────────────────────────────────────
+// ── Procedural animation (shared with both genders) ───────────────────────────
+function animateCasual(entry, speed, isDancing, dt) {
+  if (!entry?.root) return;
+  const model = entry.root.getObjectByName("avatarModel");
+  if (!model) return;
+  const p = model.userData._animParts;
+  if (!p) return;
+
+  model.userData._animTime = (model.userData._animTime || 0) + dt;
+  const t = model.userData._animTime;
+  const sin = Math.sin;
+
+  const isRun  = speed > 0.5;
+  const isWalk = speed > 0.07 && !isRun;
+  const freq   = isRun ? 3.2 : isWalk ? 2.0 : 1.0;
+  const amp    = isRun ? 0.55 : isWalk ? 0.32 : 0.0;
+
+  if (p.legL) p.legL.rotation.x = sin(t * freq) * amp;
+  if (p.legR) p.legR.rotation.x = -sin(t * freq) * amp;
+  if (p.bootL) p.bootL.rotation.x = sin(t * freq) * amp * 0.5;
+  if (p.bootR) p.bootR.rotation.x = -sin(t * freq) * amp * 0.5;
+
+  if (p.armL) {
+    p.armL.rotation.x = isDancing ? sin(t * 6.0) * 0.55  : -sin(t * freq) * amp * 0.7;
+    p.armL.rotation.z = isDancing ? Math.PI * 0.28 - Math.abs(sin(t * 6.0)) * 0.55 : 0.10;
+  }
+  if (p.armR) {
+    p.armR.rotation.x = isDancing ? -sin(t * 6.0) * 0.55 : sin(t * freq) * amp * 0.7;
+    p.armR.rotation.z = isDancing ? -(Math.PI * 0.28 - Math.abs(sin(t * 6.0)) * 0.55) : -0.10;
+  }
+
+  const isIdle = !isWalk && !isRun && !isDancing;
+  if (p.torsoGroup) {
+    const baseY = entry._gender === "female" ? 0.86 : 0.84;
+    p.torsoGroup.position.y = isIdle
+      ? baseY + sin(t * 1.2) * 0.006
+      : baseY + Math.abs(sin(t * freq)) * (isRun ? 0.022 : 0.012);
+    if (isDancing) p.torsoGroup.rotation.y = sin(t * 3.0) * 0.18;
+    else p.torsoGroup.rotation.y = 0;
+  }
+  if (p.headGroup) {
+    p.headGroup.rotation.x = isIdle ? sin(t * 0.9) * 0.025 : sin(t * freq) * 0.030;
+  }
+}
+
+// ── PUBLIC API ─────────────────────────────────────────────────────────────────
 export function createMixamoAvatar(scene, opts = {}, onReady) {
-  const sx = opts.spawnX ?? 0;
-  const sy = opts.spawnY ?? 0;
-  const sz = opts.spawnZ ?? 5;
+  const gender = opts.gender || "male";
+  const C = gender === "female" ? FEMALE_CASUAL : MALE_CASUAL;
 
   const controller = new THREE.Group();
   controller.name = "avatar";
-  controller.position.set(sx, sy, sz);
-  controller.add(makeShadow());
+  controller.position.set(opts.spawnX ?? SPAWN[0], opts.spawnY ?? SPAWN[1], opts.spawnZ ?? SPAWN[2]);
   scene.add(controller);
 
-  const model = buildHuman();
+  const model = gender === "female" ? buildFemaleCasual(C) : buildMaleCasual(C);
+  model.rotation.y = Math.PI; // face forward (toward stage)
   controller.add(model);
 
   const entry = {
     root: controller,
-    mixer: null,   // no GLB mixer — procedural only
+    mixer: null,
     clips: {},
     currentAnim: "idle",
     _isMixamo: true,
-    _model: model,
-    _t: 0,
-    _speed: 0,
-    _isDancing: false,
+    _gender: gender,
   };
 
-  // Immediately ready — no async load
   setTimeout(() => onReady?.(entry), 0);
-
   return entry;
 }
 
 export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false) {
-  if (!entry?._model) return;
-
-  entry._t = (entry._t || 0) + dt;
-  entry._speed = speed;
-  entry._isDancing = isDancing;
+  if (!entry) return;
 
   if (isHoverboarding) {
-    // Frozen surf pose — arms slightly out
-    const { leftArm, rightArm, leftLeg, rightLeg, leftKnee, rightKnee } = entry._model.userData.limbs || {};
-    if (leftArm) { leftArm.rotation.z = 0.5; leftArm.rotation.x = -0.2; }
-    if (rightArm) { rightArm.rotation.z = -0.5; rightArm.rotation.x = -0.2; }
-    if (leftLeg) leftLeg.rotation.x = 0.15;
-    if (rightLeg) rightLeg.rotation.x = 0.15;
-    if (leftKnee) leftKnee.rotation.x = 0.3;
-    if (rightKnee) rightKnee.rotation.x = 0.3;
+    const model = entry.root?.getObjectByName("avatarModel");
+    const p = model?.userData?._animParts;
+    if (p) {
+      if (p.armL) { p.armL.rotation.z = 0.50; p.armL.rotation.x = -0.18; }
+      if (p.armR) { p.armR.rotation.z = -0.50; p.armR.rotation.x = -0.18; }
+      if (p.legL) p.legL.rotation.x = 0.14;
+      if (p.legR) p.legR.rotation.x = 0.14;
+    }
     return;
   }
 
-  animateLimbs(entry._model, speed, isDancing, dt, entry._t);
+  animateCasual(entry, speed, isDancing, dt);
 }

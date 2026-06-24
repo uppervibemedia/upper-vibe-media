@@ -738,19 +738,19 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const updateSlow = !isMobile || skyFrame % 3 === 0;
 
   // ── Planets — camera-relative positioning, always inside far clip ─────────────
+  // Orbit speed: one full revolution every ~120s (2 minutes) — clearly visible.
+  const PLANET_ORBIT_SPEED = (Math.PI * 2) / 120;
   const horizonPlanets = scene.userData.horizonPlanets;
-  if (horizonPlanets && skybox) {
-    const skyAngle = skybox.rotation.y;
+  if (horizonPlanets) {
+    const orbitAngle = t * PLANET_ORBIT_SPEED; // independent of skybox drift
 
     for (const p of horizonPlanets) {
-      const angle = skyAngle + p.angleOffset;
-      const cosA = Math.cos(angle);
+      const angle = orbitAngle + p.angleOffset;
 
       // Camera-relative: planet is always at fixed offset from camera,
       // so it can NEVER be outside the far clipping plane.
-      // horizonY is now set high enough (28-42) to clear all skyline buildings.
       const cx = camera.position.x + Math.sin(angle) * p.radius;
-      const cz = camera.position.z + cosA * p.radius;
+      const cz = camera.position.z + Math.cos(angle) * p.radius;
       p.sprite.position.set(cx, p.horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.5, cz);
       p.mat.opacity = 0.90 + Math.sin(t * 0.06 + p.angleOffset) * 0.05;
     }

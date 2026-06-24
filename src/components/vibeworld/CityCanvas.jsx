@@ -1308,9 +1308,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       // Determine avatar type
       const avatarTypeKey = avatarConfig?.avatarTypeKey || "current";
-      const isMixamoAvatar = avatarTypeKey === "test-mixamo";
+      const isMixamoAvatar = avatarTypeKey === "test-mixamo" || avatarTypeKey === "test-mixamo-female";
       const isTestAvatar = avatarTypeKey === "test-male" || avatarTypeKey === "test-female";
       const testGender = avatarTypeKey === "test-female" ? "female" : "male";
+      const mixamoGender = avatarTypeKey === "test-mixamo-female" ? "female" : "male";
 
       let entry;
       if (isMixamoAvatar) {
@@ -1320,6 +1321,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           spawnX: effectiveSpawn[0],
           spawnY: effectiveSpawn[1],
           spawnZ: effectiveSpawn[2],
+          gender: mixamoGender,
         }, (_entry) => {
           avatarEntryRef.current = _entry;
         });
