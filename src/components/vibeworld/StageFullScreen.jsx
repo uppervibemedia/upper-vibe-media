@@ -73,16 +73,6 @@ export default function StageFullScreen({
       className="fixed inset-0 z-[300] flex flex-col"
       style={{ background: "#000" }}
     >
-      {/* ── Tap-to-show overlay: catches taps anywhere on screen when controls are hidden ── */}
-      {!controlsVisible && (
-        <div
-          className="absolute inset-0 z-[5]"
-          style={{ background: "transparent", pointerEvents: "auto" }}
-          onPointerDown={showControls}
-          onTouchStart={showControls}
-        />
-      )}
-
       {/* ── Video fills the screen ── */}
       <div className="absolute inset-0 z-[1]">
         {ytId ? (
@@ -97,17 +87,20 @@ export default function StageFullScreen({
               referrerPolicy="strict-origin-when-cross-origin"
               onLoad={handleIframeLoad}
             />
-            {/* Transparent overlay blocks mouse hover from reaching the iframe,
-                preventing YouTube's own title/control overlays from appearing.
-                Pointer events on our own UI buttons are set explicitly above z-[1]. */}
+            {/* Covers iframe to block YouTube native UI and catch taps */}
             <div
               className="absolute inset-0"
               style={{ zIndex: 2, background: "transparent" }}
-              onPointerDown={(e) => { e.stopPropagation(); showControls(); }}
+              onPointerDown={showControls}
+              onTouchStart={showControls}
             />
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-black">
+          <div
+            className="w-full h-full flex items-center justify-center bg-black"
+            onPointerDown={showControls}
+            onTouchStart={showControls}
+          >
             {thumbnailUrl
               ? <img src={thumbnailUrl} alt={title || "Stage"} className="w-full h-full object-contain" />
               : <p className="text-white/20 text-lg">Upper Vibe Media</p>
@@ -116,13 +109,16 @@ export default function StageFullScreen({
         )}
       </div>
 
-      {/* ── Top bar: Mute (left) + Exit (right) — NO title here ── */}
-      <div
+      {/* ── Top bar: Mute (left) + Exit (right) — fades with controls ── */}
+      <motion.div
+        animate={{ opacity: controlsVisible ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
         className="absolute left-0 right-0 z-[10] flex items-center justify-between"
         style={{
           top: saTop + 8,
           paddingLeft: `max(env(safe-area-inset-left, 0px), 12px)`,
           paddingRight: `max(env(safe-area-inset-right, 0px), 12px)`,
+          pointerEvents: controlsVisible ? "auto" : "none",
         }}
       >
         {/* Mute */}
@@ -159,7 +155,7 @@ export default function StageFullScreen({
           <X className="w-3.5 h-3.5" />
           <span>Exit</span>
         </button>
-      </div>
+      </motion.div>
 
       {/* ── Bottom controls — auto-hide; title lives HERE only ── */}
       <motion.div

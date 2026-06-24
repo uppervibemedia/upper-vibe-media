@@ -673,7 +673,7 @@ export default function WorldHUD({
             {/* ── Tap-to-show overlay: catches taps anywhere on screen while watching ── */}
             {stageWatching && !stageControlsVisible && (
               <div
-                className="fixed inset-0 z-[56]"
+                className="fixed inset-0 z-[59]"
                 style={{ background: "transparent", pointerEvents: "auto" }}
                 onPointerDown={() => showStageControls()}
                 onTouchStart={() => showStageControls()}
