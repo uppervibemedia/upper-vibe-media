@@ -866,6 +866,12 @@ export function animateCosmicSky(scene, camera, t, dt) {
   // regardless of player position or terrain elevation.
   const horizonPlanets = scene.userData.horizonPlanets;
   if (horizonPlanets) {
+    // Camera pitch compensation: when player tilts camera up, boost planet Y so they
+    // stay visually above the skyline. pitch > 0 = looking up.
+    // pitchBoost scales with both pitch angle and orbit radius so all planets lift equally.
+    const camPitch = scene.userData._camPitch ?? 0;
+    const pitchBoost = Math.max(0, camPitch) * 80; // 0 at flat, ~18u at max pitch (0.22 rad)
+
     for (const p of horizonPlanets) {
       const angle = t * p.orbitSpeed + p.angleOffset;
 
@@ -875,13 +881,11 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
       // Arc boost: when the planet passes through the front-facing angle
       // (i.e. directly in front of the camera where buildings are visible),
-      // raise it up so it clears the skyline. cos(angle) > 0 means it's in front.
-      // We ramp the boost smoothly using a clamped cosine factor.
-      // buildingArc: 0 when behind/side, up to +20 when directly in front.
-      const frontFactor = Math.max(0, Math.cos(angle)); // 0..1, peaks directly in front
-      const buildingArc = frontFactor * frontFactor * 20; // quadratic — sharp peak at front
+      // raise it up so it clears the skyline.
+      const frontFactor = Math.max(0, Math.cos(angle));
+      const buildingArc = frontFactor * frontFactor * 20;
 
-      const cy = camera.position.y + p.horizonY + buildingArc + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
+      const cy = camera.position.y + p.horizonY + buildingArc + pitchBoost + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
       p.mat.opacity = 1.0;
     }

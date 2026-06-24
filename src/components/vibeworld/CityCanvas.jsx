@@ -64,7 +64,7 @@ const CAM_DIST = 5.5;         // distance behind avatar
 const CAM_HEIGHT = 2.4;       // above avatar ground position
 const CAM_LOOK_Y = 0.9;       // look-at Y offset (avatar chest)
 const CAM_PITCH_MIN = -0.35;  // radians — look down (prevent under-map)
-const CAM_PITCH_MAX =  0.50;  // radians — look up (prevent overhead view)
+const CAM_PITCH_MAX =  0.22;  // radians — look up (was 0.50; tighter limit prevents planet/building overlap)
 // Landscape mobile — closer, more cinematic, immersive third-person
 const CAM_DIST_LS   = 3.5;    // much closer — world feels nearer
 const CAM_HEIGHT_LS = 1.75;   // lower shoulder height
@@ -2049,6 +2049,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──
         scene.userData._playerZ = pz;
+        scene.userData._camPitch = camPitchSmoothRef.current; // pass live pitch for planet compensation
         animateCosmicSky(scene, camera, t, dt);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
