@@ -345,91 +345,91 @@ export function createCosmicSky(scene) {
 
   const PLANET_DEFS = [
     {
-      // MEGA — large purple ringed planet. Far upper-left sky quadrant.
+      // MEGA — large deep-purple ringed gas giant. Far upper-left sky quadrant.
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
-      size: isMobile ? 18 : 26,          // small — distant moon feel
-      angleOffset: Math.PI * 0.75,       // left-back quadrant
-      horizonY: 42,                      // high above buildings
-      radius: 95,                        // very far back
-      orbitSpeed: (Math.PI * 2) / 240,   // ultra-slow — barely drifts
+      size: isMobile ? 18 : 26,
+      angleOffset: Math.PI * 0.75,
+      horizonY: 55,                      // well above buildings at all times
+      radius: 95,
+      orbitSpeed: (Math.PI * 2) / 240,
     },
     {
-      // BLUE — gas giant. Right-back quadrant.
+      // WEST — blue ice giant with wide bright bands. Right-back quadrant.
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
       size: isMobile ? 14 : 20,
-      angleOffset: Math.PI * 0.25,       // right-back quadrant
-      horizonY: 36,                      // slightly lower — visible from city looking up
-      radius: 105,                       // farthest
-      orbitSpeed: (Math.PI * 2) / 300,   // very slow
+      angleOffset: Math.PI * 0.25,
+      horizonY: 50,
+      radius: 105,
+      orbitSpeed: (Math.PI * 2) / 300,
     },
     {
-      // GREEN — emerald planet. Far left, mid-high.
+      // GREEN — emerald ocean world with continent patches. Far left, mid-high.
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
       size: isMobile ? 12 : 18,
-      angleOffset: Math.PI * 1.60,       // back-left quadrant
-      horizonY: 32,
+      angleOffset: Math.PI * 1.60,
+      horizonY: 48,
       radius: 100,
       orbitSpeed: (Math.PI * 2) / 270,
     },
     {
-      // CRIMSON — red storm planet. Back-right, highest.
+      // CRIMSON — volcanic lava world, deep upper sky.
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
       size: isMobile ? 16 : 22,
-      angleOffset: Math.PI * 1.25,       // back-right quadrant
-      horizonY: 48,                      // highest — deep upper sky
+      angleOffset: Math.PI * 1.25,
+      horizonY: 62,
       radius: 90,
       orbitSpeed: (Math.PI * 2) / 320,
     },
-    // ── 4 NEW PLANETS (same system, extended) ───────────────────────────────────
     {
-      // HIGH-1 — LARGE RINGED PURPLE — FAR RIGHT end of world
+      // ICE — LARGE golden Saturn-like ringed ice planet. FAR RIGHT. Distinct from mega.
+      // Body: pale icy blue-white with gold/amber ring system — nothing like purple mega.
       id: "ice",
-      bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
-      glowColor: "rgba(160,80,255,0.60)", ringColor: "rgba(200,140,255,0.70)",
+      bodyColors: ["#0A1828", "#1A3850", "#2E6890", "#6AAED8", "#C8E8FF"],
+      glowColor: "rgba(140,210,255,0.55)", ringColor: "rgba(220,180,80,0.75)",
       size: isMobile ? 38 : 58,
       angleOffset: Math.PI * 0.45,
-      horizonY: 28,                      // same level as regular planets — clearly visible
+      horizonY: 50,                      // raised well clear of skyline
       radius: 95,
       orbitSpeed: (Math.PI * 2) / 280,
     },
     {
-      // HIGH-2 — golden nebula, upper-left back
+      // GOLD — fiery nebula star-forming world, upper-left back.
       id: "gold",
       bodyColors: ["#1A1000", "#382000", "#704010", "#B07020", "#E0C060"],
       glowColor: "rgba(220,180,60,0.40)",
       size: isMobile ? 11 : 17,
       angleOffset: Math.PI * 1.45,
-      horizonY: 34,
+      horizonY: 50,
       radius: 108,
       orbitSpeed: (Math.PI * 2) / 350,
     },
     {
-      // MID-HIGH-1 — violet storm, right-mid sky
+      // VIOLET — deep violet storm world with lightning, right-mid sky.
       id: "violet",
       bodyColors: ["#150A28", "#2A1450", "#4A2488", "#7A44C0", "#B080F0"],
       glowColor: "rgba(150,100,255,0.44)",
       size: isMobile ? 13 : 18,
       angleOffset: Math.PI * 0.10,
-      horizonY: 30,
+      horizonY: 48,
       radius: 100,
       orbitSpeed: (Math.PI * 2) / 260,
     },
     {
-      // MID-HIGH-2 — LARGE TEAL GAS GIANT — FAR LEFT end of world
+      // TEAL — LARGE jade-teal gas giant with vivid storm eye. FAR LEFT. Distinct from ice.
       id: "teal",
       bodyColors: ["#021410", "#053028", "#0A5840", "#189060", "#40D098"],
       glowColor: "rgba(50,200,140,0.58)",
       size: isMobile ? 34 : 52,
       angleOffset: Math.PI * 1.75,
-      horizonY: 28,                      // same level as regular planets — clearly visible
+      horizonY: 50,                      // raised well clear of skyline
       radius: 94,
       orbitSpeed: (Math.PI * 2) / 230,
     },
@@ -567,26 +567,33 @@ export function createCosmicSky(scene) {
         pctx.fillStyle = sG; pctx.beginPath(); pctx.arc(sx2, sy2, sr2, 0, Math.PI * 2); pctx.fill();
       }
     } else if (def.id === "ice") {
-      // Large purple ringed — many dense bands + dual storm vortices
-      for (let b = 0; b < 14; b++) {
-        const by = cy - R + (b / 13) * R * 2;
-        const bw = R * (0.03 + rng() * 0.08);
-        const alpha = 0.12 + rng() * 0.16;
+      // ICE WORLD — pale blue-white with subtle cyan bands + large polar caps + cold storm oval
+      // Completely distinct from purple mega: icy, cold, pale
+      for (let b = 0; b < 10; b++) {
+        const by = cy - R + (b / 9) * R * 2;
+        const bw = R * (0.03 + rng() * 0.06);
+        const alpha = 0.08 + rng() * 0.10;
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
         bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(${160 + Math.floor(rng()*80)},${60 + Math.floor(rng()*50)},255,${alpha})`);
+        bandG.addColorStop(0.5, `rgba(${140 + Math.floor(rng()*80)},${200 + Math.floor(rng()*55)},255,${alpha})`);
         bandG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
-      // Two storm vortices
-      [[cx + R*0.25, cy + R*0.15, 0.20], [cx - R*0.30, cy - R*0.20, 0.14]].forEach(([vx, vy, vr]) => {
-        const vG = pctx.createRadialGradient(vx, vy, 0, vx, vy, R * vr);
-        vG.addColorStop(0, "rgba(255,200,255,0.32)");
-        vG.addColorStop(0.5, "rgba(180,80,255,0.16)");
-        vG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = vG; pctx.beginPath(); pctx.arc(vx, vy, R * vr, 0, Math.PI * 2); pctx.fill();
+      // Large bright polar caps (top and bottom)
+      [[cx, cy - R * 0.68, 0.50], [cx, cy + R * 0.72, 0.38]].forEach(([pcx2, pcy2, pcr]) => {
+        const capG = pctx.createRadialGradient(pcx2, pcy2, 0, pcx2, pcy2, R * pcr);
+        capG.addColorStop(0, "rgba(220,240,255,0.35)");
+        capG.addColorStop(0.5, "rgba(180,220,255,0.18)");
+        capG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = capG; pctx.beginPath(); pctx.arc(pcx2, pcy2, R * pcr, 0, Math.PI * 2); pctx.fill();
       });
+      // Cold storm oval — pale blue, not purple
+      pctx.save(); pctx.translate(cx + R*0.15, cy + R*0.18); pctx.scale(1.4, 0.65);
+      const iceOvalG = pctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.20);
+      iceOvalG.addColorStop(0, "rgba(180,230,255,0.30)"); iceOvalG.addColorStop(1, "rgba(0,0,0,0)");
+      pctx.fillStyle = iceOvalG; pctx.beginPath(); pctx.arc(0, 0, R * 0.20, 0, Math.PI * 2); pctx.fill();
+      pctx.restore();
     } else if (def.id === "teal") {
       // Large teal gas giant — vivid bands + large storm spot + polar shimmer
       for (let b = 0; b < 12; b++) {
@@ -706,20 +713,50 @@ export function createCosmicSky(scene) {
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
-    // Ring for mega planet and ice (large purple ringed) planet
-    if (def.id === "mega" || def.id === "ice") {
+    // Ring for mega (purple) and ice (gold/amber Saturn-style)
+    if (def.id === "mega") {
       pctx.save();
       pctx.translate(cx, cy);
       pctx.scale(1, 0.28);
       pctx.beginPath();
       pctx.arc(0, 0, R * 1.46, 0, Math.PI * 2);
-      pctx.strokeStyle = def.ringColor;
+      pctx.strokeStyle = def.ringColor; // purple ring
       pctx.lineWidth = S * 0.045;
       pctx.stroke();
       pctx.beginPath();
       pctx.arc(0, 0, R * 1.65, 0, Math.PI * 2);
       pctx.strokeStyle = "rgba(200,140,255,0.18)";
       pctx.lineWidth = S * 0.022;
+      pctx.stroke();
+      pctx.restore();
+    } else if (def.id === "ice") {
+      // Saturn-style gold/amber multi-ring system — wider, more layered than mega's rings
+      pctx.save();
+      pctx.translate(cx, cy);
+      pctx.scale(1, 0.22); // flatter angle — Saturn-like tilt
+      // Outer faint amber halo ring
+      pctx.beginPath();
+      pctx.arc(0, 0, R * 1.82, 0, Math.PI * 2);
+      pctx.strokeStyle = "rgba(200,160,60,0.22)";
+      pctx.lineWidth = S * 0.030;
+      pctx.stroke();
+      // Main wide amber ring
+      pctx.beginPath();
+      pctx.arc(0, 0, R * 1.58, 0, Math.PI * 2);
+      pctx.strokeStyle = def.ringColor; // "rgba(220,180,80,0.75)"
+      pctx.lineWidth = S * 0.055;
+      pctx.stroke();
+      // Inner bright gold ring
+      pctx.beginPath();
+      pctx.arc(0, 0, R * 1.32, 0, Math.PI * 2);
+      pctx.strokeStyle = "rgba(255,210,100,0.55)";
+      pctx.lineWidth = S * 0.028;
+      pctx.stroke();
+      // Innermost tight bright ring
+      pctx.beginPath();
+      pctx.arc(0, 0, R * 1.16, 0, Math.PI * 2);
+      pctx.strokeStyle = "rgba(240,200,80,0.35)";
+      pctx.lineWidth = S * 0.014;
       pctx.stroke();
       pctx.restore();
     }
@@ -973,7 +1010,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
       // (i.e. directly in front of the camera where buildings are visible),
       // raise it up so it clears the skyline.
       const frontFactor = Math.max(0, Math.cos(angle));
-      const buildingArc = frontFactor * frontFactor * 20;
+      const buildingArc = frontFactor * frontFactor * 30;
 
       const cy = camera.position.y + p.horizonY + buildingArc + pitchBoost + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
