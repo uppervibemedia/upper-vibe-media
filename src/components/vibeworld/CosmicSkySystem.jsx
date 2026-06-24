@@ -764,38 +764,40 @@ export function createCosmicSky(scene) {
     return { sprite: psprite, mat: pmat };
   }
 
-  // Planet A: teal/cyan — left lane, small and distant
+  // Planet A: teal/cyan — 50% bigger than original
   const flybyA = buildFlybyPlanet(
     ["#041820", "#0A3840", "#1A6860", "#2A9888", "#50D8C0"],
     "rgba(50,200,180,0.50)",
-    isMobile ? 14 : 20
+    isMobile ? 21 : 30
   );
-  // Planet B: amber/orange — right lane, small and distant
+  // Planet B: amber/orange — 50% bigger than original
   const flybyB = buildFlybyPlanet(
     ["#1A0E02", "#3A2004", "#7A4010", "#C07030", "#E8B060"],
     "rgba(220,140,50,0.48)",
-    isMobile ? 12 : 18
+    isMobile ? 18 : 27
   );
 
   const now0 = performance.now() * 0.001;
 
-  // Safe beach flyby lanes:
-  //   CZ = -90 → far behind the visual beach horizon, never inside playable space.
-  //   CY = +18 → well above eye level, clearly sky.
-  //   CX: Planet A sweeps left lane (-38 → -22), Planet B sweeps right lane (+38 → +22).
-  //   Neither lane crosses X=0 (avatar center column).
-  //   Duration 35s so movement is slow and cinematic.
-  //   Gap 15s between planets so only one is ever visible at a time.
-  const DURATION_A = 35;
-  const DURATION_B = 35;
-  const GAP_AFTER  = 15;
+  // Beach flyby lanes — OPPOSITE DIRECTIONS, one at a time:
+  //   Planet A: left-to-right  (startCX -45 → endCX +45)
+  //   Planet B: right-to-left  (startCX +45 → endCX -45)
+  //   CZ = -85 → stays in beach sky, well behind playable area.
+  //   CY = +16 → sky height, above avatar but not too high.
+  //   fadeOutStart = 0.72 so they fade before crossing center/north skyline.
+  //   Duration 30s — full beach pass is visible without dragging on.
+  //   GAP_AFTER 12s — brief pause before the next one enters.
+  const DURATION_A = 30;
+  const DURATION_B = 30;
+  const GAP_AFTER  = 12;
 
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    startCX: -38, startCY: 18, startCZ: -90,
-    endCX:   -22, endCY:   18, endCZ:  -90,
-    _fadeInEnd: 0.20, _fadeOutStart: 0.70,
+    // left → right
+    startCX: -45, startCY: 16, startCZ: -85,
+    endCX:    45, endCY:   16, endCZ:  -85,
+    _fadeInEnd: 0.18, _fadeOutStart: 0.68,
     duration: DURATION_A,
     nextFire: now0 + 5,
     _gapAfter: GAP_AFTER,
@@ -804,9 +806,10 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    startCX:  38, startCY: 18, startCZ: -90,
-    endCX:    22, endCY:   18, endCZ:  -90,
-    _fadeInEnd: 0.20, _fadeOutStart: 0.70,
+    // right → left (opposite direction)
+    startCX:  45, startCY: 16, startCZ: -85,
+    endCX:   -45, endCY:   16, endCZ:  -85,
+    _fadeInEnd: 0.18, _fadeOutStart: 0.68,
     duration: DURATION_B,
     nextFire: now0 + DURATION_A + GAP_AFTER + 5,
     _gapAfter: GAP_AFTER,
