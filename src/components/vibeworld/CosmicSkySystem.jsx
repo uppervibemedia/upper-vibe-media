@@ -167,13 +167,14 @@ export function createCosmicSky(scene) {
     const sr = (() => { let s = 1234; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
 
     for (let i = 0; i < starCount; i++) {
-      // Distribute on a sphere — use spherical coordinates
+      // Distribute on upper hemisphere only — no stars on or below the horizon
       const theta = sr() * Math.PI * 2;           // longitude
-      const phi   = Math.acos(2 * sr() - 1);      // latitude (full sphere)
+      // phi in [0, PI/2] → upper hemisphere only (y = cos(phi) >= 0)
+      const phi   = Math.acos(1 - sr());          // upper hemisphere: cos(phi) in [0,1]
       const dist  = 95 + sr() * 10;               // just inside skybox (r=120)
 
       positions[i * 3]     = dist * Math.sin(phi) * Math.cos(theta);
-      positions[i * 3 + 1] = dist * Math.cos(phi);
+      positions[i * 3 + 1] = dist * Math.cos(phi);  // always >= 0
       positions[i * 3 + 2] = dist * Math.sin(phi) * Math.sin(theta);
 
       // Star colors: mostly blue-white, some warm
@@ -338,32 +339,32 @@ export function createCosmicSky(scene) {
     {
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
-      glowColor: "rgba(160,80,255,0.28)", ringColor: "rgba(200,140,255,0.45)",
-      size: isMobile ? 27.5 : 37.5, angleOffset: 0, horizonY: 52, radius: 55,
+      glowColor: "rgba(160,80,255,0.35)", ringColor: "rgba(200,140,255,0.55)",
+      size: isMobile ? 32 : 46, angleOffset: 0, horizonY: 62, radius: 55,
     },
     {
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
-      glowColor: "rgba(80,180,255,0.18)", ringColor: "rgba(120,200,255,0.35)",
-      size: isMobile ? 20.0 : 26.0, angleOffset: STEP * 1, horizonY: 48, radius: 55,
+      glowColor: "rgba(80,180,255,0.25)", ringColor: "rgba(120,200,255,0.45)",
+      size: isMobile ? 24 : 32, angleOffset: STEP * 1, horizonY: 58, radius: 55,
     },
     {
       id: "east",
       bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
-      glowColor: "rgba(220,140,60,0.18)", ringColor: "rgba(200,160,80,0.30)",
-      size: isMobile ? 17.0 : 22.0, angleOffset: STEP * 2, horizonY: 46, radius: 55,
+      glowColor: "rgba(220,140,60,0.25)", ringColor: "rgba(200,160,80,0.40)",
+      size: isMobile ? 20 : 28, angleOffset: STEP * 2, horizonY: 56, radius: 55,
     },
     {
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
-      glowColor: "rgba(60,200,100,0.16)", ringColor: "rgba(80,220,120,0.30)",
-      size: isMobile ? 14.0 : 18.0, angleOffset: STEP * 3, horizonY: 44, radius: 55,
+      glowColor: "rgba(60,200,100,0.22)", ringColor: "rgba(80,220,120,0.40)",
+      size: isMobile ? 18 : 24, angleOffset: STEP * 3, horizonY: 54, radius: 55,
     },
     {
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
-      glowColor: "rgba(220,60,60,0.20)", ringColor: "rgba(200,80,80,0.30)",
-      size: isMobile ? 22.0 : 30.0, angleOffset: STEP * 4, horizonY: 50, radius: 55,
+      glowColor: "rgba(220,60,60,0.28)", ringColor: "rgba(200,80,80,0.40)",
+      size: isMobile ? 26 : 36, angleOffset: STEP * 4, horizonY: 60, radius: 55,
     },
   ];
 
@@ -535,7 +536,7 @@ export function createCosmicSky(scene) {
     const pmat = new THREE.SpriteMaterial({
       map: ptex,
       transparent: true,
-      opacity: 0.92,
+      opacity: 1.0,
       depthWrite: false,
       depthTest: false,   // always draw — never hidden by depth buffer
       sizeAttenuation: true,
@@ -752,7 +753,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
       const cx = camera.position.x + Math.sin(angle) * p.radius;
       const cz = camera.position.z + Math.cos(angle) * p.radius;
       p.sprite.position.set(cx, p.horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.5, cz);
-      p.mat.opacity = 0.90 + Math.sin(t * 0.06 + p.angleOffset) * 0.05;
+      p.mat.opacity = 1.0;
     }
 
     if (SKY_DEBUG && skyFrame % 120 === 0) {
