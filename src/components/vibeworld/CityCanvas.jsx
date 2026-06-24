@@ -2080,44 +2080,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
           let entry = remoteMap[remote.user_id];
           if (!entry) {
-            // Spawn remote avatar using the same type they selected in the customizer
-            const remoteAvatarType = remote.avatar_type || "current";
-            const remoteIsMixamo = remoteAvatarType === "test-mixamo" || remoteAvatarType === "test-mixamo-female";
-            const remoteIsTest   = remoteAvatarType === "test-male" || remoteAvatarType === "test-female";
-            let group;
-            if (remoteIsMixamo) {
-              const remoteGender = remoteAvatarType === "test-mixamo-female" ? "female" : "male";
-              // createMixamoAvatar returns an entry object; we need the root Group
-              const remoteEntry = createMixamoAvatar(scene, {
-                spawnX: remote.pos_x || 0, spawnY: SPAWN[1], spawnZ: remote.pos_z || 0,
-                gender: remoteGender,
-                hairStyle: remoteGender === "female" ? "ponytail" : "short",
-                outfitColorKey: remote.avatar_outfit_color || null,
-                skinToneKey: remote.skin_tone || "medium",
-                username: remote.username || "User",
-                isRemote: true,
-              }, () => {});
-              group = remoteEntry.root;
-              group.name = `remote_${remote.user_id}`;
-              group.userData.userId = remote.user_id;
-              group.userData._avatarEntry = remoteEntry;
-            } else if (remoteIsTest) {
-              const remoteGender = remoteAvatarType === "test-female" ? "female" : "male";
-              const remoteEntry = createTestAvatar(scene, remoteGender, { username: remote.username || "User" }, () => {});
-              group = remoteEntry.root;
-              group.name = `remote_${remote.user_id}`;
-              group.userData.userId = remote.user_id;
-              group.userData._avatarEntry = remoteEntry;
-            } else {
-              // Default: original Soldier GLB avatar
-              group = createRemoteAvatar(
-                scene, remote.user_id,
-                remote.username || "User",
-                remote.avatar_type || "neutral",
-                remote.skin_tone || "medium",
-                remote.avatar_style || "streetwear"
-              );
-            }
+            // Spawn new remote avatar — returns a controller Group immediately
+            const group = createRemoteAvatar(
+              scene, remote.user_id,
+              remote.username || "User",
+              remote.avatar_type || "neutral",
+              remote.skin_tone || "medium",
+              remote.avatar_style || "streetwear"
+            );
             entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 } };
             remoteMap[remote.user_id] = entry;
           }
@@ -2144,17 +2114,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const vel = Math.sqrt(dx * dx + dz * dz);
           entry.prevPos = { x: g.position.x, z: g.position.z };
 
-          // ─── Remote avatar animation — use correct system per type ──
+          // ─── Remote GLB avatar animation ────────────────────
+          // _avatarEntry is set immediately on the controller group, updated when GLB loads
           const remoteEntry = g.userData._avatarEntry;
-          if (remoteEntry) {
-            if (remoteEntry._isMixamo) {
-              updateMixamoAvatarAnimation(remoteEntry, vel * 15, false, dt, false, null);
-            } else if (remoteEntry._isTestAvatar) {
-              updateTestAvatarAnimation(remoteEntry, vel * 15, false, dt);
-            } else {
-              updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
-            }
-          }
+          if (remoteEntry) updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
         }
 
         // Despawn avatars that are no longer present

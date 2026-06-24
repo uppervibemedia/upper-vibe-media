@@ -786,28 +786,6 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
 
   controller.add(model);
 
-  // Name sprite for remote avatars
-  if (opts.username) {
-    const c = document.createElement("canvas");
-    c.width = 256; c.height = 48;
-    const ctx = c.getContext("2d");
-    ctx.font = "bold 17px Inter,sans-serif";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 5;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText((opts.username || "User").slice(0, 18), 128, 24);
-    const tex = new THREE.CanvasTexture(c);
-    tex.minFilter = THREE.LinearFilter;
-    tex.colorSpace = THREE.SRGBColorSpace;
-    const sprite = new THREE.Sprite(
-      new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false })
-    );
-    sprite.scale.set(1.4, 0.32, 1);
-    sprite.renderOrder = 999;
-    sprite.position.y = 2.25;
-    controller.add(sprite);
-  }
-
   const entry = {
     root: controller,
     mixer: null,

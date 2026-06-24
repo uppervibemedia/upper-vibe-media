@@ -319,7 +319,7 @@ export function createCosmicSky(scene) {
       active: false, life: 0, maxLife: 0,
       vx: 0, vy: 0, vz: 0,
       nextFire: performance.now() * 0.001 + 20 + Math.random() * 10,
-      interval: 70,
+      interval: 120,
     };
   }
 
@@ -345,91 +345,91 @@ export function createCosmicSky(scene) {
 
   const PLANET_DEFS = [
     {
-      // MEGA — large deep-purple ringed gas giant. Far upper-left sky quadrant.
+      // MEGA — large purple ringed planet. Far upper-left sky quadrant.
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
-      size: isMobile ? 18 : 26,
-      angleOffset: Math.PI * 0.75,
-      horizonY: 55,                      // well above buildings at all times
-      radius: 95,
-      orbitSpeed: (Math.PI * 2) / 240,
+      size: isMobile ? 18 : 26,          // small — distant moon feel
+      angleOffset: Math.PI * 0.75,       // left-back quadrant
+      horizonY: 42,                      // high above buildings
+      radius: 95,                        // very far back
+      orbitSpeed: (Math.PI * 2) / 240,   // ultra-slow — barely drifts
     },
     {
-      // WEST — blue ice giant with wide bright bands. Right-back quadrant.
+      // BLUE — gas giant. Right-back quadrant.
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
       size: isMobile ? 14 : 20,
-      angleOffset: Math.PI * 0.25,
-      horizonY: 50,
-      radius: 105,
-      orbitSpeed: (Math.PI * 2) / 300,
+      angleOffset: Math.PI * 0.25,       // right-back quadrant
+      horizonY: 36,                      // slightly lower — visible from city looking up
+      radius: 105,                       // farthest
+      orbitSpeed: (Math.PI * 2) / 300,   // very slow
     },
     {
-      // GREEN — emerald ocean world with continent patches. Far left, mid-high.
+      // GREEN — emerald planet. Far left, mid-high.
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
       size: isMobile ? 12 : 18,
-      angleOffset: Math.PI * 1.60,
-      horizonY: 48,
+      angleOffset: Math.PI * 1.60,       // back-left quadrant
+      horizonY: 32,
       radius: 100,
       orbitSpeed: (Math.PI * 2) / 270,
     },
     {
-      // CRIMSON — volcanic lava world, deep upper sky.
+      // CRIMSON — red storm planet. Back-right, highest.
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
       size: isMobile ? 16 : 22,
-      angleOffset: Math.PI * 1.25,
-      horizonY: 62,
+      angleOffset: Math.PI * 1.25,       // back-right quadrant
+      horizonY: 48,                      // highest — deep upper sky
       radius: 90,
       orbitSpeed: (Math.PI * 2) / 320,
     },
+    // ── 4 NEW PLANETS (same system, extended) ───────────────────────────────────
     {
-      // ICE — LARGE golden Saturn-like ringed ice planet. FAR RIGHT. Distinct from mega.
-      // Body: pale icy blue-white with gold/amber ring system — nothing like purple mega.
+      // HIGH-1 — LARGE RINGED PURPLE — FAR RIGHT end of world, very high in sky
       id: "ice",
-      bodyColors: ["#0A1828", "#1A3850", "#2E6890", "#6AAED8", "#C8E8FF"],
-      glowColor: "rgba(140,210,255,0.55)", ringColor: "rgba(220,180,80,0.75)",
-      size: isMobile ? 38 : 58,
-      angleOffset: Math.PI * 0.45,
-      horizonY: 50,                      // raised well clear of skyline
+      bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
+      glowColor: "rgba(160,80,255,0.60)", ringColor: "rgba(200,140,255,0.70)",
+      size: isMobile ? 38 : 58,          // very large — prominent sky feature
+      angleOffset: Math.PI * 0.45,       // right end of world
+      horizonY: 45,                      // brought down — clearly visible in sky
       radius: 95,
       orbitSpeed: (Math.PI * 2) / 280,
     },
     {
-      // GOLD — fiery nebula star-forming world, upper-left back.
+      // HIGH-2 — golden nebula, upper-left back, very high
       id: "gold",
       bodyColors: ["#1A1000", "#382000", "#704010", "#B07020", "#E0C060"],
       glowColor: "rgba(220,180,60,0.40)",
       size: isMobile ? 11 : 17,
-      angleOffset: Math.PI * 1.45,
-      horizonY: 50,
-      radius: 108,
+      angleOffset: Math.PI * 1.45,       // upper-left back quadrant
+      horizonY: 55,                      // second highest
+      radius: 108,                       // farthest of all — tiny and distant
       orbitSpeed: (Math.PI * 2) / 350,
     },
     {
-      // VIOLET — deep violet storm world with lightning, right-mid sky.
+      // MID-HIGH-1 — violet storm, right-mid sky
       id: "violet",
       bodyColors: ["#150A28", "#2A1450", "#4A2488", "#7A44C0", "#B080F0"],
       glowColor: "rgba(150,100,255,0.44)",
       size: isMobile ? 13 : 18,
-      angleOffset: Math.PI * 0.10,
-      horizonY: 48,
+      angleOffset: Math.PI * 0.10,       // near-right, mid quadrant
+      horizonY: 38,
       radius: 100,
       orbitSpeed: (Math.PI * 2) / 260,
     },
     {
-      // TEAL — LARGE jade-teal gas giant with vivid storm eye. FAR LEFT. Distinct from ice.
+      // MID-HIGH-2 — LARGE TEAL GAS GIANT — FAR LEFT end of world, very high in sky
       id: "teal",
       bodyColors: ["#021410", "#053028", "#0A5840", "#189060", "#40D098"],
       glowColor: "rgba(50,200,140,0.58)",
-      size: isMobile ? 34 : 52,
-      angleOffset: Math.PI * 1.75,
-      horizonY: 50,                      // raised well clear of skyline
+      size: isMobile ? 34 : 52,          // very large — prominent sky feature
+      angleOffset: Math.PI * 1.75,       // left end of world — opposite of purple ringed
+      horizonY: 42,                      // brought down — clearly visible in sky
       radius: 94,
       orbitSpeed: (Math.PI * 2) / 230,
     },
@@ -449,21 +449,19 @@ export function createCosmicSky(scene) {
     const R = S * 0.30;
     const cx = S / 2, cy = S / 2;
 
-    // Atmospheric halo — wider, brighter
-    const haloG = pctx.createRadialGradient(cx, cy, R * 0.88, cx, cy, R * 1.85);
-    haloG.addColorStop(0,   def.glowColor);
-    haloG.addColorStop(0.4, def.glowColor.replace(/[\d.]+\)$/, "0.25)"));
-    haloG.addColorStop(1,   "rgba(0,0,0,0)");
+    // Atmospheric halo
+    const haloG = pctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.65);
+    haloG.addColorStop(0, def.glowColor);
+    haloG.addColorStop(1, "rgba(0,0,0,0)");
     pctx.fillStyle = haloG;
     pctx.fillRect(0, 0, S, S);
 
-    // Planet body — 5-stop gradient for richer color depth
+    // Planet body
     const bodyG = pctx.createRadialGradient(cx - R*0.28, cy - R*0.26, R*0.04, cx, cy, R);
     bodyG.addColorStop(0,    def.bodyColors[4]);
-    bodyG.addColorStop(0.18, def.bodyColors[4]);
-    bodyG.addColorStop(0.35, def.bodyColors[3]);
-    bodyG.addColorStop(0.60, def.bodyColors[2]);
-    bodyG.addColorStop(0.82, def.bodyColors[1]);
+    bodyG.addColorStop(0.25, def.bodyColors[3]);
+    bodyG.addColorStop(0.55, def.bodyColors[2]);
+    bodyG.addColorStop(0.78, def.bodyColors[1]);
     bodyG.addColorStop(1,    def.bodyColors[0]);
     pctx.beginPath();
     pctx.arc(cx, cy, R, 0, Math.PI * 2);
@@ -477,214 +475,132 @@ export function createCosmicSky(scene) {
     pctx.clip();
 
     if (def.id === "mega") {
-      // Purple gas giant — thick bands + swirling storm eye + cloud wisps
-      for (let b = 0; b < 12; b++) {
-        const by = cy - R + (b / 11) * R * 2;
-        const bw = R * (0.04 + rng() * 0.09);
-        const alpha = 0.10 + rng() * 0.14;
+      for (let b = 0; b < 9; b++) {
+        const by = cy - R + (b / 8) * R * 2;
+        const bw = R * (0.06 + rng() * 0.10);
+        const alpha = 0.06 + rng() * 0.10;
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
         bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${60 + Math.floor(rng()*50)},255,${alpha})`);
+        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${80 + Math.floor(rng()*40)},255,${alpha})`);
         bandG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
-      // Storm eye
-      const sx = cx + R * 0.18, sy = cy + R * 0.10;
-      const stormG = pctx.createRadialGradient(sx, sy, 0, sx, sy, R * 0.22);
-      stormG.addColorStop(0, "rgba(255,200,255,0.30)");
-      stormG.addColorStop(0.5, "rgba(200,100,255,0.18)");
-      stormG.addColorStop(1, "rgba(0,0,0,0)");
-      pctx.fillStyle = stormG;
-      pctx.beginPath(); pctx.arc(sx, sy, R * 0.22, 0, Math.PI * 2); pctx.fill();
-      // Cloud wisps
-      for (let w = 0; w < 5; w++) {
-        const wx = cx + (rng() - 0.5) * R * 1.6;
-        const wy = cy + (rng() - 0.5) * R * 1.6;
-        const wG = pctx.createRadialGradient(wx, wy, 0, wx, wy, R * 0.12);
-        wG.addColorStop(0, `rgba(220,180,255,${0.08 + rng()*0.10})`);
-        wG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = wG;
-        pctx.beginPath(); pctx.arc(wx, wy, R * 0.12, 0, Math.PI * 2); pctx.fill();
-      }
-    } else if (def.id === "west") {
-      // Blue ice giant — layered bands + polar caps + storm oval
-      for (let b = 0; b < 10; b++) {
-        const by = cy - R + (b / 9) * R * 2;
-        const bw = R * (0.04 + rng() * 0.08);
-        const alpha = 0.10 + rng() * 0.12;
-        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
-        bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(${60 + Math.floor(rng()*60)},${160 + Math.floor(rng()*80)},255,${alpha})`);
-        bandG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = bandG;
-        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
-      }
-      // Polar cap top
-      const capG = pctx.createRadialGradient(cx, cy - R * 0.75, 0, cx, cy - R * 0.75, R * 0.45);
-      capG.addColorStop(0, "rgba(200,240,255,0.22)");
-      capG.addColorStop(1, "rgba(0,0,0,0)");
-      pctx.fillStyle = capG;
-      pctx.beginPath(); pctx.arc(cx, cy - R * 0.75, R * 0.45, 0, Math.PI * 2); pctx.fill();
-      // Storm oval
-      const ox2 = cx - R * 0.25, oy2 = cy + R * 0.20;
-      pctx.save(); pctx.translate(ox2, oy2); pctx.scale(1, 0.55);
-      const oG = pctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.18);
-      oG.addColorStop(0, "rgba(160,220,255,0.28)"); oG.addColorStop(1, "rgba(0,0,0,0)");
-      pctx.fillStyle = oG; pctx.beginPath(); pctx.arc(0, 0, R * 0.18, 0, Math.PI * 2); pctx.fill();
+      pctx.save();
+      pctx.translate(cx + R * 0.15, cy + R * 0.12);
+      pctx.scale(1, 0.55);
+      pctx.beginPath();
+      pctx.arc(0, 0, R * 0.16, 0, Math.PI * 2);
+      pctx.fillStyle = "rgba(255,180,255,0.18)";
+      pctx.fill();
+      pctx.strokeStyle = "rgba(220,140,255,0.22)";
+      pctx.lineWidth = 2;
+      pctx.stroke();
       pctx.restore();
+    } else if (def.id === "west") {
+      for (let b = 0; b < 8; b++) {
+        const by = cy - R + (b / 7) * R * 2;
+        const bw = R * (0.05 + rng() * 0.09);
+        const alpha = 0.07 + rng() * 0.09;
+        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
+        bandG.addColorStop(0, "rgba(0,0,0,0)");
+        bandG.addColorStop(0.5, `rgba(${80 + Math.floor(rng()*60)},${180 + Math.floor(rng()*60)},255,${alpha})`);
+        bandG.addColorStop(1, "rgba(0,0,0,0)");
+        pctx.fillStyle = bandG;
+        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
+      }
     } else if (def.id === "east") {
       for (let p = 0; p < 14; p++) {
         const px2 = cx + (rng() - 0.5) * R * 1.7;
         const py2 = cy + (rng() - 0.5) * R * 1.7;
         const pr = R * (0.06 + rng() * 0.18);
         const pG = pctx.createRadialGradient(px2, py2, 0, px2, py2, pr);
-        pG.addColorStop(0, `rgba(${180 + Math.floor(rng()*60)},${100 + Math.floor(rng()*60)},${20 + Math.floor(rng()*40)},${0.10 + rng() * 0.14})`);
+        pG.addColorStop(0, `rgba(${180 + Math.floor(rng()*60)},${100 + Math.floor(rng()*60)},${20 + Math.floor(rng()*40)},${0.06 + rng() * 0.11})`);
         pG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = pG;
         pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
       }
     } else if (def.id === "green") {
-      // Emerald — continent patches + ocean shimmer + clouds
-      for (let p = 0; p < 10; p++) {
-        const px2 = cx + (rng() - 0.5) * R * 1.5;
-        const py2 = cy + (rng() - 0.5) * R * 1.5;
-        const pr = R * (0.08 + rng() * 0.24);
+      for (let p = 0; p < 8; p++) {
+        const px2 = cx + (rng() - 0.5) * R * 1.4;
+        const py2 = cy + (rng() - 0.5) * R * 1.4;
+        const pr = R * (0.10 + rng() * 0.22);
         const pG = pctx.createRadialGradient(px2, py2, 0, px2, py2, pr);
-        pG.addColorStop(0, `rgba(${20 + Math.floor(rng()*40)},${160 + Math.floor(rng()*80)},${40 + Math.floor(rng()*40)},${0.18 + rng()*0.14})`);
+        pG.addColorStop(0, `rgba(${20 + Math.floor(rng()*40)},${160 + Math.floor(rng()*60)},${40 + Math.floor(rng()*40)},${0.14 + rng()*0.10})`);
         pG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = pG;
         pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
       }
-      // Ocean shimmer
-      for (let s = 0; s < 5; s++) {
-        const sx2 = cx + (rng() - 0.5) * R * 1.4;
-        const sy2 = cy + (rng() - 0.5) * R * 1.4;
-        const sr2 = R * (0.06 + rng() * 0.12);
-        const sG = pctx.createRadialGradient(sx2, sy2, 0, sx2, sy2, sr2);
-        sG.addColorStop(0, `rgba(30,160,200,${0.10 + rng()*0.10})`);
-        sG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = sG; pctx.beginPath(); pctx.arc(sx2, sy2, sr2, 0, Math.PI * 2); pctx.fill();
-      }
     } else if (def.id === "ice") {
-      // ICE WORLD — pale blue-white with subtle cyan bands + large polar caps + cold storm oval
-      // Completely distinct from purple mega: icy, cold, pale
-      for (let b = 0; b < 10; b++) {
-        const by = cy - R + (b / 9) * R * 2;
-        const bw = R * (0.03 + rng() * 0.06);
-        const alpha = 0.08 + rng() * 0.10;
+      // Ice (now large purple ringed): same band style as mega
+      for (let b = 0; b < 9; b++) {
+        const by = cy - R + (b / 8) * R * 2;
+        const bw = R * (0.06 + rng() * 0.10);
+        const alpha = 0.06 + rng() * 0.10;
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
         bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(${140 + Math.floor(rng()*80)},${200 + Math.floor(rng()*55)},255,${alpha})`);
+        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${80 + Math.floor(rng()*40)},255,${alpha})`);
         bandG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
-      // Large bright polar caps (top and bottom)
-      [[cx, cy - R * 0.68, 0.50], [cx, cy + R * 0.72, 0.38]].forEach(([pcx2, pcy2, pcr]) => {
-        const capG = pctx.createRadialGradient(pcx2, pcy2, 0, pcx2, pcy2, R * pcr);
-        capG.addColorStop(0, "rgba(220,240,255,0.35)");
-        capG.addColorStop(0.5, "rgba(180,220,255,0.18)");
-        capG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = capG; pctx.beginPath(); pctx.arc(pcx2, pcy2, R * pcr, 0, Math.PI * 2); pctx.fill();
-      });
-      // Cold storm oval — pale blue, not purple
-      pctx.save(); pctx.translate(cx + R*0.15, cy + R*0.18); pctx.scale(1.4, 0.65);
-      const iceOvalG = pctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.20);
-      iceOvalG.addColorStop(0, "rgba(180,230,255,0.30)"); iceOvalG.addColorStop(1, "rgba(0,0,0,0)");
-      pctx.fillStyle = iceOvalG; pctx.beginPath(); pctx.arc(0, 0, R * 0.20, 0, Math.PI * 2); pctx.fill();
-      pctx.restore();
     } else if (def.id === "teal") {
-      // Large teal gas giant — vivid bands + large storm spot + polar shimmer
-      for (let b = 0; b < 12; b++) {
-        const by = cy - R + (b / 11) * R * 2;
-        const bw = R * (0.04 + rng() * 0.08);
-        const alpha = 0.12 + rng() * 0.15;
+      // Teal: smooth horizontal bands
+      for (let b = 0; b < 6; b++) {
+        const by = cy - R + (b / 5) * R * 2;
+        const bw = R * (0.04 + rng() * 0.07);
+        const alpha = 0.05 + rng() * 0.08;
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
         bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(${20 + Math.floor(rng()*60)},${180 + Math.floor(rng()*60)},${140 + Math.floor(rng()*50)},${alpha})`);
+        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${220 + Math.floor(rng()*35)},255,${alpha})`);
         bandG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
-      // Large storm spot
-      const tStormG = pctx.createRadialGradient(cx + R*0.20, cy - R*0.12, 0, cx + R*0.20, cy - R*0.12, R * 0.28);
-      tStormG.addColorStop(0, "rgba(100,255,200,0.35)");
-      tStormG.addColorStop(0.5, "rgba(40,180,140,0.18)");
-      tStormG.addColorStop(1, "rgba(0,0,0,0)");
-      pctx.fillStyle = tStormG; pctx.beginPath(); pctx.arc(cx + R*0.20, cy - R*0.12, R * 0.28, 0, Math.PI * 2); pctx.fill();
-      // Polar shimmer
-      const polG = pctx.createRadialGradient(cx, cy - R * 0.80, 0, cx, cy - R * 0.80, R * 0.38);
-      polG.addColorStop(0, "rgba(180,255,230,0.20)");
-      polG.addColorStop(1, "rgba(0,0,0,0)");
-      pctx.fillStyle = polG; pctx.beginPath(); pctx.arc(cx, cy - R * 0.80, R * 0.38, 0, Math.PI * 2); pctx.fill();
     } else if (def.id === "gold") {
-      // Gold nebula — cloud blobs + fiery wisps + dust streaks
-      for (let p = 0; p < 12; p++) {
-        const px2 = cx + (rng() - 0.5) * R * 1.6;
-        const py2 = cy + (rng() - 0.5) * R * 1.6;
-        const pr = R * (0.07 + rng() * 0.20);
+      // Gold: swirling blob patches
+      for (let p = 0; p < 8; p++) {
+        const px2 = cx + (rng() - 0.5) * R * 1.5;
+        const py2 = cy + (rng() - 0.5) * R * 1.5;
+        const pr = R * (0.08 + rng() * 0.18);
         const pG = pctx.createRadialGradient(px2, py2, 0, px2, py2, pr);
-        pG.addColorStop(0, `rgba(255,${180 + Math.floor(rng()*75)},${20 + Math.floor(rng()*50)},${0.12 + rng()*0.14})`);
+        pG.addColorStop(0, `rgba(255,${200 + Math.floor(rng()*55)},${40 + Math.floor(rng()*40)},${0.08 + rng()*0.10})`);
         pG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = pG; pctx.beginPath(); pctx.arc(px2, py2, pr, 0, Math.PI * 2); pctx.fill();
+        pctx.fillStyle = pG;
+        pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
       }
-      // Bright hot core
-      const coreG = pctx.createRadialGradient(cx - R*0.10, cy - R*0.08, 0, cx, cy, R * 0.55);
-      coreG.addColorStop(0, "rgba(255,240,160,0.22)");
-      coreG.addColorStop(1, "rgba(0,0,0,0)");
-      pctx.fillStyle = coreG; pctx.beginPath(); pctx.arc(cx, cy, R * 0.55, 0, Math.PI * 2); pctx.fill();
     } else if (def.id === "violet") {
-      // Violet — bands + storm spot + lightning streaks
-      for (let b = 0; b < 10; b++) {
-        const by = cy - R + (b / 9) * R * 2;
-        const bw = R * (0.03 + rng() * 0.08);
-        const alpha = 0.10 + rng() * 0.13;
+      // Violet: bands + storm spot
+      for (let b = 0; b < 7; b++) {
+        const by = cy - R + (b / 6) * R * 2;
+        const bw = R * (0.04 + rng() * 0.08);
+        const alpha = 0.06 + rng() * 0.09;
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
         bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(${140 + Math.floor(rng()*80)},${60 + Math.floor(rng()*50)},255,${alpha})`);
+        bandG.addColorStop(0.5, `rgba(${160 + Math.floor(rng()*60)},${80 + Math.floor(rng()*40)},255,${alpha})`);
         bandG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
-      }
-      // Storm spot
-      const vsG = pctx.createRadialGradient(cx - R*0.18, cy + R*0.22, 0, cx - R*0.18, cy + R*0.22, R * 0.18);
-      vsG.addColorStop(0, "rgba(220,180,255,0.30)"); vsG.addColorStop(1, "rgba(0,0,0,0)");
-      pctx.fillStyle = vsG; pctx.beginPath(); pctx.arc(cx - R*0.18, cy + R*0.22, R * 0.18, 0, Math.PI * 2); pctx.fill();
-      // Lightning wisps
-      for (let lw = 0; lw < 4; lw++) {
-        const lwx = cx + (rng() - 0.5) * R * 1.4;
-        const lwy = cy + (rng() - 0.5) * R * 1.4;
-        const lwG = pctx.createRadialGradient(lwx, lwy, 0, lwx, lwy, R * 0.08);
-        lwG.addColorStop(0, `rgba(200,160,255,${0.14 + rng()*0.10})`); lwG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = lwG; pctx.beginPath(); pctx.arc(lwx, lwy, R * 0.08, 0, Math.PI * 2); pctx.fill();
       }
     } else if (def.id === "crimson") {
-      // Crimson — thick storm bands + multiple lava hotspots + ash wisps
-      for (let b = 0; b < 10; b++) {
-        const by = cy - R + (b / 9) * R * 2;
-        const bw = R * (0.03 + rng() * 0.07);
-        const alpha = 0.10 + rng() * 0.14;
-        const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
-        bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(255,${50 + Math.floor(rng()*70)},0,${alpha})`);
-        bandG.addColorStop(1, "rgba(0,0,0,0)");
-        pctx.fillStyle = bandG; pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
+      for (let b = 0; b < 7; b++) {
+        const by = cy - R + (b / 6) * R * 2;
+        const bw = R * (0.03 + rng() * 0.06);
+        pctx.fillStyle = `rgba(255,${60 + Math.floor(rng()*60)},0,${0.08 + rng() * 0.12})`;
+        pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
       }
-      for (let h = 0; h < 9; h++) {
-        const hx = cx + (rng() - 0.5) * R * 1.6;
-        const hy = cy + (rng() - 0.5) * R * 1.6;
-        const hr = R * (0.04 + rng() * 0.12);
+      for (let h = 0; h < 6; h++) {
+        const hx = cx + (rng() - 0.5) * R * 1.5;
+        const hy = cy + (rng() - 0.5) * R * 1.5;
+        const hr = R * (0.04 + rng() * 0.10);
         const hG = pctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
-        hG.addColorStop(0, `rgba(255,${100 + Math.floor(rng()*120)},0,${0.20 + rng()*0.18})`);
+        hG.addColorStop(0, `rgba(255,${120 + Math.floor(rng()*100)},0,${0.18 + rng()*0.14})`);
         hG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = hG;
-        pctx.beginPath(); pctx.arc(hx, hy, hr, 0, Math.PI * 2); pctx.fill();
+        pctx.beginPath();
+        pctx.arc(hx, hy, hr, 0, Math.PI * 2);
+        pctx.fill();
       }
-      // Great red storm
-      const grsG = pctx.createRadialGradient(cx + R*0.18, cy + R*0.08, 0, cx + R*0.18, cy + R*0.08, R * 0.24);
-      grsG.addColorStop(0, "rgba(255,180,80,0.35)"); grsG.addColorStop(0.5, "rgba(255,60,0,0.18)"); grsG.addColorStop(1, "rgba(0,0,0,0)");
-      pctx.fillStyle = grsG; pctx.beginPath(); pctx.arc(cx + R*0.18, cy + R*0.08, R * 0.24, 0, Math.PI * 2); pctx.fill();
     }
     pctx.restore();
 
@@ -713,50 +629,20 @@ export function createCosmicSky(scene) {
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
-    // Ring for mega (purple) and ice (gold/amber Saturn-style)
-    if (def.id === "mega") {
+    // Ring for mega planet and ice (large purple ringed) planet
+    if (def.id === "mega" || def.id === "ice") {
       pctx.save();
       pctx.translate(cx, cy);
       pctx.scale(1, 0.28);
       pctx.beginPath();
       pctx.arc(0, 0, R * 1.46, 0, Math.PI * 2);
-      pctx.strokeStyle = def.ringColor; // purple ring
+      pctx.strokeStyle = def.ringColor;
       pctx.lineWidth = S * 0.045;
       pctx.stroke();
       pctx.beginPath();
       pctx.arc(0, 0, R * 1.65, 0, Math.PI * 2);
       pctx.strokeStyle = "rgba(200,140,255,0.18)";
       pctx.lineWidth = S * 0.022;
-      pctx.stroke();
-      pctx.restore();
-    } else if (def.id === "ice") {
-      // Saturn-style gold/amber multi-ring system — wider, more layered than mega's rings
-      pctx.save();
-      pctx.translate(cx, cy);
-      pctx.scale(1, 0.22); // flatter angle — Saturn-like tilt
-      // Outer faint amber halo ring
-      pctx.beginPath();
-      pctx.arc(0, 0, R * 1.82, 0, Math.PI * 2);
-      pctx.strokeStyle = "rgba(200,160,60,0.22)";
-      pctx.lineWidth = S * 0.030;
-      pctx.stroke();
-      // Main wide amber ring
-      pctx.beginPath();
-      pctx.arc(0, 0, R * 1.58, 0, Math.PI * 2);
-      pctx.strokeStyle = def.ringColor; // "rgba(220,180,80,0.75)"
-      pctx.lineWidth = S * 0.055;
-      pctx.stroke();
-      // Inner bright gold ring
-      pctx.beginPath();
-      pctx.arc(0, 0, R * 1.32, 0, Math.PI * 2);
-      pctx.strokeStyle = "rgba(255,210,100,0.55)";
-      pctx.lineWidth = S * 0.028;
-      pctx.stroke();
-      // Innermost tight bright ring
-      pctx.beginPath();
-      pctx.arc(0, 0, R * 1.16, 0, Math.PI * 2);
-      pctx.strokeStyle = "rgba(240,200,80,0.35)";
-      pctx.lineWidth = S * 0.014;
       pctx.stroke();
       pctx.restore();
     }
@@ -1010,7 +896,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
       // (i.e. directly in front of the camera where buildings are visible),
       // raise it up so it clears the skyline.
       const frontFactor = Math.max(0, Math.cos(angle));
-      const buildingArc = frontFactor * frontFactor * 30;
+      const buildingArc = frontFactor * frontFactor * 20;
 
       const cy = camera.position.y + p.horizonY + buildingArc + pitchBoost + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
@@ -1182,7 +1068,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
         mega.active = false;
         mega.amat.opacity = 0;
         mega.tmat.opacity = 0;
-        mega.nextFire = t + (mega.interval || 70) + Math.random() * 10;
+        mega.nextFire = t + (mega.interval || 120) + Math.random() * 10;
       } else {
         const prog = mega.life / mega.maxLife;
         const envelope = Math.min(prog * 5, 1) * Math.min((1 - prog) * 5, 1);
