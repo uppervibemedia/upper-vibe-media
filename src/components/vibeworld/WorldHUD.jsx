@@ -692,8 +692,8 @@ export default function WorldHUD({
                 pointerEvents: !stageWatching || stageControlsVisible ? "auto" : "none",
               }}
             >
-              {/* Title pill — only when not watching */}
-              {!stageWatching && stageVideoTitle && (
+              {/* Title pill — only when not watching and not in fullscreen (fullscreen has its own title) */}
+              {!stageWatching && !stageFullScreen && stageVideoTitle && (
                 <div
                   className="px-3 py-1 rounded-full pointer-events-none"
                   style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.08)" }}
