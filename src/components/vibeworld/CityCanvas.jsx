@@ -2143,9 +2143,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── 2D FLYBY OVERLAY — drawn after WebGL render, zero 3D depth conflict ──
         const oc = overlayCanvasRef.current;
         if (oc) {
-          const cw = renderer.domElement.clientWidth || renderer.domElement.width;
-          const ch = renderer.domElement.clientHeight || renderer.domElement.height;
-          if (oc.width !== cw || oc.height !== ch) {
+          const cw = renderer.domElement.clientWidth || renderer.domElement.width || window.innerWidth;
+          const ch = renderer.domElement.clientHeight || renderer.domElement.height || window.innerHeight;
+          if (cw > 0 && ch > 0 && (oc.width !== cw || oc.height !== ch)) {
             oc.width = cw;
             oc.height = ch;
           }

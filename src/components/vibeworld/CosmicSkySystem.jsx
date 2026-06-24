@@ -714,7 +714,7 @@ export function createCosmicSky(scene) {
     endSX:   0.30, endSY:   0.25,  // left-center, slightly lower
     _fadeInEnd: 0.08, _fadeOutStart: 0.82,
     duration: DURATION_A,
-    nextFire: now0 + 2,
+    nextFire: now0 + 1,
     _gapAfter: GAP_AFTER_A,
     _partner: null,
   };
@@ -727,7 +727,7 @@ export function createCosmicSky(scene) {
     endSX:   0.70, endSY:   0.25,
     _fadeInEnd: 0.08, _fadeOutStart: 0.82,
     duration: DURATION_B,
-    nextFire: now0 + DURATION_A + GAP_AFTER_A + 2,
+    nextFire: now0 + DURATION_A + GAP_AFTER_A + 1,
     _gapAfter: GAP_AFTER_B,
     _partner: null,
   };
@@ -853,7 +853,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
   function animateFlyby(fb, playerZ) {
     if (!fb) return;
     if (!fb.active) {
-      if (t >= fb.nextFire && playerZ > 8) {
+      if (t >= fb.nextFire) {
         if (fb._partner && fb._partner.active) return;
         fb.active = true;
         fb.life = 0;
@@ -863,12 +863,6 @@ export function animateCosmicSky(scene, camera, t, dt) {
     } else {
       fb.life += dt;
       const prog = Math.min(fb.life / fb.maxLife, 1);
-
-      // Hard gate — leave beach zone = instant hide
-      if (playerZ <= 8) {
-        fb.opacity = 0;
-        return;
-      }
 
       // Fade envelope
       const fadeInEnd    = fb._fadeInEnd    ?? 0.08;
