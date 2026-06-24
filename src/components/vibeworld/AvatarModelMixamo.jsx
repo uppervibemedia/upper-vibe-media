@@ -10,30 +10,70 @@
 import * as THREE from "three";
 import { SPAWN } from "./cityData";
 
-function makeNameSpriteMixamo(text) {
+// Outfit color key → swatch hex (matches OUTFIT_COLORS in AvatarSetup)
+const OUTFIT_SWATCH_MAP = {
+  "cosmic-blue":  "#00CFFF",
+  "neon-purple":  "#9B5FFF",
+  "shadow-black": "#8888AA",
+  "rose-glow":    "#FF4FC3",
+  "gold-aura":    "#FFD34D",
+  // legacy keys
+  "electric-blue": "#00CFFF",
+  "cosmic-black":  "#8888AA",
+  "white-silver":  "#C8D4E0",
+  "pink-rose":     "#FF4FC3",
+  "gold-yellow":   "#FFD34D",
+};
+
+function makeNameSpriteMixamo(text, outfitColorKey) {
   const label = (text || "User").slice(0, 20);
+  const accentHex = OUTFIT_SWATCH_MAP[outfitColorKey] || "#9B5FFF";
+
+  // Parse accent color for rgba usage
+  const r = parseInt(accentHex.slice(1, 3), 16);
+  const g = parseInt(accentHex.slice(3, 5), 16);
+  const b = parseInt(accentHex.slice(5, 7), 16);
+
   const c = document.createElement("canvas");
   c.width = 320; c.height = 64;
   const ctx = c.getContext("2d");
   ctx.font = "bold 20px Inter,sans-serif";
   const tw = ctx.measureText(label).width;
-  const pw = Math.min(tw + 28, 310);
+  const pw = Math.min(tw + 32, 312);
   const px = (320 - pw) / 2;
   ctx.clearRect(0, 0, 320, 64);
-  ctx.fillStyle = "rgba(10,8,28,0.78)";
+
+  // Pill background — tinted with outfit color
+  ctx.fillStyle = `rgba(${r},${g},${b},0.28)`;
   ctx.beginPath();
   ctx.roundRect(px, 10, pw, 40, 12);
   ctx.fill();
-  ctx.strokeStyle = "rgba(155,126,255,0.55)";
-  ctx.lineWidth = 1.5;
+
+  // Dark inner layer for readability
+  ctx.fillStyle = "rgba(4,4,16,0.55)";
+  ctx.beginPath();
+  ctx.roundRect(px + 2, 12, pw - 4, 36, 10);
+  ctx.fill();
+
+  // Neon border matching outfit color
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.9)`;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = accentHex;
+  ctx.shadowBlur = 10;
   ctx.beginPath();
   ctx.roundRect(px, 10, pw, 40, 12);
   ctx.stroke();
+  ctx.shadowBlur = 0;
+
   ctx.font = "bold 20px Inter,sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = accentHex;
+  ctx.shadowBlur = 8;
   ctx.fillText(label, 160, 31);
+  ctx.shadowBlur = 0;
+
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -793,9 +833,18 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
   if (opts.isRemote && opts.userId) controller.userData = { userId: opts.userId };
   // Add name sprite immediately for remote users
   if (opts.isRemote && opts.username) {
-    const nameSprite = makeNameSpriteMixamo(opts.username);
-    nameSprite.position.y = 2.8; // above Mixamo avatar head
+    const nameSprite = makeNameSpriteMixamo(opts.username, opts.outfitColorKey);
+    nameSprite.position.y = 2.35; // just above head (scaled height ~2.0)
     controller.add(nameSprite);
+
+    // Large invisible hitbox for reliable mobile tap detection
+    const hitbox = new THREE.Mesh(
+      new THREE.SphereGeometry(0.9, 6, 4),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+    );
+    hitbox.position.y = 1.0;
+    hitbox.name = "avatarHitbox";
+    controller.add(hitbox);
   }
   scene.add(controller);
 

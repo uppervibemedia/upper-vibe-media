@@ -2155,7 +2155,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
                 remote.username || "User",
                 remoteAvatarType,
                 remote.skin_tone || "medium",
-                remote.avatar_style || "streetwear"
+                remote.avatar_style || "streetwear",
+                remote.avatar_outfit_color || null
               );
             }
             entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 } };
@@ -2365,7 +2366,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       const raycaster = new THREE.Raycaster();
       raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
-      raycaster.far = 20; // Only detect within reasonable distance
+      raycaster.far = 35; // Detect within reasonable distance
 
       // Collect all remote avatar groups (including name sprites)
       const remoteGroups = [];
@@ -2400,12 +2401,21 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     };
 
     canvas.addEventListener("click", handleClick);
-    // Also handle touch on mobile
+    // Mobile touch — fire on touchend for reliable iOS Safari taps
+    let touchStartPos = null;
+    canvas.addEventListener("touchstart", (e) => {
+      if (e.changedTouches.length === 1) {
+        touchStartPos = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+      }
+    }, { passive: true });
     canvas.addEventListener("touchend", (e) => {
-      // Convert touch to click-like event
-      if (e.target !== canvas) return;
-      if (e.changedTouches.length === 1 && !e.cancelable) return;
-      handleClick({ target: canvas, clientX: e.changedTouches[0]?.clientX, clientY: e.changedTouches[0]?.clientY });
+      if (e.target !== canvas || !touchStartPos || e.changedTouches.length !== 1) return;
+      const dx = e.changedTouches[0].clientX - touchStartPos.x;
+      const dy = e.changedTouches[0].clientY - touchStartPos.y;
+      // Only fire if it was a tap (not a drag/swipe)
+      if (Math.sqrt(dx * dx + dy * dy) > 12) return;
+      handleClick({ target: canvas, clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY });
+      touchStartPos = null;
     });
 
     return () => {

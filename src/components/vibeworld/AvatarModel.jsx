@@ -60,38 +60,62 @@ function cloneGltfForRemote(gltf) {
   }
 }
 
-function makeNameSprite(text) {
+const OUTFIT_SWATCH_MAP_GLB = {
+  "cosmic-blue":  "#00CFFF",
+  "neon-purple":  "#9B5FFF",
+  "shadow-black": "#8888AA",
+  "rose-glow":    "#FF4FC3",
+  "gold-aura":    "#FFD34D",
+  "electric-blue": "#00CFFF",
+  "cosmic-black":  "#8888AA",
+  "white-silver":  "#C8D4E0",
+  "pink-rose":     "#FF4FC3",
+  "gold-yellow":   "#FFD34D",
+};
+
+function makeNameSprite(text, outfitColorKey) {
   const label = (text || "User").slice(0, 20);
+  const accentHex = OUTFIT_SWATCH_MAP_GLB[outfitColorKey] || "#9B5FFF";
+  const r = parseInt(accentHex.slice(1, 3), 16);
+  const g = parseInt(accentHex.slice(3, 5), 16);
+  const b = parseInt(accentHex.slice(5, 7), 16);
+
   const c = document.createElement("canvas");
   c.width = 320; c.height = 64;
   const ctx = c.getContext("2d");
-
-  // Measure text first for pill width
   ctx.font = "bold 20px Inter,sans-serif";
   const tw = ctx.measureText(label).width;
-  const pw = Math.min(tw + 28, 310);
+  const pw = Math.min(tw + 32, 312);
   const px = (320 - pw) / 2;
 
-  // Pill background
   ctx.clearRect(0, 0, 320, 64);
-  ctx.fillStyle = "rgba(10,8,28,0.78)";
+  ctx.fillStyle = `rgba(${r},${g},${b},0.28)`;
   ctx.beginPath();
   ctx.roundRect(px, 10, pw, 40, 12);
   ctx.fill();
 
-  // Pill border
-  ctx.strokeStyle = "rgba(155,126,255,0.55)";
-  ctx.lineWidth = 1.5;
+  ctx.fillStyle = "rgba(4,4,16,0.55)";
+  ctx.beginPath();
+  ctx.roundRect(px + 2, 12, pw - 4, 36, 10);
+  ctx.fill();
+
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.9)`;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = accentHex;
+  ctx.shadowBlur = 10;
   ctx.beginPath();
   ctx.roundRect(px, 10, pw, 40, 12);
   ctx.stroke();
+  ctx.shadowBlur = 0;
 
-  // Text
   ctx.font = "bold 20px Inter,sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = accentHex;
+  ctx.shadowBlur = 8;
   ctx.fillText(label, 160, 31);
+  ctx.shadowBlur = 0;
 
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
@@ -331,8 +355,8 @@ function attachModel(gltf, controllerGroup, opts = {}) {
     // Remove any existing name sprite first (re-attach after GLB loads)
     const existingSprite = controllerGroup.getObjectByName("nameSprite");
     if (existingSprite) controllerGroup.remove(existingSprite);
-    const sprite = makeNameSprite(opts.username);
-    sprite.position.y = 2.8; // above avatar head for both Soldier and Mixamo heights
+    const sprite = makeNameSprite(opts.username, opts.outfitColorKey);
+    sprite.position.y = 2.35; // just above head
     controllerGroup.add(sprite);
   }
 
@@ -517,16 +541,25 @@ export function retintAvatar(entry, suitColor) {
 }
 
 // ─── PUBLIC: createRemoteAvatar ───────────────────────────────
-export function createRemoteAvatar(scene, userId, username, avatarType, skinTone, avatarStyle) {
+export function createRemoteAvatar(scene, userId, username, avatarType, skinTone, avatarStyle, outfitColorKey) {
   const controller = new THREE.Group();
   controller.name = `remote_${userId}`;
   controller.userData = { userId };
   controller.add(makeShadow());
   // Add name sprite immediately — visible even before GLB finishes loading
   if (username) {
-    const sprite = makeNameSprite(username);
-    sprite.position.y = 2.8;
+    const sprite = makeNameSprite(username, outfitColorKey);
+    sprite.position.y = 2.35; // just above head
     controller.add(sprite);
+
+    // Large invisible hitbox for reliable mobile tap detection
+    const hitbox = new THREE.Mesh(
+      new THREE.SphereGeometry(0.9, 6, 4),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+    );
+    hitbox.position.y = 1.0;
+    hitbox.name = "avatarHitbox";
+    controller.add(hitbox);
   }
   scene.add(controller);
 
@@ -538,6 +571,7 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
       const { mixer, clips, currentAnim } = attachModel(gltf, controller, {
         avatarStyle: avatarStyle || "streetwear",
         username,
+        outfitColorKey,
         isRemote: true,
       });
       entry.mixer = mixer;
