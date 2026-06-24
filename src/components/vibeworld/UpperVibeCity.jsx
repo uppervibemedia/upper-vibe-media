@@ -1028,6 +1028,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         open={stageFullScreen}
         video={stageVideos[stageVideoIdx] || null}
         onClose={handleExitFullScreen}
+        onStageExitWatchMode={handleExitWatchMode}
+        onStageNextVideo={handleStageNextVideo}
+        onStagePlaySong={handleStagePlaySong}
+        onStageMuteToggle={handleStageMuteToggle}
+        stageMuted={stageMuted}
+        isMobile={isMobile}
+        mobileLayout={mobileLayout}
       />
 
       {/* MOBILE: Game HUD — joystick + camera look.

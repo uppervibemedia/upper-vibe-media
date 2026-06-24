@@ -658,10 +658,10 @@ export default function WorldHUD({
           </motion.div>
         )}
 
-        {zone?.id === "stage" && (
+        {zone?.id === "stage" && !stageFullScreen && (
           <>
-            {/* ── Tap-to-show invisible overlay (when watching/fullscreen) ── */}
-            {(stageWatching || stageFullScreen) && (
+            {/* ── Tap-to-show invisible overlay (when watching, not fullscreen) ── */}
+            {stageWatching && (
               <div
                 className="fixed inset-0 z-[195]"
                 style={{ pointerEvents: "auto", background: "transparent" }}
@@ -670,41 +670,11 @@ export default function WorldHUD({
               />
             )}
 
-            {/* ── Small always-visible Exit button — top-right (fullscreen only) ── */}
-            {stageFullScreen && onStageExitFullScreen && (
-              <div
-                className="fixed z-[210]"
-                style={{
-                  top: isMobile && mobileLayout
-                    ? `${mobileLayout.sa.top + 8}px`
-                    : "calc(env(safe-area-inset-top, 0px) + 8px)",
-                  right: "calc(env(safe-area-inset-right, 0px) + 12px)",
-                  pointerEvents: "auto",
-                }}
-              >
-                <button
-                  onTouchStart={(e) => { e.stopPropagation(); hapticTap(); onStageExitFullScreen(); }}
-                  onClick={(e) => { e.stopPropagation(); hapticTap(); onStageExitFullScreen(); }}
-                  className="flex items-center gap-1 px-3 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
-                  style={{
-                    background: "rgba(0,0,0,0.55)",
-                    backdropFilter: "blur(12px)",
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    color: "rgba(255,255,255,0.8)",
-                    minWidth: 44, minHeight: 44, height: 44,
-                    touchAction: "manipulation",
-                  }}
-                >
-                  <X className="w-3.5 h-3.5" /> Exit
-                </button>
-              </div>
-            )}
-
-            {/* ── Auto-hide control bar ── */}
+            {/* ── Auto-hide control bar (not shown in fullscreen — StageFullScreen owns that UI) ── */}
             <motion.div
               key="stage-actions"
               initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: (!stageWatching && !stageFullScreen) || stageControlsVisible ? 1 : 0, y: 0 }}
+              animate={{ opacity: !stageWatching || stageControlsVisible ? 1 : 0, y: 0 }}
               transition={{ duration: 0.25 }}
               className="fixed left-0 right-0 z-[200] flex flex-col items-center gap-1.5 px-2"
               style={{
@@ -713,11 +683,11 @@ export default function WorldHUD({
                   : isMobile
                     ? "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)"
                     : "1.25rem",
-                pointerEvents: (!stageWatching && !stageFullScreen) || stageControlsVisible ? "auto" : "none",
+                pointerEvents: !stageWatching || stageControlsVisible ? "auto" : "none",
               }}
             >
               {/* Title pill — only when not watching */}
-              {!stageWatching && !stageFullScreen && stageVideoTitle && (
+              {!stageWatching && stageVideoTitle && (
                 <div
                   className="px-3 py-1 rounded-full pointer-events-none"
                   style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.08)" }}
@@ -734,7 +704,7 @@ export default function WorldHUD({
               <div
                 className="flex flex-wrap items-center gap-1.5 justify-center px-3 py-2 rounded-2xl"
                 style={{
-                  background: (stageWatching || stageFullScreen) ? "rgba(0,0,0,0.60)" : "rgba(0,0,0,0.80)",
+                  background: stageWatching ? "rgba(0,0,0,0.60)" : "rgba(0,0,0,0.80)",
                   backdropFilter: "blur(16px)",
                   border: "1px solid rgba(255,255,255,0.10)",
                   boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
@@ -782,8 +752,8 @@ export default function WorldHUD({
                   </button>
                 )}
 
-                {/* Full Screen — only when NOT in fullscreen */}
-                {onStageFullScreen && !stageFullScreen && (
+                {/* Full Screen */}
+                {onStageFullScreen && (
                   <button
                     onTouchStart={(e) => e.stopPropagation()}
                     onClick={() => { hapticTap(); onStageFullScreen(); }}
@@ -794,44 +764,18 @@ export default function WorldHUD({
                   </button>
                 )}
 
-                {/* Next — only when not watching */}
-                {!stageWatching && !stageFullScreen && (
-                  <button
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onClick={() => { hapticTap(); onStageNextVideo(); }}
-                    className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
-                    style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", minHeight: "36px", touchAction: "manipulation" }}
-                  >
-                    <SkipForward className="w-3 h-3" /> Next
-                  </button>
-                )}
+                {/* Next */}
+                <button
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={() => { hapticTap(); onStageNextVideo(); showStageControls(); }}
+                  className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+                  style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", minHeight: "36px", touchAction: "manipulation" }}
+                >
+                  <SkipForward className="w-3 h-3" /> Next
+                </button>
 
-                {/* Next — visible when watching (in the auto-hide bar) */}
-                {stageWatching && (
-                  <button
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onClick={() => { hapticTap(); onStageNextVideo(); showStageControls(); }}
-                    className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
-                    style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", minHeight: "36px", touchAction: "manipulation" }}
-                  >
-                    <SkipForward className="w-3 h-3" /> Next
-                  </button>
-                )}
-
-                {/* Play Song — only when not watching */}
-                {!stageWatching && !stageFullScreen && onStagePlaySong && (
-                  <button
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onClick={() => { hapticTap(); onStagePlaySong(); }}
-                    className="flex items-center gap-1 px-3 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
-                    style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff", minHeight: "36px", touchAction: "manipulation" }}
-                  >
-                    <Music4 className="w-3 h-3" /> Play Song
-                  </button>
-                )}
-
-                {/* Play Song — visible when watching (in the auto-hide bar) */}
-                {stageWatching && onStagePlaySong && (
+                {/* Play Song */}
+                {onStagePlaySong && (
                   <button
                     onTouchStart={(e) => e.stopPropagation()}
                     onClick={() => { hapticTap(); onStagePlaySong(); showStageControls(); }}
