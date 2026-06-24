@@ -3,7 +3,7 @@ import { motion, useAnimationFrame } from "framer-motion";
 import usePageVisible from "@/hooks/usePageVisible";
 import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
 import { isNewTrack, isNewVisualizer, sortVisualizersNewestFirst } from "@/lib/isNewTrack";
-import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Users, Radio, Zap } from "lucide-react";
+import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Users, Radio, Zap, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
@@ -427,6 +427,13 @@ export default function Home() {
                   onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,168,0,0.12)"; e.currentTarget.style.boxShadow = "0 0 16px rgba(245,168,0,0.18)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,168,0,0.06)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}>
                   <Tv2 className="w-3 h-3" /> Watch Visualizers
+                </Link>
+                <Link to="/vibe-world"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-sm font-black text-[11px] tracking-[0.1em] uppercase"
+                  style={{ background: "rgba(155,79,255,0.07)", border: "1px solid rgba(155,79,255,0.28)", color: "#C43BFF", transition: "all 0.2s ease" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(155,79,255,0.14)"; e.currentTarget.style.boxShadow = "0 0 16px rgba(155,79,255,0.2)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(155,79,255,0.07)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}>
+                  <MapPin className="w-3 h-3" /> Enter Upper Vibe City
                 </Link>
               </div>
 
