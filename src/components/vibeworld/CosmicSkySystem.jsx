@@ -894,6 +894,17 @@ export function animateCosmicSky(scene, camera, t, dt) {
     scene.userData._planetOpacity += (globalOpacityTarget - scene.userData._planetOpacity) * Math.min(1, dt * 2.0);
     const globalPlanetOpacity = scene.userData._planetOpacity;
 
+    // City proximity fade: when the player is near the skyline buildings (city-side, z < 15),
+    // fade out any planet that appears in the forward half of the sky (where buildings are).
+    // This prevents planets bleeding through building geometry when looking up.
+    // playerZ < 0  = deep city (near stage/buildings) → full fade
+    // playerZ 0–15 = transition zone → gradual fade
+    // playerZ > 15 = beach/open sky → no fade
+    const playerZ = scene.userData._playerZ ?? 0;
+    const cityFade = playerZ < 15
+      ? Math.max(0, Math.min(1, playerZ / 15)) // 0 at z≤0, 1 at z≥15
+      : 1.0;
+
     for (const p of horizonPlanets) {
       const angle = t * p.orbitSpeed + p.angleOffset;
 
@@ -914,14 +925,23 @@ export function animateCosmicSky(scene, camera, t, dt) {
       // Beach-side planets (behind camera relative to stage) stay fully visible.
       let opacity = globalPlanetOpacity;
       if (ferrisRiding && !hidePlanets) {
-        const isCitySide = frontFactor > 0.2; // planet is in front / stage-facing half
+        const isCitySide = frontFactor > 0.2;
         const ferrisTarget = isCitySide ? 0.0 : 1.0;
         if (!p._ferrisOpacity) p._ferrisOpacity = 1.0;
         p._ferrisOpacity += (ferrisTarget - p._ferrisOpacity) * Math.min(1, dt * 2.0);
         opacity = p._ferrisOpacity;
       } else {
-        // Reset per-planet fade when not on ride
         if (p._ferrisOpacity !== undefined) p._ferrisOpacity = 1.0;
+
+        // City building proximity fade: planets in the forward/city half fade out
+        // based on how deep into the city the player is standing.
+        // frontFactor: 1 = directly in front (stage-facing), 0 = behind/sides.
+        // We fade planets proportionally — deep-city ones fully, side ones partially.
+        const cityFadeStrength = frontFactor * (1 - cityFade); // 0 = no fade, 1 = fully faded
+        if (!p._cityOpacity) p._cityOpacity = 1.0;
+        const cityTarget = 1.0 - cityFadeStrength;
+        p._cityOpacity += (cityTarget - p._cityOpacity) * Math.min(1, dt * 3.0);
+        opacity = globalPlanetOpacity * p._cityOpacity;
       }
       p.mat.opacity = opacity;
     }
