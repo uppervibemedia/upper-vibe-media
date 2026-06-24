@@ -104,8 +104,8 @@ export function createCosmicSky(scene) {
   for (let i = 0; i < canvasStarCount; i++) {
     const sx = seededStar() * SKY_W;
     const sy = seededStar() * SKY_H;
-    // Larger radius so stars are visible when texture is mapped to sphere
-    const sr = 1.2 + seededStar() * (seededStar() < 0.08 ? 3.0 : 1.2);
+    // 50% smaller radius — subtler, cleaner sky
+    const sr = 0.6 + seededStar() * (seededStar() < 0.08 ? 1.5 : 0.6);
     const bright = SKY_DEBUG ? 1.0 : (0.55 + seededStar() * 0.45);
     const warm = seededStar() < 0.12;
     const col = warm
@@ -390,14 +390,14 @@ export function createCosmicSky(scene) {
     },
     // ── 4 NEW PLANETS (same system, extended) ───────────────────────────────────
     {
-      // HIGH-1 — ice blue, far upper-right, highest of all planets
+      // HIGH-1 — ice blue, FAR RIGHT end of world — bigger support planet
       id: "ice",
       bodyColors: ["#050F1A", "#0A2035", "#164A70", "#2A80B0", "#70C0F0"],
-      glowColor: "rgba(100,200,255,0.42)",
-      size: isMobile ? 13 : 19,
-      angleOffset: Math.PI * 0.55,       // upper-right quadrant
-      horizonY: 58,                      // highest horizonY — deep upper sky
-      radius: 100,
+      glowColor: "rgba(100,200,255,0.50)",
+      size: isMobile ? 22 : 34,          // upgraded: was 13/19
+      angleOffset: Math.PI * 0.45,       // right end of world
+      horizonY: 52,                      // high upper sky — safe above buildings
+      radius: 98,
       orbitSpeed: (Math.PI * 2) / 280,
     },
     {
@@ -418,19 +418,19 @@ export function createCosmicSky(scene) {
       glowColor: "rgba(150,100,255,0.44)",
       size: isMobile ? 13 : 18,
       angleOffset: Math.PI * 0.10,       // near-right, mid quadrant
-      horizonY: 38,                      // raised above buildings (was 30)
-      radius: 100,                       // pushed further out (was 88)
+      horizonY: 38,
+      radius: 100,
       orbitSpeed: (Math.PI * 2) / 260,
     },
     {
-      // MID-HIGH-2 — teal-green, left-mid sky
+      // MID-HIGH-2 — teal-green, FAR LEFT end of world — bigger support planet
       id: "teal",
       bodyColors: ["#021410", "#053028", "#0A5840", "#189060", "#40D098"],
-      glowColor: "rgba(50,200,140,0.42)",
-      size: isMobile ? 11 : 16,
-      angleOffset: Math.PI * 1.88,       // near-left, mid quadrant
-      horizonY: 36,                      // raised above buildings (was 28)
-      radius: 98,                        // pushed further out (was 92)
+      glowColor: "rgba(50,200,140,0.52)",
+      size: isMobile ? 20 : 32,          // upgraded: was 11/16
+      angleOffset: Math.PI * 1.75,       // left end of world — opposite of ice
+      horizonY: 50,                      // high upper sky — safe above buildings
+      radius: 96,
       orbitSpeed: (Math.PI * 2) / 230,
     },
   ];
