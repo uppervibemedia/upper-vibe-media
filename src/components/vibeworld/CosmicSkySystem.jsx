@@ -355,19 +355,19 @@ export function createCosmicSky(scene) {
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
       size: isMobile ? 32 : 44,
       angleOffset: Math.PI * 0.72,
-      horizonY: 12,   // low in sky — in normal camera view above buildings
-      radius: 280,
+      horizonY: 4,   // camera-relative: visible in upper portion of normal view
+      radius: 200,
       orbitSpeed: (Math.PI * 2) / 320,
     },
     {
-      // VIOLET — small purple ringed. NW lane, slightly offset from mega.
+      // VIOLET — small purple ringed.
       id: "violet",
       bodyColors: ["#120820", "#2A1245", "#4A2070", "#7040A0", "#AA70E0"],
       glowColor: "rgba(130,60,220,0.40)", ringColor: "rgba(170,110,240,0.45)",
       size: isMobile ? 18 : 24,
       angleOffset: Math.PI * 0.58,
-      horizonY: 8,    // just above building tops — clearly in frame
-      radius: 240,
+      horizonY: 3,
+      radius: 180,
       orbitSpeed: (Math.PI * 2) / 260,
     },
     {
@@ -377,8 +377,8 @@ export function createCosmicSky(scene) {
       glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
       size: isMobile ? 26 : 36,
       angleOffset: Math.PI * 0.32,
-      horizonY: 10,   // just above building tops
-      radius: 260,
+      horizonY: 5,
+      radius: 190,
       orbitSpeed: (Math.PI * 2) / 380,
     },
     {
@@ -388,8 +388,8 @@ export function createCosmicSky(scene) {
       glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
       size: isMobile ? 22 : 30,
       angleOffset: Math.PI * 0.85,
-      horizonY: 14,
-      radius: 300,
+      horizonY: 6,
+      radius: 210,
       orbitSpeed: (Math.PI * 2) / 300,
     },
     {
@@ -399,8 +399,8 @@ export function createCosmicSky(scene) {
       glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
       size: isMobile ? 28 : 38,
       angleOffset: Math.PI * 0.15,
-      horizonY: 13,
-      radius: 310,
+      horizonY: 4,
+      radius: 220,
       orbitSpeed: (Math.PI * 2) / 400,
     },
   ];
