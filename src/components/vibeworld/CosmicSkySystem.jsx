@@ -160,7 +160,7 @@ export function createCosmicSky(scene) {
   // This is what you actually SEE. The canvas stars above are supplemental.
   // Using THREE.Points: one BufferGeometry, one PointsMaterial, no per-star updates.
   {
-    const starCount = isMobile ? 500 : 1200;
+    const starCount = isMobile ? 300 : 700;
     const starGeo = new THREE.BufferGeometry();
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
@@ -209,7 +209,7 @@ export function createCosmicSky(scene) {
     starTex.minFilter = THREE.LinearFilter;
 
     const starMat = new THREE.PointsMaterial({
-      size: isMobile ? 0.55 : 0.65,
+      size: isMobile ? 0.25 : 0.30,
       map: starTex,
       vertexColors: true,
       transparent: true,
@@ -708,23 +708,29 @@ export function createCosmicSky(scene) {
   const GAP_AFTER_A = 7;    // gap after A before B fires
   const GAP_AFTER_B = 5;    // gap after B before A fires
 
+  // Beach flyby paths — camera-relative offsets.
+  // Avatar occupies roughly cameraX -8 to +8, cameraY -5 to +8 in normal third-person view.
+  // Planet A sweeps LEFT side: starts far left, ends left-center — never crosses center.
+  // Planet B sweeps RIGHT side: starts far right, ends right-center — never crosses center.
+  // cameraZ -80 to -90: far back in depth so planet reads as sky, not foreground.
+  // cameraY 10–14: above beach props/pads, below upper sky planets, avatar head at ~cameraY 5.
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // Camera-relative offsets: sweep left→right across the south sky
-    startCX: -65, startCY: 20, startCZ: -58,
-    endCX:    65, endCY:   18, endCZ: -52,
+    // LEFT side sweep — planet stays on left, never enters avatar center zone (cameraX > -15)
+    startCX: -80, startCY: 13, startCZ: -85,
+    endCX:   -18, endCY:   11, endCZ: -78,
     duration: DURATION_A,
-    nextFire: now0 + 2,          // fires 2s after world loads
+    nextFire: now0 + 2,
     _gapAfter: GAP_AFTER_A,
     _partner: null,
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // Camera-relative: sweep right→left, slightly higher
-    startCX:  68, startCY: 22, startCZ: -60,
-    endCX:   -68, endCY:   20, endCZ: -54,
+    // RIGHT side sweep — planet stays on right, never enters avatar center zone (cameraX < +15)
+    startCX:  80, startCY: 14, startCZ: -88,
+    endCX:    18, endCY:   12, endCZ: -80,
     duration: DURATION_B,
     nextFire: now0 + DURATION_A + GAP_AFTER_A + 2,
     _gapAfter: GAP_AFTER_B,
