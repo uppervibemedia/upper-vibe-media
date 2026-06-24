@@ -420,47 +420,52 @@ export default function createCitySkyline(scene) {
     return panel;
   }
 
-  // ── WEST SIGNS — storefront level, just above awning (~y=2.8) ──
-  // The storefront awning sits at y=2.05 on each building. Signs mount just above it
-  // at y≈2.8–3.2 so they sit directly above the doors at walking eye level.
+  // ── NEON BUILDING SIGNS — eye-level storefront placement ───────
+  // Stage is at x=0, z=-32. East wall x=+38, West wall x=-38.
+  // Signs sit at y=2.25 — right above the 2.0 storefront floor / awning.
+  // Face offset: x = wall ± (depth/2 + 0.05) so panel is flush against the facade.
+  // Layout:
+  //   STAGE-FLANKING (z≈-32): 1 west + 1 east — frame the Music Stage left/right
+  //   SPREAD OUT: 2 west (z=-17, z=-5) + 2 east (z=-14, z=-2) — wide distribution
+  const SIGN_Y   = 2.25;           // just above awning — true eye level
+  const W_FACE_X = -38 + 0.9;     // west wall east-facing surface
+  const E_FACE_X =  38 - 0.9;     // east wall west-facing surface
 
-  // Sign 1: "UPPER VIBE MEDIA" — west building at z=-32, storefront face
-  const wSign1 = makeFacadeSign("UPPER VIBE MEDIA", "#00E5FF", "#00AADD", 5.5, 0.9);
-  wSign1.position.set(-38 + 0.85 + 0.04, 2.9, -32);
-  wSign1.rotation.y = Math.PI / 2; // face east toward plaza
-  scene.add(wSign1);
+  // ── Stage-flanking pair (frames the Music Stage from east & west) ──
+  // WEST side of stage — "UPPER VIBE MEDIA"
+  const wStage = makeFacadeSign("UPPER VIBE MEDIA", "#00E5FF", "#00AADD", 5.5, 0.85);
+  wStage.position.set(W_FACE_X, SIGN_Y, -32);
+  wStage.rotation.y = Math.PI / 2;
+  scene.add(wStage);
 
-  // Sign 2: "VIBE HIGHER" — west building at z=-26
-  const wSign2 = makeFacadeSign("VIBE HIGHER", "#C43BFF", "#9B00FF", 4.2, 0.85);
-  wSign2.position.set(-38 + 0.85 + 0.04, 2.85, -26);
-  wSign2.rotation.y = Math.PI / 2;
-  scene.add(wSign2);
+  // EAST side of stage — "HIGH VIBE MUSIC"
+  const eStage = makeFacadeSign("HIGH VIBE MUSIC", "#00E5FF", "#0088FF", 5.2, 0.85);
+  eStage.position.set(E_FACE_X, SIGN_Y, -32);
+  eStage.rotation.y = -Math.PI / 2;
+  scene.add(eStage);
 
-  // Sign 3: "432 HZ LIVE" — west building at z=-20
-  const wSign3 = makeFacadeSign("432 HZ LIVE", "#FF4FC3", "#CC0099", 3.8, 0.85);
-  wSign3.position.set(-38 + 0.85 + 0.04, 2.85, -20);
-  wSign3.rotation.y = Math.PI / 2;
-  scene.add(wSign3);
+  // ── Spread-out signs — distributed far across the skyline ──────
+  // West: z=-17 (near lounge/library) and z=-5 (near plaza edge)
+  const wFar1 = makeFacadeSign("VIBE HIGHER", "#C43BFF", "#9B00FF", 4.2, 0.85);
+  wFar1.position.set(W_FACE_X, SIGN_Y, -17);
+  wFar1.rotation.y = Math.PI / 2;
+  scene.add(wFar1);
 
-  // ── EAST SIGNS — storefront level, just above awning (~y=2.8) ──
+  const wFar2 = makeFacadeSign("432 HZ LIVE", "#FF4FC3", "#CC0099", 3.8, 0.85);
+  wFar2.position.set(W_FACE_X, SIGN_Y, -5);
+  wFar2.rotation.y = Math.PI / 2;
+  scene.add(wFar2);
 
-  // Sign 4: "HIGH VIBE MUSIC" — east building at z=-32
-  const eSign1 = makeFacadeSign("HIGH VIBE MUSIC", "#00E5FF", "#0088FF", 5.2, 0.9);
-  eSign1.position.set(38 - 0.85 - 0.04, 2.9, -32);
-  eSign1.rotation.y = -Math.PI / 2; // face west toward plaza
-  scene.add(eSign1);
+  // East: z=-14 (spread mid) and z=-2 (near plaza edge)
+  const eFar1 = makeFacadeSign("FREQUENCY OF THE FUTURE", "#A078FF", "#7C3AED", 6.5, 0.85);
+  eFar1.position.set(E_FACE_X, SIGN_Y, -14);
+  eFar1.rotation.y = -Math.PI / 2;
+  scene.add(eFar1);
 
-  // Sign 5: "FREQUENCY OF THE FUTURE" — east building at z=-23
-  const eSign2 = makeFacadeSign("FREQUENCY OF THE FUTURE", "#A078FF", "#7C3AED", 7.0, 0.85);
-  eSign2.position.set(38 - 0.85 - 0.04, 2.85, -23);
-  eSign2.rotation.y = -Math.PI / 2;
-  scene.add(eSign2);
-
-  // Sign 6: "UPPER VIBE CITY" — east building at z=-17
-  const eSign3 = makeFacadeSign("UPPER VIBE CITY", "#FF6B35", "#DD4400", 5.0, 0.85);
-  eSign3.position.set(38 - 0.85 - 0.04, 2.85, -17);
-  eSign3.rotation.y = -Math.PI / 2;
-  scene.add(eSign3);
+  const eFar2 = makeFacadeSign("UPPER VIBE CITY", "#FF6B35", "#DD4400", 5.0, 0.85);
+  eFar2.position.set(E_FACE_X, SIGN_Y, -2);
+  eFar2.rotation.y = -Math.PI / 2;
+  scene.add(eFar2);
 
   scene.add(buildings);
 
