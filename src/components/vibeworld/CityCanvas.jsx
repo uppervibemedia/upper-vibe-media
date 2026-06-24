@@ -2092,6 +2092,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──
         scene.userData._playerZ = pz;
         scene.userData._camPitch = camPitchSmoothRef.current; // pass live pitch for planet compensation
+        scene.userData._camYaw   = camYawSmoothRef.current;   // pass live yaw for facing-direction fade
         // During Ferris ride: only hide city-side (front/stage-facing) planets.
         // During stage fullscreen/watch (locked): hide all planets.
         scene.userData._hidePlanets = lockedRef.current;

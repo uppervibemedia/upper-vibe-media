@@ -894,16 +894,32 @@ export function animateCosmicSky(scene, camera, t, dt) {
     scene.userData._planetOpacity += (globalOpacityTarget - scene.userData._planetOpacity) * Math.min(1, dt * 2.0);
     const globalPlanetOpacity = scene.userData._planetOpacity;
 
-    // City proximity fade: when the player is near the skyline buildings (city-side, z < 15),
-    // fade out any planet that appears in the forward half of the sky (where buildings are).
-    // This prevents planets bleeding through building geometry when looking up.
-    // playerZ < 0  = deep city (near stage/buildings) → full fade
-    // playerZ 0–15 = transition zone → gradual fade
-    // playerZ > 15 = beach/open sky → no fade
+    // City/stage proximity + facing fade:
+    // When the player is near the stage or dancefloor (z < 5) AND facing toward
+    // the skyline (camera yaw points toward -Z / north), fade all planets out to
+    // prevent them bleeding through building geometry when looking up.
+    // If the player turns toward the beach (+Z), planets restore immediately.
+    //
+    // camYaw: world-space angle stored each frame by CityCanvas.
+    //   camYaw ≈ 0        → camera sits at +Z (behind avatar facing stage = north)
+    //   camYaw ≈ Math.PI  → camera sits at -Z (behind avatar facing beach = south)
+    // "Facing north" (toward buildings): camera looks toward -Z, so camYaw is near 0.
+    // facingNorth = how much the camera is oriented toward the stage skyline (0–1).
     const playerZ = scene.userData._playerZ ?? 0;
-    const cityFade = playerZ < 15
-      ? Math.max(0, Math.min(1, playerZ / 15)) // 0 at z≤0, 1 at z≥15
-      : 1.0;
+    const camYawWorld = scene.userData._camYaw ?? 0;
+    // cos(camYaw) ≈ +1 when camera behind at +Z (avatar faces stage = toward buildings)
+    // cos(camYaw) ≈ -1 when camera behind at -Z (avatar faces beach)
+    const facingNorth = Math.max(0, Math.cos(camYawWorld)); // 0–1
+
+    // Zone gate: only apply fade when player is in stage/plaza/dancefloor area (z < 8)
+    // Transition band: z 5–12 so it fades gracefully as they walk away
+    const inCityZone = playerZ < 12
+      ? Math.max(0, Math.min(1, (12 - playerZ) / 10)) // 1 at z≤2, 0 at z≥12
+      : 0;
+
+    // Combined: fade strength = how much player is in city zone × how much they face north
+    // facingNorth^2 sharpens it so only truly north-facing angles trigger the fade
+    const cityBlocking = inCityZone * (facingNorth * facingNorth);
 
     for (const p of horizonPlanets) {
       const angle = t * p.orbitSpeed + p.angleOffset;
@@ -933,14 +949,12 @@ export function animateCosmicSky(scene, camera, t, dt) {
       } else {
         if (p._ferrisOpacity !== undefined) p._ferrisOpacity = 1.0;
 
-        // City building proximity fade: planets in the forward/city half fade out
-        // based on how deep into the city the player is standing.
-        // frontFactor: 1 = directly in front (stage-facing), 0 = behind/sides.
-        // We fade planets proportionally — deep-city ones fully, side ones partially.
-        const cityFadeStrength = frontFactor * (1 - cityFade); // 0 = no fade, 1 = fully faded
+        // City/stage proximity + facing fade: smoothly block all planets when
+        // the player is near the stage/dancefloor and looking toward the buildings.
+        // Fades in as they turn north, fades out instantly as they turn toward beach.
         if (!p._cityOpacity) p._cityOpacity = 1.0;
-        const cityTarget = 1.0 - cityFadeStrength;
-        p._cityOpacity += (cityTarget - p._cityOpacity) * Math.min(1, dt * 3.0);
+        const cityTarget = 1.0 - cityBlocking;
+        p._cityOpacity += (cityTarget - p._cityOpacity) * Math.min(1, dt * 4.0);
         opacity = globalPlanetOpacity * p._cityOpacity;
       }
       p.mat.opacity = opacity;
