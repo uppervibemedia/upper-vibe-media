@@ -246,7 +246,10 @@ function buildFemaleCasual(C) {
   return root;
 }
 
-// ── Procedural animation (shared with both genders) ───────────────────────────
+// ── Procedural animation — natural walk/run cycle ─────────────────────────────
+// Uses a single phase accumulator driven by actual movement speed so feet
+// never slide relative to the ground. Smooth lerp blending between states
+// replaces hard frequency/amplitude switches.
 function animateCasual(entry, speed, isDancing, dt) {
   if (!entry?.root) return;
   const model = entry.root.getObjectByName("avatarModel");
@@ -254,40 +257,133 @@ function animateCasual(entry, speed, isDancing, dt) {
   const p = model.userData._animParts;
   if (!p) return;
 
-  model.userData._animTime = (model.userData._animTime || 0) + dt;
-  const t = model.userData._animTime;
+  const ud = model.userData;
   const sin = Math.sin;
+  const cos = Math.cos;
 
-  const isRun  = speed > 0.5;
-  const isWalk = speed > 0.07 && !isRun;
-  const freq   = isRun ? 3.2 : isWalk ? 2.0 : 1.0;
-  const amp    = isRun ? 0.55 : isWalk ? 0.32 : 0.0;
+  // ── Smooth blend weight (0=idle, 1=full walk/run) with asymmetric lag ───────
+  // Ease in fast (0.18s) so movement feels responsive; ease out slower (0.35s)
+  // so stopping looks natural and feet don't snap.
+  const blendTarget = (speed > 0.06 && !isDancing) ? Math.min(speed / 2.8, 1.0) : 0.0;
+  const blendSpeed  = blendTarget > (ud._blend || 0) ? 5.5 : 2.8; // fast in, slow out
+  ud._blend = (ud._blend || 0) + (blendTarget - (ud._blend || 0)) * Math.min(1, blendSpeed * dt);
+  const blend = ud._blend;
 
-  if (p.legL) p.legL.rotation.x = sin(t * freq) * amp;
-  if (p.legR) p.legR.rotation.x = -sin(t * freq) * amp;
-  if (p.bootL) p.bootL.rotation.x = sin(t * freq) * amp * 0.5;
-  if (p.bootR) p.bootR.rotation.x = -sin(t * freq) * amp * 0.5;
+  // Walk vs run blend (0=walk, 1=full run) — crossfade over 0.3s
+  const runTarget  = Math.max(0, (speed - 1.8) / 1.4);
+  const runBlend   = Math.min(1, (ud._runBlend || 0) + (runTarget - (ud._runBlend || 0)) * Math.min(1, 4.0 * dt));
+  ud._runBlend = runBlend;
+
+  // ── Phase accumulator: advance proportional to actual speed ──────────────────
+  // Walk cycle stride at 3.0 m/s → one full step (2π) per ~0.9m of travel.
+  // Run cycle is faster — scaled up smoothly.
+  const walkCycleSpeed = 2.6;  // rad/s at reference walk speed (3.0 m/s)
+  const runCycleSpeed  = 4.8;  // rad/s at full run
+  const cycleSpeed = walkCycleSpeed + (runCycleSpeed - walkCycleSpeed) * runBlend;
+
+  // Only advance phase when actually moving — prevents sliding when stopped
+  if (speed > 0.06 && !isDancing) {
+    ud._phase = (ud._phase || 0) + cycleSpeed * dt;
+  }
+  // Separate slow idle sway timer always advances
+  ud._idleT = (ud._idleT || 0) + dt;
+
+  const phase  = ud._phase || 0;
+  const idleT  = ud._idleT;
+
+  // ── Animation amplitudes — interpolate with blend & runBlend ─────────────────
+  const legAmpWalk = 0.42;   // max leg swing in walk
+  const legAmpRun  = 0.62;   // max leg swing in run
+  const legAmp     = (legAmpWalk + (legAmpRun - legAmpWalk) * runBlend) * blend;
+
+  const armAmpWalk = 0.30;
+  const armAmpRun  = 0.50;
+  const armAmp     = (armAmpWalk + (armAmpRun - armAmpWalk) * runBlend) * blend;
+
+  // ── Leg rotation (hip-pivot swing) ───────────────────────────────────────────
+  // Legs swing on X (forward/back). Right leg leads when left is back (sin vs -sin).
+  // Use smoothstep on the sin to make foot contact flatter (less floaty arc).
+  const legSin = sin(phase);
+  // Knee bend: when leg is behind (negative extension), add slight knee bend on Z
+  // to fake the knee lift. We approximate with a half-wave rectified sin.
+  const kneeWalk = 0.10;
+  const kneeRun  = 0.20;
+  const kneeAmp  = (kneeWalk + (kneeRun - kneeWalk) * runBlend) * blend;
+
+  if (p.legL) {
+    p.legL.rotation.x = legSin * legAmp;
+    // Slight outward lean when leg is forward (natural gait)
+    p.legL.rotation.z = 0.04 * blend * sin(phase + Math.PI * 0.5);
+  }
+  if (p.legR) {
+    p.legR.rotation.x = -legSin * legAmp;
+    p.legR.rotation.z = -0.04 * blend * sin(phase + Math.PI * 0.5);
+  }
+
+  // ── Boot/shoe follows lower leg (shin rotation) ───────────────────────────────
+  // Boots pivot at the ankle — when leg swings forward the toe tips up slightly,
+  // when leg swings back the heel is down (natural ankle roll).
+  if (p.bootL) {
+    p.bootL.rotation.x = legSin * legAmp * 0.45 - Math.max(0, -legSin) * kneeAmp;
+  }
+  if (p.bootR) {
+    p.bootR.rotation.x = -legSin * legAmp * 0.45 + Math.max(0, legSin) * kneeAmp;
+  }
+
+  // ── Arm swing — naturally opposite to same-side leg ──────────────────────────
+  // Left arm swings forward when LEFT leg swings back (arms counter legs).
+  // Arms also have a slight inward-outward Z swing for shoulder feel.
+  const armSinFwd = -legSin; // counter to left leg
+  const armZSwing = 0.06 * blend; // gentle lateral sway
 
   if (p.armL) {
-    p.armL.rotation.x = isDancing ? sin(t * 6.0) * 0.55  : -sin(t * freq) * amp * 0.7;
-    p.armL.rotation.z = isDancing ? Math.PI * 0.28 - Math.abs(sin(t * 6.0)) * 0.55 : 0.10;
+    p.armL.rotation.x = armSinFwd * armAmp;
+    // Idle: arms hang naturally at sides (small z outward). Moving: arms swing slightly inward at peak.
+    p.armL.rotation.z = 0.10 + armZSwing * sin(phase + Math.PI * 0.5);
   }
   if (p.armR) {
-    p.armR.rotation.x = isDancing ? -sin(t * 6.0) * 0.55 : sin(t * freq) * amp * 0.7;
-    p.armR.rotation.z = isDancing ? -(Math.PI * 0.28 - Math.abs(sin(t * 6.0)) * 0.55) : -0.10;
+    p.armR.rotation.x = -armSinFwd * armAmp; // opposite arm
+    p.armR.rotation.z = -(0.10 + armZSwing * sin(phase + Math.PI * 0.5));
   }
 
-  const isIdle = !isWalk && !isRun && !isDancing;
+  // ── Torso: hip sway + shoulder counter-rotation + bob ────────────────────────
   if (p.torsoGroup) {
     const baseY = entry._gender === "female" ? 0.86 : 0.84;
-    p.torsoGroup.position.y = isIdle
-      ? baseY + sin(t * 1.2) * 0.006
-      : baseY + Math.abs(sin(t * freq)) * (isRun ? 0.022 : 0.012);
-    if (isDancing) p.torsoGroup.rotation.y = sin(t * 3.0) * 0.18;
-    else p.torsoGroup.rotation.y = 0;
+
+    // Vertical bob: body drops slightly on each step contact (2× per stride cycle)
+    const bobAmpWalk = 0.010;
+    const bobAmpRun  = 0.022;
+    const bob = (bobAmpWalk + (bobAmpRun - bobAmpWalk) * runBlend) * blend;
+    // Bob hits lowest on each foot plant (phase = 0 and PI)
+    const bobVal = -Math.abs(sin(phase)) * bob;
+
+    // Idle breathing: gentle up/down
+    const idleBob = isDancing ? 0 : sin(idleT * 1.1) * 0.005 * (1 - blend);
+
+    p.torsoGroup.position.y = baseY + bobVal + idleBob;
+
+    // Shoulder counter-rotation: upper body twists opposite to hips
+    const shoulderAmpWalk = 0.055;
+    const shoulderAmpRun  = 0.10;
+    const shoulderAmp = (shoulderAmpWalk + (shoulderAmpRun - shoulderAmpWalk) * runBlend) * blend;
+    if (isDancing) {
+      p.torsoGroup.rotation.y = sin(idleT * 3.0) * 0.18;
+    } else {
+      p.torsoGroup.rotation.y = sin(phase + Math.PI) * shoulderAmp;
+    }
+
+    // Slight forward lean when running
+    const leanAmp  = 0.06 * runBlend * blend;
+    p.torsoGroup.rotation.x = leanAmp;
   }
+
+  // ── Head: subtle nod and gentle idle look-around ─────────────────────────────
   if (p.headGroup) {
-    p.headGroup.rotation.x = isIdle ? sin(t * 0.9) * 0.025 : sin(t * freq) * 0.030;
+    // Small forward nod on each step
+    const nodAmp = 0.022 * blend;
+    p.headGroup.rotation.x = sin(phase * 2) * nodAmp + sin(idleT * 0.7) * 0.015 * (1 - blend);
+    // Subtle side tilt with gait (looks at path)
+    p.headGroup.rotation.z = sin(phase) * 0.015 * blend;
   }
 }
 
@@ -321,15 +417,35 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
 export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false) {
   if (!entry) return;
 
+  const model = entry.root?.getObjectByName("avatarModel");
+  const p = model?.userData;
+
   if (isHoverboarding) {
-    const model = entry.root?.getObjectByName("avatarModel");
-    const p = model?.userData?._animParts;
-    if (p) {
-      if (p.armL) { p.armL.rotation.z = 0.50; p.armL.rotation.x = -0.18; }
-      if (p.armR) { p.armR.rotation.z = -0.50; p.armR.rotation.x = -0.18; }
-      if (p.legL) p.legL.rotation.x = 0.14;
-      if (p.legR) p.legR.rotation.x = 0.14;
+    // Smooth blend into hoverboard stance — lerp toward target pose
+    const lerpSpeed = Math.min(1, 6.0 * dt);
+    const parts = p?._animParts;
+    if (parts) {
+      if (parts.armL) {
+        parts.armL.rotation.x += (-0.18 - parts.armL.rotation.x) * lerpSpeed;
+        parts.armL.rotation.z += (0.50 - parts.armL.rotation.z) * lerpSpeed;
+      }
+      if (parts.armR) {
+        parts.armR.rotation.x += (-0.18 - parts.armR.rotation.x) * lerpSpeed;
+        parts.armR.rotation.z += (-0.50 - parts.armR.rotation.z) * lerpSpeed;
+      }
+      if (parts.legL) {
+        parts.legL.rotation.x += (0.14 - parts.legL.rotation.x) * lerpSpeed;
+        parts.legL.rotation.z += (0 - parts.legL.rotation.z) * lerpSpeed;
+      }
+      if (parts.legR) {
+        parts.legR.rotation.x += (0.14 - parts.legR.rotation.x) * lerpSpeed;
+        parts.legR.rotation.z += (0 - parts.legR.rotation.z) * lerpSpeed;
+      }
+      if (parts.bootL) { parts.bootL.rotation.x += (0 - parts.bootL.rotation.x) * lerpSpeed; }
+      if (parts.bootR) { parts.bootR.rotation.x += (0 - parts.bootR.rotation.x) * lerpSpeed; }
     }
+    // Freeze phase accumulator so walk cycle resumes cleanly from where it was
+    if (p) p._blend = (p._blend || 0) * (1 - lerpSpeed * 0.5);
     return;
   }
 
