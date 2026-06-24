@@ -90,12 +90,21 @@ export default function useVibeWorldPresence(user, currentZone, position) {
     if (!user?.id || !mountedRef.current) return;
     const now = new Date().toISOString();
 
+    // Read the live avatar_type_key from sessionStorage (set by AvatarSetup/WorldGate)
+    let avatarTypeKey = user.avatar_type || "neutral";
+    try {
+      const stored = sessionStorage.getItem("uvc_test_avatar");
+      if (stored) avatarTypeKey = stored;
+    } catch {}
+
     const payload = {
       user_id: user.id,
       username: user.full_name || "Vibe Citizen",
       avatar_type: user.avatar_type || "neutral",
+      avatar_type_key: avatarTypeKey,
       skin_tone: user.skin_tone || "medium",
       avatar_style: user.avatar_style || "streetwear",
+      avatar_outfit_color: user.avatar_outfit_color || "electric-blue",
       current_zone: zoneRef.current,
       pos_x: posRef.current.x,
       pos_z: posRef.current.z,

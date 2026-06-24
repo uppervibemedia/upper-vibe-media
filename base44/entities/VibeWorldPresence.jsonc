@@ -24,6 +24,10 @@
       ],
       "default": "neutral"
     },
+    "avatar_type_key": {
+      "type": "string",
+      "description": "Exact avatar key used in CityCanvas e.g. test-mixamo-female, test-mixamo-male"
+    },
     "skin_tone": {
       "type": "string",
       "enum": [
@@ -44,6 +48,10 @@
       ],
       "default": "streetwear",
       "description": "Outfit style for the avatar"
+    },
+    "avatar_outfit_color": {
+      "type": "string",
+      "description": "Outfit color key e.g. electric-blue, neon-purple"
     },
     "current_zone": {
       "type": "string",

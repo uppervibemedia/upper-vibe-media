@@ -29,6 +29,7 @@ import { CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_INTERACT_RADIUS } from "@/compo
 import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/orbBank";
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
 import useFollowSystem from "@/hooks/useFollowSystem";
+import useBlockSystem from "@/hooks/useBlockSystem";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
@@ -591,6 +592,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Follow System ─────────────────────────────────────────────────────
   const followSystem = useFollowSystem(user?.id, user?.full_name || user?.username);
 
+  // ── Block System (persistent) ─────────────────────────────────────────
+  const blockSystem = useBlockSystem(user?.id, user?.full_name || user?.username);
+
   // ── Private Chat ─────────────────────────────────────────────────────
   const {
     activeChatPeer, chatMessages, incomingRequest, outgoingStatus,
@@ -1003,10 +1007,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onDeclineChat={declineRequest}
         onSendChatMessage={sendMessage}
         onEndChat={endChat}
-        onBlockUser={blockUser}
+        onBlockUser={(uid) => {
+          blockSystem.blockUser(uid, activeUsers.find(u => u.user_id === uid)?.username);
+          blockUser(uid); // also update in-memory chat block state
+        }}
+        onUnblockUser={blockSystem.unblockUser}
         onReportUser={handleReportUser}
         onSafetyConfirm={() => setSafetyConfirmed(true)}
-        blockedUsers={blockedUsers}
+        blockedUsers={{ ...blockedUsers, ...blockSystem.blockMap }}
         userInteractionTarget={userInteractionTarget}
         onCloseUserMenu={handleCloseUserMenu}
         onLoungeInputFocus={setLoungeInputFocused}

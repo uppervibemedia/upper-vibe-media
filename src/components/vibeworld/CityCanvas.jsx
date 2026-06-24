@@ -2127,8 +2127,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
           let entry = remoteMap[remote.user_id];
           if (!entry) {
-            // Spawn new remote avatar using the same avatar type the remote user has selected
-            const remoteAvatarType = remote.avatar_type || "current";
+            // Spawn new remote avatar using the same avatar type the remote user has selected.
+            // Prefer avatar_type_key (the exact sessionStorage key broadcast in heartbeat).
+            const remoteAvatarType = remote.avatar_type_key || remote.avatar_type || "current";
             let group;
             if (remoteAvatarType === "test-mixamo" || remoteAvatarType === "test-mixamo-female") {
               // Use Mixamo procedural avatar matching their chosen type

@@ -96,6 +96,7 @@ export default function WorldHUD({
   onSendChatMessage,
   onEndChat,
   onBlockUser,
+  onUnblockUser,
   onReportUser,
   onSafetyConfirm,
   blockedUsers,
@@ -1148,11 +1149,17 @@ export default function WorldHUD({
             onBlockUser(userInteractionTarget.user_id || userInteractionTarget.id);
           }
         }}
-        onReport={() => onReportUser(userInteractionTarget)}
+        onUnblock={() => {
+          if (userInteractionTarget) {
+            onUnblockUser?.(userInteractionTarget.user_id || userInteractionTarget.id);
+          }
+        }}
         isBlocked={!!(userInteractionTarget && blockedUsers[userInteractionTarget.user_id || userInteractionTarget.id])}
+        outgoingStatus={outgoingStatus}
+        onReport={() => onReportUser(userInteractionTarget)}
         isMobile={isMobile}
         currentUserId={currentUserId}
-        isFollowing={followSystem?.isFollowing}
+        isFollowing={followSystem?.isFollowing ?? (() => false)}
         onFollow={followSystem?.follow}
         onUnfollow={followSystem?.unfollow}
         followerCounts={followSystem?.followerCounts}

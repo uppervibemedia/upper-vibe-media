@@ -1,0 +1,40 @@
+{
+  "name": "UserBlock",
+  "type": "object",
+  "properties": {
+    "blocker_user_id": {
+      "type": "string",
+      "description": "User ID of the person doing the blocking"
+    },
+    "blocked_user_id": {
+      "type": "string",
+      "description": "User ID of the person being blocked"
+    },
+    "blocker_username": {
+      "type": "string",
+      "description": "Cached username of blocker"
+    },
+    "blocked_username": {
+      "type": "string",
+      "description": "Cached username of blocked user"
+    }
+  },
+  "required": [
+    "blocker_user_id",
+    "blocked_user_id"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
