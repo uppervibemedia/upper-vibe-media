@@ -191,19 +191,22 @@ function buildFemaleCasual(C) {
 
   // Arms
   const armGeo = new THREE.CapsuleGeometry(0.056, 0.37, 4, 8);
-  const armL = new THREE.Group(); armL.name = "armL"; armL.position.set(0.200, 0.10, 0);
+  // Move arm pivot outward so hands naturally hang clear of the torso
+  const armL = new THREE.Group(); armL.name = "armL"; armL.position.set(0.215, 0.10, 0);
   const armLMesh = new THREE.Mesh(armGeo, mat(C.shirt, { roughness: 0.65 }));
-  armLMesh.rotation.z = 0.10; armLMesh.castShadow = true; armL.add(armLMesh);
-  const armR = new THREE.Group(); armR.name = "armR"; armR.position.set(-0.200, 0.10, 0);
+  armLMesh.rotation.z = 0.08; armLMesh.castShadow = true; armL.add(armLMesh);
+  const armR = new THREE.Group(); armR.name = "armR"; armR.position.set(-0.215, 0.10, 0);
   const armRMesh = new THREE.Mesh(armGeo, mat(C.shirt, { roughness: 0.65 }));
-  armRMesh.rotation.z = -0.10; armRMesh.castShadow = true; armR.add(armRMesh);
+  armRMesh.rotation.z = -0.08; armRMesh.castShadow = true; armR.add(armRMesh);
   torsoGroup.add(armL, armR);
 
-  // Hands
+  // Hands — positioned straight below arm pivot so they follow the arm swing
+  // without drifting inward and clipping through the torso
   const handGeo = new THREE.SphereGeometry(0.058, 8, 6);
   const handL = new THREE.Mesh(handGeo, mat(C.skin)); handL.name = "gloveL";
-  handL.position.set(0.215, -0.22, 0); armL.add(handL);
-  const handR = handL.clone(); handR.name = "gloveR"; armR.add(handR);
+  handL.position.set(0, -0.24, 0); armL.add(handL);
+  const handR = new THREE.Mesh(handGeo, mat(C.skin)); handR.name = "gloveR";
+  handR.position.set(0, -0.24, 0); armR.add(handR);
 
   // Neck
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.070, 0.11, 8), mat(C.skin));
@@ -277,8 +280,8 @@ function animateCasual(entry, speed, isDancing, dt) {
   // ── Phase accumulator: advance proportional to actual speed ──────────────────
   // Walk cycle stride at 3.0 m/s → one full step (2π) per ~0.9m of travel.
   // Run cycle is faster — scaled up smoothly.
-  const walkCycleSpeed = 2.6;  // rad/s at reference walk speed (3.0 m/s)
-  const runCycleSpeed  = 4.8;  // rad/s at full run
+  const walkCycleSpeed = 3.2;  // rad/s — increased 23% for snappier walk
+  const runCycleSpeed  = 5.4;  // rad/s at full run
   const cycleSpeed = walkCycleSpeed + (runCycleSpeed - walkCycleSpeed) * runBlend;
 
   // Only advance phase when actually moving — prevents sliding when stopped
@@ -334,27 +337,28 @@ function animateCasual(entry, speed, isDancing, dt) {
   // Left arm swings forward when LEFT leg swings back (arms counter legs).
   // Arms also have a slight inward-outward Z swing for shoulder feel.
   const armSinFwd = -legSin; // counter to left leg
-  const armZSwing = 0.06 * blend; // gentle lateral sway
+  // Female arms stay strictly on X axis with minimal Z drift to prevent clipping
+  const isFemale = entry._gender === "female";
+  const armZBase = isFemale ? 0.08 : 0.10;
+  const armZSwing = isFemale ? 0.03 : 0.06; // reduced for female to keep arms clear of body
 
   if (p.armL) {
     p.armL.rotation.x = armSinFwd * armAmp;
-    // Idle: arms hang naturally at sides (small z outward). Moving: arms swing slightly inward at peak.
-    p.armL.rotation.z = 0.10 + armZSwing * sin(phase + Math.PI * 0.5);
+    p.armL.rotation.z = armZBase + armZSwing * blend * sin(phase + Math.PI * 0.5);
   }
   if (p.armR) {
-    p.armR.rotation.x = -armSinFwd * armAmp; // opposite arm
-    p.armR.rotation.z = -(0.10 + armZSwing * sin(phase + Math.PI * 0.5));
+    p.armR.rotation.x = -armSinFwd * armAmp;
+    p.armR.rotation.z = -(armZBase + armZSwing * blend * sin(phase + Math.PI * 0.5));
   }
 
   // ── Torso: hip sway + shoulder counter-rotation + bob ────────────────────────
   if (p.torsoGroup) {
-    const baseY = entry._gender === "female" ? 0.86 : 0.84;
+    const baseY = isFemale ? 0.86 : 0.84;
 
     // Vertical bob: body drops slightly on each step contact (2× per stride cycle)
     const bobAmpWalk = 0.010;
     const bobAmpRun  = 0.022;
     const bob = (bobAmpWalk + (bobAmpRun - bobAmpWalk) * runBlend) * blend;
-    // Bob hits lowest on each foot plant (phase = 0 and PI)
     const bobVal = -Math.abs(sin(phase)) * bob;
 
     // Idle breathing: gentle up/down
@@ -362,9 +366,9 @@ function animateCasual(entry, speed, isDancing, dt) {
 
     p.torsoGroup.position.y = baseY + bobVal + idleBob;
 
-    // Shoulder counter-rotation: upper body twists opposite to hips
-    const shoulderAmpWalk = 0.055;
-    const shoulderAmpRun  = 0.10;
+    // Shoulder counter-rotation — reduced for female so shoulders don't swing arms into body
+    const shoulderAmpWalk = isFemale ? 0.030 : 0.055;
+    const shoulderAmpRun  = isFemale ? 0.055 : 0.10;
     const shoulderAmp = (shoulderAmpWalk + (shoulderAmpRun - shoulderAmpWalk) * runBlend) * blend;
     if (isDancing) {
       p.torsoGroup.rotation.y = sin(idleT * 3.0) * 0.18;
