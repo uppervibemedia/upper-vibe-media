@@ -898,11 +898,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </div>
       )}
 
-      {/* ── Top HUD row: Exit (left) | TV Mode + UVC (right) ── */}
+      {/* ── Top HUD row: Exit (left) | TV Mode + UVC (right) — hidden during fullscreen ── */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: loading ? 0 : 1 }}
-        transition={{ delay: 0.4 }}
+        animate={{ opacity: (loading || stageFullScreen) ? 0 : 1 }}
+        style={{ pointerEvents: (loading || stageFullScreen) ? "none" : "auto" }}
+        transition={{ delay: stageFullScreen ? 0 : 0.4 }}
         className="absolute top-0 left-0 right-0 flex items-center justify-between"
         style={{
           zIndex: 200,
@@ -985,6 +986,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         forceOpenPanel={openPanelOnLoad}
         stageVideoTitle={stageVideos[stageVideoIdx]?.title || null}
         stageWatching={stageWatching}
+        stageFullScreen={stageFullScreen}
         stageVideosCount={stageVideos.length}
         onStageWatchVideo={handleWatchOnStage}
         onStageExitWatchMode={handleExitWatchMode}

@@ -150,15 +150,14 @@ export default function StageFullScreen({ open, video, onClose }) {
             />
           </div>
 
-          {/* Mute/Unmute toggle — always visible when video is open */}
+          {/* Mute/Unmute toggle — bottom-left, always visible, safe in portrait & landscape */}
           {ytId && (
             <button
               onClick={handleToggleMute}
-              className="absolute flex items-center gap-1.5 px-4 py-2.5 rounded-full font-bold text-xs tracking-wide transition-all hover:brightness-110"
+              className="absolute flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs tracking-wide transition-all hover:brightness-110 active:scale-95"
               style={{
                 bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
-                left: "50%",
-                transform: "translateX(-50%)",
+                left: "1rem",
                 background: muted ? "rgba(255,255,255,0.08)" : "rgba(124,58,237,0.45)",
                 border: `1px solid ${muted ? "rgba(255,255,255,0.15)" : "rgba(155,126,255,0.5)"}`,
                 color: muted ? "rgba(255,255,255,0.7)" : "#fff",
@@ -170,7 +169,7 @@ export default function StageFullScreen({ open, video, onClose }) {
                 boxShadow: !muted ? "0 0 16px rgba(124,58,237,0.4)" : "none",
               }}
             >
-              {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+              {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               {muted ? "Tap for Audio" : "Audio On"}
             </button>
           )}

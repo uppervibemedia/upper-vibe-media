@@ -45,6 +45,7 @@ export default function WorldHUD({
   isMobile, mobileLayout, loading,
   stageVideoTitle,
   stageWatching,
+  stageFullScreen = false,
   stageVideosCount,
   onStageWatchVideo,
   onStageExitWatchMode,
@@ -631,7 +632,7 @@ export default function WorldHUD({
           </motion.div>
         )}
 
-        {zone?.id === "stage" && (
+        {zone?.id === "stage" && !stageFullScreen && (
           <motion.div
             key="stage-actions"
             initial={{ opacity: 0, y: 10 }}
