@@ -779,25 +779,25 @@ export function createCosmicSky(scene) {
 
   const now0 = performance.now() * 0.001;
 
-  // Beach flyby lanes — OPPOSITE DIRECTIONS, one at a time:
-  //   Planet A: left-to-right  (startCX -45 → endCX +45)
-  //   Planet B: right-to-left  (startCX +45 → endCX -45)
-  //   CZ = -85 → stays in beach sky, well behind playable area.
-  //   CY = +16 → sky height, above avatar but not too high.
-  //   fadeOutStart = 0.72 so they fade before crossing center/north skyline.
-  //   Duration 30s — full beach pass is visible without dragging on.
-  //   GAP_AFTER 12s — brief pause before the next one enters.
-  const DURATION_A = 30;
-  const DURATION_B = 30;
-  const GAP_AFTER  = 12;
+  // Beach flyby lanes — IN FRONT of camera (toward the water), opposite directions.
+  //   CZ = +55 → in FRONT of the camera, out over the beach/water. Never behind buildings.
+  //   CY = +6  → low — just above water level, cinematic beach pass.
+  //   Planet A: left-to-right  (-55 → +55)
+  //   Planet B: right-to-left  (+55 → -55)
+  //   fadeOutStart = 0.82 — fade near the edge so it exits cleanly before going OOB.
+  //   Duration 28s — enough time to clearly cross the beach view.
+  //   GAP_AFTER 10s — pause then the next one comes the other way.
+  const DURATION_A = 28;
+  const DURATION_B = 28;
+  const GAP_AFTER  = 10;
 
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // left → right
-    startCX: -45, startCY: 16, startCZ: -85,
-    endCX:    45, endCY:   16, endCZ:  -85,
-    _fadeInEnd: 0.18, _fadeOutStart: 0.68,
+    // left → right, low in front over the beach water
+    startCX: -55, startCY: 6, startCZ: 55,
+    endCX:    55, endCY:   6, endCZ:  55,
+    _fadeInEnd: 0.15, _fadeOutStart: 0.82,
     duration: DURATION_A,
     nextFire: now0 + 5,
     _gapAfter: GAP_AFTER,
@@ -806,10 +806,10 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // right → left (opposite direction)
-    startCX:  45, startCY: 16, startCZ: -85,
-    endCX:   -45, endCY:   16, endCZ:  -85,
-    _fadeInEnd: 0.18, _fadeOutStart: 0.68,
+    // right → left (opposite direction), same beach-front plane
+    startCX:  55, startCY: 6, startCZ: 55,
+    endCX:   -55, endCY:   6, endCZ:  55,
+    _fadeInEnd: 0.15, _fadeOutStart: 0.82,
     duration: DURATION_B,
     nextFire: now0 + DURATION_A + GAP_AFTER + 5,
     _gapAfter: GAP_AFTER,
@@ -870,11 +870,18 @@ export function animateCosmicSky(scene, camera, t, dt) {
       const angle = t * p.orbitSpeed + p.angleOffset;
 
       // Camera-relative position — ALWAYS inside far clip plane.
-      // Y offset keeps planet clearly above buildings from any viewpoint.
       const cx = camera.position.x + Math.sin(angle) * p.radius;
       const cz = camera.position.z + Math.cos(angle) * p.radius;
-      // Gentle vertical bob (0.8u amplitude) so planet feels alive, not locked
-      const cy = camera.position.y + p.horizonY + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
+
+      // Arc boost: when the planet passes through the front-facing angle
+      // (i.e. directly in front of the camera where buildings are visible),
+      // raise it up so it clears the skyline. cos(angle) > 0 means it's in front.
+      // We ramp the boost smoothly using a clamped cosine factor.
+      // buildingArc: 0 when behind/side, up to +20 when directly in front.
+      const frontFactor = Math.max(0, Math.cos(angle)); // 0..1, peaks directly in front
+      const buildingArc = frontFactor * frontFactor * 20; // quadratic — sharp peak at front
+
+      const cy = camera.position.y + p.horizonY + buildingArc + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
       p.mat.opacity = 1.0;
     }
