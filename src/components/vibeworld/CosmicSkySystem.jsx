@@ -349,57 +349,57 @@ export function createCosmicSky(scene) {
   //   - All orbits are slow (1 rev / 180–400s) so planets feel like sky features, not objects
   const PLANET_DEFS = [
     {
-      // MEGA — large purple ringed. High skyline, far NW. Background only.
+      // MEGA — large purple ringed. NW background sky.
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
-      size: isMobile ? 20 : 28,      // small on-screen — very far away feel
-      angleOffset: Math.PI * 0.72,   // NW quadrant — never behind avatar
-      horizonY: 40,                  // high skyline — visible but not in normal viewport center
-      radius: 280,                   // FAR — deep background, well outside playable space
+      size: isMobile ? 32 : 44,
+      angleOffset: Math.PI * 0.72,
+      horizonY: 12,   // low in sky — in normal camera view above buildings
+      radius: 280,
       orbitSpeed: (Math.PI * 2) / 320,
     },
     {
-      // VIOLET — small purple ringed. Mid-sky NW lane. Visible in normal view.
+      // VIOLET — small purple ringed. NW lane, slightly offset from mega.
       id: "violet",
       bodyColors: ["#120820", "#2A1245", "#4A2070", "#7040A0", "#AA70E0"],
       glowColor: "rgba(130,60,220,0.40)", ringColor: "rgba(170,110,240,0.45)",
-      size: isMobile ? 12 : 16,      // small — distant accent planet
-      angleOffset: Math.PI * 0.62,   // mid-left NW lane
-      horizonY: 18,                  // low-mid sky — in normal view
+      size: isMobile ? 18 : 24,
+      angleOffset: Math.PI * 0.58,
+      horizonY: 8,    // just above building tops — clearly in frame
       radius: 240,
       orbitSpeed: (Math.PI * 2) / 260,
     },
     {
-      // BLUE — gas giant. Mid-sky NE lane. Balances violet on the right side.
+      // BLUE — gas giant. NE lane.
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
-      size: isMobile ? 16 : 22,      // slightly larger than violet — dominant NE accent
-      angleOffset: Math.PI * 0.32,   // NE lane — clear of avatar center
-      horizonY: 16,                  // same apparent height band as violet
+      size: isMobile ? 26 : 36,
+      angleOffset: Math.PI * 0.32,
+      horizonY: 10,   // just above building tops
       radius: 260,
       orbitSpeed: (Math.PI * 2) / 380,
     },
     {
-      // GREEN — emerald. Upper skyline NW. Above buildings.
+      // GREEN — emerald. Deep NW background.
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
-      size: isMobile ? 14 : 19,
-      angleOffset: Math.PI * 0.85,   // deep NW — behind north skyline
-      horizonY: 28,                  // upper skyline band
+      size: isMobile ? 22 : 30,
+      angleOffset: Math.PI * 0.85,
+      horizonY: 14,
       radius: 300,
       orbitSpeed: (Math.PI * 2) / 300,
     },
     {
-      // CRIMSON — red storm. Upper skyline NE. Symmetric to GREEN.
+      // CRIMSON — red storm. Deep NE background.
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
-      size: isMobile ? 18 : 24,
-      angleOffset: Math.PI * 0.15,   // deep NE — clear of avatar
-      horizonY: 30,
+      size: isMobile ? 28 : 38,
+      angleOffset: Math.PI * 0.15,
+      horizonY: 13,
       radius: 310,
       orbitSpeed: (Math.PI * 2) / 400,
     },
