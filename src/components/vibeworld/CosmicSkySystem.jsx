@@ -581,14 +581,16 @@ export function createCosmicSky(scene) {
   });
   scene.userData.horizonPlanets = planets;
 
-  // ── 6. BEACH FLYBY PLANETS — A & B ───────────────────────────────────────────
-  // Two planets that fly slowly over Neon Surf Beach at low altitude.
-  // Same visual pipeline as horizon planets: Sprite, depthTest=false, renderOrder=20.
-  // Positions are WORLD-SPACE (not camera-relative) so they actually cross the beach.
-  // They are large enough to feel close but placed high enough (y≈14-22) to stay sky-level.
+  // ── 6. BEACH FLYBY PLANETS — A & B (2D screen-space overlay) ────────────────
+  // These are rendered as pure 2D canvas draws on a CSS overlay, NOT as Three.js
+  // objects. This means they are 100% decoupled from the 3D scene — they can NEVER
+  // appear in front of the avatar no matter what camera angle is used, because they
+  // are drawn on a separate HTML canvas sitting on top of the WebGL canvas.
+  //
+  // buildFlybyPlanet2D: returns { canvas, size } — the pre-rendered planet image
+  // and its pixel size for drawing. No Three.js mesh/sprite is created.
 
-  // Reuse planet canvas builder — Planet A: teal/cyan, Planet B: warm amber/orange
-  function buildFlybyPlanet(colors, glowColor, size) {
+  function buildFlybyPlanet2D(colors, glowColor, size) {
     const S = 256;
     const pc = document.createElement("canvas");
     pc.width = S; pc.height = S;
@@ -596,12 +598,14 @@ export function createCosmicSky(scene) {
     const R = S * 0.30;
     const cx = S / 2, cy = S / 2;
 
+    // Atmospheric halo
     const haloG = pctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.65);
     haloG.addColorStop(0, glowColor);
     haloG.addColorStop(1, "rgba(0,0,0,0)");
     pctx.fillStyle = haloG;
     pctx.fillRect(0, 0, S, S);
 
+    // Planet body
     const bodyG = pctx.createRadialGradient(cx - R*0.28, cy - R*0.26, R*0.04, cx, cy, R);
     bodyG.addColorStop(0,    colors[4]);
     bodyG.addColorStop(0.25, colors[3]);
@@ -613,7 +617,7 @@ export function createCosmicSky(scene) {
     pctx.fillStyle = bodyG;
     pctx.fill();
 
-    // Simple band texture
+    // Band texture
     pctx.save();
     pctx.beginPath();
     pctx.arc(cx, cy, R, 0, Math.PI * 2);
@@ -656,35 +660,19 @@ export function createCosmicSky(scene) {
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
-    const ptex = new THREE.CanvasTexture(pc);
-    ptex.minFilter = THREE.LinearFilter;
-    ptex.generateMipmaps = false;
-
-    const pmat = new THREE.SpriteMaterial({
-      map: ptex, transparent: true, opacity: 0,
-      depthWrite: false, depthTest: false,
-    });
-    const psprite = new THREE.Sprite(pmat);
-    psprite.scale.set(size, size, 1);
-    psprite.frustumCulled = false;
-    psprite.renderOrder = 20;
-    scene.add(psprite);
-    // Park off-screen initially
-    psprite.position.set(9999, 9999, 9999);
-    return { sprite: psprite, mat: pmat };
+    return { canvas: pc, size };
   }
 
-  // Planet A: teal/cyan — left→right cinematic sweep, CAMERA-RELATIVE
-  const flybyA = buildFlybyPlanet(
+  // Planet A: teal/cyan | Planet B: amber/orange
+  const flybyA = buildFlybyPlanet2D(
     ["#041820", "#0A3840", "#1A6860", "#2A9888", "#50D8C0"],
     "rgba(50,200,180,0.55)",
-    isMobile ? 36 : 48
+    isMobile ? 120 : 160   // screen-space pixel size
   );
-  // Planet B: amber/orange — right→left sweep, CAMERA-RELATIVE
-  const flybyB = buildFlybyPlanet(
+  const flybyB = buildFlybyPlanet2D(
     ["#1A0E02", "#3A2004", "#7A4010", "#C07030", "#E8B060"],
     "rgba(220,140,50,0.52)",
-    isMobile ? 32 : 44
+    isMobile ? 100 : 140
   );
 
   const now0 = performance.now() * 0.001;
@@ -714,12 +702,16 @@ export function createCosmicSky(scene) {
   // Planet A: left lane only (cameraX -55 → -18), never crosses center.
   // Planet B: right lane only (cameraX +55 → +18), never crosses center.
   // Visibility gated by playerZ > 8 in animateFlyby so they never appear in the city.
+  // Screen-space X positions as fraction of viewport width (0=left edge, 1=right edge).
+  // Planet A sweeps in from the left side, Planet B from the right side.
+  // They never cross the center band (0.35–0.65) where the avatar is rendered.
   scene.userData.beachFlybyA = {
-    ...flybyA,
+    canvas: flybyA.canvas, size: flybyA.size,
     active: false, life: 0, maxLife: 0,
-    // Left lane: sweeps from far-left edge toward left-center
-    startCX: -55, startCY: 5, startCZ: -150,
-    endCX:   -18, endCY:  5, endCZ:  -150,
+    opacity: 0,
+    // Screen-space: X as viewport fraction, Y as viewport fraction from top
+    startSX: 0.02, startSY: 0.18,  // far left, upper third
+    endSX:   0.30, endSY:   0.25,  // left-center, slightly lower
     _fadeInEnd: 0.08, _fadeOutStart: 0.82,
     duration: DURATION_A,
     nextFire: now0 + 2,
@@ -727,11 +719,12 @@ export function createCosmicSky(scene) {
     _partner: null,
   };
   scene.userData.beachFlybyB = {
-    ...flybyB,
+    canvas: flybyB.canvas, size: flybyB.size,
     active: false, life: 0, maxLife: 0,
-    // Right lane: sweeps from far-right edge toward right-center
-    startCX:  55, startCY: 5, startCZ: -150,
-    endCX:    18, endCY:  5, endCZ:  -150,
+    opacity: 0,
+    // Screen-space: mirror of A on right side
+    startSX: 0.98, startSY: 0.18,
+    endSX:   0.70, endSY:   0.25,
     _fadeInEnd: 0.08, _fadeOutStart: 0.82,
     duration: DURATION_B,
     nextFire: now0 + DURATION_A + GAP_AFTER_A + 2,
@@ -860,49 +853,38 @@ export function animateCosmicSky(scene, camera, t, dt) {
   function animateFlyby(fb, playerZ) {
     if (!fb) return;
     if (!fb.active) {
-      // Only fire when player is in the beach zone (playerZ > 8)
       if (t >= fb.nextFire && playerZ > 8) {
         if (fb._partner && fb._partner.active) return;
         fb.active = true;
         fb.life = 0;
         fb.maxLife = fb.duration;
-        fb.mat.opacity = 0;
+        fb.opacity = 0;
       }
     } else {
       fb.life += dt;
       const prog = Math.min(fb.life / fb.maxLife, 1);
 
-      // Hard gate every frame — if player leaves beach zone, hide immediately
+      // Hard gate — leave beach zone = instant hide
       if (playerZ <= 8) {
-        fb.mat.opacity = 0;
-        fb.sprite.position.set(9999, 9999, 9999);
+        fb.opacity = 0;
         return;
       }
 
-      // Per-flyby fade envelope
+      // Fade envelope
       const fadeInEnd    = fb._fadeInEnd    ?? 0.08;
       const fadeOutStart = fb._fadeOutStart ?? 0.82;
       const fadeIn  = Math.min(prog / fadeInEnd, 1);
       const fadeOut = prog > fadeOutStart ? Math.max(0, 1 - (prog - fadeOutStart) / (1 - fadeOutStart)) : 1;
-      fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.92;
+      fb.opacity = Math.min(fadeIn, fadeOut) * 0.92;
 
-      // Camera-relative positioning — always behind horizon at cameraZ - 150
-      const cx = fb.startCX + (fb.endCX - fb.startCX) * prog;
-      const cy = fb.startCY + (fb.endCY - fb.startCY) * prog;
-      const cz = fb.startCZ + (fb.endCZ - fb.startCZ) * prog;
-      fb.sprite.position.set(
-        camera.position.x + cx,
-        camera.position.y + cy,
-        camera.position.z + cz
-      );
+      // Interpolate screen-space position (stored as viewport fractions)
+      fb._curSX = fb.startSX + (fb.endSX - fb.startSX) * prog;
+      fb._curSY = fb.startSY + (fb.endSY - fb.startSY) * prog;
 
       if (prog >= 1) {
         fb.active = false;
-        fb.mat.opacity = 0;
-        fb.sprite.position.set(9999, 9999, 9999);
-        if (fb._partner) {
-          fb._partner.nextFire = t + fb._gapAfter;
-        }
+        fb.opacity = 0;
+        if (fb._partner) fb._partner.nextFire = t + fb._gapAfter;
         const partner = fb._partner;
         fb.nextFire = partner
           ? t + fb._gapAfter + (partner.duration || 22) + (partner._gapAfter || 6)
@@ -959,4 +941,30 @@ export function animateCosmicSky(scene, camera, t, dt) {
       }
     }
   }
+}
+
+/**
+ * drawFlybyOverlay — call this each frame AFTER the Three.js render,
+ * passing a 2D canvas that sits on top of the WebGL canvas (same size, pointer-events:none).
+ * Clears the overlay and draws active beach flyby planets in screen-space.
+ * This is the "2D overlay" half of the hybrid approach — planets are never 3D objects
+ * so they physically cannot appear in front of the avatar.
+ */
+export function drawFlybyOverlay(scene, overlayCanvas) {
+  if (!overlayCanvas) return;
+  const ctx = overlayCanvas.getContext("2d");
+  const W = overlayCanvas.width;
+  const H = overlayCanvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const flybys = [scene.userData.beachFlybyA, scene.userData.beachFlybyB];
+  for (const fb of flybys) {
+    if (!fb || !fb.active || fb.opacity <= 0 || fb._curSX == null) continue;
+    const px = fb._curSX * W;
+    const py = fb._curSY * H;
+    const drawSize = fb.size;
+    ctx.globalAlpha = fb.opacity;
+    ctx.drawImage(fb.canvas, px - drawSize / 2, py - drawSize / 2, drawSize, drawSize);
+  }
+  ctx.globalAlpha = 1;
 }
