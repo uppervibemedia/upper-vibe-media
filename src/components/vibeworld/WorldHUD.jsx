@@ -129,6 +129,15 @@ export default function WorldHUD({
   const stageActive = zone?.id === "stage" && (stageWatching || stageFullScreen);
   const { visible: stageControlsVisible, show: showStageControls } = useStageAutoHide(stageActive, false);
 
+  // Portrait detection — used to position stage controls above the music player/joystick
+  const [isPortrait, setIsPortrait] = useState(() => window.innerHeight > window.innerWidth);
+  useEffect(() => {
+    const check = () => setIsPortrait(window.innerHeight > window.innerWidth);
+    window.addEventListener("resize", check);
+    window.addEventListener("orientationchange", check);
+    return () => { window.removeEventListener("resize", check); window.removeEventListener("orientationchange", check); };
+  }, []);
+
   // Zone label: show briefly on zone change, then auto-fade
   useEffect(() => {
     if (!zone) return;
@@ -684,10 +693,17 @@ export default function WorldHUD({
               transition={{ duration: 0.25 }}
               className="fixed left-0 right-0 z-[200] flex flex-col items-center gap-1.5 px-2"
               style={{
+                // Portrait mobile: sit above music player (which is ~72px tall) + joystick area
+                // Landscape mobile: keep near bottom (landscape has more vertical room)
+                // Desktop: near bottom
                 bottom: isMobile && mobileLayout
-                  ? mobileLayout.sa.bottom + 8
+                  ? isPortrait
+                    ? mobileLayout.sa.bottom + (mobileLayout.actionBottom ?? 248) - 8
+                    : mobileLayout.sa.bottom + 8
                   : isMobile
-                    ? "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)"
+                    ? isPortrait
+                      ? "calc(env(safe-area-inset-bottom, 0px) + 15rem)"
+                      : "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)"
                     : "1.25rem",
                 pointerEvents: !stageWatching || stageControlsVisible ? "auto" : "none",
               }}
