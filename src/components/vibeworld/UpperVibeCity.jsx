@@ -459,7 +459,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [ferrisRiding, setFerrisRiding] = useState(false);
   // Note: ferrisRiding is passed directly to CityCanvas — do NOT include it in movementLocked
   // because that would trigger the stage-lock camera branch inside CityCanvas.
-  const movementLocked = stageWatching || stageFullScreen || loungeInputFocused;
+  // Only lock movement when user explicitly chose Watch Stage or is typing in lounge.
+  // Being in fullscreen (StageFullScreen overlay) still lets the user move freely underneath.
+  const movementLocked = stageWatching || loungeInputFocused;
 
   // ── Dance floor boundary — matches visual plaza edge (r=10.5) ─────────────
   // Audio fades in at the edge so music is audible as soon as the user reaches the floor.

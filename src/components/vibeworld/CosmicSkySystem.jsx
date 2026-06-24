@@ -895,31 +895,36 @@ export function animateCosmicSky(scene, camera, t, dt) {
     const globalPlanetOpacity = scene.userData._planetOpacity;
 
     // City/stage proximity + facing fade:
-    // When the player is near the stage or dancefloor (z < 5) AND facing toward
-    // the skyline (camera yaw points toward -Z / north), fade all planets out to
-    // prevent them bleeding through building geometry when looking up.
-    // If the player turns toward the beach (+Z), planets restore immediately.
+    // When the player is near the stage/dancefloor/plaza (z < 12) AND looking toward
+    // the city skyline (north, NE, or NW — the entire ~240° arc of buildings),
+    // fade planets out to prevent them bleeding through building geometry.
     //
     // camYaw: world-space angle stored each frame by CityCanvas.
-    //   camYaw ≈ 0        → camera sits at +Z (behind avatar facing stage = north)
-    //   camYaw ≈ Math.PI  → camera sits at -Z (behind avatar facing beach = south)
-    // "Facing north" (toward buildings): camera looks toward -Z, so camYaw is near 0.
-    // facingNorth = how much the camera is oriented toward the stage skyline (0–1).
+    //   camYaw ≈ 0        → camera sits at +Z (behind avatar, avatar faces stage = north)
+    //   camYaw ≈ Math.PI  → camera sits at -Z (avatar faces beach = south)
+    //
+    // The city skyline spans roughly north, NE, NW — a 240° arc from the player's POV.
+    // We only restore planets when truly facing south (toward beach), i.e. camYaw near π.
+    //
+    // facingCity: 1 when camera points toward any city-side angle (north/NE/NW),
+    //             0 when pointing clearly toward beach (south).
+    // cos(camYaw) gives +1 at north, -1 at south. We want to block everything except
+    // a ~90° window around south (cos < -0.4 → facing beach).
     const playerZ = scene.userData._playerZ ?? 0;
     const camYawWorld = scene.userData._camYaw ?? 0;
-    // cos(camYaw) ≈ +1 when camera behind at +Z (avatar faces stage = toward buildings)
-    // cos(camYaw) ≈ -1 when camera behind at -Z (avatar faces beach)
-    const facingNorth = Math.max(0, Math.cos(camYawWorld)); // 0–1
+    const cosYaw = Math.cos(camYawWorld);
+    // facingCity = 1 when facing north/NE/NW/east/west; 0 only when facing south
+    // Smooth transition: from cos=-0.4 (SSE/SSW) to cos=0 (east/west) → city blocking ramps up
+    const facingCity = Math.max(0, Math.min(1, (cosYaw + 0.4) / 0.5)); // 0–1
 
-    // Zone gate: only apply fade when player is in stage/plaza/dancefloor area (z < 8)
-    // Transition band: z 5–12 so it fades gracefully as they walk away
-    const inCityZone = playerZ < 12
-      ? Math.max(0, Math.min(1, (12 - playerZ) / 10)) // 1 at z≤2, 0 at z≥12
+    // Zone gate: in city zone (z < 12). Transition band: z 8–14.
+    const inCityZone = playerZ < 14
+      ? Math.max(0, Math.min(1, (14 - playerZ) / 8)) // 1 at z≤6, 0 at z≥14
       : 0;
 
-    // Combined: fade strength = how much player is in city zone × how much they face north
-    // facingNorth^2 sharpens it so only truly north-facing angles trigger the fade
-    const cityBlocking = inCityZone * (facingNorth * facingNorth);
+    // Combined fade: city zone × facing city direction
+    // facingCity^1.5 slightly sharpens it without killing NE/NW coverage
+    const cityBlocking = inCityZone * Math.pow(facingCity, 1.5);
 
     for (const p of horizonPlanets) {
       const angle = t * p.orbitSpeed + p.angleOffset;
