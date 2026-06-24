@@ -97,9 +97,9 @@ function buildMaleHair(style, HAIR, headG) {
   switch (style) {
 
     case "locs": {
-      // 1. Full-head shell — covers every angle
+      // 1. Full-head shell shifted back so it doesn't cover the front face/eyes
       const shell = fullShell(0.170, Math.PI * 0.78, HAIR, 0.80);
-      shell.position.y = 0.018; headG.add(shell);
+      shell.position.set(0, 0.018, -0.022); headG.add(shell);
       // 2. Dense loc capsules radiating outward from shell — sides, back, top-back
       // NO locs in front of face (z > 0.05 is face-side, keep locs at z <= 0.04)
       const locs = [
@@ -135,19 +135,16 @@ function buildMaleHair(style, HAIR, headG) {
     }
 
     case "fade": {
-      // Full-head shell — the "fade" is just a shorter shell, still covers sides
       const shell = fullShell(0.166, Math.PI * 0.75, HAIR, 0.88);
-      shell.position.y = 0.020; headG.add(shell);
-      // Slightly thicker top dome for texture
+      shell.position.set(0, 0.020, -0.020); headG.add(shell);
       const topDome = fullShell(0.162, Math.PI * 0.42, HAIR, 0.85);
-      topDome.position.y = 0.035; headG.add(topDome);
+      topDome.position.set(0, 0.035, 0); headG.add(topDome);
       break;
     }
 
     case "hat": {
-      // Full buzz under hat — still covers sides so it doesn't look bald
       const shell = fullShell(0.164, Math.PI * 0.72, HAIR, 0.90);
-      shell.position.y = 0.020; headG.add(shell);
+      shell.position.set(0, 0.020, -0.018); headG.add(shell);
       // Cap brim — flat cylinder ring
       const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.244, 0.244, 0.016, 16), mh(0x0d0d0d, 0.82));
       brim.position.set(0, 0.128, 0.018); headG.add(brim);
@@ -167,9 +164,9 @@ function buildMaleHair(style, HAIR, headG) {
       // No hair — intentional
       break;
 
-    default: { // "short" — full round cut, covers all angles
+    default: { // "short"
       const shell = fullShell(0.167, Math.PI * 0.76, HAIR, 0.86);
-      shell.position.y = 0.018; headG.add(shell);
+      shell.position.set(0, 0.018, -0.020); headG.add(shell);
       break;
     }
   }
@@ -179,9 +176,8 @@ function buildFemaleHair(style, HAIR, ACCENT, headG) {
   switch (style) {
 
     case "long": {
-      // Full-head shell — foundation, covers top + sides + upper back
       const shell = fullShell(0.158, Math.PI * 0.80, HAIR, 0.76);
-      shell.position.y = 0.016; headG.add(shell);
+      shell.position.set(0, 0.016, -0.022); headG.add(shell);
       // Side curtains — thick flowing panels down to chin/neck level
       const sGeo = new THREE.CapsuleGeometry(0.058, 0.46, 4, 7);
       const sL = new THREE.Mesh(sGeo, mh(HAIR, 0.78)); sL.position.set( 0.115, -0.17, -0.010); sL.rotation.z =  0.14; headG.add(sL);
@@ -197,9 +193,8 @@ function buildFemaleHair(style, HAIR, ACCENT, headG) {
     }
 
     case "bob": {
-      // Full-head shell — medium length, wraps around head
       const shell = fullShell(0.158, Math.PI * 0.78, HAIR, 0.78);
-      shell.position.y = 0.016; headG.add(shell);
+      shell.position.set(0, 0.016, -0.022); headG.add(shell);
       // Bob side curtains — end at chin level
       const bGeo = new THREE.CapsuleGeometry(0.062, 0.26, 4, 6);
       const bL = new THREE.Mesh(bGeo, mh(HAIR, 0.78)); bL.position.set( 0.110, -0.12, -0.004); bL.rotation.z =  0.10; headG.add(bL);
@@ -214,9 +209,8 @@ function buildFemaleHair(style, HAIR, ACCENT, headG) {
     }
 
     case "short": {
-      // Full-head shell — covers everything, shorter than long
       const shell = fullShell(0.157, Math.PI * 0.76, HAIR, 0.82);
-      shell.position.y = 0.018; headG.add(shell);
+      shell.position.set(0, 0.018, -0.020); headG.add(shell);
       // Extra side puff for feminine fullness
       const pGeo = new THREE.CapsuleGeometry(0.042, 0.12, 3, 6);
       const pL = new THREE.Mesh(pGeo, mh(HAIR, 0.82)); pL.position.set( 0.140, -0.025, -0.028); pL.rotation.z =  0.60; headG.add(pL);
@@ -228,9 +222,8 @@ function buildFemaleHair(style, HAIR, ACCENT, headG) {
     }
 
     default: { // "ponytail"
-      // Full-head shell
       const shell = fullShell(0.158, Math.PI * 0.78, HAIR, 0.78);
-      shell.position.y = 0.016; headG.add(shell);
+      shell.position.set(0, 0.016, -0.022); headG.add(shell);
       // Gathered back volume before tie
       const gather = new THREE.Mesh(new THREE.CapsuleGeometry(0.056, 0.20, 3, 6), mh(HAIR, 0.78));
       gather.position.set(0, -0.06, -0.118); gather.rotation.x = -0.15; headG.add(gather);

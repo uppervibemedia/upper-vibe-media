@@ -72,8 +72,9 @@ function buildMaleHairInWorld(style, HAIR, headGroup) {
   switch (style) {
 
     case "locs": {
+      // Shell shifted back so it covers top/sides/back but NOT the front face
       const shell = iwShell(0.170, Math.PI * 0.78, HAIR, 0.80);
-      shell.position.y = 0.018; headGroup.add(shell);
+      shell.position.set(0, 0.018, -0.022); headGroup.add(shell);
       const locs = [
         { x:  0.00, y:-0.08, z:-0.160, len:0.28, r:0.022 },
         { x:  0.04, y:-0.06, z:-0.158, len:0.25, r:0.021 },
@@ -101,15 +102,15 @@ function buildMaleHairInWorld(style, HAIR, headGroup) {
 
     case "fade": {
       const shell = iwShell(0.166, Math.PI * 0.75, HAIR, 0.88);
-      shell.position.y = 0.020; headGroup.add(shell);
+      shell.position.set(0, 0.020, -0.020); headGroup.add(shell);
       const topDome = iwShell(0.162, Math.PI * 0.42, HAIR, 0.85);
-      topDome.position.y = 0.035; headGroup.add(topDome);
+      topDome.position.set(0, 0.035, 0); headGroup.add(topDome);
       break;
     }
 
     case "hat": {
       const shell = iwShell(0.164, Math.PI * 0.72, HAIR, 0.90);
-      shell.position.y = 0.020; headGroup.add(shell);
+      shell.position.set(0, 0.020, -0.018); headGroup.add(shell);
       const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.244, 0.244, 0.016, 16), iwMh(0x0d0d0d, 0.82));
       brim.position.set(0, 0.128, 0.018); headGroup.add(brim);
       const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.174, 0.180, 0.148, 14), iwMh(0x111111, 0.78));
@@ -126,7 +127,7 @@ function buildMaleHairInWorld(style, HAIR, headGroup) {
 
     default: { // "short"
       const shell = iwShell(0.167, Math.PI * 0.76, HAIR, 0.86);
-      shell.position.y = 0.018; headGroup.add(shell);
+      shell.position.set(0, 0.018, -0.020); headGroup.add(shell);
       break;
     }
   }
@@ -137,7 +138,7 @@ function buildFemaleHairInWorld(style, HAIR, ACCENT, headGroup) {
 
     case "long": {
       const shell = iwShell(0.158, Math.PI * 0.80, HAIR, 0.76);
-      shell.position.y = 0.016; headGroup.add(shell);
+      shell.position.set(0, 0.016, -0.022); headGroup.add(shell);
       const sGeo = new THREE.CapsuleGeometry(0.058, 0.46, 4, 7);
       const sL = new THREE.Mesh(sGeo, iwMh(HAIR, 0.78)); sL.position.set( 0.115, -0.17, -0.010); sL.rotation.z =  0.14; headGroup.add(sL);
       const sR = new THREE.Mesh(sGeo, iwMh(HAIR, 0.78)); sR.position.set(-0.115, -0.17, -0.010); sR.rotation.z = -0.14; headGroup.add(sR);
@@ -151,7 +152,7 @@ function buildFemaleHairInWorld(style, HAIR, ACCENT, headGroup) {
 
     case "bob": {
       const shell = iwShell(0.158, Math.PI * 0.78, HAIR, 0.78);
-      shell.position.y = 0.016; headGroup.add(shell);
+      shell.position.set(0, 0.016, -0.022); headGroup.add(shell);
       const bGeo = new THREE.CapsuleGeometry(0.062, 0.26, 4, 6);
       const bL = new THREE.Mesh(bGeo, iwMh(HAIR, 0.78)); bL.position.set( 0.110, -0.12, -0.004); bL.rotation.z =  0.10; headGroup.add(bL);
       const bR = new THREE.Mesh(bGeo, iwMh(HAIR, 0.78)); bR.position.set(-0.110, -0.12, -0.004); bR.rotation.z = -0.10; headGroup.add(bR);
@@ -162,7 +163,7 @@ function buildFemaleHairInWorld(style, HAIR, ACCENT, headGroup) {
 
     case "short": {
       const shell = iwShell(0.157, Math.PI * 0.76, HAIR, 0.82);
-      shell.position.y = 0.018; headGroup.add(shell);
+      shell.position.set(0, 0.018, -0.020); headGroup.add(shell);
       const pGeo = new THREE.CapsuleGeometry(0.042, 0.12, 3, 6);
       const pL = new THREE.Mesh(pGeo, iwMh(HAIR, 0.82)); pL.position.set( 0.140, -0.025, -0.028); pL.rotation.z =  0.60; headGroup.add(pL);
       const pR = new THREE.Mesh(pGeo, iwMh(HAIR, 0.82)); pR.position.set(-0.140, -0.025, -0.028); pR.rotation.z = -0.60; headGroup.add(pR);
@@ -173,7 +174,7 @@ function buildFemaleHairInWorld(style, HAIR, ACCENT, headGroup) {
 
     default: { // "ponytail"
       const shell = iwShell(0.158, Math.PI * 0.78, HAIR, 0.78);
-      shell.position.y = 0.016; headGroup.add(shell);
+      shell.position.set(0, 0.016, -0.022); headGroup.add(shell);
       const gather = new THREE.Mesh(new THREE.CapsuleGeometry(0.056, 0.20, 3, 6), iwMh(HAIR, 0.78));
       gather.position.set(0, -0.06, -0.118); gather.rotation.x = -0.15; headGroup.add(gather);
       const band = new THREE.Mesh(new THREE.TorusGeometry(0.044, 0.013, 6, 12), iwMb(ACCENT, 0.90));
