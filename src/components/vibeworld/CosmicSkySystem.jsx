@@ -724,36 +724,45 @@ export function createCosmicSky(scene) {
   // Planet B: right→left  (+38 → -38)
   // Only one active at a time, strict alternation.
 
-  const DURATION_A  = 18;
-  const DURATION_B  = 18;
-  const GAP_AFTER_A = 7;
-  const GAP_AFTER_B = 7;
+  // Each planet sweeps ONLY its own side of the beach sky:
+  //   A: enters from far LEFT (-44), drifts right, fades out at center (-8)
+  //   B: enters from far RIGHT (+44), drifts left, fades out at center (+8)
+  // This means they NEVER overlap and NEVER cross into the north skyline.
+  // Z: camera - 155  (deep background, behind beach horizon, never near buildings)
+  // Y: camera + 5.5  (low enough to see in normal beach view, not overhead)
+  // Duration 16s + 8s gap = 24s cycle per planet, ~48s total before same planet repeats.
+  // Only one active at a time — strict alternation enforced by _partner check.
+
+  const DURATION_A  = 16;
+  const DURATION_B  = 16;
+  const GAP_AFTER_A = 8;
+  const GAP_AFTER_B = 8;
 
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // Left → Right sweep across beach sky
-    startCX: -38, startCY: 6, startCZ: -160,
-    endCX:    38, endCY:   5, endCZ: -155,
+    // Sweeps left-side only: far left → just past center-left, then fades out
+    startCX: -44, startCY: 5.5, startCZ: -155,
+    endCX:    -6, endCY:   5.0, endCZ: -150,
     duration: DURATION_A,
-    nextFire: now0 + 3,          // first pass starts after 3s
+    nextFire: now0 + 3,
     _gapAfter: GAP_AFTER_A,
     _partner: null,
-    _fadeInEnd: 0.12,            // fully visible by 12% into pass
-    _fadeOutStart: 0.80,         // starts fading at 80% — gone well before right edge buildings
+    _fadeInEnd: 0.10,       // fades in over first 10% (fast appear from edge)
+    _fadeOutStart: 0.78,    // starts fading at 78%, fully gone by 100%
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // Right → Left sweep across beach sky
-    startCX:  38, startCY: 6, startCZ: -160,
-    endCX:   -38, endCY:   5, endCZ: -155,
+    // Sweeps right-side only: far right → just past center-right, then fades out
+    startCX:  44, startCY: 5.5, startCZ: -155,
+    endCX:     6, endCY:   5.0, endCZ: -150,
     duration: DURATION_B,
     nextFire: now0 + DURATION_A + GAP_AFTER_A + 3,
     _gapAfter: GAP_AFTER_B,
     _partner: null,
-    _fadeInEnd: 0.12,
-    _fadeOutStart: 0.80,
+    _fadeInEnd: 0.10,
+    _fadeOutStart: 0.78,
   };
   scene.userData.beachFlybyA._partner = scene.userData.beachFlybyB;
   scene.userData.beachFlybyB._partner = scene.userData.beachFlybyA;
