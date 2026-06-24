@@ -339,69 +339,61 @@ export function createCosmicSky(scene) {
   //  - angleOffset: evenly spread at 90° apart so they appear in all 4 sky quadrants.
   //  - All: frustumCulled=false, depthTest=false, renderOrder=20 — never hidden.
   //  - Size boosted vs previous values so they read clearly from gameplay distance.
-  // ── Planet sizing & depth philosophy ────────────────────────────────────────
-  // sizeAttenuation=true means sprites shrink with distance, so size × distance = constant angular size.
-  // To feel "distant sky":
-  //   - radius: 200–350 world units from player (well beyond playable space)
-  //   - size: 18–36 world units sprite scale (keeps angular size small at that distance)
-  //   - horizonY: 12–40 camera-relative — controls vertical screen position
-  //   - angleOffset: kept to NE/NW/N quadrants, never directly behind avatar (S = PI)
-  //   - All orbits are slow (1 rev / 180–400s) so planets feel like sky features, not objects
   const PLANET_DEFS = [
     {
-      // MEGA — large purple ringed. NW background sky.
+      // MEGA — large purple ringed. HIGH flight path — upper sky background, not in normal viewport.
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
-      size: isMobile ? 32 : 44,
-      angleOffset: Math.PI * 0.72,
-      horizonY: 4,   // camera-relative: visible in upper portion of normal view
-      radius: 200,
-      orbitSpeed: (Math.PI * 2) / 320,
+      size: isMobile ? 52 : 72,
+      angleOffset: Math.PI * 0.72,   // NW quadrant
+      horizonY: 52,                  // HIGH — far above buildings, only visible when looking up
+      radius: 75,
+      orbitSpeed: (Math.PI * 2) / 90,
     },
     {
-      // VIOLET — small purple ringed.
+      // VIOLET — small purple accent. Layer B mid-sky NW. Replaces mega's old low position.
       id: "violet",
       bodyColors: ["#120820", "#2A1245", "#4A2070", "#7040A0", "#AA70E0"],
       glowColor: "rgba(130,60,220,0.40)", ringColor: "rgba(170,110,240,0.45)",
-      size: isMobile ? 18 : 24,
-      angleOffset: Math.PI * 0.58,
-      horizonY: 3,
-      radius: 180,
-      orbitSpeed: (Math.PI * 2) / 260,
+      size: isMobile ? 28 : 38,
+      angleOffset: Math.PI * 0.68,   // close to mega's angle — same NW region
+      horizonY: 16,                  // Layer B: visible in normal view
+      radius: 56,
+      orbitSpeed: (Math.PI * 2) / 130,
     },
     {
-      // BLUE — gas giant. NE lane.
+      // BLUE — gas giant. Layer B mid-sky NE. Mirrors MEGA for balanced framing.
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
-      size: isMobile ? 26 : 36,
-      angleOffset: Math.PI * 0.32,
-      horizonY: 5,
-      radius: 190,
-      orbitSpeed: (Math.PI * 2) / 380,
+      size: isMobile ? 40 : 56,
+      angleOffset: Math.PI * 0.28,   // NE quadrant — symmetric to MEGA
+      horizonY: 14,                  // Layer B: same apparent height as MEGA
+      radius: 65,
+      orbitSpeed: (Math.PI * 2) / 160,
     },
     {
-      // GREEN — emerald. Deep NW background.
+      // GREEN — emerald. Layer C high skyline NW. Above buildings, behind north wall.
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
-      size: isMobile ? 22 : 30,
-      angleOffset: Math.PI * 0.85,
-      horizonY: 6,
-      radius: 210,
-      orbitSpeed: (Math.PI * 2) / 300,
+      size: isMobile ? 36 : 50,
+      angleOffset: Math.PI * 0.88,   // deep NW — behind north skyline
+      horizonY: 30,                  // Layer C: above building tops (~8u), not zenith
+      radius: 62,
+      orbitSpeed: (Math.PI * 2) / 150,
     },
     {
-      // CRIMSON — red storm. Deep NE background.
+      // CRIMSON — red storm. Layer C high skyline NE. Symmetric to GREEN.
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
-      size: isMobile ? 28 : 38,
-      angleOffset: Math.PI * 0.15,
-      horizonY: 4,
-      radius: 220,
-      orbitSpeed: (Math.PI * 2) / 400,
+      size: isMobile ? 44 : 60,
+      angleOffset: Math.PI * 0.12,   // deep NE — symmetric to GREEN
+      horizonY: 32,                  // Layer C: slightly higher for visual variety
+      radius: 60,
+      orbitSpeed: (Math.PI * 2) / 200,
     },
   ];
 
@@ -693,39 +685,53 @@ export function createCosmicSky(scene) {
     return { sprite: psprite, mat: pmat };
   }
 
-  // Flyby planets: small sprites at large Z depth — feel distant, never foreground.
-  // At depth ~180 units behind camera, size 14–18 world units = small distant body in sky.
+  // Planet A: teal/cyan — left→right cinematic sweep, CAMERA-RELATIVE
   const flybyA = buildFlybyPlanet(
     ["#041820", "#0A3840", "#1A6860", "#2A9888", "#50D8C0"],
     "rgba(50,200,180,0.55)",
-    isMobile ? 14 : 18   // much smaller — distant sky object
+    isMobile ? 36 : 48
   );
+  // Planet B: amber/orange — right→left sweep, CAMERA-RELATIVE
   const flybyB = buildFlybyPlanet(
     ["#1A0E02", "#3A2004", "#7A4010", "#C07030", "#E8B060"],
     "rgba(220,140,50,0.52)",
-    isMobile ? 13 : 16   // slightly smaller than A
+    isMobile ? 32 : 44
   );
 
   const now0 = performance.now() * 0.001;
 
-  const DURATION_A  = 12;
-  const DURATION_B  = 11;
-  const GAP_AFTER_A = 4;
-  const GAP_AFTER_B = 3;
+  // ── Alternating beach flyby system — CAMERA-RELATIVE ────────────────────
+  // Positions are camera offsets, not world-space coordinates.
+  // This guarantees the planets are always inside the far clip plane
+  // and always appear in the correct sky direction regardless of player position.
+  //
+  // Beach is at world Z≈+32 (south of plaza origin).
+  // Camera-relative Z: negative Z = in front of camera (toward beach horizon).
+  // We place them at cameraZ -50 to -65 so they sit in the distant sky behind the beach.
+  // cameraX ±60 sweeps wide across the screen — offset from center so avatar is never obscured.
+  // cameraY +20: ~20 units above camera eye → appears in upper third of viewport.
+  //
+  // DURATION_A/B: seconds the planet crosses the screen.
+  // GAP: pause between one ending and the next starting.
 
-  // ── Flyby paths — camera-relative offsets ──────────────────────────────────
-  // KEY RULES:
-  //  • cameraZ: -160 to -180 → planets sit FAR behind the horizon, not in playable space
-  //  • cameraY: +8 to +12 → low in sky (visible in normal view) but not overlapping avatar
-  //  • cameraX: stays in hard left/right lanes, NEVER within ±20 of center (avatar zone)
-  //    Planet A: sweeps from far-left to mid-left  (cameraX -80 → -28)
-  //    Planet B: sweeps from far-right to mid-right (cameraX +80 → +28)
-  //  • Avatar occupies roughly cameraX -8 to +8 in third-person view — safe zone = ±25
+  const DURATION_A  = 12;   // seconds Planet A is visible
+  const DURATION_B  = 11;   // seconds Planet B is visible
+  const GAP_AFTER_A = 4;    // gap after A before B fires
+  const GAP_AFTER_B = 3;    // gap after B before A fires
+  // Total cycle: 12 + 4 + 11 + 3 = 30s
+
+  // Beach flyby paths — camera-relative offsets.
+  // Avatar occupies roughly cameraX -8 to +8, cameraY -5 to +8 in normal third-person view.
+  // Planet A sweeps LEFT side: starts far left, ends left-center — never crosses center.
+  // Planet B sweeps RIGHT side: starts far right, ends right-center — never crosses center.
+  // cameraZ -80 to -90: far back in depth so planet reads as sky, not foreground.
+  // cameraY 10–14: above beach props/pads, below upper sky planets, avatar head at ~cameraY 5.
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    startCX: -80, startCY: 10, startCZ: -175,
-    endCX:   -28, endCY:    8, endCZ: -165,
+    // LEFT side sweep — well within far clip (max dist ~55u from camera)
+    startCX: -45, startCY: 18, startCZ: -40,
+    endCX:   -15, endCY:   14, endCZ: -35,
     duration: DURATION_A,
     nextFire: now0 + 1,
     _gapAfter: GAP_AFTER_A,
@@ -734,8 +740,9 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    startCX:  80, startCY: 10, startCZ: -175,
-    endCX:    28, endCY:    8, endCZ: -165,
+    // RIGHT side sweep — well within far clip (max dist ~55u from camera)
+    startCX:  45, startCY: 18, startCZ: -40,
+    endCX:    15, endCY:   14, endCZ: -35,
     duration: DURATION_B,
     nextFire: now0 + DURATION_A + GAP_AFTER_A + 1,
     _gapAfter: GAP_AFTER_B,
