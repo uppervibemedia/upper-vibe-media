@@ -278,11 +278,151 @@ function buildFemaleCasual(C) {
   return root;
 }
 
+// ── Procedural emote animations ──────────────────────────────────────────────
+// All emotes use the _animParts skeleton. emoteBlend (0→1) controls blend-in.
+function applyProceduralEmote(p, emoteId, t, emoteBlend, isFemale) {
+  const sin = Math.sin;
+  const PI  = Math.PI;
+  const b   = emoteBlend; // 0=idle, 1=full emote
+
+  switch (emoteId) {
+    case "dance": {
+      // Full body dance — hip sway, alternating arm pumps, bounce
+      const beat = t * 3.5;
+      const hipSway = sin(beat) * 0.28 * b;
+      const bounce  = Math.abs(sin(beat)) * 0.04 * b;
+      if (p.torsoGroup) {
+        p.torsoGroup.rotation.y = hipSway;
+        p.torsoGroup.rotation.x = sin(beat * 2) * 0.06 * b;
+        p.torsoGroup.position.y = 0.82 + bounce;
+      }
+      // Arms pump alternately — left up when right down
+      if (p.armL) {
+        p.armL.rotation.x = sin(beat + PI * 0.5) * 0.55 * b;
+        p.armL.rotation.z = (isFemale ? 0.08 : 0.10) + sin(beat) * 0.3 * b;
+      }
+      if (p.armR) {
+        p.armR.rotation.x = -sin(beat + PI * 0.5) * 0.55 * b;
+        p.armR.rotation.z = -(isFemale ? 0.08 : 0.10) - sin(beat) * 0.3 * b;
+      }
+      // Legs step side to side
+      if (p.legL) { p.legL.rotation.x = sin(beat) * 0.18 * b; p.legL.rotation.z = 0; }
+      if (p.legR) { p.legR.rotation.x = -sin(beat) * 0.18 * b; p.legR.rotation.z = 0; }
+      if (p.headGroup) {
+        p.headGroup.rotation.z = sin(beat * 0.5) * 0.08 * b;
+        p.headGroup.rotation.x = sin(beat * 2) * 0.04 * b;
+      }
+      break;
+    }
+    case "clap": {
+      // Arms swing inward to clap, alternating with a body bounce
+      const beat = t * 5.0;
+      const clap = Math.abs(sin(beat)); // 0=apart, 1=together
+      const fwd  = clap * 0.65 * b;    // arms swing forward/inward
+      if (p.armL) {
+        p.armL.rotation.x = -fwd;
+        p.armL.rotation.z = (isFemale ? 0.08 : 0.10) - clap * 0.55 * b;
+      }
+      if (p.armR) {
+        p.armR.rotation.x = -fwd;
+        p.armR.rotation.z = -(isFemale ? 0.08 : 0.10) + clap * 0.55 * b;
+      }
+      if (p.torsoGroup) {
+        p.torsoGroup.position.y = 0.82 + clap * 0.015 * b;
+        p.torsoGroup.rotation.y = sin(beat * 0.5) * 0.06 * b;
+        p.torsoGroup.rotation.x = 0;
+      }
+      if (p.legL) { p.legL.rotation.x = 0; p.legL.rotation.z = 0; }
+      if (p.legR) { p.legR.rotation.x = 0; p.legR.rotation.z = 0; }
+      if (p.headGroup) {
+        p.headGroup.rotation.z = 0;
+        p.headGroup.rotation.x = clap * 0.05 * b;
+      }
+      break;
+    }
+    case "wave": {
+      // Right arm raises and waves side to side
+      const beat = t * 4.5;
+      const wave = sin(beat) * 0.45 * b;
+      if (p.armR) {
+        p.armR.rotation.x = -0.55 * b;         // raise arm up
+        p.armR.rotation.z = -0.55 * b + wave;  // wave left/right
+      }
+      if (p.armL) {
+        p.armL.rotation.x = sin(beat * 0.3) * 0.06 * b;
+        p.armL.rotation.z = (isFemale ? 0.08 : 0.10);
+      }
+      if (p.torsoGroup) {
+        p.torsoGroup.rotation.y = sin(beat * 0.4) * 0.06 * b;
+        p.torsoGroup.position.y = 0.82;
+        p.torsoGroup.rotation.x = 0;
+      }
+      if (p.legL) { p.legL.rotation.x = 0; p.legL.rotation.z = 0; }
+      if (p.legR) { p.legR.rotation.x = 0; p.legR.rotation.z = 0; }
+      if (p.headGroup) {
+        p.headGroup.rotation.z = sin(beat * 0.5) * 0.04 * b;
+        p.headGroup.rotation.x = 0;
+      }
+      break;
+    }
+    case "celebrate": {
+      // Both arms pump up in victory, body bounces
+      const beat = t * 4.0;
+      const pump = sin(beat);
+      const upAmount = (0.55 + pump * 0.25) * b;
+      if (p.armL) {
+        p.armL.rotation.x = -upAmount;
+        p.armL.rotation.z = 0.55 * b + sin(beat) * 0.15 * b;
+      }
+      if (p.armR) {
+        p.armR.rotation.x = -upAmount;
+        p.armR.rotation.z = -(0.55 * b + sin(beat) * 0.15 * b);
+      }
+      const bounce = Math.abs(sin(beat * 2)) * 0.045 * b;
+      if (p.torsoGroup) {
+        p.torsoGroup.position.y = 0.82 + bounce;
+        p.torsoGroup.rotation.y = sin(beat * 0.5) * 0.10 * b;
+        p.torsoGroup.rotation.x = -0.04 * b; // slight lean back for victory feel
+      }
+      if (p.legL) { p.legL.rotation.x = sin(beat) * 0.12 * b; p.legL.rotation.z = 0; }
+      if (p.legR) { p.legR.rotation.x = -sin(beat) * 0.12 * b; p.legR.rotation.z = 0; }
+      if (p.headGroup) {
+        p.headGroup.rotation.x = -0.08 * b; // look slightly upward
+        p.headGroup.rotation.z = sin(beat * 0.5) * 0.04 * b;
+      }
+      break;
+    }
+    case "vibe": {
+      // Relaxed groove — gentle hip sway, soft arm swing, slight body roll
+      const beat = t * 2.2;
+      if (p.torsoGroup) {
+        p.torsoGroup.rotation.y = sin(beat) * 0.20 * b;
+        p.torsoGroup.rotation.x = sin(beat * 2) * 0.03 * b;
+        p.torsoGroup.position.y = 0.82 + Math.abs(sin(beat)) * 0.018 * b;
+      }
+      if (p.armL) {
+        p.armL.rotation.x = sin(beat + PI * 0.3) * 0.25 * b;
+        p.armL.rotation.z = (isFemale ? 0.08 : 0.10) + sin(beat) * 0.18 * b;
+      }
+      if (p.armR) {
+        p.armR.rotation.x = -sin(beat + PI * 0.3) * 0.25 * b;
+        p.armR.rotation.z = -(isFemale ? 0.08 : 0.10) - sin(beat) * 0.18 * b;
+      }
+      if (p.legL) { p.legL.rotation.x = sin(beat) * 0.10 * b; p.legL.rotation.z = sin(beat * 0.5) * 0.04 * b; }
+      if (p.legR) { p.legR.rotation.x = -sin(beat) * 0.10 * b; p.legR.rotation.z = -sin(beat * 0.5) * 0.04 * b; }
+      if (p.headGroup) {
+        p.headGroup.rotation.z = sin(beat * 0.7) * 0.07 * b;
+        p.headGroup.rotation.x = sin(beat * 1.4) * 0.03 * b;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 // ── Procedural animation — natural walk/run cycle ─────────────────────────────
-// Uses a single phase accumulator driven by actual movement speed so feet
-// never slide relative to the ground. Smooth lerp blending between states
-// replaces hard frequency/amplitude switches.
-function animateCasual(entry, speed, isDancing, dt) {
+function animateCasual(entry, speed, isDancing, dt, emoteId) {
   if (!entry?.root) return;
   const model = entry.root.getObjectByName("avatarModel");
   if (!model) return;
@@ -291,122 +431,69 @@ function animateCasual(entry, speed, isDancing, dt) {
 
   const ud = model.userData;
   const sin = Math.sin;
-  const cos = Math.cos;
   const isFemale = entry._gender === "female";
 
-  // ── Smooth blend weight (0=idle, 1=full walk/run) with asymmetric lag ───────
-  // Ease in fast (0.18s) so movement feels responsive; ease out slower (0.35s)
-  // so stopping looks natural and feet don't snap.
-  const blendTarget = (speed > 0.06 && !isDancing) ? Math.min(speed / 2.8, 1.0) : 0.0;
-  const blendSpeed  = blendTarget > (ud._blend || 0) ? 5.5 : 2.8; // fast in, slow out
+  // Global timer (always advances)
+  ud._idleT = (ud._idleT || 0) + dt;
+  const idleT = ud._idleT;
+
+  // ── Emote blend weight — smooth in/out ────────────────────────────────────────
+  const emoteTarget = isDancing ? 1.0 : 0.0;
+  const emoteBlendSpeed = emoteTarget > (ud._emoteBlend || 0) ? 4.5 : 3.0; // fast in, slower out
+  ud._emoteBlend = (ud._emoteBlend || 0) + (emoteTarget - (ud._emoteBlend || 0)) * Math.min(1, emoteBlendSpeed * dt);
+  const emoteBlend = ud._emoteBlend;
+
+  // When emote is active, hand off to emote system
+  if (emoteBlend > 0.01 && emoteId) {
+    // Walk blend drops to 0 during emote (avatar stays in place)
+    ud._blend = (ud._blend || 0) * (1 - Math.min(1, 6 * dt));
+    applyProceduralEmote(p, emoteId, idleT, emoteBlend, isFemale);
+    return;
+  }
+
+  // ── Walk/run blend weight ─────────────────────────────────────────────────────
+  const blendTarget = speed > 0.06 ? Math.min(speed / 2.8, 1.0) : 0.0;
+  const blendSpeed  = blendTarget > (ud._blend || 0) ? 5.5 : 2.8;
   ud._blend = (ud._blend || 0) + (blendTarget - (ud._blend || 0)) * Math.min(1, blendSpeed * dt);
   const blend = ud._blend;
 
-  // Walk vs run blend (0=walk, 1=full run) — crossfade over 0.3s
   const runTarget  = Math.max(0, (speed - 1.8) / 1.4);
-  const runBlend   = Math.min(1, (ud._runBlend || 0) + (runTarget - (ud._runBlend || 0)) * Math.min(1, 4.0 * dt));
-  ud._runBlend = runBlend;
+  ud._runBlend = Math.min(1, (ud._runBlend || 0) + (runTarget - (ud._runBlend || 0)) * Math.min(1, 4.0 * dt));
+  const runBlend = ud._runBlend;
 
-  // ── Phase accumulator: advance proportional to actual speed ──────────────────
-  // Walk cycle stride at 3.0 m/s → one full step (2π) per ~0.9m of travel.
-  // Run cycle is faster — scaled up smoothly.
-  // Female gets 22% faster cycle to match her longer stride from the 1.16 height scale.
   const walkCycleSpeed = isFemale ? 3.9 : 3.2;
   const runCycleSpeed  = isFemale ? 6.6 : 5.4;
   const cycleSpeed = walkCycleSpeed + (runCycleSpeed - walkCycleSpeed) * runBlend;
 
-  // Only advance phase when actually moving — prevents sliding when stopped
-  if (speed > 0.06 && !isDancing) {
+  if (speed > 0.06) {
     ud._phase = (ud._phase || 0) + cycleSpeed * dt;
   }
-  // Separate slow idle sway timer always advances
-  ud._idleT = (ud._idleT || 0) + dt;
+  const phase = ud._phase || 0;
 
-  const phase  = ud._phase || 0;
-  const idleT  = ud._idleT;
-
-  // ── Animation amplitudes — interpolate with blend & runBlend ─────────────────
-  const legAmpWalk = 0.42;   // max leg swing in walk
-  const legAmpRun  = 0.62;   // max leg swing in run
-  const legAmp     = (legAmpWalk + (legAmpRun - legAmpWalk) * runBlend) * blend;
-
-  const armAmpWalk = 0.30;
-  const armAmpRun  = 0.50;
-  const armAmp     = (armAmpWalk + (armAmpRun - armAmpWalk) * runBlend) * blend;
-
-  // ── Leg rotation (hip-pivot swing) ───────────────────────────────────────────
-  // Legs swing on X (forward/back). Right leg leads when left is back (sin vs -sin).
-  // Use smoothstep on the sin to make foot contact flatter (less floaty arc).
+  const legAmp = (0.42 + 0.20 * runBlend) * blend;
+  const armAmp = (0.30 + 0.20 * runBlend) * blend;
   const legSin = sin(phase);
-  // Knee bend: when leg is behind (negative extension), add slight knee bend on Z
-  // to fake the knee lift. We approximate with a half-wave rectified sin.
-  const kneeWalk = 0.10;
-  const kneeRun  = 0.20;
-  const kneeAmp  = (kneeWalk + (kneeRun - kneeWalk) * runBlend) * blend;
 
-  if (p.legL) {
-    p.legL.rotation.x = legSin * legAmp;
-    // Slight outward lean when leg is forward (natural gait)
-    p.legL.rotation.z = 0.04 * blend * sin(phase + Math.PI * 0.5);
-  }
-  if (p.legR) {
-    p.legR.rotation.x = -legSin * legAmp;
-    p.legR.rotation.z = -0.04 * blend * sin(phase + Math.PI * 0.5);
-  }
+  if (p.legL) { p.legL.rotation.x = legSin * legAmp; p.legL.rotation.z = 0.04 * blend * sin(phase + Math.PI * 0.5); }
+  if (p.legR) { p.legR.rotation.x = -legSin * legAmp; p.legR.rotation.z = -0.04 * blend * sin(phase + Math.PI * 0.5); }
 
-  // ── Arm swing — naturally opposite to same-side leg ──────────────────────────
-  // Left arm swings forward when LEFT leg swings back (arms counter legs).
-  // Arms also have a slight inward-outward Z swing for shoulder feel.
-  const armSinFwd = -legSin; // counter to left leg
-  // Female arms stay strictly on X axis with minimal Z drift to prevent clipping
-  const armZBase = isFemale ? 0.08 : 0.10;
-  const armZSwing = isFemale ? 0.03 : 0.06; // reduced for female to keep arms clear of body
+  const armSinFwd = -legSin;
+  const armZBase  = isFemale ? 0.08 : 0.10;
+  const armZSwing = isFemale ? 0.03 : 0.06;
+  if (p.armL) { p.armL.rotation.x = armSinFwd * armAmp; p.armL.rotation.z = armZBase + armZSwing * blend * sin(phase + Math.PI * 0.5); }
+  if (p.armR) { p.armR.rotation.x = -armSinFwd * armAmp; p.armR.rotation.z = -(armZBase + armZSwing * blend * sin(phase + Math.PI * 0.5)); }
 
-  if (p.armL) {
-    p.armL.rotation.x = armSinFwd * armAmp;
-    p.armL.rotation.z = armZBase + armZSwing * blend * sin(phase + Math.PI * 0.5);
-  }
-  if (p.armR) {
-    p.armR.rotation.x = -armSinFwd * armAmp;
-    p.armR.rotation.z = -(armZBase + armZSwing * blend * sin(phase + Math.PI * 0.5));
-  }
-
-  // ── Torso: hip sway + shoulder counter-rotation + bob ────────────────────────
   if (p.torsoGroup) {
-    const baseY = 0.82; // same for both genders — torso pivot is at 0.82 in both builds
-
-    // Vertical bob: body drops slightly on each step contact (2× per stride cycle)
-    const bobAmpWalk = 0.010;
-    const bobAmpRun  = 0.022;
-    const bob = (bobAmpWalk + (bobAmpRun - bobAmpWalk) * runBlend) * blend;
-    const bobVal = -Math.abs(sin(phase)) * bob;
-
-    // Idle breathing: gentle up/down
-    const idleBob = isDancing ? 0 : sin(idleT * 1.1) * 0.005 * (1 - blend);
-
-    p.torsoGroup.position.y = baseY + bobVal + idleBob;
-
-    // Shoulder counter-rotation — reduced for female so shoulders don't swing arms into body
-    const shoulderAmpWalk = isFemale ? 0.030 : 0.055;
-    const shoulderAmpRun  = isFemale ? 0.055 : 0.10;
-    const shoulderAmp = (shoulderAmpWalk + (shoulderAmpRun - shoulderAmpWalk) * runBlend) * blend;
-    if (isDancing) {
-      p.torsoGroup.rotation.y = sin(idleT * 3.0) * 0.18;
-    } else {
-      p.torsoGroup.rotation.y = sin(phase + Math.PI) * shoulderAmp;
-    }
-
-    // Slight forward lean when running
-    const leanAmp  = 0.06 * runBlend * blend;
-    p.torsoGroup.rotation.x = leanAmp;
+    const bob = (0.010 + 0.012 * runBlend) * blend;
+    const idleBob = sin(idleT * 1.1) * 0.005 * (1 - blend);
+    p.torsoGroup.position.y = 0.82 - Math.abs(sin(phase)) * bob + idleBob;
+    const shoulderAmp = (isFemale ? 0.030 : 0.055) + (isFemale ? 0.025 : 0.045) * runBlend;
+    p.torsoGroup.rotation.y = sin(phase + Math.PI) * shoulderAmp * blend;
+    p.torsoGroup.rotation.x = 0.06 * runBlend * blend;
   }
 
-  // ── Head: subtle nod and gentle idle look-around ─────────────────────────────
   if (p.headGroup) {
-    // Small forward nod on each step
-    const nodAmp = 0.022 * blend;
-    p.headGroup.rotation.x = sin(phase * 2) * nodAmp + sin(idleT * 0.7) * 0.015 * (1 - blend);
-    // Subtle side tilt with gait (looks at path)
+    p.headGroup.rotation.x = sin(phase * 2) * 0.022 * blend + sin(idleT * 0.7) * 0.015 * (1 - blend);
     p.headGroup.rotation.z = sin(phase) * 0.015 * blend;
   }
 }
@@ -442,7 +529,7 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
   return entry;
 }
 
-export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false) {
+export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false, emoteId = null) {
   if (!entry) return;
 
   const model = entry.root?.getObjectByName("avatarModel");
@@ -476,5 +563,5 @@ export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHover
     return;
   }
 
-  animateCasual(entry, speed, isDancing, dt);
+  animateCasual(entry, speed, isDancing, dt, emoteId);
 }

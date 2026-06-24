@@ -110,13 +110,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsDancing(true);
     setActiveEmote({ ...emote, startedAt: Date.now() });
 
-    if (emote.id !== "dance") {
-      // Non-dance emotes auto-expire after 3s then return to idle
+    if (emote.id !== "dance" && emote.id !== "vibe") {
+      // Short emotes (clap, wave, celebrate) auto-expire after 3s
       emoteTimerRef.current = setTimeout(() => {
         setIsDancing(false);
         setActiveEmote(null);
       }, 3000);
     }
+    // "dance" and "vibe" loop until stopped manually or by movement
     // "dance" persists until handleStopDance() or movement cancels it
   }, []);
 

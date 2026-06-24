@@ -123,46 +123,83 @@ function crossFade(entry, toKey, duration = 0.22) {
 }
 
 // ─── Procedural emote animation — applied on top of idle pose ─
-// Runs per-frame and manipulates bone rotations directly.
-// Returns nothing; mutates bones in place.
+// Works by finding bones in the Soldier GLB skeleton and rotating them.
 function applyEmotePose(entry, dt) {
   if (!entry._emote) return;
-  const t = entry._emoteTimer || 0;
-  entry._emoteTimer = t + dt;
+  entry._emoteTimer = (entry._emoteTimer || 0) + dt;
   const tm = entry._emoteTimer;
 
   const model = entry.root.getObjectByName("avatarModel");
   if (!model) return;
 
-  // Helper: find bone by partial name match
-  const getBone = (partialName) => {
-    let found = null;
+  // Cache bones on first call to avoid per-frame traversal
+  if (!entry._emoteBones) {
+    const bones = {};
     model.traverse((obj) => {
-      if (obj.isBone && obj.name.toLowerCase().includes(partialName.toLowerCase())) found = obj;
+      if (!obj.isBone) return;
+      const n = obj.name.toLowerCase();
+      if (n.includes("spine") || n.includes("chest") || n.includes("hips")) bones.spine = bones.spine || obj;
+      if ((n.includes("upper") || n.includes("arm")) && (n.includes("left") || n.endsWith("l"))) bones.armL = bones.armL || obj;
+      if ((n.includes("upper") || n.includes("arm")) && (n.includes("right") || n.endsWith("r"))) bones.armR = bones.armR || obj;
+      if (n.includes("head")) bones.head = bones.head || obj;
+      if ((n.includes("leg") || n.includes("thigh") || n.includes("upleg")) && (n.includes("left") || n.endsWith("l"))) bones.legL = bones.legL || obj;
+      if ((n.includes("leg") || n.includes("thigh") || n.includes("upleg")) && (n.includes("right") || n.endsWith("r"))) bones.legR = bones.legR || obj;
     });
-    return found;
-  };
-
-  const spine = getBone("spine") || getBone("chest") || getBone("upper");
-  const armL  = getBone("leftarm")  || getBone("left_arm")  || getBone("larm");
-  const armR  = getBone("rightarm") || getBone("right_arm") || getBone("rarm");
-  const head  = getBone("head") || getBone("neck");
-
+    entry._emoteBones = bones;
+  }
+  const { spine, armL, armR, head, legL, legR } = entry._emoteBones;
   const sin = Math.sin;
-  const cos = Math.cos;
   const PI  = Math.PI;
 
   switch (entry._emote) {
-    case "dance":
-    case "clap": {
-      // Dance animation = clapping-style: both arms swing toward each other rhythmically
-      const clap = Math.abs(sin(tm * 6.0));
-      if (armL) { armL.rotation.z = PI * 0.3 - clap * 0.7; armL.rotation.x = clap * 0.3; }
-      if (armR) { armR.rotation.z = -(PI * 0.3 - clap * 0.7); armR.rotation.x = clap * 0.3; }
-      if (head) { head.rotation.x = sin(tm * 6.0) * 0.06; }
+    case "dance": {
+      const beat = tm * 3.5;
+      if (armL) { armL.rotation.z = PI * 0.5 + sin(beat + PI * 0.5) * 0.5; armL.rotation.x = sin(beat) * 0.3; }
+      if (armR) { armR.rotation.z = -(PI * 0.5 + sin(beat + PI * 0.5) * 0.5); armR.rotation.x = -sin(beat) * 0.3; }
+      if (spine) { spine.rotation.y = sin(beat) * 0.22; spine.rotation.x = sin(beat * 2) * 0.06; }
+      if (head)  { head.rotation.z = sin(beat * 0.5) * 0.07; }
+      if (legL)  { legL.rotation.x = sin(beat) * 0.18; }
+      if (legR)  { legR.rotation.x = -sin(beat) * 0.18; }
       break;
     }
-    // All other emotes: emoji-only — no body animation (handled by EmojiEmote overlay in React)
+    case "clap": {
+      const beat = tm * 5.0;
+      const clap = Math.abs(sin(beat));
+      if (armL) { armL.rotation.z = PI * 0.3 - clap * 0.65; armL.rotation.x = -clap * 0.55; }
+      if (armR) { armR.rotation.z = -(PI * 0.3 - clap * 0.65); armR.rotation.x = -clap * 0.55; }
+      if (spine) { spine.rotation.y = sin(beat * 0.5) * 0.05; }
+      if (head)  { head.rotation.x = clap * 0.06; }
+      break;
+    }
+    case "wave": {
+      const beat = tm * 4.5;
+      if (armR) { armR.rotation.z = -PI * 0.55; armR.rotation.x = sin(beat) * 0.45; }
+      if (armL) { armL.rotation.x = sin(beat * 0.3) * 0.06; }
+      if (spine) { spine.rotation.y = sin(beat * 0.4) * 0.06; }
+      if (head)  { head.rotation.z = sin(beat * 0.5) * 0.04; }
+      break;
+    }
+    case "celebrate": {
+      const beat = tm * 4.0;
+      const pump = sin(beat);
+      if (armL) { armL.rotation.z = PI * 0.6 + sin(beat) * 0.2; armL.rotation.x = -(0.5 + pump * 0.25); }
+      if (armR) { armR.rotation.z = -(PI * 0.6 + sin(beat) * 0.2); armR.rotation.x = -(0.5 + pump * 0.25); }
+      if (spine) { spine.rotation.y = sin(beat * 0.5) * 0.10; spine.rotation.x = -0.04; }
+      if (head)  { head.rotation.x = -0.08; head.rotation.z = sin(beat * 0.5) * 0.04; }
+      if (legL)  { legL.rotation.x = sin(beat) * 0.12; }
+      if (legR)  { legR.rotation.x = -sin(beat) * 0.12; }
+      break;
+    }
+    case "vibe": {
+      const beat = tm * 2.2;
+      if (armL) { armL.rotation.z = PI * 0.25 + sin(beat) * 0.2; armL.rotation.x = sin(beat + PI * 0.3) * 0.25; }
+      if (armR) { armR.rotation.z = -(PI * 0.25 + sin(beat) * 0.2); armR.rotation.x = -sin(beat + PI * 0.3) * 0.25; }
+      if (spine) { spine.rotation.y = sin(beat) * 0.20; spine.rotation.x = sin(beat * 2) * 0.03; }
+      if (head)  { head.rotation.z = sin(beat * 0.7) * 0.07; }
+      if (legL)  { legL.rotation.x = sin(beat) * 0.10; }
+      if (legR)  { legR.rotation.x = -sin(beat) * 0.10; }
+      break;
+    }
     default:
       break;
   }
@@ -187,14 +224,13 @@ export function updateAvatarAnimation(entry, speed, isDancing, dt, isHoverboardi
   }
 
   if (isDancing) {
-    // dance/clap emotes drive body animation; all others are emoji-only (no bone manipulation)
-    const BODY_EMOTES = new Set(["dance", "clap"]);
+    // All emotes drive real body animation via applyEmotePose
     const key = entry.clips.idle ? "idle" : entry.clips.walk ? "walk" : null;
     if (key) {
       crossFade(entry, key, 0.3);
       entry.clips[key].setEffectiveTimeScale(0.6);
     }
-    if (entry._emote && BODY_EMOTES.has(entry._emote)) {
+    if (entry._emote) {
       applyEmotePose(entry, dt);
     }
     return;

@@ -1680,7 +1680,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const avatarEntry = avatarEntryRef.current;
         if (avatarEntry?._isMixamo) {
           // Mixamo Xbot GLB avatar — same logic as soldier, including hoverboard freeze
-          updateMixamoAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt, hbRidingRef.current);
+          const emoteId = isDancingRef.current ? (activeEmoteRef.current?.id || "dance") : null;
+          updateMixamoAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt, hbRidingRef.current, emoteId);
         } else if (avatarEntry?._isTestAvatar) {
           // Procedural test avatars (male/female) — no mixer/clips
           updateTestAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt);
@@ -1691,10 +1692,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             if (avatarEntry._emote !== emoteId) {
               avatarEntry._emote = emoteId;
               avatarEntry._emoteTimer = 0;
+              avatarEntry._emoteBones = null; // force bone re-cache on emote switch
             }
           } else if (avatarEntry && !isDancingRef.current && avatarEntry._emote) {
             avatarEntry._emote = null;
             avatarEntry._emoteTimer = 0;
+            avatarEntry._emoteBones = null;
           }
           if (avatarEntry) updateAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt, hbRidingRef.current);
         }

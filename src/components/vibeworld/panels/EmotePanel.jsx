@@ -1,14 +1,14 @@
 import React, { useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Music4, Hand, Heart, Flame, Flower2 } from "lucide-react";
+import { X, Music4, Hand, Trophy, Zap, Waves } from "lucide-react";
 
-// dance/clap = body animation (clap motion); wave/heart/fire/peace = emoji floaters only
+// All emotes drive real avatar body animation — no emoji-only effects
 const EMOTES = [
-  { id: "dance",  label: "Dance", icon: Music4,   color: "#C43BFF", effect: "dance" },
-  { id: "wave",   label: "Wave",  icon: Hand,      color: "#00D4F0", effect: "wave"  },
-  { id: "heart",  label: "Heart", icon: Heart,     color: "#FF4081", effect: "heart" },
-  { id: "fire",   label: "Fire",  icon: Flame,     color: "#FF6D00", effect: "fire"  },
-  { id: "peace",  label: "Peace", icon: Flower2,   color: "#A078FF", effect: "peace" },
+  { id: "dance",     label: "Dance",     icon: Music4, color: "#C43BFF" },
+  { id: "clap",      label: "Clap",      icon: Zap,    color: "#00D4F0" },
+  { id: "wave",      label: "Wave",      icon: Hand,   color: "#4ADE80" },
+  { id: "celebrate", label: "Celebrate", icon: Trophy, color: "#FFD700" },
+  { id: "vibe",      label: "Vibe",      icon: Waves,  color: "#FF6B6B" },
 ];
 
 export default function EmotePanel({ open, onClose, onEmote, onStopDance, isDancing, activeEmote, isMobile }) {
