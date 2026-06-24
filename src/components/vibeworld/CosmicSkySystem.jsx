@@ -98,15 +98,15 @@ export function createCosmicSky(scene) {
     skyCtx.restore();
   }
 
-  // Baked canvas stars — small dots on the sphere texture
-  const canvasStarCount = isMobile ? 400 : 900;
+  // Baked canvas stars — larger dots so they're actually visible on the sphere
+  const canvasStarCount = isMobile ? 600 : 1400;
   const seededStar = (() => { let s = 99; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
   for (let i = 0; i < canvasStarCount; i++) {
-  const sx = seededStar() * SKY_W;
-  const sy = seededStar() * SKY_H;
-  // Smaller radius for a less cluttered sky
-  const sr = 0.5 + seededStar() * (seededStar() < 0.08 ? 1.2 : 0.5);
-  const bright = SKY_DEBUG ? 1.0 : (0.45 + seededStar() * 0.35);
+    const sx = seededStar() * SKY_W;
+    const sy = seededStar() * SKY_H;
+    // Larger radius so stars are visible when texture is mapped to sphere
+    const sr = 1.2 + seededStar() * (seededStar() < 0.08 ? 3.0 : 1.2);
+    const bright = SKY_DEBUG ? 1.0 : (0.55 + seededStar() * 0.45);
     const warm = seededStar() < 0.12;
     const col = warm
       ? `rgba(255,215,170,${bright.toFixed(2)})`
@@ -117,21 +117,21 @@ export function createCosmicSky(scene) {
     skyCtx.fill();
   }
 
-  // Hero stars — smaller glowing stars (reduced 60%)
-  const heroStarCount = isMobile ? 8 : 18;
+  // Hero stars — bright glowing prominent stars
+  const heroStarCount = isMobile ? 15 : 35;
   const seededHero = (() => { let s = 77; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
   for (let h = 0; h < heroStarCount; h++) {
     const hx = seededHero() * SKY_W;
     const hy = seededHero() * SKY_H * 0.80;
-    const hr = 0.8 + seededHero() * 1.2;
-    const hg = skyCtx.createRadialGradient(hx, hy, 0, hx, hy, hr * 2.0);
-    hg.addColorStop(0,    "rgba(255,255,255,0.9)");
-    hg.addColorStop(0.2,  "rgba(220,235,255,0.5)");
-    hg.addColorStop(0.6,  "rgba(180,210,255,0.15)");
+    const hr = 2.0 + seededHero() * 3.0;
+    const hg = skyCtx.createRadialGradient(hx, hy, 0, hx, hy, hr * 3.0);
+    hg.addColorStop(0,    "rgba(255,255,255,1)");
+    hg.addColorStop(0.15, "rgba(220,235,255,0.85)");
+    hg.addColorStop(0.4,  "rgba(180,210,255,0.35)");
     hg.addColorStop(1,    "rgba(0,0,0,0)");
     skyCtx.fillStyle = hg;
     skyCtx.beginPath();
-    skyCtx.arc(hx, hy, hr * 2.0, 0, Math.PI * 2);
+    skyCtx.arc(hx, hy, hr * 3.0, 0, Math.PI * 2);
     skyCtx.fill();
   }
 
@@ -341,48 +341,48 @@ export function createCosmicSky(scene) {
   //  - Size boosted vs previous values so they read clearly from gameplay distance.
   const PLANET_DEFS = [
     {
-      // MEGA — large purple ringed. Layer B mid-sky NW. Visible in normal view.
+      // MEGA — large purple ringed planet. NW upper sky. Faster drift (shows movement).
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
       size: isMobile ? 52 : 72,
-      angleOffset: Math.PI * 0.72,   // NW quadrant — off avatar center corridor
-      horizonY: 16,                  // Layer B: low enough to be in normal viewport
-      radius: 58,
-      orbitSpeed: (Math.PI * 2) / 90,
+      angleOffset: Math.PI * 0.80,   // NW arc
+      horizonY: 50,                  // high in sky — well above buildings
+      radius: 58,                    // close enough to be large on screen
+      orbitSpeed: (Math.PI * 2) / 90, // 1 revolution per 90s
     },
     {
-      // BLUE — gas giant. Layer B mid-sky NE. Mirrors MEGA for balanced framing.
+      // WEST — blue gas giant. NE upper sky. Slower drift (feels fixed).
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
-      size: isMobile ? 40 : 56,
-      angleOffset: Math.PI * 0.28,   // NE quadrant — symmetric to MEGA
-      horizonY: 14,                  // Layer B: same apparent height as MEGA
-      radius: 65,
-      orbitSpeed: (Math.PI * 2) / 160,
+      size: isMobile ? 38 : 54,
+      angleOffset: Math.PI * 0.30,   // NE arc — opposite side from mega
+      horizonY: 44,                  // slightly lower than mega but still upper sky
+      radius: 70,                    // farther = slightly smaller on screen
+      orbitSpeed: (Math.PI * 2) / 180, // very slow — 1 rev per 3 minutes
     },
     {
-      // GREEN — emerald. Layer C high skyline NW. Above buildings, behind north wall.
+      // GREEN — emerald planet. SE-to-north arc. Visible from beach + plaza.
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
-      size: isMobile ? 36 : 50,
-      angleOffset: Math.PI * 0.88,   // deep NW — behind north skyline
-      horizonY: 30,                  // Layer C: above building tops (~8u), not zenith
+      size: isMobile ? 34 : 46,
+      angleOffset: Math.PI * 1.55,   // SE arc — visible from beach looking up
+      horizonY: 48,
       radius: 62,
-      orbitSpeed: (Math.PI * 2) / 150,
+      orbitSpeed: (Math.PI * 2) / 150, // medium drift
     },
     {
-      // CRIMSON — red storm. Layer C high skyline NE. Symmetric to GREEN.
+      // CRIMSON — red storm planet. SW upper sky. Slower fixed presence.
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
-      size: isMobile ? 44 : 60,
-      angleOffset: Math.PI * 0.12,   // deep NE — symmetric to GREEN
-      horizonY: 32,                  // Layer C: slightly higher for visual variety
-      radius: 60,
-      orbitSpeed: (Math.PI * 2) / 200,
+      size: isMobile ? 42 : 58,
+      angleOffset: Math.PI * 1.20,   // SW arc — completes the 4-quadrant spread
+      horizonY: 54,                  // highest of the 4 — deep upper sky
+      radius: 65,
+      orbitSpeed: (Math.PI * 2) / 200, // slowest — feels like a fixed star
     },
   ];
 
@@ -717,22 +717,22 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // LEFT side sweep — well within far clip (max dist ~55u from camera)
-    startCX: -45, startCY: 18, startCZ: -40,
-    endCX:   -15, endCY:   14, endCZ: -35,
+    // LEFT side sweep — planet stays on left, never enters avatar center zone (cameraX > -15)
+    startCX: -80, startCY: 13, startCZ: -85,
+    endCX:   -18, endCY:   11, endCZ: -78,
     duration: DURATION_A,
-    nextFire: now0 + 1,
+    nextFire: now0 + 2,
     _gapAfter: GAP_AFTER_A,
     _partner: null,
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // RIGHT side sweep — well within far clip (max dist ~55u from camera)
-    startCX:  45, startCY: 18, startCZ: -40,
-    endCX:    15, endCY:   14, endCZ: -35,
+    // RIGHT side sweep — planet stays on right, never enters avatar center zone (cameraX < +15)
+    startCX:  80, startCY: 14, startCZ: -88,
+    endCX:    18, endCY:   12, endCZ: -80,
     duration: DURATION_B,
-    nextFire: now0 + DURATION_A + GAP_AFTER_A + 1,
+    nextFire: now0 + DURATION_A + GAP_AFTER_A + 2,
     _gapAfter: GAP_AFTER_B,
     _partner: null,
   };
