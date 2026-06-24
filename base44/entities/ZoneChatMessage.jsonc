@@ -1,0 +1,45 @@
+{
+  "name": "ZoneChatMessage",
+  "type": "object",
+  "properties": {
+    "zone_id": {
+      "type": "string",
+      "description": "Zone identifier e.g. stage, plaza, lounge"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Sender user ID"
+    },
+    "username": {
+      "type": "string",
+      "description": "Display name of sender"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message text (max 250 chars)"
+    },
+    "is_quick": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this was a quick preset message"
+    }
+  },
+  "required": [
+    "zone_id",
+    "user_id",
+    "username",
+    "message"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": true,
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

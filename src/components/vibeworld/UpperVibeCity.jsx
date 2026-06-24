@@ -1074,6 +1074,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         djTrack={djTrack}
         onFerrisRideChange={setFerrisRiding}
         followSystem={followSystem}
+        username={user?.full_name || user?.username || "Visitor"}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}

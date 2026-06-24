@@ -48,6 +48,7 @@ import UserInteractionMenu from "./UserInteractionMenu";
 import IncomingChatRequest from "./IncomingChatRequest";
 import ChatWarning from "@/components/vibeworld/ChatWarning";
 import LiveUsersBadge from "@/components/vibeworld/LiveUsersBadge";
+import ZoneChatPanel from "./panels/ZoneChatPanel";
 
 const ZONE_ICONS = {
   plaza: Compass,
@@ -119,6 +120,8 @@ export default function WorldHUD({
   onFerrisRideChange,
   // Follow system
   followSystem,
+  // Zone chat
+  username,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -196,6 +199,8 @@ export default function WorldHUD({
   const [jukeboxOpen, setJukeboxOpen] = useState(false);
   const [djSongPageOpen, setDjSongPageOpen] = useState(false);
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
+  const [zoneChatOpen, setZoneChatOpen] = useState(false);
+  const [zoneChatInputFocused, setZoneChatInputFocused] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -278,6 +283,28 @@ export default function WorldHUD({
             : isMobile ? "calc(env(safe-area-inset-top, 0px) + 3.4rem)" : "4.5rem",
         }}
       >
+        {/* Zone Chat button */}
+        <button
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={() => { hapticTap(); setZoneChatOpen((v) => !v); onMobileModalChange?.(!zoneChatOpen); }}
+          className="relative flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
+          style={{
+            background: zoneChatOpen ? "rgba(196,59,255,0.2)" : "rgba(255,255,255,0.06)",
+            border: `1px solid ${zoneChatOpen ? "rgba(196,59,255,0.4)" : "rgba(255,255,255,0.08)"}`,
+            backdropFilter: "blur(8px)",
+            width: isMobile ? 32 : 36,
+            height: isMobile ? 32 : 36,
+            minWidth: isMobile ? 32 : 36,
+            minHeight: isMobile ? 32 : 36,
+            touchAction: "manipulation",
+            pointerEvents: "auto",
+          }}
+          title="Zone Chat"
+        >
+          <MessageCircle style={{ width: isMobile ? 12 : 14, height: isMobile ? 12 : 14 }}
+            color={zoneChatOpen ? "#C43BFF" : "rgba(255,255,255,0.4)"} />
+        </button>
+
         {/* Chat requests bell */}
         <button
           onTouchStart={(e) => e.stopPropagation()}
@@ -1180,6 +1207,23 @@ export default function WorldHUD({
             onUnfollow={followSystem?.unfollow}
             loadMyFollows={followSystem?.loadMyFollows}
             activeUsers={activeUsers}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Zone Chat Panel ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {zoneChatOpen && (
+          <ZoneChatPanel
+            open={zoneChatOpen}
+            onClose={() => { setZoneChatOpen(false); onMobileModalChange?.(false); setZoneChatInputFocused(false); }}
+            zoneId={zone?.id || "plaza"}
+            userId={currentUserId}
+            username={username}
+            blockedUsers={blockedUsers}
+            onInputFocus={(focused) => { setZoneChatInputFocused(focused); onLoungeInputFocus?.(focused); }}
+            isMobile={isMobile}
+            mobileLayout={mobileLayout}
           />
         )}
       </AnimatePresence>
