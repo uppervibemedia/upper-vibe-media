@@ -105,7 +105,7 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
               </div>
 
               {/* Body — two-column desktop, stack mobile */}
-              <div className="flex flex-col lg:flex-row flex-1 overflow-hidden" style={{ maxHeight: "calc(92vh - 130px)" }}>
+              <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden" style={{ maxHeight: "calc(92vh - 130px)" }}>
 
                 {/* LEFT: preview */}
                 <div
@@ -114,11 +114,11 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                 >
                   {/* Mobile: compact preview */}
                   <div className="block lg:hidden w-full">
-                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={300} height={280} />
+                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} avatarTypeKey={avatarTypeKey} width={300} height={240} />
                   </div>
                   {/* Desktop: tall preview */}
                   <div className="hidden lg:block w-full">
-                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} width={280} height={440} />
+                    <AvatarPreviewCanvas outfitColorKey={outfitColorKey} avatarTypeKey={avatarTypeKey} width={280} height={400} />
                   </div>
                   <p className="text-[9px] mt-2 text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
                     Click a color to preview instantly
@@ -127,12 +127,12 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
 
                 {/* RIGHT: color picker + apply */}
                 <div
-                  className="flex flex-col flex-1 overflow-y-auto px-5 py-5 lg:border-l"
+                  className="flex flex-col flex-1 overflow-y-auto px-5 py-4 lg:border-l"
                   style={{ borderColor: "rgba(255,255,255,0.06)" }}
                 >
                   {/* Avatar Type Selector — TEST MODE */}
-                  <div className="mb-5">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="mb-3">
+                    <div className="flex items-center gap-2 mb-1.5">
                       <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.3)" }}>
                         Avatar Type
                       </span>
@@ -140,33 +140,27 @@ export default function AvatarCustomizerPanel({ open, onClose, onApply, user }) 
                         TEST
                       </span>
                     </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex gap-1.5">
                       {AVATAR_TYPE_OPTIONS.map((opt) => {
                         const active = avatarTypeKey === opt.key;
                         return (
                           <button
                             key={opt.key}
                             onClick={() => handleAvatarTypeChange(opt.key)}
-                            className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-all hover:brightness-110 active:scale-[0.98]"
+                            className="flex-1 flex flex-col items-center gap-1 px-2 py-2 rounded-xl text-center transition-all hover:brightness-110 active:scale-[0.98]"
                             style={{
                               background: active ? "rgba(155,126,255,0.14)" : "rgba(255,255,255,0.04)",
                               border: active ? "1.5px solid rgba(155,126,255,0.6)" : "1px solid rgba(255,255,255,0.08)",
                               boxShadow: active ? "0 0 14px rgba(155,126,255,0.2)" : "none",
                             }}
                           >
-                            <span style={{ fontSize: 18, lineHeight: 1 }}>{opt.icon}</span>
-                            <div className="flex flex-col min-w-0 flex-1">
-                              <span className="text-[11px] font-black text-white">{opt.label}</span>
-                              <span className="text-[9px]" style={{ color: opt.key === "current" ? "rgba(255,255,255,0.25)" : "rgba(255,180,0,0.6)" }}>{opt.sub}</span>
-                            </div>
-                            {active && <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#9B7EFF" }} />}
+                            <span style={{ fontSize: 16, lineHeight: 1 }}>{opt.icon}</span>
+                            <span className="text-[10px] font-black text-white leading-tight">{opt.label}</span>
+                            {active && <Check className="w-3 h-3" style={{ color: "#9B7EFF" }} />}
                           </button>
                         );
                       })}
                     </div>
-                    <p className="text-[9px] mt-1.5" style={{ color: "rgba(255,255,255,0.18)" }}>
-                      Test avatars are session-only. Current avatar is the permanent default.
-                    </p>
                   </div>
 
                   <div className="mb-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14 }}>
