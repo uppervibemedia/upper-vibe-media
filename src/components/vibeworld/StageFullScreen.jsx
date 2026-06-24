@@ -77,24 +77,27 @@ export default function StageFullScreen({ open, video, onClose }) {
           className="fixed inset-0 z-[75] flex flex-col items-center justify-center"
           style={{ background: "rgba(0,0,0,0.95)", backdropFilter: "blur(12px)" }}
         >
-          {/* Exit button */}
-          <button
-            onClick={onClose}
-            className="absolute z-10 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all hover:bg-white/10"
-            style={{
-              top: "calc(env(safe-area-inset-top, 0px) + 1rem)",
-              right: "1rem",
-              background: "rgba(255,255,255,0.08)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              color: "rgba(255,255,255,0.7)",
-              minWidth: "44px",
-              minHeight: "44px",
-              pointerEvents: "auto",
-            }}
-          >
-            <X className="w-3.5 h-3.5" />
-            Exit Full Screen
-          </button>
+          {/* Top-right controls: mute toggle + exit */}
+          <div className="absolute z-10 flex items-center gap-2"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)", right: "1rem" }}>
+            {/* Mute / Unmute */}
+            <button
+              onClick={handleToggleMute}
+              className="flex items-center justify-center rounded-full transition-all hover:bg-white/10 active:scale-95"
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", minWidth: 44, minHeight: 44, width: 44, height: 44, pointerEvents: "auto" }}
+            >
+              {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+            {/* Exit */}
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold tracking-wide transition-all hover:bg-white/10"
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", minWidth: 44, minHeight: 44, pointerEvents: "auto" }}
+            >
+              <X className="w-3.5 h-3.5" />
+              Exit
+            </button>
+          </div>
 
           {/* Title */}
           <div className="absolute z-10 max-w-[50vw]"
@@ -150,26 +153,7 @@ export default function StageFullScreen({ open, video, onClose }) {
             />
           </div>
 
-          {/* Audio hint — WorldHUD stage controls bar handles mute/unmute */}
-          {ytId && muted && (
-            <div
-              className="absolute flex items-center gap-2 px-3 py-2 rounded-full pointer-events-none"
-              style={{
-                bottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
-                left: "50%",
-                transform: "translateX(-50%)",
-                background: "rgba(0,0,0,0.55)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "rgba(255,255,255,0.5)",
-                fontSize: "11px",
-                fontWeight: 700,
-                whiteSpace: "nowrap",
-              }}
-            >
-              <VolumeX className="w-3.5 h-3.5" />
-              Use the controls below to unmute
-            </div>
-          )}
+
         </motion.div>
       )}
     </AnimatePresence>
