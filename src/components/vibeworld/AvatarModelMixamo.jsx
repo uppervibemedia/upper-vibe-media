@@ -1,17 +1,26 @@
 /**
  * AvatarModelMixamo — Mixamo Xbot test avatar.
- * Uses the EXACT same animation logic as the soldier avatar (AvatarModel.js).
- * Movement, camera, hoverboard, zones — all identical to the soldier.
  *
- * The soldier avatar remains the default. This is a TEST option only.
+ * Uses the EXACT same movement system, animation logic, hoverboard, and
+ * controller Group pattern as the soldier avatar (AvatarModel.js).
+ *
+ * This is a TEST option only. The soldier remains the default.
  * Do NOT set as default until explicitly approved.
+ *
+ * Key design decisions matching soldier:
+ * - Returns entry { root (Group), mixer, clips, currentAnim } immediately
+ * - GLB loads async, attaches as child of controller Group
+ * - Uses gltf.scene directly (no clone) for player — same as soldier pattern
+ * - model.rotation.y = Math.PI so it faces the same direction as soldier
+ * - attachHoverboard / detachHoverboard imported from AvatarModel (shared)
+ * - updateMixamoAvatarAnimation mirrors updateAvatarAnimation exactly
  */
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { SPAWN } from "./cityData";
 
-// Xbot GLB — hosted by Three.js team, CORS-open, has Idle/Walk/Run/Dance baked in
+// Three.js-hosted Xbot — CORS-open, has Idle/Walk/Run/Dance baked in
 const XBOT_URL =
   "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Xbot.glb";
 
@@ -33,7 +42,7 @@ function loadGLTF() {
   return _gltfPromise;
 }
 
-// ── Shadow disc (same as soldier) ────────────────────────────
+// ── Shadow disc — identical to soldier ───────────────────────
 function makeShadow() {
   const m = new THREE.Mesh(
     new THREE.CircleGeometry(0.28, 12),
@@ -44,7 +53,7 @@ function makeShadow() {
   return m;
 }
 
-// ── Cross-fade helper — IDENTICAL to soldier's crossFade ─────
+// ── crossFade — IDENTICAL to soldier's crossFade ─────────────
 function crossFade(entry, toKey, duration = 0.22) {
   if (!entry.clips[toKey] || entry.currentAnim === toKey) return;
   const from = entry.clips[entry.currentAnim];
@@ -54,54 +63,53 @@ function crossFade(entry, toKey, duration = 0.22) {
   entry.currentAnim = toKey;
 }
 
-// ── Attach Xbot model as child of controller ─────────────────
+// ── attachMixamoModel — mirrors soldier's attachModel ────────
 function attachMixamoModel(gltf, controllerGroup) {
+  // Remove any existing model (handles React StrictMode double-mount)
   const existing = controllerGroup.getObjectByName("avatarModel");
   if (existing) controllerGroup.remove(existing);
 
-  // Clone scene for Xbot (unlike soldier which uses scene directly — Xbot needs clone
-  // because it's called once and we want clean state)
-  const model = gltf.scene.clone(true);
+  // Use gltf.scene directly — same pattern as soldier (avoids SkinnedMesh clone issues)
+  const model = gltf.scene;
   model.name = "avatarModel";
   model.position.set(0, 0, 0);
-  // Xbot faces +Z by default; rotate 180° so it faces same direction as soldier
+  // Rotate 180° on Y — Xbot faces +Z, soldier faces -Z; match the soldier's facing
   model.rotation.set(0, Math.PI, 0);
-  // Scale: Xbot is huge (220cm), scale to ~1.75m to match soldier height
+  // Scale Xbot from its huge size (~200cm) down to ~1.75m to match soldier
   model.scale.setScalar(0.011);
 
   model.traverse((child) => {
-    if (child.isMesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
-      // Mobile perf: downgrade to standard material if physics-heavy
-      if (child.material?.type === "MeshPhysicalMaterial") {
-        const old = child.material;
-        const std = new THREE.MeshStandardMaterial({
-          color: old.color,
-          map: old.map,
-          roughness: 0.6,
-          metalness: 0.1,
-        });
-        child.material = std;
-        old.dispose();
-      }
+    if (!child.isMesh) return;
+    child.castShadow = true;
+    child.receiveShadow = true;
+    // Mobile perf: replace heavy physical material with standard
+    if (child.material?.type === "MeshPhysicalMaterial") {
+      const old = child.material;
+      child.material = new THREE.MeshStandardMaterial({
+        color: old.color,
+        map: old.map,
+        roughness: 0.6,
+        metalness: 0.1,
+      });
+      old.dispose();
     }
   });
 
+  // Add to controller BEFORE creating AnimationMixer (required for Three.js)
   controllerGroup.add(model);
 
-  // Build AnimationMixer — target the model (same as soldier pattern)
+  // AnimationMixer targets the model — same as soldier
   const mixer = new THREE.AnimationMixer(model);
   const clips = {};
 
   for (const clip of gltf.animations) {
     const n = clip.name.toLowerCase();
     let key = null;
-    if (n.includes("idle"))  key = "idle";
-    else if (n.includes("walk"))  key = "walk";
-    else if (n.includes("run"))   key = "run";
-    else if (n.includes("dance") || n.includes("hip")) key = "dance";
-    if (key) {
+    if (n.includes("idle"))                         key = "idle";
+    else if (n.includes("walk"))                    key = "walk";
+    else if (n.includes("run"))                     key = "run";
+    else if (n.includes("dance") || n.includes("hip hop")) key = "dance";
+    if (key && !clips[key]) {
       const action = mixer.clipAction(clip);
       action.setLoop(THREE.LoopRepeat, Infinity);
       clips[key] = action;
@@ -119,7 +127,7 @@ function attachMixamoModel(gltf, controllerGroup) {
 
 // ── PUBLIC: createMixamoAvatar ────────────────────────────────
 // Mirrors createAvatar() from AvatarModel.js exactly.
-// Returns entry immediately; model loads async.
+// CityCanvas receives entry immediately; model attaches async.
 export function createMixamoAvatar(scene, opts = {}, onReady) {
   const controller = new THREE.Group();
   controller.name = "avatar";
@@ -127,12 +135,13 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
   controller.add(makeShadow());
   scene.add(controller);
 
+  // Same entry contract as soldier — CityCanvas stores root in avatarRef
   const entry = {
-    root: controller,   // CityCanvas stores this in avatarRef — same contract as soldier
+    root: controller,
     mixer: null,
     clips: {},
     currentAnim: "idle",
-    _isMixamo: true,    // flag so CityCanvas calls updateMixamoAvatarAnimation
+    _isMixamo: true,   // tells CityCanvas to call updateMixamoAvatarAnimation
   };
 
   loadGLTF()
@@ -145,7 +154,7 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
     })
     .catch((err) => {
       console.warn("[AvatarModelMixamo] GLB load failed:", err);
-      // Capsule fallback — controller still moves correctly
+      // Capsule fallback — controller still moves correctly with joystick/camera
       const cap = new THREE.Mesh(
         new THREE.CapsuleGeometry(0.26, 1.1, 4, 8),
         new THREE.MeshStandardMaterial({ color: 0x44aadd })
@@ -161,12 +170,12 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
 
 // ── PUBLIC: updateMixamoAvatarAnimation ──────────────────────
 // IDENTICAL logic to updateAvatarAnimation() in AvatarModel.js.
-// Speed thresholds, hoverboard freeze, dance handling — all the same.
+// Same speed thresholds, hoverboard freeze, dance, timeScale math.
 export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHoverboarding = false) {
-  if (!entry || !entry.mixer) return;
+  if (!entry?.mixer) return;
   entry.mixer.update(dt);
 
-  // Hoverboard: freeze in idle — feet planted on board (same as soldier)
+  // Hoverboard: freeze in idle pose — feet stay planted on board (same as soldier)
   if (isHoverboarding) {
     if (entry.clips.idle) {
       crossFade(entry, "idle", 0.35);
@@ -178,6 +187,7 @@ export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHover
     return;
   }
 
+  // Dancing — slow idle/walk to a sway (same as soldier)
   if (isDancing) {
     const key = entry.clips.idle ? "idle" : entry.clips.walk ? "walk" : null;
     if (key) {
@@ -187,7 +197,7 @@ export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHover
     return;
   }
 
-  // Locomotion — same thresholds as soldier
+  // Locomotion — exact same thresholds and timeScale math as soldier
   if (speed > 0.5) {
     const key = entry.clips.run ? "run" : "walk";
     if (entry.clips[key]) {
