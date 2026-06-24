@@ -156,27 +156,32 @@ function buildFemaleCasual(C) {
   hipBlock.castShadow = true;
   root.add(hipBlock);
 
-  // Legs (slimmer) — pivot at top (y=0.36 centers the capsule so top is at ~0.62)
+  // Legs — pivot groups sit at the hip joint (y=0.66), capsule mesh hangs downward.
+  // This means rotation happens at the top of the leg, so the thigh never pokes through the hip block.
   const legGeo = new THREE.CapsuleGeometry(0.072, 0.46, 4, 8);
-  const legL = new THREE.Mesh(legGeo, mat(C.pants));
-  legL.name = "legL"; legL.position.set(0.090, 0.36, 0); legL.castShadow = true;
-  const legR = legL.clone(); legR.name = "legR"; legR.position.set(-0.090, 0.36, 0);
+  const legMat = mat(C.pants);
+
+  const legL = new THREE.Group(); legL.name = "legL"; legL.position.set(0.090, 0.66, 0);
+  const legLMesh = new THREE.Mesh(legGeo, legMat); legLMesh.position.y = -0.30; legLMesh.castShadow = true; legL.add(legLMesh);
+
+  const legR = new THREE.Group(); legR.name = "legR"; legR.position.set(-0.090, 0.66, 0);
+  const legRMesh = new THREE.Mesh(legGeo, legMat); legRMesh.position.y = -0.30; legRMesh.castShadow = true; legR.add(legRMesh);
+
   root.add(legL, legR);
 
-  // Sneakers (pink)
+  // Sneakers — parented to leg pivot groups so they follow the leg swing
   const shoeGeo = new THREE.BoxGeometry(0.10, 0.10, 0.185);
   const bootL = new THREE.Mesh(shoeGeo, mat(C.shoes));
-  bootL.name = "bootL"; bootL.position.set(0.090, 0.078, 0.015); bootL.castShadow = true;
-  const bootR = bootL.clone(); bootR.name = "bootR"; bootR.position.set(-0.090, 0.078, 0.015);
-  root.add(bootL, bootR);
+  bootL.name = "bootL"; bootL.position.set(0, -0.62, 0.015); bootL.castShadow = true; legL.add(bootL);
+  const bootR = new THREE.Mesh(shoeGeo, mat(C.shoes));
+  bootR.name = "bootR"; bootR.position.set(0, -0.62, 0.015); bootR.castShadow = true; legR.add(bootR);
 
-  // Shoe glow
+  // Shoe glow — also parented to leg pivots
   const soleMat = new THREE.MeshBasicMaterial({ color: C.glow, transparent: true, opacity: 0.60, depthWrite: false });
-  for (const bx of [0.090, -0.090]) {
-    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.102, 0.012, 0.13), soleMat);
-    sole.position.set(bx, 0.030, 0.010);
-    root.add(sole);
-  }
+  const soleL = new THREE.Mesh(new THREE.BoxGeometry(0.102, 0.012, 0.13), soleMat);
+  soleL.position.set(0, -0.665, 0.010); legL.add(soleL);
+  const soleR = new THREE.Mesh(new THREE.BoxGeometry(0.102, 0.012, 0.13), soleMat);
+  soleR.position.set(0, -0.665, 0.010); legR.add(soleR);
 
   // Torso — lowered slightly so bottom edge overlaps hip block top
   const torsoGroup = new THREE.Group();
@@ -254,7 +259,7 @@ function buildFemaleCasual(C) {
   const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(0.048, 0.028, 0.138); headGroup.add(eyeL);
   const eyeR = eyeL.clone(); eyeR.position.set(-0.048, 0.028, 0.138); headGroup.add(eyeR);
 
-  root.userData._animParts = { legL, legR, armL, armR, headGroup, torsoGroup, bootL, bootR };
+  root.userData._animParts = { legL, legR, armL, armR, headGroup, torsoGroup };
   root.userData._animTime = 0;
   return root;
 }
@@ -331,16 +336,6 @@ function animateCasual(entry, speed, isDancing, dt) {
   if (p.legR) {
     p.legR.rotation.x = -legSin * legAmp;
     p.legR.rotation.z = -0.04 * blend * sin(phase + Math.PI * 0.5);
-  }
-
-  // ── Boot/shoe follows lower leg (shin rotation) ───────────────────────────────
-  // Boots pivot at the ankle — when leg swings forward the toe tips up slightly,
-  // when leg swings back the heel is down (natural ankle roll).
-  if (p.bootL) {
-    p.bootL.rotation.x = legSin * legAmp * 0.45 - Math.max(0, -legSin) * kneeAmp;
-  }
-  if (p.bootR) {
-    p.bootR.rotation.x = -legSin * legAmp * 0.45 + Math.max(0, legSin) * kneeAmp;
   }
 
   // ── Arm swing — naturally opposite to same-side leg ──────────────────────────
@@ -455,8 +450,7 @@ export function updateMixamoAvatarAnimation(entry, speed, isDancing, dt, isHover
         parts.legR.rotation.x += (0.14 - parts.legR.rotation.x) * lerpSpeed;
         parts.legR.rotation.z += (0 - parts.legR.rotation.z) * lerpSpeed;
       }
-      if (parts.bootL) { parts.bootL.rotation.x += (0 - parts.bootL.rotation.x) * lerpSpeed; }
-      if (parts.bootR) { parts.bootR.rotation.x += (0 - parts.bootR.rotation.x) * lerpSpeed; }
+
     }
     // Freeze phase accumulator so walk cycle resumes cleanly from where it was
     if (p) p._blend = (p._blend || 0) * (1 - lerpSpeed * 0.5);
