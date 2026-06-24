@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, MessageCircle, Phone, User, UserX, Flag, AlertTriangle } from "lucide-react";
+import { X, MessageCircle, Phone, User, UserX, Flag } from "lucide-react";
+import FollowButton from "@/components/vibeworld/FollowButton";
 
 export default function UserInteractionMenu({
   open,
@@ -12,7 +13,21 @@ export default function UserInteractionMenu({
   onReport,
   isBlocked,
   isMobile,
+  // Follow system
+  currentUserId,
+  isFollowing,
+  onFollow,
+  onUnfollow,
+  followerCounts,
+  followingCounts,
+  onLoadCounts,
 }) {
+  useEffect(() => {
+    if (open && targetUser?.user_id && onLoadCounts) {
+      onLoadCounts(targetUser.user_id);
+    }
+  }, [open, targetUser?.user_id]);
+
   if (!open || !targetUser) return null;
 
   return (
@@ -46,28 +61,50 @@ export default function UserInteractionMenu({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
               style={{ background: "rgba(155,126,255,0.15)" }}
             >
               <User className="w-4 h-4 text-purple-300" />
             </div>
-            <span className="font-bold text-sm text-white">{targetUser.username}</span>
+            <div className="min-w-0">
+              <span className="font-bold text-sm text-white block truncate">{targetUser.username}</span>
+              {/* Follower/following counts */}
+              {(followerCounts?.[targetUser.user_id] !== undefined) && (
+                <span className="text-[9px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  {followerCounts[targetUser.user_id] || 0} followers · {followingCounts?.[targetUser.user_id] || 0} following
+                </span>
+              )}
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.5)",
-              minWidth: 32,
-              minHeight: 32,
-              touchAction: "manipulation",
-            }}
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Follow button in header */}
+            {isFollowing && onFollow && onUnfollow && (
+              <FollowButton
+                targetUserId={targetUser.user_id}
+                targetUsername={targetUser.username}
+                currentUserId={currentUserId}
+                isFollowing={isFollowing}
+                onFollow={onFollow}
+                onUnfollow={onUnfollow}
+                size="sm"
+              />
+            )}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center"
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.5)",
+                minWidth: 32,
+                minHeight: 32,
+                touchAction: "manipulation",
+              }}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Options */}

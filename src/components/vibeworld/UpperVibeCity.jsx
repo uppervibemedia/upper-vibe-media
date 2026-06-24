@@ -28,6 +28,7 @@ import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibew
 import { CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_INTERACT_RADIUS } from "@/components/vibeworld/CrystalZone";
 import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/orbBank";
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
+import useFollowSystem from "@/hooks/useFollowSystem";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
@@ -576,6 +577,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const currentZoneName = detectZone(playerPos.x, playerPos.z)?.name || "Plaza";
   const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName, playerPos);
 
+  // ── Follow System ─────────────────────────────────────────────────────
+  const followSystem = useFollowSystem(user?.id, user?.full_name || user?.username);
+
   // ── Private Chat ─────────────────────────────────────────────────────
   const {
     activeChatPeer, chatMessages, incomingRequest, outgoingStatus,
@@ -1037,6 +1041,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         nearJukebox={nearJukebox}
         djTrack={djTrack}
         onFerrisRideChange={setFerrisRiding}
+        followSystem={followSystem}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}

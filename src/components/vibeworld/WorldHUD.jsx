@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, Sun, X, UserCircle,
   Compass, Sparkles, Library, SkipForward,
-  BookOpen, GraduationCap, Bell, Waves, Volume2, VolumeX,
+  BookOpen, GraduationCap, Bell, Waves, Volume2, VolumeX, Users,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
@@ -21,6 +21,7 @@ import ZenBeachPanel from "./panels/ZenBeachPanel";
 import EmotePanel from "./panels/EmotePanel";
 import JukeboxPanel from "./panels/JukeboxPanel";
 import InWorldSongPage from "./panels/InWorldSongPage";
+import SocialPanel from "./panels/SocialPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import IncomingChatRequest from "./IncomingChatRequest";
 import ChatWarning from "@/components/vibeworld/ChatWarning";
@@ -92,6 +93,8 @@ export default function WorldHUD({
   nearJukebox = false,
   djTrack = null,
   onFerrisRideChange,
+  // Follow system
+  followSystem,
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
@@ -154,6 +157,7 @@ export default function WorldHUD({
   const [requestsOpen, setRequestsOpen] = useState(false);
   const [jukeboxOpen, setJukeboxOpen] = useState(false);
   const [djSongPageOpen, setDjSongPageOpen] = useState(false);
+  const [socialPanelOpen, setSocialPanelOpen] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -281,6 +285,30 @@ export default function WorldHUD({
           currentUserId={currentUserId}
           onSelectUser={onSelectUser}
         />
+
+        {/* Social (followers) button */}
+        {followSystem && currentUserId && (
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={() => { hapticTap(); setSocialPanelOpen(true); }}
+            className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(8px)",
+              width: isMobile ? 28 : 32,
+              height: isMobile ? 28 : 32,
+              minWidth: isMobile ? 28 : 32,
+              minHeight: isMobile ? 28 : 32,
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
+            title="Social / Friends"
+          >
+            <Users style={{ width: isMobile ? 11 : 13, height: isMobile ? 11 : 13 }}
+              color="rgba(155,126,255,0.8)" />
+          </button>
+        )}
 
         {/* Edit Avatar button (only in plaza) */}
         {zone?.id === "plaza" && onEditAvatar && (
@@ -1066,7 +1094,31 @@ export default function WorldHUD({
         onReport={() => onReportUser(userInteractionTarget)}
         isBlocked={!!(userInteractionTarget && blockedUsers[userInteractionTarget.user_id || userInteractionTarget.id])}
         isMobile={isMobile}
+        currentUserId={currentUserId}
+        isFollowing={followSystem?.isFollowing}
+        onFollow={followSystem?.follow}
+        onUnfollow={followSystem?.unfollow}
+        followerCounts={followSystem?.followerCounts}
+        followingCounts={followSystem?.followingCounts}
+        onLoadCounts={followSystem?.loadCountsForUser}
       />
+
+      {/* ── Social Panel (followers/following) ──────────────────── */}
+      <AnimatePresence>
+        {socialPanelOpen && (
+          <SocialPanel
+            open={socialPanelOpen}
+            onClose={() => setSocialPanelOpen(false)}
+            isMobile={isMobile}
+            currentUserId={currentUserId}
+            isFollowing={followSystem?.isFollowing}
+            onFollow={followSystem?.follow}
+            onUnfollow={followSystem?.unfollow}
+            loadMyFollows={followSystem?.loadMyFollows}
+            activeUsers={activeUsers}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Incoming Chat Request ──────────────────────────────── */}
       <IncomingChatRequest

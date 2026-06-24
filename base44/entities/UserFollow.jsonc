@@ -1,0 +1,38 @@
+{
+  "name": "UserFollow",
+  "type": "object",
+  "properties": {
+    "follower_user_id": {
+      "type": "string",
+      "description": "User ID of the person following"
+    },
+    "following_user_id": {
+      "type": "string",
+      "description": "User ID of the person being followed"
+    },
+    "follower_username": {
+      "type": "string",
+      "description": "Cached username of follower"
+    },
+    "following_username": {
+      "type": "string",
+      "description": "Cached username of the person being followed"
+    }
+  },
+  "required": [
+    "follower_user_id",
+    "following_user_id"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": true,
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
