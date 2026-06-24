@@ -408,8 +408,9 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
   const model = gender === "female" ? buildFemaleCasual(C) : buildMaleCasual(C);
   model.rotation.y = 0; // face is +Z; camera starts at +Z behind avatar, sees back
   if (gender === "female") {
-    model.scale.set(1, 1.10, 1); // taller only — no width change
-    model.position.y = 0; // feet stay at ground (scaling is upward from origin)
+    // Scale to match soldier GLB height (~1.8u). Female geometry top ≈ 1.55u → scale = 1.8/1.55 ≈ 1.16
+    model.scale.set(1.16, 1.16, 1.16);
+    model.position.y = 0; // feet origin stays at ground
   }
   controller.add(model);
 
