@@ -444,28 +444,30 @@ export default function createCitySkyline(scene) {
   eStage.rotation.y = -Math.PI / 2;
   scene.add(eStage);
 
-  // ── Spread-out signs — distributed far across the skyline ──────
-  // West: z=-17 (near lounge/library) and z=-5 (near plaza edge)
-  const wFar1 = makeFacadeSign("VIBE HIGHER", "#C43BFF", "#9B00FF", 4.2, 0.85);
-  wFar1.position.set(W_FACE_X, SIGN_Y, -17);
-  wFar1.rotation.y = Math.PI / 2;
-  scene.add(wFar1);
+  // ── Spread-out signs — evenly distributed across the skyline ───
+  // West wall runs z=-35 to z=+11. Stage pair is at z=-32.
+  // Mid-west: z=-11 (halfway along wall), Far-west end: z=+7
+  const wMid = makeFacadeSign("VIBE HIGHER", "#C43BFF", "#9B00FF", 4.2, 0.85);
+  wMid.position.set(W_FACE_X, SIGN_Y, -11);
+  wMid.rotation.y = Math.PI / 2;
+  scene.add(wMid);
 
-  const wFar2 = makeFacadeSign("432 HZ LIVE", "#FF4FC3", "#CC0099", 3.8, 0.85);
-  wFar2.position.set(W_FACE_X, SIGN_Y, -5);
-  wFar2.rotation.y = Math.PI / 2;
-  scene.add(wFar2);
+  const wEnd = makeFacadeSign("432 HZ LIVE", "#FF4FC3", "#CC0099", 3.8, 0.85);
+  wEnd.position.set(W_FACE_X, SIGN_Y, 7);
+  wEnd.rotation.y = Math.PI / 2;
+  scene.add(wEnd);
 
-  // East: z=-14 (spread mid) and z=-2 (near plaza edge)
-  const eFar1 = makeFacadeSign("FREQUENCY OF THE FUTURE", "#A078FF", "#7C3AED", 6.5, 0.85);
-  eFar1.position.set(E_FACE_X, SIGN_Y, -14);
-  eFar1.rotation.y = -Math.PI / 2;
-  scene.add(eFar1);
+  // East wall runs z=-35 to z=+11. Stage pair is at z=-32.
+  // Mid-east: z=-11 (halfway along wall), Far-east end: z=+7
+  const eMid = makeFacadeSign("FREQUENCY OF THE FUTURE", "#A078FF", "#7C3AED", 6.5, 0.85);
+  eMid.position.set(E_FACE_X, SIGN_Y, -11);
+  eMid.rotation.y = -Math.PI / 2;
+  scene.add(eMid);
 
-  const eFar2 = makeFacadeSign("UPPER VIBE CITY", "#FF6B35", "#DD4400", 5.0, 0.85);
-  eFar2.position.set(E_FACE_X, SIGN_Y, -2);
-  eFar2.rotation.y = -Math.PI / 2;
-  scene.add(eFar2);
+  const eEnd = makeFacadeSign("UPPER VIBE CITY", "#FF6B35", "#DD4400", 5.0, 0.85);
+  eEnd.position.set(E_FACE_X, SIGN_Y, 7);
+  eEnd.rotation.y = -Math.PI / 2;
+  scene.add(eEnd);
 
   scene.add(buildings);
 
