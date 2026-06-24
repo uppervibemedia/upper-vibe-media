@@ -632,7 +632,7 @@ export default function WorldHUD({
           </motion.div>
         )}
 
-        {zone?.id === "stage" && !stageFullScreen && (
+        {zone?.id === "stage" && (
           <motion.div
             key="stage-actions"
             initial={{ opacity: 0, y: 10 }}

@@ -150,28 +150,25 @@ export default function StageFullScreen({ open, video, onClose }) {
             />
           </div>
 
-          {/* Mute/Unmute toggle — bottom-left, always visible, safe in portrait & landscape */}
-          {ytId && (
-            <button
-              onClick={handleToggleMute}
-              className="absolute flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-xs tracking-wide transition-all hover:brightness-110 active:scale-95"
+          {/* Audio hint — WorldHUD stage controls bar handles mute/unmute */}
+          {ytId && muted && (
+            <div
+              className="absolute flex items-center gap-2 px-3 py-2 rounded-full pointer-events-none"
               style={{
-                bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
-                left: "1rem",
-                background: muted ? "rgba(255,255,255,0.08)" : "rgba(124,58,237,0.45)",
-                border: `1px solid ${muted ? "rgba(255,255,255,0.15)" : "rgba(155,126,255,0.5)"}`,
-                color: muted ? "rgba(255,255,255,0.7)" : "#fff",
-                minWidth: "44px",
-                minHeight: "44px",
-                pointerEvents: "auto",
-                touchAction: "manipulation",
-                zIndex: 10,
-                boxShadow: !muted ? "0 0 16px rgba(124,58,237,0.4)" : "none",
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: "rgba(0,0,0,0.55)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(255,255,255,0.5)",
+                fontSize: "11px",
+                fontWeight: 700,
+                whiteSpace: "nowrap",
               }}
             >
-              {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              {muted ? "Tap for Audio" : "Audio On"}
-            </button>
+              <VolumeX className="w-3.5 h-3.5" />
+              Use the controls below to unmute
+            </div>
           )}
         </motion.div>
       )}
