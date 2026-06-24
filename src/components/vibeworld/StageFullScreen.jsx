@@ -72,8 +72,17 @@ export default function StageFullScreen({
     <div
       className="fixed inset-0 z-[300] flex flex-col"
       style={{ background: "#000" }}
-      onPointerDown={showControls}
     >
+      {/* ── Tap-to-show overlay: catches taps anywhere on screen when controls are hidden ── */}
+      {!controlsVisible && (
+        <div
+          className="absolute inset-0 z-[5]"
+          style={{ background: "transparent", pointerEvents: "auto" }}
+          onPointerDown={showControls}
+          onTouchStart={showControls}
+        />
+      )}
+
       {/* ── Video fills the screen ── */}
       <div className="absolute inset-0 z-[1]">
         {ytId ? (

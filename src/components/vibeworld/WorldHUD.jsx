@@ -670,6 +670,16 @@ export default function WorldHUD({
 
         {zone?.id === "stage" && !stageFullScreen && (
           <>
+            {/* ── Tap-to-show overlay: catches taps anywhere on screen while watching ── */}
+            {stageWatching && !stageControlsVisible && (
+              <div
+                className="fixed inset-0 z-[56]"
+                style={{ background: "transparent", pointerEvents: "auto" }}
+                onPointerDown={() => showStageControls()}
+                onTouchStart={() => showStageControls()}
+              />
+            )}
+
             {/* ── Auto-hide control bar (not shown in fullscreen — StageFullScreen owns that UI) ── */}
             {/* Portrait: raise above global music player (approx 80px tall) + safe area + 12px gap */}
             {/* Landscape: stay near bottom as before */}
