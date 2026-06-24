@@ -191,11 +191,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [stageWatching, setStageWatching] = useState(false);
   const [stageFullScreen, setStageFullScreen] = useState(false);
   // stageMuted: single source of truth for stage audio state.
-  // Only changed by user action (toggle button). Never reset by proximity/render/exit.
-  // Persists across Watch Stage sessions so user preference is remembered.
+  // Only changed by user action (toggle button) or explicit exit. Never reset by proximity/render.
   const [stageMuted, setStageMuted] = useState(true);
-  const stageMutedRef = useRef(true);
-  stageMutedRef.current = stageMuted;
   const stagePausedPlayerRef = useRef(false);
   const stageEmbedRef = useRef(null);
   const stageScreenPosRef = useRef({ x: -9999, y: -9999, w: 0, h: 0 });
@@ -411,16 +408,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     pauseGlobal();
     stagePausedPlayerRef.current = true;
 
-    // 3) Enter watch mode — preserve the user's existing stageMuted preference via ref.
-    //    If they unmuted last time, keep it unmuted. Uses ref so closure always reads live value.
+    // 3) Enter watch mode — preserve the user's existing stageMuted preference.
+    //    If they unmuted last time, keep it unmuted. iOS autoplay requires muted start,
+    //    so we always start muted technically but respect the user's button state.
     setStageWatching(true);
     setTimeout(() => {
       stageEmbedRef.current?.play();
-      if (!stageMutedRef.current) {
+      // Apply current muted state to embed (user may have left it unmuted previously)
+      if (!stageMuted) {
         stageEmbedRef.current?.unmute();
       }
     }, 300);
-  }, [stageFullScreen, pauseGlobal]);
+  }, [stageFullScreen, pauseGlobal, stageMuted]);
 
   const handleExitWatchMode = useCallback(() => {
     muteStage();
@@ -475,11 +474,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [voiceActive, setVoiceActive] = useState(false);
   const preVoiceVolumeRef = useRef(null);
 
-  // ── Movement locked when typing in lounge ONLY ─
-  // stageWatching must NOT lock movement — user should be free to walk while watching.
-  // ferrisRiding is passed directly to CityCanvas (not via movementLocked) to avoid camera conflicts.
+  // ── Movement locked when watching stage, full-screen, or typing ─
   const [ferrisRiding, setFerrisRiding] = useState(false);
-  const movementLocked = loungeInputFocused;
+  // Note: ferrisRiding is passed directly to CityCanvas — do NOT include it in movementLocked
+  // because that would trigger the stage-lock camera branch inside CityCanvas.
+  // Only lock movement when user explicitly chose Watch Stage or is typing in lounge.
+  // Being in fullscreen (StageFullScreen overlay) still lets the user move freely underneath.
+  const movementLocked = stageWatching || loungeInputFocused;
 
   // ── Dance floor boundary — matches visual plaza edge (r=10.5) ─────────────
   // Audio fades in at the edge so music is audible as soon as the user reaches the floor.

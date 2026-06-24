@@ -61,25 +61,24 @@ const StageVideoEmbed = forwardRef(function StageVideoEmbed({ open, video, scree
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [open, screenPosRef]);
 
-  // ── Reset on open/close — do NOT reset muted; parent owns audio state ─────
+  // ── Reset on open/close ──────────────────────────────────────────────────
   useEffect(() => {
     if (open) {
       setError(false);
       setReady(false);
+      setMuted(true);
       setStarted(false);
-      // Do NOT reset muted here — parent (UpperVibeCity) controls mute state
-      // via the imperative ref. Resetting here causes the audio button to fight itself.
     }
   }, [open]);
 
-  // ── Rebuild on video change — do NOT reset muted ─────────────────────────
+  // ── Rebuild on video change ──────────────────────────────────────────────
   useEffect(() => {
     if (!open || !ytId || ytId === lastVideoIdRef.current) return;
     lastVideoIdRef.current = ytId;
     setError(false);
     setReady(false);
+    setMuted(true);
     setStarted(false);
-    // Do NOT reset muted on video change — user preference persists
   }, [open, ytId]);
 
   const embedUrl = ytId

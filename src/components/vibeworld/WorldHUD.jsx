@@ -684,16 +684,11 @@ export default function WorldHUD({
               transition={{ duration: 0.25 }}
               className="fixed left-0 right-0 z-[200] flex flex-col items-center gap-1.5 px-2"
               style={{
-                // Portrait mobile: sit above the bottom music player (≈88px) + safe area.
-                // Landscape mobile / desktop: stay near bottom edge.
-                bottom: (() => {
-                  const isPortrait = typeof window !== "undefined" && window.innerHeight > window.innerWidth;
-                  if (isMobile && isPortrait && mobileLayout) return mobileLayout.sa.bottom + 100;
-                  if (isMobile && isPortrait) return "calc(env(safe-area-inset-bottom, 0px) + 100px)";
-                  if (isMobile && mobileLayout) return mobileLayout.sa.bottom + 8;
-                  if (isMobile) return "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)";
-                  return "1.25rem";
-                })(),
+                bottom: isMobile && mobileLayout
+                  ? mobileLayout.sa.bottom + 8
+                  : isMobile
+                    ? "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)"
+                    : "1.25rem",
                 pointerEvents: !stageWatching || stageControlsVisible ? "auto" : "none",
               }}
             >
