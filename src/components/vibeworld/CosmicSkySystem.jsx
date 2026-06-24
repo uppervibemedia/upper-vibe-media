@@ -341,26 +341,15 @@ export function createCosmicSky(scene) {
   //  - Size boosted vs previous values so they read clearly from gameplay distance.
   const PLANET_DEFS = [
     {
-      // MEGA — large purple ringed. HIGH flight path — upper sky background, not in normal viewport.
+      // MEGA — large purple ringed. Layer B mid-sky NW. Visible in normal view.
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
       size: isMobile ? 52 : 72,
-      angleOffset: Math.PI * 0.72,   // NW quadrant
-      horizonY: 52,                  // HIGH — far above buildings, only visible when looking up
-      radius: 75,
+      angleOffset: Math.PI * 0.72,   // NW quadrant — off avatar center corridor
+      horizonY: 16,                  // Layer B: low enough to be in normal viewport
+      radius: 58,
       orbitSpeed: (Math.PI * 2) / 90,
-    },
-    {
-      // VIOLET — small purple accent. Layer B mid-sky NW. Replaces mega's old low position.
-      id: "violet",
-      bodyColors: ["#120820", "#2A1245", "#4A2070", "#7040A0", "#AA70E0"],
-      glowColor: "rgba(130,60,220,0.40)", ringColor: "rgba(170,110,240,0.45)",
-      size: isMobile ? 28 : 38,
-      angleOffset: Math.PI * 0.68,   // close to mega's angle — same NW region
-      horizonY: 16,                  // Layer B: visible in normal view
-      radius: 56,
-      orbitSpeed: (Math.PI * 2) / 130,
     },
     {
       // BLUE — gas giant. Layer B mid-sky NE. Mirrors MEGA for balanced framing.
@@ -436,7 +425,7 @@ export function createCosmicSky(scene) {
     pctx.arc(cx, cy, R, 0, Math.PI * 2);
     pctx.clip();
 
-    if (def.id === "mega" || def.id === "violet") {
+    if (def.id === "mega") {
       for (let b = 0; b < 9; b++) {
         const by = cy - R + (b / 8) * R * 2;
         const bw = R * (0.06 + rng() * 0.10);
@@ -540,8 +529,8 @@ export function createCosmicSky(scene) {
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
-    // Ring for mega and violet planets
-    if (def.id === "mega" || def.id === "violet") {
+    // Ring for mega planet
+    if (def.id === "mega") {
       pctx.save();
       pctx.translate(cx, cy);
       pctx.scale(1, 0.28);
@@ -567,13 +556,13 @@ export function createCosmicSky(scene) {
       transparent: true,
       opacity: 1.0,
       depthWrite: false,
-      depthTest: false,
-      blending: THREE.AdditiveBlending,
+      depthTest: false,   // always draw — never hidden by depth buffer
+      sizeAttenuation: true,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
-    psprite.frustumCulled = false;
-    psprite.renderOrder = 15;
+    psprite.frustumCulled = false;  // never culled by frustum
+    psprite.renderOrder = 20;       // above skybox(-10), above starfield(1), above world
     scene.add(psprite);
 
     if (SKY_DEBUG) {
@@ -674,12 +663,11 @@ export function createCosmicSky(scene) {
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0,
       depthWrite: false, depthTest: false,
-      blending: THREE.AdditiveBlending,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(size, size, 1);
     psprite.frustumCulled = false;
-    psprite.renderOrder = 15;
+    psprite.renderOrder = 20;
     scene.add(psprite);
     // Park off-screen initially
     psprite.position.set(9999, 9999, 9999);
@@ -715,11 +703,10 @@ export function createCosmicSky(scene) {
   // DURATION_A/B: seconds the planet crosses the screen.
   // GAP: pause between one ending and the next starting.
 
-  const DURATION_A  = 12;   // seconds Planet A is visible
-  const DURATION_B  = 11;   // seconds Planet B is visible
-  const GAP_AFTER_A = 4;    // gap after A before B fires
-  const GAP_AFTER_B = 3;    // gap after B before A fires
-  // Total cycle: 12 + 4 + 11 + 3 = 30s
+  const DURATION_A  = 24;   // seconds Planet A is visible
+  const DURATION_B  = 22;   // seconds Planet B is visible
+  const GAP_AFTER_A = 7;    // gap after A before B fires
+  const GAP_AFTER_B = 5;    // gap after B before A fires
 
   // Beach flyby paths — camera-relative offsets.
   // Avatar occupies roughly cameraX -8 to +8, cameraY -5 to +8 in normal third-person view.
