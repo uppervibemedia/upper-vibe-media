@@ -674,32 +674,33 @@ export function createCosmicSky(scene) {
   );
 
   const now0 = performance.now() * 0.001;
-  // Beach flyby planets — cinematic paths over Neon Surf Beach.
-  // Y=38–44: high enough to stay sky-level and never overlap avatar head
-  //   (camera eye is ~2.4u above ground; planets at y=38+ are well above).
-  // Z=50–65: past the shoreline (z≈32) deep into the ocean sky.
-  // X paths are wide and offset from center so planets never cross avatar center.
-  // Duration 20–30s: slow cinematic drift, clearly visible.
-  // nextFire starts at 5–8s so they appear quickly on first beach visit.
+  // Beach flyby planets — cinematic low-sky paths over Neon Surf Beach.
+  // Y=12–18: low enough to be clearly visible in normal landscape camera view
+  //   without tilting up. Camera looks at avatar chest (~y=0.9), planets at y=12–18
+  //   appear in the upper portion of the viewport naturally.
+  // Z=42–55: past the beach (z≈32) into the ocean sky, behind the playable area.
+  // X: wide lateral paths so planets never pass directly over the avatar.
+  // Duration 18–26s: slow cinematic drift.
+  // nextFire starts at 4–6s for immediate visibility on beach arrival.
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    // Path A: left-to-right sweep across the upper beach sky
-    startX: -65, startY: 40, startZ: 58,
-    endX:    50, endY:   38, endZ: 50,
-    nextFire: now0 + 5 + Math.random() * 8,
-    minInterval: 35, maxInterval: 55,
-    duration: 22 + Math.random() * 8,
+    // Path A: left-to-right, low cinematic sweep
+    startX: -70, startY: 14, startZ: 48,
+    endX:    55, endY:   12, endZ: 42,
+    nextFire: now0 + 4 + Math.random() * 6,
+    minInterval: 30, maxInterval: 48,
+    duration: 20 + Math.random() * 6,
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    // Path B: right-to-left, slightly higher arc
-    startX: 68, startY: 44, startZ: 64,
-    endX: -50,  endY:   42, endZ: 52,
-    nextFire: now0 + 30 + Math.random() * 15,
-    minInterval: 40, maxInterval: 65,
-    duration: 22 + Math.random() * 8,
+    // Path B: right-to-left, slightly higher for variety
+    startX: 72, startY: 18, startZ: 54,
+    endX: -55,  endY:   16, endZ: 44,
+    nextFire: now0 + 22 + Math.random() * 12,
+    minInterval: 35, maxInterval: 55,
+    duration: 20 + Math.random() * 6,
   };
 }
 
