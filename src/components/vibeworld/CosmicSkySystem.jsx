@@ -352,10 +352,12 @@ export function createCosmicSky(scene) {
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
       size: isMobile ? 22 : 30,
-      // North-east quadrant — angle ~54° from north, never goes south of player
       angleOffset: Math.PI * 0.30,
-      // worldY = camera.y + camHeightOffset — stays above 6u buildings
-      camHeightOffset: 9,
+      // worldY = camera.y + camHeightOffset
+      // Buildings top out ~8u above ground; camera eye is ~2.4u above ground.
+      // So camera.y ≈ 2.4. To clear an 8u rooftop: need offset > 8 - 2.4 = 5.6.
+      // Use 14 so the planet centre sits ~16.4u world-Y — clearly above all rooflines.
+      camHeightOffset: 14,
       radius: 185,
       orbitSpeed: (Math.PI * 2) / 380,
     },
@@ -366,7 +368,7 @@ export function createCosmicSky(scene) {
       glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
       size: isMobile ? 20 : 28,
       angleOffset: Math.PI * 0.78,
-      camHeightOffset: 8,
+      camHeightOffset: 16,
       radius: 195,
       orbitSpeed: (Math.PI * 2) / 300,
     },
@@ -377,9 +379,8 @@ export function createCosmicSky(scene) {
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
       size: isMobile ? 36 : 50,
-      // Due north-northwest — angle very close to 0 (north), slight west offset
       angleOffset: Math.PI * 0.88,
-      camHeightOffset: 20,
+      camHeightOffset: 28,
       radius: 250,
       orbitSpeed: (Math.PI * 2) / 480,
     },
@@ -390,7 +391,7 @@ export function createCosmicSky(scene) {
       glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
       size: isMobile ? 30 : 42,
       angleOffset: Math.PI * 0.12,
-      camHeightOffset: 22,
+      camHeightOffset: 30,
       radius: 265,
       orbitSpeed: (Math.PI * 2) / 560,
     },
@@ -566,13 +567,13 @@ export function createCosmicSky(scene) {
       transparent: true,
       opacity: 1.0,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,   // let buildings occlude planets that are behind them
       sizeAttenuation: true,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
     psprite.frustumCulled = false;
-    psprite.renderOrder = 20;
+    psprite.renderOrder = 0;  // render with normal scene order so depth works
     scene.add(psprite);
 
     return {
@@ -674,12 +675,12 @@ export function createCosmicSky(scene) {
 
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0,
-      depthWrite: false, depthTest: false,
+      depthWrite: false, depthTest: true,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(size, size, 1);
     psprite.frustumCulled = false;
-    psprite.renderOrder = 20;
+    psprite.renderOrder = 0;
     scene.add(psprite);
     // Park off-screen initially
     psprite.position.set(9999, 9999, 9999);
