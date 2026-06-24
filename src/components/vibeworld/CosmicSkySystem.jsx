@@ -707,37 +707,43 @@ export function createCosmicSky(scene) {
   const now0 = performance.now() * 0.001;
 
   // ── Layer A flyby path rules ──────────────────────────────────────────────
-  // Duration: 12s per pass, 3s gap between them → max gap ever seen is 15s.
-  // Two planets alternate: A finishes → 3s → B starts → 3s → A again.
-  // Total cycle = 12 + 3 + 12 + 3 = 30s, so beach is NEVER bare > 15s.
-  const DURATION_A  = 12;
-  const DURATION_B  = 12;
-  const GAP_AFTER_A = 3;
-  const GAP_AFTER_B = 3;
+  // Duration: 18s per pass — slow drift across beach sky
+  // cameraZ: -150 → deep background, never inside playable space
+  // cameraY: +5 → low sky, feels like it's passing over the beach horizon
+  // cameraX (A): -55 → -18 (left lane only, fades before center)
+  // cameraX (B): +55 → +18 (right lane only, fades before center)
+  // Fade envelope: fade IN first 8% of duration, fade OUT last 15%
+  //   → guarantees planet is invisible before/after beach X-zone conflict
+  const DURATION_A  = 18;
+  const DURATION_B  = 18;
+  const GAP_AFTER_A = 8;   // gap after A finishes before B starts
+  const GAP_AFTER_B = 8;
 
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
+    // Left lane: enters far left, exits mid-left — never crosses center
     startCX: -55, startCY: 5, startCZ: -150,
     endCX:   -18, endCY:   4, endCZ: -145,
     duration: DURATION_A,
-    nextFire: now0 + 1,
+    nextFire: now0 + 2,
     _gapAfter: GAP_AFTER_A,
     _partner: null,
-    _fadeInEnd: 0.10,
-    _fadeOutStart: 0.85,
+    _fadeInEnd: 0.08,    // fade-in completes at 8% of duration
+    _fadeOutStart: 0.82, // fade-out begins at 82% of duration
   };
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
+    // Right lane: enters far right, exits mid-right — never crosses center
     startCX:  55, startCY: 5, startCZ: -150,
     endCX:    18, endCY:   4, endCZ: -145,
     duration: DURATION_B,
-    nextFire: now0 + DURATION_A + GAP_AFTER_A + 1,
+    nextFire: now0 + DURATION_A + GAP_AFTER_A + 2,
     _gapAfter: GAP_AFTER_B,
     _partner: null,
-    _fadeInEnd: 0.10,
-    _fadeOutStart: 0.85,
+    _fadeInEnd: 0.08,
+    _fadeOutStart: 0.82,
   };
   scene.userData.beachFlybyA._partner = scene.userData.beachFlybyB;
   scene.userData.beachFlybyB._partner = scene.userData.beachFlybyA;
@@ -874,9 +880,9 @@ export function animateCosmicSky(scene, camera, t, dt) {
       if (prog < fadeInEnd) env = prog / fadeInEnd;
       else if (prog > fadeOutStart) env = Math.max(0, (1 - prog) / (1 - fadeOutStart));
 
-      // Let active passes complete their fade naturally — no hard cut when
-      // player briefly steps off beach. Only new fires are gated by isAtBeach.
-      fb.mat.opacity = env * 0.92;
+      // Beach-only: if player walked away from beach, fade out immediately
+      const beachVisible = isAtBeach ? 1.0 : 0.0;
+      fb.mat.opacity = env * beachVisible * 0.92;
 
       // Camera-relative — deep background, left/right sky lanes only
       const cx = fb.startCX + (fb.endCX - fb.startCX) * prog;
@@ -892,11 +898,11 @@ export function animateCosmicSky(scene, camera, t, dt) {
         fb.active = false;
         fb.mat.opacity = 0;
         fb.sprite.position.set(9999, 9999, 9999);
-        // Partner fires after our gap, then we fire after partner finishes + gap
-        const partnerDur = fb._partner ? (fb._partner.duration || 12) : 12;
-        const partnerGap = fb._partner ? (fb._partner._gapAfter || 3) : 3;
         if (fb._partner) fb._partner.nextFire = t + fb._gapAfter;
-        fb.nextFire = t + fb._gapAfter + partnerDur + partnerGap;
+        const partner = fb._partner;
+        fb.nextFire = partner
+          ? t + fb._gapAfter + (partner.duration || 18) + (partner._gapAfter || 8)
+          : t + 44;
       }
     }
   }
