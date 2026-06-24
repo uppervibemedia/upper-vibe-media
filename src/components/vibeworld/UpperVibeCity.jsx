@@ -28,7 +28,6 @@ import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibew
 import { CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_INTERACT_RADIUS } from "@/components/vibeworld/CrystalZone";
 import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/orbBank";
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
-import EmotePanel from "@/components/vibeworld/panels/EmotePanel";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
@@ -151,9 +150,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       if (emoteTimerRef.current) clearTimeout(emoteTimerRef.current);
     };
   }, []);
-
-  // ── Emote panel open state ────────────────────────────────────────────────────
-  const [emotePanelOpen, setEmotePanelOpen] = useState(false);
 
   // ── TV Mode — hides joystick/camera visuals for clean mirrored view ──────────
   const [tvMode, setTvMode] = useState(false);
@@ -1263,66 +1259,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </div>
       )}
 
-      {/* ── Dance Floor Emote Button — single compact button, opens EmotePanel ── */}
-      <AnimatePresence>
-        {!loading && onDanceFloor && !hbRiding && !stageWatching && !stageFullScreen && (
-          <motion.div
-            key="dance-floor-emote-btn"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ type: "spring", damping: 26, stiffness: 320 }}
-            className="fixed z-[62] pointer-events-auto"
-            style={{
-              left: "50%",
-              transform: "translateX(-50%)",
-              bottom: isMobile && mobileLayout
-                ? mobileLayout.sa.bottom + (mobileLayout.isLandscape ? 88 : 148)
-                : isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 148px)" : "5.5rem",
-            }}
-          >
-            <button
-              onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => {
-                try { navigator?.vibrate?.(10); } catch {}
-                if (isDancing) { handleStopDance(); } else { setEmotePanelOpen(true); }
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full font-black transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: isDancing ? "rgba(196,59,255,0.22)" : "rgba(8,6,20,0.88)",
-                border: `1.5px solid ${isDancing ? "rgba(196,59,255,0.6)" : "rgba(196,59,255,0.25)"}`,
-                backdropFilter: "blur(18px)",
-                boxShadow: isDancing ? "0 0 20px rgba(196,59,255,0.35)" : "0 4px 16px rgba(0,0,0,0.4)",
-                color: isDancing ? "#e07fff" : "rgba(255,255,255,0.75)",
-                fontSize: 13,
-                touchAction: "manipulation",
-                minHeight: 44,
-              }}
-            >
-              <span style={{ fontSize: 18 }}>{isDancing ? activeEmote?.emoji || "💃" : "🎭"}</span>
-              <span>{isDancing ? "Stop" : "Emote"}</span>
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
-
-      {/* Emote panel — opens from dance floor button */}
-      <AnimatePresence>
-        {emotePanelOpen && (
-          <EmotePanel
-            open={emotePanelOpen}
-            onClose={() => setEmotePanelOpen(false)}
-            onEmote={(emote) => { handleEmote(emote); setEmotePanelOpen(false); }}
-            onStopDance={handleStopDance}
-            isDancing={isDancing}
-            activeEmote={activeEmote}
-            isMobile={isMobile}
-          />
-        )}
-      </AnimatePresence>
 
       {/* Performance audit overlay — only visible with ?perf=1 in URL */}
       <PerfAuditOverlay playerPos={playerPos} rendererRef={rendererRef} />
