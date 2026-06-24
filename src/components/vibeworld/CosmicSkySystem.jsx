@@ -326,54 +326,63 @@ export function createCosmicSky(scene) {
   // No small asteroids — only mega asteroid per timing rules
   scene.userData.asteroids = [];
 
-  // ── 5. PLANETS — 5 horizon planets, always visible ───────────────────────────
-  // renderOrder=20 > everything. frustumCulled=false. depthTest=false.
-  // Camera-relative positioning keeps them inside far clip plane always.
-  const STEP = (Math.PI * 2) / 5;
-  // horizonY: raised to 28-42 so planets clear the skyline buildings (~7u tall)
-  // from normal walking camera height (eye ~1.5-2.5u above ground).
-  // horizonY values raised to clear building tops (~7-8u tall from ground).
-  // North-facing planets (mega, west, crimson) use higher Y so they never
-  // intersect the skyline. Beach-side (east, green) can be slightly lower.
-  // North skyline planets — all 5 orbit high above the north buildings.
-  // horizonY lifted to 75–90 so they clear building tops (~7-8u) even from close range.
-  // angleOffset spread keeps them in the north arc (front/sides of city, never south/beach).
-  // Beach planets are handled separately by the beachFlyby system below.
-  // Horizon planets spread evenly around the compass.
-  // horizonY: vertical world units above ground level as seen from camera.
-  // Camera eye is at ~Y=8; planets at Y=22-32 appear in the upper 1/3 of the screen
-  // without requiring the user to tilt up. radius=65 keeps them inside far clip (200u).
-  const NORTH_STEP = (Math.PI * 2) / 5; // evenly spaced around full 360° orbit
+  // ── 5. UPPER SKY PLANETS — 4 background planets, always visible ──────────────
+  // These are the HIGH background planets — NOT the 2 low beach flyby planets.
+  // They live in the upper sky, well above the city skyline.
+  //
+  // Design rules:
+  //  - horizonY: 42–58 camera-relative units → clearly above buildings (tops ~8u)
+  //    and visible in normal landscape view without tilting camera up.
+  //  - radius: 55–75 — spread so they don't stack. Smaller radius = closer/bigger.
+  //  - orbitSpeed: varied per planet so they drift independently.
+  //    2 faster (complete ~1 rev per 90s) and 2 slower (1 rev per 180s).
+  //  - angleOffset: evenly spread at 90° apart so they appear in all 4 sky quadrants.
+  //  - All: frustumCulled=false, depthTest=false, renderOrder=20 — never hidden.
+  //  - Size boosted vs previous values so they read clearly from gameplay distance.
   const PLANET_DEFS = [
     {
+      // MEGA — large purple ringed planet. NW upper sky. Faster drift (shows movement).
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
-      size: isMobile ? 40 : 56, angleOffset: Math.PI + NORTH_STEP * 0, horizonY: 28, radius: 65,
+      size: isMobile ? 52 : 72,
+      angleOffset: Math.PI * 0.80,   // NW arc
+      horizonY: 50,                  // high in sky — well above buildings
+      radius: 58,                    // close enough to be large on screen
+      orbitSpeed: (Math.PI * 2) / 90, // 1 revolution per 90s
     },
     {
+      // WEST — blue gas giant. NE upper sky. Slower drift (feels fixed).
       id: "west",
       bodyColors: ["#0A2A4A", "#1A4A7A", "#2A6AA0", "#4A8AC0", "#7ABAEE"],
       glowColor: "rgba(80,180,255,0.45)", ringColor: "rgba(120,200,255,0.55)",
-      size: isMobile ? 30 : 40, angleOffset: Math.PI + NORTH_STEP * 1, horizonY: 24, radius: 65,
+      size: isMobile ? 38 : 54,
+      angleOffset: Math.PI * 0.30,   // NE arc — opposite side from mega
+      horizonY: 44,                  // slightly lower than mega but still upper sky
+      radius: 70,                    // farther = slightly smaller on screen
+      orbitSpeed: (Math.PI * 2) / 180, // very slow — 1 rev per 3 minutes
     },
     {
-      id: "east",
-      bodyColors: ["#2A1A0A", "#5A3A1A", "#8A5A2A", "#C07840", "#E8B060"],
-      glowColor: "rgba(220,140,60,0.45)", ringColor: "rgba(200,160,80,0.55)",
-      size: isMobile ? 26 : 34, angleOffset: Math.PI + NORTH_STEP * 2, horizonY: 22, radius: 65,
-    },
-    {
+      // GREEN — emerald planet. SE-to-north arc. Visible from beach + plaza.
       id: "green",
       bodyColors: ["#041A0A", "#0A3A18", "#185A28", "#28884A", "#50CC80"],
       glowColor: "rgba(60,200,100,0.42)", ringColor: "rgba(80,220,120,0.55)",
-      size: isMobile ? 24 : 30, angleOffset: Math.PI + NORTH_STEP * 3, horizonY: 26, radius: 65,
+      size: isMobile ? 34 : 46,
+      angleOffset: Math.PI * 1.55,   // SE arc — visible from beach looking up
+      horizonY: 48,
+      radius: 62,
+      orbitSpeed: (Math.PI * 2) / 150, // medium drift
     },
     {
+      // CRIMSON — red storm planet. SW upper sky. Slower fixed presence.
       id: "crimson",
       bodyColors: ["#2A0404", "#5A0A0A", "#8A1818", "#C03030", "#E86060"],
       glowColor: "rgba(220,60,60,0.48)", ringColor: "rgba(200,80,80,0.55)",
-      size: isMobile ? 32 : 44, angleOffset: Math.PI + NORTH_STEP * 4, horizonY: 25, radius: 65,
+      size: isMobile ? 42 : 58,
+      angleOffset: Math.PI * 1.20,   // SW arc — completes the 4-quadrant spread
+      horizonY: 54,                  // highest of the 4 — deep upper sky
+      radius: 65,
+      orbitSpeed: (Math.PI * 2) / 200, // slowest — feels like a fixed star
     },
   ];
 
@@ -566,6 +575,7 @@ export function createCosmicSky(scene) {
       angleOffset: def.angleOffset,
       horizonY: def.horizonY,
       radius: def.radius,
+      orbitSpeed: def.orbitSpeed,
       id: def.id,
     };
   });
@@ -765,23 +775,21 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const skyFrame = scene.userData._skyFrame;
   const updateSlow = !isMobile || skyFrame % 3 === 0;
 
-  // ── Planets — camera-relative positioning, always inside far clip ─────────────
-  // Orbit speed: one full revolution every ~120s (2 minutes) — clearly visible.
-  const PLANET_ORBIT_SPEED = (Math.PI * 2) / 120;
+  // ── Upper Sky Planets — camera-relative, always inside far clip ──────────────
+  // Each planet uses its own orbitSpeed so they drift independently.
+  // horizonY is camera-relative so they stay at a fixed apparent sky height
+  // regardless of player position or terrain elevation.
   const horizonPlanets = scene.userData.horizonPlanets;
   if (horizonPlanets) {
-    const orbitAngle = t * PLANET_ORBIT_SPEED; // independent of skybox drift
-
     for (const p of horizonPlanets) {
-      const angle = orbitAngle + p.angleOffset;
+      const angle = t * p.orbitSpeed + p.angleOffset;
 
-      // Camera-relative: planet is always at fixed offset from camera,
-      // so it can NEVER be outside the far clipping plane.
-      // Y is also camera-relative: camera.position.y + horizonY keeps the planet
-      // at a consistent sky position regardless of terrain height.
+      // Camera-relative position — ALWAYS inside far clip plane.
+      // Y offset keeps planet clearly above buildings from any viewpoint.
       const cx = camera.position.x + Math.sin(angle) * p.radius;
       const cz = camera.position.z + Math.cos(angle) * p.radius;
-      const cy = camera.position.y + p.horizonY + Math.sin(t * 0.04 + p.angleOffset) * 0.5;
+      // Gentle vertical bob (0.8u amplitude) so planet feels alive, not locked
+      const cy = camera.position.y + p.horizonY + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
       p.mat.opacity = 1.0;
     }
