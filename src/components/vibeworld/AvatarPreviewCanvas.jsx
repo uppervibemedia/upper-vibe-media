@@ -81,9 +81,9 @@ function buildMale() {
   // Arms
   const armGeo = new THREE.CapsuleGeometry(0.068, 0.40, 4, 8);
   const armL = new THREE.Group(); armL.position.set(0.235, -0.05, 0); torsoG.add(armL);
-  armL.add(Object.assign(new THREE.Mesh(armGeo, mstd(C.shirt, 0.75)), { rotation: { x: 0, y: 0, z: 0.12 } }));
+  const armLMesh = new THREE.Mesh(armGeo, mstd(C.shirt, 0.75)); armLMesh.rotation.z = 0.12; armL.add(armLMesh);
   const armR = new THREE.Group(); armR.position.set(-0.235, -0.05, 0); torsoG.add(armR);
-  armR.add(Object.assign(new THREE.Mesh(armGeo, mstd(C.shirt, 0.75)), { rotation: { x: 0, y: 0, z: -0.12 } }));
+  const armRMesh = new THREE.Mesh(armGeo, mstd(C.shirt, 0.75)); armRMesh.rotation.z = -0.12; armR.add(armRMesh);
 
   // Hands
   const hG = new THREE.SphereGeometry(0.068, 8, 6);
@@ -91,7 +91,8 @@ function buildMale() {
   const hR = hL.clone(); hR.position.set(-0.05, -0.28, 0); armR.add(hR);
 
   // Neck
-  torsoG.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.082, 0.13, 8), mstd(C.skin)), { position: { x: 0, y: 0.30, z: 0 } }));
+  const neckM = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.082, 0.13, 8), mstd(C.skin));
+  neckM.position.set(0, 0.30, 0); torsoG.add(neckM);
 
   // Head
   const headG = new THREE.Group(); headG.position.set(0, 0.44, 0); torsoG.add(headG);
@@ -147,9 +148,9 @@ function buildFemale() {
   // Arms
   const armGeo = new THREE.CapsuleGeometry(0.056, 0.37, 4, 8);
   const armL = new THREE.Group(); armL.position.set(0.200, -0.06, 0); torsoG.add(armL);
-  armL.add(Object.assign(new THREE.Mesh(armGeo, mstd(C.shirt, 0.65)), { rotation: { x: 0, y: 0, z: 0.10 } }));
+  const armLMeshF = new THREE.Mesh(armGeo, mstd(C.shirt, 0.65)); armLMeshF.rotation.z = 0.10; armL.add(armLMeshF);
   const armR = new THREE.Group(); armR.position.set(-0.200, -0.06, 0); torsoG.add(armR);
-  armR.add(Object.assign(new THREE.Mesh(armGeo, mstd(C.shirt, 0.65)), { rotation: { x: 0, y: 0, z: -0.10 } }));
+  const armRMeshF = new THREE.Mesh(armGeo, mstd(C.shirt, 0.65)); armRMeshF.rotation.z = -0.10; armR.add(armRMeshF);
 
   // Hands
   const hG = new THREE.SphereGeometry(0.058, 8, 6);
@@ -157,7 +158,8 @@ function buildFemale() {
   const hR = hL.clone(); hR.position.set(-0.04, -0.24, 0); armR.add(hR);
 
   // Neck
-  torsoG.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.070, 0.11, 8), mstd(C.skin)), { position: { x: 0, y: 0.28, z: 0 } }));
+  const neckF = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.070, 0.11, 8), mstd(C.skin));
+  neckF.position.set(0, 0.28, 0); torsoG.add(neckF);
 
   // Head
   const headG = new THREE.Group(); headG.position.set(0, 0.42, 0); torsoG.add(headG);
@@ -214,7 +216,8 @@ export default function AvatarPreviewCanvas({ outfitColorKey, avatarTypeKey = "c
     key.position.set(2, 6, 5); scene.add(key);
     const fill = new THREE.DirectionalLight(0xaabbff, 1.2);
     fill.position.set(-3, 3, 2); scene.add(fill);
-    scene.add(Object.assign(new THREE.DirectionalLight(0xaaaaff, 0.8), { position: { x: 0, y: 5, z: -5 } }));
+    const rim = new THREE.DirectionalLight(0xaaaaff, 0.8);
+    rim.position.set(0, 5, -5); scene.add(rim);
 
     const glowMat = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.18, depthWrite: false });
     const glow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 32), glowMat);
