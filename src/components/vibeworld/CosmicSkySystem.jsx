@@ -562,18 +562,20 @@ export function createCosmicSky(scene) {
     ptex.minFilter = THREE.LinearFilter;
     ptex.generateMipmaps = false;
 
+    // Mid/high city planets: depthTest=true so skyline buildings occlude them.
+    // renderOrder=2 ensures opaque building geometry fills the depth buffer first.
     const pmat = new THREE.SpriteMaterial({
       map: ptex,
       transparent: true,
       opacity: 1.0,
       depthWrite: false,
-      depthTest: true,   // let buildings occlude planets that are behind them
+      depthTest: true,
       sizeAttenuation: true,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(def.size, def.size, 1);
     psprite.frustumCulled = false;
-    psprite.renderOrder = 0;  // render with normal scene order so depth works
+    psprite.renderOrder = 2;
     scene.add(psprite);
 
     return {
@@ -673,14 +675,16 @@ export function createCosmicSky(scene) {
     ptex.minFilter = THREE.LinearFilter;
     ptex.generateMipmaps = false;
 
+    // Beach flyby planets: open sky zone — no buildings to occlude them.
+    // depthTest=false + renderOrder=15 keeps them always visible in the beach sky.
     const pmat = new THREE.SpriteMaterial({
       map: ptex, transparent: true, opacity: 0,
-      depthWrite: false, depthTest: true,
+      depthWrite: false, depthTest: false,
     });
     const psprite = new THREE.Sprite(pmat);
     psprite.scale.set(size, size, 1);
     psprite.frustumCulled = false;
-    psprite.renderOrder = 0;
+    psprite.renderOrder = 15;
     scene.add(psprite);
     // Park off-screen initially
     psprite.position.set(9999, 9999, 9999);
