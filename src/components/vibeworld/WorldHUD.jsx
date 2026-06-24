@@ -121,12 +121,22 @@ export default function WorldHUD({
 }) {
   const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(() => window.innerHeight > window.innerWidth);
   const zoneFadeTimerRef = useRef(null);
   const { currentTrack, isPlaying, togglePlay, playTrack } = usePlayer() || {};
   const zone = detectZone(playerX, playerZ);
 
-  // Stage auto-hide controls (watching or fullscreen mode)
-  const stageActive = zone?.id === "stage" && (stageWatching || stageFullScreen);
+  // Track orientation changes
+  useEffect(() => {
+    const onResize = () => setIsPortrait(window.innerHeight > window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Stage auto-hide controls — active any time user is in the stage zone
+  // When watching: controls auto-hide after 3s; tapping the control bar resets the timer.
+  // When not watching: controls are always visible (stageControlsVisible irrelevant — opacity driven by !stageWatching).
+  const stageActive = zone?.id === "stage" && stageWatching;
   const { visible: stageControlsVisible, show: showStageControls } = useStageAutoHide(stageActive, false);
 
   // Zone label: show briefly on zone change, then auto-fade
@@ -660,35 +670,26 @@ export default function WorldHUD({
 
         {zone?.id === "stage" && !stageFullScreen && (
           <>
-            {/* ── Tap-to-show ghost layer (when watching) — sits BEHIND joystick/camera zones ── */}
-            {stageWatching && (
-              <div
-                className="fixed z-[195]"
-                style={{
-                  // Cover only the upper 60% of the screen — leaves joystick area free
-                  top: 0, left: 0, right: 0,
-                  height: "60%",
-                  pointerEvents: "auto",
-                  background: "transparent",
-                }}
-                onClick={() => showStageControls()}
-                onTouchStart={() => showStageControls()}
-              />
-            )}
-
             {/* ── Auto-hide control bar (not shown in fullscreen — StageFullScreen owns that UI) ── */}
+            {/* Portrait: raise above global music player (approx 80px tall) + safe area + 12px gap */}
+            {/* Landscape: stay near bottom as before */}
             <motion.div
               key="stage-actions"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: !stageWatching || stageControlsVisible ? 1 : 0, y: 0 }}
               transition={{ duration: 0.25 }}
-              className="fixed left-0 right-0 z-[200] flex flex-col items-center gap-1.5 px-2"
+              className="fixed left-0 right-0 z-[57] flex flex-col items-center gap-1.5 px-2"
               style={{
-                bottom: isMobile && mobileLayout
-                  ? mobileLayout.sa.bottom + 8
-                  : isMobile
-                    ? "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)"
-                    : "1.25rem",
+                // Portrait mobile: sit above the global music player bar (~80px) + joystick area
+                // Landscape mobile: stay near bottom (music player is narrower)
+                // Desktop: fixed near bottom
+                bottom: isMobile && mobileLayout && isPortrait
+                  ? mobileLayout.actionBottom + 16
+                  : isMobile && mobileLayout && !isPortrait
+                    ? mobileLayout.sa.bottom + 8
+                    : isMobile
+                      ? "calc(env(safe-area-inset-bottom, 0px) + 15.5rem)"
+                      : "1.25rem",
                 pointerEvents: !stageWatching || stageControlsVisible ? "auto" : "none",
               }}
             >

@@ -474,13 +474,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [voiceActive, setVoiceActive] = useState(false);
   const preVoiceVolumeRef = useRef(null);
 
-  // ── Movement locked when watching stage, full-screen, or typing ─
+  // ── Movement locked only when typing in lounge chat ─────────────
+  // stageWatching does NOT lock movement — user should be able to walk away from the stage
+  // even while the in-world embed is playing. Camera and joystick must remain active.
   const [ferrisRiding, setFerrisRiding] = useState(false);
-  // Note: ferrisRiding is passed directly to CityCanvas — do NOT include it in movementLocked
-  // because that would trigger the stage-lock camera branch inside CityCanvas.
-  // Only lock movement when user explicitly chose Watch Stage or is typing in lounge.
-  // Being in fullscreen (StageFullScreen overlay) still lets the user move freely underneath.
-  const movementLocked = stageWatching || loungeInputFocused;
+  const movementLocked = loungeInputFocused;
 
   // ── Dance floor boundary — matches visual plaza edge (r=10.5) ─────────────
   // Audio fades in at the edge so music is audible as soon as the user reaches the floor.
