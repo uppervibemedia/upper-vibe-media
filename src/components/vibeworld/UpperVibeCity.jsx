@@ -32,6 +32,7 @@ import useFollowSystem from "@/hooks/useFollowSystem";
 import useBlockSystem from "@/hooks/useBlockSystem";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
+import RemoteUserTags from "@/components/vibeworld/RemoteUserTags";
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
 import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
 
@@ -1316,6 +1317,20 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onConfirm={(quality) => { setTvOverlayOpen(false); enableTvMode(quality); }}
           onCancel={() => setTvOverlayOpen(false)}
           defaultQuality={tvQuality}
+        />
+      )}
+
+      {/* Clickable username tags for nearby remote users */}
+      {!loading && !stageWatching && !stageFullScreen && (
+        <RemoteUserTags
+          remoteUsers={activeUsers}
+          playerX={playerPos.x}
+          playerZ={playerPos.z}
+          onClickUser={(userData) => handleSelectUser({
+            user_id: userData.user_id,
+            username: userData.username,
+          })}
+          isMobile={isMobile}
         />
       )}
 

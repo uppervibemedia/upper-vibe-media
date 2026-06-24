@@ -181,30 +181,49 @@ export default function usePrivateChat(user) {
     const myId = user.id;
 
     const unsubscribe = base44.entities.PrivateChatRequest.subscribe((event) => {
-      if (event.type !== "create" || !event.data) return;
+      if (!event.data) return;
       const data = event.data;
+
+      // Only care about requests addressed to me
       if (data.to_user_id !== myId) return;
-      if (data.status !== "pending") return;
 
       const blocked = blockedUsersRef.current || {};
       if (blocked[data.from_user_id]) return;
 
-      console.log("[usePrivateChat] Incoming request from:", data.from_username, "id:", data.id);
+      // New pending request — show notification
+      if (event.type === "create" && data.status === "pending") {
+        console.log("[usePrivateChat] Incoming request from:", data.from_username, "id:", data.id);
 
-      setIncomingRequest({
-        id: data.id,
-        fromUserId: data.from_user_id,
-        fromUsername: data.from_username,
-      });
+        setIncomingRequest({
+          id: data.id,
+          fromUserId: data.from_user_id,
+          fromUsername: data.from_username,
+        });
 
-      // Auto-expire incoming request
-      const timerKey = `in_${data.from_user_id}`;
-      if (expiryTimersRef.current[timerKey]) clearTimeout(expiryTimersRef.current[timerKey]);
-      expiryTimersRef.current[timerKey] = setTimeout(() => {
-        setIncomingRequest((prev) =>
-          prev?.fromUserId === data.from_user_id ? null : prev
-        );
-      }, REQUEST_EXPIRY_MS);
+        // Also add to pending list immediately
+        setPendingRequests((prev) => {
+          const already = prev.find((r) => r.id === data.id);
+          if (already) return prev;
+          return [...prev, { id: data.id, fromUserId: data.from_user_id, fromUsername: data.from_username }];
+        });
+        setPendingRequestsCount((c) => c + 1);
+
+        // Auto-expire incoming request
+        const timerKey = `in_${data.from_user_id}`;
+        if (expiryTimersRef.current[timerKey]) clearTimeout(expiryTimersRef.current[timerKey]);
+        expiryTimersRef.current[timerKey] = setTimeout(() => {
+          setIncomingRequest((prev) =>
+            prev?.fromUserId === data.from_user_id ? null : prev
+          );
+          setPendingRequests((prev) => prev.filter((r) => r.fromUserId !== data.from_user_id));
+          setPendingRequestsCount((c) => Math.max(0, c - 1));
+        }, REQUEST_EXPIRY_MS);
+      }
+
+      // Request was accepted — open chat if outgoing
+      if (event.type === "update" && data.status === "accepted" && data.from_user_id === myId) {
+        setOutgoingStatus({ toUsername: data.to_username, status: "accepted" });
+      }
     });
 
     requestSubRef.current = unsubscribe;
@@ -293,9 +312,9 @@ export default function usePrivateChat(user) {
       }
     };
 
-    // Poll immediately on mount, then every 15 seconds as fallback
+    // Poll immediately on mount, then every 5 seconds as fallback
     poll();
-    const interval = setInterval(poll, 15_000);
+    const interval = setInterval(poll, 5_000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [user?.id]);
 
