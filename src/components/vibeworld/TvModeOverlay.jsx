@@ -6,22 +6,37 @@ import React, { useState } from "react";
 
 export default function TvModeOverlay({ onConfirm, onCancel, defaultQuality = "smooth" }) {
   const [quality, setQuality] = useState(defaultQuality);
+  // Detect landscape so we can switch to a centered modal layout instead of bottom sheet
+  const isLandscape = typeof window !== "undefined" && window.innerWidth > window.innerHeight;
 
   return (
     <div
       className="fixed inset-0 flex items-end justify-center"
-      style={{ zIndex: 500, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}
+      style={{
+        zIndex: 500,
+        background: "rgba(0,0,0,0.72)",
+        backdropFilter: "blur(6px)",
+        // In landscape: center vertically instead of anchoring to bottom
+        alignItems: isLandscape ? "center" : "flex-end",
+      }}
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div
-        className="w-full max-w-md rounded-t-2xl flex flex-col"
+        className="w-full flex flex-col"
         style={{
           background: "linear-gradient(180deg,#0d0b1e 0%,#080616 100%)",
           border: "1px solid rgba(0,229,255,0.18)",
-          borderBottom: "none",
-          maxHeight: "calc(100dvh - env(safe-area-inset-top, 20px) - env(safe-area-inset-bottom, 0px) - 16px)",
-          paddingTop: "calc(env(safe-area-inset-top, 0px))",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
+          // Portrait: bottom sheet. Landscape: centered card with rounded corners on all sides.
+          borderRadius: isLandscape ? "20px" : "20px 20px 0 0",
+          maxWidth: isLandscape ? "520px" : "100%",
+          margin: isLandscape ? "0 auto" : "0",
+          maxHeight: isLandscape
+            ? "calc(100dvh - env(safe-area-inset-top, 20px) - env(safe-area-inset-bottom, 20px) - 24px)"
+            : "calc(100dvh - env(safe-area-inset-top, 20px) - 16px)",
+          paddingTop: isLandscape ? "0" : "calc(env(safe-area-inset-top, 0px))",
+          paddingBottom: isLandscape ? "0" : "calc(env(safe-area-inset-bottom, 0px) + 8px)",
+          paddingLeft: isLandscape ? "calc(env(safe-area-inset-left, 0px))" : "0",
+          paddingRight: isLandscape ? "calc(env(safe-area-inset-right, 0px))" : "0",
           overflowY: "auto",
           WebkitOverflowScrolling: "touch",
         }}

@@ -149,6 +149,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [tvMode, setTvMode] = useState(false);
   const [tvQuality, setTvQuality] = useState("smooth"); // "smooth" | "normal"
   const [tvOverlayOpen, setTvOverlayOpen] = useState(false);
+  // Track whether any blocking UI is open (panels, modals, zone UIs)
+  const [anyBlockingUIOpen, setAnyBlockingUIOpen] = useState(false);
   // In TV mode: auto-hide media player after 4s; tap to reveal temporarily
   const [tvPlayerVisible, setTvPlayerVisible] = useState(true);
   const tvPlayerTimerRef = useRef(null);
@@ -964,8 +966,46 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           <ChevronLeft style={{ width: "16px", height: "16px" }} />
         </button>
 
-        {/* Right: spacer (TV Mode button removed) */}
-        <div />
+        {/* Right: TV Mode button — only in free-roam, hidden when any UI/zone is open */}
+        {(() => {
+          const showTVButton = !loading
+            && !stageWatching
+            && !stageFullScreen
+            && !anyBlockingUIOpen
+            && !mobileModalOpen
+            && !tvOverlayOpen;
+          return showTVButton ? (
+            <button
+              onClick={() => {
+                if (tvMode) {
+                  disableTvMode();
+                } else {
+                  setTvOverlayOpen(true);
+                }
+              }}
+              onTouchStart={(e) => { e.stopPropagation(); }}
+              className="flex items-center gap-1 rounded-full transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
+              style={{
+                background: tvMode ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.10)",
+                backdropFilter: "blur(10px)",
+                border: tvMode ? "1px solid rgba(0,229,255,0.4)" : "1px solid rgba(255,255,255,0.12)",
+                color: tvMode ? "#00E5FF" : "rgba(255,255,255,0.65)",
+                height: "44px",
+                minHeight: "44px",
+                padding: "0 12px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+              }}
+              aria-label={tvMode ? "Exit TV Mode" : "TV Mode"}
+            >
+              📺 {tvMode ? "Exit TV" : "TV"}
+            </button>
+          ) : <div />;
+        })()}
       </motion.div>
 
       {/* World HUD */}
@@ -991,7 +1031,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onStageMuteToggle={handleStageMuteToggle}
         stageMuted={stageMuted}
         chatAgeConfirmed={chatAgeConfirmed}
-        onMobileModalChange={setMobileModalOpen}
+        onMobileModalChange={(open) => { setMobileModalOpen(open); setAnyBlockingUIOpen(open); }}
         activeUsers={activeUsers}
         userCount={userCount}
         isBroadcasting={isBroadcasting}
