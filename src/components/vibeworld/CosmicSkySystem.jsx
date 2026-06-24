@@ -341,15 +341,26 @@ export function createCosmicSky(scene) {
   //  - Size boosted vs previous values so they read clearly from gameplay distance.
   const PLANET_DEFS = [
     {
-      // MEGA — large purple ringed. Layer B mid-sky NW. Visible in normal view.
+      // MEGA — large purple ringed. HIGH flight path — upper sky background, not in normal viewport.
       id: "mega",
       bodyColors: ["#1A0A2A", "#3A1A5A", "#6A2A9A", "#9A4ACA", "#CC88FF"],
       glowColor: "rgba(160,80,255,0.55)", ringColor: "rgba(200,140,255,0.65)",
       size: isMobile ? 52 : 72,
-      angleOffset: Math.PI * 0.72,   // NW quadrant — off avatar center corridor
-      horizonY: 16,                  // Layer B: low enough to be in normal viewport
-      radius: 58,
+      angleOffset: Math.PI * 0.72,   // NW quadrant
+      horizonY: 52,                  // HIGH — far above buildings, only visible when looking up
+      radius: 75,
       orbitSpeed: (Math.PI * 2) / 90,
+    },
+    {
+      // VIOLET — small purple accent. Layer B mid-sky NW. Replaces mega's old low position.
+      id: "violet",
+      bodyColors: ["#120820", "#2A1245", "#4A2070", "#7040A0", "#AA70E0"],
+      glowColor: "rgba(130,60,220,0.40)", ringColor: "rgba(170,110,240,0.45)",
+      size: isMobile ? 28 : 38,
+      angleOffset: Math.PI * 0.68,   // close to mega's angle — same NW region
+      horizonY: 16,                  // Layer B: visible in normal view
+      radius: 56,
+      orbitSpeed: (Math.PI * 2) / 130,
     },
     {
       // BLUE — gas giant. Layer B mid-sky NE. Mirrors MEGA for balanced framing.
@@ -425,7 +436,7 @@ export function createCosmicSky(scene) {
     pctx.arc(cx, cy, R, 0, Math.PI * 2);
     pctx.clip();
 
-    if (def.id === "mega") {
+    if (def.id === "mega" || def.id === "violet") {
       for (let b = 0; b < 9; b++) {
         const by = cy - R + (b / 8) * R * 2;
         const bw = R * (0.06 + rng() * 0.10);
@@ -529,8 +540,8 @@ export function createCosmicSky(scene) {
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
 
-    // Ring for mega planet
-    if (def.id === "mega") {
+    // Ring for mega and violet planets
+    if (def.id === "mega" || def.id === "violet") {
       pctx.save();
       pctx.translate(cx, cy);
       pctx.scale(1, 0.28);
