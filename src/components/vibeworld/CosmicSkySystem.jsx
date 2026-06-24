@@ -708,20 +708,19 @@ export function createCosmicSky(scene) {
   const GAP_AFTER_A = 8;    // gap after A before B fires
   const GAP_AFTER_B = 6;    // gap after B before A fires
 
-  // Beach flyby paths — WORLD-SPACE coordinates.
-  // Beach is at world Z ≈ +30 to +75 (south of plaza origin).
-  // Planets fly through the beach sky at world Y ≈ 22 (well above beach props ~3u, avatar head ~7u).
-  // Planet A sweeps west→east (negative X to positive X) across the beach.
-  // Planet B sweeps east→west (positive X to negative X) across the beach.
-  // They fade in from beyond the beach edge and fade out as they clear the other side.
-  // useWorldSpace=true tells animateFlyby to set absolute position, not camera-relative.
+  // Beach flyby paths — CAMERA-RELATIVE offsets.
+  // cameraZ - 150 = deep behind the horizon, visually behind the skyline without GPU occlusion.
+  // cameraY + 5 = just above eye level, low in the beach sky.
+  // Planet A: left lane only (cameraX -55 → -18), never crosses center.
+  // Planet B: right lane only (cameraX +55 → +18), never crosses center.
+  // Visibility gated by playerZ > 8 in animateFlyby so they never appear in the city.
   scene.userData.beachFlybyA = {
     ...flybyA,
     active: false, life: 0, maxLife: 0,
-    useWorldSpace: true,
-    // West→East sweep, over the beach (Z≈55), left of center fading to right-off-screen
-    startX: -90, startY: 22, startZ: 55,
-    endX:    90, endY:   20, endZ:  52,
+    // Left lane: sweeps from far-left edge toward left-center
+    startCX: -55, startCY: 5, startCZ: -150,
+    endCX:   -18, endCY:  5, endCZ:  -150,
+    _fadeInEnd: 0.08, _fadeOutStart: 0.82,
     duration: DURATION_A,
     nextFire: now0 + 2,
     _gapAfter: GAP_AFTER_A,
@@ -730,10 +729,10 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyB = {
     ...flybyB,
     active: false, life: 0, maxLife: 0,
-    useWorldSpace: true,
-    // East→West sweep, over the beach (Z≈60), right of center fading to left-off-screen
-    startX:  90, startY: 23, startZ: 60,
-    endX:   -90, endY:   21, endZ:  57,
+    // Right lane: sweeps from far-right edge toward right-center
+    startCX:  55, startCY: 5, startCZ: -150,
+    endCX:    18, endCY:  5, endCZ:  -150,
+    _fadeInEnd: 0.08, _fadeOutStart: 0.82,
     duration: DURATION_B,
     nextFire: now0 + DURATION_A + GAP_AFTER_A + 2,
     _gapAfter: GAP_AFTER_B,
@@ -858,11 +857,12 @@ export function animateCosmicSky(scene, camera, t, dt) {
   const fba = scene.userData.beachFlybyA;
   const fbb = scene.userData.beachFlybyB;
 
-  function animateFlyby(fb) {
+  function animateFlyby(fb, playerZ) {
     if (!fb) return;
     if (!fb.active) {
-      if (t >= fb.nextFire) {
-        if (fb._partner && fb._partner.active) return; // wait for partner to finish
+      // Only fire when player is in the beach zone (playerZ > 8)
+      if (t >= fb.nextFire && playerZ > 8) {
+        if (fb._partner && fb._partner.active) return;
         fb.active = true;
         fb.life = 0;
         fb.maxLife = fb.duration;
@@ -872,28 +872,22 @@ export function animateCosmicSky(scene, camera, t, dt) {
       fb.life += dt;
       const prog = Math.min(fb.life / fb.maxLife, 1);
 
-      // Fade in over first 10% of flight, fade out over last 15% — smooth disappear at end
-      const fadeIn  = Math.min(prog / 0.10, 1);
-      const fadeOut = Math.min((1 - prog) / 0.15, 1);
+      // Per-flyby fade envelope
+      const fadeInEnd    = fb._fadeInEnd    ?? 0.08;
+      const fadeOutStart = fb._fadeOutStart ?? 0.82;
+      const fadeIn  = Math.min(prog / fadeInEnd, 1);
+      const fadeOut = prog > fadeOutStart ? Math.max(0, 1 - (prog - fadeOutStart) / (1 - fadeOutStart)) : 1;
       fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.92;
 
-      if (fb.useWorldSpace) {
-        // World-space: planet moves through actual beach coordinates
-        const wx = fb.startX + (fb.endX - fb.startX) * prog;
-        const wy = fb.startY + (fb.endY - fb.startY) * prog;
-        const wz = fb.startZ + (fb.endZ - fb.startZ) * prog;
-        fb.sprite.position.set(wx, wy, wz);
-      } else {
-        // Camera-relative fallback
-        const cx = fb.startCX + (fb.endCX - fb.startCX) * prog;
-        const cy = fb.startCY + (fb.endCY - fb.startCY) * prog;
-        const cz = fb.startCZ + (fb.endCZ - fb.startCZ) * prog;
-        fb.sprite.position.set(
-          camera.position.x + cx,
-          camera.position.y + cy,
-          camera.position.z + cz
-        );
-      }
+      // Camera-relative positioning — always behind horizon at cameraZ - 150
+      const cx = fb.startCX + (fb.endCX - fb.startCX) * prog;
+      const cy = fb.startCY + (fb.endCY - fb.startCY) * prog;
+      const cz = fb.startCZ + (fb.endCZ - fb.startCZ) * prog;
+      fb.sprite.position.set(
+        camera.position.x + cx,
+        camera.position.y + cy,
+        camera.position.z + cz
+      );
 
       if (prog >= 1) {
         fb.active = false;
@@ -910,8 +904,9 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
-  animateFlyby(fba);
-  animateFlyby(fbb);
+  const playerZ = camera.position.z;
+  animateFlyby(fba, playerZ);
+  animateFlyby(fbb, playerZ);
 
   // ── Mega Asteroid — every 120s ────────────────────────────────────────────────
   if (!updateSlow && isMobile) return;
