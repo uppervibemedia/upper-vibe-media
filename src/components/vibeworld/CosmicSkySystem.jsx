@@ -396,7 +396,7 @@ export function createCosmicSky(scene) {
       glowColor: "rgba(160,80,255,0.60)", ringColor: "rgba(200,140,255,0.70)",
       size: isMobile ? 38 : 58,          // very large — prominent sky feature
       angleOffset: Math.PI * 0.45,       // right end of world
-      horizonY: 68,                      // very high — deep upper sky, never near buildings
+      horizonY: 45,                      // brought down — clearly visible in sky
       radius: 95,
       orbitSpeed: (Math.PI * 2) / 280,
     },
@@ -429,7 +429,7 @@ export function createCosmicSky(scene) {
       glowColor: "rgba(50,200,140,0.58)",
       size: isMobile ? 34 : 52,          // very large — prominent sky feature
       angleOffset: Math.PI * 1.75,       // left end of world — opposite of purple ringed
-      horizonY: 65,                      // very high — deep upper sky, never near buildings
+      horizonY: 42,                      // brought down — clearly visible in sky
       radius: 94,
       orbitSpeed: (Math.PI * 2) / 230,
     },
