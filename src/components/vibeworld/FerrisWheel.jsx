@@ -1,427 +1,427 @@
 /**
- * FerrisWheel.jsx — Clean neon Ferris wheel for Upper Vibe City.
+ * FerrisWheel.jsx — Complete rebuild. True Ferris wheel mechanics.
  *
- * Structure:
- *   root (Group, world-positioned)
- *     ├── stationary: base platform, support legs, hub housing, entry deck
- *     └── wheelPivot (Group at hub center, rotates around Z)
- *           ├── rim rings (TorusGeometry, rotation.y = PI/2 so ring is in Y-Z plane)
- *           ├── spokes (radial cylinders from hub to rim)
- *           └── gondolaPivots[i] (Group at rim point, counter-rotates to stay upright)
- *                 └── gondola body, roof, arm
+ * Coordinate system used here:
+ *   • The wheel faces the camera (wheel plane = X-Y plane, wheel is vertical)
+ *   • WheelGroup sits at (0, WHEEL_HUB_Y, 0) in root space and rotates around Z
+ *   • A spoke tip at wheel angle θ is at (cos(θ)*R, sin(θ)*R, 0) in WheelGroup space
+ *   • GondolaPivot is placed at the spoke tip, counter-rotates to stay upright
+ *   • Gondola body hangs BELOW the pivot in world Y (position.y = -hangLen)
  *
- * The wheel ring lives in the Y-Z plane (torus rotation.y = PI/2).
- * A spoke at angle θ has its tip at (0, cos(θ)*R, sin(θ)*R) in wheelPivot space.
- * Cylinder default axis is Y; rotate it so its axis points from (0,0,0) toward tip.
+ * Hierarchy:
+ *   root (Group @ world pos, root.rotation.y = facing angle)
+ *     staticGroup
+ *       base platform
+ *       left A-frame leg
+ *       right A-frame leg
+ *       cross braces
+ *       hub housing (static shell)
+ *       boarding deck
+ *     wheelGroup  ← rotates around Z
+ *       innerHub (visual spin disc)
+ *       rimStructural (front + back torus)
+ *       ledRim, ledRim2 (neon rings)
+ *       spokes[i] (cylinders hub→rim)
+ *       gondolaPivot[i]  ← at rim point, counter-rotates
+ *         suspensionArm
+ *         gondolaBody
+ *         gondolaRoof
+ *         windowGlass
+ *         underglow LED
+ *         tipLight sphere
+ *       chaseBulbs[i]
  */
+
 import * as THREE from "three";
 
 const {
   MeshStandardMaterial, MeshBasicMaterial, Color,
   CircleGeometry, CylinderGeometry, SphereGeometry,
   BoxGeometry, TorusGeometry, RingGeometry,
-  Mesh, Group, PointLight, Vector3,
+  Mesh, Group, PointLight, Vector3, Quaternion,
 } = THREE;
 
+// ── World placement ────────────────────────────────────────────────
 export const WHEEL_X = 22;
 export const WHEEL_Z = 5;
-export const WHEEL_INTERACT_RADIUS = 9.5;
-export const WHEEL_RADIUS = 6.0;
+export const WHEEL_INTERACT_RADIUS = 10;
+export const WHEEL_RADIUS = 6.2;       // rim center radius
 export const NUM_CABINS = 8;
-export const WHEEL_HUB_Y = 8.5; // hub center height above ground
+export const WHEEL_HUB_Y = 8.8;       // hub center above ground
+export const WHEEL_SPEED = 0.14;       // radians/sec — slow, scenic
 
 const IS_MOB = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const SEG = IS_MOB ? 32 : 56;         // torus/circle segment count
 
-// ── Material helpers ──────────────────────────────────────────────
-function stdMat(hex, roughness = 0.5, metalness = 0.25) {
-  const m = new MeshStandardMaterial();
-  m.color = new Color(hex);
-  m.roughness = roughness;
-  m.metalness = metalness;
+// ── Material factory helpers ───────────────────────────────────────
+function stdMat(hex, roughness = 0.5, metalness = 0.3) {
+  const m = new MeshStandardMaterial({ color: new Color(hex), roughness, metalness });
   return m;
 }
 
-function neonMat(hex, opacity = 0.8) {
-  return new MeshBasicMaterial({ color: new Color(hex), transparent: true, opacity, depthWrite: false });
+function neonMat(hex, opacity = 0.85) {
+  return new MeshBasicMaterial({
+    color: new Color(hex), transparent: true, opacity, depthWrite: false,
+  });
 }
 
-// ── Build a radial spoke inside wheelPivot ────────────────────────
-// The wheel ring is in the Y-Z plane.  Spoke tip is at angle θ:
-//   tip = (0, cos(θ)*R, sin(θ)*R)
-// CylinderGeometry default axis is Y.  We need the cylinder to point
-// from (0,0,0) toward tip.  That means:
-//   • position cylinder at midpoint (0, cos(θ)*R/2, sin(θ)*R/2)
-//   • align its Y axis toward tip by rotating the cylinder so +Y → direction of tip
-function addSpoke(parent, angle, length, radius, material) {
-  const cy = Math.cos(angle);
-  const cz = Math.sin(angle);
+// ── Build a single spoke: cylinder from hub-edge to rim-edge ───────
+// In WheelGroup space the wheel is in the X-Y plane.
+// Tip of spoke at angle θ: (cos(θ)*R, sin(θ)*R, 0).
+// CylinderGeometry default axis is +Y. We rotate it to point hub→tip.
+function buildSpoke(parent, angle, length, radius, material) {
+  const cx = Math.cos(angle);
+  const cy = Math.sin(angle);
 
   const spoke = new Mesh(new CylinderGeometry(radius, radius, length, 6), material);
-
-  // Place at midpoint along the spoke direction
-  spoke.position.set(0, cy * length / 2, cz * length / 2);
-
-  // Rotate +Y axis to point toward tip.
-  // The tip direction in local space is (0, cy, cz).
-  // quaternion from +Y to (0, cy, cz):
+  // Position at midpoint
+  spoke.position.set(cx * length / 2, cy * length / 2, 0);
+  // Align default +Y to (cx, cy, 0)
   const from = new Vector3(0, 1, 0);
-  const to = new Vector3(0, cy, cz).normalize();
-  const q = new THREE.Quaternion().setFromUnitVectors(from, to);
-  spoke.quaternion.copy(q);
-
+  const to = new Vector3(cx, cy, 0).normalize();
+  spoke.quaternion.copy(new Quaternion().setFromUnitVectors(from, to));
   parent.add(spoke);
   return spoke;
 }
 
+// ── Main build function ────────────────────────────────────────────
 export function createFerrisWheel(scene) {
   const root = new Group();
   root.name = "ferrisWheel";
   root.position.set(WHEEL_X, 0, WHEEL_Z);
-  root.rotation.y = 0.26; // ~15° toward city center
+  // Rotate the whole ride ~20° so it faces into the city
+  root.rotation.y = 0.35;
 
-  // ── Stationary group (base, legs, hub housing) ──────────────────
+  // ══ STATIC GROUP ══════════════════════════════════════════════════
   const staticGroup = new Group();
-  staticGroup.name = "ferrisWheelStatic";
+  staticGroup.name = "ferrisStatic";
   root.add(staticGroup);
 
-  // Ground platform
+  // Ground base platform
   const base = new Mesh(
-    new CylinderGeometry(4.5, 4.8, 0.22, 32),
-    stdMat("#1C1C28", 0.4, 0.5)
+    new CylinderGeometry(4.2, 4.6, 0.25, 32),
+    stdMat("#1A1A26", 0.45, 0.55)
   );
-  base.position.set(0, 0.11, 0);
+  base.position.set(0, 0.125, 0);
   base.receiveShadow = true;
   staticGroup.add(base);
 
-  // Loading deck (front boarding area)
-  const loadingDeck = new Mesh(
-    new BoxGeometry(3.2, 0.3, 2.0),
-    stdMat("#2A2A3C", 0.35, 0.45)
-  );
-  loadingDeck.position.set(0, 0.37, WHEEL_RADIUS - 0.4);
-  loadingDeck.castShadow = true;
-  staticGroup.add(loadingDeck);
+  // ── A-frame support legs ──
+  // Two inverted-V steel frames, one on each side (± X in root space).
+  // Each frame: two legs meeting at the hub height, wide at the base.
+  // Base foot X = ±3.8,  hub attachment X = ±1.0
+  // This keeps legs well clear of the gondola sweep (max gondola half-width ~0.5)
+  const legMat = stdMat("#23304A", 0.3, 0.8);
+  const HUB_Y = WHEEL_HUB_Y;
 
-  // Loading edge neon strip
-  const loadingEdge = new Mesh(
-    new BoxGeometry(3.25, 0.06, 0.06),
-    neonMat("#00E5FF", 0.8)
-  );
-  loadingEdge.position.set(0, 0.55, WHEEL_RADIUS + 0.6);
-  staticGroup.add(loadingEdge);
+  // Each side: front leg and back leg (along Z)
+  for (const side of [-1, 1]) {
+    const footX = side * 3.8;
+    const topX  = side * 1.0;
 
-  // Side railings
-  for (const sx of [-1.5, 1.5]) {
-    const rail = new Mesh(
-      new BoxGeometry(0.05, 0.8, 2.0),
-      stdMat("#333344", 0.3, 0.7)
-    );
-    rail.position.set(sx, 0.77, WHEEL_RADIUS - 0.4);
-    staticGroup.add(rail);
+    for (const footZ of [-0.9, 0.9]) {
+      // Leg is a cylinder connecting (footX, 0, footZ) → (topX, HUB_Y, 0)
+      const start = new Vector3(footX, 0, footZ);
+      const end   = new Vector3(topX, HUB_Y, 0);
+      const mid   = start.clone().lerp(end, 0.5);
+      const dir   = end.clone().sub(start);
+      const len   = dir.length();
 
-    const topRail = new Mesh(
-      new BoxGeometry(0.05, 0.05, 2.0),
-      neonMat("#00D4F0", 0.5)
-    );
-    topRail.position.set(sx, 1.17, WHEEL_RADIUS - 0.4);
-    staticGroup.add(topRail);
-  }
+      const leg = new Mesh(new CylinderGeometry(0.17, 0.22, len, 8), legMat);
+      leg.position.copy(mid);
+      // Rotate +Y to direction
+      const q = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.clone().normalize());
+      leg.quaternion.copy(q);
+      leg.castShadow = true;
+      staticGroup.add(leg);
+    }
 
-  // A-frame support legs — 4 legs, widened base so legs stay outside gondola sweep.
-  // Gondola body is 0.85 wide centered on the wheel plane (X=0 in root space).
-  // Legs start at x=±3.2 at ground and converge to x=±1.1 at hub top,
-  // keeping a clear ~1.0 unit gap from the gondola edge (±0.55) at all heights.
-  const legMat = stdMat("#2A3344", 0.3, 0.75);
-  const LEG_LEN = WHEEL_HUB_Y + 0.5;
-  const legDefs = [
-    { x: -3.2, z:  1.0, rz:  0.18, rx: -0.08 },
-    { x: -3.0, z: -1.0, rz:  0.16, rx:  0.08 },
-    { x:  3.2, z:  1.0, rz: -0.18, rx: -0.08 },
-    { x:  3.0, z: -1.0, rz: -0.16, rx:  0.08 },
-  ];
-  for (const ld of legDefs) {
-    const leg = new Mesh(new CylinderGeometry(0.16, 0.22, LEG_LEN, 8), legMat);
-    leg.position.set(ld.x, LEG_LEN / 2, ld.z);
-    leg.rotation.set(ld.rx, 0, ld.rz);
-    leg.castShadow = true;
-    staticGroup.add(leg);
-  }
-
-  // Horizontal cross-braces between legs — span matches wider leg base
-  const braceMat = stdMat("#222A38", 0.25, 0.8);
-  for (const by of [2.5, 5.0, 7.0]) {
-    for (const bz of [-0.5, 0.5]) {
-      const brace = new Mesh(new CylinderGeometry(0.07, 0.07, 6.4, 6), braceMat);
-      brace.position.set(0, by, bz);
-      brace.rotation.z = Math.PI / 2;
+    // Horizontal brace connecting the two legs on this side at mid-height
+    for (const braceY of [HUB_Y * 0.35, HUB_Y * 0.65]) {
+      const brace = new Mesh(new CylinderGeometry(0.07, 0.07, 1.85, 6), stdMat("#1D2B3C", 0.3, 0.75));
+      brace.position.set(side * 3.0 * (1 - braceY / HUB_Y) + topX * (braceY / HUB_Y), braceY, 0);
+      brace.rotation.x = Math.PI / 2;
       staticGroup.add(brace);
     }
   }
 
-  // Hub axle housing (stationary cylinder, axis along X)
-  const hubHousing = new Mesh(
-    new CylinderGeometry(0.55, 0.55, 1.4, 20),
-    stdMat("#1E2A3C", 0.12, 0.9)
+  // Cross brace between the two sides at hub height (behind the wheel)
+  const crossBraceMat = stdMat("#1A2838", 0.25, 0.82);
+  for (const braceZ of [-0.75, 0.75]) {
+    for (const braceY of [HUB_Y * 0.45, HUB_Y * 0.72]) {
+      const cb = new Mesh(new CylinderGeometry(0.065, 0.065, 7.8, 6), crossBraceMat);
+      cb.position.set(0, braceY, braceZ);
+      cb.rotation.z = Math.PI / 2;
+      staticGroup.add(cb);
+    }
+  }
+
+  // ── Hub housing (static shell around axle) ──
+  const hubShell = new Mesh(
+    new CylinderGeometry(0.52, 0.52, 1.6, 24),
+    stdMat("#1B2A3C", 0.15, 0.9)
   );
-  hubHousing.rotation.z = Math.PI / 2;
-  hubHousing.position.set(0, WHEEL_HUB_Y, 0);
-  staticGroup.add(hubHousing);
+  hubShell.rotation.z = Math.PI / 2; // axis along X
+  hubShell.position.set(0, HUB_Y, 0);
+  staticGroup.add(hubShell);
 
   // Hub end caps
-  for (const sx of [-0.75, 0.75]) {
-    const cap = new Mesh(
-      new CylinderGeometry(0.52, 0.52, 0.12, 20),
-      stdMat("#263040", 0.15, 0.85)
-    );
+  for (const sx of [-0.85, 0.85]) {
+    const cap = new Mesh(new CylinderGeometry(0.5, 0.5, 0.14, 20), stdMat("#243344", 0.18, 0.88));
     cap.rotation.z = Math.PI / 2;
-    cap.position.set(sx, WHEEL_HUB_Y, 0);
+    cap.position.set(sx, HUB_Y, 0);
     staticGroup.add(cap);
   }
 
-  // Hub neon ring glow (stationary)
-  const hubGlow = new Mesh(
-    new TorusGeometry(0.48, 0.06, 8, 24),
-    neonMat("#FFD700", 0.85)
+  // Hub neon ring (static)
+  const hubNeon = new Mesh(
+    new TorusGeometry(0.45, 0.065, 8, 24),
+    neonMat("#FFD700", 0.9)
   );
-  hubGlow.rotation.y = Math.PI / 2; // ring in Y-Z plane
-  hubGlow.position.set(0, WHEEL_HUB_Y, 0);
-  staticGroup.add(hubGlow);
+  // Torus default is in X-Y plane; we want it in Y-Z plane (showing as circle when viewed from front)
+  // Since wheel is in X-Y plane and hub axle runs along X, a ring in Y-Z plane works
+  hubNeon.rotation.y = Math.PI / 2;
+  hubNeon.position.set(0, HUB_Y, 0);
+  staticGroup.add(hubNeon);
 
-  // Base LED rings (stationary)
-  const baseLedMat = neonMat("#00D4F0", 0.8);
-  const baseLedRing = new Mesh(
-    new TorusGeometry(4.55, 0.07, 6, IS_MOB ? 32 : 48),
-    baseLedMat
-  );
-  baseLedRing.rotation.x = Math.PI / 2;
-  baseLedRing.position.set(0, 0.25, 0);
-  staticGroup.add(baseLedRing);
+  // ── Boarding deck ──
+  // Placed at Z+ side of the wheel (loading zone at bottom-front)
+  const deckMat = stdMat("#232336", 0.4, 0.45);
+  const deck = new Mesh(new BoxGeometry(2.8, 0.28, 1.8), deckMat);
+  deck.position.set(0, 0.42, WHEEL_RADIUS - 0.3);
+  deck.castShadow = true;
+  staticGroup.add(deck);
 
-  const baseLedMat2 = neonMat("#C43BFF", 0.6);
-  const baseLedRing2 = new Mesh(
-    new TorusGeometry(3.2, 0.05, 6, IS_MOB ? 28 : 40),
-    baseLedMat2
-  );
-  baseLedRing2.rotation.x = Math.PI / 2;
-  baseLedRing2.position.set(0, 0.24, 0);
-  staticGroup.add(baseLedRing2);
+  // Deck edge neon strip
+  const deckStrip = new Mesh(new BoxGeometry(2.85, 0.055, 0.055), neonMat("#00E5FF", 0.85));
+  deckStrip.position.set(0, 0.58, WHEEL_RADIUS + 0.62);
+  staticGroup.add(deckStrip);
+
+  // Deck side railings
+  for (const sx of [-1.35, 1.35]) {
+    const rail = new Mesh(new BoxGeometry(0.045, 0.75, 1.8), stdMat("#2E3A4E", 0.3, 0.7));
+    rail.position.set(sx, 0.94, WHEEL_RADIUS - 0.3);
+    staticGroup.add(rail);
+    const topRail = new Mesh(new BoxGeometry(0.045, 0.045, 1.8), neonMat("#00C8FF", 0.55));
+    topRail.position.set(sx, 1.32, WHEEL_RADIUS - 0.3);
+    staticGroup.add(topRail);
+  }
+
+  // Base neon rings (stationary ground decor)
+  const baseLed1Mat = neonMat("#00D4F0", 0.78);
+  const baseLed1 = new Mesh(new TorusGeometry(4.25, 0.07, 6, SEG), baseLed1Mat);
+  baseLed1.rotation.x = Math.PI / 2;
+  baseLed1.position.set(0, 0.28, 0);
+  staticGroup.add(baseLed1);
+
+  const baseLed2Mat = neonMat("#C43BFF", 0.55);
+  const baseLed2 = new Mesh(new TorusGeometry(3.0, 0.05, 6, IS_MOB ? 28 : 44), baseLed2Mat);
+  baseLed2.rotation.x = Math.PI / 2;
+  baseLed2.position.set(0, 0.27, 0);
+  staticGroup.add(baseLed2);
 
   // Ground glow disc
-  const groundGlowMat = new MeshBasicMaterial({
-    color: new Color("#0044AA"), transparent: true, opacity: 0.22,
+  const glowDiscMat = new MeshBasicMaterial({
+    color: new Color("#002299"), transparent: true, opacity: 0.2,
     depthWrite: false, side: THREE.DoubleSide,
   });
-  const groundGlow = new Mesh(new CircleGeometry(5.5, 32), groundGlowMat);
-  groundGlow.rotation.x = -Math.PI / 2;
-  groundGlow.position.set(0, 0.01, 0);
-  groundGlow.renderOrder = 1;
-  staticGroup.add(groundGlow);
+  const glowDisc = new Mesh(new CircleGeometry(5.2, 32), glowDiscMat);
+  glowDisc.rotation.x = -Math.PI / 2;
+  glowDisc.position.set(0, 0.01, 0);
+  glowDisc.renderOrder = 1;
+  staticGroup.add(glowDisc);
 
-  // ── WHEEL PIVOT GROUP — everything here rotates around Z ─────────
-  // Positioned at the hub center so rotation.z spins the wheel in place.
-  const wheelPivot = new Group();
-  wheelPivot.name = "wheelPivot";
-  wheelPivot.position.set(0, WHEEL_HUB_Y, 0);
-  root.add(wheelPivot);
+  // ══ WHEEL GROUP — rotates around Z ════════════════════════════════
+  const wheelGroup = new Group();
+  wheelGroup.name = "wheelGroup";
+  wheelGroup.position.set(0, HUB_Y, 0);
+  root.add(wheelGroup);
 
-  // Inner hub cylinder (rotates with wheel, gives visual spin)
+  // Inner hub disc (rotates visually with wheel)
   const innerHub = new Mesh(
-    new CylinderGeometry(0.75, 0.75, 0.9, 20),
-    stdMat("#1C2636", 0.2, 0.8)
+    new CylinderGeometry(0.7, 0.7, 0.85, 20),
+    stdMat("#1C2838", 0.22, 0.82)
   );
   innerHub.rotation.z = Math.PI / 2;
-  wheelPivot.add(innerHub);
+  wheelGroup.add(innerHub);
 
-  // Structural rim — front + back torus, ring in Y-Z plane
-  const rimFrontMat = stdMat("#263244", 0.22, 0.75);
-  const rimFront = new Mesh(
-    new TorusGeometry(WHEEL_RADIUS, 0.18, 10, IS_MOB ? 48 : 72),
-    rimFrontMat
-  );
-  rimFront.rotation.y = Math.PI / 2;
-  rimFront.position.x = 0.38;
+  // Structural rim (two parallel structural tori, one on each side of Z)
+  // In X-Y plane — default torus orientation (ring in X-Y plane)
+  const rimStructMat = stdMat("#243444", 0.22, 0.78);
+  const rimFront = new Mesh(new TorusGeometry(WHEEL_RADIUS, 0.17, 10, SEG), rimStructMat);
+  rimFront.position.z = 0.35;
   rimFront.castShadow = !IS_MOB;
-  wheelPivot.add(rimFront);
+  wheelGroup.add(rimFront);
 
-  const rimBack = new Mesh(
-    new TorusGeometry(WHEEL_RADIUS, 0.18, 10, IS_MOB ? 48 : 72),
-    stdMat("#222E3C", 0.25, 0.75)
-  );
-  rimBack.rotation.y = Math.PI / 2;
-  rimBack.position.x = -0.38;
+  const rimBack = new Mesh(new TorusGeometry(WHEEL_RADIUS, 0.17, 10, SEG), stdMat("#1E2C3C", 0.25, 0.78));
+  rimBack.position.z = -0.35;
   rimBack.castShadow = !IS_MOB;
-  wheelPivot.add(rimBack);
+  wheelGroup.add(rimBack);
 
-  // Outer LED rim neon strips (attached to wheelPivot, rotate with wheel)
-  const ledRimMat = neonMat("#00E5FF", 0.9);
-  const ledRim = new Mesh(
-    new TorusGeometry(WHEEL_RADIUS + 0.18, 0.07, 6, IS_MOB ? 48 : 72),
-    ledRimMat
-  );
-  ledRim.rotation.y = Math.PI / 2;
+  // LED neon rim strips (rotate with wheel)
+  const ledRimMat = neonMat("#00E5FF", 0.88);
+  const ledRim = new Mesh(new TorusGeometry(WHEEL_RADIUS + 0.20, 0.07, 6, SEG), ledRimMat);
   ledRim.name = "ledRim";
-  wheelPivot.add(ledRim);
+  wheelGroup.add(ledRim);
 
-  const ledRimMat2 = neonMat("#A078FF", 0.65);
-  const ledRim2 = new Mesh(
-    new TorusGeometry(WHEEL_RADIUS - 0.15, 0.05, 6, IS_MOB ? 40 : 60),
-    ledRimMat2
-  );
-  ledRim2.rotation.y = Math.PI / 2;
+  const ledRim2Mat = neonMat("#A078FF", 0.62);
+  const ledRim2 = new Mesh(new TorusGeometry(WHEEL_RADIUS - 0.16, 0.05, 6, IS_MOB ? 36 : SEG), ledRim2Mat);
   ledRim2.name = "ledRim2";
-  wheelPivot.add(ledRim2);
+  wheelGroup.add(ledRim2);
 
-  // Rim neon pulse ring (thinner, between structural rings)
-  const rimNeonMat = neonMat("#00C8FF", 0.55);
-  const rimNeon = new Mesh(
-    new TorusGeometry(WHEEL_RADIUS + 0.05, 0.04, 6, IS_MOB ? 48 : 72),
-    rimNeonMat
-  );
-  rimNeon.rotation.y = Math.PI / 2;
+  const rimNeonMat = neonMat("#00C8FF", 0.5);
+  const rimNeon = new Mesh(new TorusGeometry(WHEEL_RADIUS + 0.04, 0.04, 6, SEG), rimNeonMat);
   rimNeon.name = "rimNeon";
-  wheelPivot.add(rimNeon);
+  wheelGroup.add(rimNeon);
 
-  // Spokes — radial from hub to rim, front + back plane
-  const spokeMat = stdMat("#1E2D40", 0.2, 0.8);
-  const spokeLength = WHEEL_RADIUS - 0.82; // hub radius 0.75 + rim tube 0.18 clearance
+  // ── Spokes ──
+  // Spokes from hub surface to rim. In X-Y plane.
+  const spokeMat = stdMat("#1E2D42", 0.22, 0.82);
+  const SPOKE_NEON_COLORS = ["#00E5FF", "#A078FF", "#00C8FF", "#C43BFF"];
+  const SPOKE_LEN = WHEEL_RADIUS - 0.78; // hub radius 0.70 + rim tube 0.17 + clearance
   const spokeNeonMats = [];
-  const SPOKE_COLORS = ["#00E5FF", "#A078FF", "#00C8FF", "#C43BFF"];
 
   for (let i = 0; i < NUM_CABINS; i++) {
     const angle = (i / NUM_CABINS) * Math.PI * 2;
 
-    // Front + back structural spokes
-    for (const xOffset of [0.28, -0.28]) {
-      const sGroup = new Group();
-      sGroup.position.x = xOffset;
-      addSpoke(sGroup, angle, spokeLength, 0.055, spokeMat);
-      // Re-offset the spoke's position to be relative to hub edge
-      // addSpoke places midpoint at half-length; we need it offset from hub surface
-      // Actually addSpoke builds in sGroup space so it's fine — just add
-      wheelPivot.add(sGroup);
+    // Two structural spokes per cabin (front + back Z offset)
+    for (const zo of [0.28, -0.28]) {
+      const sg = new Group();
+      sg.position.z = zo;
+      buildSpoke(sg, angle, SPOKE_LEN, 0.055, spokeMat);
+      wheelGroup.add(sg);
     }
 
-    // Neon spoke (center plane, every other spoke)
+    // Neon center spoke (every other cabin)
     if (i % 2 === 0) {
-      const snMat = neonMat(SPOKE_COLORS[(i / 2) % SPOKE_COLORS.length], 0.7);
-      const snGroup = new Group();
-      addSpoke(snGroup, angle, spokeLength, 0.038, snMat);
-      wheelPivot.add(snGroup);
+      const snMat = neonMat(SPOKE_NEON_COLORS[(i / 2) % SPOKE_NEON_COLORS.length], 0.72);
+      const sng = new Group();
+      buildSpoke(sng, angle, SPOKE_LEN, 0.038, snMat);
+      wheelGroup.add(sng);
       spokeNeonMats.push({ mat: snMat, phase: angle });
     }
   }
 
-  // ── Gondolas — parented to wheelPivot via a pivot at the rim ────
-  // Each gondolaPivot sits at the rim attachment point (0, cos(θ)*R, sin(θ)*R).
-  // It counter-rotates around Z to keep the gondola hanging upright.
-  const GONDOLA_COLORS = ["#C8321E","#1E5FC8","#2EA83A","#C89A1E","#C83278","#1E9AC8","#7C3AED","#C85A1E"];
-  const TIP_COLORS = ["#00E5FF","#A078FF","#00C8FF","#C43BFF","#40AAFF","#AA60FF","#00FFCC","#FF60CC"];
-  const gondolaPivots = [];
-  const tipLightMats = [];
-  const carnivalMats = [];
-
-  for (let i = 0; i < NUM_CABINS; i++) {
-    const angle = (i / NUM_CABINS) * Math.PI * 2;
-    const ry = Math.cos(angle) * WHEEL_RADIUS;
-    const rz = Math.sin(angle) * WHEEL_RADIUS;
-
-    // Pivot at the rim point — counter-rotation keeps gondola upright
-    const pivotGroup = new Group();
-    pivotGroup.name = `gondolaPivot_${i}`;
-    pivotGroup.position.set(0, ry, rz);
-    pivotGroup.userData.baseAngle = angle;
-    wheelPivot.add(pivotGroup);
-    gondolaPivots.push(pivotGroup);
-
-    // Suspension arm (hangs from pivot down to gondola)
-    const arm = new Mesh(
-      new CylinderGeometry(0.035, 0.035, 0.6, 5),
-      stdMat("#1E2A38", 0.2, 0.8)
-    );
-    arm.position.y = -0.3; // hang below pivot
-    pivotGroup.add(arm);
-
-    // Gondola body
-    const bodyColor = GONDOLA_COLORS[i % GONDOLA_COLORS.length];
-    const body = new Mesh(
-      new BoxGeometry(0.85, 0.9, 0.65),
-      stdMat(bodyColor, 0.45, 0.2)
-    );
-    body.position.y = -0.85; // below arm
-    body.castShadow = !IS_MOB;
-    pivotGroup.add(body);
-
-    // Gondola roof
-    if (!IS_MOB) {
-      const roof = new Mesh(
-        new BoxGeometry(0.92, 0.12, 0.7),
-        stdMat(bodyColor, 0.35, 0.25)
-      );
-      roof.position.set(0, -0.37, 0);
-      pivotGroup.add(roof);
-    }
-
-    // Window (desktop only)
-    if (!IS_MOB) {
-      const win = new Mesh(
-        new BoxGeometry(0.55, 0.44, 0.04),
-        new MeshBasicMaterial({ color: new Color("#A0D8EF"), transparent: true, opacity: 0.38, depthWrite: false })
-      );
-      win.position.set(0, -0.85, 0.345);
-      pivotGroup.add(win);
-
-      const winFrame = new Mesh(
-        new BoxGeometry(0.58, 0.47, 0.03),
-        neonMat(bodyColor, 0.55)
-      );
-      winFrame.position.set(0, -0.85, 0.348);
-      pivotGroup.add(winFrame);
-    }
-
-    // Cabin underglow strip (attached to gondola pivot, hangs correctly)
-    const glowColor = i % 2 === 0 ? "#00D4F0" : "#A078FF";
-    const cgMat = neonMat(glowColor, 0.6);
-    const underglow = new Mesh(new BoxGeometry(0.8, 0.04, 0.6), cgMat);
-    underglow.position.y = -1.32; // below gondola body
-    pivotGroup.add(underglow);
-
-    // Spoke tip light at rim attachment
-    const tipMat = neonMat(TIP_COLORS[i % TIP_COLORS.length], 0.95);
-    const tipLight = new Mesh(new SphereGeometry(0.13, 6, 4), tipMat);
-    tipLight.position.set(0, 0, 0); // at the pivot center (rim point)
-    pivotGroup.add(tipLight);
-    tipLightMats.push({ mat: tipMat, phase: angle });
-  }
-
-  // Chase bulbs around rim (children of wheelPivot — rotate with wheel)
+  // ── Chase bulbs around rim ──
   const CHASE_COLORS = ["#00E5FF","#A078FF","#40C8FF","#C43BFF","#00AAFF","#8844FF","#44EEFF","#FF44CC"];
-  const carnivalCount = IS_MOB ? 12 : 32;
-  for (let i = 0; i < carnivalCount; i++) {
-    const a = (i / carnivalCount) * Math.PI * 2;
-    const cMat = neonMat(CHASE_COLORS[i % CHASE_COLORS.length], 0.85);
+  const chaseCount = IS_MOB ? 16 : 36;
+  const carnivalMats = [];
+  for (let i = 0; i < chaseCount; i++) {
+    const a = (i / chaseCount) * Math.PI * 2;
+    const cMat = neonMat(CHASE_COLORS[i % CHASE_COLORS.length], 0.88);
     const bulb = new Mesh(new SphereGeometry(0.09, 5, 4), cMat);
-    bulb.position.set(0, Math.cos(a) * (WHEEL_RADIUS + 0.28), Math.sin(a) * (WHEEL_RADIUS + 0.28));
-    bulb.name = `carnival_${i}`;
-    wheelPivot.add(bulb);
+    bulb.position.set(
+      Math.cos(a) * (WHEEL_RADIUS + 0.28),
+      Math.sin(a) * (WHEEL_RADIUS + 0.28),
+      0
+    );
+    bulb.name = `chase_${i}`;
+    wheelGroup.add(bulb);
     carnivalMats.push({ mat: cMat, phase: a });
   }
 
-  // ── Entry ring in world space ──────────────────────────────────
+  // ── Gondola pivots ──
+  // Pivot sits at the rim attachment point in WheelGroup space: (cos(θ)*R, sin(θ)*R, 0).
+  // Counter-rotation around Z keeps pivot's local Y pointing world-up.
+  // Gondola body hangs at local Y = -(ARM + BODY_HALF) below pivot.
+  const GONDOLA_COLORS = ["#C8321E","#1E5FC8","#2EA83A","#C89A1E","#C83278","#1E9AC8","#7C3AED","#C85A1E"];
+  const TIP_COLORS    = ["#00E5FF","#A078FF","#00C8FF","#C43BFF","#40AAFF","#AA60FF","#00FFCC","#FF60CC"];
+  const gondolaPivots = [];
+  const tipLightMats  = [];
+  const HANG_ARM = 0.55;   // suspension arm length
+  const BODY_H   = 0.88;   // gondola body height
+  const BODY_D   = 0.38;   // gondola depth (along wheel axis Z)
+
+  for (let i = 0; i < NUM_CABINS; i++) {
+    const angle = (i / NUM_CABINS) * Math.PI * 2;
+    const rimX = Math.cos(angle) * WHEEL_RADIUS;
+    const rimY = Math.sin(angle) * WHEEL_RADIUS;
+
+    // Pivot at rim attachment point
+    const pivot = new Group();
+    pivot.name = `gondolaPivot_${i}`;
+    pivot.position.set(rimX, rimY, 0);
+    pivot.userData.baseAngle = angle;
+    wheelGroup.add(pivot);
+    gondolaPivots.push(pivot);
+
+    // Suspension arm (cylinder pointing down in pivot-local space)
+    const arm = new Mesh(
+      new CylinderGeometry(0.032, 0.032, HANG_ARM, 5),
+      stdMat("#1E2A3A", 0.2, 0.82)
+    );
+    arm.position.y = -(HANG_ARM / 2);
+    pivot.add(arm);
+
+    // ── Gondola body ──
+    const bodyY = -(HANG_ARM + BODY_H / 2); // center of body below pivot
+    const bodyColor = GONDOLA_COLORS[i % GONDOLA_COLORS.length];
+    const body = new Mesh(
+      new BoxGeometry(0.80, BODY_H, BODY_D * 2),
+      stdMat(bodyColor, 0.45, 0.22)
+    );
+    body.position.y = bodyY;
+    body.castShadow = !IS_MOB;
+    pivot.add(body);
+
+    // Gondola roof canopy
+    const roof = new Mesh(
+      new BoxGeometry(0.88, 0.11, BODY_D * 2 + 0.06),
+      stdMat(bodyColor, 0.35, 0.28)
+    );
+    roof.position.y = -(HANG_ARM) - 0.06; // sits on top of body
+    pivot.add(roof);
+
+    // Window glass (front face)
+    if (!IS_MOB) {
+      const glass = new Mesh(
+        new BoxGeometry(0.52, 0.40, 0.04),
+        new MeshBasicMaterial({ color: new Color("#A0D8EF"), transparent: true, opacity: 0.35, depthWrite: false })
+      );
+      glass.position.set(0, bodyY + 0.05, BODY_D + 0.03);
+      pivot.add(glass);
+
+      // Window frame neon outline
+      const wf = new Mesh(
+        new BoxGeometry(0.56, 0.44, 0.03),
+        neonMat(bodyColor, 0.5)
+      );
+      wf.position.set(0, bodyY + 0.05, BODY_D + 0.035);
+      pivot.add(wf);
+    }
+
+    // Underglow strip (bottom of cabin)
+    const ugColor = i % 2 === 0 ? "#00D4F0" : "#A078FF";
+    const ugMat = neonMat(ugColor, 0.65);
+    const ugStrip = new Mesh(new BoxGeometry(0.76, 0.04, BODY_D * 1.8), ugMat);
+    ugStrip.position.y = -(HANG_ARM + BODY_H) - 0.04;
+    pivot.add(ugStrip);
+
+    // Rim-point tip light sphere
+    const tipMat = neonMat(TIP_COLORS[i % TIP_COLORS.length], 0.95);
+    const tipSphere = new Mesh(new SphereGeometry(0.13, 6, 4), tipMat);
+    tipSphere.position.set(0, 0, 0); // at pivot center (rim point)
+    pivot.add(tipSphere);
+    tipLightMats.push({ mat: tipMat, phase: angle });
+  }
+
+  // ── Entry ring in world space (boarding marker on ground) ──────
   const entryRing = new Mesh(
-    new RingGeometry(1.1, 1.45, 32),
+    new RingGeometry(1.05, 1.42, 32),
     new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
   );
   entryRing.rotation.x = -Math.PI / 2;
-  entryRing.position.set(WHEEL_X, 0.01, WHEEL_Z + WHEEL_RADIUS + 0.2);
+  // Boarding zone is at the bottom of the wheel (+Z side in root space, after root.rotation.y)
+  entryRing.position.set(WHEEL_X, 0.01, WHEEL_Z + WHEEL_RADIUS + 0.5);
   entryRing.renderOrder = 1;
   scene.add(entryRing);
 
-  // ── Point lights ───────────────────────────────────────────────
+  // ── Point lights ──────────────────────────────────────────────────
   const wheelLight = new PointLight();
   wheelLight.color = new Color("#00BBFF");
-  wheelLight.intensity = 4.0;
-  wheelLight.distance = 28;
-  wheelLight.position.set(WHEEL_X, WHEEL_HUB_Y + 1, WHEEL_Z);
+  wheelLight.intensity = 4.2;
+  wheelLight.distance = 30;
+  wheelLight.position.set(WHEEL_X, HUB_Y + 1, WHEEL_Z);
   scene.add(wheelLight);
   scene.userData.ferrisWheelLight = wheelLight;
 
@@ -429,26 +429,26 @@ export function createFerrisWheel(scene) {
   baseSplashLight.color = new Color("#7C3AED");
   baseSplashLight.intensity = 2.5;
   baseSplashLight.distance = 14;
-  baseSplashLight.position.set(WHEEL_X, 0.8, WHEEL_Z);
+  baseSplashLight.position.set(WHEEL_X, 1.0, WHEEL_Z);
   scene.add(baseSplashLight);
 
-  // ── Position root in world ─────────────────────────────────────
+  // ── Add root to scene ─────────────────────────────────────────────
   scene.add(root);
 
-  // ── Store for animation tick ───────────────────────────────────
+  // ── Store references for animation tick ─────────────────────────
   scene.userData.ferrisWheel = {
     root,
-    wheelPivot,
+    wheelGroup,
     gondolaPivots,
-    hubGlow,
+    hubNeon,
     rimNeonMat,
     ledRimMat,
-    ledRimMat2,
+    ledRim2Mat,
     wheelLight,
     baseSplashLight,
-    baseLedMat,
-    baseLedMat2,
-    groundGlowMat,
+    baseLed1Mat,
+    baseLed2Mat,
+    glowDiscMat,
     tipLightMats,
     carnivalMats,
     spokeNeonMats,
@@ -457,120 +457,104 @@ export function createFerrisWheel(scene) {
   return { group: root };
 }
 
-// ── Animation tick ─────────────────────────────────────────────────
-export function animateFerrisWheel(scene, t, audioBeat, playerX, playerZ, tvSmooth = false) {
+// ── Animation tick ──────────────────────────────────────────────────
+export function animateFerrisWheel(scene, t, audioBeat = 0, playerX = 0, playerZ = 0, tvSmooth = false) {
   const fw = scene.userData.ferrisWheel;
   if (!fw) return;
 
-  const dx = (playerX ?? 0) - WHEEL_X;
-  const dz = (playerZ ?? 0) - WHEEL_Z;
+  const dx = playerX - WHEEL_X;
+  const dz = playerZ - WHEEL_Z;
   const dist = Math.sqrt(dx * dx + dz * dz);
-  const tooFar = (IS_MOB || tvSmooth) && dist > (tvSmooth ? 30 : 35);
+  const farAway = (IS_MOB || tvSmooth) && dist > (tvSmooth ? 28 : 34);
 
-  if (!tooFar) {
-    const wheelAngle = t * 0.16; // slow clockwise
+  if (!farAway) {
+    const wheelAngle = t * WHEEL_SPEED;
 
-    // Rotate the entire wheel (spokes, rim, gondola pivots all rotate together)
-    fw.wheelPivot.rotation.z = wheelAngle;
+    // Rotate the entire wheel group (rim, spokes, chase bulbs, gondola pivots all move together)
+    fw.wheelGroup.rotation.z = wheelAngle;
 
-    // Counter-rotate each gondola pivot so gondola stays upright
+    // Counter-rotate each gondola pivot to keep gondola body upright in world space.
+    // wheelGroup.rotation.z = wheelAngle causes each pivot to orbit.
+    // Counter-rotation: pivot.rotation.z = -wheelAngle keeps pivot's local axes world-aligned.
     for (const pivot of fw.gondolaPivots) {
       pivot.rotation.z = -wheelAngle;
     }
   }
 
-  // ── Rim neon ──────────────────────────────────────────────────
-  if (fw.rimNeonMat) {
-    fw.rimNeonMat.opacity = tooFar ? 0.25 : (tvSmooth ? 0.5 : 0.4 + Math.sin(t * 1.8) * 0.15 + audioBeat * 0.25);
-  }
-  if (fw.ledRimMat) {
-    fw.ledRimMat.opacity = tooFar ? 0.55 : (tvSmooth ? 0.85 : 0.75 + Math.sin(t * 1.4) * 0.15 + audioBeat * 0.2);
-  }
-  if (fw.ledRimMat2) {
-    fw.ledRimMat2.opacity = tooFar ? 0.35 : (tvSmooth ? 0.6 : 0.5 + Math.sin(t * 1.9 + 1.2) * 0.12 + audioBeat * 0.15);
-  }
+  // ── Neon animations ───────────────────────────────────────────────
+  const beat = audioBeat || 0;
 
-  // ── Hub glow ──────────────────────────────────────────────────
-  if (fw.hubGlow?.material) {
-    fw.hubGlow.material.opacity = tooFar ? 0.4 : (tvSmooth ? 0.7 : 0.65 + Math.sin(t * 2.5) * 0.2 + audioBeat * 0.15);
-  }
+  if (fw.rimNeonMat)  fw.rimNeonMat.opacity  = farAway ? 0.25 : (tvSmooth ? 0.48 : 0.38 + Math.sin(t * 1.8) * 0.14 + beat * 0.22);
+  if (fw.ledRimMat)   fw.ledRimMat.opacity   = farAway ? 0.55 : (tvSmooth ? 0.82 : 0.72 + Math.sin(t * 1.4) * 0.15 + beat * 0.18);
+  if (fw.ledRim2Mat)  fw.ledRim2Mat.opacity  = farAway ? 0.32 : (tvSmooth ? 0.58 : 0.48 + Math.sin(t * 1.9 + 1.2) * 0.12 + beat * 0.14);
+  if (fw.hubNeon?.material) fw.hubNeon.material.opacity = farAway ? 0.38 : (tvSmooth ? 0.68 : 0.62 + Math.sin(t * 2.4) * 0.2 + beat * 0.15);
 
-  // ── Point lights ──────────────────────────────────────────────
-  if (fw.wheelLight) {
-    fw.wheelLight.intensity = tooFar ? 1.5 : (tvSmooth ? 3.5 : 3.5 + Math.sin(t * 1.1) * 0.7 + audioBeat * 1.2);
-  }
-  if (fw.baseSplashLight) {
-    fw.baseSplashLight.intensity = tooFar ? 0.5 : (tvSmooth ? 2.0 : 2.0 + Math.sin(t * 0.9 + 0.8) * 0.5 + audioBeat * 0.8);
-  }
+  if (fw.wheelLight)      fw.wheelLight.intensity      = farAway ? 1.5 : (tvSmooth ? 3.5 : 3.4 + Math.sin(t * 1.1) * 0.7 + beat * 1.1);
+  if (fw.baseSplashLight) fw.baseSplashLight.intensity = farAway ? 0.5 : (tvSmooth ? 2.0 : 1.9 + Math.sin(t * 0.9 + 0.8) * 0.5 + beat * 0.8);
 
-  // ── Base LED rings ────────────────────────────────────────────
-  if (fw.baseLedMat) {
-    fw.baseLedMat.opacity = tooFar ? 0.4 : (tvSmooth ? 0.7 : 0.6 + Math.sin(t * 1.2) * 0.18 + audioBeat * 0.2);
-  }
-  if (fw.baseLedMat2) {
-    fw.baseLedMat2.opacity = tooFar ? 0.25 : (tvSmooth ? 0.5 : 0.4 + Math.sin(t * 1.6 + 2.0) * 0.15 + audioBeat * 0.18);
-  }
-  if (fw.groundGlowMat) {
-    fw.groundGlowMat.opacity = tooFar ? 0.08 : (tvSmooth ? 0.18 : 0.16 + Math.sin(t * 0.8) * 0.06 + audioBeat * 0.08);
-  }
+  if (fw.baseLed1Mat)  fw.baseLed1Mat.opacity  = farAway ? 0.38 : (tvSmooth ? 0.68 : 0.58 + Math.sin(t * 1.2) * 0.18 + beat * 0.2);
+  if (fw.baseLed2Mat)  fw.baseLed2Mat.opacity  = farAway ? 0.22 : (tvSmooth ? 0.48 : 0.38 + Math.sin(t * 1.6 + 2.0) * 0.15 + beat * 0.16);
+  if (fw.glowDiscMat)  fw.glowDiscMat.opacity  = farAway ? 0.07 : (tvSmooth ? 0.17 : 0.15 + Math.sin(t * 0.8) * 0.06 + beat * 0.07);
 
-  // ── Spoke neon ────────────────────────────────────────────────
-  if (!tooFar && fw.spokeNeonMats) {
+  if (!farAway && fw.spokeNeonMats) {
     for (const sn of fw.spokeNeonMats) {
-      sn.mat.opacity = tvSmooth ? 0.6 : 0.5 + Math.sin(t * 1.3 + sn.phase) * 0.2 + audioBeat * 0.15;
+      sn.mat.opacity = tvSmooth ? 0.58 : 0.48 + Math.sin(t * 1.3 + sn.phase) * 0.2 + beat * 0.14;
     }
   }
 
-  // ── Chase bulbs ───────────────────────────────────────────────
-  if (!tooFar && fw.carnivalMats) {
-    const maxBulbs = tvSmooth ? 6 : (IS_MOB ? 12 : fw.carnivalMats.length);
-    for (let i = 0; i < maxBulbs; i++) {
+  if (!farAway && fw.carnivalMats) {
+    const maxB = tvSmooth ? 8 : (IS_MOB ? 16 : fw.carnivalMats.length);
+    for (let i = 0; i < maxB; i++) {
       const c = fw.carnivalMats[i];
-      if (tvSmooth) { c.mat.opacity = 0.65; continue; }
-      c.mat.opacity = 0.45 + (Math.sin(t * 0.9 - c.phase) * 0.5 + 0.5) * 0.5 + audioBeat * 0.25;
+      c.mat.opacity = tvSmooth ? 0.65 : 0.42 + (Math.sin(t * 0.9 - c.phase) * 0.5 + 0.5) * 0.5 + beat * 0.24;
     }
   }
 
-  // ── Tip lights ────────────────────────────────────────────────
-  if (!tooFar && fw.tipLightMats) {
+  if (!farAway && fw.tipLightMats) {
     for (const tip of fw.tipLightMats) {
-      tip.mat.opacity = tvSmooth ? 0.7 : 0.6 + (Math.sin(t * 1.6 + tip.phase) * 0.5 + 0.5) * 0.35 + audioBeat * 0.2;
+      tip.mat.opacity = tvSmooth ? 0.68 : 0.58 + (Math.sin(t * 1.6 + tip.phase) * 0.5 + 0.5) * 0.32 + beat * 0.18;
     }
   }
 }
 
-// ── World-space cabin position for ride camera ─────────────────────
+// ── World-space gondola position for ride camera ───────────────────
+// Returns {x, y, z} of gondola body center in world space.
 export function getCabinWorldPosition(cabinIndex, t) {
-  const wheelAngle = t * 0.16;
-  const baseAngle = (cabinIndex / NUM_CABINS) * Math.PI * 2;
-  // wheelPivot rotates by wheelAngle around Z; gondolaPivot counter-rotates.
-  // The gondola body stays upright; its world position follows the pivot point on the rim.
-  // After wheelPivot.rotation.z = wheelAngle, pivot at (0, cos(base)*R, sin(base)*R) becomes:
+  const wheelAngle = t * WHEEL_SPEED;
+  const baseAngle  = (cabinIndex / NUM_CABINS) * Math.PI * 2;
+  // After wheelGroup rotates by wheelAngle, the pivot point in wheelGroup space moves to:
   const totalAngle = baseAngle + wheelAngle;
-  const localY = Math.cos(totalAngle) * WHEEL_RADIUS;
-  const localZ = Math.sin(totalAngle) * WHEEL_RADIUS;
+  // In wheelGroup-local space (X-Y plane):
+  const localX = Math.cos(totalAngle) * WHEEL_RADIUS;
+  const localY = Math.sin(totalAngle) * WHEEL_RADIUS;
 
-  // gondola body is at -0.85 Y below pivot (in counter-rotated space, so world-space Y offset)
-  // The gondola stays upright so the body center is 0.85 below the pivot in world Y
-  const pivotWorldY = WHEEL_HUB_Y + localY;
-  const worldBodyY = pivotWorldY - 0.85;
+  // wheelGroup is at (0, WHEEL_HUB_Y, 0) in root space.
+  // gondola body center hangs HANG_ARM + BODY_H/2 below pivot (world Y, since counter-rotated).
+  const HANG_ARM = 0.55;
+  const BODY_H   = 0.88;
+  const pivotWorldY  = WHEEL_HUB_Y + localY;
+  const bodyWorldY   = Math.max(0.6, pivotWorldY - HANG_ARM - BODY_H / 2);
 
-  // root is at (WHEEL_X, 0, WHEEL_Z), rotated 0.26 on Y
-  const ry = 0.26;
-  const worldX = WHEEL_X + Math.cos(ry) * 0 - Math.sin(ry) * localZ;
-  const worldY = Math.max(0.5, worldBodyY);
-  const worldZ = WHEEL_Z + Math.sin(ry) * 0 + Math.cos(ry) * localZ;
+  // root.rotation.y = 0.35; root is at (WHEEL_X, 0, WHEEL_Z).
+  // In root space, the pivot is at (localX, localY, 0) relative to wheelGroup which is at (0, WHEEL_HUB_Y, 0).
+  // So in root space: (localX, WHEEL_HUB_Y + localY, 0).
+  // Apply root.rotation.y = 0.35:
+  const ry = 0.35;
+  const rootLocalX = localX;
+  const rootLocalZ = 0;
+  const worldX = WHEEL_X + Math.cos(ry) * rootLocalX - Math.sin(ry) * rootLocalZ;
+  const worldZ = WHEEL_Z + Math.sin(ry) * rootLocalX + Math.cos(ry) * rootLocalZ;
 
-  return { x: worldX, y: worldY, z: worldZ };
+  return { x: worldX, y: bodyWorldY, z: worldZ };
 }
 
-// Loading platform world position (where avatar stands to board)
+// Boarding position (near bottom of wheel, in front of the deck)
 export function getBoardingPosition() {
-  const ry = 0.26;
-  const rootZ = WHEEL_RADIUS + 0.2;
+  const ry = 0.35;
+  const localZ = WHEEL_RADIUS + 0.6;
   return {
-    x: WHEEL_X - Math.sin(ry) * rootZ,
+    x: WHEEL_X - Math.sin(ry) * localZ,
     y: 0.55,
-    z: WHEEL_Z + Math.cos(ry) * rootZ,
+    z: WHEEL_Z + Math.cos(ry) * localZ,
   };
 }
