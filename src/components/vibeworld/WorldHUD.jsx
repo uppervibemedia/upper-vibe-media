@@ -292,9 +292,9 @@ export default function WorldHUD({
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: stageWatching ? 0 : 1, y: 0 }}
-        style={{ pointerEvents: stageWatching ? "none" : "auto" }}
         className="absolute top-0 right-1.5 z-[56] flex items-center gap-1.5"
         style={{
+          pointerEvents: stageWatching ? "none" : "auto",
           paddingTop: isMobile && mobileLayout
             ? `${mobileLayout.sa.top + 54}px`
             : isMobile ? "calc(env(safe-area-inset-top, 0px) + 3.4rem)" : "4.5rem",
