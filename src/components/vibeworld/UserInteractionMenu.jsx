@@ -5,18 +5,19 @@
  */
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, MessageCircle, UserPlus, UserCheck, UserX, Flag, User, Wifi } from "lucide-react";
+import { X, MessageCircle, UserPlus, UserCheck, UserX, Flag, Wifi } from "lucide-react";
 
 export default function UserInteractionMenu({
   open,
   targetUser,
   onClose,
   onRequestChat,
-  onRequestVoiceChat,
+  onOpenChat,
   onBlock,
   onUnblock,
   onReport,
-  isBlocked,        // boolean — is this user blocked
+  isBlocked,
+  isConnected,      // boolean — already connected/friends
   isMobile,
   // Follow system
   currentUserId,
@@ -178,8 +179,42 @@ export default function UserInteractionMenu({
             </button>
           )}
 
-          {/* SEND / CANCEL CHAT REQUEST */}
-          {!isBlocked && (
+          {/* CONNECTED STATE — show Connected badge + Message button */}
+          {!isBlocked && isConnected && (
+            <>
+              <div
+                className="w-full flex items-center gap-3 px-3 rounded-xl"
+                style={{
+                  background: "rgba(0,200,83,0.07)",
+                  border: "1px solid rgba(0,200,83,0.2)",
+                  minHeight: 44,
+                }}
+              >
+                <UserCheck className="w-4 h-4 flex-shrink-0" style={{ color: "#00C853" }} />
+                <p className="text-xs font-bold" style={{ color: "#00C853" }}>Connected ✓</p>
+              </div>
+              <button
+                onClick={() => onOpenChat?.()}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full flex items-center gap-3 px-3 rounded-xl transition-all hover:brightness-110 active:scale-95"
+                style={{
+                  background: "rgba(0,160,220,0.1)",
+                  border: "1px solid rgba(0,160,220,0.22)",
+                  minHeight: 48,
+                  touchAction: "manipulation",
+                }}
+              >
+                <MessageCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#00D4F0" }} />
+                <div className="text-left">
+                  <p className="text-xs font-bold" style={{ color: "#00D4F0" }}>Message</p>
+                  <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>Open direct chat</p>
+                </div>
+              </button>
+            </>
+          )}
+
+          {/* SEND CHAT REQUEST — only when not connected and not blocked */}
+          {!isBlocked && !isConnected && (
             <button
               onClick={requestSent || pendingToThisUser ? undefined : handleSendRequest}
               onTouchStart={(e) => e.stopPropagation()}

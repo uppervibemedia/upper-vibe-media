@@ -108,6 +108,8 @@ export default function WorldHUD({
   onMarkNotificationHandled,
   onMarkAllNotificationsRead,
   onOpenChat,
+  // ── Connection state ───────────────────────────────────────
+  isConnected,
   // ── Emote / Dance Floor props ──────────────────────────────
   onEmote,
   onStopDance,
@@ -1159,6 +1161,12 @@ export default function WorldHUD({
             onRequestChat?.(userInteractionTarget.user_id || userInteractionTarget.id, userInteractionTarget.username);
           }
         }}
+        onOpenChat={() => {
+          if (userInteractionTarget) {
+            onOpenChat?.(userInteractionTarget.user_id || userInteractionTarget.id, userInteractionTarget.username);
+            onCloseUserMenu?.();
+          }
+        }}
         onBlock={() => {
           if (userInteractionTarget) {
             onBlockUser?.(userInteractionTarget.user_id || userInteractionTarget.id);
@@ -1170,6 +1178,7 @@ export default function WorldHUD({
           }
         }}
         isBlocked={!!(userInteractionTarget && blockedUsers?.[userInteractionTarget.user_id || userInteractionTarget.id])}
+        isConnected={isConnected ? isConnected(userInteractionTarget?.user_id || userInteractionTarget?.id) : false}
         outgoingStatus={outgoingStatus}
         onReport={() => onReportUser?.(userInteractionTarget)}
         isMobile={isMobile}

@@ -174,12 +174,33 @@ export default function usePrivateChat(user) {
     }
   }, [myId, myUsername, loadMessages]);
 
+  // ── Track accepted connections locally for instant UI update ──────────
+  const [connectedUserIds, setConnectedUserIds] = useState(new Set());
+
+  // ── Load existing accepted connections on mount ──────────
+  useEffect(() => {
+    if (!myId) return;
+    base44.entities.PrivateChatRequest.filter({ status: "accepted" })
+      .then((records) => {
+        const ids = new Set();
+        records.forEach((r) => {
+          if (r.from_user_id === myId) ids.add(r.to_user_id);
+          if (r.to_user_id === myId) ids.add(r.from_user_id);
+        });
+        setConnectedUserIds(ids);
+      }).catch(() => {});
+  }, [myId]);
+
   // ── Accept a friend request (from notification) ──────────
   const acceptRequest = useCallback(async (requestId, fromUserId, fromUsername) => {
     try {
+      // 1. Update request status to accepted
       await base44.entities.PrivateChatRequest.update(requestId, { status: "accepted" });
 
-      // Notify the sender
+      // 2. Update local connected set immediately for both directions
+      setConnectedUserIds((prev) => new Set([...prev, fromUserId]));
+
+      // 3. Notify the sender that their request was accepted
       await base44.entities.Notification.create({
         user_id: fromUserId,
         type: "request_accepted",
@@ -191,7 +212,7 @@ export default function usePrivateChat(user) {
         handled: false,
       }).catch(() => {});
 
-      // Mark related notification as handled
+      // 4. Mark the receiver's notification as handled + remove from list
       const relatedNote = notifications.find((n) => n.related_request_id === requestId);
       if (relatedNote) {
         await base44.entities.Notification.update(relatedNote.id, { read: true, handled: true }).catch(() => {});
@@ -199,7 +220,7 @@ export default function usePrivateChat(user) {
         setUnreadCount((c) => Math.max(0, c - 1));
       }
 
-      // Open chat
+      // 5. Open direct chat
       setActiveChatPeer({ userId: fromUserId, username: fromUsername });
       await loadMessages(fromUserId);
     } catch {}
@@ -331,19 +352,21 @@ export default function usePrivateChat(user) {
     return () => clearInterval(cleanupTimer.current);
   }, [myId]);
 
-  // ── Check if two users are connected ────────────────────
-  const checkConnection = useCallback(async (targetUserId) => {
-    if (!myId || !targetUserId) return false;
-    try {
-      const accepted = await base44.entities.PrivateChatRequest.filter({
-        $or: [
-          { from_user_id: myId, to_user_id: targetUserId, status: "accepted" },
-          { from_user_id: targetUserId, to_user_id: myId, status: "accepted" },
-        ]
-      });
-      return accepted.length > 0;
-    } catch { return false; }
-  }, [myId]);
+  // ── Check if two users are connected (sync, instant) ────
+  const isConnected = useCallback((targetUserId) => {
+    return connectedUserIds.has(targetUserId);
+  }, [connectedUserIds]);
+
+  // When sender receives a "request_accepted" notification, update their connected set too
+  useEffect(() => {
+    const acceptedNotes = notifications.filter((n) => n.type === "request_accepted" && n.from_user_id);
+    if (acceptedNotes.length === 0) return;
+    setConnectedUserIds((prev) => {
+      const next = new Set(prev);
+      acceptedNotes.forEach((n) => next.add(n.from_user_id));
+      return next;
+    });
+  }, [notifications]);
 
   return {
     activeChatPeer,
@@ -352,6 +375,8 @@ export default function usePrivateChat(user) {
     unreadCount,
     outgoingStatus,
     blockedUsers,
+    connectedUserIds,
+    isConnected,
     sendChatRequest,
     acceptRequest,
     declineRequest,
@@ -363,6 +388,5 @@ export default function usePrivateChat(user) {
     markNotificationHandled,
     markAllNotificationsRead,
     clearOutgoingStatus,
-    checkConnection,
   };
 }

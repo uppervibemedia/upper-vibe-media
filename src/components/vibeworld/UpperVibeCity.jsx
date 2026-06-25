@@ -600,7 +600,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Private Chat ─────────────────────────────────────────────────────
   const {
     activeChatPeer, chatMessages, notifications, unreadCount,
-    outgoingStatus, blockedUsers,
+    outgoingStatus, blockedUsers, connectedUserIds, isConnected,
     sendChatRequest, acceptRequest, declineRequest,
     sendMessage, endChat, openChat, blockUser, unblockUser,
     markNotificationHandled, markAllNotificationsRead, clearOutgoingStatus,
@@ -984,10 +984,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           && !tvOverlayOpen;
         if (!showTVButton) return null;
         const isPortrait = isMobile && window.innerHeight > window.innerWidth;
+        // Portrait: push below the exit button row AND the bell/users row (which sits at ~top+54px)
+        // Landscape: align with exit button row (top+4px) but on the right where there's space
         const topStyle = isPortrait
           ? (isMobile && mobileLayout
-              ? `${mobileLayout.sa.top + 58}px`
-              : "calc(env(safe-area-inset-top, 0px) + 58px)")
+              ? `${mobileLayout.sa.top + 100}px`
+              : "calc(env(safe-area-inset-top, 0px) + 100px)")
           : (isMobile && mobileLayout
               ? `${mobileLayout.sa.top + 4}px`
               : "calc(env(safe-area-inset-top, 0px) + 4px)");
@@ -1082,6 +1084,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         blockedUsers={mergedBlocks}
         userInteractionTarget={userInteractionTarget}
         onCloseUserMenu={handleCloseUserMenu}
+        isConnected={isConnected}
+        onOpenChat={openChat}
         onLoungeInputFocus={setLoungeInputFocused}
         onVoiceActive={setVoiceActive}
         outgoingStatus={outgoingStatus}
