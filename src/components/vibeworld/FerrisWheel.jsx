@@ -645,8 +645,8 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   const curTY = k.targetA.y  + (k.targetB.y  - k.targetA.y)  * sp;
   const curTZ = k.targetA.z  + (k.targetB.z  - k.targetA.z)  * sp;
 
-  // Cross-boundary pre-blend: last 20% drifts toward next segment's start
-  const BLEND_ZONE = 0.20;
+  // Cross-boundary pre-blend: last 35% drifts toward next segment's start
+  const BLEND_ZONE = 0.35;
   const blendT = ss(Math.max(0, (rawProg - (1 - BLEND_ZONE)) / BLEND_ZONE));
   const worldTargetX = curTX + (kN.targetA.x - curTX) * blendT;
   const worldTargetY = curTY + (kN.targetA.y - curTY) * blendT;
