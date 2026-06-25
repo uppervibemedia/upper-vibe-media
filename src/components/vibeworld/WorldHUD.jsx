@@ -317,7 +317,7 @@ export default function WorldHUD({
         {currentUserId && (
           <button
             onTouchStart={(e) => e.stopPropagation()}
-            onClick={() => { hapticTap(); setDmInboxOpen((v) => !v); setNotifPanelOpen(false); }}
+            onClick={() => { hapticTap(); setDmInboxOpen((v) => { if (!v) setNotifPanelOpen(false); return !v; }); }}
             className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
             style={{
               background: dmInboxOpen ? "rgba(0,160,220,0.18)" : "rgba(255,255,255,0.06)",

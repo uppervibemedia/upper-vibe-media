@@ -3,7 +3,7 @@
  * Lists all MessageRequest records with status "approved" for the current user.
  * Conversations persist across sessions — never auto-deleted.
  */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { X, MessageCircle, ChevronRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -32,11 +32,18 @@ export default function DMInbox({
   const [loading, setLoading] = useState(false);
   const [lastMessages, setLastMessages] = useState({}); // conversationId → last message text + time
 
+  // Use a ref for blockedUsers so loadConversations never gets recreated when it changes
+  const blockedUsersRef = useRef(blockedUsers);
+  blockedUsersRef.current = blockedUsers;
+
+  // Guard: only load once per open session to prevent reload loops
+  const hasLoadedRef = useRef(false);
+
+  // Stable load function — deps only on currentUserId (never on blockedUsers object)
   const loadConversations = useCallback(async () => {
     if (!currentUserId) return;
     setLoading(true);
     try {
-      // Load all approved requests where I'm sender or receiver
       const [asSender, asReceiver] = await Promise.all([
         base44.entities.MessageRequest.filter({ sender_user_id: currentUserId, status: "approved" }),
         base44.entities.MessageRequest.filter({ receiver_user_id: currentUserId, status: "approved" }),
@@ -44,7 +51,6 @@ export default function DMInbox({
 
       const all = [...(asSender || []), ...(asReceiver || [])];
 
-      // Deduplicate by conversation_id
       const seen = new Set();
       const unique = all.filter((c) => {
         if (seen.has(c.conversation_id)) return false;
@@ -52,18 +58,16 @@ export default function DMInbox({
         return true;
       });
 
-      // Filter out blocked users
+      // Use ref to avoid adding blockedUsers to deps
       const filtered = unique.filter((c) => {
         const otherId = c.sender_user_id === currentUserId ? c.receiver_user_id : c.sender_user_id;
-        return !blockedUsers[otherId];
+        return !blockedUsersRef.current[otherId];
       });
 
-      // Sort by most recently updated
       filtered.sort((a, b) => new Date(b.updated_date || b.created_date) - new Date(a.updated_date || a.created_date));
 
       setConversations(filtered);
 
-      // Load last message for each conversation
       for (const conv of filtered) {
         base44.entities.DirectMessage
           .filter({ conversation_id: conv.conversation_id }, "-created_date", 1)
@@ -86,11 +90,18 @@ export default function DMInbox({
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, blockedUsers]);
+  }, [currentUserId]); // blockedUsers intentionally excluded — accessed via ref
 
+  // Load once when panel first opens; reset guard when panel closes
   useEffect(() => {
-    if (open) loadConversations();
-  }, [open, loadConversations]);
+    if (!open) {
+      hasLoadedRef.current = false;
+      return;
+    }
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+    loadConversations();
+  }, [open, currentUserId]); // loadConversations is stable; currentUserId triggers reload if user changes
 
   if (!open) return null;
 
