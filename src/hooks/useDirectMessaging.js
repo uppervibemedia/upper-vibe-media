@@ -100,21 +100,22 @@ export default function useDirectMessaging(user) {
       });
     });
 
-    // 5s polling fallback
+    // 8s polling fallback — only appends truly new messages, never replaces the array
     const poll = setInterval(async () => {
       try {
         const msgs = await base44.entities.DirectMessage.filter({ conversation_id: convId }, "created_date", 150);
         if (!msgs?.length) return;
         setChatMessages((prev) => {
-          const existingIds = new Set(prev.filter((m) => !m._optimistic).map((m) => m.id));
-          const newReal = msgs.filter((m) => !existingIds.has(m.id) && !blockedRef.current[m.sender_user_id])
-            .sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newReal = msgs.filter(
+            (m) => !existingIds.has(m.id) && !m._optimistic && !blockedRef.current[m.sender_user_id]
+          );
+          // Nothing new — return exact same reference to prevent re-render
           if (!newReal.length) return prev;
-          const withoutOpts = prev.filter((m) => !m._optimistic || m._failed);
-          return [...withoutOpts, ...newReal].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+          return [...prev, ...newReal].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
         });
       } catch {}
-    }, 5000);
+    }, 8000);
 
     return () => { try { unsub(); } catch {} clearInterval(poll); };
   }, [myId, activeChatPeer?.conversationId]);
@@ -142,10 +143,9 @@ export default function useDirectMessaging(user) {
     if (blockedRef.current[userId]) return;
 
     const conversationId = getChatId(myId, userId);
-    if (activePeerRef.current?.conversationId === conversationId) {
-      loadMessages(conversationId);
-      return;
-    }
+    // Already viewing this conversation — don't reload (would flash and reset scroll)
+    if (activePeerRef.current?.conversationId === conversationId) return;
+
     setChatMessages([]);
     setActiveChatPeer({ userId, username, conversationId });
     loadMessages(conversationId);

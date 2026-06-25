@@ -3,13 +3,13 @@
  * Opens only after a message request is approved.
  * sendMessage() never opens a new chat — it just sends into the active conversation.
  */
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import { motion } from "framer-motion";
 import { X, Send, UserX, Flag, AlertTriangle, RotateCcw } from "lucide-react";
 import BlockReportConfirmModal from "@/components/vibeworld/BlockReportConfirmModal";
 import { base44 } from "@/api/base44Client";
 
-export default function DirectChatPanel({
+function DirectChatPanel({
   open,
   peer,        // { userId, username, conversationId }
   messages,    // DirectMessage records
@@ -27,7 +27,9 @@ export default function DirectChatPanel({
   const [panelBottom, setPanelBottom] = useState(0);
   const [confirmModal, setConfirmModal] = useState(null); // { mode }
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const inputRef = useRef(null);
+  const lastMessageCountRef = useRef(0);
 
   // iOS keyboard tracking
   useEffect(() => {
@@ -41,15 +43,42 @@ export default function DirectChatPanel({
     return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
   }, [isMobile, open]);
 
-  // Scroll to bottom on new messages
+  // Smart scroll: only auto-scroll when user is already near the bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const count = messages?.length ?? 0;
+    if (count === lastMessageCountRef.current) return;
+    const isNewMessage = count > lastMessageCountRef.current;
+    lastMessageCountRef.current = count;
+    if (!isNewMessage) return;
+
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    // "Near bottom" = within 120px of the bottom
+    const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+    if (nearBottom) {
+      // Use requestAnimationFrame to let React finish rendering before scrolling
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      });
+    }
   }, [messages?.length]);
 
-  // Reset draft when chat opens
+  // Scroll to bottom when conversation first opens (initial load)
   useEffect(() => {
-    if (open) { setDraft(""); setSendError(null); setFailedDraft(null); }
-  }, [open, peer?.conversationId]);
+    if (!peer?.conversationId) return;
+    // Reset scroll tracking for new conversation
+    lastMessageCountRef.current = 0;
+    // Small delay to let messages render
+    const t = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [peer?.conversationId]);
+
+  // Reset draft only when switching to a DIFFERENT conversation, not on every re-render
+  useEffect(() => {
+    if (peer?.conversationId) { setSendError(null); setFailedDraft(null); }
+  }, [peer?.conversationId]);
 
   const handleSend = useCallback(async (textOverride) => {
     const text = (textOverride ?? draft).trim();
@@ -134,7 +163,7 @@ export default function DirectChatPanel({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5" style={{ WebkitOverflowScrolling: "touch" }}>
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5" style={{ WebkitOverflowScrolling: "touch" }}>
         {(!messages || messages.length === 0) && (
           <p className="text-center text-xs text-white/20 mt-8">Chat approved! Say something ✨</p>
         )}
@@ -246,3 +275,5 @@ export default function DirectChatPanel({
     </motion.div>
   );
 }
+
+export default memo(DirectChatPanel);

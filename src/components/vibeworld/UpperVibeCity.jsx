@@ -641,6 +641,22 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     try { navigator?.vibrate?.(20); } catch {}
   }, []);
 
+  // Stable callbacks for DirectChatPanel so memo doesn't re-render chat on every presence update
+  const activeChatPeerRef = useRef(null);
+  activeChatPeerRef.current = activeChatPeer;
+
+  const handleDirectChatBlock = useCallback(() => {
+    const peer = activeChatPeerRef.current;
+    if (!peer) return;
+    blockSystem.blockUser(peer.userId, peer.username);
+    blockUser(peer.userId, peer.username);
+    endChat();
+  }, [blockSystem, blockUser, endChat]);
+
+  const handleDirectChatReport = useCallback(() => {
+    handleReportUser(activeChatPeerRef.current);
+  }, [handleReportUser]);
+
 
   // Keep player refs in sync without adding them as effect deps
   stageIsPlayingRef.current = isPlaying;
@@ -1368,14 +1384,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             messages={chatMessages}
             onSend={sendMessage}
             onClose={endChat}
-            onBlock={() => {
-              if (activeChatPeer) {
-                blockSystem.blockUser(activeChatPeer.userId, activeChatPeer.username);
-                blockUser(activeChatPeer.userId, activeChatPeer.username);
-                endChat();
-              }
-            }}
-            onReport={() => handleReportUser(activeChatPeer)}
+            onBlock={handleDirectChatBlock}
+            onReport={handleDirectChatReport}
             currentUserId={user?.id}
             isMobile={isMobile}
           />
