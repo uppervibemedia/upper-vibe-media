@@ -1104,15 +1104,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           setIsSeatedInLounge(false);
           handleStopDance();
         }}
-        username={
-          // Prefer the city username set during Vibe City setup (stored in sessionStorage by UsernameSetup)
-          // Fall back to presence data username, then user full_name, never "Visitor"
-          (() => {
-            try { const u = sessionStorage.getItem("uvc_username"); if (u) return u; } catch {}
-            const presenceMe = activeUsers.find(u => u.user_id === user?.id);
-            return presenceMe?.username || user?.full_name || user?.email?.split("@")[0] || "";
-          })()
-        }
+        username={user?.world_username || user?.full_name || ""}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}

@@ -97,7 +97,7 @@ export default function VibeLoungeHub({
 }) {
   const { currentTrack, isPlaying, togglePlay } = usePlayer() || {};
   const { user } = useAuth();
-  const displayName = user?.full_name || user?.email?.split("@")[0] || "Anon";
+  const displayName = user?.world_username || user?.full_name || "Anon";
 
   const [activeTab, setActiveTab] = useState("sit");
   const [vibeStatus, setVibeStatus] = useState(() => {
