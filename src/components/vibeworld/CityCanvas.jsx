@@ -8,7 +8,8 @@ import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, 
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
-import { animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
+
+
 import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
 import { createCrystalZone, animateCrystalZone, activateCrystalZone } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
@@ -1537,7 +1538,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ── Notify parent of near-pad state ──
-                if (props.onNearShop && frameRef.current % 10 === 0) {
+                if (onNearShop && frameRef.current % 10 === 0) {
           const nearShop = Math.sqrt(px * px + (pz - 4) * (pz - 4)) < 6;
           try { onNearShop(nearShop); } catch {}
         }
@@ -2066,7 +2067,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               if (!scene.userData._lastLaunchTime || performance.now() - scene.userData._lastLaunchTime > 3000) {
                 scene.userData._lastLaunchTime = performance.now();
                 // Trigger a mini launch arc via launchState (reuse existing launch system)
-                const ls = launchStateRef.current;
+                const ls = { active: false };
                 if (!ls.active) {
                   ls.active = true;
                   ls.phase = "rise";
