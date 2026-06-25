@@ -127,27 +127,31 @@ export function createFerrisWheel(scene) {
     staticGroup.add(topRail);
   }
 
-  // A-frame support legs — 4 legs converging at hub
+  // A-frame support legs — 4 legs, widened base so legs stay outside gondola sweep.
+  // Gondola body is 0.85 wide centered on the wheel plane (X=0 in root space).
+  // Legs start at x=±3.2 at ground and converge to x=±1.1 at hub top,
+  // keeping a clear ~1.0 unit gap from the gondola edge (±0.55) at all heights.
   const legMat = stdMat("#2A3344", 0.3, 0.75);
+  const LEG_LEN = WHEEL_HUB_Y + 0.5;
   const legDefs = [
-    { x: -2.2, z:  0.8, rz:  0.24, rx: -0.1 },
-    { x: -2.0, z: -0.8, rz:  0.22, rx:  0.1 },
-    { x:  2.2, z:  0.8, rz: -0.24, rx: -0.1 },
-    { x:  2.0, z: -0.8, rz: -0.22, rx:  0.1 },
+    { x: -3.2, z:  1.0, rz:  0.18, rx: -0.08 },
+    { x: -3.0, z: -1.0, rz:  0.16, rx:  0.08 },
+    { x:  3.2, z:  1.0, rz: -0.18, rx: -0.08 },
+    { x:  3.0, z: -1.0, rz: -0.16, rx:  0.08 },
   ];
   for (const ld of legDefs) {
-    const leg = new Mesh(new CylinderGeometry(0.16, 0.22, WHEEL_HUB_Y + 0.5, 8), legMat);
-    leg.position.set(ld.x, (WHEEL_HUB_Y + 0.5) / 2, ld.z);
+    const leg = new Mesh(new CylinderGeometry(0.16, 0.22, LEG_LEN, 8), legMat);
+    leg.position.set(ld.x, LEG_LEN / 2, ld.z);
     leg.rotation.set(ld.rx, 0, ld.rz);
     leg.castShadow = true;
     staticGroup.add(leg);
   }
 
-  // Horizontal cross-braces between legs
+  // Horizontal cross-braces between legs — span matches wider leg base
   const braceMat = stdMat("#222A38", 0.25, 0.8);
   for (const by of [2.5, 5.0, 7.0]) {
     for (const bz of [-0.5, 0.5]) {
-      const brace = new Mesh(new CylinderGeometry(0.07, 0.07, 4.6, 6), braceMat);
+      const brace = new Mesh(new CylinderGeometry(0.07, 0.07, 6.4, 6), braceMat);
       brace.position.set(0, by, bz);
       brace.rotation.z = Math.PI / 2;
       staticGroup.add(brace);
