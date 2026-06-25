@@ -479,11 +479,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loungeInputFocused, setLoungeInputFocused] = useState(false);
   const [voiceActive, setVoiceActive] = useState(false);
   const [isSeatedInLounge, setIsSeatedInLounge] = useState(false);
+  const [seatedSeat, setSeatedSeat] = useState(null); // { id, label, x, z }
   const preVoiceVolumeRef = useRef(null);
 
-  // ── Movement locked when typing in lounge chat or watching stage ──────────
+  // ── Movement locked when typing in lounge chat, watching stage, or seated ──
   const [ferrisRiding, setFerrisRiding] = useState(false);
-  const movementLocked = loungeInputFocused || stageWatching;
+  const movementLocked = loungeInputFocused || stageWatching || isSeatedInLounge;
 
   // ── Dance floor boundary — matches visual plaza edge (r=10.5) ─────────────
   // Audio fades in at the edge so music is audible as soon as the user reaches the floor.
@@ -880,6 +881,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           audioBeatRef={audioBeatRef}
           locked={movementLocked}
           loungeSeated={isSeatedInLounge}
+          loungeSeatedPos={seatedSeat ? { x: seatedSeat.x ?? -22, z: seatedSeat.z ?? -26 } : (isSeatedInLounge ? { x: -22, z: -28 } : null)}
           stageScreenPosRef={stageScreenPosRef}
           mobileInputRef={mobileInputRef}
           remoteUsers={activeUsers}
@@ -1091,11 +1093,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         followSystem={followSystem}
         onSit={(seat) => {
           setIsSeatedInLounge(true);
-          // Trigger a gentle "vibe" emote while seated
-          handleEmote({ id: "vibe", label: "Vibe", color: "#c4aaff", effect: null });
+          setSeatedSeat(seat || null);
         }}
         onStandUp={() => {
           setIsSeatedInLounge(false);
+          setSeatedSeat(null);
           handleStopDance();
         }}
         username={user?.world_username || ""}
