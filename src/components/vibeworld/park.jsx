@@ -57,7 +57,8 @@ export function buildPark(scene, isMobile, refs, animationState) {
     scene.add(ambLight);
 
     // Avatar creation logic moved here
-    const { avatarConfig, retintRef, onLoadedRef } = refs;
+    const { avatarConfig, retintRef, launchRef, onLoaded } = refs;
+    const onLoadedRef = typeof onLoaded === 'function' ? { current: onLoaded } : { current: null };
     const [spawnX, spawnY, spawnZ] = animationState.avatarPos;
 
     const avatarTypeKey = avatarConfig?.avatarTypeKey || "current";
