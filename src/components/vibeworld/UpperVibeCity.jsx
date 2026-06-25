@@ -596,8 +596,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── Block System (persistent) ─────────────────────────────────────────
   const blockSystem = useBlockSystem(user?.id, user?.world_username || "");
-  // Merged block map: union of persistent (blockSystem) and in-session (chat) blocks
-  const mergedBlocks = { ...blockedUsers, ...blockSystem.blockMap };
 
   // ── Private Chat ─────────────────────────────────────────────────────
   const {
@@ -607,6 +605,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     sendMessage, endChat, openChat, blockUser, unblockUser,
     markNotificationHandled, markAllNotificationsRead, clearOutgoingStatus,
   } = usePrivateChat(user);
+
+  // Merged block map: union of persistent (blockSystem) and in-session (chat) blocks
+  const mergedBlocks = { ...(blockedUsers || {}), ...blockSystem.blockMap };
   const safetyConfirmed = true; // simplified — no extra safety gate
   const [userInteractionTarget, setUserInteractionTarget] = useState(null);
 
