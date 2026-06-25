@@ -1118,7 +1118,7 @@ function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, loungeSeated = false, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1201,6 +1201,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   hbRidingRef.current = hbRiding;
   const ferrisRidingRef = useRef(false);
   ferrisRidingRef.current = ferrisRiding;
+  const loungeSeatedRef = useRef(false);
+  loungeSeatedRef.current = loungeSeated;
 
   const activeEmoteRef = useRef(null);
   activeEmoteRef.current = activeEmote;
@@ -1637,11 +1639,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             cabinPos: new Vector3(), nLook: new Vector3(),
             cLook: new Vector3(0, 4.5, -34.4),
             lkPos: new Vector3(0, 3.0, -12), lkLook: new Vector3(0, 3.5, -34.4),
+            // Lounge camera: sits slightly behind/above the lounge, looks toward the seats
+            lgPos: new Vector3(-22, 4.5, -20), lgLook: new Vector3(-22, 1.2, -26),
             fA: new Vector3(0, WHEEL_HUB_Y * 0.4, -10), fB: new Vector3(0, 2, 40),
           };
         }
         const cv = scene.userData._camVecs;
-        if (ferrisRidingRef.current) {
+        if (loungeSeatedRef.current) {
+          camera.position.lerp(cv.lgPos, Math.min(1, 2.5 * dt));
+          camera.lookAt(cv.lgLook);
+        } else if (ferrisRidingRef.current) {
           const cabin = getCabinWorldPosition(0, t);
           cv.cabinPos.set(cabin.x, cabin.y + 0.6, cabin.z);
           camera.position.lerp(cv.cabinPos, Math.min(1, 4.0 * dt));

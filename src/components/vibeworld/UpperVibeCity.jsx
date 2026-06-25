@@ -481,9 +481,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [isSeatedInLounge, setIsSeatedInLounge] = useState(false);
   const preVoiceVolumeRef = useRef(null);
 
-  // ── Movement locked when typing in lounge chat OR seated ──────────
+  // ── Movement locked when typing in lounge chat or watching stage ──────────
   const [ferrisRiding, setFerrisRiding] = useState(false);
-  const movementLocked = loungeInputFocused || stageWatching || isSeatedInLounge;
+  const movementLocked = loungeInputFocused || stageWatching;
 
   // ── Dance floor boundary — matches visual plaza edge (r=10.5) ─────────────
   // Audio fades in at the edge so music is audible as soon as the user reaches the floor.
@@ -879,6 +879,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           audioBassRef={audioBassRef}
           audioBeatRef={audioBeatRef}
           locked={movementLocked}
+          loungeSeated={isSeatedInLounge}
           stageScreenPosRef={stageScreenPosRef}
           mobileInputRef={mobileInputRef}
           remoteUsers={activeUsers}
