@@ -6,6 +6,8 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { X, Send, UserX, Flag, AlertTriangle, RotateCcw } from "lucide-react";
+import BlockReportConfirmModal from "@/components/vibeworld/BlockReportConfirmModal";
+import { base44 } from "@/api/base44Client";
 
 export default function DirectChatPanel({
   open,
@@ -23,6 +25,7 @@ export default function DirectChatPanel({
   const [sendError, setSendError] = useState(null);
   const [failedDraft, setFailedDraft] = useState(null);
   const [panelBottom, setPanelBottom] = useState(0);
+  const [confirmModal, setConfirmModal] = useState(null); // { mode }
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -111,13 +114,13 @@ export default function DirectChatPanel({
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Safety actions — separate from Send to avoid accidental taps */}
-          <button onTouchStart={(e) => e.stopPropagation()} onClick={onReport}
+          {/* Safety actions — 2-step confirm to avoid accidental taps */}
+          <button onTouchStart={(e) => e.stopPropagation()} onClick={() => setConfirmModal({ mode: "report" })}
             className="flex items-center justify-center rounded-full hover:bg-white/10"
             style={{ color: "rgba(255,255,255,0.25)", width: 36, height: 36, minWidth: 36, minHeight: 36, touchAction: "manipulation" }}>
             <Flag className="w-3.5 h-3.5" />
           </button>
-          <button onTouchStart={(e) => e.stopPropagation()} onClick={onBlock}
+          <button onTouchStart={(e) => e.stopPropagation()} onClick={() => setConfirmModal({ mode: "block" })}
             className="flex items-center justify-center rounded-full hover:bg-white/10"
             style={{ color: "rgba(255,255,255,0.25)", width: 36, height: 36, minWidth: 36, minHeight: 36, touchAction: "manipulation" }}>
             <UserX className="w-3.5 h-3.5" />
@@ -215,6 +218,31 @@ export default function DirectChatPanel({
           <Send className="w-4 h-4" />
         </button>
       </div>
+
+      {/* 2-step block/report confirm */}
+      <BlockReportConfirmModal
+        open={!!confirmModal}
+        mode={confirmModal?.mode}
+        targetUsername={peer?.username}
+        onConfirm={async (reason, note) => {
+          if (confirmModal?.mode === "block") {
+            setConfirmModal(null);
+            onBlock?.();
+          } else if (confirmModal?.mode === "report") {
+            try {
+              await base44.entities.UserReport?.create?.({
+                reporter_user_id: currentUserId,
+                reported_user_id: peer?.userId,
+                reason: reason || "Other",
+                note: note || "",
+                status: "pending",
+              });
+            } catch {}
+            // modal shows success state, user closes it manually
+          }
+        }}
+        onCancel={() => setConfirmModal(null)}
+      />
     </motion.div>
   );
 }

@@ -134,9 +134,13 @@ export default function useDirectMessaging(user) {
   }, [myId]);
 
   // ── Open an approved chat ────────────────────────────────
-  // This is the ONLY place setActiveChatPeer is called (besides acceptRequest)
+  // Checks: neither side blocked, conversation is approved.
+  // This is the ONLY place setActiveChatPeer is called (besides acceptRequest).
   const openApprovedChat = useCallback(async (userId, username) => {
     if (!myId || !userId) return;
+    // Block check (fast, local)
+    if (blockedRef.current[userId]) return;
+
     const conversationId = getChatId(myId, userId);
     if (activePeerRef.current?.conversationId === conversationId) {
       loadMessages(conversationId);
@@ -264,6 +268,8 @@ export default function useDirectMessaging(user) {
   // NEVER calls setActiveChatPeer
   const sendApprovedMessage = useCallback(async (toUserId, toUsername, text, conversationId) => {
     if (!myId || !toUserId || !text?.trim()) return { error: "Missing data" };
+    // Block guard (local)
+    if (blockedRef.current[toUserId]) return { error: "You can't message this user right now." };
     const convId = conversationId || activePeerRef.current?.conversationId;
     if (!convId) return { error: "No active conversation." };
     const trimmed = text.trim();

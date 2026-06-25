@@ -6,6 +6,8 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, MessageCircle, UserPlus, UserCheck, UserX, Flag, Wifi } from "lucide-react";
+import BlockReportConfirmModal from "@/components/vibeworld/BlockReportConfirmModal";
+import { base44 } from "@/api/base44Client";
 
 export default function UserInteractionMenu({
   open,
@@ -31,10 +33,11 @@ export default function UserInteractionMenu({
   outgoingStatus,
 }) {
   const [requestSent, setRequestSent] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null); // { mode: "block"|"unblock"|"report" }
 
-  // Reset request-sent state whenever a different user is opened
+  // Reset state whenever a different user is opened
   useEffect(() => {
-    if (open) setRequestSent(false);
+    if (open) { setRequestSent(false); setConfirmModal(null); }
   }, [targetUser?.user_id, open]);
 
   // Load follow counts when card opens
@@ -62,14 +65,32 @@ export default function UserInteractionMenu({
     onRequestChat?.();
   };
 
-  const handleBlock = () => {
-    onBlock?.();
-    onClose?.();
-  };
+  const handleBlock = () => setConfirmModal({ mode: "block" });
+  const handleUnblock = () => setConfirmModal({ mode: "unblock" });
+  const handleReport = () => setConfirmModal({ mode: "report" });
 
-  const handleUnblock = () => {
-    onUnblock?.();
-    onClose?.();
+  const handleConfirmModal = async (reason, note) => {
+    if (confirmModal?.mode === "block") {
+      onBlock?.();
+      setConfirmModal(null);
+      onClose?.();
+    } else if (confirmModal?.mode === "unblock") {
+      onUnblock?.();
+      setConfirmModal(null);
+      onClose?.();
+    } else if (confirmModal?.mode === "report") {
+      // Save the report to the database
+      try {
+        await base44.entities.UserReport?.create?.({
+          reporter_user_id: currentUserId,
+          reported_user_id: targetUser?.user_id || targetUser?.id,
+          reason: reason || "Other",
+          note: note || "",
+          status: "pending",
+        });
+      } catch {}
+      // Don't close yet — modal shows success state
+    }
   };
 
   const handleFollow = (e) => {
@@ -243,65 +264,81 @@ export default function UserInteractionMenu({
             </button>
           )}
 
-          {/* BLOCK / UNBLOCK */}
-          {isBlocked ? (
-            <button
-              onClick={handleUnblock}
-              onTouchStart={(e) => e.stopPropagation()}
-              className="w-full flex items-center gap-3 px-3 rounded-xl transition-all active:scale-95"
-              style={{
-                background: "rgba(255,165,0,0.07)",
-                border: "1px solid rgba(255,165,0,0.18)",
-                minHeight: 48,
-                touchAction: "manipulation",
-              }}
-            >
-              <UserX className="w-4 h-4 flex-shrink-0" style={{ color: "#FFA500" }} />
-              <div className="text-left">
-                <p className="text-xs font-bold" style={{ color: "#FFA500" }}>Unblock User</p>
-                <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>Remove block and allow requests</p>
-              </div>
-            </button>
-          ) : (
-            <button
-              onClick={handleBlock}
-              onTouchStart={(e) => e.stopPropagation()}
-              className="w-full flex items-center gap-3 px-3 rounded-xl transition-all active:scale-95"
-              style={{
-                background: "rgba(239,68,68,0.06)",
-                border: "1px solid rgba(239,68,68,0.12)",
-                minHeight: 48,
-                touchAction: "manipulation",
-              }}
-            >
-              <UserX className="w-4 h-4 flex-shrink-0 text-red-400" />
-              <div className="text-left">
-                <p className="text-xs font-bold text-red-400">Block User</p>
-                <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>Prevent messages and requests</p>
-              </div>
-            </button>
-          )}
-
-          {/* REPORT */}
-          <button
-            onClick={() => { onReport?.(); onClose?.(); }}
-            onTouchStart={(e) => e.stopPropagation()}
-            className="w-full flex items-center gap-3 px-3 rounded-xl transition-all active:scale-95"
-            style={{
-              background: "rgba(255,255,255,0.025)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              minHeight: 48,
-              touchAction: "manipulation",
-            }}
-          >
-            <Flag className="w-4 h-4 flex-shrink-0" style={{ color: "rgba(255,255,255,0.35)" }} />
-            <div className="text-left">
-              <p className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.55)" }}>Report User</p>
-              <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>Flag inappropriate behavior</p>
+          {/* ── Safety section ── */}
+          <div className="pt-1">
+            <div className="mb-1.5 px-1">
+              <p className="text-[8px] font-black tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.2)" }}>Safety</p>
             </div>
-          </button>
+
+            {/* BLOCK / UNBLOCK */}
+            {isBlocked ? (
+              <button
+                onClick={handleUnblock}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full flex items-center gap-3 px-3 rounded-xl transition-all active:scale-95 mb-2"
+                style={{
+                  background: "rgba(255,165,0,0.07)",
+                  border: "1px solid rgba(255,165,0,0.18)",
+                  minHeight: 48,
+                  touchAction: "manipulation",
+                }}
+              >
+                <UserX className="w-4 h-4 flex-shrink-0" style={{ color: "#FFA500" }} />
+                <div className="text-left">
+                  <p className="text-xs font-bold" style={{ color: "#FFA500" }}>Unblock User</p>
+                  <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>Remove block and allow requests</p>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={handleBlock}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full flex items-center gap-3 px-3 rounded-xl transition-all active:scale-95 mb-2"
+                style={{
+                  background: "rgba(239,68,68,0.06)",
+                  border: "1px solid rgba(239,68,68,0.12)",
+                  minHeight: 48,
+                  touchAction: "manipulation",
+                }}
+              >
+                <UserX className="w-4 h-4 flex-shrink-0 text-red-400" />
+                <div className="text-left">
+                  <p className="text-xs font-bold text-red-400">Block User</p>
+                  <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>Prevent messages and requests</p>
+                </div>
+              </button>
+            )}
+
+            {/* REPORT */}
+            <button
+              onClick={handleReport}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="w-full flex items-center gap-3 px-3 rounded-xl transition-all active:scale-95"
+              style={{
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                minHeight: 48,
+                touchAction: "manipulation",
+              }}
+            >
+              <Flag className="w-4 h-4 flex-shrink-0" style={{ color: "rgba(255,255,255,0.35)" }} />
+              <div className="text-left">
+                <p className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.55)" }}>Report User</p>
+                <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>Flag inappropriate behavior</p>
+              </div>
+            </button>
+          </div>
         </div>
       </motion.div>
+
+      {/* Confirm modal — rendered outside the card to avoid stacking context issues */}
+      <BlockReportConfirmModal
+        open={!!confirmModal}
+        mode={confirmModal?.mode}
+        targetUsername={username}
+        onConfirm={handleConfirmModal}
+        onCancel={() => setConfirmModal(null)}
+      />
     </motion.div>
   );
 }

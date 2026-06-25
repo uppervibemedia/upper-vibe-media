@@ -8,6 +8,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, X, Check, MessageCircle, Sparkles, UserX, ArrowLeft, ChevronRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import BlockReportConfirmModal from "@/components/vibeworld/BlockReportConfirmModal";
 
 const TYPE_ICON = {
   message_request: MessageCircle,
@@ -41,6 +42,7 @@ function RequestDetailView({
 }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
 
   useEffect(() => {
     if (!note?.conversation_id) { setLoading(false); return; }
@@ -152,20 +154,20 @@ function RequestDetailView({
                 Deny
               </button>
               <button
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => { onBlock?.(note.from_user_id, note.from_username); onDismiss?.(note.id); onBack(); }}
-                className="flex-1 rounded-xl font-black text-sm tracking-wider transition-all active:scale-[0.98]"
-                style={{
-                  background: "rgba(239,68,68,0.1)",
-                  border: "1px solid rgba(239,68,68,0.25)",
-                  color: "#EF4444",
-                  minHeight: 48,
-                  touchAction: "manipulation",
-                  padding: "12px 16px",
-                }}
-              >
-                <UserX className="w-3.5 h-3.5 inline mr-1" />Block
-              </button>
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onClick={() => setShowBlockConfirm(true)}
+                  className="flex-1 rounded-xl font-black text-sm tracking-wider transition-all active:scale-[0.98]"
+                  style={{
+                    background: "rgba(239,68,68,0.1)",
+                    border: "1px solid rgba(239,68,68,0.25)",
+                    color: "#EF4444",
+                    minHeight: 48,
+                    touchAction: "manipulation",
+                    padding: "12px 16px",
+                  }}
+                >
+                  <UserX className="w-3.5 h-3.5 inline mr-1" />Block
+                </button>
             </div>
           </>
         )}
@@ -188,6 +190,19 @@ function RequestDetailView({
           </button>
         )}
       </div>
+
+      <BlockReportConfirmModal
+        open={showBlockConfirm}
+        mode="block"
+        targetUsername={note.from_username}
+        onConfirm={() => {
+          setShowBlockConfirm(false);
+          onBlock?.(note.from_user_id, note.from_username);
+          onDismiss?.(note.id);
+          onBack();
+        }}
+        onCancel={() => setShowBlockConfirm(false)}
+      />
     </div>
   );
 }

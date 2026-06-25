@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import DMInbox from "./DMInbox";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, X, UserCircle,
@@ -193,6 +194,7 @@ export default function WorldHUD({
   const [djSongPageOpen, setDjSongPageOpen] = useState(false);
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+  const [dmInboxOpen, setDmInboxOpen] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -311,6 +313,29 @@ export default function WorldHUD({
           )}
         </button>
 
+        {/* DM Inbox (Messages) button */}
+        {currentUserId && (
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={() => { hapticTap(); setDmInboxOpen((v) => !v); setNotifPanelOpen(false); }}
+            className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
+            style={{
+              background: dmInboxOpen ? "rgba(0,160,220,0.18)" : "rgba(255,255,255,0.06)",
+              border: `1px solid ${dmInboxOpen ? "rgba(0,160,220,0.4)" : "rgba(255,255,255,0.08)"}`,
+              backdropFilter: "blur(8px)",
+              width: isMobile ? 32 : 36,
+              height: isMobile ? 32 : 36,
+              minWidth: isMobile ? 32 : 36,
+              minHeight: isMobile ? 32 : 36,
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
+          >
+            <MessageCircle style={{ width: isMobile ? 12 : 14, height: isMobile ? 12 : 14 }}
+              color={dmInboxOpen ? "#00D4F0" : "rgba(255,255,255,0.4)"} />
+          </button>
+        )}
+
         <LiveUsersBadge
           activeUsers={activeUsers}
           userCount={userCount}
@@ -383,6 +408,23 @@ export default function WorldHUD({
             onOpenChat={(uid, uname) => { onOpenApprovedChat?.(uid, uname); setNotifPanelOpen(false); }}
             onMarkHandled={onMarkNotificationHandled}
             onMarkAllRead={onMarkAllNotificationsRead}
+            isMobile={isMobile}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── DM Inbox (approved conversations) ────────── */}
+      <AnimatePresence>
+        {dmInboxOpen && (
+          <DMInbox
+            open={dmInboxOpen}
+            onClose={() => setDmInboxOpen(false)}
+            currentUserId={currentUserId}
+            blockedUsers={blockedUsers}
+            onOpenConversation={(uid, uname, convId) => {
+              onOpenApprovedChat?.(uid, uname);
+              setDmInboxOpen(false);
+            }}
             isMobile={isMobile}
           />
         )}

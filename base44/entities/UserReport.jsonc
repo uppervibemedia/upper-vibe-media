@@ -1,0 +1,65 @@
+{
+  "name": "UserReport",
+  "type": "object",
+  "properties": {
+    "reporter_user_id": {
+      "type": "string",
+      "description": "User ID of the reporter"
+    },
+    "reported_user_id": {
+      "type": "string",
+      "description": "User ID being reported"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "Harassment",
+        "Spam",
+        "Inappropriate content",
+        "Scam / fraud",
+        "Hate or threats",
+        "Other"
+      ],
+      "description": "Report reason"
+    },
+    "note": {
+      "type": "string",
+      "description": "Optional additional note from reporter"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "reviewed",
+        "dismissed"
+      ],
+      "default": "pending",
+      "description": "Review status"
+    }
+  },
+  "required": [
+    "reporter_user_id",
+    "reported_user_id",
+    "reason"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
