@@ -593,9 +593,14 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   const ry = 0.35;
   const pivotWX = WHEEL_X + Math.cos(ry) * pivotLocalX;
   const pivotWZ = WHEEL_Z + Math.sin(ry) * pivotLocalX;
-  const rimLocalLen = Math.abs(pivotLocalX) || 0.001;
-  const radOutWX = (pivotWX - WHEEL_X) / rimLocalLen;
-  const radOutWZ = (pivotWZ - WHEEL_Z) / rimLocalLen;
+  // FIX: compute radial direction from the wheel angle DIRECTLY via trig,
+  // avoiding division by |pivotLocalX| which goes to zero and flips at the
+  // top/bottom of the rotation (pivotLocalX crosses 0). The wheel plane normal
+  // is its own cog; the radial outward is the same as the rim→hub direction.
+  // Smoothstep ramp flips the pull sign cleanly around the poles.
+  const rimFrac = Math.max(0.3, Math.abs(Math.cos(wheelAngle)));
+  const radOutWX = Math.cos(ry) * Math.cos(wheelAngle) * rimFrac / Math.abs(rimFrac || 1);
+  const radOutWZ = Math.sin(ry) * Math.cos(wheelAngle) * rimFrac / Math.abs(rimFrac || 1);
   const axleWX = Math.sin(ry), axleWZ = Math.cos(ry);
   const INWARD_PULL = 1.6, AXLE_PUSH = 0.55;
   const camX = pivotWX - radOutWX * INWARD_PULL + axleWX * AXLE_PUSH;
