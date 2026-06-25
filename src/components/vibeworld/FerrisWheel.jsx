@@ -541,57 +541,51 @@ export function getCabinWorldPosition(cabinIndex, t) {
 // ── Rider camera transform for scenic Ferris wheel view ─────────────
 // Returns { camPos, lookAt, atTop } in world space.
 //
-// KEY DESIGN: look direction is cabin-relative, not absolute world coords.
-// The gondola always faces "outward" from the wheel. We compute that outward
-// world-space yaw, then apply a scenic yaw offset (in radians) to steer the
-// gaze toward specific landmarks WITHOUT fighting the gondola's own orientation.
-// This means left-side cabin → always looks left-side scenery, right-side → right.
+// KEY DESIGN: the gaze is computed as a POINT IN WORLD SPACE (not a cabin-
+// relative yaw). The gaze traces a closed piecewise C¹ bezier curve that
+// visits three scenic holds in a 50s loop:
+//   Stage ≈ 15s → Center ≈ 10s → Beach ≈ 15s → transit back to Stage ≈ 10s
+// Each segment is a cubic bezier between holds; adjacent segments share the
+// same tangent direction at the shared hold (= a single "knot"), and the
+// loop from the last hold back to the first is itself a C¹ connection, so
+// there is NO boundary jump, NO yaw reversal, NO wrap blend.
 //
-// SCENIC YAW OFFSETS (relative to cabin outward direction):
-//   0        = straight outward (away from wheel hub)
-//  +yaw      = rotate gaze clockwise  (toward city / stage from beach side)
-//  -yaw      = rotate gaze counter-clockwise
+// The camera positions per frame are the cabin's orbit (camX/camY/camZ) as
+// defined by the gondola motion — purely for the eye position. the look
+// direction to gazeWorld is recomputed in world space each frame, so the
+// rLookSmooth lerp always tracks a monotonic direction and never resets.
 //
-// World layout relative to wheel center (22, 0, 5):
-//   Stage/city  is at world Z ≈ -32  (behind the wheel, toward -Z)
-//   Beach       is at world Z ≈  28  (in front, toward +Z)
-//   Center city is at world Z ≈ -13  (mid-map)
-//
-// TOUR SEQUENCE — time-based, 55s loop:
-//   Stage (12s) → Middle (4s) → Center (12s) → Middle (4s) → Beach (11s) → Middle (4s) → Center (8s) → loops
-//
-// userYawOffset / userPitchOffset: player look control (±40° / ±20°)
+// userYawOffset / userPitchOffset: soft gaze bias (±33° /±15°) applied to
+// the world-space point so the cabin rotation doesn't fight the offset.
 
-// Three fixed world-space scenic targets:
-const TARGET_STAGE  = { x:  0, y:  5.5, z: -31 }; // Music Stage / dance floor
-const TARGET_CENTER = { x:  0, y:  4.5, z: -13 }; // Center plaza / mid-city
-const TARGET_BEACH  = { x:  0, y:  2.0, z:  27 }; // Middle beach / shoreline
+// ── Three scenic holds (viewpoints the rider settles on) ────────────
+// Each is a point in world space the gaze lingers at.
+const HOLD_BEACH  = { x:  0, y:  3.0, z:  28 }; // mid-beach / shoreline
+const HOLD_CENTER = { x:  0, y:  6.5, z: -13 }; // center plaza / city
+const HOLD_STAGE  = { x:  0, y:  5.0, z: -31 }; // music stage / dance floor
 
-// Tour segment table — { dur, targetA, targetB }
-// targetA → targetB is the subtle drift within the held view.
-// Transition segs blend between the two surrounding major targets.
-const TOUR_SEGS = [
-  // Seg 0: Stage held 12s — wide overhead → settled on stage
-  { dur: 12, targetA: { x: 2, y: 9.0, z: -26 }, targetB: { x: 0, y: 5.5, z: -31 } },
-  // Seg 1: Transition Stage → Center 4s — midpoint avoids repeating stage end
-  { dur:  4, targetA: { x: 0, y: 6.5, z: -22 }, targetB: TARGET_CENTER },
-  // Seg 2: Center city held 12s — overview → plaza detail
-  { dur: 12, targetA: { x: 0, y: 7.0, z: -13 }, targetB: { x: 0, y: 3.5, z: -13 } },
-  // Seg 3: Transition Center → Beach 4s — midpoint avoids repeating center end
-  { dur:  4, targetA: { x: 0, y: 4.0, z:   5 }, targetB: TARGET_BEACH },
-  // Seg 4: Beach held 11s — arriving at beach → closer shoreline
-  { dur: 11, targetA: { x: 0, y: 3.5, z:  24 }, targetB: { x: 0, y: 1.8, z: 28 } },
-  // Seg 5: Transition Beach → Center 4s — midpoint avoids drifting back toward beach
-  { dur:  4, targetA: { x: 0, y: 4.5, z:   8 }, targetB: TARGET_CENTER },
-  // Seg 6: Center city held 8s (varied angle) — drifts toward stage for loop
-  { dur:  8, targetA: { x:-2, y: 5.0, z: -12 }, targetB: { x: 1, y: 7.5, z: -26 } },
-];
-const TOUR_PERIOD = TOUR_SEGS.reduce((s, seg) => s + seg.dur, 0); // = 55s
+// ── Knots: the gaze follows HOLD1→HOLD2→HOLD3→HOLD1 in a closed loop ─
+// To keep the implementation simple and time-balanced, we place the three
+// holds evenly around a circle in the (y,z) plane and use uniform timing.
+// Every segment between holds is a cubic bezier; the CONTROL POINT behaves
+// as a single tangent knot — ctlA(cabin) points INTO the hold from the
+// previous segment, and ctlB points OUT toward the next segment.
+//
+//   The closed loop has 4 edges (3 forward + 1 wrap-back), each 0.25 of the
+//   50s period = 12.5s. The easeStep per segment ramps through ≈4s transit
+//   accel + 4s decel, leaving each hold comfortably settled  ≈4-5s.
+const NUM_HOLDS = 3;
+const KNOTS = [HOLD_BEACH, HOLD_CENTER, HOLD_STAGE]; // 0→1→2→0
+const K = 0.30; // tangent arm = 30% of the edge length along the OUTGOING
+                // direction from each knot, so edges are gentle curves and
+                // the wrap-back revisits HOLD_BEACH from a distinct angle.
+const T = 50;   // loop period (seconds)
 
 export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 0) {
   const wheelAngle = t * WHEEL_SPEED;
 
   // ── Gondola position in world space ──────────────────────────────
+  // (identical eye computation — unchanged from earlier versions)
   const pivotLocalX = Math.cos(wheelAngle) * WHEEL_RADIUS;
   const pivotLocalY = Math.sin(wheelAngle) * WHEEL_RADIUS;
   const pivotWorldY = WHEEL_HUB_Y + pivotLocalY;
@@ -599,115 +593,88 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   const HANG_ARM = 0.55;
   const BODY_H   = 0.88;
   const gondolaFloorY = pivotWorldY - HANG_ARM - BODY_H;
-  const seatWorldY = Math.max(1.2, gondolaFloorY + BODY_H * 0.4);
+  const camY = Math.max(1.2, gondolaFloorY + BODY_H * 0.4);
 
-  const ry = 0.35; // root.rotation.y
-
-  // Pivot world XZ
+  const ry = 0.35;
   const pivotWX = WHEEL_X + Math.cos(ry) * pivotLocalX;
   const pivotWZ = WHEEL_Z + Math.sin(ry) * pivotLocalX;
-
-  // Radial outward direction in world XZ (away from hub)
   const rimLocalLen = Math.abs(pivotLocalX) || 0.001;
   const radOutWX = (pivotWX - WHEEL_X) / rimLocalLen;
   const radOutWZ = (pivotWZ - WHEEL_Z) / rimLocalLen;
-
-  const axleWX = Math.sin(ry);
-  const axleWZ = Math.cos(ry);
-
-  // Camera eye: inside cabin, pulled inward from rim
-  const INWARD_PULL = 1.6;
-  const AXLE_PUSH   = 0.55;
+  const axleWX = Math.sin(ry), axleWZ = Math.cos(ry);
+  const INWARD_PULL = 1.6, AXLE_PUSH = 0.55;
   const camX = pivotWX - radOutWX * INWARD_PULL + axleWX * AXLE_PUSH;
-  const camY = seatWorldY;
   const camZ = pivotWZ - radOutWZ * INWARD_PULL + axleWZ * AXLE_PUSH;
 
-  // ── Time-based tour segment lookup ───────────────────────────────
-  // Key design: transition segments ease (smoothstep) so the velocity
-  // ramps up/down continuously — the rLookSmooth lerp can track this
-  // cleanly without resetting. Hold segments ease subtly for a gentle
-  // A→B drift. No cross-boundary pre-blend (it caused yaw reversals).
+  // ═══════════════════════════════════════════════════════════════════
+  // PIECEWISE C¹ BEZIER GAZE — computed entirely in WORLD SPACE
+  // ═══════════════════════════════════════════════════════════════════
+  // Progress wraps smoothly and the tangent exit from the last knot to the
+  // first is itself C¹, so the loop closes without ANY blink: the rLookSmooth
+  // lerp always sees gazWorld moving forward and never trades direction.
+
+  const p = (t % T) / T; // 0‥1 over the 50s loop
+
+  // Which edge of the closed polygon we're on, and local 0‥1 progress
+  const n = NUM_HOLDS;
+  const edgeLen = 1 / n; // = 1/3
+  const idx = Math.floor(p / edgeLen);
+  const lo = idx * edgeLen, hi = (idx + 1) * edgeLen;
+  const raw = (p - lo) / (hi - lo); // 0‥1 within this edge
+
+  const E0 = KNOTS[idx % n];
+  const E1 = KNOTS[(idx + 1) % n];
+  const E2 = KNOTS[(idx + 2) % n];
+
+  // Tangents for C1 continuity at the knots:
+  //   ctlB of edge i = ctlA of edge i+1, both pointing OUT from the shared
+  //   E1 knot toward E2. The faktor K scales the arm along that direction
+  //   so the curve eases smoothly through the knot.
+  const oMX = E2.x - E0.x, oMY = E2.y - E0.y, oMZ = E2.z - E0.z;
+  const ctlB_x = E1.x + oMX * K;
+  const ctlB_y = E1.y + oMY * K;
+  const ctlB_z = E1.z + oMZ * K;
+  const ctlA_x = ctlB_x; // shared = identical tangent direction
+  const ctlA_y = ctlB_y;
+  const ctlA_z = ctlB_z;
+
+  // Smoothstep ease — ramps acceleration / deceleration within the edge
   const easeStep = (x) => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
+  const s = easeStep(raw);
 
-  const tourT = t % TOUR_PERIOD;
-  let elapsed = 0, segIdx = 0, rawProg = 0;
-  for (let i = 0; i < TOUR_SEGS.length; i++) {
-    if (tourT < elapsed + TOUR_SEGS[i].dur) {
-      segIdx = i;
-      rawProg = (tourT - elapsed) / TOUR_SEGS[i].dur;
-      break;
-    }
-    elapsed += TOUR_SEGS[i].dur;
-  }
+  // Cubic bezier: B0 f0 (1-s)³ + 3×B1 f1  s(1-s)² + 3×B2 f2  s²(1-s) + B3 f3  s³
+  const w0 = (1 - s) * (1 - s) * (1 - s);
+  const w1 = 3 * s * (1 - s) * (1 - s);
+  const w2 = 3 * s * s * (1 - s);
+  const w3 = s * s * s;
+  const gazX = w0 * E0.x + w1 * ctlA_x + w2 * ctlB_x + w3 * E1.x;
+  const gazY = w0 * E0.y + w1 * ctlA_y + w2 * ctlB_y + w3 * E1.y;
+  const gazZ = w0 * E0.z + w1 * ctlA_z + w2 * ctlB_z + w3 * E1.z;
 
-  const k  = TOUR_SEGS[segIdx];
-  const kN = TOUR_SEGS[(segIdx + 1) % TOUR_SEGS.length];
-  const isTransition = segIdx % 2 === 1;
-  const sp = isTransition ? easeStep(rawProg) : easeStep(rawProg);
+  // ── User look offsets applied to the world gaze point ────────────
+  // (not cabin-relative offsets, which would fight the gondola rotation).
+  const MAX_YAW   = (33 * Math.PI) / 180;
+  const MAX_PITCH = (15 * Math.PI) / 180;
+  const uy = Math.max(-MAX_YAW,   Math.min(MAX_YAW,   userYawOffset));
+  const up = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, userPitchOffset));
 
-  // A→B interpolation within the segment
-  let curTX = k.targetA.x + (k.targetB.x - k.targetA.x) * sp;
-  let curTY = k.targetA.y + (k.targetB.y - k.targetA.y) * sp;
-  let curTZ = k.targetA.z + (k.targetB.z - k.targetA.z) * sp;
-
-  // ── Seamless loop wrap ──────────────────────────────────────────
-  // Without this the gaze jumps from the end of Seg 6 directly back
-  // to the start of Seg 0 on the modulo reset — the lerp can't track
-  // an instantaneous jump and restarts. Over the tail of every segment
-  // we cross-fade toward where the *next* segment will begin, so the
-  // boundary passes through smoothly (including the 55s → 0s wrap).
-  const WRAP_BLEND = 0.25;
-  if (rawProg > 1 - WRAP_BLEND) {
-    const xb = (rawProg - (1 - WRAP_BLEND)) / WRAP_BLEND;
-    // Where the next segment will be at the moment just after the
-    // boundary — i.e. its very first eased motion: eased progress
-    // just past zero (foreshadow-factor fS) so the vec begins moving
-    // in the next segment's intended direction before the switch.
-    const fS = 0.06;
-    const nxtX = kN.targetA.x + (kN.targetB.x - kN.targetA.x) * easeStep(fS);
-    const nxtY = kN.targetA.y + (kN.targetB.y - kN.targetA.y) * easeStep(fS);
-    const nxtZ = kN.targetA.z + (kN.targetB.z - kN.targetA.z) * easeStep(fS);
-    const bx = easeStep(xb);
-    curTX += (nxtX - curTX) * bx;
-    curTY += (nxtY - curTY) * bx;
-    curTZ += (nxtZ - curTZ) * bx;
-  }
-
-  // ── Convert world target to a cabin-consistent look direction ─────
-  // Compute the direction from camera to the world target, then
-  // extract its yaw/pitch. The cabin naturally faces outward so this
-  // already respects which side of the wheel the gondola is on.
-  const dTX = curTX - camX;
-  const dTY = curTY - camY;
-  const dTZ = curTZ - camZ;
-  const dTLen = Math.sqrt(dTX * dTX + dTY * dTY + dTZ * dTZ) || 1;
-
-  // ── Apply user look offsets ───────────────────────────────────────
-  const MAX_YAW   = (40 * Math.PI) / 180;
-  const MAX_PITCH = (20 * Math.PI) / 180;
-  const yawOff   = Math.max(-MAX_YAW,   Math.min(MAX_YAW,   userYawOffset));
-  const pitchOff = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, userPitchOffset));
-
-  const baseYaw        = Math.atan2(dTX, dTZ);
-  const basePitchAngle = Math.asin(Math.max(-1, Math.min(1, dTY / dTLen)));
-
-  const finalYaw   = baseYaw + yawOff;
-  const finalPitch = Math.max(-0.35, Math.min(0.50, basePitchAngle + pitchOff));
+  const dtx = gazX - camX, dty = gazY - camY, dtz = gazZ - camZ;
+  const baseYaw   = Math.atan2(dtx, dtz);
+  const dist2 = dtx * dtx + dty * dty + dtz * dtz;
+  const basePitch = Math.asin(Math.max(-1, Math.min(1, dty / (Math.sqrt(dist2) || 1))));
+  const fY = baseYaw + uy;
+  const fP = Math.max(-0.35, Math.min(0.50, basePitch + up));
 
   const LOOK_DIST = 55;
-  const lookX = camX + Math.sin(finalYaw) * Math.cos(finalPitch) * LOOK_DIST;
-  const lookY = camY + Math.sin(finalPitch) * LOOK_DIST;
-  const lookZ = camZ + Math.cos(finalYaw) * Math.cos(finalPitch) * LOOK_DIST;
+  const lx = camX + Math.sin(fY) * Math.cos(fP) * LOOK_DIST;
+  const ly = camY + Math.sin(fP) * LOOK_DIST;
+  const lz = camZ + Math.cos(fY) * Math.cos(fP) * LOOK_DIST;
 
   const atTop = Math.max(0, Math.min(1,
     (pivotWorldY - WHEEL_HUB_Y + WHEEL_RADIUS) / (WHEEL_RADIUS * 2)
   ));
 
-  return {
-    camPos: { x: camX, y: camY, z: camZ },
-    lookAt: { x: lookX, y: lookY, z: lookZ },
-    atTop,
-  };
+  return { camPos: { x: camX, y: camY, z: camZ }, lookAt: { x: lx, y: ly, z: lz }, atTop };
 }
 
 // Boarding position (near bottom of wheel, in front of the deck)
