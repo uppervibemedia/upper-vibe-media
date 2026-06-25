@@ -27,14 +27,20 @@ export const ORB_COLLECT_RADIUS = 2.0;   // generous hitbox (world units)
 // ── Orb path: placed along the launch arc so they're reachable mid-flight ──
 // Heights are relative to ground (y=0). Each pad triggers the same arc layout
 // offset by the pad's x/z center.
-const ORB_OFFSETS = [];
+const ORB_OFFSETS = [
+  { dx:  0.0, dy: 2.5, dz:  0.0, color: "#00E5FF" }, // low — just after launch
+  { dx:  1.2, dy: 5.0, dz: -1.0, color: "#C43BFF" }, // mid-rise
+  { dx: -1.0, dy: 7.5, dz:  0.5, color: "#FFD700" }, // near peak
+  { dx:  0.5, dy: 6.0, dz:  1.5, color: "#9B7EFF" }, // glide side
+  { dx:  0.0, dy: 2.0, dz:  1.0, color: "#FF4FC3" }, // near landing
+];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function makePadMesh(pad) {
   const group = new THREE.Group();
   group.name = `launchPad_${pad.label}`;
-  group.userData = { isPad: true, padColor: pad.color, destination: pad.destination };
+  group.userData = { isPad: true, padColor: pad.color };
 
   const color = new THREE.Color(pad.color);
 
@@ -106,22 +112,18 @@ function makePadMesh(pad) {
 
   // ── Label sprite ──
   const labelCanvas = document.createElement("canvas");
-  labelCanvas.width = 256; labelCanvas.height = 64;
+  labelCanvas.width = 128; labelCanvas.height = 32;
   const ctx = labelCanvas.getContext("2d");
-  ctx.fillStyle = "white";
-  ctx.font = "bold 16px Inter, sans-serif";
+  ctx.fillStyle = pad.color;
+  ctx.font = "bold 14px Inter,sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("Launch Pad", 128, 24);
-  ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-  ctx.font = "12px Inter, sans-serif";
-  ctx.fillText("Step on to quick travel", 128, 44);
-
+  ctx.fillText("LAUNCH", 64, 16);
   const labelTex = new THREE.CanvasTexture(labelCanvas);
   labelTex.minFilter = THREE.LinearFilter;
   labelTex.colorSpace = THREE.SRGBColorSpace;
-  const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false, sizeAttenuation: false }));
-  label.scale.set(0.01 * 256, 0.01 * 64, 1);
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false }));
+  label.scale.set(1.6, 0.4, 1);
   label.position.y = 1.5;
   label.renderOrder = 99;
   group.add(label);
@@ -334,7 +336,6 @@ export function getNearLaunchPad(px, pz) {
   }
   return -1;
 }
-
 
 // ══════════════════════════════════════════════════════════════════
 // collectNearbyOrbs — checks FULL 3D distance including Y (airborne)

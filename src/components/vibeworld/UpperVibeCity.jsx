@@ -80,7 +80,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const onDanceFloorRef = useRef(false);
   // Launch zone state
   const launchRef = useRef(null);
-    const [nearLaunchPad, setNearLaunchPad] = useState(-1);
+  const [nearLaunchPad, setNearLaunchPad] = useState(false);
   const [isAirborne, setIsAirborne] = useState(false);
   const [orbCount, setOrbCount] = useState(0);         // launch session orbs
   const [launchSessionOrbs, setLaunchSessionOrbs] = useState(0); // tracked per launch
@@ -906,18 +906,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           tvMode={tvMode}
           tvQuality={tvQuality}
           onNearPad={(padIdx, airborne, orbs) => {
-            const wasNear = nearLaunchPad;
-            const isNear = padIdx >= 0 && !airborne;
-            setNearLaunchPad(isNear);
+            setNearLaunchPad(padIdx >= 0 && !airborne);
             setIsAirborne(airborne);
-
-                        const now = performance.now();
-            if (isNear && !wasNear && launchRef.current && (!launchRef.current.lastLaunch || now - launchRef.current.lastLaunch > 2000)) {
-                launchRef.current.lastLaunch = now;
-                setTimeout(() => {
-                    if(launchRef.current) launchRef.current(padIdx);
-                }, 100); // Small delay to ensure user is on the pad
-            }
 
             // Detect when a launch session ends (landed) — add to bank
             const prevAirborne = launchSessionRef.current > 0 && !airborne;
@@ -1169,7 +1159,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       )}
 
       {/* ── Vibe Launch Zone HUD ── */}
-      {!loading && isAirborne && (
+      {!loading && (nearLaunchPad || isAirborne) && (
         <div
           className="fixed z-[60] flex flex-col items-center gap-2 pointer-events-none"
           style={{
@@ -1198,7 +1188,22 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             </div>
           </div>
 
-
+          {/* Launch button */}
+          {nearLaunchPad && !isAirborne && (
+            <button
+              onClick={() => { try { navigator?.vibrate?.(30); } catch {} launchRef.current?.(); }}
+              className="pointer-events-auto px-7 py-3 rounded-full font-black text-sm tracking-widest transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#00B8D4,#9B4FFF)",
+                color: "#fff",
+                boxShadow: "0 0 24px rgba(0,184,212,0.45), 0 2px 12px rgba(0,0,0,0.4)",
+                letterSpacing: "0.18em",
+                fontSize: "13px",
+              }}
+            >
+              🚀 LAUNCH
+            </button>
+          )}
 
           {isAirborne && (
             <div
