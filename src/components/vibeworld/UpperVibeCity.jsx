@@ -478,13 +478,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Input focus lock (typing in lounge chat) + voice ducking ──
   const [loungeInputFocused, setLoungeInputFocused] = useState(false);
   const [voiceActive, setVoiceActive] = useState(false);
-  const [isSeatedInLounge, setIsSeatedInLounge] = useState(false);
-  const [seatedSeat, setSeatedSeat] = useState(null); // { id, label, x, z }
   const preVoiceVolumeRef = useRef(null);
 
-  // ── Movement locked when typing in lounge chat, watching stage, or seated ──
+  // ── Movement locked when typing in lounge chat or watching stage ──
   const [ferrisRiding, setFerrisRiding] = useState(false);
-  const movementLocked = loungeInputFocused || stageWatching || isSeatedInLounge;
+  const movementLocked = loungeInputFocused || stageWatching;
 
   // ── Dance floor boundary — matches visual plaza edge (r=10.5) ─────────────
   // Audio fades in at the edge so music is audible as soon as the user reaches the floor.
@@ -880,8 +878,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           audioBassRef={audioBassRef}
           audioBeatRef={audioBeatRef}
           locked={movementLocked}
-          loungeSeated={isSeatedInLounge}
-          loungeSeatedPos={seatedSeat ? { x: seatedSeat.x ?? -22, z: seatedSeat.z ?? -26 } : (isSeatedInLounge ? { x: -22, z: -28 } : null)}
           stageScreenPosRef={stageScreenPosRef}
           mobileInputRef={mobileInputRef}
           remoteUsers={activeUsers}
@@ -969,14 +965,16 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         <div />
       </motion.div>
 
-      {/* TV Mode button — portrait: lowered below status bar; landscape: standard top row */}
+      {/* TV Mode button — only shown during free-roam, hidden inside all zones/panels */}
       {(() => {
         const showTVButton = !loading
           && !stageWatching
           && !stageFullScreen
           && !anyBlockingUIOpen
           && !mobileModalOpen
-          && !tvOverlayOpen;
+          && !tvOverlayOpen
+          && !activeChatPeer
+          && !messageComposerTarget;
         if (!showTVButton) return null;
         const isPortrait = isMobile && window.innerHeight > window.innerWidth;
         // Portrait: push below the exit button row AND the bell/users row (which sits at ~top+54px)
@@ -1009,18 +1007,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
               onTouchStart={(e) => { e.stopPropagation(); }}
               className="flex items-center gap-1 rounded-full transition-all hover:brightness-110 active:scale-95"
               style={{
-                background: tvMode ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.10)",
+                background: tvMode ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.08)",
                 backdropFilter: "blur(10px)",
-                border: tvMode ? "1px solid rgba(0,229,255,0.4)" : "1px solid rgba(255,255,255,0.12)",
-                color: tvMode ? "#00E5FF" : "rgba(255,255,255,0.65)",
-                height: "44px",
-                minHeight: "44px",
-                padding: "0 12px",
+                border: tvMode ? "1px solid rgba(0,229,255,0.35)" : "1px solid rgba(255,255,255,0.10)",
+                color: tvMode ? "#00E5FF" : "rgba(255,255,255,0.5)",
+                height: "32px",
+                minHeight: "44px", // keep tap target
+                padding: "0 10px",
                 touchAction: "manipulation",
                 cursor: "pointer",
-                fontSize: "11px",
+                fontSize: "10px",
                 fontWeight: 900,
-                letterSpacing: "0.08em",
+                letterSpacing: "0.06em",
               }}
               aria-label={tvMode ? "Exit TV Mode" : "TV Mode"}
             >
@@ -1091,15 +1089,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         djTrack={djTrack}
         onFerrisRideChange={setFerrisRiding}
         followSystem={followSystem}
-        onSit={(seat) => {
-          setIsSeatedInLounge(true);
-          setSeatedSeat(seat || null);
-        }}
-        onStandUp={() => {
-          setIsSeatedInLounge(false);
-          setSeatedSeat(null);
-          handleStopDance();
-        }}
         username={user?.world_username || ""}
       />
 

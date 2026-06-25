@@ -48,7 +48,7 @@ import SocialPanel from "./panels/SocialPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import LiveUsersBadge from "@/components/vibeworld/LiveUsersBadge";
 import NotificationPanel from "./panels/NotificationPanel";
-import SeatedLoungeMiniBar from "./panels/SeatedLoungeMiniBar";
+
 
 const ZONE_ICONS = {
   plaza: Compass,
@@ -116,9 +116,6 @@ export default function WorldHUD({
   onFerrisRideChange,
   // Follow system
   followSystem,
-  // Lounge seating
-  onSit,
-  onStandUp,
 }) {
   const [showZoneLabel, setShowZoneLabel] = useState(false);
   const [isPortrait, setIsPortrait] = useState(() => window.innerHeight > window.innerWidth);
@@ -175,9 +172,6 @@ export default function WorldHUD({
   // Panel states
   const [musicPanelOpen, setMusicPanelOpen] = useState(false);
   const [loungePanelOpen, setLoungePanelOpen] = useState(false);
-  const [isSeatedInLounge, setIsSeatedInLounge] = useState(false);
-  const [seatedSeat, setSeatedSeat] = useState(null);
-  const [nearSeat, setNearSeat] = useState(null); // nearest seat object if within range
 
   // Force open a panel when returning from SongPage
   useEffect(() => {
@@ -227,30 +221,7 @@ export default function WorldHUD({
     onMobileModalChange?.(musicPanelOpen);
   }, [onMobileModalChange, musicPanelOpen]);
 
-  // ── Seat proximity detection (lounge zone only) ──────────────────────
-  const LOUNGE_SEATS_HUD = [
-    { id: 0, label: "Seat A", x: -23.8, z: -27.5 },
-    { id: 1, label: "Seat B", x: -22.0, z: -28.8 },
-    { id: 2, label: "Seat C", x: -20.2, z: -27.5 },
-    { id: 3, label: "Seat D", x: -19.5, z: -25.5 },
-    { id: 4, label: "Seat E", x: -24.5, z: -25.5 },
-  ];
-  const SEAT_INTERACT_RADIUS = 2.5;
-  useEffect(() => {
-    if (zone?.id !== "lounge" || isSeatedInLounge) { setNearSeat(null); return; }
-    let closest = null;
-    let closestDist = Infinity;
-    for (const seat of LOUNGE_SEATS_HUD) {
-      const dx = playerX - seat.x;
-      const dz = playerZ - seat.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-      if (dist < SEAT_INTERACT_RADIUS && dist < closestDist) {
-        closest = seat;
-        closestDist = dist;
-      }
-    }
-    setNearSeat(closest);
-  }, [playerX, playerZ, zone?.id, isSeatedInLounge]);
+
 
   if (loading) return null;
 
@@ -421,28 +392,7 @@ export default function WorldHUD({
 
 
 
-      {/* ── Seated Lounge Mini-Bar ────────────────────── */}
-      <AnimatePresence>
-        {isSeatedInLounge && !loungePanelOpen && (
-          <SeatedLoungeMiniBar
-            visible={true}
-            seat={seatedSeat}
-            isMobile={isMobile}
-            mobileLayout={mobileLayout}
-            activeUsers={activeUsers}
-            currentUserId={currentUserId}
-            blockedUsers={blockedUsers}
-            onSelectUser={onSelectUser}
-            onOpenLounge={() => { setLoungePanelOpen(true); onMobileModalChange?.(true); }}
-            onStandUp={() => {
-              setIsSeatedInLounge(false);
-              setSeatedSeat(null);
-              onStandUp?.();
-              onMobileModalChange?.(false);
-            }}
-          />
-        )}
-      </AnimatePresence>
+
 
       {/* ── Now Playing (bottom bar in UpperVibeCity handles this) ── */}
 
@@ -827,55 +777,6 @@ export default function WorldHUD({
             className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
             style={actionStyle()}
           >
-            {/* Sit prompt — shown when near a seat and not already seated */}
-            {nearSeat && !isSeatedInLounge && (
-              <motion.button
-                key={`sit-${nearSeat.id}`}
-                initial={{ opacity: 0, scale: 0.9, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 8 }}
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => {
-                  hapticTap();
-                  setIsSeatedInLounge(true);
-                  setSeatedSeat(nearSeat);
-                  onSit?.(nearSeat);
-                  // Do NOT open the full panel — mini-bar takes over
-                  onMobileModalChange?.(false);
-                }}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-                style={{
-                  background: "linear-gradient(135deg,rgba(155,126,255,0.85),rgba(196,160,255,0.85))",
-                  color: "#fff",
-                  boxShadow: "0 0 18px rgba(155,126,255,0.5)",
-                  minHeight: "44px",
-                  touchAction: "manipulation",
-                  pointerEvents: "auto",
-                  backdropFilter: "blur(10px)",
-                  border: "1px solid rgba(196,160,255,0.4)",
-                }}
-              >
-                💺 Sit — {nearSeat.label}
-              </motion.button>
-            )}
-            {/* Stand Up — when seated outside the panel */}
-            {isSeatedInLounge && (
-              <button
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => { hapticTap(); setIsSeatedInLounge(false); setSeatedSeat(null); onStandUp?.(); }}
-                className="flex items-center gap-2 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-                style={{
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "rgba(255,255,255,0.6)",
-                  minHeight: "40px",
-                  touchAction: "manipulation",
-                  pointerEvents: "auto",
-                }}
-              >
-                🧍 Stand Up
-              </button>
-            )}
             <button
               onTouchStart={(e) => e.stopPropagation()}
               onClick={handleOpenLounge}
@@ -890,7 +791,7 @@ export default function WorldHUD({
               }}
             >
               <MessageCircle className="w-3.5 h-3.5" />
-              {isSeatedInLounge ? "Open Lounge" : "Enter Lounge"}
+              Enter Vibe Lounge
             </button>
           </motion.div>
         )}
@@ -1007,7 +908,6 @@ export default function WorldHUD({
             open={loungePanelOpen}
             onClose={handleCloseLounge}
             isMobile={isMobile}
-            chatAgeConfirmed={chatAgeConfirmed}
             onInputFocus={onLoungeInputFocus}
             blockedUsers={blockedUsers}
             activeUsers={activeUsers}
@@ -1017,13 +917,6 @@ export default function WorldHUD({
               onOpenMessageComposer?.(uid, uname);
             }}
             followSystem={followSystem}
-            isSeatedExternal={isSeatedInLounge}
-            onSeatChange={(seated, seat) => {
-              setIsSeatedInLounge(seated);
-              setSeatedSeat(seated ? seat : null);
-              if (seated) { onSit?.(seat); onMobileModalChange?.(false); }
-              else { onStandUp?.(); }
-            }}
           />
         )}
       </AnimatePresence>

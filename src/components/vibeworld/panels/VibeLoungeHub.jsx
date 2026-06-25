@@ -25,8 +25,6 @@ export default function VibeLoungeHub({
   activeUsers = [],
   currentUserId,
   onSelectUser,
-  isSeatedExternal = false,
-  onSeatChange,
 }) {
   const { user } = useAuth();
   const username = user?.world_username || "New User";
@@ -112,9 +110,7 @@ export default function VibeLoungeHub({
           <span className="text-lg">🛋️</span>
           <div>
             <h3 className="font-heading font-black text-sm text-white leading-none">Vibe Lounge</h3>
-            <p className="text-[9px] text-purple-300/50 mt-0.5">
-              {isSeatedExternal ? "You're seated — chill & chat" : "Group Chat"}
-            </p>
+            <p className="text-[9px] text-purple-300/50 mt-0.5">Group Chat</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

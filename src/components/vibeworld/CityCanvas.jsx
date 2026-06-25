@@ -1118,7 +1118,7 @@ function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, loungeSeated = false, loungeSeatedPos = null, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1201,10 +1201,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   hbRidingRef.current = hbRiding;
   const ferrisRidingRef = useRef(false);
   ferrisRidingRef.current = ferrisRiding;
-  const loungeSeatedRef = useRef(false);
-  loungeSeatedRef.current = loungeSeated;
-  const loungeSeatedPosRef = useRef(null);
-  loungeSeatedPosRef.current = loungeSeatedPos;
 
   const activeEmoteRef = useRef(null);
   activeEmoteRef.current = activeEmote;
@@ -1571,11 +1567,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         avatarPosRef.current = [px, py, pz, rot];
         const avatar = avatarRef.current;
         if (avatar) {
-          if (loungeSeatedRef.current && loungeSeatedPosRef.current) {
-            const sp = loungeSeatedPosRef.current;
-            avatar.position.set(sp.x, py, sp.z);
-            avatar.rotation.y = Math.atan2(-22 - sp.x, -26 - sp.z);
-          } else { avatar.position.set(px, py, pz); avatar.rotation.y = rot; }
+          avatar.position.set(px, py, pz);
+          avatar.rotation.y = rot;
         }
 
         // Rim light follows avatar
@@ -1647,32 +1640,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             cabinPos: new Vector3(), nLook: new Vector3(),
             cLook: new Vector3(0, 4.5, -34.4),
             lkPos: new Vector3(0, 3.0, -12), lkLook: new Vector3(0, 3.5, -34.4),
-            lgPos: new Vector3(-22, 3.2, -22), lgLook: new Vector3(-22, 1.0, -26),
             fA: new Vector3(0, WHEEL_HUB_Y * 0.4, -10), fB: new Vector3(0, 2, 40),
           };
         }
         const cv = scene.userData._camVecs;
-        if (loungeSeatedRef.current) {
-          // Seat-anchored camera: position camera ~2.5u behind seat, 2u above, looking at lounge center
-          const sPos = loungeSeatedPosRef.current;
-          const LOUNGE_CENTER_X = -22, LOUNGE_CENTER_Z = -26;
-          if (sPos) {
-            // Direction from seat toward lounge center
-            const dx = LOUNGE_CENTER_X - sPos.x;
-            const dz = LOUNGE_CENTER_Z - sPos.z;
-            const len = Math.sqrt(dx * dx + dz * dz) || 1;
-            // Camera sits behind the seat (opposite of lounge-center direction), elevated
-            const camOffset = 2.8;
-            cv.lgPos.set(
-              sPos.x - (dx / len) * camOffset,
-              2.6,
-              sPos.z - (dz / len) * camOffset
-            );
-            cv.lgLook.set(LOUNGE_CENTER_X, 0.8, LOUNGE_CENTER_Z);
-          }
-          camera.position.lerp(cv.lgPos, Math.min(1, 3.5 * dt));
-          camera.lookAt(cv.lgLook);
-        } else if (ferrisRidingRef.current) {
+        if (ferrisRidingRef.current) {
           // Scenic seated-rider camera: positioned at gondola eye height, looking outward
           const rider = getRiderCameraTransform(t);
           cv.cabinPos.set(rider.camPos.x, rider.camPos.y, rider.camPos.z);
