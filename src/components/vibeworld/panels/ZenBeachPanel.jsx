@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { X, ArrowLeft, Sparkles, Waves } from "lucide-react";
+import { X, ArrowLeft, Sparkles, Waves, Volume2, VolumeX } from "lucide-react";
+import { usePlayer } from "@/context/PlayerContext";
 
 const INTENTION_WORDS = ["calm", "focus", "confidence", "discipline", "gratitude", "peace"];
 
@@ -62,6 +63,7 @@ const EXERCISES = [
 ];
 
 export default function ZenBeachPanel({ open, onClose, isMobile }) {
+  const { isPlaying, togglePlay } = usePlayer() || {};
   const [phase, setPhase] = useState("menu"); // "menu" | "breathing" | "pause" | "done"
   const [exercise, setExercise] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -215,6 +217,20 @@ export default function ZenBeachPanel({ open, onClose, isMobile }) {
           </h3>
         </div>
         <div className="flex items-center gap-1">
+          {/* ── Music mute toggle ──────────────────────────── */}
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); togglePlay?.(); }}
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
+            style={{
+              color: isPlaying ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.25)",
+              minWidth: 44, minHeight: 44,
+              touchAction: "manipulation", pointerEvents: "auto",
+            }}
+            title={isPlaying ? "Pause music" : "Play music"}
+          >
+            {isPlaying ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          </button>
           <button
             onTouchStart={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); resetAll(); onClose(); }}
