@@ -176,6 +176,7 @@ export default function WorldHUD({
   const [musicPanelOpen, setMusicPanelOpen] = useState(false);
   const [loungePanelOpen, setLoungePanelOpen] = useState(false);
   const [isSeatedInLounge, setIsSeatedInLounge] = useState(false);
+  const [seatedSeat, setSeatedSeat] = useState(null);
   const [nearSeat, setNearSeat] = useState(null); // nearest seat object if within range
 
   // Force open a panel when returning from SongPage
@@ -425,16 +426,19 @@ export default function WorldHUD({
         {isSeatedInLounge && !loungePanelOpen && (
           <SeatedLoungeMiniBar
             visible={true}
-            seat={null}
+            seat={seatedSeat}
             isMobile={isMobile}
             mobileLayout={mobileLayout}
             activeUsers={activeUsers}
             currentUserId={currentUserId}
             blockedUsers={blockedUsers}
             onSelectUser={onSelectUser}
+            onOpenLounge={() => { setLoungePanelOpen(true); onMobileModalChange?.(true); }}
             onStandUp={() => {
               setIsSeatedInLounge(false);
+              setSeatedSeat(null);
               onStandUp?.();
+              onMobileModalChange?.(false);
             }}
           />
         )}
@@ -834,9 +838,10 @@ export default function WorldHUD({
                 onClick={() => {
                   hapticTap();
                   setIsSeatedInLounge(true);
+                  setSeatedSeat(nearSeat);
                   onSit?.(nearSeat);
-                  setLoungePanelOpen(true);
-                  onMobileModalChange?.(true);
+                  // Do NOT open the full panel — mini-bar takes over
+                  onMobileModalChange?.(false);
                 }}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
                 style={{
@@ -857,7 +862,7 @@ export default function WorldHUD({
             {isSeatedInLounge && (
               <button
                 onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => { hapticTap(); setIsSeatedInLounge(false); onStandUp?.(); }}
+                onClick={() => { hapticTap(); setIsSeatedInLounge(false); setSeatedSeat(null); onStandUp?.(); }}
                 className="flex items-center gap-2 px-4 py-2 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
                 style={{
                   background: "rgba(255,255,255,0.08)",
@@ -1015,8 +1020,9 @@ export default function WorldHUD({
             isSeatedExternal={isSeatedInLounge}
             onSeatChange={(seated, seat) => {
               setIsSeatedInLounge(seated);
-              if (seated) onSit?.(seat);
-              else onStandUp?.();
+              setSeatedSeat(seated ? seat : null);
+              if (seated) { onSit?.(seat); onMobileModalChange?.(false); }
+              else { onStandUp?.(); }
             }}
           />
         )}

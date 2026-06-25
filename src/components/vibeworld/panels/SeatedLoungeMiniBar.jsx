@@ -4,7 +4,7 @@
  */
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Users, Sparkles, RefreshCw } from "lucide-react";
+import { X, Users, Sparkles, RefreshCw, MessageCircle } from "lucide-react";
 
 const MANIFEST_PROMPTS = [
   "What version of you are you becoming?",
@@ -143,6 +143,7 @@ export default function SeatedLoungeMiniBar({
   currentUserId,
   blockedUsers = {},
   onSelectUser,
+  onOpenLounge,
   onStandUp,
 }) {
   const [sheet, setSheet] = useState(null); // null | "nearby" | "manifest"
@@ -191,6 +192,23 @@ export default function SeatedLoungeMiniBar({
           <p className="text-[10px] font-black text-purple-300/80 tracking-wider flex-1 truncate">
             Chilling in Vibe Lounge{seat ? ` · ${seat.label}` : ""}
           </p>
+
+          {/* Chat */}
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={() => { setSheet(null); onOpenLounge?.(); }}
+            className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
+            style={{
+              width: 36, height: 36, minWidth: 36, minHeight: 36,
+              background: "rgba(0,180,255,0.1)",
+              border: "1px solid rgba(0,180,255,0.2)",
+              color: "#80d8ff",
+              touchAction: "manipulation",
+            }}
+            title="Chat"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+          </button>
 
           {/* Nearby */}
           <button
