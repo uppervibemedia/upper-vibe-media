@@ -16,6 +16,10 @@ export const LAUNCH_PADS = [
   { x: -5,  z: 9,  color: "#00D4F0", label: "PAD A" },
   { x:  5,  z: 9,  color: "#9B7EFF", label: "PAD B" },
   { x:  0,  z: 13, color: "#FF4FC3", label: "PAD C" },
+  { x: 15, z: -15, color: "#F0A000", label: "PAD D" },
+  { x: -15, z: -15, color: "#00F0A0", label: "PAD E" },
+  { x: 15, z: 15, color: "#A000F0", label: "PAD F" },
+  { x: -15, z: 15, color: "#F000A0", label: "PAD G" },
 ];
 
 export const LAUNCH_PAD_RADIUS  = 1.2;   // walk-on detection radius
