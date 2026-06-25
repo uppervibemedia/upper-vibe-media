@@ -79,12 +79,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const jukeboxProxVolRef = useRef(1.0);
   const onDanceFloorRef = useRef(false);
   // Launch zone state
-  const launchRef = useRef(null);
-  const [nearLaunchPad, setNearLaunchPad] = useState(false);
-  const [isAirborne, setIsAirborne] = useState(false);
-  const [orbCount, setOrbCount] = useState(0);         // launch session orbs
-  const [launchSessionOrbs, setLaunchSessionOrbs] = useState(0); // tracked per launch
-  const launchSessionRef = useRef(0);
+  
+      const [nearLaunchPad, setNearLaunchPad] = useState(false);
+  const [nearShop, setNearShop] = useState(false);
+  
+           // launch session orbs
+    const [launchSessionOrbs, setLaunchSessionOrbs] = useState(0);
+  const [shopOpen, setShopOpen] = useState(false); // tracked per launch
+  
   // ── Hoverboard Ring Run state ─────────────────────────────────
   const [nearHoverboard, setNearHoverboard] = useState(false);
   const [hbRiding, setHbRiding] = useState(false);
@@ -899,31 +901,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           remoteUsers={activeUsers}
           avatarConfig={avatarConfig}
           djTrack={djTrack}
-          launchRef={launchRef}
+          
+          onNearShop={setNearShop}
           hbRiding={hbRiding}
           ferrisRiding={ferrisRiding}
           rendererRef={rendererRef}
           tvMode={tvMode}
           tvQuality={tvQuality}
-          onNearPad={(padIdx, airborne, orbs) => {
-            setNearLaunchPad(padIdx >= 0 && !airborne);
-            setIsAirborne(airborne);
-
-            // Detect when a launch session ends (landed) — add to bank
-            const prevAirborne = launchSessionRef.current > 0 && !airborne;
-            if (prevAirborne && orbs > launchSessionRef.current) {
-              const earned = orbs - launchSessionRef.current;
-              const newBank = addToOrbBank(earned);
-              updateZoneBest("launch", orbs);
-              setOrbBank(newBank);
-            }
-            // Track per-session starts
-            if (airborne && !isAirborne) launchSessionRef.current = orbs;
-            if (!airborne) launchSessionRef.current = 0;
-
-            setOrbCount(orbs);
-            setLaunchSessionOrbs(orbs);
-          }}
+          
         />
       </div>
 
@@ -1159,7 +1144,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       )}
 
       {/* ── Vibe Launch Zone HUD ── */}
-      {!loading && (nearLaunchPad || isAirborne) && (
+      {!loading && nearShop && (
         <div
           className="fixed z-[60] flex flex-col items-center gap-2 pointer-events-none"
           style={{

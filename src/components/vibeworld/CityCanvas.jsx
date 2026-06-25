@@ -8,7 +8,7 @@ import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, 
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
-import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
+import { animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
 import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
 import { createCrystalZone, animateCrystalZone, activateCrystalZone } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
@@ -318,8 +318,9 @@ function buildPark(scene) {
   // ═══════════════════════════════════════
   // VIBE LAUNCH ZONE
   // ═══════════════════════════════════════
-  buildLaunchZone(scene);
-  createNeonSign(scene, 0, 3.5, 3, "VIBE  LAUNCH  ZONE", "#00E5FF");
+  // Launch Zone replaced by Vibe Shop
+  createVibeShop(scene);
+  createNeonSign(scene, 0, 3.5, 3, "UPPER VIBE SHOP", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 5. VIBE LOUNGE — futuristic social hangout, semi-circle seating
@@ -1118,7 +1119,7 @@ function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, onNearShop, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -1208,9 +1209,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
   // Launch zone state
-  const launchStateRef = useRef({ active: false, phase: "idle", timer: 0, startY: 0 });
-  const orbCountRef = useRef(0);
-  const nearPadRef = useRef(-1);
+  
   const speedBoostUntilRef = useRef(0); // timestamp (performance.now) when boost expires
   const splashParticlesRef = useRef(null); // water spray particle system
 
@@ -1285,17 +1284,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       window.addEventListener("crystalActivate", onCrystalActivate);
 
       // ── Expose launch trigger ref once (not in animation loop) ──
-      if (launchRef) {
-        launchRef.current = () => {
-          const ls = launchStateRef.current;
-          if (!ls.active) {
-            ls.active = true;
-            ls.phase = "rise";
-            ls.timer = 0;
-            ls.startY = SPAWN[1];
-          }
-        };
-      }
+
 
       // Avatar rim light
       const avatarRimLight = new PointLight();
@@ -1527,41 +1516,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         [px, pz] = resolveCollisions(px, pz, 0.3, COLLISION_BOXES, hbRidingRef.current);
 
         // ── Launch zone physics ──────────────────────────────
-        const ls = launchStateRef.current;
-        if (ls.active) {
-          ls.timer += dt;
-          if (ls.phase === "rise") {
-            const progress = Math.min(ls.timer / LAUNCH_DURATION, 1);
-            const eased = 1 - (1 - progress) * (1 - progress); // ease-out
-            py = ls.startY + LAUNCH_HEIGHT * eased;
-            if (progress >= 1) { ls.phase = "fall"; ls.timer = 0; }
-          } else if (ls.phase === "fall") {
-            const progress = Math.min(ls.timer / GLIDE_DURATION, 1);
-            const eased = progress * progress; // ease-in
-            py = ls.startY + LAUNCH_HEIGHT * (1 - eased);
-            if (progress >= 1) {
-              py = ls.startY;
-              ls.active = false;
-              ls.phase = "idle";
-              // Landing pulse ring at current position
-              if (sceneRef.current) triggerLandingPulse(sceneRef.current, px, pz);
-            }
-          }
-          // Collect orbs every frame during ALL airborne phases using real py height
-          if (sceneRef.current) {
-            const c = collectNearbyOrbs(sceneRef.current, px, py, pz);
-            if (c.length) orbCountRef.current += c.length;
-          }
-          vel.x *= 0.88; vel.z *= 0.88; // dampen horizontal during flight
-        } else {
-          // When riding hoverboard, float avatar slightly above ground
-          const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
+                  const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
           py = SPAWN[1] + hbLift;
-          // Check pad proximity (every 6 frames for responsiveness)
-          if (frameRef.current % 6 === 0 && sceneRef.current) {
-            nearPadRef.current = getNearLaunchPad(px, pz);
-          }
-        }
 
         avatarRotRef.current = rot;
         avatarPosRef.current = [px, py, pz, rot];
@@ -1581,8 +1537,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ── Notify parent of near-pad state ──
-        if (onNearPad && frameRef.current % 10 === 0) {
-          try { onNearPad(nearPadRef.current, launchStateRef.current.active, orbCountRef.current); } catch {}
+                if (props.onNearShop && frameRef.current % 10 === 0) {
+          const nearShop = Math.sqrt(px * px + (pz - 4) * (pz - 4)) < 6;
+          try { onNearShop(nearShop); } catch {}
         }
 
         // ── Hoverboard zone proximity ──
@@ -1996,9 +1953,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           if (hbBoard) { hbBoard.rotation.x = 0; hbBoard.rotation.z = 0; }
         }
         // Distance-gate heavy zone animations on mobile
-        const nearLaunch = Math.sqrt(px * px + (pz - 4) * (pz - 4)) < 20;
+        
         const nearFerris = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z)) < 28;
-        if (!isMob || nearLaunch || frameRef.current % 4 === 0) animateLaunchZone(scene, t, audioBeat, dt);
+        
         if (!isMob || nearFerris || frameRef.current % 4 === 0) animateHoverboardZone(scene, t, audioBeat);
         // Ferris Wheel — TV Smooth: skip when >30u away (unless riding)
         const ferrisDist = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z));

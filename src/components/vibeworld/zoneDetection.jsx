@@ -62,13 +62,13 @@ const ZONES = {
     name: "Neon Vibe Wheel",
     id: "ferriswheel",
     cx: 22, cz: 5, radius: 9.5,
-    icon: "Ferris",
+    icon: "Sparkles",
   },
-  launchzone: {
-    name: "Vibe Launch Zone",
-    id: "launchzone",
+  shop: {
+    name: "Upper Vibe Shop",
+    id: "shop",
     cx: 0, cz: 4, radius: 6,
-    icon: "Rocket",
+    icon: "ShoppingBag",
   },
   hoverboard: {
     name: "Neon Surf Beach",
