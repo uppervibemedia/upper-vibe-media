@@ -5,11 +5,10 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, MessageCircle, Sparkles, Users, Coffee, Send, RefreshCw, Play, Pause } from "lucide-react";
+import { X, MessageCircle, Sparkles, Users, Coffee, RefreshCw, Play, Pause } from "lucide-react";
 import { usePlayer } from "@/context/PlayerContext";
 import { useAuth } from "@/lib/AuthContext";
 import CoverImage from "@/components/shared/CoverImage";
-import useLoungeChat from "@/hooks/useLoungeChat";
 import { base44 } from "@/api/base44Client";
 
 const VIBE_STATUSES = [
@@ -105,16 +104,9 @@ export default function VibeLoungeHub({
   });
   const [isSeated, setIsSeated] = useState(isSeatedExternal);
   const [chosenSeat, setChosenSeat] = useState(null);
-  const [chatInput, setChatInput] = useState("");
-  const [sendError, setSendError] = useState(null);
-  const [sending, setSending] = useState(false);
   const [manifestIdx, setManifestIdx] = useState(() => Math.floor(Math.random() * MANIFEST_PROMPTS.length));
-  const messagesEndRef = useRef(null);
-
-  const { messages, sendMessage } = useLoungeChat(user?.id, displayName, blockedUsers);
 
   useEffect(() => { setIsSeated(isSeatedExternal); if (!isSeatedExternal) setChosenSeat(null); }, [isSeatedExternal]);
-  useEffect(() => { if (activeTab === "chat") messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, activeTab]);
 
   const loungeUsers = (activeUsers || []).filter((u) => u.user_id !== currentUserId && u.current_zone === "lounge");
 
@@ -132,28 +124,9 @@ export default function VibeLoungeHub({
     setIsSeated(false); setChosenSeat(null); onSeatChange?.(false, null);
   }, [onSeatChange]);
 
-  const handleSend = useCallback(async (text) => {
-    const msg = (text || chatInput).trim();
-    if (!msg || sending) return;
-    setSending(true);
-    const result = await sendMessage(msg);
-    setSending(false);
-    if (result?.error) {
-      setSendError(result.error);
-      setTimeout(() => setSendError(null), 3000);
-    } else {
-      setChatInput("");
-    }
-  }, [chatInput, sending, sendMessage]);
-
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
-  }, [handleSend]);
-
   const handleSharePrompt = useCallback(() => {
-    handleSend(`💭 "${MANIFEST_PROMPTS[manifestIdx]}"`);
-    setActiveTab("chat");
-  }, [manifestIdx, handleSend]);
+    setActiveTab("manifest");
+  }, []);
 
   if (!open) return null;
 
@@ -268,101 +241,14 @@ export default function VibeLoungeHub({
       </div>
     );
 
-    // LOUNGE CHAT
+    // LOUNGE CHAT — temporarily disabled
     if (activeTab === "chat") return (
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* Quick messages */}
-        <div className="flex-shrink-0 px-4 py-2 border-b border-white/5">
-          <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1">
-            {QUICK_MESSAGES.map((qm, i) => (
-              <button key={i} onClick={() => handleSend(qm)}
-                className="flex-shrink-0 px-2.5 py-1 rounded-full font-bold text-[9px] transition-all active:scale-95"
-                style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.18)", color: "rgba(196,160,255,0.7)", whiteSpace: "nowrap", touchAction: "manipulation", minHeight: 28 }}>
-                {qm}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 min-h-0" style={{ overscrollBehavior: "contain" }}>
-          {messages.length === 0 && (
-            <p className="text-center text-xs text-white/20 mt-8">No messages yet. Start the vibe. 🌊</p>
-          )}
-          {messages.map((msg) => {
-            if (isBlocked(msg.sender_user_id)) return null;
-            const isMe = msg.sender_user_id === currentUserId;
-            const time = msg.created_date
-              ? new Date(msg.created_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-              : "";
-            return (
-              <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                <div className="max-w-[80%] px-3 py-2 rounded-2xl"
-                  style={{
-                    background: isMe ? "rgba(0,160,220,0.12)" : "rgba(155,126,255,0.08)",
-                    border: `1px solid ${isMe ? "rgba(0,160,220,0.2)" : "rgba(155,126,255,0.15)"}`,
-                  }}>
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <p className="text-[9px] font-black" style={{ color: isMe ? "rgba(0,160,220,0.7)" : "rgba(155,126,255,0.7)" }}>
-                      {msg.sender_username || "User"}
-                    </p>
-                    {time && <span className="text-[8px] text-white/20">{time}</span>}
-                  </div>
-                  <p className="text-xs text-white/80 leading-snug">{msg.message}</p>
-                </div>
-              </div>
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Error */}
-        {sendError && (
-          <p className="text-[10px] text-red-400 text-center py-1 flex-shrink-0">{sendError}</p>
-        )}
-
-        {/* Input */}
-        <div className="flex-shrink-0 px-4 border-t border-white/5"
-          style={{ paddingTop: 12, paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))" }}>
-          {user?.id ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Share your vibe..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={() => onInputFocus?.(true)}
-                onBlur={() => onInputFocus?.(false)}
-                onTouchStart={(e) => e.stopPropagation()}
-                maxLength={250}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm text-white placeholder-white/25 outline-none"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  minHeight: "44px",
-                  fontSize: "16px",
-                  touchAction: "manipulation",
-                }}
-              />
-              <button
-                onClick={() => handleSend()}
-                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleSend(); }}
-                disabled={!chatInput.trim() || sending}
-                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
-                style={{
-                  background: chatInput.trim() ? "rgba(155,126,255,0.2)" : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${chatInput.trim() ? "rgba(155,126,255,0.35)" : "rgba(255,255,255,0.08)"}`,
-                  color: chatInput.trim() ? "#c4aaff" : "rgba(255,255,255,0.2)",
-                  minWidth: 44, minHeight: 44, touchAction: "manipulation",
-                }}>
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <p className="text-center text-[11px] text-white/30 py-2">Sign in to chat</p>
-          )}
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-3">
+        <div className="text-3xl">🔧</div>
+        <p className="text-sm font-black text-white/60">Lounge Chat</p>
+        <p className="text-xs text-white/25 max-w-xs">
+          Group chat is coming soon. Use direct messages to connect with nearby users.
+        </p>
       </div>
     );
 
@@ -381,13 +267,7 @@ export default function VibeLoungeHub({
             style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", minHeight: 44, touchAction: "manipulation" }}>
             <RefreshCw className="w-3.5 h-3.5" /> New Prompt
           </button>
-          {user?.id && (
-            <button onClick={handleSharePrompt}
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-              style={{ background: "linear-gradient(135deg,rgba(196,59,255,0.18),rgba(155,126,255,0.14))", border: "1px solid rgba(155,126,255,0.3)", color: "#c4aaff", minHeight: 44, touchAction: "manipulation" }}>
-              <Send className="w-3.5 h-3.5" /> Share to Lounge Chat
-            </button>
-          )}
+
         </div>
       </div>
     );

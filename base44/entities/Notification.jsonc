@@ -9,8 +9,9 @@
     "type": {
       "type": "string",
       "enum": [
-        "friend_request",
-        "request_accepted",
+        "message_request",
+        "message_approved",
+        "message_denied",
         "direct_message",
         "system"
       ],
@@ -25,9 +26,13 @@
     "message": {
       "type": "string"
     },
+    "conversation_id": {
+      "type": "string",
+      "description": "dm_${sorted_ids} for routing"
+    },
     "related_request_id": {
       "type": "string",
-      "description": "PrivateChatRequest ID if applicable"
+      "description": "MessageRequest ID"
     },
     "read": {
       "type": "boolean",

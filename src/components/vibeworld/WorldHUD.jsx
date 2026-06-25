@@ -5,6 +5,7 @@ import {
   Compass, Sparkles, Library, SkipForward,
   GraduationCap, Bell, Volume2, VolumeX, Users, Waves,
 } from "lucide-react";
+// Note: X is kept for potential future use in this file
 
 // ── Stage auto-hide controls hook ────────────────────────────────
 function useStageAutoHide(active, tvMode) {
@@ -34,7 +35,7 @@ import MusicLibraryPanel from "./panels/MusicLibraryPanel";
 import VibeLoungeHub from "./panels/VibeLoungeHub";
 import VisualizerPanel from "./panels/VisualizerPanel";
 import VibeCheckPanel from "./panels/VibeCheckPanel";
-import PrivateChatPanel from "./panels/PrivateChatPanel";
+
 import AcademyPanel from "./panels/AcademyPanel";
 // ShopPanel temporarily disabled
 // import ShopPanel from "./panels/ShopPanel";
@@ -80,35 +81,29 @@ export default function WorldHUD({
   activeUsers = [],
   userCount = 0,
   isBroadcasting = false,
-  // ── Private Chat props ──────────────────────────────────
+  // ── Direct Messaging props ───────────────────────────────
   currentUserId,
   activeChatPeer,
   chatMessages,
-  safetyConfirmed,
   onSelectUser,
-  onRequestChat,
-  onAcceptChat,
-  onDeclineChat,
+  onOpenMessageComposer,
   onSendChatMessage,
   onEndChat,
   onBlockUser,
   onUnblockUser,
   onReportUser,
-  onSafetyConfirm,
   blockedUsers,
   userInteractionTarget,
   onCloseUserMenu,
+  onOpenApprovedChat,
   onLoungeInputFocus,
   onVoiceActive,
-  outgoingStatus,
-  onClearOutgoingStatus,
   notifications = [],
   unreadCount = 0,
   onMarkNotificationHandled,
   onMarkAllNotificationsRead,
-  onOpenChat,
-  // ── Connection state ───────────────────────────────────────
-  isConnected,
+  onApproveRequest,
+  onDenyRequest,
   // ── Emote / Dance Floor props ──────────────────────────────
   onEmote,
   onStopDance,
@@ -408,9 +403,10 @@ export default function WorldHUD({
             onClose={() => setNotifPanelOpen(false)}
             notifications={notifications}
             unreadCount={unreadCount}
-            onAcceptRequest={onAcceptChat}
-            onDeclineRequest={onDeclineChat}
-            onOpenChat={(uid, uname) => { onOpenChat?.(uid, uname); setNotifPanelOpen(false); }}
+            onApproveRequest={onApproveRequest}
+            onDenyRequest={onDenyRequest}
+            onBlockUser={onBlockUser}
+            onOpenChat={(uid, uname) => { onOpenApprovedChat?.(uid, uname); setNotifPanelOpen(false); }}
             onMarkHandled={onMarkNotificationHandled}
             onMarkAllRead={onMarkAllNotificationsRead}
             isMobile={isMobile}
@@ -420,59 +416,7 @@ export default function WorldHUD({
 
 
 
-      {/* ── Outgoing chat request status toast — bottom-right, compact, non-blocking ── */}
-      <AnimatePresence>
-        {outgoingStatus && (
-          <motion.div
-            key={`out-${outgoingStatus.status}`}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.25 }}
-            className="fixed z-[58] pointer-events-auto"
-            style={{
-              bottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 90px)" : "100px",
-              right: isMobile ? "12px" : "20px",
-              maxWidth: "220px",
-            }}
-          >
-            <div
-              className="rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 relative"
-              style={{
-                background: "rgba(10,8,28,0.92)",
-                border: `1px solid ${
-                  outgoingStatus.status === "pending" ? "rgba(0,200,83,0.35)"
-                  : outgoingStatus.status === "accepted" ? "rgba(0,200,83,0.45)"
-                  : outgoingStatus.status === "blocked" ? "rgba(239,68,68,0.35)"
-                  : "rgba(150,150,150,0.2)"
-                }`,
-                backdropFilter: "blur(14px)",
-              }}
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-bold text-white leading-tight truncate">
-                  {outgoingStatus.status === "pending" && "Request Sent ✓"}
-                  {outgoingStatus.status === "accepted" && "Chat Accepted! 🎉"}
-                  {outgoingStatus.status === "declined" && "Request Declined"}
-                  {outgoingStatus.status === "expired" && "Request Expired"}
-                  {outgoingStatus.status === "blocked" && "Cannot Send Request"}
-                </p>
-                <p className="text-[9px] text-white/40 truncate">
-                  {outgoingStatus.toUsername || "User"}
-                </p>
-              </div>
-              <button
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => onClearOutgoingStatus?.()}
-                className="w-5 h-5 flex-shrink-0 rounded-full flex items-center justify-center hover:bg-white/10"
-                style={{ color: "rgba(255,255,255,0.4)", touchAction: "manipulation", minWidth: 20, minHeight: 20 }}
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* ── Now Playing (bottom bar in UpperVibeCity handles this) ── */}
 
@@ -1043,8 +987,7 @@ export default function WorldHUD({
             currentUserId={currentUserId}
             onSelectUser={onSelectUser}
             onRequestChat={(uid, uname) => {
-              onCloseUserMenu?.();
-              onRequestChat?.(uid, uname);
+              onOpenMessageComposer?.(uid, uname);
             }}
             followSystem={followSystem}
             isSeatedExternal={isSeatedInLounge}
@@ -1137,18 +1080,23 @@ export default function WorldHUD({
         onClose={onCloseUserMenu}
         onRequestChat={() => {
           if (userInteractionTarget) {
-            onRequestChat?.(userInteractionTarget.user_id || userInteractionTarget.id, userInteractionTarget.username);
+            const uid = userInteractionTarget.user_id || userInteractionTarget.id;
+            onOpenMessageComposer?.(uid, userInteractionTarget.username);
+            onCloseUserMenu?.();
           }
         }}
+        onOpenMessageComposer={onOpenMessageComposer}
         onOpenChat={() => {
           if (userInteractionTarget) {
-            onOpenChat?.(userInteractionTarget.user_id || userInteractionTarget.id, userInteractionTarget.username);
+            const uid = userInteractionTarget.user_id || userInteractionTarget.id;
+            onOpenApprovedChat?.(uid, userInteractionTarget.username);
             onCloseUserMenu?.();
           }
         }}
         onBlock={() => {
           if (userInteractionTarget) {
-            onBlockUser?.(userInteractionTarget.user_id || userInteractionTarget.id);
+            const uid = userInteractionTarget.user_id || userInteractionTarget.id;
+            onBlockUser?.(uid, userInteractionTarget.username);
           }
         }}
         onUnblock={() => {
@@ -1157,8 +1105,7 @@ export default function WorldHUD({
           }
         }}
         isBlocked={!!(userInteractionTarget && blockedUsers?.[userInteractionTarget.user_id || userInteractionTarget.id])}
-        isConnected={isConnected ? isConnected(userInteractionTarget?.user_id || userInteractionTarget?.id) : false}
-        outgoingStatus={outgoingStatus}
+        isConnected={false}
         onReport={() => onReportUser?.(userInteractionTarget)}
         isMobile={isMobile}
         currentUserId={currentUserId}
@@ -1187,24 +1134,7 @@ export default function WorldHUD({
         )}
       </AnimatePresence>
 
-      {/* Direct chat requests handled via notification bell only */}
-
-      {/* ── Private Chat Panel ──────────────────────────────────── */}
-      <PrivateChatPanel
-        open={!!activeChatPeer}
-        peer={activeChatPeer}
-        messages={chatMessages}
-        onSend={onSendChatMessage}
-        onEnd={onEndChat}
-        onBlock={() => {
-          if (activeChatPeer) onBlockUser(activeChatPeer.userId);
-        }}
-        onReport={() => onReportUser(activeChatPeer)}
-        currentUserId={currentUserId}
-        safetyConfirmed={safetyConfirmed}
-        onSafetyConfirm={onSafetyConfirm}
-        isMobile={isMobile}
-      />
+      {/* Direct chat panels are rendered in UpperVibeCity directly */}
     </>
   );
 }

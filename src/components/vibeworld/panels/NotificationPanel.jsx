@@ -1,21 +1,23 @@
 /**
  * NotificationPanel — bell notification dropdown.
- * Shows friend requests, accepted requests, direct message alerts.
+ * Handles: message_request (Approve/Deny/Block), message_approved (open chat), direct_message (open chat).
  */
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Bell, X, Check, UserPlus, MessageCircle, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import { Bell, X, Check, MessageCircle, Sparkles, UserX } from "lucide-react";
 
 const TYPE_ICON = {
-  friend_request: UserPlus,
-  request_accepted: Check,
+  message_request: MessageCircle,
+  message_approved: Check,
+  message_denied: X,
   direct_message: MessageCircle,
   system: Sparkles,
 };
 
 const TYPE_COLOR = {
-  friend_request: "#C43BFF",
-  request_accepted: "#00C853",
+  message_request: "#C43BFF",
+  message_approved: "#00C853",
+  message_denied: "#EF4444",
   direct_message: "#00D4F0",
   system: "#9B7EFF",
 };
@@ -25,10 +27,11 @@ export default function NotificationPanel({
   onClose,
   notifications = [],
   unreadCount = 0,
-  onAcceptRequest,
-  onDeclineRequest,
-  onOpenChat,
-  onMarkHandled,
+  onApproveRequest,   // (requestId, fromUserId, fromUsername) => void
+  onDenyRequest,      // (requestId, fromUserId) => void
+  onBlockUser,        // (userId, username) => void
+  onOpenChat,         // (userId, username) => void
+  onMarkHandled,      // (noteId) => void
   onMarkAllRead,
   isMobile,
 }) {
@@ -45,7 +48,7 @@ export default function NotificationPanel({
       style={{
         top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 5.5rem)" : "7rem",
         width: isMobile ? "min(calc(100vw - 1rem), 320px)" : "310px",
-        maxHeight: isMobile ? "60dvh" : "420px",
+        maxHeight: isMobile ? "60dvh" : "440px",
         display: "flex",
         flexDirection: "column",
         borderRadius: "16px",
@@ -72,27 +75,21 @@ export default function NotificationPanel({
         </div>
         <div className="flex items-center gap-1">
           {unreadCount > 0 && (
-            <button
-              onTouchStart={(e) => e.stopPropagation()}
-              onClick={onMarkAllRead}
-              className="px-2 py-0.5 rounded-full text-[8px] font-black transition-all hover:bg-white/10"
-              style={{ color: "rgba(255,255,255,0.35)", touchAction: "manipulation" }}
-            >
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={onMarkAllRead}
+              className="px-2 py-0.5 rounded-full text-[8px] font-black hover:bg-white/10"
+              style={{ color: "rgba(255,255,255,0.35)", touchAction: "manipulation" }}>
               Mark all read
             </button>
           )}
-          <button
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 active:scale-90 transition-all"
-            style={{ color: "rgba(255,255,255,0.4)", touchAction: "manipulation", minWidth: 32, minHeight: 32 }}
-          >
+          <button onTouchStart={(e) => e.stopPropagation()} onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 active:scale-90"
+            style={{ color: "rgba(255,255,255,0.4)", touchAction: "manipulation", minWidth: 32, minHeight: 32 }}>
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Notification list */}
+      {/* List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
         {notifications.length === 0 ? (
           <div className="py-8 text-center">
@@ -102,24 +99,20 @@ export default function NotificationPanel({
         ) : notifications.map((note) => {
           const Icon = TYPE_ICON[note.type] || Sparkles;
           const color = TYPE_COLOR[note.type] || "#9B7EFF";
-          const isRequest = note.type === "friend_request";
-          const isDM = note.type === "direct_message" || note.type === "request_accepted";
+          const isRequest = note.type === "message_request";
+          const isApproved = note.type === "message_approved";
+          const isDM = note.type === "direct_message";
 
           return (
-            <div
-              key={note.id}
-              className="p-3 rounded-xl"
+            <div key={note.id} className="p-3 rounded-xl"
               style={{
                 background: note.read ? "rgba(255,255,255,0.03)" : `${color}0D`,
                 border: `1px solid ${note.read ? "rgba(255,255,255,0.06)" : color + "28"}`,
-              }}
-            >
+              }}>
               {/* Top row */}
               <div className="flex items-start gap-2.5 mb-2">
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${color}18`, border: `1px solid ${color}30` }}
-                >
+                <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
                   <Icon style={{ width: 12, height: 12, color }} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -130,61 +123,60 @@ export default function NotificationPanel({
                       : "Just now"}
                   </p>
                 </div>
-                {/* Dismiss X */}
-                <button
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onClick={() => onMarkHandled?.(note.id)}
-                  className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-white/10 active:scale-90"
-                  style={{ color: "rgba(255,255,255,0.25)", touchAction: "manipulation", minWidth: 24, minHeight: 24 }}
-                >
+                <button onTouchStart={(e) => e.stopPropagation()} onClick={() => onMarkHandled?.(note.id)}
+                  className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/10 flex-shrink-0"
+                  style={{ color: "rgba(255,255,255,0.25)", touchAction: "manipulation", minWidth: 24, minHeight: 24 }}>
                   <X className="w-3 h-3" />
                 </button>
               </div>
 
-              {/* Friend request actions */}
+              {/* Message request: Approve / Deny / Block */}
               {isRequest && note.related_request_id && (
-                <div className="flex gap-1.5">
+                <div className="flex gap-1.5 flex-wrap">
                   <button
                     onTouchStart={(e) => e.stopPropagation()}
                     onClick={() => {
-                      // acceptRequest handles: status update, notifications, marking handled, opening chat
-                      onAcceptRequest?.(note.related_request_id, note.from_user_id, note.from_username);
-                      // Close the notification panel so the chat panel becomes visible
+                      onApproveRequest?.(note.related_request_id, note.from_user_id, note.from_username);
                       onClose?.();
                     }}
-                    className="flex-1 py-1.5 rounded-lg font-black text-[10px] transition-all hover:brightness-110 active:scale-95"
+                    className="flex-1 py-2 rounded-lg font-black text-[10px] transition-all active:scale-95"
                     style={{
-                      background: "rgba(0,200,83,0.18)",
-                      border: "1px solid rgba(0,200,83,0.35)",
-                      color: "#00C853",
-                      minHeight: 32,
-                      touchAction: "manipulation",
-                    }}
-                  >
-                    ✓ Accept
+                      background: "rgba(0,200,83,0.18)", border: "1px solid rgba(0,200,83,0.35)",
+                      color: "#00C853", minHeight: 36, touchAction: "manipulation",
+                    }}>
+                    ✓ Approve
                   </button>
                   <button
                     onTouchStart={(e) => e.stopPropagation()}
                     onClick={() => {
-                      onDeclineRequest?.(note.related_request_id);
+                      onDenyRequest?.(note.related_request_id, note.from_user_id);
                       onMarkHandled?.(note.id);
                     }}
-                    className="flex-1 py-1.5 rounded-lg font-black text-[10px] transition-all active:scale-95"
+                    className="flex-1 py-2 rounded-lg font-black text-[10px] transition-all active:scale-95"
                     style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      color: "rgba(255,255,255,0.45)",
-                      minHeight: 32,
-                      touchAction: "manipulation",
+                      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+                      color: "rgba(255,255,255,0.45)", minHeight: 36, touchAction: "manipulation",
+                    }}>
+                    Deny
+                  </button>
+                  <button
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={() => {
+                      onBlockUser?.(note.from_user_id, note.from_username);
+                      onMarkHandled?.(note.id);
                     }}
-                  >
-                    Decline
+                    className="py-2 px-3 rounded-lg font-black text-[10px] transition-all active:scale-95"
+                    style={{
+                      background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
+                      color: "#EF4444", minHeight: 36, touchAction: "manipulation",
+                    }}>
+                    <UserX className="w-3 h-3 inline mr-0.5" />Block
                   </button>
                 </div>
               )}
 
-              {/* Open chat for DM / accepted */}
-              {isDM && note.from_user_id && (
+              {/* Approved or DM — open chat */}
+              {(isApproved || isDM) && note.from_user_id && (
                 <button
                   onTouchStart={(e) => e.stopPropagation()}
                   onClick={() => {
@@ -192,15 +184,11 @@ export default function NotificationPanel({
                     onMarkHandled?.(note.id);
                     onClose?.();
                   }}
-                  className="w-full py-1.5 rounded-lg font-black text-[10px] transition-all hover:brightness-110 active:scale-95"
+                  className="w-full py-2 rounded-lg font-black text-[10px] transition-all active:scale-95"
                   style={{
-                    background: "rgba(0,212,240,0.12)",
-                    border: "1px solid rgba(0,212,240,0.25)",
-                    color: "#00D4F0",
-                    minHeight: 32,
-                    touchAction: "manipulation",
-                  }}
-                >
+                    background: "rgba(0,212,240,0.12)", border: "1px solid rgba(0,212,240,0.25)",
+                    color: "#00D4F0", minHeight: 36, touchAction: "manipulation",
+                  }}>
                   Open Chat →
                 </button>
               )}

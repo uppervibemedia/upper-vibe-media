@@ -1,0 +1,63 @@
+{
+  "name": "MessageRequest",
+  "type": "object",
+  "properties": {
+    "conversation_id": {
+      "type": "string",
+      "description": "Stable ID: dm_${sortedUserId1}_${sortedUserId2}"
+    },
+    "sender_user_id": {
+      "type": "string"
+    },
+    "receiver_user_id": {
+      "type": "string"
+    },
+    "sender_username": {
+      "type": "string"
+    },
+    "receiver_username": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "denied",
+        "blocked"
+      ],
+      "default": "pending"
+    },
+    "pre_approval_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of messages sent before approval (max 2)"
+    }
+  },
+  "required": [
+    "conversation_id",
+    "sender_user_id",
+    "receiver_user_id",
+    "sender_username",
+    "receiver_username"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": true,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.receiver_user_id": "{{user.id}}"
+        }
+      ]
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

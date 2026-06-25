@@ -14,11 +14,13 @@ import { useRadio } from "@/context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
 import usePersonalizedFeed from "@/hooks/usePersonalizedFeed";
 import useVibeWorldPresence from "@/hooks/useVibeWorldPresence";
-import usePrivateChat from "@/hooks/usePrivateChat";
+import useDirectMessaging from "@/hooks/useDirectMessaging";
 import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
 import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
+import MessageRequestComposer from "@/components/vibeworld/panels/MessageRequestComposer";
+import DirectChatPanel from "@/components/vibeworld/panels/DirectChatPanel";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
 import OrbRewardSystem from "@/components/vibeworld/OrbRewardSystem";
 import OrbLeaderboard from "@/components/vibeworld/OrbLeaderboard";
@@ -597,19 +599,19 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Block System (persistent) ─────────────────────────────────────────
   const blockSystem = useBlockSystem(user?.id, user?.world_username || "");
 
-  // ── Private Chat ─────────────────────────────────────────────────────
+  // ── Direct Messaging ──────────────────────────────────────────────────
   const {
-    activeChatPeer, chatMessages, notifications, unreadCount,
-    outgoingStatus, blockedUsers, connectedUserIds, isConnected,
-    sendChatRequest, acceptRequest, declineRequest,
-    sendMessage, endChat, openChat, blockUser, unblockUser,
-    markNotificationHandled, markAllNotificationsRead, clearOutgoingStatus,
-  } = usePrivateChat(user);
+    activeChatPeer, chatMessages, notifications, unreadCount, blockedUsers,
+    sendMessageRequest, sendMessage, approveRequest, denyRequest,
+    openApprovedChat, endChat, blockUser, unblockUser,
+    markNotificationHandled, markAllNotificationsRead,
+  } = useDirectMessaging(user);
 
   // Merged block map: union of persistent (blockSystem) and in-session (chat) blocks
   const mergedBlocks = { ...(blockedUsers || {}), ...blockSystem.blockMap };
-  const safetyConfirmed = true; // simplified — no extra safety gate
   const [userInteractionTarget, setUserInteractionTarget] = useState(null);
+  // Composer state: open message request composer for a target user
+  const [messageComposerTarget, setMessageComposerTarget] = useState(null);
 
   const handleSelectUser = useCallback((userData) => {
     setUserInteractionTarget({
@@ -627,23 +629,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setUserInteractionTarget(null);
   }, []);
 
-  const handleRequestChat = useCallback(async (targetUserId, targetUsername) => {
-    if (!targetUserId) {
-      console.warn("[handleRequestChat] No target user ID");
-      return;
-    }
-    console.log("[handleRequestChat] Sending chat request to:", targetUserId, targetUsername);
-    const result = await sendChatRequest(targetUserId, targetUsername);
-    console.log("[handleRequestChat] Result:", JSON.stringify(result));
-  }, [sendChatRequest]);
+  // Open message request composer
+  const handleOpenMessageComposer = useCallback((targetUserId, targetUsername) => {
+    if (!targetUserId) return;
+    setMessageComposerTarget({ userId: targetUserId, username: targetUsername });
+  }, []);
 
-  const handleRequestVoiceChat = useCallback(async (targetUserId, targetUsername) => {
-    // Voice chat request: send a chat request, then auto-send a voice-prompt message
-    const result = await sendChatRequest(targetUserId, targetUsername);
-    if (result?.success) {
-      // After the request is accepted, the system will handle voice through the Lounge/VoiceLoungePanel
-    }
-  }, [sendChatRequest]);
+
 
   const handleReportUser = useCallback((target) => {
     // Placeholder — could open a report form or trigger a backend function
@@ -1065,38 +1057,28 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentUserId={user?.id}
         activeChatPeer={activeChatPeer}
         chatMessages={chatMessages}
-        safetyConfirmed={true}
         onSelectUser={handleSelectUser}
-        onRequestChat={handleRequestChat}
-        onAcceptChat={acceptRequest}
-        onDeclineChat={declineRequest}
+        onOpenMessageComposer={handleOpenMessageComposer}
         onSendChatMessage={sendMessage}
         onEndChat={endChat}
-        onBlockUser={(uid) => {
-          const targetUser = activeUsers.find(u => u.user_id === uid);
-          blockSystem.blockUser(uid, targetUser?.username);
-          blockUser(uid, targetUser?.username);
+        onBlockUser={(uid, uname) => {
+          blockSystem.blockUser(uid, uname);
+          blockUser(uid, uname);
         }}
         onUnblockUser={(uid) => { blockSystem.unblockUser(uid); unblockUser(uid); }}
         onReportUser={handleReportUser}
-        safetyConfirmed={true}
-        onSafetyConfirm={() => {}}
         blockedUsers={mergedBlocks}
         userInteractionTarget={userInteractionTarget}
         onCloseUserMenu={handleCloseUserMenu}
-        isConnected={isConnected}
-        onOpenChat={openChat}
+        onOpenApprovedChat={openApprovedChat}
         onLoungeInputFocus={setLoungeInputFocused}
         onVoiceActive={setVoiceActive}
-        outgoingStatus={outgoingStatus}
-        onClearOutgoingStatus={clearOutgoingStatus}
         notifications={notifications}
         unreadCount={unreadCount}
         onMarkNotificationHandled={markNotificationHandled}
         onMarkAllNotificationsRead={markAllNotificationsRead}
-        onOpenChat={openChat}
-        onAcceptChat={acceptRequest}
-        onDeclineChat={declineRequest}
+        onApproveRequest={approveRequest}
+        onDenyRequest={denyRequest}
         onEmote={handleEmote}
         onStopDance={handleStopDance}
         isDancing={isDancing}
@@ -1359,6 +1341,49 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           defaultQuality={tvQuality}
         />
       )}
+
+      {/* ── Message Request Composer ─────────────────────────── */}
+      <AnimatePresence>
+        {messageComposerTarget && !activeChatPeer && (
+          <MessageRequestComposer
+            open={!!messageComposerTarget}
+            targetUser={messageComposerTarget}
+            isMobile={isMobile}
+            onSend={async (text) => {
+              const result = await sendMessageRequest(
+                messageComposerTarget.userId,
+                messageComposerTarget.username,
+                text
+              );
+              return result;
+            }}
+            onClose={() => setMessageComposerTarget(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Direct Chat Panel (approved chats only) ──────────── */}
+      <AnimatePresence>
+        {activeChatPeer && (
+          <DirectChatPanel
+            open={!!activeChatPeer}
+            peer={activeChatPeer}
+            messages={chatMessages}
+            onSend={sendMessage}
+            onClose={endChat}
+            onBlock={() => {
+              if (activeChatPeer) {
+                blockSystem.blockUser(activeChatPeer.userId, activeChatPeer.username);
+                blockUser(activeChatPeer.userId, activeChatPeer.username);
+                endChat();
+              }
+            }}
+            onReport={() => handleReportUser(activeChatPeer)}
+            currentUserId={user?.id}
+            isMobile={isMobile}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Mobile debug overlay — only visible with ?debug=mobile in URL */}
       <MobileDebugOverlay

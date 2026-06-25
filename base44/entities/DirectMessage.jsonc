@@ -1,0 +1,54 @@
+{
+  "name": "DirectMessage",
+  "type": "object",
+  "properties": {
+    "conversation_id": {
+      "type": "string",
+      "description": "Stable ID: dm_${sortedUserId1}_${sortedUserId2}"
+    },
+    "sender_user_id": {
+      "type": "string"
+    },
+    "receiver_user_id": {
+      "type": "string"
+    },
+    "sender_username": {
+      "type": "string"
+    },
+    "receiver_username": {
+      "type": "string"
+    },
+    "message_text": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_request",
+        "delivered",
+        "read"
+      ],
+      "default": "pending_request"
+    }
+  },
+  "required": [
+    "conversation_id",
+    "sender_user_id",
+    "receiver_user_id",
+    "sender_username",
+    "message_text"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": true,
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
