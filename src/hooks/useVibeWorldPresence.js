@@ -99,7 +99,7 @@ export default function useVibeWorldPresence(user, currentZone, position) {
 
     const payload = {
       user_id: user.id,
-      username: user.world_username || user.full_name || "Vibe Citizen",
+      username: user.world_username || "New User",
       avatar_type: user.avatar_type || "neutral",
       avatar_type_key: avatarTypeKey,
       skin_tone: user.skin_tone || "medium",

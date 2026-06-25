@@ -25,8 +25,9 @@ export default function UsernameSetup({ onComplete }) {
       if (OFFENSIVE_PATTERNS.test(word)) return "This username contains offensive language.";
       if (IMPERSONATION_PATTERNS.test(word)) return "Cannot impersonate Upper Vibe Media, admins, or artists.";
     }
-    // Check if it looks like an email
-    if (/@/.test(val)) return "Usernames cannot contain email addresses.";
+    // Check if it looks like an email or email prefix
+    if (/@/.test(val)) return "Do not use your email as your public username. Choose a public city name.";
+    if (/\.(com|net|org|io|co|me|info|biz|edu|gov)$/i.test(val)) return "Do not use your email as your public username. Choose a public city name.";
     // Check if it looks like a phone number
     if (/^[\d\s\-+()]{7,}$/.test(val)) return "Usernames cannot be phone numbers.";
     return "";

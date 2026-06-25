@@ -46,7 +46,7 @@ export default function usePrivateChat(user) {
   }, [user, getChatId]);
 
   // ── Send a chat request ───────────────────────────────────────
-  const myDisplayName = user?.world_username || user?.full_name || "Anon";
+  const myDisplayName = user?.world_username || "New User";
 
   const sendChatRequest = useCallback(async (toUserId, toUsername) => {
     if (!user?.id) {
@@ -146,7 +146,7 @@ export default function usePrivateChat(user) {
   // ── Send a message ───────────────────────────────────────────
   const sendMessage = useCallback(async (text) => {
     if (!user?.id || !activeChatPeer?.userId || !text?.trim()) return;
-    const name = user?.world_username || user?.full_name || "Anon";
+    const name = user?.world_username || "New User";
     try {
       const chatId = getChatId(user.id, activeChatPeer.userId);
       await base44.entities.PrivateChatMessage.create({

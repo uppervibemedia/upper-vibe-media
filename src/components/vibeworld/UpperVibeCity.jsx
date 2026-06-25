@@ -595,7 +595,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const followSystem = useFollowSystem(user?.id, user?.full_name || user?.username);
 
   // ── Block System (persistent) ─────────────────────────────────────────
-  const blockSystem = useBlockSystem(user?.id, user?.full_name || user?.username);
+  const blockSystem = useBlockSystem(user?.id, user?.world_username || "");
 
   // ── Private Chat ─────────────────────────────────────────────────────
   const {
@@ -1104,7 +1104,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           setIsSeatedInLounge(false);
           handleStopDance();
         }}
-        username={user?.world_username || user?.full_name || ""}
+        username={user?.world_username || ""}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
