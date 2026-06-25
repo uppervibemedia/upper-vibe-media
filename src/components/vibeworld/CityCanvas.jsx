@@ -4,7 +4,7 @@ import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
 // Vibe Shop is temporarily disabled — replaced by Ferris Wheel
 // import createVibeShop from "./VibeShop";
-import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, WHEEL_HUB_Y, getCabinWorldPosition, getBoardingPosition } from "./FerrisWheel";
+import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, WHEEL_HUB_Y, getCabinWorldPosition, getBoardingPosition, getRiderCameraTransform } from "./FerrisWheel";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
@@ -1673,14 +1673,18 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camera.position.lerp(cv.lgPos, Math.min(1, 3.5 * dt));
           camera.lookAt(cv.lgLook);
         } else if (ferrisRidingRef.current) {
-          const cabin = getCabinWorldPosition(0, t);
-          cv.cabinPos.set(cabin.x, cabin.y + 0.6, cabin.z);
-          camera.position.lerp(cv.cabinPos, Math.min(1, 4.0 * dt));
-          const atTop = Math.max(0, Math.min(1, (cabin.y - WHEEL_HUB_Y) / WHEEL_RADIUS));
-          const concertWindow = Math.max(0, (atTop - 0.72) / 0.28);
-          const concertBlend = concertWindow * concertWindow * (3 - 2 * concertWindow);
-          cv.nLook.lerpVectors(cv.fA, cv.fB, atTop);
-          camera.lookAt(cv.nLook.lerp(cv.cLook, concertBlend));
+          // Scenic seated-rider camera: positioned at gondola eye height, looking outward
+          const rider = getRiderCameraTransform(t);
+          cv.cabinPos.set(rider.camPos.x, rider.camPos.y, rider.camPos.z);
+          cv.nLook.set(rider.lookAt.x, rider.lookAt.y, rider.lookAt.z);
+          // Wide cinematic FOV for panoramic ride view
+          const riderFov = 72;
+          if (Math.abs(camera.fov - riderFov) > 0.5) {
+            camera.fov += (riderFov - camera.fov) * Math.min(1, dt * 4);
+            camera.updateProjectionMatrix();
+          }
+          camera.position.lerp(cv.cabinPos, Math.min(1, 5.0 * dt));
+          camera.lookAt(cv.nLook);
           if (avatarRef.current) avatarRef.current.visible = false;
         } else if (lockedRef.current) {
           camera.position.lerp(cv.lkPos, Math.min(1, 3.0 * dt));

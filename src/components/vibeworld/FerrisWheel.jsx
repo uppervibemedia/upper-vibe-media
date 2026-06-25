@@ -522,30 +522,70 @@ export function animateFerrisWheel(scene, t, audioBeat = 0, playerX = 0, playerZ
 export function getCabinWorldPosition(cabinIndex, t) {
   const wheelAngle = t * WHEEL_SPEED;
   const baseAngle  = (cabinIndex / NUM_CABINS) * Math.PI * 2;
-  // After wheelGroup rotates by wheelAngle, the pivot point in wheelGroup space moves to:
   const totalAngle = baseAngle + wheelAngle;
-  // In wheelGroup-local space (X-Y plane):
   const localX = Math.cos(totalAngle) * WHEEL_RADIUS;
   const localY = Math.sin(totalAngle) * WHEEL_RADIUS;
 
-  // wheelGroup is at (0, WHEEL_HUB_Y, 0) in root space.
-  // gondola body center hangs HANG_ARM + BODY_H/2 below pivot (world Y, since counter-rotated).
   const HANG_ARM = 0.55;
   const BODY_H   = 0.88;
   const pivotWorldY  = WHEEL_HUB_Y + localY;
   const bodyWorldY   = Math.max(0.6, pivotWorldY - HANG_ARM - BODY_H / 2);
 
-  // root.rotation.y = 0.35; root is at (WHEEL_X, 0, WHEEL_Z).
-  // In root space, the pivot is at (localX, localY, 0) relative to wheelGroup which is at (0, WHEEL_HUB_Y, 0).
-  // So in root space: (localX, WHEEL_HUB_Y + localY, 0).
-  // Apply root.rotation.y = 0.35:
   const ry = 0.35;
-  const rootLocalX = localX;
-  const rootLocalZ = 0;
-  const worldX = WHEEL_X + Math.cos(ry) * rootLocalX - Math.sin(ry) * rootLocalZ;
-  const worldZ = WHEEL_Z + Math.sin(ry) * rootLocalX + Math.cos(ry) * rootLocalZ;
+  const worldX = WHEEL_X + Math.cos(ry) * localX;
+  const worldZ = WHEEL_Z + Math.sin(ry) * localX;
 
   return { x: worldX, y: bodyWorldY, z: worldZ };
+}
+
+// ── Rider camera transform for scenic Ferris wheel view ─────────────
+// Returns { camPos, lookAt } in world space.
+// Camera sits at seated eye height, offset outward from the wheel hub,
+// looking away from the wheel center toward the city/beach/sky.
+export function getRiderCameraTransform(t) {
+  const wheelAngle = t * WHEEL_SPEED;
+  // Use cabin 0 for the rider's seat
+  const totalAngle = wheelAngle; // cabin 0 base angle = 0
+  const pivotLocalX = Math.cos(totalAngle) * WHEEL_RADIUS;
+  const pivotLocalY = Math.sin(totalAngle) * WHEEL_RADIUS;
+  const pivotWorldY = WHEEL_HUB_Y + pivotLocalY;
+
+  const HANG_ARM = 0.55;
+  const EYE_HEIGHT = 0.35; // eye height above gondola floor (seated)
+  const seatWorldY = Math.max(0.8, pivotWorldY - HANG_ARM - 0.1 + EYE_HEIGHT);
+
+  const ry = 0.35; // root rotation
+  // Pivot world X/Z (gondola swings with wheel)
+  const pivotWX = WHEEL_X + Math.cos(ry) * pivotLocalX - Math.sin(ry) * 0;
+  const pivotWZ = WHEEL_Z + Math.sin(ry) * pivotLocalX + Math.cos(ry) * 0;
+
+  // Outward direction: from wheel hub toward gondola pivot (in world space)
+  const hubWX = WHEEL_X, hubWZ = WHEEL_Z;
+  const outDX = pivotWX - hubWX;
+  const outDZ = pivotWZ - hubWZ;
+  const outLen = Math.sqrt(outDX * outDX + outDZ * outDZ) || 1;
+
+  // Camera placed 0.15 units outward from gondola center (just past the front face)
+  // so the gondola body is behind/below the camera, not blocking the view
+  const camX = pivotWX + (outDX / outLen) * 0.15;
+  const camZ = pivotWZ + (outDZ / outLen) * 0.15;
+  const camY = seatWorldY;
+
+  // Look target: outward in the same direction but far away, at a slight downward angle
+  // when low (approaching ground) and upward when at top — gives scenic arc
+  const atTop = Math.max(0, Math.min(1, (pivotWorldY - WHEEL_HUB_Y + WHEEL_RADIUS) / (WHEEL_RADIUS * 2)));
+  const lookDist = 28;
+  // At bottom: look slightly down toward ground/city floor
+  // At top: look more level/upward to see skyline and ocean
+  const lookY = seatWorldY + (atTop - 0.3) * 4.5;
+  const lookX = pivotWX + (outDX / outLen) * lookDist;
+  const lookZ = pivotWZ + (outDZ / outLen) * lookDist;
+
+  return {
+    camPos: { x: camX, y: camY, z: camZ },
+    lookAt: { x: lookX, y: lookY, z: lookZ },
+    atTop,
+  };
 }
 
 // Boarding position (near bottom of wheel, in front of the deck)
