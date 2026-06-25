@@ -17,7 +17,6 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, 
 import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
 import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
 import { createZoneSign } from "./ZoneSign";
-import { resolveCollisions, mat, circleVsCircle } from "./park/utils";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -81,7 +80,69 @@ const COLLISION_BOXES = [
 ];
 
 // ─── UTILITIES ────────────────────────────────────────────────
+function circleVsCircle(x1, z1, r1, x2, z2, r2) {
+  const dx = x1 - x2, dz = z1 - z2;
+  return dx * dx + dz * dz < (r1 + r2) * (r1 + r2);
+}
 
+// Skyline boundary — rectangular perimeter matching CitySkyline.jsx wall positions
+// North wall: z=-36  East wall: x=36  West wall: x=-36
+// Beach/south open face starts at z=15 (where wings end)
+const SKYLINE_NORTH = -36;
+const SKYLINE_EAST  =  36;
+const SKYLINE_WEST  = -36;
+const SKYLINE_BEACH_START = 15; // south of this z, beach x-limits apply
+
+function resolveCollisions(px, pz, r, boxes, isHoverboarding = false) {
+  let x = px, z = pz;
+  for (const [bx, bz, br] of boxes) {
+    if (!circleVsCircle(x, z, r, bx, bz, br)) continue;
+    const dx = x - bx, dz = z - bz;
+    const dist = Math.sqrt(dx * dx + dz * dz) || 0.001;
+    const overlap = r + br - dist;
+    x += (dx / dist) * overlap;
+    z += (dz / dist) * overlap;
+  }
+
+  // ── Rectangular skyline perimeter ──────────────────────────────
+  // North wall (z=-36): block players from going behind stage/north buildings
+  if (z < SKYLINE_NORTH + r) z = SKYLINE_NORTH + r;
+  // East wall (x=36): block access behind east wing buildings
+  if (x > SKYLINE_EAST - r) x = SKYLINE_EAST - r;
+  // West wall (x=-36): block access behind west wing buildings
+  if (x < SKYLINE_WEST + r) x = SKYLINE_WEST + r;
+
+  // ── Beach zone (z > SKYLINE_BEACH_START) ───────────────────────
+  // Wings stop at z=14; apply narrower x limits so players don't walk off
+  // to the sides where there are no buildings. Beach area is open but contained.
+  if (z >= SKYLINE_BEACH_START) {
+    // Gradually narrow the x corridor as player moves toward ocean
+    const beachProgress = Math.min(1, (z - SKYLINE_BEACH_START) / 18);
+    const beachXLimit = 34 - beachProgress * 6; // from ±34 → ±28 deep
+    if (x > beachXLimit) x = beachXLimit;
+    if (x < -beachXLimit) x = -beachXLimit;
+  }
+
+  // Beach shoreline / ocean boundary
+  const maxZ = isHoverboarding ? 75 : 34;
+  if (z > maxZ) z = maxZ;
+
+  return [x, z];
+}
+
+// ─── COLORS ───────────────────────────────────────────────────
+function mat(hexColor, opts = {}) {
+  const m = new MeshStandardMaterial();
+  m.color = new Color(hexColor);
+  m.roughness = opts.roughness ?? 0.5;
+  m.metalness = opts.metalness ?? 0.05;
+  if (opts.transparent) {
+    m.transparent = true;
+    m.opacity = opts.opacity ?? 1;
+    m.depthWrite = opts.depthWrite ?? true;
+  }
+  return m;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // BUILD SCENE — Upper Vibe City: 6-zone social hub
@@ -1520,7 +1581,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ── Notify parent of near-pad state ──
-        if (onNearPad && frameRef.current % 2 === 0) {
+        if (onNearPad && frameRef.current % 10 === 0) {
           try { onNearPad(nearPadRef.current, launchStateRef.current.active, orbCountRef.current); } catch {}
         }
 
