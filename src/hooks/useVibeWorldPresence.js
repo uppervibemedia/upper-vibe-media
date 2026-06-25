@@ -86,6 +86,7 @@ export default function useVibeWorldPresence(user, currentZone, position) {
   }, [user]);
 
   // ── Full heartbeat (slower — online status + full identity) ──────────────
+  const isBroadcastingRef = useRef(false);
   const heartbeat = useCallback(async () => {
     if (!user?.id || !mountedRef.current) return;
     const now = new Date().toISOString();
@@ -131,11 +132,14 @@ export default function useVibeWorldPresence(user, currentZone, position) {
         zone: zoneRef.current,
         anim: animRef.current,
       };
-      if (!isBroadcasting && mountedRef.current) setIsBroadcasting(true);
+      if (!isBroadcastingRef.current && mountedRef.current) {
+        isBroadcastingRef.current = true;
+        setIsBroadcasting(true);
+      }
     } catch {
       // Silently skip
     }
-  }, [user, isBroadcasting]);
+  }, [user]);
 
   // ── Real-time entity subscription (replaces polling) ─────────────────────
   useEffect(() => {
@@ -285,6 +289,7 @@ export default function useVibeWorldPresence(user, currentZone, position) {
 
   const markOnline = useCallback(() => {
     if (!user?.id || !mountedRef.current) return;
+    isBroadcastingRef.current = false;
     setIsBroadcasting(false); // force re-creation on next heartbeat
     recordIdRef.current = null;
     heartbeat();
