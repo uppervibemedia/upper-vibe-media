@@ -967,15 +967,37 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           <ChevronLeft style={{ width: "16px", height: "16px" }} />
         </button>
 
-        {/* Right: TV Mode button — only in free-roam, hidden when any UI/zone is open */}
-        {(() => {
-          const showTVButton = !loading
-            && !stageWatching
-            && !stageFullScreen
-            && !anyBlockingUIOpen
-            && !mobileModalOpen
-            && !tvOverlayOpen;
-          return showTVButton ? (
+        {/* Right: spacer — TV Mode button is now positioned independently below */}
+        <div />
+      </motion.div>
+
+      {/* TV Mode button — portrait: lowered below status bar; landscape: standard top row */}
+      {(() => {
+        const showTVButton = !loading
+          && !stageWatching
+          && !stageFullScreen
+          && !anyBlockingUIOpen
+          && !mobileModalOpen
+          && !tvOverlayOpen;
+        if (!showTVButton) return null;
+        const isPortrait = isMobile && window.innerHeight > window.innerWidth;
+        const topStyle = isPortrait
+          ? (isMobile && mobileLayout
+              ? `${mobileLayout.sa.top + 58}px`
+              : "calc(env(safe-area-inset-top, 0px) + 58px)")
+          : (isMobile && mobileLayout
+              ? `${mobileLayout.sa.top + 4}px`
+              : "calc(env(safe-area-inset-top, 0px) + 4px)");
+        return (
+          <div
+            style={{
+              position: "absolute",
+              top: topStyle,
+              right: "calc(env(safe-area-inset-right, 0px) + 6px)",
+              zIndex: 201,
+              pointerEvents: "auto",
+            }}
+          >
             <button
               onClick={() => {
                 if (tvMode) {
@@ -985,7 +1007,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                 }
               }}
               onTouchStart={(e) => { e.stopPropagation(); }}
-              className="flex items-center gap-1 rounded-full transition-all hover:brightness-110 active:scale-95 flex-shrink-0"
+              className="flex items-center gap-1 rounded-full transition-all hover:brightness-110 active:scale-95"
               style={{
                 background: tvMode ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.10)",
                 backdropFilter: "blur(10px)",
@@ -995,7 +1017,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
                 minHeight: "44px",
                 padding: "0 12px",
                 touchAction: "manipulation",
-                pointerEvents: "auto",
                 cursor: "pointer",
                 fontSize: "11px",
                 fontWeight: 900,
@@ -1005,9 +1026,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             >
               📺 {tvMode ? "Exit TV" : "TV"}
             </button>
-          ) : <div />;
-        })()}
-      </motion.div>
+          </div>
+        );
+      })()}
 
       {/* World HUD */}
       <WorldHUD
