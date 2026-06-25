@@ -174,17 +174,20 @@ export default function usePrivateChat(user) {
   }, [myId, activeChatPeer?.userId]);
 
   // ── Open chat — the ONLY place that sets activeChatPeer ──
-  // Clears stale messages, sets peer, loads history.
+  // Sets peer synchronously so the panel renders immediately,
+  // then loads history in the background.
   const openChat = useCallback(async (userId, username) => {
     if (!myId || !userId) return;
     // If this peer is already open, just reload messages — don't remount
     if (activePeerRef.current?.userId === userId) {
-      await loadMessages(userId);
+      loadMessages(userId).catch(() => {});
       return;
     }
+    // Set peer synchronously — panel opens immediately
     setChatMessages([]);
     setActiveChatPeer({ userId, username });
-    await loadMessages(userId);
+    // Load history in background — don't await so caller isn't blocked
+    loadMessages(userId).catch(() => {});
   }, [myId, loadMessages]);
 
   // ── Send a message — NEVER touches activeChatPeer ────────
@@ -322,9 +325,26 @@ export default function usePrivateChat(user) {
   // ── Accept a request ─────────────────────────────────────
   const acceptRequest = useCallback(async (requestId, fromUserId, fromUsername) => {
     if (!myId || !fromUserId) return;
+
+    // Open the chat immediately — don't wait for DB round-trips
+    // This ensures the panel is visible before the notification panel closes
+    setChatMessages([]);
+    setActiveChatPeer({ userId: fromUserId, username: fromUsername });
+    setConnectedUserIds((prev) => new Set([...prev, fromUserId]));
+
+    // Mark incoming notification handled immediately in UI
+    setNotifications((prev) => {
+      const note = prev.find((n) => n.related_request_id === requestId);
+      if (note) {
+        base44.entities.Notification.update(note.id, { read: true, handled: true }).catch(() => {});
+      }
+      return prev.filter((n) => n.related_request_id !== requestId);
+    });
+    setUnreadCount((c) => Math.max(0, c - 1));
+
+    // Background: update request + notify sender + load messages
     try {
       await base44.entities.PrivateChatRequest.update(requestId, { status: "accepted" });
-      setConnectedUserIds((prev) => new Set([...prev, fromUserId]));
 
       base44.entities.Notification.create({
         user_id: fromUserId,
@@ -337,24 +357,12 @@ export default function usePrivateChat(user) {
         handled: false,
       }).catch(() => {});
 
-      // Mark the incoming notification handled
-      setNotifications((prev) => {
-        const note = prev.find((n) => n.related_request_id === requestId);
-        if (note) {
-          base44.entities.Notification.update(note.id, { read: true, handled: true }).catch(() => {});
-        }
-        return prev.filter((n) => n.related_request_id !== requestId);
-      });
-      setUnreadCount((c) => Math.max(0, c - 1));
-
-      // Open chat for the receiver
-      await openChat(fromUserId, fromUsername);
+      // Load message history in background
+      loadMessages(fromUserId).catch(() => {});
     } catch (err) {
       console.error("[acceptRequest] error:", err);
-      // Still try to open chat even on partial failure
-      await openChat(fromUserId, fromUsername).catch(() => {});
     }
-  }, [myId, myUsername, openChat]);
+  }, [myId, myUsername, loadMessages]);
 
   // ── Decline a request ────────────────────────────────────
   const declineRequest = useCallback(async (requestId) => {
