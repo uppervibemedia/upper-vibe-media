@@ -559,7 +559,7 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   const wheelAngle = t * WHEEL_SPEED;
   const totalAngle = wheelAngle;
 
-  // ── Gondola position in wheel-group local space ───────────────────
+  // ── Gondola position in world space ──────────────────────────────
   const pivotLocalX = Math.cos(totalAngle) * WHEEL_RADIUS;
   const pivotLocalY = Math.sin(totalAngle) * WHEEL_RADIUS;
   const pivotWorldY = WHEEL_HUB_Y + pivotLocalY;
@@ -569,22 +569,24 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   const gondolaFloorY = pivotWorldY - HANG_ARM - BODY_H;
   const seatWorldY = Math.max(1.2, gondolaFloorY + BODY_H * 0.4);
 
-  const ry = 0.35; // root.rotation.y — wheel faces slightly into city
+  const ry = 0.35; // root.rotation.y
 
-  // Pivot world XZ
+  // Pivot world XZ (root.rotation.y rotates local X axis into world XZ)
   const pivotWX = WHEEL_X + Math.cos(ry) * pivotLocalX;
   const pivotWZ = WHEEL_Z + Math.sin(ry) * pivotLocalX;
 
-  // Radial outward direction (normalised)
-  const rimLocalLen = Math.sqrt(pivotLocalX * pivotLocalX) || 0.001;
+  // ── Radial outward direction (FIXED: use both X and Y of pivot) ──
+  // The radial direction in world XZ is purely the X component of the gondola
+  // (Y component is vertical, not horizontal). rimLocalLen must only use X.
+  const rimLocalLen = Math.abs(pivotLocalX) || 0.001;
   const radOutWX = (pivotWX - WHEEL_X) / rimLocalLen;
   const radOutWZ = (pivotWZ - WHEEL_Z) / rimLocalLen;
 
-  // Wheel axle direction in world space
+  // Axle direction in world space
   const axleWX = Math.sin(ry);  // ≈ 0.342
   const axleWZ = Math.cos(ry);  // ≈ 0.940
 
-  // Inside-cabin eye position — pulled inward from rim to clear structure
+  // ── Camera eye: inside the cabin, inward-pulled from rim ─────────
   const INWARD_PULL = 1.6;
   const AXLE_PUSH   = 0.55;
 
@@ -592,114 +594,77 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   const camY = seatWorldY;
   const camZ = pivotWZ - radOutWZ * INWARD_PULL + axleWZ * AXLE_PUSH;
 
-  // ── Normalised position in the revolution (0 → 1) ────────────────
+  // ── FIXED WORLD-SPACE LOOK-AT POINTS ────────────────────────────
+  // These are ABSOLUTE world coordinates of landmarks.
+  // The camera always points at these real locations regardless of gondola
+  // position, so the view is always correctly framed.
+  //
+  // World layout:
+  //   Wheel:        (22, ~8, 5)
+  //   Beach center: (0, 0.5, 28)    — mid-beach, near water
+  //   Waterline:    (0, 0.2, 32)    — shoreline
+  //   City plaza:   (0, 3, -13)     — dance floor center
+  //   City wide:    (0, 8, -13)     — elevated overview of plaza
+  //   Stage:        (0, 4, -32)     — music stage face
+  //   Stage wide:   (0, 7, -32)     — stage from distance
+  //   Lounge:       (-22, 2, -26)   — vibe lounge platform
+  //   Academy:      (-28, 3, 5)     — academy building
+
+  // Tour keyframes: [lookX, lookY, lookZ]
+  // 8 segments, each 1/8 of a revolution. Each segment blends from A to B.
+  const KEYS = [
+    // seg 0: bottom-right rising → Beach wide (middle beach + water horizon)
+    { ax:  4, ay:  3.5, az: 28,   bx:  0, by:  2.0, bz: 32  },
+    // seg 1: right side rising → Beach closer (look at shoreline)
+    { ax:  0, ay:  2.0, az: 32,   bx: -4, by:  0.8, bz: 30  },
+    // seg 2: top-right arc → City center wide (panoramic overview from height)
+    { ax: -4, ay:  0.8, az: 30,   bx:  0, by:  9.0, bz: -13 },
+    // seg 3: top of arc → City center closer (plaza + dance floor detail)
+    { ax:  0, ay:  9.0, az: -13,  bx:  0, by:  4.0, bz: -13 },
+    // seg 4: top-left arc → Stage wide reveal (north city from height)
+    { ax:  0, ay:  4.0, az: -13,  bx:  0, by:  8.0, bz: -32 },
+    // seg 5: left side descending → Stage closer (stage face clearly visible)
+    { ax:  0, ay:  8.0, az: -32,  bx:  0, by:  3.5, bz: -32 },
+    // seg 6: bottom-left → Lounge + Academy zone
+    { ax:  0, ay:  3.5, az: -32,  bx: -22, by: 3.0, bz: -20 },
+    // seg 7: bottom completing loop → Return to beach center
+    { ax: -22, ay: 3.0, az: -20,  bx:  4, by:  3.5, bz: 28  },
+  ];
+
+  // Smooth-step for easing within each segment
+  const ss = (x) => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
+
   const norm = ((totalAngle % (Math.PI * 2)) + Math.PI * 2) / (Math.PI * 2);
+  const segIdx = Math.min(7, Math.floor(norm * 8));
+  const sp = ss((norm * 8) % 1);
 
-  // ── Named look targets (world XZ unit vectors) ────────────────────
-  // Wheel sits at (22, 5). Beach center is north-east at ~Z=26.
-  // City center (plaza) is at (0, -13). Stage at (0, -32).
-  // Lounge at (-22, -26). Academy at (-28, 5).
-  //
-  // Directions expressed as (dx, dz) pointing FROM wheel position:
-  //
-  // BEACH CENTER: from (22,5) toward (0,26) → dx=-22, dz=21 → normalised
-  const BCH_W  = { x: -0.72, z:  0.69, y:  1.5 };  // middle beach wide — slightly elevated gaze
-  const BCH_C  = { x: -0.65, z:  0.76, y:  0.4 };  // middle beach closer — look at waterline
-  // CITY CENTER: from (22,5) toward (0,-13) → dx=-22, dz=-18 → normalised
-  const CTY_W  = { x: -0.77, z: -0.64, y:  6.0 };  // city wide from high arc — broad overview
-  const CTY_C  = { x: -0.72, z: -0.69, y:  2.5 };  // city closer — plaza & dance floor detail
-  // NORTH / STAGE: from (22,5) toward (0,-32) → dx=-22, dz=-37 → normalised
-  const STG_W  = { x: -0.51, z: -0.86, y:  4.0 };  // stage wide from top of arc — far reveal
-  const STG_C  = { x: -0.46, z: -0.89, y:  1.5 };  // stage closer — stage + arch clearly visible
-  // LOUNGE + ACADEMY: from (22,5) toward (-22,-20) → dx=-44, dz=-25 → normalised
-  const LNG_W  = { x: -0.87, z: -0.49, y:  3.5 };  // lounge/academy zone wide
-  // BEACH RETURN: same as BCH_W but lower gaze — smooth handoff
-  const BCH_R  = { x: -0.70, z:  0.72, y:  0.8 };  // returning to beach at bottom
+  const k = KEYS[segIdx];
+  const lerpedLookX = k.ax + (k.bx - k.ax) * sp;
+  const lerpedLookY = k.ay + (k.by - k.ay) * sp;
+  const lerpedLookZ = k.az + (k.bz - k.az) * sp;
 
-  // ── Smooth-step helper ───────────────────────────────────────────
-  const ss = (x) => {
-    const c = Math.max(0, Math.min(1, x));
-    return c * c * (3 - 2 * c);
-  };
-
-  // ── Segment interpolation ─────────────────────────────────────────
-  // 8 equal segments, each 0.125 of the revolution
-  const SEG = 0.125;
-  const seg = Math.floor(norm / SEG);       // 0–7
-  const sp  = ss((norm % SEG) / SEG);       // smooth progress within segment (0→1)
-
-  const lerp1D = (a, b, t2) => a + (b - a) * t2;
-
-  let lDX, lDZ, lookYOff;
-
-  switch (seg) {
-    case 0: // Middle beach — wide view (bottom-right rising)
-      lDX = lerp1D(BCH_W.x, BCH_W.x, sp);
-      lDZ = lerp1D(BCH_W.z, BCH_W.z, sp);
-      lookYOff = lerp1D(BCH_W.y, BCH_W.y + 0.8, sp);
-      break;
-    case 1: // Middle beach — closer zoom
-      lDX = lerp1D(BCH_W.x, BCH_C.x, sp);
-      lDZ = lerp1D(BCH_W.z, BCH_C.z, sp);
-      lookYOff = lerp1D(BCH_W.y + 0.8, BCH_C.y, sp);
-      break;
-    case 2: // City center — wide overview (climbing toward top-left arc)
-      lDX = lerp1D(BCH_C.x, CTY_W.x, sp);
-      lDZ = lerp1D(BCH_C.z, CTY_W.z, sp);
-      lookYOff = lerp1D(BCH_C.y, CTY_W.y, sp);
-      break;
-    case 3: // City center — closer zoom (near top of arc)
-      lDX = lerp1D(CTY_W.x, CTY_C.x, sp);
-      lDZ = lerp1D(CTY_W.z, CTY_C.z, sp);
-      lookYOff = lerp1D(CTY_W.y, CTY_C.y, sp);
-      break;
-    case 4: // North / Stage — wide reveal (at/past top, beginning descent)
-      lDX = lerp1D(CTY_C.x, STG_W.x, sp);
-      lDZ = lerp1D(CTY_C.z, STG_W.z, sp);
-      lookYOff = lerp1D(CTY_C.y, STG_W.y, sp);
-      break;
-    case 5: // North / Stage — closer framing (mid-descent)
-      lDX = lerp1D(STG_W.x, STG_C.x, sp);
-      lDZ = lerp1D(STG_W.z, STG_C.z, sp);
-      lookYOff = lerp1D(STG_W.y, STG_C.y, sp);
-      break;
-    case 6: // Lounge + Academy zone (descending left side)
-      lDX = lerp1D(STG_C.x, LNG_W.x, sp);
-      lDZ = lerp1D(STG_C.z, LNG_W.z, sp);
-      lookYOff = lerp1D(STG_C.y, LNG_W.y, sp);
-      break;
-    case 7: // Return beach approach (bottom-left → bottom completing loop)
-    default:
-      lDX = lerp1D(LNG_W.x, BCH_R.x, sp);
-      lDZ = lerp1D(LNG_W.z, BCH_R.z, sp);
-      lookYOff = lerp1D(LNG_W.y, BCH_R.y, sp);
-      break;
-  }
-
-  // Normalise guided XZ direction
-  const gLen = Math.sqrt(lDX * lDX + lDZ * lDZ) || 1;
-  lDX /= gLen; lDZ /= gLen;
-
-  // ── Apply user look offsets (±40° yaw, ±20° pitch) ───────────────
+  // ── Apply user look offsets around the base look direction ────────
   const MAX_YAW   = (40 * Math.PI) / 180;
   const MAX_PITCH = (20 * Math.PI) / 180;
   const yawOff   = Math.max(-MAX_YAW,   Math.min(MAX_YAW,   userYawOffset));
   const pitchOff = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, userPitchOffset));
 
-  const guidedYaw = Math.atan2(lDX, lDZ);
-  const totalYaw  = guidedYaw + yawOff;
-  const fDX = Math.sin(totalYaw);
-  const fDZ = Math.cos(totalYaw);
+  // Convert look-at point to direction, apply yaw/pitch offset, convert back
+  const baseDX = lerpedLookX - camX;
+  const baseDY = lerpedLookY - camY;
+  const baseDZ = lerpedLookZ - camZ;
+  const baseDist = Math.sqrt(baseDX * baseDX + baseDY * baseDY + baseDZ * baseDZ) || 1;
 
-  // ── Look-at point ─────────────────────────────────────────────────
+  const baseYaw = Math.atan2(baseDX, baseDZ);
+  const basePitchAngle = Math.asin(Math.max(-1, Math.min(1, baseDY / baseDist)));
+
+  const finalYaw   = baseYaw + yawOff;
+  const finalPitch = Math.max(-0.35, Math.min(0.50, basePitchAngle + pitchOff));
+
   const LOOK_DIST = 55;
-  const basePitch = Math.atan2(lookYOff, LOOK_DIST);
-  const pitchTotal = Math.max(-0.35, Math.min(0.50, basePitch + pitchOff));
-
-  const lookHD = LOOK_DIST * Math.cos(pitchTotal);
-  const lookX  = camX + fDX * lookHD;
-  const lookY  = camY + LOOK_DIST * Math.sin(pitchTotal);
-  const lookZ  = camZ + fDZ * lookHD;
+  const lookX = camX + Math.sin(finalYaw) * Math.cos(finalPitch) * LOOK_DIST;
+  const lookY = camY + Math.sin(finalPitch) * LOOK_DIST;
+  const lookZ = camZ + Math.cos(finalYaw) * Math.cos(finalPitch) * LOOK_DIST;
 
   const atTop = Math.max(0, Math.min(1,
     (pivotWorldY - WHEEL_HUB_Y + WHEEL_RADIUS) / (WHEEL_RADIUS * 2)
