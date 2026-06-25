@@ -1671,6 +1671,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           if (Math.abs(camera.fov - rFov) > 0.5) { camera.fov += (rFov - camera.fov) * Math.min(1, dt*4.0); camera.updateProjectionMatrix(); }
           camera.position.lerp(cv.cabinPos, Math.min(1, 8.0 * dt));
           camera.lookAt(cv.rLookSmooth);
+          scene.userData._ferrisRideCam.position.copy(camera.position);
           if (avatarRef.current) avatarRef.current.visible = false;
         } else if (lockedRef.current) {
           // Detect if player is in the lounge zone (x≈-22, z≈-26) to show lounge camera

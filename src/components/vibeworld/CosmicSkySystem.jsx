@@ -913,9 +913,12 @@ export function animateCosmicSky(scene, camera, t, dt) {
     const playerZ = scene.userData._playerZ ?? 0;
     const camYawWorld = scene.userData._camYaw ?? 0;
     const cosYaw = Math.cos(camYawWorld);
-    // facingCity = 1 when facing north/NE/NW/east/west; 0 only when facing south
-    // Smooth transition: from cos=-0.4 (SSE/SSW) to cos=0 (east/west) → city blocking ramps up
-    const facingCity = Math.max(0, Math.min(1, (cosYaw + 0.4) / 0.5)); // 0–1
+
+    // During the Ferris ride, player direction is irrelevant; the ride camera dictates the view.
+    // We use the player's position (which is parked at the wheel) to detect the beach zone (z > 8)
+    // and simply turn off the city-facing fade during that hold.
+    const inRideBeachHold = ferrisRiding && playerZ > 8;
+    const facingCity = inRideBeachHold ? 0 : Math.max(0, Math.min(1, (cosYaw + 0.4) / 0.5)); // 0–1
 
     // Zone gate: in city zone (z < 12). Transition band: z 8–14.
     const inCityZone = playerZ < 14
@@ -947,10 +950,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
       // below to keep them hidden during the city/stage-facing holds of the tour.
       let opacity = globalPlanetOpacity;
       if (ferrisRiding && !hidePlanets) {
-        if (!p._ferrisOpacity) p._ferrisOpacity = 1.0;
-        const ferrisTarget = playerZ > 8 ? 1.0 : 0.0;
-        p._ferrisOpacity += (ferrisTarget - p._ferrisOpacity) * Math.min(1, dt * 1.5);
-        opacity = p._ferrisOpacity * globalPlanetOpacity;
+        // This block is now empty; the cityBlocking logic below handles it.
       } else {
         // Restore from Ferris fade when not riding
         if (p._ferrisOpacity !== undefined && p._ferrisOpacity < 0.99) {
@@ -1107,9 +1107,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
   // Ferris ride UNLESS the rider is parked at the wheel (z > 8) — which is
   // true throughout the entire ride, so flyby planets stay visible whenever
   // the rider's own camera faces the water.
-  const inBeachZone = !scene.userData._hidePlanets
-    && (!scene.userData._ferrisRiding || (scene.userData._playerZ ?? 0) > 8)
-    && camera.position.z > 8;
+  const inBeachZone = !scene.userData._hidePlanets && camera.position.z > 8;
   animateFlyby(fba, inBeachZone);
   animateFlyby(fbb, inBeachZone);
 
