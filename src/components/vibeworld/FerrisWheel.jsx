@@ -540,52 +540,135 @@ export function getCabinWorldPosition(cabinIndex, t) {
 
 // ── Rider camera transform for scenic Ferris wheel view ─────────────
 // Returns { camPos, lookAt } in world space.
-// Camera sits at seated eye height, offset outward from the wheel hub,
-// looking away from the wheel center toward the city/beach/sky.
+//
+// Cinematic 4-phase guided view path:
+//   Phase 0 → rising:       North/West scenic view (away from east skyline)
+//   Phase 1 → at top:       Beach/ocean panorama (+Z world direction)
+//   Phase 2 → pre-descent:  Beach view lingers before turning
+//   Phase 3 → descending:   City skyline view (west/north buildings, not east front)
 export function getRiderCameraTransform(t) {
   const wheelAngle = t * WHEEL_SPEED;
-  // Use cabin 0 for the rider's seat
-  const totalAngle = wheelAngle; // cabin 0 base angle = 0
+  // Cabin 0 base angle = 0 (starts at 3-o'clock / right side of wheel in wheel-local X-Y)
+  const totalAngle = wheelAngle;
   const pivotLocalX = Math.cos(totalAngle) * WHEEL_RADIUS;
   const pivotLocalY = Math.sin(totalAngle) * WHEEL_RADIUS;
   const pivotWorldY = WHEEL_HUB_Y + pivotLocalY;
 
   const HANG_ARM = 0.55;
-  const EYE_HEIGHT = 0.35; // eye height above gondola floor (seated)
+  const EYE_HEIGHT = 0.35; // seated eye height above gondola floor
   const seatWorldY = Math.max(0.8, pivotWorldY - HANG_ARM - 0.1 + EYE_HEIGHT);
 
-  const ry = 0.35; // root rotation
-  // Pivot world X/Z (gondola swings with wheel)
-  const pivotWX = WHEEL_X + Math.cos(ry) * pivotLocalX - Math.sin(ry) * 0;
-  const pivotWZ = WHEEL_Z + Math.sin(ry) * pivotLocalX + Math.cos(ry) * 0;
+  const ry = 0.35; // root.rotation.y — whole wheel faces slightly into city
+  // Gondola world position (apply root rotation to local X offset; local Z=0)
+  const pivotWX = WHEEL_X + Math.cos(ry) * pivotLocalX;
+  const pivotWZ = WHEEL_Z + Math.sin(ry) * pivotLocalX;
 
-  // Outward direction: from wheel hub toward gondola pivot (in world space)
-  const hubWX = WHEEL_X, hubWZ = WHEEL_Z;
-  const outDX = pivotWX - hubWX;
-  const outDZ = pivotWZ - hubWZ;
-  const outLen = Math.sqrt(outDX * outDX + outDZ * outDZ) || 1;
+  // ── Determine ride phase from wheel angle ────────────────────────
+  // normalise to [0, 2π)
+  const ang = ((totalAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  // sin(ang): +1 = top of wheel, -1 = bottom
+  // cos(ang): +1 = right (east-ish), -1 = left (west-ish)
+  //
+  // Phase mapping (wheel starts at 0 = right / 3-o'clock):
+  //   0  → π/2   rising right→top:       look north-west
+  //   π/2 → π    top→left (pre-descent): look beach/ocean (+Z)
+  //   π  → 3π/2  left→bottom (descent):  look city (stage area, -Z gentle)
+  //   3π/2 → 2π  bottom→right (loading): look beach (short, near ground)
 
-  // Camera placed 0.15 units outward from gondola center (just past the front face)
-  // so the gondola body is behind/below the camera, not blocking the view
-  const camX = pivotWX + (outDX / outLen) * 0.15;
-  const camZ = pivotWZ + (outDZ / outLen) * 0.15;
+  // Smooth blend weights — use sinusoidal easing for gradual transitions
+  // risingT:    0 at bottom/right, peaks at top-right quarter
+  const risingT     = Math.max(0, Math.sin(ang));                      // >0 for ang 0→π (rising half)
+  const descendingT = Math.max(0, -Math.sin(ang));                     // >0 for ang π→2π (descending half)
+  const leftSideT   = Math.max(0, -Math.cos(ang));                     // >0 for ang π/2→3π/2 (left half, includes top)
+  const topT        = Math.max(0, Math.sin(ang)) * Math.max(0, -Math.cos(ang)); // peak at top-left (ang ≈ π*0.75)
+
+  // ── Define 4 scenic look directions (all in world space) ──────────
+  const lookDist = 32;
+
+  // 1. North-West: look toward (-1, 0, -1) normalised — away from east skyline
+  //    This is the primary "going up" direction
+  const lookNW_X = -0.72;
+  const lookNW_Z = -0.55;
+
+  // 2. Beach/Ocean: look straight toward +Z (south, toward shoreline)
+  //    Fully open water view at the top
+  const lookBeach_X = 0.0;
+  const lookBeach_Z = 1.0;
+
+  // 3. City descent: look toward the west/stage area (-Z slightly, not east)
+  //    Gentle city view looking back toward stage, NOT the front east buildings
+  const lookCity_X = -0.35;
+  const lookCity_Z = -0.85;
+
+  // 4. Loading zone (near bottom): short beach-biased view
+  const lookLoad_X = 0.2;
+  const lookLoad_Z = 0.9;
+
+  // ── Blend between views based on ride phase ───────────────────────
+  // ang in [0, π]:    rising → blend from NW (rising) into Beach (top)
+  // ang in [π, 2π]:   descending → blend from Beach (top) into City (descent) into Load
+
+  // How far through the rising half (0=bottom-right, 1=left/top)
+  const riseProgress  = ang / Math.PI;               // 0→1 across rising half
+  // How far through the descending half (0=top-left, 1=bottom-right)
+  const descProgress  = (ang - Math.PI) / Math.PI;   // 0→1 across descending half (only valid for ang>π)
+
+  let lookDirX, lookDirZ, lookYOffset;
+
+  if (ang < Math.PI) {
+    // ── RISING HALF ──────────────────────────────────────────────
+    // 0→0.4: pure north-west view (going up on right side)
+    // 0.4→1.0: smoothly cross-fade to beach view as we approach the top
+    const beachBlend = Math.max(0, Math.min(1, (riseProgress - 0.35) / 0.65));
+    const t0 = Math.sin(beachBlend * Math.PI * 0.5); // ease-in
+    lookDirX = lookNW_X + (lookBeach_X - lookNW_X) * t0;
+    lookDirZ = lookNW_Z + (lookBeach_Z - lookNW_Z) * t0;
+    // Look slightly upward while rising, level off at top
+    lookYOffset = 3.5 * (1 - riseProgress) + 1.5 * riseProgress;
+  } else {
+    // ── DESCENDING HALF ──────────────────────────────────────────
+    // 0→0.35: hold beach view (best moment — before coming down)
+    // 0.35→0.75: transition from beach to city
+    // 0.75→1.0: hold city view, start looking more level
+    if (descProgress < 0.35) {
+      // Still at top/beach view — full beach
+      lookDirX = lookBeach_X;
+      lookDirZ = lookBeach_Z;
+      lookYOffset = 2.0;
+    } else if (descProgress < 0.75) {
+      // Transition beach → city
+      const t1 = Math.sin(((descProgress - 0.35) / 0.40) * Math.PI * 0.5); // ease-in
+      lookDirX = lookBeach_X + (lookCity_X - lookBeach_X) * t1;
+      lookDirZ = lookBeach_Z + (lookCity_Z - lookBeach_Z) * t1;
+      lookYOffset = 2.0 - 0.5 * t1;
+    } else {
+      // City view on descent, easing toward load view near bottom
+      const t2 = (descProgress - 0.75) / 0.25;
+      const ts = Math.sin(t2 * Math.PI * 0.5);
+      lookDirX = lookCity_X + (lookLoad_X - lookCity_X) * ts;
+      lookDirZ = lookCity_Z + (lookLoad_Z - lookCity_Z) * ts;
+      lookYOffset = 1.5 - 0.5 * ts;
+    }
+  }
+
+  // Normalise look direction
+  const lookLen = Math.sqrt(lookDirX * lookDirX + lookDirZ * lookDirZ) || 1;
+  const lDX = lookDirX / lookLen;
+  const lDZ = lookDirZ / lookLen;
+
+  // Camera position: slightly offset inward (toward wheel center) so gondola
+  // structure doesn't block the view; eye sits at gondola seat height
+  const camX = WHEEL_X + (lDX < 0 ? 0.3 : -0.1); // slight inward offset
+  const camZ = WHEEL_Z + (lDZ < 0 ? 0.3 : -0.1);
   const camY = seatWorldY;
 
+  // Look-at point: far out in the scenic direction, with height blending
+  const lookY = seatWorldY + lookYOffset;
+  const lookX = WHEEL_X + lDX * lookDist;
+  const lookZ = WHEEL_Z + lDZ * lookDist;
+
+  // atTop: for FOV / other callers
   const atTop = Math.max(0, Math.min(1, (pivotWorldY - WHEEL_HUB_Y + WHEEL_RADIUS) / (WHEEL_RADIUS * 2)));
-  const lookDist = 28;
-
-  // Bias look direction toward beach/ocean (world +Z direction) when the gondola
-  // is on the city-facing side (outDZ < 0, i.e. facing toward the buildings).
-  // This steers the view away from building faces and toward open scenery.
-  const cityFacing = Math.max(0, -outDZ / outLen); // 0 when facing beach, 1 when facing city
-  const beachBiasZ = cityFacing * 0.7;  // blend outward direction toward +Z (beach)
-  const biasedDX = outDX / outLen;
-  const biasedDZ = outDZ / outLen + beachBiasZ;
-  const biasLen = Math.sqrt(biasedDX * biasedDX + biasedDZ * biasedDZ) || 1;
-
-  const lookY = seatWorldY + (atTop - 0.3) * 4.5;
-  const lookX = pivotWX + (biasedDX / biasLen) * lookDist;
-  const lookZ = pivotWZ + (biasedDZ / biasLen) * lookDist;
 
   return {
     camPos: { x: camX, y: camY, z: camZ },
