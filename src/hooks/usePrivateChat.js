@@ -82,11 +82,22 @@ export default function usePrivateChat(user) {
     const chatId = getChatId(myId, activeChatPeer.userId);
     const unsub = base44.entities.PrivateChatMessage.subscribe((event) => {
       if (event.type !== "create" || !event.data) return;
-      if (event.data.chat_id !== chatId) return;
-      if (blockedRef.current[event.data.sender_user_id]) return;
+      const msg = event.data;
+      if (msg.chat_id !== chatId) return;
+      if (blockedRef.current[msg.sender_user_id]) return;
       setChatMessages((prev) => {
-        if (prev.some((m) => m.id === event.data.id)) return prev;
-        return [...prev, event.data];
+        // Skip if real ID already present
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        // Replace matching optimistic message from self (same sender + message text)
+        if (msg.sender_user_id === myId) {
+          const optIdx = prev.findIndex((m) => m._optimistic && !m._failed && m.message === msg.message);
+          if (optIdx !== -1) {
+            const next = [...prev];
+            next[optIdx] = { ...msg };
+            return next;
+          }
+        }
+        return [...prev, msg];
       });
     });
     chatSubRef.current = unsub;
@@ -250,28 +261,60 @@ export default function usePrivateChat(user) {
   }, [notifications]);
 
   // ── Send a message ───────────────────────────────────────
+  // Returns { success: true } or { error: string }
   const sendMessage = useCallback(async (text) => {
-    if (!myId || !activeChatPeer?.userId || !text?.trim()) return;
+    if (!myId || !activeChatPeer?.userId || !text?.trim()) return { error: "Missing data" };
     const chatId = getChatId(myId, activeChatPeer.userId);
+    const trimmed = text.trim();
+
+    // Optimistic: add to local state immediately so it appears right away
+    const optimisticId = `optimistic_${Date.now()}`;
+    const optimisticMsg = {
+      id: optimisticId,
+      chat_id: chatId,
+      sender_user_id: myId,
+      sender_username: myUsername,
+      receiver_user_id: activeChatPeer.userId,
+      message: trimmed,
+      created_date: new Date().toISOString(),
+      _optimistic: true,
+    };
+    setChatMessages((prev) => [...prev, optimisticMsg]);
+
     try {
-      await base44.entities.PrivateChatMessage.create({
+      const saved = await base44.entities.PrivateChatMessage.create({
         chat_id: chatId,
         sender_user_id: myId,
         sender_username: myUsername,
         receiver_user_id: activeChatPeer.userId,
-        message: text.trim(),
+        message: trimmed,
       });
-      // Notify if needed (don't wait)
+
+      // Replace optimistic with real saved record
+      setChatMessages((prev) =>
+        prev.map((m) => m.id === optimisticId ? { ...saved } : m)
+      );
+
+      // Notify receiver (fire-and-forget, don't notify for every message — only if they haven't been notified recently)
       base44.entities.Notification.create({
         user_id: activeChatPeer.userId,
         type: "direct_message",
         from_user_id: myId,
         from_username: myUsername,
-        message: `${myUsername}: ${text.trim().slice(0, 60)}${text.trim().length > 60 ? "…" : ""}`,
+        message: `${myUsername}: ${trimmed.slice(0, 60)}${trimmed.length > 60 ? "…" : ""}`,
         read: false,
         handled: false,
       }).catch(() => {});
-    } catch {}
+
+      return { success: true };
+    } catch (err) {
+      console.error("[sendMessage] failed:", err);
+      // Mark the optimistic message as failed so the UI can show retry
+      setChatMessages((prev) =>
+        prev.map((m) => m.id === optimisticId ? { ...m, _failed: true } : m)
+      );
+      return { error: "Failed to send message" };
+    }
   }, [myId, myUsername, activeChatPeer, getChatId]);
 
   const endChat = useCallback(() => {
