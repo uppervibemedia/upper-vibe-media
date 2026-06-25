@@ -1638,6 +1638,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (!scene.userData._camVecs) {
           scene.userData._camVecs = {
             cabinPos: new Vector3(), nLook: new Vector3(),
+            rLookSmooth: new Vector3(), rLookInitialized: false,
             cLook: new Vector3(0, 4.5, -34.4),
             lkPos: new Vector3(0, 3.0, -12), lkLook: new Vector3(0, 3.5, -34.4),
             fA: new Vector3(0, WHEEL_HUB_Y * 0.4, -10), fB: new Vector3(0, 2, 40),
@@ -1663,13 +1664,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const rider = getRiderCameraTransform(t, rl.yaw, rl.pitch);
           cv.cabinPos.set(rider.camPos.x, rider.camPos.y, rider.camPos.z);
           cv.nLook.set(rider.lookAt.x, rider.lookAt.y, rider.lookAt.z);
-          // 62° FOV: cinematic cabin view — wide enough for panoramic scenery,
-          // narrow enough that wheel structure stays out of center frame.
-          // Slight zoom-in at top for sweeping panoramic feel.
+          // Smooth look-at: lerp gaze toward target — prevents hard jumps between views
+          if (!cv.rLookInitialized) { cv.rLookSmooth.copy(cv.nLook); cv.rLookInitialized = true; }
+          else { cv.rLookSmooth.lerp(cv.nLook, Math.min(1, dt * 1.8)); }
           const rFov = 62 + rider.atTop * 4;
           if (Math.abs(camera.fov - rFov) > 0.5) { camera.fov += (rFov - camera.fov) * Math.min(1, dt*4.0); camera.updateProjectionMatrix(); }
           camera.position.lerp(cv.cabinPos, Math.min(1, 8.0 * dt));
-          camera.lookAt(cv.nLook);
+          camera.lookAt(cv.rLookSmooth);
           if (avatarRef.current) avatarRef.current.visible = false;
         } else if (lockedRef.current) {
           // Detect if player is in the lounge zone (x≈-22, z≈-26) to show lounge camera
@@ -2332,9 +2333,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   useEffect(() => {
     if (!ferrisRiding) {
       if (avatarRef.current) avatarRef.current.visible = true;
-      // Reset ride look-control state so next ride starts clean
       const cv = sceneRef.current?.userData?._camVecs;
-      if (cv) cv._rl = null;
+      if (cv) { cv._rl = null; cv.rLookInitialized = false; }
     }
   }, [ferrisRiding]);
 

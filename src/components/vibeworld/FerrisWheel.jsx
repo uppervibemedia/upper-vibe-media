@@ -631,17 +631,30 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
     { ax: -22, ay: 3.0, az: -20,  bx:  4, by:  3.5, bz: 28  },
   ];
 
-  // Smooth-step for easing within each segment
   const ss = (x) => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
 
   const norm = ((totalAngle % (Math.PI * 2)) + Math.PI * 2) / (Math.PI * 2);
   const segIdx = Math.min(7, Math.floor(norm * 8));
-  const sp = ss((norm * 8) % 1);
+  const rawProg = (norm * 8) % 1; // 0→1 within segment
+  const sp = ss(rawProg);
 
-  const k = KEYS[segIdx];
-  const lerpedLookX = k.ax + (k.bx - k.ax) * sp;
-  const lerpedLookY = k.ay + (k.by - k.ay) * sp;
-  const lerpedLookZ = k.az + (k.bz - k.az) * sp;
+  // Cross-boundary blend: last 18% of each segment begins drifting toward the
+  // next segment's start point so there is never a hard jump at the boundary.
+  const BLEND_ZONE = 0.18;
+  const nextIdx = (segIdx + 1) % 8;
+  const k  = KEYS[segIdx];
+  const kN = KEYS[nextIdx];
+
+  // Current segment interpolated look-at (A→B)
+  const curX = k.ax + (k.bx - k.ax) * sp;
+  const curY = k.ay + (k.by - k.ay) * sp;
+  const curZ = k.az + (k.bz - k.az) * sp;
+
+  // Cross-fade blend factor (0 until we enter the blend zone, then 0→1)
+  const blendT = ss(Math.max(0, (rawProg - (1 - BLEND_ZONE)) / BLEND_ZONE));
+  const lerpedLookX = curX + (kN.ax - curX) * blendT;
+  const lerpedLookY = curY + (kN.ay - curY) * blendT;
+  const lerpedLookZ = curZ + (kN.az - curZ) * blendT;
 
   // ── Apply user look offsets around the base look direction ────────
   const MAX_YAW   = (40 * Math.PI) / 180;
@@ -649,7 +662,6 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   const yawOff   = Math.max(-MAX_YAW,   Math.min(MAX_YAW,   userYawOffset));
   const pitchOff = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, userPitchOffset));
 
-  // Convert look-at point to direction, apply yaw/pitch offset, convert back
   const baseDX = lerpedLookX - camX;
   const baseDY = lerpedLookY - camY;
   const baseDZ = lerpedLookZ - camZ;
