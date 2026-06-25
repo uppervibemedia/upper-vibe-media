@@ -92,6 +92,8 @@ export default function VibeLoungeHub({
   onSelectUser,
   onRequestChat,
   followSystem,
+  isSeatedExternal = false,
+  onSeatChange,
 }) {
   const { currentTrack, isPlaying, togglePlay } = usePlayer() || {};
   const { user } = useAuth();
@@ -101,8 +103,14 @@ export default function VibeLoungeHub({
   const [vibeStatus, setVibeStatus] = useState(() => {
     try { return sessionStorage.getItem("uvc_lounge_status") || null; } catch { return null; }
   });
-  const [isSeated, setIsSeated] = useState(false);
+  const [isSeated, setIsSeated] = useState(isSeatedExternal);
   const [chosenSeat, setChosenSeat] = useState(null);
+
+  // Sync external seated state (e.g. sitting from the world "Sit" prompt)
+  useEffect(() => {
+    setIsSeated(isSeatedExternal);
+    if (!isSeatedExternal) setChosenSeat(null);
+  }, [isSeatedExternal]);
 
   // Chat state
   const [messages, setMessages] = useState([]);
@@ -189,12 +197,14 @@ export default function VibeLoungeHub({
     setIsSeated(true);
     setChosenSeat(seat);
     handleSetStatus("chilling");
-  }, [handleSetStatus]);
+    onSeatChange?.(true, seat);
+  }, [handleSetStatus, onSeatChange]);
 
   const handleStandUp = useCallback(() => {
     setIsSeated(false);
     setChosenSeat(null);
-  }, []);
+    onSeatChange?.(false, null);
+  }, [onSeatChange]);
 
   // ── Send lounge chat message ─────────────────────────────
   const handleSend = useCallback(async (text) => {

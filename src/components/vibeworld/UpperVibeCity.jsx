@@ -476,13 +476,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Input focus lock (typing in lounge chat) + voice ducking ──
   const [loungeInputFocused, setLoungeInputFocused] = useState(false);
   const [voiceActive, setVoiceActive] = useState(false);
+  const [isSeatedInLounge, setIsSeatedInLounge] = useState(false);
   const preVoiceVolumeRef = useRef(null);
 
-  // ── Movement locked only when typing in lounge chat ─────────────
-  // stageWatching does NOT lock movement — user should be able to walk away from the stage
-  // even while the in-world embed is playing. Camera and joystick must remain active.
+  // ── Movement locked when typing in lounge chat OR seated ──────────
   const [ferrisRiding, setFerrisRiding] = useState(false);
-  const movementLocked = loungeInputFocused || stageWatching;
+  const movementLocked = loungeInputFocused || stageWatching || isSeatedInLounge;
 
   // ── Dance floor boundary — matches visual plaza edge (r=10.5) ─────────────
   // Audio fades in at the edge so music is audible as soon as the user reaches the floor.
@@ -1096,6 +1095,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         djTrack={djTrack}
         onFerrisRideChange={setFerrisRiding}
         followSystem={followSystem}
+        onSit={(seat) => {
+          setIsSeatedInLounge(true);
+          // Trigger a gentle "vibe" emote while seated
+          handleEmote({ id: "vibe", label: "Vibe", color: "#c4aaff", effect: null });
+        }}
+        onStandUp={() => {
+          setIsSeatedInLounge(false);
+          handleStopDance();
+        }}
         username={
           // Prefer the city username set during Vibe City setup (stored in sessionStorage by UsernameSetup)
           // Fall back to presence data username, then user full_name, never "Visitor"
