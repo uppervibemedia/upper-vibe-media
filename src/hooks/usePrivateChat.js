@@ -8,6 +8,8 @@ import { base44 } from "@/api/base44Client";
 
 const REQUEST_EXPIRY_MS = 60_000;
 const CLEANUP_INTERVAL_MS = 30_000;
+// Throttle DM notifications: only send one per peer per 30s to avoid spam
+const DM_NOTIF_THROTTLE_MS = 30_000;
 
 export default function usePrivateChat(user) {
   const [activeChatPeer, setActiveChatPeer] = useState(null);
@@ -24,6 +26,7 @@ export default function usePrivateChat(user) {
   const expiryTimers = useRef({});
   const cleanupTimer = useRef(null);
   const chatSubRef = useRef(null);
+  const dmNotifTimestamps = useRef({}); // peerUserId → last notification timestamp
 
   const myId = user?.id;
   const myUsername = user?.world_username || "New User";
@@ -80,15 +83,16 @@ export default function usePrivateChat(user) {
   useEffect(() => {
     if (!myId || !activeChatPeer?.userId) return;
     const chatId = getChatId(myId, activeChatPeer.userId);
+    const peerUserId = activeChatPeer.userId;
+
     const unsub = base44.entities.PrivateChatMessage.subscribe((event) => {
       if (event.type !== "create" || !event.data) return;
       const msg = event.data;
       if (msg.chat_id !== chatId) return;
       if (blockedRef.current[msg.sender_user_id]) return;
       setChatMessages((prev) => {
-        // Skip if real ID already present
         if (prev.some((m) => m.id === msg.id)) return prev;
-        // Replace matching optimistic message from self (same sender + message text)
+        // Replace matching optimistic message from self
         if (msg.sender_user_id === myId) {
           const optIdx = prev.findIndex((m) => m._optimistic && !m._failed && m.message === msg.message);
           if (optIdx !== -1) {
@@ -101,7 +105,30 @@ export default function usePrivateChat(user) {
       });
     });
     chatSubRef.current = unsub;
-    return () => { try { unsub(); } catch {} };
+
+    // Polling fallback — catches messages realtime subscription may have missed
+    const poll = setInterval(async () => {
+      try {
+        const msgs = await base44.entities.PrivateChatMessage.filter({ chat_id: chatId }, "created_date", 100);
+        if (!msgs?.length) return;
+        const sorted = msgs.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+        setChatMessages((prev) => {
+          // Merge: add any real DB messages not yet in state (skip optimistic duplicates)
+          const existingIds = new Set(prev.filter((m) => !m._optimistic).map((m) => m.id));
+          const newReal = sorted.filter((m) => !existingIds.has(m.id) && !blockedRef.current[m.sender_user_id]);
+          if (newReal.length === 0) return prev;
+          // Replace optimistic messages that now have real records
+          let next = prev.filter((m) => !m._optimistic || m._failed);
+          next = [...next, ...newReal].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+          return next;
+        });
+      } catch {}
+    }, 5000);
+
+    return () => {
+      try { unsub(); } catch {}
+      clearInterval(poll);
+    };
   }, [myId, activeChatPeer?.userId, getChatId]);
 
   // ── Load messages when chat opens ───────────────────────
@@ -109,9 +136,14 @@ export default function usePrivateChat(user) {
     if (!myId || !peerUserId) return;
     const chatId = getChatId(myId, peerUserId);
     try {
-      const msgs = await base44.entities.PrivateChatMessage.filter({ chat_id: chatId }, "created_date", 60);
-      setChatMessages(msgs || []);
-    } catch {}
+      const msgs = await base44.entities.PrivateChatMessage.filter({ chat_id: chatId }, "created_date", 100);
+      // Sort ascending by created_date so oldest message is at top
+      const sorted = (msgs || []).sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      setChatMessages(sorted);
+    } catch (err) {
+      console.error("[loadMessages] failed:", err);
+      // Keep current messages rather than wiping on error
+    }
   }, [myId, getChatId]);
 
   // ── Send friend request ──────────────────────────────────
@@ -295,16 +327,20 @@ export default function usePrivateChat(user) {
         prev.map((m) => m.id === optimisticId ? { ...saved } : m)
       );
 
-      // Notify receiver (fire-and-forget, don't notify for every message — only if they haven't been notified recently)
-      base44.entities.Notification.create({
-        user_id: activeChatPeer.userId,
-        type: "direct_message",
-        from_user_id: myId,
-        from_username: myUsername,
-        message: `${myUsername}: ${trimmed.slice(0, 60)}${trimmed.length > 60 ? "…" : ""}`,
-        read: false,
-        handled: false,
-      }).catch(() => {});
+      // Notify receiver — throttled to avoid spam (one notif per 30s per peer)
+      const lastNotif = dmNotifTimestamps.current[activeChatPeer.userId] || 0;
+      if (Date.now() - lastNotif > DM_NOTIF_THROTTLE_MS) {
+        dmNotifTimestamps.current[activeChatPeer.userId] = Date.now();
+        base44.entities.Notification.create({
+          user_id: activeChatPeer.userId,
+          type: "direct_message",
+          from_user_id: myId,
+          from_username: myUsername,
+          message: `${myUsername}: ${trimmed.slice(0, 60)}${trimmed.length > 60 ? "…" : ""}`,
+          read: false,
+          handled: false,
+        }).catch(() => {});
+      }
 
       return { success: true };
     } catch (err) {
@@ -324,6 +360,8 @@ export default function usePrivateChat(user) {
 
   // ── Open chat with a connected user ─────────────────────
   const openChat = useCallback(async (userId, username) => {
+    // Set peer first so subscription activates, then load history
+    setChatMessages([]); // clear stale messages from previous chat
     setActiveChatPeer({ userId, username });
     await loadMessages(userId);
   }, [loadMessages]);

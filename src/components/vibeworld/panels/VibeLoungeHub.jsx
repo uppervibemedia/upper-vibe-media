@@ -81,6 +81,21 @@ export default function VibeLoungeHub({
   isSeatedExternal = false,
   onSeatChange,
 }) {
+  // iOS keyboard-safe: track keyboard height via visualViewport
+  const [panelBottom, setPanelBottom] = useState(0);
+  useEffect(() => {
+    if (!isMobile || !open) { setPanelBottom(0); return; }
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const kh = window.innerHeight - vv.height - vv.offsetTop;
+      setPanelBottom(Math.max(0, kh));
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    update();
+    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
+  }, [isMobile, open]);
   const { currentTrack, isPlaying, togglePlay } = usePlayer() || {};
   const { user } = useAuth();
   const displayName = user?.world_username || "New User";
@@ -307,7 +322,8 @@ export default function VibeLoungeHub({
         )}
 
         {/* Input */}
-        <div className="flex-shrink-0 px-4 py-3 border-t border-white/5">
+        <div className="flex-shrink-0 px-4 border-t border-white/5"
+          style={{ paddingTop: 12, paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))" }}>
           {user?.id ? (
             <div className="flex items-center gap-2">
               <input
@@ -385,9 +401,10 @@ export default function VibeLoungeHub({
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="fixed inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
+      className="fixed inset-x-0 rounded-t-3xl overflow-hidden flex flex-col"
       style={{
         zIndex: 70,
+        bottom: panelBottom,
         height: isMobile ? "min(82dvh, 100dvh)" : "70vh",
         maxHeight: "100dvh",
         background: "rgba(10,8,22,0.97)",
