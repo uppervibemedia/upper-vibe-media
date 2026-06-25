@@ -539,140 +539,134 @@ export function getCabinWorldPosition(cabinIndex, t) {
 }
 
 // ── Rider camera transform for scenic Ferris wheel view ─────────────
-// Returns { camPos, lookAt } in world space.
+// Returns { camPos, lookAt, guidedYaw, guidedPitch } in world space.
 //
-// Cinematic 4-phase guided view path:
-//   Phase 0 → rising:       North/West scenic view (away from east skyline)
-//   Phase 1 → at top:       Beach/ocean panorama (+Z world direction)
-//   Phase 2 → pre-descent:  Beach view lingers before turning
-//   Phase 3 → descending:   City skyline view (west/north buildings, not east front)
-export function getRiderCameraTransform(t) {
+// Camera sits OUTSIDE the gondola at eye-level, pushed outward in the
+// scenic look direction so wheel structure stays behind/to the side.
+//
+// Cinematic 4-phase guided view path (50/50 beach ↔ city):
+//   Rising  (0→π):    NW city diagonal → blend into beach at top
+//   Descending (π→2π): hold beach → blend into city/stage → return to beach
+//
+// userYawOffset / userPitchOffset: limited look control (±40° yaw, ±20° pitch)
+// applied on top of the guided direction; auto-recenter when not touching.
+export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 0) {
   const wheelAngle = t * WHEEL_SPEED;
-  // Cabin 0 base angle = 0 (starts at 3-o'clock / right side of wheel in wheel-local X-Y)
   const totalAngle = wheelAngle;
+
+  // Gondola pivot world position
   const pivotLocalX = Math.cos(totalAngle) * WHEEL_RADIUS;
   const pivotLocalY = Math.sin(totalAngle) * WHEEL_RADIUS;
   const pivotWorldY = WHEEL_HUB_Y + pivotLocalY;
 
-  const HANG_ARM = 0.55;
-  const EYE_HEIGHT = 0.35; // seated eye height above gondola floor
-  const seatWorldY = Math.max(0.8, pivotWorldY - HANG_ARM - 0.1 + EYE_HEIGHT);
+  const HANG_ARM  = 0.55;
+  const EYE_H     = 0.30;  // eye height above gondola floor — low = more sky
+  const seatWorldY = Math.max(0.8, pivotWorldY - HANG_ARM - 0.05 + EYE_H);
 
-  const ry = 0.35; // root.rotation.y — whole wheel faces slightly into city
-  // Gondola world position (apply root rotation to local X offset; local Z=0)
+  const ry = 0.35; // root.rotation.y
+  // Gondola world XZ (wheel rotates in X-Y plane, Z offset from root.rotation.y)
   const pivotWX = WHEEL_X + Math.cos(ry) * pivotLocalX;
   const pivotWZ = WHEEL_Z + Math.sin(ry) * pivotLocalX;
 
-  // ── Determine ride phase from wheel angle ────────────────────────
-  // normalise to [0, 2π)
+  // ── Normalised wheel angle 0→2π ──────────────────────────────────
   const ang = ((totalAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  // sin(ang): +1 = top of wheel, -1 = bottom
-  // cos(ang): +1 = right (east-ish), -1 = left (west-ish)
-  //
-  // Phase mapping (wheel starts at 0 = right / 3-o'clock):
-  //   0  → π/2   rising right→top:       look north-west
-  //   π/2 → π    top→left (pre-descent): look beach/ocean (+Z)
-  //   π  → 3π/2  left→bottom (descent):  look city (stage area, -Z gentle)
-  //   3π/2 → 2π  bottom→right (loading): look beach (short, near ground)
+  const riseProgress = ang / Math.PI;             // 0→1 across rising half
+  const descProgress = (ang - Math.PI) / Math.PI; // 0→1 across descending half
 
-  // Smooth blend weights — use sinusoidal easing for gradual transitions
-  // risingT:    0 at bottom/right, peaks at top-right quarter
-  const risingT     = Math.max(0, Math.sin(ang));                      // >0 for ang 0→π (rising half)
-  const descendingT = Math.max(0, -Math.sin(ang));                     // >0 for ang π→2π (descending half)
-  const leftSideT   = Math.max(0, -Math.cos(ang));                     // >0 for ang π/2→3π/2 (left half, includes top)
-  const topT        = Math.max(0, Math.sin(ang)) * Math.max(0, -Math.cos(ang)); // peak at top-left (ang ≈ π*0.75)
+  // ── Define scenic look directions ────────────────────────────────
+  // All are world-space unit XZ vectors.
+  // NW diagonal — wide open city diagonal, avoids east skyline front wall
+  const NW  = { x: -0.65, z: -0.55 };
+  // Beach / ocean
+  const BCH = { x:  0.08, z:  1.0  };
+  // City/stage view — looking back at stage from height (NW of wheel)
+  const CTY = { x: -0.40, z: -0.80 };
+  // Near-bottom: biased beach to avoid east building wall
+  const LOW = { x:  0.15, z:  0.95 };
 
-  // ── Define 4 scenic look directions (all in world space) ──────────
-  const lookDist = 32;
-
-  // 1. North-West: look toward (-1, 0, -1) normalised — away from east skyline
-  //    This is the primary "going up" direction
-  const lookNW_X = -0.72;
-  const lookNW_Z = -0.55;
-
-  // 2. Beach/Ocean: look straight toward +Z (south, toward shoreline)
-  //    Fully open water view at the top
-  const lookBeach_X = 0.0;
-  const lookBeach_Z = 1.0;
-
-  // 3. City descent: look toward the west/stage area (-Z slightly, not east)
-  //    Gentle city view looking back toward stage, NOT the front east buildings
-  const lookCity_X = -0.35;
-  const lookCity_Z = -0.85;
-
-  // 4. Loading zone (near bottom): short beach-biased view
-  const lookLoad_X = 0.2;
-  const lookLoad_Z = 0.9;
-
-  // ── Blend between views based on ride phase ───────────────────────
-  // ang in [0, π]:    rising → blend from NW (rising) into Beach (top)
-  // ang in [π, 2π]:   descending → blend from Beach (top) into City (descent) into Load
-
-  // How far through the rising half (0=bottom-right, 1=left/top)
-  const riseProgress  = ang / Math.PI;               // 0→1 across rising half
-  // How far through the descending half (0=top-left, 1=bottom-right)
-  const descProgress  = (ang - Math.PI) / Math.PI;   // 0→1 across descending half (only valid for ang>π)
-
-  let lookDirX, lookDirZ, lookYOffset;
+  // ── Blend guided look direction by phase ─────────────────────────
+  let lDX, lDZ, lookYOffset;
 
   if (ang < Math.PI) {
-    // ── RISING HALF ──────────────────────────────────────────────
-    // 0→0.4: pure north-west view (going up on right side)
-    // 0.4→1.0: smoothly cross-fade to beach view as we approach the top
-    const beachBlend = Math.max(0, Math.min(1, (riseProgress - 0.35) / 0.65));
-    const t0 = Math.sin(beachBlend * Math.PI * 0.5); // ease-in
-    lookDirX = lookNW_X + (lookBeach_X - lookNW_X) * t0;
-    lookDirZ = lookNW_Z + (lookBeach_Z - lookNW_Z) * t0;
-    // Look slightly upward while rising, level off at top
-    lookYOffset = 3.5 * (1 - riseProgress) + 1.5 * riseProgress;
+    // RISING: 0→0.45 pure NW, 0.45→1.0 smooth blend to beach
+    const bb = Math.max(0, Math.min(1, (riseProgress - 0.40) / 0.60));
+    const t0 = bb * bb * (3 - 2 * bb); // smoothstep
+    lDX = NW.x + (BCH.x - NW.x) * t0;
+    lDZ = NW.z + (BCH.z - NW.z) * t0;
+    // Gaze slightly upward while climbing, level at top
+    lookYOffset = 3.0 * (1 - riseProgress * 0.7);
   } else {
-    // ── DESCENDING HALF ──────────────────────────────────────────
-    // 0→0.35: hold beach view (best moment — before coming down)
-    // 0.35→0.75: transition from beach to city
-    // 0.75→1.0: hold city view, start looking more level
-    if (descProgress < 0.35) {
-      // Still at top/beach view — full beach
-      lookDirX = lookBeach_X;
-      lookDirZ = lookBeach_Z;
-      lookYOffset = 2.0;
-    } else if (descProgress < 0.75) {
-      // Transition beach → city
-      const t1 = Math.sin(((descProgress - 0.35) / 0.40) * Math.PI * 0.5); // ease-in
-      lookDirX = lookBeach_X + (lookCity_X - lookBeach_X) * t1;
-      lookDirZ = lookBeach_Z + (lookCity_Z - lookBeach_Z) * t1;
-      lookYOffset = 2.0 - 0.5 * t1;
+    // DESCENDING:
+    // 0→0.30: hold full beach (just past top)
+    // 0.30→0.65: smooth beach → city
+    // 0.65→0.85: hold city
+    // 0.85→1.0: smooth city → LOW beach (arriving at bottom)
+    if (descProgress < 0.30) {
+      lDX = BCH.x; lDZ = BCH.z;
+      lookYOffset = 2.5;
+    } else if (descProgress < 0.65) {
+      const t1 = (descProgress - 0.30) / 0.35;
+      const s1 = t1 * t1 * (3 - 2 * t1);
+      lDX = BCH.x + (CTY.x - BCH.x) * s1;
+      lDZ = BCH.z + (CTY.z - BCH.z) * s1;
+      lookYOffset = 2.5 - 1.2 * s1;
+    } else if (descProgress < 0.85) {
+      lDX = CTY.x; lDZ = CTY.z;
+      lookYOffset = 1.3;
     } else {
-      // City view on descent, easing toward load view near bottom
-      const t2 = (descProgress - 0.75) / 0.25;
-      const ts = Math.sin(t2 * Math.PI * 0.5);
-      lookDirX = lookCity_X + (lookLoad_X - lookCity_X) * ts;
-      lookDirZ = lookCity_Z + (lookLoad_Z - lookCity_Z) * ts;
-      lookYOffset = 1.5 - 0.5 * ts;
+      const t2 = (descProgress - 0.85) / 0.15;
+      const s2 = t2 * t2 * (3 - 2 * t2);
+      lDX = CTY.x + (LOW.x - CTY.x) * s2;
+      lDZ = CTY.z + (LOW.z - CTY.z) * s2;
+      lookYOffset = 1.3 + 0.5 * s2;
     }
   }
 
-  // Normalise look direction
-  const lookLen = Math.sqrt(lookDirX * lookDirX + lookDirZ * lookDirZ) || 1;
-  const lDX = lookDirX / lookLen;
-  const lDZ = lookDirZ / lookLen;
+  // Normalise guided direction
+  const len = Math.sqrt(lDX * lDX + lDZ * lDZ) || 1;
+  lDX /= len; lDZ /= len;
 
-  // Camera position: slightly offset inward (toward wheel center) so gondola
-  // structure doesn't block the view; eye sits at gondola seat height
-  const camX = WHEEL_X + (lDX < 0 ? 0.3 : -0.1); // slight inward offset
-  const camZ = WHEEL_Z + (lDZ < 0 ? 0.3 : -0.1);
+  // Guided yaw (world-space angle of look direction)
+  const guidedYaw   = Math.atan2(lDX, lDZ);
+  const guidedPitch = Math.atan2(lookYOffset, 30); // approx pitch angle to look-at
+
+  // Apply limited user look offset (±40° yaw, ±20° pitch)
+  const MAX_YAW   = (40 * Math.PI) / 180;
+  const MAX_PITCH = (20 * Math.PI) / 180;
+  const yawOff   = Math.max(-MAX_YAW,   Math.min(MAX_YAW,   userYawOffset));
+  const pitchOff = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, userPitchOffset));
+
+  const totalYaw = guidedYaw + yawOff;
+
+  // Final look direction with user offset applied
+  const fDX = Math.sin(totalYaw);
+  const fDZ = Math.cos(totalYaw);
+
+  // ── Camera position ───────────────────────────────────────────────
+  // Push eye OUTWARD from wheel hub in the scenic look direction.
+  // This clears the gondola walls and spokes from the foreground.
+  // Push distance: 1.4 units — puts eye outside the gondola's 0.4 depth
+  const PUSH = 1.4;
+  const camX = pivotWX + fDX * PUSH;
+  const camZ = pivotWZ + fDZ * PUSH;
   const camY = seatWorldY;
 
-  // Look-at point: far out in the scenic direction, with height blending
-  const lookY = seatWorldY + lookYOffset;
-  const lookX = WHEEL_X + lDX * lookDist;
-  const lookZ = WHEEL_Z + lDZ * lookDist;
+  // ── Look-at point ─────────────────────────────────────────────────
+  const LOOK_DIST = 38;
+  const pitchTotal = guidedPitch + pitchOff;
+  // Vertical look-at: use pitch to set Y relative to eye
+  const lookHorizDist = LOOK_DIST * Math.cos(Math.max(-0.35, Math.min(0.35, pitchTotal)));
+  const lookY = camY + LOOK_DIST * Math.sin(Math.max(-0.35, Math.min(0.35, pitchTotal)));
+  const lookX = camX + fDX * lookHorizDist;
+  const lookZ = camZ + fDZ * lookHorizDist;
 
-  // atTop: for FOV / other callers
   const atTop = Math.max(0, Math.min(1, (pivotWorldY - WHEEL_HUB_Y + WHEEL_RADIUS) / (WHEEL_RADIUS * 2)));
 
   return {
     camPos: { x: camX, y: camY, z: camZ },
     lookAt: { x: lookX, y: lookY, z: lookZ },
+    guidedYaw,
+    guidedPitch,
     atTop,
   };
 }

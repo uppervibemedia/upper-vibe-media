@@ -1645,17 +1645,27 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
         const cv = scene.userData._camVecs;
         if (ferrisRidingRef.current) {
-          // Scenic seated-rider camera: positioned at gondola eye height, looking outward
-          const rider = getRiderCameraTransform(t);
+          if (!cv._rl) cv._rl = { yaw: 0, pitch: 0, rt: 0 };
+          const rl = cv._rl;
+          const joy = mobileInputRef.current;
+          const rcdx = joy.camDx || 0, rcdy = joy.camDy || 0;
+          joy.camDx = 0; joy.camDy = 0;
+          if (Math.abs(rcdx) > 0.0002 || Math.abs(rcdy) > 0.0002) {
+            rl.yaw += rcdx * 0.65; rl.pitch += rcdy * 0.65; rl.rt = 0;
+          } else { rl.rt += dt; }
+          const MY = (40*Math.PI)/180, MP = (20*Math.PI)/180;
+          rl.yaw   = Math.max(-MY, Math.min(MY, rl.yaw));
+          rl.pitch = Math.max(-MP, Math.min(MP, rl.pitch));
+          if (rl.rt > 1.2) {
+            rl.yaw   -= Math.sign(rl.yaw)   * Math.min(Math.abs(rl.yaw),   0.8*dt);
+            rl.pitch -= Math.sign(rl.pitch) * Math.min(Math.abs(rl.pitch), 0.8*dt);
+          }
+          const rider = getRiderCameraTransform(t, rl.yaw, rl.pitch);
           cv.cabinPos.set(rider.camPos.x, rider.camPos.y, rider.camPos.z);
           cv.nLook.set(rider.lookAt.x, rider.lookAt.y, rider.lookAt.z);
-          // Wide cinematic FOV for panoramic ride view
-          const riderFov = 72;
-          if (Math.abs(camera.fov - riderFov) > 0.5) {
-            camera.fov += (riderFov - camera.fov) * Math.min(1, dt * 4);
-            camera.updateProjectionMatrix();
-          }
-          camera.position.lerp(cv.cabinPos, Math.min(1, 5.0 * dt));
+          const rFov = 70 + rider.atTop * 4;
+          if (Math.abs(camera.fov - rFov) > 0.5) { camera.fov += (rFov - camera.fov) * Math.min(1, dt*3.5); camera.updateProjectionMatrix(); }
+          camera.position.lerp(cv.cabinPos, Math.min(1, 6.0 * dt));
           camera.lookAt(cv.nLook);
           if (avatarRef.current) avatarRef.current.visible = false;
         } else if (lockedRef.current) {
@@ -2317,10 +2327,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     else { if (entry) detachHoverboard(entry); }
   }, [hbRiding]);
   useEffect(() => {
-    // When ride ends, restore avatar visibility. When riding, the animation loop
-    // hides it every frame (handles late GLB loads gracefully).
-    if (!ferrisRiding && avatarRef.current) {
-      avatarRef.current.visible = true;
+    if (!ferrisRiding) {
+      if (avatarRef.current) avatarRef.current.visible = true;
+      // Reset ride look-control state so next ride starts clean
+      const cv = sceneRef.current?.userData?._camVecs;
+      if (cv) cv._rl = null;
     }
   }, [ferrisRiding]);
 
