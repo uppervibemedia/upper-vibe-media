@@ -574,12 +574,7 @@ const HOLD_STAGE  = { x:  0, y:  5.0, z: -31 }; // music stage / dance floor
 //   The closed loop has 4 edges (3 forward + 1 wrap-back), each 0.25 of the
 //   50s period = 12.5s. The easeStep per segment ramps through ≈4s transit
 //   accel + 4s decel, leaving each hold comfortably settled  ≈4-5s.
-const NUM_HOLDS = 3;
-const KNOTS = [HOLD_BEACH, HOLD_CENTER, HOLD_STAGE]; // 0→1→2→0
-const K = 0.30; // tangent arm = 30% of the edge length along the OUTGOING
-                // direction from each knot, so edges are gentle curves and
-                // the wrap-back revisits HOLD_BEACH from a distinct angle.
-const T = 50;   // loop period (seconds)
+const K = 0.50;
 
 export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 0) {
   const wheelAngle = t * WHEEL_SPEED;
@@ -607,49 +602,41 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   const camZ = pivotWZ - radOutWZ * INWARD_PULL + axleWZ * AXLE_PUSH;
 
   // ═══════════════════════════════════════════════════════════════════
-  // PIECEWISE C¹ BEZIER GAZE — computed entirely in WORLD SPACE
+  // C¹ BEZIER VIA CHORD TANGENTS — 50s loop, 4×12.5s edges
   // ═══════════════════════════════════════════════════════════════════
-  // Progress wraps smoothly and the tangent exit from the last knot to the
-  // first is itself C¹, so the loop closes without ANY blink: the rLookSmooth
-  // lerp always sees gazWorld moving forward and never trades direction.
+  // THE FIX: the tangent at each knot points ALONG the CHORD (E0→E1),
+  // NOT the knot two ahead (E2). All edges use identical arm length
+  // (= K × average chord length) so bezier derivative magnitude is
+  // identical entering AND leaving every knot (true C¹). The gaze
+  // decisively reaches each hold, settles ≈4-5s, then transitions
+  // to the next — with NO direction reversal, NO wrap jump.
+  const NE = 4, T = 50;
+  const p = (t % T) / T;
+  const idx = Math.floor(p * NE);
+  const edg = p * NE - idx; // 0‥1 within edge idx
+  const E0 = [HOLD_BEACH, HOLD_CENTER, HOLD_STAGE][idx % 3];
+  const E1 = [HOLD_BEACH, HOLD_CENTER, HOLD_STAGE][(idx + 1) % 3];
 
-  const p = (t % T) / T; // 0‥1 over the 50s loop
+  const dx = E1.x - E0.x, dy = E1.y - E0.y, dz = E1.z - E0.z;
+  const mLen = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.001;
+  // Precompute average chord ONCE per instance
+  if (!HOLD_BEACH.__ca) {
+    const cl = (i) => { const a=[HOLD_BEACH,HOLD_CENTER,HOLD_STAGE][i],b=[HOLD_BEACH,HOLD_CENTER,HOLD_STAGE][(i+1)%3]; return Math.sqrt((b.x-a.x)**2+(b.y-a.y)**2+(b.z-a.z)**2)||0.001; };
+    HOLD_BEACH.__ca = (cl(0) + cl(1) + cl(2) + cl(0)) / 4;
+  }
+  const arm = K * HOLD_BEACH.__ca; // same length for EVERY edge → C¹
+  const u0 = dx / mLen, v0 = dy / mLen, w0 = dz / mLen;
+  const cAx = E0.x + u0 * arm, cAy = E0.y + v0 * arm, cAz = E0.z + w0 * arm;
+  const cBx = E1.x - u0 * arm, cBy = E1.y - v0 * arm, cBz = E1.z - w0 * arm;
 
-  // Which edge of the closed polygon we're on, and local 0‥1 progress
-  const n = NUM_HOLDS;
-  const edgeLen = 1 / n; // = 1/3
-  const idx = Math.floor(p / edgeLen);
-  const lo = idx * edgeLen, hi = (idx + 1) * edgeLen;
-  const raw = (p - lo) / (hi - lo); // 0‥1 within this edge
-
-  const E0 = KNOTS[idx % n];
-  const E1 = KNOTS[(idx + 1) % n];
-  const E2 = KNOTS[(idx + 2) % n];
-
-  // Tangents for C1 continuity at the knots:
-  //   ctlB of edge i = ctlA of edge i+1, both pointing OUT from the shared
-  //   E1 knot toward E2. The faktor K scales the arm along that direction
-  //   so the curve eases smoothly through the knot.
-  const oMX = E2.x - E0.x, oMY = E2.y - E0.y, oMZ = E2.z - E0.z;
-  const ctlB_x = E1.x + oMX * K;
-  const ctlB_y = E1.y + oMY * K;
-  const ctlB_z = E1.z + oMZ * K;
-  const ctlA_x = ctlB_x; // shared = identical tangent direction
-  const ctlA_y = ctlB_y;
-  const ctlA_z = ctlB_z;
-
-  // Smoothstep ease — ramps acceleration / deceleration within the edge
-  const easeStep = (x) => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
-  const s = easeStep(raw);
-
-  // Cubic bezier: B0 f0 (1-s)³ + 3×B1 f1  s(1-s)² + 3×B2 f2  s²(1-s) + B3 f3  s³
-  const w0 = (1 - s) * (1 - s) * (1 - s);
-  const w1 = 3 * s * (1 - s) * (1 - s);
-  const w2 = 3 * s * s * (1 - s);
-  const w3 = s * s * s;
-  const gazX = w0 * E0.x + w1 * ctlA_x + w2 * ctlB_x + w3 * E1.x;
-  const gazY = w0 * E0.y + w1 * ctlA_y + w2 * ctlB_y + w3 * E1.y;
-  const gazZ = w0 * E0.z + w1 * ctlA_z + w2 * ctlB_z + w3 * E1.z;
+  const sg = (() => { const c = Math.max(0, Math.min(1, edg)); return c * c * (3 - 2 * c); })(); // smoothstep
+  const f0 = (1 - sg) * (1 - sg) * (1 - sg);
+  const f1 = 3 * sg * (1 - sg) * (1 - sg);
+  const f2 = 3 * sg * sg * (1 - sg);
+  const f3 = sg * sg * sg;
+  const gazX = f0 * E0.x + f1 * cAx + f2 * cBx + f3 * E1.x;
+  const gazY = f0 * E0.y + f1 * cAy + f2 * cBy + f3 * E1.y;
+  const gazZ = f0 * E0.z + f1 * cAz + f2 * cBz + f3 * E1.z;
 
   // ── User look offsets applied to the world gaze point ────────────
   // (not cabin-relative offsets, which would fight the gondola rotation).
