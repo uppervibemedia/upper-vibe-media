@@ -147,8 +147,9 @@ export default function NotificationPanel({
                   <button
                     onTouchStart={(e) => e.stopPropagation()}
                     onClick={() => {
+                      // acceptRequest handles: status update, notifications, marking handled, opening chat
                       onAcceptRequest?.(note.related_request_id, note.from_user_id, note.from_username);
-                      onMarkHandled?.(note.id);
+                      // Close the notification panel so the chat panel becomes visible
                       onClose?.();
                     }}
                     className="flex-1 py-1.5 rounded-lg font-black text-[10px] transition-all hover:brightness-110 active:scale-95"

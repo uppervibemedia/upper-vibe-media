@@ -193,37 +193,47 @@ export default function usePrivateChat(user) {
 
   // ── Accept a friend request (from notification) ──────────
   const acceptRequest = useCallback(async (requestId, fromUserId, fromUsername) => {
+    if (!myId || !fromUserId) return;
+    let chatOpened = false;
     try {
       // 1. Update request status to accepted
       await base44.entities.PrivateChatRequest.update(requestId, { status: "accepted" });
 
-      // 2. Update local connected set immediately for both directions
+      // 2. Update local connected set immediately
       setConnectedUserIds((prev) => new Set([...prev, fromUserId]));
 
       // 3. Notify the sender that their request was accepted
-      await base44.entities.Notification.create({
+      base44.entities.Notification.create({
         user_id: fromUserId,
         type: "request_accepted",
         from_user_id: myId,
         from_username: myUsername,
-        message: `${myUsername} accepted your connect request. You can now message each other.`,
+        message: `${myUsername} accepted your connect request. Tap to open chat.`,
         related_request_id: requestId,
         read: false,
         handled: false,
       }).catch(() => {});
 
-      // 4. Mark the receiver's notification as handled + remove from list
+      // 4. Mark the receiver's own friend_request notification as handled
       const relatedNote = notifications.find((n) => n.related_request_id === requestId);
       if (relatedNote) {
-        await base44.entities.Notification.update(relatedNote.id, { read: true, handled: true }).catch(() => {});
+        base44.entities.Notification.update(relatedNote.id, { read: true, handled: true }).catch(() => {});
         setNotifications((prev) => prev.filter((n) => n.id !== relatedNote.id));
         setUnreadCount((c) => Math.max(0, c - 1));
       }
 
-      // 5. Open direct chat
+      // 5. Open direct chat immediately for the receiver
       setActiveChatPeer({ userId: fromUserId, username: fromUsername });
       await loadMessages(fromUserId);
-    } catch {}
+      chatOpened = true;
+    } catch (err) {
+      console.error("[acceptRequest] error:", err);
+      // Even if something failed, still try to open chat
+      if (!chatOpened && fromUserId && fromUsername) {
+        setActiveChatPeer({ userId: fromUserId, username: fromUsername });
+        await loadMessages(fromUserId).catch(() => {});
+      }
+    }
   }, [myId, myUsername, notifications, loadMessages]);
 
   // ── Decline a request ────────────────────────────────────
@@ -357,7 +367,7 @@ export default function usePrivateChat(user) {
     return connectedUserIds.has(targetUserId);
   }, [connectedUserIds]);
 
-  // When sender receives a "request_accepted" notification, update their connected set too
+  // When sender receives a "request_accepted" notification, update their connected set + outgoing status
   useEffect(() => {
     const acceptedNotes = notifications.filter((n) => n.type === "request_accepted" && n.from_user_id);
     if (acceptedNotes.length === 0) return;
@@ -366,7 +376,14 @@ export default function usePrivateChat(user) {
       acceptedNotes.forEach((n) => next.add(n.from_user_id));
       return next;
     });
-  }, [notifications]);
+    // Update outgoing status to accepted so the sender sees live feedback
+    setOutgoingStatus((prev) => {
+      if (!prev) return prev;
+      const match = acceptedNotes.find((n) => n.from_user_id !== myId);
+      if (match) return { ...prev, status: "accepted", toUsername: prev.toUsername };
+      return prev;
+    });
+  }, [notifications, myId]);
 
   return {
     activeChatPeer,

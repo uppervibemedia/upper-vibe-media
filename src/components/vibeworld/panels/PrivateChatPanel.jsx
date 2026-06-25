@@ -119,6 +119,7 @@ export default function PrivateChatPanel({
         <div className="flex items-center gap-1">
           {/* Mic toggle — circle, green when unmuted, red when muted */}
           <button
+            onTouchStart={(e) => e.stopPropagation()}
             onClick={() => setIsMicMuted((m) => !m)}
             className="w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90"
             style={{
@@ -136,6 +137,7 @@ export default function PrivateChatPanel({
             )}
           </button>{" "}
           <button
+            onTouchStart={(e) => e.stopPropagation()}
             onClick={onReport}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
             style={{
@@ -148,6 +150,7 @@ export default function PrivateChatPanel({
             <Flag className="w-3.5 h-3.5" />
           </button>
           <button
+            onTouchStart={(e) => e.stopPropagation()}
             onClick={onBlock}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
             style={{
@@ -160,6 +163,7 @@ export default function PrivateChatPanel({
             <UserX className="w-3.5 h-3.5" />
           </button>
           <button
+            onTouchStart={(e) => e.stopPropagation()}
             onClick={onEnd}
             className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-red-500/20"
             style={{
@@ -217,16 +221,19 @@ export default function PrivateChatPanel({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
+          onTouchStart={(e) => e.stopPropagation()}
           placeholder="Type a message..."
           maxLength={500}
-          className="flex-1 px-3 py-2 rounded-xl text-xs text-white placeholder-white/20 outline-none"
+          className="flex-1 px-3 py-2 rounded-xl text-white placeholder-white/20 outline-none"
           style={{
             background: "rgba(255,255,255,0.06)",
             border: "1px solid rgba(255,255,255,0.08)",
             minHeight: 40,
+            fontSize: 16, // prevent iOS Safari zoom on focus
           }}
         />
         <button
+          onTouchStart={(e) => e.stopPropagation()}
           onClick={handleSend}
           disabled={!draft.trim()}
           className="w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95"
