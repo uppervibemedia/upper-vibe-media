@@ -541,20 +541,43 @@ export function getCabinWorldPosition(cabinIndex, t) {
 // ── Rider camera transform for scenic Ferris wheel view ─────────────
 // Returns { camPos, lookAt, atTop } in world space.
 //
-// TOUR SEQUENCE (one full revolution = 8 even segments of π/4 each):
+// TOUR SEQUENCE — time-based, decoupled from wheel rotation.
+// Total loop: 55 seconds.  Flow: Stage → Middle → Beach → Middle → Stage
 //
-//   Seg 0  (0.00→0.125):  Middle beach — wide view (water + beach center)
-//   Seg 1  (0.125→0.25):  Middle beach — closer zoom (appreciating the shoreline)
-//   Seg 2  (0.25→0.375):  City center — wide overview (full skyline panorama)
-//   Seg 3  (0.375→0.50):  City center — closer zoom (plaza + dance floor detail)
-//   Seg 4  (0.50→0.625):  North / Music Stage — wide approach (top-of-arc reveal)
-//   Seg 5  (0.625→0.75):  North / Music Stage — closer framing (stage clearly visible)
-//   Seg 6  (0.75→0.875):  Vibe Lounge + Academy zone — wide view from descent
-//   Seg 7  (0.875→1.00):  Return beach approach — smooth handoff back to Seg 0
+//  Seg 0  ( 0s→11s):  Stage wide — dance floor + north city overview
+//  Seg 1  (11s→14s):  Transition Stage → Middle (slow pan)
+//  Seg 2  (14s→25s):  Middle of map — center city / plaza held view
+//  Seg 3  (25s→28s):  Transition Middle → Beach (slow pan)
+//  Seg 4  (28s→38s):  Beach — middle beach + shoreline held view
+//  Seg 5  (38s→41s):  Transition Beach → Middle (slow pan back)
+//  Seg 6  (41s→52s):  Middle of map again — center city held view
+//  Seg 7  (52s→55s):  Transition Middle → Stage (loops back to Seg 0)
 //
-// Each segment is 1/8 of the wheel's period — evenly paced, no lingering.
 // userYawOffset (rad): ±40° left/right look control
 // userPitchOffset (rad): ±20° up/down look control
+
+// Tour segment table — each entry: { dur, ax, ay, az, bx, by, bz }
+// A = start look-at, B = end look-at (subtle drift within the hold for life)
+const TOUR_SEGS = [
+  // Seg 0: Stage area held (11s) — start wide, drift slightly closer
+  { dur: 11, ax:  2, ay:  8.5, az: -30,  bx:  0, by:  5.0, bz: -31 },
+  // Seg 1: Transition Stage → Middle (3s)
+  { dur:  3, ax:  0, ay:  5.0, az: -31,  bx:  0, by:  7.0, bz: -13 },
+  // Seg 2: Middle of map held (11s) — city overview, drift to plaza detail
+  { dur: 11, ax:  0, ay:  7.0, az: -13,  bx:  0, by:  3.5, bz: -13 },
+  // Seg 3: Transition Middle → Beach (3s)
+  { dur:  3, ax:  0, ay:  3.5, az: -13,  bx:  0, by:  3.0, bz:  26 },
+  // Seg 4: Beach held (10s) — middle beach + water, subtle zoom to shoreline
+  { dur: 10, ax:  0, ay:  3.0, az:  26,  bx:  0, by:  1.5, bz:  30 },
+  // Seg 5: Transition Beach → Middle (3s)
+  { dur:  3, ax:  0, ay:  1.5, az:  30,  bx:  0, by:  5.5, bz: -10 },
+  // Seg 6: Middle of map again held (11s) — slightly different angle for variety
+  { dur: 11, ax:  0, ay:  5.5, az: -10,  bx: -4, by:  4.0, bz: -14 },
+  // Seg 7: Transition Middle → Stage (3s, loops to Seg 0)
+  { dur:  3, ax: -4, ay:  4.0, az: -14,  bx:  2, by:  8.5, bz: -30 },
+];
+const TOUR_PERIOD = TOUR_SEGS.reduce((s, seg) => s + seg.dur, 0); // = 55s
+
 export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 0) {
   const wheelAngle = t * WHEEL_SPEED;
   const totalAngle = wheelAngle;
@@ -571,22 +594,17 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
 
   const ry = 0.35; // root.rotation.y
 
-  // Pivot world XZ (root.rotation.y rotates local X axis into world XZ)
+  // Pivot world XZ
   const pivotWX = WHEEL_X + Math.cos(ry) * pivotLocalX;
   const pivotWZ = WHEEL_Z + Math.sin(ry) * pivotLocalX;
 
-  // ── Radial outward direction (FIXED: use both X and Y of pivot) ──
-  // The radial direction in world XZ is purely the X component of the gondola
-  // (Y component is vertical, not horizontal). rimLocalLen must only use X.
   const rimLocalLen = Math.abs(pivotLocalX) || 0.001;
   const radOutWX = (pivotWX - WHEEL_X) / rimLocalLen;
   const radOutWZ = (pivotWZ - WHEEL_Z) / rimLocalLen;
 
-  // Axle direction in world space
-  const axleWX = Math.sin(ry);  // ≈ 0.342
-  const axleWZ = Math.cos(ry);  // ≈ 0.940
+  const axleWX = Math.sin(ry);
+  const axleWZ = Math.cos(ry);
 
-  // ── Camera eye: inside the cabin, inward-pulled from rim ─────────
   const INWARD_PULL = 1.6;
   const AXLE_PUSH   = 0.55;
 
@@ -594,63 +612,35 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   const camY = seatWorldY;
   const camZ = pivotWZ - radOutWZ * INWARD_PULL + axleWZ * AXLE_PUSH;
 
-  // ── FIXED WORLD-SPACE LOOK-AT POINTS ────────────────────────────
-  // These are ABSOLUTE world coordinates of landmarks.
-  // The camera always points at these real locations regardless of gondola
-  // position, so the view is always correctly framed.
-  //
-  // World layout:
-  //   Wheel:        (22, ~8, 5)
-  //   Beach center: (0, 0.5, 28)    — mid-beach, near water
-  //   Waterline:    (0, 0.2, 32)    — shoreline
-  //   City plaza:   (0, 3, -13)     — dance floor center
-  //   City wide:    (0, 8, -13)     — elevated overview of plaza
-  //   Stage:        (0, 4, -32)     — music stage face
-  //   Stage wide:   (0, 7, -32)     — stage from distance
-  //   Lounge:       (-22, 2, -26)   — vibe lounge platform
-  //   Academy:      (-28, 3, 5)     — academy building
-
-  // Tour keyframes: [lookX, lookY, lookZ]
-  // 8 segments, each 1/8 of a revolution. Each segment blends from A to B.
-  const KEYS = [
-    // seg 0: bottom-right rising → Beach wide (middle beach + water horizon)
-    { ax:  4, ay:  3.5, az: 28,   bx:  0, by:  2.0, bz: 32  },
-    // seg 1: right side rising → Beach closer (look at shoreline)
-    { ax:  0, ay:  2.0, az: 32,   bx: -4, by:  0.8, bz: 30  },
-    // seg 2: top-right arc → City center wide (panoramic overview from height)
-    { ax: -4, ay:  0.8, az: 30,   bx:  0, by:  9.0, bz: -13 },
-    // seg 3: top of arc → City center closer (plaza + dance floor detail)
-    { ax:  0, ay:  9.0, az: -13,  bx:  0, by:  4.0, bz: -13 },
-    // seg 4: top-left arc → Stage wide reveal (north city from height)
-    { ax:  0, ay:  4.0, az: -13,  bx:  0, by:  8.0, bz: -32 },
-    // seg 5: left side descending → Stage closer (stage face clearly visible)
-    { ax:  0, ay:  8.0, az: -32,  bx:  0, by:  3.5, bz: -32 },
-    // seg 6: bottom-left → Lounge + Academy zone
-    { ax:  0, ay:  3.5, az: -32,  bx: -22, by: 3.0, bz: -20 },
-    // seg 7: bottom completing loop → Return to beach center
-    { ax: -22, ay: 3.0, az: -20,  bx:  4, by:  3.5, bz: 28  },
-  ];
-
+  // ── Time-based tour — fully decoupled from wheel speed ───────────
   const ss = (x) => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
 
-  const norm = ((totalAngle % (Math.PI * 2)) + Math.PI * 2) / (Math.PI * 2);
-  const segIdx = Math.min(7, Math.floor(norm * 8));
-  const rawProg = (norm * 8) % 1; // 0→1 within segment
+  const tourT = t % TOUR_PERIOD;
+
+  // Find which segment we're in
+  let elapsed = 0;
+  let segIdx = 0;
+  let rawProg = 0;
+  for (let i = 0; i < TOUR_SEGS.length; i++) {
+    if (tourT < elapsed + TOUR_SEGS[i].dur) {
+      segIdx = i;
+      rawProg = (tourT - elapsed) / TOUR_SEGS[i].dur; // 0→1 within this segment
+      break;
+    }
+    elapsed += TOUR_SEGS[i].dur;
+  }
+
   const sp = ss(rawProg);
+  const k  = TOUR_SEGS[segIdx];
+  const kN = TOUR_SEGS[(segIdx + 1) % TOUR_SEGS.length];
 
-  // Cross-boundary blend: last 18% of each segment begins drifting toward the
-  // next segment's start point so there is never a hard jump at the boundary.
-  const BLEND_ZONE = 0.18;
-  const nextIdx = (segIdx + 1) % 8;
-  const k  = KEYS[segIdx];
-  const kN = KEYS[nextIdx];
-
-  // Current segment interpolated look-at (A→B)
+  // Within-segment look-at (A→B subtle drift)
   const curX = k.ax + (k.bx - k.ax) * sp;
   const curY = k.ay + (k.by - k.ay) * sp;
   const curZ = k.az + (k.bz - k.az) * sp;
 
-  // Cross-fade blend factor (0 until we enter the blend zone, then 0→1)
+  // Cross-boundary blend: last 20% of segment pre-fades into next segment's start
+  const BLEND_ZONE = 0.20;
   const blendT = ss(Math.max(0, (rawProg - (1 - BLEND_ZONE)) / BLEND_ZONE));
   const lerpedLookX = curX + (kN.ax - curX) * blendT;
   const lerpedLookY = curY + (kN.ay - curY) * blendT;
