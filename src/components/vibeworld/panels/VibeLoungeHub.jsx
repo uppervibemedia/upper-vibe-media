@@ -2,7 +2,6 @@
  * VibeLoungeHub — Vibe Lounge group chat panel.
  * - Duplicate-safe send (disabled while in-flight + debounce)
  * - Realtime messages via useLoungeChat subscription
- * - Lounge overhead camera preview above chat
  * - Accurate lounge user count (includes self)
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -10,7 +9,6 @@ import { motion } from "framer-motion";
 import { X, Send, Users } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import useLoungeChat from "@/hooks/useLoungeChat";
-import LoungePreviewCamera from "@/components/vibeworld/LoungePreviewCamera";
 
 const QUICK_MESSAGES = [
   "🌊 Chilling",
@@ -128,11 +126,7 @@ export default function VibeLoungeHub({
 
   if (!open) return null;
 
-  // Panel height split: ~30% camera preview, ~70% chat — only on mobile portrait
-  const isPortrait = isMobile && window.innerHeight > window.innerWidth;
-  const panelHeight = isMobile ? "min(82dvh, 100dvh)" : "70vh";
-  // Camera preview height
-  const cameraHeight = isPortrait ? "28%" : (isMobile ? "22%" : "200px");
+  const panelHeight = isMobile ? "min(88dvh, 100dvh)" : "72vh";
 
   return (
     <motion.div
@@ -140,10 +134,14 @@ export default function VibeLoungeHub({
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="fixed inset-x-0 rounded-t-3xl overflow-hidden flex flex-col"
+      className="fixed rounded-t-3xl overflow-hidden flex flex-col"
       style={{
         zIndex: 70,
         bottom: panelBottom,
+        left: 0,
+        right: 0,
+        paddingLeft: "env(safe-area-inset-left)",
+        paddingRight: "env(safe-area-inset-right)",
         height: panelHeight,
         maxHeight: "100dvh",
         background: "rgba(10,8,22,0.97)",
@@ -156,32 +154,21 @@ export default function VibeLoungeHub({
       onTouchStart={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* ── Lounge camera preview ─────────────────────────────────── */}
-      <div
-        className="flex-shrink-0 rounded-t-3xl overflow-hidden relative"
-        style={{ height: cameraHeight, minHeight: isMobile ? 100 : 140 }}
-      >
-        <LoungePreviewCamera
-          activeUsers={activeUsers}
-          currentUserId={currentUserId}
-          isMobile={isMobile}
-        />
-        {/* Gradient overlay at bottom for readability */}
-        <div
-          className="absolute inset-x-0 bottom-0 pointer-events-none"
-          style={{ height: "40%", background: "linear-gradient(to top, rgba(10,8,22,0.97) 0%, transparent 100%)" }}
-        />
-        {/* "Vibe Lounge" label overlaid on camera */}
-        <div className="absolute top-2 left-3 flex items-center gap-1.5 pointer-events-none">
-          <span className="text-sm">🛋️</span>
-          <span className="font-heading font-black text-xs text-white/80 tracking-wider">Vibe Lounge</span>
-        </div>
-      </div>
-
       {/* ── Header ───────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 flex-shrink-0">
+      <div
+        className="flex items-center justify-between px-4 flex-shrink-0"
+        style={{
+          paddingTop: `calc(env(safe-area-inset-top, 0px) + 10px)`,
+          paddingBottom: 10,
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+        }}
+      >
         <div className="flex items-center gap-2">
-          <p className="text-[9px] text-purple-300/50">Group Chat</p>
+          <span className="text-base">🛋️</span>
+          <div>
+            <p className="font-heading font-black text-xs text-white/90 tracking-wider leading-tight">Vibe Lounge</p>
+            <p className="text-[9px] text-purple-300/50 leading-tight">Group Chat</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {/* Who's Here toggle */}
@@ -288,7 +275,7 @@ export default function VibeLoungeHub({
           </div>
 
           {/* Input bar */}
-          <div className="flex-shrink-0 flex items-center gap-2 px-3 pb-3 pt-1.5">
+          <div className="flex-shrink-0 flex items-center gap-2 px-3 pt-1.5" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))" }}>
             <input
               ref={inputRef}
               value={input}
