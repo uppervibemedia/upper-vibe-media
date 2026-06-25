@@ -128,9 +128,10 @@ export default function ZoneChatPanel({
         </div>
         <button
           onClick={handleClose}
-          onTouchStart={(e) => { e.stopPropagation(); handleClose(); }}
-          className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
-          style={{ minWidth: 32, minHeight: 32, touchAction: "manipulation" }}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleClose(); }}
+          className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-90"
+          style={{ minWidth: 44, minHeight: 44, touchAction: "manipulation" }}
         >
           <X className="w-4 h-4 text-white/50" />
         </button>
@@ -207,26 +208,30 @@ export default function ZoneChatPanel({
                 onKeyDown={handleKeyDown}
                 onFocus={() => onInputFocus?.(true)}
                 onBlur={() => onInputFocus?.(false)}
+                onTouchStart={(e) => e.stopPropagation()}
                 placeholder={`Message ${zoneName}...`}
                 maxLength={250}
-                className="flex-1 px-3 py-2.5 rounded-xl text-xs text-white/90 outline-none"
+                className="flex-1 px-3 py-2.5 rounded-xl text-white/90 outline-none"
                 style={{
                   background: "rgba(255,255,255,0.07)",
                   border: "1px solid rgba(255,255,255,0.12)",
                   minHeight: 44,
                   touchAction: "manipulation",
-                  fontSize: "14px", // prevent iOS zoom
+                  fontSize: "16px", // 16px prevents iOS Safari auto-zoom
                 }}
               />
               <button
                 onClick={() => handleSend(draft)}
-                onTouchStart={(e) => { e.stopPropagation(); }}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleSend(draft); }}
                 disabled={sending || !draft.trim()}
                 className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-90"
                 style={{
                   background: draft.trim() ? "linear-gradient(135deg,#7C3AED,#C43BFF)" : "rgba(255,255,255,0.07)",
                   minWidth: 44, minHeight: 44, touchAction: "manipulation",
                   opacity: draft.trim() ? 1 : 0.4,
+                  pointerEvents: "auto",
+                  zIndex: 1,
                 }}
               >
                 <Send className="w-4 h-4 text-white" />

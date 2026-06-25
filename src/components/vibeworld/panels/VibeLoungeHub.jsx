@@ -448,10 +448,12 @@ export default function VibeLoungeHub({
                   pointerEvents: "auto",
                   touchAction: "manipulation",
                   minHeight: "44px",
-                  fontSize: "16px",
+                  fontSize: "16px", // 16px prevents iOS Safari auto-zoom
                 }}
               />
-              <button onClick={() => handleSend()} disabled={!chatInput.trim() || sending}
+              <button
+                onClick={() => handleSend()}
+                onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleSend(); }}
                 className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
                 style={{
                   background: chatInput.trim() ? "rgba(155,126,255,0.15)" : "rgba(255,255,255,0.05)",
