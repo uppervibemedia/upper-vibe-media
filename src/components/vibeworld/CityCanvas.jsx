@@ -1659,8 +1659,20 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           camera.lookAt(cv.nLook);
           if (avatarRef.current) avatarRef.current.visible = false;
         } else if (lockedRef.current) {
-          camera.position.lerp(cv.lkPos, Math.min(1, 3.0 * dt));
-          camera.lookAt(cv.lkLook);
+          // Detect if player is in the lounge zone (x≈-22, z≈-26) to show lounge camera
+          const inLounge = Math.sqrt((px - (-22)) ** 2 + (pz - (-26)) ** 2) < 12;
+          if (inLounge) {
+            // Overhead-angled lounge camera — same angle as LoungePreviewCamera
+            if (!cv.lgLkPos) {
+              cv.lgLkPos = new Vector3(-22, 14, -18);
+              cv.lgLkLook = new Vector3(-22, 0.5, -26);
+            }
+            camera.position.lerp(cv.lgLkPos, Math.min(1, 3.0 * dt));
+            camera.lookAt(cv.lgLkLook);
+          } else {
+            camera.position.lerp(cv.lkPos, Math.min(1, 3.0 * dt));
+            camera.lookAt(cv.lkLook);
+          }
         } else {
           // Standard third-person: camera sits at world-space camYaw angle behind avatar.
           // Pick landscape vs portrait camera constants based on current orientation.

@@ -1,12 +1,16 @@
 /**
- * VibeLoungeHub — Simplified Vibe Lounge panel.
- * One view: group chat + who's here list. No tabs, no complexity.
+ * VibeLoungeHub — Vibe Lounge group chat panel.
+ * - Duplicate-safe send (disabled while in-flight + debounce)
+ * - Realtime messages via useLoungeChat subscription
+ * - Lounge overhead camera preview above chat
+ * - Accurate lounge user count (includes self)
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { X, Send, Users } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import useLoungeChat from "@/hooks/useLoungeChat";
+import LoungePreviewCamera from "@/components/vibeworld/LoungePreviewCamera";
 
 const QUICK_MESSAGES = [
   "🌊 Chilling",
@@ -15,6 +19,9 @@ const QUICK_MESSAGES = [
   "💜 Good energy",
   "🤝 Open to connect",
 ];
+
+// Debounce duration: ignore rapid re-taps for this long after a successful send
+const SEND_DEBOUNCE_MS = 700;
 
 export default function VibeLoungeHub({
   open,
@@ -25,6 +32,7 @@ export default function VibeLoungeHub({
   activeUsers = [],
   currentUserId,
   onSelectUser,
+  followSystem,
 }) {
   const { user } = useAuth();
   const username = user?.world_username || "New User";
@@ -36,8 +44,11 @@ export default function VibeLoungeHub({
   const [showPeople, setShowPeople] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const lastSendTimeRef = useRef(0); // UI-level debounce guard
+  const atBottomRef = useRef(true);
+  const scrollContainerRef = useRef(null);
 
-  // iOS keyboard-safe
+  // iOS keyboard-safe height
   const [panelBottom, setPanelBottom] = useState(0);
   useEffect(() => {
     if (!isMobile || !open) { setPanelBottom(0); return; }
@@ -53,23 +64,58 @@ export default function VibeLoungeHub({
     return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
   }, [isMobile, open]);
 
-  // Auto-scroll to latest message
+  // Track whether user is near the bottom (for auto-scroll)
+  const handleScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    atBottomRef.current = distFromBottom < 80;
+  };
+
+  // Auto-scroll to latest message only when user is near bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (atBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages.length]);
 
-  const loungeUsers = (activeUsers || []).filter(
-    (u) => u.user_id !== currentUserId && u.current_zone === "lounge" && !blockedUsers?.[u.user_id]
-  );
+  // Scroll to bottom on open
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+        atBottomRef.current = true;
+      }, 200);
+    }
+  }, [open]);
 
+  // Lounge users: others in the lounge zone (excluding blocked and self)
+  const loungeUsers = (activeUsers || []).filter(
+    (u) => u.user_id !== currentUserId
+      && u.current_zone === "Vibe Lounge"
+      && !blockedUsers?.[u.user_id]
+  );
+  // Total lounge count = others + self (current user is always counted when panel is open)
+  const loungeCount = loungeUsers.length + 1;
+
+  // ── Send handler — fully debounced + disabled while in-flight ─────
   const handleSend = useCallback(async (text) => {
-    const trimmed = (text || input).trim();
-    if (!trimmed || sending) return;
+    const trimmed = (typeof text === "string" ? text : input).trim();
+    if (!trimmed) return;
+
+    // UI-level debounce: ignore taps within SEND_DEBOUNCE_MS of last send
+    const now = Date.now();
+    if (sending || now - lastSendTimeRef.current < SEND_DEBOUNCE_MS) return;
+
+    lastSendTimeRef.current = now;
     setSending(true);
     setSendError(null);
     setInput("");
+
     const result = await sendMessage(trimmed);
-    if (result?.error) setSendError(result.error);
+    if (result?.error) {
+      setSendError(result.error);
+    }
     setSending(false);
   }, [input, sending, sendMessage]);
 
@@ -82,6 +128,12 @@ export default function VibeLoungeHub({
 
   if (!open) return null;
 
+  // Panel height split: ~30% camera preview, ~70% chat — only on mobile portrait
+  const isPortrait = isMobile && window.innerHeight > window.innerWidth;
+  const panelHeight = isMobile ? "min(82dvh, 100dvh)" : "70vh";
+  // Camera preview height
+  const cameraHeight = isPortrait ? "28%" : (isMobile ? "22%" : "200px");
+
   return (
     <motion.div
       initial={{ y: "100%" }}
@@ -92,7 +144,7 @@ export default function VibeLoungeHub({
       style={{
         zIndex: 70,
         bottom: panelBottom,
-        height: isMobile ? "min(78dvh, 100dvh)" : "65vh",
+        height: panelHeight,
         maxHeight: "100dvh",
         background: "rgba(10,8,22,0.97)",
         backdropFilter: "blur(24px)",
@@ -104,14 +156,32 @@ export default function VibeLoungeHub({
       onTouchStart={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 flex-shrink-0">
+      {/* ── Lounge camera preview ─────────────────────────────────── */}
+      <div
+        className="flex-shrink-0 rounded-t-3xl overflow-hidden relative"
+        style={{ height: cameraHeight, minHeight: isMobile ? 100 : 140 }}
+      >
+        <LoungePreviewCamera
+          activeUsers={activeUsers}
+          currentUserId={currentUserId}
+          isMobile={isMobile}
+        />
+        {/* Gradient overlay at bottom for readability */}
+        <div
+          className="absolute inset-x-0 bottom-0 pointer-events-none"
+          style={{ height: "40%", background: "linear-gradient(to top, rgba(10,8,22,0.97) 0%, transparent 100%)" }}
+        />
+        {/* "Vibe Lounge" label overlaid on camera */}
+        <div className="absolute top-2 left-3 flex items-center gap-1.5 pointer-events-none">
+          <span className="text-sm">🛋️</span>
+          <span className="font-heading font-black text-xs text-white/80 tracking-wider">Vibe Lounge</span>
+        </div>
+      </div>
+
+      {/* ── Header ───────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🛋️</span>
-          <div>
-            <h3 className="font-heading font-black text-sm text-white leading-none">Vibe Lounge</h3>
-            <p className="text-[9px] text-purple-300/50 mt-0.5">Group Chat</p>
-          </div>
+          <p className="text-[9px] text-purple-300/50">Group Chat</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Who's Here toggle */}
@@ -127,7 +197,7 @@ export default function VibeLoungeHub({
             }}
           >
             <Users className="w-3 h-3" />
-            {loungeUsers.length + 1}
+            <span>{loungeCount}</span>
           </button>
           <button
             onTouchStart={(e) => e.stopPropagation()}
@@ -140,11 +210,16 @@ export default function VibeLoungeHub({
         </div>
       </div>
 
-      {/* Main content: chat | people */}
+      {/* ── Main content: chat | people ──────────────────────────── */}
       <div className="flex-1 flex min-h-0">
         {/* Chat messages */}
         <div className={`flex flex-col min-h-0 transition-all ${showPeople ? "w-[60%]" : "w-full"}`}>
-          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2" style={{ overscrollBehavior: "contain" }}>
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto px-3 py-3 space-y-2"
+            style={{ overscrollBehavior: "contain" }}
+          >
             {loading ? (
               <div className="flex justify-center py-8">
                 <div className="w-5 h-5 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
@@ -175,7 +250,7 @@ export default function VibeLoungeHub({
                     <div
                       className="px-3 py-2 rounded-2xl text-xs leading-snug"
                       style={isOwn
-                        ? { background: "linear-gradient(135deg,rgba(155,126,255,0.3),rgba(124,58,237,0.25))", color: "rgba(255,255,255,0.9)", border: "1px solid rgba(155,126,255,0.25)" }
+                        ? { background: msg._optimistic ? "rgba(124,58,237,0.18)" : "linear-gradient(135deg,rgba(155,126,255,0.3),rgba(124,58,237,0.25))", color: "rgba(255,255,255,0.9)", border: "1px solid rgba(155,126,255,0.25)", opacity: msg._optimistic ? 0.75 : 1 }
                         : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.07)" }
                       }
                     >
@@ -194,7 +269,8 @@ export default function VibeLoungeHub({
               <button
                 key={qm}
                 onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => handleSend(qm)}
+                onClick={() => !sending && handleSend(qm)}
+                disabled={sending}
                 className="flex-shrink-0 px-2.5 py-1 rounded-full font-black text-[9px] tracking-wider transition-all active:scale-95 hover:brightness-110"
                 style={{
                   background: "rgba(155,126,255,0.08)",
@@ -203,6 +279,7 @@ export default function VibeLoungeHub({
                   whiteSpace: "nowrap",
                   touchAction: "manipulation",
                   minHeight: 28,
+                  opacity: sending ? 0.5 : 1,
                 }}
               >
                 {qm}
@@ -225,24 +302,28 @@ export default function VibeLoungeHub({
               style={{
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(155,126,255,0.2)",
-                fontSize: "16px", // prevent iOS zoom
+                fontSize: "16px",
                 minHeight: 40,
               }}
             />
             <button
-              onTouchStart={(e) => e.stopPropagation()}
+              onTouchStart={(e) => { e.stopPropagation(); }}
               onClick={() => handleSend()}
               disabled={!input.trim() || sending}
               className="flex items-center justify-center rounded-full transition-all active:scale-95 hover:brightness-110 flex-shrink-0"
               style={{
                 width: 40, height: 40, minWidth: 40, minHeight: 40,
-                background: input.trim() ? "linear-gradient(135deg,#7C3AED,#A078FF)" : "rgba(255,255,255,0.06)",
+                background: (input.trim() && !sending) ? "linear-gradient(135deg,#7C3AED,#A078FF)" : "rgba(255,255,255,0.06)",
                 border: "none",
-                color: input.trim() ? "#fff" : "rgba(255,255,255,0.25)",
+                color: (input.trim() && !sending) ? "#fff" : "rgba(255,255,255,0.25)",
                 touchAction: "manipulation",
+                opacity: sending ? 0.6 : 1,
               }}
             >
-              <Send className="w-3.5 h-3.5" />
+              {sending
+                ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white/80 rounded-full animate-spin" />
+                : <Send className="w-3.5 h-3.5" />
+              }
             </button>
           </div>
           {sendError && (
@@ -250,14 +331,14 @@ export default function VibeLoungeHub({
           )}
         </div>
 
-        {/* People panel (slide in) */}
+        {/* People panel */}
         {showPeople && (
           <div
             className="w-[40%] border-l flex flex-col min-h-0"
             style={{ borderColor: "rgba(155,126,255,0.12)" }}
           >
             <p className="text-[9px] font-black text-white/30 tracking-wider uppercase px-3 pt-3 pb-1 flex-shrink-0">
-              Here ({loungeUsers.length + 1})
+              Here ({loungeCount})
             </p>
             <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-1.5" style={{ overscrollBehavior: "contain" }}>
               {/* Self */}
@@ -267,7 +348,10 @@ export default function VibeLoungeHub({
                   style={{ background: "linear-gradient(135deg,#7C3AED,#A078FF)", color: "#fff" }}>
                   {(username || "Y")[0].toUpperCase()}
                 </div>
-                <p className="text-[9px] font-black text-purple-300 truncate flex-1">You</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-black text-purple-300 truncate">You</p>
+                </div>
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#4ade80" }} />
               </div>
               {loungeUsers.length === 0 ? (
                 <p className="text-[9px] text-white/20 text-center py-4">No one else here</p>
@@ -284,6 +368,7 @@ export default function VibeLoungeHub({
                     {(u.username || "?")[0].toUpperCase()}
                   </div>
                   <p className="text-[9px] font-black text-white/70 truncate flex-1">{u.username || "User"}</p>
+                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#4ade80" }} />
                 </button>
               ))}
             </div>
