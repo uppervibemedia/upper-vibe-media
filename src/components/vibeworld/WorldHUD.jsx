@@ -48,6 +48,7 @@ import SocialPanel from "./panels/SocialPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import LiveUsersBadge from "@/components/vibeworld/LiveUsersBadge";
 import NotificationPanel from "./panels/NotificationPanel";
+import SeatedLoungeMiniBar from "./panels/SeatedLoungeMiniBar";
 
 const ZONE_ICONS = {
   plaza: Compass,
@@ -221,6 +222,7 @@ export default function WorldHUD({
   const handleCloseLounge = useCallback(() => {
     setLoungePanelOpen(false);
     // Only report no modals if music library is also closed
+    // Note: isSeatedInLounge state is preserved — closing the panel doesn't stand the user up
     onMobileModalChange?.(musicPanelOpen);
   }, [onMobileModalChange, musicPanelOpen]);
 
@@ -417,6 +419,26 @@ export default function WorldHUD({
 
 
 
+
+      {/* ── Seated Lounge Mini-Bar ────────────────────── */}
+      <AnimatePresence>
+        {isSeatedInLounge && !loungePanelOpen && (
+          <SeatedLoungeMiniBar
+            visible={true}
+            seat={null}
+            isMobile={isMobile}
+            mobileLayout={mobileLayout}
+            activeUsers={activeUsers}
+            currentUserId={currentUserId}
+            blockedUsers={blockedUsers}
+            onSelectUser={onSelectUser}
+            onStandUp={() => {
+              setIsSeatedInLounge(false);
+              onStandUp?.();
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Now Playing (bottom bar in UpperVibeCity handles this) ── */}
 

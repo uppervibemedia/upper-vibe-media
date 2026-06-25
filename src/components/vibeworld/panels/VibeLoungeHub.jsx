@@ -118,7 +118,9 @@ export default function VibeLoungeHub({
 
   const handleSit = useCallback((seat) => {
     setIsSeated(true); setChosenSeat(seat); handleSetStatus("chilling"); onSeatChange?.(true, seat);
-  }, [handleSetStatus, onSeatChange]);
+    // Close the full panel so the lounge view is clear while seated
+    onClose?.();
+  }, [handleSetStatus, onSeatChange, onClose]);
 
   const handleStandUp = useCallback(() => {
     setIsSeated(false); setChosenSeat(null); onSeatChange?.(false, null);
