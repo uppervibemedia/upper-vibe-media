@@ -571,15 +571,21 @@ export function getRiderCameraTransform(t) {
   const camZ = pivotWZ + (outDZ / outLen) * 0.15;
   const camY = seatWorldY;
 
-  // Look target: outward in the same direction but far away, at a slight downward angle
-  // when low (approaching ground) and upward when at top — gives scenic arc
   const atTop = Math.max(0, Math.min(1, (pivotWorldY - WHEEL_HUB_Y + WHEEL_RADIUS) / (WHEEL_RADIUS * 2)));
   const lookDist = 28;
-  // At bottom: look slightly down toward ground/city floor
-  // At top: look more level/upward to see skyline and ocean
+
+  // Bias look direction toward beach/ocean (world +Z direction) when the gondola
+  // is on the city-facing side (outDZ < 0, i.e. facing toward the buildings).
+  // This steers the view away from building faces and toward open scenery.
+  const cityFacing = Math.max(0, -outDZ / outLen); // 0 when facing beach, 1 when facing city
+  const beachBiasZ = cityFacing * 0.7;  // blend outward direction toward +Z (beach)
+  const biasedDX = outDX / outLen;
+  const biasedDZ = outDZ / outLen + beachBiasZ;
+  const biasLen = Math.sqrt(biasedDX * biasedDX + biasedDZ * biasedDZ) || 1;
+
   const lookY = seatWorldY + (atTop - 0.3) * 4.5;
-  const lookX = pivotWX + (outDX / outLen) * lookDist;
-  const lookZ = pivotWZ + (outDZ / outLen) * lookDist;
+  const lookX = pivotWX + (biasedDX / biasLen) * lookDist;
+  const lookZ = pivotWZ + (biasedDZ / biasLen) * lookDist;
 
   return {
     camPos: { x: camX, y: camY, z: camZ },

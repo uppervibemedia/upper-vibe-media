@@ -942,17 +942,18 @@ export function animateCosmicSky(scene, camera, t, dt) {
       const cy = camera.position.y + p.horizonY + buildingArc + pitchBoost + Math.sin(t * 0.025 + p.angleOffset) * 0.8;
       p.sprite.position.set(cx, cy, cz);
 
-      // Per-planet Ferris ride opacity: city-side = cos(angle) > 0.2 → fade out.
-      // Beach-side planets (behind camera relative to stage) stay fully visible.
+      // Ferris ride: fade ALL planets out to prevent them passing through ride geometry.
+      // Fade speed: 1.5s in, 1s out — smooth, no pop.
       let opacity = globalPlanetOpacity;
       if (ferrisRiding && !hidePlanets) {
-        const isCitySide = frontFactor > 0.2;
-        const ferrisTarget = isCitySide ? 0.0 : 1.0;
         if (!p._ferrisOpacity) p._ferrisOpacity = 1.0;
-        p._ferrisOpacity += (ferrisTarget - p._ferrisOpacity) * Math.min(1, dt * 2.0);
+        p._ferrisOpacity += (0.0 - p._ferrisOpacity) * Math.min(1, dt * 1.5);
         opacity = p._ferrisOpacity;
       } else {
-        if (p._ferrisOpacity !== undefined) p._ferrisOpacity = 1.0;
+        // Restore from Ferris fade when not riding
+        if (p._ferrisOpacity !== undefined && p._ferrisOpacity < 0.99) {
+          p._ferrisOpacity += (1.0 - p._ferrisOpacity) * Math.min(1, dt * 2.0);
+        }
 
         // City/stage proximity + facing fade: smoothly block all planets when
         // the player is near the stage/dancefloor and looking toward the buildings.
@@ -1100,8 +1101,8 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
-  // Beach flyby planets: suppress during Ferris ride AND in city zone (z < 8)
-  const inBeachZone = !scene.userData._hidePlanets && camera.position.z > 8;
+  // Beach flyby planets: suppress during Ferris ride, stage watch, and city zone
+  const inBeachZone = !scene.userData._hidePlanets && !scene.userData._ferrisRiding && camera.position.z > 8;
   animateFlyby(fba, inBeachZone);
   animateFlyby(fbb, inBeachZone);
 
