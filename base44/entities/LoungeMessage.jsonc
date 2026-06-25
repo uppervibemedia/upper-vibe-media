@@ -1,0 +1,33 @@
+{
+  "name": "LoungeMessage",
+  "type": "object",
+  "properties": {
+    "sender_user_id": {
+      "type": "string"
+    },
+    "sender_username": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 250
+    }
+  },
+  "required": [
+    "sender_user_id",
+    "sender_username",
+    "message"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": true,
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

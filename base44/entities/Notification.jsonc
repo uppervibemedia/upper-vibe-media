@@ -1,0 +1,58 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Recipient user ID"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "friend_request",
+        "request_accepted",
+        "direct_message",
+        "system"
+      ],
+      "default": "system"
+    },
+    "from_user_id": {
+      "type": "string"
+    },
+    "from_username": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "related_request_id": {
+      "type": "string",
+      "description": "PrivateChatRequest ID if applicable"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false
+    },
+    "handled": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "user_id",
+    "type",
+    "message"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "data.user_id": "{{user.id}}"
+    },
+    "update": {
+      "data.user_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.user_id": "{{user.id}}"
+    }
+  }
+}

@@ -45,10 +45,8 @@ import JukeboxPanel from "./panels/JukeboxPanel";
 import InWorldSongPage from "./panels/InWorldSongPage";
 import SocialPanel from "./panels/SocialPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
-import IncomingChatRequest from "./IncomingChatRequest";
-import ChatWarning from "@/components/vibeworld/ChatWarning";
 import LiveUsersBadge from "@/components/vibeworld/LiveUsersBadge";
-import ZoneChatPanel from "./panels/ZoneChatPanel";
+import NotificationPanel from "./panels/NotificationPanel";
 
 const ZONE_ICONS = {
   plaza: Compass,
@@ -87,11 +85,9 @@ export default function WorldHUD({
   currentUserId,
   activeChatPeer,
   chatMessages,
-  incomingRequest,
   safetyConfirmed,
   onSelectUser,
   onRequestChat,
-  onRequestVoiceChat,
   onAcceptChat,
   onDeclineChat,
   onSendChatMessage,
@@ -107,8 +103,11 @@ export default function WorldHUD({
   onVoiceActive,
   outgoingStatus,
   onClearOutgoingStatus,
-  pendingRequestsCount = 0,
-  pendingRequests = [],
+  notifications = [],
+  unreadCount = 0,
+  onMarkNotificationHandled,
+  onMarkAllNotificationsRead,
+  onOpenChat,
   // ── Emote / Dance Floor props ──────────────────────────────
   onEmote,
   onStopDance,
@@ -120,13 +119,10 @@ export default function WorldHUD({
   onFerrisRideChange,
   // Follow system
   followSystem,
-  // Zone chat
-  username,
   // Lounge seating
   onSit,
   onStandUp,
 }) {
-  const [chatWarningVisible, setChatWarningVisible] = useState(false);
   const [showZoneLabel, setShowZoneLabel] = useState(false);
   const [isPortrait, setIsPortrait] = useState(() => window.innerHeight > window.innerWidth);
   const zoneFadeTimerRef = useRef(null);
@@ -200,12 +196,11 @@ export default function WorldHUD({
   const [isRiding, setIsRiding] = useState(false);
   const [zenBeachOpen, setZenBeachOpen] = useState(false);
   const [emotePanelOpen, setEmotePanelOpen] = useState(false);
-  const [requestsOpen, setRequestsOpen] = useState(false);
+
   const [jukeboxOpen, setJukeboxOpen] = useState(false);
   const [djSongPageOpen, setDjSongPageOpen] = useState(false);
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
-  const [zoneChatOpen, setZoneChatOpen] = useState(false);
-  const [zoneChatInputFocused, setZoneChatInputFocused] = useState(false);
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -225,11 +220,7 @@ export default function WorldHUD({
     hapticTap();
     setLoungePanelOpen(true);
     onMobileModalChange?.(true);
-    if (chatAgeConfirmed) {
-      setChatWarningVisible(true);
-      setTimeout(() => setChatWarningVisible(false), 5000);
-    }
-  }, [chatAgeConfirmed, onMobileModalChange]);
+  }, [onMobileModalChange]);
 
   const handleCloseLounge = useCallback(() => {
     setLoungePanelOpen(false);
@@ -313,14 +304,14 @@ export default function WorldHUD({
             : isMobile ? "calc(env(safe-area-inset-top, 0px) + 3.4rem)" : "4.5rem",
         }}
       >
-        {/* Zone Chat button */}
+        {/* Notification Bell */}
         <button
           onTouchStart={(e) => e.stopPropagation()}
-          onClick={() => { hapticTap(); setZoneChatOpen((v) => !v); onMobileModalChange?.(!zoneChatOpen); }}
+          onClick={() => { hapticTap(); setNotifPanelOpen((v) => !v); if (!notifPanelOpen && unreadCount > 0) onMarkAllNotificationsRead?.(); }}
           className="relative flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
           style={{
-            background: zoneChatOpen ? "rgba(196,59,255,0.2)" : "rgba(255,255,255,0.06)",
-            border: `1px solid ${zoneChatOpen ? "rgba(196,59,255,0.4)" : "rgba(255,255,255,0.08)"}`,
+            background: unreadCount > 0 ? "rgba(155,126,255,0.18)" : "rgba(255,255,255,0.06)",
+            border: `1px solid ${unreadCount > 0 ? "rgba(155,126,255,0.4)" : "rgba(255,255,255,0.08)"}`,
             backdropFilter: "blur(8px)",
             width: isMobile ? 32 : 36,
             height: isMobile ? 32 : 36,
@@ -329,45 +320,23 @@ export default function WorldHUD({
             touchAction: "manipulation",
             pointerEvents: "auto",
           }}
-          title="Zone Chat"
         >
-          <MessageCircle style={{ width: isMobile ? 12 : 14, height: isMobile ? 12 : 14 }}
-            color={zoneChatOpen ? "#C43BFF" : "rgba(255,255,255,0.4)"} />
-        </button>
-
-        {/* Chat requests bell — vibrate on new notification */}
-        <button
-          onTouchStart={(e) => e.stopPropagation()}
-          onClick={() => { setRequestsOpen((v) => !v); if (!requestsOpen) try { navigator?.vibrate?.(15); } catch {} }}
-          className="relative flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
-          style={{
-            background: pendingRequestsCount > 0 ? "rgba(0,212,240,0.15)" : "rgba(255,255,255,0.06)",
-            border: `1px solid ${pendingRequestsCount > 0 ? "rgba(0,212,240,0.3)" : "rgba(255,255,255,0.08)"}`,
-            backdropFilter: "blur(8px)",
-            width: isMobile ? 28 : 32,
-            height: isMobile ? 28 : 32,
-            minWidth: isMobile ? 28 : 32,
-            minHeight: isMobile ? 28 : 32,
-            touchAction: "manipulation",
-            pointerEvents: "auto",
-          }}
-        >
-          <Bell style={{ width: isMobile ? 11 : 13, height: isMobile ? 11 : 13 }}
-            color={pendingRequestsCount > 0 ? "#00D4F0" : "rgba(255,255,255,0.4)"} />
-          {pendingRequestsCount > 0 && (
+          <Bell style={{ width: isMobile ? 12 : 14, height: isMobile ? 12 : 14 }}
+            color={unreadCount > 0 ? "#c4aaff" : "rgba(255,255,255,0.4)"} />
+          {unreadCount > 0 && (
             <span
               className="absolute -top-0.5 -right-0.5 flex items-center justify-center rounded-full font-black"
               style={{
-                background: "#00D4F0",
-                color: "#000",
-                fontSize: isMobile ? "6px" : "8px",
-                width: isMobile ? 12 : 14,
-                height: isMobile ? 12 : 14,
-                minWidth: isMobile ? 12 : 14,
-                minHeight: isMobile ? 12 : 14,
+                background: "#9B7EFF",
+                color: "#fff",
+                fontSize: "7px",
+                width: isMobile ? 13 : 15,
+                height: isMobile ? 13 : 15,
+                minWidth: isMobile ? 13 : 15,
+                minHeight: isMobile ? 13 : 15,
               }}
             >
-              {pendingRequestsCount > 9 ? "9+" : pendingRequestsCount}
+              {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </button>
@@ -430,123 +399,25 @@ export default function WorldHUD({
         )}
       </motion.div>
 
-      {/* ── Notification Bell Dropdown ───────────────────────── */}
+      {/* ── Notification Panel ───────────────────────── */}
       <AnimatePresence>
-        {requestsOpen && (
-          <motion.div
-            key="requests-dropdown"
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="absolute right-1 z-[57] pointer-events-auto"
-            style={{
-              top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 5.5rem)" : "7rem",
-              width: isMobile ? "min(calc(100vw - 2rem), 310px)" : "300px",
-              maxHeight: "320px",
-              overflow: "auto",
-              borderRadius: "16px",
-              background: "rgba(14,10,32,0.97)",
-              border: "1px solid rgba(124,58,237,0.25)",
-              backdropFilter: "blur(20px)",
-              boxShadow: "0 8px 40px rgba(0,0,0,0.6)",
-            }}
-            onTouchStart={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/5">
-              <div className="flex items-center gap-1.5">
-                <Bell style={{ width: 11, height: 11, color: "#00D4F0" }} />
-                <p className="text-[10px] font-black text-white/60 tracking-wider uppercase">
-                  Notifications
-                </p>
-                {pendingRequestsCount > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black"
-                    style={{ background: "rgba(0,212,240,0.2)", color: "#00D4F0" }}>
-                    {pendingRequestsCount}
-                  </span>
-                )}
-              </div>
-              <button
-                onTouchStart={(e) => e.stopPropagation()}
-                onClick={() => setRequestsOpen(false)}
-                className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/10"
-                style={{ color: "rgba(255,255,255,0.4)", touchAction: "manipulation" }}
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {(!pendingRequests || pendingRequests.length === 0) ? (
-              <div className="p-6 text-center">
-                <Bell style={{ width: 20, height: 20, color: "rgba(255,255,255,0.1)", margin: "0 auto 8px" }} />
-                <p className="text-xs text-white/25">No notifications</p>
-              </div>
-            ) : (
-              <div className="p-2 space-y-1.5">
-                {pendingRequests.map((req) => (
-                  <div key={req.id} className="p-2.5 rounded-xl"
-                    style={{ background: "rgba(155,126,255,0.05)", border: "1px solid rgba(155,126,255,0.12)" }}>
-                    {/* User info */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 font-black text-[11px]"
-                        style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.3),rgba(0,200,220,0.2))", color: "#c4aaff" }}>
-                        {(req.fromUsername || "?")[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-black text-white truncate">{req.fromUsername}</p>
-                        <p className="text-[9px] text-white/35">wants to start a private chat</p>
-                      </div>
-                    </div>
-                    {/* Actions */}
-                    <div className="flex items-center gap-1">
-                      <button
-                        onTouchStart={(e) => e.stopPropagation()}
-                        onClick={() => { onAcceptChat?.(req.id, req.fromUserId, req.fromUsername); setRequestsOpen(false); }}
-                        className="flex-1 py-1.5 rounded-lg font-black text-[9px] transition-all hover:brightness-110 active:scale-95"
-                        style={{
-                          background: "rgba(0,200,83,0.18)", border: "1px solid rgba(0,200,83,0.35)", color: "#00C853",
-                          minHeight: 30, touchAction: "manipulation",
-                        }}
-                      >
-                        ✓ Accept
-                      </button>
-                      <button
-                        onTouchStart={(e) => e.stopPropagation()}
-                        onClick={() => { onDeclineChat?.(req.id, req.fromUserId); }}
-                        className="flex-1 py-1.5 rounded-lg font-black text-[9px] transition-all hover:brightness-110 active:scale-95"
-                        style={{
-                          background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)",
-                          minHeight: 30, touchAction: "manipulation",
-                        }}
-                      >
-                        Decline
-                      </button>
-                      <button
-                        onTouchStart={(e) => e.stopPropagation()}
-                        onClick={() => { onBlockUser?.(req.fromUserId); onDeclineChat?.(req.id, req.fromUserId); }}
-                        className="py-1.5 px-2 rounded-lg font-black text-[9px] transition-all hover:brightness-110 active:scale-95"
-                        style={{
-                          background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "rgba(239,68,68,0.8)",
-                          minHeight: 30, touchAction: "manipulation",
-                        }}
-                      >
-                        Block
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
+        {notifPanelOpen && (
+          <NotificationPanel
+            open={notifPanelOpen}
+            onClose={() => setNotifPanelOpen(false)}
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onAcceptRequest={onAcceptChat}
+            onDeclineRequest={onDeclineChat}
+            onOpenChat={(uid, uname) => { onOpenChat?.(uid, uname); setNotifPanelOpen(false); }}
+            onMarkHandled={onMarkNotificationHandled}
+            onMarkAllRead={onMarkAllNotificationsRead}
+            isMobile={isMobile}
+          />
         )}
       </AnimatePresence>
 
-      {/* ── Chat Warning Banner ──────────────────────────────── */}
-      <ChatWarning
-        show={chatWarningVisible}
-        onDismiss={() => setChatWarningVisible(false)}
-      />
+
 
       {/* ── Outgoing chat request status toast — bottom-right, compact, non-blocking ── */}
       <AnimatePresence>
@@ -1285,17 +1156,12 @@ export default function WorldHUD({
         onClose={onCloseUserMenu}
         onRequestChat={() => {
           if (userInteractionTarget) {
-            onRequestChat(userInteractionTarget.user_id || userInteractionTarget.id, userInteractionTarget.username);
-          }
-        }}
-        onRequestVoiceChat={() => {
-          if (userInteractionTarget) {
-            onRequestVoiceChat(userInteractionTarget.user_id || userInteractionTarget.id, userInteractionTarget.username);
+            onRequestChat?.(userInteractionTarget.user_id || userInteractionTarget.id, userInteractionTarget.username);
           }
         }}
         onBlock={() => {
           if (userInteractionTarget) {
-            onBlockUser(userInteractionTarget.user_id || userInteractionTarget.id);
+            onBlockUser?.(userInteractionTarget.user_id || userInteractionTarget.id);
           }
         }}
         onUnblock={() => {
@@ -1303,9 +1169,9 @@ export default function WorldHUD({
             onUnblockUser?.(userInteractionTarget.user_id || userInteractionTarget.id);
           }
         }}
-        isBlocked={!!(userInteractionTarget && blockedUsers[userInteractionTarget.user_id || userInteractionTarget.id])}
+        isBlocked={!!(userInteractionTarget && blockedUsers?.[userInteractionTarget.user_id || userInteractionTarget.id])}
         outgoingStatus={outgoingStatus}
-        onReport={() => onReportUser(userInteractionTarget)}
+        onReport={() => onReportUser?.(userInteractionTarget)}
         isMobile={isMobile}
         currentUserId={currentUserId}
         isFollowing={followSystem?.isFollowing ?? (() => false)}
@@ -1333,24 +1199,7 @@ export default function WorldHUD({
         )}
       </AnimatePresence>
 
-      {/* ── Zone Chat Panel ─────────────────────────────────────── */}
-      <AnimatePresence>
-        {zoneChatOpen && (
-          <ZoneChatPanel
-            open={zoneChatOpen}
-            onClose={() => { setZoneChatOpen(false); onMobileModalChange?.(false); setZoneChatInputFocused(false); }}
-            zoneId={zone?.id || "plaza"}
-            userId={currentUserId}
-            username={username}
-            blockedUsers={blockedUsers}
-            onInputFocus={(focused) => { setZoneChatInputFocused(focused); onLoungeInputFocus?.(focused); }}
-            isMobile={isMobile}
-            mobileLayout={mobileLayout}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Incoming chat requests now routed to bell notification dropdown only — no floating modal */}
+      {/* Direct chat requests handled via notification bell only */}
 
       {/* ── Private Chat Panel ──────────────────────────────────── */}
       <PrivateChatPanel

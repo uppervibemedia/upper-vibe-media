@@ -1,376 +1,368 @@
+/**
+ * usePrivateChat — clean rebuild.
+ * Friend requests → notifications → direct messages.
+ * No zone chat. Uses world_username only. No email fallbacks.
+ */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 
-const REQUEST_EXPIRY_MS = 60_000; // 60 seconds
-const COOLDOWN_MS = 120_000; // 2 minutes cooldown after decline
+const REQUEST_EXPIRY_MS = 60_000;
 const CLEANUP_INTERVAL_MS = 30_000;
 
 export default function usePrivateChat(user) {
-  const [activeChatPeer, setActiveChatPeer] = useState(null); // { userId, username }
+  const [activeChatPeer, setActiveChatPeer] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
-  const [incomingRequest, setIncomingRequest] = useState(null); // { id, fromUsername, fromUserId }
-  const [outgoingStatus, setOutgoingStatus] = useState(null); // { toUsername, status: 'pending'|'accepted'|'declined'|'expired' }
-  const [safetyConfirmed, setSafetyConfirmed] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [outgoingStatus, setOutgoingStatus] = useState(null);
   const [blockedUsers, setBlockedUsers] = useState({});
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
-  const [pendingRequests, setPendingRequests] = useState([]); // all pending incoming requests
 
+  const userRef = useRef(user);
+  userRef.current = user;
+  const blockedRef = useRef({});
+  blockedRef.current = blockedUsers;
+  const expiryTimers = useRef({});
+  const cleanupTimer = useRef(null);
   const chatSubRef = useRef(null);
-  const requestSubRef = useRef(null);
-  const expiryTimersRef = useRef({});
-  const cleanupTimerRef = useRef(null);
-  const blockedUsersRef = useRef({});
-  const userRef = useRef(null);
 
-  // Keep refs in sync
-  useEffect(() => { blockedUsersRef.current = blockedUsers; }, [blockedUsers]);
-  useEffect(() => { userRef.current = user; }, [user]);
+  const myId = user?.id;
+  const myUsername = user?.world_username || "New User";
 
-  // ── Build chat_id from two user IDs (sorted) ──────────────────
-  const getChatId = useCallback((uid1, uid2) => {
-    return [uid1, uid2].sort().join("_");
-  }, []);
+  const getChatId = useCallback((a, b) => `dm_${[a, b].sort().join("_")}`, []);
 
-  // ── Load messages for active chat ──────────────────────────────
+  // ── Load blocks ──────────────────────────────────────────
+  useEffect(() => {
+    if (!myId) return;
+    base44.entities.UserBlock.filter({ blocker_user_id: myId })
+      .then((records) => {
+        const map = {};
+        records.forEach((r) => { map[r.blocked_user_id] = r.id; });
+        setBlockedUsers(map);
+        blockedRef.current = map;
+      }).catch(() => {});
+  }, [myId]);
+
+  // ── Load notifications ───────────────────────────────────
+  useEffect(() => {
+    if (!myId) return;
+    base44.entities.Notification
+      .filter({ user_id: myId }, "-created_date", 50)
+      .then((notes) => {
+        const valid = (notes || []).filter((n) => !n.handled);
+        setNotifications(valid);
+        setUnreadCount(valid.filter((n) => !n.read).length);
+      }).catch(() => {});
+  }, [myId]);
+
+  // ── Subscribe to notifications ───────────────────────────
+  useEffect(() => {
+    if (!myId) return;
+    const unsub = base44.entities.Notification.subscribe((event) => {
+      if (!event?.data) return;
+      const note = event.data;
+      if (note.user_id !== myId) return;
+      if (event.type === "create") {
+        setNotifications((prev) => [note, ...prev]);
+        setUnreadCount((c) => c + 1);
+        try { navigator?.vibrate?.([15, 30, 15]); } catch {}
+      } else if (event.type === "update") {
+        setNotifications((prev) => {
+          const updated = prev.map((n) => n.id === note.id ? note : n).filter((n) => !n.handled);
+          setUnreadCount(updated.filter((n) => !n.read).length);
+          return updated;
+        });
+      }
+    });
+    return () => { try { unsub(); } catch {} };
+  }, [myId]);
+
+  // ── Subscribe to messages in active chat ─────────────────
+  useEffect(() => {
+    if (!myId || !activeChatPeer?.userId) return;
+    const chatId = getChatId(myId, activeChatPeer.userId);
+    const unsub = base44.entities.PrivateChatMessage.subscribe((event) => {
+      if (event.type !== "create" || !event.data) return;
+      if (event.data.chat_id !== chatId) return;
+      if (blockedRef.current[event.data.sender_user_id]) return;
+      setChatMessages((prev) => {
+        if (prev.some((m) => m.id === event.data.id)) return prev;
+        return [...prev, event.data];
+      });
+    });
+    chatSubRef.current = unsub;
+    return () => { try { unsub(); } catch {} };
+  }, [myId, activeChatPeer?.userId, getChatId]);
+
+  // ── Load messages when chat opens ───────────────────────
   const loadMessages = useCallback(async (peerUserId) => {
-    if (!user?.id || !peerUserId) return;
-    const chatId = getChatId(user.id, peerUserId);
+    if (!myId || !peerUserId) return;
+    const chatId = getChatId(myId, peerUserId);
     try {
-      const msgs = await base44.entities.PrivateChatMessage.filter(
-        { chat_id: chatId },
-        "created_date",
-        50
-      );
-      setChatMessages(msgs);
+      const msgs = await base44.entities.PrivateChatMessage.filter({ chat_id: chatId }, "created_date", 60);
+      setChatMessages(msgs || []);
     } catch {}
-  }, [user, getChatId]);
+  }, [myId, getChatId]);
 
-  // ── Send a chat request ───────────────────────────────────────
-  const myDisplayName = user?.world_username || "New User";
-
+  // ── Send friend request ──────────────────────────────────
   const sendChatRequest = useCallback(async (toUserId, toUsername) => {
-    if (!user?.id) {
-      console.warn("[sendChatRequest] Not authenticated, no user.id");
-      return { error: "Not authenticated" };
-    }
-    if (!toUserId) {
-      console.warn("[sendChatRequest] No target user ID provided");
-      return { error: "No target user" };
-    }
+    if (!myId || !toUserId) return { error: "Not authenticated" };
+    if (blockedRef.current[toUserId]) return { error: "User is blocked" };
 
-    // Check: have I blocked them?
-    if (blockedUsersRef.current[toUserId]) return { error: "User is blocked" };
-
-    // Check: have they blocked me? Query UserBlock where they are the blocker
+    // Check if they blocked me
     try {
-      const theyBlockedMe = await base44.entities.UserBlock.filter({
-        blocker_user_id: toUserId,
-        blocked_user_id: user.id,
-      });
-      if (theyBlockedMe.length > 0) return { error: "You cannot contact this user." };
+      const theyBlocked = await base44.entities.UserBlock.filter({ blocker_user_id: toUserId, blocked_user_id: myId });
+      if (theyBlocked.length > 0) return { error: "Cannot contact this user." };
     } catch {}
 
-    // Check existing pending request
+    // Check existing pending
     try {
-      const existing = await base44.entities.PrivateChatRequest.filter({
-        from_user_id: user.id,
-        to_user_id: toUserId,
-        status: "pending",
+      const existing = await base44.entities.PrivateChatRequest.filter({ from_user_id: myId, to_user_id: toUserId, status: "pending" });
+      if (existing.length > 0) return { error: "Request already sent" };
+      // Check if already accepted (already connected)
+      const accepted = await base44.entities.PrivateChatRequest.filter({
+        $or: [
+          { from_user_id: myId, to_user_id: toUserId, status: "accepted" },
+          { from_user_id: toUserId, to_user_id: myId, status: "accepted" },
+        ]
       });
-      if (existing.length > 0) return { error: "You already have a pending request to this user" };
-    } catch (e) {
-      console.warn("[sendChatRequest] Error checking existing requests:", e);
-    }
+      if (accepted.length > 0) {
+        // Already connected — open chat directly
+        setActiveChatPeer({ userId: toUserId, username: toUsername });
+        await loadMessages(toUserId);
+        return { success: true, alreadyConnected: true };
+      }
+    } catch {}
 
     try {
       const expiresAt = new Date(Date.now() + REQUEST_EXPIRY_MS).toISOString();
-      console.log("[sendChatRequest] Creating request:", {
-        from_user_id: user.id,
-        from_username: myDisplayName,
-        to_user_id: toUserId,
-        to_username: toUsername,
-      });
       const created = await base44.entities.PrivateChatRequest.create({
-        from_user_id: user.id,
-        from_username: myDisplayName,
+        from_user_id: myId,
+        from_username: myUsername,
         to_user_id: toUserId,
         to_username: toUsername,
         status: "pending",
         expires_at: expiresAt,
       });
-      console.log("[sendChatRequest] Created:", created);
-      setOutgoingStatus({ toUsername, status: "pending" });
 
-      // Auto-expire timer
-      expiryTimersRef.current[toUserId] = setTimeout(() => {
+      // Notify the receiver
+      await base44.entities.Notification.create({
+        user_id: toUserId,
+        type: "friend_request",
+        from_user_id: myId,
+        from_username: myUsername,
+        message: `${myUsername} sent you a connect request.`,
+        related_request_id: created.id,
+        read: false,
+        handled: false,
+      }).catch(() => {});
+
+      setOutgoingStatus({ toUsername, toUserId, status: "pending" });
+
+      // Auto-expire
+      if (expiryTimers.current[toUserId]) clearTimeout(expiryTimers.current[toUserId]);
+      expiryTimers.current[toUserId] = setTimeout(() => {
         setOutgoingStatus((prev) =>
-          prev?.toUsername === toUsername && prev?.status === "pending"
-            ? { toUsername, status: "expired" }
+          prev?.toUserId === toUserId && prev?.status === "pending"
+            ? { ...prev, status: "expired" }
             : prev
         );
       }, REQUEST_EXPIRY_MS);
 
       return { success: true };
     } catch (e) {
-      console.error("[sendChatRequest] Failed to create request:", e);
-      return { error: "Failed to send request: " + (e?.message || String(e)) };
+      return { error: "Failed to send request" };
     }
-  }, [user, myDisplayName]);
+  }, [myId, myUsername, loadMessages]);
 
-  // ── Accept incoming request ──────────────────────────────────
+  // ── Accept a friend request (from notification) ──────────
   const acceptRequest = useCallback(async (requestId, fromUserId, fromUsername) => {
     try {
       await base44.entities.PrivateChatRequest.update(requestId, { status: "accepted" });
-      setIncomingRequest(null);
-      setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
-      setPendingRequestsCount((c) => Math.max(0, c - 1));
+
+      // Notify the sender
+      await base44.entities.Notification.create({
+        user_id: fromUserId,
+        type: "request_accepted",
+        from_user_id: myId,
+        from_username: myUsername,
+        message: `${myUsername} accepted your connect request. You can now message each other.`,
+        related_request_id: requestId,
+        read: false,
+        handled: false,
+      }).catch(() => {});
+
+      // Mark related notification as handled
+      const relatedNote = notifications.find((n) => n.related_request_id === requestId);
+      if (relatedNote) {
+        await base44.entities.Notification.update(relatedNote.id, { read: true, handled: true }).catch(() => {});
+        setNotifications((prev) => prev.filter((n) => n.id !== relatedNote.id));
+        setUnreadCount((c) => Math.max(0, c - 1));
+      }
+
+      // Open chat
       setActiveChatPeer({ userId: fromUserId, username: fromUsername });
       await loadMessages(fromUserId);
     } catch {}
-  }, [loadMessages]);
+  }, [myId, myUsername, notifications, loadMessages]);
 
-  // ── Decline incoming request ─────────────────────────────────
-  const declineRequest = useCallback(async (requestId, fromUserId) => {
+  // ── Decline a request ────────────────────────────────────
+  const declineRequest = useCallback(async (requestId) => {
     try {
       await base44.entities.PrivateChatRequest.update(requestId, { status: "declined" });
-      setIncomingRequest(null);
+      const relatedNote = notifications.find((n) => n.related_request_id === requestId);
+      if (relatedNote) {
+        await base44.entities.Notification.update(relatedNote.id, { read: true, handled: true }).catch(() => {});
+        setNotifications((prev) => prev.filter((n) => n.id !== relatedNote.id));
+        setUnreadCount((c) => Math.max(0, c - 1));
+      }
     } catch {}
-  }, []);
+  }, [notifications]);
 
-  // ── End chat (close panel) ───────────────────────────────────
+  // ── Send a message ───────────────────────────────────────
+  const sendMessage = useCallback(async (text) => {
+    if (!myId || !activeChatPeer?.userId || !text?.trim()) return;
+    const chatId = getChatId(myId, activeChatPeer.userId);
+    try {
+      await base44.entities.PrivateChatMessage.create({
+        chat_id: chatId,
+        sender_user_id: myId,
+        sender_username: myUsername,
+        receiver_user_id: activeChatPeer.userId,
+        message: text.trim(),
+      });
+      // Notify if needed (don't wait)
+      base44.entities.Notification.create({
+        user_id: activeChatPeer.userId,
+        type: "direct_message",
+        from_user_id: myId,
+        from_username: myUsername,
+        message: `${myUsername}: ${text.trim().slice(0, 60)}${text.trim().length > 60 ? "…" : ""}`,
+        read: false,
+        handled: false,
+      }).catch(() => {});
+    } catch {}
+  }, [myId, myUsername, activeChatPeer, getChatId]);
+
   const endChat = useCallback(() => {
     setActiveChatPeer(null);
     setChatMessages([]);
   }, []);
 
-  // ── Send a message ───────────────────────────────────────────
-  const sendMessage = useCallback(async (text) => {
-    if (!user?.id || !activeChatPeer?.userId || !text?.trim()) return;
-    const name = user?.world_username || "New User";
+  // ── Open chat with a connected user ─────────────────────
+  const openChat = useCallback(async (userId, username) => {
+    setActiveChatPeer({ userId, username });
+    await loadMessages(userId);
+  }, [loadMessages]);
+
+  // ── Block ────────────────────────────────────────────────
+  const blockUser = useCallback(async (targetUserId, targetUsername) => {
+    if (!myId || !targetUserId) return;
+    setBlockedUsers((prev) => ({ ...prev, [targetUserId]: "pending" }));
     try {
-      const chatId = getChatId(user.id, activeChatPeer.userId);
-      await base44.entities.PrivateChatMessage.create({
-        chat_id: chatId,
-        sender_user_id: user.id,
-        sender_username: name,
-        receiver_user_id: activeChatPeer.userId,
-        message: text.trim(),
+      const record = await base44.entities.UserBlock.create({
+        blocker_user_id: myId,
+        blocked_user_id: targetUserId,
+        blocker_username: myUsername,
+        blocked_username: targetUsername || "",
       });
-    } catch {}
-  }, [user, activeChatPeer, getChatId]);
+      setBlockedUsers((prev) => ({ ...prev, [targetUserId]: record.id }));
+      // Cancel pending requests
+      base44.entities.PrivateChatRequest.filter({ from_user_id: targetUserId, to_user_id: myId, status: "pending" })
+        .then((reqs) => reqs.forEach((r) => base44.entities.PrivateChatRequest.update(r.id, { status: "blocked" }).catch(() => {})))
+        .catch(() => {});
+      if (activeChatPeer?.userId === targetUserId) endChat();
+    } catch {
+      setBlockedUsers((prev) => { const next = { ...prev }; delete next[targetUserId]; return next; });
+    }
+  }, [myId, myUsername, activeChatPeer, endChat]);
 
-  // ── Block user ───────────────────────────────────────────────
-  const blockUser = useCallback(async (blockedUserId) => {
-    setBlockedUsers((prev) => ({ ...prev, [blockedUserId]: true }));
-
-    // Decline any pending requests from this user
+  const unblockUser = useCallback(async (targetUserId) => {
+    if (!myId || !targetUserId) return;
+    const recordId = blockedRef.current[targetUserId];
+    setBlockedUsers((prev) => { const next = { ...prev }; delete next[targetUserId]; return next; });
     try {
-      const pending = await base44.entities.PrivateChatRequest.filter({
-        from_user_id: blockedUserId,
-        to_user_id: user.id,
-        status: "pending",
-      });
-      for (const req of pending) {
-        await base44.entities.PrivateChatRequest.update(req.id, { status: "blocked" });
+      if (recordId && recordId !== "pending") {
+        await base44.entities.UserBlock.delete(recordId);
+      } else {
+        const records = await base44.entities.UserBlock.filter({ blocker_user_id: myId, blocked_user_id: targetUserId });
+        for (const r of records) await base44.entities.UserBlock.delete(r.id).catch(() => {});
       }
+    } catch {
+      setBlockedUsers((prev) => ({ ...prev, [targetUserId]: recordId }));
+    }
+  }, [myId]);
+
+  // ── Mark notification read ───────────────────────────────
+  const markNotificationHandled = useCallback(async (noteId) => {
+    try {
+      await base44.entities.Notification.update(noteId, { read: true, handled: true });
+      setNotifications((prev) => prev.filter((n) => n.id !== noteId));
+      setUnreadCount((c) => Math.max(0, c - 1));
     } catch {}
+  }, []);
 
-    // Close active chat if it's with this user
-    if (activeChatPeer?.userId === blockedUserId) {
-      endChat();
+  const markAllNotificationsRead = useCallback(async () => {
+    const unread = notifications.filter((n) => !n.read);
+    for (const n of unread) {
+      try { await base44.entities.Notification.update(n.id, { read: true }); } catch {}
     }
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+  }, [notifications]);
 
-    if (incomingRequest?.fromUserId === blockedUserId) {
-      setIncomingRequest(null);
-    }
-  }, [user, activeChatPeer, incomingRequest, endChat]);
+  const clearOutgoingStatus = useCallback(() => setOutgoingStatus(null), []);
 
-  // ── Subscribe to incoming requests ───────────────────────────
+  // ── Periodic cleanup ─────────────────────────────────────
   useEffect(() => {
-    if (!user?.id) return;
-
-    const myId = user.id;
-
-    const unsubscribe = base44.entities.PrivateChatRequest.subscribe((event) => {
-      if (!event.data) return;
-      const data = event.data;
-
-      // Only care about new requests addressed to me
-      if (data.to_user_id !== myId) return;
-
-      // Don't show requests from blocked users (in either direction)
-      const blocked = blockedUsersRef.current || {};
-      if (blocked[data.from_user_id]) return;
-      // Note: if they blocked us, sendChatRequest already prevents creation
-
-      // New pending request — show notification
-      if (event.type === "create" && data.status === "pending") {
-        console.log("[usePrivateChat] Incoming request from:", data.from_username, "id:", data.id);
-
-        setIncomingRequest({
-          id: data.id,
-          fromUserId: data.from_user_id,
-          fromUsername: data.from_username,
-        });
-
-        // Also add to pending list immediately
-        setPendingRequests((prev) => {
-          const already = prev.find((r) => r.id === data.id);
-          if (already) return prev;
-          return [...prev, { id: data.id, fromUserId: data.from_user_id, fromUsername: data.from_username }];
-        });
-        setPendingRequestsCount((c) => c + 1);
-
-        // Auto-expire incoming request
-        const timerKey = `in_${data.from_user_id}`;
-        if (expiryTimersRef.current[timerKey]) clearTimeout(expiryTimersRef.current[timerKey]);
-        expiryTimersRef.current[timerKey] = setTimeout(() => {
-          setIncomingRequest((prev) =>
-            prev?.fromUserId === data.from_user_id ? null : prev
-          );
-          setPendingRequests((prev) => prev.filter((r) => r.fromUserId !== data.from_user_id));
-          setPendingRequestsCount((c) => Math.max(0, c - 1));
-        }, REQUEST_EXPIRY_MS);
-      }
-
-      // Request was accepted — open chat panel for the requester
-      if (event.type === "update" && data.status === "accepted" && data.from_user_id === myId) {
-        setOutgoingStatus({ toUsername: data.to_username, status: "accepted" });
-        // Open chat panel automatically
-        setActiveChatPeer({ userId: data.to_user_id, username: data.to_username });
-        loadMessages(data.to_user_id);
-      }
-    });
-
-    requestSubRef.current = unsubscribe;
-    return () => unsubscribe();
-  }, [user?.id, loadMessages]);
-
-  // ── Subscribe to messages in active chat ─────────────────────
-  useEffect(() => {
-    if (!user?.id || !activeChatPeer?.userId) return;
-
-    const chatId = getChatId(user.id, activeChatPeer.userId);
-
-    const unsubscribe = base44.entities.PrivateChatMessage.subscribe((event) => {
-      if (event.type !== "create" || !event.data) return;
-      if (event.data.chat_id !== chatId) return;
-      // Don't show messages from blocked users
-      const senderId = event.data.sender_user_id;
-      if (senderId && blockedUsersRef.current[senderId]) return;
-      setChatMessages((prev) => [...prev, event.data]);
-    });
-
-    chatSubRef.current = unsubscribe;
-    return () => unsubscribe();
-  }, [user?.id, activeChatPeer?.userId, getChatId]);
-
-  // ── Periodic cleanup: expire stale requests ──────────────────
-  useEffect(() => {
-    if (!user?.id) return;
-    cleanupTimerRef.current = setInterval(async () => {
+    if (!myId) return;
+    cleanupTimer.current = setInterval(async () => {
       try {
         const now = new Date().toISOString();
-        const stale = await base44.entities.PrivateChatRequest.filter({
-          status: "pending",
-          expires_at: { $lt: now },
-        });
+        const stale = await base44.entities.PrivateChatRequest.filter({ status: "pending" });
         for (const req of stale) {
-          if (req.created_by_id === user.id || req.to_user_id === user.id) {
-            await base44.entities.PrivateChatRequest.update(req.id, { status: "expired" }).catch(() => {});
+          if (req.expires_at && req.expires_at < now) {
+            if (req.created_by_id === myId || req.to_user_id === myId) {
+              await base44.entities.PrivateChatRequest.update(req.id, { status: "expired" }).catch(() => {});
+            }
           }
         }
       } catch {}
     }, CLEANUP_INTERVAL_MS);
+    return () => clearInterval(cleanupTimer.current);
+  }, [myId]);
 
-    return () => clearInterval(cleanupTimerRef.current);
-  }, [user?.id]);
-
-  // ── Poll for incoming requests on mount (catches missed subscription events) ─
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    const myId = user.id;
-
-    const poll = async () => {
-      if (cancelled) return;
-      // Don't poll if we already have an active incoming request showing
-      try {
-        const myPending = await base44.entities.PrivateChatRequest.filter({
-          to_user_id: myId,
-          status: "pending",
-        });
-        if (cancelled) return;
-        if (myPending.length > 0) {
-          const blocked = blockedUsersRef.current || {};
-          const validPending = myPending.filter((req) => {
-            if (blocked[req.from_user_id]) return false;
-            const expiresAt = req.expires_at ? new Date(req.expires_at).getTime() : 0;
-            return expiresAt > Date.now();
-          });
-          setPendingRequestsCount(validPending.length);
-          setPendingRequests(validPending.map((req) => ({
-            id: req.id,
-            fromUserId: req.from_user_id,
-            fromUsername: req.from_username,
-          })));
-          if (validPending.length > 0) {
-            const req = validPending[0];
-            setIncomingRequest({
-              id: req.id,
-              fromUserId: req.from_user_id,
-              fromUsername: req.from_username,
-            });
-          }
-        } else {
-          setPendingRequestsCount(0);
-          setPendingRequests([]);
-        }
-      } catch (e) {
-        console.warn("[usePrivateChat] Poll error:", e);
-      }
-    };
-
-    // Poll immediately on mount, then every 5 seconds as fallback
-    poll();
-    const interval = setInterval(poll, 5_000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, [user?.id]);
-
-  // ── Clear outgoing status ────────────────────────────────────
-  const clearOutgoingStatus = useCallback(() => {
-    setOutgoingStatus(null);
-  }, []);
-
-  // ── Cleanup on unmount ───────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      Object.values(expiryTimersRef.current).forEach(clearTimeout);
-      if (cleanupTimerRef.current) clearInterval(cleanupTimerRef.current);
-    };
-  }, []);
+  // ── Check if two users are connected ────────────────────
+  const checkConnection = useCallback(async (targetUserId) => {
+    if (!myId || !targetUserId) return false;
+    try {
+      const accepted = await base44.entities.PrivateChatRequest.filter({
+        $or: [
+          { from_user_id: myId, to_user_id: targetUserId, status: "accepted" },
+          { from_user_id: targetUserId, to_user_id: myId, status: "accepted" },
+        ]
+      });
+      return accepted.length > 0;
+    } catch { return false; }
+  }, [myId]);
 
   return {
-    // Active chat
     activeChatPeer,
     chatMessages,
-    // Incoming
-    incomingRequest,
-    // Outgoing
+    notifications,
+    unreadCount,
     outgoingStatus,
-    // Safety
-    safetyConfirmed,
-    setSafetyConfirmed,
-    // Actions
+    blockedUsers,
     sendChatRequest,
     acceptRequest,
     declineRequest,
     sendMessage,
     endChat,
+    openChat,
     blockUser,
-    blockedUsers,
+    unblockUser,
+    markNotificationHandled,
+    markAllNotificationsRead,
     clearOutgoingStatus,
-    pendingRequestsCount,
-    pendingRequests,
+    checkConnection,
   };
 }

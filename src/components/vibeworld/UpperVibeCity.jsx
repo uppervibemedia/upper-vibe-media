@@ -596,15 +596,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── Block System (persistent) ─────────────────────────────────────────
   const blockSystem = useBlockSystem(user?.id, user?.world_username || "");
+  // Merged block map: union of persistent (blockSystem) and in-session (chat) blocks
+  const mergedBlocks = { ...blockedUsers, ...blockSystem.blockMap };
 
   // ── Private Chat ─────────────────────────────────────────────────────
   const {
-    activeChatPeer, chatMessages, incomingRequest, outgoingStatus,
-    safetyConfirmed, setSafetyConfirmed,
+    activeChatPeer, chatMessages, notifications, unreadCount,
+    outgoingStatus, blockedUsers,
     sendChatRequest, acceptRequest, declineRequest,
-    sendMessage, endChat, blockUser, blockedUsers, clearOutgoingStatus,
-    pendingRequestsCount, pendingRequests,
+    sendMessage, endChat, openChat, blockUser, unblockUser,
+    markNotificationHandled, markAllNotificationsRead, clearOutgoingStatus,
   } = usePrivateChat(user);
+  const safetyConfirmed = true; // simplified — no extra safety gate
   const [userInteractionTarget, setUserInteractionTarget] = useState(null);
 
   const handleSelectUser = useCallback((userData) => {
@@ -1059,31 +1062,34 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         currentUserId={user?.id}
         activeChatPeer={activeChatPeer}
         chatMessages={chatMessages}
-        incomingRequest={incomingRequest}
-        safetyConfirmed={safetyConfirmed}
+        safetyConfirmed={true}
         onSelectUser={handleSelectUser}
         onRequestChat={handleRequestChat}
-        onRequestVoiceChat={handleRequestVoiceChat}
         onAcceptChat={acceptRequest}
         onDeclineChat={declineRequest}
         onSendChatMessage={sendMessage}
         onEndChat={endChat}
         onBlockUser={(uid) => {
-          blockSystem.blockUser(uid, activeUsers.find(u => u.user_id === uid)?.username);
-          blockUser(uid); // also update in-memory chat block state
+          const targetUser = activeUsers.find(u => u.user_id === uid);
+          blockSystem.blockUser(uid, targetUser?.username);
+          blockUser(uid, targetUser?.username);
         }}
-        onUnblockUser={blockSystem.unblockUser}
+        onUnblockUser={(uid) => { blockSystem.unblockUser(uid); unblockUser(uid); }}
         onReportUser={handleReportUser}
-        onSafetyConfirm={() => setSafetyConfirmed(true)}
-        blockedUsers={{ ...blockedUsers, ...blockSystem.blockMap }}
+        safetyConfirmed={true}
+        onSafetyConfirm={() => {}}
+        blockedUsers={mergedBlocks}
         userInteractionTarget={userInteractionTarget}
         onCloseUserMenu={handleCloseUserMenu}
         onLoungeInputFocus={setLoungeInputFocused}
         onVoiceActive={setVoiceActive}
         outgoingStatus={outgoingStatus}
         onClearOutgoingStatus={clearOutgoingStatus}
-        pendingRequestsCount={pendingRequestsCount}
-        pendingRequests={pendingRequests}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        onMarkNotificationHandled={markNotificationHandled}
+        onMarkAllNotificationsRead={markAllNotificationsRead}
+        onOpenChat={openChat}
         onAcceptChat={acceptRequest}
         onDeclineChat={declineRequest}
         onEmote={handleEmote}
