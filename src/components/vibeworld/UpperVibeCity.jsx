@@ -1292,35 +1292,40 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         }}
       />
 
-      {/* DESKTOP: Draggable media player — hidden during stage watch */}
-      {!loading && !isMobile && currentTrack && !stageWatching && !stageFullScreen && (
-        <div
-          style={{ opacity: tvMode && !tvPlayerVisible ? 0 : 1, transition: "opacity 0.5s", pointerEvents: tvMode && !tvPlayerVisible ? "none" : "auto" }}
-          onClick={tvMode ? handleTvPlayerTap : undefined}
-        >
-          <DraggableMediaPlayer
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-            onTogglePlay={handleGlobalPlayToggle}
-            onSkip={handleGlobalSkip}
-          />
-        </div>
-      )}
+      {/* ── Media Player — smart visibility/position based on UI state ── */}
+      {(() => {
+        if (loading || !currentTrack || stageFullScreen) return null;
 
-      {/* MOBILE: mini player — hidden when modal/panel open, stage, fullscreen, or TV mode auto-hides */}
-      {!loading && isMobile && currentTrack && !mobileModalOpen && !stageWatching && !stageFullScreen && (
-        <div
-          style={{ opacity: tvMode && !tvPlayerVisible ? 0 : 1, transition: "opacity 0.5s", pointerEvents: tvMode && !tvPlayerVisible ? "none" : "auto" }}
-          onClick={tvMode ? handleTvPlayerTap : undefined}
-        >
-          <DraggableMediaPlayer
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-            onTogglePlay={handleGlobalPlayToggle}
-            onSkip={handleGlobalSkip}
-          />
-        </div>
-      )}
+        // Determine current zone for stage-proximity check
+        const currentZone = detectZone(playerPos.x, playerPos.z);
+        const nearStage = currentZone?.id === "stage";
+
+        // Hide when stage is watching (stage embed is the audio) or any blocking modal is open
+        const shouldHide = stageWatching || mobileModalOpen || activeChatPeer || messageComposerTarget;
+        if (shouldHide) return null;
+
+        // TV mode opacity
+        const tvOpacity = tvMode && !tvPlayerVisible ? 0 : 1;
+        const tvPointerEvents = tvMode && !tvPlayerVisible ? "none" : "auto";
+
+        // In landscape + near stage: shift player to bottom-left (already fixed in useMobileLayout)
+        // The layout hook now parks the landscape player at bottom-left away from stage controls.
+
+        return (
+          <div
+            style={{ opacity: tvOpacity, transition: "opacity 0.5s", pointerEvents: tvPointerEvents }}
+            onClick={tvMode ? handleTvPlayerTap : undefined}
+          >
+            <DraggableMediaPlayer
+              currentTrack={currentTrack}
+              isPlaying={isPlaying}
+              onTogglePlay={handleGlobalPlayToggle}
+              onSkip={handleGlobalSkip}
+              nearStage={nearStage}
+            />
+          </div>
+        );
+      })()}
 
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />

@@ -106,10 +106,13 @@ function computeLayout() {
   let playerLeft, playerBottom;
 
   if (isLandscape) {
-    // Center it horizontally but keep it clear of joystick on the left
-    const minLeft = joyCX + joyHalfSize + 20;
-    playerLeft = Math.max(minLeft, (vw - playerWidth) / 2);
-    playerBottom = sa.bottom + 12;
+    // In landscape: park player at bottom-left, clear of joystick.
+    // Stage controls sit bottom-center at roughly sa.bottom+8 and are ~56px tall.
+    // To avoid overlap, place player bottom-LEFT (joystick right edge + gap).
+    const minLeft = joyCX + joyHalfSize + 12;
+    playerLeft = minLeft;
+    // Push up enough to clear a typical stage control bar (56px) + 12px gap
+    playerBottom = sa.bottom + 76;
   } else {
     // Portrait: place player to the RIGHT of the joystick, vertically aligned
     // so it sits at the same bottom level as the joystick, not above it.

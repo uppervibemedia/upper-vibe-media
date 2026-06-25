@@ -31,6 +31,7 @@ export default function DraggableMediaPlayer({
   isPlaying,
   onTogglePlay,
   onSkip,
+  nearStage = false,
 }) {
   const mobileLayout = useMobileLayout(IS_MOBILE);
   const [pos, setPos] = useState(() => IS_MOBILE ? null : loadPos());
@@ -180,7 +181,7 @@ export default function DraggableMediaPlayer({
       {/* Title + Artist */}
       <div
         className="flex-1 min-w-0 pointer-events-none overflow-hidden"
-        style={{ maxWidth: IS_MOBILE ? "70px" : "90px" }}
+        style={{ maxWidth: IS_MOBILE ? (nearStage ? "52px" : "70px") : "90px" }}
       >
         <p className="text-[10px] font-bold text-white/90 truncate leading-tight">
           {currentTrack.title}
