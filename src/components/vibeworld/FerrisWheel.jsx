@@ -539,134 +539,150 @@ export function getCabinWorldPosition(cabinIndex, t) {
 }
 
 // ── Rider camera transform for scenic Ferris wheel view ─────────────
-// Returns { camPos, lookAt, guidedYaw, guidedPitch } in world space.
+// Returns { camPos, lookAt, atTop } in world space.
 //
-// Camera sits OUTSIDE the gondola at eye-level, pushed outward in the
-// scenic look direction so wheel structure stays behind/to the side.
+// CAMERA PLACEMENT STRATEGY
+// ─────────────────────────
+// The wheel spins in the X-Y plane (Z is the axle). Spokes, rims, and
+// gondola walls all live near Z=0 in wheel-group space.
 //
-// Cinematic 4-phase guided view path (50/50 beach ↔ city):
-//   Rising  (0→π):    NW city diagonal → blend into beach at top
-//   Descending (π→2π): hold beach → blend into city/stage → return to beach
+// To escape all structure, the camera eye is placed:
+//   1. At gondola eye height (seat Y)
+//   2. PUSHED ALONG THE WHEEL AXLE (+Z in root-local space = world forward after ry=0.35)
+//      by AXLE_PUSH = 1.0  — this clears the gondola front face & rim/spoke plane
+//   3. Pulled RADIALLY INWARD toward hub by a tiny amount (RADIAL_PULL = 0.3) so the
+//      gondola's colored body is just visible at screen edges for realism
 //
-// userYawOffset / userPitchOffset: limited look control (±40° yaw, ±20° pitch)
-// applied on top of the guided direction; auto-recenter when not touching.
+// The look-at is far out in the scenic direction. With a 68° FOV the gondola
+// roof/rail appears subtly at the top edge (~15% of screen) and the side body
+// at the far edge (~10%), giving the "seated cabin" feel without blocking the view.
+//
+// userYawOffset (rad): ±40° left/right look control
+// userPitchOffset (rad): ±20° up/down look control
+// Auto-recenters after 1.2 s of no input (handled by CityCanvas).
 export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 0) {
   const wheelAngle = t * WHEEL_SPEED;
   const totalAngle = wheelAngle;
 
-  // Gondola pivot world position
+  // ── Gondola world position ────────────────────────────────────────
   const pivotLocalX = Math.cos(totalAngle) * WHEEL_RADIUS;
   const pivotLocalY = Math.sin(totalAngle) * WHEEL_RADIUS;
   const pivotWorldY = WHEEL_HUB_Y + pivotLocalY;
 
-  const HANG_ARM  = 0.55;
-  const EYE_H     = 0.30;  // eye height above gondola floor — low = more sky
-  const seatWorldY = Math.max(0.8, pivotWorldY - HANG_ARM - 0.05 + EYE_H);
+  const HANG_ARM   = 0.55;
+  const EYE_H      = 0.28;   // seated eye height above gondola floor
+  const seatWorldY = Math.max(0.9, pivotWorldY - HANG_ARM - 0.05 + EYE_H);
 
-  const ry = 0.35; // root.rotation.y
-  // Gondola world XZ (wheel rotates in X-Y plane, Z offset from root.rotation.y)
+  const ry = 0.35; // root.rotation.y — wheel faces slightly into city
+  // Pivot world XZ (root.rotation.y rotates local X → world XZ)
   const pivotWX = WHEEL_X + Math.cos(ry) * pivotLocalX;
   const pivotWZ = WHEEL_Z + Math.sin(ry) * pivotLocalX;
 
-  // ── Normalised wheel angle 0→2π ──────────────────────────────────
+  // ── Wheel axle direction in world space ───────────────────────────
+  // Root local +Z = wheel axle forward face. After ry rotation:
+  //   world axleX = sin(ry) = 0.342,  world axleZ = cos(ry) = 0.940
+  // We push the camera along this axis to escape the rim/spoke plane.
+  const axleWX = Math.sin(ry);   //  0.342
+  const axleWZ = Math.cos(ry);   //  0.940
+  const AXLE_PUSH   = 1.05;  // units forward along axle — clears gondola depth (0.76) + rim
+
+  // Tiny radial pull toward hub so gondola body shows subtly at screen edges
+  // Radial outward dir = normalised (pivotWX - WHEEL_X, pivotWZ - WHEEL_Z)
+  const radLen = Math.sqrt(pivotLocalX * pivotLocalX) || 0.001; // |localX|
+  const radWX  = (pivotWX - WHEEL_X) / (radLen || 1);
+  const radWZ  = (pivotWZ - WHEEL_Z) / (radLen || 1);
+  const RADIAL_PULL = 0.30; // pull inward so rim/body frames the edge
+
+  // ── Camera eye position ───────────────────────────────────────────
+  const camX = pivotWX + axleWX * AXLE_PUSH - radWX * RADIAL_PULL;
+  const camY = seatWorldY;
+  const camZ = pivotWZ + axleWZ * AXLE_PUSH - radWZ * RADIAL_PULL;
+
+  // ── Guided scenic look direction ──────────────────────────────────
+  // Wheel angle normalised 0→2π
   const ang = ((totalAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  const riseProgress = ang / Math.PI;             // 0→1 across rising half
-  const descProgress = (ang - Math.PI) / Math.PI; // 0→1 across descending half
+  const riseP = ang / Math.PI;               // 0→1 rising half
+  const descP = (ang - Math.PI) / Math.PI;   // 0→1 descending half
 
-  // ── Define scenic look directions ────────────────────────────────
-  // All are world-space unit XZ vectors.
-  // NW diagonal — wide open city diagonal, avoids east skyline front wall
-  const NW  = { x: -0.65, z: -0.55 };
-  // Beach / ocean
-  const BCH = { x:  0.08, z:  1.0  };
-  // City/stage view — looking back at stage from height (NW of wheel)
-  const CTY = { x: -0.40, z: -0.80 };
-  // Near-bottom: biased beach to avoid east building wall
-  const LOW = { x:  0.15, z:  0.95 };
+  // World-space XZ look vectors (city is toward -Z, beach toward +Z)
+  // NW: open city diagonal rising view — avoids flat east skyline wall
+  const NW  = { x: -0.60, z: -0.60 };
+  // Beach/ocean panorama at the top
+  const BCH = { x:  0.10, z:  1.00 };
+  // City/stage from height — stage is at world Z≈-32, wheel at Z=5, so -Z
+  const CTY = { x: -0.35, z: -0.85 };
+  // Near-bottom beach bias — avoids east wall at load position
+  const LOW = { x:  0.12, z:  0.98 };
 
-  // ── Blend guided look direction by phase ─────────────────────────
-  let lDX, lDZ, lookYOffset;
+  let lDX, lDZ, lookYOff;
 
   if (ang < Math.PI) {
-    // RISING: 0→0.45 pure NW, 0.45→1.0 smooth blend to beach
-    const bb = Math.max(0, Math.min(1, (riseProgress - 0.40) / 0.60));
-    const t0 = bb * bb * (3 - 2 * bb); // smoothstep
-    lDX = NW.x + (BCH.x - NW.x) * t0;
-    lDZ = NW.z + (BCH.z - NW.z) * t0;
-    // Gaze slightly upward while climbing, level at top
-    lookYOffset = 3.0 * (1 - riseProgress * 0.7);
+    // RISING half: NW → beach
+    // 0→0.42: pure NW (going up the right side)
+    // 0.42→1.0: smoothstep blend into beach (arriving at top)
+    const bb = Math.max(0, Math.min(1, (riseP - 0.42) / 0.58));
+    const s  = bb * bb * (3 - 2 * bb);
+    lDX = NW.x + (BCH.x - NW.x) * s;
+    lDZ = NW.z + (BCH.z - NW.z) * s;
+    // Look slightly upward while climbing, level off near top
+    lookYOff = 2.8 * (1 - riseP * 0.75);
   } else {
-    // DESCENDING:
-    // 0→0.30: hold full beach (just past top)
-    // 0.30→0.65: smooth beach → city
-    // 0.65→0.85: hold city
-    // 0.85→1.0: smooth city → LOW beach (arriving at bottom)
-    if (descProgress < 0.30) {
-      lDX = BCH.x; lDZ = BCH.z;
-      lookYOffset = 2.5;
-    } else if (descProgress < 0.65) {
-      const t1 = (descProgress - 0.30) / 0.35;
+    // DESCENDING half: beach → city → beach
+    // 0.00→0.32: hold full beach (still high up, best ocean view)
+    // 0.32→0.64: blend beach → city (passing left side going down)
+    // 0.64→0.82: hold city/stage view
+    // 0.82→1.00: blend back to LOW beach (approaching bottom)
+    if (descP < 0.32) {
+      lDX = BCH.x; lDZ = BCH.z; lookYOff = 2.2;
+    } else if (descP < 0.64) {
+      const t1 = (descP - 0.32) / 0.32;
       const s1 = t1 * t1 * (3 - 2 * t1);
       lDX = BCH.x + (CTY.x - BCH.x) * s1;
       lDZ = BCH.z + (CTY.z - BCH.z) * s1;
-      lookYOffset = 2.5 - 1.2 * s1;
-    } else if (descProgress < 0.85) {
-      lDX = CTY.x; lDZ = CTY.z;
-      lookYOffset = 1.3;
+      lookYOff = 2.2 - 1.0 * s1;
+    } else if (descP < 0.82) {
+      lDX = CTY.x; lDZ = CTY.z; lookYOff = 1.2;
     } else {
-      const t2 = (descProgress - 0.85) / 0.15;
+      const t2 = (descP - 0.82) / 0.18;
       const s2 = t2 * t2 * (3 - 2 * t2);
       lDX = CTY.x + (LOW.x - CTY.x) * s2;
       lDZ = CTY.z + (LOW.z - CTY.z) * s2;
-      lookYOffset = 1.3 + 0.5 * s2;
+      lookYOff = 1.2 + 0.6 * s2;
     }
   }
 
-  // Normalise guided direction
-  const len = Math.sqrt(lDX * lDX + lDZ * lDZ) || 1;
-  lDX /= len; lDZ /= len;
+  // Normalise guided XZ direction
+  const gLen = Math.sqrt(lDX * lDX + lDZ * lDZ) || 1;
+  lDX /= gLen; lDZ /= gLen;
 
-  // Guided yaw (world-space angle of look direction)
-  const guidedYaw   = Math.atan2(lDX, lDZ);
-  const guidedPitch = Math.atan2(lookYOffset, 30); // approx pitch angle to look-at
-
-  // Apply limited user look offset (±40° yaw, ±20° pitch)
+  // ── Apply user look offsets (±40° yaw, ±20° pitch) ───────────────
   const MAX_YAW   = (40 * Math.PI) / 180;
   const MAX_PITCH = (20 * Math.PI) / 180;
   const yawOff   = Math.max(-MAX_YAW,   Math.min(MAX_YAW,   userYawOffset));
   const pitchOff = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, userPitchOffset));
 
-  const totalYaw = guidedYaw + yawOff;
-
-  // Final look direction with user offset applied
+  const guidedYaw = Math.atan2(lDX, lDZ);
+  const totalYaw  = guidedYaw + yawOff;
   const fDX = Math.sin(totalYaw);
   const fDZ = Math.cos(totalYaw);
 
-  // ── Camera position ───────────────────────────────────────────────
-  // Push eye OUTWARD from wheel hub in the scenic look direction.
-  // This clears the gondola walls and spokes from the foreground.
-  // Push distance: 1.4 units — puts eye outside the gondola's 0.4 depth
-  const PUSH = 1.4;
-  const camX = pivotWX + fDX * PUSH;
-  const camZ = pivotWZ + fDZ * PUSH;
-  const camY = seatWorldY;
-
   // ── Look-at point ─────────────────────────────────────────────────
-  const LOOK_DIST = 38;
-  const pitchTotal = guidedPitch + pitchOff;
-  // Vertical look-at: use pitch to set Y relative to eye
-  const lookHorizDist = LOOK_DIST * Math.cos(Math.max(-0.35, Math.min(0.35, pitchTotal)));
-  const lookY = camY + LOOK_DIST * Math.sin(Math.max(-0.35, Math.min(0.35, pitchTotal)));
-  const lookX = camX + fDX * lookHorizDist;
-  const lookZ = camZ + fDZ * lookHorizDist;
+  const LOOK_DIST = 42;
+  const basePitch = Math.atan2(lookYOff, LOOK_DIST);    // gentle upward gaze
+  const pitchTotal = Math.max(-0.30, Math.min(0.30, basePitch + pitchOff));
 
-  const atTop = Math.max(0, Math.min(1, (pivotWorldY - WHEEL_HUB_Y + WHEEL_RADIUS) / (WHEEL_RADIUS * 2)));
+  const lookHD = LOOK_DIST * Math.cos(pitchTotal);
+  const lookX  = camX + fDX * lookHD;
+  const lookY  = camY + LOOK_DIST * Math.sin(pitchTotal);
+  const lookZ  = camZ + fDZ * lookHD;
+
+  const atTop = Math.max(0, Math.min(1,
+    (pivotWorldY - WHEEL_HUB_Y + WHEEL_RADIUS) / (WHEEL_RADIUS * 2)
+  ));
 
   return {
     camPos: { x: camX, y: camY, z: camZ },
     lookAt: { x: lookX, y: lookY, z: lookZ },
-    guidedYaw,
-    guidedPitch,
     atTop,
   };
 }
