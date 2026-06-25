@@ -31,7 +31,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "@/context/PlayerContext";
 import { detectZone, ZONES } from "./zoneDetection";
 import MusicLibraryPanel from "./panels/MusicLibraryPanel";
-import LoungePanel from "./panels/LoungePanel";
+import VibeLoungeHub from "./panels/VibeLoungeHub";
 import VisualizerPanel from "./panels/VisualizerPanel";
 import VibeCheckPanel from "./panels/VibeCheckPanel";
 import PrivateChatPanel from "./panels/PrivateChatPanel";
@@ -946,7 +946,7 @@ export default function WorldHUD({
           </motion.div>
         )}
 
-        {zone?.id === "lounge" && (
+        {zone?.id === "lounge" && !loungePanelOpen && (
           <motion.div
             key="lounge-actions"
             initial={{ opacity: 0, y: 10 }}
@@ -969,7 +969,7 @@ export default function WorldHUD({
               }}
             >
               <MessageCircle className="w-3.5 h-3.5" />
-              Hang Out
+              Enter Lounge
             </button>
           </motion.div>
         )}
@@ -1099,16 +1099,27 @@ export default function WorldHUD({
         onClose={() => setVisualizerOpen(false)}
       />
 
-      {/* ── Lounge Panel (slide-up) ───────────────────────────── */}
-      <LoungePanel
-        open={loungePanelOpen}
-        onClose={handleCloseLounge}
-        isMobile={isMobile}
-        chatAgeConfirmed={chatAgeConfirmed}
-        onInputFocus={onLoungeInputFocus}
-        onVoiceActive={onVoiceActive}
-        blockedUsers={blockedUsers}
-      />
+      {/* ── Vibe Lounge Hub (slide-up) ────────────────────────── */}
+      <AnimatePresence>
+        {loungePanelOpen && (
+          <VibeLoungeHub
+            open={loungePanelOpen}
+            onClose={handleCloseLounge}
+            isMobile={isMobile}
+            chatAgeConfirmed={chatAgeConfirmed}
+            onInputFocus={onLoungeInputFocus}
+            blockedUsers={blockedUsers}
+            activeUsers={activeUsers}
+            currentUserId={currentUserId}
+            onSelectUser={onSelectUser}
+            onRequestChat={(uid, uname) => {
+              onCloseUserMenu?.();
+              onRequestChat?.(uid, uname);
+            }}
+            followSystem={followSystem}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Vibe Check Panel (slide-up) ────────────────────────── */}
       <VibeCheckPanel
