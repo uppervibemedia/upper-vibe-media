@@ -571,20 +571,20 @@ const TARGET_BEACH  = { x:  0, y:  2.0, z:  27 }; // Middle beach / shoreline
 // targetA → targetB is the subtle drift within the held view.
 // Transition segs blend between the two surrounding major targets.
 const TOUR_SEGS = [
-  // Seg 0: Stage held 12s — wide → closer stage focus
-  { dur: 12, targetA: { x: 2, y: 7.5, z: -29 }, targetB: TARGET_STAGE },
-  // Seg 1: Transition Stage → Center 4s
-  { dur:  4, targetA: TARGET_STAGE,  targetB: TARGET_CENTER },
+  // Seg 0: Stage held 12s — wide overhead → settled on stage
+  { dur: 12, targetA: { x: 2, y: 9.0, z: -26 }, targetB: { x: 0, y: 5.5, z: -31 } },
+  // Seg 1: Transition Stage → Center 4s — midpoint avoids repeating stage end
+  { dur:  4, targetA: { x: 0, y: 6.5, z: -22 }, targetB: TARGET_CENTER },
   // Seg 2: Center city held 12s — overview → plaza detail
   { dur: 12, targetA: { x: 0, y: 7.0, z: -13 }, targetB: { x: 0, y: 3.5, z: -13 } },
-  // Seg 3: Transition Center → Beach 4s
-  { dur:  4, targetA: TARGET_CENTER, targetB: TARGET_BEACH },
-  // Seg 4: Beach held 11s — mid-beach → closer shoreline
-  { dur: 11, targetA: { x: 0, y: 3.5, z: 25 },  targetB: { x: 0, y: 1.5, z: 30 } },
-  // Seg 5: Transition Beach → Center 4s
-  { dur:  4, targetA: TARGET_BEACH,  targetB: TARGET_CENTER },
-  // Seg 6: Center city held 8s (slightly varied angle) → loops to Stage
-  { dur:  8, targetA: { x:-2, y: 5.0, z: -12 }, targetB: { x: 1, y: 6.5, z: -29 } },
+  // Seg 3: Transition Center → Beach 4s — midpoint avoids repeating center end
+  { dur:  4, targetA: { x: 0, y: 4.0, z:   5 }, targetB: TARGET_BEACH },
+  // Seg 4: Beach held 11s — arriving at beach → closer shoreline
+  { dur: 11, targetA: { x: 0, y: 3.5, z:  24 }, targetB: { x: 0, y: 1.8, z: 28 } },
+  // Seg 5: Transition Beach → Center 4s — midpoint avoids drifting back toward beach
+  { dur:  4, targetA: { x: 0, y: 4.5, z:   8 }, targetB: TARGET_CENTER },
+  // Seg 6: Center city held 8s (varied angle) — drifts toward stage for loop
+  { dur:  8, targetA: { x:-2, y: 5.0, z: -12 }, targetB: { x: 1, y: 7.5, z: -26 } },
 ];
 const TOUR_PERIOD = TOUR_SEGS.reduce((s, seg) => s + seg.dur, 0); // = 55s
 

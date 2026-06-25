@@ -1666,7 +1666,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           cv.nLook.set(rider.lookAt.x, rider.lookAt.y, rider.lookAt.z);
           // Smooth look-at: lerp gaze toward target — prevents hard jumps between views
           if (!cv.rLookInitialized) { cv.rLookSmooth.copy(cv.nLook); cv.rLookInitialized = true; }
-          else { cv.rLookSmooth.lerp(cv.nLook, Math.min(1, dt * 0.6)); }
+          else { cv.rLookSmooth.lerp(cv.nLook, Math.min(1, dt * 1.1)); }
           const rFov = 62 + rider.atTop * 4;
           if (Math.abs(camera.fov - rFov) > 0.5) { camera.fov += (rFov - camera.fov) * Math.min(1, dt*4.0); camera.updateProjectionMatrix(); }
           camera.position.lerp(cv.cabinPos, Math.min(1, 8.0 * dt));
