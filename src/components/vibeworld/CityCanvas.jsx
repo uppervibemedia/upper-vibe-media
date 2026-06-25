@@ -1664,16 +1664,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const rider = getRiderCameraTransform(t, rl.yaw, rl.pitch);
           cv.cabinPos.set(rider.camPos.x, rider.camPos.y, rider.camPos.z);
           cv.nLook.set(rider.lookAt.x, rider.lookAt.y, rider.lookAt.z);
-          // Cross-fade on segment change: darken overlay, slow look-at lerp while fading
-          if (!cv._ff) cv._ff = { seg: -1, fade: 0 };
-          const ff = cv._ff;
-          if (rider._segIdx !== undefined && rider._segIdx !== ff.seg) { ff.seg = rider._segIdx; ff.fade = 1.0; }
-          ff.fade = Math.max(0, ff.fade - dt * 1.25);
-          const fadeEl = document.getElementById("ferris-fade-overlay");
-          if (fadeEl) fadeEl.style.opacity = String(ff.fade);
-          const lerpSpd = ff.fade > 0.05 ? 0.5 : 2.2;
+          // Smooth look-at: lerp gaze toward target — prevents hard jumps between views
           if (!cv.rLookInitialized) { cv.rLookSmooth.copy(cv.nLook); cv.rLookInitialized = true; }
-          else { cv.rLookSmooth.lerp(cv.nLook, Math.min(1, dt * lerpSpd)); }
+          else { cv.rLookSmooth.lerp(cv.nLook, Math.min(1, dt * 1.8)); }
           const rFov = 62 + rider.atTop * 4;
           if (Math.abs(camera.fov - rFov) > 0.5) { camera.fov += (rFov - camera.fov) * Math.min(1, dt*4.0); camera.updateProjectionMatrix(); }
           camera.position.lerp(cv.cabinPos, Math.min(1, 8.0 * dt));
@@ -2076,7 +2069,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           resetOrbs(scene);
         }
 
-        // ─── HOVERBOARD ORB COLLECTION ────────────────────────────────────
+        // ─── HOVERBOARD ORB COLLECTION — only while actively riding ──
         if (hbRidingRef.current && frameRef.current % 4 === 0) {
           const orbMeshes = scene.userData.hbOrbMeshes;
           if (orbMeshes) {
@@ -2093,7 +2086,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── SPEED PAD / LAUNCH PAD DETECTION ────────────────────────────
+        // ─── SPEED PAD DETECTION — temporary speed multiplier ────────
         if (hbRidingRef.current && frameRef.current % 6 === 0) {
           const nowMs = performance.now();
           for (const pad of BOOST_PADS) {
@@ -2108,7 +2101,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        if (hbRidingRef.current && frameRef.current % 6 === 0) { // launch pad
+        // ─── LAUNCH PAD DETECTION — air launch ───────────────────────
+        if (hbRidingRef.current && frameRef.current % 6 === 0) {
           for (const pad of LAUNCH_PADS) {
             const dx = px - pad.x, dz = pz - pad.z;
             if (Math.sqrt(dx * dx + dz * dz) < 1.6) {
@@ -2128,15 +2122,19 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── COSMIC SKY ──────────────────────────────────────────────
+        // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──
         scene.userData._playerZ = pz;
-        scene.userData._camPitch = camPitchSmoothRef.current;
-        scene.userData._camYaw   = camYawSmoothRef.current;
+        scene.userData._camPitch = camPitchSmoothRef.current; // pass live pitch for planet compensation
+        scene.userData._camYaw   = camYawSmoothRef.current;   // pass live yaw for facing-direction fade
+        // During Ferris ride: only hide city-side (front/stage-facing) planets.
+        // During stage fullscreen/watch (locked): hide all planets.
         scene.userData._hidePlanets = lockedRef.current;
         scene.userData._ferrisRiding = ferrisRidingRef.current;
         animateCosmicSky(scene, camera, t, dt);
 
-        // ─── Stage screen projection ──────────────────────────────────────
+        // ─── Stage screen projection (for YouTube iframe overlay) ──────────
+        // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
+        // (attribute pixels are scaled by devicePixelRatio on retina/mobile)
         if (stageScreenPosRef) {
           const ss = new Vector3(0, 3.5, -34.4);
           const proj = ss.clone().project(camera);
@@ -2152,7 +2150,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           stageScreenPosRef.current = { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh };
         }
 
-        // ─── REMOTE AVATARS ───────────────────────────────────────────────
+        // ─── REMOTE AVATARS — Phase 2: sync, spawn, despawn, animate ──
         const remoteMap = remoteAvatarsRef.current;
         const activeIds = new Set();
 
@@ -2336,9 +2334,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     if (!ferrisRiding) {
       if (avatarRef.current) avatarRef.current.visible = true;
       const cv = sceneRef.current?.userData?._camVecs;
-      if (cv) { cv._rl = null; cv.rLookInitialized = false; cv._ff = null; }
-      const fadeEl = document.getElementById("ferris-fade-overlay");
-      if (fadeEl) fadeEl.style.opacity = "0";
+      if (cv) { cv._rl = null; cv.rLookInitialized = false; }
     }
   }, [ferrisRiding]);
 
@@ -2484,10 +2480,19 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   }
 
   return (
-    <div style={{ position: "relative", width: isMobile ? "100vw" : "100%", height: isMobile ? "100dvh" : "100%" }}>
-      <canvas ref={canvasRef} className="w-full h-full block" style={{ touchAction: "none" }} />
-      {/* Ferris ride cross-fade overlay — controlled by animation loop */}
-      <div id="ferris-fade-overlay" style={{ position:"absolute", inset:0, background:"#000", opacity:0, pointerEvents:"none", transition:"none" }} />
+    <div
+      style={{
+        position: "relative",
+        width: isMobile ? "100vw" : "100%",
+        height: isMobile ? "100dvh" : "100%",
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full block"
+        style={{ touchAction: "none" }}
+      />
+      {/* Mobile controls rendered by parent (UpperVibeCity) */}
     </div>
   );
 }

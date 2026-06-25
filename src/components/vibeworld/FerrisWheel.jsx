@@ -676,7 +676,6 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
     camPos: { x: camX, y: camY, z: camZ },
     lookAt: { x: lookX, y: lookY, z: lookZ },
     atTop,
-    _segIdx: segIdx,
   };
 }
 
