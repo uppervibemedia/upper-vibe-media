@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Music4, Tv2, MessageCircle, Sun, X, UserCircle,
+  Music4, Tv2, MessageCircle, X, UserCircle,
   Compass, Sparkles, Library, SkipForward,
-  BookOpen, GraduationCap, Bell, Waves, Volume2, VolumeX, Users,
+  GraduationCap, Bell, Volume2, VolumeX, Users,
 } from "lucide-react";
 
 // ── Stage auto-hide controls hook ────────────────────────────────
@@ -55,8 +55,7 @@ const ZONE_ICONS = {
   lounge: MessageCircle,
   library: Library,
   vibecheck: Sparkles,
-  beach: Sun,
-  zenbeach: Waves,
+  zenbeach: Sparkles,
   academy: GraduationCap,
   ferriswheel: Sparkles,
 };
@@ -985,55 +984,7 @@ export default function WorldHUD({
           </motion.div>
         )}
 
-        {zone?.id === "beach" && (
-          <motion.div
-            key="beach-actions"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={actionStyle()}
-          >
-            <span
-              className="px-3 py-1.5 rounded-full text-[10px] font-black tracking-wider"
-              style={{
-                background: "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.15)",
-                color: "rgba(255,255,255,0.5)",
-              }}
-            >
-              Waves sync to your music
-            </span>
-          </motion.div>
-        )}
 
-        {zone?.id === "zenbeach" && (
-          <motion.div
-            key="zenbeach-actions"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={actionStyle()}
-          >
-            <button
-              onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); setZenBeachOpen(true); onMobileModalChange?.(true); }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg,#00D4F0,#7C3AED)",
-                color: "#fff",
-                boxShadow: "0 0 20px rgba(0,212,240,0.35)",
-                minHeight: "44px",
-                touchAction: "manipulation",
-                pointerEvents: "auto",
-              }}
-            >
-              <Waves className="w-3.5 h-3.5" />
-              Enter Zen Beach
-            </button>
-          </motion.div>
-        )}
       </AnimatePresence>
 
       {/* ── Music Library Panel (slide-up) ────────────────────── */}
