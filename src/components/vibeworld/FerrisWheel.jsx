@@ -623,7 +623,11 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   const camZ = pivotWZ - radOutWZ * INWARD_PULL + axleWZ * AXLE_PUSH;
 
   // ── Time-based tour segment lookup ───────────────────────────────
-  const ss = (x) => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
+  // Key design: transition segments ease (smoothstep) so the velocity
+  // ramps up/down continuously — the rLookSmooth lerp can track this
+  // cleanly without resetting. Hold segments ease subtly for a gentle
+  // A→B drift. No cross-boundary pre-blend (it caused yaw reversals).
+  const easeStep = (x) => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
 
   const tourT = t % TOUR_PERIOD;
   let elapsed = 0, segIdx = 0, rawProg = 0;
@@ -636,21 +640,14 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
     elapsed += TOUR_SEGS[i].dur;
   }
 
-  const sp = ss(rawProg);
   const k  = TOUR_SEGS[segIdx];
-  const kN = TOUR_SEGS[(segIdx + 1) % TOUR_SEGS.length];
+  const isTransition = segIdx % 2 === 1;
+  const sp = isTransition ? easeStep(rawProg) : easeStep(rawProg);
 
-  // Interpolate within-segment (A→B subtle drift)
-  const curTX = k.targetA.x  + (k.targetB.x  - k.targetA.x)  * sp;
-  const curTY = k.targetA.y  + (k.targetB.y  - k.targetA.y)  * sp;
-  const curTZ = k.targetA.z  + (k.targetB.z  - k.targetA.z)  * sp;
-
-  // Cross-boundary pre-blend: last 35% drifts toward next segment's start
-  const BLEND_ZONE = 0.35;
-  const blendT = ss(Math.max(0, (rawProg - (1 - BLEND_ZONE)) / BLEND_ZONE));
-  const worldTargetX = curTX + (kN.targetA.x - curTX) * blendT;
-  const worldTargetY = curTY + (kN.targetA.y - curTY) * blendT;
-  const worldTargetZ = curTZ + (kN.targetA.z - curTZ) * blendT;
+  // A→B interpolation within the segment
+  const worldTargetX = k.targetA.x + (k.targetB.x - k.targetA.x) * sp;
+  const worldTargetY = k.targetA.y + (k.targetB.y - k.targetA.y) * sp;
+  const worldTargetZ = k.targetA.z + (k.targetB.z - k.targetA.z) * sp;
 
   // ── Convert world target to a cabin-consistent look direction ─────
   // Compute the direction from camera to the world target, then
