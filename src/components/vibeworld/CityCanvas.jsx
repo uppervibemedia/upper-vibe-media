@@ -1663,9 +1663,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const rider = getRiderCameraTransform(t, rl.yaw, rl.pitch);
           cv.cabinPos.set(rider.camPos.x, rider.camPos.y, rider.camPos.z);
           cv.nLook.set(rider.lookAt.x, rider.lookAt.y, rider.lookAt.z);
-          // 68° FOV: wide enough for panoramic scenic view, tight enough to
-          // keep gondola structure at screen edges rather than center
-          const rFov = 68 + rider.atTop * 3;
+          // 62° FOV: cinematic cabin view — wide enough for panoramic scenery,
+          // narrow enough that wheel structure stays out of center frame.
+          // Slight zoom-in at top for sweeping panoramic feel.
+          const rFov = 62 + rider.atTop * 4;
           if (Math.abs(camera.fov - rFov) > 0.5) { camera.fov += (rFov - camera.fov) * Math.min(1, dt*4.0); camera.updateProjectionMatrix(); }
           camera.position.lerp(cv.cabinPos, Math.min(1, 8.0 * dt));
           camera.lookAt(cv.nLook);
