@@ -641,21 +641,45 @@ export function getRiderCameraTransform(t, userYawOffset = 0, userPitchOffset = 
   }
 
   const k  = TOUR_SEGS[segIdx];
+  const kN = TOUR_SEGS[(segIdx + 1) % TOUR_SEGS.length];
   const isTransition = segIdx % 2 === 1;
   const sp = isTransition ? easeStep(rawProg) : easeStep(rawProg);
 
   // A→B interpolation within the segment
-  const worldTargetX = k.targetA.x + (k.targetB.x - k.targetA.x) * sp;
-  const worldTargetY = k.targetA.y + (k.targetB.y - k.targetA.y) * sp;
-  const worldTargetZ = k.targetA.z + (k.targetB.z - k.targetA.z) * sp;
+  let curTX = k.targetA.x + (k.targetB.x - k.targetA.x) * sp;
+  let curTY = k.targetA.y + (k.targetB.y - k.targetA.y) * sp;
+  let curTZ = k.targetA.z + (k.targetB.z - k.targetA.z) * sp;
+
+  // ── Seamless loop wrap ──────────────────────────────────────────
+  // Without this the gaze jumps from the end of Seg 6 directly back
+  // to the start of Seg 0 on the modulo reset — the lerp can't track
+  // an instantaneous jump and restarts. Over the tail of every segment
+  // we cross-fade toward where the *next* segment will begin, so the
+  // boundary passes through smoothly (including the 55s → 0s wrap).
+  const WRAP_BLEND = 0.25;
+  if (rawProg > 1 - WRAP_BLEND) {
+    const xb = (rawProg - (1 - WRAP_BLEND)) / WRAP_BLEND;
+    // Where the next segment will be at the moment just after the
+    // boundary — i.e. its very first eased motion: eased progress
+    // just past zero (foreshadow-factor fS) so the vec begins moving
+    // in the next segment's intended direction before the switch.
+    const fS = 0.06;
+    const nxtX = kN.targetA.x + (kN.targetB.x - kN.targetA.x) * easeStep(fS);
+    const nxtY = kN.targetA.y + (kN.targetB.y - kN.targetA.y) * easeStep(fS);
+    const nxtZ = kN.targetA.z + (kN.targetB.z - kN.targetA.z) * easeStep(fS);
+    const bx = easeStep(xb);
+    curTX += (nxtX - curTX) * bx;
+    curTY += (nxtY - curTY) * bx;
+    curTZ += (nxtZ - curTZ) * bx;
+  }
 
   // ── Convert world target to a cabin-consistent look direction ─────
   // Compute the direction from camera to the world target, then
   // extract its yaw/pitch. The cabin naturally faces outward so this
   // already respects which side of the wheel the gondola is on.
-  const dTX = worldTargetX - camX;
-  const dTY = worldTargetY - camY;
-  const dTZ = worldTargetZ - camZ;
+  const dTX = curTX - camX;
+  const dTY = curTY - camY;
+  const dTZ = curTZ - camZ;
   const dTLen = Math.sqrt(dTX * dTX + dTY * dTY + dTZ * dTZ) || 1;
 
   // ── Apply user look offsets ───────────────────────────────────────
