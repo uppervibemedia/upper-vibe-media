@@ -22,16 +22,15 @@ export default function CameraLookZone({ mobileInputRef }) {
     if (!el) return;
 
     const onStart = (e) => {
-      e.preventDefault();
       if (activeTouchRef.current !== null) return; // already tracking one finger
       const t = e.changedTouches[0];
       if (!t) return;
-      activeTouchRef.current = { id: t.identifier, lastX: t.clientX, lastY: t.clientY };
-      mobileInputRef.current._camActive = true;
+      // Record start position to distinguish taps from drags
+      activeTouchRef.current = { id: t.identifier, lastX: t.clientX, lastY: t.clientY, startX: t.clientX, startY: t.clientY, startTime: Date.now() };
+      // Don't prevent default immediately — let short taps reach the canvas for avatar hit detection
     };
 
     const onMove = (e) => {
-      e.preventDefault();
       if (!activeTouchRef.current) return;
       let touch = null;
       for (let i = 0; i < e.touches.length; i++) {
@@ -44,22 +43,33 @@ export default function CameraLookZone({ mobileInputRef }) {
 
       const rawDx = touch.clientX - activeTouchRef.current.lastX;
       const rawDy = touch.clientY - activeTouchRef.current.lastY;
-      activeTouchRef.current.lastX = touch.clientX;
-      activeTouchRef.current.lastY = touch.clientY;
 
-      // Sensitivity: 0.0072 = responsive mobile third-person feel.
-      // camDx: drag RIGHT = positive = camYaw increases = camera rotates RIGHT (GTA standard)
-      // camDy: drag DOWN = positive = camera tilts down (pitch decreases)
-      const sensitivity = 0.0072;
-      mobileInputRef.current.camDx = rawDx * sensitivity;
-      mobileInputRef.current.camDy = rawDy * sensitivity;
+      // Only treat as a drag (camera move) if moved >8px from start — otherwise could be a tap on an avatar
+      const totalDx = touch.clientX - activeTouchRef.current.startX;
+      const totalDy = touch.clientY - activeTouchRef.current.startY;
+      const isDrag = Math.sqrt(totalDx * totalDx + totalDy * totalDy) > 8;
+
+      if (isDrag) {
+        e.preventDefault(); // only prevent default once confirmed as drag
+        activeTouchRef.current.lastX = touch.clientX;
+        activeTouchRef.current.lastY = touch.clientY;
+        mobileInputRef.current._camActive = true;
+
+        const sensitivity = 0.0072;
+        mobileInputRef.current.camDx = rawDx * sensitivity;
+        mobileInputRef.current.camDy = rawDy * sensitivity;
+      }
     };
 
     const onEnd = (e) => {
-      e.preventDefault();
       if (!activeTouchRef.current) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === activeTouchRef.current.id) {
+          // If it was a short tap (< 250ms, < 12px movement) — don't consume, let canvas handle it
+          const elapsed = Date.now() - activeTouchRef.current.startTime;
+          const dx = e.changedTouches[i].clientX - activeTouchRef.current.startX;
+          const dy = e.changedTouches[i].clientY - activeTouchRef.current.startY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
           activeTouchRef.current = null;
           mobileInputRef.current._camActive = false;
           mobileInputRef.current.camDx = 0;
@@ -69,10 +79,10 @@ export default function CameraLookZone({ mobileInputRef }) {
       }
     };
 
-    el.addEventListener("touchstart",  onStart, { passive: false });
-    el.addEventListener("touchmove",   onMove,  { passive: false });
-    el.addEventListener("touchend",    onEnd,   { passive: false });
-    el.addEventListener("touchcancel", onEnd,   { passive: false });
+    el.addEventListener("touchstart",  onStart, { passive: true });  // passive = taps pass through
+    el.addEventListener("touchmove",   onMove,  { passive: false }); // non-passive only for drags
+    el.addEventListener("touchend",    onEnd,   { passive: true });
+    el.addEventListener("touchcancel", onEnd,   { passive: true });
 
     return () => {
       el.removeEventListener("touchstart",  onStart);
@@ -95,7 +105,9 @@ export default function CameraLookZone({ mobileInputRef }) {
         touchAction: "none",
         userSelect: "none",
         WebkitUserSelect: "none",
-        pointerEvents: "auto",
+        // pointer-events: none so canvas raycasting (click/pointerdown) passes through
+        // Touch drag is captured via addEventListener above (not pointer events)
+        pointerEvents: "none",
         // Subtle indicator so user knows this area is interactive
         // (invisible in practice — opacity 0 — but keeps layout correct)
       }}

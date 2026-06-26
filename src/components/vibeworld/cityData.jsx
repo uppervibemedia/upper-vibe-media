@@ -1,7 +1,9 @@
 /**
  * Simple Park Layout
  */
-export const SPAWN = [0, 0, 5];
+// Spawn on the dance floor center, avatar faces stage (-Z direction)
+// Dance floor is centered at (0, 0, -13) with radius 10.5
+export const SPAWN = [0, 0, -8];
 export const PARK_RADIUS = 44;
 
 // Empty districts — will be populated later when city is built

@@ -155,6 +155,24 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     };
   }, []);
 
+  // ── Auto-dance on spawn: start dancing once world loads if on dance floor ──
+  const autoDanceStartedRef = useRef(false);
+  useEffect(() => {
+    if (loading || autoDanceStartedRef.current) return;
+    autoDanceStartedRef.current = true;
+    // Spawn is on the dance floor — auto-start dance after a short settle delay
+    const t = setTimeout(() => {
+      const dfDxNow = playerPos.x - 0;
+      const dfDzNow = playerPos.z - (-13);
+      const onFloor = Math.sqrt(dfDxNow * dfDxNow + dfDzNow * dfDzNow) <= 12;
+      if (onFloor) {
+        setIsDancing(true);
+        setActiveEmote({ id: "dance", label: "Dance", color: "#9B7EFF", startedAt: Date.now() });
+      }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [loading]);
+
   // ── TV Mode — hides joystick/camera visuals for clean mirrored view ──────────
   const [tvMode, setTvMode] = useState(false);
   const [tvQuality, setTvQuality] = useState("smooth"); // "smooth" | "normal"

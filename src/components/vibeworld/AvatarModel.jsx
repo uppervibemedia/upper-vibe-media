@@ -552,14 +552,15 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
     sprite.position.y = 1.9; // close above head
     controller.add(sprite);
 
-    // Large invisible hitbox for reliable mobile tap detection
+    // Large invisible hitbox — wide enough to catch reliable iPhone taps
+    // Box is wider/taller than the avatar body + name label area
     const hitbox = new THREE.Mesh(
-      new THREE.SphereGeometry(1.4, 6, 4),
-      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+      new THREE.BoxGeometry(1.2, 3.2, 1.2),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })
     );
-    hitbox.position.y = 1.4; // centered at chest+name area
+    hitbox.position.y = 1.6; // centered: feet (0) → top of name sprite (~3.2)
     hitbox.name = "avatarHitbox";
-    hitbox.userData = { userId };
+    hitbox.userData = { userId, type: "remoteUserProfileHitbox" };
     controller.add(hitbox);
   }
   scene.add(controller);

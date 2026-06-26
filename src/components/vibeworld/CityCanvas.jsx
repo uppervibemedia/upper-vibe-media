@@ -529,11 +529,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const effectiveSpawn = spawnOverride
     ? [spawnOverride.x, SPAWN[1], spawnOverride.z, spawnOverride.rot || 0]
     : [...SPAWN, 0];
-  const avatarPosRef = useRef(effectiveSpawn); // [x, y, z, rotY]
+  // Avatar faces stage = rotation Math.PI (faces -Z)
+  const avatarPosRef = useRef([...effectiveSpawn, Math.PI]); // [x, y, z, rotY]
   const stageCanvasRef = useRef(null);
   stageCanvasRef.current = stageCanvas;
   const velocityRef = useRef({ x: 0, z: 0 });
-  const avatarRotRef = useRef(spawnOverride?.rot || 0);    // avatar body Y rotation (world space)
+  // Face stage (-Z) by default; Math.PI means avatar looks toward -Z
+  const avatarRotRef = useRef(spawnOverride?.rot !== undefined ? spawnOverride.rot : Math.PI);
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0, button: 0 });
   // Camera: yaw = angle of camera around avatar (0 = directly behind)
@@ -626,13 +628,18 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       // Stars (Points) also follow camera at r≈105 — must be > 105. Use 130 for both.
       const camera = new PerspectiveCamera(52, asp, 0.1, isMob ? 130 : 160);
       cameraRef.current = camera;
-      // Start camera at camYaw=0: camera behind avatar facing stage. Use landscape constants if already landscape.
+      // Spawn on dance floor facing stage (-Z direction).
+      // camYaw=0 → camera is at +Z behind avatar → avatar faces -Z (toward stage). Correct.
       const [spX, spY, spZ] = effectiveSpawn;
       const spawnLS = isMob && window.innerWidth > window.innerHeight;
       camera.fov = spawnLS ? FOV_LANDSCAPE : FOV_PORTRAIT;
       camera.updateProjectionMatrix();
-      camera.position.set(spX, spY + (spawnLS ? CAM_HEIGHT_LS : CAM_HEIGHT), spZ + (spawnLS ? CAM_DIST_LS : CAM_DIST));
-      camera.lookAt(spX, spY + (spawnLS ? CAM_LOOK_Y_LS : CAM_LOOK_Y), spZ);
+      const spCamDist = spawnLS ? CAM_DIST_LS : CAM_DIST;
+      const spCamH    = spawnLS ? CAM_HEIGHT_LS : CAM_HEIGHT;
+      const spLookY   = spawnLS ? CAM_LOOK_Y_LS : CAM_LOOK_Y;
+      // Camera sits directly behind avatar on +Z side, looking toward -Z (stage)
+      camera.position.set(spX, spY + spCamH, spZ + spCamDist);
+      camera.lookAt(spX, spY + spLookY, spZ - 2); // look slightly toward stage
 
       buildPark(scene);
 
@@ -1773,26 +1780,34 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       }
     };
 
+    // Desktop: click on canvas
     canvas.addEventListener("click", handleClick);
-    // Mobile touch — fire on touchend for reliable iOS Safari taps
-    let touchStartPos = null;
-    canvas.addEventListener("touchstart", (e) => {
-      if (e.changedTouches.length === 1) {
-        touchStartPos = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-      }
-    }, { passive: true });
-    canvas.addEventListener("touchend", (e) => {
-      if (e.target !== canvas || !touchStartPos || e.changedTouches.length !== 1) return;
-      const dx = e.changedTouches[0].clientX - touchStartPos.x;
-      const dy = e.changedTouches[0].clientY - touchStartPos.y;
-      // Only fire if it was a tap (not a drag/swipe) — allow up to 18px of drift on mobile
-      if (Math.sqrt(dx * dx + dy * dy) > 18) return;
-      handleClick({ clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY }, true);
-      touchStartPos = null;
-    });
+
+    // iOS Safari tap detection — listen on window (not canvas) so CameraLookZone pointer-events:none
+    // doesn't interfere. Short tap (< 200ms, < 15px drift) → raycast for avatar hit.
+    let _tapStart = null;
+    const onWindowTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      _tapStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+    };
+    const onWindowTouchEnd = (e) => {
+      if (!_tapStart || e.changedTouches.length !== 1) { _tapStart = null; return; }
+      const ch = e.changedTouches[0];
+      const dx = ch.clientX - _tapStart.x;
+      const dy = ch.clientY - _tapStart.y;
+      const elapsed = Date.now() - _tapStart.t;
+      _tapStart = null;
+      // Only fire for short taps, not drags
+      if (elapsed > 300 || Math.sqrt(dx * dx + dy * dy) > 15) return;
+      handleClick({ clientX: ch.clientX, clientY: ch.clientY }, true);
+    };
+    window.addEventListener("touchstart", onWindowTouchStart, { passive: true });
+    window.addEventListener("touchend", onWindowTouchEnd, { passive: true });
 
     return () => {
       canvas.removeEventListener("click", handleClick);
+      window.removeEventListener("touchstart", onWindowTouchStart);
+      window.removeEventListener("touchend", onWindowTouchEnd);
     };
   }, []);
 

@@ -837,14 +837,14 @@ export function createMixamoAvatar(scene, opts = {}, onReady) {
     nameSprite.position.y = 1.9; // close above head
     controller.add(nameSprite);
 
-    // Large invisible hitbox for reliable mobile tap detection
+    // Large invisible hitbox — wide box covering full avatar body + name label
     const hitbox = new THREE.Mesh(
-      new THREE.SphereGeometry(0.9, 6, 4),
-      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+      new THREE.BoxGeometry(1.2, 3.2, 1.2),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })
     );
-    hitbox.position.y = 1.0;
+    hitbox.position.y = 1.6;
     hitbox.name = "avatarHitbox";
-    hitbox.userData = { userId: opts.userId };
+    hitbox.userData = { userId: opts.userId, type: "remoteUserProfileHitbox" };
     controller.add(hitbox);
   }
   scene.add(controller);
