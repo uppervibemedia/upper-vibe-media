@@ -37,6 +37,7 @@ import useFollowSystem from "@/hooks/useFollowSystem";
 import useBlockSystem from "@/hooks/useBlockSystem";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
+import PersonalHoverboardHUD from "@/components/vibeworld/PersonalHoverboardHUD";
 
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
 import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
@@ -94,9 +95,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [isPlayingNeonSurf, setIsPlayingNeonSurf] = useState(false); // true only while Neon Surf game active
   // B) Personal hoverboard: owned item, equipped from Inventory, city free-roam only
   // (Future: read equipped board from inventory; for now stub = false until user equips)
-  const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
+    const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
+  const [equippedBoard, setEquippedBoard] = useState(null);
+
   // Combined: CityCanvas hbRiding prop = Neon Surf board OR personal board
-  const hbRiding = isPlayingNeonSurf; // personal board is NOT the same as Neon Surf riding
+  const hbRiding = isPlayingNeonSurf || personalHoverboardActive;
   // Crystal Zone — decorative landmark only, no interaction state needed
   const rendererRef = useRef(null);
   const [sessionCoins, setSessionCoins] = useState(() => getSessionCoins());
@@ -321,8 +324,25 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       }
     };
     window.addEventListener("vibeCoinsShopPurchase", onShop);
-    return () => window.removeEventListener("vibeCoinsShopPurchase", onShop);
-  }, []);
+
+    const onInventoryUpdate = (e) => {
+      const { itemId, equipped, category } = e.detail || {};
+      if (category === 'hoverboard') {
+        if (equipped) {
+          setEquippedBoard(itemId);
+        } else if (equippedBoard === itemId) {
+          setEquippedBoard(null);
+          setPersonalHoverboardActive(false); // Force dismount if board is unequipped
+        }
+      }
+    };
+    window.addEventListener('inventoryUpdate', onInventoryUpdate);
+
+    return () => {
+      window.removeEventListener("vibeCoinsShopPurchase", onShop);
+      window.removeEventListener('inventoryUpdate', onInventoryUpdate);
+    }
+  }, [equippedBoard]);
 
   // ── Avatar config derived from user data ──────────────────────────────
   // avatarTypeKey: read from sessionStorage (set by AvatarSetup or WorldGate on entry)
@@ -1372,6 +1392,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onClose={() => setInventoryOpen(false)}
         user={user}
         isMobile={isMobile}
+      />
+
+      <PersonalHoverboardHUD 
+        isMobile={isMobile} 
+        mobileLayout={mobileLayout}
+        onToggle={() => setPersonalHoverboardActive(p => !p)}
+        personalHoverboardActive={personalHoverboardActive}
+        canUsePersonalBoard={!!equippedBoard && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !anyBlockingUIOpen}
       />
 
       {/* Mobile debug overlay — only visible with ?debug=mobile in URL */}

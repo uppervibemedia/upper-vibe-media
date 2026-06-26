@@ -11,7 +11,8 @@ export const SHOP_ITEMS = [
     category: "hoverboard",
     price: 25,
     description: "Your personal hoverboard for city free-roam. Separate from Neon Surf.",
-    preview_emoji: "🛹",
+    preview_icon: "Rocket",
+    preview_model: "basic",
     rarity: "common",
   },
   {
@@ -20,7 +21,9 @@ export const SHOP_ITEMS = [
     category: "hoverboard",
     price: 75,
     description: "Electric blue personal hoverboard. Equip from Inventory.",
-    preview_emoji: "💙",
+    preview_icon: "Rocket",
+    preview_color: "#00D4F0",
+    preview_model: "neon_blue",
     rarity: "uncommon",
   },
   {
@@ -29,7 +32,9 @@ export const SHOP_ITEMS = [
     category: "hoverboard",
     price: 150,
     description: "Deep space-themed personal board for free-roam.",
-    preview_emoji: "🌌",
+    preview_icon: "Rocket",
+    preview_color: "#9B4FFF",
+    preview_model: "cosmic",
     rarity: "rare",
   },
 
@@ -40,7 +45,8 @@ export const SHOP_ITEMS = [
     category: "avatar_glow",
     price: 20,
     description: "A subtle blue glow for your avatar.",
-    preview_emoji: "💙",
+    preview_icon: "Sparkles",
+    preview_color: "#00AADD",
     rarity: "common",
   },
   {
@@ -49,7 +55,8 @@ export const SHOP_ITEMS = [
     category: "avatar_glow",
     price: 50,
     description: "A purple energy aura around your avatar.",
-    preview_emoji: "🟣",
+    preview_icon: "Sparkles",
+    preview_color: "#9B4FFF",
     rarity: "uncommon",
   },
   {
@@ -58,7 +65,8 @@ export const SHOP_ITEMS = [
     category: "avatar_glow",
     price: 100,
     description: "Premium golden glow effect.",
-    preview_emoji: "✨",
+    preview_icon: "Sparkles",
+    preview_color: "#FFD700",
     rarity: "rare",
   },
 
@@ -69,7 +77,8 @@ export const SHOP_ITEMS = [
     category: "nameplate",
     price: 30,
     description: "Cyan neon nameplate above your avatar.",
-    preview_emoji: "🪪",
+    preview_icon: "Badge",
+    preview_color: "#00D4F0",
     rarity: "common",
   },
   {
@@ -78,7 +87,8 @@ export const SHOP_ITEMS = [
     category: "nameplate",
     price: 100,
     description: "Premium gold nameplate. Rarity status.",
-    preview_emoji: "🏆",
+    preview_icon: "Badge",
+    preview_color: "#FFD700",
     rarity: "rare",
   },
 
@@ -89,7 +99,7 @@ export const SHOP_ITEMS = [
     category: "badge",
     price: 50,
     description: "Rewarded to early members of Upper Vibe City.",
-    preview_emoji: "🏅",
+    preview_icon: "Award",
     rarity: "rare",
   },
   {
@@ -98,7 +108,7 @@ export const SHOP_ITEMS = [
     category: "badge",
     price: 75,
     description: "Show your commitment to the highest frequency.",
-    preview_emoji: "⚡",
+    preview_icon: "Zap",
     rarity: "uncommon",
   },
 ];

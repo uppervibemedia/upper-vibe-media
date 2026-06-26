@@ -22,7 +22,8 @@ export const STARTER_ITEMS = [
     description: "A subtle blue glow for your avatar.",
     rarity: "common",
     starter: true,
-    preview_emoji: "💙",
+    preview_icon: "Sparkles",
+    preview_color: "#00AADD",
   },
   {
     id: "nameplate_default",
@@ -31,7 +32,7 @@ export const STARTER_ITEMS = [
     description: "Clean white nameplate shown above your avatar.",
     rarity: "common",
     starter: true,
-    preview_emoji: "🪪",
+    preview_icon: "Badge",
   },
   {
     id: "hoverboard_basic",
@@ -40,7 +41,8 @@ export const STARTER_ITEMS = [
     description: "Your personal hoverboard. Equip it from Inventory to free-roam Upper Vibe City.",
     rarity: "common",
     starter: true,
-    preview_emoji: "🛹",
+    preview_icon: "Rocket",
+    preview_model: "basic",
   },
   {
     id: "badge_citizen",
@@ -49,15 +51,15 @@ export const STARTER_ITEMS = [
     description: "Awarded to early members of Upper Vibe City.",
     rarity: "rare",
     starter: true,
-    preview_emoji: "🏅",
+    preview_icon: "Award",
   },
 ];
 
 // ── Shop hoverboards (purchasable with Vibe Coins, not starter grants) ─────
 export const SHOP_HOVERBOARDS = [
-  { id: "hoverboard_neon_blue",   name: "Neon Blue Board",   price: 150, preview_emoji: "🛹", rarity: "uncommon", description: "Electric blue personal hoverboard for city free-roam." },
-  { id: "hoverboard_cosmic",      name: "Cosmic Surf Board",  price: 350, preview_emoji: "🌌", rarity: "rare",     description: "Deep space-themed personal board. Turn heads in the plaza." },
-  { id: "hoverboard_gold_aura",   name: "Gold Aura Board",    price: 600, preview_emoji: "✨", rarity: "epic",     description: "Premium gold-finish personal board. Only for the dedicated." },
+  { id: "hoverboard_neon_blue", name: "Neon Blue Board", price: 150, rarity: "uncommon", description: "Electric blue personal hoverboard for city free-roam.", preview_icon: "Rocket", preview_color: "#00D4F0", preview_model: "neon_blue" },
+  { id: "hoverboard_cosmic", name: "Cosmic Surf Board",  price: 350, rarity: "rare", description: "Deep space-themed personal board. Turn heads in the plaza.", preview_icon: "Rocket", preview_color: "#9B4FFF", preview_model: "cosmic" },
+  { id: "hoverboard_gold_aura", name: "Gold Aura Board", price: 600, rarity: "epic", description: "Premium gold-finish personal board. Only for the dedicated.", preview_icon: "Rocket", preview_color: "#FFD700", preview_model: "gold" },
 ];
 
 /** Look up an item config by id (checks starter items + shop boards) */

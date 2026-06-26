@@ -1,9 +1,23 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Package, RefreshCw } from "lucide-react";
+import { X, Package, RefreshCw, Rocket, Sparkles, Badge, Award, Zap } from "lucide-react";
 import { INVENTORY_CATEGORIES, getCategoryLabel, getItemConfig, isPersonalHoverboard } from "./inventoryConfig";
 import { loadInventory, equipItem, unequipItem } from "./inventoryService";
 import { getWalletBalance, getWalletLifetime } from "../wallet/vibeCoinWallet";
+
+const ItemPreview = ({ config }) => {
+  if (!config) return "🎁";
+  const Icon = {
+    Rocket,
+    Sparkles,
+    Badge,
+    Award,
+    Zap
+  }[config.preview_icon];
+
+  if (Icon) return <Icon className="w-6 h-6" />;
+  return config.preview_emoji || "🎁";
+};
 
 export default function InventoryPanel({ open, onClose, user, isMobile }) {
   const [items, setItems] = useState([]);
@@ -30,19 +44,30 @@ export default function InventoryPanel({ open, onClose, user, isMobile }) {
     if (equipping) return;
     setEquipping(record.id);
     try {
-      if (record.equipped) {
-        await unequipItem(record.id);
-        setItems((prev) => prev.map((r) => r.id === record.id ? { ...r, equipped: false } : r));
-      } else {
+      const willEquip = !record.equipped;
+      if (willEquip) {
         await equipItem(user.id, record.id, record.item_category, items);
-        setItems((prev) => prev.map((r) => {
-          if (r.item_category === record.item_category) {
-            return { ...r, equipped: r.id === record.id };
-          }
-          return r;
-        }));
+      } else {
+        await unequipItem(record.id);
       }
-    } catch {}
+      // Dispatch event so UpperVibeCity can react to equipment changes
+      window.dispatchEvent(new CustomEvent('inventoryUpdate', {
+        detail: {
+          itemId: record.item_id,
+          equipped: willEquip,
+          category: record.item_category,
+        }
+      }));
+      // Optimistically update UI
+      setItems((prev) => prev.map((r) => {
+        if (r.item_category === record.item_category) {
+          return { ...r, equipped: r.id === record.id ? willEquip : false };
+        }
+        return r;
+      }));
+    } catch (e) {
+      console.error("Equip failed:", e);
+    }
     setEquipping(null);
   };
 
@@ -174,8 +199,8 @@ export default function InventoryPanel({ open, onClose, user, isMobile }) {
                       }}
                     >
                       {/* Preview */}
-                      <div style={{ width: 42, height: 42, borderRadius: "8px", background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", flexShrink: 0 }}>
-                        {config?.preview_emoji || "🎁"}
+                      <div style={{ width: 42, height: 42, borderRadius: "8px", background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", flexShrink: 0, color: config?.preview_color || 'rgba(255,255,255,0.7)' }}>
+                        <ItemPreview config={config} />
                       </div>
 
                       {/* Info */}

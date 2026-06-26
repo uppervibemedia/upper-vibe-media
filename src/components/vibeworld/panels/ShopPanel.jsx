@@ -1,11 +1,25 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ShoppingBag, Check, Zap } from "lucide-react";
+import { X, ShoppingBag, Check, Zap, Rocket, Sparkles, Badge, Award } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { loadWallet, getWalletBalance, getWalletLifetime, spendCoins } from "../wallet/vibeCoinWallet";
 import { loadInventory, equipItem } from "../inventory/inventoryService";
 import { SHOP_ITEMS, SHOP_CATEGORIES, getShopItem } from "./shopConfig";
 import { getCategoryLabel } from "../inventory/inventoryConfig";
+
+const ItemPreview = ({ config }) => {
+  if (!config) return "🎁";
+  const Icon = {
+    Rocket,
+    Sparkles,
+    Badge,
+    Award,
+    Zap
+  }[config.preview_icon];
+
+  if (Icon) return <Icon className="w-6 h-6" />;
+  return config.preview_emoji || "🎁";
+};
 
 const STATUS = {
   BUY: "buy",
@@ -74,10 +88,11 @@ export default function ShopPanel({ open, onClose, isMobile, user, currentUserId
     setProcessing(null);
     setBalance(result.balance);
     setMessage("Purchased ✓");
-    setOwned((prev) => ({ ...prev, [item.id]: { equipped: false, item_category: item.category } }));
     window.dispatchEvent(new CustomEvent("vibeCoinsShopPurchase", { detail: { balance: result.balance } }));
-    setTimeout(() => setMessage(null), 2000);
-    refresh();
+    setTimeout(() => {
+      setMessage(null);
+      refresh();
+    }, 1500);
   };
 
   const handleEquip = async (itemId, record) => {
@@ -206,8 +221,8 @@ export default function ShopPanel({ open, onClose, isMobile, user, currentUserId
                   >
                     {/* Preview */}
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: "rgba(255,255,255,0.06)", fontSize: "26px" }}>
-                      {item.preview_emoji}
+                      style={{ background: "rgba(255,255,255,0.06)", fontSize: "26px", color: item.preview_color || 'rgba(255,255,255,0.7)' }}>
+                      <ItemPreview config={item} />
                     </div>
 
                     {/* Info */}
