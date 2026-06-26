@@ -4,7 +4,7 @@ import { ChevronLeft, Tv2 } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import CameraLookZone from "@/components/vibeworld/CameraLookZone";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
-import CityCanvas from "@/components/vibeworld/CityCanvas";
+import CityCanvas from "@/components/vibeworld/CityCanvas.jsx";
 import { retintAvatar } from "@/components/vibeworld/AvatarModel";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
