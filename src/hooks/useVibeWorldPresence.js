@@ -31,11 +31,20 @@ function getLifetimeOrbs() {
   }
 }
 
-export default function useVibeWorldPresence(user, currentZone, position, equippedState = {}) {
+export default function useVibeWorldPresence(user, currentZone, position, equippedState = {}, liveState = {}) {
   const {
     equippedAura = "", equippedAuraColor = "", equippedHoverboard = "",
-    personalHoverboardActive = false, equippedNameplate = "", equippedBadge = "", equippedClothing = "",
+    equippedNameplate = "", equippedBadge = "", equippedClothing = "",
   } = equippedState;
+  const {
+    isDancing = false,
+    personalHoverboardActive: liveHoverboardActive = false,
+    isPlayingNeonSurf = false,
+  } = liveState;
+  // Effective riding flags: personal hoverboard OR Neon Surf riding
+  const isRidingPersonal = liveHoverboardActive;
+  const isRidingNeonSurf = isPlayingNeonSurf;
+  const anyRiding = isRidingPersonal || isRidingNeonSurf;
   const [activeUsers, setActiveUsers] = useState([]);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const recordIdRef = useRef(null);
@@ -43,7 +52,8 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
   const posRef = useRef({ x: 0, z: 0, rot: 0 });
   const animRef = useRef("idle");
   const mountedRef = useRef(true);
-  const lastSentRef = useRef({ x: Infinity, z: Infinity, rot: Infinity, zone: "", anim: "" });
+  // Track last-sent state so the fast path (sendPosition, 2s) fires immediately on state changes
+  const lastSentRef = useRef({ x: Infinity, z: Infinity, rot: Infinity, zone: "", anim: "", dancing: false, riding: false, neonSurf: false, aura: "", hoverboard: "", nameplate: "", badge: "", clothing: "" });
   const usersMapRef = useRef({});
 
   // Keep refs current without triggering re-renders
@@ -51,7 +61,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
   posRef.current = position || { x: 0, z: 0, rot: 0 };
   animRef.current = position?.animState || "idle";
 
-  // ── Rapid position sync (only if changed meaningfully) ────────────────────
+  // ── Rapid position sync — also carries live animation/riding state ───────
   const sendPosition = useCallback(async () => {
     if (!user?.id || !mountedRef.current) return;
     const rid = recordIdRef.current;
@@ -59,21 +69,50 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
 
     const { x, z, rot } = posRef.current;
     const zone = zoneRef.current;
-    const anim = animRef.current;
+    const baseAnim = animRef.current;
     const last = lastSentRef.current;
 
-    // Skip if nothing changed meaningfully
+    // Derive effective animation state from live state
+    // Phase-order: dance > riding > walking > idle
+    let anim = baseAnim;
+    if (isRidingPersonal) anim = "hbRiding";
+    else if (isRidingNeonSurf) anim = "neonSurf";
+    else if (isDancing) anim = "dance";
+
+    const dancing = isDancing;
+    const riding = isRidingPersonal;
+    const neonSurf = isRidingNeonSurf;
+
+    // Skip if nothing changed (position, animation, riding, OR equipped items)
     if (
       Math.abs(x - last.x) < POS_THRESHOLD &&
       Math.abs(z - last.z) < POS_THRESHOLD &&
       Math.abs(rot - last.rot) < ROT_THRESHOLD &&
       zone === last.zone &&
-      anim === last.anim
+      anim === last.anim &&
+      dancing === last.dancing &&
+      riding === last.riding &&
+      neonSurf === last.neonSurf &&
+      equippedAura === last.aura &&
+      equippedHoverboard === last.hoverboard &&
+      equippedNameplate === last.nameplate &&
+      equippedBadge === last.badge &&
+      equippedClothing === last.clothing
     ) {
       return;
     }
 
-    lastSentRef.current = { x, z, rot, zone, anim };
+    lastSentRef.current = {
+      x, z, rot, zone, anim,
+      dancing,
+      riding,
+      neonSurf,
+      aura: equippedAura,
+      hoverboard: equippedHoverboard,
+      nameplate: equippedNameplate,
+      badge: equippedBadge,
+      clothing: equippedClothing,
+    };
 
     try {
       await base44.entities.VibeWorldPresence.update(rid, {
@@ -82,12 +121,21 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         rotation: rot,
         current_zone: zone,
         animation_state: anim,
+        is_dancing: dancing,
+        personal_hoverboard_active: riding,
+        is_playing_neon_surf: neonSurf,
+        equipped_hoverboard: equippedHoverboard,
+        equipped_aura: equippedAura,
+        equipped_aura_color: equippedAuraColor,
+        equipped_nameplate: equippedNameplate,
+        equipped_badge: equippedBadge,
+        equipped_clothing: equippedClothing,
         last_heartbeat: new Date().toISOString(),
       });
     } catch {
       // Silently skip rate limits / network issues
     }
-  }, [user]);
+  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, isDancing, isRidingPersonal, isRidingNeonSurf]);
 
   // ── Full heartbeat (slower — online status + full identity) ──────────────
   const isBroadcastingRef = useRef(false);
@@ -114,11 +162,17 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       pos_x: posRef.current.x,
       pos_z: posRef.current.z,
       rotation: posRef.current.rot,
-      animation_state: animRef.current,
+      // Derive effective animation state from live state
+      animation_state: isRidingPersonal ? "hbRiding" :
+        isRidingNeonSurf ? "neonSurf" :
+        isDancing ? "dance" :
+        animRef.current || "idle",
+      is_dancing: isDancing,
+      personal_hoverboard_active: isRidingPersonal,
+      is_playing_neon_surf: isRidingNeonSurf,
       equipped_aura: equippedAura || "",
       equipped_aura_color: equippedAuraColor || "",
       equipped_hoverboard: equippedHoverboard || "",
-      personal_hoverboard_active: personalHoverboardActive,
       equipped_nameplate: equippedNameplate,
       equipped_badge: equippedBadge,
       equipped_clothing: equippedClothing,
@@ -136,12 +190,21 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         const rec = await base44.entities.VibeWorldPresence.create(payload);
         recordIdRef.current = rec.id;
       }
+      const dancing = isDancing, riding = isRidingPersonal, neonSurf = isRidingNeonSurf;
       lastSentRef.current = {
         x: posRef.current.x,
         z: posRef.current.z,
         rot: posRef.current.rot,
         zone: zoneRef.current,
-        anim: animRef.current,
+        anim: riding ? "hbRiding" : neonSurf ? "neonSurf" : dancing ? "dance" : animRef.current || "idle",
+        dancing,
+        riding,
+        neonSurf,
+        aura: equippedAura || "",
+        hoverboard: equippedHoverboard || "",
+        nameplate: equippedNameplate || "",
+        badge: equippedBadge || "",
+        clothing: equippedClothing || "",
       };
       if (!isBroadcastingRef.current && mountedRef.current) {
         isBroadcastingRef.current = true;

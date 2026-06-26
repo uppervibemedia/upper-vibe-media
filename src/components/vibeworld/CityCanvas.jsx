@@ -1566,13 +1566,26 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const vel = Math.sqrt(dx * dx + dz * dz);
           entry.prevPos = { x: g.position.x, z: g.position.z };
 
-          // ─── Remote avatar animation ────────────────────
+          // ─── Remote avatar animation — use received state ──
           const remoteEntry = g.userData._avatarEntry;
+          const animState = remote.animation_state || remote.animationState || "idle";
+          const remoteIsDancing = animState === "dance" || !!remote.is_dancing;
+          const remoteIsHoverboarding = animState === "hbRiding" || !!remote.personal_hoverboard_active;
+          // Neon Surf is separate — remote animation stays normal, no hoverboard attach
           if (remoteEntry) {
             if (remoteEntry._isMixamo) {
-              updateMixamoAvatarAnimation(remoteEntry, vel * 15, false, dt, false, null);
+              const emergeId = remoteIsDancing ? "dance" : null;
+              updateMixamoAvatarAnimation(remoteEntry, vel * 15, remoteIsDancing, dt,
+                remoteIsHoverboarding ? true : false, emergeId);
             } else {
-              updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
+              updateAvatarAnimation(remoteEntry, vel * 15, remoteIsDancing, dt,
+                remoteIsHoverboarding ? true : false);
+            }
+            // Bump avatar Y up slightly so hoverboard mesh doesn't clip the ground
+            if (remoteIsHoverboarding) {
+              g.position.y = SPAWN[1] + 0.15;
+            } else {
+              g.position.y = SPAWN[1];
             }
           }
 
@@ -1581,6 +1594,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const prevS = rs[remote.user_id];
           const hasAura   = !!remote.equipped_aura;
           const isRidingHb = !!remote.personal_hoverboard_active;
+          const isRidingNeon = !!remote.is_playing_neon_surf;
           if (prevS && prevS.hasAura !== hasAura) {
             if (hasAura) {
               bindAura(g, remote.equipped_aura, remote.equipped_aura_color || null);
@@ -1591,7 +1605,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             bindAura(g, remote.equipped_aura, remote.equipped_aura_color || null);
           }
 
-          // ── Remote hoverboard sync ──────────────────────
+          // ── Remote hoverboard sync (PERSONAL board — NOT Neon Surf) ──
           if (prevS && prevS.isRiding !== isRidingHb) {
             if (isRidingHb) {
               attachHoverboard(remoteEntry);
@@ -1604,7 +1618,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             // noop — just spawned, not riding. Clean state.
           }
 
-          rs[remote.user_id] = { hasAura, isRiding: isRidingHb };
+          rs[remote.user_id] = { hasAura, isRiding: isRidingHb, isDancing: remoteIsDancing };
         }
 
         // Despawn avatars that are no longer present

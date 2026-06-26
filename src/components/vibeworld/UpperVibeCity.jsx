@@ -683,6 +683,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     equippedNameplate,
     equippedBadge,
     equippedClothing,
+  }, {
+    isDancing,
+    personalHoverboardActive,
+    isPlayingNeonSurf,
   });
 
   // ── Follow System ─────────────────────────────────────────────────────
