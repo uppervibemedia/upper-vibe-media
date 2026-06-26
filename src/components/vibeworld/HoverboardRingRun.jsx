@@ -1,6 +1,6 @@
 /**
  * NeonSurfBeach — Free-ride hoverboard beach zone.
- * Collectible energy orbs · Speed Boost Pads · Launch Pads (air launch)
+ * Collectible Vibe Coins · Speed Boost Pads · Launch Pads (air launch)
  */
 import * as THREE from "three";
 
@@ -19,20 +19,25 @@ export const HOVERBOARD_INTERACT_RADIUS = 6.0;
 // Legacy (unused but kept for import compat)
 export const HOVERBOARD_RINGS = [];
 
-// ── ENERGY ORBS ─────────────────────────────────────────────────────────────
+// ── SURF VIBE COINS ──────────────────────────────────────────────────────────
+// 70% easy (clear ride lines), 20% medium (light steering), 10% bonus (+5)
+// All placed at y=1.0 (easy reach height), close to ride path
 export const BEACH_ORBS = [
-  { id: 0,  x: 22,  z: 28, color: "#00E5FF" },
-  { id: 1,  x: 15,  z: 31, color: "#C43BFF" },
-  { id: 2,  x:  8,  z: 29, color: "#00E5FF" },
-  { id: 3,  x:  0,  z: 32, color: "#FFD700" },
-  { id: 4,  x: -8,  z: 30, color: "#C43BFF" },
-  { id: 5,  x:-16,  z: 28, color: "#00E5FF" },
-  { id: 6,  x:-22,  z: 31, color: "#FFD700" },
-  { id: 7,  x: 18,  z: 22, color: "#C43BFF" },
-  { id: 8,  x:  5,  z: 24, color: "#00E5FF" },
-  { id: 9,  x:-10,  z: 25, color: "#FFD700" },
-  { id: 10, x: 25,  z: 20, color: "#C43BFF" },
-  { id: 11, x:-18,  z: 22, color: "#00E5FF" },
+  // Easy lane — straight line across beach (70%)
+  { id: 0,  x: 22,  z: 27, color: "#00E5FF", value: 1 },
+  { id: 1,  x: 16,  z: 29, color: "#00E5FF", value: 1 },
+  { id: 2,  x:  8,  z: 28, color: "#00E5FF", value: 1 },
+  { id: 3,  x:  0,  z: 30, color: "#FFD700", value: 1 },
+  { id: 4,  x: -8,  z: 29, color: "#00E5FF", value: 1 },
+  { id: 5,  x:-16,  z: 27, color: "#00E5FF", value: 1 },
+  { id: 6,  x:-22,  z: 29, color: "#00E5FF", value: 1 },
+  // Medium — slight curve off main path (20%)
+  { id: 7,  x: 20,  z: 23, color: "#C43BFF", value: 1 },
+  { id: 8,  x:  5,  z: 25, color: "#C43BFF", value: 1 },
+  { id: 9,  x:-12,  z: 24, color: "#C43BFF", value: 1 },
+  // Bonus coins +5 (10%) — near boost pads or turns
+  { id: 10, x: 12,  z: 27, color: "#FFD700", value: 5 },
+  { id: 11, x:-14,  z: 26, color: "#FFD700", value: 5 },
 ];
 
 // ── SPEED BOOST PADS — green, speed arrow icons, temporary speed burst ────
@@ -77,6 +82,97 @@ function makeLabel(text, colorHex, scale = [4, 0.8]) {
   const sp = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
   sp.scale.set(...scale, 1); sp.renderOrder = 999;
   return sp;
+}
+
+// ── Vibe Coin face texture (cached) ──────────────────────────────────────────
+let _coinFaceTex = null;
+function getCoinFaceTex() {
+  if (_coinFaceTex) return _coinFaceTex;
+  const c = document.createElement("canvas");
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext("2d");
+  const grad = ctx.createRadialGradient(32, 32, 2, 32, 32, 32);
+  grad.addColorStop(0, "#ffe066");
+  grad.addColorStop(0.5, "#c47d00");
+  grad.addColorStop(1, "#7a4a00");
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(32, 32, 30, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ffd700";
+  ctx.font = "bold 26px 'Syne','Inter',sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("V", 32, 33);
+  _coinFaceTex = new CanvasTexture(c);
+  _coinFaceTex.minFilter = LinearFilter;
+  _coinFaceTex.colorSpace = THREE.SRGBColorSpace;
+  return _coinFaceTex;
+}
+
+// Build a surf Vibe Coin mesh at given position
+function buildSurfCoin(scene, orb) {
+  const g = new Group();
+  g.name = `hbOrb_${orb.id}`;
+
+  const isBonus = orb.value >= 5;
+  const coinR = isBonus ? 0.34 : 0.26;
+
+  // Gold disc face
+  const faceMat = new MeshBasicMaterial({
+    map: getCoinFaceTex(),
+    depthWrite: true,
+    side: THREE.DoubleSide,
+  });
+  const face = new Mesh(new CircleGeometry(coinR * 0.95, 20), faceMat);
+  face.position.y = 0.03;
+  g.add(face);
+  const face2 = face.clone();
+  face2.position.y = -0.03;
+  g.add(face2);
+
+  // Thin cylinder rim
+  const rimMat = new MeshStandardMaterial({ color: new Color("#ffd700"), roughness: 0.2, metalness: 0.75 });
+  const rim = new Mesh(new CylinderGeometry(coinR, coinR, 0.06, 20, 1, true), rimMat);
+  rim.rotation.x = Math.PI / 2;
+  g.add(rim);
+
+  // Neon edge — cyan or gold for bonus
+  const edgeColor = isBonus ? "#FFD700" : "#00E5FF";
+  const edgeMat = new MeshBasicMaterial({
+    color: new Color(edgeColor),
+    depthWrite: false, transparent: true, opacity: 0.8,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  });
+  const edge = new Mesh(new TorusGeometry(coinR, 0.022, 6, 28), edgeMat);
+  g.add(edge);
+  g.userData.edgeMat = edgeMat;
+
+  // Aura glow disc below coin
+  const auraMat = new MeshBasicMaterial({
+    color: new Color(isBonus ? "#FFD700" : "#00D4F0"),
+    depthWrite: false, transparent: true, opacity: 0.18,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  });
+  const aura = new Mesh(new RingGeometry(coinR * 0.9, coinR * 1.8, 24), auraMat);
+  aura.rotation.x = -Math.PI / 2;
+  aura.position.y = -0.04;
+  g.add(aura);
+  g.userData.auraMat = auraMat;
+
+  // Small point light
+  const glow = new PointLight(new Color(isBonus ? "#ffd700" : "#00E5FF"), isBonus ? 0.5 : 0.3, isBonus ? 4 : 3);
+  g.add(glow);
+
+  // Bonus coin: add "+5" label sprite
+  if (isBonus) {
+    const lbl = makeLabel("+5", "#FFD700", [1.6, 0.5]);
+    lbl.position.y = 0.65;
+    g.add(lbl);
+  }
+
+  g.position.set(orb.x, 1.0, orb.z);
+  g.userData.coinValue = orb.value || 1;
+  g.userData.isBonus = isBonus;
+  scene.add(g);
+  return { group: g, edgeMat, auraMat, id: orb.id, collected: false, value: orb.value || 1 };
 }
 
 // ─── BUILD ZONE ─────────────────────────────────────────────────────────────
@@ -142,34 +238,11 @@ export function createHoverboardZone(scene) {
   titleLabel.position.set(SX, 5.5, SZ);
   scene.add(titleLabel);
 
-  // ── ENERGY ORBS ─────────────────────────────────────────────────────────
+  // ── SURF VIBE COINS ──────────────────────────────────────────────────────
   const orbMeshes = [];
   for (const orb of BEACH_ORBS) {
-    const g = new Group();
-    g.name = `hbOrb_${orb.id}`;
-
-    const coreMat = bmat(orb.color, 0.92);
-    const core = new Mesh(new SphereGeometry(0.28, 12, 8), coreMat);
-    g.add(core);
-
-    const haloMat = bmat(orb.color, 0.22, { side: THREE.DoubleSide });
-    const halo = new Mesh(new SphereGeometry(0.46, 10, 6), haloMat);
-    g.add(halo);
-
-    const sparkMat = bmat("#ffffff", 0.55);
-    const spark = new Mesh(new SphereGeometry(0.10, 6, 4), sparkMat);
-    spark.position.y = 0.08;
-    g.add(spark);
-
-    const ringMat = bmat(orb.color, 0.45);
-    const ring = new Mesh(new TorusGeometry(0.38, 0.025, 6, 32), ringMat);
-    ring.rotation.x = Math.PI / 2;
-    g.add(ring);
-    g.userData.ringMat = ringMat;
-
-    g.position.set(orb.x, 1.4, orb.z);
-    scene.add(g);
-    orbMeshes.push({ group: g, coreMat, haloMat, ringMat, id: orb.id, collected: false, color: orb.color });
+    const entry = buildSurfCoin(scene, orb);
+    orbMeshes.push(entry);
   }
   scene.userData.hbOrbMeshes = orbMeshes;
 
@@ -183,7 +256,6 @@ export function createHoverboardZone(scene) {
     base.receiveShadow = true;
     g.add(base);
 
-    // Bright green glow ring
     const glowMat = bmat("#00FF88", 0.7);
     const glowRing = new Mesh(new RingGeometry(0.85, 1.2, 64), glowMat);
     glowRing.rotation.x = -Math.PI / 2;
@@ -192,7 +264,6 @@ export function createHoverboardZone(scene) {
     g.add(glowRing);
     boostPadMats.push(glowMat);
 
-    // Double-chevron arrows (green)
     for (const oz of [0, -0.28]) {
       const arrow = new Mesh(new BoxGeometry(0.10, 0.04, 0.52), bmat("#00FF88", 0.85));
       arrow.position.set(0, 0.08, oz);
@@ -205,7 +276,6 @@ export function createHoverboardZone(scene) {
       g.add(arrowR);
     }
 
-    // Inner green disc
     const innerDisc = new Mesh(new CircleGeometry(0.6, 32), bmat("#00FF88", 0.18));
     innerDisc.rotation.x = -Math.PI / 2;
     innerDisc.position.y = 0.07;
@@ -228,7 +298,6 @@ export function createHoverboardZone(scene) {
     const g = new Group();
     g.name = `hbLaunch_${pad.x}_${pad.z}`;
 
-    // Dark base with orange stripe ring
     const base = new Mesh(new CylinderGeometry(1.3, 1.45, 0.12, 32), smat("#1A0A00", { r: 0.15, m: 0.9 }));
     base.receiveShadow = true;
     g.add(base);
@@ -241,7 +310,6 @@ export function createHoverboardZone(scene) {
     g.add(outerRing);
     launchPadMats.push(outerRingMat);
 
-    // Inner bright amber disc (distinct from green boost)
     const innerMat = bmat("#FF9900", 0.22);
     const innerDisc = new Mesh(new CircleGeometry(0.7, 32), innerMat);
     innerDisc.rotation.x = -Math.PI / 2;
@@ -249,14 +317,12 @@ export function createHoverboardZone(scene) {
     innerDisc.renderOrder = 1;
     g.add(innerDisc);
 
-    // Rocket cone sitting on pad
     const rocket = new Mesh(new ConeGeometry(0.22, 0.55, 8), bmat("#FF6600", 0.9));
     rocket.position.y = 0.45;
     g.add(rocket);
     const rocketBody = new Mesh(new CylinderGeometry(0.14, 0.18, 0.25, 8), smat("#FF4400", { r: 0.2, m: 0.7 }));
     rocketBody.position.y = 0.18;
     g.add(rocketBody);
-    // Exhaust glow
     const exhaustMat = bmat("#FFAA00", 0.55);
     const exhaust = new Mesh(new ConeGeometry(0.12, 0.35, 8), exhaustMat);
     exhaust.rotation.z = Math.PI;
@@ -265,7 +331,6 @@ export function createHoverboardZone(scene) {
     g.userData.exhaustMat = exhaustMat;
     g.userData.rocketGroup = g;
 
-    // Upward arrows (orange)
     for (const ox of [-0.35, 0.35]) {
       const upArr = new Mesh(new BoxGeometry(0.07, 0.35, 0.07), bmat("#FF9900", 0.75));
       upArr.position.set(ox, 0.22, 0);
@@ -353,19 +418,21 @@ export function animateHoverboardZone(scene, t, beat) {
   const hbLight = scene.userData.hbLight;
   if (hbLight) hbLight.intensity = 2.5 + beat * 3.5 + Math.sin(t * 1.3) * 0.6;
 
-  // Orbs
+  // Surf Vibe Coins animation
   const orbs = scene.userData.hbOrbMeshes;
   if (orbs) {
-    for (const orb of orbs) {
-      if (orb.collected) { orb.group.visible = false; continue; }
-      orb.group.visible = true;
-      orb.group.position.y = 1.4 + Math.sin(t * 1.6 + orb.id * 0.9) * 0.25;
-      orb.group.rotation.y += 0.018;
-      const pulse = 0.65 + beat * 0.32 + Math.sin(t * 2.2 + orb.id * 0.7) * 0.18;
-      if (orb.coreMat) orb.coreMat.opacity = pulse;
-      if (orb.haloMat) orb.haloMat.opacity = 0.12 + beat * 0.18 + Math.sin(t * 1.4 + orb.id) * 0.08;
-      const ring = orb.group.children.find(c => c.geometry?.type === "TorusGeometry");
-      if (ring) { ring.rotation.y += 0.03; ring.rotation.x = Math.PI / 2 + Math.sin(t * 0.8 + orb.id) * 0.4; }
+    for (const coin of orbs) {
+      if (coin.collected) { coin.group.visible = false; continue; }
+      coin.group.visible = true;
+      // Gentle bob at y=1.0 base — easy collect height
+      coin.group.position.y = 1.0 + Math.sin(t * 1.6 + coin.id * 0.9) * 0.12;
+      // Spin like a VibeCoin
+      coin.group.rotation.y += 0.022;
+      // Gentle tilt
+      coin.group.rotation.x = Math.sin(t * 1.1 + coin.id * 0.5) * 0.06;
+      // Pulse edge glow
+      if (coin.edgeMat) coin.edgeMat.opacity = 0.6 + beat * 0.3 + Math.sin(t * 2.2 + coin.id * 0.7) * 0.18;
+      if (coin.auraMat) coin.auraMat.opacity = 0.10 + beat * 0.15 + Math.sin(t * 1.4 + coin.id) * 0.06;
     }
   }
 
@@ -384,7 +451,6 @@ export function animateHoverboardZone(scene, t, beat) {
       if (m) m.opacity = 0.55 + beat * 0.4 + Math.sin(t * 2.2) * 0.2;
     }
   }
-  // Exhaust glow flicker on launch pad rockets
   for (const pad of LAUNCH_PADS) {
     const g = scene.getObjectByName(`hbLaunch_${pad.x}_${pad.z}`);
     if (g?.userData?.exhaustMat) {
@@ -409,14 +475,14 @@ export function animateHoverboardZone(scene, t, beat) {
 export function collectOrb(scene, orbId) {
   const orbs = scene.userData.hbOrbMeshes;
   if (!orbs) return;
-  const orb = orbs.find(o => o.id === orbId);
-  if (orb) orb.collected = true;
+  const coin = orbs.find(o => o.id === orbId);
+  if (coin) coin.collected = true;
 }
 
 export function resetOrbs(scene) {
   const orbs = scene.userData.hbOrbMeshes;
   if (!orbs) return;
-  for (const orb of orbs) { orb.collected = false; orb.group.visible = true; }
+  for (const coin of orbs) { coin.collected = false; coin.group.visible = true; }
 }
 
 // Legacy no-ops

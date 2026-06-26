@@ -615,6 +615,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       const scene = new Scene();
       sceneRef.current = scene;
+      // Expose scene globally so HoverboardPanel can look up coin values
+      window.__hbScene = scene;
       // CityAddOns: create visual shop + launch pads (inert, no logic)
       runConnections(scene, audioIntensityRef);
 
@@ -1615,6 +1617,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         });
         // Detach hoverboard on unmount
         if (avatarEntryRef.current) detachHoverboard(avatarEntryRef.current);
+        window.__hbScene = null;
         initializedRef.current = false;
         lastTimeRef.current = 0;
         frameRef.current = 0;

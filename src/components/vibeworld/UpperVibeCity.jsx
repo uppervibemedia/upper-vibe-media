@@ -1278,6 +1278,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         user={user}
         onStartRide={handleHbStart}
         onEndRide={handleHbEnd}
+        onCoinsEarned={null}
       />
 
 
