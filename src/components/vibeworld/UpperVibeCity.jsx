@@ -775,9 +775,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   useEffect(() => {
     if (feedLoading || loading || !playTrack) return;
     if (feedStartedRef.current) return; // already initialized — don't restart on state changes
-    // Don't auto-start personal music if player is already on the dance floor
-    // (DJ stream is the audio source there)
-    if (onDanceFloor) return;
+    // Start feed regardless of dance floor so the player card is always visible.
+    // The dance floor enter/exit handler pauses the audio and silences volume on the
+    // floor, then restores and resumes on exit — so this just gives us a track to display.
     // If something is already playing, adopt it into feed mode
     if (currentTrack && isPlaying) {
       feedActiveRef.current = true;
