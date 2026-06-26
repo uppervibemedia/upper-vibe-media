@@ -28,7 +28,7 @@ export const ZONES = {
   hoverboardRun:   { label: "Hoverboard Run",      x: 18,  z: 28,  tag: "hoverboard" },
   vibeLaunchZone:  { label: "Vibe Launch Zone",    x: 0,   z: 4,   tag: "launch" },
   ferrisWheel:     { label: "Ferris Wheel",        x: 22,  z: 5,   tag: "ferris" },
-  upperVibeShop:   { label: "Upper Vibe Shop",     x: 0,   z: 7,   tag: "shop" },
+  upperVibeShop:   { label: "Upper Vibe Shop",     x: 0,   z: 10,   tag: "shop" },
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -56,6 +56,7 @@ export const ZONE_COLORS = {
 // This config defines the shop's layout. The actual shop visual
 // (UpperVibeShop.jsx) will be built as a separate component.
 export const SHOP = {
+  pos: { x: 0, z: 10 },
   isActive: false,
   items: [
     { id: "cosmic_jacket",     label: "Cosmic Jacket",     price: 800,   category: "wearable" },

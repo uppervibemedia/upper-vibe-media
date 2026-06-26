@@ -275,6 +275,7 @@ export default function createUpperVibeShop(scene, pos) {
   const group = new Group();
   group.name = "upperVibeShop";
   group.position.set(fx, 0, fz);
+  group.rotation.y = Math.PI;
   buildShop(group);
   scene.add(group);
   return group;

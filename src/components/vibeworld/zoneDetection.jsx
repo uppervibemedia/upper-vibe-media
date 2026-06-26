@@ -67,7 +67,7 @@ const ZONES = {
   shop: {
     name: "Upper Vibe Shop",
     id: "shop",
-    cx: 0, cz: 7, radius: 6,
+    cx: 0, cz: 10, radius: 6,
     icon: "Store",
   },
   hoverboard: {
