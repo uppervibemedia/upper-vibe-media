@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import buildPark from "./city-engine/sceneSetup";
 import { updatePlayerMovement } from "./city-engine/playerMovement";
@@ -10,109 +10,142 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, 
 import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
 import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
 
+// ── Helper: wrap a (possibly stale) plain value so it reads like a ref – share a single object──
+function refFromValue(v) {
+  const o = {};
+  Object.defineProperty(o, "current", { enumerable: true, get: () => v, set: (nv) => { v = nv; }, configurable: true });
+  return o;
+}
+
 export default function CityCanvasV2({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
-  
   const isMobileRef = useRef(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
-
   const effectiveSpawn = spawnOverride ? [spawnOverride.x, SPAWN[1], spawnOverride.z, spawnOverride.rot || 0] : [...SPAWN, 0];
-  
-  const refs = useRef({
-    sceneRef: null,
-    cameraRef: null,
-    avatarRef: null,
-    avatarEntryRef: null,
-    avatarPosRef: effectiveSpawn,
-    velocityRef: { x: 0, z: 0 },
-    avatarRotRef: spawnOverride?.rot || 0,
-    keysRef: {},
-    mouseRef: { down: false, dx: 0, dy: 0, button: 0 },
-    camYawRef: 0,
-    camYawSmoothRef: 0,
-    camPitchRef: 0.08,
-    camPitchSmoothRef: 0.08,
-    userTouchingCamRef: false,
-    remoteAvatarsRef: {},
-    mobileInputRef: props.mobileInputRef || { x: 0, y: 0, camDx: 0 },
-    tvModeRef: tvMode,
-    tvQualityRef: tvQuality,
-    lockedRef: locked,
-    prevLockedRef: locked,
-    isDancingRef: isDancing,
-    hbRidingRef: hbRiding,
-    ferrisRidingRef: ferrisRiding,
-    activeEmoteRef: activeEmote,
-    lastTimeRef: 0,
-    frameRef: 0,
-    launchStateRef: { active: false, phase: "idle", timer: 0, startY: 0 },
-    nearPadRef: -1,
-    speedBoostUntilRef: 0,
-    isMobile: isMobileRef.current,
-  }).current;
+  const avatarPosRef = useRef(effectiveSpawn);   // [x,y,z,rotY]
+  const avatarRotRef = useRef(spawnOverride?.rot || 0);
+  const velocityRef = useRef({ x:0, z:0 });
+  const keysRef = useRef({});
+  const mouseRef = useRef({ down:false, dx:0, dy:0, button:0 });
+  const camYawRef = useRef(0);
+  const camYawSmoothRef = useRef(0);
+  const camPitchRef = useRef(0.08);
+  const camPitchSmoothRef = useRef(0.08);
+  const userTouchingCamRef = useRef(false);
+  const remoteAvatarsRef = useRef({});
+  const frameRef = useRef(0);
+  const launchStateRef = useRef({ active:false, phase:"idle", timer:0, startY:0 });
+  const nearPadRef = useRef(-1);
+  const speedBoostUntilRef = useRef(0);
+
+  // TV & locked refs synced from props (inner runners re-read .current every frame)
+  const tvModeRef = useRef(tvMode);
+  const tvQualityRef = useRef(tvQuality);
+  const lockedRef = useRef(locked);
+  const hbRidingRef = useRef(hbRiding);
+  useEffect(() => { tvModeRef.current = tvMode; }, [tvMode]);
+  useEffect(() => { tvQualityRef.current = tvQuality; }, [tvQuality]);
+  useEffect(() => { lockedRef.current = locked; }, [locked]);
+  useEffect(() => { hbRidingRef.current = hbRiding; }, [hbRiding]);
+
+  // Build the refs map that engine modules destructure with .current
+  const refs = { sceneRef:null, cameraRef:null, avatarRef:null, avatarEntryRef:null,
+    avatarPosRef, avatarRotRef, velocityRef, keysRef, mouseRef,
+    camYawRef, camYawSmoothRef, camPitchRef, camPitchSmoothRef, userTouchingCamRef,
+    remoteAvatarsRef, mobileInputRef: props.mobileInputRef || { x:0, y:0, camDx:0, camDy:0 },
+    tvModeRef, tvQualityRef, lockedRef, hbRidingRef,
+    frameRef, launchStateRef, nearPadRef, speedBoostUntilRef,
+    isMobileRef: { get current() { return isMobileRef.current; }, set current(v) { isMobileRef.current = v; } }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const isMob = isMobileRef.current;
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias:!isMob, powerPreference:isMob?"low-power":"high-performance" });
+    renderer.setClearColor(0x0A1020);
+    renderer.setPixelRatio(isMob ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    renderer.shadowMap.enabled = !isMob;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    if(rendererRef) rendererRef.current = renderer;
+
+    const scene = new THREE.Scene();
+    refs.sceneRef = scene;
+    const camera = new THREE.PerspectiveCamera(52, canvas.clientWidth / canvas.clientHeight, 0.1, isMob ? 130 : 160);
+    refs.cameraRef = camera;
+
+    buildPark(scene);
+
+    // ── Avatar ──
+    const avatarTypeKey = avatarConfig?.avatarTypeKey || "current";
+    const isMixamo = avatarTypeKey === "test-mixamo" || avatarTypeKey === "test-mixamo-female";
+    const isTest = avatarTypeKey === "test-male" || avatarTypeKey === "test-female";
+    const gender = avatarTypeKey === "test-female" || avatarTypeKey === "test-mixamo-female" ? "female" : "male";
+    const savedHair = (()=>{try{return sessionStorage.getItem("uvc_hair_style")||""}catch{return ""}})();
+
+    let entry;
+    if(isMixamo) entry = createMixamoAvatar(scene, { spawnX:effectiveSpawn[0], spawnY:effectiveSpawn[1],
+        spawnZ:effectiveSpawn[2], gender, hairStyle: savedHair||(gender==="female"?"ponytail":"short"),
+        outfitColorKey: avatarConfig?.outfitColorKey || null,
+        skinToneKey: (()=>{try{return sessionStorage.getItem("uvc_skin_tone")||null}catch{return null}})()||avatarConfig?.skinTone||"medium" }, null);
+    else if(isTest) entry = createTestAvatar(scene, gender, avatarConfig||{}, ()=>{});
+    else entry = createAvatar(scene, avatarConfig||{}, ()=>{});
+    refs.avatarEntryRef = entry;
+    refs.avatarRef = entry?.root || null;
+
+    if(retintRef) {
+      retintRef.current = (hex) => {
+        const e = refs.avatarEntryRef;
+        if(!e) return;
+        if(isMixamo) retintMixamoAvatar(e, hex);
+        else if(isTest) retintTestAvatar(e, hex);
+        else retintAvatar(e, hex);
+      };
+    }
+    if(launchRef) launchRef.current = ()=>{ const ls=launchStateRef.current; if(!ls.active){ls.active=true;ls.phase="rise";ls.timer=0;ls.startY=SPAWN[1];}};
+
+    const onCrystal = ()=>window.dispatchEvent(new CustomEvent("crystalActivate"));
+    window.addEventListener("crystalActivate", onCrystal);
 
     let animId;
-    try {
-      const renderer = new THREE.WebGLRenderer({ canvas, antialias: !refs.isMobile, powerPreference: refs.isMobile ? "low-power" : "high-performance" });
-      renderer.setClearColor(0x0A1020);
-      renderer.setPixelRatio(refs.isMobile ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-      renderer.shadowMap.enabled = !refs.isMobile;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      if(rendererRef) rendererRef.current = renderer;
-      
-      const scene = new THREE.Scene();
-      refs.sceneRef = scene;
+    const animate = () => {
+      animId = requestAnimationFrame(animate);
+      const now = performance.now()*0.001;
+      if(frameRef.current===0){frameRef.current=1; refs.lastTimeRef=now;}
+      let dt = now - refs.lastTimeRef;
+      refs.lastTimeRef = now;
+      if(dt>0.1) dt=0.1; if(dt<=0) dt=0.016;
 
-      const camera = new THREE.PerspectiveCamera(52, canvas.clientWidth / canvas.clientHeight, 0.1, refs.isMobile ? 130 : 160);
-      refs.cameraRef = camera;
+      // Pass reference-typed refs so engine modules get .current
+      refs.isMobileRef = isMobileRef;
+      refs.hbRidingRef = hbRidingRef;
+      refs.mobileInputRef = props.mobileInputRef || refs.mobileInputRef;
 
-      buildPark(scene);
+      const playerState = updatePlayerMovement(refs, dt);
+      if(refs.avatarRef) {
+        refs.avatarRef.position.set(...playerState.position);
+        refs.avatarRef.rotation.y = playerState.rotation;
+      }
 
-      // This is a simplified placeholder. In a real scenario, you'd have a more robust
-      // way to manage avatar creation and state.
-      const avatarEntry = createAvatar(scene, avatarConfig || {}, () => {});
-      refs.avatarEntryRef = avatarEntry;
-      refs.avatarRef = avatarEntry.root;
+      updateCamera(refs, dt, playerState.position);
+      animateScene(scene, camera, now, dt, { audioBeatRef, audioIntensityRef }, playerState.position, refs);
 
-      const animate = () => {
-        animId = requestAnimationFrame(animate);
-        const now = performance.now() * 0.001;
-        if (refs.lastTimeRef === 0) refs.lastTimeRef = now;
-        let dt = now - refs.lastTimeRef;
-        refs.lastTimeRef = now;
-        if (dt > 0.1) dt = 0.1;
-        if (dt <= 0) dt = 0.016;
-
-        const playerState = updatePlayerMovement(refs, dt);
-        if(refs.avatarRef) {
-          refs.avatarRef.position.set(...playerState.position);
-          refs.avatarRef.rotation.y = playerState.rotation;
-        }
-        
-        updateCamera(refs, dt, playerState.position);
-
-        animateScene(scene, camera, now, dt, { audioBeatRef, audioIntensityRef }, playerState.position, refs);
-        
-        renderer.render(scene, camera);
-        refs.frameRef++;
-      };
-
-      animate();
-
-    } catch (e) {
-      setError(e.message);
-    }
-
-    return () => {
-      if (animId) cancelAnimationFrame(animId);
+      renderer.render(scene, camera);
+      if(frameRef.current===3) onLoaded?.();
+      frameRef.current++;
     };
-
+    animate();
+    return () => { cancelAnimationFrame(animId); window.removeEventListener("crystalActivate",onCrystal);
+      renderer.dispose(); if(refs.avatarEntryRef) detachHoverboard(refs.avatarEntryRef);
+    };
   }, []);
 
-  return <canvas ref={canvasRef} className="w-full h-full block" style={{ touchAction: "none" }} />;
+  if(error) {
+    return <div className="absolute inset-0 flex items-center justify-center bg-sky-200">
+      <p className="text-red-600 font-bold text-sm">{error}</p>
+    </div>;
+  }
+
+  return <canvas ref={canvasRef} className="w-full h-full block" style={{ touchAction:"none" }} />;
 }
