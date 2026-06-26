@@ -100,6 +100,18 @@
       "default": false,
       "description": "Whether this user is currently riding a personal hoverboard"
     },
+    "equipped_nameplate": {
+      "type": "string",
+      "description": "Item id of equipped nameplate, empty if none"
+    },
+    "equipped_badge": {
+      "type": "string",
+      "description": "Item id of equipped badge, empty if none"
+    },
+    "equipped_clothing": {
+      "type": "string",
+      "description": "Item id of equipped clothing, empty if none"
+    },
     "is_online": {
       "type": "boolean",
       "default": true

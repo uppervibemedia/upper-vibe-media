@@ -99,6 +99,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [equippedBoard, setEquippedBoard] = useState(null);
   const [equippedAura, setEquippedAura] = useState(null); // item id of equipped aura glow
   const [equippedAuraColor, setEquippedAuraColor] = useState(null); // hex color for sync
+  const [equippedNameplate, setEquippedNameplate] = useState(null);
+  const [equippedBadge, setEquippedBadge] = useState(null);
+  const [equippedClothing, setEquippedClothing] = useState(null);
 
   // Item id to hex color for aura — keep minimal, full set in AuraGlow
   const auraColors = {
@@ -350,6 +353,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         setEquippedAura(equipped ? itemId : null);
         setEquippedAuraColor(equipped ? (auraColors[itemId] || "#00AADD") : null);
       }
+      if (category === 'nameplate') setEquippedNameplate(equipped ? itemId : null);
+      if (category === 'badge') setEquippedBadge(equipped ? itemId : null);
+      if (category === 'clothing') setEquippedClothing(equipped ? itemId : null);
     };
     window.addEventListener('inventoryUpdate', onInventoryUpdate);
 
@@ -674,6 +680,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     equippedAuraColor,
     equippedHoverboard: equippedBoard,
     personalHoverboardActive,
+    equippedNameplate,
+    equippedBadge,
+    equippedClothing,
   });
 
   // ── Follow System ─────────────────────────────────────────────────────

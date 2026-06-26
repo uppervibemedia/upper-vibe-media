@@ -33,20 +33,21 @@ function getSignTex() {
   c.height = 120;
   const ctx = c.getContext("2d");
 
-  // Dark panel bg
+  // Full canvas dark panel bg
   ctx.fillStyle = "#0b0420";
-  ctx.fillRect(0, 0, 400, 120);
+  ctx.fillRect(0, 0, 520, 120);
 
   // Gold glow behind text
   const goldGlow = ctx.createRadialGradient(260, 42, 10, 260, 42, 180);
   goldGlow.addColorStop(0, "rgba(255,215,0,0.14)");
   goldGlow.addColorStop(1, "rgba(124,58,237,0)");
   ctx.fillStyle = goldGlow;
-  ctx.fillRect(0, 0, 400, 120);
+  ctx.fillRect(0, 0, 520, 120);
 
   // UPPER VIBE SHOP (main line only — no sub-brand text)
   ctx.fillStyle = "#ffd700";
   // "UPPER VIBE SHOP" fits cleanly on one 520px-wide canvas — large enough at distance, no cut-off
+  ctx.letterSpacing = "0px";
   ctx.font = "700 35px 'Syne','Inter',sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
