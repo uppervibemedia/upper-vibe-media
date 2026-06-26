@@ -87,7 +87,7 @@ export function buildVisualizerDomeZone(scene) {
   for (let i = 0; i < STRIP_COUNT; i++) {
     const sAng = (i / STRIP_COUNT) * Math.PI * 2;
     // Only place on the rear-facing half so the entrance face stays clear
-    if (i === 0) continue; // skip front (entrance)
+    if ((i === 1) || (i === 2)) continue; // place strips on the back/sides, keep plaza face clear
     const strip = new Mesh(
       new BoxGeometry(0.04, R * 0.85, 2.4),
       new MeshBasicMaterial({ color: new Color(["#00D4F0", "#C43BFF", "#A078FF"][i - 1]), depthWrite: false, transparent: true, opacity: 0.12 })
@@ -97,15 +97,16 @@ export function buildVisualizerDomeZone(scene) {
     dome.add(strip);
   }
 
-  // ── Enlarged entrance doors (faces Central Plaza = +Z direction) ──
-  // Entrance dimensions: wider and taller for easy walk-in
+  // ── Enlarged entrance doors (faces toward Central Plaza / -Z direction) ──
+  // Entrance sits on the plaza-facing (lower Z) side and opens toward plaza
   const ENTRANCE_W = 3.0, ENTRANCE_H = 4.2;
   // Entrance glow door
   const entranceDoor = new Mesh(
     new BoxGeometry(ENTRANCE_W, ENTRANCE_H, 0.12),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.85 })
   );
-  entranceDoor.position.set(CX, ENTRANCE_H / 2, CZ - 0.05);
+  entranceDoor.position.set(CX, ENTRANCE_H / 2, CZ - R + 0.05);
+  entranceDoor.rotation.y = Math.PI;
   entranceDoor.name = "domeEntrance";
   dome.add(entranceDoor);
 
@@ -114,13 +115,13 @@ export function buildVisualizerDomeZone(scene) {
     new BoxGeometry(ENTRANCE_W + 0.25, 0.10, 0.08),
     new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
   );
-  entranceFrame.position.set(CX, ENTRANCE_H + 0.05, CZ - 0.05);
+  entranceFrame.position.set(CX, ENTRANCE_H + 0.05, CZ - R + 0.05);
   dome.add(entranceFrame);
   const entranceFrame2 = new Mesh(
     new BoxGeometry(ENTRANCE_W + 0.25, 0.10, 0.08),
     new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
   );
-  entranceFrame2.position.set(CX, -0.04, CZ - 0.05);
+  entranceFrame2.position.set(CX, -0.04, CZ - R + 0.05);
   dome.add(entranceFrame2);
 
   // ── Dome floor interior ────────────────────────────────────────
@@ -150,6 +151,6 @@ export function buildVisualizerDomeZone(scene) {
   doorLight.color = new Color("#00E5FF");
   doorLight.intensity = 1.5;
   doorLight.distance = 8;
-  doorLight.position.set(CX, 1.0, CZ - 3.0);
+  doorLight.position.set(CX, 1.0, CZ - R - 1.5);
   scene.add(doorLight);
 }
