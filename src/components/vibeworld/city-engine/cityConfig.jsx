@@ -63,7 +63,7 @@ export const SHOP = {
     { id: "hoverboard_skin_1", label: "Electric Blue Skin", price: 500,  category: "hoverboard" },
     { id: "aura_ring",         label: "Aura Ring",         price: 200,   category: "accessory" },
   ],
-  currencyLabel: "Vibe Tokens",
+  currencyLabel: "Vibe Coins",
   panelWidth: 400,
 };
 
@@ -74,19 +74,18 @@ export const SHOP = {
 // passed directly to the new LaunchPad component(s).
 // For now they are 100% inert — defined here so they're ready to use.
 export const LAUNCH_PADS = {
-  "pad-stadium":    { x: -8,  z: -32, hint: "Stage" },
-  "pad-tower":      { x: 4,   z: -32, hint: "Stage" },
-  "pad-arch":       { x: -2,  z: 18,  hint: "Beach" },
-  "pad-beach-left": { x: -16, z: 22,  hint: "Beach" },
-  "pad-beach-right":{ x: 14,  z: 24,  hint: "Beach" },
+  "pad-lounge":   { x: -10, z: -24, hint: "Plaza–Lounge corridor" },
+  "pad-library":  { x: 14,  z: -24, hint: "Library corridor" },
+  "pad-academy":  { x: -26, z: -4,  hint: "Academy approach" },
+  "pad-crystal":  { x: -14, z: -8,  hint: "Dome–Crystal corridor" },
 };
 
 // ═══════════════════════════════════════════════════════════════════
-// VIBE TOKENS — sky/fetch token placement config (not yet connected)
+// VIBE COINS — sky/fetch coin placement config (not yet connected)
 // ═══════════════════════════════════════════════════════════════════
-// Tokens float in the sky above the city. Defined as inert config
-// for the future VibeToken component.
-export const VIBE_TOKENS = [
+// Coins float in the sky above the city. Defined as inert config
+// for the future VibeCoin component.
+export const VIBE_COINS = [
   { id: "token-music",  x: 0,   y: 10, z: -26, label: "Music" },
   { id: "token-beach",  x: 0,   y: 10, z: 26,  label: "Beach" },
   { id: "token-lounge", x: -22, y: 10, z: -26, label: "Lounge" },
