@@ -563,7 +563,7 @@ function buildPark(scene) {
     domeGeo2,
     mat("#1A2540", { roughness: 0.20, metalness: 0.65, transparent: true, opacity: 0.75, depthWrite: true })
   );
-  domeMesh2.position.set(-13, 0.05, 3);
+  domeMesh2.position.set(-13, 0.05, 10);
   domeMesh2.castShadow = true;
   dome.add(domeMesh2);
 
@@ -583,7 +583,7 @@ function buildPark(scene) {
     new BoxGeometry(2.5, 3.5, 0.1),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.85 })
   );
-  domeEntrance.position.set(-13, 1.75, 3 - 3.35);
+  domeEntrance.position.set(-13, 1.75, 10 - 3.35);
   domeEntrance.name = "domeEntrance";
   dome.add(domeEntrance);
 
@@ -592,12 +592,12 @@ function buildPark(scene) {
     new MeshBasicMaterial({ color: new Color("#1E2A4E"), depthWrite: false, transparent: true, opacity: 0.3 })
   );
   domeFloor.rotation.x = -Math.PI / 2;
-  domeFloor.position.set(-13, 0.003, 3);
+  domeFloor.position.set(-13, 0.003, 10);
   dome.add(domeFloor);
 
   scene.add(dome);
   // Dome sign — above the dome top
-  createNeonSign(scene, -13, 3.8, 3, "VISUALIZER  DOME", "#C43BFF");
+  createNeonSign(scene, -13, 3.8, 10, "VISUALIZER  DOME", "#C43BFF");
 
   // ═════════════════════════════════════════════════════════════
   // 8. DAILY VIBE CHECK — Vibe Mirror reflection zone
@@ -722,7 +722,7 @@ function buildPark(scene) {
   const academy = new Group();
   academy.name = "upperVibeAcademy";
 
-  const ACAD_X = -28, ACAD_Z = 5;
+  const ACAD_X = -28, ACAD_Z = 10;
 
   // Base platform — wide, cinematic
   const acadPlat = new Mesh(
@@ -1072,7 +1072,7 @@ function buildPark(scene) {
   const domeLight = new PointLight();
   domeLight.color = new Color("#FF00FF");
   domeLight.intensity = 3.5; domeLight.distance = 14;
-  domeLight.position.set(-13, 2.5, 3);
+  domeLight.position.set(-13, 2.5, 10);
   scene.add(domeLight);
 
   const vibeCheckLight = new PointLight();
