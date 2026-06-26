@@ -30,6 +30,7 @@ export default function CityCanvasV2({ onLoaded, onPositionChange, onRemoteAvata
   const userTouchingCamRef = useRef(false);
   const remoteAvatarsRef = useRef({});
   const frameRef = useRef(0);
+  const lastTimeRef = useRef(0);
   const launchStateRef = useRef({ active:false, phase:"idle", timer:0, startY:0 });
   const nearPadRef = useRef(-1);
   const speedBoostUntilRef = useRef(0);
@@ -132,9 +133,9 @@ export default function CityCanvasV2({ onLoaded, onPositionChange, onRemoteAvata
     const animate = () => {
       animId = requestAnimationFrame(animate);
       const now = performance.now()*0.001;
-      if(frameRef.current===0){frameRef.current=1; refs.lastTimeRef=now;}
-      let dt = now - refs.lastTimeRef;
-      refs.lastTimeRef = now;
+      if(lastTimeRef.current===0) lastTimeRef.current = now;
+      let dt = now - lastTimeRef.current;
+      lastTimeRef.current = now;
       if(dt>0.1) dt=0.1; if(dt<=0) dt=0.016;
 
       // Pass reference-typed refs so engine modules get .current
