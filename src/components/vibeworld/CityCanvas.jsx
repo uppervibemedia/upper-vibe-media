@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
 // Vibe Shop is temporarily disabled — replaced by Ferris Wheel
-// import createVibeShop from "./VibeShop";
+import createVibeShop from "./VibeShop";
 import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, WHEEL_HUB_Y, getCabinWorldPosition, getBoardingPosition, getRiderCameraTransform } from "./FerrisWheel";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
@@ -19,7 +19,9 @@ import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from ".
 import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
 import { createZoneSign } from "./ZoneSign";
 
-// Destructure immediately after namespace import to ensure full module load
+// Guard: THREE itself
+let _threeErr;
+if (!THREE) { _threeErr = "Three.js library did not load"; }
 const {
   WebGLRenderer,
   Scene,
@@ -51,7 +53,7 @@ const {
   Sprite,
   CanvasTexture,
   LinearFilter,
-} = THREE;
+} = THREE || {};
 
 // ─── CONSTANTS ────────────────────────────────────────────────
 const MOVE_SPEED = 4.5;    // +50% from 3.0
@@ -1222,10 +1224,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    try {
+    if (_threeErr) { setError(_threeErr); return; }
+      try {
       // Sanity-check that THREE loaded properly
-      if (typeof MeshStandardMaterial !== "function") {
-        throw new Error("Three.js MeshStandardMaterial unavailable — check your bundle");
+      if (_threeErr || typeof MeshStandardMaterial !== "function") {
+        throw new Error(_threeErr || "Three.js MeshStandardMaterial unavailable — check your bundle");
       }
 
       const isMob = isMobileRef.current;
