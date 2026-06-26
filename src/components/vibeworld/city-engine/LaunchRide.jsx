@@ -37,14 +37,21 @@ const PAD_DIRECTION = [
 ];
 const DIRECTION_SPEED = 6.5;
 
-// ── Coin paths ───
-const PAD_COIN_OFFSETS = [
-  { dx:   2.0, dy: PEAK_HEIGHT * 0.15, dz:   0.0 },
-  { dx:   0.0, dy: PEAK_HEIGHT * 0.40, dz:   0.5 },
-  { dx:  -1.5, dy: PEAK_HEIGHT * 0.65, dz:   0.0 },
-  { dx:   0.0, dy: PEAK_HEIGHT * 0.80, dz:  -0.5 },
-  { dx:   1.5, dy: PEAK_HEIGHT * 0.50, dz:   0.0 },
-];
+// ── Coin arc trail offsets per pad ───────────────────────────
+// Each pad launches in its PAD_DIRECTION; coins are placed along
+// the arc the player actually flies through (t=0.2 → 0.9 of arc).
+// dx/dz follow the pad's launch direction; dy traces the parabola.
+// 7 coins per pad — a tight trail easy to fly through.
+const makeCoinOffsets = (fd) => {
+  const steps = [0.18, 0.30, 0.42, 0.54, 0.65, 0.76, 0.86];
+  return steps.map((frac) => {
+    // Parabola: y = sin(frac * PI) * PEAK_HEIGHT
+    const dy = Math.sin(frac * Math.PI) * PEAK_HEIGHT;
+    // Horizontal drift: frac of DIRECTION_SPEED * RISE_TIME
+    const horiz = frac * DIRECTION_SPEED * (RISE_TIME + GLIDE_FALL);
+    return { dx: fd.fx * horiz * 0.08, dy, dz: fd.fz * horiz * 0.08 };
+  });
+};
 
 export const MOVEMENT_BRIDGE = { px: 0, pz: 0, py: 0, hbRiding: false, dt_: 0.016 };
 const perScene = new WeakMap();
@@ -68,7 +75,7 @@ function collectCoins(st) {
     const dx = mb.px - c.position.x;
     const dy = mb.py - c.position.y;
     const dz = mb.pz - c.position.z;
-    if (dx * dx + dy * dy + dz * dz < 2.25) { // 1.5u radius
+    if (dx * dx + dy * dy + dz * dz < 1.44) { // 1.2u radius — tighter for smaller coins
       c.userData.collected = true;
       c.visible = false;
       c.userData._respawnAt = now + RESPAWN_DELAY_MS;
@@ -118,14 +125,16 @@ export function setupLaunchRide(scene) {
 
   const coins = [];
   PADS.forEach((pad, pi) => {
-    PAD_COIN_OFFSETS.forEach((off, ci) => {
+    const dir = PAD_DIRECTION[pi] || { fx: 0, fz: 0 };
+    const offsets = makeCoinOffsets(dir);
+    offsets.forEach((off, ci) => {
       const wx = pad.x + off.dx;
+      const wy = off.dy;
       const wz = pad.z + off.dz;
-      const coin = createCoin(scene, { x: wx, z: wz }, 5, `lr_${pi}_${ci}`);
-      coin.position.y = 0.5 + off.dy;
-      coin.scale.setScalar(0.32);
-      coin.userData._placedBaseY = off.dy;
-      coin.userData._respawnAt = 0; // 0 = not pending respawn
+      const phase = (pi * 7 + ci) * 0.4; // stagger bob animation
+      const coin = createCoin(scene, { x: wx, y: wy, z: wz }, 1, `lr_${pi}_${ci}`, phase);
+      coin.userData._placedBaseY = wy;
+      coin.userData._respawnAt = 0;
       coins.push(coin);
     });
   });
@@ -255,9 +264,10 @@ export function animateLaunchCoins(scene, t) {
       c.visible = true;
     }
     if (c.userData.collected) return;
-    c.rotation.y += 0.012;
-    const placedBase = c.userData._placedBaseY || 0;
-    c.position.y = 0.5 + placedBase + Math.sin(t * 2.2 + (c.userData.coinId?.charCodeAt(3) || 0)) * 0.06;
+    c.rotation.y += 0.018;
+    // Float bob — animateVibeCoin handles per-coin phase via _baseY + _phase
+    const base = c.userData._placedBaseY || 0;
+    c.position.y = base + Math.sin(t * 2.2 + (c.userData._phase || 0)) * 0.06;
   });
 
   st.pads.forEach((p, i) => {
