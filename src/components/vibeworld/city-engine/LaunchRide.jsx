@@ -9,7 +9,7 @@
  */
 
 import * as THREE from "three";
-import createCoin from "../VibeCoin";
+import createCoin, { animateVibeCoin } from "../VibeCoin";
 import { addVibeCoins } from "@/lib/vibeCoinBank";
 
 // ── Pads (mirrors city-engine/cityConfig LAUNCH_PADS coords) ───
@@ -37,14 +37,25 @@ const PAD_DIRECTION = [
 ];
 const DIRECTION_SPEED = 6.5;
 
-// ── Coin paths ───
-const PAD_COIN_OFFSETS = [
-  { dx:   2.0, dy: PEAK_HEIGHT * 0.15, dz:   0.0 },
-  { dx:   0.0, dy: PEAK_HEIGHT * 0.40, dz:   0.5 },
-  { dx:  -1.5, dy: PEAK_HEIGHT * 0.65, dz:   0.0 },
-  { dx:   0.0, dy: PEAK_HEIGHT * 0.80, dz:  -0.5 },
-  { dx:   1.5, dy: PEAK_HEIGHT * 0.50, dz:   0.0 },
-];
+// ── Coin arc trails — 7 coins per pad in a smooth parabolic arc ──
+// Evenly spaced along the launch trajectory so the player flies through them
+const COINS_PER_PAD = 7;
+function getPadCoinOffsets(padIdx) {
+  const dir = PAD_DIRECTION[padIdx] || { fx: 0, fz: 0 };
+  const offsets = [];
+  for (let i = 0; i < COINS_PER_PAD; i++) {
+    const t = (i + 1) / (COINS_PER_PAD + 1); // 0..1 exclusive
+    // Parabolic height: peak at t=0.5
+    const dy = PEAK_HEIGHT * (4 * t * (1 - t)) * 0.85;
+    // Horizontal spread along launch direction
+    const horiz = t * DIRECTION_SPEED * (RISE_TIME + GLIDE_FALL) * 0.55;
+    const fLen = Math.sqrt(dir.fx * dir.fx + dir.fz * dir.fz) || 1;
+    const dx = (dir.fx / fLen) * horiz;
+    const dz = (dir.fz / fLen) * horiz;
+    offsets.push({ dx, dy, dz });
+  }
+  return offsets;
+}
 
 export const MOVEMENT_BRIDGE = { px: 0, pz: 0, py: 0, hbRiding: false, dt_: 0.016 };
 const perScene = new WeakMap();
@@ -66,9 +77,10 @@ function collectCoins(st) {
     const dx = mb.px - c.position.x;
     const dy = mb.py - c.position.y;
     const dz = mb.pz - c.position.z;
-    if (dx * dx + dy * dy + dz * dz < 2.0 * 2.0) {
+    if (dx * dx + dy * dy + dz * dz < 1.4 * 1.4) {
       c.userData.collected = true;
-      c.visible = false;
+      c.userData._fadeTimer = 0;
+      // Keep visible briefly for sparkle fade-out
       count++;
     }
   });
@@ -113,12 +125,13 @@ export function setupLaunchRide(scene) {
 
   const coins = [];
   PADS.forEach((pad, pi) => {
-    PAD_COIN_OFFSETS.forEach((off, ci) => {
+    const offsets = getPadCoinOffsets(pi);
+    offsets.forEach((off, ci) => {
       const wx = pad.x + off.dx;
       const wz = pad.z + off.dz;
-      const coin = createCoin(scene, { x: wx, z: wz }, 5, `lr_${pi}_${ci}`);
-      coin.position.y = 0.5 + off.dy;
-      coin.scale.setScalar(0.32); // Vibe coins smaller
+      const coin = createCoin(scene, { x: wx, z: wz }, 1, `lr_${pi}_${ci}`);
+      coin.position.y = 1.0 + off.dy;
+      coin.scale.setScalar(0.7); // small collectible size
       coin.userData._placedBaseY = off.dy;
       coins.push(coin);
     });
@@ -238,10 +251,27 @@ export function animateLaunchCoins(scene, t) {
   if (!st) return;
 
   st.coins.forEach((c) => {
-    if (c.userData.collected) return;
-    c.rotation.y += 0.012;
+    if (c.userData.collected) {
+      // Sparkle fade-out after collection
+      if (c.visible) {
+        c.userData._fadeTimer = (c.userData._fadeTimer || 0) + 0.016;
+        const scale = 1 + c.userData._fadeTimer * 4;
+        c.scale.setScalar(0.7 * (1 + c.userData._fadeTimer * 3));
+        // Fade out all materials
+        c.traverse((obj) => {
+          if (obj.material?.opacity !== undefined && obj.material.transparent) {
+            obj.material.opacity = Math.max(0, obj.material.opacity - 0.08);
+          }
+        });
+        if (c.userData._fadeTimer > 0.35) c.visible = false;
+      }
+      return;
+    }
+    // Gentle bob + arc-path sway
+    const phase = (c.userData._phaseOff || 0);
     const placedBase = c.userData._placedBaseY || 0;
-    c.position.y = 0.5 + placedBase + Math.sin(t * 2.2 + (c.userData.coinId?.charCodeAt(3) || 0)) * 0.06;
+    c.position.y = 1.0 + placedBase + Math.sin(t * 2.0 + phase) * 0.08;
+    animateVibeCoin(c, t, 0);
   });
 
   const now = performance.now();
