@@ -135,7 +135,10 @@ export default function HoverboardPanel({ visible, isMobile, mobileLayout, user,
           >
             <div className="flex items-center gap-2.5">
               <Zap className="w-5 h-5 flex-shrink-0" style={{ color: "#00E5FF" }} />
-              <span className="font-black text-white text-sm tracking-wider">NEON SURF BEACH</span>
+              <div>
+                <span className="font-black text-white text-sm tracking-wider">NEON SURF BEACH</span>
+                <div style={{ fontSize: "9px", color: "rgba(0,229,255,0.5)", marginTop: "1px" }}>Temporary surf board · Beach game only</div>
+              </div>
             </div>
 
             <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.45)" }}>
@@ -159,7 +162,7 @@ export default function HoverboardPanel({ visible, isMobile, mobileLayout, user,
                 boxShadow: "0 0 28px rgba(0,229,255,0.4)",
               }}
             >
-              ⚡ START RIDE
+              🏄 PLAY NEON SURF
             </button>
 
             <p className="text-[9px] text-center" style={{ color: "rgba(255,255,255,0.18)" }}>
@@ -204,11 +207,11 @@ export default function HoverboardPanel({ visible, isMobile, mobileLayout, user,
             {/* Exit button */}
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
               <button
-                onClick={exitRide}
-                className="w-full flex items-center justify-center gap-1.5 py-2 pointer-events-auto transition-all hover:bg-white/5 active:scale-[0.97]"
-                style={{ color: "rgba(255,255,255,0.45)", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em" }}
+              onClick={exitRide}
+              className="w-full flex items-center justify-center gap-1.5 py-2 pointer-events-auto transition-all hover:bg-white/5 active:scale-[0.97]"
+              style={{ color: "rgba(255,255,255,0.45)", fontSize: "9px", fontWeight: 900, letterSpacing: "0.08em" }}
               >
-                <X className="w-3 h-3" /> EXIT RIDE
+              <X className="w-3 h-3" /> EXIT NEON SURF
               </button>
             </div>
           </div>

@@ -88,9 +88,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [orbCount, setOrbCount] = useState(0);         // launch session orbs
   const [launchSessionOrbs, setLaunchSessionOrbs] = useState(0); // tracked per launch
   const launchSessionRef = useRef(0);
-  // ── Hoverboard Ring Run state ─────────────────────────────────
+  // ── Hoverboard state — TWO SEPARATE SYSTEMS ──────────────────
+  // A) Neon Surf: temporary beach game board (disappears on exit)
   const [nearHoverboard, setNearHoverboard] = useState(false);
-  const [hbRiding, setHbRiding] = useState(false);
+  const [isPlayingNeonSurf, setIsPlayingNeonSurf] = useState(false); // true only while Neon Surf game active
+  // B) Personal hoverboard: owned item, equipped from Inventory, city free-roam only
+  // (Future: read equipped board from inventory; for now stub = false until user equips)
+  const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
+  // Combined: CityCanvas hbRiding prop = Neon Surf board OR personal board
+  const hbRiding = isPlayingNeonSurf; // personal board is NOT the same as Neon Surf riding
   // Crystal Zone
   const [nearCrystal, setNearCrystal] = useState(false);
   const [crystalAura, setCrystalAura] = useState(false);
@@ -564,14 +570,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }, 4000);
   }, [crystalAura]);
 
-  // Stable callbacks — never recreated, so endGame/startGame closures stay valid
+  // Neon Surf game callbacks — only control the temporary beach game board
   const handleHbStart = useCallback(() => {
-    console.log("[HB] Ride started — mounting board");
-    setHbRiding(true);
+    setIsPlayingNeonSurf(true);   // Neon Surf board: active during game only
   }, []);
   const handleHbEnd = useCallback(() => {
-    console.log("[HB] Ride ended — dismounting board");
-    setHbRiding(false);
+    setIsPlayingNeonSurf(false);  // Neon Surf board: removed on exit, avatar returns to walking
   }, []);
 
   // ── Audio ducking: reduce personal player + DJ stream to ~25% when voice is active ──

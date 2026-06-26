@@ -35,9 +35,9 @@ export const STARTER_ITEMS = [
   },
   {
     id: "hoverboard_basic",
-    name: "Basic Hoverboard",
+    name: "Basic Vibe Board",
     category: "hoverboard",
-    description: "The standard cyan Neon Surf board.",
+    description: "Your personal hoverboard. Equip it from Inventory to free-roam Upper Vibe City.",
     rarity: "common",
     starter: true,
     preview_emoji: "🛹",
@@ -53,9 +53,23 @@ export const STARTER_ITEMS = [
   },
 ];
 
-/** Look up an item config by id */
+// ── Shop hoverboards (purchasable with Vibe Coins, not starter grants) ─────
+export const SHOP_HOVERBOARDS = [
+  { id: "hoverboard_neon_blue",   name: "Neon Blue Board",   price: 150, preview_emoji: "🛹", rarity: "uncommon", description: "Electric blue personal hoverboard for city free-roam." },
+  { id: "hoverboard_cosmic",      name: "Cosmic Surf Board",  price: 350, preview_emoji: "🌌", rarity: "rare",     description: "Deep space-themed personal board. Turn heads in the plaza." },
+  { id: "hoverboard_gold_aura",   name: "Gold Aura Board",    price: 600, preview_emoji: "✨", rarity: "epic",     description: "Premium gold-finish personal board. Only for the dedicated." },
+];
+
+/** Look up an item config by id (checks starter items + shop boards) */
 export function getItemConfig(itemId) {
-  return STARTER_ITEMS.find((i) => i.id === itemId) || null;
+  return STARTER_ITEMS.find((i) => i.id === itemId)
+    || SHOP_HOVERBOARDS.find((i) => i.id === itemId)
+    || null;
+}
+
+/** Returns true if the item id is a personal hoverboard (not Neon Surf) */
+export function isPersonalHoverboard(itemId) {
+  return itemId?.startsWith("hoverboard_");
 }
 
 /** Return label for a category id */

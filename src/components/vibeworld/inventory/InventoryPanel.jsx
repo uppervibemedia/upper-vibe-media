@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Package, RefreshCw } from "lucide-react";
-import { INVENTORY_CATEGORIES, getCategoryLabel, getItemConfig } from "./inventoryConfig";
+import { INVENTORY_CATEGORIES, getCategoryLabel, getItemConfig, isPersonalHoverboard } from "./inventoryConfig";
 import { loadInventory, equipItem, unequipItem } from "./inventoryService";
 import { getWalletBalance, getWalletLifetime } from "../wallet/vibeCoinWallet";
 
@@ -178,36 +178,55 @@ export default function InventoryPanel({ open, onClose, user, isMobile }) {
 
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: "13px", color: "#fff", marginBottom: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {record.item_name}
-                        </div>
-                        <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                          {getCategoryLabel(record.item_category)}
-                          {config?.rarity && <span style={{ marginLeft: "6px", color: config.rarity === "rare" ? "#FFD700" : "rgba(255,255,255,0.25)" }}>• {config.rarity}</span>}
-                        </div>
+                       <div style={{ fontWeight: 800, fontSize: "13px", color: "#fff", marginBottom: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                         {record.item_name}
+                       </div>
+                       <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                         {getCategoryLabel(record.item_category)}
+                         {config?.rarity && <span style={{ marginLeft: "6px", color: config.rarity === "rare" ? "#FFD700" : "rgba(255,255,255,0.25)" }}>• {config.rarity}</span>}
+                       </div>
+                       {isPersonalHoverboard(record.item_id) && (
+                         <div style={{ fontSize: "9px", color: "rgba(0,229,255,0.5)", marginTop: "2px" }}>
+                           City free-roam · Not Neon Surf
+                         </div>
+                       )}
                       </div>
 
-                      {/* Equip button */}
-                      <button
-                        onClick={() => handleEquip(record)}
-                        disabled={!!equipping}
-                        style={{
-                          padding: "6px 14px",
-                          borderRadius: "999px",
-                          border: record.equipped ? "1px solid rgba(155,126,255,0.5)" : "1px solid rgba(255,255,255,0.12)",
-                          background: record.equipped ? "rgba(155,126,255,0.22)" : "rgba(255,255,255,0.06)",
-                          color: record.equipped ? "#c4aaff" : "rgba(255,255,255,0.5)",
-                          fontSize: "11px",
-                          fontWeight: 800,
-                          cursor: equipping ? "default" : "pointer",
-                          flexShrink: 0,
-                          letterSpacing: "0.04em",
-                          opacity: isEquipping ? 0.5 : 1,
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        {isEquipping ? "…" : record.equipped ? "Equipped" : "Equip"}
-                      </button>
+                      {/* Equip button — hoverboards get specific personal-board labels */}
+                      {(() => {
+                       const isBoard = isPersonalHoverboard(record.item_id);
+                       const label = isEquipping ? "…"
+                         : isBoard
+                           ? (record.equipped ? "Put Away Board" : "Equip Personal Board")
+                           : (record.equipped ? "Equipped" : "Equip");
+                       return (
+                         <button
+                           onClick={() => handleEquip(record)}
+                           disabled={!!equipping}
+                           style={{
+                             padding: "6px 14px",
+                             borderRadius: "999px",
+                             border: record.equipped ? "1px solid rgba(0,229,255,0.5)" : "1px solid rgba(255,255,255,0.12)",
+                             background: record.equipped
+                               ? (isBoard ? "rgba(0,229,255,0.15)" : "rgba(155,126,255,0.22)")
+                               : "rgba(255,255,255,0.06)",
+                             color: record.equipped
+                               ? (isBoard ? "#00E5FF" : "#c4aaff")
+                               : "rgba(255,255,255,0.5)",
+                             fontSize: "11px",
+                             fontWeight: 800,
+                             cursor: equipping ? "default" : "pointer",
+                             flexShrink: 0,
+                             letterSpacing: "0.04em",
+                             opacity: isEquipping ? 0.5 : 1,
+                             transition: "all 0.2s",
+                             whiteSpace: "nowrap",
+                           }}
+                         >
+                           {label}
+                         </button>
+                       );
+                      })()}
                     </div>
                   );
                 })}
