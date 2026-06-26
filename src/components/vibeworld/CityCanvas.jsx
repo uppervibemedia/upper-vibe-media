@@ -529,13 +529,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const effectiveSpawn = spawnOverride
     ? [spawnOverride.x, SPAWN[1], spawnOverride.z, spawnOverride.rot || 0]
     : [...SPAWN, 0];
-  // Avatar faces stage = rotation Math.PI (faces -Z)
-  const avatarPosRef = useRef([...effectiveSpawn, Math.PI]); // [x, y, z, rotY]
+  // Avatar faces camera on spawn: camera is at +Z, avatar faces +Z = rotation 0
+  const avatarPosRef = useRef([...effectiveSpawn, 0]); // [x, y, z, rotY]
   const stageCanvasRef = useRef(null);
   stageCanvasRef.current = stageCanvas;
   const velocityRef = useRef({ x: 0, z: 0 });
-  // Face stage (-Z) by default; Math.PI means avatar looks toward -Z
-  const avatarRotRef = useRef(spawnOverride?.rot !== undefined ? spawnOverride.rot : Math.PI);
+  // Face camera on spawn: camera is at +Z behind avatar, avatar faces +Z = rotation 0
+  const avatarRotRef = useRef(spawnOverride?.rot !== undefined ? spawnOverride.rot : 0);
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0, button: 0 });
   // Camera: yaw = angle of camera around avatar (0 = directly behind)

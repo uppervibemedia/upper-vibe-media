@@ -920,6 +920,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             const dx = x - prev.x;
             const dz = z - prev.z;
             const speed = Math.sqrt(dx * dx + dz * dz);
+            // Stop auto-dance as soon as the player starts moving
+            if (isDancingRef.current && speed > 0.015) {
+              setIsDancing(false);
+              setActiveEmote(null);
+            }
             const animState = isDancingRef.current ? "dancing" : speed > 0.015 ? "walking" : "idle";
             prevPosRef.current = { x, z };
             setPlayerPos({ x, z, rot, animState });
