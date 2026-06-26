@@ -10,17 +10,12 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, 
 import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
 import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
 
-// ── Helper: wrap a (possibly stale) plain value so it reads like a ref – share a single object──
-function refFromValue(v) {
-  const o = {};
-  Object.defineProperty(o, "current", { enumerable: true, get: () => v, set: (nv) => { v = nv; }, configurable: true });
-  return o;
-}
 
 export default function CityCanvasV2({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const isMobileRef = useRef(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  const ferrisRidingRef = useRef(ferrisRiding);
   const effectiveSpawn = spawnOverride ? [spawnOverride.x, SPAWN[1], spawnOverride.z, spawnOverride.rot || 0] : [...SPAWN, 0];
   const avatarPosRef = useRef(effectiveSpawn);   // [x,y,z,rotY]
   const avatarRotRef = useRef(spawnOverride?.rot || 0);
@@ -47,15 +42,16 @@ export default function CityCanvasV2({ onLoaded, onPositionChange, onRemoteAvata
   useEffect(() => { tvQualityRef.current = tvQuality; }, [tvQuality]);
   useEffect(() => { lockedRef.current = locked; }, [locked]);
   useEffect(() => { hbRidingRef.current = hbRiding; }, [hbRiding]);
+  useEffect(() => { ferrisRidingRef.current = ferrisRiding; }, [ferrisRiding]);
 
   // Build the refs map that engine modules destructure with .current
   const refs = { sceneRef:null, cameraRef:null, avatarRef:null, avatarEntryRef:null,
     avatarPosRef, avatarRotRef, velocityRef, keysRef, mouseRef,
     camYawRef, camYawSmoothRef, camPitchRef, camPitchSmoothRef, userTouchingCamRef,
     remoteAvatarsRef, mobileInputRef: props.mobileInputRef || { x:0, y:0, camDx:0, camDy:0 },
-    tvModeRef, tvQualityRef, lockedRef, hbRidingRef,
+    tvModeRef, tvQualityRef, lockedRef, hbRidingRef, ferrisRidingRef,
     frameRef, launchStateRef, nearPadRef, speedBoostUntilRef,
-    isMobileRef: { get current() { return isMobileRef.current; }, set current(v) { isMobileRef.current = v; } }
+    isMobileRef
   };
 
   useEffect(() => {
