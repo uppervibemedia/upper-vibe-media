@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Compass, Music4, Radio, Rocket, AlertTriangle, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
-import UpperVibeCity from "@/components/vibeworld/UpperVibeCity";
+import CityCanvasV2 from "@/components/vibeworld/CityCanvasV2";
 import WorldGate from "@/components/vibeworld/WorldGate";
 import PageErrorBoundary from "@/components/shared/PageErrorBoundary";
 
@@ -34,7 +34,7 @@ function VibeWorldHub({ chatAgeConfirmed }) {
   const [webglOk] = useState(() => isWebGLAvailable());
 
   if (launched) {
-    return <UpperVibeCity onExit={() => setLaunched(false)} chatAgeConfirmed={chatAgeConfirmed} />;
+    return <CityCanvasV2 onExit={() => setLaunched(false)} chatAgeConfirmed={chatAgeConfirmed} />;
   }
 
   return (
