@@ -1,19 +1,19 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
-import { SPAWN } from "../cityData";
-import buildPark from "./sceneSetup.js";
-import { MOVE_SPEED, ACCELERATION, DECELERATION, CAM_PITCH_MIN, CAM_PITCH_MAX, CAM_DIST, CAM_HEIGHT, CAM_LOOK_Y, CAM_DIST_LS, CAM_HEIGHT_LS, CAM_LOOK_Y_LS, FOV_PORTRAIT, FOV_LANDSCAPE, AVATAR_R, COLLISION_BOXES, resolveCollisions } from "./playerMovement.js";
-import { animateFerrisWheel, getRiderCameraTransform } from "../FerrisWheel";
-import { animateZenBeach } from "../ZenBeach";
-import { animateDanceFloor } from "../DanceFloor";
-import { animateJukebox } from "../Jukebox";
-import { animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "../VibeLaunchZone";
-import { animateHoverboardZone, resetOrbs, collectOrb } from "../HoverboardRingRun";
-import { animateCrystalZone, activateCrystalZone } from "../CrystalZone";
-import { animateCosmicSky } from "../CosmicSkySystem";
-import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "../AvatarModel.jsx";
-import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "../AvatarModelTest";
-import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "../AvatarModelMixamo";
+import { SPAWN } from "./cityData";
+import buildPark from "./city-engine/sceneSetup";
+import { MOVE_SPEED, ACCELERATION, DECELERATION, CAM_PITCH_MIN, CAM_PITCH_MAX, CAM_DIST, CAM_HEIGHT, CAM_LOOK_Y, CAM_DIST_LS, CAM_HEIGHT_LS, CAM_LOOK_Y_LS, FOV_PORTRAIT, FOV_LANDSCAPE, AVATAR_R, COLLISION_BOXES, resolveCollisions } from "./city-engine/playerMovement";
+import { animateFerrisWheel, getRiderCameraTransform } from "./FerrisWheel";
+import { animateZenBeach } from "./ZenBeach";
+import { animateDanceFloor } from "./DanceFloor";
+import { animateJukebox } from "./Jukebox";
+import { animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
+import { animateHoverboardZone, resetOrbs, collectOrb } from "./HoverboardRingRun";
+import { animateCrystalZone, activateCrystalZone } from "./CrystalZone";
+import { animateCosmicSky } from "./CosmicSkySystem";
+import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
+import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
+import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
 
 const {
   WebGLRenderer,
@@ -54,7 +54,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const userTouchingCamRef = useRef(false);
   const remoteAvatarsRef = useRef({});
   const cameraRef = useRef(null);
-  const mobileInputRef = props.mobileInputRef || useRef({ x: 0, y: 0, camDx: 0, camDy: 0 });
+  const fallbackInputRef = useRef({ x: 0, y: 0, camDx: 0, camDy: 0 });
+  const mobileInputRef = props.mobileInputRef || fallbackInputRef;
   const tvModeRef = useRef(tvMode);
   tvModeRef.current = tvMode;
   const tvQualityRef = useRef(tvQuality);
