@@ -82,21 +82,6 @@ export function buildVisualizerDomeZone(scene) {
     dome.add(dot);
   }
 
-  // ── Vertical neon accent strips (thin bars, very subtle) ───────
-  const STRIP_COUNT = 4;
-  for (let i = 0; i < STRIP_COUNT; i++) {
-    const sAng = (i / STRIP_COUNT) * Math.PI * 2;
-    // Only place on the rear-facing half so the entrance face stays clear
-    if (i === 1 || i === 2) continue; // skip plaza-facing and beach-facing sides; keep left+right clear
-    const strip = new Mesh(
-      new BoxGeometry(0.04, R * 0.85, 2.4),
-      new MeshBasicMaterial({ color: new Color(["#00D4F0", "#C43BFF", "#A078FF"][i - 1]), depthWrite: false, transparent: true, opacity: 0.12 })
-    );
-    strip.position.set(CX + Math.cos(sAng) * (R - 0.02), R * 0.45, CZ + Math.sin(sAng) * (R - 0.02));
-    strip.lookAt(CX, 0, CZ);
-    dome.add(strip);
-  }
-
   // ── Clean entrance opening (faces toward Central Plaza / -Z) ──
   // No solid door — just a subtle open portal glow so users can walk through
   const ENTRANCE_W = 3.0, ENTRANCE_H = 4.3;

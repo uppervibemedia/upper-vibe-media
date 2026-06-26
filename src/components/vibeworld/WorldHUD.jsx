@@ -279,9 +279,6 @@ export default function WorldHUD({
               {zone.id === 'shop' ? 'UPPER VIBE SHOP' : zone.name}
             </span>
           </div>
-          {zone.id === 'shop' && (
-            <span className="text-[9px] text-white/40 -mt-1">Shop</span>
-          )}
         </motion.div>
       )}
 
