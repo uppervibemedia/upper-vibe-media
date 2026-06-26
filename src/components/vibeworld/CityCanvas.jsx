@@ -1555,7 +1555,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         } else {
           // When riding hoverboard, float avatar slightly above ground
           const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
-          py = SPAWN[1] + hbLift;
+          py = window.__lr_flying ? MOVEMENT_BRIDGE.py : SPAWN[1] + hbLift;
           // Check pad proximity (every 6 frames for responsiveness)
           if (frameRef.current % 6 === 0 && sceneRef.current) {
             nearPadRef.current = getNearLaunchPad(px, pz);
