@@ -97,6 +97,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // (Future: read equipped board from inventory; for now stub = false until user equips)
     const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
   const [equippedBoard, setEquippedBoard] = useState(null);
+  const [equippedAura, setEquippedAura] = useState(null); // item id of equipped aura glow
+
+  const [auraActive, setAuraActive] = useState(false);
 
   // Combined: CityCanvas hbRiding prop = Neon Surf board OR personal board
   const hbRiding = isPlayingNeonSurf || personalHoverboardActive;
@@ -334,6 +337,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           setEquippedBoard(null);
           setPersonalHoverboardActive(false); // Force dismount if board is unequipped
         }
+      }
+      if (category === 'avatar_glow') {
+        setAuraActive(equipped);
+        setEquippedAura(equipped ? itemId : null);
       }
     };
     window.addEventListener('inventoryUpdate', onInventoryUpdate);
@@ -928,6 +935,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onOpenInventory={() => setInventoryOpen(true)}
         />
         <CityCanvas
+          auraActive={auraActive}
+          equippedAura={equippedAura}
           spawnOverride={returnState.current ? { x: returnState.current.x, z: returnState.current.z, rot: returnState.current.rot } : null}
           onLoaded={() => {
             setLoading(false);
@@ -1263,7 +1272,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* ── Hoverboard Ring Run HUD ── */}
       <HoverboardPanel
-        visible={nearHoverboard || hbRiding}
+        visible={(nearHoverboard || hbRiding) && !personalHoverboardActive}
         isMobile={isMobile}
         mobileLayout={mobileLayout}
         user={user}

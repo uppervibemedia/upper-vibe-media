@@ -17,6 +17,7 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, 
 import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
 import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
 import { createZoneSign } from "./ZoneSign";
+import { bindAura, unbindAura, animateAura } from "./AuraGlow";
 import { buildMusicStageZone }     from "./city-engine/zones/MusicStageZone";
 import { buildVibeLoungeZone }     from "./city-engine/zones/VibeLoungeZone";
 import { buildMusicLibraryZone }   from "./city-engine/zones/MusicLibraryZone";
@@ -484,7 +485,7 @@ function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -569,6 +570,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   hbRidingRef.current = hbRiding;
   const ferrisRidingRef = useRef(false);
   ferrisRidingRef.current = ferrisRiding;
+  const equippedAuraRef = useRef(null);
+  const prevEquippedAuraRef = useRef(null);
+  equippedAuraRef.current = equippedAura;
 
   const activeEmoteRef = useRef(null);
   activeEmoteRef.current = activeEmote;
@@ -1093,6 +1097,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
           if (avatarEntry) updateAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt, hbRidingRef.current);
         }
+
+        // ── Aura glow animation ─────────────────────────────
+        animateAura(avatarEntry, t);
 
         // ── Audio intensity (used by stage screen, ocean, foam, glow) ──
         const audioBeat = audioIntensityRef?.current ?? 0;
@@ -1620,8 +1627,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             else obj.material.dispose();
           }
         });
-        // Detach hoverboard on unmount
-        if (avatarEntryRef.current) detachHoverboard(avatarEntryRef.current);
+        // Detach hoverboard + aura on unmount
+        if (avatarEntryRef.current) {
+          detachHoverboard(avatarEntryRef.current);
+          if (equippedAuraRef.current) unbindAura(avatarEntryRef.current.root);
+        }
         window.__hbScene = null;
         initializedRef.current = false;
         lastTimeRef.current = 0;
@@ -1677,6 +1687,21 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       if (cv) { cv._rl = null; cv.rLookInitialized = false; }
     }
   }, [ferrisRiding]);
+
+  // ── Aura glow bind/unbind ─────────────────────────────────────
+  useEffect(() => {
+    const controller = avatarRef.current;
+    if (!controller) return;
+    const prev = prevEquippedAuraRef.current;
+    if (equippedAura !== prev) {
+      prevEquippedAuraRef.current = equippedAura;
+      if (equippedAura) {
+        bindAura(controller, equippedAura);
+      } else {
+        unbindAura(controller);
+      }
+    }
+  }, [equippedAura]);
 
   // Keyboard
   useEffect(() => {
