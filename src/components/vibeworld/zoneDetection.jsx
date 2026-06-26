@@ -1,24 +1,101 @@
 /**
- * zoneDetection.jsx — Zone definitions and proximity detection for Upper Vibe City.
+ * Zone detection — returns which zone the player is in based on (x, z) position.
+ * All coordinates match the layout in CityCanvas.jsx (buildPark).
  */
-export const ZONES = [
-  { id: "plaza",      name: "Plaza",          x: 0,   z: -13, r: 10.5 },
-  { id: "stage",      name: "Music Stage",    x: 0,   z: -32, r: 8 },
-  { id: "lounge",     name: "Vibe Lounge",    x: -22, z: -26, r: 7 },
-  { id: "library",    name: "Music Library",  x: 22,  z: -20, r: 6 },
-  { id: "dome",       name: "Visualizer Dome",x: -13, z: 3,   r: 6 },
-  { id: "vibecheck",  name: "Vibe Check",     x: -16, z: -13, r: 5 },
-  { id: "academy",    name: "Vibe Academy",   x: -20, z: 5,   r: 6 },
-  { id: "zenbeach",   name: "Zen Beach",      x: 0,   z: 24,  r: 9 },
-  { id: "ferriswheel", name: "Ferris Wheel",  x: 0,   z: 14,  r: 7 },
-];
+
+const ZONES = {
+  plaza: {
+    name: "UVC Central Plaza",
+    id: "plaza",
+    cx: 0, cz: -13, radius: 7,
+    icon: "Compass",
+  },
+  stage: {
+    name: "Main Music Stage",
+    id: "stage",
+    cx: 0, cz: -32, radius: 6,
+    icon: "Music4",
+  },
+  lounge: {
+    name: "Vibe Lounge",
+    id: "lounge",
+    cx: -22, cz: -26, radius: 5,
+    icon: "MessageCircle",
+  },
+  library: {
+    name: "Music Library",
+    id: "library",
+    cx: 22, cz: -20, radius: 5,
+    icon: "Library",
+  },
+  dome: {
+    name: "Visualizer Dome",
+    id: "dome",
+    cx: -13, cz: 3, radius: 5,
+    icon: "Tv2",
+  },
+  vibecheck: {
+    name: "Daily Vibe Check",
+    id: "vibecheck",
+    cx: -16, cz: -13, radius: 4,
+    icon: "Sparkles",
+  },
+  zenbeach: {
+    name: "Zen Beach",
+    id: "zenbeach",
+    cx: -20, cz: 22, radius: 5,
+    icon: "Waves",
+  },
+  beach: {
+    name: "Beach Walk",
+    id: "beach",
+    cx: 0, cz: 24, radius: 18,
+    icon: "Sun",
+  },
+  academy: {
+    name: "Vibe Academy",
+    id: "academy",
+    cx: -28, cz: 5, radius: 5,
+    icon: "GraduationCap",
+  },
+  ferriswheel: {
+    name: "Neon Vibe Wheel",
+    id: "ferriswheel",
+    cx: 22, cz: 5, radius: 9.5,
+    icon: "Ferris",
+  },
+  launchzone: {
+    name: "Vibe Launch Zone",
+    id: "launchzone",
+    cx: 0, cz: 4, radius: 6,
+    icon: "Rocket",
+  },
+  hoverboard: {
+    name: "Neon Surf Beach",
+    id: "hoverboard",
+    cx: 28, cz: 23, radius: 8,
+    icon: "Zap",
+  },
+  crystalzone: {
+    name: "Crystal Zone",
+    id: "crystalzone",
+    cx: -28, cz: -11, radius: 9,
+    icon: "Sparkles",
+  },
+};
 
 export function detectZone(px, pz) {
-  for (let i = 0; i < ZONES.length; i++) {
-    const z = ZONES[i];
-    const dx = px - z.x;
-    const dz = pz - z.z;
-    if (dx * dx + dz * dz <= z.r * z.r) return z;
+  for (const zone of Object.values(ZONES)) {
+    const dx = px - zone.cx;
+    const dz = pz - zone.cz;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist <= zone.radius) return zone;
   }
-  return null;
+  return null; // wandering between zones
 }
+
+export function getZoneInfo(zoneId) {
+  return ZONES[zoneId] || null;
+}
+
+export { ZONES };

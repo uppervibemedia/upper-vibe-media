@@ -4,7 +4,7 @@ import { ChevronLeft, Tv2 } from "lucide-react";
 import MobileJoystick from "@/components/vibeworld/MobileJoystick";
 import CameraLookZone from "@/components/vibeworld/CameraLookZone";
 import DraggableMediaPlayer from "@/components/vibeworld/DraggableMediaPlayer";
-import CityCanvas from "@/components/vibeworld/CityCanvas.jsx";
+import CityCanvas from "@/components/vibeworld/CityCanvas";
 import { retintAvatar } from "@/components/vibeworld/AvatarModel";
 import StageCoverVisualizer from "@/components/vibeworld/StageCoverVisualizer";
 import StageFullScreen from "@/components/vibeworld/StageFullScreen";
@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/AuthContext";
 import usePersonalizedFeed from "@/hooks/usePersonalizedFeed";
 import useVibeWorldPresence from "@/hooks/useVibeWorldPresence";
 import useDirectMessaging from "@/hooks/useDirectMessaging";
-
+import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
 import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
@@ -34,7 +34,6 @@ import useFollowSystem from "@/hooks/useFollowSystem";
 import useBlockSystem from "@/hooks/useBlockSystem";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
-import { detectZone } from "./zoneDetection";
 
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
 import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
@@ -1110,7 +1109,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
-
+      {!stageWatching && (
+        <StageCoverVisualizer
+          onReady={(c) => setStageCanvas(c)}
+          video={stageVideos[stageVideoIdx] || null}
+          audioIntensityRef={audioIntensityRef}
+        />
+      )}
 
       {/* YouTube video + audio embed on stage screen (Watch on Stage mode) */}
       <StageVideoEmbed
