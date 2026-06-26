@@ -173,14 +173,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return () => clearInterval(poll);
   }, []);
 
-  // Sync coin bank to account on dismount
-  useEffect(() => {
-    if (!user) return;
-    syncVibeCoinsToAccount(base44, false);
-    const onUnload = () => syncVibeCoinsToAccount(base44, true);
-    window.addEventListener("beforeunload", onUnload);
-    return () => window.removeEventListener("beforeunload", onUnload);
-  }, [user]);
   // In TV mode: auto-hide media player after 4s; tap to reveal temporarily
   const [tvPlayerVisible, setTvPlayerVisible] = useState(true);
   const tvPlayerTimerRef = useRef(null);
@@ -282,6 +274,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const { allTracks, tracksLoaded } = radioCtx || {};
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
+
+  // Sync coin bank to account on dismount
+  useEffect(() => {
+    if (!user) return;
+    syncVibeCoinsToAccount(base44, false);
+    const onUnload = () => syncVibeCoinsToAccount(base44, true);
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+  }, [user]);
 
   // ── Avatar config derived from user data ──────────────────────────────
   // avatarTypeKey: read from sessionStorage (set by AvatarSetup or WorldGate on entry)
