@@ -3,6 +3,7 @@ import createLaunchPad, { animateLaunchPad } from "./LaunchPad";
 import { animateShop } from "./UpperVibeShop";
 import { LAUNCH_PADS, SHOP } from "./city-engine/cityConfig";
 import { setupLaunchRide, tickLaunchRide, animateLaunchCoins, MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
+import { resetSessionCoins, getVibeCoinBank } from "../../lib/vibeCoinBank";
 
 // ─────────────────────────────────────────────────────────────
 // CityAddOns — gateways new objects into the live Three.js
@@ -44,6 +45,12 @@ export function runConnections(scene, audioBeatRef) {
 
   // ── LaunchRide: floating coins in city sky ───────────────
   setupLaunchRide(scene);
+
+  // ── Reset session coin tally on city entry ──────────────
+  resetSessionCoins();
+  window.__lrTotalCoins = getVibeCoinBank();
+  window.__lrCoinsCollected = 0;
+  window.__lrJustLanded = false;
 }
 
 /**
@@ -64,4 +71,7 @@ export function tickAddOns(scene, t) {
   // LaunchRide — auto-launch detection, flight, mid-air coin collect
   tickLaunchRide(scene, t);
   animateLaunchCoins(scene, t);
+
+  // Keep window total in sync with local storage
+  window.__lrTotalCoins = getVibeCoinBank();
 }

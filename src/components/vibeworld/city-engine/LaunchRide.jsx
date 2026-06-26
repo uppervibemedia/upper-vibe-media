@@ -10,7 +10,7 @@
 
 import * as THREE from "three";
 import createCoin from "../VibeCoin";
-import { addToOrbBank } from "../../../lib/orbBank";
+import { addVibeCoins } from "../../../lib/vibeCoinBank";
 
 // ── Pads (mirrors city-engine/cityConfig LAUNCH_PADS coords) ───
 const PADS = [
@@ -211,10 +211,16 @@ export function tickLaunchRide(scene, t) {
     st.pulse.position.set(mb.px, 0.01, mb.pz);
     st.pulse.material.opacity = 0.8;
     st.pulse.scale.set(1, 1, 1);
-    if (collected > 0) addToOrbBank(collected);
-    window.__lrNewCoins = collected;
+    if (collected > 0) {
+      const { total } = addVibeCoins(collected);
+      window.__lrCoinsCollected = collected;
+      window.__lrTotalCoins = total;
+    } else {
+      window.__lrCoinsCollected = 0;
+    }
     st.justLanded = false;
     st._pulseTimer = 0.8;
+    window.__lrJustLanded = true;
   }
   
   if (st._pulseTimer > 0) {
