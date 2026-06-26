@@ -26,15 +26,24 @@ const COOLDOWN_MS = 1800; // prevent re-trigger wrap
 // ── Launch arc parameters ──────────────────────────────────────
 const RISE_TIME     = 0.6;  // seconds up to peak
 const GLIDE_FALL    = 0.9;  // seconds down to ground
-const PEAK_HEIGHT   = 9;    // world units
+const PEAK_HEIGHT   = 9;    // world units (avatars are ~1.7 tall, so 7-9 is comfortably above buildings)
 
-// ── Coin paths: one arc per pad, 5 coins at increasing height ───
+// ── Direction each pad hurls the player (pointing toward central/open sky) ──
+const PAD_DIRECTION = [
+  { fx: 4,  fz: 6  }, // lounge → center
+  { fx: -4, fz: 8  }, // library → center
+  { fx: 4,  fz: 2  }, // academy → plaza side
+  { fx: 4,  fz: 4  }, // dome → shop/center side
+];
+const DIRECTION_SPEED = 6.5; // world units/sec of forward drift during flight
+
+// ── Coin paths: one arc per pad → 5 coins climbing into the sky ───
 const PAD_COIN_OFFSETS = [
-  { dx:   0, dy: 2, dz:   0 },
-  { dx:   0, dy: 4, dz:   1 },
-  { dx:   0, dy: 6, dz:   0 },
-  { dx:   0, dy: 5, dz:  -1 },
-  { dx:   0, dy: 3, dz:   0 },
+  { dx:   2.0, dy: PEAK_HEIGHT * 0.15, dz:   0.0 },
+  { dx:   0.0, dy: PEAK_HEIGHT * 0.40, dz:   0.5 },
+  { dx:  -1.5, dy: PEAK_HEIGHT * 0.65, dz:   0.0 },
+  { dx:   0.0, dy: PEAK_HEIGHT * 0.80, dz:  -0.5 },
+  { dx:   1.5, dy: PEAK_HEIGHT * 0.50, dz:   0.0 },
 ];
 
 // ── Shared movement bridge (written by CityCanvas → read by tick) ─
@@ -98,6 +107,9 @@ export function setupLaunchRide(scene) {
       const wx = pad.x + off.dx;
       const wz = pad.z + off.dz;
       const coin = createCoin(scene, { x: wx, z: wz }, 5, `lr_${pi}_${ci}`);
+      // Sky-height collectibles: coins follow the launch arc peak
+      coin.position.y = 0.5 + off.dy;
+      coin.scale.setScalar(0.4);
       coins.push(coin);
     });
   });
@@ -147,8 +159,10 @@ export function tickLaunchRide(scene, t) {
         launchStartY = mb.py;
         justLanded = false;
         p.cooldownUntil = now + COOLDOWN_MS;
+        mb._flightOrig = { x: mb.px, y: mb.py, z: mb.pz };
+        mb._flightDir = PAD_DIRECTION[p.padSnapIdx] || { fx: 0, fz: 0 };
         break;
-      }
+        }
     }
   }
 
@@ -159,6 +173,11 @@ export function tickLaunchRide(scene, t) {
 
   // ── Flight ─────────────────────────────────────────────────
   if (launchActive > 0 && !isHovering) {
+    // Forward drift toward open sky (need pad index to grab direction; we store dir on launch)
+    const dir = mb._flightDir || { fx: 0, fz: 0 };
+    mb.px += dir.fx * DIRECTION_SPEED * dt;
+    mb.pz += dir.fz * DIRECTION_SPEED * dt;
+
     if (launchState === "rise") {
       const progress = Math.min(launchActive / RISE_TIME, 1);
       const eased = 1 - (1 - progress) * (1 - progress);
@@ -168,7 +187,7 @@ export function tickLaunchRide(scene, t) {
       const progress = Math.min((launchActive - RISE_TIME) / GLIDE_FALL, 1);
       const eased = progress * progress;
       mb.py = launchStartY + PEAK_HEIGHT * (1 - eased);
-      if (progress >= 1) { launchState = "idle"; launchActive = 0; justLanded = true; }
+      if (progress >= 1) { launchState = "idle"; launchActive = 0; justLanded = true; mb._flightDir = null; mb._flightOrig = null; }
     }
   }
 

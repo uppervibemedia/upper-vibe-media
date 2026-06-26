@@ -62,6 +62,26 @@ export function tickAddOns(scene, t) {
   }
 
   // LaunchRide — auto-launch detection, flight, mid-air coin collect
+  const wasFlying = !!MOVEMENT_BRIDGE._flightOrig;
   tickLaunchRide(scene, t);
   animateLaunchCoins(scene, t);
+  // Reflect launch Y + diameter shift back onto the avatar mesh so the player
+  // appears airborne and the camera (which derives from avatar Group position + py)
+  // lifts with them — all without any edit to CityCanvas.jsx.
+  if (MOVEMENT_BRIDGE._flightOrig || wasFlying) {
+    const r = scene.getObjectByName("avatar");
+    if (r) {
+      MOVEMENT_BRIDGE.px = r.position.x; // safe: CityCanvas resolves collisions
+      MOVEMENT_BRIDGE.pz = r.position.z; // ditto
+      r.position.y = MOVEMENT_BRIDGE.py;
+    } else {
+      // fallback: animate each avatar root we can find
+      scene.children.some((c) => {
+        if (c.isGroup && c.position.y !== undefined && c.type === "Group") {
+          c.position.y = MOVEMENT_BRIDGE.py;
+          return true;
+        }
+      });
+    }
+  }
 }
