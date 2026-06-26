@@ -18,6 +18,7 @@ import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from ".
 import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
 import { createZoneSign } from "./ZoneSign";
 import { runConnections, tickAddOns, KEYS_CREATED } from "./CityAddOns";
+import { MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -2127,6 +2128,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         scene.userData._hidePlanets = lockedRef.current;
         scene.userData._ferrisRiding = ferrisRidingRef.current;
         animateCosmicSky(scene, camera, t, dt);
+        // LaunchRide bridge — passes avatar position + state into add-ons
+        MOVEMENT_BRIDGE.px = px; MOVEMENT_BRIDGE.py = py; MOVEMENT_BRIDGE.pz = pz;
+        MOVEMENT_BRIDGE.hbRiding = hbRidingRef.current;
+        MOVEMENT_BRIDGE.dt_ = dt;
         tickAddOns(scene, t);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────

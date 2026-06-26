@@ -2,14 +2,12 @@ import createUpperVibeShop from "./UpperVibeShop";
 import createLaunchPad, { animateLaunchPad } from "./LaunchPad";
 import { animateShop } from "./UpperVibeShop";
 import { LAUNCH_PADS, SHOP } from "./city-engine/cityConfig";
+import { setupLaunchRide, tickLaunchRide, animateLaunchCoins, MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
 
 // ─────────────────────────────────────────────────────────────
-// CityAddOns — gateways new visual objects into the live
-// Three.js scene, keeping all wiring outside CityCanvas.
-// Creates the objects once (scene.userData._cityAddOnsReady)
-// and exposes a single per-frame routing function so
-// CityCanvas calls it with the scene + audio intensity ref.
-// ⚠ No launch physics. No collection logic. No purchases.
+// CityAddOns — gateways new objects into the live Three.js
+// scene. Now also runs the LaunchRide auto-launch + coin
+// system (pad cooldown, step-on detection, mid-air collection).
 // ─────────────────────────────────────────────────────────────
 
 const INITIALIZED = { value: false };
@@ -43,11 +41,14 @@ export function runConnections(scene, audioBeatRef) {
     const pad = createLaunchPad(scene, cfg);
     scene.userData[`_launchPad_${id}`] = pad;
   });
+
+  // ── LaunchRide: floating coins in city sky ───────────────
+  setupLaunchRide(scene);
 }
 
 /**
  * Per-frame tick — call inside CityCanvas's animation loop.
- * Animates the shop lights and pad pulses, driven by in-scene data.
+ * Handles shop/pad visuals + LaunchRide step-on auto-launch + coin collection.
  */
 export function tickAddOns(scene, t) {
   const beat = scene.userData._audioBeatRef?.current ?? 0;
@@ -59,4 +60,8 @@ export function tickAddOns(scene, t) {
     const pad = scene.userData[`_launchPad_${id}`];
     if (pad) animateLaunchPad(pad, t, beat);
   }
+
+  // LaunchRide — auto-launch detection, flight, mid-air coin collect
+  tickLaunchRide(scene, t);
+  animateLaunchCoins(scene, t);
 }
