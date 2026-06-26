@@ -22,10 +22,11 @@ export default function CityCanvasV2({ onLoaded, onPositionChange, onRemoteAvata
   const velocityRef = useRef({ x:0, z:0 });
   const keysRef = useRef({});
   const mouseRef = useRef({ down:false, dx:0, dy:0, button:0 });
-  const camYawRef = useRef(0);
-  const camYawSmoothRef = useRef(0);
-  const camPitchRef = useRef(0.08);
-  const camPitchSmoothRef = useRef(0.08);
+  // Camera behind the player so the player faces the city skyline
+  const camYawRef = useRef(Math.PI);
+  const camYawSmoothRef = useRef(Math.PI);
+  const camPitchRef = useRef(-0.12);
+  const camPitchSmoothRef = useRef(-0.12);
   const userTouchingCamRef = useRef(false);
   const remoteAvatarsRef = useRef({});
   const frameRef = useRef(0);
@@ -68,7 +69,8 @@ export default function CityCanvasV2({ onLoaded, onPositionChange, onRemoteAvata
 
     const scene = new THREE.Scene();
     refs.sceneRef = scene;
-    const camera = new THREE.PerspectiveCamera(52, canvas.clientWidth / canvas.clientHeight, 0.1, isMob ? 130 : 160);
+    const aspect = canvas.clientWidth / (canvas.clientHeight || 1);
+    const camera = new THREE.PerspectiveCamera(60, aspect, 0.1, isMob ? 130 : 160);
     refs.cameraRef = camera;
 
     buildPark(scene);
@@ -100,6 +102,28 @@ export default function CityCanvasV2({ onLoaded, onPositionChange, onRemoteAvata
       };
     }
     if(launchRef) launchRef.current = ()=>{ const ls=launchStateRef.current; if(!ls.active){ls.active=true;ls.phase="rise";ls.timer=0;ls.startY=SPAWN[1];}};
+
+    // ── Camera: position behind player with a slight downward pitch ──
+    const [sx, sy, sz, srot] = effectiveSpawn;
+    const behindAngle = srot + Math.PI;          // behind the player facing +Z
+    // Eye-level camera above ground, looking past the avatar toward the city
+    const elev = 2.4;
+    const dist = 5.5;
+    const pitch = -0.12;
+    const cosP = Math.cos(pitch);
+    const sinP = Math.sin(pitch);
+    camera.position.set(
+      sx + Math.sin(behindAngle) * dist * cosP,
+      sy + elev + sinP * dist,
+      sz + Math.cos(behindAngle) * dist * cosP
+    );
+    camera.fov = 58;
+    camera.lookAt(sx, sy + 0.55, sz);
+    camera.updateProjectionMatrix();
+    camYawRef.current = behindAngle;
+    camYawSmoothRef.current = behindAngle;
+    camPitchRef.current = pitch;
+    camPitchSmoothRef.current = pitch;
 
     const onCrystal = ()=>window.dispatchEvent(new CustomEvent("crystalActivate"));
     window.addEventListener("crystalActivate", onCrystal);
