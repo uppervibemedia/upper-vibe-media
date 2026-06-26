@@ -24,6 +24,12 @@ export default function CameraLookZone({ mobileInputRef }) {
       if (activeTouchRef.current !== null) return; // already tracking one finger
       const t = e.changedTouches[0];
       if (!t) return;
+      // Let touches landing on buttons through — only claim camera-drag gestures.
+      // Uses pointer-events to check whether the real target is interactive.
+      if (t && t.target) {
+        const pe = window.getComputedStyle(t.target).pointerEvents;
+        if (pe === "auto" && ["BUTTON","A","INPUT","SELECT","TEXTAREA"].includes(t.target.tagName)) return;
+      }
       // Only capture right-side (>40vw). Left side → joystick.
       if (t.clientX < window.innerWidth * 0.40) return;
       // Claim the right-side gesture so Safari doesn't do rubber-banding / scroll
