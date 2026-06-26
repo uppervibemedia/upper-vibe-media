@@ -1012,16 +1012,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         <div />
       </motion.div>
 
-      {/* TV Mode button — only shown during free-roam, hidden inside all zones/panels */}
+      {/* TV Mode button — only shown during free-roam, never inside any zone/panel */}
       {(() => {
+        const currentZone = detectZone(playerPos.x, playerPos.z);
+        const insideAZone = currentZone && currentZone.id !== "plaza";
         const showTVButton = !loading
-          && !stageWatching
-          && !stageFullScreen
-          && !anyBlockingUIOpen
-          && !mobileModalOpen
-          && !tvOverlayOpen
-          && !activeChatPeer
-          && !messageComposerTarget;
+          && !stageWatching && !stageFullScreen
+          && !anyBlockingUIOpen && !mobileModalOpen && !tvOverlayOpen
+          && !activeChatPeer && !messageComposerTarget
+          && !insideAZone;
         if (!showTVButton) return null;
         const isPortrait = isMobile && window.innerHeight > window.innerWidth;
         // Portrait: push below the exit button row AND the bell/users row (which sits at ~top+54px)

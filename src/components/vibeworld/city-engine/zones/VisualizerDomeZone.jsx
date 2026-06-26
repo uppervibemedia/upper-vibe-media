@@ -87,7 +87,7 @@ export function buildVisualizerDomeZone(scene) {
   for (let i = 0; i < STRIP_COUNT; i++) {
     const sAng = (i / STRIP_COUNT) * Math.PI * 2;
     // Only place on the rear-facing half so the entrance face stays clear
-    if ((i === 1) || (i === 2)) continue; // place strips on the back/sides, keep plaza face clear
+    if (i === 1 || i === 2) continue; // skip plaza-facing and beach-facing sides; keep left+right clear
     const strip = new Mesh(
       new BoxGeometry(0.04, R * 0.85, 2.4),
       new MeshBasicMaterial({ color: new Color(["#00D4F0", "#C43BFF", "#A078FF"][i - 1]), depthWrite: false, transparent: true, opacity: 0.12 })
@@ -97,32 +97,47 @@ export function buildVisualizerDomeZone(scene) {
     dome.add(strip);
   }
 
-  // ── Enlarged entrance doors (faces toward Central Plaza / -Z direction) ──
-  // Entrance sits on the plaza-facing (lower Z) side and opens toward plaza
-  const ENTRANCE_W = 3.0, ENTRANCE_H = 4.2;
-  // Entrance glow door
-  const entranceDoor = new Mesh(
-    new BoxGeometry(ENTRANCE_W, ENTRANCE_H, 0.12),
-    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.85 })
-  );
-  entranceDoor.position.set(CX, ENTRANCE_H / 2, CZ - R + 0.05);
-  entranceDoor.rotation.y = Math.PI;
-  entranceDoor.name = "domeEntrance";
-  dome.add(entranceDoor);
+  // ── Clean entrance opening (faces toward Central Plaza / -Z) ──
+  // No solid door — just a subtle open portal glow so users can walk through
+  const ENTRANCE_W = 3.0, ENTRANCE_H = 4.3;
+  const ENTRANCE_Z = CZ - R + 0.05;
 
-  // Entrance door edge lighting — thin cyan frame around the opening
-  const entranceFrame = new Mesh(
-    new BoxGeometry(ENTRANCE_W + 0.25, 0.10, 0.08),
-    new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
+  // Subtle portal glow — faint energy field inside the doorway (not a solid door)
+  const portalGlow = new Mesh(
+    new BoxGeometry(ENTRANCE_W, ENTRANCE_H, 0.05),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.20 })
   );
-  entranceFrame.position.set(CX, ENTRANCE_H + 0.05, CZ - R + 0.05);
-  dome.add(entranceFrame);
-  const entranceFrame2 = new Mesh(
-    new BoxGeometry(ENTRANCE_W + 0.25, 0.10, 0.08),
-    new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.5 })
+  portalGlow.position.set(CX, ENTRANCE_H / 2, ENTRANCE_Z + 0.3);
+  portalGlow.name = "domePortalGlow";
+  dome.add(portalGlow);
+
+  // Subtle neon entrance frame — slim top/bottom edges
+  const entranceFrameTop = new Mesh(
+    new BoxGeometry(ENTRANCE_W + 0.25, 0.08, 0.06),
+    new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.35 })
   );
-  entranceFrame2.position.set(CX, -0.04, CZ - R + 0.05);
-  dome.add(entranceFrame2);
+  entranceFrameTop.position.set(CX, ENTRANCE_H + 0.03, ENTRANCE_Z);
+  dome.add(entranceFrameTop);
+  const entranceFrameBot = new Mesh(
+    new BoxGeometry(ENTRANCE_W + 0.25, 0.08, 0.06),
+    new MeshBasicMaterial({ color: new Color("#A078FF"), depthWrite: false, transparent: true, opacity: 0.35 })
+  );
+  entranceFrameBot.position.set(CX, -0.03, ENTRANCE_Z);
+  dome.add(entranceFrameBot);
+
+  // Thin neon side columns
+  const entranceSideL = new Mesh(
+    new BoxGeometry(0.06, ENTRANCE_H, 0.06),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.25 })
+  );
+  entranceSideL.position.set(CX - ENTRANCE_W / 2 - 0.03, ENTRANCE_H / 2, ENTRANCE_Z);
+  dome.add(entranceSideL);
+  const entranceSideR = new Mesh(
+    new BoxGeometry(0.06, ENTRANCE_H, 0.06),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.25 })
+  );
+  entranceSideR.position.set(CX + ENTRANCE_W / 2 + 0.03, ENTRANCE_H / 2, ENTRANCE_Z);
+  dome.add(entranceSideR);
 
   // ── Dome floor interior ────────────────────────────────────────
   const domeFloor = new Mesh(
@@ -135,8 +150,8 @@ export function buildVisualizerDomeZone(scene) {
 
   scene.add(dome);
 
-  // ── Zone sign ─────────────────────────────────────────────────
-  createZoneSign(scene, CX, R * 0.85 + 0.6, CZ, "VISUALIZER  DOME", "#C43BFF");
+  // ── Zone sign — placed in front of the entrance, facing the plaza ──
+  createZoneSign(scene, CX, R * 0.85 + 0.5, CZ - R - 0.9, "VISUALIZER  DOME", "#A078FF");
 
   // ── Zone point light — stronger, farther reach ────────────────
   const domeLight = new PointLight();

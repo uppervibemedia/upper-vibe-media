@@ -393,16 +393,16 @@ export default function VisualizerPanel({ open, onClose }) {
         <button
           onClick={(e) => { e.stopPropagation(); onClose(); }}
           onTouchStart={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/15 active:bg-white/20"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110 active:scale-95"
           style={{
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "rgba(255,255,255,0.75)",
+            background: "linear-gradient(135deg,#7C3AED,#A078FF)",
+            border: "1px solid rgba(160,120,255,0.5)",
+            color: "#fff",
             minWidth: "44px", minHeight: "44px",
             touchAction: "manipulation",
           }}
         >
-          <X className="w-3.5 h-3.5" /> Leave
+          <ChevronLeft className="w-4 h-4" /> Exit
         </button>
 
         {/* Mode tabs — pill selector */}
