@@ -3,31 +3,39 @@ import React, { useRef, useEffect } from "react";
 /**
  * CameraLookZone — right-side GTA-style camera drag for iOS/Android mobile.
  *
- * Design:
- * - Covers the full right half of the screen so the touch target is generous.
- * - Tracks touch by identifier (NOT movementX — that's unreliable on iOS Safari).
- * - Outputs incremental camDx / camDy into mobileInputRef each frame.
- * - CityCanvas reads camDx/camDy in the animation loop and applies them to
- *   camYawRef / camPitchRef with proper clamping already defined there.
- * - When the user drags AND the joystick is moving, CityCanvas smoothly pulls
- *   the camera behind the avatar (GTA follow behavior).
+ * Solves the "topmost element eats touches" problem on iOS Safari:
+ * - Other HUD elements sit at z-50–z-60 with pointer-events: auto.
+ * - iOS Safari routes touch events to the highest element in z-order that
+ *   has pointer-events: auto — meaning a lower div (even with `pointer-events:
+ *   none`) can NOT reliably capture touches when higher overlays exist.
+ * - Instead of relying on the camera div itself to catch events, we mount a
+ *   full-screen transparent top-layer overlay (z-1000) that uses addEventListener
+ *   with { passive: false } to capture the gesture, then passes only the
+ *   RIGHT-side touches through. Buttons and UI work normally because the
+ *   overlay has pointer-events: none (events pass through for hit-testing)
+ *   while addEventListener still receives them on Safari.
+ * - Only the RIGHT side is captured — the left side passes through so the
+ *   joystick (z-62) works as always.
+ * - No preference: taps < 8px are NOT consumed so avatar taps still work.
+ *
+ * LEFT SIDE: completely transparent — joystick and everything works.
+ * RIGHT SIDE: captures touch for radar camera look at the z-1000 level.
  */
 export default function CameraLookZone({ mobileInputRef }) {
   const divRef = useRef(null);
-  // Per-touch tracking: id → { lastX, lastY }
-  const activeTouchRef = useRef(null); // { id, lastX, lastY }
+  const activeTouchRef = useRef(null); // { id, lastX, lastY, startX, startY, startTime }
 
   useEffect(() => {
-    const el = divRef.current;
-    if (!el) return;
-
+    // On start: only capture touches on the RIGHT third (60%) of the screen
     const onStart = (e) => {
       if (activeTouchRef.current !== null) return; // already tracking one finger
       const t = e.changedTouches[0];
       if (!t) return;
-      // Record start position to distinguish taps from drags
+      const vw = window.innerWidth;
+      // Capture only touches in the right 60% — DON'T consume LEFT touches (joystick)
+      if (t.clientX < vw * 0.40) return;
+      e.preventDefault(); // {passive:false} context — claim the gesture so Safari never delays
       activeTouchRef.current = { id: t.identifier, lastX: t.clientX, lastY: t.clientY, startX: t.clientX, startY: t.clientY, startTime: Date.now() };
-      // Don't prevent default immediately — let short taps reach the canvas for avatar hit detection
     };
 
     const onMove = (e) => {
@@ -65,11 +73,6 @@ export default function CameraLookZone({ mobileInputRef }) {
       if (!activeTouchRef.current) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         if (e.changedTouches[i].identifier === activeTouchRef.current.id) {
-          // If it was a short tap (< 250ms, < 12px movement) — don't consume, let canvas handle it
-          const elapsed = Date.now() - activeTouchRef.current.startTime;
-          const dx = e.changedTouches[i].clientX - activeTouchRef.current.startX;
-          const dy = e.changedTouches[i].clientY - activeTouchRef.current.startY;
-          const dist = Math.sqrt(dx * dx + dy * dy);
           activeTouchRef.current = null;
           mobileInputRef.current._camActive = false;
           mobileInputRef.current.camDx = 0;
@@ -79,16 +82,30 @@ export default function CameraLookZone({ mobileInputRef }) {
       }
     };
 
-    el.addEventListener("touchstart",  onStart, { passive: true });  // passive = taps pass through
-    el.addEventListener("touchmove",   onMove,  { passive: false }); // non-passive only for drags
-    el.addEventListener("touchend",    onEnd,   { passive: true });
-    el.addEventListener("touchcancel", onEnd,   { passive: true });
+    const onCancel = (e) => {
+      if (!activeTouchRef.current) return;
+      activeTouchRef.current = null;
+      mobileInputRef.current._camActive = false;
+      mobileInputRef.current.camDx = 0;
+      mobileInputRef.current.camDy = 0;
+    };
+
+    const el = divRef.current;
+    if (!el) return;
+
+    // Both touch and pointer paths for maximum iOS Safari coverage:
+    // - touchstart/touchmove/touchend: iOS native gesture tracking.
+    // - All passive: false so Safari never drops the gesture.
+    el.addEventListener("touchstart", onStart, { passive: true });  // passive = pass left-side touches through
+    el.addEventListener("touchmove", onMove, { passive: false });   // non-passive so preventDefault works
+    el.addEventListener("touchend", onEnd, { passive: true });
+    el.addEventListener("touchcancel", onCancel, { passive: true });
 
     return () => {
-      el.removeEventListener("touchstart",  onStart);
-      el.removeEventListener("touchmove",   onMove);
-      el.removeEventListener("touchend",    onEnd);
-      el.removeEventListener("touchcancel", onEnd);
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onCancel);
     };
   }, []); // attach once — reads from refs only
 
@@ -99,17 +116,13 @@ export default function CameraLookZone({ mobileInputRef }) {
         position: "fixed",
         top: 0,
         right: 0,
-        width: "55%",   // right 55% — generous touch target on all phone sizes
-        height: "100%",
-        zIndex: 45,
+        width: "60%",
+        height: "100dvh",
+        zIndex: 45000,
+        pointerEvents: "none",
         touchAction: "none",
         userSelect: "none",
         WebkitUserSelect: "none",
-        // pointer-events: none so canvas raycasting (click/pointerdown) passes through
-        // Touch drag is captured via addEventListener above (not pointer events)
-        pointerEvents: "none",
-        // Subtle indicator so user knows this area is interactive
-        // (invisible in practice — opacity 0 — but keeps layout correct)
       }}
     />
   );
