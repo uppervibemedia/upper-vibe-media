@@ -157,21 +157,32 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // Track whether any blocking UI is open (panels, modals, zone UIs)
   const [anyBlockingUIOpen, setAnyBlockingUIOpen] = useState(false);
 
-  // ── Vibe Coin HUD poll ───────────────────────────────────
+  // ── Vibe Coin HUD — event-driven updates + 2s sync poll ──
   useEffect(() => {
-    const poll = setInterval(() => {
-      const session = getSessionCoins();
-      const bank = getVibeCoinBank();
-      setSessionCoins(session);
-      setTotalCoins(bank);
-      const collected = window.__lrCoinsCollected || 0;
-      if (collected > 0) {
-        setLastCollectCount(collected);
+    const onCollect = (e) => {
+      const { count, total, session } = e.detail || {};
+      if (count > 0) {
+        setLastCollectCount(count);
+        setSessionCoins(session ?? getSessionCoins());
+        setTotalCoins(total ?? getVibeCoinBank());
         window.__lrCoinsCollected = 0;
+        // Sync to account on each collection (best-effort)
+        if (user) syncVibeCoinsToAccount(base44, false).catch(() => {});
       }
-    }, 250);
-    return () => clearInterval(poll);
-  }, []);
+    };
+    window.addEventListener("vibeCoinsCollected", onCollect);
+
+    // Slow background poll to keep HUD in sync (catches edge cases)
+    const poll = setInterval(() => {
+      setSessionCoins(getSessionCoins());
+      setTotalCoins(getVibeCoinBank());
+    }, 2000);
+
+    return () => {
+      window.removeEventListener("vibeCoinsCollected", onCollect);
+      clearInterval(poll);
+    };
+  }, [user]);
 
   // In TV mode: auto-hide media player after 4s; tap to reveal temporarily
   const [tvPlayerVisible, setTvPlayerVisible] = useState(true);
@@ -275,14 +286,24 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
 
-  // Sync coin bank to account on dismount
+  // Sync coin bank to/from account
   useEffect(() => {
     if (!user) return;
-    syncVibeCoinsToAccount(base44, false);
+
+    // On entry: if server has a higher total than localStorage, restore it
+    const localTotal = getVibeCoinBank();
+    const serverTotal = user.hb_total_orbs ?? 0;
+    if (serverTotal > localTotal) {
+      try { localStorage.setItem("uvc_orb_bank_total", String(serverTotal)); } catch {}
+      setTotalCoins(serverTotal);
+    }
+
+    // On exit: push local total to server
+    syncVibeCoinsToAccount(base44, false).catch(() => {});
     const onUnload = () => syncVibeCoinsToAccount(base44, true);
     window.addEventListener("beforeunload", onUnload);
     return () => window.removeEventListener("beforeunload", onUnload);
-  }, [user]);
+  }, [user?.id]);
 
   // ── Avatar config derived from user data ──────────────────────────────
   // avatarTypeKey: read from sessionStorage (set by AvatarSetup or WorldGate on entry)

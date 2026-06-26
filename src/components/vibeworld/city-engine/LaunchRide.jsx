@@ -61,14 +61,17 @@ function ensureFlightState(st) {
 function collectCoins(st) {
   let count = 0;
   const mb = MOVEMENT_BRIDGE;
+  const now = performance.now();
   st.coins.forEach((c) => {
     if (c.userData.collected) return;
+    if (!c.visible) return;
     const dx = mb.px - c.position.x;
     const dy = mb.py - c.position.y;
     const dz = mb.pz - c.position.z;
-    if (dx * dx + dy * dy + dz * dz < 2.0 * 2.0) {
+    if (dx * dx + dy * dy + dz * dz < 2.25) { // 1.5u radius
       c.userData.collected = true;
       c.visible = false;
+      c.userData._respawnAt = now + RESPAWN_DELAY_MS;
       count++;
     }
   });
@@ -100,6 +103,8 @@ function mkCooldownRing(hex) {
   return fullRing;
 }
 
+const RESPAWN_DELAY_MS = 45000; // 45 seconds
+
 export function setupLaunchRide(scene) {
   let st = perScene.get(scene);
   if (st) return st;
@@ -118,8 +123,9 @@ export function setupLaunchRide(scene) {
       const wz = pad.z + off.dz;
       const coin = createCoin(scene, { x: wx, z: wz }, 5, `lr_${pi}_${ci}`);
       coin.position.y = 0.5 + off.dy;
-      coin.scale.setScalar(0.32); // Vibe coins smaller
+      coin.scale.setScalar(0.32);
       coin.userData._placedBaseY = off.dy;
+      coin.userData._respawnAt = 0; // 0 = not pending respawn
       coins.push(coin);
     });
   });
@@ -212,9 +218,12 @@ export function tickLaunchRide(scene, t) {
     st.pulse.material.opacity = 0.8;
     st.pulse.scale.set(1, 1, 1);
     if (collected > 0) {
-      const { total } = addVibeCoins(collected);
+      const { total, session } = addVibeCoins(collected);
       window.__lrCoinsCollected = collected;
       window.__lrTotalCoins = total;
+      window.__lrSessionCoins = session;
+      // Fire event so HUD can react immediately without polling delay
+      window.dispatchEvent(new CustomEvent("vibeCoinsCollected", { detail: { count: collected, total, session } }));
     } else {
       window.__lrCoinsCollected = 0;
     }
@@ -237,14 +246,20 @@ export function animateLaunchCoins(scene, t) {
   const st = perScene.get(scene);
   if (!st) return;
 
+  const now = performance.now();
   st.coins.forEach((c) => {
+    // Respawn check
+    if (c.userData.collected && c.userData._respawnAt > 0 && now >= c.userData._respawnAt) {
+      c.userData.collected = false;
+      c.userData._respawnAt = 0;
+      c.visible = true;
+    }
     if (c.userData.collected) return;
     c.rotation.y += 0.012;
     const placedBase = c.userData._placedBaseY || 0;
     c.position.y = 0.5 + placedBase + Math.sin(t * 2.2 + (c.userData.coinId?.charCodeAt(3) || 0)) * 0.06;
   });
 
-  const now = performance.now();
   st.pads.forEach((p, i) => {
     const ring = st.cooldownRings[i];
     if (!ring) return;

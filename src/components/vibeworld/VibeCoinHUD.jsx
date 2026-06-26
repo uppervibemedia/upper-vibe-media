@@ -2,15 +2,15 @@ import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /**
- * VibeCoinHUD — persistent top-left coin counter + +N popup
- *
- * Stays visible during free-roam, hidden in full-screen stage.
- * Sits at top-left (away from joystick/camera/bell) with
- * safe-area awareness so it never overlaps iPhone notch.
+ * VibeCoinHUD — top-left coin wallet display
+ * Shows: Session coins (this visit) + Bank total (lifetime)
+ * Pops up "+N ✦" on collection.
+ * Never overlaps: joystick (bottom-left), camera zone (right 55%),
+ * music player (bottom), chat/bell (top-right), iPhone notch (top).
  */
 export default function VibeCoinHUD({
-  sessionCoins,
-  totalCoins,
+  sessionCoins = 0,
+  totalCoins = 0,
   lastCollectCount = 0,
   visible = true,
   isMobile = false,
@@ -20,79 +20,112 @@ export default function VibeCoinHUD({
   const [popups, setPopups] = useState([]);
   const popupIdRef = useRef(0);
 
-  // Show +N popup when coins are collected
+  // Show "+N" popup whenever lastCollectCount changes to > 0
   useEffect(() => {
     if (lastCollectCount <= 0) return;
     const id = ++popupIdRef.current;
     setPopups((prev) => [...prev, { id, count: lastCollectCount }]);
-    const remove = setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 1400);
-
+    const remove = setTimeout(() => setPopups((prev) => prev.filter((p) => p.id !== id)), 1600);
     return () => clearTimeout(remove);
-  }, [lastCollectCount, sessionCoins]);
+  }, [lastCollectCount]);
 
   if (!visible || stageFullScreen) return null;
 
-  // Mobile: use safe area from layout hook; desktop: fixed
+  // Position: below the exit button row (which is ~44px tall + safe-area)
+  // Mobile: safe-area top + 52px (exit row) + 6px gap
+  // Desktop: 64px from top
   const topOffset = isMobile && mobileLayout
-    ? `${mobileLayout.sa.top + 56}px`
-    : "calc(env(safe-area-inset-top, 0px) + 3.5rem)";
+    ? `${mobileLayout.sa.top + 54}px`
+    : "calc(env(safe-area-inset-top, 0px) + 54px)";
+
+  const leftOffset = isMobile && mobileLayout
+    ? `calc(env(safe-area-inset-left, 0px) + ${mobileLayout.sa.left + 8}px)`
+    : "calc(env(safe-area-inset-left, 0px) + 8px)";
 
   return (
     <div
-      className="absolute z-[55] flex items-center gap-2"
       style={{
+        position: "absolute",
         top: topOffset,
-        left: isMobile && mobileLayout
-          ? `calc(env(safe-area-inset-left, 0px) + ${mobileLayout.sa.left + 52}px)`
-          : "calc(env(safe-area-inset-left, 0px) + 3.25rem)",
+        left: leftOffset,
+        zIndex: 55,
         pointerEvents: "none",
+        display: "flex",
+        flexDirection: "column",
+        gap: "4px",
       }}
     >
-      {/* Session */}
-      {sessionCoins > 0 && (
-        <div
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black tracking-tight pointer-events-none"
-          style={{
-            background: "rgba(0,229,255,0.1)",
-            border: "1px solid rgba(0,229,255,0.22)",
-            color: "#88E8FF",
-            backdropFilter: "blur(8px)",
-          }}
-        >
-          <span className="text-[10px] leading-none">✦</span>
-          <span>{sessionCoins}</span>
-        </div>
-      )}
+      {/* Session coins — only show when > 0 */}
+      <AnimatePresence>
+        {sessionCoins > 0 && (
+          <motion.div
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.25 }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "3px 9px",
+              borderRadius: "999px",
+              background: "rgba(0,229,255,0.10)",
+              border: "1px solid rgba(0,229,255,0.20)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+          >
+            <span style={{ fontSize: "9px", color: "#88E8FF", lineHeight: 1 }}>✦</span>
+            <span style={{ fontSize: "10px", fontWeight: 900, color: "#88E8FF", letterSpacing: "0.02em", lineHeight: 1 }}>
+              {sessionCoins} this session
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Bank (always show, even if 0, to indicate the wallet exists) */}
+      {/* Bank total — always visible */}
       <div
-        className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black tracking-tight pointer-events-none"
         style={{
-          background: "rgba(255,215,0,0.08)",
-          border: "1px solid rgba(255,215,0,0.18)",
-          color: "#FFD700",
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          padding: "3px 9px",
+          borderRadius: "999px",
+          background: "rgba(255,215,0,0.09)",
+          border: "1px solid rgba(255,215,0,0.20)",
           backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
         }}
       >
-        <span className="text-[10px] leading-none">✦</span>
-        <span>{totalCoins}</span>
+        <span style={{ fontSize: "9px", color: "#FFD700", lineHeight: 1 }}>✦</span>
+        <span style={{ fontSize: "10px", fontWeight: 900, color: "#FFD700", letterSpacing: "0.02em", lineHeight: 1 }}>
+          {totalCoins} bank
+        </span>
       </div>
 
-      {/* +N collection popups */}
-      <div className="absolute left-0 flex flex-col items-start gap-1" style={{ bottom: "calc(100% + 4px)" }}>
+      {/* +N collection popups — float upward */}
+      <div style={{ position: "absolute", left: 0, bottom: "calc(100% + 6px)" }}>
         <AnimatePresence>
           {popups.map((p) => (
             <motion.div
               key={p.id}
               initial={{ opacity: 1, y: 0, scale: 1 }}
-              animate={{ opacity: 0, y: -24, scale: 1.2 }}
+              animate={{ opacity: 0, y: -28, scale: 1.15 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 1 }}
-              className="flex items-center gap-0.5 font-black pointer-events-none whitespace-nowrap"
-              style={{ fontSize: "11px", color: "#FFD700", textShadow: "0 0 8px rgba(255,215,0,0.5)" }}
+              transition={{ duration: 1.2, ease: "easeOut" }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "2px",
+                fontWeight: 900,
+                fontSize: "13px",
+                color: "#FFD700",
+                textShadow: "0 0 10px rgba(255,215,0,0.6)",
+                pointerEvents: "none",
+                whiteSpace: "nowrap",
+              }}
             >
-              +{p.count}
-              <span className="text-[10px] opacity-80">✦</span>
+              +{p.count} <span style={{ fontSize: "10px", opacity: 0.85 }}>✦</span>
             </motion.div>
           ))}
         </AnimatePresence>
