@@ -43,9 +43,10 @@ export const DOME_Z = 3;
 export const VIBE_CHECK_X = -16;
 export const VIBE_CHECK_Z = -13;
 
-export const ACAD_Y = -28;
+export const ACAD_X = -20;
 export const ACAD_Z = 5;
 
+export const LAUNCH_ZONE_X = 0;
 export const LAUNCH_ZONE_Z = 4;
 
 // ── Movement constants ───────────────────────────────────────
