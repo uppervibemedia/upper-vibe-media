@@ -852,7 +852,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   useEffect(() => {
     if (feedLoading || loading || !playTrack) return;
     if (feedStartedRef.current) return; // already initialized — don't restart on state changes
-    // Start feed regardless of dance floor so the player card is always visible.
+    if (onDanceFloor) return; // NEVER start the personal player on the dance floor. Only DJ audio plays.
+    // Start feed so the player card is always visible.
     // The dance floor enter/exit handler pauses the audio and silences volume on the
     // floor, then restores and resumes on exit — so this just gives us a track to display.
     // If something is already playing, adopt it into feed mode
@@ -883,7 +884,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         playTrack(pick, "song");
       }
     }
-  }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
+  }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack, onDanceFloor]);
 
   const personalBaseVolRef = useRef(1.0);
 
@@ -1207,6 +1208,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onDenyRequest={denyRequest}
         onEmote={handleEmote}
         onStopDance={handleStopDance}
+        onEmotePanelOpen={(open) => { if (open) setAnyBlockingUIOpen(true); }}
         isDancing={isDancing}
         activeEmote={activeEmote}
         onEditAvatar={() => setCustomizerOpen(true)}

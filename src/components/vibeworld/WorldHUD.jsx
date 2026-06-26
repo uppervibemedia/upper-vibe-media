@@ -110,6 +110,7 @@ export default function WorldHUD({
   // ── Emote / Dance Floor props ──────────────────────────────
   onEmote,
   onStopDance,
+  onEmotePanelOpen,
   isDancing = false,
   activeEmote = null,
   onEditAvatar,
@@ -191,6 +192,9 @@ export default function WorldHUD({
   const [zenBeachOpen, setZenBeachOpen] = useState(false);
   const [emotePanelOpen, setEmotePanelOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
+  // Sync emote panel open state to UpperVibeCity so overlaying UI elements
+  // (e.g. hoverboard button at bottom-right) hide while the emote panel is visible
+  useEffect(() => { onEmotePanelOpen?.(emotePanelOpen); }, [emotePanelOpen, onEmotePanelOpen]);
 
   const [jukeboxOpen, setJukeboxOpen] = useState(false);
   const [djSongPageOpen, setDjSongPageOpen] = useState(false);

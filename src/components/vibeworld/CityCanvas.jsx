@@ -1606,16 +1606,18 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
 
           // ── Remote hoverboard sync (PERSONAL board — NOT Neon Surf) ──
-          if (prevS && prevS.isRiding !== isRidingHb) {
-            if (isRidingHb) {
-              attachHoverboard(remoteEntry);
-            } else {
-              detachHoverboard(remoteEntry);
-            }
-          } else if (isRidingHb && !prevS) {
-            attachHoverboard(remoteEntry);
-          } else if (!isRidingHb && !prevS && remoteEntry) {
-            // noop — just spawned, not riding. Clean state.
+          // Grace window: brief drops in isRidingHb (from noisy presence ticks)
+          // won't detach immediately. Only detach after 6+ consecutive false frames.
+          const prevRiding = prevS?.isRiding;
+          const gc = prevS || {};
+          if (isRidingHb) {
+            gc.rideGraceCounter = 0;
+            if (!prevRiding) attachHoverboard(remoteEntry);
+          } else if (prevRiding) {
+            gc.rideGraceCounter = (gc.rideGraceCounter || 0) + 1;
+            if (gc.rideGraceCounter >= 6) detachHoverboard(remoteEntry);
+          } else {
+            // Wasn't riding before either — noop
           }
 
           rs[remote.user_id] = { hasAura, isRiding: isRidingHb, isDancing: remoteIsDancing };
