@@ -98,6 +98,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
   const [equippedBoard, setEquippedBoard] = useState(null);
   const [equippedAura, setEquippedAura] = useState(null); // item id of equipped aura glow
+  const [equippedAuraColor, setEquippedAuraColor] = useState(null); // hex color for sync
+
+  // Item id to hex color for aura — keep minimal, full set in AuraGlow
+  const auraColors = {
+    "glow_starter": "#00AADD", "shop_glow_starter": "#00AADD",
+    "shop_glow_purple": "#9B4FFF", "shop_glow_gold": "#FFD700",
+  };
 
   const [auraActive, setAuraActive] = useState(false);
 
@@ -341,6 +348,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       if (category === 'avatar_glow') {
         setAuraActive(equipped);
         setEquippedAura(equipped ? itemId : null);
+        setEquippedAuraColor(equipped ? (auraColors[itemId] || "#00AADD") : null);
       }
     };
     window.addEventListener('inventoryUpdate', onInventoryUpdate);
@@ -661,7 +669,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── Presence — Phase 2: track zone + position + heartbeat ─────────────
   const currentZoneName = detectZone(playerPos.x, playerPos.z)?.name || "Plaza";
-  const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName, playerPos);
+  const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName, playerPos, {
+    equippedAura,
+    equippedAuraColor,
+    equippedHoverboard: equippedBoard,
+    personalHoverboardActive,
+  });
 
   // ── Follow System ─────────────────────────────────────────────────────
   const followSystem = useFollowSystem(user?.id, user?.full_name || user?.username);

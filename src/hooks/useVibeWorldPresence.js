@@ -31,7 +31,7 @@ function getLifetimeOrbs() {
   }
 }
 
-export default function useVibeWorldPresence(user, currentZone, position) {
+export default function useVibeWorldPresence(user, currentZone, position, equippedState = {}) {
   const [activeUsers, setActiveUsers] = useState([]);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const recordIdRef = useRef(null);
@@ -111,6 +111,10 @@ export default function useVibeWorldPresence(user, currentZone, position) {
       pos_z: posRef.current.z,
       rotation: posRef.current.rot,
       animation_state: animRef.current,
+      equipped_aura: equippedState.equippedAura || "",
+      equipped_aura_color: equippedState.equippedAuraColor || "",
+      equipped_hoverboard: equippedState.equippedHoverboard || "",
+      personal_hoverboard_active: equippedState.personalHoverboardActive || false,
       is_online: true,
       last_heartbeat: now,
       joined_at: now,

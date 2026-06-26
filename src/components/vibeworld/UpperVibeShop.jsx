@@ -29,7 +29,7 @@ let _signTex = null;
 function getSignTex() {
   if (_signTex) return _signTex;
   const c = document.createElement("canvas");
-  c.width = 400;
+  c.width = 520;
   c.height = 120;
   const ctx = c.getContext("2d");
 
@@ -38,7 +38,7 @@ function getSignTex() {
   ctx.fillRect(0, 0, 400, 120);
 
   // Gold glow behind text
-  const goldGlow = ctx.createRadialGradient(200, 42, 10, 200, 42, 140);
+  const goldGlow = ctx.createRadialGradient(260, 42, 10, 260, 42, 180);
   goldGlow.addColorStop(0, "rgba(255,215,0,0.14)");
   goldGlow.addColorStop(1, "rgba(124,58,237,0)");
   ctx.fillStyle = goldGlow;
@@ -46,10 +46,11 @@ function getSignTex() {
 
   // UPPER VIBE SHOP (main line only — no sub-brand text)
   ctx.fillStyle = "#ffd700";
-  ctx.font = "700 42px 'Syne','Inter',sans-serif";
+  // "UPPER VIBE SHOP" fits cleanly on one 520px-wide canvas — large enough at distance, no cut-off
+  ctx.font = "700 35px 'Syne','Inter',sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("UPPER VIBE SHOP", 200, 58);
+  ctx.fillText("UPPER VIBE SHOP", 260, 58);
 
   _signTex = new CanvasTexture(c);
   _signTex.minFilter = LinearFilter;
@@ -124,7 +125,8 @@ function buildShop(group) {
 
   // ── Shop sign (front face, texture)
   const signMat = new MeshBasicMaterial({ map: getSignTex(), depthWrite: true });
-  const sign = new Mesh(new PlaneGeometry(5.4, 1.5), signMat);
+  // Wider sign board — full phrase one line, centered, readable from distance
+  const sign = new Mesh(new PlaneGeometry(7.0, 1.5), signMat);
   sign.position.set(0, 3.6, 2.755);
   group.add(sign);
 

@@ -83,6 +83,23 @@
       "default": "idle",
       "description": "Current animation state of the avatar"
     },
+    "equipped_aura": {
+      "type": "string",
+      "description": "Item id of equipped aura/glow, empty if none"
+    },
+    "equipped_aura_color": {
+      "type": "string",
+      "description": "Hex color of equipped aura, empty if none"
+    },
+    "equipped_hoverboard": {
+      "type": "string",
+      "description": "Item id of equipped hoverboard, empty if none"
+    },
+    "personal_hoverboard_active": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this user is currently riding a personal hoverboard"
+    },
     "is_online": {
       "type": "boolean",
       "default": true

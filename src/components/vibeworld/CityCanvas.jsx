@@ -549,6 +549,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const camPitchSmoothRef = useRef(0.08);
   const userTouchingCamRef = useRef(false); // right-click or cam drag active
   const remoteAvatarsRef = useRef({}); // userId → { group, prevPos }
+  const remoteHbStateRef = useRef({}); // userId → { hasAura, hasHoverboard, isRiding }
   const remoteUsersRef = useRef([]);
   remoteUsersRef.current = remoteUsers || [];
   const onRemoteClickRef = useRef(onRemoteAvatarClick);
@@ -1574,12 +1575,51 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               updateAvatarAnimation(remoteEntry, vel * 15, false, dt);
             }
           }
+
+          // ── Remote aura sync ────────────────────────────
+          const rs = remoteHbStateRef.current;
+          const prevS = rs[remote.user_id];
+          const hasAura   = !!remote.equipped_aura;
+          const isRidingHb = !!remote.personal_hoverboard_active;
+          if (prevS && prevS.hasAura !== hasAura) {
+            if (hasAura) {
+              bindAura(g, remote.equipped_aura, remote.equipped_aura_color || null);
+            } else {
+              unbindAura(g);
+            }
+          } else if (hasAura && !prevS) {
+            bindAura(g, remote.equipped_aura, remote.equipped_aura_color || null);
+          }
+
+          // ── Remote hoverboard sync ──────────────────────
+          if (prevS && prevS.isRiding !== isRidingHb) {
+            if (isRidingHb) {
+              attachHoverboard(remoteEntry);
+            } else {
+              detachHoverboard(remoteEntry);
+            }
+          } else if (isRidingHb && !prevS) {
+            attachHoverboard(remoteEntry);
+          } else if (!isRidingHb && !prevS && remoteEntry) {
+            // noop — just spawned, not riding. Clean state.
+          }
+
+          rs[remote.user_id] = { hasAura, isRiding: isRidingHb };
         }
 
         // Despawn avatars that are no longer present
         for (const id in remoteMap) {
           if (!activeIds.has(id)) {
             const entry = remoteMap[id];
+            // Clean remote state
+            const rs = remoteHbStateRef.current[id];
+            if (rs) {
+              // Detach hoverboard + aura before removing the group from the scene
+              const remoteEntry = entry.group?.userData?._avatarEntry;
+              if (remoteEntry) detachHoverboard(remoteEntry);
+              unbindAura(entry.group);
+              delete remoteHbStateRef.current[id];
+            }
             if (entry.group) {
               scene.remove(entry.group);
               entry.group.traverse((obj) => {
@@ -1640,6 +1680,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         avatarEntryRef.current = null;
         sceneRef.current = null;
         remoteAvatarsRef.current = {};
+        remoteHbStateRef.current = {};
         avatarRotRef.current = 0;
         camYawRef.current = 0;
         camYawSmoothRef.current = 0;

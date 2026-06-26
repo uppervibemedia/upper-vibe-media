@@ -49,10 +49,11 @@ function glowTex(hex) {
   return _texCache[hex];
 }
 
-/** Build the soft aura group for an avatar. Recreated each bind. */
-export function bindAura(controller, itemId) {
+/** Build the soft aura group for an avatar. Recreated each bind.
+ *  @param {string} colorHex - optional direct hex color override (used for remote avatars) */
+export function bindAura(controller, itemId, colorHex) {
   unbindAura(controller);
-  const hex = typedHex(itemId);
+  const hex = colorHex || typedHex(itemId);
   const color = new THREE.Color(hex);
   const tex = glowTex(hex);
 
@@ -63,10 +64,10 @@ export function bindAura(controller, itemId) {
   // Texture-based sprites = soft misty glow around the body, never hard edges.
   // Stacked vertically to wrap: chest, waist, thighs, knees.
   const bodyPositions = [
-    { y: 1.40, s: 1.2, o: 0.30 }, // shoulders / upper chest (largest)
-    { y: 0.95, s: 1.1, o: 0.28 }, // mid torso
-    { y: 0.55, s: 1.0, o: 0.22 }, // waist / hips
-    { y: 0.20, s: 0.9, o: 0.18 }, // upper legs / thighs
+    { y: 1.40, s: 1.0, o: 0.15 }, // shoulders / upper chest
+    { y: 0.95, s: 0.9, o: 0.14 }, // mid torso
+    { y: 0.55, s: 0.8, o: 0.11 }, // waist / hips
+    { y: 0.20, s: 0.7, o: 0.09 }, // upper legs / thighs
   ];
   for (const bp of bodyPositions) {
     const sprite = new THREE.Sprite(
@@ -81,7 +82,7 @@ export function bindAura(controller, itemId) {
   // ── 2. SOFT OVERHEAD GLOW ────────────────────────────────
   // Instead of a hard torus ring — a soft sprite floating above
   const headGlow = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.18, color })
+    new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.08, color })
   );
   headGlow.position.set(0, 1.85, 0);
   headGlow.scale.set(0.75, 0.75, 1);
@@ -90,7 +91,7 @@ export function bindAura(controller, itemId) {
 
   // ── 3. BASE FLOOR GLOW (soft, muted) ────────────────────
   const floorGlow = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.10, color })
+    new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.05, color })
   );
   floorGlow.position.set(0, 0.02, 0);
   floorGlow.scale.set(0.9, 0.9, 1);
@@ -103,13 +104,13 @@ export function bindAura(controller, itemId) {
   const wispCount = 15;
   for (let i = 0; i < wispCount; i++) {
     const theta = Math.random() * Math.PI * 2;
-    const radius = 0.55 + Math.random() * 0.35;
+    const radius = 0.42 + Math.random() * 0.25;
     const wisp = new THREE.Sprite(
       new THREE.SpriteMaterial({
         map: tex,
         transparent: true,
         depthWrite: false,
-        opacity: 0.08 + Math.random() * 0.12,
+        opacity: 0.04 + Math.random() * 0.06,
         color,
       })
     );
@@ -118,7 +119,7 @@ export function bindAura(controller, itemId) {
       0.35 + Math.random() * 1.5,
       Math.sin(theta) * radius,
     );
-    const s = 0.13 + Math.random() * 0.18;
+    const s = 0.09 + Math.random() * 0.10;
     wisp.scale.set(s, s, 1);
     wisp.renderOrder = 1;
     wisp.userData._yBase = wisp.position.y;
@@ -164,7 +165,7 @@ export function animateAura(avatarEntry, t) {
     // Alternating phase between upper body (faster) and lower (slower)
     const phase = i < 3 ? 0 : 0.8;
     const rate = i < 3 ? 2.5 : 1.5;
-    child.material.opacity = (i === 0 ? 0.24 : i === aura.children.length - 2 ? 0.08 : 0.16) + Math.sin(t * rate + phase) * 0.08;
+    child.material.opacity = (i === 0 ? 0.12 : i === aura.children.length - 2 ? 0.04 : 0.08) + Math.sin(t * rate + phase) * 0.04;
     const sBase = [1.2, 1.1, 1.0, 0.9, 0.75, 0.9][i] || 0.9;
     child.scale.setScalar(sBase * (1 + slow * 0.035));
     // Soften color with slight white blend for diffused look
@@ -181,6 +182,6 @@ export function animateAura(avatarEntry, t) {
     wisp.position.x = Math.cos(angle) * wisp.userData._orbitRadius;
     wisp.position.z = Math.sin(angle) * wisp.userData._orbitRadius;
     wisp.position.y = basey + Math.sin(t * wisp.userData._driftSpeed + phase) * 0.35;
-    wisp.material.opacity = 0.10 + Math.sin(t * 1.4 + phase) * 0.12;
+    wisp.material.opacity = 0.05 + Math.sin(t * 1.4 + phase) * 0.06;
   }
 }
