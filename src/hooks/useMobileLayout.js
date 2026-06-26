@@ -161,10 +161,7 @@ function computeLayout() {
 }
 
 export default function useMobileLayout(enabled = true) {
-  const [layout, setLayout] = useState(() => {
-    if (!enabled) return null;
-    return computeLayout();
-  });
+  const [layout, setLayout] = useState(null);
 
   const timerRef = useRef(null);
 
