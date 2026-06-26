@@ -3,7 +3,7 @@ import createLaunchPad, { animateLaunchPad } from "./LaunchPad";
 import { animateShop } from "./UpperVibeShop";
 import { LAUNCH_PADS, SHOP } from "./city-engine/cityConfig";
 import { setupLaunchRide, tickLaunchRide, animateLaunchCoins, MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
-import { resetSessionCoins, getVibeCoinBank } from "../../lib/vibeCoinBank";
+import { resetSessionCoins, getVibeCoinBank } from "@/lib/vibeCoinBank";
 
 // ─────────────────────────────────────────────────────────────
 // CityAddOns — gateways new objects into the live Three.js

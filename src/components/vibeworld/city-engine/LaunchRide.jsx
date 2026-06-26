@@ -10,7 +10,7 @@
 
 import * as THREE from "three";
 import createCoin from "../VibeCoin";
-import { addVibeCoins } from "../../../lib/vibeCoinBank";
+import { addVibeCoins } from "@/lib/vibeCoinBank";
 
 // ── Pads (mirrors city-engine/cityConfig LAUNCH_PADS coords) ───
 const PADS = [
