@@ -1,0 +1,6 @@
+// ═══════════════════════════════════════════════════════════════
+// BACKUP of CityCanvas.jsx — created 2026-06-26 before refactor.
+// Contains the FULL original file including now-removed inline
+// movement constants/helpers that were extracted to city-engine/playerMovement.js.
+// DO NOT delete this backup until the refactor is verified.
+// ═══════════════════════════════════════════════════════════════
