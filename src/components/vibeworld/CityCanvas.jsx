@@ -191,6 +191,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     const camera = new PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 160);
     
     buildPark(scene);
+    scene.userData.launchState = { active: false, phase: "rise", timer: 0, startY: 0, cooldown: 0 };
 
     const avatarEntry = createMixamoAvatar(scene, {
         spawnX: SPAWN[0], spawnY: SPAWN[1], spawnZ: SPAWN[2],
@@ -231,6 +232,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     return () => {
         cancelAnimationFrame(animId);
         renderer.dispose();
+        const sc = scene.userData;
+        delete sc.launchState;
+        delete sc.launchPads;
     };
   }, []);
 
@@ -295,5 +299,5 @@ function applyLaunchPhysics(scene, py, dt) {
 }
 
 function animateLaunchSystem(scene, t) {
-    scene.userData.launchPads?.forEach(pad => animateLaunchPad(pad, t));
+    (scene.userData.launchPads || []).forEach(pad => animateLaunchPad(pad, t));
 }
