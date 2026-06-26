@@ -4,6 +4,7 @@ import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
 // Vibe Shop is temporarily disabled — replaced by Ferris Wheel
 import { createVibeShop } from "./VibeShop";
+import { createLaunchPad, animateLaunchPad } from './LaunchPad';
 import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, WHEEL_HUB_Y, getCabinWorldPosition, getBoardingPosition, getRiderCameraTransform } from "./FerrisWheel";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
@@ -324,6 +325,15 @@ function buildPark(scene) {
   // Launch Zone replaced by Vibe Shop
   createVibeShop(scene);
   createNeonSign(scene, 0, 3.5, 3, "UPPER VIBE SHOP", "#00E5FF");
+
+  const launchPads = [
+    { x: -15, z: -5, rot: Math.PI / 4 },
+    { x: 15, z: -5, rot: -Math.PI / 4 },
+    { x: -10, z: 15, rot: Math.PI * 0.75 },
+    { x: 10, z: 15, rot: -Math.PI * 0.75 },
+  ];
+
+  scene.userData.launchPads = launchPads.map(p => ({...p, ...createLaunchPad(scene, p.x, p.z, p.rot)}));
 
   // ═════════════════════════════════════════════════════════════
   // 5. VIBE LOUNGE — futuristic social hangout, semi-circle seating
@@ -1521,7 +1531,36 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // ── Launch zone physics ──────────────────────────────
                   const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
+          const launchState = scene.userData.launchState;
+        if (launchState?.active) {
+          launchState.timer += dt;
+          const DURATION = 1.6;
+          const APEX = 12.0;
+          const progress = Math.min(1, launchState.timer / DURATION);
+
+          if (launchState.phase === "rise") {
+            const easeIn = progress * progress;
+            py = launchState.startY + easeIn * APEX;
+            if (progress >= 1) {
+              launchState.phase = "fall";
+              launchState.timer = 0;
+              launchState.startY = py;
+            }
+          } else {
+            const easeOut = 1 - (1 - progress) * (1 - progress);
+            py = launchState.startY * (1 - easeOut);
+            if (progress >= 1) {
+              launchState.active = false;
+              py = SPAWN[1];
+            }
+          }
+        } else {
+          const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
           py = SPAWN[1] + hbLift;
+          if (launchState.cooldown > 0) {
+            launchState.cooldown -= dt;
+          }
+        }
 
         avatarRotRef.current = rot;
         avatarPosRef.current = [px, py, pz, rot];
@@ -1967,6 +2006,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           ? (ferrisRidingRef.current || ferrisDist < 30)
           : (!isMob || ferrisRidingRef.current || nearFerris || frameRef.current % 6 === 0);
         if (ferrisGate) animateFerrisWheel(scene, t, audioBeat, px, pz, tvSmooth);
+
+        scene.userData.launchPads?.forEach(pad => animateLaunchPad(pad, t));
 
         // ── WATER SPLASH — hoverboard spray when rider is in the ocean zone ──
         const splash = splashParticlesRef.current;
