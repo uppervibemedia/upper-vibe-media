@@ -39,9 +39,7 @@ export default function VibeCoinHUD({
     ? `${mobileLayout.sa.top + 54}px`
     : "calc(env(safe-area-inset-top, 0px) + 54px)";
 
-  const leftOffset = isMobile && mobileLayout
-    ? `calc(env(safe-area-inset-left, 0px) + ${mobileLayout.sa.left + 8}px)`
-    : "calc(env(safe-area-inset-left, 0px) + 8px)";
+  const leftOffset = "calc(env(safe-area-inset-left, 0px) + 8px)";
 
   return (
     <div

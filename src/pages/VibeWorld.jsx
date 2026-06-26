@@ -38,8 +38,12 @@ function VibeWorldHub({ chatAgeConfirmed }) {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden px-5 py-16 md:py-20"
-      style={{ background: "linear-gradient(160deg,#05050f 0%,#080818 55%,#050510 100%)" }}>
+    <div className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden px-5 py-16 md:py-20"
+      style={{
+        background: "linear-gradient(160deg,#05050f 0%,#080818 55%,#050510 100%)",
+        paddingLeft: "env(safe-area-inset-left, 1.25rem)",
+        paddingRight: "env(safe-area-inset-right, 1.25rem)",
+      }}>
 
       {/* ── Lightweight animated background ── */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">

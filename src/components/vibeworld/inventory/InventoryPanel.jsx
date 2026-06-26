@@ -73,6 +73,8 @@ export default function InventoryPanel({ open, onClose, user, isMobile }) {
               width: "100%",
               maxWidth: isMobile ? "100%" : "480px",
               maxHeight: isMobile ? "88dvh" : "78vh",
+              marginLeft: "env(safe-area-inset-left, 0px)",
+              marginRight: "env(safe-area-inset-right, 0px)",
               background: "linear-gradient(160deg,#0d0d22,#0a0a1a)",
               border: "1px solid rgba(155,126,255,0.18)",
               borderRadius: isMobile ? "20px 20px 0 0" : "16px",

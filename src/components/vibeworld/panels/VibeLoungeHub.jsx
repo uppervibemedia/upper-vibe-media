@@ -138,8 +138,8 @@ export default function VibeLoungeHub({
       style={{
         zIndex: 70,
         bottom: panelBottom,
-        left: 0,
-        right: 0,
+        left: "env(safe-area-inset-left, 0px)",
+        right: "env(safe-area-inset-right, 0px)",
         paddingLeft: "env(safe-area-inset-left)",
         paddingRight: "env(safe-area-inset-right)",
         height: panelHeight,

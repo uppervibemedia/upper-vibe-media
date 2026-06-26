@@ -176,6 +176,8 @@ export default function MusicLibraryPanel({ open, onClose, isMobile, playerPos }
         className="fixed inset-x-0 bottom-0 rounded-t-3xl overflow-hidden flex flex-col"
         style={{
           zIndex: 70,
+          left: "env(safe-area-inset-left, 0px)",
+          right: "env(safe-area-inset-right, 0px)",
           top: isMobile ? "0" : "auto",
           height: isMobile ? "100dvh" : "84vh",
           background: "rgba(8,8,24,0.97)",

@@ -270,6 +270,7 @@ export default function NotificationPanel({
       transition={{ duration: 0.18 }}
       className="absolute right-1 z-[80] pointer-events-auto"
       style={{
+        right: "calc(env(safe-area-inset-right, 0px) + 4px)",
         top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 5.5rem)" : "7rem",
         width: isMobile ? "min(calc(100vw - 1rem), 320px)" : "320px",
         maxHeight: isMobile ? "65dvh" : "480px",
