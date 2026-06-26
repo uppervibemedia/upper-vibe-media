@@ -28,7 +28,7 @@ export const ZONES = {
   hoverboardRun:   { label: "Hoverboard Run",      x: 18,  z: 28,  tag: "hoverboard" },
   vibeLaunchZone:  { label: "Vibe Launch Zone",    x: 0,   z: 4,   tag: "launch" },
   ferrisWheel:     { label: "Ferris Wheel",        x: 22,  z: 5,   tag: "ferris" },
-  upperVibeShop:   { label: "Upper Vibe Shop",     x: 0,   z: 0,   tag: "shop" },
+  upperVibeShop:   { label: "Upper Vibe Shop",     x: 0,   z: 7,   tag: "shop" },
 };
 
 // ═══════════════════════════════════════════════════════════════════

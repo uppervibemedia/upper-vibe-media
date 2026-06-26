@@ -314,10 +314,8 @@ function buildPark(scene) {
   createNeonSign(scene, 0, 7.4, -34.0, "MUSIC  STAGE", "#00D4F0");
 
   // ═══════════════════════════════════════
-  // VIBE LAUNCH ZONE
+  // VIBE LAUNCH ZONE — removed; replaced by Upper Vibe Shop
   // ═══════════════════════════════════════
-  buildLaunchZone(scene);
-  createNeonSign(scene, 0, 3.5, 3, "VIBE  LAUNCH  ZONE", "#00E5FF");
 
   // ═════════════════════════════════════════════════════════════
   // 5. VIBE LOUNGE — futuristic social hangout, semi-circle seating
@@ -1996,9 +1994,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           if (hbBoard) { hbBoard.rotation.x = 0; hbBoard.rotation.z = 0; }
         }
         // Distance-gate heavy zone animations on mobile
-        const nearLaunch = Math.sqrt(px * px + (pz - 4) * (pz - 4)) < 20;
         const nearFerris = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z)) < 28;
-        if (!isMob || nearLaunch || frameRef.current % 4 === 0) animateLaunchZone(scene, t, audioBeat, dt);
         if (!isMob || nearFerris || frameRef.current % 4 === 0) animateHoverboardZone(scene, t, audioBeat);
         // Ferris Wheel — TV Smooth: skip when >30u away (unless riding)
         const ferrisDist = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z));
