@@ -1162,12 +1162,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   // Use spawn override if provided (restores position when returning from SongPage)
   const effectiveSpawn = spawnOverride
     ? [spawnOverride.x, SPAWN[1], spawnOverride.z, spawnOverride.rot || 0]
-    : [SPAWN[0], SPAWN[1], SPAWN[2], Math.PI]; // avatar faces stage (-Z)
+    : [SPAWN[0], SPAWN[1], SPAWN[2], 0]; // avatar faces beach (+Z) toward camera
   const avatarPosRef = useRef(effectiveSpawn); // [x, y, z, rotY]
   const stageCanvasRef = useRef(null);
   stageCanvasRef.current = stageCanvas;
   const velocityRef = useRef({ x: 0, z: 0 });
-  const avatarRotRef = useRef(spawnOverride?.rot || Math.PI); // avatar faces stage (-Z)
+  const avatarRotRef = useRef(spawnOverride?.rot || 0); // avatar faces beach (+Z)
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0, button: 0 });
   // Camera: yaw = angle of camera around avatar (0 = directly behind)
@@ -1426,11 +1426,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
            vel.z = 0;
          } else if (isMobileRef.current) {
            if (prevLockedRef.current) {
-             // Exiting stage/locked mode — reset camera back behind avatar facing stage
+             // Exiting stage/locked mode — reset avatar facing beach (+Z)
              mobileInputRef.current = { x: 0, y: 0, camDx: 0, camDy: 0 };
-             camYawRef.current = 0;        // camera at +Z side, avatar faces stage
+             camYawRef.current = 0;
              camYawSmoothRef.current = 0;
-             avatarRotRef.current = Math.PI; // avatar faces -Z = toward stage
+             avatarRotRef.current = 0; // avatar faces beach (+Z)
            }
            const joy = mobileInputRef.current;
 
@@ -1457,10 +1457,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
            }
         } else {
           if (prevLockedRef.current) {
-            // Desktop: exiting stage mode — snap camera back to stage-facing
+            // Desktop: exiting stage mode — snap avatar back to beach-facing
             camYawRef.current = 0;
             camYawSmoothRef.current = 0;
-            avatarRotRef.current = Math.PI;
+            avatarRotRef.current = 0;
           }
           if (keys.w || keys.arrowup)    { inputFwd =  1; hasAnyInput = true; }
           if (keys.s || keys.arrowdown)  { inputFwd = -1; hasAnyInput = true; }
