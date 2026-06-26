@@ -41,17 +41,17 @@ export const SHOP_ITEMS = [
   // ── Avatar Glows ──────────────────────────────────────────────
   {
     id: "shop_glow_starter",
-    name: "Starter Glow",
+    name: "Starter Aura",
     category: "avatar_glow",
     price: 20,
-    description: "A subtle blue glow for your avatar.",
+    description: "A subtle blue aura for your avatar.",
     preview_icon: "Sparkles",
     preview_color: "#00AADD",
     rarity: "common",
   },
   {
     id: "shop_glow_purple",
-    name: "Purple Aura Glow",
+    name: "Purple Aura",
     category: "avatar_glow",
     price: 50,
     description: "A purple energy aura around your avatar.",
@@ -61,10 +61,10 @@ export const SHOP_ITEMS = [
   },
   {
     id: "shop_glow_gold",
-    name: "Gold Aura Glow",
+    name: "Gold Aura",
     category: "avatar_glow",
     price: 100,
-    description: "Premium golden glow effect.",
+    description: "Premium golden aura effect.",
     preview_icon: "Sparkles",
     preview_color: "#FFD700",
     rarity: "rare",
@@ -115,7 +115,7 @@ export const SHOP_ITEMS = [
 
 export const SHOP_CATEGORIES = [
   { id: "hoverboard",  label: "Hoverboards", emoji: "🛹" },
-  { id: "avatar_glow", label: "Avatar Glows", emoji: "✨" },
+  { id: "avatar_glow", label: "Auras",        emoji: "✨" },
   { id: "nameplate",   label: "Nameplates",   emoji: "🪪" },
   { id: "badge",       label: "Badges",        emoji: "🏅" },
 ];

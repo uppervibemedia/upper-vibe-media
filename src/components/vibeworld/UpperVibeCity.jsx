@@ -29,7 +29,7 @@ import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibew
 // CrystalZone is now decorative-only — no imports needed
 import { getSessionCoins, addSessionCoins, resetSessionCoins } from "@/lib/vibeCoinBank";
 import { loadWallet, earnCoins, getWalletBalance, isCoinAlreadyCollected } from "@/components/vibeworld/wallet/vibeCoinWallet";
-import { grantStarterItems } from "@/components/vibeworld/inventory/inventoryService";
+import { grantStarterItems, loadInventory } from "@/components/vibeworld/inventory/inventoryService";
 import VibeCoinHUD from "@/components/vibeworld/VibeCoinHUD";
 import InventoryPanel from "@/components/vibeworld/inventory/InventoryPanel";
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
@@ -300,7 +300,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
 
-  // ── Wallet: load from server on entry, grant starter items ──
+  // ── Wallet + inventory: load from server on entry ─────────
   useEffect(() => {
     if (!user?.id) return;
     resetSessionCoins();
@@ -308,7 +308,19 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     loadWallet(user.id).then(({ balance }) => {
       setTotalCoins(balance);
     });
-    grantStarterItems(user.id).catch(() => {});
+    grantStarterItems(user.id).then(() => {
+      // Load inventory to sync equipped items into live world state.
+      // On spawn: hoverboard is equipped but NOT active (no board under avatar).
+      // Aura loads video-equipped and applies immediately.
+      loadInventory(user.id).then((records) => {
+        records.forEach((r) => {
+          if (!r.equipped) return;
+          window.dispatchEvent(new CustomEvent('inventoryUpdate', {
+            detail: { itemId: r.item_id, equipped: true, category: r.item_category }
+          }));
+        });
+      });
+    }).catch(() => {});
   }, [user?.id]);
 
   // ── Vibe Coin HUD — event-driven coin collection via new wallet ──

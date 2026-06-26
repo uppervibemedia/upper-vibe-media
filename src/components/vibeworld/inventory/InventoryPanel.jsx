@@ -224,7 +224,7 @@ export default function InventoryPanel({ open, onClose, user, isMobile }) {
                        const isBoard = isPersonalHoverboard(record.item_id);
                        const label = isEquipping ? "…"
                          : isBoard
-                           ? (record.equipped ? "Put Away Board" : "Equip Personal Board")
+                           ? (record.equipped ? "Equipped" : "Equip")
                            : (record.equipped ? "Equipped" : "Equip");
                        return (
                          <button

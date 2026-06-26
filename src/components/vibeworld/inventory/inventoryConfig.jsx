@@ -5,7 +5,7 @@
  */
 
 export const INVENTORY_CATEGORIES = [
-  { id: "avatar_glow",  label: "Avatar Glows",   emoji: "✨" },
+  { id: "avatar_glow",  label: "Auras",          emoji: "✨" },
   { id: "aura",         label: "Auras",           emoji: "🌀" },
   { id: "nameplate",    label: "Nameplates",      emoji: "🪪" },
   { id: "hoverboard",   label: "Hoverboards",     emoji: "🛹" },
@@ -17,9 +17,9 @@ export const INVENTORY_CATEGORIES = [
 export const STARTER_ITEMS = [
   {
     id: "glow_starter",
-    name: "Starter Glow",
+    name: "Starter Aura",
     category: "avatar_glow",
-    description: "A subtle blue glow for your avatar.",
+    description: "A subtle blue aura for your avatar.",
     rarity: "common",
     starter: true,
     preview_icon: "Sparkles",
