@@ -227,7 +227,7 @@ export default function UserInteractionMenu({
               >
                 <MessageCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#00D4F0" }} />
                 <div className="text-left">
-                  <p className="text-xs font-bold" style={{ color: "#00D4F0" }}>Message</p>
+                  <p className="text-xs font-bold" style={{ color: "#00D4F0" }}>Chat</p>
                   <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>Open direct chat</p>
                 </div>
               </button>
@@ -255,7 +255,7 @@ export default function UserInteractionMenu({
               />
               <div className="text-left">
                 <p className="text-xs font-bold" style={{ color: (requestSent || pendingToThisUser) ? "#00C853" : "#00D4F0" }}>
-                  {(requestSent || pendingToThisUser) ? "Request Sent ✓" : "Request 1-on-1 Chat"}
+                  {(requestSent || pendingToThisUser) ? "Request Sent ✓" : "Request Chat"}
                 </p>
                 <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>
                   {(requestSent || pendingToThisUser) ? "Waiting for response..." : "Send a private chat request"}

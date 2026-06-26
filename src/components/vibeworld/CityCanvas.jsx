@@ -1756,9 +1756,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const handleClick = (e) => {
+    const handleClick = (e, fromTouch = false) => {
       // Only process clicks directly on the canvas (ignore HUD buttons)
-      if (e.target !== canvas) return;
+      // fromTouch=true bypasses target check since touch events use canvas directly
+      if (!fromTouch && e.target !== canvas) return;
 
       const scene = sceneRef.current;
       const camera = cameraRef.current;
@@ -1770,7 +1771,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       const raycaster = new THREE.Raycaster();
       raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
-      raycaster.far = 35; // Detect within reasonable distance
+      raycaster.far = fromTouch ? 50 : 35; // Mobile: longer reach for avatar taps
 
       // Collect all remote avatar groups (including name sprites)
       const remoteGroups = [];
@@ -1821,9 +1822,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       if (e.target !== canvas || !touchStartPos || e.changedTouches.length !== 1) return;
       const dx = e.changedTouches[0].clientX - touchStartPos.x;
       const dy = e.changedTouches[0].clientY - touchStartPos.y;
-      // Only fire if it was a tap (not a drag/swipe)
-      if (Math.sqrt(dx * dx + dy * dy) > 12) return;
-      handleClick({ target: canvas, clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY });
+      // Only fire if it was a tap (not a drag/swipe) — allow up to 18px of drift on mobile
+      if (Math.sqrt(dx * dx + dy * dy) > 18) return;
+      handleClick({ clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY }, true);
       touchStartPos = null;
     });
 

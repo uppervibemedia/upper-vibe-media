@@ -49,6 +49,7 @@ import SocialPanel from "./panels/SocialPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import LiveUsersBadge from "@/components/vibeworld/LiveUsersBadge";
 import NotificationPanel from "./panels/NotificationPanel";
+import { base44 } from "@/api/base44Client";
 
 
 const ZONE_ICONS = {
@@ -195,6 +196,22 @@ export default function WorldHUD({
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const [dmInboxOpen, setDmInboxOpen] = useState(false);
+  // approved conversation cache: { [userId]: true } — populated when profile card opens
+  const [approvedConversations, setApprovedConversations] = useState({});
+
+  // Check if we have an approved conversation with the tapped user
+  useEffect(() => {
+    if (!userInteractionTarget || !currentUserId) return;
+    const uid = userInteractionTarget.user_id || userInteractionTarget.id;
+    if (!uid || approvedConversations[uid] !== undefined) return;
+    const convId = `dm_${[currentUserId, uid].sort().join("_")}`;
+    base44.entities.MessageRequest.filter({ conversation_id: convId })
+      .then((reqs) => {
+        const approved = (reqs || []).some((r) => r.status === "approved");
+        setApprovedConversations((prev) => ({ ...prev, [uid]: approved }));
+      })
+      .catch(() => {});
+  }, [userInteractionTarget?.user_id, userInteractionTarget?.id, currentUserId]);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -1068,7 +1085,7 @@ export default function WorldHUD({
           }
         }}
         isBlocked={!!(userInteractionTarget && blockedUsers?.[userInteractionTarget.user_id || userInteractionTarget.id])}
-        isConnected={false}
+        isConnected={!!(userInteractionTarget && approvedConversations?.[userInteractionTarget.user_id || userInteractionTarget.id])}
         onReport={() => onReportUser?.(userInteractionTarget)}
         isMobile={isMobile}
         currentUserId={currentUserId}

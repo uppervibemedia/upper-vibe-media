@@ -554,10 +554,10 @@ export function createRemoteAvatar(scene, userId, username, avatarType, skinTone
 
     // Large invisible hitbox for reliable mobile tap detection
     const hitbox = new THREE.Mesh(
-      new THREE.SphereGeometry(0.9, 6, 4),
+      new THREE.SphereGeometry(1.4, 6, 4),
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
     );
-    hitbox.position.y = 1.0;
+    hitbox.position.y = 1.4; // centered at chest+name area
     hitbox.name = "avatarHitbox";
     hitbox.userData = { userId };
     controller.add(hitbox);
