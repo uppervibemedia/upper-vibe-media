@@ -1261,8 +1261,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const spawnLS = isMob && window.innerWidth > window.innerHeight;
       camera.fov = spawnLS ? FOV_LANDSCAPE : FOV_PORTRAIT;
       camera.updateProjectionMatrix();
-      camera.position.set(spX, spY + (spawnLS ? CAM_HEIGHT_LS : 5.0), spZ + (spawnLS ? CAM_DIST_LS : CAM_DIST));
-      camera.lookAt(spX, spY - 0.3, spZ); // look downward, framing skyline + plaza + avatar
+      camera.position.set(spX, spY + (spawnLS ? CAM_HEIGHT_LS : CAM_HEIGHT), spZ + (spawnLS ? CAM_DIST_LS : CAM_DIST));
+      camera.lookAt(spX, spY + CAM_LOOK_Y, spZ); // look at avatar chest/head
 
       buildPark(scene);
 
