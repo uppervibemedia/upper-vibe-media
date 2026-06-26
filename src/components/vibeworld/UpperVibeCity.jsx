@@ -157,32 +157,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // Track whether any blocking UI is open (panels, modals, zone UIs)
   const [anyBlockingUIOpen, setAnyBlockingUIOpen] = useState(false);
 
-  // ── Vibe Coin HUD — event-driven updates + 2s sync poll ──
-  useEffect(() => {
-    const onCollect = (e) => {
-      const { count, total, session } = e.detail || {};
-      if (count > 0) {
-        setLastCollectCount(count);
-        setSessionCoins(session ?? getSessionCoins());
-        setTotalCoins(total ?? getVibeCoinBank());
-        window.__lrCoinsCollected = 0;
-        // Sync to account on each collection (best-effort)
-        if (user) syncVibeCoinsToAccount(base44, false).catch(() => {});
-      }
-    };
-    window.addEventListener("vibeCoinsCollected", onCollect);
 
-    // Slow background poll to keep HUD in sync (catches edge cases)
-    const poll = setInterval(() => {
-      setSessionCoins(getSessionCoins());
-      setTotalCoins(getVibeCoinBank());
-    }, 2000);
-
-    return () => {
-      window.removeEventListener("vibeCoinsCollected", onCollect);
-      clearInterval(poll);
-    };
-  }, [user]);
 
   // In TV mode: auto-hide media player after 4s; tap to reveal temporarily
   const [tvPlayerVisible, setTvPlayerVisible] = useState(true);
@@ -285,6 +260,29 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const { allTracks, tracksLoaded } = radioCtx || {};
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
+
+  // ── Vibe Coin HUD — event-driven updates + 2s sync poll ──
+  useEffect(() => {
+    const onCollect = (e) => {
+      const { count, total, session } = e.detail || {};
+      if (count > 0) {
+        setLastCollectCount(count);
+        setSessionCoins(session ?? getSessionCoins());
+        setTotalCoins(total ?? getVibeCoinBank());
+        window.__lrCoinsCollected = 0;
+        if (user) syncVibeCoinsToAccount(base44, false).catch(() => {});
+      }
+    };
+    window.addEventListener("vibeCoinsCollected", onCollect);
+    const poll = setInterval(() => {
+      setSessionCoins(getSessionCoins());
+      setTotalCoins(getVibeCoinBank());
+    }, 2000);
+    return () => {
+      window.removeEventListener("vibeCoinsCollected", onCollect);
+      clearInterval(poll);
+    };
+  }, [user]);
 
   // Sync coin bank to/from account
   useEffect(() => {
