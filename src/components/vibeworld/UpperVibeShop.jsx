@@ -44,17 +44,12 @@ function getSignTex() {
   ctx.fillStyle = goldGlow;
   ctx.fillRect(0, 0, 400, 120);
 
-  // UPPER VIBE SHOP (main line)
+  // UPPER VIBE SHOP (main line only — no sub-brand text)
   ctx.fillStyle = "#ffd700";
-  ctx.font = "700 38px 'Syne','Inter',sans-serif";
+  ctx.font = "700 42px 'Syne','Inter',sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("UPPER VIBE SHOP", 200, 46);
-
-  // Shop sub-brand (smaller, below)
-  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-  ctx.font = "600 16px 'Syne','Inter',sans-serif";
-  ctx.fillText("Shop", 200, 80);
+  ctx.fillText("UPPER VIBE SHOP", 200, 58);
 
   _signTex = new CanvasTexture(c);
   _signTex.minFilter = LinearFilter;
