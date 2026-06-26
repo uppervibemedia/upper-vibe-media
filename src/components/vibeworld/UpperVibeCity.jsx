@@ -22,16 +22,18 @@ import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 import MessageRequestComposer from "@/components/vibeworld/panels/MessageRequestComposer";
 import DirectChatPanel from "@/components/vibeworld/panels/DirectChatPanel";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
+import OrbRewardSystem from "@/components/vibeworld/OrbRewardSystem";
+import OrbLeaderboard from "@/components/vibeworld/OrbLeaderboard";
 import useWorldDJStream from "@/hooks/useWorldDJStream";
 import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
 import { CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_INTERACT_RADIUS } from "@/components/vibeworld/CrystalZone";
+import { getOrbBank, addToOrbBank, updateZoneBest, getZoneBests } from "@/lib/orbBank";
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
 import useFollowSystem from "@/hooks/useFollowSystem";
 import useBlockSystem from "@/hooks/useBlockSystem";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
-import VibeShopPanel from "./panels/VibeShopPanel";
 
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
 import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
@@ -76,9 +78,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
   const onDanceFloorRef = useRef(false);
-  const [nearShop, setNearShop] = useState(false);
-  const [shopOpen, setShopOpen] = useState(false);
-  
+  // Launch zone state
+  const launchRef = useRef(null);
+  const [nearLaunchPad, setNearLaunchPad] = useState(false);
+  const [isAirborne, setIsAirborne] = useState(false);
+  const [orbCount, setOrbCount] = useState(0);         // launch session orbs
+  const [launchSessionOrbs, setLaunchSessionOrbs] = useState(0); // tracked per launch
+  const launchSessionRef = useRef(0);
   // ── Hoverboard Ring Run state ─────────────────────────────────
   const [nearHoverboard, setNearHoverboard] = useState(false);
   const [hbRiding, setHbRiding] = useState(false);
@@ -89,6 +95,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const crystalAuraTimerRef = useRef(null);
   const crystalSceneRef = useRef(null);
   const rendererRef = useRef(null);
+  const [orbBank, setOrbBank] = useState(() => getOrbBank());
 
   const jukeboxFadeRef = useRef(null);        // kept for cleanup compat
 
@@ -892,12 +899,31 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           remoteUsers={activeUsers}
           avatarConfig={avatarConfig}
           djTrack={djTrack}
-          onNearShop={(isNear) => setNearShop(isNear)}
+          launchRef={launchRef}
           hbRiding={hbRiding}
           ferrisRiding={ferrisRiding}
           rendererRef={rendererRef}
           tvMode={tvMode}
           tvQuality={tvQuality}
+          onNearPad={(padIdx, airborne, orbs) => {
+            setNearLaunchPad(padIdx >= 0 && !airborne);
+            setIsAirborne(airborne);
+
+            // Detect when a launch session ends (landed) — add to bank
+            const prevAirborne = launchSessionRef.current > 0 && !airborne;
+            if (prevAirborne && orbs > launchSessionRef.current) {
+              const earned = orbs - launchSessionRef.current;
+              const newBank = addToOrbBank(earned);
+              updateZoneBest("launch", orbs);
+              setOrbBank(newBank);
+            }
+            // Track per-session starts
+            if (airborne && !isAirborne) launchSessionRef.current = orbs;
+            if (!airborne) launchSessionRef.current = 0;
+
+            setOrbCount(orbs);
+            setLaunchSessionOrbs(orbs);
+          }}
         />
       </div>
 
@@ -1080,8 +1106,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onFerrisRideChange={setFerrisRiding}
         followSystem={followSystem}
         username={user?.world_username || ""}
-        onShopOpen={setShopOpen}
-        nearShop={nearShop}
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
@@ -1133,9 +1157,63 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           </div>
         </>
       )}
-      
-      {!loading && (
-        <VibeShopPanel open={shopOpen} onClose={() => setShopOpen(false)} isMobile={isMobile} />
+
+      {/* ── Vibe Launch Zone HUD ── */}
+      {!loading && (nearLaunchPad || isAirborne) && (
+        <div
+          className="fixed z-[60] flex flex-col items-center gap-2 pointer-events-none"
+          style={{
+            bottom: isMobile && mobileLayout
+              ? mobileLayout.launchHudBottom
+              : isMobile ? 248 : 96,
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+        >
+          {/* Session + bank row */}
+          <div className="flex items-center gap-2">
+            {orbCount > 0 && (
+              <div
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black pointer-events-none"
+                style={{ background: "rgba(0,229,255,0.12)", border: "1px solid rgba(0,229,255,0.3)", color: "#00E5FF", backdropFilter: "blur(8px)" }}
+              >
+                ✦ {orbCount} this run
+              </div>
+            )}
+            <div
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black pointer-events-none"
+              style={{ background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.3)", color: "#FFD700", backdropFilter: "blur(8px)" }}
+            >
+              🪙 {orbBank} Bank
+            </div>
+          </div>
+
+          {/* Launch button */}
+          {nearLaunchPad && !isAirborne && (
+            <button
+              onClick={() => { try { navigator?.vibrate?.(30); } catch {} launchRef.current?.(); }}
+              className="pointer-events-auto px-7 py-3 rounded-full font-black text-sm tracking-widest transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#00B8D4,#9B4FFF)",
+                color: "#fff",
+                boxShadow: "0 0 24px rgba(0,184,212,0.45), 0 2px 12px rgba(0,0,0,0.4)",
+                letterSpacing: "0.18em",
+                fontSize: "13px",
+              }}
+            >
+              🚀 LAUNCH
+            </button>
+          )}
+
+          {isAirborne && (
+            <div
+              className="px-5 py-1.5 rounded-full font-black text-[11px] tracking-widest pointer-events-none"
+              style={{ background: "rgba(155,126,255,0.18)", border: "1px solid rgba(155,126,255,0.35)", color: "#c4aaff", backdropFilter: "blur(8px)" }}
+            >
+              ⚡ AIRBORNE
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── Crystal Zone Interaction ── */}
@@ -1188,6 +1266,19 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         user={user}
         onStartRide={handleHbStart}
         onEndRide={handleHbEnd}
+      />
+
+
+      {/* ── Vibe Orb Reward System ── */}
+      <OrbRewardSystem orbCount={orbCount} isMobile={isMobile} user={user} />
+
+      {/* ── Orb Leaderboard — shown near Vibe Launch Zone ── */}
+      <OrbLeaderboard
+        visible={!loading && (nearLaunchPad || isAirborne || (Math.abs(playerPos.x) < 12 && playerPos.z > 5 && playerPos.z < 20))}
+        isMobile={isMobile}
+        currentUserId={user?.id}
+        currentUserOrbs={orbBank}
+        currentUsername={user?.full_name || "You"}
       />
 
       {/* ── Avatar Customizer Panel (color + style) ────────────────────── */}

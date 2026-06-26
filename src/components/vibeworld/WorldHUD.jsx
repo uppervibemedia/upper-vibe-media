@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, X, UserCircle,
   Compass, Sparkles, Library, SkipForward,
-  GraduationCap, Bell, Volume2, VolumeX, Users, Waves, ShoppingBag,
+  GraduationCap, Bell, Volume2, VolumeX, Users, Waves,
 } from "lucide-react";
 // Note: X is kept for potential future use in this file
 
@@ -36,7 +36,6 @@ import MusicLibraryPanel from "./panels/MusicLibraryPanel";
 import VibeLoungeHub from "./panels/VibeLoungeHub";
 import VisualizerPanel from "./panels/VisualizerPanel";
 import VibeCheckPanel from "./panels/VibeCheckPanel";
-import VibeShopPanel from "./panels/VibeShopPanel";
 
 import AcademyPanel from "./panels/AcademyPanel";
 // ShopPanel temporarily disabled
@@ -62,7 +61,6 @@ const ZONE_ICONS = {
   zenbeach: Sparkles,
   academy: GraduationCap,
   ferriswheel: Sparkles,
-  shop: ShoppingBag,
 };
 
 export default function WorldHUD({
@@ -117,7 +115,6 @@ export default function WorldHUD({
   nearJukebox = false,
   djTrack = null,
   onFerrisRideChange,
-  onShopOpen, nearShop,
   // Follow system
   followSystem,
 }) {
@@ -198,7 +195,6 @@ export default function WorldHUD({
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const [dmInboxOpen, setDmInboxOpen] = useState(false);
-  const [shopOpen, setShopOpen] = useState(false);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
 
@@ -526,34 +522,6 @@ export default function WorldHUD({
 
       {/* ── Zone-specific action buttons — hidden entirely when watching stage video ── */}
       <AnimatePresence>
-        {zone?.id === "shop" && (
-          <motion.div
-            key="shop-actions"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
-            style={actionStyle()}
-          >
-            <button
-              onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); onShopOpen(true); onMobileModalChange?.(true); }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg,#7C3AED,#A078FF)",
-                color: "#fff",
-                boxShadow: "0 0 20px rgba(160,120,255,0.4)",
-                minHeight: "44px",
-                touchAction: "manipulation",
-                pointerEvents: "auto",
-              }}
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              Enter Upper Vibe Shop
-            </button>
-          </motion.div>
-        )}
-
         {zone?.id === "plaza" && !stageWatching && (
           <motion.div
             key="plaza-actions"
@@ -1130,12 +1098,6 @@ export default function WorldHUD({
       </AnimatePresence>
 
       {/* Direct chat panels are rendered in UpperVibeCity directly */}
-
-      <VibeShopPanel
-        open={shopOpen}
-        onClose={() => setShopOpen(false)}
-        isMobile={isMobile}
-      />
     </>
   );
 }
