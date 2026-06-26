@@ -1,0 +1,61 @@
+{
+  "name": "UserWallet",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Authenticated user ID"
+    },
+    "vibe_coin_balance": {
+      "type": "number",
+      "default": 0,
+      "description": "Current spendable balance"
+    },
+    "lifetime_vibe_coins_earned": {
+      "type": "number",
+      "default": 0,
+      "description": "Total ever earned (never decreases)"
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "ISO timestamp of last update"
+    }
+  },
+  "required": [
+    "user_id"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

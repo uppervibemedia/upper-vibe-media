@@ -10,7 +10,6 @@
 
 import * as THREE from "three";
 import createCoin from "../VibeCoin";
-import { addVibeCoins } from "@/lib/vibeCoinBank";
 
 // ── Pads (mirrors city-engine/cityConfig LAUNCH_PADS coords) ───
 const PADS = [
@@ -66,23 +65,23 @@ function ensureFlightState(st) {
 }
 
 function collectCoins(st) {
-  let count = 0;
   const mb = MOVEMENT_BRIDGE;
   const now = performance.now();
+  if (!st._collectedCoinIds) st._collectedCoinIds = [];
   st.coins.forEach((c) => {
     if (c.userData.collected) return;
     if (!c.visible) return;
     const dx = mb.px - c.position.x;
     const dy = mb.py - c.position.y;
     const dz = mb.pz - c.position.z;
-    if (dx * dx + dy * dy + dz * dz < 1.44) { // 1.2u radius — tighter for smaller coins
+    if (dx * dx + dy * dy + dz * dz < 1.44) {
       c.userData.collected = true;
       c.visible = false;
       c.userData._respawnAt = now + RESPAWN_DELAY_MS;
-      count++;
+      // Track the coin's unique ID for dedup in wallet
+      if (c.userData.coinId) st._collectedCoinIds.push(c.userData.coinId);
     }
   });
-  return count;
 }
 
 function mkPulse() {
@@ -163,8 +162,6 @@ export function tickLaunchRide(scene, t) {
 
   const mb = MOVEMENT_BRIDGE;
   const dt = Math.min(mb.dt_, 0.05);
-  let collected = 0;
-
   window.__lr_flying = st.flightActive > 0;
 
   if (!mb.hbRiding && st.flightActive > 0) {
@@ -201,7 +198,7 @@ export function tickLaunchRide(scene, t) {
   }
 
   if (st.flightActive > 0) {
-    collected = collectCoins(st);
+    collectCoins(st);
   }
 
   if (st.flightActive > 0 && !mb.hbRiding) {
@@ -226,16 +223,13 @@ export function tickLaunchRide(scene, t) {
     st.pulse.position.set(mb.px, 0.01, mb.pz);
     st.pulse.material.opacity = 0.8;
     st.pulse.scale.set(1, 1, 1);
-    if (collected > 0) {
-      const { total, session } = addVibeCoins(collected);
-      window.__lrCoinsCollected = collected;
-      window.__lrTotalCoins = total;
-      window.__lrSessionCoins = session;
-      // Fire event so HUD can react immediately without polling delay
-      window.dispatchEvent(new CustomEvent("vibeCoinsCollected", { detail: { count: collected, total, session } }));
-    } else {
-      window.__lrCoinsCollected = 0;
+    if (st._collectedCoinIds && st._collectedCoinIds.length > 0) {
+      window.dispatchEvent(new CustomEvent("vibeCoinsCollected", {
+        detail: { coinIds: [...st._collectedCoinIds], source: "sky_coin" }
+      }));
+      st._collectedCoinIds = [];
     }
+    window.__lrCoinsCollected = 0;
     st.justLanded = false;
     st._pulseTimer = 0.8;
     window.__lrJustLanded = true;
@@ -248,7 +242,6 @@ export function tickLaunchRide(scene, t) {
     st.pulse.material.opacity = (st._pulseTimer / 0.8) * 0.8;
   }
 
-  return collected;
 }
 
 export function animateLaunchCoins(scene, t) {

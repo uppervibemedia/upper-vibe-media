@@ -1,0 +1,83 @@
+{
+  "name": "UserInventory",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "item_id": {
+      "type": "string",
+      "description": "Unique item identifier from inventoryConfig"
+    },
+    "item_name": {
+      "type": "string"
+    },
+    "item_category": {
+      "type": "string",
+      "enum": [
+        "avatar_glow",
+        "aura",
+        "nameplate",
+        "hoverboard",
+        "badge",
+        "clothing",
+        "emote"
+      ]
+    },
+    "equipped": {
+      "type": "boolean",
+      "default": false
+    },
+    "acquired_at": {
+      "type": "string",
+      "description": "ISO timestamp"
+    }
+  },
+  "required": [
+    "user_id",
+    "item_id",
+    "item_name",
+    "item_category"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

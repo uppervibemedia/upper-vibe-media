@@ -16,6 +16,7 @@ export default function VibeCoinHUD({
   isMobile = false,
   mobileLayout = null,
   stageFullScreen = false,
+  onOpenInventory = null,
 }) {
   const [popups, setPopups] = useState([]);
   const popupIdRef = useRef(0);
@@ -83,24 +84,50 @@ export default function VibeCoinHUD({
         )}
       </AnimatePresence>
 
-      {/* Bank total — always visible */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          padding: "3px 9px",
-          borderRadius: "999px",
-          background: "rgba(255,215,0,0.09)",
-          border: "1px solid rgba(255,215,0,0.20)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-        }}
-      >
-        <span style={{ fontSize: "9px", color: "#FFD700", lineHeight: 1 }}>✦</span>
-        <span style={{ fontSize: "10px", fontWeight: 900, color: "#FFD700", letterSpacing: "0.02em", lineHeight: 1 }}>
-          {totalCoins} bank
-        </span>
+      {/* Bank total + Inventory button */}
+      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            padding: "3px 9px",
+            borderRadius: "999px",
+            background: "rgba(255,215,0,0.09)",
+            border: "1px solid rgba(255,215,0,0.20)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+          }}
+        >
+          <span style={{ fontSize: "9px", color: "#FFD700", lineHeight: 1 }}>✦</span>
+          <span style={{ fontSize: "10px", fontWeight: 900, color: "#FFD700", letterSpacing: "0.02em", lineHeight: 1 }}>
+            {totalCoins} bank
+          </span>
+        </div>
+        {onOpenInventory && (
+          <button
+            onClick={onOpenInventory}
+            style={{
+              padding: "3px 8px",
+              borderRadius: "999px",
+              background: "rgba(155,126,255,0.12)",
+              border: "1px solid rgba(155,126,255,0.22)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              color: "#c4aaff",
+              fontSize: "9px",
+              fontWeight: 800,
+              letterSpacing: "0.04em",
+              cursor: "pointer",
+              pointerEvents: "auto",
+              touchAction: "manipulation",
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+            }}
+          >
+            📦 Inv
+          </button>
+        )}
       </div>
 
       {/* +N collection popups — float upward */}

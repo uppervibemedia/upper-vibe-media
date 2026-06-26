@@ -27,8 +27,11 @@ import useWorldDJStream from "@/hooks/useWorldDJStream";
 import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
 import { CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_INTERACT_RADIUS } from "@/components/vibeworld/CrystalZone";
-import { getVibeCoinBank, getSessionCoins, syncVibeCoinsToAccount } from "@/lib/vibeCoinBank";
+import { getSessionCoins, addSessionCoins, resetSessionCoins } from "@/lib/vibeCoinBank";
+import { loadWallet, earnCoins, getWalletBalance, isCoinAlreadyCollected } from "@/components/vibeworld/wallet/vibeCoinWallet";
+import { grantStarterItems } from "@/components/vibeworld/inventory/inventoryService";
 import VibeCoinHUD from "@/components/vibeworld/VibeCoinHUD";
+import InventoryPanel from "@/components/vibeworld/inventory/InventoryPanel";
 import EmojiEmote from "@/components/vibeworld/EmojiEmote";
 import useFollowSystem from "@/hooks/useFollowSystem";
 import useBlockSystem from "@/hooks/useBlockSystem";
@@ -96,8 +99,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const crystalSceneRef = useRef(null);
   const rendererRef = useRef(null);
   const [sessionCoins, setSessionCoins] = useState(() => getSessionCoins());
-  const [totalCoins, setTotalCoins] = useState(() => getVibeCoinBank());
+  const [totalCoins, setTotalCoins] = useState(() => getWalletBalance());
   const [lastCollectCount, setLastCollectCount] = useState(0);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
 
   const jukeboxFadeRef = useRef(null);        // kept for cleanup compat
 
@@ -261,46 +265,32 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
 
-  // ── Vibe Coin HUD — event-driven updates + 2s sync poll ──
+  // ── Wallet: load from server on entry, grant starter items ──
   useEffect(() => {
-    const onCollect = (e) => {
-      const { count, total, session } = e.detail || {};
-      if (count > 0) {
-        setLastCollectCount(count);
-        setSessionCoins(session ?? getSessionCoins());
-        setTotalCoins(total ?? getVibeCoinBank());
+    if (!user?.id) return;
+    resetSessionCoins();
+    setSessionCoins(0);
+    loadWallet(user.id).then(({ balance }) => {
+      setTotalCoins(balance);
+    });
+    grantStarterItems(user.id).catch(() => {});
+  }, [user?.id]);
+
+  // ── Vibe Coin HUD — event-driven coin collection via new wallet ──
+  useEffect(() => {
+    const onCollect = async (e) => {
+      const { coinIds, source } = e.detail || {};
+      if (!coinIds?.length) return;
+      const { balance, lifetime, added } = await earnCoins(user?.id || null, coinIds, source || "sky_coin");
+      if (added > 0) {
+        setLastCollectCount(added);
+        setSessionCoins((prev) => prev + added);
+        setTotalCoins(balance);
         window.__lrCoinsCollected = 0;
-        if (user) syncVibeCoinsToAccount(base44, false).catch(() => {});
       }
     };
     window.addEventListener("vibeCoinsCollected", onCollect);
-    const poll = setInterval(() => {
-      setSessionCoins(getSessionCoins());
-      setTotalCoins(getVibeCoinBank());
-    }, 2000);
-    return () => {
-      window.removeEventListener("vibeCoinsCollected", onCollect);
-      clearInterval(poll);
-    };
-  }, [user]);
-
-  // Sync coin bank to/from account
-  useEffect(() => {
-    if (!user) return;
-
-    // On entry: if server has a higher total than localStorage, restore it
-    const localTotal = getVibeCoinBank();
-    const serverTotal = user.hb_total_orbs ?? 0;
-    if (serverTotal > localTotal) {
-      try { localStorage.setItem("uvc_orb_bank_total", String(serverTotal)); } catch {}
-      setTotalCoins(serverTotal);
-    }
-
-    // On exit: push local total to server
-    syncVibeCoinsToAccount(base44, false).catch(() => {});
-    const onUnload = () => syncVibeCoinsToAccount(base44, true);
-    window.addEventListener("beforeunload", onUnload);
-    return () => window.removeEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("vibeCoinsCollected", onCollect);
   }, [user?.id]);
 
   // ── Avatar config derived from user data ──────────────────────────────
@@ -908,6 +898,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           isMobile={isMobile}
           mobileLayout={mobileLayout}
           stageFullScreen={stageFullScreen}
+          onOpenInventory={() => setInventoryOpen(true)}
         />
         <CityCanvas
           spawnOverride={returnState.current ? { x: returnState.current.x, z: returnState.current.z, rot: returnState.current.rot } : null}
@@ -1402,6 +1393,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           />
         )}
       </AnimatePresence>
+
+      {/* ── Inventory Panel ─────────────────────────────────── */}
+      <InventoryPanel
+        open={inventoryOpen}
+        onClose={() => setInventoryOpen(false)}
+        user={user}
+        isMobile={isMobile}
+      />
 
       {/* Mobile debug overlay — only visible with ?debug=mobile in URL */}
       <MobileDebugOverlay

@@ -1,0 +1,75 @@
+{
+  "name": "VibeCoinTransaction",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Positive = earn, negative = spend"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "earn",
+        "spend",
+        "refund",
+        "adjustment"
+      ],
+      "default": "earn"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "sky_coin",
+        "daily_reward",
+        "shop_purchase",
+        "admin_adjustment",
+        "hoverboard_orb"
+      ],
+      "default": "sky_coin"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "Unique coin ID to prevent duplicate recording"
+    },
+    "note": {
+      "type": "string",
+      "description": "Optional human-readable note"
+    }
+  },
+  "required": [
+    "user_id",
+    "amount",
+    "type",
+    "source"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
