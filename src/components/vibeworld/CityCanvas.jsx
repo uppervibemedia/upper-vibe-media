@@ -1162,12 +1162,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   // Use spawn override if provided (restores position when returning from SongPage)
   const effectiveSpawn = spawnOverride
     ? [spawnOverride.x, SPAWN[1], spawnOverride.z, spawnOverride.rot || 0]
-    : [...SPAWN, 0];
+    : [SPAWN[0], SPAWN[1], SPAWN[2], Math.PI]; // avatar faces stage (-Z)
   const avatarPosRef = useRef(effectiveSpawn); // [x, y, z, rotY]
   const stageCanvasRef = useRef(null);
   stageCanvasRef.current = stageCanvas;
   const velocityRef = useRef({ x: 0, z: 0 });
-  const avatarRotRef = useRef(spawnOverride?.rot || 0);    // avatar body Y rotation (world space)
+  const avatarRotRef = useRef(spawnOverride?.rot || Math.PI); // avatar faces stage (-Z)
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0, button: 0 });
   // Camera: yaw = angle of camera around avatar (0 = directly behind)
@@ -1261,8 +1261,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const spawnLS = isMob && window.innerWidth > window.innerHeight;
       camera.fov = spawnLS ? FOV_LANDSCAPE : FOV_PORTRAIT;
       camera.updateProjectionMatrix();
-      camera.position.set(spX, spY + (spawnLS ? CAM_HEIGHT_LS : CAM_HEIGHT), spZ + (spawnLS ? CAM_DIST_LS : CAM_DIST));
-      camera.lookAt(spX, spY + (spawnLS ? CAM_LOOK_Y_LS : CAM_LOOK_Y), spZ);
+      camera.position.set(spX, spY + (spawnLS ? CAM_HEIGHT_LS : 5.0), spZ + (spawnLS ? CAM_DIST_LS : CAM_DIST));
+      camera.lookAt(spX, spY - 0.3, spZ); // look downward, framing skyline + plaza + avatar
 
       buildPark(scene);
 
