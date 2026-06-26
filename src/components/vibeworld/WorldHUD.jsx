@@ -276,9 +276,12 @@ export default function WorldHUD({
             <span className="font-black tracking-wider text-white/50"
               style={{ fontSize: isMobile ? "8px" : "11px" }}
             >
-              {zone.name}
+              {zone.id === 'shop' ? 'UPPER VIBE SHOP' : zone.name}
             </span>
           </div>
+          {zone.id === 'shop' && (
+            <span className="text-[9px] text-white/40 -mt-1">Shop</span>
+          )}
         </motion.div>
       )}
 
@@ -935,7 +938,7 @@ export default function WorldHUD({
               }}
             >
               <ShoppingBag className="w-3.5 h-3.5" />
-              Open Shop
+              Enter Shop
             </button>
           </motion.div>
         )}

@@ -51,10 +51,10 @@ function getSignTex() {
   ctx.textBaseline = "middle";
   ctx.fillText("UPPER VIBE SHOP", 200, 46);
 
-  // Upper Vibe sub-brand (smaller, below)
-  ctx.fillStyle = "#00D4F0";
+  // Shop sub-brand (smaller, below)
+  ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
   ctx.font = "600 16px 'Syne','Inter',sans-serif";
-  ctx.fillText("Upper Vibe", 200, 80);
+  ctx.fillText("Shop", 200, 80);
 
   _signTex = new CanvasTexture(c);
   _signTex.minFilter = LinearFilter;

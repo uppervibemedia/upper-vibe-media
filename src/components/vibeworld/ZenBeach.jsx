@@ -197,32 +197,7 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   scene.add(sunsetLight);
   scene.userData.zenSunsetLight = sunsetLight;
 
-  // Sunset gradient sprite — warm horizontal glow plane
-  const glowCanvas = document.createElement("canvas");
-  glowCanvas.width = 256; glowCanvas.height = 256;
-  const gCtx = glowCanvas.getContext("2d");
-  const glowGrad = gCtx.createRadialGradient(128, 180, 20, 128, 128, 180);
-  glowGrad.addColorStop(0, "rgba(251,146,60,0.35)");
-  glowGrad.addColorStop(0.35, "rgba(236,72,153,0.15)");
-  glowGrad.addColorStop(0.7, "rgba(168,85,247,0.05)");
-  glowGrad.addColorStop(1, "rgba(0,0,0,0)");
-  gCtx.fillStyle = glowGrad;
-  gCtx.fillRect(0, 0, 256, 256);
-
-  const glowTex = new CanvasTexture(glowCanvas);
-  glowTex.minFilter = LinearFilter;
-  glowTex.colorSpace = THREE.SRGBColorSpace;
-
-  const sunsetGlow = new Sprite(new SpriteMaterial({
-    map: glowTex, transparent: true, opacity: 0.5, depthWrite: false, depthTest: false,
-    blending: AdditiveBlending,
-  }));
-  sunsetGlow.scale.set(14, 8, 1);
-  sunsetGlow.position.set(ZEN_X, 3.5, ZEN_Z + 2);
-  sunsetGlow.renderOrder = 0;
-  sunsetGlow.name = "zenSunsetGlow";
-  scene.add(sunsetGlow);
-  scene.userData.zenSunsetGlow = sunsetGlow;
+  // Sunset glow sprite removed per user request.
 
   // ── GENTLE FOG PARTICLES — desktop only ────────────────
   const fogCount = isMob ? 0 : 40; // disable fog particles on mobile
