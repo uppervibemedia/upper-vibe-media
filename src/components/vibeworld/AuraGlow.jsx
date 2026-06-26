@@ -1,10 +1,9 @@
 /**
- * AuraGlow — 3D avatar aura effect for Upper Vibe City.
- * Creates a vertical energy field that surrounds the avatar's entire body
- * (torso, head, legs), not just a floor ring.
+ * AuraGlow — Soft magical energy-field aura for Upper Vibe City.
+ * Designed to look like a floating crystal-charge energy mist around
+ * the avatar, NOT a tube/cylinder/shield. Soft body glows + wisps only.
  *
- * Controlled via CustomEvents from inventory equip/unequip.
- * Attached to the avatar root Group so it moves with the character.
+ * Attached to the avatar controller Group so it moves with the character.
  */
 import * as THREE from "three";
 
@@ -14,130 +13,126 @@ const AURA_COLORS = {
   shop_glow_starter: "#00AADD",
   shop_glow_purple:  "#9B4FFF",
   shop_glow_gold:    "#FFD700",
-   // fallback
   default:           "#00AADD",
 };
 
-/** Bind aura to an avatar controller Group. Meshes are recreated each call. */
+/**
+ * Generate a soft circular gradient texture for sprite-based glow.
+ * Softer falloff = more "mist/energy field" and less "hard circle".
+ */
+function makeGlowTexture(color, size = 128) {
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext("2d");
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, color);                     // bright center
+  g.addColorStop(0.12, color.replace(")", ",0.8)"));
+  g.addColorStop(0.30, color.replace(")", ",0.12)"));
+  g.addColorStop(0.50, color.replace(")", ",0.03)"));
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+let _texCache = {};
+function typedHex(itemId) {
+  return AURA_COLORS[itemId] || AURA_COLORS.default;
+}
+function glowTex(hex) {
+  if (!_texCache[hex]) _texCache[hex] = makeGlowTexture(hex);
+  return _texCache[hex];
+}
+
+/** Build the soft aura group for an avatar. Recreated each bind. */
 export function bindAura(controller, itemId) {
-  // Remove existing aura first
   unbindAura(controller);
-
-  const hex = AURA_COLORS[itemId] || AURA_COLORS.default;
+  const hex = typedHex(itemId);
   const color = new THREE.Color(hex);
+  const tex = glowTex(hex);
 
-  // ── VERTICAL FIELD GROUP ──────────────────────────────────
-  // All meshes are children of this group so they move with the avatar.
-  const shroud = new THREE.Group();
-  shroud.name = "avatarAura";
+  const aura = new THREE.Group();
+  aura.name = "avatarAura";
 
-  // ── 1. SHROUD HALO / OVERHEAD GLOW ───────────────────────
-  // Floating ring above the avatar's head — like a crown/energy
-  const halo = new THREE.Mesh(
-    new THREE.TorusGeometry(0.55, 0.02, 12, 24),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22, depthWrite: false })
-  );
-  halo.rotation.x = Math.PI / 3; // tilted like an energy ring
-  halo.position.y = 1.9;
-  halo.renderOrder = 2;
-  shroud.add(halo);
-
-  // Small second ring inside halo
-  const haloInner = new THREE.Mesh(
-    new THREE.TorusGeometry(0.30, 0.015, 10, 20),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color("#FFFFFF"), transparent: true, opacity: 0.15, depthWrite: false })
-  );
-  haloInner.rotation.x = Math.PI / 3;
-  haloInner.position.set(0, 1.87, 0.05);
-  haloInner.renderOrder = 2;
-  shroud.add(haloInner);
-
-  // ── 2. FLOATING FIELD DISC — mid-body (chest level) ──────
-  // Silhouette-sized semi-transparent disc at avatar's torso height
-  // Gives the "body energy field" look rather than a ground floor ring
-  const bodyDisc = new THREE.Mesh(
-    new THREE.CircleGeometry(0.52, 20),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide })
-  );
-  bodyDisc.position.y = 0.85;
-  bodyDisc.renderOrder = 1;
-  shroud.add(bodyDisc);
-
-  // ── 3. ENERGY RIBS — vertical light pillars ──────────────
-  // Thin vertical planes arranged in a ring around the avatar.
-  // These create the "vertical enveloping energy field" effect.
-  const ribCount = 8;
-  const ribPositions = [];
-  for (let i = 0; i < ribCount; i++) {
-    const angle = (i / ribCount) * Math.PI * 2;
-    ribPositions.push({
-      x: Math.cos(angle) * 0.48,
-      z: Math.sin(angle) * 0.48,
-      phase: i * 1.23,
-    });
-  }
-
-  const ribMat = new THREE.MeshBasicMaterial({
-    color,
-    transparent: true,
-    opacity: 0.09,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  });
-  for (const rp of ribPositions) {
-    // Tall narrow plane running from feet to above head
-    const rib = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.09, 2.0),
-      ribMat.clone()
+  // ── 1. SOFT BODY GLOWS (sprite discs at key body points) ──
+  // Texture-based sprites = soft misty glow around the body, never hard edges.
+  // Stacked vertically to wrap: chest, waist, thighs, knees.
+  const bodyPositions = [
+    { y: 1.40, s: 1.2, o: 0.30 }, // shoulders / upper chest (largest)
+    { y: 0.95, s: 1.1, o: 0.28 }, // mid torso
+    { y: 0.55, s: 1.0, o: 0.22 }, // waist / hips
+    { y: 0.20, s: 0.9, o: 0.18 }, // upper legs / thighs
+  ];
+  for (const bp of bodyPositions) {
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: bp.o, color })
     );
-    rib.position.set(rp.x, 1.0, rp.z);
-    // Rotate plane to face outward from center, like a ring of pillars
-    rib.lookAt(0, 1.0, 0);
-    rib.renderOrder = 1;
-    rib.userData._phase = rp.phase;
-    shroud.add(rib);
+    sprite.position.set(0, bp.y, 0);
+    sprite.scale.set(bp.s, bp.s, 1);
+    sprite.renderOrder = 1;
+    aura.add(sprite);
   }
 
-  // ── 4. GRADIENT LEGACY: subtle softened floor glow (muted) ──
-  // Kept lightweight so the aura feels grounded without being the
-  // primary visual. Body disc + ribs do the heavy lifting now.
-  const floorGlow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.50, 20),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.06, depthWrite: false })
+  // ── 2. SOFT OVERHEAD GLOW ────────────────────────────────
+  // Instead of a hard torus ring — a soft sprite floating above
+  const headGlow = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.18, color })
   );
-  floorGlow.rotation.x = -Math.PI / 2;
-  floorGlow.position.y = 0.002;
-  shroud.add(floorGlow);
+  headGlow.position.set(0, 1.85, 0);
+  headGlow.scale.set(0.75, 0.75, 1);
+  headGlow.renderOrder = 1;
+  aura.add(headGlow);
 
-  // ── 5. PARTICLE SPARKLES — subtle floating specks ─────────
-  // Each glows and drifts upward for a gentle "energy field" effect
-  const particleCount = 28;
-  for (let i = 0; i < particleCount; i++) {
+  // ── 3. BASE FLOOR GLOW (soft, muted) ────────────────────
+  const floorGlow = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.10, color })
+  );
+  floorGlow.position.set(0, 0.02, 0);
+  floorGlow.scale.set(0.9, 0.9, 1);
+  floorGlow.renderOrder = 1;
+  aura.add(floorGlow);
+
+  // ── 4. FLOATING ENERGY WISPS (particles) ─────────────────
+  // Small soft sprites that drift around the avatar body.
+  // These give the "magical energy field" / "mist" feel.
+  const wispCount = 15;
+  for (let i = 0; i < wispCount; i++) {
     const theta = Math.random() * Math.PI * 2;
-    const baseY = 0.4 + Math.random() * 1.6;
-    const radius = 0.38 + Math.random() * 0.18;
-    const speck = new THREE.Mesh(
-      new THREE.SphereGeometry(0.018, 4, 4),
-      new THREE.MeshBasicMaterial({
-        color,
+    const radius = 0.55 + Math.random() * 0.35;
+    const wisp = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: tex,
         transparent: true,
-        opacity: 0.08 + Math.random() * 0.15,
         depthWrite: false,
+        opacity: 0.08 + Math.random() * 0.12,
+        color,
       })
     );
-    speck.position.set(
+    wisp.position.set(
       Math.cos(theta) * radius,
-      baseY,
+      0.35 + Math.random() * 1.5,
       Math.sin(theta) * radius,
     );
-    speck.userData._yBase = baseY;
-    speck.userData._phase = Math.random() * 10;
-    speck.userData._isAuraParticle = true;
-    shroud.add(speck);
+    const s = 0.13 + Math.random() * 0.18;
+    wisp.scale.set(s, s, 1);
+    wisp.renderOrder = 1;
+    wisp.userData._yBase = wisp.position.y;
+    wisp.userData._phase = Math.random() * 10;
+    wisp.userData._orbitalAngle = theta;
+    wisp.userData._orbitRadius = radius;
+    wisp.userData._orbitDir = Math.random() > 0.5 ? 1 : -1;
+    wisp.userData._driftSpeed = 0.15 + Math.random() * 0.35;
+    wisp.userData._isAuraParticle = true;
+    aura.add(wisp);
   }
 
-  controller.add(shroud);
-  return shroud;
+  controller.add(aura);
+  return aura;
 }
 
 export function unbindAura(controller) {
@@ -148,69 +143,44 @@ export function unbindAura(controller) {
       if (child.material) child.material.dispose();
     });
     controller.remove(existing);
+    _texCache = {};
   }
 }
 
-/** Called each frame to animate aura rings/particles */
+/** Called each frame — pulse all glows + drift wisps */
 export function animateAura(avatarEntry, t) {
   const controller = avatarEntry?.root;
   const aura = controller?.getObjectByName("avatarAura");
-  if (!aura) return;
+  if (!aura?.children?.length) return;
 
-  const pulse = Math.sin(t * 2.2) * 0.5 + 0.5;
-  const slow = Math.sin(t * 0.9) * 0.5 + 0.5;
+  const pulse = Math.sin(t * 2.5) * 0.5 + 0.5;
+  const slow = Math.sin(t * 0.7) * 0.5 + 0.5;
 
-  // ── Halo pulse ──────────────────────────────────────────
-  const halo = aura.children[0];
-  if (halo?.isMesh && halo.material) {
-    halo.material.opacity = 0.18 + pulse * 0.14;
-    halo.scale.setScalar(1 + slow * 0.035);
-    halo.rotation.z = Math.sin(t * 0.15) * 0.04;
-  }
-
-  // ── Inner halo ──────────────────────────────────────────
-  const haloInner = aura.children[1];
-  if (haloInner?.isMesh && haloInner.material) {
-    haloInner.material.opacity = 0.10 + pulse * 0.12;
-    haloInner.scale.setScalar(1 + slow * 0.03);
-  }
-
-  // ── Energy ribs pulse ───────────────────────────────────
-  // Children 2-3 are body disc + floor glow, ribs start at child 4
-  for (let i = 4; i < aura.children.length; i++) {
+  // ── Body glows pulse ────────────────────────────────────
+  // First N sprites = body stack + head + floor (not wisps)
+  for (let i = 0; i < aura.children.length; i++) {
     const child = aura.children[i];
-    if (child.isMesh && child.material && child.material.opacity !== undefined) {
-      const phase = child.userData?._phase || i;
-      const flicker = Math.sin(t * 3.5 + phase) * 0.5 + 0.5;
-      child.material.opacity = 0.06 + flicker * 0.12;
-      child.material.color.multiplyScalar(0.95 + flicker * 0.1);
-      child.material.color.set(aura.children[0]?.material?.color || child.material.color);
-    }
+    if (!child.isSprite || child.userData._isAuraParticle) continue;
+    // Alternating phase between upper body (faster) and lower (slower)
+    const phase = i < 3 ? 0 : 0.8;
+    const rate = i < 3 ? 2.5 : 1.5;
+    child.material.opacity = (i === 0 ? 0.24 : i === aura.children.length - 2 ? 0.08 : 0.16) + Math.sin(t * rate + phase) * 0.08;
+    const sBase = [1.2, 1.1, 1.0, 0.9, 0.75, 0.9][i] || 0.9;
+    child.scale.setScalar(sBase * (1 + slow * 0.035));
+    // Soften color with slight white blend for diffused look
+    const baseColor = child.material.color.clone();
+    child.material.color = baseColor;
   }
 
-  // ── Body disc + floor glow ──────────────────────────────
-  // Child 2 = body disc, child 3 = floor glow
-  const bodyDisc = aura.children[2];
-  if (bodyDisc?.isMesh && bodyDisc.material) {
-    bodyDisc.material.opacity = 0.05 + pulse * 0.06;
-    bodyDisc.material.color.set(aura.children[0]?.material?.color || bodyDisc.material.color);
-  }
-
-  const floorGlow =
-    aura.children.length > 3 && !aura.children[3]?.userData._isAuraParticle
-      ? aura.children[3]
-      : null;
-  if (floorGlow?.isMesh && floorGlow.material) {
-    floorGlow.material.opacity = 0.04 + pulse * 0.05;
-    floorGlow.scale.setScalar(1 + slow * 0.04);
-  }
-
-  // ── Particles float up/down ─────────────────────────────
-  for (const child of aura.children) {
-    if (child.userData?._isAuraParticle) {
-      const ph = child.userData._phase;
-      child.position.y = child.userData._yBase + Math.sin(t * 0.7 + ph) * 0.5;
-      child.material.opacity = 0.10 + Math.sin(t * 1.1 + ph) * 0.12;
-    }
+  // ── Wisps drift around the body ─────────────────────────
+  for (const wisp of aura.children) {
+    if (!wisp.userData?._isAuraParticle) continue;
+    const basey = wisp.userData._yBase;
+    const phase = wisp.userData._phase;
+    const angle = wisp.userData._orbitalAngle + t * wisp.userData._orbitDir * 0.2;
+    wisp.position.x = Math.cos(angle) * wisp.userData._orbitRadius;
+    wisp.position.z = Math.sin(angle) * wisp.userData._orbitRadius;
+    wisp.position.y = basey + Math.sin(t * wisp.userData._driftSpeed + phase) * 0.35;
+    wisp.material.opacity = 0.10 + Math.sin(t * 1.4 + phase) * 0.12;
   }
 }
