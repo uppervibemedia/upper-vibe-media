@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import DMInbox from "./DMInbox";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Music4, Tv2, MessageCircle, X, UserCircle,
+  Music4, Tv2, MessageCircle, X, UserCircle, ShoppingBag,
   Compass, Sparkles, Library, SkipForward,
   GraduationCap, Bell, Volume2, VolumeX, Users, Waves,
 } from "lucide-react";
@@ -38,8 +38,7 @@ import VisualizerPanel from "./panels/VisualizerPanel";
 import VibeCheckPanel from "./panels/VibeCheckPanel";
 
 import AcademyPanel from "./panels/AcademyPanel";
-// ShopPanel temporarily disabled
-// import ShopPanel from "./panels/ShopPanel";
+import ShopPanel from "./panels/ShopPanel";
 import FerrisWheelPanel from "./panels/FerrisWheelPanel";
 import ZenBeachPanel from "./panels/ZenBeachPanel";
 import EmotePanel from "./panels/EmotePanel";
@@ -62,6 +61,7 @@ const ZONE_ICONS = {
   zenbeach: Sparkles,
   academy: GraduationCap,
   ferriswheel: Sparkles,
+  shop: Sparkles,
 };
 
 export default function WorldHUD({
@@ -190,6 +190,7 @@ export default function WorldHUD({
   const [isRiding, setIsRiding] = useState(false);
   const [zenBeachOpen, setZenBeachOpen] = useState(false);
   const [emotePanelOpen, setEmotePanelOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
 
   const [jukeboxOpen, setJukeboxOpen] = useState(false);
   const [djSongPageOpen, setDjSongPageOpen] = useState(false);
@@ -911,6 +912,34 @@ export default function WorldHUD({
           </motion.div>
         )}
 
+        {zone?.id === "shop" && !shopOpen && (
+          <motion.div
+            key="shop-actions"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4"
+            style={actionStyle()}
+          >
+            <button
+              onTouchStart={(e) => e.stopPropagation()}
+              onClick={() => { hapticTap(); setShopOpen(true); onMobileModalChange?.(true); }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg,#FFD700,#FFC060)",
+                color: "#0a0420",
+                boxShadow: "0 0 20px rgba(255,196,96,0.4)",
+                minHeight: "44px",
+                touchAction: "manipulation",
+                pointerEvents: "auto",
+              }}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              Open Shop
+            </button>
+          </motion.div>
+        )}
+
         {zone?.id === "ferriswheel" && !isRiding && (
           <motion.div
             key="ferriswheel-actions"
@@ -1020,6 +1049,15 @@ export default function WorldHUD({
         open={zenBeachOpen}
         onClose={() => { setZenBeachOpen(false); onMobileModalChange?.(false); }}
         isMobile={isMobile}
+      />
+
+      {/* ── Upper Vibe Shop Panel ────────────────────────────────── */}
+      <ShopPanel
+        open={shopOpen}
+        onClose={() => { setShopOpen(false); onMobileModalChange?.(false); }}
+        isMobile={isMobile}
+        currentUserId={currentUserId}
+        user={null}
       />
 
       {/* ── DJ Booth Panel ────────────────────────────────────────── */}

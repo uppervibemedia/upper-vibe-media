@@ -11,6 +11,8 @@ import { base44 } from "@/api/base44Client";
 
 const LOCAL_BALANCE_KEY = "uvc_wallet_balance";
 const LOCAL_LIFETIME_KEY = "uvc_wallet_lifetime";
+const STARTER_BALANCE = 300; // Vibe Coins granted on first wallet creation
+let _starterGranted = false; // only seed once per session
 
 // ── Local fallback ────────────────────────────────────────────
 export function getLocalBalance() {
@@ -53,9 +55,12 @@ export async function loadWallet(userId) {
       setLocalLifetime(serverLifetime);
       return { balance: serverBalance, lifetime: serverLifetime };
     } else {
-      // First time — create wallet
-      const localBal = getLocalBalance();
-      const localLife = getLocalLifetime();
+      // First time — seed wallet with starter balance if localStorage is empty
+      const localBal = (getLocalBalance() > 0 || _starterGranted) ? getLocalBalance() : STARTER_BALANCE;
+      const localLife = (getLocalLifetime() > 0 || _starterGranted) ? getLocalLifetime() : STARTER_BALANCE;
+      _starterGranted = true;
+      setLocalBalance(localBal);
+      setLocalLifetime(localLife);
       _walletRecord = await base44.entities.UserWallet.create({
         user_id: userId,
         vibe_coin_balance: localBal,
@@ -135,6 +140,43 @@ export async function earnCoins(userId, coinIds, source = "sky_coin") {
   })();
 
   return { balance: newBalance, lifetime: newLifetime, added: amount };
+}
+
+// ── Spend coins (shop purchases) ──────────────────────────────
+// Returns { success, balance, lifetime } — success = false if insufficient funds
+export async function spendCoins(userId, amount, source = "shop_purchase", sourceId = "") {
+  if (!userId) return { success: false, balance: getLocalBalance(), lifetime: getLocalLifetime() };
+
+  const currentBalance = getLocalBalance();
+  if (currentBalance < amount) return { success: false, balance: currentBalance, lifetime: getLocalLifetime() };
+
+  const newBalance = currentBalance - amount;
+  const lifetime = getLocalLifetime();
+  setLocalBalance(newBalance);
+
+  // Server update (best-effort)
+  (async () => {
+    try {
+      if (_walletRecord?.id) {
+        _walletRecord = await base44.entities.UserWallet.update(_walletRecord.id, {
+          vibe_coin_balance: newBalance,
+          updated_at: new Date().toISOString(),
+        });
+      }
+      await base44.entities.VibeCoinTransaction.create({
+        user_id: userId,
+        amount: -amount,
+        type: "spend",
+        source,
+        source_id: sourceId,
+        note: `Purchased ${sourceId}`,
+      });
+    } catch (e) {
+      console.warn("[VibeCoinWallet] spendCoins server sync failed:", e.message);
+    }
+  })();
+
+  return { success: true, balance: newBalance, lifetime };
 }
 
 // ── Get current wallet state ──────────────────────────────────

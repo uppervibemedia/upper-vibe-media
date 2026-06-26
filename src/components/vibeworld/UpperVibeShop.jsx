@@ -24,50 +24,37 @@ const {
   LinearFilter,
 } = THREE;
 
-// ── Shop sign canvas (UPPER VIBE SHOP + COMING SOON) ────────
+// ── Shop sign canvas (UPPER VIBE SHOP + Upper Vibe sub-brand) ──
 let _signTex = null;
 function getSignTex() {
   if (_signTex) return _signTex;
   const c = document.createElement("canvas");
-  c.width = 384;
-  c.height = 128;
+  c.width = 400;
+  c.height = 120;
   const ctx = c.getContext("2d");
 
   // Dark panel bg
   ctx.fillStyle = "#0b0420";
-  ctx.fillRect(0, 0, 384, 128);
+  ctx.fillRect(0, 0, 400, 120);
 
   // Gold glow behind text
-  const goldGlow = ctx.createRadialGradient(192, 50, 10, 192, 50, 140);
-  goldGlow.addColorStop(0, "rgba(255,215,0,0.12)");
+  const goldGlow = ctx.createRadialGradient(200, 42, 10, 200, 42, 140);
+  goldGlow.addColorStop(0, "rgba(255,215,0,0.14)");
   goldGlow.addColorStop(1, "rgba(124,58,237,0)");
   ctx.fillStyle = goldGlow;
-  ctx.fillRect(0, 0, 384, 128);
+  ctx.fillRect(0, 0, 400, 120);
 
-  // UPPER VIBE SHOP
+  // UPPER VIBE SHOP (main line)
   ctx.fillStyle = "#ffd700";
   ctx.font = "700 38px 'Syne','Inter',sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("UPPER VIBE SHOP", 192, 50);
+  ctx.fillText("UPPER VIBE SHOP", 200, 46);
 
-  // UVM sub-brand
+  // Upper Vibe sub-brand (smaller, below)
   ctx.fillStyle = "#00D4F0";
   ctx.font = "600 16px 'Syne','Inter',sans-serif";
-  ctx.fillText("UVM // UPPER VIBE MEDIA", 192, 80);
-
-  // Gold line
-  ctx.beginPath();
-  ctx.moveTo(80, 94);
-  ctx.lineTo(304, 94);
-  ctx.strokeStyle = "rgba(255,215,0,0.35)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // COMING SOON
-  ctx.fillStyle = "rgba(255,255,255,0.8)";
-  ctx.font = "600 22px 'Syne','Inter',sans-serif";
-  ctx.fillText("COMING SOON", 192, 112);
+  ctx.fillText("Upper Vibe", 200, 80);
 
   _signTex = new CanvasTexture(c);
   _signTex.minFilter = LinearFilter;
@@ -89,7 +76,7 @@ function getCsTex() {
   ctx.font = "500 16px 'Syne','Inter',sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("★ COMING SOON ★", 64, 60);
+  ctx.fillText("★ UPPER VIBE ★", 64, 60);
 
   // Faint grid overlay
   ctx.strokeStyle = "rgba(0,212,240,0.06)";

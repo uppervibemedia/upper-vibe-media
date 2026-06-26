@@ -312,6 +312,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return () => window.removeEventListener("vibeCoinsCollected", onCollect);
   }, [user?.id]);
 
+  // ── Sync wallet after shop purchases ──────────────────────────
+  useEffect(() => {
+    const onShop = (e) => {
+      const { balance } = e.detail || {};
+      if (balance != null) {
+        setTotalCoins(balance);
+      }
+    };
+    window.addEventListener("vibeCoinsShopPurchase", onShop);
+    return () => window.removeEventListener("vibeCoinsShopPurchase", onShop);
+  }, []);
+
   // ── Avatar config derived from user data ──────────────────────────────
   // avatarTypeKey: read from sessionStorage (set by AvatarSetup or WorldGate on entry)
   // Falls back to user.avatar_type from profile, then "test-mixamo-female" as new default

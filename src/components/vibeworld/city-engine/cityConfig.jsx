@@ -57,7 +57,7 @@ export const ZONE_COLORS = {
 // (UpperVibeShop.jsx) will be built as a separate component.
 export const SHOP = {
   pos: { x: 0, z: 10 },
-  isActive: false,
+  isActive: true,
   items: [
     { id: "cosmic_jacket",     label: "Cosmic Jacket",     price: 800,   category: "wearable" },
     { id: "neon_glasses",      label: "Neon Glasses",      price: 300,   category: "wearable" },
