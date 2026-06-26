@@ -17,6 +17,7 @@ import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, 
 import { createTestAvatar, updateTestAvatarAnimation, retintTestAvatar } from "./AvatarModelTest";
 import { createMixamoAvatar, updateMixamoAvatarAnimation, retintMixamoAvatar } from "./AvatarModelMixamo";
 import { createZoneSign } from "./ZoneSign";
+import { runConnections, tickAddOns, KEYS_CREATED } from "./CityAddOns";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -149,9 +150,6 @@ function mat(hexColor, opts = {}) {
 // ═══════════════════════════════════════════════════════════════
 // Alias — all sign creation delegated to ZoneSign.js
 const createNeonSign = createZoneSign;
-
-
-
 function buildPark(scene) {
   createCosmicSky(scene);
   createCitySkyline(scene);
@@ -1249,6 +1247,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       const scene = new Scene();
       sceneRef.current = scene;
+      // CityAddOns: create visual shop + launch pads (inert, no logic)
+      runConnections(scene, audioIntensityRef);
 
       const asp = rw / Math.max(rh, 1);
       // Reduce far clip on mobile — less geometry enters view when turning, fewer draw calls
@@ -2131,6 +2131,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         scene.userData._hidePlanets = lockedRef.current;
         scene.userData._ferrisRiding = ferrisRidingRef.current;
         animateCosmicSky(scene, camera, t, dt);
+        tickAddOns(scene, t);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
