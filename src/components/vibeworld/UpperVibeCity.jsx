@@ -26,7 +26,7 @@ import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel"
 import useWorldDJStream from "@/hooks/useWorldDJStream";
 import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
-import { CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, CRYSTAL_INTERACT_RADIUS } from "@/components/vibeworld/CrystalZone";
+// CrystalZone is now decorative-only — no imports needed
 import { getSessionCoins, addSessionCoins, resetSessionCoins } from "@/lib/vibeCoinBank";
 import { loadWallet, earnCoins, getWalletBalance, isCoinAlreadyCollected } from "@/components/vibeworld/wallet/vibeCoinWallet";
 import { grantStarterItems } from "@/components/vibeworld/inventory/inventoryService";
@@ -97,12 +97,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
   // Combined: CityCanvas hbRiding prop = Neon Surf board OR personal board
   const hbRiding = isPlayingNeonSurf; // personal board is NOT the same as Neon Surf riding
-  // Crystal Zone
-  const [nearCrystal, setNearCrystal] = useState(false);
-  const [crystalAura, setCrystalAura] = useState(false);
-  const [crystalMsg, setCrystalMsg] = useState(false);
-  const crystalAuraTimerRef = useRef(null);
-  const crystalSceneRef = useRef(null);
+  // Crystal Zone — decorative landmark only, no interaction state needed
   const rendererRef = useRef(null);
   const [sessionCoins, setSessionCoins] = useState(() => getSessionCoins());
   const [totalCoins, setTotalCoins] = useState(() => getWalletBalance());
@@ -546,29 +541,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     const hbdz = playerPos.z - HOVERBOARD_START.z;
     const dist = Math.sqrt(hbdx * hbdx + hbdz * hbdz);
     setNearHoverboard(dist < HOVERBOARD_INTERACT_RADIUS);
-    // Crystal Zone proximity
-    const cdx = playerPos.x - CRYSTAL_ZONE_X;
-    const cdz = playerPos.z - CRYSTAL_ZONE_Z;
-    setNearCrystal(Math.sqrt(cdx * cdx + cdz * cdz) < CRYSTAL_INTERACT_RADIUS);
   }, [playerPos.x, playerPos.z]);
-
-  const handleActivateCrystal = useCallback(() => {
-    if (crystalAura) return;
-    // Trigger visual boost on the 3D crystal
-    import("@/components/vibeworld/CrystalZone").then(({ activateCrystalZone }) => {
-      // Access scene via CityCanvas internals is not possible directly —
-      // we use a custom event instead
-      window.dispatchEvent(new CustomEvent("crystalActivate"));
-    });
-    setCrystalAura(true);
-    setCrystalMsg(true);
-    try { navigator?.vibrate?.([30, 40, 60]); } catch {}
-    if (crystalAuraTimerRef.current) clearTimeout(crystalAuraTimerRef.current);
-    crystalAuraTimerRef.current = setTimeout(() => {
-      setCrystalAura(false);
-      setCrystalMsg(false);
-    }, 4000);
-  }, [crystalAura]);
 
   // Neon Surf game callbacks — only control the temporary beach game board
   const handleHbStart = useCallback(() => {
@@ -1232,47 +1205,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </div>
       )}
 
-      {/* ── Crystal Zone Interaction ── */}
-      {!loading && (nearCrystal || crystalAura) && (
-        <div
-          className="fixed z-[60] flex flex-col items-center gap-2 pointer-events-none"
-          style={{ bottom: isMobile ? 220 : 88, left: "50%", transform: "translateX(-50%)" }}
-        >
-          {crystalMsg && (
-            <div
-              className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest pointer-events-none"
-              style={{ background: "rgba(100,200,255,0.18)", border: "1px solid rgba(100,200,255,0.4)", color: "#88EEFF", backdropFilter: "blur(10px)" }}
-            >
-              ✦ Vibe Charged
-            </div>
-          )}
-          {nearCrystal && !crystalAura && (
-            <button
-              onClick={handleActivateCrystal}
-              onTouchStart={(e) => { e.stopPropagation(); handleActivateCrystal(); }}
-              className="pointer-events-auto px-6 py-2.5 rounded-full font-black text-sm tracking-widest transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg,#4433AA,#8844FF)",
-                color: "#E8CCFF",
-                border: "1px solid rgba(170,100,255,0.5)",
-                boxShadow: "0 0 20px rgba(136,68,255,0.4)",
-                letterSpacing: "0.15em",
-                fontSize: "12px",
-              }}
-            >
-              ◇ Charge Your Vibe
-            </button>
-          )}
-          {crystalAura && (
-            <div
-              className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest pointer-events-none"
-              style={{ background: "rgba(136,68,255,0.15)", border: "1px solid rgba(136,68,255,0.35)", color: "#c4aaff", backdropFilter: "blur(10px)" }}
-            >
-              ⚡ Crystal Aura Active
-            </div>
-          )}
-        </div>
-      )}
+      {/* Crystal Zone is now a decorative landmark — no UI/interaction */}
 
       {/* ── Hoverboard Ring Run HUD ── */}
       <HoverboardPanel

@@ -10,7 +10,7 @@ import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
 import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
-import { createCrystalZone, animateCrystalZone, activateCrystalZone } from "./CrystalZone";
+import { createCrystalZone, animateCrystalZone } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
@@ -650,9 +650,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         splashParticlesRef.current = { points: splashPoints, particles, pos };
       }
 
-      // ── Crystal Zone activate via custom event ──────────────────
-      const onCrystalActivate = () => activateCrystalZone(scene);
-      window.addEventListener("crystalActivate", onCrystalActivate);
+      // Crystal Zone is decorative-only — no activation event needed
 
       // ── Expose launch trigger ref once (not in animation loop) ──
       if (launchRef) {
@@ -1606,7 +1604,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       return () => {
         cancelAnimationFrame(animId);
         window.removeEventListener("resize", onResize);
-        window.removeEventListener("crystalActivate", onCrystalActivate);
+
         renderer.dispose();
         scene.traverse((obj) => {
           if (obj.geometry) obj.geometry.dispose();
