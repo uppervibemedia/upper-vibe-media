@@ -20,7 +20,7 @@ import {
 import { buildLaunchZone } from "../VibeLaunchZone";
 import { createHoverboardZone } from "../HoverboardRingRun";
 import { createCrystalZone } from "../CrystalZone";
-import { createZenBeach } from "../ZenBeach";
+import createZenBeach from "../ZenBeach";
 import { createFerrisWheel, WHEEL_X, WHEEL_Z } from "../FerrisWheel";
 import { createZoneSign } from "../ZoneSign";
 
