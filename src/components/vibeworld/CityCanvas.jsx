@@ -25,6 +25,7 @@ import { buildDailyVibeCheckZone } from "./city-engine/zones/DailyVibeCheckZone"
 import { buildVibeAcademyZone }    from "./city-engine/zones/VibeAcademyZone";
 import { runConnections, tickAddOns, KEYS_CREATED } from "./CityAddOns";
 import { MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
+import { tickLaunchPhysics, checkHbLaunchPads } from "./city-engine/launchPadSystem";
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -896,30 +897,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ── Launch zone physics ──────────────────────────────
         const ls = launchStateRef.current;
         if (ls.active) {
-          ls.timer += dt;
-          if (ls.phase === "rise") {
-            const progress = Math.min(ls.timer / LAUNCH_DURATION, 1);
-            const eased = 1 - (1 - progress) * (1 - progress); // ease-out
-            py = ls.startY + LAUNCH_HEIGHT * eased;
-            if (progress >= 1) { ls.phase = "fall"; ls.timer = 0; }
-          } else if (ls.phase === "fall") {
-            const progress = Math.min(ls.timer / GLIDE_DURATION, 1);
-            const eased = progress * progress; // ease-in
-            py = ls.startY + LAUNCH_HEIGHT * (1 - eased);
-            if (progress >= 1) {
-              py = ls.startY;
-              ls.active = false;
-              ls.phase = "idle";
-              // Landing pulse ring at current position
-              if (sceneRef.current) triggerLandingPulse(sceneRef.current, px, pz);
-            }
-          }
-          // Collect orbs every frame during ALL airborne phases using real py height
-          if (sceneRef.current) {
-            const c = collectNearbyOrbs(sceneRef.current, px, py, pz);
-            if (c.length) orbCountRef.current += c.length;
-          }
-          vel.x *= 0.88; vel.z *= 0.88; // dampen horizontal during flight
+          py = tickLaunchPhysics(ls, dt, py, px, pz, sceneRef.current, orbCountRef, vel);
         } else {
           // When riding hoverboard, float avatar slightly above ground
           const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
@@ -1468,23 +1446,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // ─── LAUNCH PAD DETECTION — air launch ───────────────────────
         if (hbRidingRef.current && frameRef.current % 6 === 0) {
-          for (const pad of LAUNCH_PADS) {
-            const dx = px - pad.x, dz = pz - pad.z;
-            if (Math.sqrt(dx * dx + dz * dz) < 1.6) {
-              if (!scene.userData._lastLaunchTime || performance.now() - scene.userData._lastLaunchTime > 3000) {
-                scene.userData._lastLaunchTime = performance.now();
-                // Trigger a mini launch arc via launchState (reuse existing launch system)
-                const ls = launchStateRef.current;
-                if (!ls.active) {
-                  ls.active = true;
-                  ls.phase = "rise";
-                  ls.timer = 0;
-                  ls.startY = py;
-                }
-                if (window.__hbLaunchTriggered) window.__hbLaunchTriggered();
-              }
-            }
-          }
+          checkHbLaunchPads(px, py, pz, scene, launchStateRef, LAUNCH_PADS);
         }
 
         // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──
