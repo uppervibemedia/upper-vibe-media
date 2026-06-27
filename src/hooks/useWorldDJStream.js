@@ -76,6 +76,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   const fadeCleanupRef = useRef(null);
   const pollTimerRef = useRef(null);
   const didInitRef = useRef(false);
+  const activePlaylistRef = useRef(null); // { trackIds, playMode, ... } or null
 
   // ── Create audio element — ALWAYS muted and volume=0 at birth ──────────────
   const getAudio = useCallback(() => {
@@ -97,9 +98,34 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   }, []);
 
   const pickNextTrack = useCallback(() => {
+    // Prefer the admin's active DJ playlist if available
+    const pl = activePlaylistRef.current;
+    const playMode = pl?.playMode || "shuffle";
+
+    if (pl?.tracks?.length) {
+      const pool = pl.tracks;
+      const lastId = recentIdsRef.current[recentIdsRef.current.length - 1];
+      const filtered = playMode === "shuffle"
+        ? pool.filter(t => t.id !== lastId)
+        : pool;
+      let pick;
+      if (playMode === "ordered") {
+        pl._orderedIdx = (pl._orderedIdx ?? -1) + 1;
+        pick = pool[pl._orderedIdx % pool.length];
+      } else {
+        // Shuffle: randomly pick from pool, retry once if same as last
+        let idx = Math.floor(Math.random() * pool.length);
+        if (pool.length > 1 && pool[idx].id === lastId) idx = Math.floor(Math.random() * pool.length);
+        pick = pool[idx] || pool[0];
+      }
+      recentIdsRef.current = [...recentIdsRef.current, pick.id].slice(-12);
+      return pick;
+    }
+
+    // Fallback: random from the full published pool
     const pool = trackPoolRef.current;
     if (!pool.length) return null;
-    const histSize = Math.min(8, Math.floor(pool.length / 2));
+    const histSize = Math.min(9, Math.floor(pool.length / 2));
     const recentSet = new Set(recentIdsRef.current.slice(-histSize));
     let candidates = pool.filter(t => !recentSet.has(t.id));
     if (!candidates.length) candidates = pool.filter(t => t.id !== recentIdsRef.current[recentIdsRef.current.length - 1]);
@@ -174,9 +200,35 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     loadAndPlaySilent(next, startTs);
   }, [pickNextTrack, loadAndPlaySilent]);
 
+  // ── Load the admin's active DJ playlist ──────────────────────────────────────
+  const getActivePlaylist = useCallback(async () => {
+    try {
+      const list = await base44.entities.DJPlaylist.list("-updatedAt", 20);
+      const active = list.find(p => p.isActive);
+      if (!active) throw new Error("No active playlist");
+      if (!active.trackIds?.length) throw new Error("Active playlist is empty");
+      // Resolve track objects from IDs
+      const poolMap = Object.fromEntries(trackPoolRef.current.map(t => [t.id, t]));
+      const tracks = active.trackIds
+        .map(id => poolMap[id])
+        .filter(Boolean)
+        .filter(t => t.audio_url);
+      if (!tracks.length) throw new Error("No playable tracks in active playlist");
+      return { tracks, playMode: active.playMode || "shuffle" };
+    } catch {
+      // Fallback: no admin playlist → use the random pool
+      return { tracks: null, playMode: null };
+    }
+  }, []);
+
   // ── Sync from AppSettings ───────────────────────────────────────────────────
   const syncFromSettings = useCallback(async () => {
     if (!enabled) return;
+
+    // Reload the active DJ playlist on every sync tick (every 8s)
+    const pl = await getActivePlaylist();
+    activePlaylistRef.current = pl;
+
     const { trackId, startTs, trackRecordId, tsRecordId } = await readDJSettings();
 
     if (!trackId || !startTs) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2, Mic2, FlaskConical, Wrench } from "lucide-react";
+import { Plus, Music, Users, Grid3X3, Brain, ListFilter, Tv2, Youtube, GraduationCap, BarChart2, Mic2, FlaskConical, Wrench, Disc3 } from "lucide-react";
 import AnalyticsDashboard from "../components/admin/AnalyticsDashboard";
 import { toast } from "sonner";
 import { base44 } from "@/api/base44Client";
@@ -15,6 +15,7 @@ import ArtistManager from "../components/admin/ArtistManager";
 import HostDropManager from "../components/admin/HostDropManager.jsx";
 import StripeTestPanel from "../components/admin/StripeTestPanel";
 import StripeRepairPanel from "../components/admin/StripeRepairPanel";
+import DJPlaylistManager from "../components/admin/DJPlaylistManager";
 import { useAuth } from "@/lib/AuthContext";
 
 const TABS = [
@@ -30,6 +31,7 @@ const TABS = [
   { id: "ai_organizer", label: "AI Organizer", icon: Brain },
   { id: "stripe_test",  label: "Stripe Test",  icon: FlaskConical },
   { id: "stripe_repair", label: "Stripe Repair", icon: Wrench },
+  { id: "dj_playlist", label: "DJ Playlist", icon: Disc3 },
 ];
 
 export default function Admin() {
@@ -251,6 +253,22 @@ export default function Admin() {
               </p>
             </div>
             <StripeRepairPanel />
+          </div>
+        )}
+
+        {/* DJ Playlist tab */}
+        {tab === "dj_playlist" && (
+          <div>
+            <div className="mb-6">
+              <div className="flex items-center gap-3">
+                <Disc3 className="w-5 h-5 text-cyan-400" />
+                <h2 className="font-heading font-bold text-2xl">Live DJ Playlist</h2>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Build the playlist the Live DJ plays on the dance floor. Create playlists, order tracks, and set one as active.
+              </p>
+            </div>
+            <DJPlaylistManager tracks={tracks} />
           </div>
         )}
       </motion.div>

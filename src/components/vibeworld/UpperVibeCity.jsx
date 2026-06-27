@@ -17,6 +17,7 @@ import useVibeWorldPresence from "@/hooks/useVibeWorldPresence";
 import useDirectMessaging from "@/hooks/useDirectMessaging";
 import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
+import { playCoinSound } from "@/lib/vibeCoinSound";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
 import ResumeMusicButton from "@/components/vibeworld/ResumeMusicButton";
 import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
@@ -332,6 +333,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       if (!coinIds?.length) return;
       const { balance, lifetime, added } = await earnCoins(user?.id || null, coinIds, source || "sky_coin");
       if (added > 0) {
+        playCoinSound(added >= 5);
         setLastCollectCount(added);
         setSessionCoins((prev) => prev + added);
         setTotalCoins(balance);

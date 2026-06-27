@@ -1,0 +1,57 @@
+{
+  "name": "DJPlaylist",
+  "type": "object",
+  "properties": {
+    "djPlaylistName": {
+      "type": "string",
+      "description": "Display name for this DJ playlist"
+    },
+    "trackIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Ordered array of Track IDs in the playlist"
+    },
+    "playMode": {
+      "type": "string",
+      "enum": [
+        "shuffle",
+        "ordered"
+      ],
+      "default": "shuffle",
+      "description": "Whether the DJ plays tracks in order or shuffled"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is the currently active dance floor playlist"
+    },
+    "updatedAt": {
+      "type": "string",
+      "description": "ISO timestamp of last playlist update"
+    }
+  },
+  "required": [
+    "djPlaylistName"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
