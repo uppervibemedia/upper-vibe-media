@@ -66,7 +66,6 @@ function makeParticleTex(hex, size = 64) {
 }
 
 let _glowCache = {};
-let _partCache = {};
 
 export function bindAura(controller, itemId, colorHex) {
   unbindAura(controller);
@@ -74,9 +73,7 @@ export function bindAura(controller, itemId, colorHex) {
   const color = new THREE.Color(hex);
 
   if (!_glowCache[hex]) _glowCache[hex] = makeGlowTexture(hex);
-  if (!_partCache[hex]) _partCache[hex] = makeParticleTex(hex);
   const glowTex = _glowCache[hex];
-  const partTex = _partCache[hex];
 
   const aura = new THREE.Group();
   aura.name = "avatarAura";
@@ -127,66 +124,7 @@ export function bindAura(controller, itemId, colorHex) {
   corona.userData._isCorona = true;
   aura.add(corona);
 
-  // ── 3. RISING CHARGED PARTICLES — like crystal zone energy streams ────
-  const PARTICLE_COUNT = 28;
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
-    const theta = Math.random() * Math.PI * 2;
-    const radius = 0.28 + Math.random() * 0.45;
-    const startY = Math.random() * 0.15; // start near feet
-    const particle = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: partTex,
-        transparent: true,
-        depthWrite: false,
-        opacity: 0.0,
-        color,
-        blending: THREE.AdditiveBlending,
-      })
-    );
-    const s = 0.06 + Math.random() * 0.10;
-    particle.scale.set(s, s, 1);
-    particle.position.set(
-      Math.cos(theta) * radius,
-      startY,
-      Math.sin(theta) * radius,
-    );
-    particle.renderOrder = 3;
-    particle.userData._isCharged = true;
-    particle.userData._phase = Math.random() * Math.PI * 2;
-    particle.userData._speed = 0.55 + Math.random() * 0.85; // rise speed
-    particle.userData._radius = radius;
-    particle.userData._theta = theta;
-    particle.userData._orbitDir = Math.random() > 0.5 ? 1 : -1;
-    particle.userData._orbitSpeed = 0.4 + Math.random() * 0.6;
-    particle.userData._size = s;
-    aura.add(particle);
-  }
-
-  // ── 4. ELECTRIC ARC WISPS (line-based lightning) ─────────────────────
-  const ARC_COLORS = [hex, "#ffffff", hex];
-  const arcCount = 4;
-  const arcLines = [];
-  for (let a = 0; a < arcCount; a++) {
-    const mat = new THREE.LineBasicMaterial({
-      color: new THREE.Color(a % 2 === 0 ? "#ffffff" : hex),
-      transparent: true,
-      opacity: 0.0,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-    const pts = Array.from({ length: 6 }, () => new THREE.Vector3());
-    const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    const line = new THREE.Line(geo, mat);
-    line.renderOrder = 4;
-    line.userData._isArc = true;
-    line.userData._arcIdx = a;
-    line.userData._phase = (a / arcCount) * Math.PI * 2;
-    aura.add(line);
-    arcLines.push({ line, mat, geo, pts });
-  }
-  aura.userData._arcLines = arcLines;
-
-  // ── 5. POINT LIGHT — the avatar glows the world around them ─────────
+  // ── 3. POINT LIGHT — the avatar glows the world around them ─────────
   const light = new THREE.PointLight(color, 3.5, 7);
   light.position.set(0, 1.0, 0);
   light.userData._isAuraLight = true;
@@ -241,67 +179,6 @@ export function animateAura(avatarEntry, t) {
       3.8 + fastPulse * 0.20,
       1
     );
-  }
-
-  // ── Rising charged particles ────────────────────────────────────────
-  for (const child of aura.children) {
-    if (!child.isSprite || !child.userData._isCharged) continue;
-    const ph = child.userData._phase;
-    const spd = child.userData._speed;
-    const orbitAngle = child.userData._theta + t * child.userData._orbitDir * child.userData._orbitSpeed;
-
-    // Loop: particle rises from y=0 to y=2.2 then resets
-    const cycleLen = 2.0 / spd;
-    const cycleT = ((t * spd + ph) % cycleLen) / cycleLen; // 0→1
-    const y = cycleT * 2.2;
-
-    // Tighten orbit near top (particles converge like crystal beams)
-    const orbitScale = 1.0 - cycleT * 0.4;
-    child.position.set(
-      Math.cos(orbitAngle) * child.userData._radius * orbitScale,
-      y,
-      Math.sin(orbitAngle) * child.userData._radius * orbitScale,
-    );
-
-    // Fade in at bottom, bright mid, fade out at top
-    const fade = cycleT < 0.15 ? cycleT / 0.15
-               : cycleT > 0.75 ? (1 - cycleT) / 0.25
-               : 1.0;
-    child.material.opacity = fade * (0.55 + Math.sin(t * 5.0 + ph) * 0.30);
-
-    // Slightly enlarge particles mid-rise
-    const s = child.userData._size * (0.9 + fade * 0.5);
-    child.scale.setScalar(s);
-  }
-
-  // ── Electric arc lines — crackle like crystal arcs ─────────────────
-  const arcLines = aura.userData._arcLines;
-  if (arcLines) {
-    for (const { mat, geo, pts, line } of arcLines) {
-      const ph = line.userData._phase;
-      // Arc flickers on/off rapidly — same as crystal zone lightning
-      const flicker = Math.sin(t * 18.0 + ph) > 0.3;
-      mat.opacity = flicker ? (0.4 + chargePeak * 0.55) : 0;
-
-      if (flicker) {
-        // Arc from foot level up to head — random jagged path
-        const startY = 0.1 + Math.random() * 0.3;
-        const endY   = 1.4 + Math.random() * 0.5;
-        const startA = ph + t * 2.0;
-        const r = 0.15 + Math.random() * 0.35;
-        for (let i = 0; i < pts.length; i++) {
-          const frac = i / (pts.length - 1);
-          const jitter = i > 0 && i < pts.length - 1 ? (Math.random() - 0.5) * 0.22 : 0;
-          pts[i].set(
-            Math.cos(startA + frac * 1.2) * r + jitter,
-            startY + (endY - startY) * frac + (Math.random() - 0.5) * 0.1,
-            Math.sin(startA + frac * 1.2) * r + jitter,
-          );
-        }
-        geo.setFromPoints(pts);
-        geo.attributes.position.needsUpdate = true;
-      }
-    }
   }
 
   // ── Point light — throb with the charge ────────────────────────────
