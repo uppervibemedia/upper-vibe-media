@@ -1214,7 +1214,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // ─── NEON SKYLINE PULSE — throttled on mobile, skipped in TV smooth ──
         const neonMats = scene.userData.neonMats;
-        if (neonMats && (!isMob || frameRef.current % 3 === 0) && !tvSmooth) {
+        if (neonMats && (!isMob || frameRef.current % 6 === 0) && !tvSmooth) {
           const colorShift = Math.sin(t * 0.4) * 0.5 + 0.5;
           if (!scene.userData._neonC) {
             scene.userData._neonC = [new Color("#00D4F0"), new Color("#A078FF"), new Color("#40A0EE")];
@@ -1230,20 +1230,30 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Building window flickers removed — static windows for performance
 
         // ─── PLAZA FILL LIGHT — throttled on mobile ───────────
-        if (!isMob || frameRef.current % 4 === 0) {
+        if (!isMob || frameRef.current % 8 === 0) {
           const pf = scene.userData.plazaFill;
           if (pf) pf.intensity = 1.0 + audioBeat * 0.8 + Math.sin(t * 1.2) * 0.2;
         }
 
         // ─── SHIFTING NEON AMBIENT LIGHTS — throttled on mobile, skipped in TV smooth ──
-        if ((!isMob || frameRef.current % 3 === 0) && !tvSmooth) {
+        // Mobile: skip color lerp (expensive), just pulse intensity every 6 frames
+        if (!tvSmooth) {
           const neonAmbients = scene.userData.neonAmbients;
           if (neonAmbients) {
-            for (const na of neonAmbients) {
-              const wave = Math.sin(t * 0.35 + na.phase);
-              na.light.intensity = na.baseI * (0.7 + wave * 0.3) + audioBeat * 0.4;
-              const blend = wave * 0.5 + 0.5;
-              na.light.color.copy(na.color1).lerp(na.color2, blend * 0.45);
+            if (isMob) {
+              if (frameRef.current % 6 === 0) {
+                for (const na of neonAmbients) {
+                  const wave = Math.sin(t * 0.35 + na.phase);
+                  na.light.intensity = na.baseI * (0.7 + wave * 0.3);
+                }
+              }
+            } else if (frameRef.current % 2 === 0) {
+              for (const na of neonAmbients) {
+                const wave = Math.sin(t * 0.35 + na.phase);
+                na.light.intensity = na.baseI * (0.7 + wave * 0.3) + audioBeat * 0.4;
+                const blend = wave * 0.5 + 0.5;
+                na.light.color.copy(na.color1).lerp(na.color2, blend * 0.45);
+              }
             }
           }
         }

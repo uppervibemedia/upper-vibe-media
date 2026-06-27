@@ -14,12 +14,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 
-const POSITION_MS = 2000;      // Send position every 2s — keeps all players permanently visible
-const HEARTBEAT_MS = 10_000;   // Full heartbeat every 10s
-const STALE_MS = 5_000;        // Mark as offline if no heartbeat for 5s (3× heartbeat gap covers retries)
-const BATCH_MS = 100;          // Batch incoming subscribe events every 100ms
-const POS_THRESHOLD = 0.05;    // Minimum position delta to trigger an update
-const ROT_THRESHOLD = 0.02;    // Minimum rotation delta to trigger an update
+const POSITION_MS = 3000;      // Send position every 3s — reduces DB write load
+const HEARTBEAT_MS = 15_000;   // Full heartbeat every 15s
+const STALE_MS = 20_000;       // Mark as offline if no heartbeat for 20s
+const BATCH_MS = 150;          // Batch incoming subscribe events every 150ms
+const POS_THRESHOLD = 0.15;    // Minimum position delta to trigger an update (was 0.05)
+const ROT_THRESHOLD = 0.08;    // Minimum rotation delta to trigger an update (was 0.02)
 
 /** Touch the last_heartbeat timestamp. Returns true on success. Retries once after 1s. */
 const touchHeartbeat = async (rid) => {
@@ -229,7 +229,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     } catch (err) {
       console.warn("[VibeWorldPresence] heartbeat failed — record may not exist:", err?.message);
     }
-  }, [user]);
+  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, isDancing, isRidingPersonal, isRidingNeonSurf]);
 
   // ── Real-time entity subscription (replaces polling) ─────────────────────
   useEffect(() => {

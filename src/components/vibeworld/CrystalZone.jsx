@@ -367,11 +367,24 @@ export function animateCrystalZone(scene, t, dt, playerX, playerZ, tvSmooth = fa
   const cz = scene.userData.crystalZone;
   if (!cz) return;
 
-  // TV Smooth far-zone: just rotate, skip all material writes
   const dx = playerX - CRYSTAL_ZONE_X;
   const dz = playerZ - CRYSTAL_ZONE_Z;
   const dist = Math.sqrt(dx * dx + dz * dz);
-  if (tvSmooth && dist > 22) {
+
+  // Far away: only rotate, no material writes (cheapest possible update)
+  if (dist > 20) {
+    cz.center.rotation.y = t * 0.07;
+    // Keep light range small when far to reduce shadow/draw cost
+    cz.bigLight.distance = 10;
+    cz.bigLight.intensity = 1.8;
+    return;
+  }
+
+  // Track frame counter on the zone for throttling
+  cz._frame = (cz._frame || 0) + 1;
+
+  // On mobile: update material properties every 3 frames only
+  if (IS_MOBILE && cz._frame % 3 !== 0) {
     cz.center.rotation.y = t * 0.07;
     return;
   }
@@ -384,35 +397,34 @@ export function animateCrystalZone(scene, t, dt, playerX, playerZ, tvSmooth = fa
   cz.glowMat.opacity        = 0.06 + idlePulse * 0.05;
   cz.coreMat.opacity        = 0.12 + Math.sin(t * 2.2) * 0.04;
 
-  cz.bigLight.intensity = 2.5 + idlePulse * 1.2;
-  cz.bigLight.distance  = 16;
-  if (cz.bigLight2) cz.bigLight2.intensity = 1.0 + Math.sin(t * 1.7) * 0.3;
+  cz.bigLight.intensity = 2.0 + idlePulse * 0.8;  // reduced from 2.5+1.2
+  cz.bigLight.distance  = 14;                       // reduced from 16
+  if (cz.bigLight2) cz.bigLight2.intensity = 0.8 + Math.sin(t * 1.7) * 0.25;
 
-  // ── Small crystals — gentle glow, no bob on mobile ──
+  // ── Small crystals — update every other crystal per frame ──
+  const frameOdd = cz._frame % 2;
   for (let i = 0; i < cz.smallCrystals.length; i++) {
+    if (i % 2 !== frameOdd) continue; // interleave: half per frame
     const sc = cz.smallCrystals[i];
-    if (i % 2 === 0) { // only update half each frame for perf
-      const sp = Math.sin(t * 0.9 + i * 0.7) * 0.5 + 0.5;
-      sc.mat.emissiveIntensity = 0.38 + sp * 0.16;
-      sc.glowMat.opacity = 0.04 + sp * 0.05;
-      if (sc.light) sc.light.intensity = 0.4 + sp * 0.25;
-    }
+    const sp = Math.sin(t * 0.9 + i * 0.7) * 0.5 + 0.5;
+    sc.mat.emissiveIntensity = 0.35 + sp * 0.14;
+    sc.glowMat.opacity = 0.04 + sp * 0.04;
+    if (sc.light) sc.light.intensity = 0.35 + sp * 0.2;
   }
 
-  // ── Ground rings — static low opacity ──
-  cz.baseMat.opacity      = 0.18;
-  cz.outerRingMat.opacity = 0.28;
-  cz.midRingMat.opacity   = 0.14;
-  const innerRing = cz.group.getObjectByName("crystalInnerRing");
-  if (innerRing) {
+  // ── Ground rings — write only on slow frames ──
+  if (cz._frame % 4 === 0) {
+    cz.baseMat.opacity      = 0.18;
+    cz.outerRingMat.opacity = 0.28;
+    cz.midRingMat.opacity   = 0.14;
     cz.innerRingMat.opacity = 0.24;
-    innerRing.rotation.z = t * 0.10;
   }
+  // Inner ring rotation is cheap (just a rotation, no material write)
+  if (!cz._innerRing) cz._innerRing = cz.group.getObjectByName("crystalInnerRing");
+  if (cz._innerRing) cz._innerRing.rotation.z = t * 0.10;
 
-  // ── Arcs — keep hidden (decorative only, no active lightning) ──
-  for (const arc of cz.arcs) { arc.mat.opacity = 0; }
-
-  // Keep beam and aura invisible
-  if (cz.beamMat) cz.beamMat.opacity = 0;
-  if (cz.auraMat) cz.auraMat.opacity = 0;
+  // Arcs, beam, aura — keep hidden
+  for (const arc of cz.arcs) { if (arc.mat.opacity !== 0) arc.mat.opacity = 0; }
+  if (cz.beamMat && cz.beamMat.opacity !== 0) cz.beamMat.opacity = 0;
+  if (cz.auraMat && cz.auraMat.opacity !== 0) cz.auraMat.opacity = 0;
 }

@@ -40,6 +40,7 @@ import useBlockSystem from "@/hooks/useBlockSystem";
 import useMobileLayout from "@/hooks/useMobileLayout";
 import MobileDebugOverlay from "@/components/vibeworld/MobileDebugOverlay";
 import PersonalHoverboardHUD from "@/components/vibeworld/PersonalHoverboardHUD";
+import FPSMonitor from "@/components/vibeworld/FPSMonitor";
 
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
 import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
@@ -1049,8 +1050,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
               setIsDancing(false);
               setActiveEmote(null);
             }
+            // Skip React re-render if position changed less than 0.3 units and rotation < 0.05 rad
+            const prevRot = prevPosRef.current.rot ?? 0;
+            if (Math.abs(dx) < 0.3 && Math.abs(dz) < 0.3 && Math.abs(rot - prevRot) < 0.05) return;
             const animState = isDancingRef.current ? "dancing" : speed > 0.015 ? "walking" : "idle";
-            prevPosRef.current = { x, z };
+            prevPosRef.current = { x, z, rot };
             setPlayerPos({ x, z, rot, animState });
           }}
           onJukeboxProximity={(near, vol) => {
@@ -1457,6 +1461,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         personalHoverboardActive={personalHoverboardActive}
         canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !anyBlockingUIOpen && !nearHoverboard && !detectZone(playerPos.x, playerPos.z)}
       />
+
+      {/* FPS monitor — only visible with ?debug=1 in URL or localStorage.uvc_debug=1 */}
+      <FPSMonitor sceneRef={rendererRef} remoteUserCount={userCount} />
 
       {/* Mobile debug overlay — only visible with ?debug=mobile in URL */}
       <MobileDebugOverlay
