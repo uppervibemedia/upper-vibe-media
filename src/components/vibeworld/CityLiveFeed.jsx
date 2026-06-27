@@ -100,16 +100,16 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       // ── Cinematic neon zone labels — kept LOW so the camera orbit
       // never clips them against the top edge of the frame ─────────
       const labels = [
-        neonLabel("MUSIC STAGE",       "#00D4F0", 0,   4.8, -34.0, 5),
-        neonLabel("VIBE LOUNGE",       "#C43BFF", -22, 3.5, -26,   5),
-        neonLabel("MUSIC LIBRARY",     "#00D4F0", 22,  3.5, -20,   5),
-        neonLabel("VISUALIZER DOME",   "#C43BFF", -13, 3.5, 3,     5),
-        neonLabel("VIBE CHECK",        "#00E5FF", -16, 3.8, -13,   5),
-        neonLabel("VIBE ACADEMY",      "#9B7EFF", -28, 4.2, 5,     5),
-        neonLabel("UPPER VIBE SHOP",   "#00E5FF", 0,   4.2, 10,    5),
-        neonLabel("NEON SURF BEACH",   "#F5A800", 28,  3.2, 23,    5),
-        neonLabel("NEON VIBE WHEEL",   "#F5A800", WHEEL_X, 7.5, WHEEL_Z, 5),
-        neonLabel("CRYSTAL ZONE",      "#C43BFF", -26, 4.0, -14,   5),
+        neonLabel("MUSIC STAGE",       "#00D4F0", 0,   3.8, -34.0, 4),
+        neonLabel("VIBE LOUNGE",       "#C43BFF", -22, 2.6, -26,   4),
+        neonLabel("MUSIC LIBRARY",     "#00D4F0", 22,  2.6, -20,   4),
+        neonLabel("VISUALIZER DOME",   "#C43BFF", -13, 2.6, 3,     4),
+        neonLabel("VIBE CHECK",        "#00E5FF", -16, 2.7, -13,   4),
+        neonLabel("VIBE ACADEMY",      "#9B7EFF", -28, 2.9, 5,     4),
+        neonLabel("UPPER VIBE SHOP",   "#00E5FF", 0,   2.8, 10,    4),
+        neonLabel("NEON SURF BEACH",   "#F5A800", 28,  2.2, 23,    4),
+        neonLabel("NEON VIBE WHEEL",   "#F5A800", WHEEL_X, 6.0, WHEEL_Z, 4),
+        neonLabel("CRYSTAL ZONE",      "#C43BFF", -26, 2.7, -14,   4),
       ];
       labels.forEach((l) => scene.add(l));
 
@@ -177,7 +177,7 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       ro.observe(canvas.parentElement || canvas);
 
       // ── Animate ───────────────────────────────────────────────────────────
-      let frame = 0, shotIdx = 0, shotElapsed = 0, camShotPos = new Vector3(...SHOTS[0].pos), camShotLook = new Vector3(...SHOTS[0].look);
+      let frame = 0, shotIdx = 0, shotElapsed = SHOT_DURATION, camShotPos = new Vector3(...SHOTS[0].pos), camShotLook = new Vector3(...SHOTS[0].look);
       const camPos0 = new Vector3(), camLook0 = new Vector3(...SHOTS[0].look);
 
       const advanceShot = () => {
