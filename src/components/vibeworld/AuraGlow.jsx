@@ -22,12 +22,13 @@ function makeGlowTexture(hex, size = 128) {
   const c = document.createElement("canvas");
   c.width = size; c.height = size;
   const ctx = c.getContext("2d");
+  const rgb = hexToRgb(hex);
   const g = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
-  g.addColorStop(0,    hex);
-  g.addColorStop(0.08, hex);
-  g.addColorStop(0.25, hex.replace(")", ",0.6)").replace("#", "rgba(").replace(/rgba\(#/, "rgba("));
-  g.addColorStop(0.50, "rgba(0,0,0,0.04)");
-  g.addColorStop(1,    "rgba(0,0,0,0)");
+  g.addColorStop(0,    `rgba(${rgb},1)`);
+  g.addColorStop(0.08, `rgba(${rgb},1)`);
+  g.addColorStop(0.25, `rgba(${rgb},0.6)`);
+  g.addColorStop(0.50, `rgba(${rgb},0.04)`);
+  g.addColorStop(1,    `rgba(${rgb},0)`);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
   const tex = new THREE.CanvasTexture(c);
