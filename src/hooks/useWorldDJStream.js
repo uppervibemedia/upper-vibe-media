@@ -1,13 +1,56 @@
 /**
- * useWorldDJStream — Dance floor DJ audio stream.
- * Plays music from the active DJ playlist when user is on the dance floor.
- * Handles browser autoplay policy by retrying on user interaction.
+ * useWorldDJStream — Shared live DJ audio for the dance floor.
+ *
+ * Design: simulates a "radio station" by calculating the current track and
+ * playback position from a shared epoch (a fixed reference timestamp). All
+ * users derive the same track + offset from the same math, so they stay in
+ * sync without any server round-trip.
+ *
+ * Audio ownership rules (enforced here):
+ *   • When danceFloorMode=true  → DJ audio is unsilenced; caller must silence global player.
+ *   • When danceFloorMode=false → DJ audio is immediately silenced (volume=0, paused).
+ *   • Only one audio element exists for the lifetime of the hook.
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 
-const MAX_VOL = 0.85;
-const FADE_MS = 500;
+const MAX_VOL = 0.82;
+const FADE_MS = 600;
+
+// ── Shared epoch: fixed reference point in ms.
+// All users compute position as (Date.now() - EPOCH) % total_playlist_duration.
+// This makes the "stream" deterministic for all clients simultaneously.
+const DJ_EPOCH = 1700000000000; // arbitrary fixed past timestamp (ms)
+
+function computeSharedPosition(tracks) {
+  if (!tracks?.length) return { idx: 0, offset: 0 };
+
+  // Build cumulative durations (prefer audio duration hint, fallback to 210s)
+  const durations = tracks.map(t => {
+    const d = parseFloat(t.duration) || 210;
+    // duration field may be "3:30" or seconds as string
+    if (typeof t.duration === "string" && t.duration.includes(":")) {
+      const parts = t.duration.split(":");
+      return parseInt(parts[0]) * 60 + parseInt(parts[1] || "0");
+    }
+    return Math.max(30, d);
+  });
+
+  const total = durations.reduce((s, d) => s + d, 0);
+  if (total <= 0) return { idx: 0, offset: 0 };
+
+  const elapsed = (Date.now() - DJ_EPOCH) % (total * 1000); // ms
+  const elapsedSec = elapsed / 1000;
+
+  let cum = 0;
+  for (let i = 0; i < durations.length; i++) {
+    if (elapsedSec < cum + durations[i]) {
+      return { idx: i, offset: elapsedSec - cum };
+    }
+    cum += durations[i];
+  }
+  return { idx: 0, offset: 0 };
+}
 
 function fadeIn(el, targetVol, ms) {
   if (!el) return;
@@ -24,20 +67,25 @@ function fadeIn(el, targetVol, ms) {
 export default function useWorldDJStream({ enabled = true, danceFloorMode = false }) {
   const audioRef = useRef(null);
   const [djTrack, setDjTrack] = useState(null);
-  const tracksRef = useRef([]);        // resolved track objects from active playlist
+  const tracksRef = useRef([]);
   const currentIdxRef = useRef(0);
+  const loadedRef = useRef(false);
   const danceFloorRef = useRef(false);
   danceFloorRef.current = danceFloorMode;
+  // Guard: prevent double-play calls from overlapping
+  const playingRef = useRef(false);
+  const mountedRef = useRef(true);
 
-  const loadedRef = useRef(false);     // tracks loaded at least once
-  const playBlockedRef = useRef(false); // browser blocked autoplay
-
-  // ── Get or create audio element ──────────────────────────────────────────
+  // ── Create ONE audio element for the lifetime of the hook ────────────────
   const getAudio = useCallback(() => {
     if (!audioRef.current) {
       const el = new Audio();
       el.volume = 0;
       el.preload = "auto";
+      // Attach to DOM so iOS doesn't garbage-collect the audio element
+      el.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
+      el.setAttribute("aria-hidden", "true");
+      document.body.appendChild(el);
       audioRef.current = el;
     }
     return audioRef.current;
@@ -46,39 +94,25 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   // ── Load tracks from active DJ playlist ──────────────────────────────────
   const loadPlaylist = useCallback(async () => {
     try {
-      // Try active DJ playlist first
       const playlists = await base44.entities.DJPlaylist.list("-updatedAt", 20);
       const active = playlists.find(p => p.isActive);
 
       if (active?.trackIds?.length) {
-        // Fetch all tracks from pool and map by ID
         const pool = await base44.entities.Track.filter({ status: "published" }, "-display_order", 500);
         const poolMap = Object.fromEntries(pool.filter(t => t.audio_url).map(t => [t.id, t]));
         const resolved = active.trackIds.map(id => poolMap[id]).filter(Boolean);
         if (resolved.length) {
-          // Shuffle
-          for (let i = resolved.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [resolved[i], resolved[j]] = [resolved[j], resolved[i]];
-          }
           tracksRef.current = resolved;
-          currentIdxRef.current = 0;
           loadedRef.current = true;
           return;
         }
       }
 
-      // Fallback: use published tracks pool
+      // Fallback: published tracks
       const fallback = await base44.entities.Track.filter({ status: "published" }, "-display_order", 100);
       const withAudio = fallback.filter(t => t.audio_url);
       if (withAudio.length) {
-        // Shuffle
-        for (let i = withAudio.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [withAudio[i], withAudio[j]] = [withAudio[j], withAudio[i]];
-        }
         tracksRef.current = withAudio;
-        currentIdxRef.current = 0;
         loadedRef.current = true;
       }
     } catch (e) {
@@ -86,103 +120,169 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     }
   }, []);
 
-  // ── Play current track ────────────────────────────────────────────────────
-  const playCurrentTrack = useCallback(() => {
+  // ── Start playing from the shared clock position ──────────────────────────
+  const startAtSharedPosition = useCallback(() => {
     const tracks = tracksRef.current;
-    if (!tracks.length) return;
+    if (!tracks.length || playingRef.current) return;
+    if (!danceFloorRef.current) return; // don't start if already off the floor
 
-    const track = tracks[currentIdxRef.current % tracks.length];
+    const { idx, offset } = computeSharedPosition(tracks);
+    const track = tracks[idx];
     if (!track?.audio_url) return;
 
     const el = getAudio();
-
-    // Load track if different
-    if (el.src !== track.audio_url) {
-      el.src = track.audio_url;
-      el.load();
-    }
-
-    setDjTrack(track);
+    playingRef.current = true;
 
     const doPlay = () => {
-      if (!danceFloorRef.current) return; // don't unmute if user left floor
-      el.play()
-        .then(() => {
-          playBlockedRef.current = false;
+      if (!mountedRef.current || !danceFloorRef.current) {
+        playingRef.current = false;
+        return;
+      }
+
+      // Only switch track if it changed
+      if (el.dataset.djSrc !== track.audio_url) {
+        el.src = track.audio_url;
+        el.dataset.djSrc = track.audio_url;
+        el.load();
+      }
+
+      setDjTrack(track);
+      currentIdxRef.current = idx;
+
+      const seekAndPlay = () => {
+        // Seek to shared offset — recalculate in case loading took time
+        const { idx: newIdx, offset: newOffset } = computeSharedPosition(tracks);
+        const currentTrack = tracks[newIdx];
+
+        if (currentTrack?.audio_url !== el.dataset.djSrc) {
+          // Track rolled over during load — restart with the new one
+          el.src = currentTrack.audio_url;
+          el.dataset.djSrc = currentTrack.audio_url;
+          el.load();
+          setDjTrack(currentTrack);
+          currentIdxRef.current = newIdx;
+          el.addEventListener("canplay", seekAndPlay, { once: true });
+          return;
+        }
+
+        try {
+          if (newOffset > 0) el.currentTime = newOffset;
+        } catch {}
+
+        el.play().then(() => {
+          if (!danceFloorRef.current) {
+            // Left the floor during the async gap — silence immediately
+            el.pause();
+            el.volume = 0;
+            playingRef.current = false;
+            return;
+          }
           fadeIn(el, MAX_VOL, FADE_MS);
-        })
-        .catch((err) => {
+          playingRef.current = false;
+        }).catch(err => {
           console.warn("[DJStream] play() blocked:", err.message);
-          playBlockedRef.current = true;
-          // Will retry on next user interaction via the gesture listener
+          playingRef.current = false;
+          // Will retry on next user gesture via the gesture listeners below
         });
+      };
+
+      if (el.readyState >= 2) {
+        seekAndPlay();
+      } else {
+        el.addEventListener("canplay", seekAndPlay, { once: true });
+      }
     };
 
-    if (el.readyState >= 2) {
-      doPlay();
-    } else {
-      el.oncanplay = () => { el.oncanplay = null; doPlay(); };
-    }
+    doPlay();
   }, [getAudio]);
 
-  // ── Advance to next track on end ──────────────────────────────────────────
-  const advanceTrack = useCallback(() => {
-    currentIdxRef.current = (currentIdxRef.current + 1) % Math.max(1, tracksRef.current.length);
-    playCurrentTrack();
-  }, [playCurrentTrack]);
+  // ── Silence DJ audio (does NOT destroy the element) ──────────────────────
+  const silenceDJ = useCallback(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.volume = 0;
+    if (!el.paused) el.pause();
+    playingRef.current = false;
+  }, []);
 
-  // ── Init: load playlist, set up ended listener ────────────────────────────
+  // ── Init: load playlist ───────────────────────────────────────────────────
   useEffect(() => {
+    mountedRef.current = true;
     if (!enabled) return;
     loadPlaylist();
-    const el = getAudio();
-    const onEnded = () => advanceTrack();
-    el.addEventListener("ended", onEnded);
-    return () => el.removeEventListener("ended", onEnded);
-  }, [enabled, loadPlaylist, getAudio, advanceTrack]);
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [enabled, loadPlaylist]);
 
-  // ── Dance floor gate: start/stop audio based on proximity ────────────────
+  // ── Track ended → advance to next shared position ────────────────────────
   useEffect(() => {
     if (!enabled) return;
-    const el = audioRef.current;
+    const el = getAudio();
+    const onEnded = () => {
+      // Recompute shared position (epoch-based), not just +1
+      if (danceFloorRef.current && tracksRef.current.length > 0) {
+        const { idx, offset } = computeSharedPosition(tracksRef.current);
+        const track = tracksRef.current[idx];
+        if (track?.audio_url) {
+          el.src = track.audio_url;
+          el.dataset.djSrc = track.audio_url;
+          el.load();
+          setDjTrack(track);
+          currentIdxRef.current = idx;
+          el.addEventListener("canplay", () => {
+            try { if (offset > 0) el.currentTime = offset; } catch {}
+            el.play().then(() => {
+              if (danceFloorRef.current) fadeIn(el, MAX_VOL, FADE_MS);
+              else { el.volume = 0; el.pause(); }
+            }).catch(() => {});
+          }, { once: true });
+        }
+      }
+    };
+    el.addEventListener("ended", onEnded);
+    return () => el.removeEventListener("ended", onEnded);
+  }, [enabled, getAudio]);
+
+  // ── Dance floor gate: enter/exit audio ───────────────────────────────────
+  useEffect(() => {
+    if (!enabled) return;
 
     if (danceFloorMode) {
-      // Ensure tracks are loaded, then play
+      // Entering dance floor
       if (!loadedRef.current) {
-        // Playlist still loading — wait for it then play
+        // Wait for tracks to load then play
         const wait = setInterval(() => {
           if (loadedRef.current) {
             clearInterval(wait);
-            playCurrentTrack();
+            startAtSharedPosition();
           }
-        }, 300);
+        }, 200);
         return () => clearInterval(wait);
       } else {
-        // Tracks ready — if audio is paused or at wrong volume, start it
-        const audioEl = getAudio();
-        if (audioEl.paused || audioEl.volume < 0.1) {
-          playCurrentTrack();
-        } else {
-          // Already playing, just unmute/fade up
-          fadeIn(audioEl, MAX_VOL, FADE_MS);
+        const el = audioRef.current;
+        if (el && !el.paused && el.volume > 0) {
+          // Already playing — just ensure volume is up
+          return;
         }
+        startAtSharedPosition();
       }
     } else {
-      // Left dance floor — silence immediately
-      if (el) {
-        el.volume = 0;
-        // Don't pause — keep buffered so re-entry is instant
-      }
+      // Leaving dance floor — silence immediately, no partial fade
+      silenceDJ();
     }
-  }, [danceFloorMode, enabled, playCurrentTrack, getAudio]);
+  }, [danceFloorMode, enabled, startAtSharedPosition, silenceDJ]);
 
   // ── Retry on user gesture if autoplay was blocked ─────────────────────────
   useEffect(() => {
     if (!enabled) return;
     const retry = () => {
-      if (playBlockedRef.current && danceFloorRef.current) {
-        playBlockedRef.current = false;
-        playCurrentTrack();
+      if (!danceFloorRef.current) return;
+      const el = audioRef.current;
+      if (!el) return;
+      // Only retry if we're on the floor but audio is silent/paused
+      if (el.paused || el.volume < 0.01) {
+        startAtSharedPosition();
       }
     };
     window.addEventListener("click", retry, { passive: true });
@@ -193,13 +293,19 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       window.removeEventListener("touchend", retry);
       window.removeEventListener("keydown", retry);
     };
-  }, [enabled, playCurrentTrack]);
+  }, [enabled, startAtSharedPosition]);
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
+      mountedRef.current = false;
       const el = audioRef.current;
-      if (el) { el.pause(); el.src = ""; }
+      if (el) {
+        el.pause();
+        el.src = "";
+        // Remove from DOM
+        try { if (el.parentNode) el.parentNode.removeChild(el); } catch {}
+      }
       audioRef.current = null;
     };
   }, []);

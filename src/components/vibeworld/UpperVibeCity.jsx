@@ -639,29 +639,39 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsPlayingNeonSurf(false);  // Neon Surf board: removed on exit, avatar returns to walking
   }, []);
 
-  // ── Audio ducking: reduce personal player + DJ stream to ~25% when voice is active ──
+  // ── Audio ducking: reduce active audio source to ~25% when voice is active ──
   useEffect(() => {
     const audio = audioRef?.current;
     const dj = djAudioRef?.current;
     if (voiceActive) {
-      if (preVoiceVolumeRef.current === null && audio) {
-        preVoiceVolumeRef.current = audio.volume;
+      // Save pre-voice volumes
+      if (preVoiceVolumeRef.current === null) {
+        preVoiceVolumeRef.current = onDanceFloor ? 0 : (audio?.volume ?? 1.0);
       }
-      if (audio) audio.volume = 0.25;
-      if (dj) dj.volume = 0.12;
+      // Only duck the active source
+      if (onDanceFloor) {
+        if (dj) dj.volume = 0.12;
+      } else {
+        if (audio) audio.volume = 0.25;
+      }
     } else {
-      if (preVoiceVolumeRef.current !== null && audio) {
-        audio.volume = preVoiceVolumeRef.current;
-        preVoiceVolumeRef.current = null;
+      // Restore — but respect the dance floor ownership rule
+      if (onDanceFloor) {
+        if (dj) dj.volume = 0.82;
+      } else {
+        if (audio && preVoiceVolumeRef.current !== null) {
+          audio.volume = preVoiceVolumeRef.current > 0 ? preVoiceVolumeRef.current : personalBaseVolRef.current;
+        }
       }
+      preVoiceVolumeRef.current = null;
     }
     return () => {
-      if (preVoiceVolumeRef.current !== null && audio) {
-        audio.volume = preVoiceVolumeRef.current;
+      if (preVoiceVolumeRef.current !== null) {
+        if (!onDanceFloor && audio) audio.volume = personalBaseVolRef.current;
         preVoiceVolumeRef.current = null;
       }
     };
-  }, [voiceActive, audioRef, djAudioRef]);
+  }, [voiceActive, onDanceFloor, audioRef, djAudioRef]);
 
   const handleStageNextVideo = () => {
     if (stageVideos.length <= 1) return;
@@ -779,7 +789,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const handleGlobalSkip = useCallback(() => { skipTrack?.(); }, [skipTrack]);
 
   // ── Bottom player toggle: simple, instant, no stage side-effects ──
+  // Guard: don't start personal audio when on the dance floor (DJ owns audio there)
   const handleGlobalPlayToggle = useCallback(() => {
+    // On dance floor: player UI is visible but audio is owned by DJ — tap does nothing
+    if (onDanceFloor) return;
+
     // If paused but no track yet, start feed
     if (!isPlaying && !currentTrack && playTrack) {
       const pool = sortedTracks?.length > 0
@@ -794,7 +808,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       }
     }
     togglePlay?.();
-  }, [isPlaying, currentTrack, togglePlay, sortedTracks, allTracks, playTrack]);
+  }, [isPlaying, currentTrack, togglePlay, sortedTracks, allTracks, playTrack, onDanceFloor]);
 
   // ── Stage proximity: auto-exit watch mode when player walks far away ──
   useEffect(() => {
@@ -852,15 +866,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return () => cancelAnimationFrame(raf);
   }, [playerCtx?.analyserNode]);
 
+  // ── Dance floor radius check (stable ref, no re-render needed) ──────────
+  const onDanceFloorRef2 = useRef(false);
+  onDanceFloorRef2.current = onDanceFloor;
+
   // Auto-start personalized feed when entering world.
   // Uses feedStartedRef to prevent re-triggering when user pauses playback.
-  // The dance floor effect will pause this feed on enter and restore/resume on exit.
+  // IMPORTANT: if user spawns ON the dance floor, we load the track into the
+  // player (so the UI card appears) but immediately mute/pause it so the DJ owns audio.
   useEffect(() => {
     if (feedLoading || loading || !playTrack) return;
     if (feedStartedRef.current) return; // already initialized — don't restart on state changes
-    // Start feed so the player card is always visible.
-    // The dance floor enter/exit handler pauses the audio and silences volume on the
-    // floor, then restores and resumes on exit — so this just gives us a track to display.
+
     // If something is already playing, adopt it into feed mode
     if (currentTrack && isPlaying) {
       feedActiveRef.current = true;
@@ -868,26 +885,45 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       feedIndexRef.current = sortedTracks?.findIndex(t => t.id === currentTrack.id) ?? 0;
       return;
     }
-    // Start feed
-    if (sortedTracks?.length > 0) {
-      const pool = sortedTracks.slice(0, Math.min(5, sortedTracks.length));
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      if (pick) {
-        feedActiveRef.current = true;
-        feedStartedRef.current = true;
-        feedIndexRef.current = sortedTracks.indexOf(pick);
+
+    const pickAndLoad = (tracks, idx) => {
+      const pick = tracks[idx];
+      if (!pick) return;
+      feedActiveRef.current = true;
+      feedStartedRef.current = true;
+      feedIndexRef.current = idx;
+
+      if (onDanceFloorRef2.current) {
+        // Spawned on dance floor: set track in context for the UI card,
+        // but silence + pause immediately so DJ is the only audio source.
+        const personal = audioRef?.current;
+        playTrack(pick, "song");
+        // After playTrack fires (sync), silence the personal player
+        requestAnimationFrame(() => {
+          const p = audioRef?.current;
+          if (p) {
+            p.volume = 0;
+            if (!p.paused) {
+              p.pause();
+              danceFloorPausedRef.current = true;
+            }
+          }
+          savedPersonalTimeRef.current = 0;
+        });
+      } else {
         playTrack(pick, "song");
       }
+    };
+
+    if (sortedTracks?.length > 0) {
+      const pool = sortedTracks.slice(0, Math.min(5, sortedTracks.length));
+      const idx = sortedTracks.indexOf(pool[Math.floor(Math.random() * pool.length)]);
+      pickAndLoad(sortedTracks, Math.max(0, idx));
     } else if (!feedLoading && allTracks?.length > 0) {
       const featured = allTracks.filter((t) => t.is_featured);
       const pool = featured.length > 0 ? featured : allTracks;
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      if (pick) {
-        feedActiveRef.current = true;
-        feedStartedRef.current = true;
-        feedIndexRef.current = allTracks.indexOf(pick);
-        playTrack(pick, "song");
-      }
+      const idx = allTracks.indexOf(pool[Math.floor(Math.random() * pool.length)]);
+      pickAndLoad(allTracks, Math.max(0, idx));
     }
   }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
 
@@ -924,70 +960,89 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const personalBaseVolRef = useRef(1.0);
 
-  // DJ audio is gated strictly to dance floor — no proximity bleed outside
-
   // Keep stable refs for isPlaying/togglePlay so dance floor effect never uses stale closures
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
+  const audioRefStable = useRef(audioRef);
+  audioRefStable.current = audioRef;
 
-  // ── Dance floor enter / exit — pause personal player, restore on exit ──────────
+  // ── Dance floor enter / exit — strict single-source audio ownership ──────
+  // Rule: DJ is the ONLY audible source on the floor.
+  //       Global player is the ONLY audible source off the floor.
+  // The DJ hook already handles its own volume via danceFloorMode prop.
+  // This effect handles the global player side only.
   useEffect(() => {
-    const personal = audioRef?.current;
+    const personal = audioRefStable.current?.current;
+
     if (onDanceFloor && !wasOnDanceFloorRef.current) {
-      // Entered dance floor
+      // ── Entering dance floor ────────────────────────────────────────────
       wasOnDanceFloorRef.current = true;
+
       if (personal) {
-        savedPersonalTimeRef.current = personal.currentTime;
-        // Only pause if currently playing (use ref to avoid stale closure)
-        if (isPlayingRef.current) {
-          danceFloorPausedRef.current = true;
-          togglePlayRef.current?.();
+        // Save exact position so we can resume from here on exit
+        if (personal.currentTime > 0) {
+          savedPersonalTimeRef.current = personal.currentTime;
         }
-        // Silence personal player volume — DJ stream takes over
+        // Hard-silence the personal player immediately — no fade, no race
         personal.volume = 0;
+        // Pause it (use ref to read live isPlaying without stale closure)
+        if (!personal.paused) {
+          danceFloorPausedRef.current = true;
+          personal.pause();
+          // Mirror state into PlayerContext so UI shows paused
+          togglePlayRef.current?.(); // togglePlay pauses synchronously when playing
+        } else {
+          // Already paused (e.g. user had it paused before entering) — still track it
+          danceFloorPausedRef.current = false;
+        }
         setShowResumeButton(false);
       }
     } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
-      // Left dance floor
+      // ── Leaving dance floor ─────────────────────────────────────────────
       wasOnDanceFloorRef.current = false;
+
       if (personal) {
         // Restore saved playback position
         if (savedPersonalTimeRef.current > 0) {
-          personal.currentTime = savedPersonalTimeRef.current;
+          try { personal.currentTime = savedPersonalTimeRef.current; } catch {}
         }
-        // Restore full volume
+        // Restore full volume BEFORE resuming so there's no silent blip
         personal.volume = personalBaseVolRef.current;
-        // Resume if we were the ones who paused it.
-        // IMPORTANT: do NOT gate on !isPlayingRef.current here —
-        // the PlayerContext's setIsPlaying(false) triggers a re-render
-        // that updates isPlayingRef ONLY after this effect has already
-        // evaluated its deps. If we gate, the check reads the OLD value
-        // (still true) and resume NEVER fires, leaving the user stuck
-        // needing manual play. Instead rely on togglePlay's internal
-        // check: it won't double-play if already playing.
+
+        // Resume only if WE paused it on entry
         if (danceFloorPausedRef.current) {
           danceFloorPausedRef.current = false;
-          togglePlayRef.current?.();
+          // Small delay so the DJ audio has time to silence first,
+          // ensuring the personal player doesn't overlap with fading-out DJ audio
+          setTimeout(() => {
+            const p = audioRefStable.current?.current;
+            if (!p) return;
+            if (p.paused) {
+              // togglePlay() resumes synchronously — safe to call here
+              togglePlayRef.current?.();
+            }
+          }, 80);
         }
       }
     } else if (!onDanceFloor && !wasOnDanceFloorRef.current && personal) {
-      // Spawn was inside dance floor — first real exit must always restore playback.
-      // Restore volume unconditionally on the first exit (no saved track = resumeGlobalIfNeeded won't fire).
+      // ── Spawn was off the floor — just ensure volume is restored ────────
       personal.volume = personalBaseVolRef.current;
     }
-  // onDanceFloor is the only real trigger; refs handle the rest without stale values
-  }, [onDanceFloor, audioRef]);
+  }, [onDanceFloor]);
 
-  // Cleanup on unmount — restore personal player volume
+  // Cleanup on unmount — restore personal player volume, silence DJ
   useEffect(() => {
     return () => {
       clearInterval(jukeboxFadeRef.current);
       const personal = audioRef?.current;
       if (personal) personal.volume = personalBaseVolRef.current;
+      // Silence DJ audio on unmount so it doesn't bleed into other pages
+      const dj = djAudioRef?.current;
+      if (dj) { dj.volume = 0; try { dj.pause(); } catch {} }
     };
-  }, [audioRef]);
+  }, [audioRef, djAudioRef]);
 
   // ── Auto-rotate stage video every 60s when user isn't interacting ──
   useEffect(() => {
