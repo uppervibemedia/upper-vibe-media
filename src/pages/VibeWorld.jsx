@@ -18,11 +18,11 @@ function isWebGLAvailable() {
 }
 
 // ══════════════════════════════════════════════════════════
-// DEV BYPASS — set to true to skip Enter the World screen
-// and load directly into Upper Vibe City for avatar testing.
-// Set back to false before production launch.
+// PRODUCTION LOCK — false means users must be logged in,
+// have a world_username, and have accepted the current
+// Terms & Conditions before entering Upper Vibe City.
 // ══════════════════════════════════════════════════════════
-const DEV_BYPASS_ENTER_WORLD = true;
+const DEV_BYPASS_ENTER_WORLD = false;
 
 // ── The hub / landing page — lightweight, no 3D loaded ──
 function VibeWorldHub({ chatAgeConfirmed }) {
@@ -155,34 +155,12 @@ function VibeWorldHub({ chatAgeConfirmed }) {
   );
 }
 
-// TEMPORARY TEST MODE: remove before production launch.
-// ?bypass=1 skips auth, username, rules, and agreement gates.
-// Provides a guest profile (chat disabled) so mobile controls can be tested.
-function isBypassMode() {
-  try { return new URLSearchParams(window.location.search).get("bypass") === "1"; } catch { return false; }
-}
-
-function BypassWrapper({ children }) {
-  // Guest test profile — chatAgeConfirmed=false keeps chat disabled
-  const guestChatAgeConfirmed = false;
-  return React.cloneElement(children, { chatAgeConfirmed: guestChatAgeConfirmed });
-}
-
 export default function VibeWorld() {
-  // TEMPORARY TEST MODE: skip WorldGate when DEV_BYPASS_ENTER_WORLD=true OR ?bypass=1 in URL
-  const bypass = DEV_BYPASS_ENTER_WORLD || isBypassMode();
-
   return (
     <PageErrorBoundary>
-      {bypass ? (
-        <BypassWrapper>
-          <VibeWorldHub />
-        </BypassWrapper>
-      ) : (
-        <WorldGate>
-          <VibeWorldHub />
-        </WorldGate>
-      )}
+      <WorldGate>
+        <VibeWorldHub />
+      </WorldGate>
     </PageErrorBoundary>
   );
 }

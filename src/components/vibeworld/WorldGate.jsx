@@ -8,7 +8,7 @@ import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 import CommunityRulesModal from "@/components/vibeworld/CommunityRulesModal";
 import UserAgreementModal from "@/components/vibeworld/UserAgreementModal";
 
-const UVC_AGREEMENT_VERSION = "1.0";
+const UVC_AGREEMENT_VERSION = "uvc-2026-06";
 
 // Flow steps
 const STEP = {
