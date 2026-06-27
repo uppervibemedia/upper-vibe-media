@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Compass, Music4, Radio, Rocket, AlertTriangle, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -27,11 +27,21 @@ const DEV_BYPASS_ENTER_WORLD = true;
 // ── The hub / landing page — lightweight, no 3D loaded ──
 function VibeWorldHub({ chatAgeConfirmed }) {
   // Auto-launch when dev bypass is active OR via URL param ?launch=1
+  const [webglOk, setWebglOk] = useState(false);
+  const [webglChecked, setWebglChecked] = useState(false);
   const [launched, setLaunched] = useState(() => {
-    if (DEV_BYPASS_ENTER_WORLD) return true;
     try { return new URLSearchParams(window.location.search).get("launch") === "1"; } catch { return false; }
   });
-  const [webglOk] = useState(() => isWebGLAvailable());
+
+  // Run WebGL check once; if bypass is active, auto-launch only when WebGL is available
+  useEffect(() => {
+    const ok = isWebGLAvailable();
+    setWebglOk(ok);
+    setWebglChecked(true);
+    if (DEV_BYPASS_ENTER_WORLD && ok) {
+      setLaunched(true);
+    }
+  }, []);
 
   if (launched) {
     return <UpperVibeCity onExit={() => setLaunched(false)} chatAgeConfirmed={chatAgeConfirmed} />;
