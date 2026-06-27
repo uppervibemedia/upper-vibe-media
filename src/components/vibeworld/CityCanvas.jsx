@@ -8,7 +8,7 @@ import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, 
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
-import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION } from "./VibeLaunchZone";
+import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION, LAUNCH_PADS as PLAZA_LAUNCH_PADS } from "./VibeLaunchZone";
 import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
 import { createCrystalZone, animateCrystalZone } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
@@ -1461,7 +1461,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // ─── LAUNCH PAD DETECTION — air launch ───────────────────────
         if (hbRidingRef.current && frameRef.current % 6 === 0) {
-          checkHbLaunchPads(px, py, pz, scene, launchStateRef, LAUNCH_PADS);
+          // Check both beach pads (HoverboardRingRun) AND plaza pads (VibeLaunchZone)
+          checkHbLaunchPads(px, py, pz, scene, launchStateRef, [...PLAZA_LAUNCH_PADS, ...LAUNCH_PADS]);
         }
 
         // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──
