@@ -83,7 +83,12 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     const riding = isRidingPersonal;
     const neonSurf = isRidingNeonSurf;
 
-    // Skip if nothing changed (position, animation, riding, OR equipped items)
+    // Fire-and-forget heartbeat keepalive every cycle — keeps this user visible
+    // to all other players even when standing still/idle. Never awaited so it
+    // can't block or hit rate-limit backpressure.
+    base44.entities.VibeWorldPresence.update(rid, { last_heartbeat: new Date().toISOString() }).catch(() => {});
+
+    // Skip full position update if nothing changed (saves DB writes)
     if (
       Math.abs(x - last.x) < POS_THRESHOLD &&
       Math.abs(z - last.z) < POS_THRESHOLD &&
@@ -107,13 +112,14 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       dancing,
       riding,
       neonSurf,
-      aura: equippedAura,
-      hoverboard: equippedHoverboard,
-      nameplate: equippedNameplate,
-      badge: equippedBadge,
-      clothing: equippedClothing,
+      aura: equippedAura || "",
+      hoverboard: equippedHoverboard || "",
+      nameplate: equippedNameplate || "",
+      badge: equippedBadge || "",
+      clothing: equippedClothing || "",
     };
 
+    // Full position update — only when state actually changed
     try {
       await base44.entities.VibeWorldPresence.update(rid, {
         pos_x: x,
@@ -124,12 +130,12 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         is_dancing: dancing,
         personal_hoverboard_active: riding,
         is_playing_neon_surf: neonSurf,
-        equipped_hoverboard: equippedHoverboard,
-        equipped_aura: equippedAura,
-        equipped_aura_color: equippedAuraColor,
-        equipped_nameplate: equippedNameplate,
-        equipped_badge: equippedBadge,
-        equipped_clothing: equippedClothing,
+        equipped_hoverboard: equippedHoverboard || "",
+        equipped_aura: equippedAura || "",
+        equipped_aura_color: equippedAuraColor || "",
+        equipped_nameplate: equippedNameplate || "",
+        equipped_badge: equippedBadge || "",
+        equipped_clothing: equippedClothing || "",
         last_heartbeat: new Date().toISOString(),
       });
     } catch {
