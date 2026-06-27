@@ -307,24 +307,38 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   // This is THE ONLY place that ever unmutes / raises volume.
   // Runs on every danceFloorMode change including the initial false → stays false.
   useEffect(() => {
-    const el = djAudioRef.current;
-
     // Always cancel any in-progress fade first
     fadeCleanupRef.current?.();
     fadeCleanupRef.current = null;
 
-    if (danceFloorMode) {
-      // User stepped onto dance floor → unmute and fade in
-      if (el) {
-        el.muted = false;
-        fadeCleanupRef.current = fadeVolume(el, MAX_VOL, FADE_IN_MS);
+    if (!danceFloorMode) {
+      // User is NOT on dance floor → INSTANT hard silence
+      const el = djAudioRef.current;
+      if (el) { el.volume = 0; el.muted = true; }
+      return;
+    }
+
+    // User is ON dance floor — unmute immediately if audio is ready,
+    // otherwise poll until the audio element exists and has a src loaded.
+    const tryUnmute = () => {
+      const el = djAudioRef.current;
+      if (!el) return false;
+      // If audio is paused (not yet started), try to play it first
+      if (el.paused && el.src) {
+        el.play().catch(() => {});
       }
-    } else {
-      // User is NOT on dance floor (including spawn) → INSTANT hard silence
-      if (el) {
-        el.volume = 0;
-        el.muted = true;
-      }
+      el.muted = false;
+      fadeCleanupRef.current = fadeVolume(el, MAX_VOL, FADE_IN_MS);
+      return true;
+    };
+
+    if (!tryUnmute()) {
+      // Audio not ready yet — retry until it is (covers spawn-on-floor race condition)
+      let attempts = 0;
+      const retry = setInterval(() => {
+        if (tryUnmute() || ++attempts > 30) clearInterval(retry);
+      }, 300);
+      fadeCleanupRef.current = () => clearInterval(retry);
     }
   }, [danceFloorMode]);
 
