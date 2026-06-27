@@ -171,6 +171,24 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
     onRefresh();
   };
 
+  const downloadSong = (track) => {
+    const fileUrl = track.audio_url || track.audioUrl || track.songUrl || track.fileUrl || track.downloadUrl;
+    if (!fileUrl) {
+      toast.error("No audio file available for this track.");
+      return;
+    }
+    const artist = track.artist_display || track.artist || "Upper Vibe Media";
+    const title = track.title || "Untitled";
+    const safeFileName = `${artist} - ${title}.mp3`.replace(/[\\/:*?"<>|]/g, "");
+    const link = document.createElement("a");
+    link.href = fileUrl;
+    link.download = safeFileName;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // AI Organize: scan selected (or all unlocked) tracks and fix missing metadata
   const aiOrganizeSongs = async () => {
     const toOrganize = (selCount > 0 ? filtered.filter((t) => selected.has(t.id)) : filtered)
@@ -521,6 +539,14 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
                         <button onClick={() => toggleStatus(track)} title="Toggle status"
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-all">
                           {track.status === "published" ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          onClick={() => downloadSong(track)}
+                          title={track.audio_url ? "Download audio file" : "No audio file available"}
+                          disabled={!track.audio_url}
+                          className={`p-1.5 rounded-lg transition-all ${track.audio_url ? "text-muted-foreground hover:text-green-400" : "text-muted-foreground/20 cursor-not-allowed"}`}
+                        >
+                          <Download className="w-3.5 h-3.5" />
                         </button>
                         <button onClick={() => onEdit(track)}
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-primary transition-all">
