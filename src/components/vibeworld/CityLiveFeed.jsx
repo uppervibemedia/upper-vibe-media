@@ -44,17 +44,17 @@ function neonLabel(text, hex, x, y, z, scale = 6, hScale = 1) {
 // All duration=6 for gentle pacing and clean transitions.
 const SHOTS = [
   // 1) Premium grand-angle from south — plaza + stage + full skyline
-  { pos: [0,  22, 36],  look: [0,   2, -16],  duration: 6 },
+  { pos: [0,  22, 36],  look: [0,   2, -16],  duration: 5 },
   // 2) Crank right — Shop + Dome + skyline buildings
-  { pos: [-14, 20, 26], look: [-8,  2, -10],  duration: 6 },
+  { pos: [-14, 20, 26], look: [-8,  2, -10],  duration: 5 },
   // 3) Right-side — Library + Ferris Wheel + east skyline
-  { pos: [30, 19, 28],  look: [12,  2, -13],  duration: 6 },
+  { pos: [30, 19, 28],  look: [12,  2, -13],  duration: 5 },
   // 4) Angled from west — Crystal + Academy + skyline
-  { pos: [-36, 18, 18], look: [-18, 2, -16],  duration: 6 },
+  { pos: [-36, 18, 18], look: [-18, 2, -16],  duration: 5 },
   // 5) High overhead — plaza/Lounge rings clearly visible
-  { pos: [0,  28, 10],  look: [0,  2, -14],   duration: 6 },
+  { pos: [0,  28, 10],  look: [0,  2, -14],   duration: 5 },
   // 6) Grand diagonal from beach side — whole city + stage distant
-  { pos: [16, 20, 38],  look: [0,   2, -14],  duration: 6 },
+  { pos: [16, 20, 38],  look: [0,   2, -14],  duration: 5 },
 ];
 
 export default function CityLiveFeed({ width = "100%", height = "100%", className = "" }) {
@@ -86,7 +86,7 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       const camera = new THREE.PerspectiveCamera(52, w / Math.max(h, 1), 0.1, 120);
 
       // ── Lighting — rich purple-blue nocturnal with neon washes ─────────────
-      scene.add(new THREE.AmbientLight(new Color("#283068"), 0.65));
+      scene.add(new THREE.AmbientLight(new Color("#283068"), 0.85));
       scene.add(new THREE.HemisphereLight(new Color("#9B7EFF"), new Color("#1A2040"), 0.55));
 
       const moon = new THREE.DirectionalLight(new Color("#8888CC"), 1.0);
@@ -147,6 +147,18 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       center.rotation.x = -Math.PI / 2; center.position.set(0, 0.005, -13);
       scene.add(center);
 
+      // Music video on stage screen — loading a video texture (embedded element for three.js)
+      const stageVideoEl = document.createElement("video");
+      stageVideoEl.loop = true;
+      stageVideoEl.muted = true;
+      stageVideoEl.playsInline = true;
+      stageVideoEl.crossOrigin = "anonymous";
+      stageVideoEl.src = "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+      stageVideoEl.load();
+      // Play attempt is best-effort; silently handle autoplay blocks
+      const tryStagePlay = () => { stageVideoEl.play().catch(() => {}); };
+      stageVideoEl.addEventListener('canplay', tryStagePlay, { once: true });
+
       // ── MUSIC STAGE ────────────────────────────────────────────────────
       const stage = new Mesh(new BoxGeometry(10, 1.0, 5.5), new MeshStandardMaterial({ color: 0x111830, roughness: 0.35 })); // Adjusted for typos
       stage.position.set(0, 0.5, -32); scene.add(stage);
@@ -158,7 +170,10 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       sideLeft.position.set(-5.05, 0.5, -32); scene.add(sideLeft);
       const sideRight = new Mesh(new BoxGeometry(0.06, 1.0, 0.06), new MeshBasicMaterial({ color: new Color("#00D4F0"), transparent: true, opacity: 0.7 }));
       sideRight.position.set(5.05, 0.5, -32); scene.add(sideRight);
-      const screen = new Mesh(new BoxGeometry(14, 7, 0.2), new MeshBasicMaterial({ color: 0x001A40 }));
+      const stageVideoTex = new THREE.VideoTexture(stageVideoEl);
+      stageVideoTex.minFilter = THREE.LinearFilter;
+      stageVideoTex.colorSpace = THREE.SRGBColorSpace;
+      const screen = new Mesh(new BoxGeometry(14, 7, 0.2), new THREE.MeshBasicMaterial({ map: stageVideoTex }));
       screen.position.set(0, 3.5, -34.4); scene.add(screen);
       const glowBorder = new Mesh(new BoxGeometry(14.3, 7.3, 0.05), new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: 0.5 }));
       glowBorder.position.set(0, 3.5, -34.4); scene.add(glowBorder);
@@ -247,8 +262,8 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       hbGlow.position.set(28, 0.17, 23); scene.add(hbGlow);
       scene.add(neonLabel("NEON SURF BEACH", "#F5A800", 28, 3.5, 23, 6, 0.95));
 
-      // ── FERRIS WHEEL ──────────────────────────────────────────────────
-      const WHEEL_X = 22, WHEEL_Z = 22, WHEEL_R = 7;
+      // ── FERRIS WHEEL — on blacktop near Music Library ──────────────────────
+      const WHEEL_X = 22, WHEEL_Z = -12, WHEEL_R = 7;
       const wheelHub = new Mesh(new CylinderGeometry(0.5, 0.5, 0.5, 8), new THREE.MeshBasicMaterial({ color: new Color("#00D4F0") }));
       wheelHub.position.set(WHEEL_X, WHEEL_R + 1.2, WHEEL_Z); scene.add(wheelHub);
       const wheelRim = new Mesh(new TorusGeometry(WHEEL_R, 0.15, 6, 32), new THREE.MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: 0.85 }));
@@ -333,6 +348,44 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         scene.add(dot);
       }
 
+      // ── STARS IN THE SKY ──────────────────────────────────────────────────
+      const starCount = 600;
+      const starGeo = new BufferGeometry();
+      const starPos = new Float32Array(starCount * 3);
+      const starSizes = new Float32Array(starCount);
+      for (let i = 0; i < starCount; i++) {
+        // Spread across the night sky — centred above the city
+        const rad = 6 + Math.random() * 14;
+        const ang2 = Math.random() * Math.PI * 2;
+        starPos[i * 3] = Math.cos(ang2) * rad + (Math.random() - 0.5) * 8;
+        starPos[i * 3 + 1] = 10 + Math.random() * 18;
+        starPos[i * 3 + 2] = -(30 + Math.random() * 20);
+        starSizes[i] = 0.06 + Math.random() * 0.12;
+      }
+      starGeo.setAttribute("position", new BufferAttribute(starPos, 3));
+      starGeo.setAttribute("size", new BufferAttribute(starSizes, 1));
+      const starMat = new PointsMaterial({
+        color: new Color("#ddeeff"),
+        size: 0.18,
+        transparent: true,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending,
+        sizeAttenuation: true,
+      });
+      const stars = new Points(starGeo, starMat);
+      scene.add(stars);
+      const starMat2 = new PointsMaterial({
+        color: new Color("#8899cc"),
+        size: 0.10,
+        transparent: true,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending,
+        sizeAttenuation: true,
+      });
+      const stars2 = new Points(starGeo, starMat2);
+      stars2.position.set(0, 0.15, 0);
+      scene.add(stars2);
+
       // ── SKYLINE (real CitySkyline module) ─────────────────────────────────
       let skylineCleanup = null;
       try {
@@ -406,7 +459,7 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         const pulseLights = [stageWash, loungeLight, plazaFill, domeLight].filter(Boolean);
         const offsets = [2.1, 1.7, 1.3, 1.9];
         for (const [i, light] of pulseLights.entries()) {
-          if (light) light.intensity = (light === stageWash ? 5 : light === domeLight ? 3 : 3.5) + Math.sin(t * offsets[i]) * 0.8;
+          if (light) light.intensity = (light === stageWash ? 5 : light === plazaFill ? 5 : 3) + Math.sin(t * offsets[i]) * 1.2;
         }
         // Orb float
         for (const [i, m] of orbMeshes.entries()) {
@@ -428,6 +481,9 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         cancelAnimationFrame(animId);
         ro.disconnect();
         renderer.dispose();
+        stageVideoEl.pause();
+        stageVideoEl.removeAttribute("src");
+        stageVideoEl.load();
         scene.traverse((obj) => {
           if (obj.geometry) obj.geometry.dispose();
           if (obj.material) { (Array.isArray(obj.material) ? obj.material : [obj.material]).forEach(m => m.dispose()); }
