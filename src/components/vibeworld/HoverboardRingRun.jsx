@@ -3,6 +3,7 @@
  * Collectible Vibe Coins · Speed Boost Pads · Launch Pads (air launch)
  */
 import * as THREE from "three";
+import { MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
 
 const {
   CircleGeometry, RingGeometry, SphereGeometry, BoxGeometry, CylinderGeometry,
@@ -483,6 +484,64 @@ export function resetOrbs(scene) {
   const orbs = scene.userData.hbOrbMeshes;
   if (!orbs) return;
   for (const coin of orbs) { coin.collected = false; coin.group.visible = true; }
+}
+
+// ─── BEACH LAUNCH PAD SYSTEM (self-contained, no VibeLaunchZone dep) ──
+// Launches ANY rider on a beach pad (walking, personal hoverboard, or Neon Surf).
+// Returns the launch state to integrate into CityCanvas/LaunchRide height pipeline.
+const LAUNCH_RISE = 0.55;      // seconds to rise
+const LAUNCH_FALL= 0.80;       // seconds to glide down
+const LAUNCH_PEAK = 10;        // peak height
+const LAUNCH_DIRS = [{fx: -2, fz: -10}, {fx: 8, fz: -6}];
+const LAUNCH_SPEED = 3.0;
+
+export function tickBeachLaunch(scene, dt, prevLift, onTrigger) {
+  if (!scene.userData._beachLaunch) scene.userData._beachLaunch = { active: false, phase: "idle", timer: 0, startY: 0, cooldownMs: 0, dirIdx: 0 };
+  const ls = scene.userData._beachLaunch;
+
+  if (!ls.active) {
+    // Detect step-on
+    const now = performance.now();
+    if (now < ls.cooldownMs + 2500 && ls.cooldownMs > 0) return 0;
+    for (let i = 0; i < LAUNCH_PADS.length; i++) {
+      const pad = LAUNCH_PADS[i];
+      const dx = MOVEMENT_BRIDGE.px - pad.x;
+      const dz = MOVEMENT_BRIDGE.pz - pad.z;
+      if (Math.sqrt(dx * dx + dz * dz) < 1.6) {
+        ls.active = true; ls.phase = "rise"; ls.timer = 0; ls.startY = prevLift; ls.cooldownMs = now; ls.dirIdx = i;
+        onTrigger?.();
+        break;
+      }
+    }
+    return 0;
+  }
+
+  ls.timer += dt;
+  if (ls.phase === "rise") {
+    const progress = Math.min(ls.timer / LAUNCH_RISE, 1);
+    const eased = 1 - (1 - progress) * (1 - progress);
+    if (progress >= 1) { ls.phase = "fall"; ls.timer = 0; }
+    return ls.startY + LAUNCH_PEAK * eased;
+  }
+  if (ls.phase === "fall") {
+    const progress = Math.min(ls.timer / LAUNCH_FALL, 1);
+    const eased = progress * progress;
+    if (progress >= 1) { ls.active = false; ls.phase = "idle"; return ls.startY; }
+    return ls.startY + LAUNCH_PEAK * (1 - eased);
+  }
+  return 0;
+}
+
+export function isBeachLaunchActive(scene) {
+  return scene.userData._beachLaunch?.active ?? false;
+}
+
+export function applyBeachLaunchDrift(velRef, dt) {
+  const ls = window.__hbScene?.userData?._beachLaunch;
+  if (!ls?.active) return;
+  const dir = LAUNCH_DIRS[ls.dirIdx];
+  velRef.x += dir.fx * LAUNCH_SPEED * dt;
+  velRef.z += dir.fz * LAUNCH_SPEED * dt;
 }
 
 // Legacy no-ops
