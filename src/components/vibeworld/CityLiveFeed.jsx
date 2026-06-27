@@ -15,6 +15,7 @@ import { buildPark } from "@/components/vibeworld/CityCanvas";
 import { animateFerrisWheel } from "@/components/vibeworld/FerrisWheel";
 import { animateCosmicSky } from "@/components/vibeworld/CosmicSkySystem";
 import createUpperVibeShop, { animateShop } from "@/components/vibeworld/UpperVibeShop";
+import { base44 } from "@/api/base44Client";
 
 const { Color, Vector3, SpriteMaterial, Sprite, CanvasTexture, SRGBColorSpace,
         Mesh, MeshBasicMaterial, PointsMaterial, Points,
@@ -76,6 +77,19 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
   const canvasRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
+  const featuredTrackRef = useRef(null);
+
+  // Fetch a real featured/published track to show on stage
+  useEffect(() => {
+    base44.entities.Track.filter({ status: "published", is_featured: true }, "-created_date", 1)
+      .then(tracks => {
+        if (tracks?.length) { featuredTrackRef.current = tracks[0]; return; }
+        // fallback: any published track
+        return base44.entities.Track.filter({ status: "published" }, "-created_date", 1)
+          .then(all => { if (all?.length) featuredTrackRef.current = all[0]; });
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -248,46 +262,108 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         // Upper Vibe Shop — animate lights
         if (shopGroup) animateShop(shopGroup, t, 0);
 
-        // ── Put a track on the Music Stage screen ─────────────────────
-        // Render cover art into a canvas, then apply it to the stage screen.
-        // Re-renders every 4 frames to keep in sync, falling back to the
-        // existing visualizer/dark screen if the screen was already textured.
+        // ── Music Stage screen — real track cover art + animated bars ──
         if (frame % 4 === 0) {
           const ss = scene.userData.stageScreen;
-          if (ss && ss.material && !scene.userData._stageSongPainted) {
-            const sgw = 12.444, sgh = 7;
-            const sq = document.createElement("canvas");
-            sq.width = 128; sq.height = 72;
-            const sctx = sq.getContext("2d");
-            // Deep purple glow background
-            const grd = sctx.createLinearGradient(0, 0, 128, 72);
-            grd.addColorStop(0, "#1a1040"); grd.addColorStop(0.5, "#2d1560"); grd.addColorStop(1, "#1a1040");
-            sctx.fillStyle = grd; sctx.fillRect(0, 0, 128, 72);
-            // Glow halo
-            sctx.shadowColor = "#00E5FF"; sctx.shadowBlur = 8;
-            sctx.beginPath(); sctx.arc(22, 36, 12, 0, Math.PI * 2); sctx.fillStyle = "rgba(0,229,255,0.4)"; sctx.fill();
-            sctx.shadowBlur = 0; sctx.shadowColor = "transparent";
-            // Neon Strobes vocalist fig
-            sctx.fillStyle = "#ffffff"; sctx.font = "22px 'Syne',sans-serif"; sctx.textAlign = "center"; sctx.textBaseline = "middle";
-            sctx.shadowColor = "#C43BFF"; sctx.shadowBlur = 10;
-            sctx.fillText("🎤", 20, 38); sctx.shadowBlur = 0;
-            sctx.shadowColor = "#00E5FF"; sctx.shadowBlur = 6;
-            sctx.fillText("ON", 60, 28); sctx.fillText("STAGE", 60, 48);
-            sctx.shadowBlur = 0;
-            sctx.fillStyle = "#9B7EFF"; sctx.font = "18px 'Syne',sans-serif";
-            sctx.fillText("Now Playing", 60, 5);
-            sctx.fillStyle = "rgba(255,255,255,0.4)"; sctx.font = "14px 'Inter',sans-serif"; sctx.textAlign = "left";
-            sctx.fillText("★ 528Hz Remix", 86, 58);
-            // Music bars
-            for (let b = 0; b < 6; b++) {
-              const bh = 4 + Math.sin(b * 1.5 + t * 2.3) * 5;
-              sctx.fillStyle = ["#00E5FF", "#C43BFF", "#9B7EFF", "#00E5FF", "#C43BFF", "#9B7EFF"][b];
-              sctx.fillRect(92 + b * 6, 66 - bh, 4, bh);
+          const track = featuredTrackRef.current;
+          if (ss && track && !scene.userData._stageCanvasApplied) {
+            // Paint immediately with placeholder, then re-paint once image loads
+            const paintStage = (coverImg) => {
+              const sq = document.createElement("canvas");
+              sq.width = 256; sq.height = 144;
+              const sctx = sq.getContext("2d");
+
+              // Background gradient
+              const grd = sctx.createLinearGradient(0, 0, 256, 144);
+              grd.addColorStop(0, "#0d0828"); grd.addColorStop(1, "#1a1040");
+              sctx.fillStyle = grd; sctx.fillRect(0, 0, 256, 144);
+
+              // Cover art (left side square)
+              const covSize = 100;
+              const covX = 10, covY = 22;
+              if (coverImg) {
+                sctx.save();
+                sctx.beginPath();
+                sctx.roundRect(covX, covY, covSize, covSize, 6);
+                sctx.clip();
+                sctx.drawImage(coverImg, covX, covY, covSize, covSize);
+                sctx.restore();
+                // Cover border glow
+                sctx.shadowColor = "#00E5FF"; sctx.shadowBlur = 10;
+                sctx.strokeStyle = "rgba(0,229,255,0.6)"; sctx.lineWidth = 1.5;
+                sctx.beginPath(); sctx.roundRect(covX, covY, covSize, covSize, 6); sctx.stroke();
+                sctx.shadowBlur = 0; sctx.shadowColor = "transparent";
+              } else {
+                // Placeholder if no image
+                sctx.fillStyle = "#2d1560"; sctx.fillRect(covX, covY, covSize, covSize);
+                sctx.fillStyle = "#9B7EFF"; sctx.font = "36px serif";
+                sctx.textAlign = "center"; sctx.textBaseline = "middle";
+                sctx.fillText("🎵", covX + covSize / 2, covY + covSize / 2);
+              }
+
+              // "NOW PLAYING" label
+              sctx.fillStyle = "#00E5FF"; sctx.font = "bold 9px 'Inter',sans-serif";
+              sctx.textAlign = "left"; sctx.textBaseline = "top";
+              sctx.shadowColor = "#00E5FF"; sctx.shadowBlur = 4;
+              sctx.fillText("▶ NOW PLAYING", 120, 22);
+              sctx.shadowBlur = 0; sctx.shadowColor = "transparent";
+
+              // Track title (truncated)
+              const title = (track.title || "Unknown").substring(0, 22);
+              sctx.fillStyle = "#ffffff"; sctx.font = "bold 13px 'Syne',sans-serif";
+              sctx.textBaseline = "top";
+              sctx.fillText(title, 120, 38);
+
+              // Artist name
+              const artist = (track.artist_display || "Upper Vibe").substring(0, 22);
+              sctx.fillStyle = "rgba(155,126,255,0.9)"; sctx.font = "11px 'Inter',sans-serif";
+              sctx.fillText(artist, 120, 56);
+
+              // Frequency badge
+              if (track.frequency_hz) {
+                sctx.fillStyle = "rgba(0,229,255,0.15)";
+                sctx.beginPath(); sctx.roundRect(120, 72, 60, 16, 4); sctx.fill();
+                sctx.fillStyle = "#00E5FF"; sctx.font = "9px 'Inter',sans-serif";
+                sctx.fillText(`${track.frequency_hz}Hz`, 124, 76);
+              }
+
+              // Animated music bars
+              for (let b = 0; b < 8; b++) {
+                const bh = 6 + Math.sin(b * 1.3 + t * 3.0) * 8;
+                const colors = ["#00E5FF","#C43BFF","#9B7EFF","#00D4F0","#C43BFF","#9B7EFF","#00E5FF","#A078FF"];
+                sctx.fillStyle = colors[b];
+                sctx.fillRect(120 + b * 12, 108 - bh, 8, bh);
+              }
+
+              // Bottom "UPPER VIBE CITY" watermark
+              sctx.fillStyle = "rgba(255,255,255,0.15)"; sctx.font = "8px 'Inter',sans-serif";
+              sctx.textAlign = "center";
+              sctx.fillText("UPPER VIBE CITY — MUSIC STAGE", 128, 136);
+
+              const stex = new THREE.CanvasTexture(sq);
+              stex.colorSpace = THREE.SRGBColorSpace; stex.minFilter = THREE.LinearFilter;
+              ss.material = new MeshBasicMaterial({ map: stex, depthWrite: true });
+              scene.userData._stageCanvasApplied = true;
+              scene.userData._stageTex = stex;
+            };
+
+            // Try to load cover image
+            if (track.cover_url) {
+              const img = new Image();
+              img.crossOrigin = "anonymous";
+              img.onload = () => paintStage(img);
+              img.onerror = () => paintStage(null);
+              img.src = track.cover_url;
+            } else {
+              paintStage(null);
             }
-            const stex = new THREE.CanvasTexture(sq);
-            stex.colorSpace = THREE.SRGBColorSpace;
-            stex.minFilter = THREE.LinearFilter;
-            ss.material = new MeshBasicMaterial({ map: stex, depthWrite: true });
+          }
+
+          // Re-update music bars every 4 frames once painted
+          if (ss && scene.userData._stageTex && scene.userData._stageCanvasApplied) {
+            // Bars are static in texture — texture is repainted on next track load only
+            // For live bar animation, mark needsUpdate so the CanvasTexture refreshes
+            if (scene.userData._stageTex) scene.userData._stageTex.needsUpdate = true;
           }
         }
 
