@@ -44,12 +44,18 @@ function neonLabel(text, hex, x, y, z, scale = 6, hScale = 1) {
   return sp;
 }
 
-// ── Single fixed preview camera ─────────────────────────────────────────
-// Wide elevated angle (16:9 cinematic): centered above south end of the city,
-// showing the full plaza/dance floor, Music Stage in the background, the
-// neon skyline framing the scene, with Visualizer Dome visible on the left
-// and Music Library on the right. No rotation — one polished destination view.
-const FIXED_CAM = { pos: [0, 18, 30], look: [0, 0, -16] };
+// ── Cinematic preview camera ──────────────────────────────────────────
+// Wide elevated angle with gentle orbiting. Shots are kept deep so ALL zone
+// name labels stay fully within the vertical frame — no cropping.
+const SHOTS = [
+  { pos: [0,  20, 32], look: [0, 0, -16] },  // central — full plaza + stage
+  { pos: [8,  20, 28], look: [3, 0, -16] },   // pan right — library + academy
+  { pos: [-11, 20, 32], look: [-6, 0, -14] }, // pan left — lounge + dome
+  { pos: [12, 18, 34], look: [8, 0, -14] },   // far right — beach + wheel
+];
+const FIXED_CAM = SHOTS[0];
+const SHOT_DURATION = 5; // seconds per shot
+const SHOT_LERP = 1.2;   // smoothness between shots
 
 // WHEEL_X / Z constants matching the live Ferris wheel position on blacktop
 const WHEEL_X = 22, WHEEL_Z = -12;
@@ -91,18 +97,19 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       // HoverboardRingRun, ZenBeach, DanceFloor, Jukebox
       buildPark(scene);
 
-      // ── Cinematic neon zone labels ─────────────────────────────────────
+      // ── Cinematic neon zone labels — kept LOW so the camera orbit
+      // never clips them against the top edge of the frame ─────────
       const labels = [
-        neonLabel("MUSIC STAGE", "#00D4F0", 0, 7.8, -34.0, 7, 1.1),
-        neonLabel("VIBE LOUNGE", "#C43BFF", -22, 4.2, -26),
-        neonLabel("MUSIC LIBRARY", "#00D4F0", 22, 4.0, -20),
-        neonLabel("VISUALIZER DOME", "#C43BFF", -13, 4.2, 3),
-        neonLabel("VIBE CHECK", "#00E5FF", -16, 4.2, -13),
-        neonLabel("VIBE ACADEMY", "#9B7EFF", -28, 5.0, 5),
-        neonLabel("UPPER VIBE SHOP", "#00E5FF", 0, 4.6, 10, 6, 1.0),
-        neonLabel("NEON SURF BEACH", "#F5A800", 28, 3.5, 23, 6, 0.95),
-        neonLabel("NEON VIBE WHEEL", "#F5A800", WHEEL_X, 14.5, WHEEL_Z),
-        neonLabel("CRYSTAL ZONE", "#C43BFF", -26, 5.2, -14),
+        neonLabel("MUSIC STAGE",       "#00D4F0", 0,   4.8, -34.0, 5),
+        neonLabel("VIBE LOUNGE",       "#C43BFF", -22, 3.5, -26,   5),
+        neonLabel("MUSIC LIBRARY",     "#00D4F0", 22,  3.5, -20,   5),
+        neonLabel("VISUALIZER DOME",   "#C43BFF", -13, 3.5, 3,     5),
+        neonLabel("VIBE CHECK",        "#00E5FF", -16, 3.8, -13,   5),
+        neonLabel("VIBE ACADEMY",      "#9B7EFF", -28, 4.2, 5,     5),
+        neonLabel("UPPER VIBE SHOP",   "#00E5FF", 0,   4.2, 10,    5),
+        neonLabel("NEON SURF BEACH",   "#F5A800", 28,  3.2, 23,    5),
+        neonLabel("NEON VIBE WHEEL",   "#F5A800", WHEEL_X, 7.5, WHEEL_Z, 5),
+        neonLabel("CRYSTAL ZONE",      "#C43BFF", -26, 4.0, -14,   5),
       ];
       labels.forEach((l) => scene.add(l));
 
@@ -170,7 +177,15 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       ro.observe(canvas.parentElement || canvas);
 
       // ── Animate ───────────────────────────────────────────────────────────
-      let frame = 0;
+      let frame = 0, shotIdx = 0, shotElapsed = 0, camShotPos = new Vector3(...SHOTS[0].pos), camShotLook = new Vector3(...SHOTS[0].look);
+      const camPos0 = new Vector3(), camLook0 = new Vector3(...SHOTS[0].look);
+
+      const advanceShot = () => {
+        shotIdx = (shotIdx + 1) % SHOTS.length;
+        camShotPos.set(...SHOTS[shotIdx].pos);
+        camShotLook.set(...SHOTS[shotIdx].look);
+        shotElapsed = 0;
+      };
 
       const animate = (time) => {
         if (disposed) return;
@@ -178,9 +193,13 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         const t = time * 0.001;
         const dt2 = 0.016;
 
-        // Fixed camera position — no rotation, no shot touring
-        camera.position.set(...FIXED_CAM.pos);
-        camera.lookAt(...FIXED_CAM.look);
+        // ── Gentle city tour — no hard snaps, all labels stay in frame ──
+        shotElapsed += dt2;
+        if (shotElapsed >= SHOT_DURATION) advanceShot();
+        camPos0.copy(camera.position);
+        camLook0.lerp(camShotLook, Math.min(1, SHOT_LERP * dt2));
+        camera.position.lerp(camShotPos, Math.min(1, SHOT_LERP * dt2));
+        camera.lookAt(camLook0);
 
         // ── Animate the real Ferris Wheel (same rotation as in-game) ──
         animateFerrisWheel(scene, t, 0);

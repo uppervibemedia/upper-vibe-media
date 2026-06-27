@@ -55,18 +55,23 @@ export function buildMusicStageZone(scene) {
     stage.add(sideStrip);
   }
 
-  // Main screen
+  // Main screen — 16:9 aspect ratio so cover art / video fills it without stretching
   const screenMat = mat("#1A1A3A", { roughness: 0.2, metalness: 0.7 });
-  const screen = new Mesh(new BoxGeometry(14, 7, 0.2), screenMat);
+  const SCREEN_ASPECT = 16 / 9;
+  const screenW = 12.444; // = 7 * 16/9
+  const screenH = 7;
+  const screen = new Mesh(new BoxGeometry(screenW, screenH, 0.2), screenMat);
   screen.position.set(0, 3.5, -34.4);
   screen.castShadow = true;
   screen.name = "stageScreen";
   stage.add(screen);
   scene.userData.stageScreen = screen;
   scene.userData._stageCanvasApplied = false;
+  scene.userData._screenW = screenW;
+  scene.userData._screenH = screenH;
 
   const screenGlow = new Mesh(
-    new BoxGeometry(14.3, 7.3, 0.05),
+    new BoxGeometry(screenW + 0.3, screenH + 0.3, 0.05),
     new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.65 })
   );
   screenGlow.position.set(0, 3.5, -34.4);

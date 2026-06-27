@@ -1454,9 +1454,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const rh = renderer.domElement.clientHeight || renderer.domElement.height;
           const cx = (proj.x * 0.5 + 0.5) * rw;
           const cy = (-proj.y * 0.5 + 0.5) * rh;
-          // Project corners for size (screen is 14×7 centered at y=3.5)
-          const tl = new Vector3(-7.0, 7.0, -34.4).project(camera);
-          const br = new Vector3(7.0, 0.0, -34.4).project(camera);
+          // Project corners for size (16:9 screen centered at y=3.5)
+          const sw2 = (scene.userData._screenW || 12.444) / 2;
+          const sh2 = scene.userData._screenH || 7;
+          const tl = new Vector3(-sw2, 3.5 + sh2 / 2, -34.4).project(camera);
+          const br = new Vector3( sw2, 3.5 - sh2 / 2, -34.4).project(camera);
           const sw = Math.abs((br.x - tl.x) * 0.5 * rw);
           const sh = Math.abs((-br.y + tl.y) * 0.5 * rh);
           stageScreenPosRef.current = { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh };
