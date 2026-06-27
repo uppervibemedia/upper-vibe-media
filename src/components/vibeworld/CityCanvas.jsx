@@ -170,7 +170,7 @@ function buildPark(scene) {
   // 1. GROUND — dark urban plaza floor
   // ═════════════════════════════════════════════════════════════
   const groundGeo = new PlaneGeometry(84, 64);
-  const groundMat = mat("#0B1020", { roughness: 0.55, metalness: 0.15 });
+  const groundMat = mat("#080C1A", { roughness: 0.45, metalness: 0.25 });
   const ground = new Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(0, -0.01, -10);
@@ -185,7 +185,7 @@ function buildPark(scene) {
 
   const plazaDisc = new Mesh(
     new CircleGeometry(PLAZA_R, 64),
-    mat("#141B2D", { roughness: 0.35, metalness: 0.30 })
+    mat("#131A30", { roughness: 0.3, metalness: 0.35 })
   );
   plazaDisc.rotation.x = -Math.PI / 2;
   plazaDisc.position.set(PLAZA_X, 0.001, PLAZA_Z);  // PLAZA_Z=-13
@@ -331,7 +331,7 @@ function buildPark(scene) {
 
   // 10. BEACH — wider sand strip for the hoverboard course
   const beachGeo = new PlaneGeometry(92, 32);
-  const beach = new Mesh(beachGeo, mat("#D4AA70", { roughness: 0.55, metalness: 0.0 }));
+  const beach = new Mesh(beachGeo, mat("#302844", { roughness: 0.55, metalness: 0.05 }));
   beach.rotation.x = -Math.PI / 2;
   beach.position.set(0, 0.001, 24);
   beach.receiveShadow = true;
@@ -344,7 +344,7 @@ function buildPark(scene) {
   const isMobScene = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const oceanWidth = 92;
   const oceanGeo = new PlaneGeometry(oceanWidth, OCEAN_DEPTH, isMobScene ? 4 : 56, isMobScene ? 4 : 54);
-  const oceanMat = new MeshBasicMaterial({ color: new Color(isMobScene ? "#38B8E0" : "#30B0DC"), side: THREE.DoubleSide });
+  const oceanMat = new MeshBasicMaterial({ color: new Color(isMobScene ? "#204468" : "#284A78"), side: THREE.DoubleSide });
   const ocean = new Mesh(oceanGeo, oceanMat);
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, 0, SHORELINE_Z + OCEAN_DEPTH / 2);
@@ -360,7 +360,7 @@ function buildPark(scene) {
   const foamMeshMat = new MeshBasicMaterial();
   foamMeshMat.color = new Color("#FFFFFF");
   foamMeshMat.transparent = true;
-  foamMeshMat.opacity = 0.35;
+  foamMeshMat.opacity = 0.5;
   foamMeshMat.depthWrite = false;
   const foam = new Mesh(foamGeo, foamMeshMat);
   foam.rotation.x = -Math.PI / 2;
@@ -377,7 +377,7 @@ function buildPark(scene) {
   const shoreGlowMat = new MeshBasicMaterial();
   shoreGlowMat.color = new Color("#00D4F0");
   shoreGlowMat.transparent = true;
-  shoreGlowMat.opacity = 0.12;
+  shoreGlowMat.opacity = 0.2;
   shoreGlowMat.depthWrite = false;
   shoreGlowMat.side = THREE.DoubleSide;
   const shoreGlow = new Mesh(shoreGlowGeo, shoreGlowMat);
@@ -391,10 +391,10 @@ function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 12. LIGHTING — night ambiance
   // ═════════════════════════════════════════════════════════════
-  // Soft moonlight — keeps night vibe visible
+  // Moonlight — cool blue, casts shadows but keeps the city dark at night
   const moon = new DirectionalLight();
   moon.color = new Color("#8899CC");
-  moon.intensity = 0.6;
+  moon.intensity = 0.5;
   moon.position.set(15, 22, SHORELINE_Z + 10);
   moon.castShadow = true;
   moon.shadow.mapSize.width = 1024;
@@ -408,55 +408,55 @@ function buildPark(scene) {
   moon.shadow.bias = -0.0006;
   scene.add(moon);
 
-  // Soft blue ambient — bright neon city night
+  // Dark night ambient — keeps the skyline pitch-black, neon stays punchy
   const ambLight = new AmbientLight();
-  ambLight.color = new Color("#4850A0");
-  ambLight.intensity = 0.9;
+  ambLight.color = new Color("#384490");
+  ambLight.intensity = 0.55;
   scene.add(ambLight);
 
-  // Purple-blue hemisphere fill
+  // Deep purple-blue hemisphere — evening sky top, dark ground floor
   const hemiLight = new HemisphereLight();
-  hemiLight.color = new Color("#6B5CAA");
-  hemiLight.groundColor = new Color("#1A2040");
-  hemiLight.intensity = 0.7;
+  hemiLight.color = new Color("#574A99");
+  hemiLight.groundColor = new Color("#0E1228");
+  hemiLight.intensity = 0.5;
   scene.add(hemiLight);
 
-  // ── BEACH LIGHTING — much brighter and warmer than city interior ──
+  // ── BEACH LIGHTING — softer neon wash, keeps the nighttime mood ──
   const beachLight = new PointLight();
-  beachLight.color = new Color("#FFE0A0");
-  beachLight.intensity = 6.0;
+  beachLight.color = new Color("#B0D8F0");
+  beachLight.intensity = 2.0;
   beachLight.distance = 42;
-  beachLight.position.set(0, 5, SHORELINE_Z + 6);
+  beachLight.position.set(0, 4, SHORELINE_Z + 6);
   scene.add(beachLight);
 
-  // Warm sun fills from above-left and above-right
+  // Soft lavender fills from above-left and above-right
   const beachSunL = new PointLight();
-  beachSunL.color = new Color("#FFD580");
-  beachSunL.intensity = 4.5;
+  beachSunL.color = new Color("#B080F0");
+  beachSunL.intensity = 1.5;
   beachSunL.distance = 36;
-  beachSunL.position.set(-20, 7, SHORELINE_Z + 8);
+  beachSunL.position.set(-18, 5, SHORELINE_Z + 8);
   scene.add(beachSunL);
 
   const beachSunR = new PointLight();
-  beachSunR.color = new Color("#FFC060");
-  beachSunR.intensity = 4.5;
+  beachSunR.color = new Color("#A060F0");
+  beachSunR.intensity = 1.5;
   beachSunR.distance = 36;
-  beachSunR.position.set(20, 7, SHORELINE_Z + 8);
+  beachSunR.position.set(18, 5, SHORELINE_Z + 8);
   scene.add(beachSunR);
 
   // Ocean reflection — cool blue-cyan shimmer on the water surface
   const oceanReflect = new PointLight();
   oceanReflect.color = new Color("#40D4FF");
-  oceanReflect.intensity = 3.5;
+  oceanReflect.intensity = 1.8;
   oceanReflect.distance = 28;
   oceanReflect.position.set(0, 2, SHORELINE_Z + 20);
   scene.add(oceanReflect);
 
-  // ── Plaza fill light — soft central glow ──────────────────
+  // ── Plaza fill light — soft central neon wash ──────────────────
   const plazaFill = new PointLight();
   plazaFill.color = new Color("#8888DD");
-  plazaFill.intensity = 2.0;
-  plazaFill.distance = 16;
+  plazaFill.intensity = 1.8;
+  plazaFill.distance = 18;
   plazaFill.position.set(0, 1.5, -13);
   scene.add(plazaFill);
   scene.userData.plazaFill = plazaFill;
@@ -464,10 +464,10 @@ function buildPark(scene) {
   // ── Shifting neon ambient lights — 2 on mobile, 4 on desktop ──
   const _isMobLights = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const _allNeonAmb = [
-    { pos: [8,  3.5, -20], color: new Color("#0088FF"), distance: 18, phase: 0.0, baseI: 1.2 },
-    { pos: [-8, 3.5, -20], color: new Color("#7C3AED"), distance: 18, phase: 1.6, baseI: 1.2 },
-    { pos: [0,  4.0,   8], color: new Color("#00C8E8"), distance: 16, phase: 3.1, baseI: 1.0 },
-    { pos: [0,  3.5, -30], color: new Color("#9B4FFF"), distance: 14, phase: 4.7, baseI: 0.9 },
+    { pos: [8,  3.5, -20], color: new Color("#0088FF"), distance: 20, phase: 0.0, baseI: 1.6 },
+    { pos: [-8, 3.5, -20], color: new Color("#7C3AED"), distance: 20, phase: 1.6, baseI: 1.6 },
+    { pos: [0,  4.0,   8], color: new Color("#00C8E8"), distance: 18, phase: 3.1, baseI: 1.4 },
+    { pos: [0,  3.5, -30], color: new Color("#9B4FFF"), distance: 16, phase: 4.7, baseI: 1.2 },
   ];
   // Mobile: only 1 neon ambient light (the front one)
   const neonAmbients = (_isMobLights ? _allNeonAmb.slice(0, 1) : _allNeonAmb).map(({ pos, color, distance, phase, baseI }) => {
@@ -677,11 +677,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         };
       }
 
-      // Avatar rim light
+      // Avatar rim light — stronger cool-blue rim so characters pop against the dark ground
       const avatarRimLight = new PointLight();
       avatarRimLight.color = new Color("#8899DD");
-      avatarRimLight.intensity = 0.8;
-      avatarRimLight.distance = 8;
+      avatarRimLight.intensity = 1.2;
+      avatarRimLight.distance = 10;
       avatarRimLight.position.set(SPAWN[0], SPAWN[1] + 1.2, SPAWN[2]);
       scene.add(avatarRimLight);
       scene.userData.avatarRimLight = avatarRimLight;
@@ -1193,7 +1193,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const foamMesh = scene.userData.foam;
           if (foamMesh?.material) {
             const tide = Math.sin(t * 0.55) * 0.5 + 0.5;
-            foamMesh.material.opacity = 0.18 + tide * 0.55;
+            foamMesh.material.opacity = 0.25 + tide * 0.55;
             foamMesh.position.z = scene.userData._foamBaseZ + tide * 0.7;
           }
           const shoreGlow = scene.userData.shoreGlow;
@@ -1243,9 +1243,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             scene.userData._neonC2 = [new Color("#C43BFF"), new Color("#00E5FF"), new Color("#C43BFF")];
           }
           const nc = scene.userData._neonC, nc2 = scene.userData._neonC2;
-          if (neonMats[0]) { neonMats[0].opacity = Math.max(0.5, 0.65 + audioBeat * 1.1 + Math.sin(t * 2.1) * 0.2); neonMats[0].color.copy(nc[0]).lerp(nc2[0], colorShift * 0.35); }
-          if (neonMats[1]) { neonMats[1].opacity = Math.max(0.4, 0.55 + audioBeat * 0.9 + Math.sin(t * 1.5 + 1.2) * 0.25); neonMats[1].color.copy(nc[1]).lerp(nc2[1], colorShift * 0.4); }
-          if (neonMats[2]) { neonMats[2].opacity = Math.max(0.45, 0.6 + audioBeat * 1.0 + Math.sin(t * 1.8 + 2.5) * 0.22); neonMats[2].color.copy(nc[2]).lerp(nc2[2], colorShift * 0.38); }
+          if (neonMats[0]) { neonMats[0].opacity = Math.max(0.55, 0.75 + audioBeat * 1.3 + Math.sin(t * 2.1) * 0.2); neonMats[0].color.copy(nc[0]).lerp(nc2[0], colorShift * 0.35); }
+          if (neonMats[1]) { neonMats[1].opacity = Math.max(0.5, 0.65 + audioBeat * 1.1 + Math.sin(t * 1.5 + 1.2) * 0.25); neonMats[1].color.copy(nc[1]).lerp(nc2[1], colorShift * 0.4); }
+          if (neonMats[2]) { neonMats[2].opacity = Math.max(0.5, 0.7 + audioBeat * 1.2 + Math.sin(t * 1.8 + 2.5) * 0.22); neonMats[2].color.copy(nc[2]).lerp(nc2[2], colorShift * 0.38); }
         }
 
 
