@@ -42,13 +42,29 @@ export default function Admin() {
   const [editingTrack, setEditingTrack] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Helper: retry once with a delay on rate-limit errors
+  const withRetry = async (fn, delay = 800) => {
+    try {
+      return await fn();
+    } catch (e) {
+      if (String(e?.message || e).includes("Rate limit")) {
+        await new Promise((r) => setTimeout(r, delay));
+        return await fn();
+      }
+      throw e;
+    }
+  };
+
   const loadAll = async () => {
     setLoading(true);
-    const t = await base44.entities.Track.list("-created_date", 100);
+    // Stagger requests to stay within rate limits
+    const t = await withRetry(() => base44.entities.Track.list("-created_date", 100));
     setTracks(t);
-    const a = await base44.entities.Artist.list("name", 50);
+    await new Promise((r) => setTimeout(r, 600));
+    const a = await withRetry(() => base44.entities.Artist.list("name", 50));
     setArtists(a);
-    const c = await base44.entities.Category.list("display_order", 50);
+    await new Promise((r) => setTimeout(r, 600));
+    const c = await withRetry(() => base44.entities.Category.list("display_order", 50));
     setCategories(c);
     setLoading(false);
   };
