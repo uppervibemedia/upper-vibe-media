@@ -164,7 +164,7 @@ export function tickLaunchRide(scene, t) {
   const dt = Math.min(mb.dt_, 0.05);
   window.__lr_flying = st.flightActive > 0;
 
-  if (!mb.hbRiding && st.flightActive > 0) {
+  if (st.flightActive > 0) {
     st.flightActive += dt;
     if (st.flightActive >= RISE_TIME + GLIDE_FALL) {
       st.flightActive = 0;
@@ -172,13 +172,10 @@ export function tickLaunchRide(scene, t) {
       st.justLanded = true;
       st._flightOrig = null;
     }
-  } else if (mb.hbRiding && st.flightActive > 0) {
-    st.flightActive = 0;
-    st.flightState = "idle";
   }
 
   const now = performance.now();
-  if (st.flightActive <= 0 && !mb.hbRiding) {
+  if (st.flightActive <= 0) {
     for (const p of st.pads) {
       const dx = mb.px - p.x;
       const dz = mb.pz - p.z;
@@ -201,7 +198,7 @@ export function tickLaunchRide(scene, t) {
     collectCoins(st);
   }
 
-  if (st.flightActive > 0 && !mb.hbRiding) {
+  if (st.flightActive > 0) {
     const dir = st._flightDir || { fx: 0, fz: 0 };
     mb.px += dir.fx * DIRECTION_SPEED * dt;
     mb.pz += dir.fz * DIRECTION_SPEED * dt;

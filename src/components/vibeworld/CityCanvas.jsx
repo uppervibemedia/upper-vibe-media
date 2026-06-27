@@ -8,7 +8,7 @@ import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, 
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
-import { buildLaunchZone, animateLaunchZone, getNearLaunchPad, collectNearbyOrbs, triggerLandingPulse, LAUNCH_HEIGHT, LAUNCH_DURATION, GLIDE_DURATION, LAUNCH_PADS as PLAZA_LAUNCH_PADS } from "./VibeLaunchZone";
+
 import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
 import { createCrystalZone, animateCrystalZone } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
@@ -26,7 +26,7 @@ import { buildDailyVibeCheckZone } from "./city-engine/zones/DailyVibeCheckZone"
 import { buildVibeAcademyZone }    from "./city-engine/zones/VibeAcademyZone";
 import { runConnections, tickAddOns, KEYS_CREATED } from "./CityAddOns";
 import { MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
-import { tickLaunchPhysics, checkHbLaunchPads } from "./city-engine/launchPadSystem";
+
 
 // Destructure immediately after namespace import to ensure full module load
 const {
@@ -485,7 +485,7 @@ function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, launchRef, onNearPad, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -580,10 +580,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
-  // Launch zone state
-  const launchStateRef = useRef({ active: false, phase: "idle", timer: 0, startY: 0 });
-  const orbCountRef = useRef(0);
-  const nearPadRef = useRef(-1);
+  // Launch is handled by LaunchRide (tickAddOns via MOVEMENT_BRIDGE)
   const speedBoostUntilRef = useRef(0); // timestamp (performance.now) when boost expires
   const splashParticlesRef = useRef(null); // water spray particle system
 
@@ -663,19 +660,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       }
 
       // Crystal Zone is decorative-only — no activation event needed
-
-      // ── Expose launch trigger ref once (not in animation loop) ──
-      if (launchRef) {
-        launchRef.current = () => {
-          const ls = launchStateRef.current;
-          if (!ls.active) {
-            ls.active = true;
-            ls.phase = "rise";
-            ls.timer = 0;
-            ls.startY = SPAWN[1];
-          }
-        };
-      }
 
       // Avatar rim light — stronger cool-blue rim so characters pop against the dark ground
       const avatarRimLight = new PointLight();
@@ -906,19 +890,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Collisions
         [px, pz] = resolveCollisions(px, pz, 0.3, COLLISION_BOXES, hbRidingRef.current);
 
-        // ── Launch zone physics ──────────────────────────────
-        const ls = launchStateRef.current;
-        if (ls.active) {
-          py = tickLaunchPhysics(ls, dt, py, px, pz, sceneRef.current, orbCountRef, vel);
-        } else {
-          // When riding hoverboard, float avatar slightly above ground
-          const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
-          py = window.__lr_flying ? MOVEMENT_BRIDGE.py : SPAWN[1] + hbLift;
-          // Check pad proximity (every 6 frames for responsiveness)
-          if (frameRef.current % 6 === 0 && sceneRef.current) {
-            nearPadRef.current = getNearLaunchPad(px, pz);
-          }
-        }
+        // ── Launch arc handled by LaunchRide (tickAddOns via MOVEMENT_BRIDGE) ──
+        // Step-on city pads auto-launch walking AND hoverboard riders.
+        const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
+        py = window.__lr_flying ? MOVEMENT_BRIDGE.py : SPAWN[1] + hbLift;
 
         avatarRotRef.current = rot;
         avatarPosRef.current = [px, py, pz, rot];
@@ -935,11 +910,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Notify parent of position (throttled — every 10 frames)
         if (onPosCbRef.current && frameRef.current % 10 === 0) {
           try { onPosCbRef.current(px, pz, rot); } catch {}
-        }
-
-        // ── Notify parent of near-pad state ──
-        if (onNearPad && frameRef.current % 10 === 0) {
-          try { onNearPad(nearPadRef.current, launchStateRef.current.active, orbCountRef.current); } catch {}
         }
 
         // ── Hoverboard zone proximity ──
@@ -1457,12 +1427,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               }
             }
           }
-        }
-
-        // ─── LAUNCH PAD DETECTION — air launch ───────────────────────
-        if (hbRidingRef.current && frameRef.current % 6 === 0) {
-          // Check both beach pads (HoverboardRingRun) AND plaza pads (VibeLaunchZone)
-          checkHbLaunchPads(px, py, pz, scene, launchStateRef, [...PLAZA_LAUNCH_PADS, ...LAUNCH_PADS]);
         }
 
         // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──

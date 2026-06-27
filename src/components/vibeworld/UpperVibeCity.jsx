@@ -83,13 +83,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
   const onDanceFloorRef = useRef(false);
-  // Launch zone state
-  const launchRef = useRef(null);
-  const [nearLaunchPad, setNearLaunchPad] = useState(false);
-  const [isAirborne, setIsAirborne] = useState(false);
-  const [orbCount, setOrbCount] = useState(0);         // launch session orbs
-  const [launchSessionOrbs, setLaunchSessionOrbs] = useState(0); // tracked per launch
-  const launchSessionRef = useRef(0);
+  // Launch handled by LaunchRide — no manual "LAUNCH" button
   // ── Hoverboard state — TWO SEPARATE SYSTEMS ──────────────────
   // A) Neon Surf: temporary beach game board (disappears on exit)
   const [nearHoverboard, setNearHoverboard] = useState(false);
@@ -1073,16 +1067,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           remoteUsers={activeUsers}
           avatarConfig={avatarConfig}
           djTrack={djTrack}
-          launchRef={launchRef}
           hbRiding={hbRiding}
           ferrisRiding={ferrisRiding}
           rendererRef={rendererRef}
           tvMode={tvMode}
           tvQuality={tvQuality}
-          onNearPad={(padIdx, airborne, orbs) => {
-            setNearLaunchPad(padIdx >= 0 && !airborne);
-            setIsAirborne(airborne);
-          }}
         />
       </div>
 
@@ -1317,45 +1306,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </>
       )}
 
-      {/* ── Vibe Launch Zone HUD ── */}
-      {!loading && (nearLaunchPad || isAirborne) && (
-        <div
-          className="fixed z-[60] flex flex-col items-center gap-2 pointer-events-none"
-          style={{
-            bottom: isMobile && mobileLayout
-              ? mobileLayout.launchHudBottom
-              : isMobile ? 248 : 96,
-            left: "50%",
-            transform: "translateX(-50%)",
-          }}
-        >
-          {nearLaunchPad && !isAirborne && (
-            <button
-              onClick={() => { try { navigator?.vibrate?.(30); } catch {} launchRef.current?.(); }}
-              className="pointer-events-auto px-7 py-3 rounded-full font-black text-sm tracking-widest transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg,#00B8D4,#9B4FFF)",
-                color: "#fff",
-                boxShadow: "0 0 24px rgba(0,184,212,0.45), 0 2px 12px rgba(0,0,0,0.4)",
-                letterSpacing: "0.18em",
-                fontSize: "13px",
-              }}
-            >
-              🚀 LAUNCH
-            </button>
-          )}
-
-          {isAirborne && (
-            <div
-              className="px-5 py-1.5 rounded-full font-black text-[11px] tracking-widest pointer-events-none"
-              style={{ background: "rgba(155,126,255,0.18)", border: "1px solid rgba(155,126,255,0.35)", color: "#c4aaff", backdropFilter: "blur(8px)" }}
-            >
-              ⚡ AIRBORNE
-            </div>
-          )}
-        </div>
-      )}
-
+      {/* Launch is handled by LaunchRide — no manual LAUNCH button */}
       {/* Crystal Zone is now a decorative landmark — no UI/interaction */}
 
       {/* ── Hoverboard Ring Run HUD ── */}
@@ -1501,7 +1452,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         mobileLayout={mobileLayout}
         onToggle={() => setPersonalHoverboardActive(p => !p)}
         personalHoverboardActive={personalHoverboardActive}
-        canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !anyBlockingUIOpen && !isAirborne && !nearHoverboard && !detectZone(playerPos.x, playerPos.z)}
+        canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !anyBlockingUIOpen && !nearHoverboard && !detectZone(playerPos.x, playerPos.z)}
       />
 
       {/* Mobile debug overlay — only visible with ?debug=mobile in URL */}
