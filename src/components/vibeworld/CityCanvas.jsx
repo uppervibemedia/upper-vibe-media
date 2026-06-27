@@ -159,7 +159,7 @@ function mat(hexColor, opts = {}) {
 // ═══════════════════════════════════════════════════════════════
 // Alias — all sign creation delegated to ZoneSign.js
 const createNeonSign = createZoneSign;
-function buildPark(scene) {
+export function buildPark(scene) {
   createCosmicSky(scene);
   createCitySkyline(scene);
 
