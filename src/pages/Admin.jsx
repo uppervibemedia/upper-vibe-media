@@ -64,7 +64,7 @@ export default function Admin() {
     setLoading(true);
     try {
       // Stagger requests to stay within rate limits
-      const t = await withRetry(() => base44.entities.Track.list("-created_date", 100));
+      const t = await withRetry(() => base44.entities.Track.list("-created_date", 500));
       setTracks(t);
       await new Promise((r) => setTimeout(r, 1200));
       const a = await withRetry(() => base44.entities.Artist.list("name", 50));

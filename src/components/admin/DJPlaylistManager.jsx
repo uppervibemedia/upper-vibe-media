@@ -299,7 +299,7 @@ export default function DJPlaylistManager({ tracks: allTracks = [] }) {
                         (t.artist_display || "").toLowerCase().includes(partnerSearch.toLowerCase())
                       ))
                     : allTracks.filter(t => t.status === "published")
-                  ).slice(0, 60).map(t => {
+                  ).map(t => {
                     const inList = editingPlaylist.trackIds.includes(t.id);
                     return (
                       <button
