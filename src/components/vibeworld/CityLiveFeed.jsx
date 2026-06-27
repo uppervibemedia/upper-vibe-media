@@ -1,12 +1,13 @@
 /**
- * CityLiveFeed — Lightweight cinematic live-render of Upper Vibe City.
+ * CityLiveFeed — Single-pose cinematic live-render of Upper Vibe City.
  *
  * Uses the SAME scene builders as the in-game Vibe World (buildPark from CityCanvas,
  * CitySkyline, FerrisWheel, CosmicSkySystem, zone animators) so the preview is
  * a true representation of the real city — not a hand-built approximation.
  *
- * Adds floating neon zone labels and flying rings on top for the cinematic tour.
- * Safe to mount on Home/Start without impacting site performance.
+ * Fixed preview camera: wide elevated angle showing plaza/dance floor center,
+ * Music Stage in background, full skyline, and neon zones — no rotating shots
+ * that risk cropping zone text. Safe to mount on Home/Start.
  */
 import React, { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
@@ -43,15 +44,12 @@ function neonLabel(text, hex, x, y, z, scale = 6, hScale = 1) {
   return sp;
 }
 
-// ── Polished wide-city camera tour ──────────────────────────────────────
-const SHOTS = [
-  { pos: [0,  22, 36],  look: [0,   2, -16],  duration: 5 },
-  { pos: [-14, 20, 26], look: [-8,  2, -10],  duration: 5 },
-  { pos: [30, 19, 28],  look: [12,  2, -13],  duration: 5 },
-  { pos: [-36, 18, 18], look: [-18, 2, -16],  duration: 5 },
-  { pos: [0,  28, 10],  look: [0,  2, -14],   duration: 5 },
-  { pos: [16, 20, 38],  look: [0,   2, -14],  duration: 5 },
-];
+// ── Single fixed preview camera ─────────────────────────────────────────
+// Wide elevated angle (16:9 cinematic): centered above south end of the city,
+// showing the full plaza/dance floor, Music Stage in the background, the
+// neon skyline framing the scene, with Visualizer Dome visible on the left
+// and Music Library on the right. No rotation — one polished destination view.
+const FIXED_CAM = { pos: [0, 18, 30], look: [0, 0, -16] };
 
 // WHEEL_X / Z constants matching the live Ferris wheel position on blacktop
 const WHEEL_X = 22, WHEEL_Z = -12;
@@ -83,8 +81,8 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       scene.fog = new Fog(0x060614, 50, 100);
 
       const camera = new THREE.PerspectiveCamera(60, w / Math.max(h, 1), 0.1, 200);
-      camera.position.set(0, 22, 36);
-      camera.lookAt(0, 2, -16);
+      camera.position.set(...FIXED_CAM.pos);
+      camera.lookAt(...FIXED_CAM.look);
 
       // ── BUILD THE REAL CITY ────────────────────────────────────────────
       // Uses ALL the same zone builders as Vibe World: CitySkyline, CosmicSkySystem,
@@ -172,37 +170,17 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       ro.observe(canvas.parentElement || canvas);
 
       // ── Animate ───────────────────────────────────────────────────────────
-      let shotIdx = 0, shotElapsed = 0, frame = 0;
-      const camPos = new Vector3(), lookAt = new Vector3(),
-            camSmooth = new Vector3(), lookSmooth = new Vector3();
-      const initShot = (idx) => {
-        const s = SHOTS[idx];
-        camPos.set(...s.pos); lookAt.set(...s.look);
-        camSmooth.copy(camPos); lookSmooth.copy(lookAt);
-        shotElapsed = 0;
-      };
-      initShot(0);
+      let frame = 0;
 
       const animate = (time) => {
         if (disposed) return;
         animId = requestAnimationFrame(animate);
         const t = time * 0.001;
-
-        // Shot tour
         const dt2 = 0.016;
-        shotElapsed += dt2;
-        const shot = SHOTS[shotIdx];
-        if (shotElapsed >= shot.duration) {
-          shotElapsed -= shot.duration;
-          shotIdx = (shotIdx + 1) % SHOTS.length;
-          const next = SHOTS[shotIdx];
-          camPos.set(...next.pos); lookAt.set(...next.look);
-        }
-        const lerpSpd = 1.4;
-        camSmooth.lerp(camPos, Math.min(1, lerpSpd * dt2));
-        lookSmooth.lerp(lookAt, Math.min(1, lerpSpd * dt2));
-        camera.position.copy(camSmooth);
-        camera.lookAt(lookSmooth);
+
+        // Fixed camera position — no rotation, no shot touring
+        camera.position.set(...FIXED_CAM.pos);
+        camera.lookAt(...FIXED_CAM.look);
 
         // ── Animate the real Ferris Wheel (same rotation as in-game) ──
         animateFerrisWheel(scene, t, 0);

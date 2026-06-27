@@ -62,8 +62,8 @@ export default function UpperVibeCityPreview({ variant = "home" }) {
           boxShadow: "0 0 60px rgba(0,212,240,0.06), 0 0 100px rgba(155,126,255,0.04)",
         }}
       >
-        {/* ── Live 3D aerial feed ── */}
-        <div className="relative w-full" style={{ paddingBottom: isHome ? "42%" : "50%", minHeight: isHome ? 180 : 220 }}>
+        {/* ── Live 3D aerial feed — 16:9 cinematic crop ── */}
+        <div className="relative w-full" style={{ paddingBottom: "56.25%", minHeight: 200 }}>
           <div className="absolute inset-0 overflow-hidden rounded-t-2xl md:rounded-t-3xl">
             <CityLiveFeed />
 
@@ -105,20 +105,18 @@ export default function UpperVibeCityPreview({ variant = "home" }) {
           {/* Headline */}
           <h2
             className="font-heading font-black text-white leading-tight mb-1"
-            style={{ fontSize: "clamp(1.1rem, 3vw, 1.5rem)" }}
+            style={{ fontSize: "clamp(1rem, 2.8vw, 1.5rem)" }}
           >
             Upper Vibe City
           </h2>
 
           {/* Subtitle */}
           <p className="text-xs sm:text-sm leading-relaxed mb-2" style={{ color: "rgba(255,255,255,0.45)", maxWidth: "36rem" }}>
-            {isHome
-              ? "Dance with live users, ride hoverboards, collect Vibe Coins, unlock auras, and explore the full Upper Vibe Media 3D experience."
-              : "Dance with live users, ride hoverboards, collect Vibe Coins, unlock auras, and explore the full Upper Vibe Media 3D experience."}
+            Dance with live users, ride hoverboards, collect Vibe Coins, unlock auras, and explore the full Upper Vibe Media 3D experience.
           </p>
 
-          {/* Feature badges */}
-          <div className="flex flex-wrap gap-1.5 mt-1">
+          {/* Feature badges — wrap freely on mobile, fractional scaling on desktop */}
+          <div className="flex flex-wrap gap-1.5 mt-1 overflow-hidden max-w-full">
             {FEATURE_BADGES.map(({ emoji, label, color }) => (
               <div
                 key={label}
@@ -144,7 +142,7 @@ export default function UpperVibeCityPreview({ variant = "home" }) {
               touchAction: "manipulation",
             }}
           >
-            {isHome ? "Enter Upper Vibe City" : "Enter City"}
+            {isHome ? "Enter Upper Vibe City" : "Start Exploring"}
           </button>
 
           {/* Login/terms footnote */}
