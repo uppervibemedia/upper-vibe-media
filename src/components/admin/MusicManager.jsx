@@ -2,17 +2,45 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckSquare, Square, Trash2, Download, Lock, Unlock, Tag, Users, Waves,
-  Edit2, Search, X, Star, Eye, EyeOff, Music4, Brain, Loader2, Shield, ShieldOff, AlertTriangle, Disc3, Plus, CheckCheck
+  Edit2, Search, X, Star, Eye, EyeOff, Music4, Brain, Loader2, Shield, ShieldOff, AlertTriangle, Disc3, Plus, CheckCheck, FileArchive, FileText
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import JSZip from "jszip";
 import CoverImage from "@/components/shared/CoverImage";
 
 const MOOD_OPTIONS = ["motivation", "focus", "healing", "confidence", "money", "night", "driving", "meditation", "love", "spiritual"];
 const TIER_OPTIONS = ["free", "supporter", "premium"];
 
+function getFileExtension(url) {
+  try {
+    const path = new URL(url).pathname;
+    const ext = path.split(".").pop().toLowerCase().split("?")[0];
+    return ["mp3","wav","m4a","aac","ogg","flac"].includes(ext) ? ext : "mp3";
+  } catch {
+    return "mp3";
+  }
+}
+
+function buildExportReport(allTracks, skipped) {
+  const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+  const skippedLines = skipped.map(s => `  - ${s.title} — ${s.reason}`).join("\n");
+  return [
+    "Upper Vibe Media Song Export",
+    `Exported at: ${now}`,
+    "",
+    `Total songs found: ${allTracks.length}`,
+    `Songs exported: ${allTracks.length - skipped.length}`,
+    `Songs skipped: ${skipped.length}`,
+    "",
+    skipped.length > 0 ? `Skipped:\n${skippedLines}` : "No songs skipped.",
+  ].join("\n");
+}
+
 export default function MusicManager({ tracks, categories, artists, onEdit, onRefresh }) {
   const [selected, setSelected] = useState(new Set());
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(null); // { current, total }
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterTier, setFilterTier] = useState("all");
@@ -171,6 +199,73 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
     onRefresh();
   };
 
+  const exportAllSongs = async () => {
+    if (isExporting) return;
+    if (!confirm(`Export all ${tracks.length} songs into a ZIP file? This may take a few minutes — keep this page open until the download starts.`)) return;
+    setIsExporting(true);
+    setExportProgress({ current: 0, total: tracks.length });
+    const zip = new JSZip();
+    const skipped = [];
+    for (let i = 0; i < tracks.length; i++) {
+      const track = tracks[i];
+      const fileUrl = track.audio_url || track.audioUrl || track.songUrl || track.fileUrl || track.downloadUrl;
+      if (!fileUrl) {
+        skipped.push({ title: track.title || "Untitled", reason: "Missing audio URL" });
+        setExportProgress({ current: i + 1, total: tracks.length });
+        continue;
+      }
+      try {
+        const response = await fetch(fileUrl);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        const artist = track.artist_display || track.artist || "Upper Vibe Media";
+        const title = track.title || "Untitled";
+        const ext = getFileExtension(fileUrl);
+        const safeFileName = `${artist} - ${title}.${ext}`.replace(/[\\/:*?"<>|]/g, "");
+        zip.file(safeFileName, blob);
+      } catch (err) {
+        skipped.push({ title: track.title || "Untitled", reason: err.message });
+      }
+      setExportProgress({ current: i + 1, total: tracks.length });
+    }
+    zip.file("EXPORT-REPORT.txt", buildExportReport(tracks, skipped));
+    const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 3 } });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(zipBlob);
+    link.download = "Upper-Vibe-Media-All-Songs.zip";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+    setIsExporting(false);
+    setExportProgress(null);
+    const exported = tracks.length - skipped.length;
+    toast.success(`Export complete. ${exported} song${exported !== 1 ? "s" : ""} downloaded${skipped.length > 0 ? `, ${skipped.length} skipped (see EXPORT-REPORT.txt).` : "."}`);
+  };
+
+  const exportSongUrlsCsv = () => {
+    const rows = [["Title", "Artist", "Audio URL", "Cover URL", "Duration"]];
+    for (const t of tracks) {
+      rows.push([
+        `"${(t.title || "").replace(/"/g, '""')}"`,
+        `"${(t.artist_display || "").replace(/"/g, '""')}"`,
+        `"${t.audio_url || ""}"`,
+        `"${t.cover_url || ""}"`,
+        `"${t.duration || ""}"`,
+      ]);
+    }
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Upper-Vibe-Media-Song-URLs.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+    toast.success(`Exported ${tracks.length} song URLs as CSV.`);
+  };
+
   const downloadSong = (track) => {
     const fileUrl = track.audio_url || track.audioUrl || track.songUrl || track.fileUrl || track.downloadUrl;
     if (!fileUrl) {
@@ -284,7 +379,42 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
             ? <><Loader2 className="w-4 h-4 animate-spin" /> Organizing...</>
             : <><Brain className="w-4 h-4" /> AI Organize Songs</>}
         </button>
+
+        {/* Export All Songs (ZIP) */}
+        <button
+          onClick={exportAllSongs}
+          disabled={isExporting || tracks.length === 0}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold tracking-wide transition-all disabled:opacity-60"
+          style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", color: "#4ade80" }}
+          title="Download all songs as a ZIP file"
+        >
+          <FileArchive className="w-4 h-4" />
+          {isExporting ? `Exporting ${exportProgress?.current ?? 0}/${exportProgress?.total ?? tracks.length}...` : "Export All Songs"}
+        </button>
+
+        {/* Export URL list as CSV */}
+        <button
+          onClick={exportSongUrlsCsv}
+          disabled={tracks.length === 0}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold tracking-wide transition-all disabled:opacity-60"
+          style={{ background: "rgba(155,126,255,0.08)", border: "1px solid rgba(155,126,255,0.2)", color: "#9B7EFF" }}
+          title="Download a CSV of all song URLs"
+        >
+          <FileText className="w-4 h-4" /> Export URL List
+        </button>
       </div>
+
+      {/* Export progress banner */}
+      {isExporting && exportProgress && (
+        <div className="mb-4 px-4 py-3 rounded-xl flex items-center gap-3 text-sm"
+          style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)" }}>
+          <Loader2 className="w-4 h-4 text-green-400 animate-spin flex-shrink-0" />
+          <span className="text-green-400 font-semibold">
+            Preparing export… {exportProgress.current} of {exportProgress.total} songs
+          </span>
+          <span className="text-green-400/50 text-xs ml-auto">Large exports may take a few minutes. Keep this page open.</span>
+        </div>
+      )}
 
       {/* Selection bar */}
       <div className="flex items-center justify-between mb-3">
