@@ -279,26 +279,35 @@ export default function DJPlaylistManager({ tracks: allTracks = [] }) {
                 </div>
               </div>
 
-              {/* Add song search */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search songs to add..."
-                  value={partnerSearch}
-                  onChange={(e) => setPartnerSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card/40 border border-border/30 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
-                />
-                {partnerSearch && partnerResults.length > 0 && (
-                  <div className="absolute z-20 top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-xl bg-card border border-border/30 shadow-xl">
-                    {partnerResults.map(t => (
+              {/* Add song — search + browseable list */}
+              <div className="mb-4">
+                <div className="relative mb-2">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Filter songs to add..."
+                    value={partnerSearch}
+                    onChange={(e) => setPartnerSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card/40 border border-border/30 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                  />
+                </div>
+                {/* Always-visible browseable track list */}
+                <div className="max-h-44 overflow-y-auto rounded-xl border border-border/20 bg-card/10">
+                  {(partnerSearch
+                    ? allTracks.filter(t => t.status === "published" && (
+                        (t.title || "").toLowerCase().includes(partnerSearch.toLowerCase()) ||
+                        (t.artist_display || "").toLowerCase().includes(partnerSearch.toLowerCase())
+                      ))
+                    : allTracks.filter(t => t.status === "published")
+                  ).slice(0, 60).map(t => {
+                    const inList = editingPlaylist.trackIds.includes(t.id);
+                    return (
                       <button
                         key={t.id}
-                        onClick={() => addTrack(t.id)}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all ${
-                          editingPlaylist.trackIds.includes(t.id) ? "bg-primary/10" : "hover:bg-muted/50"
+                        onClick={() => inList ? null : addTrack(t.id)}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all border-b border-border/10 last:border-0 ${
+                          inList ? "bg-primary/8 opacity-50 cursor-default" : "hover:bg-muted/40"
                         }`}
-                        disabled={editingPlaylist.trackIds.includes(t.id)}
                       >
                         <CoverImage src={t.cover_url} alt="" width={28} height={28}
                           className="w-7 h-7 rounded object-cover flex-shrink-0"
@@ -307,16 +316,16 @@ export default function DJPlaylistManager({ tracks: allTracks = [] }) {
                           <p className="text-xs font-semibold text-foreground truncate">{t.title}</p>
                           <p className="text-[9px] text-muted-foreground truncate">{t.artist_display || "Upper Vibe Media"}</p>
                         </div>
-                        {editingPlaylist.trackIds.includes(t.id) && (
-                          <CheckCheck className="w-4 h-4 text-primary" />
-                        )}
-                        {!editingPlaylist.trackIds.includes(t.id) && (
-                          <Plus className="w-4 h-4 text-muted-foreground/50" />
-                        )}
+                        {inList
+                          ? <CheckCheck className="w-4 h-4 text-primary flex-shrink-0" />
+                          : <Plus className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />}
                       </button>
-                    ))}
-                  </div>
-                )}
+                    );
+                  })}
+                  {allTracks.filter(t => t.status === "published").length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4">No published tracks available.</p>
+                  )}
+                </div>
               </div>
 
               {/* Playing indicator */}

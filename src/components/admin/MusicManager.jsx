@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckSquare, Square, Trash2, Download, Lock, Unlock, Tag, Users, Waves,
-  Edit2, Search, X, Star, Eye, EyeOff, Music4, Brain, Loader2, Shield, ShieldOff, AlertTriangle
+  Edit2, Search, X, Star, Eye, EyeOff, Music4, Brain, Loader2, Shield, ShieldOff, AlertTriangle, Disc3, Plus, CheckCheck
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
@@ -19,6 +19,43 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
   const [bulkPanel, setBulkPanel] = useState(null);
   const [bulkValue, setBulkValue] = useState("");
   const [aiOrganizing, setAiOrganizing] = useState(false);
+  const [djPlaylists, setDjPlaylists] = useState([]);
+  const [djMenuTrackId, setDjMenuTrackId] = useState(null); // track id whose DJ menu is open
+  const [djTrackIds, setDjTrackIds] = useState(new Set()); // all track ids in any DJ playlist
+
+  // Load DJ playlists once so we can show "add to DJ" inline
+  useEffect(() => {
+    base44.entities.DJPlaylist.list("-updatedAt", 30)
+      .then(pls => {
+        setDjPlaylists(pls);
+        const allIds = new Set(pls.flatMap(p => p.trackIds || []));
+        setDjTrackIds(allIds);
+      })
+      .catch(() => {});
+  }, [tracks]);
+
+  // Close DJ dropdown on outside click
+  useEffect(() => {
+    if (!djMenuTrackId) return;
+    const close = () => setDjMenuTrackId(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [djMenuTrackId]);
+
+  const addToDJPlaylist = async (trackId, playlistId) => {
+    const pl = djPlaylists.find(p => p.id === playlistId);
+    if (!pl) return;
+    if ((pl.trackIds || []).includes(trackId)) {
+      toast.info("Already in that playlist");
+      setDjMenuTrackId(null);
+      return;
+    }
+    const newIds = [...(pl.trackIds || []), trackId];
+    await base44.entities.DJPlaylist.update(playlistId, { trackIds: newIds, updatedAt: new Date().toISOString() });
+    toast.success(`Added to "${pl.djPlaylistName}"`);
+    setDjTrackIds(prev => new Set([...prev, trackId]));
+    setDjMenuTrackId(null);
+  };
 
   const catMap = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c.name])), [categories]);
   const artistMap = useMemo(() => Object.fromEntries(artists.map((a) => [a.id, a.name])), [artists]);
@@ -443,6 +480,36 @@ export default function MusicManager({ tracks, categories, artists, onEdit, onRe
                     </td>
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1 justify-end">
+                        {/* Add to DJ Playlist */}
+                        {djPlaylists.length > 0 && (
+                          <div className="relative">
+                            <button
+                              onClick={() => setDjMenuTrackId(djMenuTrackId === track.id ? null : track.id)}
+                              title="Add to DJ Playlist"
+                              className={`p-1.5 rounded-lg transition-all ${djTrackIds.has(track.id) ? "text-cyan-400" : "text-muted-foreground hover:text-cyan-400"}`}
+                            >
+                              <Disc3 className="w-3.5 h-3.5" />
+                            </button>
+                            {djMenuTrackId === track.id && (
+                              <div className="absolute right-0 top-7 z-30 bg-card border border-border/40 rounded-xl shadow-xl min-w-[160px] py-1">
+                                <p className="text-[10px] font-bold text-muted-foreground px-3 pt-1 pb-1.5 uppercase tracking-wider">Add to playlist</p>
+                                {djPlaylists.map(pl => (
+                                  <button
+                                    key={pl.id}
+                                    onClick={() => addToDJPlaylist(track.id, pl.id)}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted/40 text-left transition-colors"
+                                  >
+                                    {(pl.trackIds || []).includes(track.id)
+                                      ? <CheckCheck className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+                                      : <Plus className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
+                                    <span className="truncate">{pl.djPlaylistName}</span>
+                                    {pl.isActive && <span className="ml-auto text-[9px] text-cyan-400 font-bold">LIVE</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <button onClick={() => toggleFeatured(track)} title="Toggle featured"
                           className={`p-1.5 rounded-lg transition-all ${track.is_featured ? "text-secondary" : "text-muted-foreground hover:text-secondary"}`}>
                           <Star className="w-3.5 h-3.5" />
