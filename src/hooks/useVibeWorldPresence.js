@@ -14,12 +14,27 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 
-const POSITION_MS = 2000;      // Send position every 2s — prevents rate limits under multi-sub load
+const POSITION_MS = 2000;      // Send position every 2s — keeps all players permanently visible
 const HEARTBEAT_MS = 10_000;   // Full heartbeat every 10s
-const STALE_MS = 25_000;       // Mark as offline if no heartbeat for 25s
+const STALE_MS = 5_000;        // Mark as offline if no heartbeat for 5s (3× heartbeat gap covers retries)
 const BATCH_MS = 100;          // Batch incoming subscribe events every 100ms
 const POS_THRESHOLD = 0.05;    // Minimum position delta to trigger an update
 const ROT_THRESHOLD = 0.02;    // Minimum rotation delta to trigger an update
+
+/** Touch the last_heartbeat timestamp. Returns true on success. Retries once after 1s. */
+const touchHeartbeat = async (rid) => {
+  const start = Date.now();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await base44.entities.VibeWorldPresence.update(rid, { last_heartbeat: new Date().toISOString() });
+      return true;
+    } catch (err) {
+      if (Date.now() - start > 5000) return false; // don't retry past the next cycle start
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+  return false;
+};
 
 function getLifetimeOrbs() {
   try {
@@ -83,10 +98,10 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     const riding = isRidingPersonal;
     const neonSurf = isRidingNeonSurf;
 
-    // Fire-and-forget heartbeat keepalive every cycle — keeps this user visible
-    // to all other players even when standing still/idle. Never awaited so it
-    // can't block or hit rate-limit backpressure.
-    base44.entities.VibeWorldPresence.update(rid, { last_heartbeat: new Date().toISOString() }).catch(() => {});
+    // Heartbeat keepalive every cycle — keeps this user visible to all other players
+    // even when standing still/idle. Retries once on failure; touches last_heartbeat
+    // so remote clients see a recent timestamp (within STALE_MS).
+    touchHeartbeat(rid).catch(() => {});
 
     // Skip full position update if nothing changed (saves DB writes)
     if (
@@ -216,8 +231,8 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         isBroadcastingRef.current = true;
         setIsBroadcasting(true);
       }
-    } catch {
-      // Silently skip
+    } catch (err) {
+      console.warn("[VibeWorldPresence] heartbeat failed — record may not exist:", err?.message);
     }
   }, [user]);
 
