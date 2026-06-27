@@ -38,22 +38,23 @@ function neonLabel(text, hex, x, y, z, scale = 6, hScale = 1) {
   return sp;
 }
 
-// ── Shot tour ──────────────────────────────────────────────────────────
-// { preset: 'show'|'dash', pos, look, duration }
+// ── Polished wide-city camera tour ──────────────────────────────────────
+// All shots frame the full city center with skyline — no zone closeups.
+// Elevated 16:9 angles looking toward the central plaza/stage.
+// All duration=6 for gentle pacing and clean transitions.
 const SHOTS = [
-  // Quick neon cut-ins — fast (3 each), pure energy
-  { preset: "dash", pos: [-26, 4, -16], look: [-26, 3, -14], duration: 3 },  // Crystal Zone
-  { preset: "dash", pos: [38, 4, 7],   look: [38, 3, -8],   duration: 3 },  // East skyline
-  { preset: "dash", pos: [-38, 4, -15], look: [-38, 3, -26], duration: 3 },  // West skyline
-  // Main features — show (5 each)
-  { preset: "show", pos: [0, 14, -18],  look: [0, 3, -34],   duration: 5 },  // Music Stage
-  { preset: "show", pos: [-30, 14, -18], look: [-22, 1, -26], duration: 5 },  // Vibe Lounge
-  { preset: "show", pos: [35, 14, -12],  look: [22, 2, -20],  duration: 5 },  // Music Library
-  { preset: "show", pos: [-8, 8, 12],    look: [-13, 2, 3],   duration: 5 },  // Visualizer Dome
-  // Iconic climax shots — long, dramatic (7 each)
-  { preset: "dash", pos: [38, 18, 22],    look: [22, 7, 22],    duration: 7 },  // Ferris Wheel
-  { preset: "dash", pos: [0,   5, 12],    look: [0,  4, -8],    duration: 7 },  // City Center
-  { preset: "show", pos: [0,   24, 36],   look: [0,  4, -20],   duration: 7 },  // Grand reveal
+  // 1) Premium grand-angle from south — plaza + stage + full skyline
+  { pos: [0,  22, 36],  look: [0,   2, -16],  duration: 6 },
+  // 2) Crank right — Shop + Dome + skyline buildings
+  { pos: [-14, 20, 26], look: [-8,  2, -10],  duration: 6 },
+  // 3) Right-side — Library + Ferris Wheel + east skyline
+  { pos: [30, 19, 28],  look: [12,  2, -13],  duration: 6 },
+  // 4) Angled from west — Crystal + Academy + skyline
+  { pos: [-36, 18, 18], look: [-18, 2, -16],  duration: 6 },
+  // 5) High overhead — plaza/Lounge rings clearly visible
+  { pos: [0,  28, 10],  look: [0,  2, -14],   duration: 6 },
+  // 6) Grand diagonal from beach side — whole city + stage distant
+  { pos: [16, 20, 38],  look: [0,   2, -14],  duration: 6 },
 ];
 
 export default function CityLiveFeed({ width = "100%", height = "100%", className = "" }) {
@@ -363,7 +364,7 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         shotElapsed = 0;
       };
       initShot(0);
-      camera.fov = 52; // Using the wider FOV as primary
+      camera.fov = 60;
 
       const animate = (time) => {
         if (disposed) return;

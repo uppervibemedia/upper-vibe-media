@@ -107,16 +107,14 @@ export default function UpperVibeCityPreview({ variant = "home" }) {
             className="font-heading font-black text-white leading-tight mb-1"
             style={{ fontSize: "clamp(1.1rem, 3vw, 1.5rem)" }}
           >
-            {(isHome
-              ? "Live View — Upper Vibe City"
-              : "Enter Upper Vibe City")}
+            Upper Vibe City
           </h2>
 
           {/* Subtitle */}
           <p className="text-xs sm:text-sm leading-relaxed mb-2" style={{ color: "rgba(255,255,255,0.45)", maxWidth: "36rem" }}>
             {isHome
-              ? "Step into the neon music world. Dance with live users, ride hoverboards, collect Vibe Coins, unlock auras, and explore the full Upper Vibe Media 3D experience."
-              : "A live 3D music world with DJ dance floors, hoverboards, Vibe Coins, Neon Surf, visualizers, and real users exploring together."}
+              ? "Dance with live users, ride hoverboards, collect Vibe Coins, unlock auras, and explore the full Upper Vibe Media 3D experience."
+              : "Dance with live users, ride hoverboards, collect Vibe Coins, unlock auras, and explore the full Upper Vibe Media 3D experience."}
           </p>
 
           {/* Feature badges */}
