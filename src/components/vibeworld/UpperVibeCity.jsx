@@ -18,6 +18,7 @@ import useDirectMessaging from "@/hooks/useDirectMessaging";
 import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
+import ResumeMusicButton from "@/components/vibeworld/ResumeMusicButton";
 import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 import MessageRequestComposer from "@/components/vibeworld/panels/MessageRequestComposer";
 import DirectChatPanel from "@/components/vibeworld/panels/DirectChatPanel";
@@ -121,6 +122,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [inventoryOpen, setInventoryOpen] = useState(false);
 
   const jukeboxFadeRef = useRef(null);        // kept for cleanup compat
+
+  // ── Resume Music button (iPhone Safari autoplay blocker fallback) ────────
+  const [showResumeButton, setShowResumeButton] = useState(false);
+  const resumeButtonHandledRef = useRef(false);
+  const isIOSRef = useRef(false);
 
   // ── Dance Floor / Emote state ─────────────────────────────────────────────
   const [isDancing, setIsDancing] = useState(false);
@@ -255,7 +261,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const exitCooldownTimerRef = useRef(null);
 
   useEffect(() => {
-    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    setIsMobile(isIOS || /Android/i.test(navigator.userAgent));
+    isIOSRef.current = isIOS;
   }, []);
 
   // iOS Safari: prevent pull-to-refresh and rubber-banding inside the 3D world
@@ -847,12 +855,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return () => cancelAnimationFrame(raf);
   }, [playerCtx?.analyserNode]);
 
-  // Auto-start personalized feed when entering world (only if silent and NOT on dance floor).
+  // Auto-start personalized feed when entering world.
   // Uses feedStartedRef to prevent re-triggering when user pauses playback.
+  // The dance floor effect will pause this feed on enter and restore/resume on exit.
   useEffect(() => {
     if (feedLoading || loading || !playTrack) return;
     if (feedStartedRef.current) return; // already initialized — don't restart on state changes
-    if (onDanceFloor) return; // NEVER start the personal player on the dance floor. Only DJ audio plays.
     // Start feed so the player card is always visible.
     // The dance floor enter/exit handler pauses the audio and silences volume on the
     // floor, then restores and resumes on exit — so this just gives us a track to display.
@@ -884,7 +892,38 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         playTrack(pick, "song");
       }
     }
-  }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack, onDanceFloor]);
+  }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
+
+  // ── iPhone Safari autoplay detection ────────────────────────────────
+  // If the feed started programmatically (no gesture) and Safari blocked it,
+  // `audio.played` stays empty. Show Resume Music button as fallback.
+  useEffect(() => {
+    if (!feedStartedRef.current || resumeButtonHandledRef.current) return;
+    if (!isIOSRef.current) return;
+    const audio = audioRef?.current;
+    if (!audio) return;
+    const t = setTimeout(() => {
+      // Safari blocks autoplay silently: play() resolves, but played stays empty
+      if (audio.played.length === 0 || audio.paused) {
+        resumeButtonHandledRef.current = true;
+        setShowResumeButton(true);
+      }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [feedStartedRef.current, audioRef]);
+
+  const handleResumeMusic = useCallback(() => {
+    // User gesture-triggered resume — Safari allows this
+    togglePlay?.();
+    setShowResumeButton(false);
+  }, [togglePlay]);
+
+  // Hide Resume Music button once audio actually starts playing
+  useEffect(() => {
+    if (isPlaying && showResumeButton) {
+      setShowResumeButton(false);
+    }
+  }, [isPlaying, showResumeButton]);
 
   const personalBaseVolRef = useRef(1.0);
 
@@ -911,6 +950,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         }
         // Silence personal player volume — DJ stream takes over
         personal.volume = 0;
+        setShowResumeButton(false);
       }
     } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
       // Left dance floor
@@ -935,6 +975,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           togglePlayRef.current?.();
         }
       }
+    } else if (!onDanceFloor && !wasOnDanceFloorRef.current && personal) {
+      // Spawn was inside dance floor — first real exit must always restore playback.
+      // Restore volume unconditionally on the first exit (no saved track = resumeGlobalIfNeeded won't fire).
+      personal.volume = personalBaseVolRef.current;
     }
   // onDanceFloor is the only real trigger; refs handle the rest without stale values
   }, [onDanceFloor, audioRef]);
@@ -1382,6 +1426,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         );
       })()}
 
+      {/* iPhone Safari Resume Music button — shown when autoplay was blocked */}
+      {showResumeButton && (
+        <ResumeMusicButton isMobile={isMobile} onResume={handleResumeMusic} />
+      )}
+
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
 
@@ -1452,7 +1501,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         mobileLayout={mobileLayout}
         onToggle={() => setPersonalHoverboardActive(p => !p)}
         personalHoverboardActive={personalHoverboardActive}
-        canUsePersonalBoard={!!equippedBoard && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !anyBlockingUIOpen}
+        canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !anyBlockingUIOpen && !isAirborne && !nearHoverboard && !detectZone(playerPos.x, playerPos.z)}
       />
 
       {/* Mobile debug overlay — only visible with ?debug=mobile in URL */}

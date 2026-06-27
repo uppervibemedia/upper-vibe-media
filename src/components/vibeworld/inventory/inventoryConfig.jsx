@@ -34,16 +34,8 @@ export const STARTER_ITEMS = [
     starter: true,
     preview_icon: "Badge",
   },
-  {
-    id: "hoverboard_basic",
-    name: "Basic Vibe Board",
-    category: "hoverboard",
-    description: "Your personal hoverboard. Equip it from Inventory to free-roam Upper Vibe City.",
-    rarity: "common",
-    starter: true,
-    preview_icon: "Rocket",
-    preview_model: "basic",
-  },
+  // Hoverboard removed from starters — only show Ride Hoverboard button for users
+  // who actually bought and equipped a board.
   {
     id: "badge_citizen",
     name: "Vibe Citizen",
