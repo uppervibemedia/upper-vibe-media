@@ -928,14 +928,16 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
 
   // ── iPhone Safari autoplay detection ────────────────────────────────
-  // If the feed started programmatically (no gesture) and Safari blocked it,
-  // `audio.played` stays empty. Show Resume Music button as fallback.
+  // Only show Resume Music button if user is NOT on the dance floor
+  // (on the dance floor, DJ audio handles playback — no resume button needed)
   useEffect(() => {
     if (!feedStartedRef.current || resumeButtonHandledRef.current) return;
     if (!isIOSRef.current) return;
     const audio = audioRef?.current;
     if (!audio) return;
     const t = setTimeout(() => {
+      // Don't show resume button if on dance floor — DJ owns audio there
+      if (onDanceFloorRef2.current) return;
       // Safari blocks autoplay silently: play() resolves, but played stays empty
       if (audio.played.length === 0 || audio.paused) {
         resumeButtonHandledRef.current = true;
@@ -959,6 +961,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, [isPlaying, showResumeButton]);
 
   const personalBaseVolRef = useRef(1.0);
+  // Single timer ref for dance floor audio transitions — always cancel before scheduling
+  const audioTransitionTimerRef = useRef(null);
 
   // Keep stable refs for isPlaying/togglePlay so dance floor effect never uses stale closures
   const isPlayingRef = useRef(isPlaying);
@@ -976,6 +980,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   useEffect(() => {
     const personal = audioRefStable.current?.current;
 
+    // Always cancel any pending transition timer first (prevents stale delayed play)
+    clearTimeout(audioTransitionTimerRef.current);
+
     if (onDanceFloor && !wasOnDanceFloorRef.current) {
       // ── Entering dance floor ────────────────────────────────────────────
       wasOnDanceFloorRef.current = true;
@@ -987,44 +994,48 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         }
         // Hard-silence the personal player immediately — no fade, no race
         personal.volume = 0;
-        // Pause it (use ref to read live isPlaying without stale closure)
+        // Pause it directly on the audio element — don't call togglePlay here
+        // because it can race with React state and cause double-audio on re-entry
         if (!personal.paused) {
           danceFloorPausedRef.current = true;
           personal.pause();
-          // Mirror state into PlayerContext so UI shows paused
-          togglePlayRef.current?.(); // togglePlay pauses synchronously when playing
-        } else {
-          // Already paused (e.g. user had it paused before entering) — still track it
-          danceFloorPausedRef.current = false;
+        }
+        // Also sync PlayerContext UI state to "paused" if it thinks it's playing
+        if (isPlayingRef.current) {
+          togglePlayRef.current?.();
         }
         setShowResumeButton(false);
       }
     } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
-      // ── Leaving dance floor ─────────────────────────────────────────────
+      // ── Leaving dance floor — 500ms clean delay before resuming personal audio ──
       wasOnDanceFloorRef.current = false;
 
-      if (personal) {
-        // Restore saved playback position
+      if (personal && danceFloorPausedRef.current) {
+        danceFloorPausedRef.current = false;
+        // Restore saved playback position immediately (before delay)
         if (savedPersonalTimeRef.current > 0) {
           try { personal.currentTime = savedPersonalTimeRef.current; } catch {}
         }
-        // Restore full volume BEFORE resuming so there's no silent blip
-        personal.volume = personalBaseVolRef.current;
 
-        // Resume only if WE paused it on entry
-        if (danceFloorPausedRef.current) {
-          danceFloorPausedRef.current = false;
-          // Small delay so the DJ audio has time to silence first,
-          // ensuring the personal player doesn't overlap with fading-out DJ audio
-          setTimeout(() => {
-            const p = audioRefStable.current?.current;
-            if (!p) return;
-            if (p.paused) {
-              // togglePlay() resumes synchronously — safe to call here
-              togglePlayRef.current?.();
-            }
-          }, 80);
-        }
+        // Wait 500ms for DJ audio to fully silence, then resume personal player
+        audioTransitionTimerRef.current = setTimeout(() => {
+          // Stale check: if user walked back in during the delay, abort
+          if (onDanceFloorRef2.current) return;
+
+          const p = audioRefStable.current?.current;
+          if (!p) return;
+
+          // Restore volume then resume
+          p.volume = personalBaseVolRef.current;
+          if (p.paused && !isPlayingRef.current) {
+            togglePlayRef.current?.();
+          } else if (p.paused) {
+            p.play().catch(() => {});
+          }
+        }, 500);
+      } else if (personal) {
+        // Was already paused by user before entering — just restore volume
+        personal.volume = personalBaseVolRef.current;
       }
     } else if (!onDanceFloor && !wasOnDanceFloorRef.current && personal) {
       // ── Spawn was off the floor — just ensure volume is restored ────────
@@ -1032,10 +1043,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
   }, [onDanceFloor]);
 
-  // Cleanup on unmount — restore personal player volume, silence DJ
+  // Cleanup on unmount — restore personal player volume, silence DJ, cancel pending timers
   useEffect(() => {
     return () => {
       clearInterval(jukeboxFadeRef.current);
+      clearTimeout(audioTransitionTimerRef.current);
       const personal = audioRef?.current;
       if (personal) personal.volume = personalBaseVolRef.current;
       // Silence DJ audio on unmount so it doesn't bleed into other pages
