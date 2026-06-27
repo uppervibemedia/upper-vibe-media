@@ -44,31 +44,39 @@ export default function Admin() {
   const [editingTrack, setEditingTrack] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper: retry once with a delay on rate-limit errors
-  const withRetry = async (fn, delay = 800) => {
-    try {
-      return await fn();
-    } catch (e) {
-      if (String(e?.message || e).includes("Rate limit")) {
-        await new Promise((r) => setTimeout(r, delay));
+  // Helper: retry up to 3 times with exponential backoff on rate-limit errors
+  const withRetry = async (fn, baseDelay = 1500) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
         return await fn();
+      } catch (e) {
+        const isRateLimit = String(e?.message || e).includes("Rate limit");
+        if (isRateLimit && attempt < 2) {
+          await new Promise((r) => setTimeout(r, baseDelay * (attempt + 1)));
+        } else {
+          throw e;
+        }
       }
-      throw e;
     }
   };
 
   const loadAll = async () => {
     setLoading(true);
-    // Stagger requests to stay within rate limits
-    const t = await withRetry(() => base44.entities.Track.list("-created_date", 100));
-    setTracks(t);
-    await new Promise((r) => setTimeout(r, 600));
-    const a = await withRetry(() => base44.entities.Artist.list("name", 50));
-    setArtists(a);
-    await new Promise((r) => setTimeout(r, 600));
-    const c = await withRetry(() => base44.entities.Category.list("display_order", 50));
-    setCategories(c);
-    setLoading(false);
+    try {
+      // Stagger requests to stay within rate limits
+      const t = await withRetry(() => base44.entities.Track.list("-created_date", 100));
+      setTracks(t);
+      await new Promise((r) => setTimeout(r, 1200));
+      const a = await withRetry(() => base44.entities.Artist.list("name", 50));
+      setArtists(a);
+      await new Promise((r) => setTimeout(r, 1200));
+      const c = await withRetry(() => base44.entities.Category.list("display_order", 50));
+      setCategories(c);
+    } catch (e) {
+      console.warn("[Admin] loadAll error:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { loadAll(); }, []);
