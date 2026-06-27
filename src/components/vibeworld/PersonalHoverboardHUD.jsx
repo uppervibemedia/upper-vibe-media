@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { Rocket, Ban } from 'lucide-react';
 
 export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle, personalHoverboardActive, canUsePersonalBoard }) {
+  // Strict gates:
+  // - must have equipped board (not just owned)
+  // - canUsePersonalBoard = null means inventory hasn't loaded yet → hide until confirmed
   if (!canUsePersonalBoard) return null;
 
   return (

@@ -922,13 +922,17 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         }
         // Restore full volume
         personal.volume = personalBaseVolRef.current;
-        // Resume playback only if we were the ones who paused it
+        // Resume if we were the ones who paused it.
+        // IMPORTANT: do NOT gate on !isPlayingRef.current here —
+        // the PlayerContext's setIsPlaying(false) triggers a re-render
+        // that updates isPlayingRef ONLY after this effect has already
+        // evaluated its deps. If we gate, the check reads the OLD value
+        // (still true) and resume NEVER fires, leaving the user stuck
+        // needing manual play. Instead rely on togglePlay's internal
+        // check: it won't double-play if already playing.
         if (danceFloorPausedRef.current) {
           danceFloorPausedRef.current = false;
-          // Resume only if not currently playing (avoid double-toggle)
-          if (!isPlayingRef.current) {
-            togglePlayRef.current?.();
-          }
+          togglePlayRef.current?.();
         }
       }
     }

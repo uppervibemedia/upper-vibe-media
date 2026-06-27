@@ -27,6 +27,16 @@ export default function CameraLookZone({ mobileInputRef }) {
       if (!t) return;
       // Only claim right-side (≥40vw). Left side → joystick.
       if (t.clientX < window.innerWidth * 0.40) return;
+      // Skip if touch targets an interactive element (button, anchor, input).
+      // composedPath() reveals the real touch target even during capture phase
+      // — without this, the capture listener claims EVERY right-side touch and
+      // no buttons ever fire their handlers on iPhone.
+      const path = e.composedPath?.() || [];
+      for (const el of path) {
+        if (el?.tagName === "BUTTON" || el?.tagName === "A" ||
+            el?.tagName === "INPUT" || el?.tagName === "TEXTAREA" ||
+            el?.tagName === "SELECT" || el?.getAttribute?.("role") === "button") return;
+      }
       e.preventDefault();
       touchIdRef.current = t.identifier;
       lastXRef.current = t.clientX;
