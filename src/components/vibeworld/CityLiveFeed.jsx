@@ -58,17 +58,19 @@ function neonLabel(text, hex, x, y, z, scale = 6, spriteMult = 1.8) {
 }
 
 // ── Cinematic preview camera ──────────────────────────────────────────
-// Wide elevated angle with gentle orbiting. Shots are kept deep so ALL zone
-// name labels stay fully within the vertical frame — no cropping.
 const SHOTS = [
-  { pos: [0,  20, 32], look: [0, 0, -16] },  // central — full plaza + stage
-  { pos: [8,  20, 28], look: [3, 0, -16] },   // pan right — library + academy
-  { pos: [-11, 20, 32], look: [-6, 0, -14] }, // pan left — lounge + dome
-  { pos: [12, 18, 34], look: [8, 0, -14] },   // far right — beach + wheel
+  { pos: [0,   20, 32],  look: [0,   0, -16], fov: 60  }, // central — full plaza + stage
+  { pos: [30,  16, 10],  look: [0,   1, -10], fov: 58  }, // east orbit — beach + wheel
+  { pos: [-30, 16, 8],   look: [-4,  1, -14], fov: 58  }, // west orbit — lounge + academy
+  { pos: [0,   14, -5],  look: [0,   3, -34], fov: 52  }, // close-up stage shot
+  { pos: [18,  22, 28],  look: [-4,  0, -14], fov: 62  }, // high right — library view
+  { pos: [-18, 22, 28],  look: [4,   0, -14], fov: 62  }, // high left — dome + lounge
+  { pos: [0,   28, 20],  look: [0,   0, -10], fov: 65  }, // top-down aerial
+  { pos: [28,  12, -8],  look: [0,   2, -20], fov: 55  }, // side stage east
 ];
 const FIXED_CAM = SHOTS[0];
-const SHOT_DURATION = 5; // seconds per shot
-const SHOT_LERP = 1.2;   // smoothness between shots
+const SHOT_DURATION = 7; // seconds per shot
+const SHOT_LERP = 0.9;   // smoothness between shots
 
 // WHEEL_X / Z constants matching the live Ferris wheel position on blacktop
 const WHEEL_X = 22, WHEEL_Z = -12;
@@ -206,13 +208,17 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       ro.observe(canvas.parentElement || canvas);
 
       // ── Animate ───────────────────────────────────────────────────────────
-      let frame = 0, shotIdx = 0, shotElapsed = SHOT_DURATION, camShotPos = new Vector3(...SHOTS[0].pos), camShotLook = new Vector3(...SHOTS[0].look);
-      const camPos0 = new Vector3(), camLook0 = new Vector3(...SHOTS[0].look);
+      let frame = 0, shotIdx = 0, shotElapsed = SHOT_DURATION;
+      let camShotPos = new Vector3(...SHOTS[0].pos);
+      let camShotLook = new Vector3(...SHOTS[0].look);
+      let camTargetFov = SHOTS[0].fov ?? 60;
+      const camLook0 = new Vector3(...SHOTS[0].look);
 
       const advanceShot = () => {
         shotIdx = (shotIdx + 1) % SHOTS.length;
         camShotPos.set(...SHOTS[shotIdx].pos);
         camShotLook.set(...SHOTS[shotIdx].look);
+        camTargetFov = SHOTS[shotIdx].fov ?? 60;
         shotElapsed = 0;
       };
 
@@ -222,13 +228,17 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         const t = time * 0.001;
         const dt2 = 0.016;
 
-        // ── Gentle city tour — no hard snaps, all labels stay in frame ──
+        // ── Cinematic city tour — smooth camera transitions between shots ──
         shotElapsed += dt2;
         if (shotElapsed >= SHOT_DURATION) advanceShot();
-        camPos0.copy(camera.position);
         camLook0.lerp(camShotLook, Math.min(1, SHOT_LERP * dt2));
         camera.position.lerp(camShotPos, Math.min(1, SHOT_LERP * dt2));
         camera.lookAt(camLook0);
+        // Smooth FOV transition
+        if (Math.abs(camera.fov - camTargetFov) > 0.1) {
+          camera.fov += (camTargetFov - camera.fov) * Math.min(1, SHOT_LERP * dt2 * 2);
+          camera.updateProjectionMatrix();
+        }
 
         // ── Animate the real Ferris Wheel (same rotation as in-game) ──
         animateFerrisWheel(scene, t, 0);
