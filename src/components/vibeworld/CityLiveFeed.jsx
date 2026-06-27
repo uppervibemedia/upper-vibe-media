@@ -24,7 +24,7 @@ const { Color, Vector3, SpriteMaterial, Sprite, CanvasTexture, SRGBColorSpace,
         Fog, LinearFilter } = THREE;
 
 // ── Cinematic neon floating labels ────────────────────────────────────────
-function neonLabel(text, hex, x, y, z, scale = 6) {
+function neonLabel(text, hex, x, y, z, scale = 6, spriteMult = 1.8) {
   const c = document.createElement("canvas");
   const fontSize = Math.floor(scale * 5.5);
   const extra = text.length > 12 ? 0.8 : 0.7;
@@ -51,7 +51,7 @@ function neonLabel(text, hex, x, y, z, scale = 6) {
   tex.minFilter = LinearFilter; tex.colorSpace = SRGBColorSpace;
   const sp = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending }));
   const ratio = c.width / c.height;
-  sp.scale.set(scale * 0.08 * ratio, scale * 0.08, 1);
+  sp.scale.set(scale * 0.08 * ratio * spriteMult, scale * 0.08 * spriteMult, 1);
   sp.position.set(x, y, z); sp.renderOrder = 999;
   return sp;
 }
@@ -136,8 +136,8 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         { x: 22, y: 3, z: -20, color: "#00E5FF" },
         { x: 0, y: 4, z: 10, color: "#00E5FF" },
         { x: 28, y: 3, z: 23, color: "#F5A800" },
-        { x: -26, y: 3, z: -14, color: "#C43BFF" },
-        { x: -28, y: 3, z: 5, color: "#9B7EFF" },
+        { x: -13, y: 2.5, z: 3, color: "#C43BFF" },
+        { x: -28, y: 2.5, z: 5, color: "#9B7EFF" },
       ];
       const orbMeshes = glowOrbs.map(({ x, y, z, color }) => {
         const m = new Mesh(new SphereGeometry(0.32, 10, 7), new THREE.MeshBasicMaterial({ color: new Color(color), transparent: true, opacity: 0.85 }));
@@ -152,13 +152,13 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         [-22, 0.18, -26, 4.7, "#C43BFF", 0.55],
         [-22, 0.19, -26, 3.2, "#A078FF", 0.35],
         [22, 0.15, -20, 4.3, "#00D4F0", 0.55],
-        [-13, 0.15, 3, 4.0, "#C43BFF", 0.55],
-        [-16, 0.17, -13, 3.3, "#00E5FF", 0.55],
-        [0, 0.2, 10, 5.5, "#00E5FF", 0.55],
-        [-26, 0.17, -14, 2.3, "#C43BFF", 0.55],
+        [-13, 0.1, 3, 4.0, "#C43BFF", 0.55],
+        [-13, 0.12, 3, 2.5, "#E040FB", 0.35],
+        [-28, 0.1, 5, 5.0, "#9B7EFF", 0.55],
+        [-28, 0.12, 5, 3.2, "#C43BFF", 0.35],
         [28, 0.1, 23, 3.5, "#F5A800", 0.45],
         [22, 0.2, 22, 8.5, "#A078FF", 0.45],
-        [-28, 0.16, 5, 5.0, "#9B7EFF", 0.55],
+        [0, 0.2, 10, 5.5, "#00E5FF", 0.55],
       ];
       ringData.forEach((data) => {
         const ring = new Mesh(new RingGeometry(data[3] - 0.1, data[3] + 0.08, 48), new THREE.MeshBasicMaterial({ color: new Color(data[4]), transparent: true, opacity: data[5], depthWrite: false, side: THREE.DoubleSide }));
