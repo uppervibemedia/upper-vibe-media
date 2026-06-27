@@ -2,8 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
 import { SPAWN, TREE_POSITIONS, PARK_RADIUS } from "./cityData";
 import createCitySkyline from "./CitySkyline";
-// Vibe Shop is temporarily disabled — replaced by Ferris Wheel
-// import createVibeShop from "./VibeShop";
+import createUpperVibeShop, { animateShop } from "./UpperVibeShop";
 import { createFerrisWheel, animateFerrisWheel, WHEEL_X, WHEEL_Z, WHEEL_RADIUS, WHEEL_HUB_Y, getCabinWorldPosition, getBoardingPosition, getRiderCameraTransform } from "./FerrisWheel";
 import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
@@ -257,6 +256,13 @@ export function buildPark(scene) {
   // 8.6. ZEN BEACH — meditation zone, left-side beach area
   // ═════════════════════════════════════════════════════════════
   createZenBeach(scene, PLAZA_X, PLAZA_Z);
+
+  // ═════════════════════════════════════════════════════════════
+  // 8.65. UPPER VIBE SHOP — central plaza storefront
+  // ═════════════════════════════════════════════════════════════
+  const shopGroup = createUpperVibeShop(scene, [0, 0, 8]);
+  if (shopGroup) shopGroup.rotation.y = Math.PI; // face toward player spawn
+  scene.userData.shopGroup = shopGroup;
 
   // ═════════════════════════════════════════════════════════════
   // 8.8. HOVERBOARD RING RUN — right-side beach, action zone
@@ -1296,6 +1302,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           : (!isMob || frameRef.current % 3 === 0);
         if (crystalGate) animateCrystalZone(scene, t, dt, px, pz, tvSmooth);
         if (!isMob || nearDanceFloor || frameRef.current % 3 === 0) animateJukebox(scene, t, audioBeat);
+        if (scene.userData.shopGroup) animateShop(scene.userData.shopGroup, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──
         if (hbRidingRef.current && avatarEntryRef.current && !avatarEntryRef.current._hbBoard) {
