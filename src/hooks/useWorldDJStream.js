@@ -92,7 +92,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
 
   // ── Track pool ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    base44.entities.Track.filter({ status: "published" }, "-display_order", 60)
+    base44.entities.Track.filter({ status: "published" }, "-display_order", 500)
       .then((tracks) => { trackPoolRef.current = tracks.filter(t => t.audio_url); })
       .catch(() => {});
   }, []);
