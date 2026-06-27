@@ -1573,20 +1573,19 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const remoteIsHoverboarding = animState === "hbRiding" || !!remote.personal_hoverboard_active;
           // Neon Surf is separate — remote animation stays normal, no hoverboard attach
           if (remoteEntry) {
-            if (remoteEntry._isMixamo) {
-              const emergeId = remoteIsDancing ? "dance" : null;
-              updateMixamoAvatarAnimation(remoteEntry, vel * 15, remoteIsDancing, dt,
-                remoteIsHoverboarding ? true : false, emergeId);
-            } else {
-              updateAvatarAnimation(remoteEntry, vel * 15, remoteIsDancing, dt,
-                remoteIsHoverboarding ? true : false);
-            }
-            // Bump avatar Y up slightly so hoverboard mesh doesn't clip the ground
-            if (remoteIsHoverboarding) {
-              g.position.y = SPAWN[1] + 0.15;
-            } else {
-              g.position.y = SPAWN[1];
-            }
+          if (remoteEntry._isMixamo) {
+            const emergeId = remoteIsDancing ? "dance" : null;
+            updateMixamoAvatarAnimation(remoteEntry, vel * 15, remoteIsDancing, dt,
+              remoteIsHoverboarding ? true : false, emergeId);
+          } else {
+            updateAvatarAnimation(remoteEntry, vel * 15, remoteIsDancing, dt,
+              remoteIsHoverboarding ? true : false);
+          }
+          // Smoothly lerp avatar Y up when hoverboarding, back down when not.
+          // A hard set (SPAWN[1] → SPAWN[1]+0.15) creates an instantaneous
+          // jump that looks like the board "flickers on and off" to observers.
+          const targetY = remoteIsHoverboarding ? SPAWN[1] + 0.15 : SPAWN[1];
+          g.position.y += (targetY - g.position.y) * Math.min(1, 8 * dt);
           }
 
           // ── Remote aura sync ────────────────────────────
