@@ -485,7 +485,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, djTrack, hbRiding = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -569,6 +569,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   isDancingRef.current = isDancing;
   const hbRidingRef = useRef(false);
   hbRidingRef.current = hbRiding;
+  const isPlayingNeonSurfRef = useRef(false);
+  isPlayingNeonSurfRef.current = isPlayingNeonSurf;
   const ferrisRidingRef = useRef(false);
   ferrisRidingRef.current = ferrisRiding;
   const equippedAuraRef = useRef(null);
@@ -1397,8 +1399,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           resetOrbs(scene);
         }
 
-        // ─── HOVERBOARD ORB COLLECTION — only while actively riding ──
-        if (hbRidingRef.current && frameRef.current % 4 === 0) {
+        // ─── HOVERBOARD ORB COLLECTION — only while playing Neon Surf game (not personal board) ──
+        if (isPlayingNeonSurfRef.current && frameRef.current % 4 === 0) {
           const orbMeshes = scene.userData.hbOrbMeshes;
           if (orbMeshes) {
             for (const orb of orbMeshes) {

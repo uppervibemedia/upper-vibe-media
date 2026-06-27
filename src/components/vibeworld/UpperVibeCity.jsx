@@ -1070,6 +1070,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           avatarConfig={avatarConfig}
           djTrack={djTrack}
           hbRiding={hbRiding}
+          isPlayingNeonSurf={isPlayingNeonSurf}
           ferrisRiding={ferrisRiding}
           rendererRef={rendererRef}
           tvMode={tvMode}
