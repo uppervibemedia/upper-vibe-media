@@ -15,7 +15,7 @@ function fadeIn(el, targetVol, ms) {
   const start = performance.now();
   const tick = (now) => {
     const t = Math.min(1, (now - start) / ms);
-    el.volume = targetVol * t;
+    el.volume = Math.max(0, Math.min(1, targetVol * t));
     if (t < 1) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
