@@ -98,11 +98,6 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     const riding = isRidingPersonal;
     const neonSurf = isRidingNeonSurf;
 
-    // Heartbeat keepalive every cycle — keeps this user visible to all other players
-    // even when standing still/idle. Retries once on failure; touches last_heartbeat
-    // so remote clients see a recent timestamp (within STALE_MS).
-    touchHeartbeat(rid).catch(() => {});
-
     // Skip full position update if nothing changed (saves DB writes)
     if (
       Math.abs(x - last.x) < POS_THRESHOLD &&
