@@ -14,32 +14,44 @@ import * as THREE from "three";
 import { buildPark } from "@/components/vibeworld/CityCanvas";
 import { animateFerrisWheel } from "@/components/vibeworld/FerrisWheel";
 import { animateCosmicSky } from "@/components/vibeworld/CosmicSkySystem";
+import createUpperVibeShop, { animateShop } from "@/components/vibeworld/UpperVibeShop";
 
 const { Color, Vector3, SpriteMaterial, Sprite, CanvasTexture, SRGBColorSpace,
         Mesh, MeshBasicMaterial, PointsMaterial, Points,
         BufferGeometry, BufferAttribute,
         RingGeometry, ConeGeometry, SphereGeometry,
+        BoxGeometry, MeshStandardMaterial,
         Fog, LinearFilter } = THREE;
 
 // ── Cinematic neon floating labels ────────────────────────────────────────
-function neonLabel(text, hex, x, y, z, scale = 6, hScale = 1) {
+function neonLabel(text, hex, x, y, z, scale = 6) {
   const c = document.createElement("canvas");
-  const fontSize = Math.floor(scale * 6.5);
-  c.width = Math.max(256, fontSize * text.length * 0.65);
-  c.height = Math.max(64, fontSize);
+  const fontSize = Math.floor(scale * 5.5);
+  const extra = text.length > 12 ? 0.8 : 0.7;
+  c.width = Math.max(320, Math.ceil(fontSize * text.length * extra + 48));
+  c.height = Math.max(80, Math.ceil(fontSize * 2));
   const ctx = c.getContext("2d");
-  ctx.font = `900 ${fontSize}px 'Syne','Inter',sans-serif`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.shadowColor = hex; ctx.shadowBlur = 35;
+  // White glow base
+  ctx.shadowColor = hex; ctx.shadowBlur = 40;
+  ctx.font = `900 ${fontSize}px 'Syne','Inter',sans-serif`;
   ctx.fillStyle = "#ffffff";
-  ctx.fillText(text, c.width / 2, c.height / 2 + 2);
-  ctx.shadowBlur = 14;
+  ctx.fillText(text, c.width / 2, c.height / 2);
+  // Color fill on top
+  ctx.shadowBlur = 16;
   ctx.fillStyle = hex;
-  ctx.fillText(text, c.width / 2, c.height / 2 + 2);
+  ctx.fillText(text, c.width / 2, c.height / 2);
+  ctx.shadowBlur = 0;
+  // Bottom stroke for neon readability
+  ctx.shadowColor = "transparent";
+  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = hex;
+  ctx.strokeText(text, c.width / 2, c.height / 2);
   const tex = new CanvasTexture(c);
   tex.minFilter = LinearFilter; tex.colorSpace = SRGBColorSpace;
   const sp = new Sprite(new SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending }));
-  sp.scale.set(scale * (c.width / c.height) * 0.25, scale * 0.25, 1);
+  const ratio = c.width / c.height;
+  sp.scale.set(scale * 0.08 * ratio, scale * 0.08, 1);
   sp.position.set(x, y, z); sp.renderOrder = 999;
   return sp;
 }
@@ -97,19 +109,22 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       // HoverboardRingRun, ZenBeach, DanceFloor, Jukebox
       buildPark(scene);
 
-      // ── Cinematic neon zone labels — kept LOW so the camera orbit
-      // never clips them against the top edge of the frame ─────────
+      // ── UPPER VIBE SHOP — storefront building in the plaza center ──
+      const shopGroup = createUpperVibeShop(scene, [0, 0, 10]);
+      if (shopGroup) shopGroup.rotation.y = 0;
+
+      // ── Cinematic neon zone labels — tight so full names always fit ──
       const labels = [
-        neonLabel("MUSIC STAGE",       "#00D4F0", 0,   3.8, -34.0, 4),
-        neonLabel("VIBE LOUNGE",       "#C43BFF", -22, 2.6, -26,   4),
-        neonLabel("MUSIC LIBRARY",     "#00D4F0", 22,  2.6, -20,   4),
-        neonLabel("VISUALIZER DOME",   "#C43BFF", -13, 2.6, 3,     4),
-        neonLabel("VIBE CHECK",        "#00E5FF", -16, 2.7, -13,   4),
-        neonLabel("VIBE ACADEMY",      "#9B7EFF", -28, 2.9, 5,     4),
-        neonLabel("UPPER VIBE SHOP",   "#00E5FF", 0,   2.8, 10,    4),
-        neonLabel("NEON SURF BEACH",   "#F5A800", 28,  2.2, 23,    4),
-        neonLabel("NEON VIBE WHEEL",   "#F5A800", WHEEL_X, 6.0, WHEEL_Z, 4),
-        neonLabel("CRYSTAL ZONE",      "#C43BFF", -26, 2.7, -14,   4),
+        neonLabel("MUSIC STAGE",       "#00D4F0", 0,   3.6, -34.0, 3.4),
+        neonLabel("VIBE LOUNGE",       "#C43BFF", -22, 2.4, -26,   3.4),
+        neonLabel("MUSIC LIBRARY",     "#00D4F0", 22,  2.4, -20,   3.4),
+        neonLabel("VISUALIZER DOME",   "#C43BFF", -13, 2.4, 3,     3.2),
+        neonLabel("VIBE CHECK",        "#00E5FF", -16, 2.5, -13,   3.4),
+        neonLabel("VIBE ACADEMY",      "#9B7EFF", -28, 2.6, 5,     3.4),
+        neonLabel("UPPER VIBE SHOP",   "#00E5FF", 0,   2.6, 10,    3.2),
+        neonLabel("NEON SURF BEACH",   "#F5A800", 28,  2.2, 23,    3.2),
+        neonLabel("VIBE WHEEL",        "#F5A800", WHEEL_X, 5.5, WHEEL_Z, 3.2),
+        neonLabel("CRYSTAL ZONE",      "#C43BFF", -26, 2.5, -14,   3.4),
       ];
       labels.forEach((l) => scene.add(l));
 
@@ -230,9 +245,51 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
           }
         }
 
-        // Zone-animator pulse calls — muted audio beat preserves scenery motion
-        const audioBeat = 0;
-        scene.userData._beachStrobe = 0;
+        // Upper Vibe Shop — animate lights
+        if (shopGroup) animateShop(shopGroup, t, 0);
+
+        // ── Put a track on the Music Stage screen ─────────────────────
+        // Render cover art into a canvas, then apply it to the stage screen.
+        // Re-renders every 4 frames to keep in sync, falling back to the
+        // existing visualizer/dark screen if the screen was already textured.
+        if (frame % 4 === 0) {
+          const ss = scene.userData.stageScreen;
+          if (ss && ss.material && !scene.userData._stageSongPainted) {
+            const sgw = 12.444, sgh = 7;
+            const sq = document.createElement("canvas");
+            sq.width = 128; sq.height = 72;
+            const sctx = sq.getContext("2d");
+            // Deep purple glow background
+            const grd = sctx.createLinearGradient(0, 0, 128, 72);
+            grd.addColorStop(0, "#1a1040"); grd.addColorStop(0.5, "#2d1560"); grd.addColorStop(1, "#1a1040");
+            sctx.fillStyle = grd; sctx.fillRect(0, 0, 128, 72);
+            // Glow halo
+            sctx.shadowColor = "#00E5FF"; sctx.shadowBlur = 8;
+            sctx.beginPath(); sctx.arc(22, 36, 12, 0, Math.PI * 2); sctx.fillStyle = "rgba(0,229,255,0.4)"; sctx.fill();
+            sctx.shadowBlur = 0; sctx.shadowColor = "transparent";
+            // Neon Strobes vocalist fig
+            sctx.fillStyle = "#ffffff"; sctx.font = "22px 'Syne',sans-serif"; sctx.textAlign = "center"; sctx.textBaseline = "middle";
+            sctx.shadowColor = "#C43BFF"; sctx.shadowBlur = 10;
+            sctx.fillText("🎤", 20, 38); sctx.shadowBlur = 0;
+            sctx.shadowColor = "#00E5FF"; sctx.shadowBlur = 6;
+            sctx.fillText("ON", 60, 28); sctx.fillText("STAGE", 60, 48);
+            sctx.shadowBlur = 0;
+            sctx.fillStyle = "#9B7EFF"; sctx.font = "18px 'Syne',sans-serif";
+            sctx.fillText("Now Playing", 60, 5);
+            sctx.fillStyle = "rgba(255,255,255,0.4)"; sctx.font = "14px 'Inter',sans-serif"; sctx.textAlign = "left";
+            sctx.fillText("★ 528Hz Remix", 86, 58);
+            // Music bars
+            for (let b = 0; b < 6; b++) {
+              const bh = 4 + Math.sin(b * 1.5 + t * 2.3) * 5;
+              sctx.fillStyle = ["#00E5FF", "#C43BFF", "#9B7EFF", "#00E5FF", "#C43BFF", "#9B7EFF"][b];
+              sctx.fillRect(92 + b * 6, 66 - bh, 4, bh);
+            }
+            const stex = new THREE.CanvasTexture(sq);
+            stex.colorSpace = THREE.SRGBColorSpace;
+            stex.minFilter = THREE.LinearFilter;
+            ss.material = new MeshBasicMaterial({ map: stex, depthWrite: true });
+          }
+        }
 
         frame++;
         if (frame === 2) setReady(true);
