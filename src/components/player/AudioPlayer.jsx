@@ -250,7 +250,7 @@ export default function AudioPlayer() {
           {!isRamRadio && (
           <div
             className="relative h-[3px] w-full cursor-pointer group"
-            style={{ background: `rgba(${themeRgb}, 0.18)` }}
+            style={{ background: "rgba(255,255,255,0.08)" }}
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               const pct = ((e.clientX - rect.left) / rect.width) * 100;
@@ -273,12 +273,12 @@ export default function AudioPlayer() {
               }}
             />
             <div
-              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{
-                left: `calc(${progress}% - 6px)`,
-                background: themeHex,
-                boxShadow: `0 0 10px rgba(${themeRgb},0.9), 0 0 20px rgba(${themeRgb},0.5)`
-              }}
+            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              left: `calc(${progress}% - 6px)`,
+              background: "#00A0DC",
+              boxShadow: "0 0 10px rgba(0,160,220,0.9), 0 0 20px rgba(0,160,220,0.5)"
+            }}
             />
           </div>
           )}
