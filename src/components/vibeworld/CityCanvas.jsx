@@ -638,8 +638,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       // Stars (Points) also follow camera at r≈105 — must be > 105. Use 130 for both.
       const camera = new PerspectiveCamera(52, asp, 0.1, isMob ? 130 : 160);
       cameraRef.current = camera;
-      // Spawn on dance floor facing stage (-Z direction).
-      // camYaw=0 → camera is at +Z behind avatar → avatar faces -Z (toward stage). Correct.
+      // Spawn in the central plaza (outside dance floor), avatar faces -Z toward the city.
+      // camYaw=0 → camera is at +Z behind avatar → avatar faces -Z. Correct.
       const [spX, spY, spZ] = effectiveSpawn;
       const spawnLS = isMob && window.innerWidth > window.innerHeight;
       camera.fov = spawnLS ? FOV_LANDSCAPE : FOV_PORTRAIT;

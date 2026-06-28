@@ -173,23 +173,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     };
   }, []);
 
-  // ── Auto-dance on spawn: start dancing once world loads if on dance floor ──
-  const autoDanceStartedRef = useRef(false);
-  useEffect(() => {
-    if (loading || autoDanceStartedRef.current) return;
-    autoDanceStartedRef.current = true;
-    // Spawn is on the dance floor — auto-start dance after a short settle delay
-    const t = setTimeout(() => {
-      const dfDxNow = playerPos.x - 0;
-      const dfDzNow = playerPos.z - (-13);
-      const onFloor = Math.sqrt(dfDxNow * dfDxNow + dfDzNow * dfDzNow) <= 12;
-      if (onFloor) {
-        setIsDancing(true);
-        setActiveEmote({ id: "dance", label: "Dance", color: "#9B7EFF", startedAt: Date.now() });
-      }
-    }, 800);
-    return () => clearTimeout(t);
-  }, [loading]);
+  // Auto-dance removed: user now spawns outside the dance floor in the plaza area.
 
   // ── TV Mode — hides joystick/camera visuals for clean mirrored view ──────────
   const [tvMode, setTvMode] = useState(false);
@@ -892,27 +876,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       feedActiveRef.current = true;
       feedStartedRef.current = true;
       feedIndexRef.current = idx;
-
-      if (onDanceFloorRef2.current) {
-        // Spawned on dance floor: set track in context for the UI card,
-        // but silence + pause immediately so DJ is the only audio source.
-        const personal = audioRef?.current;
-        playTrack(pick, "song");
-        // After playTrack fires (sync), silence the personal player
-        requestAnimationFrame(() => {
-          const p = audioRef?.current;
-          if (p) {
-            p.volume = 0;
-            if (!p.paused) {
-              p.pause();
-              danceFloorPausedRef.current = true;
-            }
-          }
-          savedPersonalTimeRef.current = 0;
-        });
-      } else {
-        playTrack(pick, "song");
-      }
+      // User spawns outside the dance floor — play normally.
+      // The dance floor enter/exit effect handles silencing if they walk in.
+      playTrack(pick, "song");
     };
 
     if (sortedTracks?.length > 0) {
