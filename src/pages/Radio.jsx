@@ -1,167 +1,107 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Pause, SkipForward, SkipBack,
-  Radio as RadioIcon, Waves, Download, Music4, Crown, Mic2, Sparkles, ThumbsDown,
+  Play, Pause,
+  Radio as RadioIcon, Waves, Music4, Sparkles,
 } from "lucide-react";
-import { toast } from "sonner";
-import { Link, useNavigate } from "react-router-dom";
 import { usePlayer } from "../context/PlayerContext";
-import { useRadio } from "../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
-import { useSavedItemsContext } from "@/context/SavedItemsContext";
-import SaveHeartButton from "@/components/shared/SaveHeartButton";
-import ShareVibeButton from "../components/shared/ShareVibeButton";
-import FavLoginModal from "../components/shared/FavLoginModal";
-import { useDislike } from "../hooks/useDislike";
-// useDislike: toggle records dislikes to DB/localStorage; visual state is local (thumbsDownActive)
-import { recordDislike } from "../lib/radioCurator";
-import UpNextPanel from "../components/radio/UpNextPanel";
-import TrendingLiveSection from "../components/radio/TrendingLiveSection";
-
 import RadioThemePicker, { useRadioTheme, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
 import RadioVisualizer, { MODES } from "../components/radio/RadioVisualizer";
 import usePageVisible from "../hooks/usePageVisible";
 import IOSTip from "../components/shared/iOSTip";
-import CoverImage from "@/components/shared/CoverImage";
-
-// Breathing glow animation — injected once
-const GLOW_STYLE_ID = "radio-breathe-style";
-if (typeof document !== "undefined" && !document.getElementById(GLOW_STYLE_ID)) {
-  const s = document.createElement("style");
-  s.id = GLOW_STYLE_ID;
-  s.textContent = ``;
-  document.head.appendChild(s);
-}
+import TrendingLiveSection from "../components/radio/TrendingLiveSection";
+import { LIVE_STREAM_URL, LIVE_STREAM_NAME, LIVE_STREAM_DESCRIPTION } from "@/lib/liveStreamConfig";
 
 const PREF_KEY = "uvm_radio_viz_v9";
 const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
 
 export default function RadioPage() {
-  const [loginModal, setLoginModal] = useState(false);
-  const navigate = useNavigate();
   const [vizMode, setVizMode] = useState(getSavedMode);
   const [pulseOn, setPulseOn] = useState(getPulseEnabled);
   const { themeId, theme, applyTheme } = useRadioTheme();
   const isPageVisible = usePageVisible();
 
-  const handleTogglePulse = (v) => { setPulseOn(v); setPulseEnabled(v); };
+  // ── Live stream state ────────────────────────────────────────────────────
+  const audioRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
+  // Pause global player when live radio starts
+  const { togglePlay: globalToggle, isPlaying: globalIsPlaying, audioRef: globalAudioRef } = usePlayer();
+
+  const getAudio = useCallback(() => {
+    if (!audioRef.current) {
+      const el = new Audio();
+      el.preload = "none";
+      el.volume = 0.9;
+      el.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
+      document.body.appendChild(el);
+      audioRef.current = el;
+    }
+    return audioRef.current;
+  }, []);
+
+  const startStream = useCallback(() => {
+    setError(null);
+    setIsLoading(true);
+    // Pause global player if playing
+    if (globalIsPlaying) globalToggle();
+    const el = getAudio();
+    el.src = LIVE_STREAM_URL;
+    el.load();
+    el.play()
+      .then(() => { setIsPlaying(true); setIsLoading(false); })
+      .catch((err) => {
+        setIsLoading(false);
+        setError("Tap play to start the stream.");
+        console.warn("[LiveRadio] play blocked:", err.message);
+      });
+  }, [getAudio, globalIsPlaying, globalToggle]);
+
+  const stopStream = useCallback(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.pause();
+    el.src = "";
+    setIsPlaying(false);
+    setIsLoading(false);
+  }, []);
+
+  const handleToggle = useCallback(() => {
+    if (isPlaying) {
+      stopStream();
+    } else {
+      startStream();
+    }
+  }, [isPlaying, startStream, stopStream]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      const el = audioRef.current;
+      if (el) {
+        el.pause();
+        el.src = "";
+        try { if (el.parentNode) el.parentNode.removeChild(el); } catch {}
+      }
+    };
+  }, []);
+
+  // Pause live stream if global player starts (single-source rule)
+  useEffect(() => {
+    if (globalIsPlaying && isPlaying) {
+      stopStream();
+    }
+  }, [globalIsPlaying]);
+
+  const handleTogglePulse = (v) => { setPulseOn(v); setPulseEnabled(v); };
   const handleCycleMode = (next) => {
     setVizMode(next);
     try { localStorage.setItem(PREF_KEY, next); } catch {}
   };
   const currentModeObj = MODES.find(m => m.id === vizMode) || MODES[0];
-
-  const { currentTrack, isPlaying, togglePlay, sourceType } = usePlayer();
-  const {
-    tracksLoaded, currentRadioSong, isRadioMode, hasPrev, upNext,
-    curatorActive, isHostDropPlaying, setRadioLikedIds, curatorRecordLike,
-    initRadio, startRadio, resumeRadio, nextRadioSong, prevRadioSong, jumpToSong,
-  } = useRadio();
-  const { user } = useAuth();
-  const { savedItems } = useSavedItemsContext();
-  const { toggle: toggleDislike } = useDislike(user?.email);
-  const [dislikeDisabled, setDislikeDisabled] = useState(false);
-  // Per-song thumbs-down state — resets when track changes
-  const [thumbsDownActive, setThumbsDownActive] = useState(false);
-  const lastDislikedTrackId = useRef(null);
-
-  // Keep radio curator aware of liked song IDs using SavedItem system
-  useEffect(() => {
-    const ids = savedItems.filter((s) => s.itemType === "song").map((s) => s.itemId).filter(Boolean);
-    setRadioLikedIds(ids);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedItems]);
-
-  const isPlus =
-    user?.role === "admin" || user?.isPlus === true || user?.tier === "plus" ||
-    user?.tier === "premium" || user?.isPremium === true || user?.role === "premium";
-
-  useEffect(() => {
-    if (tracksLoaded) initRadio();
-  }, [tracksLoaded, initRadio]);
-
-  // Reset thumbs-down state whenever the current radio song changes
-  useEffect(() => {
-    const trackId = currentRadioSong?.id || currentRadioSong?._id || null;
-    if (trackId && trackId !== lastDislikedTrackId.current) {
-      setThumbsDownActive(false);
-      setDislikeDisabled(false);
-    }
-  }, [currentRadioSong]);
-
-  // If the homepage song is currently playing and its ID matches the radio song,
-  // treat it as radio playing so we don't show "Resume Radio" or restart anything.
-  const currentSongMatchesRadio = currentTrack?.id === currentRadioSong?.id;
-  const isCurrentlyPlayingRadio = (sourceType === "radio" || (isPlaying && currentSongMatchesRadio)) && currentSongMatchesRadio;
-  const radioIsPaused = currentRadioSong && !isCurrentlyPlayingRadio && !!currentTrack && !currentSongMatchesRadio;
-  const playingThisRadioSong = isCurrentlyPlayingRadio && isPlaying;
-
-  const handlePlay = () => {
-    if (isCurrentlyPlayingRadio) {
-      togglePlay();
-    } else if (currentSongMatchesRadio && !isPlaying) {
-      // Same song, just paused — resume without restarting
-      togglePlay();
-    } else {
-      startRadio();
-    }
-  };
-  const handleResume = () => resumeRadio();
-  const handleNext = () => nextRadioSong();
-  const handlePrev = () => prevRadioSong();
-  const handleJump = (song) => jumpToSong(song);
-
-
-
-  const handleDislike = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (dislikeDisabled || !currentRadioSong) return;
-
-    const songId = currentRadioSong.id || currentRadioSong._id;
-    if (!songId) return;
-
-    // Mark active + disable immediately for this song
-    setThumbsDownActive(true);
-    setDislikeDisabled(true);
-    lastDislikedTrackId.current = songId;
-
-    // Skip to next song immediately
-    nextRadioSong();
-    toast("We'll play this song less often", { duration: 2500 });
-
-    // Record dislike in background (non-blocking)
-    recordDislike(songId, true, []);
-    if (user) {
-      toggleDislike(songId, { title: currentRadioSong.title }).catch(() => {});
-    } else {
-      try {
-        const raw = localStorage.getItem("uvm_disliked_ids");
-        const ids = raw ? JSON.parse(raw) : [];
-        if (!ids.includes(songId)) {
-          localStorage.setItem("uvm_disliked_ids", JSON.stringify([...ids, songId]));
-        }
-      } catch {}
-    }
-  }, [dislikeDisabled, currentRadioSong, user, toggleDislike, nextRadioSong]);
-
-  const handleDownload = () => {
-    if (!currentRadioSong?.id) return;
-    navigate(`/song/${currentRadioSong.id}?downloadIntent=true`);
-  };
-
-  if (!tracksLoaded) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-6 h-6 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />
-          <p className="text-[10px] tracking-[0.25em] uppercase text-white/20">Loading frequency...</p>
-        </div>
-      </div>
-    );
-  }
 
   // Build CSS variable style object from current theme
   const themeStyle = Object.entries(theme.vars).reduce((acc, [k, v]) => {
@@ -174,12 +114,12 @@ export default function RadioPage() {
       {/* ── Fixed ambient background ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <motion.div
-          animate={{ opacity: playingThisRadioSong ? 0.06 : 0.03 }}
+          animate={{ opacity: isPlaying ? 0.06 : 0.03 }}
           transition={{ duration: 2, ease: "easeInOut" }}
           className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full blur-[180px]"
-          style={{ background: "rgb(var(--rt-ambient1, #00C9E0))", background: theme.vars["--rt-ambient1"] }}
+          style={{ background: theme.vars["--rt-ambient1"] }}
         />
-        {playingThisRadioSong && (
+        {isPlaying && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.025 }}
@@ -197,41 +137,28 @@ export default function RadioPage() {
           paddingBottom: "calc(9rem + env(safe-area-inset-bottom, 16px))",
         }}
       >
-
         {/* ── Header ── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
           className="text-center mb-5">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm mb-3"
             style={{ background: `rgba(${theme.vars["--rt-primary"]},0.06)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.16)` }}>
-            {/* Live dot */}
             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: playingThisRadioSong ? "#ef4444" : `rgb(${theme.vars["--rt-primary"]})`,
-                animation: playingThisRadioSong ? "pulse 1.5s infinite" : "none" }} />
+              style={{ background: isPlaying ? "#ef4444" : `rgb(${theme.vars["--rt-primary"]})`,
+                animation: isPlaying ? "pulse 1.5s infinite" : "none" }} />
             <RadioIcon className="w-3 h-3" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
             <span className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }}>
-              {playingThisRadioSong ? "Live Now" : "Live Radio"}
+              {isPlaying ? "Live Now" : "Live Radio"}
             </span>
           </div>
           <h1 className="font-heading font-black text-white mb-1.5" style={{ fontSize: "clamp(1.6rem,5vw,2.6rem)" }}>
-            Upper Vibe Radio
+            {LIVE_STREAM_NAME}
           </h1>
-          {curatorActive ? (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
-              style={{ background: `rgba(${theme.vars["--rt-primary"]},0.08)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.2)` }}>
-              <Sparkles className="w-3 h-3" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
-              <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }}>
-                Tuned to You
-              </span>
-            </div>
-          ) : (
-            <p className="text-white/30 text-xs">432 Hz high-vibe music, nonstop</p>
-          )}
+          <p className="text-white/30 text-xs">{LIVE_STREAM_DESCRIPTION}</p>
         </motion.div>
 
         {/* ── Theme Picker + Viz Mode Picker ── */}
         <div className="flex justify-between items-center mb-2" style={{ maxWidth: 440, margin: "0 auto 8px" }}>
-          {/* Viz mode — left side */}
           <button
             onClick={() => handleCycleMode(MODES[(MODES.findIndex(m => m.id === vizMode) + 1) % MODES.length].id)}
             style={{
@@ -248,7 +175,6 @@ export default function RadioPage() {
             <span style={{ fontSize: 9, lineHeight: 1 }}>{currentModeObj.icon}</span>
             {currentModeObj.label}
           </button>
-          {/* Theme picker — right side */}
           <RadioThemePicker themeId={themeId} onSelect={applyTheme} pulseEnabled={pulseOn} onTogglePulse={handleTogglePulse} />
         </div>
 
@@ -271,235 +197,100 @@ export default function RadioPage() {
               style={{ border: `1px solid rgba(${theme.vars["--rt-primary"]},0.3)` }} />
           )}
           <div className="relative z-10 overflow-hidden rounded-3xl"
-            style={{
-              background: "rgba(0,0,0,0.4)",
-              border: `1px solid rgba(${theme.vars["--rt-primary"]},0.15)`,
-            }}>
-            <RadioVisualizer isPlaying={playingThisRadioSong} currentSong={currentRadioSong} themeColor={theme.vars["--rt-primary"]} mode={vizMode} onCycleMode={handleCycleMode} />
+            style={{ background: "rgba(0,0,0,0.4)", border: `1px solid rgba(${theme.vars["--rt-primary"]},0.15)` }}>
+            <RadioVisualizer isPlaying={isPlaying} currentSong={null} themeColor={theme.vars["--rt-primary"]} mode={vizMode} onCycleMode={handleCycleMode} />
             <div className="pointer-events-none absolute inset-0"
               style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />
           </div>
         </motion.div>
 
-        {/* ── No songs state ── */}
-        {!currentRadioSong ? (
-          <div className="text-center py-16">
-            <Music4 className="w-12 h-12 text-white/10 mx-auto mb-4" />
-            <p className="text-white/30 text-sm">No songs available for radio yet.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col lg:flex-row gap-5 items-start justify-center">
+        {/* ── Player Card ── */}
+        <div className="flex justify-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
+            className="w-full max-w-sm relative">
+            {pulseOn && (
+              <motion.div
+                animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
+                transition={{ duration: 5, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: 0.4 }}
+                className="absolute inset-0 rounded-3xl pointer-events-none"
+                style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
+              />
+            )}
+            {!pulseOn && (
+              <div className="absolute inset-0 rounded-3xl pointer-events-none"
+                style={{ border: `1px solid rgba(${theme.vars["--rt-primary"]},0.3)` }} />
+            )}
+            <div className="relative z-10 rounded-3xl p-8 flex flex-col items-center gap-6"
+              style={{ background: "rgba(255,255,255,0.028)", border: `1px solid rgba(${theme.vars["--rt-primary"]},0.12)` }}>
 
-            {/* ── Main Player Card ── */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
-              className="w-full lg:w-[360px] flex-shrink-0 relative">
-              {pulseOn && (
-                <motion.div
-                  animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
-                  transition={{ duration: 5, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: 0.4 }}
-                  className="absolute inset-0 rounded-3xl pointer-events-none"
-                  style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
-                />
-              )}
-              {!pulseOn && (
-                <div className="absolute inset-0 rounded-3xl pointer-events-none"
-                  style={{ border: `1px solid rgba(${theme.vars["--rt-primary"]},0.3)` }} />
-              )}
-              <div className="relative z-10 rounded-3xl p-6"
-                style={{
-                  background: "rgba(255,255,255,0.028)",
-                  border: `1px solid rgba(${theme.vars["--rt-primary"]},0.12)`,
-                }}>
-
-                {/* Cover art */}
-                <div className="flex justify-center mb-5">
-                  {isHostDropPlaying ? (
-                    <div className="w-36 h-36 rounded-2xl flex flex-col items-center justify-center gap-3"
-                      style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.25)" }}>
-                      <Mic2 className="w-10 h-10" style={{ color: "#A855F7" }} />
-                      <div className="flex gap-1 items-end">
-                        {[1,2,3,4].map((i) => (
-                          <motion.div key={i}
-                            animate={{ height: [`${8 + i * 3}px`, `${14 + i * 4}px`, `${8 + i * 3}px`] }}
-                            transition={{ duration: 0.6 + i * 0.1, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 }}
-                            className="w-1 rounded-full" style={{ background: "#A855F7" }} />
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <Link to={`/song/${currentRadioSong?.id}`} className="block relative w-36 h-36 mx-auto">
-                      <CoverImage
-                        src={currentRadioSong?.cover_url}
-                        alt={currentRadioSong?.title}
-                        className="w-full h-full rounded-2xl overflow-hidden"
-                        eager
-                        iconClassName="w-12 h-12"
-                        fallbackOpacityClass="opacity-20"
-                      />
-                      {playingThisRadioSong && (
-                        <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center pointer-events-none"
-                          style={{ background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${theme.vars["--rt-primary"]}))` }}>
-                          <Waves className="w-3.5 h-3.5 text-black animate-pulse" />
-                        </div>
-                      )}
-                    </Link>
-                  )}
-                </div>
-
-                {/* Track info */}
-                <div className="text-center mb-5 px-2">
-                  {isHostDropPlaying ? (
-                    <>
-                      <h2 className="font-heading font-black text-base mb-1 leading-snug" style={{ color: "#A855F7" }}>
-                        Upper Vibe Radio Host
-                      </h2>
-                      <p className="text-white/40 text-sm mb-3">Upper Vibe Media</p>
-                      <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full"
-                        style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)", color: "#A855F7" }}>
-                        <Mic2 className="w-2.5 h-2.5" /> Radio Check-In
-                      </span>
-                    </>
-                  ) : (
-                    <Link to={`/song/${currentRadioSong?.id}`}>
-                      <h2 className="font-heading font-black text-white mb-1 leading-snug hover:underline decoration-white/20 underline-offset-4"
-                        style={{ fontSize: "clamp(1rem, 4vw, 1.2rem)", wordBreak: "break-word" }}>
-                        {currentRadioSong.title}
-                      </h2>
-                      <p className="text-white/40 text-sm mb-3 truncate max-w-[260px] mx-auto">
-                        {currentRadioSong.artist_display || "Upper Vibe Media"}
-                      </p>
-                    </Link>
-                  )}
-                  {!isHostDropPlaying && (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-1 rounded-full"
-                      style={{ background: `rgba(${theme.vars["--rt-primary"]},0.1)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.2)`, color: `rgb(${theme.vars["--rt-primary"]})` }}>
-                      <Waves className="w-2.5 h-2.5" /> 432 Hz
-                    </span>
-                  )}
-                </div>
-
-                {/* Paused banner */}
-                <AnimatePresence>
-                  {radioIsPaused && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                      className="mb-4 px-4 py-2.5 rounded-xl text-xs text-white/45 flex items-center justify-center gap-2"
-                      style={{ background: `rgba(${theme.vars["--rt-primary"]},0.05)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.1)` }}>
-                      <RadioIcon className="w-3 h-3 opacity-40" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
-                      Radio paused — playing another song
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Playback controls */}
-                <div className="flex items-center justify-center gap-5 mb-6">
-                  <button onClick={handlePrev} disabled={!hasPrev}
-                    className="w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 disabled:opacity-30"
-                    style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}>
-                    <SkipBack className="w-4 h-4 text-white/60" />
-                  </button>
-
-                  {radioIsPaused ? (
-                    <button onClick={handleResume}
-                      className="px-6 h-14 rounded-full flex items-center gap-2 font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
-                      style={{ background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${theme.vars["--rt-primary"]}))`, color: "#000", boxShadow: `0 0 28px rgba(${theme.vars["--rt-primary"]},0.25)` }}>
-                      <RadioIcon className="w-3.5 h-3.5" />
-                      Resume Radio
-                    </button>
-                  ) : (
-                    <motion.button
-                      onClick={handlePlay}
-                      whileTap={{ scale: 0.92 }}
-                      className="w-16 h-16 rounded-full flex items-center justify-center transition-all hover:brightness-115"
-                      style={{
-                        background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${theme.vars["--rt-primary"]}))`,
-                        boxShadow: playingThisRadioSong
-                          ? `0 0 36px rgba(${theme.vars["--rt-primary"]},0.4), 0 0 80px rgba(${theme.vars["--rt-primary"]},0.15)`
-                          : `0 0 20px rgba(${theme.vars["--rt-primary"]},0.2)`,
-                        transition: "box-shadow 0.8s ease",
-                      }}>
-                      {playingThisRadioSong
-                        ? <Pause className="w-7 h-7 text-black fill-current" />
-                        : <Play className="w-7 h-7 text-black fill-current ml-0.5" />}
-                    </motion.button>
-                  )}
-
-                  <button onClick={handleNext}
-                    className="w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90"
-                    style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}>
-                    <SkipForward className="w-4 h-4 text-white/60" />
-                  </button>
-                </div>
-
-                {/* Like + Dislike + Download + Share */}
-                <div className="flex items-center justify-center gap-3 flex-wrap">
-                  {currentRadioSong && !isHostDropPlaying && (
-                    <SaveHeartButton
-                      item={currentRadioSong.id}
-                      itemType="song"
-                      meta={{
-                        title: currentRadioSong.title,
-                        artist: currentRadioSong.artist_display || "Upper Vibe Media",
-                        cover_url: currentRadioSong.cover_url || "",
-                        audio_url: currentRadioSong.audio_url || "",
-                      }}
-                      size="md"
-                      onNeedLogin={() => setLoginModal(true)}
-                    />
-                  )}
-
-                  {/* Thumbs Down — Radio personalisation only */}
-                  {!isHostDropPlaying && (
-                    <button
-                      type="button"
-                      onClick={handleDislike}
-                      disabled={dislikeDisabled}
-                      className="w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-40"
-                      style={{
-                        touchAction: "manipulation",
-                        WebkitTapHighlightColor: "transparent",
-                        background: `rgba(${theme.vars["--rt-primary"]},0.06)`,
-                        border: `1px solid rgba(${theme.vars["--rt-primary"]},0.3)`,
-                      }}>
-                      <ThumbsDown className="w-4 h-4 transition-colors"
-                        style={{ color: `rgba(${theme.vars["--rt-primary"]},0.55)` }} />
-                    </button>
-                  )}
-
-                  <button onClick={handleDownload}
-                    className="inline-flex items-center gap-2 px-5 h-11 rounded-full text-xs font-black tracking-wider transition-all hover:brightness-115 active:scale-95"
-                    style={{ background: "rgba(212,168,67,0.08)", border: "1px solid rgba(212,168,67,0.2)", color: "#C89432" }}>
-                    <Download className="w-3.5 h-3.5" />
-                    Download Song
-                    {!isPlus && <Crown className="w-3 h-3 text-yellow-400/60" />}
-                  </button>
-
-                  <ShareVibeButton
-                    type={isHostDropPlaying ? "radio" : "song"}
-                    track={currentRadioSong}
-                  />
-                </div>
+              {/* Station logo / live indicator */}
+              <div className="w-28 h-28 rounded-2xl flex flex-col items-center justify-center gap-2"
+                style={{ background: `rgba(${theme.vars["--rt-primary"]},0.08)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.2)` }}>
+                <RadioIcon className="w-10 h-10" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
+                {isPlaying && (
+                  <div className="flex gap-0.5 items-end">
+                    {[1,2,3,4,3].map((h, i) => (
+                      <motion.div key={i}
+                        animate={{ height: [`${h * 3}px`, `${h * 5}px`, `${h * 3}px`] }}
+                        transition={{ duration: 0.5 + i * 0.1, repeat: Infinity, ease: "easeInOut", delay: i * 0.08 }}
+                        className="w-1 rounded-full"
+                        style={{ background: `rgb(${theme.vars["--rt-primary"]})` }} />
+                    ))}
+                  </div>
+                )}
               </div>
-            </motion.div>
-            {/* ── Up Next Panel ── */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, duration: 0.5 }}
-              className="w-full lg:flex-1">
-              <UpNextPanel upNext={upNext} onJump={handleJump} />
-            </motion.div>
-          </div>
-        )}
+
+              {/* Station info */}
+              <div className="text-center">
+                <h2 className="font-heading font-black text-white text-xl mb-1">{LIVE_STREAM_NAME}</h2>
+                <p className="text-white/40 text-sm">{LIVE_STREAM_DESCRIPTION}</p>
+                {error && <p className="text-yellow-400/70 text-xs mt-2">{error}</p>}
+              </div>
+
+              {/* Play/Pause button */}
+              <motion.button
+                onClick={handleToggle}
+                whileTap={{ scale: 0.92 }}
+                className="w-20 h-20 rounded-full flex items-center justify-center transition-all hover:brightness-115"
+                style={{
+                  background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${theme.vars["--rt-primary"]}))`,
+                  boxShadow: isPlaying
+                    ? `0 0 36px rgba(${theme.vars["--rt-primary"]},0.4), 0 0 80px rgba(${theme.vars["--rt-primary"]},0.15)`
+                    : `0 0 20px rgba(${theme.vars["--rt-primary"]},0.2)`,
+                  transition: "box-shadow 0.8s ease",
+                }}>
+                {isLoading ? (
+                  <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                ) : isPlaying ? (
+                  <Pause className="w-8 h-8 text-black fill-current" />
+                ) : (
+                  <Play className="w-8 h-8 text-black fill-current ml-1" />
+                )}
+              </motion.button>
+
+              {/* Live badge */}
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
+                style={{ background: `rgba(${theme.vars["--rt-primary"]},0.08)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.2)` }}>
+                <Waves className="w-3 h-3" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
+                <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }}>
+                  Nonstop Live Stream
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
 
         {/* ── Trending Live Broadcast ── */}
-        <TrendingLiveSection themeVars={theme.vars} />
+        <div className="mt-8">
+          <TrendingLiveSection themeVars={theme.vars} />
+        </div>
 
         <p className="text-center text-[10px] text-white/15 tracking-wide mt-8">
-          Free to stream · Premium members unlock downloads
+          Free to stream · 432 Hz high-vibe music
         </p>
       </div>
 
-      <FavLoginModal open={loginModal} onClose={() => setLoginModal(false)} />
       <IOSTip trigger="always" />
     </div>
   );

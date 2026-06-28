@@ -13,6 +13,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
+import { LIVE_STREAM_URL } from "@/lib/liveStreamConfig";
 
 const MAX_VOL = 0.82;
 const FADE_MS = 600;
@@ -70,6 +71,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   const tracksRef = useRef([]);
   const currentIdxRef = useRef(0);
   const loadedRef = useRef(false);
+  const useLiveStreamRef = useRef(false); // true when no active playlist — fall back to Citrus3
   const danceFloorRef = useRef(false);
   danceFloorRef.current = danceFloorMode;
   // Guard: prevent double-play calls from overlapping
@@ -108,38 +110,56 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
         }
       }
 
-      // Fallback: published tracks
-      const fallback = await base44.entities.Track.filter({ status: "published" }, "-display_order", 100);
-      const withAudio = fallback.filter(t => t.audio_url);
-      if (withAudio.length) {
-        tracksRef.current = withAudio;
-        loadedRef.current = true;
-      }
+      // No active playlist — use the Citrus3 live stream
+      console.log("[DJStream] No active DJ playlist — using Citrus3 live stream");
+      useLiveStreamRef.current = true;
+      loadedRef.current = true;
     } catch (e) {
       console.warn("[DJStream] loadPlaylist error:", e);
+      // On error, fall back to live stream
+      useLiveStreamRef.current = true;
+      loadedRef.current = true;
     }
   }, []);
 
-  // ── Start playing from the shared clock position ──────────────────────────
+  // ── Start playing from the shared clock position (or live stream) ────────
   const startAtSharedPosition = useCallback(() => {
-    const tracks = tracksRef.current;
-    if (!tracks.length || playingRef.current) return;
-    if (!danceFloorRef.current) return; // don't start if already off the floor
-
-    const { idx, offset } = computeSharedPosition(tracks);
-    const track = tracks[idx];
-    if (!track?.audio_url) return;
+    if (playingRef.current) return;
+    if (!danceFloorRef.current) return;
 
     const el = getAudio();
     playingRef.current = true;
 
-    const doPlay = () => {
-      if (!mountedRef.current || !danceFloorRef.current) {
-        playingRef.current = false;
-        return;
+    // ── Live stream mode (Citrus3) ─────────────────────────────────────────
+    if (useLiveStreamRef.current) {
+      if (el.dataset.djSrc !== LIVE_STREAM_URL) {
+        el.src = LIVE_STREAM_URL;
+        el.dataset.djSrc = LIVE_STREAM_URL;
+        el.load();
       }
+      setDjTrack({ title: "Upper Vibe Radio", artist_display: "Live Stream" });
+      el.play().then(() => {
+        if (!danceFloorRef.current) { el.pause(); el.volume = 0; playingRef.current = false; return; }
+        fadeIn(el, MAX_VOL, FADE_MS);
+        playingRef.current = false;
+      }).catch(err => {
+        console.warn("[DJStream] live stream play() blocked:", err.message);
+        playingRef.current = false;
+      });
+      return;
+    }
 
-      // Only switch track if it changed
+    // ── Playlist mode (epoch-synced) ──────────────────────────────────────
+    const tracks = tracksRef.current;
+    if (!tracks.length) { playingRef.current = false; return; }
+
+    const { idx, offset } = computeSharedPosition(tracks);
+    const track = tracks[idx];
+    if (!track?.audio_url) { playingRef.current = false; return; }
+
+    const doPlay = () => {
+      if (!mountedRef.current || !danceFloorRef.current) { playingRef.current = false; return; }
+
       if (el.dataset.djSrc !== track.audio_url) {
         el.src = track.audio_url;
         el.dataset.djSrc = track.audio_url;
@@ -150,12 +170,10 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       currentIdxRef.current = idx;
 
       const seekAndPlay = () => {
-        // Seek to shared offset — recalculate in case loading took time
         const { idx: newIdx, offset: newOffset } = computeSharedPosition(tracks);
         const currentTrack = tracks[newIdx];
 
         if (currentTrack?.audio_url !== el.dataset.djSrc) {
-          // Track rolled over during load — restart with the new one
           el.src = currentTrack.audio_url;
           el.dataset.djSrc = currentTrack.audio_url;
           el.load();
@@ -165,32 +183,20 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
           return;
         }
 
-        try {
-          if (newOffset > 0) el.currentTime = newOffset;
-        } catch {}
+        try { if (newOffset > 0) el.currentTime = newOffset; } catch {}
 
         el.play().then(() => {
-          if (!danceFloorRef.current) {
-            // Left the floor during the async gap — silence immediately
-            el.pause();
-            el.volume = 0;
-            playingRef.current = false;
-            return;
-          }
+          if (!danceFloorRef.current) { el.pause(); el.volume = 0; playingRef.current = false; return; }
           fadeIn(el, MAX_VOL, FADE_MS);
           playingRef.current = false;
         }).catch(err => {
           console.warn("[DJStream] play() blocked:", err.message);
           playingRef.current = false;
-          // Will retry on next user gesture via the gesture listeners below
         });
       };
 
-      if (el.readyState >= 2) {
-        seekAndPlay();
-      } else {
-        el.addEventListener("canplay", seekAndPlay, { once: true });
-      }
+      if (el.readyState >= 2) seekAndPlay();
+      else el.addEventListener("canplay", seekAndPlay, { once: true });
     };
 
     doPlay();
