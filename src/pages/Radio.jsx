@@ -67,17 +67,17 @@ export default function RadioPage() {
   const { isFaved, toggle: toggleFav } = useFavorites(user?.id, user?.email);
 
   // ── Live stream state ────────────────────────────────────────────────────
-  // liveAudioRef points to the module-level singleton — never null after first use
   const liveAudioRef = useRef(null);
   const [liveIsPlaying, setLiveIsPlaying] = useState(false);
   const [liveIsLoading, setLiveIsLoading] = useState(false);
   const [liveError, setLiveError] = useState(null);
   const [nowPlaying, setNowPlaying] = useState(null);
+  const crossfadeRef = useRef(null); // cancel any in-progress crossfade
 
-  // Sync ref to singleton on every render — survives remounts
+  // Sync ref to singleton on every render
   liveAudioRef.current = _liveAudioEl;
 
-  // Detect if live stream is actually playing on mount (page returned to)
+  // Detect if live stream is already playing on mount (page returned to)
   useEffect(() => {
     const el = _liveAudioEl;
     if (el && !el.paused && el.src) {
@@ -123,27 +123,42 @@ export default function RadioPage() {
     const next = already ? playLessIds.filter((x) => x !== id) : [...playLessIds, id];
     setPlayLessIds(next);
     try { localStorage.setItem("uvm_play_less", JSON.stringify(next)); } catch {}
-    // Record strong negative curator signal
     import("@/lib/radioCurator").then(({ recordDislike }) => {
       recordDislike(id, !already, allTracks);
     });
-    // Skip to next after a short delay so user sees the feedback
-    if (!already) {
-      setTimeout(() => nextRadioSong(), 800);
-    }
+    if (!already) setTimeout(() => nextRadioSong(), 800);
   }, [myVibeTrack, playLessIds, allTracks, nextRadioSong]);
 
-  // ── Stop live stream ──────────────────────────────────────────────────────
-  const stopLiveStream = useCallback(() => {
-    const el = _liveAudioEl;
-    if (!el) return;
-    el.pause();
-    el.src = "";
-    setLiveIsPlaying(false);
-    setLiveIsLoading(false);
+  // ── Crossfade helper ──────────────────────────────────────────────────────
+  // Fades outEl volume from 1→0 over 600ms, then stops it.
+  // inEl (optional) fades from 0→1 over 600ms simultaneously.
+  const crossfade = useCallback((outEl, inEl) => {
+    // Cancel any previous crossfade
+    if (crossfadeRef.current) { clearInterval(crossfadeRef.current); crossfadeRef.current = null; }
+
+    const DURATION = 600; // ms
+    const STEPS = 20;
+    const INTERVAL = DURATION / STEPS;
+    let step = 0;
+
+    if (inEl) { inEl.volume = 0; }
+
+    crossfadeRef.current = setInterval(() => {
+      step++;
+      const progress = step / STEPS;
+      if (outEl) outEl.volume = Math.max(0, 1 - progress);
+      if (inEl) inEl.volume = Math.min(0.9, 0.9 * progress);
+      if (step >= STEPS) {
+        clearInterval(crossfadeRef.current);
+        crossfadeRef.current = null;
+        // Hard stop the outgoing source after fade
+        if (outEl) { outEl.pause(); outEl.src = ""; outEl.volume = 0.9; }
+        if (inEl) inEl.volume = 0.9;
+      }
+    }, INTERVAL);
   }, []);
 
-  // ── Tab switch: just changes the view, does NOT stop any audio ───────────
+  // ── Tab switch: purely cosmetic, never touches audio ──────────────────────
   const switchTab = useCallback((tab) => {
     if (tab === activeTab) return;
     setActiveTab(tab);
@@ -169,75 +184,115 @@ export default function RadioPage() {
     return () => clearInterval(iv);
   }, []);
 
-  // ── Live stream ───────────────────────────────────────────────────────────
+  // ── Stop live stream (hard stop, no crossfade) ────────────────────────────
+  const stopLiveStream = useCallback(() => {
+    const el = _liveAudioEl;
+    if (!el) return;
+    el.pause();
+    el.src = "";
+    el.volume = 0.9;
+    setLiveIsPlaying(false);
+    setLiveIsLoading(false);
+  }, []);
+
+  // ── Start live stream, crossfading out My Vibe if it's playing ───────────
   const startLiveStream = useCallback(() => {
     setLiveError(null);
     setLiveIsLoading(true);
-    // Directly pause the global audio element if it's playing — don't toggle
-    const globalEl = globalAudioRef?.current;
-    if (globalEl && !globalEl.paused) globalEl.pause();
 
     const el = getLiveAudioEl();
     liveAudioRef.current = el;
+    el.volume = 0; // will be ramped up by crossfade
     el.src = LIVE_STREAM_URL;
     el.load();
     el.play()
-      .then(() => { setLiveIsPlaying(true); setLiveIsLoading(false); })
+      .then(() => {
+        setLiveIsPlaying(true);
+        setLiveIsLoading(false);
+        // Crossfade: fade out My Vibe (global player), fade in live stream
+        const globalEl = globalAudioRef?.current;
+        if (globalEl && !globalEl.paused) {
+          // Fade both simultaneously
+          crossfade(globalEl, el);
+          // After fade, sync PlayerContext state
+          setTimeout(() => {
+            if (!globalEl.paused) { globalEl.pause(); }
+          }, 650);
+        } else {
+          // No My Vibe playing — just ramp live stream up
+          crossfade(null, el);
+        }
+      })
       .catch((err) => {
         setLiveIsLoading(false);
+        el.volume = 0.9;
         setLiveError("Tap play to start the stream.");
         console.warn("[LiveRadio] play blocked:", err.message);
       });
-  }, [globalAudioRef]);
+  }, [globalAudioRef, crossfade]);
 
+  // ── Toggle live stream ────────────────────────────────────────────────────
   const handleLiveToggle = useCallback(() => {
     if (liveIsPlaying) {
-      // Pause only — keep src so resuming works
-      const el = _liveAudioEl;
-      if (el) { el.pause(); el.src = ""; }
-      setLiveIsPlaying(false);
-      setLiveIsLoading(false);
+      stopLiveStream();
     } else {
       startLiveStream();
     }
-  }, [liveIsPlaying, startLiveStream]);
+  }, [liveIsPlaying, startLiveStream, stopLiveStream]);
 
-  // ── My Vibe Radio ─────────────────────────────────────────────────────────
+  // ── My Vibe toggle — crossfades out live stream if it's playing ───────────
   const handleMyVibeToggle = useCallback(() => {
-    // Only stop live stream if it's actually playing (don't touch it if already stopped)
     const liveEl = _liveAudioEl;
-    if (liveEl && !liveEl.paused) {
-      liveEl.pause();
-      liveEl.src = "";
-      setLiveIsPlaying(false);
-      setLiveIsLoading(false);
-    }
+    const liveCurrentlyPlaying = liveEl && !liveEl.paused;
+
     if (myVibeIsPlaying) {
-      // Pause My Vibe
+      // User pausing My Vibe — simple pause, no crossfade needed
       globalToggle();
-    } else if (isRadioMode) {
-      // Resume My Vibe (already has a track loaded)
-      globalToggle();
-    } else {
-      // Start fresh radio session
-      startRadio();
+      return;
     }
-  }, [myVibeIsPlaying, isRadioMode, globalToggle, startRadio]);
 
-  // Single-source enforcement is handled imperatively in each start handler above
+    // Starting / resuming My Vibe
+    if (liveCurrentlyPlaying) {
+      // Crossfade: fade out live, then start My Vibe
+      // We need My Vibe audio element to fade in — get it after starting
+      if (isRadioMode) {
+        // Resume existing radio session
+        const globalEl = globalAudioRef?.current;
+        if (globalEl) {
+          globalEl.volume = 0;
+          globalToggle(); // resume
+          // Fade live out, new source in
+          crossfade(liveEl, globalEl);
+          setTimeout(() => { setLiveIsPlaying(false); }, 650);
+        } else {
+          globalToggle();
+          crossfade(liveEl, null);
+          setTimeout(() => { setLiveIsPlaying(false); }, 650);
+        }
+      } else {
+        // Fresh radio start — fade out live, My Vibe will start its own audio
+        crossfade(liveEl, null);
+        setTimeout(() => {
+          setLiveIsPlaying(false);
+          startRadio();
+        }, 300); // start radio at midpoint of fade so it overlaps
+      }
+    } else {
+      // Live not playing — just start/resume My Vibe normally
+      if (isRadioMode) {
+        globalToggle();
+      } else {
+        startRadio();
+      }
+    }
+  }, [myVibeIsPlaying, isRadioMode, globalToggle, startRadio, globalAudioRef, crossfade]);
 
-  // On unmount: only clean up live stream if it's NOT playing (navigating away
-  // while live radio is streaming should stop it; but My Vibe (global player)
-  // must keep running). If live stream IS playing and user navigates away, stop it.
+  // On unmount: cancel crossfade, stop live stream
   useEffect(() => {
     return () => {
-      // Live stream doesn't persist across navigation — always stop on unmount
+      if (crossfadeRef.current) { clearInterval(crossfadeRef.current); crossfadeRef.current = null; }
       const el = _liveAudioEl;
-      if (el && !el.paused) {
-        el.pause();
-        el.src = "";
-        // Don't destroy the singleton — just stop it so it can restart on return
-      }
+      if (el && !el.paused) { el.pause(); el.src = ""; el.volume = 0.9; }
     };
   }, []);
 
