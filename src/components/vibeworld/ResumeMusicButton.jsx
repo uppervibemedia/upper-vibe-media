@@ -27,7 +27,7 @@ export default function ResumeMusicButton({ isMobile, onResume }) {
       }}
     >
       <Play className="w-4 h-4" />
-      Resume Music
+      Tap to Play
     </button>
   );
 }

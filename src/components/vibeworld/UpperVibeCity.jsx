@@ -302,12 +302,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return ramSubscribe((s) => setRamState(s));
   }, []);
 
-  // Determine what the city media player should show:
-  // If RAM is active (My Vibe Radio or Upper Vibe Radio), use RAM state.
-  // Otherwise fall back to PlayerContext (Music Library songs).
+  // Determine what the city media player should show.
+  // Priority: PlayerContext currentTrack → RAM active track → RAM lastTrack (persisted).
+  // This ensures we NEVER show "No Music Playing" — always fall back to the My Vibe last track.
   const ramActive = ramState.activeMode !== null;
-  const cityTrack = ramActive ? ramState.currentTrack : currentTrack;
-  const cityIsPlaying = ramActive ? ramState.isPlaying : isPlaying;
+  const cityTrack = currentTrack || ramState.currentTrack || ramState.lastTrack;
+  const cityIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
 
   const handleCityTogglePlay = useCallback(() => {
     if (ramState.activeMode === "myVibeRadio") {
@@ -316,10 +316,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     } else if (ramState.activeMode === "upperVibeRadio") {
       if (ramState.isPlaying) pauseUpperVibeRadio();
       else resumeUpperVibeRadio();
+    } else if (ramState.lastTrack) {
+      // Not active but we have a last track — start My Vibe Radio with it
+      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(ramState.lastTrack));
     } else {
       togglePlay?.();
     }
-  }, [ramState.activeMode, ramState.isPlaying, togglePlay]);
+  }, [ramState.activeMode, ramState.isPlaying, ramState.lastTrack, togglePlay]);
 
   const handleCitySkip = useCallback(() => {
     if (ramState.activeMode === "myVibeRadio") {
@@ -1489,9 +1492,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       {/* ── Media Player — mirrors global player state, no separate song selector ── */}
       {(() => {
         if (loading || stageFullScreen) return null;
-        const displayTrack = cityTrack || currentTrack;
+        const displayTrack = cityTrack;
 
-        // The city player is always visible — shows idle state when nothing is playing.
+        // The city player is always visible — shows the My Vibe current track even when paused.
         // No "Choose Music" / "Choose Song" idle state — the city mirrors whatever
         // is already playing on Home, Start, My Vibe, or song pages.
 

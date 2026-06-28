@@ -155,23 +155,28 @@ export default function AudioPlayer() {
   const [ramState, setRamState] = useState(() => ramGetState());
   useEffect(() => ramSubscribe((s) => setRamState(s)), []);
 
-  // Derive effective display track and playing state from both sources:
-  // RAM (Upper Vibe Radio / My Vibe Radio) takes priority over PlayerContext.
+  // Derive effective display track and playing state from all sources.
+  // Priority: PlayerContext currentTrack → RAM active track → RAM lastTrack (persisted).
+  // This ensures we NEVER show "No Music Playing" — always fall back to the last My Vibe track.
   const ramActive = ramState.activeMode !== null;
-  const displayTrack = ramActive ? ramState.currentTrack : currentTrack;
-  const effectiveIsPlaying = ramActive ? ramState.isPlaying : isPlaying;
+  const displayTrack = currentTrack || ramState.currentTrack || ramState.lastTrack;
+  const effectiveIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
   const isRamRadio = ramActive && ramState.audioType === "liveStream";
 
   const handleIdlePlay = () => {
     if (ramActive) return; // RAM already active — nothing to play here
-    if (queue?.length > 0 && queue[0]?.audio_url) {
-      playTrack(queue[0], "song", 0);
-    } else {
-      navigate("/start");
-    }
+    // Start My Vibe Radio with the last track or a new one
+    import("@/lib/radioAudioManager").then((mod) => {
+      const track = ramState.lastTrack || (queue?.length > 0 ? queue[0] : null);
+      if (track?.audio_url) {
+        mod.playMyVibeTrack(track);
+      } else {
+        navigate("/start");
+      }
+    });
   };
 
-  // Toggle play: delegate to RAM when RAM is active, otherwise use PlayerContext
+  // Toggle play: delegate to RAM when RAM is active, otherwise start My Vibe with lastTrack or use PlayerContext
   const handleTogglePlay = useCallback(() => {
     if (ramActive) {
       // RAM handles its own toggle internally — user taps to start/stop radio/myVibe
@@ -184,10 +189,13 @@ export default function AudioPlayer() {
           else mod.resumeMyVibe();
         }
       });
+    } else if (ramState.lastTrack) {
+      // Not active but we have a last track — start My Vibe Radio with it
+      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(ramState.lastTrack));
     } else {
       togglePlay();
     }
-  }, [ramActive, ramState.activeMode, ramState.isPlaying, togglePlay]);
+  }, [ramActive, ramState.activeMode, ramState.isPlaying, ramState.lastTrack, togglePlay]);
 
   // Skip: delegate to RAM when RAM is active
   const handleSkip = useCallback(() => {
@@ -434,17 +442,17 @@ export default function AudioPlayer() {
           </div>
         </div>
       ) : (
-        /* ── Idle state: compact bar when no music is playing ── */
+        /* ── Fallback: show My Vibe last track or placeholder instead of "No Music Playing" ── */
         <div className="flex items-center gap-3 px-4 py-3 md:px-6">
           <div
             className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center"
-            style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}
+            style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.2)" }}
           >
-            <Music4 className="w-4 h-4" style={{ color: "rgba(0,229,255,0.45)" }} />
+            <Music4 className="w-4 h-4" style={{ color: "rgba(0,229,255,0.5)" }} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground/45 truncate leading-tight">No Music Playing</p>
-            <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">Upper Vibe Media</p>
+            <p className="text-sm font-semibold text-foreground/45 truncate leading-tight">Upper Vibe</p>
+            <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">Tap to start My Vibe</p>
           </div>
 
           <button

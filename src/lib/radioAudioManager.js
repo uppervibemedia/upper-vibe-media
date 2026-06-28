@@ -38,6 +38,7 @@ let _state = {
   intendedToPlay: false,
   currentStreamUrl: null,
   currentTrack: null,        // Track object for myVibeRadio
+  lastTrack: null,           // Persists the last My Vibe track even after stopAll()
   audioStatus: "idle",       // "idle" | "loading" | "playing" | "paused" | "stalled" | "error"
   lastError: null,
   currentTime: 0,            // playback position for myVibeRadio (updated via timeupdate)
@@ -413,6 +414,9 @@ export function playMyVibeTrack(track) {
   _savedMyVibeTrackId = null;
   _savedMyVibePosition = 0;
 
+  // Persist as lastTrack so it survives stopAll()
+  _state.lastTrack = track;
+
   _setState({
     activeMode: "myVibeRadio",
     audioType: "internalTrack",
@@ -514,12 +518,15 @@ export function restoreMyVibePosition(savedTime) {
  */
 export function stopAll() {
   console.log("[RAM] stopAll");
+  // Preserve lastTrack so the player can still show the last song
+  const keep = _state.lastTrack;
   _stopAudio("stopAll");
   _setState({
     activeMode: null,
     audioType: null,
     currentTrack: null,
     currentStreamUrl: null,
+    lastTrack: keep,
   });
 }
 

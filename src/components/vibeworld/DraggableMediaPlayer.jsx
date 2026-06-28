@@ -148,53 +148,35 @@ export default function DraggableMediaPlayer({
       }}
     >
       {!currentTrack ? (
-        // ── No track loaded (live stream active, or truly nothing) ──
-        isPlaying ? (
-          <>
-            {/* Radio icon — live stream is playing */}
-            <div
-              className="rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
-              style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, background: "rgba(0,229,255,0.1)" }}
-            >
-              <Radio className="w-4 h-4" style={{ color: "rgba(0,229,255,0.7)" }} />
-            </div>
+        <>
+          {/* Fallback: show a music icon + "Upper Vibe" label instead of "No Music Playing" */}
+          <div
+            className="rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
+            style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, background: "rgba(0,229,255,0.1)" }}
+          >
+            <Music4 className="w-4 h-4" style={{ color: "rgba(0,229,255,0.5)" }} />
+          </div>
 
-            <span className="text-[10px] font-bold text-white/70 flex-1 min-w-0 overflow-hidden truncate">
-              Upper Vibe Live Radio
-            </span>
+          <span className="text-[10px] font-bold text-white/50 flex-1 min-w-0 overflow-hidden truncate">
+            Upper Vibe
+          </span>
 
-            {/* Pause button */}
-            <button
-              onTouchStart={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); onTogglePlay?.(); }}
-              className="rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:brightness-110 active:scale-90"
-              style={{
-                width: 38, height: 38, minWidth: 38, minHeight: 38,
-                background: "linear-gradient(135deg,#1B5E20,#2E7D32)",
-                color: "#fff",
-                touchAction: "manipulation",
-                pointerEvents: "auto",
-              }}
-              aria-label="Pause"
-            >
-              <Pause className="w-3 h-3" />
-            </button>
-          </>
-        ) : (
-          <>
-            {/* Music icon — idle state, nothing playing */}
-            <div
-              className="rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
-              style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, background: "rgba(255,255,255,0.06)" }}
-            >
-              <Music4 className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
-            </div>
-
-            <span className="text-[10px] font-bold text-white/40 flex-1 min-w-0 overflow-hidden truncate">
-              No Music Playing
-            </span>
-          </>
-        )
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onTogglePlay?.(); }}
+            className="rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:brightness-110 active:scale-90"
+            style={{
+              width: 38, height: 38, minWidth: 38, minHeight: 38,
+              background: "linear-gradient(135deg,#1B5E20,#2E7D32)",
+              color: "#fff",
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
+            aria-label="Play"
+          >
+            <Play className="w-3 h-3 ml-0.5" />
+          </button>
+        </>
       ) : (
         <>
           {/* Drag handle (desktop only — on mobile it's a fixed anchor) */}
