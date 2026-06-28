@@ -716,25 +716,27 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           cleanup();
           dfStateRef.current = "inside";
 
-          // Force global audio paused + muted immediately
+          // Force global audio paused + muted immediately.
+          // IMPORTANT: do NOT call togglePlay() after pausing. On iOS Safari that
+          // sees the element as paused and toggles it back ON, causing double audio.
           if (ctxAudio && !ctxAudio.paused) {
             savedPersonalTimeRef.current = ctxAudio.currentTime;
             ctxAudio.pause();
             ctxAudio.volume = 0;
             ctxAudio.muted = true;
-            if (isPlayingRef.current) togglePlayRef.current?.();
             console.log("[DANCE FLOOR AUDIO] Global → DJ | global audio paused at", ctxAudio.currentTime.toFixed(2));
           }
-          // Force RAM audio element paused (safety net)
-          // 100ms loop saves RAM position independently (no React effect dependency)
-          // since iOS position throttle may prevent React state from updating.
+          // Force RAM audio through its own pause API so intendedToPlay is false
+          // and reconnect/resume logic cannot restart it while on the dance floor.
           const ramS = ramGetState();
-          if (ramS.activeMode !== null && ramAudio && !ramAudio.paused && ramAudio.src && ramAudio.src !== window.location.href) {
-            if (ramS.activeMode === "myVibeRadio" && ramAudio.currentTime > 0 && savedPersonalTimeRef.current === 0) {
+          if (ramS.activeMode === "myVibeRadio") {
+            if (ramAudio && ramAudio.currentTime > 0 && savedPersonalTimeRef.current === 0) {
               savedPersonalTimeRef.current = ramAudio.currentTime;
-              console.log("[DANCE FLOOR AUDIO] 100ms loop: saved RAM position", ramAudio.currentTime.toFixed(2));
+              console.log("[DANCE FLOOR AUDIO] saved RAM position", ramAudio.currentTime.toFixed(2));
             }
-            ramAudio.pause();
+            pauseMyVibe();
+          } else if (ramS.activeMode === "upperVibeRadio") {
+            pauseUpperVibeRadio();
           }
           danceFloorAudioPausedRef.current = true;
           danceFloorPausedRef.current = true;
@@ -751,9 +753,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
         // Every tick: maintain global silence, ramp DJ up
         if (ctxAudio) { ctxAudio.muted = true; ctxAudio.volume = 0; }
-        if (ramAudio && !ramAudio.paused && ramAudio.src && ramAudio.src !== window.location.href) {
-          ramAudio.pause();
-        }
+        const ramNow = ramGetState();
+        if (ramNow.activeMode === "myVibeRadio") pauseMyVibe();
+        else if (ramNow.activeMode === "upperVibeRadio") pauseUpperVibeRadio();
         if (djEl) {
           djEl.muted = false;
           if (djEl.volume < 0.7) {

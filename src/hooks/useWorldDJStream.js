@@ -91,8 +91,12 @@ export default function useWorldDJStream({ enabled = true, active = false }) {
   const getAudio = useCallback(() => {
     if (!audioRef.current) {
       const el = new Audio();
+      el.crossOrigin = "anonymous";
       el.volume = 0;
+      el.muted = true;
       el.preload = "auto";
+      el.setAttribute("playsinline", "");
+      el.setAttribute("x-webkit-airplay", "allow");
       el.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
       el.setAttribute("aria-hidden", "true");
       document.body.appendChild(el);
@@ -162,6 +166,7 @@ export default function useWorldDJStream({ enabled = true, active = false }) {
   const startInitialPlayback = useCallback(() => {
     const el = getAudio();
     el.volume = 0; // must be silent before play()
+    el.muted = false;
 
     if (useLiveStreamRef.current) {
       if (!el.dataset.djSrc || el.dataset.djSrc !== LIVE_STREAM_URL) {
@@ -248,6 +253,18 @@ export default function useWorldDJStream({ enabled = true, active = false }) {
 
   // ── Enter dance floor ────────────────────────────────────────────────────
   const enterDanceFloor = useCallback(() => {
+    if (!loadedRef.current) {
+      // Playlist not loaded yet — wait without getting stuck in "entering".
+      transitionStateRef.current = "idleOutside";
+      const wait = setInterval(() => {
+        if (loadedRef.current) {
+          clearInterval(wait);
+          if (danceFloorRef.current) enterDanceFloor();
+        }
+      }, 100);
+      return;
+    }
+
     const state = transitionStateRef.current;
     if (state === "inside" || state === "entering") return;
 
@@ -255,14 +272,6 @@ export default function useWorldDJStream({ enabled = true, active = false }) {
     transitionStateRef.current = "entering";
 
     const el = getAudio();
-
-    if (!loadedRef.current) {
-      // Playlist not loaded yet — wait
-      const wait = setInterval(() => {
-        if (loadedRef.current) { clearInterval(wait); enterDanceFloor(); }
-      }, 100);
-      return;
-    }
 
     if (!hasStartedRef.current) {
       // First ever entry — must start playback (needs user gesture context)
@@ -273,6 +282,7 @@ export default function useWorldDJStream({ enabled = true, active = false }) {
 
     // Already started before — audio is still running (just silent), fade back in
     console.log("[DJStream] 🕺 Re-entering dance floor — fading in at current position (no restart)");
+    el.muted = false;
     const isActuallyPlaying = !el.paused;
 
     if (!isActuallyPlaying) {
@@ -365,9 +375,10 @@ export default function useWorldDJStream({ enabled = true, active = false }) {
     const id = setInterval(() => {
       if (danceFloorRef.current) return; // inside floor — volume is managed by ramp
       const el = audioRef.current;
-      if (el && el.volume > 0) {
+      if (el) {
+        if (el.volume > 0) console.log("[DJStream] ⚠️ Safety clamp: forced DJ volume to 0 outside floor");
         el.volume = 0;
-        console.log("[DJStream] ⚠️ Safety clamp: forced DJ volume to 0 outside floor");
+        el.muted = true;
       }
     }, 250);
     return () => clearInterval(id);
@@ -380,6 +391,40 @@ export default function useWorldDJStream({ enabled = true, active = false }) {
     preloadDJSource();
     return () => { mountedRef.current = false; };
   }, [enabled, preloadDJSource]);
+
+  // ── iOS/Safari unlock: start DJ muted during a real user gesture ─────────
+  // Then entering the dance floor only unmutes/fades it, which is reliable in PWA/Safari.
+  const primeSilentPlayback = useCallback(() => {
+    if (!enabled || danceFloorRef.current || hasStartedRef.current || !loadedRef.current) return;
+    const el = getAudio();
+    if (!el.src || el.src === window.location.href) return;
+    el.volume = 0;
+    el.muted = true;
+    el.play().then(() => {
+      if (!mountedRef.current) return;
+      hasStartedRef.current = true;
+      if (!danceFloorRef.current) {
+        el.volume = 0;
+        el.muted = true;
+        transitionStateRef.current = "idleOutside";
+        console.log("[DJStream] 🔓 DJ audio primed silently from user gesture");
+      }
+    }).catch(() => {});
+  }, [enabled, getAudio]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    window.addEventListener("touchstart", primeSilentPlayback, { capture: true, passive: true });
+    window.addEventListener("touchmove", primeSilentPlayback, { capture: true, passive: true });
+    window.addEventListener("pointerdown", primeSilentPlayback, { capture: true, passive: true });
+    window.addEventListener("click", primeSilentPlayback, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("touchstart", primeSilentPlayback, true);
+      window.removeEventListener("touchmove", primeSilentPlayback, true);
+      window.removeEventListener("pointerdown", primeSilentPlayback, true);
+      window.removeEventListener("click", primeSilentPlayback, true);
+    };
+  }, [enabled, primeSilentPlayback]);
 
   // ── Dance floor gate ─────────────────────────────────────────────────────
   useEffect(() => {
