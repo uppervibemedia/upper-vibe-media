@@ -40,6 +40,8 @@ let _state = {
   currentTrack: null,        // Track object for myVibeRadio
   audioStatus: "idle",       // "idle" | "loading" | "playing" | "paused" | "stalled" | "error"
   lastError: null,
+  currentTime: 0,            // playback position for myVibeRadio (updated via timeupdate)
+  duration: 0,               // track duration once known
 };
 
 // ── Subscribers ───────────────────────────────────────────────────────────────
@@ -289,7 +291,7 @@ function _attachMyVibeListeners(track) {
   const onPause = () => {
     if (_state.activeMode !== "myVibeRadio") return;
     console.log("[RAM][MyVibe] paused");
-    _setState({ isPlaying: false, audioStatus: "paused" });
+    _setState({ isPlaying: false, audioStatus: "paused", currentTime: audio.currentTime });
   };
 
   const onWaiting = () => {
@@ -297,10 +299,24 @@ function _attachMyVibeListeners(track) {
     _setState({ audioStatus: "loading" });
   };
 
+  const onTimeUpdate = () => {
+    if (_state.activeMode !== "myVibeRadio") return;
+    // Throttle state updates: only notify if position changed by >= 1s to avoid excessive renders
+    const t = audio.currentTime;
+    if (Math.abs(t - _state.currentTime) >= 1) {
+      _setState({ currentTime: t, duration: audio.duration || _state.duration });
+    }
+  };
+
+  const onDurationChange = () => {
+    if (_state.activeMode !== "myVibeRadio") return;
+    _setState({ duration: audio.duration || 0 });
+  };
+
   const onEnded = () => {
     if (_state.activeMode !== "myVibeRadio") return;
     console.log("[RAM][MyVibe] ended:", track?.title);
-    _setState({ isPlaying: false, audioStatus: "idle" });
+    _setState({ isPlaying: false, audioStatus: "idle", currentTime: 0 });
     if (_onMyVibeEnded) _onMyVibeEnded(track);
   };
 
@@ -315,6 +331,8 @@ function _attachMyVibeListeners(track) {
   audio.addEventListener("playing", onPlaying);
   audio.addEventListener("pause", onPause);
   audio.addEventListener("waiting", onWaiting);
+  audio.addEventListener("timeupdate", onTimeUpdate);
+  audio.addEventListener("durationchange", onDurationChange);
   audio.addEventListener("ended", onEnded);
   audio.addEventListener("error", onError);
 
@@ -324,6 +342,8 @@ function _attachMyVibeListeners(track) {
     audio.removeEventListener("playing", onPlaying);
     audio.removeEventListener("pause", onPause);
     audio.removeEventListener("waiting", onWaiting);
+    audio.removeEventListener("timeupdate", onTimeUpdate);
+    audio.removeEventListener("durationchange", onDurationChange);
     audio.removeEventListener("ended", onEnded);
     audio.removeEventListener("error", onError);
     console.log("[RAM][MyVibe] listeners detached for:", track?.title);
@@ -333,11 +353,37 @@ function _attachMyVibeListeners(track) {
 /**
  * Play a My Vibe track.
  * MUST be called synchronously from a user gesture on first play.
+ *
+ * Idempotent: if the same track is already loaded (same audio_url), this will
+ * resume from the current position instead of restarting from 0:00.
+ * This prevents songs from restarting when navigating between pages.
  */
 export function playMyVibeTrack(track) {
   if (!track?.audio_url) {
     console.warn("[RAM] playMyVibeTrack — no audio_url for:", track?.title);
     if (_onMyVibeError) _onMyVibeError(track);
+    return;
+  }
+
+  const audio = getAudio();
+
+  // ── SAME TRACK ALREADY LOADED — just resume, don't restart ──────────────
+  const alreadySameTrack =
+    _state.activeMode === "myVibeRadio" &&
+    _state.currentTrack?.id === track.id &&
+    audio.src &&
+    audio.src !== "" &&
+    audio.src !== window.location.href;
+
+  if (alreadySameTrack) {
+    console.log("[RAM] playMyVibeTrack — same track already loaded, resuming:", track.title, "| pos:", audio.currentTime.toFixed(2));
+    _setState({ intendedToPlay: true, currentTrack: track });
+    if (audio.paused) {
+      audio.play().catch((e) => {
+        console.warn("[RAM][MyVibe] resume blocked:", e.message);
+        _setState({ audioStatus: "error", lastError: "Tap play to start.", isPlaying: false, intendedToPlay: false });
+      });
+    }
     return;
   }
 
@@ -355,11 +401,12 @@ export function playMyVibeTrack(track) {
     audioStatus: "loading",
     lastError: null,
     isPlaying: false,
+    currentTime: 0,
+    duration: 0,
   });
 
   _attachMyVibeListeners(track);
 
-  const audio = getAudio();
   audio.src = track.audio_url;
   audio.load();
 
@@ -383,11 +430,41 @@ export function pauseMyVibe() {
 
 export function resumeMyVibe() {
   if (_state.activeMode !== "myVibeRadio") return;
-  console.log("[RAM] resumeMyVibe");
+  console.log("[RAM] resumeMyVibe | pos:", getAudio().currentTime.toFixed(2));
   const audio = getAudio();
   _setState({ intendedToPlay: true, audioStatus: "loading" });
   audio.play().catch((e) => {
     console.warn("[RAM][MyVibe] resume blocked:", e.message);
+    _setState({ lastError: "Tap play to start.", isPlaying: false, audioStatus: "error" });
+  });
+}
+
+/**
+ * Save the current My Vibe playback position before entering dance floor.
+ * Returns the saved time so callers can stash it.
+ */
+export function saveMyVibePosition() {
+  const audio = getAudio();
+  const t = _state.activeMode === "myVibeRadio" ? audio.currentTime : 0;
+  console.log("[RAM] saveMyVibePosition:", t.toFixed(2));
+  return t;
+}
+
+/**
+ * Restore My Vibe to a previously saved position and resume playback.
+ * Safe to call even if position is 0.
+ */
+export function restoreMyVibePosition(savedTime) {
+  if (_state.activeMode !== "myVibeRadio") return;
+  const audio = getAudio();
+  if (savedTime > 0 && isFinite(savedTime)) {
+    console.log("[RAM] restoreMyVibePosition:", savedTime.toFixed(2));
+    try { audio.currentTime = savedTime; } catch {}
+    _setState({ currentTime: savedTime });
+  }
+  _setState({ intendedToPlay: true, audioStatus: "loading" });
+  audio.play().catch((e) => {
+    console.warn("[RAM][MyVibe] restore/resume blocked:", e.message);
     _setState({ lastError: "Tap play to start.", isPlaying: false, audioStatus: "error" });
   });
 }

@@ -125,9 +125,15 @@ export default function Home() {
   const handlePlayTrack = (track) => {
     if (!track?.audio_url) return;
     recordPlay(track);
-    // If My Vibe Radio is active and this is the current track, toggle it
-    if (ramState.activeMode === "myVibeRadio" && ramState.currentTrack?.id === track.id) {
-      if (ramState.isPlaying) pauseMyVibe(); else resumeMyVibe();
+    // If My Vibe Radio is already active (any track), just toggle play/pause
+    if (ramState.activeMode === "myVibeRadio") {
+      if (ramState.currentTrack?.id === track.id) {
+        // Same track — toggle
+        if (ramState.isPlaying) pauseMyVibe(); else resumeMyVibe();
+      } else {
+        // Different track — playMyVibeTrack handles idempotency; this is an intentional switch
+        playMyVibeTrack(track);
+      }
       return;
     }
     // Start My Vibe Radio queue with this track as the first song

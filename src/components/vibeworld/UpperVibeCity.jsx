@@ -33,6 +33,8 @@ import {
   resumeMyVibe,
   pauseUpperVibeRadio,
   resumeUpperVibeRadio,
+  saveMyVibePosition,
+  restoreMyVibePosition,
 } from "@/lib/radioAudioManager";
 import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
@@ -1006,11 +1008,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       const ramS = ramGetState();
       console.log("[UpperVibeCity] 🕺 Dance floor entered | RAM mode:", ramS.activeMode, "| isPlaying:", ramS.isPlaying, "| track:", ramS.currentTrack?.title || "none");
       if (ramS.activeMode === "myVibeRadio" && ramS.isPlaying) {
-        // My Vibe Radio is active — pause via RAM
+        // Save position before pausing so we can restore it exactly on exit
+        savedPersonalTimeRef.current = saveMyVibePosition();
         danceFloorPausedRef.current = true;
         pauseMyVibe();
       } else if (ramS.activeMode === "upperVibeRadio" && ramS.isPlaying) {
-        // Upper Vibe Radio is active — pause via RAM
+        // Upper Vibe Radio is a live stream — no position to save
         danceFloorPausedRef.current = true;
         pauseUpperVibeRadio();
       } else if (personal) {
@@ -1031,25 +1034,27 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
       // ── Leaving dance floor — 500ms clean delay before resuming personal audio ──
       wasOnDanceFloorRef.current = false;
-      console.log("[UpperVibeCity] 🚶 Dance floor exited | danceFloorPaused:", danceFloorPausedRef.current);
+      console.log("[UpperVibeCity] 🚶 Dance floor exited | danceFloorPaused:", danceFloorPausedRef.current, "| savedTime:", savedPersonalTimeRef.current.toFixed(2));
 
       if (danceFloorPausedRef.current) {
         danceFloorPausedRef.current = false;
+        const savedTime = savedPersonalTimeRef.current;
 
         audioTransitionTimerRef.current = setTimeout(() => {
           if (onDanceFloorRef2.current) return;
 
           const ramS = ramGetState();
-          console.log("[UpperVibeCity] 🎵 Restoring audio after dance floor | mode:", ramS.activeMode, "| track:", ramS.currentTrack?.title || "none");
+          console.log("[UpperVibeCity] 🎵 Restoring audio after dance floor | mode:", ramS.activeMode, "| track:", ramS.currentTrack?.title || "none", "| savedTime:", savedTime.toFixed(2));
           if (ramS.activeMode === "myVibeRadio") {
-            resumeMyVibe();
+            // Restore exact playback position before resuming
+            restoreMyVibePosition(savedTime);
           } else if (ramS.activeMode === "upperVibeRadio") {
             resumeUpperVibeRadio();
           } else {
             const p = audioRefStable.current?.current;
             if (!p) return;
-            if (savedPersonalTimeRef.current > 0) {
-              try { p.currentTime = savedPersonalTimeRef.current; } catch {}
+            if (savedTime > 0) {
+              try { p.currentTime = savedTime; } catch {}
             }
             p.volume = personalBaseVolRef.current;
             if (p.paused && !isPlayingRef.current) {
