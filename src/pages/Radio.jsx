@@ -1,39 +1,69 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Pause,
-  Radio as RadioIcon, Waves, Music4, Sparkles,
+  Play, Pause, Radio as RadioIcon, Waves, Music4, Sparkles, SkipForward, SkipBack, User,
 } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
-import { useAuth } from "@/lib/AuthContext";
+import { useRadio } from "../context/RadioContext";
 import RadioThemePicker, { useRadioTheme, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
 import RadioVisualizer, { MODES } from "../components/radio/RadioVisualizer";
 import usePageVisible from "../hooks/usePageVisible";
 import IOSTip from "../components/shared/iOSTip";
 import TrendingLiveSection from "../components/radio/TrendingLiveSection";
-import { LIVE_STREAM_URL, LIVE_STREAM_NAME, LIVE_STREAM_DESCRIPTION } from "@/lib/liveStreamConfig";
+import { LIVE_STREAM_URL } from "@/lib/liveStreamConfig";
+import { Link } from "react-router-dom";
 
 const NOW_PLAYING_URL = "https://s5.citrus3.com:2020/json/stream/upperviberadio";
 const PREF_KEY = "uvm_radio_viz_v9";
+const TAB_KEY = "uvm_radio_tab";
 const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
+const getSavedTab = () => { try { return localStorage.getItem(TAB_KEY) || "live"; } catch { return "live"; } };
+
+const LIVE_BADGES = ["Live 24/7", "432 Hz", "High Vibe Music", "Shared Stream"];
+const MYVIBE_BADGES = ["Personalized", "432 Hz", "High Vibe Music", "Built for You"];
 
 export default function RadioPage() {
+  const [activeTab, setActiveTab] = useState(getSavedTab);
   const [vizMode, setVizMode] = useState(getSavedMode);
   const [pulseOn, setPulseOn] = useState(getPulseEnabled);
   const { themeId, theme, applyTheme } = useRadioTheme();
   const isPageVisible = usePageVisible();
 
   // ── Live stream state ────────────────────────────────────────────────────
-  const audioRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const liveAudioRef = useRef(null);
+  const [liveIsPlaying, setLiveIsPlaying] = useState(false);
+  const [liveIsLoading, setLiveIsLoading] = useState(false);
+  const [liveError, setLiveError] = useState(null);
+  const [nowPlaying, setNowPlaying] = useState(null);
 
-  // ── Now Playing metadata ─────────────────────────────────────────────────
-  const [nowPlaying, setNowPlaying] = useState(null); // { title, artist, coverart }
+  // ── Global player (My Vibe Radio) ────────────────────────────────────────
+  const { togglePlay: globalToggle, isPlaying: globalIsPlaying, audioRef: globalAudioRef } = usePlayer();
+  const { startRadio, nextRadioSong, prevRadioSong, currentRadioSong, isRadioMode, hasPrev } = useRadio();
 
+  const myVibeIsPlaying = globalIsPlaying && isRadioMode;
+  const myVibeTrack = currentRadioSong;
+
+  // ── Tab switch ────────────────────────────────────────────────────────────
+  const stopLiveStream = useCallback(() => {
+    const el = liveAudioRef.current;
+    if (!el) return;
+    el.pause();
+    el.src = "";
+    setLiveIsPlaying(false);
+    setLiveIsLoading(false);
+  }, []);
+
+  const switchTab = useCallback((tab) => {
+    if (tab === activeTab) return;
+    if (activeTab === "live") stopLiveStream();
+    if (activeTab === "myvibe" && globalIsPlaying) globalToggle();
+    setActiveTab(tab);
+    try { localStorage.setItem(TAB_KEY, tab); } catch {}
+  }, [activeTab, stopLiveStream, globalIsPlaying, globalToggle]);
+
+  // ── Now Playing poll ──────────────────────────────────────────────────────
   useEffect(() => {
-    const fetchNowPlaying = async () => {
+    const fetchNP = async () => {
       try {
         const res = await fetch(NOW_PLAYING_URL);
         const data = await res.json();
@@ -45,79 +75,72 @@ export default function RadioPage() {
         }
       } catch {}
     };
-    fetchNowPlaying();
-    const interval = setInterval(fetchNowPlaying, 10000);
-    return () => clearInterval(interval);
+    fetchNP();
+    const iv = setInterval(fetchNP, 10000);
+    return () => clearInterval(iv);
   }, []);
 
-  // Pause global player when live radio starts
-  const { togglePlay: globalToggle, isPlaying: globalIsPlaying, audioRef: globalAudioRef } = usePlayer();
-
-  const getAudio = useCallback(() => {
-    if (!audioRef.current) {
+  // ── Live stream ───────────────────────────────────────────────────────────
+  const getLiveAudio = useCallback(() => {
+    if (!liveAudioRef.current) {
       const el = new Audio();
-      el.crossOrigin = "anonymous"; // required for Web Audio analyser to read stream data
+      el.crossOrigin = "anonymous";
       el.preload = "none";
       el.volume = 0.9;
       el.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
       document.body.appendChild(el);
-      audioRef.current = el;
+      liveAudioRef.current = el;
     }
-    return audioRef.current;
+    return liveAudioRef.current;
   }, []);
 
-  const startStream = useCallback(() => {
-    setError(null);
-    setIsLoading(true);
-    // Pause global player if playing
-    if (globalIsPlaying) globalToggle();
-    const el = getAudio();
+  const startLiveStream = useCallback(() => {
+    setLiveError(null);
+    setLiveIsLoading(true);
+    if (globalIsPlaying) globalToggle(); // stop My Vibe / library
+    const el = getLiveAudio();
     el.src = LIVE_STREAM_URL;
     el.load();
     el.play()
-      .then(() => { setIsPlaying(true); setIsLoading(false); })
+      .then(() => { setLiveIsPlaying(true); setLiveIsLoading(false); })
       .catch((err) => {
-        setIsLoading(false);
-        setError("Tap play to start the stream.");
+        setLiveIsLoading(false);
+        setLiveError("Tap play to start the stream.");
         console.warn("[LiveRadio] play blocked:", err.message);
       });
-  }, [getAudio, globalIsPlaying, globalToggle]);
+  }, [getLiveAudio, globalIsPlaying, globalToggle]);
 
-  const stopStream = useCallback(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    el.pause();
-    el.src = "";
-    setIsPlaying(false);
-    setIsLoading(false);
-  }, []);
+  const handleLiveToggle = useCallback(() => {
+    if (liveIsPlaying) stopLiveStream();
+    else startLiveStream();
+  }, [liveIsPlaying, startLiveStream, stopLiveStream]);
 
-  const handleToggle = useCallback(() => {
-    if (isPlaying) {
-      stopStream();
+  // ── My Vibe Radio ─────────────────────────────────────────────────────────
+  const handleMyVibeToggle = useCallback(() => {
+    if (isRadioMode) {
+      globalToggle(); // play/pause existing radio session
     } else {
-      startStream();
+      stopLiveStream(); // stop live stream if running
+      startRadio();
     }
-  }, [isPlaying, startStream, stopStream]);
+  }, [isRadioMode, globalToggle, stopLiveStream, startRadio]);
 
-  // Cleanup on unmount
+  // ── Single-source enforcement ─────────────────────────────────────────────
+  // If global player starts, stop live stream
+  useEffect(() => {
+    if (globalIsPlaying && liveIsPlaying) stopLiveStream();
+  }, [globalIsPlaying]);
+
+  // ── Cleanup ───────────────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      const el = audioRef.current;
+      const el = liveAudioRef.current;
       if (el) {
-        el.pause();
-        el.src = "";
+        el.pause(); el.src = "";
         try { if (el.parentNode) el.parentNode.removeChild(el); } catch {}
       }
     };
   }, []);
-
-  // Pause live stream if global player starts (single-source rule)
-  useEffect(() => {
-    if (globalIsPlaying && isPlaying) {
-      stopStream();
-    }
-  }, [globalIsPlaying]);
 
   const handleTogglePulse = (v) => { setPulseOn(v); setPulseEnabled(v); };
   const handleCycleMode = (next) => {
@@ -126,35 +149,27 @@ export default function RadioPage() {
   };
   const currentModeObj = MODES.find(m => m.id === vizMode) || MODES[0];
 
-  // Build CSS variable style object from current theme
-  const themeStyle = Object.entries(theme.vars).reduce((acc, [k, v]) => {
-    acc[k] = v; return acc;
-  }, { WebkitOverflowScrolling: "touch" });
+  const anyPlaying = liveIsPlaying || myVibeIsPlaying;
+  const vizAudioRef = activeTab === "live" ? liveAudioRef : globalAudioRef;
+  const p = theme.vars["--rt-primary"];
+  const themeStyle = Object.entries(theme.vars).reduce((acc, [k, v]) => { acc[k] = v; return acc; }, { WebkitOverflowScrolling: "touch" });
+  const badges = activeTab === "live" ? LIVE_BADGES : MYVIBE_BADGES;
 
   return (
     <div className="min-h-screen" style={themeStyle}>
 
-      {/* ── Fixed ambient background ── */}
+      {/* Ambient */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <motion.div
-          animate={{ opacity: isPlaying ? 0.06 : 0.03 }}
+          animate={{ opacity: anyPlaying ? 0.06 : 0.03 }}
           transition={{ duration: 2, ease: "easeInOut" }}
           className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full blur-[180px]"
           style={{ background: theme.vars["--rt-ambient1"] }}
         />
-        {isPlaying && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.025 }}
-            transition={{ duration: 2 }}
-            className="absolute bottom-1/3 right-1/4 w-[300px] h-[300px] rounded-full blur-[120px]"
-            style={{ background: theme.vars["--rt-ambient2"] }}
-          />
-        )}
       </div>
 
       <div
-        className="max-w-5xl mx-auto px-5 relative z-10"
+        className="max-w-2xl mx-auto px-4 sm:px-6 relative z-10"
         style={{
           paddingTop: "max(5rem, calc(3.5rem + env(safe-area-inset-top, 0px)))",
           paddingBottom: "calc(9rem + env(safe-area-inset-bottom, 16px))",
@@ -163,24 +178,60 @@ export default function RadioPage() {
         {/* ── Header ── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-          className="text-center mb-5">
+          className="text-center mb-6">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-sm mb-3"
-            style={{ background: `rgba(${theme.vars["--rt-primary"]},0.06)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.16)` }}>
+            style={{ background: `rgba(${p},0.06)`, border: `1px solid rgba(${p},0.16)` }}>
             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-              style={{ background: isPlaying ? "#ef4444" : `rgb(${theme.vars["--rt-primary"]})`,
-                animation: isPlaying ? "pulse 1.5s infinite" : "none" }} />
-            <RadioIcon className="w-3 h-3" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
-            <span className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }}>
-              {isPlaying ? "Live Now" : "Live Radio"}
+              style={{ background: anyPlaying ? "#ef4444" : `rgb(${p})`, animation: anyPlaying ? "pulse 1.5s infinite" : "none" }} />
+            <RadioIcon className="w-3 h-3" style={{ color: `rgb(${p})` }} />
+            <span className="text-[9px] font-black tracking-[0.4em] uppercase" style={{ color: `rgb(${p})` }}>
+              Upper Vibe Radio
             </span>
           </div>
-          <h1 className="font-heading font-black text-white mb-1.5" style={{ fontSize: "clamp(1.6rem,5vw,2.6rem)" }}>
-            {LIVE_STREAM_NAME}
+          <h1 className="font-heading font-black text-white mb-1.5" style={{ fontSize: "clamp(1.5rem,5vw,2.4rem)" }}>
+            Upper Vibe Radio
           </h1>
-          <p className="text-white/30 text-xs">{LIVE_STREAM_DESCRIPTION}</p>
+          <p className="text-white/35 text-xs max-w-xs mx-auto leading-relaxed">
+            Choose the live 24/7 Upper Vibe stream or play a personal station built from your vibe.
+          </p>
         </motion.div>
 
-        {/* ── Theme Picker + Viz Mode Picker ── */}
+        {/* ── Tab Switcher ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }}
+          className="flex rounded-2xl p-1 mb-6"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          {[
+            { id: "live", label: "Upper Vibe Radio", shortLabel: "Live Radio", icon: <RadioIcon className="w-3.5 h-3.5 flex-shrink-0" />, badge: "LIVE" },
+            { id: "myvibe", label: "My Vibe Radio", shortLabel: "My Vibe", icon: <Music4 className="w-3.5 h-3.5 flex-shrink-0" />, badge: "PERSONAL" },
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => switchTab(tab.id)}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black tracking-wide transition-all"
+                style={{
+                  background: isActive ? `rgba(${p},0.15)` : "transparent",
+                  color: isActive ? `rgb(${p})` : "rgba(255,255,255,0.4)",
+                  border: isActive ? `1px solid rgba(${p},0.35)` : "1px solid transparent",
+                  boxShadow: isActive ? `0 0 16px rgba(${p},0.12)` : "none",
+                }}>
+                {tab.icon}
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.shortLabel}</span>
+                {isActive && (
+                  <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full hidden xs:inline"
+                    style={{ background: `rgba(${p},0.2)`, color: `rgb(${p})` }}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </motion.div>
+
+        {/* ── Viz Mode + Theme Picker ── */}
         <div className="flex justify-between items-center mb-2" style={{ maxWidth: 440, margin: "0 auto 8px" }}>
           <button
             onClick={() => handleCycleMode(MODES[(MODES.findIndex(m => m.id === vizMode) + 1) % MODES.length].id)}
@@ -190,10 +241,7 @@ export default function RadioPage() {
               fontSize: 9, fontWeight: 800, letterSpacing: "0.07em",
               textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap",
               transition: "all 0.2s ease", userSelect: "none", WebkitUserSelect: "none",
-              background: `rgba(${theme.vars["--rt-primary"]},0.10)`,
-              border: `1px solid rgba(${theme.vars["--rt-primary"]},0.45)`,
-              color: `rgb(${theme.vars["--rt-primary"]})`,
-              boxShadow: `0 0 8px rgba(${theme.vars["--rt-primary"]},0.12)`,
+              background: `rgba(${p},0.10)`, border: `1px solid rgba(${p},0.45)`, color: `rgb(${p})`,
             }}>
             <span style={{ fontSize: 9, lineHeight: 1 }}>{currentModeObj.icon}</span>
             {currentModeObj.label}
@@ -207,129 +255,100 @@ export default function RadioPage() {
           transition={{ delay: 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="relative mx-auto mb-5 rounded-3xl"
           style={{ maxWidth: 440 }}>
-          {pulseOn && (
+          {pulseOn ? (
             <motion.div
               animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
               transition={{ duration: 5, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut" }}
               className="absolute inset-0 rounded-3xl pointer-events-none"
-              style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
+              style={{ border: `2px solid rgb(${p})`, boxShadow: `0 0 30px rgba(${p},0.5)` }}
             />
-          )}
-          {!pulseOn && (
+          ) : (
             <div className="absolute inset-0 rounded-3xl pointer-events-none"
-              style={{ border: `1px solid rgba(${theme.vars["--rt-primary"]},0.3)` }} />
+              style={{ border: `1px solid rgba(${p},0.3)` }} />
           )}
           <div className="relative z-10 overflow-hidden rounded-3xl"
-            style={{ background: "rgba(0,0,0,0.4)", border: `1px solid rgba(${theme.vars["--rt-primary"]},0.15)` }}>
-            <RadioVisualizer isPlaying={isPlaying} currentSong={null} themeColor={theme.vars["--rt-primary"]} mode={vizMode} onCycleMode={handleCycleMode} radioAudioRef={audioRef} />
+            style={{ background: "rgba(0,0,0,0.4)", border: `1px solid rgba(${p},0.15)` }}>
+            <RadioVisualizer
+              isPlaying={anyPlaying}
+              currentSong={activeTab === "myvibe" ? myVibeTrack : null}
+              themeColor={p}
+              mode={vizMode}
+              onCycleMode={handleCycleMode}
+              radioAudioRef={vizAudioRef}
+            />
             <div className="pointer-events-none absolute inset-0"
               style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />
           </div>
         </motion.div>
 
         {/* ── Player Card ── */}
-        <div className="flex justify-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }}
-            className="w-full max-w-sm relative">
-            {pulseOn && (
-              <motion.div
-                animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
-                transition={{ duration: 5, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: 0.4 }}
-                className="absolute inset-0 rounded-3xl pointer-events-none"
-                style={{ border: `2px solid rgb(${theme.vars["--rt-primary"]})`, boxShadow: `0 0 30px rgba(${theme.vars["--rt-primary"]},0.5)` }}
+        <AnimatePresence mode="wait">
+          {activeTab === "live" ? (
+            <motion.div key="live"
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              className="flex justify-center mb-6">
+              <LivePlayerCard
+                isPlaying={liveIsPlaying}
+                isLoading={liveIsLoading}
+                error={liveError}
+                nowPlaying={nowPlaying}
+                onToggle={handleLiveToggle}
+                theme={theme}
+                p={p}
+                pulseOn={pulseOn}
+                isPageVisible={isPageVisible}
               />
-            )}
-            {!pulseOn && (
-              <div className="absolute inset-0 rounded-3xl pointer-events-none"
-                style={{ border: `1px solid rgba(${theme.vars["--rt-primary"]},0.3)` }} />
-            )}
-            <div className="relative z-10 rounded-3xl p-8 flex flex-col items-center gap-6"
-              style={{ background: "rgba(255,255,255,0.028)", border: `1px solid rgba(${theme.vars["--rt-primary"]},0.12)` }}>
+            </motion.div>
+          ) : (
+            <motion.div key="myvibe"
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              className="flex justify-center mb-6">
+              <MyVibePlayerCard
+                isPlaying={myVibeIsPlaying}
+                track={myVibeTrack}
+                onToggle={handleMyVibeToggle}
+                onNext={nextRadioSong}
+                onPrev={hasPrev ? prevRadioSong : null}
+                theme={theme}
+                p={p}
+                pulseOn={pulseOn}
+                isPageVisible={isPageVisible}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-              {/* Cover art / station logo */}
-              <div className="relative w-36 h-36 rounded-2xl overflow-hidden flex-shrink-0"
-                style={{ border: `1px solid rgba(${theme.vars["--rt-primary"]},0.25)` }}>
-                {nowPlaying?.coverart ? (
-                  <img
-                    src={nowPlaying.coverart}
-                    alt={nowPlaying.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center"
-                    style={{ background: `rgba(${theme.vars["--rt-primary"]},0.08)` }}>
-                    <RadioIcon className="w-10 h-10" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
-                  </div>
-                )}
-                {/* Live bars overlay when playing */}
-                {isPlaying && (
-                  <div className="absolute bottom-2 left-0 right-0 flex gap-0.5 items-end justify-center">
-                    {[1,2,3,4,3].map((h, i) => (
-                      <motion.div key={i}
-                        animate={{ height: [`${h * 3}px`, `${h * 5}px`, `${h * 3}px`] }}
-                        transition={{ duration: 0.5 + i * 0.1, repeat: Infinity, ease: "easeInOut", delay: i * 0.08 }}
-                        className="w-1 rounded-full"
-                        style={{ background: `rgb(${theme.vars["--rt-primary"]})`, opacity: 0.9 }} />
-                    ))}
-                  </div>
-                )}
-              </div>
+        {/* ── Feature badges ── */}
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          {badges.map((label) => (
+            <span key={label} className="text-[9px] font-black tracking-[0.15em] uppercase px-3 py-1.5 rounded-full"
+              style={{ background: `rgba(${p},0.07)`, border: `1px solid rgba(${p},0.2)`, color: `rgb(${p})` }}>
+              {label}
+            </span>
+          ))}
+        </div>
 
-              {/* Station / now playing info */}
-              <div className="text-center">
-                {nowPlaying ? (
-                  <>
-                    <p className="text-white/40 text-[10px] uppercase tracking-widest mb-1">Now Playing</p>
-                    <h2 className="font-heading font-black text-white text-lg mb-0.5 leading-tight">{nowPlaying.title}</h2>
-                    {nowPlaying.artist && <p className="text-white/50 text-sm">{nowPlaying.artist}</p>}
-                  </>
-                ) : (
-                  <>
-                    <h2 className="font-heading font-black text-white text-xl mb-1">{LIVE_STREAM_NAME}</h2>
-                    <p className="text-white/40 text-sm">{LIVE_STREAM_DESCRIPTION}</p>
-                  </>
-                )}
-                {error && <p className="text-yellow-400/70 text-xs mt-2">{error}</p>}
-              </div>
+        {/* ── Tab-specific content ── */}
+        {activeTab === "live" && (
+          <div className="mt-2">
+            <TrendingLiveSection themeVars={theme.vars} />
+          </div>
+        )}
 
-              {/* Play/Pause button */}
-              <motion.button
-                onClick={handleToggle}
-                whileTap={{ scale: 0.92 }}
-                className="w-20 h-20 rounded-full flex items-center justify-center transition-all hover:brightness-115"
-                style={{
-                  background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${theme.vars["--rt-primary"]}))`,
-                  boxShadow: isPlaying
-                    ? `0 0 36px rgba(${theme.vars["--rt-primary"]},0.4), 0 0 80px rgba(${theme.vars["--rt-primary"]},0.15)`
-                    : `0 0 20px rgba(${theme.vars["--rt-primary"]},0.2)`,
-                  transition: "box-shadow 0.8s ease",
-                }}>
-                {isLoading ? (
-                  <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                ) : isPlaying ? (
-                  <Pause className="w-8 h-8 text-black fill-current" />
-                ) : (
-                  <Play className="w-8 h-8 text-black fill-current ml-1" />
-                )}
-              </motion.button>
-
-              {/* Live badge */}
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
-                style={{ background: `rgba(${theme.vars["--rt-primary"]},0.08)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.2)` }}>
-                <Waves className="w-3 h-3" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
-                <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }}>
-                  Nonstop Live Stream
-                </span>
-              </div>
-            </div>
+        {activeTab === "myvibe" && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+            className="rounded-2xl p-5 text-center"
+            style={{ background: `rgba(${p},0.04)`, border: `1px solid rgba(${p},0.12)` }}>
+            <Sparkles className="w-5 h-5 mx-auto mb-2" style={{ color: `rgba(${p},0.6)` }} />
+            <p className="text-white/50 text-xs leading-relaxed max-w-xs mx-auto">
+              My Vibe Radio learns from your likes, saves, replays, and listening history — getting better every session.{" "}
+              <Link to="/music" className="underline" style={{ color: `rgb(${p})` }}>Browse the library</Link> to discover more.
+            </p>
           </motion.div>
-        </div>
-
-        {/* ── Trending Live Broadcast ── */}
-        <div className="mt-8">
-          <TrendingLiveSection themeVars={theme.vars} />
-        </div>
+        )}
 
         <p className="text-center text-[10px] text-white/15 tracking-wide mt-8">
           Free to stream · 432 Hz high-vibe music
@@ -337,6 +356,208 @@ export default function RadioPage() {
       </div>
 
       <IOSTip trigger="always" />
+    </div>
+  );
+}
+
+// ── Live Player Card ──────────────────────────────────────────────────────────
+function LivePlayerCard({ isPlaying, isLoading, error, nowPlaying, onToggle, theme, p, pulseOn, isPageVisible }) {
+  return (
+    <div className="w-full max-w-sm relative">
+      {pulseOn ? (
+        <motion.div
+          animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
+          transition={{ duration: 5, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: 0.4 }}
+          className="absolute inset-0 rounded-3xl pointer-events-none"
+          style={{ border: `2px solid rgb(${p})`, boxShadow: `0 0 30px rgba(${p},0.5)` }}
+        />
+      ) : (
+        <div className="absolute inset-0 rounded-3xl pointer-events-none"
+          style={{ border: `1px solid rgba(${p},0.3)` }} />
+      )}
+      <div className="relative z-10 rounded-3xl p-8 flex flex-col items-center gap-5"
+        style={{ background: "rgba(255,255,255,0.028)", border: `1px solid rgba(${p},0.12)` }}>
+
+        {/* Cover */}
+        <div className="relative w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0"
+          style={{ border: `1px solid rgba(${p},0.25)` }}>
+          {nowPlaying?.coverart ? (
+            <img src={nowPlaying.coverart} alt={nowPlaying.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center" style={{ background: `rgba(${p},0.08)` }}>
+              <RadioIcon className="w-10 h-10" style={{ color: `rgb(${p})` }} />
+            </div>
+          )}
+          {isPlaying && (
+            <div className="absolute bottom-2 left-0 right-0 flex gap-0.5 items-end justify-center">
+              {[1,2,3,4,3].map((h, i) => (
+                <motion.div key={i}
+                  animate={{ height: [`${h * 3}px`, `${h * 5}px`, `${h * 3}px`] }}
+                  transition={{ duration: 0.5 + i * 0.1, repeat: Infinity, ease: "easeInOut", delay: i * 0.08 }}
+                  className="w-1 rounded-full"
+                  style={{ background: `rgb(${p})`, opacity: 0.9 }} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="text-center">
+          <p className="text-white/35 text-[10px] uppercase tracking-widest mb-1">
+            {isPlaying ? "Now Playing on Upper Vibe Radio" : "Upper Vibe Radio"}
+          </p>
+          {nowPlaying ? (
+            <>
+              <h2 className="font-heading font-black text-white text-base mb-0.5 leading-tight">{nowPlaying.title}</h2>
+              {nowPlaying.artist && <p className="text-white/45 text-sm">{nowPlaying.artist}</p>}
+            </>
+          ) : (
+            <>
+              <h2 className="font-heading font-black text-white text-lg mb-0.5">Live 24/7 Radio</h2>
+              <p className="text-white/35 text-sm">432 Hz high-vibe music, nonstop</p>
+            </>
+          )}
+          {error && <p className="text-yellow-400/70 text-xs mt-2">{error}</p>}
+        </div>
+
+        {/* Play button */}
+        <motion.button
+          onClick={onToggle}
+          whileTap={{ scale: 0.92 }}
+          className="w-20 h-20 rounded-full flex items-center justify-center transition-all hover:brightness-115"
+          style={{
+            background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${p}))`,
+            boxShadow: isPlaying ? `0 0 36px rgba(${p},0.4), 0 0 80px rgba(${p},0.15)` : `0 0 20px rgba(${p},0.2)`,
+            transition: "box-shadow 0.8s ease",
+          }}>
+          {isLoading ? (
+            <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+          ) : isPlaying ? (
+            <Pause className="w-8 h-8 text-black fill-current" />
+          ) : (
+            <Play className="w-8 h-8 text-black fill-current ml-1" />
+          )}
+        </motion.button>
+
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
+          style={{ background: `rgba(${p},0.08)`, border: `1px solid rgba(${p},0.2)` }}>
+          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-red-500" style={{ animation: "pulse 1.5s infinite" }} />
+          <Waves className="w-3 h-3" style={{ color: `rgb(${p})` }} />
+          <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: `rgb(${p})` }}>
+            {isPlaying ? "Listen Live" : "Live Radio"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── My Vibe Player Card ───────────────────────────────────────────────────────
+function MyVibePlayerCard({ isPlaying, track, onToggle, onNext, onPrev, theme, p, pulseOn, isPageVisible }) {
+  return (
+    <div className="w-full max-w-sm relative">
+      {pulseOn ? (
+        <motion.div
+          animate={{ scale: [1, 1.03, 1], opacity: [0.3, 0.9, 0.3] }}
+          transition={{ duration: 5, repeat: isPageVisible ? Infinity : 0, ease: "easeInOut", delay: 0.4 }}
+          className="absolute inset-0 rounded-3xl pointer-events-none"
+          style={{ border: `2px solid rgb(${p})`, boxShadow: `0 0 30px rgba(${p},0.5)` }}
+        />
+      ) : (
+        <div className="absolute inset-0 rounded-3xl pointer-events-none"
+          style={{ border: `1px solid rgba(${p},0.3)` }} />
+      )}
+      <div className="relative z-10 rounded-3xl p-8 flex flex-col items-center gap-5"
+        style={{ background: "rgba(255,255,255,0.028)", border: `1px solid rgba(${p},0.12)` }}>
+
+        {/* Cover */}
+        <div className="relative w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0"
+          style={{ border: `1px solid rgba(${p},0.25)` }}>
+          {track?.cover_url ? (
+            <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center" style={{ background: `rgba(${p},0.08)` }}>
+              <Music4 className="w-10 h-10" style={{ color: `rgb(${p})` }} />
+            </div>
+          )}
+          {isPlaying && (
+            <div className="absolute bottom-2 left-0 right-0 flex gap-0.5 items-end justify-center">
+              {[1,2,3,4,3].map((h, i) => (
+                <motion.div key={i}
+                  animate={{ height: [`${h * 3}px`, `${h * 5}px`, `${h * 3}px`] }}
+                  transition={{ duration: 0.5 + i * 0.1, repeat: Infinity, ease: "easeInOut", delay: i * 0.08 }}
+                  className="w-1 rounded-full"
+                  style={{ background: `rgb(${p})`, opacity: 0.9 }} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="text-center">
+          <p className="text-white/35 text-[10px] uppercase tracking-widest mb-1">
+            {isPlaying ? "Now Playing · My Vibe Radio" : "My Vibe Radio"}
+          </p>
+          {track ? (
+            <>
+              <h2 className="font-heading font-black text-white text-base mb-0.5 leading-tight">{track.title}</h2>
+              <p className="text-white/45 text-sm">{track.artist_display || "Upper Vibe Media"}</p>
+            </>
+          ) : (
+            <>
+              <h2 className="font-heading font-black text-white text-lg mb-0.5">My Vibe Radio</h2>
+              <p className="text-white/35 text-sm">Personalized to your listening history</p>
+            </>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center gap-5">
+          <button
+            onClick={onPrev || undefined}
+            disabled={!onPrev}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
+            style={{
+              background: `rgba(${p},0.08)`,
+              border: `1px solid rgba(${p},${onPrev ? 0.25 : 0.08})`,
+              color: onPrev ? `rgb(${p})` : `rgba(${p},0.25)`,
+              cursor: onPrev ? "pointer" : "default",
+            }}>
+            <SkipBack className="w-4 h-4 fill-current" />
+          </button>
+
+          <motion.button
+            onClick={onToggle}
+            whileTap={{ scale: 0.92 }}
+            className="w-20 h-20 rounded-full flex items-center justify-center transition-all hover:brightness-115"
+            style={{
+              background: `linear-gradient(135deg,rgb(${theme.vars["--rt-primary-dark"]}),rgb(${p}))`,
+              boxShadow: isPlaying ? `0 0 36px rgba(${p},0.4), 0 0 80px rgba(${p},0.15)` : `0 0 20px rgba(${p},0.2)`,
+              transition: "box-shadow 0.8s ease",
+            }}>
+            {isPlaying ? (
+              <Pause className="w-8 h-8 text-black fill-current" />
+            ) : (
+              <Play className="w-8 h-8 text-black fill-current ml-1" />
+            )}
+          </motion.button>
+
+          <button
+            onClick={onNext}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all hover:brightness-125"
+            style={{ background: `rgba(${p},0.08)`, border: `1px solid rgba(${p},0.25)`, color: `rgb(${p})` }}>
+            <SkipForward className="w-4 h-4 fill-current" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
+          style={{ background: `rgba(${p},0.08)`, border: `1px solid rgba(${p},0.2)` }}>
+          <User className="w-3 h-3" style={{ color: `rgb(${p})` }} />
+          <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: `rgb(${p})` }}>
+            {isPlaying ? "Playing My Vibe" : "Play My Vibe"}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
