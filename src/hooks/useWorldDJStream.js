@@ -392,6 +392,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   }, [danceFloorMode, enabled, enterDanceFloor, exitDanceFloor]);
 
   // ── Retry on user gesture if autoplay was blocked ────────────────────────
+  // Uses capture phase so joystick's preventDefault() doesn't block retry.
   useEffect(() => {
     if (!enabled) return;
     const retry = () => {
@@ -405,11 +406,15 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
         el.play().catch(() => {});
       }
     };
-    window.addEventListener("click", retry, { passive: true });
-    window.addEventListener("touchend", retry, { passive: true });
+    // Capture phase (true) catches events that child preventDefault() blocks on bubble
+    window.addEventListener("click", retry, { capture: true, passive: true });
+    window.addEventListener("touchend", retry, { capture: true, passive: true });
+    // Also retry on touchstart capture for iOS where touchend may also be preventDefault'd
+    window.addEventListener("touchstart", retry, { capture: true, passive: true });
     return () => {
-      window.removeEventListener("click", retry);
-      window.removeEventListener("touchend", retry);
+      window.removeEventListener("click", retry, true);
+      window.removeEventListener("touchend", retry, true);
+      window.removeEventListener("touchstart", retry, true);
     };
   }, [enabled, enterDanceFloor]);
 
