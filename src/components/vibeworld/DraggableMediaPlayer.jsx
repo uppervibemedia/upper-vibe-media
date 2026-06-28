@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Play, Pause, SkipForward, GripHorizontal, Music4, Radio } from "lucide-react";
 import CoverImage from "@/components/shared/CoverImage";
 import useMobileLayout from "@/hooks/useMobileLayout";
+import { subscribe as ramSubscribe, getState as ramGetState } from "@/lib/radioAudioManager";
 
 const LS_KEY = "vibeworld_player_pos";
 
@@ -27,14 +28,23 @@ function clamp(val, min, max) {
 const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 export default function DraggableMediaPlayer({
-  currentTrack,
-  isPlaying,
+  currentTrack: propTrack,
+  isPlaying: propPlaying,
   onTogglePlay,
   onSkip,
   nearStage = false,
 }) {
   const mobileLayout = useMobileLayout(IS_MOBILE);
   const [pos, setPos] = useState(() => IS_MOBILE ? null : loadPos());
+
+  // ── RAM subscription: always prefer My Vibe Radio track ──
+  const [ramState, setRamState] = useState(() => ramGetState());
+  useEffect(() => ramSubscribe((s) => setRamState(s)), []);
+
+  // When My Vibe Radio is active, use its track even if paused
+  const isMyVibe = ramState.activeMode === "myVibeRadio";
+  const currentTrack = isMyVibe ? (ramState.currentTrack || propTrack) : propTrack;
+  const isPlaying = isMyVibe ? ramState.isPlaying : propPlaying;
   const playerRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0, px: 0, py: 0 });
   const isDraggingRef = useRef(false);
