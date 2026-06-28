@@ -173,6 +173,12 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       el.play().then(() => {
         if (!mountedRef.current) return;
         hasStartedRef.current = true;
+        if (!danceFloorRef.current) {
+          // User left the floor while audio was loading — stay silent
+          el.volume = 0;
+          transitionStateRef.current = "idleOutside";
+          return;
+        }
         transitionStateRef.current = "inside";
         cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => { cancelRampRef.current = null; });
         console.log("[DJStream] ✅ Live stream started — fading in");
@@ -219,6 +225,11 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       el.play().then(() => {
         if (!mountedRef.current) return;
         hasStartedRef.current = true;
+        if (!danceFloorRef.current) {
+          el.volume = 0;
+          transitionStateRef.current = "idleOutside";
+          return;
+        }
         transitionStateRef.current = "inside";
         cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => { cancelRampRef.current = null; });
         console.log("[DJStream] ✅ Playlist track started at shared position:", latestTrack?.title);
@@ -268,7 +279,11 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       // Audio got paused somehow (e.g. browser tab suspension) — resume it
       el.volume = 0;
       el.play().then(() => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || !danceFloorRef.current) {
+          el.volume = 0;
+          transitionStateRef.current = "idleOutside";
+          return;
+        }
         transitionStateRef.current = "inside";
         cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => { cancelRampRef.current = null; });
       }).catch(() => {
@@ -277,22 +292,29 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     } else {
       // Still playing silently — just fade in
       transitionStateRef.current = "inside";
-      cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => { cancelRampRef.current = null; });
+      cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => {
+        cancelRampRef.current = null;
+        // Safety check: if user left during the fade, immediately silence
+        if (!danceFloorRef.current && audioRef.current) {
+          audioRef.current.volume = 0;
+          transitionStateRef.current = "idleOutside";
+        }
+      });
     }
   }, [cancelRamp, getAudio, startInitialPlayback]);
 
   // ── Exit dance floor — fade out ONLY, do NOT pause or reset ─────────────
   const exitDanceFloor = useCallback(() => {
-    const state = transitionStateRef.current;
-    if (state === "idleOutside" || state === "leaving") return;
-
-    cancelRamp();
+    cancelRamp(); // always cancel any in-progress ramp first
     transitionStateRef.current = "leaving";
-    console.log("[DJStream] 🔇 Exiting dance floor — fading out (audio keeps playing silently)");
+    console.log("[DJStream] 🔇 Exiting dance floor — fading out");
 
     const el = audioRef.current;
-    if (!el || el.volume <= 0.01) {
-      if (el) el.volume = 0;
+    if (!el) { transitionStateRef.current = "idleOutside"; return; }
+
+    // Hard-clamp: if already at 0, just set state and return
+    if (el.volume <= 0.01) {
+      el.volume = 0;
       transitionStateRef.current = "idleOutside";
       return;
     }
@@ -300,7 +322,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     cancelRampRef.current = rampVolume(el, 0, FADE_OUT_MS, () => {
       cancelRampRef.current = null;
       if (!mountedRef.current) return;
-      // DO NOT pause — keep audio running at volume=0 so position advances
+      el.volume = 0; // hard-clamp after fade in case of floating point
       transitionStateRef.current = "idleOutside";
       console.log("[DJStream] ✅ DJ faded to silent (still running at shared position)");
     });
@@ -335,6 +357,21 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     el.addEventListener("ended", onEnded);
     return () => el.removeEventListener("ended", onEnded);
   }, [enabled, getAudio]);
+
+  // ── Safety clamp: if user is outside floor, volume must stay at 0 ────────
+  // Runs every 250ms to catch any async race conditions (ramp completing late, etc.)
+  useEffect(() => {
+    if (!enabled) return;
+    const id = setInterval(() => {
+      if (danceFloorRef.current) return; // inside floor — volume is managed by ramp
+      const el = audioRef.current;
+      if (el && el.volume > 0) {
+        el.volume = 0;
+        console.log("[DJStream] ⚠️ Safety clamp: forced DJ volume to 0 outside floor");
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [enabled]);
 
   // ── Init: preload on mount ───────────────────────────────────────────────
   useEffect(() => {
