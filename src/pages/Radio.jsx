@@ -555,12 +555,15 @@ function MyVibePlayerCard({
   isPlus, isLoggedIn, navigate,
 }) {
   const handleCoverClick = () => {
-    if (track?.id) navigate(`/song/${track.id}`);
+    if (!track?.id) return;
+    // Persist current tab before navigating so it's restored on return
+    try { localStorage.setItem(TAB_KEY, "myvibe"); } catch {}
+    navigate(`/song/${track.id}?source=myVibeRadio&returnPath=/radio`);
   };
 
   const handleDownload = () => {
     if (!track?.id) return;
-    navigate(`/song/${track.id}?downloadIntent=true`);
+    navigate(`/song/${track.id}?source=myVibeRadio&returnPath=/radio&downloadIntent=true`);
   };
 
   return (

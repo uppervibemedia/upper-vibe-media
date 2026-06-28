@@ -117,10 +117,16 @@ function SongPageInner() {
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [vizPlaying, setVizPlaying] = useState(false);
   const [downloadIntent, setDownloadIntent] = useState(false);
-  // "Back to Upper Vibe City" — shown when user came from VibeWorld
-  const [showCityReturn, setShowCityReturn] = useState(() => {
-    try { return sessionStorage.getItem("vibeworld_return") === "1"; } catch { return false; }
+  // Determine origin from URL param — only show city button for city origins
+  const _originParam = new URLSearchParams(window.location.search).get("source") || "";
+  const CITY_ORIGINS = ["upperVibeCity", "djSongCard", "stage", "cityMusicLibrary"];
+  const [showCityReturn] = useState(() => {
+    // Legacy: sessionStorage flag set by VibeWorld components
+    const legacyCity = (() => { try { return sessionStorage.getItem("vibeworld_return") === "1"; } catch { return false; } })();
+    return legacyCity || CITY_ORIGINS.includes(_originParam);
   });
+  const [songOrigin] = useState(() => _originParam || "");
+  const [returnPath] = useState(() => new URLSearchParams(window.location.search).get("returnPath") || "");
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus: isAuthPlus, isAdmin: isAuthAdmin } = useAuth();
   const isPlus = isAuthPlus || isAuthAdmin;
@@ -265,11 +271,22 @@ function SongPageInner() {
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <button
             onClick={() => {
-              if (window.history.length > 1) navigate(-1);
-              else navigate("/music");
+              // If a specific return path was passed, use it
+              if (returnPath) {
+                navigate(returnPath);
+              } else if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/music");
+              }
             }}
             className="inline-flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition-colors active:scale-95">
-            <ChevronLeft className="w-3.5 h-3.5" /> Back
+            <ChevronLeft className="w-3.5 h-3.5" />
+            {songOrigin === "myVibeRadio" ? "Back to My Vibe Radio"
+              : songOrigin === "upperVibeRadio" ? "Back to Radio"
+              : songOrigin === "musicLibrary" ? "Back to Music"
+              : songOrigin === "home" ? "Back to Home"
+              : "Back"}
           </button>
           {showCityReturn && (
             <button
