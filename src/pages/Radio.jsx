@@ -94,7 +94,7 @@ export default function RadioPage() {
     togglePlay: globalToggle,
     isPlaying: globalIsPlaying,
     audioRef: globalAudioRef,
-    setIsPlaying: setGlobalIsPlaying,
+    stopPlaying: stopGlobalPlayer,
   } = usePlayer();
   const {
     startRadio, nextRadioSong, prevRadioSong,
@@ -177,12 +177,9 @@ export default function RadioPage() {
   }, []);
 
   const _hardStopMyVibe = useCallback(() => {
-    const el = globalAudioRef?.current;
-    if (!el) return;
-    if (!el.paused) el.pause();
-    // Sync PlayerContext state so isPlaying becomes false
-    setGlobalIsPlaying(false);
-  }, [globalAudioRef, setGlobalIsPlaying]);
+    // Use the proper PlayerContext API — stops audio, clears src, syncs all state
+    stopGlobalPlayer();
+  }, [stopGlobalPlayer]);
 
   // ── Stop live stream (user intent: stop) ─────────────────────────────────
   const stopLiveStream = useCallback(() => {
@@ -191,7 +188,7 @@ export default function RadioPage() {
 
   // ── Start live stream ─────────────────────────────────────────────────────
   const startLiveStream = useCallback(() => {
-    // 1. Stop My Vibe first — clean, no crossfade
+    // 1. Stop My Vibe first via proper API
     _hardStopMyVibe();
 
     // 2. Cancel any pending reconnect
@@ -203,21 +200,25 @@ export default function RadioPage() {
 
     const el = getLiveAudioEl();
     liveAudioRef.current = el;
-    el.volume = 0.9;
-    el.src = LIVE_STREAM_URL;
-    el.load();
-    el.play()
-      .then(() => {
-        setLiveIsPlaying(true);
-        setLiveIsLoading(false);
-        console.log("[LiveRadio] ▶ started");
-      })
-      .catch((err) => {
-        setLiveIsLoading(false);
-        liveIntendedRef.current = false;
-        setLiveError("Tap play to start the stream.");
-        console.warn("[LiveRadio] play blocked:", err.message);
-      });
+    // Small delay so any in-flight PlayerContext async ops settle before we start
+    setTimeout(() => {
+      if (!liveIntendedRef.current) return; // user already stopped it
+      el.volume = 0.9;
+      el.src = LIVE_STREAM_URL;
+      el.load();
+      el.play()
+        .then(() => {
+          setLiveIsPlaying(true);
+          setLiveIsLoading(false);
+          console.log("[LiveRadio] ▶ started");
+        })
+        .catch((err) => {
+          setLiveIsLoading(false);
+          liveIntendedRef.current = false;
+          setLiveError("Tap play to start the stream.");
+          console.warn("[LiveRadio] play blocked:", err.message);
+        });
+    }, 80);
   }, [_hardStopMyVibe]);
 
   // ── Toggle live stream ────────────────────────────────────────────────────
@@ -239,17 +240,13 @@ export default function RadioPage() {
       return;
     }
 
-    // Starting / resuming My Vibe — stop live stream first
+    // Starting / resuming My Vibe — stop live stream first (hard stop, no crossfade)
     _hardStopLive();
 
-    if (isRadioMode) {
-      // Resume existing radio session via PlayerContext toggle
-      globalToggle();
-    } else {
-      // Fresh radio start
-      startRadio();
-    }
-  }, [myVibeIsPlaying, isRadioMode, globalToggle, startRadio, _hardStopLive]);
+    // Always start fresh — live stream stop may have cleared the global player src
+    // startRadio() handles both fresh start and cases where radio was already initialized
+    startRadio();
+  }, [myVibeIsPlaying, globalToggle, startRadio, _hardStopLive]);
 
   // ── Live stream stall/error auto-reconnect ────────────────────────────────
   useEffect(() => {
