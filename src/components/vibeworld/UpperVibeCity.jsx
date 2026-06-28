@@ -660,10 +660,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ═══════════════════════════════════════════════════════════════════════════════
   const rawDfRef = useRef(false);  // true = within enter radius, false = outside exit radius
   const rawPosRef = useRef({ x: -10, z: -4 }); // always tracks latest position
+  // ── World DJ Stream — strictly gated: volume only raises inside dance floor ──
+  const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, danceFloorMode: onDanceFloor });
+
   // iOS safety mute — runs every 250ms and forces DJ volume to 0 when outside floor.
   // This catches any timing gaps between the React state update and the DJ audio element.
   useEffect(() => {
-    if (!djAudioRef.current) return;
+    if (!djAudioRef?.current) return;
     const id = setInterval(() => {
       const el = djAudioRef.current;
       if (!el) return;
@@ -705,9 +708,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const wasOnDanceFloorRef = useRef(false);
   const savedPersonalTimeRef = useRef(0);
   const danceFloorPausedRef = useRef(false);
-
-  // ── World DJ Stream — strictly gated: volume only raises inside dance floor ──
-  const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, danceFloorMode: onDanceFloor });
 
   // ── Hoverboard zone proximity detection ──────────────────────
   useEffect(() => {
