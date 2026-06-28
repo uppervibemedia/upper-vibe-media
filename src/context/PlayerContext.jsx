@@ -405,6 +405,12 @@ export function PlayerProvider({ children }) {
   // Operation queue — ONE instance, persists for the life of the provider
   const opQueueRef = useRef(new AudioOpQueue());
 
+  // ── Queue ref for auto-advance (mirrors state, safe for event handler closures) ──
+  const queueRef = useRef([]);
+  useEffect(() => { queueRef.current = queue; }, [queue]);
+  const sourceTypeRef = useRef("song");
+  useEffect(() => { sourceTypeRef.current = sourceType; }, [sourceType]);
+
   // Lock-screen debounce (200 ms) — ONE instance
   const lsDebounceRef = useRef(makeDebounce(200));
 
@@ -748,7 +754,24 @@ export function PlayerProvider({ children }) {
       const dur = (audio.duration && isFinite(audio.duration)) ? audio.duration : 0;
       // streamEnd handles the ≥90% check and fires trackSongComplete internally
       try { if (track) { streamEnd(true, dur); } } catch {}
-      onNextRef.current?.();
+
+      if (onNextRef.current) {
+        // External handler (UpperVibeCity feed, RadioContext, etc.)
+        onNextRef.current?.();
+      } else {
+        // Auto-advance: play next track from the queue
+        const q = queueRef.current;
+        if (q.length > 1) {
+          const currentIdx = q.findIndex(t => t.id === currentTrackRef.current?.id);
+          const nextTrack = currentIdx >= 0
+            ? q[(currentIdx + 1) % q.length]
+            : q[0];
+          if (nextTrack && nextTrack.audio_url && nextTrack.id !== currentTrackRef.current?.id) {
+            currentTrackRef.current = nextTrack; // guard against ended re-firing
+            playTrack(nextTrack, sourceTypeRef.current || "song", 0);
+          }
+        }
+      }
     };
 
     const onRateChange = () => {
@@ -1021,6 +1044,14 @@ export function PlayerProvider({ children }) {
     // Update React state
     setSourceType(source);
     setCurrentTrack(track);
+
+    // Add to queue for auto-advance (not for radio/live sources which manage their own queue)
+    if (source !== "radio" && source !== "live") {
+      setQueue(prev => {
+        if (prev.find(t => t.id === track.id)) return prev;
+        return [...prev, track];
+      });
+    }
 
     // Clear any pending ops so this track wins
     opQueueRef.current.clearQueue();
