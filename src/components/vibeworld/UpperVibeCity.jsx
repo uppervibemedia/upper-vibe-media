@@ -651,7 +651,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const dfDist = Math.sqrt(dfDx * dfDx + dfDz * dfDz);
   const rawOnDanceFloor = dfDist <= DANCE_FLOOR_ENTER_R;
 
-  // Debounced dance floor state — only flips after 200ms stable (fast enough to feel responsive)
+  // Debounced dance floor state — only flips after stable position
+  // Desktop: 200ms | iOS mobile: 80ms for faster boundary response
+  const dfDebounceMs = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 80 : 200;
   const [onDanceFloor, setOnDanceFloor] = useState(false);
   const dfDebounceRef = useRef(null);
   const dfStableRef = useRef(false); // current debounced value
@@ -666,27 +668,35 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── World DJ Stream — strictly gated: volume only raises inside dance floor ──
   const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, danceFloorMode: onDanceFloor });
 
-  // iOS safety mute — runs every 250ms and forces DJ volume to 0 when outside floor.
-  // This catches any timing gaps between the React state update and the DJ audio element.
+  // ── iOS safety clamp — runs every 100ms using RAW position (bypasses React state)
+  // Forces volume=0 & muted=true when outside dance floor. Catches timing gaps between
+  // React state update and DJ audio element ramp completion.
+  // Uses rawDfRef (updated every frame in onPositionChange) — never the debounced state.
   useEffect(() => {
     if (!djAudioRef?.current) return;
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    console.log("[UVC/DJ] 📱 iOS safety clamp active (100ms) | isIOS:", isIOS);
     const id = setInterval(() => {
       const el = djAudioRef.current;
       if (!el) return;
-      const inside = rawDfRef.current;
       const pos = rawPosRef.current;
       const dx = pos.x - DANCE_FLOOR_CX;
       const dz = pos.z - DANCE_FLOOR_CZ;
       const dist = Math.sqrt(dx * dx + dz * dz);
       const isOutside = dist > DANCE_FLOOR_EXIT_R;
-      if (isOutside && el.volume > 0.01) {
+      const isInside = dist <= DANCE_FLOOR_ENTER_R;
+
+      // Outside: force zero volume and mute
+      if (isOutside && (el.volume > 0.01 || !el.muted)) {
         el.volume = 0;
         el.muted = true;
-        console.log("[UVC/iOS] 🔇 Safety mute: DJ volume forced to 0 outside dance floor | dist:", dist.toFixed(1), "| exitR:", DANCE_FLOOR_EXIT_R);
-      } else if (!isOutside && el.muted && inside) {
+        console.log("[UVC/DJ] 🔇 Safety clamp: vol=0, muted=true | dist:", dist.toFixed(1));
+      }
+      // Inside && was muted: unmute (let hook's ramp handle the fade-in)
+      else if (isInside && el.muted && !isOutside) {
         el.muted = false;
       }
-    }, 250);
+    }, 100);
     return () => clearInterval(id);
   }, [djAudioRef]);
 
@@ -705,7 +715,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         dfDebounceRef.current = null;
         dfStableRef.current = target;
         setOnDanceFloor(target);
-      }, 200);
+      }, dfDebounceMs);
     }
   }, [rawOnDanceFloor, dfDist]);
   const wasOnDanceFloorRef = useRef(false);
@@ -1008,12 +1018,34 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const audioRefStable = useRef(audioRef);
   audioRefStable.current = audioRef;
 
+  // ── iOS debug logging — dance floor state snapshot every 3s ──────────────
+  useEffect(() => {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isIOS) return;
+    const id = setInterval(() => {
+      const el = djAudioRef?.current;
+      console.log("[UVC/iOS-DJ]", JSON.stringify({
+        onDanceFloor,
+        rawInside: rawDfRef.current,
+        pos: { x: rawPosRef.current.x.toFixed(1), z: rawPosRef.current.z.toFixed(1) },
+        dfVol: el?.volume?.toFixed(3),
+        dfMuted: el?.muted,
+        dfPaused: el?.paused,
+        dfTime: el?.currentTime?.toFixed(1),
+        transition: wasOnDanceFloorRef.current ? "wasInside" : "wasOutside",
+      }));
+    }, 3000);
+    return () => clearInterval(id);
+  }, [djAudioRef, onDanceFloor]);
+
   // ── Dance floor enter / exit — strict single-source audio ownership ──────
   // Rule: DJ is the ONLY audible source on the floor.
   //       Global player is the ONLY audible source off the floor.
   // The DJ hook already handles its own volume via danceFloorMode prop.
   // This effect handles the global player side only.
   useEffect(() => {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    console.log("[UVC/DF] 🎯 Dance floor transition | onDanceFloor:", onDanceFloor, "| wasInside:", wasOnDanceFloorRef.current, "| iOS:", isIOS, "| rawDf:", rawDfRef.current, "| pos:", rawPosRef.current);
     const personal = audioRefStable.current?.current;
 
     // Always cancel any pending transition timer first (prevents stale delayed play)
