@@ -701,8 +701,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // The onDanceFloor React effect handles RAM save/restore separately.
   const dfStateRef = useRef("outside"); // "outside" | "inside" | "leaving"
   const dfLeavingTimerRef = useRef(null);
+  const dfRestoreDoneRef = useRef(false); // guard: only one restore runs across both timers
   useEffect(() => {
-    // Cleanup function to clear timers on unmount
     const cleanup = () => {
       if (dfLeavingTimerRef.current) { clearTimeout(dfLeavingTimerRef.current); dfLeavingTimerRef.current = null; }
     };
@@ -715,10 +715,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       // ── INSIDE / ENTERING ──────────────────────────────────────────────
       if (inside) {
-        // State transition: outside → inside
         if (dfStateRef.current !== "inside") {
-          cleanup(); // cancel any pending leave timer
+          cleanup();
           dfStateRef.current = "inside";
+          dfRestoreDoneRef.current = false; // reset guard for next leave cycle
 
           // Force global audio paused + muted immediately
           if (ctxAudio && !ctxAudio.paused) {
@@ -728,15 +728,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             ctxAudio.muted = true;
             if (isPlayingRef.current) togglePlayRef.current?.();
           }
-          // Force RAM paused
+          // Force RAM audio element paused (safety net)
+          // NOTE: RAM state save/restore is handled by the onDanceFloor React effect.
+          // This loop only pauses the audio element as a belt-and-suspenders.
           const ramS = ramGetState();
-          if (ramS.activeMode === "myVibeRadio" && ramS.isPlaying) {
-            saveMyVibePosition();
-            pauseMyVibe();
-          } else if (ramS.activeMode === "upperVibeRadio" && ramS.isPlaying) {
-            pauseUpperVibeRadio();
-          } else if (ramAudio && !ramAudio.paused && ramAudio.src && ramAudio.src !== window.location.href) {
-            savedPersonalTimeRef.current = ramAudio.currentTime;
+          if (ramS.activeMode !== null && ramAudio && !ramAudio.paused && ramAudio.src && ramAudio.src !== window.location.href) {
             ramAudio.pause();
           }
           danceFloorAudioPausedRef.current = true;
@@ -765,27 +761,25 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       // ── OUTSIDE / LEAVING ──────────────────────────────────────────────
       } else {
-        // State transition: inside → leaving
         if (dfStateRef.current === "inside") {
           dfStateRef.current = "leaving";
 
-          // IMMEDIATELY silence DJ for this user (no fade — prevents double audio)
+          // IMMEDIATELY silence DJ (no fade — prevents double audio)
           if (djEl) { djEl.volume = 0; djEl.muted = true; }
 
-          // Start single 500ms restore timer
+          // 500ms restore timer — only fires if onDanceFloor effect didn't already handle it
           cleanup();
           dfLeavingTimerRef.current = setTimeout(() => {
             dfLeavingTimerRef.current = null;
-            // Guard: user re-entered during delay
             if (danceFloorFrameRef.current.onDanceFloor) { dfStateRef.current = "inside"; return; }
+            if (dfRestoreDoneRef.current) return; // onDanceFloor effect already restored
+            dfRestoreDoneRef.current = true;
             dfStateRef.current = "outside";
             danceFloorAudioPausedRef.current = false;
             danceFloorPausedRef.current = false;
 
-            // Belt-and-suspenders: ensure DJ is still silent before restoring global
             if (djEl) { djEl.volume = 0; djEl.muted = true; }
 
-            // Restore previous audio source
             const ramS = ramGetState();
             const p = ctxAudio || ramAudio;
             if (ramS.activeMode === "myVibeRadio") {
@@ -793,9 +787,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             } else if (ramS.activeMode === "upperVibeRadio") {
               resumeUpperVibeRadio();
             } else if (p) {
-              if (savedPersonalTimeRef.current > 0) {
-                try { p.currentTime = savedPersonalTimeRef.current; } catch {}
-              }
+              if (savedPersonalTimeRef.current > 0) { try { p.currentTime = savedPersonalTimeRef.current; } catch {} }
               p.muted = false;
               p.volume = personalBaseVolRef.current;
               if (p.paused) p.play().catch(() => {});
@@ -803,17 +795,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             savedPersonalTimeRef.current = 0;
           }, 500);
 
-        // State already leaving — wait for timer (noop)
         } else if (dfStateRef.current === "leaving") {
-          // Already leaving — timer is running, do nothing
+          // Already leaving — timer running, do nothing
         }
 
-        // Every tick: force DJ silent (hard clamp, overrides any ramps)
+        // Every tick: force DJ silent
         if (djEl) { djEl.volume = 0; djEl.muted = true; }
-
-        // Re-enter guard: if `onDanceFloor` React effect starts its own
-        // restore timer, clear our timer to prevent double-restore
-        // (handled by cleanup() above on inside→entering)
       }
     }, 100);
     return () => { cleanup(); clearInterval(id); };
@@ -1143,33 +1130,66 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const audioRefStable = useRef(audioRef);
   audioRefStable.current = audioRef;
 
-  // ── Dance floor enter/exit — RAM state management only ─────────────────
-  // The 100ms safety loop handles audio element enforcement (paused, volume, mute).
-  // This effect handles persisted RAM state (save/restore position).
+  // ── Dance floor enter / exit — audio state management ──────────────────
+  // The `onDanceFloor` React state is the PRIMARY path for audio coordination
+  // (works reliably on desktop where position state updates).
+  // The 100ms safety loop supplements for iOS where React state may not update.
+  // This effect handles RAM state (save/restore) + restore timer.
+  // The 100ms loop handles audio element enforcement (volume, mute).
   useEffect(() => {
     const personal = audioRefStable.current?.current;
     clearTimeout(audioTransitionTimerRef.current);
 
     if (onDanceFloor && !wasOnDanceFloorRef.current) {
-      // ── Entering dance floor — save RAM state ───────────────────────────
+      // ── Entering dance floor ────────────────────────────────────────────
       wasOnDanceFloorRef.current = true;
-      console.log("[UpperVibeCity] 🕺 Floor entered — saving RAM state");
-
       const ramS = ramGetState();
+      console.log("[UpperVibeCity] 🕺 Dance floor entered | RAM mode:", ramS.activeMode, "| isPlaying:", ramS.isPlaying);
+
       if (ramS.activeMode === "myVibeRadio" && ramS.isPlaying) {
         savedPersonalTimeRef.current = saveMyVibePosition();
         danceFloorPausedRef.current = true;
+        pauseMyVibe();
       } else if (ramS.activeMode === "upperVibeRadio" && ramS.isPlaying) {
         danceFloorPausedRef.current = true;
-      } else if (personal && personal.currentTime > 0) {
-        savedPersonalTimeRef.current = personal.currentTime;
-        danceFloorPausedRef.current = true;
+        pauseUpperVibeRadio();
+      } else if (personal) {
+        if (personal.currentTime > 0) savedPersonalTimeRef.current = personal.currentTime;
+        personal.volume = 0;
+        if (!personal.paused) { danceFloorPausedRef.current = true; personal.pause(); }
+        if (isPlayingRef.current) togglePlayRef.current?.();
       }
     } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
-      // ── Leaving dance floor — RAM state was already restored by the 100ms loop ──
+      // ── Leaving dance floor — 500ms restore timer ───────────────────────
       wasOnDanceFloorRef.current = false;
-      // RAM restore is handled by the 100ms loop's state machine.
-      // This effect just clears the flag to avoid double-restore on next entry.
+      console.log("[UpperVibeCity] 🚶 Dance floor exited | savedTime:", savedPersonalTimeRef.current.toFixed(2));
+
+      if (danceFloorPausedRef.current) {
+        danceFloorPausedRef.current = false;
+        const savedTime = savedPersonalTimeRef.current;
+
+        audioTransitionTimerRef.current = setTimeout(() => {
+          if (onDanceFloorRef2.current) return;
+          if (dfRestoreDoneRef.current) return; // 100ms loop already restored
+          dfRestoreDoneRef.current = true;
+          const ramS = ramGetState();
+          console.log("[UpperVibeCity] 🎵 Restoring audio after dance floor | mode:", ramS.activeMode, "| savedTime:", savedTime.toFixed(2));
+          if (ramS.activeMode === "myVibeRadio") {
+            restoreMyVibePosition(savedTime);
+          } else if (ramS.activeMode === "upperVibeRadio") {
+            resumeUpperVibeRadio();
+          } else {
+            const p = audioRefStable.current?.current;
+            if (!p) return;
+            if (savedTime > 0) { try { p.currentTime = savedTime; } catch {} }
+            p.volume = personalBaseVolRef.current;
+            if (p.paused && !isPlayingRef.current) { togglePlayRef.current?.(); }
+            else if (p.paused) { p.play().catch(() => {}); }
+          }
+        }, 500);
+      } else if (personal) {
+        personal.volume = personalBaseVolRef.current;
+      }
     } else if (!onDanceFloor && !wasOnDanceFloorRef.current && personal) {
       personal.volume = personalBaseVolRef.current;
     }
