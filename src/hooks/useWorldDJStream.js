@@ -400,6 +400,7 @@ export default function useWorldDJStream({ enabled = true, active = false }) {
     if (!el.src || el.src === window.location.href) return;
     el.volume = 0;
     el.muted = true;
+    if (useLiveStreamRef.current) setDjTrack({ title: "Upper Vibe Radio", artist_display: "Live Stream" });
     el.play().then(() => {
       if (!mountedRef.current) return;
       hasStartedRef.current = true;
