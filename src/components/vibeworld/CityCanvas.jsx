@@ -647,9 +647,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const spCamDist = spawnLS ? CAM_DIST_LS : CAM_DIST;
       const spCamH    = spawnLS ? CAM_HEIGHT_LS : CAM_HEIGHT;
       const spLookY   = spawnLS ? CAM_LOOK_Y_LS : CAM_LOOK_Y;
-      // Camera sits directly behind avatar on +Z side, looking toward -Z (stage)
+      // Camera sits directly behind avatar on +Z side (camYaw=0), looking toward -Z (city/stage).
+      // Avatar spawns at Z=10 facing -Z; camera is at Z+camDist looking through avatar toward city.
       camera.position.set(spX, spY + spCamH, spZ + spCamDist);
-      camera.lookAt(spX, spY + spLookY, spZ - 2); // look slightly toward stage
+      camera.lookAt(spX, spY + spLookY, spZ - 6); // look toward city center and dance floor
 
       buildPark(scene);
 

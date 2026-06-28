@@ -1,9 +1,11 @@
 /**
  * Simple Park Layout
  */
-// Spawn in the central plaza area — outside the dance floor (center 0,-13, r=10.5),
-// near the shop entrance where the user can see the dance floor and choose to enter.
-export const SPAWN = [0, 0, 4];
+// Spawn in the Welcome Plaza — open walkway south of the shop, well clear of the dance floor.
+// Dance floor center: (0, -13), radius 10.5 → nearest edge at Z = -2.5.
+// Spawn at Z = 10 gives ~12.5 units of clearance from the dance floor edge (>5u requirement).
+// Avatar faces -Z (toward city center / dance floor), camera sits at +Z behind avatar.
+export const SPAWN = [0, 0, 10];
 export const PARK_RADIUS = 44;
 
 // Empty districts — will be populated later when city is built

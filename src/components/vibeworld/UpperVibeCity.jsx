@@ -78,11 +78,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const mobileLayout = useMobileLayout(isMobile);
-  const [playerPos, setPlayerPos] = useState({ x: 0, z: 5, rot: 0, animState: "idle" });
+  const [playerPos, setPlayerPos] = useState({ x: 0, z: 10, rot: 0, animState: "idle" });
   // Restore saved return state (position + panel) when returning from SongPage
   const returnState = useRef(readReturnState());
   const returnStateApplied = useRef(false);
-  const prevPosRef = useRef({ x: 0, z: 5 });
+  const prevPosRef = useRef({ x: 0, z: 10 });
   const [stageCanvas, setStageCanvas] = useState(null);
   const audioIntensityRef = useRef(0);
   const audioBassRef = useRef(0);
