@@ -16,7 +16,7 @@ import { base44 } from "@/api/base44Client";
 import { LIVE_STREAM_URL } from "@/lib/liveStreamConfig";
 
 const MAX_VOL = 0.82;
-const FADE_MS = 600;
+const FADE_MS = 500; // Faster fade-in for snappier dance floor entry
 
 // ── Shared epoch: fixed reference point in ms.
 // All users compute position as (Date.now() - EPOCH) % total_playlist_duration.
@@ -130,8 +130,11 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     const el = getAudio();
     playingRef.current = true;
 
+    console.log("[DJStream] 🎵 Dance floor entered — starting DJ audio");
+
     // ── Live stream mode (Citrus3) ─────────────────────────────────────────
     if (useLiveStreamRef.current) {
+      // Source may already be preloaded — avoid redundant load()
       if (el.dataset.djSrc !== LIVE_STREAM_URL) {
         el.src = LIVE_STREAM_URL;
         el.dataset.djSrc = LIVE_STREAM_URL;
@@ -142,6 +145,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
         if (!danceFloorRef.current) { el.pause(); el.volume = 0; playingRef.current = false; return; }
         fadeIn(el, MAX_VOL, FADE_MS);
         playingRef.current = false;
+        console.log("[DJStream] ✅ Live stream playing — fading in");
       }).catch(err => {
         console.warn("[DJStream] live stream play() blocked:", err.message);
         playingRef.current = false;
@@ -160,7 +164,9 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     const doPlay = () => {
       if (!mountedRef.current || !danceFloorRef.current) { playingRef.current = false; return; }
 
-      if (el.dataset.djSrc !== track.audio_url) {
+      // If source already preloaded and matches — skip load()
+      const srcChanged = el.dataset.djSrc !== track.audio_url;
+      if (srcChanged) {
         el.src = track.audio_url;
         el.dataset.djSrc = track.audio_url;
         el.load();
@@ -171,13 +177,13 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
 
       const seekAndPlay = () => {
         const { idx: newIdx, offset: newOffset } = computeSharedPosition(tracks);
-        const currentTrack = tracks[newIdx];
+        const latestTrack = tracks[newIdx];
 
-        if (currentTrack?.audio_url !== el.dataset.djSrc) {
-          el.src = currentTrack.audio_url;
-          el.dataset.djSrc = currentTrack.audio_url;
+        if (latestTrack?.audio_url !== el.dataset.djSrc) {
+          el.src = latestTrack.audio_url;
+          el.dataset.djSrc = latestTrack.audio_url;
           el.load();
-          setDjTrack(currentTrack);
+          setDjTrack(latestTrack);
           currentIdxRef.current = newIdx;
           el.addEventListener("canplay", seekAndPlay, { once: true });
           return;
@@ -189,14 +195,19 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
           if (!danceFloorRef.current) { el.pause(); el.volume = 0; playingRef.current = false; return; }
           fadeIn(el, MAX_VOL, FADE_MS);
           playingRef.current = false;
+          console.log("[DJStream] ✅ Playlist track playing:", latestTrack?.title);
         }).catch(err => {
           console.warn("[DJStream] play() blocked:", err.message);
           playingRef.current = false;
         });
       };
 
-      if (el.readyState >= 2) seekAndPlay();
-      else el.addEventListener("canplay", seekAndPlay, { once: true });
+      // readyState >= 2 (HAVE_CURRENT_DATA) means data is available to play immediately
+      if (el.readyState >= 2) {
+        seekAndPlay();
+      } else {
+        el.addEventListener("canplay", seekAndPlay, { once: true });
+      }
     };
 
     doPlay();
@@ -211,15 +222,52 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     playingRef.current = false;
   }, []);
 
+  // ── Preload: prepare the audio source as soon as tracks are loaded ──────
+  // This primes the browser's network pipeline so the audio starts instantly
+  // when the user enters the dance floor, instead of loading from cold.
+  const preloadRef = useRef(false);
+
+  const preloadDJSource = useCallback(async () => {
+    if (preloadRef.current) return;
+    preloadRef.current = true;
+    await loadPlaylist();
+    if (!mountedRef.current) return;
+
+    const el = getAudio();
+    // Only preload if not already loaded
+    if (el.dataset.djSrc) return;
+
+    if (useLiveStreamRef.current) {
+      // Prime live stream connection at volume 0
+      el.src = LIVE_STREAM_URL;
+      el.dataset.djSrc = LIVE_STREAM_URL;
+      el.volume = 0;
+      // Don't call play() — just set src so browser resolves DNS/connects
+      console.log("[DJStream] 🎵 Preloaded live stream source (muted)");
+    } else {
+      const tracks = tracksRef.current;
+      if (!tracks.length) return;
+      const { idx } = computeSharedPosition(tracks);
+      const track = tracks[idx];
+      if (!track?.audio_url) return;
+      el.src = track.audio_url;
+      el.dataset.djSrc = track.audio_url;
+      el.volume = 0;
+      el.load(); // Prime the network connection
+      console.log("[DJStream] 🎵 Preloaded DJ track:", track.title, "(muted, readyState:", el.readyState + ")");
+    }
+  }, [loadPlaylist, getAudio]);
+
   // ── Init: load playlist ───────────────────────────────────────────────────
   useEffect(() => {
     mountedRef.current = true;
     if (!enabled) return;
-    loadPlaylist();
+    // Preload immediately on mount — warms up the audio pipeline
+    preloadDJSource();
     return () => {
       mountedRef.current = false;
     };
-  }, [enabled, loadPlaylist]);
+  }, [enabled, preloadDJSource]);
 
   // ── Track ended → advance to next shared position ────────────────────────
   useEffect(() => {
@@ -256,25 +304,30 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
 
     if (danceFloorMode) {
       // Entering dance floor
+      const el = audioRef.current;
+      if (el && !el.paused && el.volume > 0.01) {
+        // Already audibly playing — just ensure volume is at target
+        if (el.volume < MAX_VOL) fadeIn(el, MAX_VOL, FADE_MS);
+        return;
+      }
+
       if (!loadedRef.current) {
-        // Wait for tracks to load then play
+        // Preload not finished yet — poll with short interval (rare path)
+        console.log("[DJStream] Waiting for preload to finish...");
         const wait = setInterval(() => {
           if (loadedRef.current) {
             clearInterval(wait);
             startAtSharedPosition();
           }
-        }, 200);
+        }, 100); // 100ms poll — much faster than before
         return () => clearInterval(wait);
       } else {
-        const el = audioRef.current;
-        if (el && !el.paused && el.volume > 0) {
-          // Already playing — just ensure volume is up
-          return;
-        }
+        // Preloaded — start immediately
         startAtSharedPosition();
       }
     } else {
-      // Leaving dance floor — silence immediately, no partial fade
+      // Leaving dance floor — silence immediately
+      console.log("[DJStream] 🔇 Dance floor exited — silencing DJ");
       silenceDJ();
     }
   }, [danceFloorMode, enabled, startAtSharedPosition, silenceDJ]);

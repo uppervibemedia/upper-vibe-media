@@ -64,10 +64,15 @@ export default function RadioPage() {
   // ── RadioAudioManager state ───────────────────────────────────────────────
   const [ramState, setRamState] = useState(ramGetState);
 
+  // Log on Radio page mount to confirm My Vibe state survived city navigation
+  useEffect(() => {
+    const s = ramGetState();
+    console.log("[Radio] 📻 Radio page mounted | mode:", s.activeMode, "| track:", s.currentTrack?.title || "none", "| playing:", s.isPlaying, "| intended:", s.intendedToPlay);
+  }, []);
+
   useEffect(() => {
     const unsub = ramSubscribe((state) => {
       setRamState(state);
-      console.log("[Radio] RAM state:", state.activeMode, state.audioStatus, "playing:", state.isPlaying);
     });
     return unsub;
   }, []);

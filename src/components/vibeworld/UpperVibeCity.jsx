@@ -297,6 +297,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ── Subscribe to RadioAudioManager (My Vibe Radio + Upper Vibe Radio state) ──
   const [ramState, setRamState] = useState(() => ramGetState());
   useEffect(() => {
+    const s = ramGetState();
+    console.log("[UpperVibeCity] 🌆 City entered | RAM mode:", s.activeMode, "| track:", s.currentTrack?.title || "none", "| playing:", s.isPlaying);
     return ramSubscribe((s) => setRamState(s));
   }, []);
 
@@ -1002,6 +1004,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       wasOnDanceFloorRef.current = true;
 
       const ramS = ramGetState();
+      console.log("[UpperVibeCity] 🕺 Dance floor entered | RAM mode:", ramS.activeMode, "| isPlaying:", ramS.isPlaying, "| track:", ramS.currentTrack?.title || "none");
       if (ramS.activeMode === "myVibeRadio" && ramS.isPlaying) {
         // My Vibe Radio is active — pause via RAM
         danceFloorPausedRef.current = true;
@@ -1028,6 +1031,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
       // ── Leaving dance floor — 500ms clean delay before resuming personal audio ──
       wasOnDanceFloorRef.current = false;
+      console.log("[UpperVibeCity] 🚶 Dance floor exited | danceFloorPaused:", danceFloorPausedRef.current);
 
       if (danceFloorPausedRef.current) {
         danceFloorPausedRef.current = false;
@@ -1036,6 +1040,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           if (onDanceFloorRef2.current) return;
 
           const ramS = ramGetState();
+          console.log("[UpperVibeCity] 🎵 Restoring audio after dance floor | mode:", ramS.activeMode, "| track:", ramS.currentTrack?.title || "none");
           if (ramS.activeMode === "myVibeRadio") {
             resumeMyVibe();
           } else if (ramS.activeMode === "upperVibeRadio") {
@@ -1063,16 +1068,34 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
   }, [onDanceFloor]);
 
-  // Cleanup on unmount — restore personal player volume, silence DJ, cancel pending timers
+  // Cleanup on unmount — cancel timers, silence DJ, restore personal player volume.
+  // IMPORTANT: Do NOT touch RAM state or the RAM audio element — My Vibe Radio
+  // and Upper Vibe Radio must survive city unmount intact.
   useEffect(() => {
     return () => {
+      console.log("[UpperVibeCity] 🚪 City unmounting — cleaning up timers and DJ audio");
       clearInterval(jukeboxFadeRef.current);
       clearTimeout(audioTransitionTimerRef.current);
+
+      // Restore personal player volume (may have been ducked)
       const personal = audioRef?.current;
       if (personal) personal.volume = personalBaseVolRef.current;
-      // Silence DJ audio on unmount so it doesn't bleed into other pages
+
+      // Silence DJ audio on unmount — it will be destroyed by useWorldDJStream cleanup
       const dj = djAudioRef?.current;
       if (dj) { dj.volume = 0; try { dj.pause(); } catch {} }
+
+      // If RAM was paused for dance floor, resume it now (user left city, not dance floor)
+      if (danceFloorPausedRef.current) {
+        danceFloorPausedRef.current = false;
+        const ramS = ramGetState();
+        console.log("[UpperVibeCity] 🎵 City exit — restoring RAM audio | mode:", ramS.activeMode);
+        if (ramS.activeMode === "myVibeRadio" && !ramS.isPlaying && ramS.currentTrack) {
+          resumeMyVibe();
+        } else if (ramS.activeMode === "upperVibeRadio" && !ramS.isPlaying) {
+          resumeUpperVibeRadio();
+        }
+      }
     };
   }, [audioRef, djAudioRef]);
 

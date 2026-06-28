@@ -788,6 +788,15 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     _beat.hist.fill(0); _beat.idx = 0; _beat.count = 0; _beat.lastMs = 0;
     _spin.acc = 0; _spin.lastMs = Date.now();
 
+    // If AudioContext was closed (e.g. after city unmount side-effects), reset it
+    // so tryConnectAnalyser can create a fresh one
+    if (audioCtxRef.current?.state === "closed") {
+      console.log("[RadioViz] AudioContext was closed — resetting for reconnect");
+      audioCtxRef.current = null;
+      analyserRef.current = null;
+      sourceRef.current = null;
+    }
+
     tryConnectAnalyser().then(connected => {
       const ctx = audioCtxRef.current;
       if (connected && ctx?.state === "suspended") {
@@ -799,11 +808,32 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     return stopLoop;
   }, [mode, isPlaying, currentSong?.id, themeColor]);
 
-  // Re-connect when tab becomes visible again
+  // Re-connect when tab becomes visible again OR on initial mount (catches city-return remounts)
   useEffect(() => {
+    // Run once on mount to handle the case where we're returning from Upper Vibe City
+    // The audio may already be playing — reconnect the analyser without interrupting it
+    const reconnectOnMount = async () => {
+      if (audioCtxRef.current?.state === "closed") {
+        audioCtxRef.current = null;
+        analyserRef.current = null;
+        sourceRef.current = null;
+      }
+      const connected = await tryConnectAnalyser();
+      console.log("[RadioViz] Radio page mounted — analyser reconnect:", connected ? "success" : "fallback");
+      if (!rafRef.current) {
+        setTimeout(() => startLoop(mode, themeColor), connected ? 60 : 0);
+      }
+    };
+    reconnectOnMount();
+
     const onVisible = async () => {
       if (document.visibilityState !== "visible") return;
       stopLoop(); particlesRef.current = []; _sm.data = null;
+      if (audioCtxRef.current?.state === "closed") {
+        audioCtxRef.current = null;
+        analyserRef.current = null;
+        sourceRef.current = null;
+      }
       if (audioCtxRef.current?.state === "suspended") {
         try { await audioCtxRef.current.resume(); } catch {}
       }
@@ -812,7 +842,8 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [mode, isPlaying, tryConnectAnalyser, startLoop, stopLoop, themeColor]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Retry connection after playback starts.
   // iOS Safari: AudioContext may take 300-800ms to reach "running" after gesture.
