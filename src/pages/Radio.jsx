@@ -1,11 +1,16 @@
+/**
+ * Radio.jsx — Upper Vibe Media
+ *
+ * All audio is controlled through radioAudioManager (one audio element, one source of truth).
+ * This component only reads state and sends commands — never touches audio directly.
+ */
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, Radio as RadioIcon, AudioLines, Music4, Sparkles,
-  SkipForward, SkipBack, Heart, ThumbsDown, Download, Lock,
+  SkipForward, SkipBack, Heart, ThumbsDown, Download, Lock, Bookmark,
 } from "lucide-react";
-import { usePlayer } from "../context/PlayerContext";
-import { useRadio } from "../context/RadioContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "@/hooks/useFavorite";
 import { hasPlusAccess } from "@/lib/tierAccess";
@@ -14,45 +19,35 @@ import RadioVisualizer, { MODES } from "../components/radio/RadioVisualizer";
 import usePageVisible from "../hooks/usePageVisible";
 import IOSTip from "../components/shared/iOSTip";
 import TrendingLiveSection from "../components/radio/TrendingLiveSection";
-import { LIVE_STREAM_URL } from "@/lib/liveStreamConfig";
 import { Link, useNavigate } from "react-router-dom";
 import SongMiniSheet from "@/components/radio/SongMiniSheet";
+import {
+  subscribe as ramSubscribe,
+  getState as ramGetState,
+  playUpperVibeRadio,
+  pauseUpperVibeRadio,
+  resumeUpperVibeRadio,
+  playMyVibeTrack,
+  pauseMyVibe,
+  resumeMyVibe,
+  getAudioElementRef,
+  setMyVibeCallbacks,
+} from "@/lib/radioAudioManager";
+import { useRadio } from "../context/RadioContext";
+import { base44 } from "@/api/base44Client";
 
 const NOW_PLAYING_URL = "https://s5.citrus3.com:2020/json/stream/upperviberadio";
-const PREF_KEY = "uvm_radio_viz_v9";
+const VIZ_PREF_KEY = "uvm_radio_viz_v9";
 const TAB_KEY = "uvm_radio_tab";
-const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
+
+const getSavedMode = () => { try { return localStorage.getItem(VIZ_PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
 const getSavedTab = () => { try { return localStorage.getItem(TAB_KEY) || "live"; } catch { return "live"; } };
 
 const LIVE_BADGES = ["Live 24/7", "432 Hz", "High Vibe Music", "Shared Stream"];
 const MYVIBE_BADGES = ["Personalized", "432 Hz", "High Vibe Music", "Built for You"];
 
-// ── Module-level live audio singleton — survives Radio page remounts ──────────
-// Storing it outside React means clicking a cover / navigating away and back
-// never orphans or re-creates the live audio element.
-let _liveAudioEl = null;
-
-function getLiveAudioEl() {
-  if (!_liveAudioEl) {
-    const el = new Audio();
-    el.crossOrigin = "anonymous";
-    el.preload = "none";
-    el.volume = 0.9;
-    el.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
-    document.body.appendChild(el);
-    _liveAudioEl = el;
-  }
-  return _liveAudioEl;
-}
-
-function destroyLiveAudioEl() {
-  if (_liveAudioEl) {
-    _liveAudioEl.pause();
-    _liveAudioEl.src = "";
-    try { if (_liveAudioEl.parentNode) _liveAudioEl.parentNode.removeChild(_liveAudioEl); } catch {}
-    _liveAudioEl = null;
-  }
-}
+// Stable audio element ref for visualizer (doesn't change)
+const VIZ_AUDIO_REF = getAudioElementRef();
 
 export default function RadioPage() {
   const [activeTab, setActiveTab] = useState(getSavedTab);
@@ -66,85 +61,63 @@ export default function RadioPage() {
 
   const { isFaved, toggle: toggleFav } = useFavorites(user?.id, user?.email);
 
-  // ── Live stream state ────────────────────────────────────────────────────
-  const liveAudioRef = useRef(null);
-  const [liveIsPlaying, setLiveIsPlaying] = useState(false);
-  const [liveIsLoading, setLiveIsLoading] = useState(false);
-  const [liveError, setLiveError] = useState(null);
-  const [nowPlaying, setNowPlaying] = useState(null);
+  // ── RadioAudioManager state ───────────────────────────────────────────────
+  const [ramState, setRamState] = useState(ramGetState);
 
-  // Intent + reconnect — module-level refs so they survive renders
-  const liveIntendedRef = useRef(false);
-  const liveReconnectRef = useRef(null);
-
-  // Sync liveAudioRef to singleton on every render
-  liveAudioRef.current = _liveAudioEl;
-
-  // Detect if live stream is already playing on mount (page returned to)
   useEffect(() => {
-    const el = _liveAudioEl;
-    if (el && !el.paused && el.src) {
-      liveIntendedRef.current = true;
-      setLiveIsPlaying(true);
-    }
+    const unsub = ramSubscribe((state) => {
+      setRamState(state);
+      console.log("[Radio] RAM state:", state.activeMode, state.audioStatus, "playing:", state.isPlaying);
+    });
+    return unsub;
   }, []);
 
-  // ── Global player (My Vibe Radio) ────────────────────────────────────────
+  // ── RadioContext (queue/curator) ──────────────────────────────────────────
   const {
-    togglePlay: globalToggle,
-    isPlaying: globalIsPlaying,
-    audioRef: globalAudioRef,
-    stopPlaying: stopGlobalPlayer,
-  } = usePlayer();
-  const {
-    startRadio, nextRadioSong, prevRadioSong,
-    currentRadioSong, isRadioMode, hasPrev,
-    curatorRecordLike, allTracks,
+    currentRadioSong,
+    nextRadioSong,
+    handleNextNatural,
+    prevRadioSong,
+    hasPrev,
+    curatorRecordLike,
+    allTracks,
+    startMyVibeQueue,
+    tracksLoaded,
   } = useRadio();
 
-  const myVibeIsPlaying = globalIsPlaying && isRadioMode;
-  const myVibeTrack = currentRadioSong;
-
-  // ── Per-track feedback state ──────────────────────────────────────────────
-  const [playLessIds, setPlayLessIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("uvm_play_less") || "[]"); } catch { return []; }
-  });
-
-  const isLiked = myVibeTrack ? isFaved("track", myVibeTrack.id) : false;
-  const isPlayLess = myVibeTrack ? playLessIds.includes(myVibeTrack.id) : false;
-
-  const handleLike = useCallback(async () => {
-    if (!myVibeTrack || !user) return;
-    const nowLiked = !isLiked;
-    await toggleFav("track", myVibeTrack.id, {
-      title: myVibeTrack.title,
-      artist: myVibeTrack.artist_display,
-      cover_url: myVibeTrack.cover_url,
+  // Wire RadioContext callbacks to RadioAudioManager
+  useEffect(() => {
+    setMyVibeCallbacks({
+      onEnded: (track) => {
+        console.log("[Radio] My Vibe track ended naturally:", track?.title);
+        // Natural end — use handleNextNatural (fromSkip=false) so host drop logic fires
+        if (handleNextNatural) handleNextNatural();
+        else nextRadioSong(); // fallback
+      },
+      onError: (track) => {
+        console.warn("[Radio] My Vibe track error:", track?.title, "→ skip");
+        nextRadioSong(); // error = skip signal
+      },
     });
-    curatorRecordLike(myVibeTrack.id, nowLiked);
-  }, [myVibeTrack, isLiked, toggleFav, curatorRecordLike, user]);
+  }, [nextRadioSong, handleNextNatural]);
 
-  const handlePlayLess = useCallback(() => {
-    if (!myVibeTrack) return;
-    const id = myVibeTrack.id;
-    const already = playLessIds.includes(id);
-    const next = already ? playLessIds.filter((x) => x !== id) : [...playLessIds, id];
-    setPlayLessIds(next);
-    try { localStorage.setItem("uvm_play_less", JSON.stringify(next)); } catch {}
-    import("@/lib/radioCurator").then(({ recordDislike }) => {
-      recordDislike(id, !already, allTracks);
-    });
-    if (!already) setTimeout(() => nextRadioSong(), 800);
-  }, [myVibeTrack, playLessIds, allTracks, nextRadioSong]);
+  // When RadioContext picks a new song (from queue advance), play it via RAM
+  const prevSongIdRef = useRef(null);
+  useEffect(() => {
+    if (!currentRadioSong) return;
+    if (currentRadioSong.id === prevSongIdRef.current) return;
+    prevSongIdRef.current = currentRadioSong.id;
 
-  // ── Tab switch: purely cosmetic, never touches audio ──────────────────────
-  const switchTab = useCallback((tab) => {
-    if (tab === activeTab) return;
-    setActiveTab(tab);
-    try { localStorage.setItem(TAB_KEY, tab); } catch {}
-  }, [activeTab]);
+    // Only auto-play if we're in myVibeRadio mode and intendedToPlay
+    const s = ramGetState();
+    if (s.activeMode === "myVibeRadio" && s.intendedToPlay) {
+      console.log("[Radio] Auto-advancing to next My Vibe song:", currentRadioSong.title);
+      playMyVibeTrack(currentRadioSong);
+    }
+  }, [currentRadioSong]);
 
-  // ── Now Playing poll ──────────────────────────────────────────────────────
+  // ── Now Playing poll (live radio metadata) ────────────────────────────────
+  const [nowPlaying, setNowPlaying] = useState(null);
   useEffect(() => {
     const fetchNP = async () => {
       try {
@@ -163,141 +136,126 @@ export default function RadioPage() {
     return () => clearInterval(iv);
   }, []);
 
-  // ── Hard-stop helpers (no crossfade — clean and reliable) ────────────────
-  const _hardStopLive = useCallback(() => {
-    liveIntendedRef.current = false;
-    if (liveReconnectRef.current) { clearTimeout(liveReconnectRef.current); liveReconnectRef.current = null; }
-    const el = _liveAudioEl;
-    if (!el) return;
-    el.pause();
-    el.src = "";
-    el.volume = 0.9;
-    setLiveIsPlaying(false);
-    setLiveIsLoading(false);
+  // ── Per-track feedback state ──────────────────────────────────────────────
+  const [playLessIds, setPlayLessIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("uvm_play_less") || "[]"); } catch { return []; }
+  });
+  const [savedIds, setSavedIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("uvm_radio_saved") || "[]"); } catch { return []; }
+  });
+
+  const myVibeTrack = ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : currentRadioSong;
+  const isLiked = myVibeTrack ? isFaved("track", myVibeTrack.id) : false;
+  const isPlayLess = myVibeTrack ? playLessIds.includes(myVibeTrack.id) : false;
+  const isSaved = myVibeTrack ? savedIds.includes(myVibeTrack.id) : false;
+
+  const handleLike = useCallback(async () => {
+    if (!myVibeTrack || !user) return;
+    const nowLiked = !isLiked;
+    await toggleFav("track", myVibeTrack.id, {
+      title: myVibeTrack.title,
+      artist: myVibeTrack.artist_display,
+      cover_url: myVibeTrack.cover_url,
+    });
+    curatorRecordLike(myVibeTrack.id, nowLiked);
+  }, [myVibeTrack, isLiked, toggleFav, curatorRecordLike, user]);
+
+  const handleSave = useCallback(async () => {
+    if (!myVibeTrack || !user) return;
+    const id = myVibeTrack.id;
+    const next = isSaved ? savedIds.filter((x) => x !== id) : [...savedIds, id];
+    setSavedIds(next);
+    try { localStorage.setItem("uvm_radio_saved", JSON.stringify(next)); } catch {}
+    curatorRecordLike(myVibeTrack.id, !isSaved); // treat save like a strong positive signal
+  }, [myVibeTrack, isSaved, savedIds, curatorRecordLike, user]);
+
+  const handlePlayLess = useCallback(() => {
+    if (!myVibeTrack) return;
+    const id = myVibeTrack.id;
+    const already = playLessIds.includes(id);
+    const next = already ? playLessIds.filter((x) => x !== id) : [...playLessIds, id];
+    setPlayLessIds(next);
+    try { localStorage.setItem("uvm_play_less", JSON.stringify(next)); } catch {}
+    import("@/lib/radioCurator").then(({ recordDislike }) => {
+      recordDislike(id, !already, allTracks);
+    });
+    if (!already) {
+      setTimeout(() => {
+        console.log("[Radio] Play Less → skipping to next");
+        nextRadioSong();
+      }, 600);
+    }
+  }, [myVibeTrack, playLessIds, allTracks, nextRadioSong]);
+
+  const handleSkip = useCallback(() => {
+    console.log("[Radio] Skip button pressed");
+    nextRadioSong();
+  }, [nextRadioSong]);
+
+  // ── Tab switching (cosmetic only — does not touch audio) ──────────────────
+  const switchTab = useCallback((tab) => {
+    if (tab === activeTab) return;
+    console.log("[Radio] Tab switched to:", tab);
+    setActiveTab(tab);
+    try { localStorage.setItem(TAB_KEY, tab); } catch {}
+  }, [activeTab]);
+
+  // ── Upper Vibe Radio controls ─────────────────────────────────────────────
+  const handleLiveToggle = useCallback(() => {
+    const s = ramGetState();
+    const isLivePlaying = s.activeMode === "upperVibeRadio" && s.isPlaying;
+    const isLiveIntended = s.activeMode === "upperVibeRadio" && s.intendedToPlay;
+
+    console.log("[Radio] handleLiveToggle | mode:", s.activeMode, "isPlaying:", s.isPlaying, "intended:", s.intendedToPlay);
+
+    if (isLivePlaying || isLiveIntended) {
+      pauseUpperVibeRadio();
+    } else if (s.activeMode === "upperVibeRadio" && !s.intendedToPlay) {
+      // Paused in live mode — resume
+      resumeUpperVibeRadio();
+    } else {
+      // Fresh start or switching from myVibe — must call in gesture
+      playUpperVibeRadio();
+    }
   }, []);
 
-  const _hardStopMyVibe = useCallback(() => {
-    // Use the proper PlayerContext API — stops audio, clears src, syncs all state
-    stopGlobalPlayer();
-  }, [stopGlobalPlayer]);
-
-  // ── Stop live stream (user intent: stop) ─────────────────────────────────
-  const stopLiveStream = useCallback(() => {
-    _hardStopLive();
-  }, [_hardStopLive]);
-
-  // ── Start live stream ─────────────────────────────────────────────────────
-  const startLiveStream = useCallback(() => {
-    // 1. Cancel any pending reconnect
-    if (liveReconnectRef.current) { clearTimeout(liveReconnectRef.current); liveReconnectRef.current = null; }
-
-    setLiveError(null);
-    setLiveIsLoading(true);
-    liveIntendedRef.current = true;
-
-    // 2. Start live stream synchronously within the user gesture (iOS requires this)
-    const el = getLiveAudioEl();
-    liveAudioRef.current = el;
-    el.volume = 0.9;
-    el.src = LIVE_STREAM_URL;
-    el.load();
-    const playPromise = el.play();
-
-    // 3. Stop My Vibe AFTER initiating play (gesture already used, safe to do async work)
-    _hardStopMyVibe();
-
-    if (playPromise && typeof playPromise.then === "function") {
-      playPromise
-        .then(() => {
-          setLiveIsPlaying(true);
-          setLiveIsLoading(false);
-          console.log("[LiveRadio] ▶ started");
-        })
-        .catch((err) => {
-          setLiveIsLoading(false);
-          liveIntendedRef.current = false;
-          setLiveError("Tap play to start the stream.");
-          console.warn("[LiveRadio] play blocked:", err.message);
-        });
-    } else {
-      setLiveIsPlaying(true);
-      setLiveIsLoading(false);
-    }
-  }, [_hardStopMyVibe]);
-
-  // ── Toggle live stream ────────────────────────────────────────────────────
-  const handleLiveToggle = useCallback(() => {
-    const el = _liveAudioEl;
-    const actuallyPlaying = el && !el.paused && el.src;
-    if (liveIsPlaying || actuallyPlaying) {
-      _hardStopLive();
-    } else {
-      startLiveStream();
-    }
-  }, [liveIsPlaying, _hardStopLive, startLiveStream]);
-
-  // ── My Vibe toggle ────────────────────────────────────────────────────────
+  // ── My Vibe Radio controls ────────────────────────────────────────────────
   const handleMyVibeToggle = useCallback(() => {
-    if (myVibeIsPlaying) {
-      // Just pause My Vibe — don't touch live stream
-      globalToggle();
+    const s = ramGetState();
+    console.log("[Radio] handleMyVibeToggle | mode:", s.activeMode, "isPlaying:", s.isPlaying, "intended:", s.intendedToPlay);
+
+    if (s.activeMode === "myVibeRadio" && s.isPlaying) {
+      pauseMyVibe();
       return;
     }
 
-    // Starting / resuming My Vibe — stop live stream first (hard stop, no crossfade)
-    _hardStopLive();
+    if (s.activeMode === "myVibeRadio" && !s.isPlaying && s.currentTrack) {
+      // Paused — resume same track
+      resumeMyVibe();
+      return;
+    }
 
-    // Always start fresh — live stream stop may have cleared the global player src
-    // startRadio() handles both fresh start and cases where radio was already initialized
-    startRadio();
-  }, [myVibeIsPlaying, globalToggle, startRadio, _hardStopLive]);
+    // Switching from live or fresh start
+    // Must start playback synchronously (gesture) — get the track first
+    const track = currentRadioSong;
+    if (track) {
+      console.log("[Radio] Starting My Vibe with existing song:", track.title);
+      playMyVibeTrack(track);
+    } else if (tracksLoaded && allTracks.length > 0) {
+      // No current song — ask RadioContext to pick one, then play it
+      console.log("[Radio] Starting My Vibe — initializing queue");
+      startMyVibeQueue((firstTrack) => {
+        if (firstTrack) playMyVibeTrack(firstTrack);
+      });
+    } else {
+      console.warn("[Radio] My Vibe — no tracks loaded yet");
+    }
+  }, [currentRadioSong, tracksLoaded, allTracks, startMyVibeQueue]);
 
-  // ── Live stream stall/error auto-reconnect ────────────────────────────────
-  useEffect(() => {
-    const el = getLiveAudioEl();
+  // ── When nextRadioSong is called externally (skip/end), pick new song from RAM ──
+  // RadioContext's nextRadioSong updates currentRadioSong → the useEffect above fires playMyVibeTrack
 
-    const tryReconnect = () => {
-      if (!liveIntendedRef.current) return;
-      if (liveReconnectRef.current) return;
-      console.log("[LiveRadio] interrupted — reconnecting in 2s");
-      setLiveIsPlaying(false);
-      liveReconnectRef.current = setTimeout(() => {
-        liveReconnectRef.current = null;
-        if (!liveIntendedRef.current) return;
-        el.src = LIVE_STREAM_URL;
-        el.load();
-        el.play()
-          .then(() => { el.volume = 0.9; setLiveIsPlaying(true); setLiveIsLoading(false); })
-          .catch((err) => console.warn("[LiveRadio] reconnect blocked:", err.message));
-      }, 2000);
-    };
-
-    const onStall = () => { if (liveIntendedRef.current) tryReconnect(); };
-    const onError = () => { if (liveIntendedRef.current) tryReconnect(); };
-    const onEnded = () => { if (liveIntendedRef.current) tryReconnect(); };
-
-    el.addEventListener("stalled", onStall);
-    el.addEventListener("error",   onError);
-    el.addEventListener("ended",   onEnded);
-
-    return () => {
-      el.removeEventListener("stalled", onStall);
-      el.removeEventListener("error",   onError);
-      el.removeEventListener("ended",   onEnded);
-    };
-  }, []);
-
-  // On unmount: stop live stream only
-  useEffect(() => {
-    return () => {
-      if (liveReconnectRef.current) { clearTimeout(liveReconnectRef.current); liveReconnectRef.current = null; }
-      liveIntendedRef.current = false;
-      const el = _liveAudioEl;
-      if (el && !el.paused) { el.pause(); el.src = ""; el.volume = 0.9; }
-    };
-  }, []);
-
-  // ── Song mini-sheet (no-navigation song detail) ───────────────────────────
+  // ── Song mini-sheet ───────────────────────────────────────────────────────
   const [sheetTrack, setSheetTrack] = useState(null);
   const [sheetDownloadIntent, setSheetDownloadIntent] = useState(false);
   const openSheet = useCallback((track, downloadIntent = false) => {
@@ -312,13 +270,17 @@ export default function RadioPage() {
   const handleTogglePulse = (v) => { setPulseOn(v); setPulseEnabled(v); };
   const handleCycleMode = (next) => {
     setVizMode(next);
-    try { localStorage.setItem(PREF_KEY, next); } catch {}
+    try { localStorage.setItem(VIZ_PREF_KEY, next); } catch {}
   };
   const currentModeObj = MODES.find(m => m.id === vizMode) || MODES[0];
 
-  const anyPlaying = liveIsPlaying || myVibeIsPlaying;
-  // Visualizer always connects to whichever source is actually playing
-  const vizAudioRef = liveIsPlaying ? liveAudioRef : globalAudioRef;
+  // Derived display state
+  const liveIsPlaying = ramState.activeMode === "upperVibeRadio" && ramState.isPlaying;
+  const liveIsLoading = ramState.activeMode === "upperVibeRadio" && ramState.audioStatus === "loading";
+  const liveError = ramState.activeMode === "upperVibeRadio" ? ramState.lastError : null;
+  const myVibeIsPlaying = ramState.activeMode === "myVibeRadio" && ramState.isPlaying;
+  const anyPlaying = ramState.isPlaying;
+
   const p = theme.vars["--rt-primary"];
   const themeStyle = Object.entries(theme.vars).reduce((acc, [k, v]) => { acc[k] = v; return acc; }, { WebkitOverflowScrolling: "touch" });
   const badges = activeTab === "live" ? LIVE_BADGES : MYVIBE_BADGES;
@@ -326,7 +288,7 @@ export default function RadioPage() {
   return (
     <div className="min-h-screen" style={themeStyle}>
 
-      {/* Ambient */}
+      {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <motion.div
           animate={{ opacity: anyPlaying ? 0.06 : 0.03 }}
@@ -343,7 +305,7 @@ export default function RadioPage() {
           paddingBottom: "calc(9rem + env(safe-area-inset-bottom, 16px))",
         }}
       >
-        {/* ── Header ── */}
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
           className="text-center mb-6">
@@ -364,7 +326,7 @@ export default function RadioPage() {
           </p>
         </motion.div>
 
-        {/* ── Tab Switcher ── */}
+        {/* Tab Switcher */}
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }}
           className="flex rounded-2xl p-1 mb-6"
@@ -402,11 +364,10 @@ export default function RadioPage() {
           })}
         </motion.div>
 
-        {/* ── Persistent Now Playing Banner — shows across both tabs ── */}
+        {/* Cross-tab now-playing banners */}
         <AnimatePresence>
           {activeTab === "myvibe" && liveIsPlaying && (
-            <motion.div
-              key="live-playing-notice"
+            <motion.div key="live-banner"
               initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
               className="mb-3 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2.5 rounded-xl"
@@ -416,13 +377,12 @@ export default function RadioPage() {
                   <RadioIcon className="w-3 h-3 flex-shrink-0" style={{ color: `rgb(${p})` }} />
                   <span className="text-[10px] font-black tracking-wider uppercase" style={{ color: `rgb(${p})` }}>Live Radio Still Playing</span>
                 </div>
-                <button onClick={stopLiveStream} className="text-[9px] font-black opacity-60 hover:opacity-100 transition-opacity uppercase tracking-wider" style={{ color: `rgb(${p})` }}>Stop</button>
+                <button onClick={pauseUpperVibeRadio} className="text-[9px] font-black opacity-60 hover:opacity-100 transition-opacity uppercase tracking-wider" style={{ color: `rgb(${p})` }}>Stop</button>
               </div>
             </motion.div>
           )}
           {activeTab === "live" && myVibeIsPlaying && (
-            <motion.div
-              key="myvibe-playing-notice"
+            <motion.div key="myvibe-banner"
               initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
               className="mb-3 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2.5 rounded-xl"
@@ -433,13 +393,13 @@ export default function RadioPage() {
                     My Vibe Playing{myVibeTrack ? `: ${myVibeTrack.title}` : ""}
                   </span>
                 </div>
-                <button onClick={globalToggle} className="text-[9px] font-black opacity-60 hover:opacity-100 transition-opacity uppercase tracking-wider flex-shrink-0 ml-2" style={{ color: `rgb(${p})` }}>Pause</button>
+                <button onClick={pauseMyVibe} className="text-[9px] font-black opacity-60 hover:opacity-100 transition-opacity uppercase tracking-wider flex-shrink-0 ml-2" style={{ color: `rgb(${p})` }}>Pause</button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── Viz Mode + Theme Picker ── */}
+        {/* Viz mode + theme picker */}
         <div className="flex justify-between items-center mb-2" style={{ maxWidth: 440, margin: "0 auto 8px" }}>
           <button
             onClick={() => handleCycleMode(MODES[(MODES.findIndex(m => m.id === vizMode) + 1) % MODES.length].id)}
@@ -457,7 +417,7 @@ export default function RadioPage() {
           <RadioThemePicker themeId={themeId} onSelect={applyTheme} pulseEnabled={pulseOn} onTogglePulse={handleTogglePulse} />
         </div>
 
-        {/* ── Visualizer ── */}
+        {/* Visualizer */}
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
@@ -482,14 +442,14 @@ export default function RadioPage() {
               themeColor={p}
               mode={vizMode}
               onCycleMode={handleCycleMode}
-              radioAudioRef={vizAudioRef}
+              radioAudioRef={VIZ_AUDIO_REF}
             />
             <div className="pointer-events-none absolute inset-0"
               style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />
           </div>
         </motion.div>
 
-        {/* ── Player Card ── */}
+        {/* Player Cards */}
         <AnimatePresence mode="wait">
           {activeTab === "live" ? (
             <motion.div key="live"
@@ -517,11 +477,13 @@ export default function RadioPage() {
                 isPlaying={myVibeIsPlaying}
                 track={myVibeTrack}
                 onToggle={handleMyVibeToggle}
-                onNext={nextRadioSong}
+                onNext={handleSkip}
                 onPrev={hasPrev ? prevRadioSong : null}
                 onLike={handleLike}
+                onSave={handleSave}
                 onPlayLess={handlePlayLess}
                 isLiked={isLiked}
+                isSaved={isSaved}
                 isPlayLess={isPlayLess}
                 theme={theme}
                 p={p}
@@ -536,7 +498,7 @@ export default function RadioPage() {
           )}
         </AnimatePresence>
 
-        {/* ── Feature badges ── */}
+        {/* Feature badges */}
         <div className="flex flex-wrap justify-center gap-2 mb-8">
           {badges.map((label) => (
             <span key={label} className="text-[9px] font-black tracking-[0.15em] uppercase px-3 py-1.5 rounded-full"
@@ -546,13 +508,12 @@ export default function RadioPage() {
           ))}
         </div>
 
-        {/* ── Tab-specific content ── */}
+        {/* Tab content */}
         {activeTab === "live" && (
           <div className="mt-2">
             <TrendingLiveSection themeVars={theme.vars} />
           </div>
         )}
-
         {activeTab === "myvibe" && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
@@ -573,7 +534,7 @@ export default function RadioPage() {
 
       <IOSTip trigger="always" />
 
-      {/* ── Song Mini Sheet — no navigation, radio keeps playing ── */}
+      {/* Song Mini Sheet */}
       <AnimatePresence>
         {sheetTrack && (
           <SongMiniSheet
@@ -608,7 +569,6 @@ function LivePlayerCard({ isPlaying, isLoading, error, nowPlaying, onToggle, the
       <div className="relative z-10 rounded-3xl p-8 flex flex-col items-center gap-5"
         style={{ background: "rgba(255,255,255,0.028)", border: `1px solid rgba(${p},0.12)` }}>
 
-        {/* Cover */}
         <div className="relative w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0"
           style={{ border: `1px solid rgba(${p},0.25)` }}>
           {nowPlaying?.coverart ? (
@@ -631,7 +591,6 @@ function LivePlayerCard({ isPlaying, isLoading, error, nowPlaying, onToggle, the
           )}
         </div>
 
-        {/* Info */}
         <div className="text-center">
           <p className="text-white/35 text-[10px] uppercase tracking-widest mb-1">
             {isPlaying ? "Now Playing · Upper Vibe Live Radio" : "Upper Vibe Live Radio"}
@@ -650,7 +609,6 @@ function LivePlayerCard({ isPlaying, isLoading, error, nowPlaying, onToggle, the
           {error && <p className="text-yellow-400/70 text-xs mt-2">{error}</p>}
         </div>
 
-        {/* Play button */}
         <motion.button
           onClick={onToggle}
           whileTap={{ scale: 0.92 }}
@@ -685,7 +643,8 @@ function LivePlayerCard({ isPlaying, isLoading, error, nowPlaying, onToggle, the
 // ── My Vibe Player Card ───────────────────────────────────────────────────────
 function MyVibePlayerCard({
   isPlaying, track, onToggle, onNext, onPrev,
-  onLike, onPlayLess, isLiked, isPlayLess,
+  onLike, onSave, onPlayLess,
+  isLiked, isSaved, isPlayLess,
   theme, p, pulseOn, isPageVisible,
   isPlus, isLoggedIn, navigate, onOpenSheet,
 }) {
@@ -696,7 +655,7 @@ function MyVibePlayerCard({
 
   const handleDownload = () => {
     if (!track?.id || !onOpenSheet) return;
-    onOpenSheet(track, true); // true = scroll to download
+    onOpenSheet(track, true);
   };
 
   return (
@@ -715,15 +674,11 @@ function MyVibePlayerCard({
       <div className="relative z-10 rounded-3xl p-6 flex flex-col items-center gap-4"
         style={{ background: "rgba(255,255,255,0.028)", border: `1px solid rgba(${p},0.12)` }}>
 
-        {/* Clickable Cover */}
+        {/* Clickable cover — opens mini sheet, does NOT pause radio */}
         <div
           onClick={handleCoverClick}
-          title={track ? "Open Song Page" : undefined}
           className="relative w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0 group"
-          style={{
-            border: `1px solid rgba(${p},0.25)`,
-            cursor: track ? "pointer" : "default",
-          }}>
+          style={{ border: `1px solid rgba(${p},0.25)`, cursor: track ? "pointer" : "default" }}>
           {track?.cover_url ? (
             <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
           ) : (
@@ -749,17 +704,14 @@ function MyVibePlayerCard({
           )}
         </div>
 
-        {/* Song details label */}
         {track && (
-          <button
-            onClick={handleCoverClick}
+          <button onClick={handleCoverClick}
             className="text-[9px] font-black tracking-[0.15em] uppercase -mt-2 transition-opacity hover:opacity-80"
             style={{ color: `rgba(${p},0.5)` }}>
             Song Details ↑
           </button>
         )}
 
-        {/* Info */}
         <div className="text-center -mt-1">
           <p className="text-white/35 text-[10px] uppercase tracking-widest mb-1">
             {isPlaying ? "Now Playing · My Vibe Radio" : "My Vibe Radio"}
@@ -777,7 +729,7 @@ function MyVibePlayerCard({
           )}
         </div>
 
-        {/* Main controls: prev / play / next */}
+        {/* Playback controls */}
         <div className="flex items-center gap-5">
           <button
             onClick={onPrev || undefined}
@@ -816,41 +768,43 @@ function MyVibePlayerCard({
           </button>
         </div>
 
-        {/* ── Feedback action row: Like / Play Less / Download ── */}
+        {/* Feedback buttons */}
         {track && (
           <div className="flex items-center justify-center gap-2 flex-wrap w-full">
-
             {/* Like */}
-            <button
-              onClick={isLoggedIn ? onLike : undefined}
+            <button onClick={isLoggedIn ? onLike : undefined}
               title={isLoggedIn ? (isLiked ? "Unlike" : "Like") : "Log in to like"}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all active:scale-95"
               style={isLiked ? {
-                background: "rgba(239,68,68,0.18)",
-                border: "1px solid rgba(239,68,68,0.45)",
-                color: "#f87171",
+                background: "rgba(239,68,68,0.18)", border: "1px solid rgba(239,68,68,0.45)", color: "#f87171",
               } : {
-                background: `rgba(${p},0.07)`,
-                border: `1px solid rgba(${p},0.22)`,
-                color: `rgba(${p},0.75)`,
+                background: `rgba(${p},0.07)`, border: `1px solid rgba(${p},0.22)`, color: `rgba(${p},0.75)`,
               }}>
               <Heart className={`w-3.5 h-3.5 ${isLiked ? "fill-current" : ""}`} />
               <span>{isLiked ? "Liked" : "Like"}</span>
             </button>
 
-            {/* Play Less Like This */}
-            <button
-              onClick={onPlayLess}
-              title={isPlayLess ? "Undo Play Less" : "Play Less Like This"}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all active:scale-95"
-              style={isPlayLess ? {
-                background: "rgba(251,146,60,0.18)",
-                border: "1px solid rgba(251,146,60,0.4)",
-                color: "#fb923c",
+            {/* Save */}
+            <button onClick={isLoggedIn ? onSave : undefined}
+              title={isLoggedIn ? (isSaved ? "Saved" : "Save") : "Log in to save"}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all active:scale-95"
+              style={isSaved ? {
+                background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80",
               } : {
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "rgba(255,255,255,0.4)",
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)",
+              }}>
+              <Bookmark className={`w-3.5 h-3.5 ${isSaved ? "fill-current" : ""}`} />
+              <span>{isSaved ? "Saved" : "Save"}</span>
+            </button>
+
+            {/* Play Less */}
+            <button onClick={onPlayLess}
+              title={isPlayLess ? "Undo Play Less" : "Play Less Like This"}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all active:scale-95"
+              style={isPlayLess ? {
+                background: "rgba(251,146,60,0.18)", border: "1px solid rgba(251,146,60,0.4)", color: "#fb923c",
+              } : {
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)",
               }}>
               <ThumbsDown className="w-3.5 h-3.5" />
               <span className="hidden xs:inline">{isPlayLess ? "Undone" : "Play Less"}</span>
@@ -858,18 +812,13 @@ function MyVibePlayerCard({
             </button>
 
             {/* Download */}
-            <button
-              onClick={handleDownload}
+            <button onClick={handleDownload}
               title={isPlus ? "Download" : "Unlock Downloads (Plus)"}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all active:scale-95"
               style={isPlus ? {
-                background: `rgba(${p},0.12)`,
-                border: `1px solid rgba(${p},0.35)`,
-                color: `rgb(${p})`,
+                background: `rgba(${p},0.12)`, border: `1px solid rgba(${p},0.35)`, color: `rgb(${p})`,
               } : {
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "rgba(255,255,255,0.25)",
+                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.25)",
               }}>
               {isPlus ? <Download className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
               <span className="hidden xs:inline">{isPlus ? "Download" : "Unlock"}</span>
@@ -877,7 +826,6 @@ function MyVibePlayerCard({
           </div>
         )}
 
-        {/* Status pill */}
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
           style={{ background: `rgba(${p},0.08)`, border: `1px solid rgba(${p},0.2)` }}>
           <Music4 className="w-3 h-3" style={{ color: `rgb(${p})` }} />

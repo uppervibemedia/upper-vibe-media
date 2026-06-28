@@ -762,16 +762,14 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     loop();
   }, [isPlaying, radioAudioRef, currentSong]);
 
-  // Cleanup local AudioContext on unmount
+  // On unmount: stop the animation loop but do NOT close the AudioContext.
+  // The audio element is a singleton shared across remounts — closing the context
+  // would permanently break createMediaElementSource on subsequent mounts.
   useEffect(() => {
     return () => {
       stopLoop();
-      try { if (sourceRef.current) sourceRef.current.disconnect(); } catch {}
-      try { if (analyserRef.current) analyserRef.current.disconnect(); } catch {}
-      try { if (audioCtxRef.current) audioCtxRef.current.close(); } catch {}
-      sourceRef.current = null;
-      analyserRef.current = null;
-      audioCtxRef.current = null;
+      // Keep sourceRef/analyserRef/audioCtxRef alive so they can be reused on remount.
+      // The source is permanently bound to the audio element — reuse it next time.
     };
   }, []);
 
