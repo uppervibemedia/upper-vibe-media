@@ -456,6 +456,7 @@ export default function RadioPage() {
               mode={vizMode}
               onCycleMode={handleCycleMode}
               radioAudioRef={VIZ_AUDIO_REF}
+              isLiveStream={activeTab === "live"}
             />
             <div className="pointer-events-none absolute inset-0"
               style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />

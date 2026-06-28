@@ -544,8 +544,10 @@ function drawDrift(ctx, W, H, sm, bufLen, t, particlesRef, bass, treble) {
 }
 
 // ── Fallback (no live data) — gentle animation to show the mode ───────────────
-function runFallback(ctx, W, H, t, mode, color, active) {
-  const cx = W / 2, cy = H / 2, pulse = active ? 0.55 + Math.sin(t * 1.4) * 0.45 : 0.15;
+function runFallback(ctx, W, H, t, mode, color, active, boost = 1.0) {
+  const cx = W / 2, cy = H / 2;
+  const rawPulse = active ? 0.55 + Math.sin(t * 1.4) * 0.45 : 0.15;
+  const pulse = Math.min(1, rawPulse * boost);
 
   if (mode === "spectrum" || mode === "tunnel") {
     const maxR = Math.min(W, H) * 0.44, rings = mode === "tunnel" ? 10 : 7;
@@ -608,15 +610,16 @@ function runFallback(ctx, W, H, t, mode, color, active) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export { MODES };
-export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "0,229,255", mode: modeProp, onCycleMode, radioAudioRef }) {
+export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "0,229,255", mode: modeProp, onCycleMode, radioAudioRef, isLiveStream }) {
   const canvasRef    = useRef(null);
   const rafRef       = useRef(null);
-  const analyserRef  = useRef(null);
-  const audioCtxRef  = useRef(null);
-  const sourceRef    = useRef(null);
-  const particlesRef = useRef([]);
-  const logTimerRef  = useRef(0);
-  const debugRef     = useRef({});
+  const analyserRef     = useRef(null);
+  const audioCtxRef     = useRef(null);
+  const sourceRef       = useRef(null);
+  const destConnectedRef = useRef(false);  // tracks whether analyser→destination is connected
+  const particlesRef    = useRef([]);
+  const logTimerRef     = useRef(0);
+  const debugRef        = useRef({});
 
   const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
   const [internalMode, setInternalMode] = useState(getSavedMode);
@@ -644,6 +647,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       // Create or reuse AudioContext — never close it between mounts
       if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        destConnectedRef.current = false;
       }
 
       const ctx = audioCtxRef.current;
@@ -652,21 +656,29 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       }
 
       // Create analyser once; reuse across remounts
+      // Use lower smoothing for live streams (more responsive) vs local tracks
       if (!analyserRef.current) {
         const an = ctx.createAnalyser();
         an.fftSize = 2048;
-        an.smoothingTimeConstant = 0.75;
+        an.smoothingTimeConstant = isLiveStream ? 0.55 : 0.75;
         analyserRef.current = an;
       }
 
-      // If source already exists and points to the same audio element, just reconnect
-      // the graph (analyser → destination) in case it was disconnected.
+      // If source already exists and points to the same audio element, reconnect
+      // the graph. IMPORTANT: disconnect first to prevent stacking connections.
       // NEVER call createMediaElementSource twice on the same element.
       if (sourceRef.current && sourceRef.current._el === audio) {
         try {
+          sourceRef.current.disconnect();
           sourceRef.current.connect(analyserRef.current);
-          analyserRef.current.connect(ctx.destination);
         } catch {}
+        // Only connect analyser → destination once
+        if (!destConnectedRef.current) {
+          try {
+            analyserRef.current.connect(ctx.destination);
+            destConnectedRef.current = true;
+          } catch {}
+        }
         console.log("[RadioViz] AudioGraph reconnected (existing source reused) | ctxState:", ctx.state);
         return true;
       }
@@ -682,7 +694,10 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       const src = ctx.createMediaElementSource(audio);
       src._el = audio;
       src.connect(analyserRef.current);
-      analyserRef.current.connect(ctx.destination);
+      if (!destConnectedRef.current) {
+        analyserRef.current.connect(ctx.destination);
+        destConnectedRef.current = true;
+      }
       sourceRef.current = src;
       console.log("[RadioViz] AudioGraph connected (new source) | ctxState:", ctx.state, "| src:", audio.src?.substring(0, 50));
 
@@ -693,7 +708,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
       analyserRef.current = null;
       return false;
     }
-  }, [radioAudioRef]);
+  }, [radioAudioRef, isLiveStream]);
 
   const stopLoop = useCallback(() => {
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
@@ -750,27 +765,30 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
             default:         drawDrift(ctx, lW, lH, sm, bufLen, t, particlesRef, bass, treble); break;
           }
         } else {
-          // Analyser connected but CORS/stream not giving data — show fallback + log
+          // Analyser connected but no frequency data
           if (Date.now() - logTimerRef.current > 3000) {
             logTimerRef.current = Date.now();
-            console.warn("[RadioViz] analyser connected but no frequency data — likely CORS block",
-              "| audio.paused:", audio?.paused);
+            console.warn("[RadioViz] analyser connected but no frequency data",
+              "| audio.paused:", audio?.paused, "| isLive:", isLiveStream);
           }
-          runFallback(ctx, lW, lH, t, currentMode, color, isPlaying);
+          // Live stream gets a more energetic fallback while data buffers
+          const liveBoost = isLiveStream ? 1.35 : 1.0;
+          runFallback(ctx, lW, lH, t, currentMode, color, isPlaying, liveBoost);
         }
       } else {
         if (Date.now() - logTimerRef.current > 3000) {
           logTimerRef.current = Date.now();
           console.log("[RadioViz] no analyser | ctxState:", localCtx?.state || "null",
-            "| audioEl:", !!audio, "| paused:", audio?.paused);
+            "| audioEl:", !!audio, "| paused:", audio?.paused, "| isLive:", isLiveStream);
         }
-        runFallback(ctx, lW, lH, t, currentMode, color, isPlaying);
+        const liveBoost = isLiveStream ? 1.35 : 1.0;
+        runFallback(ctx, lW, lH, t, currentMode, color, isPlaying, liveBoost);
       }
 
       rafRef.current = requestAnimationFrame(loop);
     };
     loop();
-  }, [isPlaying, radioAudioRef, currentSong]);
+  }, [isPlaying, radioAudioRef, currentSong, isLiveStream]);
 
   // On unmount: stop the animation loop but do NOT close the AudioContext.
   // The audio element is a singleton shared across remounts — closing the context
@@ -880,6 +898,40 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     const t3 = (isIOS || isSafari) ? setTimeout(() => attempt("1800ms"), 1800) : null;
     return () => { clearTimeout(t1); clearTimeout(t2); if (t3) clearTimeout(t3); };
   }, [isPlaying]);
+
+  // ── Live stream: periodic graph reset/reconnect when data not flowing ─────
+  // Every 5 seconds while live radio is playing, if analyser is connected but
+  // frequency data stays at zero, reset and reconnect the graph.
+  useEffect(() => {
+    if (!isPlaying || !isLiveStream) return;
+    const id = setInterval(async () => {
+      if (!rafRef.current) return;  // no loop running
+      const an = analyserRef.current;
+      if (!an) return;
+      // Quick check: is there ANY non-zero frequency data?
+      const buffer = new Uint8Array(an.frequencyBinCount);
+      an.getByteFrequencyData(buffer);
+      let live = false;
+      for (let i = 0; i < Math.min(128, buffer.length); i++) {
+        if (buffer[i] > 2) { live = true; break; }
+      }
+      if (live) return; // data is flowing — no reset needed
+      // Frequency data stuck at zero — force-reset the graph
+      console.log("[RadioViz] Live stream — frequency data stuck, resetting graph");
+      // Fully reset: disconnect old, null everything, reconnect fresh
+      try { sourceRef.current?.disconnect(); } catch {}
+      sourceRef.current = null;
+      analyserRef.current = null;
+      destConnectedRef.current = false;
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();  // close old context
+        audioCtxRef.current = null;
+      }
+      await tryConnectAnalyser();
+      if (!rafRef.current) startLoop(mode, themeColor);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [isPlaying, isLiveStream, mode, themeColor]);
 
   const currentModeObj = MODES.find(m => m.id === mode) || MODES[0];
 
