@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X, Mic2 } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X, Mic2, Music4 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import ShareVibeButton from "../shared/ShareVibeButton";
 import ThumbsDownButton from "../shared/ThumbsDownButton";
 import { Slider } from "@/components/ui/slider";
@@ -11,6 +12,7 @@ import usePageVisible from "@/hooks/usePageVisible";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function AudioPlayer() {
+  const navigate = useNavigate();
   const {
     currentTrack,
     isPlaying,
@@ -22,6 +24,8 @@ export default function AudioPlayer() {
     skipTrack,
     lastTimeRef,
     sourceType,
+    queue,
+    playTrack,
   } = usePlayer();
 
   const { user } = useAuth();
@@ -146,6 +150,14 @@ export default function AudioPlayer() {
     audioRef.current.volume = muted ? 0 : volume / 100;
   }, [volume, muted, audioRef]);
 
+  const handleIdlePlay = () => {
+    if (queue?.length > 0 && queue[0]?.audio_url) {
+      playTrack(queue[0], "song", 0);
+    } else {
+      navigate("/start");
+    }
+  };
+
   const handleSeek = (val) => {
     const audio = audioRef.current;
     if (!audio.duration) return;
@@ -163,21 +175,18 @@ export default function AudioPlayer() {
     return `${m}:${s}`;
   };
 
+  // ── Always-rendered persistent player bar ──
   return (
-    <AnimatePresence>
-      {currentTrack && (
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          transition={{ type: "spring", damping: 28, stiffness: 200 }}
-          className="fixed left-0 right-0 lg:left-[72px] z-40 border-t border-border/30 player-bar"
-          style={{
-            background: "hsl(var(--card) / 0.98)",
-            backdropFilter: "blur(40px)",
-            WebkitBackdropFilter: "blur(40px)",
-          }}
-        >
+    <div
+      className="fixed left-0 right-0 lg:left-[72px] z-40 border-t border-border/30 player-bar"
+      style={{
+        background: "hsl(var(--card) / 0.98)",
+        backdropFilter: "blur(40px)",
+        WebkitBackdropFilter: "blur(40px)",
+      }}
+    >
+      {currentTrack ? (
+        <>
           {/* Seek bar */}
           <div
             className="relative h-[3px] w-full cursor-pointer group"
@@ -188,7 +197,6 @@ export default function AudioPlayer() {
               handleSeek([pct]);
             }}
           >
-            {/* Progress fill: theme color is the big background line, the two others lead as small bright tips */}
             <div
               className="h-full"
               style={{
@@ -203,7 +211,6 @@ export default function AudioPlayer() {
                 )`
               }}
             />
-            {/* Hover thumb */}
             <div
               className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
               style={{
@@ -264,7 +271,6 @@ export default function AudioPlayer() {
               <button
                 onClick={() => {
                   handlePrev();
-                  // Fallback for non-radio: restart current track
                   if (sourceType !== "radio") {
                     const a = audioRef.current;
                     if (a && a.currentTime > 3) a.currentTime = 0;
@@ -346,8 +352,37 @@ export default function AudioPlayer() {
               <X className="w-4 h-4" />
             </button>
           </div>
-        </motion.div>
+        </>
+      ) : (
+        /* ── Idle state: compact bar when no track is loaded ── */
+        <div className="flex items-center gap-3 px-4 py-3 md:px-6">
+          <div
+            className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center"
+            style={{ background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}
+          >
+            <Music4 className="w-4 h-4" style={{ color: "rgba(0,229,255,0.45)" }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground/45 truncate leading-tight">Choose Music</p>
+            <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">Upper Vibe Media</p>
+          </div>
+
+          <button
+            onClick={handleIdlePlay}
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 flex-shrink-0"
+            style={{
+              background: `linear-gradient(135deg, rgba(${themeRgb},0.9), rgb(${themeRgb}))`,
+              boxShadow: `0 0 20px rgba(${themeRgb},0.45)`,
+              minWidth: "44px",
+              minHeight: "44px",
+              touchAction: "manipulation",
+            }}
+            aria-label="Start playing music"
+          >
+            <Play className="w-3.5 h-3.5 md:w-4 md:h-4 text-black ml-0.5" />
+          </button>
+        </div>
       )}
-    </AnimatePresence>
+    </div>
   );
 }

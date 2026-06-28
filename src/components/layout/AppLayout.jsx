@@ -73,7 +73,7 @@ function LayoutContent() {
 
   const mainStyle = {
     paddingTop: isStartPage ? "0px" : "calc(56px + env(safe-area-inset-top, 0px))",
-    paddingBottom: isStartPage ? "0px" : currentTrack && !isRadioPage
+    paddingBottom: isStartPage ? "0px" : !isRadioPage
       ? "calc(56px + 72px + env(safe-area-inset-bottom, 12px))"
       : "calc(56px + env(safe-area-inset-bottom, 12px))",
   };
