@@ -33,7 +33,6 @@ import {
   resumeMyVibe,
   pauseUpperVibeRadio,
   resumeUpperVibeRadio,
-  saveMyVibePosition,
   restoreMyVibePosition,
   getAudioElement,
 } from "@/lib/radioAudioManager";
@@ -1279,12 +1278,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: (loading || stageFullScreen) ? 0 : 1 }}
-        style={{ pointerEvents: (loading || stageFullScreen) ? "none" : "auto" }}
         transition={{ delay: stageFullScreen ? 0 : 0.4 }}
         className="absolute top-0 left-0 right-0 flex items-center justify-between"
         style={{
           zIndex: 200,
-          pointerEvents: "none",
+          pointerEvents: (loading || stageFullScreen) ? "none" : "auto",
           paddingTop: isMobile && mobileLayout
             ? `${mobileLayout.sa.top + 4}px`
             : "calc(env(safe-area-inset-top, 0px) + 4px)",
