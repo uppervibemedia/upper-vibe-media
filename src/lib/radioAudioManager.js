@@ -92,6 +92,10 @@ function _clearReconnect() {
   }
 }
 
+// ── Saved state for cross-mode restoration (Live ↔ My Vibe switching) ─────────
+let _savedMyVibeTrackId = null;
+let _savedMyVibePosition = 0;
+
 // ── Callbacks from outside (RadioContext) ────────────────────────────────────
 let _onMyVibeEnded = null;    // called when a myVibe track ends naturally
 let _onMyVibeError = null;    // called when a myVibe track errors
@@ -220,6 +224,13 @@ export function playUpperVibeRadio() {
   if (_state.activeMode === "upperVibeRadio" && _state.intendedToPlay && !audio.paused) {
     console.log("[RAM] Already playing live radio — no-op");
     return;
+  }
+
+  // ── Save My Vibe position before switching to Live ────────────────────
+  if (_state.activeMode === "myVibeRadio" && _state.currentTrack) {
+    _savedMyVibeTrackId = _state.currentTrack.id;
+    _savedMyVibePosition = audio.currentTime;
+    console.log("[RAM] Saved My Vibe state before switching to Live | track:", _savedMyVibeTrackId, "| pos:", _savedMyVibePosition.toFixed(2));
   }
 
   // Stop whatever was playing
@@ -387,10 +398,20 @@ export function playMyVibeTrack(track) {
     return;
   }
 
-  console.log("[RAM] playMyVibeTrack:", track.title, "| url:", track.audio_url.substring(0, 60));
+  // ── RESTORE SAVED POSITION when switching back from Live mode ──────────
+  // _savedMyVibeTrackId is set by playUpperVibeRadio before it stops My Vibe
+  const isRestoringFromLive = _savedMyVibeTrackId === track.id && _savedMyVibePosition > 0;
+  const restoreTime = isRestoringFromLive ? _savedMyVibePosition : 0;
+
+  console.log("[RAM] playMyVibeTrack:", track.title, "| url:", track.audio_url.substring(0, 60),
+    "| restore:", isRestoringFromLive, "| restoreTime:", restoreTime.toFixed(2));
 
   // Stop whatever was playing
   _stopAudio("before myVibe track");
+
+  // Clear saved state after using it
+  _savedMyVibeTrackId = null;
+  _savedMyVibePosition = 0;
 
   _setState({
     activeMode: "myVibeRadio",
@@ -401,7 +422,7 @@ export function playMyVibeTrack(track) {
     audioStatus: "loading",
     lastError: null,
     isPlaying: false,
-    currentTime: 0,
+    currentTime: restoreTime,
     duration: 0,
   });
 
@@ -409,6 +430,25 @@ export function playMyVibeTrack(track) {
 
   audio.src = track.audio_url;
   audio.load();
+
+  // Seek to saved position once metadata loads
+  if (isRestoringFromLive && restoreTime > 0) {
+    const seekTarget = restoreTime;
+    const doSeek = () => {
+      if (_state.activeMode !== "myVibeRadio") return;
+      try {
+        if (Math.abs(audio.currentTime - seekTarget) > 0.5) {
+          audio.currentTime = seekTarget;
+          _setState({ currentTime: seekTarget });
+        }
+      } catch {}
+    };
+    audio.addEventListener("loadedmetadata", doSeek, { once: true });
+    // Also try immediately if already ready
+    if (audio.readyState >= 1) {
+      try { audio.currentTime = seekTarget; _setState({ currentTime: seekTarget }); } catch {}
+    }
+  }
 
   const promise = audio.play();
   if (promise) {

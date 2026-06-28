@@ -19,7 +19,7 @@ import { detectZone } from "@/components/vibeworld/zoneDetection";
 import { base44 } from "@/api/base44Client";
 import { playCoinSound } from "@/lib/vibeCoinSound";
 import WorldHUD from "@/components/vibeworld/WorldHUD";
-import ResumeMusicButton from "@/components/vibeworld/ResumeMusicButton";
+// Resume button removed — DraggableMediaPlayer handles all gesture playback
 import RPMAvatarCreator from "@/components/vibeworld/RPMAvatarCreator";
 import MessageRequestComposer from "@/components/vibeworld/panels/MessageRequestComposer";
 import DirectChatPanel from "@/components/vibeworld/panels/DirectChatPanel";
@@ -129,9 +129,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const jukeboxFadeRef = useRef(null);        // kept for cleanup compat
 
-  // ── Resume Music button (iPhone Safari autoplay blocker fallback) ────────
-  const [showResumeButton, setShowResumeButton] = useState(false);
-  const resumeButtonHandledRef = useRef(false);
+  // ── iOS detection ref — kept for scroll-lock below ────────────────────────
   const isIOSRef = useRef(false);
 
   // ── Dance Floor / Emote state ─────────────────────────────────────────────
@@ -959,39 +957,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
   }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
 
-  // ── iPhone Safari autoplay detection ────────────────────────────────
-  // Only show button if there was actually music loaded (not the idle "Choose Music" state)
-  // and user is NOT on the dance floor (DJ audio handles playback there)
-  useEffect(() => {
-    if (!feedStartedRef.current || resumeButtonHandledRef.current) return;
-    if (!isIOSRef.current) return;
-    if (!currentTrack) return; // No track loaded — nothing to resume, show idle "Choose Music" instead
-    const audio = audioRef?.current;
-    if (!audio) return;
-    const t = setTimeout(() => {
-      // Don't show resume button if on dance floor — DJ owns audio there
-      if (onDanceFloorRef2.current) return;
-      // Safari blocks autoplay silently: play() resolves, but played stays empty
-      if (audio.played.length === 0 || audio.paused) {
-        resumeButtonHandledRef.current = true;
-        setShowResumeButton(true);
-      }
-    }, 800);
-    return () => clearTimeout(t);
-  }, [feedStartedRef.current, audioRef]);
-
-  const handleResumeMusic = useCallback(() => {
-    // User gesture-triggered resume — Safari allows this
-    togglePlay?.();
-    setShowResumeButton(false);
-  }, [togglePlay]);
-
-  // Hide Resume Music button once audio actually starts playing
-  useEffect(() => {
-    if (isPlaying && showResumeButton) {
-      setShowResumeButton(false);
-    }
-  }, [isPlaying, showResumeButton]);
+  // ── No resume button needed ───────────────────────────────────────────────
+  // The DraggableMediaPlayer is always visible and its play button handles iOS
+  // gesture-triggered playback. A separate resume button would be redundant.
 
   const personalBaseVolRef = useRef(1.0);
   // Single timer ref for dance floor audio transitions — always cancel before scheduling
@@ -1045,7 +1013,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           togglePlayRef.current?.();
         }
       }
-      setShowResumeButton(false);
     } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
       // ── Leaving dance floor — 500ms clean delay before resuming personal audio ──
       wasOnDanceFloorRef.current = false;
@@ -1516,10 +1483,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         );
       })()}
 
-      {/* iPhone Safari Resume Music button — shown when autoplay was blocked */}
-      {showResumeButton && (
-        <ResumeMusicButton isMobile={isMobile} onResume={handleResumeMusic} />
-      )}
+      {/* No Resume Music button — DraggableMediaPlayer handles iOS gesture playback */}
 
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
