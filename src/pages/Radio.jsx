@@ -97,18 +97,27 @@ export default function RadioPage() {
   const startLiveStream = useCallback(() => {
     setLiveError(null);
     setLiveIsLoading(true);
-    if (globalIsPlaying) globalToggle(); // stop My Vibe / library
-    const el = getLiveAudio();
-    el.src = LIVE_STREAM_URL;
-    el.load();
-    el.play()
-      .then(() => { setLiveIsPlaying(true); setLiveIsLoading(false); })
-      .catch((err) => {
-        setLiveIsLoading(false);
-        setLiveError("Tap play to start the stream.");
-        console.warn("[LiveRadio] play blocked:", err.message);
-      });
-  }, [getLiveAudio, globalIsPlaying, globalToggle]);
+    // Hard-stop the global player audio element so it doesn't conflict
+    const globalEl = globalAudioRef?.current;
+    if (globalEl) {
+      globalEl.pause();
+      // Don't clear src — just pause so it can be resumed later
+    }
+    if (globalIsPlaying) globalToggle(); // sync React state
+    // Small delay to let the global audio fully pause before starting stream
+    setTimeout(() => {
+      const el = getLiveAudio();
+      el.src = LIVE_STREAM_URL;
+      el.load();
+      el.play()
+        .then(() => { setLiveIsPlaying(true); setLiveIsLoading(false); })
+        .catch((err) => {
+          setLiveIsLoading(false);
+          setLiveError("Tap play to start the stream.");
+          console.warn("[LiveRadio] play blocked:", err.message);
+        });
+    }, 150);
+  }, [getLiveAudio, globalIsPlaying, globalToggle, globalAudioRef]);
 
   const handleLiveToggle = useCallback(() => {
     if (liveIsPlaying) stopLiveStream();
@@ -129,7 +138,7 @@ export default function RadioPage() {
   // If global player starts, stop live stream
   useEffect(() => {
     if (globalIsPlaying && liveIsPlaying) stopLiveStream();
-  }, [globalIsPlaying]);
+  }, [globalIsPlaying, liveIsPlaying, stopLiveStream]);
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -202,7 +211,7 @@ export default function RadioPage() {
           className="flex rounded-2xl p-1 mb-6"
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
           {[
-            { id: "live", label: "Upper Vibe Radio", shortLabel: "Live Radio", icon: <RadioIcon className="w-3.5 h-3.5 flex-shrink-0" />, badge: "LIVE" },
+            { id: "live", label: "Upper Vibe Live Radio", shortLabel: "Live Radio", icon: <RadioIcon className="w-3.5 h-3.5 flex-shrink-0" />, badge: "LIVE" },
             { id: "myvibe", label: "My Vibe Radio", shortLabel: "My Vibe", icon: <Music4 className="w-3.5 h-3.5 flex-shrink-0" />, badge: "PERSONAL" },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -404,7 +413,7 @@ function LivePlayerCard({ isPlaying, isLoading, error, nowPlaying, onToggle, the
         {/* Info */}
         <div className="text-center">
           <p className="text-white/35 text-[10px] uppercase tracking-widest mb-1">
-            {isPlaying ? "Now Playing on Upper Vibe Radio" : "Upper Vibe Radio"}
+            {isPlaying ? "Now Playing · Upper Vibe Live Radio" : "Upper Vibe Live Radio"}
           </p>
           {nowPlaying ? (
             <>
@@ -413,7 +422,7 @@ function LivePlayerCard({ isPlaying, isLoading, error, nowPlaying, onToggle, the
             </>
           ) : (
             <>
-              <h2 className="font-heading font-black text-white text-lg mb-0.5">Live 24/7 Radio</h2>
+              <h2 className="font-heading font-black text-white text-lg mb-0.5">Upper Vibe Live Radio</h2>
               <p className="text-white/35 text-sm">432 Hz high-vibe music, nonstop</p>
             </>
           )}
