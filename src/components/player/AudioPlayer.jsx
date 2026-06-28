@@ -163,6 +163,9 @@ export default function AudioPlayer() {
   const effectiveIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
   const isRamRadio = ramActive && ramState.audioType === "liveStream";
 
+  // Normalize cover art from various field names
+  const displayCover = displayTrack?.cover_url || displayTrack?.coverArt || displayTrack?.image || displayTrack?.artwork || null;
+
   const handleIdlePlay = () => {
     if (ramActive) return; // RAM already active — nothing to play here
     // Start My Vibe Radio with the last track or a new one
@@ -286,10 +289,10 @@ export default function AudioPlayer() {
           <div className="flex items-center gap-3 md:gap-5 px-4 py-3 md:px-6">
             {/* Track info */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              {displayTrack.cover_url ? (
+              {displayCover ? (
                 <div className="relative flex-shrink-0">
                   <img
-                    src={displayTrack.cover_url}
+                    src={displayCover}
                     alt={displayTrack.title}
                     className="w-11 h-11 rounded-lg object-cover"
                     style={{ boxShadow: `0 0 16px rgba(${themeRgb},0.25)` }}

@@ -34,6 +34,9 @@ export default function DraggableMediaPlayer({
   nearStage = false,
 }) {
   const mobileLayout = useMobileLayout(IS_MOBILE);
+
+  // Normalize cover art from various field names
+  const coverSrc = currentTrack?.cover_url || currentTrack?.coverArt || currentTrack?.image || currentTrack?.artwork || null;
   const [pos, setPos] = useState(() => IS_MOBILE ? null : loadPos());
   const playerRef = useRef(null);
   const dragStartRef = useRef({ x: 0, y: 0, px: 0, py: 0 });
@@ -204,7 +207,7 @@ export default function DraggableMediaPlayer({
             style={{ width: 36, height: 36, minWidth: 36, minHeight: 36 }}
           >
             <CoverImage
-              src={currentTrack.cover_url}
+              src={coverSrc}
               alt={currentTrack.title}
               className="w-full h-full"
               iconClassName="w-3 h-3"

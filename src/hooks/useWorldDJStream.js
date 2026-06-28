@@ -65,7 +65,7 @@ function rampVolume(el, targetVol, ms, onDone) {
   return () => { cancelled = true; if (rafId) cancelAnimationFrame(rafId); };
 }
 
-export default function useWorldDJStream({ enabled = true, danceFloorMode = false }) {
+export default function useWorldDJStream({ enabled = true, active = false }) {
   const audioRef = useRef(null);
   const [djTrack, setDjTrack] = useState(null);
   const tracksRef = useRef([]);
@@ -81,7 +81,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   const cancelRampRef = useRef(null);
 
   const danceFloorRef = useRef(false);
-  danceFloorRef.current = danceFloorMode;
+  danceFloorRef.current = active;
 
   const cancelRamp = useCallback(() => {
     if (cancelRampRef.current) { cancelRampRef.current(); cancelRampRef.current = null; }
@@ -384,12 +384,12 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   // ── Dance floor gate ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!enabled) return;
-    if (danceFloorMode) {
+    if (active) {
       enterDanceFloor();
     } else {
       exitDanceFloor();
     }
-  }, [danceFloorMode, enabled, enterDanceFloor, exitDanceFloor]);
+  }, [active, enabled, enterDanceFloor, exitDanceFloor]);
 
   // ── Retry on user gesture if autoplay was blocked ────────────────────────
   // Uses capture phase so joystick's preventDefault() doesn't block retry.
