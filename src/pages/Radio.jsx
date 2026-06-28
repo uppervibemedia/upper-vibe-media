@@ -130,30 +130,31 @@ export default function RadioPage() {
   }, [myVibeTrack, playLessIds, allTracks, nextRadioSong]);
 
   // ── Crossfade helper ──────────────────────────────────────────────────────
-  // Fades outEl volume from 1→0 over 600ms, then stops it.
-  // inEl (optional) fades from 0→1 over 600ms simultaneously.
-  const crossfade = useCallback((outEl, inEl) => {
-    // Cancel any previous crossfade
+  // Fades outEl volume 1→0 over 600ms, then stops it.
+  // inEl (optional) fades 0→0.9 simultaneously.
+  // onDone called when fade completes.
+  const crossfade = useCallback((outEl, inEl, onDone) => {
     if (crossfadeRef.current) { clearInterval(crossfadeRef.current); crossfadeRef.current = null; }
 
-    const DURATION = 600; // ms
     const STEPS = 20;
-    const INTERVAL = DURATION / STEPS;
+    const INTERVAL = 30; // 600ms total
     let step = 0;
 
-    if (inEl) { inEl.volume = 0; }
+    // Snapshot starting volumes
+    const outStart = outEl ? outEl.volume : 0;
+    if (inEl) inEl.volume = 0;
 
     crossfadeRef.current = setInterval(() => {
       step++;
-      const progress = step / STEPS;
-      if (outEl) outEl.volume = Math.max(0, 1 - progress);
+      const progress = Math.min(1, step / STEPS);
+      if (outEl) outEl.volume = Math.max(0, outStart * (1 - progress));
       if (inEl) inEl.volume = Math.min(0.9, 0.9 * progress);
       if (step >= STEPS) {
         clearInterval(crossfadeRef.current);
         crossfadeRef.current = null;
-        // Hard stop the outgoing source after fade
-        if (outEl) { outEl.pause(); outEl.src = ""; outEl.volume = 0.9; }
+        if (outEl) { outEl.volume = 0; outEl.pause(); outEl.src = ""; outEl.volume = 0.9; }
         if (inEl) inEl.volume = 0.9;
+        if (onDone) onDone();
       }
     }, INTERVAL);
   }, []);
@@ -186,6 +187,8 @@ export default function RadioPage() {
 
   // ── Stop live stream (hard stop, no crossfade) ────────────────────────────
   const stopLiveStream = useCallback(() => {
+    liveIntendedRef.current = false;
+    if (liveReconnectRef.current) { clearTimeout(liveReconnectRef.current); liveReconnectRef.current = null; }
     const el = _liveAudioEl;
     if (!el) return;
     el.pause();
@@ -195,14 +198,22 @@ export default function RadioPage() {
     setLiveIsLoading(false);
   }, []);
 
+  // ── Live stream reconnect ref ─────────────────────────────────────────────
+  const liveReconnectRef = useRef(null);
+  const liveIntendedRef = useRef(false); // true when user wants live to be playing
+
   // ── Start live stream, crossfading out My Vibe if it's playing ───────────
   const startLiveStream = useCallback(() => {
     setLiveError(null);
     setLiveIsLoading(true);
+    liveIntendedRef.current = true;
+
+    // Cancel any pending reconnect
+    if (liveReconnectRef.current) { clearTimeout(liveReconnectRef.current); liveReconnectRef.current = null; }
 
     const el = getLiveAudioEl();
     liveAudioRef.current = el;
-    el.volume = 0; // will be ramped up by crossfade
+    el.volume = 0.9;
     el.src = LIVE_STREAM_URL;
     el.load();
     el.play()
@@ -212,15 +223,13 @@ export default function RadioPage() {
         // Crossfade: fade out My Vibe (global player), fade in live stream
         const globalEl = globalAudioRef?.current;
         if (globalEl && !globalEl.paused) {
-          // Fade both simultaneously
-          crossfade(globalEl, el);
-          // After fade, sync PlayerContext state
-          setTimeout(() => {
-            if (!globalEl.paused) { globalEl.pause(); }
-          }, 650);
+          crossfade(globalEl, el, () => {
+            // After fade: pause global player properly via PlayerContext
+            globalEl.volume = 0.9; // restore before pausing
+            if (!globalEl.paused) globalEl.pause();
+          });
         } else {
-          // No My Vibe playing — just ramp live stream up
-          crossfade(null, el);
+          el.volume = 0.9; // already at full, just ensure
         }
       })
       .catch((err) => {
@@ -253,29 +262,25 @@ export default function RadioPage() {
 
     // Starting / resuming My Vibe
     if (liveCurrentlyPlaying) {
-      // Crossfade: fade out live, then start My Vibe
-      // We need My Vibe audio element to fade in — get it after starting
+      liveIntendedRef.current = false;
+      if (liveReconnectRef.current) { clearTimeout(liveReconnectRef.current); liveReconnectRef.current = null; }
+
       if (isRadioMode) {
-        // Resume existing radio session
+        // Resume existing radio session — crossfade: live out, globalEl in
         const globalEl = globalAudioRef?.current;
         if (globalEl) {
           globalEl.volume = 0;
-          globalToggle(); // resume
-          // Fade live out, new source in
-          crossfade(liveEl, globalEl);
-          setTimeout(() => { setLiveIsPlaying(false); }, 650);
+          globalToggle(); // resume audio
+          crossfade(liveEl, globalEl, () => { setLiveIsPlaying(false); });
         } else {
-          globalToggle();
-          crossfade(liveEl, null);
-          setTimeout(() => { setLiveIsPlaying(false); }, 650);
+          crossfade(liveEl, null, () => { setLiveIsPlaying(false); globalToggle(); });
         }
       } else {
-        // Fresh radio start — fade out live, My Vibe will start its own audio
-        crossfade(liveEl, null);
-        setTimeout(() => {
+        // Fresh radio start — fade out live, then start radio
+        crossfade(liveEl, null, () => {
           setLiveIsPlaying(false);
           startRadio();
-        }, 300); // start radio at midpoint of fade so it overlaps
+        });
       }
     } else {
       // Live not playing — just start/resume My Vibe normally
@@ -287,10 +292,51 @@ export default function RadioPage() {
     }
   }, [myVibeIsPlaying, isRadioMode, globalToggle, startRadio, globalAudioRef, crossfade]);
 
+  // ── Live stream stall/error auto-reconnect ────────────────────────────────
+  useEffect(() => {
+    const el = getLiveAudioEl();
+
+    const tryReconnect = () => {
+      if (!liveIntendedRef.current) return; // user stopped it — don't reconnect
+      if (liveReconnectRef.current) return; // already scheduled
+      console.log("[LiveRadio] stream interrupted — reconnecting in 2s");
+      setLiveIsPlaying(false);
+      liveReconnectRef.current = setTimeout(() => {
+        liveReconnectRef.current = null;
+        if (!liveIntendedRef.current) return;
+        console.log("[LiveRadio] reconnecting stream...");
+        el.src = LIVE_STREAM_URL;
+        el.load();
+        el.play()
+          .then(() => { el.volume = 0.9; setLiveIsPlaying(true); setLiveIsLoading(false); })
+          .catch((err) => console.warn("[LiveRadio] reconnect play blocked:", err.message));
+      }, 2000);
+    };
+
+    const onStall  = () => { if (liveIntendedRef.current) { console.log("[LiveRadio] stalled"); tryReconnect(); } };
+    const onError  = () => { if (liveIntendedRef.current) { console.log("[LiveRadio] error"); tryReconnect(); } };
+    const onEnded  = () => { if (liveIntendedRef.current) { console.log("[LiveRadio] ended"); tryReconnect(); } };
+    const onAbort  = () => { if (liveIntendedRef.current) { console.log("[LiveRadio] abort"); tryReconnect(); } };
+
+    el.addEventListener("stalled", onStall);
+    el.addEventListener("error",   onError);
+    el.addEventListener("ended",   onEnded);
+    el.addEventListener("abort",   onAbort);
+
+    return () => {
+      el.removeEventListener("stalled", onStall);
+      el.removeEventListener("error",   onError);
+      el.removeEventListener("ended",   onEnded);
+      el.removeEventListener("abort",   onAbort);
+    };
+  }, []); // singleton el, stable forever
+
   // On unmount: cancel crossfade, stop live stream
   useEffect(() => {
     return () => {
       if (crossfadeRef.current) { clearInterval(crossfadeRef.current); crossfadeRef.current = null; }
+      if (liveReconnectRef.current) { clearTimeout(liveReconnectRef.current); liveReconnectRef.current = null; }
+      liveIntendedRef.current = false;
       const el = _liveAudioEl;
       if (el && !el.paused) { el.pause(); el.src = ""; el.volume = 0.9; }
     };

@@ -478,7 +478,9 @@ export function PlayerProvider({ children }) {
       }
 
       // Stall watchdog: no advancement in 1.5 s while supposedly playing
-      if (elapsed >= 1.5 && advanced < 0.05) {
+      // SKIP for live streams (src contains the live stream URL — currentTime never advances on HLS/icecast)
+      const isLiveStream = audio.src && (audio.src.includes("citrus3.com") || audio.src.includes("/stream/"));
+      if (!isLiveStream && elapsed >= 1.5 && advanced < 0.05) {
         console.warn("[WD:stall] audio not advancing — ct:", ct.toFixed(2), "elapsed:", elapsed.toFixed(1));
         savedTimeRef.current = ct;
         lastTimeRef.current  = ct;
