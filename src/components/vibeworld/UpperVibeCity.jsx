@@ -35,6 +35,7 @@ import {
   resumeUpperVibeRadio,
   saveMyVibePosition,
   restoreMyVibePosition,
+  getAudioElement,
 } from "@/lib/radioAudioManager";
 import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
@@ -690,6 +691,68 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     return () => clearInterval(id);
   }, [djAudioRef]);
 
+  // ── Raw-position interval for dance floor audio pause/resume ────────────
+  // Uses rawDfRef (updated every animation frame) instead of React state,
+  // ensuring audio pauses instantly on iOS regardless of position throttle.
+  useEffect(() => {
+    const id = setInterval(() => {
+      const inside = rawDfRef.current;
+      const ramAudio = getAudioElement();
+      const ctxAudio = audioRefStable.current?.current;
+
+      if (inside && !danceFloorAudioPausedRef.current) {
+        // Entering dance floor — pause global audio immediately
+        danceFloorAudioPausedRef.current = true;
+        const ramS = ramGetState();
+        if (ramS.activeMode === "myVibeRadio" && ramS.isPlaying) {
+          saveMyVibePosition();
+          danceFloorPausedRef.current = true;
+          pauseMyVibe();
+        } else if (ramS.activeMode === "upperVibeRadio" && ramS.isPlaying) {
+          danceFloorPausedRef.current = true;
+          pauseUpperVibeRadio();
+        } else if (ctxAudio && !ctxAudio.paused) {
+          // PlayerContext track is playing
+          savedPersonalTimeRef.current = ctxAudio.currentTime;
+          ctxAudio.pause();
+          danceFloorPausedRef.current = true;
+          if (isPlayingRef.current) {
+            togglePlayRef.current?.();
+          }
+        } else if (ramAudio && !ramAudio.paused && ramAudio.src && ramAudio.src !== window.location.href) {
+          // Fallback: standalone RAM audio (no active mode but playing somehow)
+          savedPersonalTimeRef.current = ramAudio.currentTime;
+          ramAudio.pause();
+          danceFloorPausedRef.current = true;
+        }
+      } else if (!inside && danceFloorAudioPausedRef.current) {
+        // Exiting dance floor — resume global audio with clean delay
+        danceFloorAudioPausedRef.current = false;
+        if (danceFloorPausedRef.current) {
+          danceFloorPausedRef.current = false;
+          clearTimeout(audioTransitionTimerRef.current);
+          audioTransitionTimerRef.current = setTimeout(() => {
+            if (rawDfRef.current) return; // Re-entered during delay
+            const ramS = ramGetState();
+            const p = ctxAudio || ramAudio;
+            if (ramS.activeMode === "myVibeRadio") {
+              restoreMyVibePosition(savedPersonalTimeRef.current);
+            } else if (ramS.activeMode === "upperVibeRadio") {
+              resumeUpperVibeRadio();
+            } else if (p) {
+              if (savedPersonalTimeRef.current > 0) {
+                try { p.currentTime = savedPersonalTimeRef.current; } catch {}
+              }
+              if (p.paused) p.play().catch(() => {});
+              savedPersonalTimeRef.current = 0;
+            }
+          }, 500);
+        }
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     const target = rawOnDanceFloor;
     if (target === dfStableRef.current) {
@@ -711,6 +774,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const wasOnDanceFloorRef = useRef(false);
   const savedPersonalTimeRef = useRef(0);
   const danceFloorPausedRef = useRef(false);
+  // Raw-position interval-based dance floor audio control
+  // Bypasses React state throttling so audio pauses instantly on iOS
+  const danceFloorAudioPausedRef = useRef(false);
 
   // ── Hoverboard zone proximity detection ──────────────────────
   useEffect(() => {
