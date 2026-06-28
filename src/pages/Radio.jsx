@@ -9,7 +9,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, Radio as RadioIcon, AudioLines, Music4, Sparkles,
-  SkipForward, SkipBack, Heart, ThumbsDown, Download, Lock, Bookmark,
+  SkipForward, SkipBack, Heart, ThumbsDown, Download, Lock,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavorites } from "@/hooks/useFavorite";
@@ -171,8 +171,16 @@ export default function RadioPage() {
     const next = isSaved ? savedIds.filter((x) => x !== id) : [...savedIds, id];
     setSavedIds(next);
     try { localStorage.setItem("uvm_radio_saved", JSON.stringify(next)); } catch {}
-    curatorRecordLike(myVibeTrack.id, !isSaved); // treat save like a strong positive signal
+    curatorRecordLike(myVibeTrack.id, !isSaved);
   }, [myVibeTrack, isSaved, savedIds, curatorRecordLike, user]);
+
+  // Combined like+save: pressing heart also saves the track
+  const handleLikeAndSave = useCallback(async () => {
+    if (!myVibeTrack || !user) return;
+    await handleLike();
+    // Also save if not already saved
+    if (!isSaved) await handleSave();
+  }, [myVibeTrack, user, handleLike, handleSave, isSaved]);
 
   const handlePlayLess = useCallback(() => {
     if (!myVibeTrack) return;
@@ -484,11 +492,9 @@ export default function RadioPage() {
                 onToggle={handleMyVibeToggle}
                 onNext={handleSkip}
                 onPrev={hasPrev ? prevRadioSong : null}
-                onLike={handleLike}
-                onSave={handleSave}
+                onLike={handleLikeAndSave}
                 onPlayLess={handlePlayLess}
-                isLiked={isLiked}
-                isSaved={isSaved}
+                isLiked={isLiked || isSaved}
                 isPlayLess={isPlayLess}
                 theme={theme}
                 p={p}
@@ -648,8 +654,8 @@ function LivePlayerCard({ isPlaying, isLoading, error, nowPlaying, onToggle, the
 // ── My Vibe Player Card ───────────────────────────────────────────────────────
 function MyVibePlayerCard({
   isPlaying, track, onToggle, onNext, onPrev,
-  onLike, onSave, onPlayLess,
-  isLiked, isSaved, isPlayLess,
+  onLike, onPlayLess,
+  isLiked, isPlayLess,
   theme, p, pulseOn, isPageVisible,
   isPlus, isLoggedIn, navigate, onOpenSheet,
 }) {
@@ -776,30 +782,17 @@ function MyVibePlayerCard({
         {/* Feedback buttons */}
         {track && (
           <div className="flex items-center justify-center gap-2 flex-wrap w-full">
-            {/* Like */}
+            {/* Heart — like + save combined, turns violet purple when active */}
             <button onClick={isLoggedIn ? onLike : undefined}
-              title={isLoggedIn ? (isLiked ? "Unlike" : "Like") : "Log in to like"}
+              title={isLoggedIn ? (isLiked ? "Saved & Liked" : "Like & Save") : "Log in to like"}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all active:scale-95"
               style={isLiked ? {
-                background: "rgba(239,68,68,0.18)", border: "1px solid rgba(239,68,68,0.45)", color: "#f87171",
+                background: "rgba(155,126,255,0.18)", border: "1px solid rgba(155,126,255,0.55)", color: "#9B7EFF",
               } : {
                 background: `rgba(${p},0.07)`, border: `1px solid rgba(${p},0.22)`, color: `rgba(${p},0.75)`,
               }}>
               <Heart className={`w-3.5 h-3.5 ${isLiked ? "fill-current" : ""}`} />
-              <span>{isLiked ? "Liked" : "Like"}</span>
-            </button>
-
-            {/* Save */}
-            <button onClick={isLoggedIn ? onSave : undefined}
-              title={isLoggedIn ? (isSaved ? "Saved" : "Save") : "Log in to save"}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all active:scale-95"
-              style={isSaved ? {
-                background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", color: "#4ade80",
-              } : {
-                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)",
-              }}>
-              <Bookmark className={`w-3.5 h-3.5 ${isSaved ? "fill-current" : ""}`} />
-              <span>{isSaved ? "Saved" : "Save"}</span>
+              <span>{isLiked ? "Saved" : "Save"}</span>
             </button>
 
             {/* Play Less */}

@@ -541,16 +541,21 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const stageCanvasRef = useRef(null);
   stageCanvasRef.current = stageCanvas;
   const velocityRef = useRef({ x: 0, z: 0 });
-  // Face camera on spawn: camera is at +Z behind avatar, avatar faces +Z = rotation 0
-  const avatarRotRef = useRef(spawnOverride?.rot !== undefined ? spawnOverride.rot : 0);
+  // Spawn near Vibe Check: avatar faces toward (-16,-13) from (-10,-4)
+  // angle = atan2(-16 - -10, -13 - -4) = atan2(-6, -9) ≈ -2.55 rad (NW direction)
+  const SPAWN_AVATAR_ROT = -2.55;
+  const avatarRotRef = useRef(spawnOverride?.rot !== undefined ? spawnOverride.rot : SPAWN_AVATAR_ROT);
   const keysRef = useRef({});
   const mouseRef = useRef({ down: false, dx: 0, dy: 0, button: 0 });
   // Camera: yaw = angle of camera around avatar (0 = directly behind)
   // camYaw is independent of avatar rotation; avatar rotation is avatarRotRef
   // Third-person camera: camYaw is WORLD-SPACE absolute angle (not relative to avatar)
   // 0 = camera looks from +Z toward avatar (south), increases clockwise
-  const camYawRef = useRef(0);    // start: camera at +Z behind avatar, avatar faces stage (-Z)
-  const camYawSmoothRef = useRef(0);
+  // Spawn near Vibe Check: avatar faces toward (-16,-13) from (-10,-4) → angle ≈ -2.5 rad (NW)
+  // Camera sits opposite (SE), camYaw = avatar.rot + π ≈ -2.5+π ≈ 0.64 rad
+  const SPAWN_CAM_YAW = 0.64;
+  const camYawRef = useRef(SPAWN_CAM_YAW);
+  const camYawSmoothRef = useRef(SPAWN_CAM_YAW);
   const camPitchRef = useRef(0.08);    // slight upward default
   const camPitchSmoothRef = useRef(0.08);
   const userTouchingCamRef = useRef(false); // right-click or cam drag active
@@ -647,10 +652,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       const spCamDist = spawnLS ? CAM_DIST_LS : CAM_DIST;
       const spCamH    = spawnLS ? CAM_HEIGHT_LS : CAM_HEIGHT;
       const spLookY   = spawnLS ? CAM_LOOK_Y_LS : CAM_LOOK_Y;
-      // Camera sits directly behind avatar on +Z side (camYaw=0), looking toward -Z (city/stage).
-      // Avatar spawns at Z=10 facing -Z; camera is at Z+camDist looking through avatar toward city.
-      camera.position.set(spX, spY + spCamH, spZ + spCamDist);
-      camera.lookAt(spX, spY + spLookY, spZ - 6); // look toward city center and dance floor
+      // Spawn near Vibe Check (-16, -13). Camera sits behind avatar on +X/+Z side,
+      // looking toward Vibe Check zone so it's visible immediately on entry.
+      // camYaw will be set to point camera from +X/+Z toward avatar facing -X/-Z.
+      camera.position.set(spX + spCamDist * 0.7, spY + spCamH, spZ + spCamDist * 0.7);
+      camera.lookAt(spX, spY + spLookY, spZ); // look at avatar; Vibe Check is ahead of avatar
 
       buildPark(scene);
 

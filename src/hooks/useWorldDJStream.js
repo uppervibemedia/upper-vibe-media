@@ -65,6 +65,20 @@ function fadeIn(el, targetVol, ms) {
   requestAnimationFrame(tick);
 }
 
+function fadeOut(el, ms, onDone) {
+  if (!el) { onDone?.(); return; }
+  const startVol = el.volume;
+  if (startVol <= 0) { el.pause(); onDone?.(); return; }
+  const start = performance.now();
+  const tick = (now) => {
+    const t = Math.min(1, (now - start) / ms);
+    el.volume = Math.max(0, startVol * (1 - t));
+    if (t < 1) { requestAnimationFrame(tick); }
+    else { el.pause(); el.volume = 0; onDone?.(); }
+  };
+  requestAnimationFrame(tick);
+}
+
 export default function useWorldDJStream({ enabled = true, danceFloorMode = false }) {
   const audioRef = useRef(null);
   const [djTrack, setDjTrack] = useState(null);
@@ -213,13 +227,12 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     doPlay();
   }, [getAudio]);
 
-  // ── Silence DJ audio (does NOT destroy the element) ──────────────────────
+  // ── Silence DJ audio with a smooth fade-out (does NOT destroy the element) ──
   const silenceDJ = useCallback(() => {
     const el = audioRef.current;
     if (!el) return;
-    el.volume = 0;
-    if (!el.paused) el.pause();
     playingRef.current = false;
+    fadeOut(el, 400, () => { /* fully silent */ });
   }, []);
 
   // ── Preload: prepare the audio source as soon as tracks are loaded ──────
