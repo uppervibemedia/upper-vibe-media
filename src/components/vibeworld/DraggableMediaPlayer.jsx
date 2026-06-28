@@ -112,8 +112,10 @@ export default function DraggableMediaPlayer({
   let containerStyle;
   if (IS_MOBILE) {
     const L = mobileLayout;
+    // position: absolute (not fixed) to avoid iOS Safari nested-fixed rendering bug
+    // The city parent is already fixed inset-0 (full viewport), so absolute is equivalent.
     containerStyle = {
-      position: "fixed",
+      position: "absolute",
       left: L.playerLeft,
       bottom: L.playerBottom,
       top: "unset",
@@ -132,7 +134,7 @@ export default function DraggableMediaPlayer({
   return (
     <div
       ref={playerRef}
-      className="z-[58] flex items-center gap-1.5 px-2 py-1.5 rounded-full select-none"
+      className="z-[70] flex items-center gap-1.5 px-2 py-1.5 rounded-full select-none"
       style={{
         ...containerStyle,
         pointerEvents: "auto",

@@ -652,6 +652,38 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [onDanceFloor, setOnDanceFloor] = useState(false);
   const dfDebounceRef = useRef(null);
   const dfStableRef = useRef(false); // current debounced value
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // iOS Safety: Ref-based dance floor check using RAW position (before throttle)
+  // This ref is updated in onPositionChange EVERY frame, not just on React re-render.
+  // The safety interval below reads this ref directly — bypassing React state entirely.
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const rawDfRef = useRef(false);  // true = within enter radius, false = outside exit radius
+  const rawPosRef = useRef({ x: -10, z: -4 }); // always tracks latest position
+  // iOS safety mute — runs every 250ms and forces DJ volume to 0 when outside floor.
+  // This catches any timing gaps between the React state update and the DJ audio element.
+  useEffect(() => {
+    if (!djAudioRef.current) return;
+    const id = setInterval(() => {
+      const el = djAudioRef.current;
+      if (!el) return;
+      const inside = rawDfRef.current;
+      const pos = rawPosRef.current;
+      const dx = pos.x - DANCE_FLOOR_CX;
+      const dz = pos.z - DANCE_FLOOR_CZ;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      const isOutside = dist > DANCE_FLOOR_EXIT_R;
+      if (isOutside && el.volume > 0.01) {
+        el.volume = 0;
+        el.muted = true;
+        console.log("[UVC/iOS] 🔇 Safety mute: DJ volume forced to 0 outside dance floor | dist:", dist.toFixed(1), "| exitR:", DANCE_FLOOR_EXIT_R);
+      } else if (!isOutside && el.muted && inside) {
+        el.muted = false;
+      }
+    }, 250);
+    return () => clearInterval(id);
+  }, [djAudioRef]);
+
   useEffect(() => {
     const target = rawOnDanceFloor;
     if (target === dfStableRef.current) {
@@ -1139,6 +1171,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onRemoteAvatarClick={handleRemoteAvatarClick}
           retintRef={retintInWorldRef}
           onPositionChange={(x, z, rot) => {
+            // Update raw position refs EVERY frame (before throttle) for iOS safety
+            rawPosRef.current = { x, z };
+            {
+              const dfDx = x - DANCE_FLOOR_CX;
+              const dfDz = z - DANCE_FLOOR_CZ;
+              rawDfRef.current = Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_ENTER_R;
+            }
             const prev = prevPosRef.current;
             const dx = x - prev.x;
             const dz = z - prev.z;
@@ -1452,11 +1491,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         if (loading || stageFullScreen) return null;
         const displayTrack = cityTrack || currentTrack;
 
-        // Only show the city player when there's actually an active audio source.
+        // The city player is always visible — shows idle state when nothing is playing.
         // No "Choose Music" / "Choose Song" idle state — the city mirrors whatever
         // is already playing on Home, Start, My Vibe, or song pages.
-        const hasActiveSource = ramActive || !!currentTrack || isPlaying;
-        if (!hasActiveSource) return null;
 
         // Determine current zone for stage-proximity check
         const currentZone = detectZone(playerPos.x, playerPos.z);
