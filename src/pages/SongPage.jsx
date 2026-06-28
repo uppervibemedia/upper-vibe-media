@@ -117,16 +117,15 @@ function SongPageInner() {
   const [upgradeModal, setUpgradeModal] = useState(false);
   const [vizPlaying, setVizPlaying] = useState(false);
   const [downloadIntent, setDownloadIntent] = useState(false);
-  // Determine origin from URL param — only show city button for city origins
-  const _originParam = new URLSearchParams(window.location.search).get("source") || "";
+  // Determine origin from URL param — captured once at mount via useState initializer
+  const [songOrigin] = useState(() => new URLSearchParams(window.location.search).get("source") || "");
+  const [returnPath] = useState(() => new URLSearchParams(window.location.search).get("returnPath") || "");
   const CITY_ORIGINS = ["upperVibeCity", "djSongCard", "stage", "cityMusicLibrary"];
   const [showCityReturn] = useState(() => {
-    // Legacy: sessionStorage flag set by VibeWorld components
+    const src = new URLSearchParams(window.location.search).get("source") || "";
     const legacyCity = (() => { try { return sessionStorage.getItem("vibeworld_return") === "1"; } catch { return false; } })();
-    return legacyCity || CITY_ORIGINS.includes(_originParam);
+    return legacyCity || CITY_ORIGINS.includes(src);
   });
-  const [songOrigin] = useState(() => _originParam || "");
-  const [returnPath] = useState(() => new URLSearchParams(window.location.search).get("returnPath") || "");
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isPlus: isAuthPlus, isAdmin: isAuthAdmin } = useAuth();
   const isPlus = isAuthPlus || isAuthAdmin;

@@ -16,7 +16,6 @@ import IOSTip from "../components/shared/iOSTip";
 import TrendingLiveSection from "../components/radio/TrendingLiveSection";
 import { LIVE_STREAM_URL } from "@/lib/liveStreamConfig";
 import { Link, useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 
 const NOW_PLAYING_URL = "https://s5.citrus3.com:2020/json/stream/upperviberadio";
 const PREF_KEY = "uvm_radio_viz_v9";
