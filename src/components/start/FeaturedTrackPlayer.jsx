@@ -6,6 +6,14 @@ import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
+import {
+  subscribe as ramSubscribe,
+  getState as ramGetState,
+  playMyVibeTrack,
+  pauseMyVibe,
+  resumeMyVibe,
+} from "@/lib/radioAudioManager";
+import { useRadio } from "@/context/RadioContext";
 
 // The default featured track title — used as fallback when no admin override is set
 const DEFAULT_FEATURED_TITLE = "Fourth Dimension Hustler";
@@ -49,9 +57,9 @@ function MusicBars({ color = "#00A0DC", active = false }) {
 
 export default function FeaturedTrackPlayer({ onTrackLoaded }) {
   const [track, setTrack] = useState(null);
-  const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(true);
-  const audioRef = useRef(null);
+  const [ramState, setRamState] = useState(ramGetState);
+  const { startMyVibeQueue } = useRadio();
 
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -60,10 +68,14 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
   const primaryColor = `rgb(${rtPrimary})`;
   const primaryRgba = (a) => `rgba(${rtPrimary},${a})`;
 
+  // Subscribe to RAM so play/pause state stays in sync with all other surfaces
+  useEffect(() => {
+    return ramSubscribe((s) => setRamState(s));
+  }, []);
+
   useEffect(() => {
     async function loadTrack() {
       try {
-        // Single fetch: get newest 10 published tracks — enough to find featured or fallback
         const [settingRows, recent] = await Promise.all([
           base44.entities.AppSettings.filter({ key: "start_featured_track_id" }),
           base44.entities.Track.filter({ status: "published" }, "-release_date", 10),
@@ -71,43 +83,42 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
 
         const featuredId = settingRows?.[0]?.value;
 
-        // 1. Admin-pinned track
         if (featuredId) {
           const found = recent.find((t) => t.id === featuredId && t.audio_url);
           if (found) { setTrack(found); onTrackLoaded?.(found); setLoading(false); return; }
         }
 
-        // 2. Default title match
         const byTitle = recent.find((t) => t.audio_url && t.title?.toLowerCase().includes("fourth dimension hustler"));
         if (byTitle) { setTrack(byTitle); onTrackLoaded?.(byTitle); setLoading(false); return; }
 
-        // 3. First with audio
         const withAudio = recent.find((t) => t.audio_url);
         if (withAudio) { setTrack(withAudio); onTrackLoaded?.(withAudio); }
-      } catch { /* silently fail */ }
+      } catch {}
       setLoading(false);
     }
     loadTrack();
   }, []);
 
-  const handlePlay = () => {
-    if (!audioRef.current || !track?.audio_url) return;
-    if (playing) {
-      audioRef.current.pause();
-      setPlaying(false);
-    } else {
-      audioRef.current.play();
-      setPlaying(true);
-    }
-  };
+  // Derive playing state from RAM: this track is "playing" if RAM is in myVibeRadio mode,
+  // playing, and has this track loaded (or any track — show as playing if My Vibe is active)
+  const myVibeActive = ramState.activeMode === "myVibeRadio";
+  const playing = myVibeActive && ramState.isPlaying &&
+    (ramState.currentTrack?.id === track?.id || ramState.currentTrack != null);
 
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    const onEnded = () => setPlaying(false);
-    el.addEventListener("ended", onEnded);
-    return () => el.removeEventListener("ended", onEnded);
-  }, [track]);
+  const handlePlay = () => {
+    if (!track?.audio_url) return;
+    if (myVibeActive) {
+      // My Vibe already active — toggle the same state
+      if (ramState.isPlaying) pauseMyVibe();
+      else resumeMyVibe();
+      return;
+    }
+    // Start My Vibe Radio from the featured track via RadioContext queue
+    startMyVibeQueue((firstTrack) => {
+      // If RadioContext gave us a first track, play it; otherwise play the featured track directly
+      playMyVibeTrack(firstTrack || track);
+    });
+  };
 
   if (loading) return null;
 
@@ -140,10 +151,6 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
           boxShadow: `0 0 28px rgba(${rtPrimary},0.18)`,
         }}
       >
-        {track?.audio_url && (
-          <audio ref={audioRef} src={track.audio_url} preload="none" />
-        )}
-
         {/* Label */}
         <div className="px-4 pt-4 pb-2 flex items-center justify-between">
           <span style={{

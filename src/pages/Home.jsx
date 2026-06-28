@@ -9,6 +9,13 @@ import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
+import {
+  subscribe as ramSubscribe,
+  getState as ramGetState,
+  playMyVibeTrack,
+  pauseMyVibe,
+  resumeMyVibe,
+} from "@/lib/radioAudioManager";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useFavoritesContext } from "@/context/FavoritesContext";
@@ -95,7 +102,9 @@ export default function Home() {
   const [premiumModal, setPremiumModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const [vizModal, setVizModal] = useState(null);
-  const { currentRadioSong } = useRadio();
+  const { currentRadioSong, startMyVibeQueue } = useRadio();
+  const [ramState, setRamState] = useState(ramGetState);
+  useEffect(() => { return ramSubscribe((s) => setRamState(s)); }, []);
   const { accentId } = useTheme();
 
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -114,9 +123,17 @@ export default function Home() {
   const { isFaved, toggle } = useFavoritesContext();
 
   const handlePlayTrack = (track) => {
-    if (currentTrack?.id === track.id) { togglePlay(); return; }
-    playTrack(track);
+    if (!track?.audio_url) return;
     recordPlay(track);
+    // If My Vibe Radio is active and this is the current track, toggle it
+    if (ramState.activeMode === "myVibeRadio" && ramState.currentTrack?.id === track.id) {
+      if (ramState.isPlaying) pauseMyVibe(); else resumeMyVibe();
+      return;
+    }
+    // Start My Vibe Radio queue with this track as the first song
+    startMyVibeQueue((firstTrack) => {
+      playMyVibeTrack(firstTrack || track);
+    });
   };
 
   const loadData = async () => {
@@ -271,27 +288,35 @@ export default function Home() {
 
             {/* ── Hero media card — Play/Pause current track, no navigation ── */}
             {(() => {
-              // Show card if something is playing/paused, or we have a radio song, or latest tracks loaded
-              const displayTrack = currentTrack || currentRadioSong || latestTracks[0];
+              // Prefer RAM (My Vibe Radio) as the active track, fallback to PlayerContext, then latest
+              const myVibeTrack = ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : null;
+              const displayTrack = myVibeTrack || currentTrack || currentRadioSong || latestTracks[0];
               if (!displayTrack) return null;
 
-              const label = isPlaying && currentTrack
-                ? "Now Playing"
-                : currentTrack
-                  ? "Paused"
-                  : currentRadioSong
-                    ? "On Air"
-                    : "Latest Release";
+              const myVibeIsPlaying = ramState.activeMode === "myVibeRadio" && ramState.isPlaying;
+              const effectivePlaying = myVibeTrack ? myVibeIsPlaying : (isPlaying && !!currentTrack);
+
+              const label = myVibeIsPlaying
+                ? "My Vibe Radio"
+                : myVibeTrack
+                  ? "My Vibe Paused"
+                  : isPlaying && currentTrack
+                    ? "Now Playing"
+                    : currentTrack
+                      ? "Paused"
+                      : currentRadioSong
+                        ? "On Air"
+                        : "Latest Release";
 
               // Play button action — stays on Home page, never navigates
               const handleHeroPlay = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (currentTrack) {
-                  // Toggle the already-loaded track
+                if (ramState.activeMode === "myVibeRadio") {
+                  if (ramState.isPlaying) pauseMyVibe(); else resumeMyVibe();
+                } else if (currentTrack) {
                   togglePlay();
                 } else {
-                  // Start the displayed track (radio preview or latest) on the Home page
                   handlePlayTrack(displayTrack);
                 }
               };
@@ -310,59 +335,59 @@ export default function Home() {
                   }}>
                   {/* Cover art + track info + play button */}
                   <div className="flex items-center gap-4 px-4 pt-4 pb-3">
-                    {/* Cover art + track info — links to song page */}
-                    <Link to={`/song/${displayTrack.id}`} className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className="relative flex-shrink-0">
-                        <img src={displayTrack.cover_url} alt={displayTrack.title}
-                          className="w-16 h-16 rounded-2xl object-cover"
-                          style={{ boxShadow: `0 0 20px rgba(${rtPrimary},0.25)` }} />
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1], opacity: [0.35, 0, 0.35] }}
-                          transition={{ duration: isPlaying ? 1.6 : 3.5, repeat: Infinity, ease: "easeInOut" }}
-                          className="absolute inset-0 rounded-2xl pointer-events-none"
-                          style={{ border: `2px solid rgb(${rtPrimary})` }} />
-                      </div>
+                  {/* Cover art + track info — links to song page */}
+                  <Link to={`/song/${displayTrack.id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="relative flex-shrink-0">
+                    <img src={displayTrack.cover_url} alt={displayTrack.title}
+                      className="w-16 h-16 rounded-2xl object-cover"
+                      style={{ boxShadow: `0 0 20px rgba(${rtPrimary},0.25)` }} />
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.35, 0, 0.35] }}
+                      transition={{ duration: effectivePlaying ? 1.6 : 3.5, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute inset-0 rounded-2xl pointer-events-none"
+                      style={{ border: `2px solid rgb(${rtPrimary})` }} />
+                  </div>
 
-                      {/* Track info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[9px] font-black tracking-[0.22em] uppercase leading-none mb-1.5"
-                          style={{ color: `rgba(${rtPrimary},0.8)` }}>
-                          {label}
-                        </p>
-                        <p className="text-sm font-bold text-white/95 truncate leading-snug">{displayTrack.title}</p>
-                        <p className="text-xs text-white/45 truncate mt-0.5">
-                          {displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}
-                        </p>
-                      </div>
-                    </Link>
+                  {/* Track info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[9px] font-black tracking-[0.22em] uppercase leading-none mb-1.5"
+                      style={{ color: `rgba(${rtPrimary},0.8)` }}>
+                      {label}
+                    </p>
+                    <p className="text-sm font-bold text-white/95 truncate leading-snug">{displayTrack.title}</p>
+                    <p className="text-xs text-white/45 truncate mt-0.5">
+                      {displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}
+                    </p>
+                  </div>
+                  </Link>
 
-                    {/* Play / Pause button — stays on Home page */}
-                    <button
-                      onClick={handleHeroPlay}
-                      type="button"
-                      aria-label={isPlaying && currentTrack ? "Pause" : "Play"}
-                      className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
-                      style={{
-                        touchAction: "manipulation",
-                        WebkitTapHighlightColor: "transparent",
-                        background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`,
-                        boxShadow: `0 0 20px rgba(${rtPrimary},0.4)`,
-                      }}>
-                      {isPlaying && currentTrack
-                        ? <Pause className="w-5 h-5 text-black fill-current" />
-                        : <Play className="w-5 h-5 text-black fill-current ml-0.5" />}
-                    </button>
+                  {/* Play / Pause button — stays on Home page */}
+                  <button
+                  onClick={handleHeroPlay}
+                  type="button"
+                  aria-label={effectivePlaying ? "Pause" : "Play"}
+                  className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+                  style={{
+                    touchAction: "manipulation",
+                    WebkitTapHighlightColor: "transparent",
+                    background: `linear-gradient(135deg,rgb(${rtPrimary}),rgba(${rtPrimary},0.75))`,
+                    boxShadow: `0 0 20px rgba(${rtPrimary},0.4)`,
+                  }}>
+                  {effectivePlaying
+                    ? <Pause className="w-5 h-5 text-black fill-current" />
+                    : <Play className="w-5 h-5 text-black fill-current ml-0.5" />}
+                  </button>
                   </div>
 
                   {/* Animated equalizer strip */}
                   <div className="flex items-end gap-[2px] px-4 pb-3" style={{ height: "28px" }}>
-                    {[5, 9, 16, 12, 7, 14, 10, 6, 13, 9, 5, 11, 8, 15, 7].map((h, i) => (
-                      <motion.div key={i}
-                        animate={{ height: [`${h * 0.25}px`, `${h}px`, `${h * 0.55}px`, `${h * 0.8}px`, `${h * 0.25}px`] }}
-                        transition={{ duration: (isPlaying ? 0.85 : 1.4) + i * 0.14, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 }}
-                        className="flex-1 rounded-full"
-                        style={{ background: `rgb(${rtPrimary})`, opacity: isPlaying ? 0.7 : 0.3, minWidth: 2, maxWidth: 6 }} />
-                    ))}
+                  {[5, 9, 16, 12, 7, 14, 10, 6, 13, 9, 5, 11, 8, 15, 7].map((h, i) => (
+                  <motion.div key={i}
+                    animate={{ height: [`${h * 0.25}px`, `${h}px`, `${h * 0.55}px`, `${h * 0.8}px`, `${h * 0.25}px`] }}
+                    transition={{ duration: (effectivePlaying ? 0.85 : 1.4) + i * 0.14, repeat: Infinity, ease: "easeInOut", delay: i * 0.1 }}
+                    className="flex-1 rounded-full"
+                    style={{ background: `rgb(${rtPrimary})`, opacity: effectivePlaying ? 0.7 : 0.3, minWidth: 2, maxWidth: 6 }} />
+                  ))}
                   </div>
                 </motion.div>
               );
@@ -567,8 +592,8 @@ export default function Home() {
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
       <LatestMusicSection
         tracks={latestTracks}
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
+        currentTrack={ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : currentTrack}
+        isPlaying={ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : isPlaying}
         handlePlayTrack={handlePlayTrack}
         user={user}
         themeColor={rtPrimary}
@@ -581,8 +606,8 @@ export default function Home() {
         <YourFrequencyFeed
           allTracks={allTracks}
           allViz={recentViz}
-          currentTrack={currentTrack}
-          isPlaying={isPlaying}
+          currentTrack={ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : currentTrack}
+          isPlaying={ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : isPlaying}
           handlePlayTrack={handlePlayTrack}
           user={user}
           themeColor={rtPrimary}
@@ -595,8 +620,8 @@ export default function Home() {
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
         <ListenerFrequencyDashboard
           allTracks={allTracks}
-          currentTrack={currentTrack}
-          isPlaying={isPlaying}
+          currentTrack={ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : currentTrack}
+          isPlaying={ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : isPlaying}
           handlePlayTrack={handlePlayTrack}
           user={user}
           themeColor={rtPrimary}
