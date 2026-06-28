@@ -730,10 +730,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             console.log("[DANCE FLOOR AUDIO] Global → DJ | global audio paused at", ctxAudio.currentTime.toFixed(2));
           }
           // Force RAM audio element paused (safety net)
-          // NOTE: RAM state save/restore is handled by the onDanceFloor React effect.
-          // This loop only pauses the audio element as a belt-and-suspenders.
+          // NOTE: RAM state save/restore is handled by the onDanceFloor React effect,
+          // BUT on iOS that effect may not fire due to position throttle.
+          // So we save the RAM position here as a belt-and-suspenders.
           const ramS = ramGetState();
           if (ramS.activeMode !== null && ramAudio && !ramAudio.paused && ramAudio.src && ramAudio.src !== window.location.href) {
+            if (ramS.activeMode === "myVibeRadio" && ramAudio.currentTime > 0 && savedPersonalTimeRef.current === 0) {
+              savedPersonalTimeRef.current = ramAudio.currentTime;
+              console.log("[DANCE FLOOR AUDIO] 100ms loop: saved RAM position", ramAudio.currentTime.toFixed(2));
+            }
             ramAudio.pause();
           }
           danceFloorAudioPausedRef.current = true;
