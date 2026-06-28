@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, Pause, Radio as RadioIcon, Waves, Music4, Sparkles,
-  SkipForward, SkipBack, Heart, ThumbsDown, Download, Lock, ExternalLink,
+  SkipForward, SkipBack, Heart, ThumbsDown, Download, Lock,
 } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
@@ -16,6 +16,7 @@ import IOSTip from "../components/shared/iOSTip";
 import TrendingLiveSection from "../components/radio/TrendingLiveSection";
 import { LIVE_STREAM_URL } from "@/lib/liveStreamConfig";
 import { Link, useNavigate } from "react-router-dom";
+import SongMiniSheet from "@/components/radio/SongMiniSheet";
 
 const NOW_PLAYING_URL = "https://s5.citrus3.com:2020/json/stream/upperviberadio";
 const PREF_KEY = "uvm_radio_viz_v9";
@@ -229,6 +230,18 @@ export default function RadioPage() {
     };
   }, []);
 
+  // ── Song mini-sheet (no-navigation song detail) ───────────────────────────
+  const [sheetTrack, setSheetTrack] = useState(null);
+  const [sheetDownloadIntent, setSheetDownloadIntent] = useState(false);
+  const openSheet = useCallback((track, downloadIntent = false) => {
+    setSheetTrack(track);
+    setSheetDownloadIntent(downloadIntent);
+  }, []);
+  const closeSheet = useCallback(() => {
+    setSheetTrack(null);
+    setSheetDownloadIntent(false);
+  }, []);
+
   const handleTogglePulse = (v) => { setPulseOn(v); setPulseEnabled(v); };
   const handleCycleMode = (next) => {
     setVizMode(next);
@@ -409,6 +422,7 @@ export default function RadioPage() {
                 isPlus={isPlus}
                 isLoggedIn={!!user}
                 navigate={navigate}
+                onOpenSheet={openSheet}
               />
             </motion.div>
           )}
@@ -450,6 +464,20 @@ export default function RadioPage() {
       </div>
 
       <IOSTip trigger="always" />
+
+      {/* ── Song Mini Sheet — no navigation, radio keeps playing ── */}
+      <AnimatePresence>
+        {sheetTrack && (
+          <SongMiniSheet
+            track={sheetTrack}
+            isPlus={isPlus}
+            p={p}
+            theme={theme}
+            downloadIntent={sheetDownloadIntent}
+            onClose={closeSheet}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -551,18 +579,16 @@ function MyVibePlayerCard({
   isPlaying, track, onToggle, onNext, onPrev,
   onLike, onPlayLess, isLiked, isPlayLess,
   theme, p, pulseOn, isPageVisible,
-  isPlus, isLoggedIn, navigate,
+  isPlus, isLoggedIn, navigate, onOpenSheet,
 }) {
   const handleCoverClick = () => {
-    if (!track?.id) return;
-    // Persist current tab before navigating so it's restored on return
-    try { localStorage.setItem(TAB_KEY, "myvibe"); } catch {}
-    navigate(`/song/${track.id}?source=myVibeRadio&returnPath=/radio`);
+    if (!track?.id || !onOpenSheet) return;
+    onOpenSheet(track);
   };
 
   const handleDownload = () => {
-    if (!track?.id) return;
-    navigate(`/song/${track.id}?source=myVibeRadio&returnPath=/radio&downloadIntent=true`);
+    if (!track?.id || !onOpenSheet) return;
+    onOpenSheet(track, true); // true = scroll to download
   };
 
   return (
@@ -599,7 +625,7 @@ function MyVibePlayerCard({
           )}
           {track && (
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
-              <ExternalLink className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+              <Music4 className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
             </div>
           )}
           {isPlaying && (
@@ -615,13 +641,13 @@ function MyVibePlayerCard({
           )}
         </div>
 
-        {/* Song page link label */}
+        {/* Song details label */}
         {track && (
           <button
             onClick={handleCoverClick}
             className="text-[9px] font-black tracking-[0.15em] uppercase -mt-2 transition-opacity hover:opacity-80"
             style={{ color: `rgba(${p},0.5)` }}>
-            Open Song Page ↗
+            Song Details ↑
           </button>
         )}
 
