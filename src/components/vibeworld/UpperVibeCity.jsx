@@ -1447,10 +1447,16 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         }}
       />
 
-      {/* ── Media Player — smart visibility/position based on UI state ── */}
+      {/* ── Media Player — mirrors global player state, no separate song selector ── */}
       {(() => {
         if (loading || stageFullScreen) return null;
         const displayTrack = cityTrack || currentTrack;
+
+        // Only show the city player when there's actually an active audio source.
+        // No "Choose Music" / "Choose Song" idle state — the city mirrors whatever
+        // is already playing on Home, Start, My Vibe, or song pages.
+        const hasActiveSource = ramActive || !!currentTrack || isPlaying;
+        if (!hasActiveSource) return null;
 
         // Determine current zone for stage-proximity check
         const currentZone = detectZone(playerPos.x, playerPos.z);
@@ -1463,9 +1469,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         // TV mode opacity
         const tvOpacity = tvMode && !tvPlayerVisible ? 0 : 1;
         const tvPointerEvents = tvMode && !tvPlayerVisible ? "none" : "auto";
-
-        // In landscape + near stage: shift player to bottom-left (already fixed in useMobileLayout)
-        // The layout hook now parks the landscape player at bottom-left away from stage controls.
 
         return (
           <div
