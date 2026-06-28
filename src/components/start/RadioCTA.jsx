@@ -5,7 +5,7 @@ import FreqBadge from "@/components/shared/FreqBadge";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
-import { pickFeaturedTrack, pickSmallCards } from "@/lib/featuredTrackPicker";
+import { pickSmallCards } from "@/lib/featuredTrackPicker";
 import NewBadge, { NewBadgeOverlay } from "@/components/shared/NewBadge";
 
 const BLUE = "0,160,220";
@@ -96,7 +96,7 @@ export default function RadioCTA() {
         .then((recent) => {
           // Only consider tracks with both audio and cover art
           const eligible = recent.filter((t) => t.audio_url && t.cover_url);
-          const featured = pickFeaturedTrack(eligible);
+          const featured = eligible[0] || null;
           setFeaturedTrack(featured);
           setTracks(pickSmallCards(eligible, featured?.id, 3));
         }).catch(() => {});
