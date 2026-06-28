@@ -727,6 +727,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             ctxAudio.volume = 0;
             ctxAudio.muted = true;
             if (isPlayingRef.current) togglePlayRef.current?.();
+            console.log("[DANCE FLOOR AUDIO] Global → DJ | global audio paused at", ctxAudio.currentTime.toFixed(2));
           }
           // Force RAM audio element paused (safety net)
           // NOTE: RAM state save/restore is handled by the onDanceFloor React effect.
@@ -744,6 +745,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             djEl.volume = 0;
             djEl.muted = false;
             djEl.play().catch(() => {});
+            console.log("[DANCE FLOOR AUDIO] 🟢 DJ audio element play() invoked");
           }
         }
 
@@ -766,6 +768,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
           // IMMEDIATELY silence DJ (no fade — prevents double audio)
           if (djEl) { djEl.volume = 0; djEl.muted = true; }
+          console.log("[DANCE FLOOR AUDIO] 🔇 DJ → Global | DJ silenced, 500ms restore timer started");
 
           // 500ms restore timer — only fires if onDanceFloor effect didn't already handle it
           cleanup();
@@ -783,10 +786,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             const ramS = ramGetState();
             const p = ctxAudio || ramAudio;
             if (ramS.activeMode === "myVibeRadio") {
+              console.log("[DANCE FLOOR AUDIO] 🔁 Restoring My Vibe Radio (savedTime:", savedPersonalTimeRef.current.toFixed(2), ")");
               restoreMyVibePosition(savedPersonalTimeRef.current);
             } else if (ramS.activeMode === "upperVibeRadio") {
+              console.log("[DANCE FLOOR AUDIO] 🔁 Restoring Upper Vibe Radio");
               resumeUpperVibeRadio();
             } else if (p) {
+              console.log("[DANCE FLOOR AUDIO] 🔁 Restoring global PlayerContext audio (savedTime:", savedPersonalTimeRef.current.toFixed(2), ")");
               if (savedPersonalTimeRef.current > 0) { try { p.currentTime = savedPersonalTimeRef.current; } catch {} }
               p.muted = false;
               p.volume = personalBaseVolRef.current;
@@ -1173,7 +1179,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           if (dfRestoreDoneRef.current) return; // 100ms loop already restored
           dfRestoreDoneRef.current = true;
           const ramS = ramGetState();
-          console.log("[UpperVibeCity] 🎵 Restoring audio after dance floor | mode:", ramS.activeMode, "| savedTime:", savedTime.toFixed(2));
+          console.log("[DANCE FLOOR AUDIO] React effect restore timer fired | mode:", ramS.activeMode, "| savedTime:", savedTime.toFixed(2));
           if (ramS.activeMode === "myVibeRadio") {
             restoreMyVibePosition(savedTime);
           } else if (ramS.activeMode === "upperVibeRadio") {
