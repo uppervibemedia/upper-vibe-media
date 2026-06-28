@@ -26,6 +26,14 @@ import DirectChatPanel from "@/components/vibeworld/panels/DirectChatPanel";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
 
 import useWorldDJStream from "@/hooks/useWorldDJStream";
+import {
+  subscribe as ramSubscribe,
+  getState as ramGetState,
+  pauseMyVibe,
+  resumeMyVibe,
+  pauseUpperVibeRadio,
+  resumeUpperVibeRadio,
+} from "@/lib/radioAudioManager";
 import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
 // CrystalZone is now decorative-only — no imports needed
@@ -284,7 +292,40 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
   const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack, registerNextHandler, clearPosition, audioRef } = playerCtx || {};
-  const { allTracks, tracksLoaded } = radioCtx || {};
+  const { allTracks, tracksLoaded, nextRadioSong } = radioCtx || {};
+
+  // ── Subscribe to RadioAudioManager (My Vibe Radio + Upper Vibe Radio state) ──
+  const [ramState, setRamState] = useState(() => ramGetState());
+  useEffect(() => {
+    return ramSubscribe((s) => setRamState(s));
+  }, []);
+
+  // Determine what the city media player should show:
+  // If RAM is active (My Vibe Radio or Upper Vibe Radio), use RAM state.
+  // Otherwise fall back to PlayerContext (Music Library songs).
+  const ramActive = ramState.activeMode !== null;
+  const cityTrack = ramActive ? ramState.currentTrack : currentTrack;
+  const cityIsPlaying = ramActive ? ramState.isPlaying : isPlaying;
+
+  const handleCityTogglePlay = useCallback(() => {
+    if (ramState.activeMode === "myVibeRadio") {
+      if (ramState.isPlaying) pauseMyVibe();
+      else resumeMyVibe();
+    } else if (ramState.activeMode === "upperVibeRadio") {
+      if (ramState.isPlaying) pauseUpperVibeRadio();
+      else resumeUpperVibeRadio();
+    } else {
+      togglePlay?.();
+    }
+  }, [ramState.activeMode, ramState.isPlaying, togglePlay]);
+
+  const handleCitySkip = useCallback(() => {
+    if (ramState.activeMode === "myVibeRadio") {
+      nextRadioSong?.();
+    } else {
+      skipTrack?.();
+    }
+  }, [ramState.activeMode, nextRadioSong, skipTrack]);
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
 
@@ -862,7 +903,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     if (feedLoading || loading || !playTrack) return;
     if (feedStartedRef.current) return; // already initialized — don't restart on state changes
 
-    // If something is already playing, adopt it into feed mode
+    // If RAM (My Vibe Radio / Upper Vibe Radio) is already active, don't start a separate feed
+    const ramS = ramGetState();
+    if (ramS.activeMode !== null) {
+      feedStartedRef.current = true; // mark as handled so we don't re-trigger
+      return;
+    }
+
+    // If something is already playing via PlayerContext, adopt it into feed mode
     if (currentTrack && isPlaying) {
       feedActiveRef.current = true;
       feedStartedRef.current = true;
@@ -953,54 +1001,60 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       // ── Entering dance floor ────────────────────────────────────────────
       wasOnDanceFloorRef.current = true;
 
-      if (personal) {
-        // Save exact position so we can resume from here on exit
+      const ramS = ramGetState();
+      if (ramS.activeMode === "myVibeRadio" && ramS.isPlaying) {
+        // My Vibe Radio is active — pause via RAM
+        danceFloorPausedRef.current = true;
+        pauseMyVibe();
+      } else if (ramS.activeMode === "upperVibeRadio" && ramS.isPlaying) {
+        // Upper Vibe Radio is active — pause via RAM
+        danceFloorPausedRef.current = true;
+        pauseUpperVibeRadio();
+      } else if (personal) {
+        // PlayerContext track is active — pause via audio element
         if (personal.currentTime > 0) {
           savedPersonalTimeRef.current = personal.currentTime;
         }
-        // Hard-silence the personal player immediately — no fade, no race
         personal.volume = 0;
-        // Pause it directly on the audio element — don't call togglePlay here
-        // because it can race with React state and cause double-audio on re-entry
         if (!personal.paused) {
           danceFloorPausedRef.current = true;
           personal.pause();
         }
-        // Also sync PlayerContext UI state to "paused" if it thinks it's playing
         if (isPlayingRef.current) {
           togglePlayRef.current?.();
         }
-        setShowResumeButton(false);
       }
+      setShowResumeButton(false);
     } else if (!onDanceFloor && wasOnDanceFloorRef.current) {
       // ── Leaving dance floor — 500ms clean delay before resuming personal audio ──
       wasOnDanceFloorRef.current = false;
 
-      if (personal && danceFloorPausedRef.current) {
+      if (danceFloorPausedRef.current) {
         danceFloorPausedRef.current = false;
-        // Restore saved playback position immediately (before delay)
-        if (savedPersonalTimeRef.current > 0) {
-          try { personal.currentTime = savedPersonalTimeRef.current; } catch {}
-        }
 
-        // Wait 500ms for DJ audio to fully silence, then resume personal player
         audioTransitionTimerRef.current = setTimeout(() => {
-          // Stale check: if user walked back in during the delay, abort
           if (onDanceFloorRef2.current) return;
 
-          const p = audioRefStable.current?.current;
-          if (!p) return;
-
-          // Restore volume then resume
-          p.volume = personalBaseVolRef.current;
-          if (p.paused && !isPlayingRef.current) {
-            togglePlayRef.current?.();
-          } else if (p.paused) {
-            p.play().catch(() => {});
+          const ramS = ramGetState();
+          if (ramS.activeMode === "myVibeRadio") {
+            resumeMyVibe();
+          } else if (ramS.activeMode === "upperVibeRadio") {
+            resumeUpperVibeRadio();
+          } else {
+            const p = audioRefStable.current?.current;
+            if (!p) return;
+            if (savedPersonalTimeRef.current > 0) {
+              try { p.currentTime = savedPersonalTimeRef.current; } catch {}
+            }
+            p.volume = personalBaseVolRef.current;
+            if (p.paused && !isPlayingRef.current) {
+              togglePlayRef.current?.();
+            } else if (p.paused) {
+              p.play().catch(() => {});
+            }
           }
         }, 500);
       } else if (personal) {
-        // Was already paused by user before entering — just restore volume
         personal.volume = personalBaseVolRef.current;
       }
     } else if (!onDanceFloor && !wasOnDanceFloorRef.current && personal) {
@@ -1384,7 +1438,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* ── Media Player — smart visibility/position based on UI state ── */}
       {(() => {
-        if (loading || !currentTrack || stageFullScreen) return null;
+        if (loading || (!cityTrack && !currentTrack) || stageFullScreen) return null;
+      const displayTrack = cityTrack || currentTrack;
 
         // Determine current zone for stage-proximity check
         const currentZone = detectZone(playerPos.x, playerPos.z);
@@ -1407,10 +1462,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             onClick={tvMode ? handleTvPlayerTap : undefined}
           >
             <DraggableMediaPlayer
-              currentTrack={currentTrack}
-              isPlaying={isPlaying}
-              onTogglePlay={handleGlobalPlayToggle}
-              onSkip={handleGlobalSkip}
+              currentTrack={displayTrack}
+              isPlaying={cityIsPlaying}
+              onTogglePlay={ramActive ? handleCityTogglePlay : handleGlobalPlayToggle}
+              onSkip={ramActive ? handleCitySkip : handleGlobalSkip}
               nearStage={nearStage}
             />
           </div>
