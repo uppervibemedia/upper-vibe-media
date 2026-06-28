@@ -587,6 +587,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const equippedAuraRef = useRef(null);
   const prevEquippedAuraRef = useRef(null);
   equippedAuraRef.current = equippedAura;
+  const danceFloorFrameRefRef = useRef(props.danceFloorFrameRef);
+  danceFloorFrameRefRef.current = props.danceFloorFrameRef;
 
   const activeEmoteRef = useRef(null);
   activeEmoteRef.current = activeEmote;
@@ -912,6 +914,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         avatarRotRef.current = rot;
         avatarPosRef.current = [px, py, pz, rot];
+        // ── Every-frame dance floor ref (bypasses throttled onPositionChange) ──
+        const dfRef = danceFloorFrameRefRef.current;
+        if (dfRef) {
+          dfRef.x = px;
+          dfRef.z = pz;
+          const dfDx = px - 0;
+          const dfDz = pz - (-13);
+          dfRef.onDanceFloor = Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= 10.0;
+        }
         const avatar = avatarRef.current;
         if (avatar) {
           avatar.position.set(px, py, pz);

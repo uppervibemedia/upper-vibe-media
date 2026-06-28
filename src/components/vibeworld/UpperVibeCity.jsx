@@ -306,8 +306,20 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // Determine what the city media player should show.
   // Priority: PlayerContext currentTrack → RAM active track → RAM lastTrack (persisted).
   // This ensures we NEVER show "No Music Playing" — always fall back to the My Vibe last track.
+  // ── Default track for spawned player (no music was ever played) ─────────
+  const [defaultCityTrack, setDefaultCityTrack] = useState(null);
+  useEffect(() => {
+    if (currentTrack || ramState.currentTrack || ramState.lastTrack || defaultCityTrack) return;
+    // Fetch the most recent published track as a display-only default (never auto-play)
+    base44.entities.Track.filter({ status: "published" }, "-created_date", 1)
+      .then((tracks) => {
+        if (tracks?.length > 0) setDefaultCityTrack(tracks[0]);
+      })
+      .catch(() => {});
+  }, []);
+
   const ramActive = ramState.activeMode !== null;
-  const cityTrack = currentTrack || ramState.currentTrack || ramState.lastTrack;
+  const cityTrack = currentTrack || ramState.currentTrack || ramState.lastTrack || defaultCityTrack;
   const cityIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
 
   const handleCityTogglePlay = useCallback(() => {
@@ -320,10 +332,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     } else if (ramState.lastTrack) {
       // Not active but we have a last track — start My Vibe Radio with it
       import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(ramState.lastTrack));
+    } else if (defaultCityTrack) {
+      // No previous track — start My Vibe with the default track
+      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(defaultCityTrack));
     } else {
       togglePlay?.();
     }
-  }, [ramState.activeMode, ramState.isPlaying, ramState.lastTrack, togglePlay]);
+  }, [ramState.activeMode, ramState.isPlaying, ramState.lastTrack, defaultCityTrack, togglePlay]);
 
   const handleCitySkip = useCallback(() => {
     if (ramState.activeMode === "myVibeRadio") {
@@ -664,75 +679,79 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // ═══════════════════════════════════════════════════════════════════════════════
   const rawDfRef = useRef(false);  // true = within enter radius, false = outside exit radius
   const rawPosRef = useRef({ x: -10, z: -4 }); // always tracks latest position
+  // Every-frame dance floor ref — written directly by CityCanvas animation loop (bypasses throttle)
+  const danceFloorFrameRef = useRef({ x: -10, z: -4, onDanceFloor: false });
   // ── World DJ Stream — strictly gated: volume only raises inside dance floor ──
-  const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, danceFloorMode: onDanceFloor });
-
-  // iOS safety mute — runs every 250ms and forces DJ volume to 0 when outside floor.
-  // This catches any timing gaps between the React state update and the DJ audio element.
+  // Raw dance floor state for DJ — syncs from every-frame ref every 150ms, bypasses position throttle
+  const [rawDfState, setRawDfState] = useState(false);
   useEffect(() => {
-    if (!djAudioRef?.current) return;
-    const id = setInterval(() => {
-      const el = djAudioRef.current;
-      if (!el) return;
-      const inside = rawDfRef.current;
-      const pos = rawPosRef.current;
-      const dx = pos.x - DANCE_FLOOR_CX;
-      const dz = pos.z - DANCE_FLOOR_CZ;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-      const isOutside = dist > DANCE_FLOOR_EXIT_R;
-      if (isOutside && el.volume > 0.01) {
-        el.volume = 0;
-        el.muted = true;
-        console.log("[UVC/iOS] 🔇 Safety mute: DJ volume forced to 0 outside dance floor | dist:", dist.toFixed(1), "| exitR:", DANCE_FLOOR_EXIT_R);
-      } else if (!isOutside && el.muted && inside) {
-        el.muted = false;
-      }
-    }, 250);
+    const id = setInterval(() => setRawDfState(danceFloorFrameRef.current.onDanceFloor), 150);
     return () => clearInterval(id);
-  }, [djAudioRef]);
+  }, []);
 
-  // ── Raw-position interval for dance floor audio pause/resume ────────────
-  // Uses rawDfRef (updated every animation frame) instead of React state,
-  // ensuring audio pauses instantly on iOS regardless of position throttle.
+  const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, danceFloorMode: rawDfState || onDanceFloor });
+
+  // iOS safety — runs every 100ms and enforces the dance floor audio rule:
+  // Inside floor = DJ only (global paused/muted). Outside floor = global only (DJ silent).
+  // Uses danceFloorFrameRef (updated every animation frame) — not React state.
   useEffect(() => {
     const id = setInterval(() => {
-      const inside = rawDfRef.current;
+      const el = djAudioRef?.current;
+      const inside = danceFloorFrameRef.current.onDanceFloor;
       const ramAudio = getAudioElement();
       const ctxAudio = audioRefStable.current?.current;
 
-      if (inside && !danceFloorAudioPausedRef.current) {
-        // Entering dance floor — pause global audio immediately
-        danceFloorAudioPausedRef.current = true;
+      // ── INSIDE DANCE FLOOR: DJ takes over, global must be silent ──
+      if (inside) {
+        // Force global audio paused + muted
+        if (ctxAudio && !ctxAudio.paused) {
+          savedPersonalTimeRef.current = ctxAudio.currentTime;
+          ctxAudio.pause();
+          ctxAudio.volume = 0;
+          ctxAudio.muted = true;
+          if (isPlayingRef.current) togglePlayRef.current?.();
+        }
         const ramS = ramGetState();
         if (ramS.activeMode === "myVibeRadio" && ramS.isPlaying) {
           saveMyVibePosition();
-          danceFloorPausedRef.current = true;
           pauseMyVibe();
         } else if (ramS.activeMode === "upperVibeRadio" && ramS.isPlaying) {
-          danceFloorPausedRef.current = true;
           pauseUpperVibeRadio();
-        } else if (ctxAudio && !ctxAudio.paused) {
-          // PlayerContext track is playing
-          savedPersonalTimeRef.current = ctxAudio.currentTime;
-          ctxAudio.pause();
-          danceFloorPausedRef.current = true;
-          if (isPlayingRef.current) {
-            togglePlayRef.current?.();
-          }
         } else if (ramAudio && !ramAudio.paused && ramAudio.src && ramAudio.src !== window.location.href) {
-          // Fallback: standalone RAM audio (no active mode but playing somehow)
           savedPersonalTimeRef.current = ramAudio.currentTime;
           ramAudio.pause();
-          danceFloorPausedRef.current = true;
         }
-      } else if (!inside && danceFloorAudioPausedRef.current) {
-        // Exiting dance floor — resume global audio with clean delay
-        danceFloorAudioPausedRef.current = false;
-        if (danceFloorPausedRef.current) {
+        danceFloorAudioPausedRef.current = true;
+        danceFloorPausedRef.current = true;
+
+        // If DJ audio exists and is paused (not started), try to start it
+        if (el && el.paused && !danceFloorAudioStartedRef.current) {
+          danceFloorAudioStartedRef.current = true;
+          el.volume = 0;
+          el.muted = false;
+          el.play().catch(() => {});
+        }
+        // Fade DJ in
+        if (el && el.volume < 0.7) {
+          el.volume = Math.min(0.82, el.volume + 0.08);
+          el.muted = false;
+        }
+
+      // ── OUTSIDE DANCE FLOOR: global resumes, DJ must be silent ──
+      } else {
+        // Force DJ silent
+        if (el && el.volume > 0.01) {
+          el.volume = Math.max(0, el.volume - 0.08);
+          if (el.volume <= 0.01) el.muted = true;
+        }
+
+        // Restore global audio (with 500ms delay after leaving)
+        if (danceFloorAudioPausedRef.current) {
+          danceFloorAudioPausedRef.current = false;
           danceFloorPausedRef.current = false;
           clearTimeout(audioTransitionTimerRef.current);
           audioTransitionTimerRef.current = setTimeout(() => {
-            if (rawDfRef.current) return; // Re-entered during delay
+            if (danceFloorFrameRef.current.onDanceFloor) return; // Re-entered during delay
             const ramS = ramGetState();
             const p = ctxAudio || ramAudio;
             if (ramS.activeMode === "myVibeRadio") {
@@ -743,15 +762,20 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
               if (savedPersonalTimeRef.current > 0) {
                 try { p.currentTime = savedPersonalTimeRef.current; } catch {}
               }
+              p.muted = false;
+              p.volume = personalBaseVolRef.current;
               if (p.paused) p.play().catch(() => {});
               savedPersonalTimeRef.current = 0;
             }
           }, 500);
         }
       }
-    }, 250);
+    }, 100);
     return () => clearInterval(id);
-  }, []);
+  }, [djAudioRef]);
+
+  // Track whether DJ audio element has ever started (for the safety loop)
+  const danceFloorAudioStartedRef = useRef(false);
 
   useEffect(() => {
     const target = rawOnDanceFloor;
@@ -1285,6 +1309,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           rendererRef={rendererRef}
           tvMode={tvMode}
           tvQuality={tvQuality}
+          danceFloorFrameRef={danceFloorFrameRef}
         />
       </div>
 
@@ -1584,7 +1609,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             <DraggableMediaPlayer
               currentTrack={displayTrack}
               isPlaying={cityIsPlaying}
-              onTogglePlay={ramActive ? handleCityTogglePlay : handleGlobalPlayToggle}
+              onTogglePlay={(ramActive || defaultCityTrack) ? handleCityTogglePlay : handleGlobalPlayToggle}
               onSkip={ramActive ? handleCitySkip : handleGlobalSkip}
               nearStage={nearStage}
             />
