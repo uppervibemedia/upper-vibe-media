@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Pause, Radio as RadioIcon, Waves, Music4, Sparkles, SkipForward, SkipBack, User,
+  Play, Pause, Radio as RadioIcon, Waves, Music4, Sparkles, SkipForward, SkipBack, User, Download, Lock, ExternalLink,
 } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
+import { useAuth } from "@/lib/AuthContext";
+import { hasPlusAccess } from "@/lib/tierAccess";
 import RadioThemePicker, { useRadioTheme, getPulseEnabled, setPulseEnabled } from "../components/radio/RadioThemePicker";
 import RadioVisualizer, { MODES } from "../components/radio/RadioVisualizer";
 import usePageVisible from "../hooks/usePageVisible";
 import IOSTip from "../components/shared/iOSTip";
 import TrendingLiveSection from "../components/radio/TrendingLiveSection";
 import { LIVE_STREAM_URL } from "@/lib/liveStreamConfig";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const NOW_PLAYING_URL = "https://s5.citrus3.com:2020/json/stream/upperviberadio";
 const PREF_KEY = "uvm_radio_viz_v9";
@@ -28,6 +30,9 @@ export default function RadioPage() {
   const [pulseOn, setPulseOn] = useState(getPulseEnabled);
   const { themeId, theme, applyTheme } = useRadioTheme();
   const isPageVisible = usePageVisible();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const isPlus = hasPlusAccess(user);
 
   // ── Live stream state ────────────────────────────────────────────────────
   const liveAudioRef = useRef(null);
@@ -324,6 +329,8 @@ export default function RadioPage() {
                 p={p}
                 pulseOn={pulseOn}
                 isPageVisible={isPageVisible}
+                isPlus={isPlus}
+                navigate={navigate}
               />
             </motion.div>
           )}
@@ -462,7 +469,17 @@ function LivePlayerCard({ isPlaying, isLoading, error, nowPlaying, onToggle, the
 }
 
 // ── My Vibe Player Card ───────────────────────────────────────────────────────
-function MyVibePlayerCard({ isPlaying, track, onToggle, onNext, onPrev, theme, p, pulseOn, isPageVisible }) {
+function MyVibePlayerCard({ isPlaying, track, onToggle, onNext, onPrev, theme, p, pulseOn, isPageVisible, isPlus, navigate }) {
+  const handleCoverClick = () => {
+    if (track?.id) navigate(`/song/${track.id}`);
+  };
+
+  const handleDownload = () => {
+    if (!track?.id) return;
+    // Route to song page with download intent — existing download logic handles Plus gate
+    navigate(`/song/${track.id}?downloadIntent=true`);
+  };
+
   return (
     <div className="w-full max-w-sm relative">
       {pulseOn ? (
@@ -479,18 +496,30 @@ function MyVibePlayerCard({ isPlaying, track, onToggle, onNext, onPrev, theme, p
       <div className="relative z-10 rounded-3xl p-8 flex flex-col items-center gap-5"
         style={{ background: "rgba(255,255,255,0.028)", border: `1px solid rgba(${p},0.12)` }}>
 
-        {/* Cover */}
-        <div className="relative w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0"
-          style={{ border: `1px solid rgba(${p},0.25)` }}>
+        {/* Clickable Cover */}
+        <div
+          onClick={handleCoverClick}
+          title={track ? "Open Song Page" : undefined}
+          className="relative w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0 group"
+          style={{
+            border: `1px solid rgba(${p},0.25)`,
+            cursor: track ? "pointer" : "default",
+          }}>
           {track?.cover_url ? (
-            <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover" />
+            <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{ background: `rgba(${p},0.08)` }}>
               <Music4 className="w-10 h-10" style={{ color: `rgb(${p})` }} />
             </div>
           )}
+          {/* Hover overlay — desktop */}
+          {track && (
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center">
+              <ExternalLink className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+            </div>
+          )}
           {isPlaying && (
-            <div className="absolute bottom-2 left-0 right-0 flex gap-0.5 items-end justify-center">
+            <div className="absolute bottom-2 left-0 right-0 flex gap-0.5 items-end justify-center group-hover:opacity-0 transition-opacity">
               {[1,2,3,4,3].map((h, i) => (
                 <motion.div key={i}
                   animate={{ height: [`${h * 3}px`, `${h * 5}px`, `${h * 3}px`] }}
@@ -502,8 +531,18 @@ function MyVibePlayerCard({ isPlaying, track, onToggle, onNext, onPrev, theme, p
           )}
         </div>
 
+        {/* Song page link label */}
+        {track && (
+          <button
+            onClick={handleCoverClick}
+            className="text-[9px] font-black tracking-[0.15em] uppercase -mt-3 transition-opacity hover:opacity-80"
+            style={{ color: `rgba(${p},0.5)` }}>
+            Open Song Page ↗
+          </button>
+        )}
+
         {/* Info */}
-        <div className="text-center">
+        <div className="text-center -mt-2">
           <p className="text-white/35 text-[10px] uppercase tracking-widest mb-1">
             {isPlaying ? "Now Playing · My Vibe Radio" : "My Vibe Radio"}
           </p>
@@ -558,6 +597,29 @@ function MyVibePlayerCard({ isPlaying, track, onToggle, onNext, onPrev, theme, p
             <SkipForward className="w-4 h-4 fill-current" />
           </button>
         </div>
+
+        {/* Download button — only shown when a track is loaded */}
+        {track && (
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black tracking-wide transition-all hover:brightness-110 active:scale-95"
+            style={isPlus ? {
+              background: `rgba(${p},0.15)`,
+              border: `1px solid rgba(${p},0.4)`,
+              color: `rgb(${p})`,
+            } : {
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.35)",
+            }}>
+            {isPlus ? (
+              <Download className="w-3.5 h-3.5" />
+            ) : (
+              <Lock className="w-3.5 h-3.5" />
+            )}
+            {isPlus ? "Download" : "Unlock Downloads"}
+          </button>
+        )}
 
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
           style={{ background: `rgba(${p},0.08)`, border: `1px solid rgba(${p},0.2)` }}>
