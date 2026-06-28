@@ -5,8 +5,15 @@ import FreqBadge from "@/components/shared/FreqBadge";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
+import { useRadio } from "@/context/RadioContext";
 import { pickSmallCards } from "@/lib/featuredTrackPicker";
 import NewBadge, { NewBadgeOverlay } from "@/components/shared/NewBadge";
+import {
+  subscribe as ramSubscribe,
+  getState as ramGetState,
+  pauseMyVibe,
+  resumeMyVibe,
+} from "@/lib/radioAudioManager";
 
 const BLUE = "0,160,220";
 
@@ -88,13 +95,14 @@ export default function RadioCTA() {
   const [tracks, setTracks] = useState([]);
   const [featuredTrack, setFeaturedTrack] = useState(null);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
+  const { startMyVibeQueue } = useRadio();
+  const [ramState, setRamState] = useState(() => ramGetState());
+  useEffect(() => { return ramSubscribe((s) => setRamState(s)); }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Fetch more tracks so we have a good pool for new-track rotation
       base44.entities.Track.filter({ status: "published" }, "-created_date", 50)
         .then((recent) => {
-          // Only consider tracks with both audio and cover art
           const eligible = recent.filter((t) => t.audio_url && t.cover_url);
           const featured = eligible[0] || null;
           setFeaturedTrack(featured);
@@ -104,20 +112,58 @@ export default function RadioCTA() {
     return () => clearTimeout(timer);
   }, []);
 
+  // ── RAM-aware display logic ──────────────────────────────────────────
+  const ramActive = ramState.activeMode !== null;
+  // Display track: RAM (My Vibe/Upper Vibe Radio) → PlayerContext → featured fallback
+  const displayTrack = ramActive
+    ? ramState.currentTrack
+    : (currentTrack && isPlaying ? currentTrack : null);
+  const effectiveTrack = displayTrack || featuredTrack;
+  const effectivePlaying = ramActive ? ramState.isPlaying : (isPlaying && !!currentTrack);
+
   const handlePlayFeatured = () => {
+    // RAM is active — toggle RAM
+    if (ramActive) {
+      if (ramState.activeMode === "upperVibeRadio") {
+        import("@/lib/radioAudioManager").then((mod) => {
+          if (ramState.isPlaying) mod.pauseUpperVibeRadio();
+          else mod.resumeUpperVibeRadio();
+        });
+        return;
+      }
+      if (ramState.isPlaying) pauseMyVibe();
+      else resumeMyVibe();
+      return;
+    }
+
+    // PlayerContext is active — toggle
+    if (currentTrack) { togglePlay(); return; }
+
+    // Nothing playing — start My Vibe Radio from the featured track
     if (!featuredTrack) return;
-    if (currentTrack?.id === featuredTrack.id) togglePlay();
-    else playTrack(featuredTrack);
+    startMyVibeQueue((firstTrack) => {
+      const target = firstTrack || featuredTrack;
+      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(target));
+    });
   };
 
-  const featuredPlaying = currentTrack?.id === featuredTrack?.id && isPlaying;
+  // Show the currently-playing track's art+title, or fall back to featured
+  const showTrack = effectiveTrack || featuredTrack;
+  const showPlaying = effectivePlaying && !!displayTrack;
   const r = BLUE;
   const primaryColor = `rgb(${r})`;
   const rgba = (a) => `rgba(${r},${a})`;
 
-  const freqLabel = featuredTrack?.frequency_type === "432hz" ? "432 Hz"
-    : featuredTrack?.frequency_type === "528hz" ? "528 Hz"
+  const freqLabel = showTrack?.frequency_type === "432hz" ? "432 Hz"
+    : showTrack?.frequency_type === "528hz" ? "528 Hz"
     : "High-Vibe";
+
+  // Label text
+  const label = ramState.activeMode === "upperVibeRadio" && ramState.isPlaying
+    ? "Live Radio"
+    : showPlaying
+      ? "Now Playing"
+      : "Featured Track";
 
   return (
     <section
@@ -138,19 +184,30 @@ export default function RadioCTA() {
       <div className="relative z-10 flex flex-col gap-3 p-4">
 
         {/* ── Featured Player Card ── */}
-        {featuredTrack && (
+        {showTrack && (
           <div className="rounded-2xl overflow-hidden"
             style={{ background: "rgba(0,0,0,0.35)", border: `1px solid ${rgba(0.3)}` }}>
+
+            {/* Label */}
+            <div className="px-3 pt-3 pb-0">
+              <span style={{
+                fontSize: "8px", fontWeight: 900, letterSpacing: "0.38em",
+                textTransform: "uppercase", color: primaryColor,
+                fontFamily: "var(--font-heading)",
+              }}>
+                {label}
+              </span>
+            </div>
 
             {/* Music card layout — square art + info side by side */}
             <div className="flex items-center gap-3 p-3">
               {/* Square album art */}
               <div className="flex-shrink-0 rounded-xl overflow-hidden relative"
                 style={{ width: 106, height: 106, background: rgba(0.1), border: `1px solid ${rgba(0.2)}` }}>
-                {featuredTrack.cover_url ? (
+                {showTrack.cover_url ? (
                   <img
-                    src={featuredTrack.cover_url}
-                    alt={featuredTrack.title}
+                    src={showTrack.cover_url}
+                    alt={showTrack.title}
                     loading="eager"
                     className="w-full h-full"
                     style={{ objectFit: "cover", objectPosition: "center top" }}
@@ -168,13 +225,13 @@ export default function RadioCTA() {
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
                     <FreqBadge label={freqLabel} />
-                    <NewBadge track={featuredTrack} />
+                    <NewBadge track={showTrack} />
                   </div>
                   <p className="font-black text-white truncate" style={{ fontFamily: "var(--font-heading)", fontSize: "0.95rem", lineHeight: 1.2 }}>
-                    {featuredTrack.title}
+                    {showTrack.title}
                   </p>
                   <p className="truncate" style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>
-                    {featuredTrack.artist_display || "Upper Vibe Media"}
+                    {showTrack.artist_display || "Upper Vibe Media"}
                   </p>
                 </div>
 
@@ -185,9 +242,9 @@ export default function RadioCTA() {
                     whileTap={{ scale: 0.9 }}
                     className="flex items-center gap-1 px-2 py-1 rounded-lg font-black transition-all"
                     style={{
-                      background: featuredPlaying ? rgba(0.2) : `linear-gradient(135deg,rgba(${r},0.85),${primaryColor})`,
-                      border: featuredPlaying ? `1px solid ${rgba(0.6)}` : "none",
-                      color: featuredPlaying ? primaryColor : "#000",
+                      background: showPlaying ? rgba(0.2) : `linear-gradient(135deg,rgba(${r},0.85),${primaryColor})`,
+                      border: showPlaying ? `1px solid ${rgba(0.6)}` : "none",
+                      color: showPlaying ? primaryColor : "#000",
                       boxShadow: `0 0 16px ${rgba(0.4)}`,
                       fontFamily: "var(--font-heading)",
                       letterSpacing: "0.04em",
@@ -195,11 +252,11 @@ export default function RadioCTA() {
                       flexShrink: 0,
                     }}
                   >
-                    {featuredPlaying
+                    {showPlaying
                       ? <><Pause className="w-2.5 h-2.5" /> Playing</>
-                      : <><Play className="w-2.5 h-2.5 ml-0.5" /> Listen Now</>}
+                      : <><Play className="w-2.5 h-2.5 ml-0.5" /> Play</>}
                   </motion.button>
-                  <MusicBars color={primaryColor} active={featuredPlaying} />
+                  <MusicBars color={primaryColor} active={showPlaying} />
                 </div>
               </div>
             </div>
