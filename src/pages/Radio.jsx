@@ -204,7 +204,7 @@ export default function RadioPage() {
 
   // ── My Vibe Radio ─────────────────────────────────────────────────────────
   const handleMyVibeToggle = useCallback(() => {
-    // Pause live stream audio directly if it's playing
+    // Only stop live stream if it's actually playing (don't touch it if already stopped)
     const liveEl = _liveAudioEl;
     if (liveEl && !liveEl.paused) {
       liveEl.pause();
@@ -212,14 +212,17 @@ export default function RadioPage() {
       setLiveIsPlaying(false);
       setLiveIsLoading(false);
     }
-    if (isRadioMode) {
-      // Already in radio mode — just toggle pause/play
+    if (myVibeIsPlaying) {
+      // Pause My Vibe
+      globalToggle();
+    } else if (isRadioMode) {
+      // Resume My Vibe (already has a track loaded)
       globalToggle();
     } else {
       // Start fresh radio session
       startRadio();
     }
-  }, [isRadioMode, globalToggle, startRadio]);
+  }, [myVibeIsPlaying, isRadioMode, globalToggle, startRadio]);
 
   // Single-source enforcement is handled imperatively in each start handler above
 
@@ -258,7 +261,8 @@ export default function RadioPage() {
   const currentModeObj = MODES.find(m => m.id === vizMode) || MODES[0];
 
   const anyPlaying = liveIsPlaying || myVibeIsPlaying;
-  const vizAudioRef = activeTab === "live" ? liveAudioRef : globalAudioRef;
+  // Visualizer always connects to whichever source is actually playing
+  const vizAudioRef = liveIsPlaying ? liveAudioRef : globalAudioRef;
   const p = theme.vars["--rt-primary"];
   const themeStyle = Object.entries(theme.vars).reduce((acc, [k, v]) => { acc[k] = v; return acc; }, { WebkitOverflowScrolling: "touch" });
   const badges = activeTab === "live" ? LIVE_BADGES : MYVIBE_BADGES;
@@ -310,15 +314,15 @@ export default function RadioPage() {
           className="flex rounded-2xl p-1 mb-6"
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
           {[
-            { id: "live", label: "Upper Vibe Live Radio", shortLabel: "Live Radio", icon: <RadioIcon className="w-3.5 h-3.5 flex-shrink-0" />, badge: "LIVE" },
-            { id: "myvibe", label: "My Vibe Radio", shortLabel: "My Vibe", icon: <Music4 className="w-3.5 h-3.5 flex-shrink-0" />, badge: "PERSONAL" },
+            { id: "live", label: "Upper Vibe Live Radio", shortLabel: "Live Radio", icon: <RadioIcon className="w-3.5 h-3.5 flex-shrink-0" />, badge: "LIVE", isPlaying: liveIsPlaying },
+            { id: "myvibe", label: "My Vibe Radio", shortLabel: "My Vibe", icon: <Music4 className="w-3.5 h-3.5 flex-shrink-0" />, badge: "PERSONAL", isPlaying: myVibeIsPlaying },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => switchTab(tab.id)}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black tracking-wide transition-all"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black tracking-wide transition-all relative"
                 style={{
                   background: isActive ? `rgba(${p},0.15)` : "transparent",
                   color: isActive ? `rgb(${p})` : "rgba(255,255,255,0.4)",
@@ -328,6 +332,9 @@ export default function RadioPage() {
                 {tab.icon}
                 <span className="hidden sm:inline">{tab.label}</span>
                 <span className="sm:hidden">{tab.shortLabel}</span>
+                {tab.isPlaying && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" style={{ animation: "pulse 1.5s infinite" }} />
+                )}
                 {isActive && (
                   <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full hidden xs:inline"
                     style={{ background: `rgba(${p},0.2)`, color: `rgb(${p})` }}>
@@ -338,6 +345,43 @@ export default function RadioPage() {
             );
           })}
         </motion.div>
+
+        {/* ── Persistent Now Playing Banner — shows across both tabs ── */}
+        <AnimatePresence>
+          {activeTab === "myvibe" && liveIsPlaying && (
+            <motion.div
+              key="live-playing-notice"
+              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+              className="mb-3 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl"
+                style={{ background: `rgba(${p},0.08)`, border: `1px solid rgba(${p},0.2)` }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" style={{ animation: "pulse 1.5s infinite" }} />
+                  <RadioIcon className="w-3 h-3 flex-shrink-0" style={{ color: `rgb(${p})` }} />
+                  <span className="text-[10px] font-black tracking-wider uppercase" style={{ color: `rgb(${p})` }}>Live Radio Still Playing</span>
+                </div>
+                <button onClick={stopLiveStream} className="text-[9px] font-black opacity-60 hover:opacity-100 transition-opacity uppercase tracking-wider" style={{ color: `rgb(${p})` }}>Stop</button>
+              </div>
+            </motion.div>
+          )}
+          {activeTab === "live" && myVibeIsPlaying && (
+            <motion.div
+              key="myvibe-playing-notice"
+              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+              className="mb-3 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl"
+                style={{ background: `rgba(${p},0.08)`, border: `1px solid rgba(${p},0.2)` }}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Music4 className="w-3 h-3 flex-shrink-0" style={{ color: `rgb(${p})` }} />
+                  <span className="text-[10px] font-black tracking-wider uppercase truncate" style={{ color: `rgb(${p})` }}>
+                    My Vibe Playing{myVibeTrack ? `: ${myVibeTrack.title}` : ""}
+                  </span>
+                </div>
+                <button onClick={globalToggle} className="text-[9px] font-black opacity-60 hover:opacity-100 transition-opacity uppercase tracking-wider flex-shrink-0 ml-2" style={{ color: `rgb(${p})` }}>Pause</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── Viz Mode + Theme Picker ── */}
         <div className="flex justify-between items-center mb-2" style={{ maxWidth: 440, margin: "0 auto 8px" }}>
