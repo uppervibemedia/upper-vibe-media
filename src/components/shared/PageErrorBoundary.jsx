@@ -38,13 +38,11 @@ export default class PageErrorBoundary extends React.Component {
               style={{ background: "linear-gradient(135deg,rgba(0,160,220,0.8),rgb(0,160,220))", color: "#fff" }}>
               <RefreshCw className="w-4 h-4" /> Try Again
             </button>
-            {this.props.showRetry && (
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-3 block mx-auto text-sm text-white/30 hover:text-white/60 transition-colors">
-                Reload page
-              </button>
-            )}
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-3 block mx-auto text-sm text-white/30 hover:text-white/60 transition-colors">
+              Reload Page
+            </button>
           </div>
         </div>
       );

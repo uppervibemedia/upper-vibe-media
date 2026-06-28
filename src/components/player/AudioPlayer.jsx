@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X, Mic2, Music4 } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X, Mic2, Music4, Radio } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ShareVibeButton from "../shared/ShareVibeButton";
 import ThumbsDownButton from "../shared/ThumbsDownButton";
@@ -10,6 +10,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
 import usePageVisible from "@/hooks/usePageVisible";
 import { useAuth } from "@/lib/AuthContext";
+import { subscribe as ramSubscribe, getState as ramGetState } from "@/lib/radioAudioManager";
 
 export default function AudioPlayer() {
   const navigate = useNavigate();
@@ -150,13 +151,63 @@ export default function AudioPlayer() {
     audioRef.current.volume = muted ? 0 : volume / 100;
   }, [volume, muted, audioRef]);
 
+  // ── RAM state subscription ──────────────────────────────────────
+  const [ramState, setRamState] = useState(() => ramGetState());
+  useEffect(() => ramSubscribe((s) => setRamState(s)), []);
+
+  // Derive effective display track and playing state from both sources:
+  // RAM (Upper Vibe Radio / My Vibe Radio) takes priority over PlayerContext.
+  const ramActive = ramState.activeMode !== null;
+  const displayTrack = ramActive ? ramState.currentTrack : currentTrack;
+  const effectiveIsPlaying = ramActive ? ramState.isPlaying : isPlaying;
+  const isRamRadio = ramActive && ramState.audioType === "liveStream";
+
   const handleIdlePlay = () => {
+    if (ramActive) return; // RAM already active — nothing to play here
     if (queue?.length > 0 && queue[0]?.audio_url) {
       playTrack(queue[0], "song", 0);
     } else {
       navigate("/start");
     }
   };
+
+  // Toggle play: delegate to RAM when RAM is active, otherwise use PlayerContext
+  const handleTogglePlay = useCallback(() => {
+    if (ramActive) {
+      // RAM handles its own toggle internally — user taps to start/stop radio/myVibe
+      import("@/lib/radioAudioManager").then((mod) => {
+        if (ramState.activeMode === "upperVibeRadio") {
+          if (ramState.isPlaying) mod.pauseUpperVibeRadio();
+          else mod.resumeUpperVibeRadio();
+        } else if (ramState.activeMode === "myVibeRadio") {
+          if (ramState.isPlaying) mod.pauseMyVibe();
+          else mod.resumeMyVibe();
+        }
+      });
+    } else {
+      togglePlay();
+    }
+  }, [ramActive, ramState.activeMode, ramState.isPlaying, togglePlay]);
+
+  // Skip: delegate to RAM when RAM is active
+  const handleSkip = useCallback(() => {
+    if (ramActive && ramState.activeMode === "myVibeRadio") {
+      // My Vibe Radio skip is handled via RadioContext's nextRadioSong
+      skipTrack?.();
+    } else if (!ramActive) {
+      skipTrack?.();
+    }
+  }, [ramActive, ramState.activeMode, skipTrack]);
+
+  const handlePrevAction = useCallback(() => {
+    if (!ramActive) {
+      if (sourceType !== "radio") {
+        const a = audioRef.current;
+        if (a && a.currentTime > 3) a.currentTime = 0;
+      }
+      handlePrev?.();
+    }
+  }, [ramActive, sourceType, handlePrev, audioRef]);
 
   const handleSeek = (val) => {
     const audio = audioRef.current;
@@ -185,9 +236,10 @@ export default function AudioPlayer() {
         WebkitBackdropFilter: "blur(40px)",
       }}
     >
-      {currentTrack ? (
+      {displayTrack ? (
         <>
-          {/* Seek bar */}
+          {/* Seek bar (only for non-live tracks) */}
+          {!isRamRadio && (
           <div
             className="relative h-[3px] w-full cursor-pointer group"
             style={{ background: `rgba(${themeRgb}, 0.18)` }}
@@ -220,19 +272,20 @@ export default function AudioPlayer() {
               }}
             />
           </div>
+          )}
 
           <div className="flex items-center gap-3 md:gap-5 px-4 py-3 md:px-6">
             {/* Track info */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              {currentTrack.cover_url ? (
+              {displayTrack.cover_url ? (
                 <div className="relative flex-shrink-0">
                   <img
-                    src={currentTrack.cover_url}
-                    alt={currentTrack.title}
+                    src={displayTrack.cover_url}
+                    alt={displayTrack.title}
                     className="w-11 h-11 rounded-lg object-cover"
                     style={{ boxShadow: `0 0 16px rgba(${themeRgb},0.25)` }}
                   />
-                  {isPlaying && (
+                  {effectiveIsPlaying && (
                     <div className="absolute inset-0 rounded-lg flex items-end justify-center pb-1 gap-0.5 bg-black/20">
                       {[1, 2, 3].map(i => (
                         <motion.div
@@ -249,19 +302,19 @@ export default function AudioPlayer() {
               ) : (
                 <div
                   className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center"
-                  style={currentTrack?._isHostDrop
+                  style={displayTrack?._isHostDrop
                     ? { background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.25)" }
                     : { background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)" }}
                 >
-                  {currentTrack?._isHostDrop
+                  {displayTrack?._isHostDrop
                     ? <Mic2 className="w-4 h-4" style={{ color: "#A855F7" }} />
                     : <span className="text-cyan-400/60 text-xs">♪</span>}
                 </div>
               )}
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate leading-tight">{currentTrack.title}</p>
+                <p className="text-sm font-semibold text-foreground truncate leading-tight">{displayTrack.title}</p>
                 <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">
-                  {currentTrack.artist_display || currentTrack.artist || "Upper Vibe Media"}
+                  {displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}
                 </p>
               </div>
             </div>
@@ -269,20 +322,14 @@ export default function AudioPlayer() {
             {/* Controls */}
             <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
               <button
-                onClick={() => {
-                  handlePrev();
-                  if (sourceType !== "radio") {
-                    const a = audioRef.current;
-                    if (a && a.currentTime > 3) a.currentTime = 0;
-                  }
-                }}
+                onClick={handlePrevAction}
                 className="text-muted-foreground/40 hover:text-foreground/70 transition-colors flex"
                 style={{ minWidth: "44px", minHeight: "44px", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 <SkipBack className="w-3.5 h-3.5" />
               </button>
               <button
-                onClick={togglePlay}
+                onClick={handleTogglePlay}
                 className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95"
                 style={{
                   background: `linear-gradient(135deg, rgba(${themeRgb},0.9), rgb(${themeRgb}))`,
@@ -292,13 +339,13 @@ export default function AudioPlayer() {
                   touchAction: "manipulation",
                 }}
               >
-                {isPlaying
+                {effectiveIsPlaying
                   ? <Pause className="w-3.5 h-3.5 md:w-4 md:h-4 text-black" />
                   : <Play  className="w-3.5 h-3.5 md:w-4 md:h-4 text-black ml-0.5" />
                 }
               </button>
               <button
-                onClick={() => { skipTrack?.(); }}
+                onClick={handleSkip}
                 className="text-muted-foreground/40 hover:text-foreground/70 transition-colors flex"
                 style={{ minWidth: "44px", minHeight: "44px", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
@@ -328,13 +375,13 @@ export default function AudioPlayer() {
               </div>
 
               <ShareVibeButton
-                type={currentTrack?._isHostDrop ? "radio" : "song"}
-                track={currentTrack}
+                type={displayTrack?._isHostDrop ? "radio" : "song"}
+                track={displayTrack}
                 size="sm"
               />
 
-              {!currentTrack?._isHostDrop && (
-                <ThumbsDownButton track={currentTrack} user={user} size="sm" />
+              {!displayTrack?._isHostDrop && (
+                <ThumbsDownButton track={displayTrack} user={user} size="sm" />
               )}
 
               <div className="w-px h-4 bg-border mx-1" />
@@ -353,8 +400,41 @@ export default function AudioPlayer() {
             </button>
           </div>
         </>
+      ) : isRamRadio ? (
+        /* ── Upper Vibe Live Radio playing ── */
+        <div className="flex items-center gap-3 px-4 py-3 md:px-6">
+          <div
+            className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center"
+            style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.25)" }}
+          >
+            <Radio className="w-4 h-4" style={{ color: "rgba(0,229,255,0.7)" }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate leading-tight">Upper Vibe Live Radio</p>
+            <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">Upper Vibe Media</p>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={handleTogglePlay}
+              className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+              style={{
+                background: `linear-gradient(135deg, rgba(${themeRgb},0.9), rgb(${themeRgb}))`,
+                boxShadow: `0 0 20px rgba(${themeRgb},0.45)`,
+                minWidth: "44px",
+                minHeight: "44px",
+                touchAction: "manipulation",
+              }}
+            >
+              {effectiveIsPlaying
+                ? <Pause className="w-3.5 h-3.5 md:w-4 md:h-4 text-black" />
+                : <Play  className="w-3.5 h-3.5 md:w-4 md:h-4 text-black ml-0.5" />
+              }
+            </button>
+          </div>
+        </div>
       ) : (
-        /* ── Idle state: compact bar when no track is loaded ── */
+        /* ── Idle state: compact bar when no music is playing ── */
         <div className="flex items-center gap-3 px-4 py-3 md:px-6">
           <div
             className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center"
@@ -363,7 +443,7 @@ export default function AudioPlayer() {
             <Music4 className="w-4 h-4" style={{ color: "rgba(0,229,255,0.45)" }} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground/45 truncate leading-tight">Choose Music</p>
+            <p className="text-sm font-semibold text-foreground/45 truncate leading-tight">No Music Playing</p>
             <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">Upper Vibe Media</p>
           </div>
 
