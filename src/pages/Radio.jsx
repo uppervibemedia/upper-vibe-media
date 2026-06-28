@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Pause, Radio as RadioIcon, Waves, Music4, Sparkles,
+  Play, Pause, Radio as RadioIcon, AudioLines, Music4, Sparkles,
   SkipForward, SkipBack, Heart, ThumbsDown, Download, Lock,
 } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
@@ -145,11 +145,15 @@ export default function RadioPage() {
 
   const switchTab = useCallback((tab) => {
     if (tab === activeTab) return;
-    // Only stop the live stream when switching away — never touch global player
-    if (activeTab === "live") stopLiveStream();
+    // Stop whichever source is active when switching tabs
+    if (activeTab === "live") {
+      stopLiveStream();
+    } else if (activeTab === "myvibe" && globalIsPlaying) {
+      globalToggle();
+    }
     setActiveTab(tab);
     try { localStorage.setItem(TAB_KEY, tab); } catch {}
-  }, [activeTab, stopLiveStream]);
+  }, [activeTab, stopLiveStream, globalIsPlaying, globalToggle]);
 
   // ── Now Playing poll ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -202,10 +206,11 @@ export default function RadioPage() {
 
   // ── My Vibe Radio ─────────────────────────────────────────────────────────
   const handleMyVibeToggle = useCallback(() => {
+    // Always stop live stream first (could be playing from live tab)
+    stopLiveStream();
     if (isRadioMode) {
       globalToggle();
     } else {
-      stopLiveStream();
       startRadio();
     }
   }, [isRadioMode, globalToggle, stopLiveStream, startRadio]);
@@ -564,7 +569,7 @@ function LivePlayerCard({ isPlaying, isLoading, error, nowPlaying, onToggle, the
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full"
           style={{ background: `rgba(${p},0.08)`, border: `1px solid rgba(${p},0.2)` }}>
           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-red-500" style={{ animation: "pulse 1.5s infinite" }} />
-          <Waves className="w-3 h-3" style={{ color: `rgb(${p})` }} />
+          <AudioLines className="w-3 h-3" style={{ color: `rgb(${p})` }} />
           <span className="text-[10px] font-black tracking-[0.2em] uppercase" style={{ color: `rgb(${p})` }}>
             {isPlaying ? "Listen Live" : "Live Radio"}
           </span>

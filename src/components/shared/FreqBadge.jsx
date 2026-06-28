@@ -1,5 +1,5 @@
 import React from "react";
-import { Waves } from "lucide-react";
+import { AudioLines } from "lucide-react";
 
 /**
  * Standard 432 Hz / frequency badge — used everywhere on the site.
@@ -19,7 +19,7 @@ export default function FreqBadge({ label = "432 Hz", color = "0,160,220", class
         whiteSpace: "nowrap",
       }}
     >
-      <Waves style={{ width: 11, height: 11, flexShrink: 0 }} />
+      <AudioLines style={{ width: 11, height: 11, flexShrink: 0 }} />
       {label}
     </span>
   );
