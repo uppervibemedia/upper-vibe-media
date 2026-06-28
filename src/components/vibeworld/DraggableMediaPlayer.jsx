@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Pause, SkipForward, GripHorizontal } from "lucide-react";
+import { Play, Pause, SkipForward, GripHorizontal, Music4 } from "lucide-react";
 import CoverImage from "@/components/shared/CoverImage";
 import useMobileLayout from "@/hooks/useMobileLayout";
 
@@ -105,7 +105,6 @@ export default function DraggableMediaPlayer({
     tapCountRef.current.lastTime = now;
   }, [resetPosition]);
 
-  if (!currentTrack) return null;
   if (!IS_MOBILE && !pos) return null;
   if (IS_MOBILE && !mobileLayout) return null;
 
@@ -146,83 +145,119 @@ export default function DraggableMediaPlayer({
         height: "52px",
       }}
     >
-      {/* Drag handle (desktop only — on mobile it's a fixed anchor) */}
-      {!IS_MOBILE && (
-        <button
-          onMouseDown={handleDragStart}
-          onClick={handleHandleTap}
-          className="rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/10"
-          style={{
-            width: 36, height: 36, minWidth: 36, minHeight: 36,
-            color: "rgba(255,255,255,0.35)",
-            touchAction: "none",
-            cursor: "grab",
-            pointerEvents: "auto",
-          }}
-          aria-label="Drag player. Double-click to reset."
-        >
-          <GripHorizontal className="w-3 h-3" />
-        </button>
+      {!currentTrack ? (
+        <>
+          {/* Music icon — idle state */}
+          <div
+            className="rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
+            style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, background: "rgba(255,255,255,0.06)" }}
+          >
+            <Music4 className="w-4 h-4" style={{ color: "rgba(255,255,255,0.3)" }} />
+          </div>
+
+          {/* "Choose Music" label */}
+          <span className="text-[10px] font-bold text-white/40 flex-1 min-w-0 overflow-hidden truncate">
+            Choose Music
+          </span>
+
+          {/* Play button */}
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onTogglePlay?.(); }}
+            className="rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:brightness-110 active:scale-90"
+            style={{
+              width: 38, height: 38, minWidth: 38, minHeight: 38,
+              background: "linear-gradient(135deg,#1B5E20,#2E7D32)",
+              color: "#fff",
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
+            aria-label="Play"
+          >
+            <Play className="w-3 h-3 ml-0.5" />
+          </button>
+        </>
+      ) : (
+        <>
+          {/* Drag handle (desktop only — on mobile it's a fixed anchor) */}
+          {!IS_MOBILE && (
+            <button
+              onMouseDown={handleDragStart}
+              onClick={handleHandleTap}
+              className="rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/10"
+              style={{
+                width: 36, height: 36, minWidth: 36, minHeight: 36,
+                color: "rgba(255,255,255,0.35)",
+                touchAction: "none",
+                cursor: "grab",
+                pointerEvents: "auto",
+              }}
+              aria-label="Drag player. Double-click to reset."
+            >
+              <GripHorizontal className="w-3 h-3" />
+            </button>
+          )}
+
+          {/* Cover art */}
+          <div
+            className="rounded-full overflow-hidden flex-shrink-0 pointer-events-none"
+            style={{ width: 36, height: 36, minWidth: 36, minHeight: 36 }}
+          >
+            <CoverImage
+              src={currentTrack.cover_url}
+              alt={currentTrack.title}
+              className="w-full h-full"
+              iconClassName="w-3 h-3"
+            />
+          </div>
+
+          {/* Title + Artist */}
+          <div
+            className="flex-1 min-w-0 pointer-events-none overflow-hidden"
+            style={{ maxWidth: IS_MOBILE ? (nearStage ? "52px" : "70px") : "90px" }}
+          >
+            <p className="text-[10px] font-bold text-white/90 truncate leading-tight">
+              {currentTrack.title}
+            </p>
+            <p className="text-[9px] text-white/40 truncate leading-tight">
+              {currentTrack.artist_display || currentTrack.artist || ""}
+            </p>
+          </div>
+
+          {/* Skip */}
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onSkip?.(); }}
+            className="rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/10 active:scale-90"
+            style={{
+              width: 38, height: 38, minWidth: 38, minHeight: 38,
+              color: "rgba(255,255,255,0.45)",
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
+            aria-label="Skip"
+          >
+            <SkipForward className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Play/Pause */}
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onTogglePlay?.(); }}
+            className="rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:brightness-110 active:scale-90"
+            style={{
+              width: 38, height: 38, minWidth: 38, minHeight: 38,
+              background: "linear-gradient(135deg,#1B5E20,#2E7D32)",
+              color: "#fff",
+              touchAction: "manipulation",
+              pointerEvents: "auto",
+            }}
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+          </button>
+        </>
       )}
-
-      {/* Cover art */}
-      <div
-        className="rounded-full overflow-hidden flex-shrink-0 pointer-events-none"
-        style={{ width: 36, height: 36, minWidth: 36, minHeight: 36 }}
-      >
-        <CoverImage
-          src={currentTrack.cover_url}
-          alt={currentTrack.title}
-          className="w-full h-full"
-          iconClassName="w-3 h-3"
-        />
-      </div>
-
-      {/* Title + Artist */}
-      <div
-        className="flex-1 min-w-0 pointer-events-none overflow-hidden"
-        style={{ maxWidth: IS_MOBILE ? (nearStage ? "52px" : "70px") : "90px" }}
-      >
-        <p className="text-[10px] font-bold text-white/90 truncate leading-tight">
-          {currentTrack.title}
-        </p>
-        <p className="text-[9px] text-white/40 truncate leading-tight">
-          {currentTrack.artist_display || currentTrack.artist || ""}
-        </p>
-      </div>
-
-      {/* Skip */}
-      <button
-        onTouchStart={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); onSkip?.(); }}
-        className="rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:bg-white/10 active:scale-90"
-        style={{
-          width: 38, height: 38, minWidth: 38, minHeight: 38,
-          color: "rgba(255,255,255,0.45)",
-          touchAction: "manipulation",
-          pointerEvents: "auto",
-        }}
-        aria-label="Skip"
-      >
-        <SkipForward className="w-3.5 h-3.5" />
-      </button>
-
-      {/* Play/Pause */}
-      <button
-        onTouchStart={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); onTogglePlay?.(); }}
-        className="rounded-full flex items-center justify-center flex-shrink-0 transition-all hover:brightness-110 active:scale-90"
-        style={{
-          width: 38, height: 38, minWidth: 38, minHeight: 38,
-          background: "linear-gradient(135deg,#1B5E20,#2E7D32)",
-          color: "#fff",
-          touchAction: "manipulation",
-          pointerEvents: "auto",
-        }}
-        aria-label={isPlaying ? "Pause" : "Play"}
-      >
-        {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
-      </button>
     </div>
   );
 }

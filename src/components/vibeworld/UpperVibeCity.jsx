@@ -928,8 +928,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // Auto-start personalized feed when entering world.
   // Uses feedStartedRef to prevent re-triggering when user pauses playback.
-  // IMPORTANT: if user spawns ON the dance floor, we load the track into the
-  // player (so the UI card appears) but immediately mute/pause it so the DJ owns audio.
+  // IMPORTANT: Only auto-starts if something was already playing before entry.
+  // If nothing was playing, marks feed as ready but stays paused — user taps play.
   useEffect(() => {
     if (feedLoading || loading || !playTrack) return;
     if (feedStartedRef.current) return; // already initialized — don't restart on state changes
@@ -949,35 +949,23 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       return;
     }
 
-    const pickAndLoad = (tracks, idx) => {
-      const pick = tracks[idx];
-      if (!pick) return;
-      feedActiveRef.current = true;
-      feedStartedRef.current = true;
-      feedIndexRef.current = idx;
-      // User spawns outside the dance floor — play normally.
-      // The dance floor enter/exit effect handles silencing if they walk in.
-      playTrack(pick, "song");
-    };
-
-    if (sortedTracks?.length > 0) {
-      const pool = sortedTracks.slice(0, Math.min(5, sortedTracks.length));
-      const idx = sortedTracks.indexOf(pool[Math.floor(Math.random() * pool.length)]);
-      pickAndLoad(sortedTracks, Math.max(0, idx));
-    } else if (!feedLoading && allTracks?.length > 0) {
-      const featured = allTracks.filter((t) => t.is_featured);
-      const pool = featured.length > 0 ? featured : allTracks;
-      const idx = allTracks.indexOf(pool[Math.floor(Math.random() * pool.length)]);
-      pickAndLoad(allTracks, Math.max(0, idx));
+    // Nothing was playing — mark feed as ready but do NOT auto-start
+    // Player will show in idle state; user taps play to start the feed
+    feedStartedRef.current = true;
+    feedActiveRef.current = true;
+    if (currentTrack) {
+      // Track loaded from previous session (paused) — adopt position without restarting
+      feedIndexRef.current = sortedTracks?.findIndex(t => t.id === currentTrack.id) ?? 0;
     }
   }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
 
   // ── iPhone Safari autoplay detection ────────────────────────────────
-  // Only show Resume Music button if user is NOT on the dance floor
-  // (on the dance floor, DJ audio handles playback — no resume button needed)
+  // Only show button if there was actually music loaded (not the idle "Choose Music" state)
+  // and user is NOT on the dance floor (DJ audio handles playback there)
   useEffect(() => {
     if (!feedStartedRef.current || resumeButtonHandledRef.current) return;
     if (!isIOSRef.current) return;
+    if (!currentTrack) return; // No track loaded — nothing to resume, show idle "Choose Music" instead
     const audio = audioRef?.current;
     if (!audio) return;
     const t = setTimeout(() => {
@@ -1494,8 +1482,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* ── Media Player — smart visibility/position based on UI state ── */}
       {(() => {
-        if (loading || (!cityTrack && !currentTrack) || stageFullScreen) return null;
-      const displayTrack = cityTrack || currentTrack;
+        if (loading || stageFullScreen) return null;
+        const displayTrack = cityTrack || currentTrack;
 
         // Determine current zone for stage-proximity check
         const currentZone = detectZone(playerPos.x, playerPos.z);
