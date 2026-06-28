@@ -1491,7 +1491,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
       {/* ── Media Player — mirrors global player state, no separate song selector ── */}
       {(() => {
-        if (loading || stageFullScreen) return null;
+        if (stageFullScreen) return null;
         const displayTrack = cityTrack;
 
         // The city player is always visible — shows the My Vibe current track even when paused.
