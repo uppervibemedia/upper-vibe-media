@@ -60,11 +60,11 @@ export default function RadioPage() {
 
   const switchTab = useCallback((tab) => {
     if (tab === activeTab) return;
+    // Only stop the live stream when switching away from it — never pause My Vibe (global player)
     if (activeTab === "live") stopLiveStream();
-    if (activeTab === "myvibe" && globalIsPlaying) globalToggle();
     setActiveTab(tab);
     try { localStorage.setItem(TAB_KEY, tab); } catch {}
-  }, [activeTab, stopLiveStream, globalIsPlaying, globalToggle]);
+  }, [activeTab, stopLiveStream]);
 
   // ── Now Playing poll ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -102,13 +102,12 @@ export default function RadioPage() {
   const startLiveStream = useCallback(() => {
     setLiveError(null);
     setLiveIsLoading(true);
-    // Hard-stop the global player audio element so it doesn't conflict
-    const globalEl = globalAudioRef?.current;
-    if (globalEl) {
-      globalEl.pause();
-      // Don't clear src — just pause so it can be resumed later
+    // Hard-stop the global player only if it's actively playing
+    if (globalIsPlaying) {
+      const globalEl = globalAudioRef?.current;
+      if (globalEl && !globalEl.paused) globalEl.pause();
+      globalToggle(); // sync React state
     }
-    if (globalIsPlaying) globalToggle(); // sync React state
     // Small delay to let the global audio fully pause before starting stream
     setTimeout(() => {
       const el = getLiveAudio();
@@ -140,21 +139,32 @@ export default function RadioPage() {
   }, [isRadioMode, globalToggle, stopLiveStream, startRadio]);
 
   // ── Single-source enforcement ─────────────────────────────────────────────
-  // If global player starts, stop live stream
+  // If global player starts while live stream is also playing, stop live stream
+  // NOTE: do NOT stop the global player here — My Vibe Radio uses it and must persist
   useEffect(() => {
     if (globalIsPlaying && liveIsPlaying) stopLiveStream();
   }, [globalIsPlaying, liveIsPlaying, stopLiveStream]);
 
-  // ── Cleanup ───────────────────────────────────────────────────────────────
+  // When navigating away from /radio, only clean up the live stream.
+  // My Vibe Radio (global player) must keep playing across navigation.
   useEffect(() => {
     return () => {
-      const el = liveAudioRef.current;
-      if (el) {
-        el.pause(); el.src = "";
-        try { if (el.parentNode) el.parentNode.removeChild(el); } catch {}
+      // Stop live stream on unmount — but do NOT touch the global player
+      if (liveAudioRef.current) {
+        liveAudioRef.current.pause();
+        liveAudioRef.current.src = "";
+        try {
+          if (liveAudioRef.current.parentNode) {
+            liveAudioRef.current.parentNode.removeChild(liveAudioRef.current);
+          }
+        } catch {}
+        liveAudioRef.current = null;
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+
 
   const handleTogglePulse = (v) => { setPulseOn(v); setPulseEnabled(v); };
   const handleCycleMode = (next) => {
