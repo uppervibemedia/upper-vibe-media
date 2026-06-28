@@ -14,6 +14,7 @@ import {
   resumeMyVibe,
 } from "@/lib/radioAudioManager";
 import { useRadio } from "@/context/RadioContext";
+import { usePlayer } from "@/context/PlayerContext";
 
 // The default featured track title — used as fallback when no admin override is set
 const DEFAULT_FEATURED_TITLE = "Fourth Dimension Hustler";
@@ -60,6 +61,7 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
   const [loading, setLoading] = useState(true);
   const [ramState, setRamState] = useState(ramGetState);
   const { startMyVibeQueue } = useRadio();
+  const { currentTrack: playerTrack, isPlaying: playerIsPlaying, togglePlay } = usePlayer();
 
   const { accentId } = useTheme();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -99,36 +101,68 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
     loadTrack();
   }, []);
 
-  // Derive playing state from RAM: this track is "playing" if RAM is in myVibeRadio mode,
-  // playing, and has this track loaded (or any track — show as playing if My Vibe is active)
-  const myVibeActive = ramState.activeMode === "myVibeRadio";
-  const playing = myVibeActive && ramState.isPlaying &&
-    (ramState.currentTrack?.id === track?.id || ramState.currentTrack != null);
+  // ── Derive effective display state from all three sources ─────────────
+  // Priority: RAM (myVibeRadio/upperVibeRadio) > PlayerContext > featured track
+  const ramActive = ramState.activeMode !== null;
+  const isRamRadio = ramActive && ramState.audioType === "liveStream";
+
+  // Display track: the currently-playing track from any source
+  const displayTrack = ramActive ? ramState.currentTrack : (playerIsPlaying && playerTrack ? playerTrack : null);
+  // Fall back to the loaded featured track when nothing is playing
+  const effectiveTrack = displayTrack || track;
+
+  // Whether "now playing" is actually happening
+  const effectivePlaying = ramActive ? ramState.isPlaying : playerIsPlaying;
+
+  // True when the user's previous playback is using the exact same track as the default loaded track.
+  // We still show the playing state — just use the actively playing track's metadata.
+  const showPlaying = effectivePlaying && !!effectiveTrack;
 
   const handlePlay = () => {
-    if (!track?.audio_url) return;
-    if (myVibeActive) {
-      // My Vibe already active — toggle the same state
+    if (!track?.audio_url && !playerTrack?.audio_url) return;
+
+    // RAM is active — toggle RAM playback
+    if (ramActive) {
+      if (ramState.activeMode === "upperVibeRadio") {
+        import("@/lib/radioAudioManager").then((mod) => {
+          if (ramState.isPlaying) mod.pauseUpperVibeRadio();
+          else mod.resumeUpperVibeRadio();
+        });
+        return;
+      }
+      // myVibeRadio
       if (ramState.isPlaying) pauseMyVibe();
       else resumeMyVibe();
       return;
     }
-    // Start My Vibe Radio from the featured track via RadioContext queue
+
+    // PlayerContext is active — toggle it
+    if (playerTrack && playerIsPlaying !== undefined) {
+      togglePlay?.();
+      return;
+    }
+
+    // Nothing is playing — start My Vibe Radio from the featured track
     startMyVibeQueue((firstTrack) => {
-      // If RadioContext gave us a first track, play it; otherwise play the featured track directly
       playMyVibeTrack(firstTrack || track);
     });
   };
 
   if (loading) return null;
 
-  const freqLabel = track?.frequency_type === "432hz" ? "432 Hz"
-    : track?.frequency_type === "528hz" ? "528 Hz"
+  // Use displayed track's metadata for the UI
+  const displayTitle = effectiveTrack?.title || DEFAULT_FEATURED_TITLE;
+  const displayArtist = effectiveTrack?.artist_display || DEFAULT_FEATURED_ARTIST;
+  const displayCover = effectiveTrack?.cover_url || null;
+
+  // Frequency label for the badge
+  const freqLabel = effectiveTrack?.frequency_type === "432hz" ? "432 Hz"
+    : effectiveTrack?.frequency_type === "528hz" ? "528 Hz"
     : "High-Vibe";
 
-  const displayTitle = track?.title || DEFAULT_FEATURED_TITLE;
-  const displayArtist = track?.artist_display || DEFAULT_FEATURED_ARTIST;
-  const displayCover = track?.cover_url || null;
+  // The play button track — use displayTrack when available (what's actually playing),
+  // fall back to the loaded featured track
+  const playButtonTrack = displayTrack || track;
 
   return (
     <div className="w-full relative rounded-2xl" style={{ overflow: "visible" }}>
@@ -158,9 +192,9 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
             textTransform: "uppercase", color: primaryColor,
             fontFamily: "var(--font-heading)",
           }}>
-            Featured Track
+            {isRamRadio ? "Live Radio" : (showPlaying && displayTrack ? "Now Playing" : "Featured Track")}
           </span>
-          {track && <FreqBadge label={freqLabel} color={rtPrimary} />}
+          {effectiveTrack && <FreqBadge label={freqLabel} color={rtPrimary} />}
         </div>
 
         {/* Track row */}
@@ -175,7 +209,7 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
             ) : (
               <Music2 className="w-6 h-6" style={{ color: primaryRgba(0.5) }} />
             )}
-            {playing && (
+            {showPlaying && (
               <div className="absolute inset-0 flex items-center justify-center rounded-xl"
                 style={{ background: "rgba(0,0,0,0.45)" }}>
                 <Waves className="w-4 h-4 animate-pulse" style={{ color: primaryColor }} />
@@ -193,26 +227,26 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
             </p>
           </div>
 
-          {/* Play button + animated bars */}
-          {track?.audio_url && (
+          {/* Play button + animated bars — uses effectiveTrack for display, playButtonTrack for audio_url */}
+          {playButtonTrack?.audio_url && (
             <div className="flex-shrink-0 flex flex-col items-center gap-2">
               <motion.button
                 onClick={handlePlay}
                 whileTap={{ scale: 0.92 }}
                 className="w-11 h-11 rounded-full flex items-center justify-center transition-all"
                 style={{
-                  background: playing
+                  background: showPlaying
                     ? primaryRgba(0.15)
                     : `linear-gradient(135deg,rgb(${rtPrimaryDark}),${primaryColor})`,
-                  border: playing ? `1px solid ${primaryRgba(0.5)}` : "none",
-                  boxShadow: `0 0 20px ${primaryRgba(playing ? 0.35 : 0.45)}`,
+                  border: showPlaying ? `1px solid ${primaryRgba(0.5)}` : "none",
+                  boxShadow: `0 0 20px ${primaryRgba(showPlaying ? 0.35 : 0.45)}`,
                 }}
               >
-                {playing
+                {showPlaying
                   ? <Pause className="w-4 h-4" style={{ color: primaryColor }} />
                   : <Play className="w-4 h-4 ml-0.5" style={{ color: "#000" }} />}
               </motion.button>
-              <MusicBars color={playing ? primaryColor : primaryRgba(0.35)} active={playing} />
+              <MusicBars color={showPlaying ? primaryColor : primaryRgba(0.35)} active={showPlaying} />
             </div>
           )}
         </div>
