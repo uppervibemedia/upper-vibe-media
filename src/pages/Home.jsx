@@ -95,8 +95,9 @@ export default function Home() {
   const [premiumModal, setPremiumModal] = useState(false);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const [vizModal, setVizModal] = useState(null);
-  const { startRadio, tracksLoaded, currentRadioSong } = useRadio();
+  const { currentRadioSong } = useRadio();
   const { accentId } = useTheme();
+
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtPrimary = radioTheme.vars["--rt-primary"];
   const rtSecondary = radioTheme.vars["--rt-secondary"];
@@ -106,14 +107,8 @@ export default function Home() {
   const isPageVisible = usePageVisible();
 
   const handleStartRadio = () => {
-    const audio = document.querySelector("audio");
-    const audioActive = audio && audio.src && !audio.paused && audio.currentTime > 0;
-    // If something is already playing, just navigate — do not restart or reload
-    if (isPlaying || audioActive) {
-      navigate("/radio");
-      return;
-    }
-    startRadio();
+    // Navigate to the Live Radio page — the Citrus3 stream plays there.
+    // Do NOT start the internal library radio here.
     navigate("/radio");
   };
   const { isFaved, toggle } = useFavoritesContext();
