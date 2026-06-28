@@ -188,25 +188,26 @@ export default function RadioPage() {
 
   // ── Start live stream ─────────────────────────────────────────────────────
   const startLiveStream = useCallback(() => {
-    // 1. Stop My Vibe first via proper API
-    _hardStopMyVibe();
-
-    // 2. Cancel any pending reconnect
+    // 1. Cancel any pending reconnect
     if (liveReconnectRef.current) { clearTimeout(liveReconnectRef.current); liveReconnectRef.current = null; }
 
     setLiveError(null);
     setLiveIsLoading(true);
     liveIntendedRef.current = true;
 
+    // 2. Start live stream synchronously within the user gesture (iOS requires this)
     const el = getLiveAudioEl();
     liveAudioRef.current = el;
-    // Small delay so any in-flight PlayerContext async ops settle before we start
-    setTimeout(() => {
-      if (!liveIntendedRef.current) return; // user already stopped it
-      el.volume = 0.9;
-      el.src = LIVE_STREAM_URL;
-      el.load();
-      el.play()
+    el.volume = 0.9;
+    el.src = LIVE_STREAM_URL;
+    el.load();
+    const playPromise = el.play();
+
+    // 3. Stop My Vibe AFTER initiating play (gesture already used, safe to do async work)
+    _hardStopMyVibe();
+
+    if (playPromise && typeof playPromise.then === "function") {
+      playPromise
         .then(() => {
           setLiveIsPlaying(true);
           setLiveIsLoading(false);
@@ -218,7 +219,10 @@ export default function RadioPage() {
           setLiveError("Tap play to start the stream.");
           console.warn("[LiveRadio] play blocked:", err.message);
         });
-    }, 80);
+    } else {
+      setLiveIsPlaying(true);
+      setLiveIsLoading(false);
+    }
   }, [_hardStopMyVibe]);
 
   // ── Toggle live stream ────────────────────────────────────────────────────
