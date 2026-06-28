@@ -95,7 +95,7 @@ export default function RadioCTA() {
   const [tracks, setTracks] = useState([]);
   const [featuredTrack, setFeaturedTrack] = useState(null);
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
-  const { startMyVibeQueue } = useRadio();
+  const { currentRadioSong, startMyVibeQueue } = useRadio();
   const [ramState, setRamState] = useState(() => ramGetState());
   useEffect(() => { return ramSubscribe((s) => setRamState(s)); }, []);
 
@@ -112,44 +112,35 @@ export default function RadioCTA() {
     return () => clearTimeout(timer);
   }, []);
 
-  // ── RAM-aware display logic ──────────────────────────────────────────
-  const ramActive = ramState.activeMode !== null;
-  // Display track: RAM (My Vibe/Upper Vibe Radio) → PlayerContext → featured fallback
-  const displayTrack = ramActive
-    ? ramState.currentTrack
-    : (currentTrack && isPlaying ? currentTrack : null);
-  const effectiveTrack = displayTrack || featuredTrack;
-  const effectivePlaying = ramActive ? ramState.isPlaying : (isPlaying && !!currentTrack);
+  // ── Display logic — matches Home hero priority ───────────────────────
+  // RAM myVibeRadio → PlayerContext (even when paused) → currentRadioSong → featured fallback
+  const ramTrack = ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : null;
+  const displayTrack = ramTrack || currentTrack || currentRadioSong || featuredTrack;
+  const effectivePlaying = ramState.activeMode === "myVibeRadio"
+    ? ramState.isPlaying
+    : (isPlaying && !!currentTrack);
 
   const handlePlayFeatured = () => {
-    // RAM is active — toggle RAM
-    if (ramActive) {
-      if (ramState.activeMode === "upperVibeRadio") {
-        import("@/lib/radioAudioManager").then((mod) => {
-          if (ramState.isPlaying) mod.pauseUpperVibeRadio();
-          else mod.resumeUpperVibeRadio();
-        });
-        return;
-      }
+    // RAM myVibeRadio — toggle via RAM
+    if (ramState.activeMode === "myVibeRadio") {
       if (ramState.isPlaying) pauseMyVibe();
       else resumeMyVibe();
       return;
     }
 
-    // PlayerContext is active — toggle
+    // PlayerContext has a track — toggle
     if (currentTrack) { togglePlay(); return; }
 
-    // Nothing playing — start My Vibe Radio from the featured track
-    if (!featuredTrack) return;
+    // Nothing playing — start My Vibe Radio from displayTrack
+    if (!displayTrack) return;
     startMyVibeQueue((firstTrack) => {
-      const target = firstTrack || featuredTrack;
+      const target = firstTrack || displayTrack;
       import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(target));
     });
   };
 
-  // Show the currently-playing track's art+title, or fall back to featured
-  const showTrack = effectiveTrack || featuredTrack;
-  const showPlaying = effectivePlaying && !!displayTrack;
+  const showTrack = displayTrack;
+  const showPlaying = effectivePlaying;
   const r = BLUE;
   const primaryColor = `rgb(${r})`;
   const rgba = (a) => `rgba(${r},${a})`;
@@ -158,12 +149,18 @@ export default function RadioCTA() {
     : showTrack?.frequency_type === "528hz" ? "528 Hz"
     : "High-Vibe";
 
-  // Label text
-  const label = ramState.activeMode === "upperVibeRadio" && ramState.isPlaying
-    ? "Live Radio"
-    : showPlaying
-      ? "Now Playing"
-      : "Featured Track";
+  // Label text — matches Home hero labels
+  const label = (ramState.activeMode === "myVibeRadio" && ramState.isPlaying)
+    ? "My Vibe Radio"
+    : ramTrack
+      ? "My Vibe Paused"
+      : isPlaying && currentTrack
+        ? "Now Playing"
+        : currentTrack
+          ? "Paused"
+          : currentRadioSong
+            ? "On Air"
+            : "Featured Track";
 
   return (
     <section
