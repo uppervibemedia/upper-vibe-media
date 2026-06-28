@@ -56,6 +56,7 @@ export default function RadioPage() {
   const getAudio = useCallback(() => {
     if (!audioRef.current) {
       const el = new Audio();
+      el.crossOrigin = "anonymous"; // required for Web Audio analyser to read stream data
       el.preload = "none";
       el.volume = 0.9;
       el.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
@@ -220,7 +221,7 @@ export default function RadioPage() {
           )}
           <div className="relative z-10 overflow-hidden rounded-3xl"
             style={{ background: "rgba(0,0,0,0.4)", border: `1px solid rgba(${theme.vars["--rt-primary"]},0.15)` }}>
-            <RadioVisualizer isPlaying={isPlaying} currentSong={null} themeColor={theme.vars["--rt-primary"]} mode={vizMode} onCycleMode={handleCycleMode} />
+            <RadioVisualizer isPlaying={isPlaying} currentSong={null} themeColor={theme.vars["--rt-primary"]} mode={vizMode} onCycleMode={handleCycleMode} radioAudioRef={audioRef} />
             <div className="pointer-events-none absolute inset-0"
               style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(4,4,14,0.65) 100%)" }} />
           </div>
