@@ -185,13 +185,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // Auto-dance removed: user now spawns outside the dance floor in the plaza area.
 
-  // ── Vibe Check first-entry prompt — shown briefly near Vibe Check zone ──────
-  const [vibeCheckPromptDismissed, setVibeCheckPromptDismissed] = useState(false);
-  const vibeCheckDx = playerPos.x - (-16);
-  const vibeCheckDz = playerPos.z - (-13);
-  const nearVibeCheck = Math.sqrt(vibeCheckDx * vibeCheckDx + vibeCheckDz * vibeCheckDz) < 12;
-  const showVibeCheckPrompt = nearVibeCheck && !vibeCheckPromptDismissed && !loading;
-
   // ── TV Mode — hides joystick/camera visuals for clean mirrored view ──────────
   const [tvMode, setTvMode] = useState(false);
   const [tvQuality, setTvQuality] = useState("smooth"); // "smooth" | "normal"
@@ -657,7 +650,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const dfDist = Math.sqrt(dfDx * dfDx + dfDz * dfDz);
   const rawOnDanceFloor = dfDist <= DANCE_FLOOR_ENTER_R;
 
-  // Debounced dance floor state — only flips after 500ms stable
+  // Debounced dance floor state — only flips after 200ms stable (fast enough to feel responsive)
   const [onDanceFloor, setOnDanceFloor] = useState(false);
   const dfDebounceRef = useRef(null);
   const dfStableRef = useRef(false); // current debounced value
@@ -676,7 +669,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         dfDebounceRef.current = null;
         dfStableRef.current = target;
         setOnDanceFloor(target);
-      }, 500);
+      }, 200);
     }
   }, [rawOnDanceFloor, dfDist]);
   const wasOnDanceFloorRef = useRef(false);
@@ -1539,46 +1532,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       {showResumeButton && (
         <ResumeMusicButton isMobile={isMobile} onResume={handleResumeMusic} />
       )}
-
-      {/* ── Vibe Check prompt — subtle guide on first entry ── */}
-      <AnimatePresence>
-        {showVibeCheckPrompt && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.4 }}
-            style={{
-              position: "absolute",
-              bottom: isMobile
-                ? `calc(${mobileLayout?.sa?.bottom || 0}px + 110px)`
-                : "100px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 180,
-              pointerEvents: "auto",
-            }}
-          >
-            <div
-              style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "8px 16px", borderRadius: 24,
-                background: "rgba(0,229,255,0.10)",
-                border: "1px solid rgba(0,229,255,0.35)",
-                backdropFilter: "blur(12px)",
-                cursor: "pointer",
-              }}
-              onClick={() => setVibeCheckPromptDismissed(true)}
-            >
-              <span style={{ fontSize: 14 }}>✦</span>
-              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", color: "#00E5FF" }}>
-                Start Here — Check Your Vibe Score
-              </span>
-              <span style={{ fontSize: 11, color: "rgba(0,229,255,0.5)", marginLeft: 4 }}>×</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
