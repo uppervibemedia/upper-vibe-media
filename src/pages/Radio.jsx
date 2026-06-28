@@ -133,7 +133,7 @@ export default function RadioPage() {
     }
   }, [myVibeTrack, playLessIds, allTracks, nextRadioSong]);
 
-  // ── Tab switch ────────────────────────────────────────────────────────────
+  // ── Stop live stream ──────────────────────────────────────────────────────
   const stopLiveStream = useCallback(() => {
     const el = _liveAudioEl;
     if (!el) return;
@@ -143,17 +143,12 @@ export default function RadioPage() {
     setLiveIsLoading(false);
   }, []);
 
+  // ── Tab switch: just changes the view, does NOT stop any audio ───────────
   const switchTab = useCallback((tab) => {
     if (tab === activeTab) return;
-    // Stop whichever source is active when switching tabs
-    if (activeTab === "live") {
-      stopLiveStream();
-    } else if (activeTab === "myvibe" && globalIsPlaying) {
-      globalToggle();
-    }
     setActiveTab(tab);
     try { localStorage.setItem(TAB_KEY, tab); } catch {}
-  }, [activeTab, stopLiveStream, globalIsPlaying, globalToggle]);
+  }, [activeTab]);
 
   // ── Now Playing poll ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -178,47 +173,55 @@ export default function RadioPage() {
   const startLiveStream = useCallback(() => {
     setLiveError(null);
     setLiveIsLoading(true);
-    // Hard-stop the global player only if it's actively playing
-    if (globalIsPlaying) {
-      const globalEl = globalAudioRef?.current;
-      if (globalEl && !globalEl.paused) globalEl.pause();
-      globalToggle();
-    }
-    setTimeout(() => {
-      const el = getLiveAudioEl();
-      liveAudioRef.current = el;
-      el.src = LIVE_STREAM_URL;
-      el.load();
-      el.play()
-        .then(() => { setLiveIsPlaying(true); setLiveIsLoading(false); })
-        .catch((err) => {
-          setLiveIsLoading(false);
-          setLiveError("Tap play to start the stream.");
-          console.warn("[LiveRadio] play blocked:", err.message);
-        });
-    }, 150);
-  }, [globalIsPlaying, globalToggle, globalAudioRef]);
+    // Directly pause the global audio element if it's playing — don't toggle
+    const globalEl = globalAudioRef?.current;
+    if (globalEl && !globalEl.paused) globalEl.pause();
+
+    const el = getLiveAudioEl();
+    liveAudioRef.current = el;
+    el.src = LIVE_STREAM_URL;
+    el.load();
+    el.play()
+      .then(() => { setLiveIsPlaying(true); setLiveIsLoading(false); })
+      .catch((err) => {
+        setLiveIsLoading(false);
+        setLiveError("Tap play to start the stream.");
+        console.warn("[LiveRadio] play blocked:", err.message);
+      });
+  }, [globalAudioRef]);
 
   const handleLiveToggle = useCallback(() => {
-    if (liveIsPlaying) stopLiveStream();
-    else startLiveStream();
-  }, [liveIsPlaying, startLiveStream, stopLiveStream]);
+    if (liveIsPlaying) {
+      // Pause only — keep src so resuming works
+      const el = _liveAudioEl;
+      if (el) { el.pause(); el.src = ""; }
+      setLiveIsPlaying(false);
+      setLiveIsLoading(false);
+    } else {
+      startLiveStream();
+    }
+  }, [liveIsPlaying, startLiveStream]);
 
   // ── My Vibe Radio ─────────────────────────────────────────────────────────
   const handleMyVibeToggle = useCallback(() => {
-    // Always stop live stream first (could be playing from live tab)
-    stopLiveStream();
+    // Pause live stream audio directly if it's playing
+    const liveEl = _liveAudioEl;
+    if (liveEl && !liveEl.paused) {
+      liveEl.pause();
+      liveEl.src = "";
+      setLiveIsPlaying(false);
+      setLiveIsLoading(false);
+    }
     if (isRadioMode) {
+      // Already in radio mode — just toggle pause/play
       globalToggle();
     } else {
+      // Start fresh radio session
       startRadio();
     }
-  }, [isRadioMode, globalToggle, stopLiveStream, startRadio]);
+  }, [isRadioMode, globalToggle, startRadio]);
 
-  // ── Single-source enforcement ─────────────────────────────────────────────
-  useEffect(() => {
-    if (globalIsPlaying && liveIsPlaying) stopLiveStream();
-  }, [globalIsPlaying, liveIsPlaying, stopLiveStream]);
+  // Single-source enforcement is handled imperatively in each start handler above
 
   // On unmount: only clean up live stream if it's NOT playing (navigating away
   // while live radio is streaming should stop it; but My Vibe (global player)
