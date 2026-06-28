@@ -13,6 +13,7 @@ import IOSTip from "../components/shared/iOSTip";
 import TrendingLiveSection from "../components/radio/TrendingLiveSection";
 import { LIVE_STREAM_URL, LIVE_STREAM_NAME, LIVE_STREAM_DESCRIPTION } from "@/lib/liveStreamConfig";
 
+const NOW_PLAYING_URL = "https://s5.citrus3.com:2020/json/stream/upperviberadio";
 const PREF_KEY = "uvm_radio_viz_v9";
 const getSavedMode = () => { try { return localStorage.getItem(PREF_KEY) || "spectrum"; } catch { return "spectrum"; } };
 
@@ -27,6 +28,27 @@ export default function RadioPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // ── Now Playing metadata ─────────────────────────────────────────────────
+  const [nowPlaying, setNowPlaying] = useState(null); // { title, artist, coverart }
+
+  useEffect(() => {
+    const fetchNowPlaying = async () => {
+      try {
+        const res = await fetch(NOW_PLAYING_URL);
+        const data = await res.json();
+        if (data?.nowplaying) {
+          const parts = data.nowplaying.split(" - ");
+          const artist = parts.length > 1 ? parts[0] : "";
+          const title = parts.length > 1 ? parts.slice(1).join(" - ") : parts[0];
+          setNowPlaying({ title, artist, coverart: data.coverart || null });
+        }
+      } catch {}
+    };
+    fetchNowPlaying();
+    const interval = setInterval(fetchNowPlaying, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Pause global player when live radio starts
   const { togglePlay: globalToggle, isPlaying: globalIsPlaying, audioRef: globalAudioRef } = usePlayer();
@@ -224,27 +246,49 @@ export default function RadioPage() {
             <div className="relative z-10 rounded-3xl p-8 flex flex-col items-center gap-6"
               style={{ background: "rgba(255,255,255,0.028)", border: `1px solid rgba(${theme.vars["--rt-primary"]},0.12)` }}>
 
-              {/* Station logo / live indicator */}
-              <div className="w-28 h-28 rounded-2xl flex flex-col items-center justify-center gap-2"
-                style={{ background: `rgba(${theme.vars["--rt-primary"]},0.08)`, border: `1px solid rgba(${theme.vars["--rt-primary"]},0.2)` }}>
-                <RadioIcon className="w-10 h-10" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
+              {/* Cover art / station logo */}
+              <div className="relative w-36 h-36 rounded-2xl overflow-hidden flex-shrink-0"
+                style={{ border: `1px solid rgba(${theme.vars["--rt-primary"]},0.25)` }}>
+                {nowPlaying?.coverart ? (
+                  <img
+                    src={nowPlaying.coverart}
+                    alt={nowPlaying.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center"
+                    style={{ background: `rgba(${theme.vars["--rt-primary"]},0.08)` }}>
+                    <RadioIcon className="w-10 h-10" style={{ color: `rgb(${theme.vars["--rt-primary"]})` }} />
+                  </div>
+                )}
+                {/* Live bars overlay when playing */}
                 {isPlaying && (
-                  <div className="flex gap-0.5 items-end">
+                  <div className="absolute bottom-2 left-0 right-0 flex gap-0.5 items-end justify-center">
                     {[1,2,3,4,3].map((h, i) => (
                       <motion.div key={i}
                         animate={{ height: [`${h * 3}px`, `${h * 5}px`, `${h * 3}px`] }}
                         transition={{ duration: 0.5 + i * 0.1, repeat: Infinity, ease: "easeInOut", delay: i * 0.08 }}
                         className="w-1 rounded-full"
-                        style={{ background: `rgb(${theme.vars["--rt-primary"]})` }} />
+                        style={{ background: `rgb(${theme.vars["--rt-primary"]})`, opacity: 0.9 }} />
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Station info */}
+              {/* Station / now playing info */}
               <div className="text-center">
-                <h2 className="font-heading font-black text-white text-xl mb-1">{LIVE_STREAM_NAME}</h2>
-                <p className="text-white/40 text-sm">{LIVE_STREAM_DESCRIPTION}</p>
+                {nowPlaying ? (
+                  <>
+                    <p className="text-white/40 text-[10px] uppercase tracking-widest mb-1">Now Playing</p>
+                    <h2 className="font-heading font-black text-white text-lg mb-0.5 leading-tight">{nowPlaying.title}</h2>
+                    {nowPlaying.artist && <p className="text-white/50 text-sm">{nowPlaying.artist}</p>}
+                  </>
+                ) : (
+                  <>
+                    <h2 className="font-heading font-black text-white text-xl mb-1">{LIVE_STREAM_NAME}</h2>
+                    <p className="text-white/40 text-sm">{LIVE_STREAM_DESCRIPTION}</p>
+                  </>
+                )}
                 {error && <p className="text-yellow-400/70 text-xs mt-2">{error}</p>}
               </div>
 
