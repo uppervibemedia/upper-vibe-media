@@ -35,13 +35,13 @@ export default function AudioPlayer() {
   const themeRgb = theme.vars["--rt-primary"];
   const themeHex = theme.swatch;
 
-  // The two colors NOT currently selected lead the tip of the progress bar
-  const allThree = [
-    { id: "amber",  rgb: "245,158,11",  hex: "#F59E0B" },
-    { id: "violet", rgb: "168,85,247",  hex: "#A855F7" },
-    { id: "cyan",   rgb: "0,160,220",   hex: "#00A0DC" },
-  ];
-  const others = allThree.filter(c => c.id !== accentId);
+  // Fixed brand tri-color gradient — electric blue → gold → deep purple
+  // Always uses all three brand colors regardless of the selected accent/theme
+  const TRI_COLORS = {
+    blue:  "0,160,220",
+    gold:  "245,168,0",
+    purple: "155,126,255",
+  };
 
   const isPageVisible = usePageVisible();
 
@@ -262,12 +262,13 @@ export default function AudioPlayer() {
               style={{
                 width: `${progress}%`,
                 background: `linear-gradient(90deg,
-                  rgba(${themeRgb},0.5) 0%,
-                  rgb(${themeRgb}) 60%,
-                  ${others[0].hex} 78%,
-                  ${others[0].hex} 88%,
-                  ${others[1].hex} 92%,
-                  ${others[1].hex} 100%
+                  rgba(${TRI_COLORS.blue},0.5) 0%,
+                  rgb(${TRI_COLORS.blue}) 25%,
+                  rgba(${TRI_COLORS.gold},0.9) 45%,
+                  rgb(${TRI_COLORS.gold}) 60%,
+                  rgba(${TRI_COLORS.purple},0.8) 78%,
+                  rgb(${TRI_COLORS.purple}) 92%,
+                  rgb(${TRI_COLORS.purple}) 100%
                 )`
               }}
             />
