@@ -641,7 +641,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     }
 
     try {
-      // Create AudioContext lazily (must be inside user gesture on iOS)
+      // Create or reuse AudioContext — never close it between mounts
       if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
@@ -651,7 +651,7 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
         try { await ctx.resume(); } catch {}
       }
 
-      // Create analyser once
+      // Create analyser once; reuse across remounts
       if (!analyserRef.current) {
         const an = ctx.createAnalyser();
         an.fftSize = 2048;
@@ -659,22 +659,32 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
         analyserRef.current = an;
       }
 
-      // Create source node once per audio element — recreating throws InvalidStateError
-      if (!sourceRef.current || sourceRef.current._el !== audio) {
-        if (sourceRef.current) {
-          try { sourceRef.current.disconnect(); } catch {}
-          sourceRef.current = null;
-        }
-        // crossOrigin must be set before src for CORS-gated streams
-        if (!audio.crossOrigin) audio.crossOrigin = "anonymous";
-
-        const src = ctx.createMediaElementSource(audio);
-        src._el = audio;
-        src.connect(analyserRef.current);
-        analyserRef.current.connect(ctx.destination);
-        sourceRef.current = src;
-        console.log("[RadioViz] AudioGraph connected | ctxState:", ctx.state, "| src:", audio.src?.substring(0, 50));
+      // If source already exists and points to the same audio element, just reconnect
+      // the graph (analyser → destination) in case it was disconnected.
+      // NEVER call createMediaElementSource twice on the same element.
+      if (sourceRef.current && sourceRef.current._el === audio) {
+        try {
+          sourceRef.current.connect(analyserRef.current);
+          analyserRef.current.connect(ctx.destination);
+        } catch {}
+        console.log("[RadioViz] AudioGraph reconnected (existing source reused) | ctxState:", ctx.state);
+        return true;
       }
+
+      // New audio element — create source node for it
+      if (sourceRef.current && sourceRef.current._el !== audio) {
+        try { sourceRef.current.disconnect(); } catch {}
+        sourceRef.current = null;
+      }
+
+      if (!audio.crossOrigin) audio.crossOrigin = "anonymous";
+
+      const src = ctx.createMediaElementSource(audio);
+      src._el = audio;
+      src.connect(analyserRef.current);
+      analyserRef.current.connect(ctx.destination);
+      sourceRef.current = src;
+      console.log("[RadioViz] AudioGraph connected (new source) | ctxState:", ctx.state, "| src:", audio.src?.substring(0, 50));
 
       return true;
     } catch (e) {
@@ -788,13 +798,15 @@ export default function RadioVisualizer({ isPlaying, currentSong, themeColor = "
     _beat.hist.fill(0); _beat.idx = 0; _beat.count = 0; _beat.lastMs = 0;
     _spin.acc = 0; _spin.lastMs = Date.now();
 
-    // If AudioContext was closed (e.g. after city unmount side-effects), reset it
-    // so tryConnectAnalyser can create a fresh one
+    // Only reset if AudioContext is truly closed — never reset a healthy context
+    // (Resetting sourceRef would require calling createMediaElementSource again,
+    //  which throws InvalidStateError if the element was already used)
     if (audioCtxRef.current?.state === "closed") {
-      console.log("[RadioViz] AudioContext was closed — resetting for reconnect");
+      console.log("[RadioViz] AudioContext closed — resetting graph for reconnect");
       audioCtxRef.current = null;
       analyserRef.current = null;
-      sourceRef.current = null;
+      // sourceRef intentionally kept — element binding is permanent once created
+      // A new AudioContext will handle reconnecting source → analyser → destination
     }
 
     tryConnectAnalyser().then(connected => {

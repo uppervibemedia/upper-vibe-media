@@ -1,15 +1,16 @@
 /**
  * useWorldDJStream — Shared live DJ audio for the dance floor.
  *
- * Transition state machine:
- *   "idleOutside" → "entering" → "inside" → "leaving" → "idleOutside"
+ * KEY DESIGN: The audio element keeps playing at all times once started.
+ * Entering/exiting the dance floor only controls the VOLUME for this user.
+ * This means:
+ *   • All users hear the same epoch-synced position (shared timeline).
+ *   • Exiting the floor mutes the DJ for that user only — does NOT pause/reset.
+ *   • Re-entering fades back in at the current live position (no restart).
+ *   • Songs advance naturally via the "ended" event — no repeat on re-entry.
  *
- * Rules:
- *  • DJ audio ALWAYS starts at volume 0 before play() is called.
- *  • Fade-in happens only AFTER playback is confirmed running.
- *  • If a transition is already in progress for the same direction, it is ignored.
- *  • Reversing direction cleanly cancels the in-progress transition.
- *  • DJ is never audible outside the dance floor.
+ * Transition state machine: "idleOutside" | "entering" | "inside" | "leaving"
+ * Only one ramp runs at a time; switching direction cancels the current ramp.
  */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
@@ -19,7 +20,7 @@ const MAX_VOL = 0.82;
 const FADE_IN_MS = 500;
 const FADE_OUT_MS = 500;
 
-// ── Shared epoch: fixed reference point in ms ────────────────────────────────
+// Shared epoch — all users compute the same position from this timestamp
 const DJ_EPOCH = 1700000000000;
 
 function computeSharedPosition(tracks) {
@@ -42,14 +43,13 @@ function computeSharedPosition(tracks) {
   return { idx: 0, offset: 0 };
 }
 
-// Ramp volume from current level to target over ms, return cancel fn
+// Ramp volume from current level to target, returns cancel fn
 function rampVolume(el, targetVol, ms, onDone) {
   if (!el) { onDone?.(); return () => {}; }
   const startVol = el.volume;
   const startTime = performance.now();
   let rafId = null;
   let cancelled = false;
-
   const tick = (now) => {
     if (cancelled) return;
     const t = Math.min(1, (now - startTime) / ms);
@@ -58,16 +58,11 @@ function rampVolume(el, targetVol, ms, onDone) {
       rafId = requestAnimationFrame(tick);
     } else {
       el.volume = targetVol;
-      if (targetVol === 0) { try { el.pause(); } catch {} }
       onDone?.();
     }
   };
   rafId = requestAnimationFrame(tick);
-
-  return () => {
-    cancelled = true;
-    if (rafId) cancelAnimationFrame(rafId);
-  };
+  return () => { cancelled = true; if (rafId) cancelAnimationFrame(rafId); };
 }
 
 export default function useWorldDJStream({ enabled = true, danceFloorMode = false }) {
@@ -78,19 +73,25 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
   const useLiveStreamRef = useRef(false);
   const mountedRef = useRef(true);
 
-  // Transition state machine: "idleOutside" | "entering" | "inside" | "leaving"
+  // Has the audio element ever started playing? Once true, we never restart — only fade in/out.
+  const hasStartedRef = useRef(false);
+
+  // Transition state: "idleOutside" | "entering" | "inside" | "leaving"
   const transitionStateRef = useRef("idleOutside");
-  // Cancel function for any in-progress volume ramp
   const cancelRampRef = useRef(null);
 
   const danceFloorRef = useRef(false);
   danceFloorRef.current = danceFloorMode;
 
-  // ── Create ONE audio element, always volume=0 on creation ───────────────
+  const cancelRamp = useCallback(() => {
+    if (cancelRampRef.current) { cancelRampRef.current(); cancelRampRef.current = null; }
+  }, []);
+
+  // ── Single audio element, always volume=0 on creation ───────────────────
   const getAudio = useCallback(() => {
     if (!audioRef.current) {
       const el = new Audio();
-      el.volume = 0; // ALWAYS start silent
+      el.volume = 0;
       el.preload = "auto";
       el.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none;";
       el.setAttribute("aria-hidden", "true");
@@ -98,14 +99,6 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       audioRef.current = el;
     }
     return audioRef.current;
-  }, []);
-
-  // ── Cancel any in-progress ramp ─────────────────────────────────────────
-  const cancelRamp = useCallback(() => {
-    if (cancelRampRef.current) {
-      cancelRampRef.current();
-      cancelRampRef.current = null;
-    }
   }, []);
 
   // ── Load tracks from active DJ playlist ─────────────────────────────────
@@ -123,7 +116,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
           return;
         }
       }
-      console.log("[DJStream] No active DJ playlist — using Citrus3 live stream");
+      console.log("[DJStream] No active playlist — using live stream");
       useLiveStreamRef.current = true;
       loadedRef.current = true;
     } catch (e) {
@@ -133,7 +126,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     }
   }, []);
 
-  // ── Preload: warm up audio pipeline on mount ─────────────────────────────
+  // ── Preload on mount: prime audio pipeline, stay silent ─────────────────
   const preloadRef = useRef(false);
   const preloadDJSource = useCallback(async () => {
     if (preloadRef.current) return;
@@ -142,13 +135,13 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     if (!mountedRef.current) return;
 
     const el = getAudio();
-    if (el.dataset.djSrc) return; // already preloaded
+    if (el.dataset.djSrc) return; // already set
 
     if (useLiveStreamRef.current) {
       el.src = LIVE_STREAM_URL;
       el.dataset.djSrc = LIVE_STREAM_URL;
-      el.volume = 0; // keep silent
-      console.log("[DJStream] Preloaded live stream source (muted)");
+      el.volume = 0;
+      console.log("[DJStream] Preloaded live stream source (silent)");
     } else {
       const tracks = tracksRef.current;
       if (!tracks.length) return;
@@ -157,144 +150,149 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       if (!track?.audio_url) return;
       el.src = track.audio_url;
       el.dataset.djSrc = track.audio_url;
-      el.volume = 0; // keep silent
+      el.volume = 0;
       el.load();
-      console.log("[DJStream] Preloaded DJ track:", track.title, "(muted)");
+      setDjTrack(track);
+      console.log("[DJStream] Preloaded DJ track:", track.title, "(silent)");
     }
   }, [loadPlaylist, getAudio]);
 
-  // ── Enter dance floor: start DJ at volume=0 then fade in ────────────────
-  const enterDanceFloor = useCallback(() => {
-    const state = transitionStateRef.current;
-    // Already inside or already entering — do nothing
-    if (state === "inside" || state === "entering") return;
-
-    cancelRamp();
-    transitionStateRef.current = "entering";
-    console.log("[DJStream] 🕺 Entering dance floor — starting DJ from silence");
-
+  // ── Start initial playback (first ever dance floor entry) ────────────────
+  // After this call, hasStartedRef=true and we NEVER restart the audio.
+  const startInitialPlayback = useCallback(() => {
     const el = getAudio();
+    el.volume = 0; // must be silent before play()
 
-    // CRITICAL: force volume to 0 BEFORE any play() call
-    el.volume = 0;
+    if (useLiveStreamRef.current) {
+      if (!el.dataset.djSrc || el.dataset.djSrc !== LIVE_STREAM_URL) {
+        el.src = LIVE_STREAM_URL;
+        el.dataset.djSrc = LIVE_STREAM_URL;
+        el.load();
+      }
+      setDjTrack({ title: "Upper Vibe Radio", artist_display: "Live Stream" });
+      el.play().then(() => {
+        if (!mountedRef.current) return;
+        hasStartedRef.current = true;
+        transitionStateRef.current = "inside";
+        cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => { cancelRampRef.current = null; });
+        console.log("[DJStream] ✅ Live stream started — fading in");
+      }).catch(err => {
+        console.warn("[DJStream] live stream play() blocked:", err.message);
+        transitionStateRef.current = "idleOutside";
+      });
+      return;
+    }
 
-    const startPlayback = () => {
+    // Playlist mode — seek to shared position
+    const tracks = tracksRef.current;
+    if (!tracks.length) { transitionStateRef.current = "idleOutside"; return; }
+    const { idx, offset } = computeSharedPosition(tracks);
+    const track = tracks[idx];
+    if (!track?.audio_url) { transitionStateRef.current = "idleOutside"; return; }
+
+    const srcChanged = el.dataset.djSrc !== track.audio_url;
+    if (srcChanged) {
+      el.src = track.audio_url;
+      el.dataset.djSrc = track.audio_url;
+      el.load();
+    }
+    setDjTrack(track);
+
+    const seekAndPlay = () => {
       if (!mountedRef.current || !danceFloorRef.current) {
         transitionStateRef.current = "idleOutside";
         return;
       }
-
-      if (useLiveStreamRef.current) {
-        if (el.dataset.djSrc !== LIVE_STREAM_URL) {
-          el.src = LIVE_STREAM_URL;
-          el.dataset.djSrc = LIVE_STREAM_URL;
-          el.load();
-        }
-        setDjTrack({ title: "Upper Vibe Radio", artist_display: "Live Stream" });
-        el.volume = 0; // must be 0 right before play
-        el.play().then(() => {
-          if (!mountedRef.current || !danceFloorRef.current) {
-            el.pause(); el.volume = 0;
-            transitionStateRef.current = "idleOutside";
-            return;
-          }
-          transitionStateRef.current = "inside";
-          cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => {
-            cancelRampRef.current = null;
-          });
-          console.log("[DJStream] ✅ Live stream playing — fading in from 0");
-        }).catch(err => {
-          console.warn("[DJStream] live stream play() blocked:", err.message);
-          transitionStateRef.current = "idleOutside";
-        });
+      // Recalc shared position in case loading took time
+      const { idx: newIdx, offset: newOffset } = computeSharedPosition(tracks);
+      const latestTrack = tracks[newIdx];
+      if (latestTrack?.audio_url && latestTrack.audio_url !== el.dataset.djSrc) {
+        el.src = latestTrack.audio_url;
+        el.dataset.djSrc = latestTrack.audio_url;
+        el.load();
+        setDjTrack(latestTrack);
+        el.addEventListener("canplay", seekAndPlay, { once: true });
         return;
       }
-
-      // Playlist mode
-      const tracks = tracksRef.current;
-      if (!tracks.length) { transitionStateRef.current = "idleOutside"; return; }
-
-      const { idx, offset } = computeSharedPosition(tracks);
-      const track = tracks[idx];
-      if (!track?.audio_url) { transitionStateRef.current = "idleOutside"; return; }
-
-      const srcChanged = el.dataset.djSrc !== track.audio_url;
-      if (srcChanged) {
-        el.src = track.audio_url;
-        el.dataset.djSrc = track.audio_url;
-        el.load();
-      }
-      setDjTrack(track);
-
-      const seekAndPlay = () => {
-        if (!mountedRef.current || !danceFloorRef.current) {
-          transitionStateRef.current = "idleOutside";
-          return;
-        }
-        // Re-check shared position (time may have passed while loading)
-        const { idx: newIdx, offset: newOffset } = computeSharedPosition(tracks);
-        const latestTrack = tracks[newIdx];
-        if (latestTrack?.audio_url && latestTrack.audio_url !== el.dataset.djSrc) {
-          el.src = latestTrack.audio_url;
-          el.dataset.djSrc = latestTrack.audio_url;
-          el.load();
-          setDjTrack(latestTrack);
-          el.addEventListener("canplay", seekAndPlay, { once: true });
-          return;
-        }
-        try { if (newOffset > 0) el.currentTime = newOffset; } catch {}
-        el.volume = 0; // ensure silent right before play
-        el.play().then(() => {
-          if (!mountedRef.current || !danceFloorRef.current) {
-            el.pause(); el.volume = 0;
-            transitionStateRef.current = "idleOutside";
-            return;
-          }
-          transitionStateRef.current = "inside";
-          cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => {
-            cancelRampRef.current = null;
-          });
-          console.log("[DJStream] ✅ Playlist track playing:", latestTrack?.title);
-        }).catch(err => {
-          console.warn("[DJStream] play() blocked:", err.message);
-          transitionStateRef.current = "idleOutside";
-        });
-      };
-
-      if (el.readyState >= 2) {
-        seekAndPlay();
-      } else {
-        el.addEventListener("canplay", seekAndPlay, { once: true });
-      }
+      try { if (newOffset > 0) el.currentTime = newOffset; } catch {}
+      el.volume = 0;
+      el.play().then(() => {
+        if (!mountedRef.current) return;
+        hasStartedRef.current = true;
+        transitionStateRef.current = "inside";
+        cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => { cancelRampRef.current = null; });
+        console.log("[DJStream] ✅ Playlist track started at shared position:", latestTrack?.title);
+      }).catch(err => {
+        console.warn("[DJStream] playlist play() blocked:", err.message);
+        transitionStateRef.current = "idleOutside";
+      });
     };
 
-    if (!loadedRef.current) {
-      // Poll until preload finishes (rare path — preload starts on mount)
-      console.log("[DJStream] Waiting for preload...");
-      const wait = setInterval(() => {
-        if (loadedRef.current) {
-          clearInterval(wait);
-          startPlayback();
-        }
-      }, 100);
+    if (el.readyState >= 2) {
+      seekAndPlay();
     } else {
-      startPlayback();
+      el.addEventListener("canplay", seekAndPlay, { once: true });
     }
-  }, [cancelRamp, getAudio]);
+  }, [getAudio]);
 
-  // ── Exit dance floor: fade out then pause ───────────────────────────────
+  // ── Enter dance floor ────────────────────────────────────────────────────
+  const enterDanceFloor = useCallback(() => {
+    const state = transitionStateRef.current;
+    if (state === "inside" || state === "entering") return;
+
+    cancelRamp();
+    transitionStateRef.current = "entering";
+
+    const el = getAudio();
+
+    if (!loadedRef.current) {
+      // Playlist not loaded yet — wait
+      const wait = setInterval(() => {
+        if (loadedRef.current) { clearInterval(wait); enterDanceFloor(); }
+      }, 100);
+      return;
+    }
+
+    if (!hasStartedRef.current) {
+      // First ever entry — must start playback (needs user gesture context)
+      console.log("[DJStream] 🕺 First dance floor entry — starting playback from silence");
+      startInitialPlayback();
+      return;
+    }
+
+    // Already started before — audio is still running (just silent), fade back in
+    console.log("[DJStream] 🕺 Re-entering dance floor — fading in at current position (no restart)");
+    const isActuallyPlaying = !el.paused;
+
+    if (!isActuallyPlaying) {
+      // Audio got paused somehow (e.g. browser tab suspension) — resume it
+      el.volume = 0;
+      el.play().then(() => {
+        if (!mountedRef.current) return;
+        transitionStateRef.current = "inside";
+        cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => { cancelRampRef.current = null; });
+      }).catch(() => {
+        transitionStateRef.current = "idleOutside";
+      });
+    } else {
+      // Still playing silently — just fade in
+      transitionStateRef.current = "inside";
+      cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => { cancelRampRef.current = null; });
+    }
+  }, [cancelRamp, getAudio, startInitialPlayback]);
+
+  // ── Exit dance floor — fade out ONLY, do NOT pause or reset ─────────────
   const exitDanceFloor = useCallback(() => {
     const state = transitionStateRef.current;
-    // Already outside or already leaving — do nothing
     if (state === "idleOutside" || state === "leaving") return;
 
     cancelRamp();
     transitionStateRef.current = "leaving";
-    console.log("[DJStream] 🔇 Leaving dance floor — fading out DJ");
+    console.log("[DJStream] 🔇 Exiting dance floor — fading out (audio keeps playing silently)");
 
     const el = audioRef.current;
-    if (!el || el.paused || el.volume <= 0) {
-      el && (el.volume = 0);
+    if (!el || el.volume <= 0.01) {
+      if (el) el.volume = 0;
       transitionStateRef.current = "idleOutside";
       return;
     }
@@ -302,10 +300,41 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     cancelRampRef.current = rampVolume(el, 0, FADE_OUT_MS, () => {
       cancelRampRef.current = null;
       if (!mountedRef.current) return;
+      // DO NOT pause — keep audio running at volume=0 so position advances
       transitionStateRef.current = "idleOutside";
-      console.log("[DJStream] ✅ DJ faded out and paused");
+      console.log("[DJStream] ✅ DJ faded to silent (still running at shared position)");
     });
   }, [cancelRamp]);
+
+  // ── Track ended → advance to next shared position ────────────────────────
+  useEffect(() => {
+    if (!enabled) return;
+    const el = getAudio();
+    const onEnded = () => {
+      if (!danceFloorRef.current) return; // outside floor — audio shouldn't have been audible
+      const tracks = tracksRef.current;
+      if (!tracks.length) return;
+      const { idx, offset } = computeSharedPosition(tracks);
+      const track = tracks[idx];
+      if (!track?.audio_url) return;
+      el.src = track.audio_url;
+      el.dataset.djSrc = track.audio_url;
+      el.volume = 0;
+      el.load();
+      setDjTrack(track);
+      el.addEventListener("canplay", () => {
+        try { if (offset > 0) el.currentTime = offset; } catch {}
+        el.play().then(() => {
+          if (danceFloorRef.current) {
+            cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => { cancelRampRef.current = null; });
+          }
+          // If outside floor, keep at volume 0 — audio just keeps running silently
+        }).catch(() => {});
+      }, { once: true });
+    };
+    el.addEventListener("ended", onEnded);
+    return () => el.removeEventListener("ended", onEnded);
+  }, [enabled, getAudio]);
 
   // ── Init: preload on mount ───────────────────────────────────────────────
   useEffect(() => {
@@ -325,37 +354,6 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     }
   }, [danceFloorMode, enabled, enterDanceFloor, exitDanceFloor]);
 
-  // ── Track ended → advance ────────────────────────────────────────────────
-  useEffect(() => {
-    if (!enabled) return;
-    const el = getAudio();
-    const onEnded = () => {
-      if (danceFloorRef.current && tracksRef.current.length > 0) {
-        const { idx, offset } = computeSharedPosition(tracksRef.current);
-        const track = tracksRef.current[idx];
-        if (track?.audio_url) {
-          el.src = track.audio_url;
-          el.dataset.djSrc = track.audio_url;
-          el.volume = 0; // start silent before fade
-          el.load();
-          setDjTrack(track);
-          el.addEventListener("canplay", () => {
-            try { if (offset > 0) el.currentTime = offset; } catch {}
-            el.play().then(() => {
-              if (danceFloorRef.current) {
-                cancelRampRef.current = rampVolume(el, MAX_VOL, FADE_IN_MS, () => { cancelRampRef.current = null; });
-              } else {
-                el.volume = 0; el.pause();
-              }
-            }).catch(() => {});
-          }, { once: true });
-        }
-      }
-    };
-    el.addEventListener("ended", onEnded);
-    return () => el.removeEventListener("ended", onEnded);
-  }, [enabled, getAudio]);
-
   // ── Retry on user gesture if autoplay was blocked ────────────────────────
   useEffect(() => {
     if (!enabled) return;
@@ -363,10 +361,11 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
       if (!danceFloorRef.current) return;
       const el = audioRef.current;
       if (!el) return;
-      if (el.paused || el.volume < 0.01) {
-        // Reset state to allow re-entry
-        if (transitionStateRef.current === "entering") transitionStateRef.current = "idleOutside";
+      if (el.paused && !hasStartedRef.current) {
+        if (transitionStateRef.current !== "idleOutside") transitionStateRef.current = "idleOutside";
         enterDanceFloor();
+      } else if (el.paused && hasStartedRef.current) {
+        el.play().catch(() => {});
       }
     };
     window.addEventListener("click", retry, { passive: true });
@@ -377,7 +376,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
     };
   }, [enabled, enterDanceFloor]);
 
-  // ── Cleanup on unmount ───────────────────────────────────────────────────
+  // ── Cleanup on unmount — silence, stop, remove element ──────────────────
   useEffect(() => {
     return () => {
       mountedRef.current = false;
@@ -390,6 +389,7 @@ export default function useWorldDJStream({ enabled = true, danceFloorMode = fals
         try { if (el.parentNode) el.parentNode.removeChild(el); } catch {}
       }
       audioRef.current = null;
+      hasStartedRef.current = false;
     };
   }, [cancelRamp]);
 
