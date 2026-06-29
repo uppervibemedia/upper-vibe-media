@@ -67,7 +67,7 @@ export default function RadioCTA() {
   const [newestTracks, setNewestTracks] = useState([]);
   const [myVibePreviewTrack, setMyVibePreviewTrack] = useState(null);
   const { currentTrack, isPlaying, togglePlay } = usePlayer();
-  const { tracksLoaded, currentRadioSong, startMyVibeQueue, nextRadioSong, jumpToSong, upNext } = useRadio();
+  const { tracksLoaded, likedIdsLoaded, currentRadioSong, startMyVibeQueue, nextRadioSong, jumpToSong, upNext } = useRadio();
   const [ramState, setRamState] = useState(() => ramGetState());
 
   useEffect(() => ramSubscribe((state) => setRamState(state)), []);
@@ -86,9 +86,9 @@ export default function RadioCTA() {
   }, []);
 
   useEffect(() => {
-    if (!tracksLoaded || currentRadioSong || myVibePreviewTrack) return;
+    if (!tracksLoaded || !likedIdsLoaded || currentRadioSong || myVibePreviewTrack) return;
     startMyVibeQueue((firstTrack) => setMyVibePreviewTrack(firstTrack || null));
-  }, [tracksLoaded, currentRadioSong, myVibePreviewTrack, startMyVibeQueue]);
+  }, [tracksLoaded, likedIdsLoaded, currentRadioSong, myVibePreviewTrack, startMyVibeQueue]);
 
   useEffect(() => {
     if (currentRadioSong) setMyVibePreviewTrack(currentRadioSong);
