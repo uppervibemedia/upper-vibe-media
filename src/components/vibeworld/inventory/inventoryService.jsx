@@ -6,6 +6,11 @@
 import { base44 } from "@/api/base44Client";
 import { STARTER_ITEMS } from "./inventoryConfig";
 
+const sameEquipGroup = (a, b) => {
+  const auraGroup = ["avatar_glow", "aura"];
+  return a === b || (auraGroup.includes(a) && auraGroup.includes(b));
+};
+
 // ── Load all inventory records for user ──────────────────────
 export async function loadInventory(userId) {
   if (!userId) return [];
@@ -47,7 +52,7 @@ export async function equipItem(userId, inventoryRecordId, category, allRecords)
   try {
     // Unequip all other items in this category
     const toUnequip = (allRecords || []).filter(
-      (r) => r.item_category === category && r.equipped && r.id !== inventoryRecordId
+      (r) => sameEquipGroup(r.item_category, category) && r.equipped && r.id !== inventoryRecordId
     );
     for (const r of toUnequip) {
       await base44.entities.UserInventory.update(r.id, { equipped: false });

@@ -5,10 +5,10 @@
  */
 
 export const INVENTORY_CATEGORIES = [
-  { id: "avatar_glow",  label: "Auras",          emoji: "✨" },
-  { id: "aura",         label: "Auras",           emoji: "🌀" },
-  { id: "nameplate",    label: "Nameplates",      emoji: "🪪" },
   { id: "hoverboard",   label: "Hoverboards",     emoji: "🛹" },
+  { id: "avatar_glow",  label: "Aura Glows",      emoji: "✨" },
+  { id: "aura",         label: "Aura Effects",    emoji: "🌀" },
+  { id: "nameplate",    label: "Nameplates",      emoji: "🪪" },
   { id: "badge",        label: "Badges",          emoji: "🏅" },
   { id: "clothing",     label: "Clothing",        emoji: "👕" },
   { id: "emote",        label: "Emotes",          emoji: "🎭" },
