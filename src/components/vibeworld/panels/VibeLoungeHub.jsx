@@ -126,7 +126,7 @@ export default function VibeLoungeHub({
 
   if (!open) return null;
 
-  const panelHeight = isMobile ? "min(88dvh, 100dvh)" : "72vh";
+  const panelHeight = isMobile ? "min(82dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px))" : "72vh";
 
   return (
     <motion.div
@@ -138,12 +138,12 @@ export default function VibeLoungeHub({
       style={{
         zIndex: 70,
         bottom: panelBottom,
-        left: "env(safe-area-inset-left, 0px)",
-        right: "env(safe-area-inset-right, 0px)",
-        paddingLeft: "env(safe-area-inset-left)",
-        paddingRight: "env(safe-area-inset-right)",
+        left: "max(8px, env(safe-area-inset-left, 0px))",
+        right: "max(8px, env(safe-area-inset-right, 0px))",
+        width: "auto",
+        maxWidth: "calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 16px)",
         height: panelHeight,
-        maxHeight: "100dvh",
+        maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px)",
         background: "rgba(10,8,22,0.97)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
@@ -156,21 +156,21 @@ export default function VibeLoungeHub({
     >
       {/* ── Header ───────────────────────────────────────────────── */}
       <div
-        className="flex items-center justify-between px-4 flex-shrink-0"
+        className="flex items-center justify-between gap-2 px-4 flex-shrink-0 min-w-0"
         style={{
           paddingTop: `calc(env(safe-area-inset-top, 0px) + 10px)`,
           paddingBottom: 10,
           borderBottom: "1px solid rgba(255,255,255,0.05)",
         }}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <span className="text-base">🛋️</span>
-          <div>
-            <p className="font-heading font-black text-xs text-white/90 tracking-wider leading-tight">Vibe Lounge</p>
-            <p className="text-[9px] text-purple-300/50 leading-tight">Group Chat</p>
+          <div className="min-w-0">
+            <p className="font-heading font-black text-xs text-white/90 tracking-wider leading-tight break-words whitespace-normal">Vibe Lounge</p>
+            <p className="text-[9px] text-purple-300/50 leading-tight break-words whitespace-normal">Group Chat</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Who's Here toggle */}
           <button
             onTouchStart={(e) => e.stopPropagation()}
@@ -200,7 +200,7 @@ export default function VibeLoungeHub({
       {/* ── Main content: chat | people ──────────────────────────── */}
       <div className="flex-1 flex min-h-0">
         {/* Chat messages */}
-        <div className={`flex flex-col min-h-0 transition-all ${showPeople ? "w-[60%]" : "w-full"}`}>
+        <div className={`flex flex-col min-h-0 min-w-0 transition-all ${showPeople ? "w-[58%]" : "w-full"}`}>
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
@@ -228,18 +228,18 @@ export default function VibeLoungeHub({
                       {(msg.sender_username || "?")[0].toUpperCase()}
                     </div>
                   )}
-                  <div className={`max-w-[75%] ${isOwn ? "items-end" : "items-start"} flex flex-col gap-0.5`}>
+                  <div className={`max-w-[88%] min-w-0 ${isOwn ? "items-end" : "items-start"} flex flex-col gap-0.5`}>
                     {!isOwn && (
-                      <p className="text-[8px] font-black tracking-wider px-1" style={{ color: "rgba(155,126,255,0.6)" }}>
+                      <p className="text-[8px] font-black tracking-wider px-1 break-words whitespace-normal" style={{ color: "rgba(155,126,255,0.6)", overflowWrap: "anywhere" }}>
                         {msg.sender_username || "User"}
                       </p>
                     )}
                     <div
-                      className="px-3 py-2 rounded-2xl text-xs leading-snug"
-                      style={isOwn
+                      className="px-3 py-2 rounded-2xl text-xs leading-snug break-words whitespace-normal"
+                      style={{ overflowWrap: "anywhere", wordBreak: "break-word", ...(isOwn
                         ? { background: msg._optimistic ? "rgba(124,58,237,0.18)" : "linear-gradient(135deg,rgba(155,126,255,0.3),rgba(124,58,237,0.25))", color: "rgba(255,255,255,0.9)", border: "1px solid rgba(155,126,255,0.25)", opacity: msg._optimistic ? 0.75 : 1 }
-                        : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.07)" }
-                      }
+                        : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.07)" })
+                      }}
                     >
                       {msg.message}
                     </div>
@@ -285,7 +285,7 @@ export default function VibeLoungeHub({
               onBlur={() => onInputFocus?.(false)}
               placeholder="Say something..."
               maxLength={250}
-              className="flex-1 rounded-2xl px-3 py-2 text-xs text-white placeholder-white/30 outline-none"
+              className="flex-1 min-w-0 rounded-2xl px-3 py-2 text-xs text-white placeholder-white/30 outline-none"
               style={{
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(155,126,255,0.2)",
@@ -321,7 +321,7 @@ export default function VibeLoungeHub({
         {/* People panel */}
         {showPeople && (
           <div
-            className="w-[40%] border-l flex flex-col min-h-0"
+            className="w-[42%] border-l flex flex-col min-h-0 min-w-0"
             style={{ borderColor: "rgba(155,126,255,0.12)" }}
           >
             <p className="text-[9px] font-black text-white/30 tracking-wider uppercase px-3 pt-3 pb-1 flex-shrink-0">
@@ -354,7 +354,7 @@ export default function VibeLoungeHub({
                     style={{ background: "linear-gradient(135deg,rgba(155,126,255,0.3),rgba(0,200,220,0.2))", color: "#c4aaff" }}>
                     {(u.username || "?")[0].toUpperCase()}
                   </div>
-                  <p className="text-[9px] font-black text-white/70 truncate flex-1">{u.username || "User"}</p>
+                  <p className="text-[9px] font-black text-white/70 break-words whitespace-normal flex-1 min-w-0" style={{ overflowWrap: "anywhere" }}>{u.username || "User"}</p>
                   <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#4ade80" }} />
                 </button>
               ))}

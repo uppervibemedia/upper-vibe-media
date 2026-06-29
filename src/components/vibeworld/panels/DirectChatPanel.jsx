@@ -112,11 +112,16 @@ function DirectChatPanel({
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="fixed inset-x-0 flex flex-col overflow-hidden rounded-t-3xl"
+      className="fixed flex flex-col overflow-hidden rounded-t-3xl"
       style={{
         zIndex: 74,
+        left: "max(8px, env(safe-area-inset-left, 0px))",
+        right: "max(8px, env(safe-area-inset-right, 0px))",
         bottom: panelBottom,
-        height: isMobile ? "65dvh" : "55vh",
+        width: "auto",
+        maxWidth: "calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 16px)",
+        height: isMobile ? "min(68dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px))" : "55vh",
+        maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px)",
         background: "rgba(16,12,32,0.98)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
@@ -129,8 +134,8 @@ function DirectChatPanel({
       onTouchMove={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 flex-shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/5 flex-shrink-0 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
             style={{ background: "rgba(0,160,220,0.15)" }}>
             <span className="text-xs font-black text-cyan-400">
@@ -138,7 +143,7 @@ function DirectChatPanel({
             </span>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-white leading-tight truncate">{peer.username}</p>
+            <p className="text-sm font-bold text-white leading-tight break-words whitespace-normal" style={{ overflowWrap: "anywhere" }}>{peer.username}</p>
             <p className="text-[10px] text-white/30">Direct Message</p>
           </div>
         </div>
@@ -174,14 +179,17 @@ function DirectChatPanel({
           const text = msg.message_text || msg.message || "";
           return (
             <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-              <div className="max-w-[80%] px-3 py-2 rounded-2xl"
+              <div className="max-w-[86%] min-w-0 px-3 py-2 rounded-2xl"
                 style={{
+                  overflowWrap: "anywhere",
+                  wordBreak: "break-word",
+                  whiteSpace: "normal",
                   background: isFailed ? "rgba(239,68,68,0.15)" : isMe ? "linear-gradient(135deg,#0080B8,#00A0DC)" : "rgba(255,255,255,0.06)",
                   border: isFailed ? "1px solid rgba(239,68,68,0.3)" : isMe ? "none" : "1px solid rgba(255,255,255,0.06)",
                   opacity: isOpt ? 0.75 : 1,
                 }}>
                 <p className="text-xs leading-relaxed"
-                  style={{ color: isFailed ? "#EF4444" : isMe ? "#fff" : "rgba(255,255,255,0.85)" }}>
+                  style={{ color: isFailed ? "#EF4444" : isMe ? "#fff" : "rgba(255,255,255,0.85)", overflowWrap: "anywhere", wordBreak: "break-word", whiteSpace: "normal" }}>
                   {text}
                 </p>
                 {isFailed ? (
@@ -224,7 +232,7 @@ function DirectChatPanel({
           placeholder={failedDraft ? "Tap retry above..." : "Type a message..."}
           maxLength={500}
           disabled={!!failedDraft}
-          className="flex-1 px-3 py-2 rounded-xl text-white placeholder-white/20 outline-none"
+          className="flex-1 min-w-0 px-3 py-2 rounded-xl text-white placeholder-white/20 outline-none"
           style={{
             background: "rgba(255,255,255,0.06)",
             border: `1px solid ${sendError ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}`,

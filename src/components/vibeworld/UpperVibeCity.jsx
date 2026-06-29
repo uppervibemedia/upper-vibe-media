@@ -35,6 +35,7 @@ import {
   pauseUpperVibeRadio,
   resumeUpperVibeRadio,
 } from "@/lib/radioAudioManager";
+import { setCityGlobalUserManuallyPaused } from "@/lib/vibeCityAudioController";
 import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
 // CrystalZone is now decorative-only — no imports needed
@@ -311,16 +312,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const handleCityTogglePlay = useCallback(() => {
     if (ramState.activeMode === "myVibeRadio") {
-      if (ramState.isPlaying) pauseMyVibe();
-      else resumeMyVibe();
+      if (ramState.isPlaying) { setCityGlobalUserManuallyPaused(true); pauseMyVibe(); }
+      else { setCityGlobalUserManuallyPaused(false); resumeMyVibe(); }
     } else if (ramState.activeMode === "upperVibeRadio") {
-      if (ramState.isPlaying) pauseUpperVibeRadio();
-      else resumeUpperVibeRadio();
+      if (ramState.isPlaying) { setCityGlobalUserManuallyPaused(true); pauseUpperVibeRadio(); }
+      else { setCityGlobalUserManuallyPaused(false); resumeUpperVibeRadio(); }
     } else if (ramState.lastTrack) {
       // Not active but we have a last track — start My Vibe Radio with it
+      setCityGlobalUserManuallyPaused(false);
       import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(ramState.lastTrack));
     } else if (defaultCityTrack) {
       // No previous track — start My Vibe with the default track
+      setCityGlobalUserManuallyPaused(false);
       import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(defaultCityTrack));
     } else {
       togglePlay?.();
@@ -859,10 +862,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         const pick = pool[Math.floor(Math.random() * pool.length)];
         feedActiveRef.current = true;
         feedIndexRef.current = (sortedTracks?.length > 0 ? sortedTracks : allTracks).indexOf(pick);
+        setCityGlobalUserManuallyPaused(false);
         playTrack(pick, "song");
         return;
       }
     }
+    setCityGlobalUserManuallyPaused(!!isPlaying);
     togglePlay?.();
   }, [isPlaying, currentTrack, togglePlay, sortedTracks, allTracks, playTrack, onDanceFloor]);
 

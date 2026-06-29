@@ -16,7 +16,8 @@ const GLOBAL_TARGET_VOLUME = 0.85;
 
 let cityAudioMode = "globalMusic";
 let defaultGlobalTrack = null;
-let previousGlobal = { activeMode: null, track: null, time: 0, volume: GLOBAL_TARGET_VOLUME };
+let userManuallyPausedGlobal = false;
+let previousGlobal = { activeMode: null, track: null, time: 0, volume: GLOBAL_TARGET_VOLUME, wasPlaying: false, userManuallyPaused: false };
 let djAudio = null;
 let djReady = false;
 let djUsesLiveStream = false;
@@ -51,6 +52,15 @@ export function subscribeCityAudio(fn) {
 export function setCityDefaultTrack(track) {
   if (track?.audio_url) defaultGlobalTrack = track;
   emit();
+}
+
+export function setCityGlobalUserManuallyPaused(paused) {
+  userManuallyPausedGlobal = !!paused;
+  emit();
+}
+
+export function getCityGlobalUserManuallyPaused() {
+  return userManuallyPausedGlobal;
 }
 
 function ensureDjAudio() {
@@ -192,6 +202,11 @@ function getPreferredGlobalTrack(track) {
 }
 
 export function startGlobalMusic(track) {
+  if (userManuallyPausedGlobal) {
+    cityAudioMode = "globalMusic";
+    emit();
+    return;
+  }
   const chosen = getPreferredGlobalTrack(track);
   if (chosen?.audio_url) playMyVibeTrack(chosen);
   const audio = getAudioElement();
@@ -212,6 +227,8 @@ export function pauseGlobalMusicImmediately() {
     track: ram.currentTrack || ram.lastTrack || defaultGlobalTrack,
     time: audio?.currentTime || ram.currentTime || 0,
     volume: audio?.volume || GLOBAL_TARGET_VOLUME,
+    wasPlaying: ram.isPlaying || !!(audio && !audio.paused),
+    userManuallyPaused: userManuallyPausedGlobal,
   };
 
   if (ram.activeMode === "myVibeRadio") pauseMyVibe();
@@ -227,14 +244,18 @@ export function pauseGlobalMusicImmediately() {
 
 export function restoreGlobalMusic() {
   const track = previousGlobal.track || defaultGlobalTrack;
-  if (previousGlobal.activeMode === "upperVibeRadio") {
-    resumeUpperVibeRadio();
-  } else if (track?.audio_url) {
-    const ram = getRamState();
-    if (ram.activeMode === "myVibeRadio" && ram.currentTrack?.id === track.id) {
-      restoreMyVibePosition(previousGlobal.time || 0);
-    } else {
-      playMyVibeTrack(track);
+  const shouldResume = previousGlobal.wasPlaying && !previousGlobal.userManuallyPaused && !userManuallyPausedGlobal;
+
+  if (shouldResume) {
+    if (previousGlobal.activeMode === "upperVibeRadio") {
+      resumeUpperVibeRadio();
+    } else if (track?.audio_url) {
+      const ram = getRamState();
+      if (ram.activeMode === "myVibeRadio" && ram.currentTrack?.id === track.id) {
+        restoreMyVibePosition(previousGlobal.time || 0);
+      } else {
+        playMyVibeTrack(track);
+      }
     }
   }
 
@@ -245,7 +266,9 @@ export function restoreGlobalMusic() {
     if (previousGlobal.time > 0 && previousGlobal.activeMode !== "upperVibeRadio") {
       try { audio.currentTime = previousGlobal.time; } catch {}
     }
-    if (audio.paused) audio.play().catch(() => {});
+    if (!shouldResume) {
+      try { audio.pause(); } catch {}
+    } else if (audio.paused) audio.play().catch(() => {});
   }
   cityAudioMode = "globalMusic";
   emit();
@@ -340,7 +363,7 @@ export function retryCityAudioFromGesture(track) {
   if (cityAudioMode === "danceFloor" || cityAudioMode === "enteringDanceFloor") {
     startLiveDj();
   } else {
-    startGlobalMusic(track);
+    if (!userManuallyPausedGlobal) startGlobalMusic(track);
     prepareLiveDjAudioMuted();
   }
 }
@@ -367,5 +390,6 @@ export function getCityAudioDebugSnapshot() {
     currentGlobalTrack: (ram.currentTrack || ram.lastTrack || defaultGlobalTrack)?.title || "none",
     currentDjTrack: currentDjTrack?.title || "none",
     djTrackObject: currentDjTrack || null,
+    userManuallyPausedGlobal,
   };
 }

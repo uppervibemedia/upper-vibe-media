@@ -70,11 +70,16 @@ export default function MessageRequestComposer({
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      className="fixed inset-x-0 flex flex-col overflow-hidden rounded-t-3xl"
+      className="fixed flex flex-col overflow-hidden rounded-t-3xl"
       style={{
         zIndex: 76,
+        left: "max(8px, env(safe-area-inset-left, 0px))",
+        right: "max(8px, env(safe-area-inset-right, 0px))",
         bottom: panelBottom,
-        height: isMobile ? "50dvh" : "40vh",
+        width: "auto",
+        maxWidth: "calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 16px)",
+        height: isMobile ? "min(56dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px))" : "40vh",
+        maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px)",
         background: "rgba(16,12,32,0.98)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
@@ -86,9 +91,9 @@ export default function MessageRequestComposer({
       onTouchMove={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 flex-shrink-0">
-        <div className="min-w-0">
-          <p className="text-sm font-black text-white truncate">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/5 flex-shrink-0 min-w-0">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-black text-white break-words whitespace-normal" style={{ overflowWrap: "anywhere" }}>
             Message {targetUser.username}
           </p>
           <p className="text-[10px] text-white/30">Message request</p>
@@ -104,7 +109,7 @@ export default function MessageRequestComposer({
       </div>
 
       {/* Status / body */}
-      <div className="flex-1 flex flex-col items-center justify-center px-5 gap-3">
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center px-5 gap-3" style={{ WebkitOverflowScrolling: "touch", overflowWrap: "anywhere", wordBreak: "break-word" }}>
         {status === "sent" && (
           <div className="text-center">
             <p className="text-2xl mb-2">📨</p>
@@ -126,7 +131,7 @@ export default function MessageRequestComposer({
           </div>
         )}
         {(status === null || status === "sent") && status !== "limit" && (
-          <p className="text-[11px] text-white/30 text-center max-w-[240px]">
+          <p className="text-[11px] text-white/30 text-center max-w-full break-words whitespace-normal" style={{ overflowWrap: "anywhere" }}>
             {status === "sent"
               ? "You can send one more message while waiting."
               : `Send a message to ${targetUser.username}. They'll see a preview and can Approve or Deny.`}
@@ -149,7 +154,7 @@ export default function MessageRequestComposer({
             onTouchStart={(e) => e.stopPropagation()}
             placeholder="Write a message..."
             maxLength={300}
-            className="flex-1 px-3 py-2 rounded-xl text-white placeholder-white/20 outline-none"
+            className="flex-1 min-w-0 px-3 py-2 rounded-xl text-white placeholder-white/20 outline-none"
             style={{
               background: "rgba(255,255,255,0.06)",
               border: "1px solid rgba(255,255,255,0.08)",
