@@ -146,10 +146,17 @@ export default function MusicLibraryPanel({ open, onClose, isMobile, playerPos }
 
   const handleCloseSongPage = () => {
     setSongPageTrack(null);
-    // Restore scroll after react renders
+    savedScrollRef.current = 0;
     setTimeout(() => {
-      if (scrollRef.current) scrollRef.current.scrollTop = savedScrollRef.current;
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
     }, 50);
+  };
+
+  const handlePanelClose = () => {
+    setSongPageTrack(null);
+    savedScrollRef.current = 0;
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    onClose();
   };
 
   if (!open) return null;
@@ -169,6 +176,7 @@ export default function MusicLibraryPanel({ open, onClose, isMobile, playerPos }
       </AnimatePresence>
 
       <motion.div
+        data-camera-scroll-lock="true"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
@@ -186,6 +194,7 @@ export default function MusicLibraryPanel({ open, onClose, isMobile, playerPos }
           border: "1px solid rgba(255,255,255,0.1)",
           borderBottom: "none",
           pointerEvents: "auto",
+          touchAction: "pan-y",
         }}
       >
         {/* Header */}
@@ -199,7 +208,7 @@ export default function MusicLibraryPanel({ open, onClose, isMobile, playerPos }
           </div>
           <button
             onTouchStart={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onClick={(e) => { e.stopPropagation(); handlePanelClose(); }}
             className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:bg-white/20"
             style={{
               color: "rgba(255,255,255,0.6)",
@@ -257,7 +266,12 @@ export default function MusicLibraryPanel({ open, onClose, isMobile, playerPos }
         <div
           ref={scrollRef}
           className="flex-1 overflow-y-auto px-3"
-          style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 120px)" : "2rem" }}
+          style={{
+            paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 120px)" : "2rem",
+            touchAction: "pan-y",
+            WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain",
+          }}
         >
           {loading ? (
             <div className="flex items-center justify-center py-16">

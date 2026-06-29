@@ -33,6 +33,7 @@ export default function CameraLookZone({ mobileInputRef }) {
       // no buttons ever fire their handlers on iPhone.
       const path = e.composedPath?.() || [];
       for (const el of path) {
+        if (el?.closest?.('[data-camera-scroll-lock="true"]')) return;
         if (el?.tagName === "BUTTON" || el?.tagName === "A" ||
             el?.tagName === "INPUT" || el?.tagName === "TEXTAREA" ||
             el?.tagName === "SELECT" || el?.getAttribute?.("role") === "button") return;

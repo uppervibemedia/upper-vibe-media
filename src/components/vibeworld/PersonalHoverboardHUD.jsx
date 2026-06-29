@@ -51,8 +51,8 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
   const putAwayStyle = isMobile && isLandscape
     ? {
         position: 'fixed',
-        right: 'calc(104px + env(safe-area-inset-right, 0px))',
-        top: 'calc(58px + env(safe-area-inset-top, 0px))',
+        right: 'calc(10px + env(safe-area-inset-right, 0px))',
+        top: 'calc(92px + env(safe-area-inset-top, 0px))',
         pointerEvents: 'auto',
       }
     : isMobile
@@ -64,8 +64,8 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
         }
       : {
           position: 'fixed',
-          right: 'calc(88px + env(safe-area-inset-right, 0px))',
-          top: 'calc(88px + env(safe-area-inset-top, 0px))',
+          right: 'calc(6px + env(safe-area-inset-right, 0px))',
+          top: 'calc(114px + env(safe-area-inset-top, 0px))',
           pointerEvents: 'auto',
           zIndex: 40,
         };
