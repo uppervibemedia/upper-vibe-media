@@ -44,6 +44,8 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
           }
     : {
         position: 'absolute',
+        right: 0,
+        bottom: 0,
         paddingBottom: isMobile && mobileLayout
           ? `${mobileLayout.actionBottom + 60}px`
           : isMobile
