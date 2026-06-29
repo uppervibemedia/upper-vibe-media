@@ -93,13 +93,24 @@ function getCityQuality() {
   const ua = navigator.userAgent || "";
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
   const isMobile = isIOS || /Android/i.test(ua);
+  const smallScreen = Math.min(window.innerWidth || 9999, window.innerHeight || 9999) < 760;
+  const lowMemory = navigator.deviceMemory && navigator.deviceMemory <= 4;
+  const isPWA = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator?.standalone === true;
+  const qualityLevel = (isIOS || isMobile || smallScreen || lowMemory) ? "mobile" : "high";
   return {
     isIOS,
     isMobile,
-    pixelRatio: isIOS ? 1.2 : isMobile ? 1.35 : 1.75,
-    farClip: isMobile ? 120 : 155,
-    antialias: !isMobile,
-    shadowMapSize: isMobile ? 512 : 1024,
+    isPWA,
+    smallScreen,
+    lowMemory,
+    qualityLevel,
+    currentLevel: qualityLevel,
+    pixelRatio: qualityLevel === "mobile" ? (isIOS ? 1.05 : 1.15) : 1.65,
+    farClip: qualityLevel === "mobile" ? 112 : 155,
+    antialias: qualityLevel === "high",
+    shadowMapSize: qualityLevel === "mobile" ? 384 : 1024,
+    nearDistance: qualityLevel === "mobile" ? 18 : 22,
+    mediumDistance: qualityLevel === "mobile" ? 34 : 42,
   };
 }
 
@@ -114,6 +125,56 @@ function disposeMaterialDeep(material) {
     });
     m.dispose?.();
   });
+}
+
+const STREAM_ZONES = [
+  { key: "stage", names: ["musicStage", "stageScreenGlow"], x: 0, z: -32, keepVisible: true },
+  { key: "lounge", names: ["vibeLounge"], x: -22, z: -26, keepVisible: true },
+  { key: "music_library", names: ["musicLibrary"], x: 22, z: -20, keepVisible: true },
+  { key: "visualizer", names: ["visualizerDome", "domePortalGlow"], x: -13, z: 3, keepVisible: true },
+  { key: "vibe_check", names: ["dailyVibeCheck", "vibeMirrorGroup"], x: -16, z: -13, keepVisible: true },
+  { key: "academy", names: ["upperVibeAcademy", "academyEntrance"], x: -28, z: 5, keepVisible: true },
+  { key: "crystal", names: ["crystalZone"], x: -26, z: -14, keepVisible: true },
+  { key: "ferris", names: ["ferrisWheel"], x: WHEEL_X, z: WHEEL_Z, keepVisible: true },
+  { key: "beach", names: ["hbPadRing", "hbParticles"], x: 18, z: 22, keepVisible: true },
+  { key: "skyline", names: ["cityBuildings"], x: 0, z: -36, keepVisible: true },
+];
+
+function classifyZoneQuality(px, pz, zx, zz, quality) {
+  const dx = px - zx, dz = pz - zz;
+  const d = Math.sqrt(dx * dx + dz * dz);
+  if (d < quality.nearDistance) return { level: "full", distance: d };
+  if (d < quality.mediumDistance) return { level: "medium", distance: d };
+  return { level: "low", distance: d };
+}
+
+function cacheStreamingObjects(scene) {
+  const zones = STREAM_ZONES.map((zone) => ({ ...zone, objects: [] }));
+  scene.traverse((obj) => {
+    for (const zone of zones) {
+      if (zone.names.includes(obj.name)) zone.objects.push(obj);
+    }
+  });
+  scene.userData._streamZones = zones;
+}
+
+function updateZoneStreaming(scene, px, pz, quality, frame) {
+  const zones = scene.userData._streamZones || [];
+  const zoneState = {};
+  const mobileLike = quality.currentLevel !== "high";
+  for (const zone of zones) {
+    const { level, distance } = classifyZoneQuality(px, pz, zone.x, zone.z, quality);
+    zoneState[zone.key] = level;
+    for (const obj of zone.objects) {
+      if (!obj) continue;
+      obj.userData._zoneQuality = level;
+      // Keep layouts present. Only hide far decorative particle systems on low quality.
+      if (mobileLike && level === "low" && (obj.isPoints || obj.name?.includes("Particles"))) obj.visible = false;
+      else obj.visible = true;
+    }
+  }
+  scene.userData._loadedZoneState = zoneState;
+  scene.userData._activeQualityLevel = quality.currentLevel;
 }
 
 function circleVsCircle(x1, z1, r1, x2, z2, r2) {
@@ -699,6 +760,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       });
       scene.userData._neonSigns = cachedNeonSigns;
       scene.userData._zenParticles = cachedZenParticles;
+      cacheStreamingObjects(scene);
+      updateZoneStreaming(scene, effectiveSpawn[0], effectiveSpawn[2], quality, 0);
 
       // Water splash particles — desktop only (too costly on mobile)
       if (!isMob) {
@@ -803,17 +866,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (dt > 0.1) dt = 0.1; // Clamp large gaps
         if (dt <= 0) dt = 0.016;
 
-        // ── TV Mode: lower pixel ratio for smoother mirroring ──
-        // Update every 120 frames (~2s) to avoid costly setPixelRatio calls per frame
+        // ── Adaptive quality + TV Mode pixel ratio control ──
+        if (!quality._fpsSamples) quality._fpsSamples = [];
+        quality._fpsSamples.push(1 / dt);
+        if (quality._fpsSamples.length > 180) quality._fpsSamples.shift();
         if (frameRef.current % 120 === 0) {
+          const avgFps = quality._fpsSamples.reduce((a, b) => a + b, 0) / Math.max(1, quality._fpsSamples.length);
+          if (avgFps < 24 && quality.currentLevel !== "low") quality.currentLevel = "low";
+          else if (avgFps < 34 && quality.currentLevel === "high") quality.currentLevel = "medium";
           const isTv = tvModeRef.current;
           const isSmooth = tvQualityRef.current === "smooth";
+          const adaptiveCap = quality.currentLevel === "low" ? 0.9 : quality.currentLevel === "mobile" ? quality.pixelRatio : quality.currentLevel === "medium" ? 1.25 : quality.pixelRatio;
           const targetPR = isTv && isSmooth
-            ? Math.min(window.devicePixelRatio, 1.15)
-            : Math.min(window.devicePixelRatio || 1, quality.pixelRatio);
+            ? Math.min(window.devicePixelRatio, 1.05)
+            : Math.min(window.devicePixelRatio || 1, adaptiveCap);
           if (Math.abs(renderer.getPixelRatio() - targetPR) > 0.05) {
             renderer.setPixelRatio(targetPR);
           }
+          scene.userData._activeQualityLevel = quality.currentLevel;
         }
 
         const t = now;
@@ -1356,6 +1426,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Distance flags — declared before any code that uses them
         const nearBeach = pz > 10;
         const nearDanceFloor = Math.sqrt(px * px + (pz + 13) * (pz + 13)) < 18;
+        const lowQuality = quality.currentLevel === "low";
+        const mobileQuality = quality.currentLevel === "mobile" || lowQuality;
+        if (frameRef.current % (mobileQuality ? 20 : 30) === 0) {
+          updateZoneStreaming(scene, px, pz, quality, frameRef.current);
+        }
 
         // Signs/particles: cached arrays avoid scanning the whole scene every frame.
         const updateSigns = !isMob || frameRef.current % 8 === 0;
@@ -1380,18 +1455,18 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
         // Distance-gate zone animations on mobile — skip if player is far away
-        if (!isMob || nearBeach || frameRef.current % 3 === 0) animateZenBeach(scene, t, audioBeat);
-        // Dance floor — throttle to every 4 frames on mobile, only when near
-        if (!isMob ? true : (nearDanceFloor && frameRef.current % 4 === 0)) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
+        if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0) animateZenBeach(scene, t, audioBeat);
+        // Dance floor — throttle on mobile/low, only when near. Audio zone logic remains separate and always active.
+        if (!mobileQuality ? true : (nearDanceFloor && frameRef.current % (lowQuality ? 6 : 4) === 0)) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         // Crystal Zone — TV Smooth: skip when >25u away; always animate when active
         const crystalDx = px - (-26), crystalDz = pz - (-14);
         const crystalDist = Math.sqrt(crystalDx * crystalDx + crystalDz * crystalDz);
         const crystalGate = tvSmooth
           ? (crystalDist < 25 || scene.userData.crystalZone?.activated)
-          : (!isMob || frameRef.current % 3 === 0);
-        if (crystalGate) animateCrystalZone(scene, t, dt, px, pz, tvSmooth);
-        if (!isMob || nearDanceFloor || frameRef.current % 3 === 0) animateJukebox(scene, t, audioBeat);
-        if (scene.userData.shopGroup) animateShop(scene.userData.shopGroup, t, audioBeat);
+          : (!mobileQuality || crystalDist < 28 || frameRef.current % (lowQuality ? 10 : 4) === 0);
+        if (crystalGate) animateCrystalZone(scene, t, dt, px, pz, tvSmooth || lowQuality);
+        if (!mobileQuality || nearDanceFloor || frameRef.current % (lowQuality ? 8 : 4) === 0) animateJukebox(scene, t, audioBeat);
+        if (scene.userData.shopGroup && (!mobileQuality || frameRef.current % (lowQuality ? 8 : 3) === 0)) animateShop(scene.userData.shopGroup, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──
         if (hbRidingRef.current && avatarEntryRef.current && !avatarEntryRef.current._hbBoard) {
@@ -1425,12 +1500,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
         // Distance-gate heavy zone animations on mobile
         const nearFerris = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z)) < 28;
-        if (!isMob || nearFerris || frameRef.current % 4 === 0) animateHoverboardZone(scene, t, audioBeat);
+        if (!mobileQuality || nearFerris || frameRef.current % (lowQuality ? 8 : 4) === 0) animateHoverboardZone(scene, t, audioBeat);
         // Ferris Wheel — TV Smooth: skip when >30u away (unless riding)
         const ferrisDist = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z));
         const ferrisGate = tvSmooth
           ? (ferrisRidingRef.current || ferrisDist < 30)
-          : (!isMob || ferrisRidingRef.current || nearFerris || frameRef.current % 6 === 0);
+          : (!mobileQuality || ferrisRidingRef.current || nearFerris || frameRef.current % (lowQuality ? 10 : 6) === 0);
         if (ferrisGate) animateFerrisWheel(scene, t, audioBeat, px, pz, tvSmooth);
 
         // ── WATER SPLASH — hoverboard spray when rider is in the ocean zone ──

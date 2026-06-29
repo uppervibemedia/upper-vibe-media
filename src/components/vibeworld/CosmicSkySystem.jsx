@@ -257,7 +257,7 @@ export function createCosmicSky(scene) {
       sprite: sstar, mat: smat,
       active: false, life: 0, maxLife: 0,
       vx: 0, vy: 0, vz: 0,
-      nextFire: performance.now() * 0.001 + 12 + Math.random() * 8,
+      nextFire: performance.now() * 0.001 + (isMobile ? 24 : 12) + Math.random() * (isMobile ? 14 : 8),
     };
   }
 
@@ -319,7 +319,7 @@ export function createCosmicSky(scene) {
       active: false, life: 0, maxLife: 0,
       vx: 0, vy: 0, vz: 0,
       nextFire: performance.now() * 0.001 + 20 + Math.random() * 10,
-      interval: 70,
+      interval: isMobile ? 140 : 70,
     };
   }
 
@@ -440,7 +440,11 @@ export function createCosmicSky(scene) {
     return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
   }
 
-  const planets = PLANET_DEFS.map((def, defIdx) => {
+  const activePlanetDefs = isMobile
+    ? PLANET_DEFS.filter((def) => ["mega", "west", "ice", "teal"].includes(def.id))
+    : PLANET_DEFS;
+
+  const planets = activePlanetDefs.map((def, defIdx) => {
     const S = isMobile ? 128 : 256;
     const pc = document.createElement("canvas");
     pc.width = S; pc.height = S;

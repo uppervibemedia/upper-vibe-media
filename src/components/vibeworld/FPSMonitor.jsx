@@ -40,7 +40,7 @@ export default function FPSMonitor({ sceneRef, remoteUserCount = 0 }) {
       const avgFps = Math.round(fpsAccRef.current.reduce((a, b) => a + b, 0) / fpsAccRef.current.length);
       const frameMs = Math.round(elapsed / 30);
 
-      let meshCount = 0, lightCount = 0;
+      let meshCount = 0, lightCount = 0, pointsCount = 0, spritesCount = 0;
       const materials = new Set();
       // Use globally exposed scene (set by CityCanvas as window.__hbScene)
       const scene = window.__hbScene;
@@ -51,6 +51,8 @@ export default function FPSMonitor({ sceneRef, remoteUserCount = 0 }) {
             if (Array.isArray(obj.material)) obj.material.forEach((m) => materials.add(m));
             else if (obj.material) materials.add(obj.material);
           }
+          if (obj.isPoints) pointsCount++;
+          if (obj.isSprite) spritesCount++;
           if (obj.isLight) lightCount++;
         });
       }
@@ -67,7 +69,11 @@ export default function FPSMonitor({ sceneRef, remoteUserCount = 0 }) {
         frameMs,
         meshCount,
         lightCount,
+        pointsCount,
+        spritesCount,
         materialCount: materials.size,
+        qualityLevel: scene?.userData?._activeQualityLevel || scene?.userData?._cityQuality?.currentLevel || "—",
+        loadedZones: scene?.userData?._loadedZoneState || {},
         drawCalls: renderInfo?.render?.calls ?? null,
         textures: renderInfo?.memory?.textures ?? null,
         geometries: renderInfo?.memory?.geometries ?? null,
@@ -106,9 +112,12 @@ export default function FPSMonitor({ sceneRef, remoteUserCount = 0 }) {
       <div>Meshes: {stats.meshCount}</div>
       <div>Materials: {stats.materialCount}</div>
       <div>Lights: {stats.lightCount}</div>
+      <div>Quality: {stats.qualityLevel}</div>
+      <div>Points/Sprites: {stats.pointsCount}/{stats.spritesCount}</div>
       {stats.drawCalls !== null && <div>Draws: {stats.drawCalls}</div>}
       {stats.textures !== null && <div>Textures: {stats.textures}</div>}
       {stats.geometries !== null && <div>Geometry: {stats.geometries}</div>}
+      <div>Zones: {Object.values(stats.loadedZones || {}).filter((v) => v === "full").length} full</div>
       <div>Remote: {stats.remoteUserCount}</div>
       {stats.memMb !== null && <div>Mem: {stats.memMb}MB</div>}
     </div>
