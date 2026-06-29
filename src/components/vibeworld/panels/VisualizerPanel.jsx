@@ -27,10 +27,10 @@ const MODES = [
 const GENERAL_AFFIRMATIONS = ["I trust my future.", "My energy creates my reality.", "I am safe to receive success.", "My nervous system supports my growth.", "I am aligned with my highest self.", "Abundance flows to me naturally.", "I am worthy of deep peace.", "My frequency attracts miracles.", "I release what no longer serves me.", "I am becoming more every day."];
 
 const MANIFESTATION_THEMES = [
+  { id: "healing", label: "Healing", color: "#00D4F0", glow: "rgba(0,212,240,0.3)", affirmations: ["I am healing in every part of my life.", "My nervous system supports my healing.", "I allow peace, balance, and renewal.", "Every breath brings me back to wholeness."] },
   { id: "wealth", label: "Wealth", color: "#D4A843", glow: "rgba(212,168,67,0.3)", affirmations: ["Money flows to me with ease.", "I am a magnet for abundance.", "Wealth is my natural state."] },
   { id: "confidence", label: "Confidence", color: "#C43BFF", glow: "rgba(196,59,255,0.3)", affirmations: ["I trust myself completely.", "I walk with purpose and power.", "My presence commands respect."] },
   { id: "love", label: "Love", color: "#FF4081", glow: "rgba(255,64,129,0.3)", affirmations: ["I am deeply loved and lovable.", "Love surrounds me everywhere.", "My heart is open and expanding."] },
-  { id: "healing", label: "Healing", color: "#00D4F0", glow: "rgba(0,212,240,0.3)", affirmations: ["My body knows how to heal.", "I release stored tension.", "Every breath restores me."] },
   { id: "peace", label: "Peace", color: "#80CBC4", glow: "rgba(128,203,196,0.28)", affirmations: ["Peace begins inside me.", "My breath brings me home.", "I choose calm in this moment."] },
   { id: "focus", label: "Focus", color: "#00E5FF", glow: "rgba(0,229,255,0.3)", affirmations: ["My mind is clear and sharp.", "I channel energy into what matters.", "Deep focus is my superpower."] },
   { id: "gratitude", label: "Gratitude", color: "#F59E0B", glow: "rgba(245,158,11,0.28)", affirmations: ["Gratitude expands my blessings.", "I notice the good around me.", "I receive this moment fully."] },
@@ -330,12 +330,12 @@ export default function VisualizerPanel({ open, onClose, currentTrack, isTrackPl
   const [activeMode, setActiveMode] = useState("visualizer");
   const [styleIdx, setStyleIdx] = useState(0);
   const [affirmationIdx, setAffirmationIdx] = useState(0);
-  const [manifestationId, setManifestationId] = useState(null);
+  const [manifestationId, setManifestationId] = useState("healing");
   const [manifestationLineIdx, setManifestationLineIdx] = useState(0);
 
   const activeStyle = STYLES[styleIdx] || STYLES[0];
-  const activeManifestation = MANIFESTATION_THEMES.find((theme) => theme.id === manifestationId) || null;
-  const manifestationText = activeManifestation ? activeManifestation.affirmations[manifestationLineIdx % activeManifestation.affirmations.length] : "Choose a manifestation focus.";
+  const activeManifestation = MANIFESTATION_THEMES.find((theme) => theme.id === manifestationId) || MANIFESTATION_THEMES[0];
+  const manifestationText = activeManifestation.affirmations[manifestationLineIdx % activeManifestation.affirmations.length];
 
   const setMode = useCallback((mode) => { setActiveMode(mode); }, []);
   const handlePrev = useCallback((e) => {
@@ -406,7 +406,7 @@ export default function VisualizerPanel({ open, onClose, currentTrack, isTrackPl
 
 
       {activeMode === "affirmation" && <DomeTextScene eyebrow="Frequency Room · Affirmations" text={GENERAL_AFFIRMATIONS[affirmationIdx]} themeColor="#A078FF" themeGlow="rgba(160,120,255,0.3)" />}
-      {activeMode === "manifestation" && <DomeTextScene eyebrow="Frequency Room · Manifestation" title={activeManifestation?.label || "Select Focus"} text={manifestationText} themeColor={activeManifestation?.color || "#A078FF"} themeGlow={activeManifestation?.glow || "rgba(160,120,255,0.3)"} />}
+      {activeMode === "manifestation" && <DomeTextScene eyebrow="Frequency Room · Manifestation" title={activeManifestation.label} text={manifestationText} themeColor={activeManifestation.color} themeGlow={activeManifestation.glow} />}
 
       {activeMode === "manifestation" && (
         <ManifestationFocusSelector

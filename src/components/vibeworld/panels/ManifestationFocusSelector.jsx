@@ -19,11 +19,11 @@ export default function ManifestationFocusSelector({ themes, activeId, onSelect 
   }, []);
 
   const wrapperStyle = landscape
-    ? { right: "max(24px, calc(env(safe-area-inset-right, 0px) + 18px))", top: "calc(84px + env(safe-area-inset-top, 0px))", width: 160 }
-    : { right: "max(20px, calc(env(safe-area-inset-right, 0px) + 14px))", top: "calc(128px + env(safe-area-inset-top, 0px))", width: "min(160px, calc(46vw - 14px))" };
+    ? { right: "max(24px, calc(env(safe-area-inset-right, 0px) + 18px))", bottom: "calc(82px + env(safe-area-inset-bottom, 0px))", width: 178 }
+    : { left: "50%", bottom: "calc(108px + env(safe-area-inset-bottom, 0px))", transform: "translateX(-50%)", width: "min(240px, calc(100vw - 32px))" };
 
   return (
-    <div className="absolute z-30 pointer-events-auto" style={wrapperStyle}>
+    <div className="absolute z-30 pointer-events-auto manifestationFocusSelector" style={wrapperStyle}>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((value) => !value); }}
         onTouchStart={(e) => e.stopPropagation()}
@@ -32,14 +32,14 @@ export default function ManifestationFocusSelector({ themes, activeId, onSelect 
       >
         <span className="min-w-0 text-left">
           <span className="block text-[7px] font-black uppercase tracking-[0.15em] text-white/70">Manifestation Focus</span>
-          <span className="block text-[10px] font-black truncate">Focus: {active?.label || "Choose"}</span>
+          <span className="block text-[10px] font-black truncate">Focus: {active?.label || "Healing"}</span>
         </span>
         <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       <AnimatePresence>
         {open && (
-          <motion.div initial={{ opacity: 0, y: 8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.97 }} transition={{ duration: 0.16 }} className="mt-1.5 rounded-2xl p-1.5" style={{ maxHeight: landscape ? "calc(100dvh - 132px)" : "min(210px, 34dvh)", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "linear-gradient(160deg, rgba(12,9,32,0.94), rgba(34,14,58,0.9), rgba(0,80,110,0.76))", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(18px)", boxShadow: "0 16px 34px rgba(0,0,0,0.36), 0 0 24px rgba(0,229,255,0.14)" }}>
+          <motion.div initial={{ opacity: 0, y: 8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.97 }} transition={{ duration: 0.16 }} className="absolute left-0 right-0 rounded-2xl p-1.5" style={{ bottom: "calc(100% + 8px)", maxHeight: landscape ? "min(220px, calc(100dvh - 150px))" : "min(250px, calc(100dvh - 230px))", overflowY: "auto", WebkitOverflowScrolling: "touch", background: "linear-gradient(160deg, rgba(12,9,32,0.94), rgba(34,14,58,0.9), rgba(0,80,110,0.76))", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(18px)", boxShadow: "0 16px 34px rgba(0,0,0,0.36), 0 0 24px rgba(0,229,255,0.14)" }}>
             <div className="grid gap-1.5" style={{ gridTemplateColumns: "1fr" }}>
               {themes.map((theme) => (
                 <button key={theme.id} onClick={(e) => { e.stopPropagation(); onSelect(theme.id); setOpen(false); }} onTouchStart={(e) => e.stopPropagation()} className="rounded-xl px-2 py-1 text-[9px] font-black transition-all active:scale-95" style={{ minHeight: 28, background: activeId === theme.id ? `linear-gradient(135deg, ${theme.color}66, ${theme.color}22)` : `linear-gradient(135deg, ${theme.color}2f, rgba(255,255,255,0.055))`, border: `1px solid ${activeId === theme.id ? theme.color + "dd" : theme.color + "55"}`, color: activeId === theme.id ? "#fff" : "rgba(255,255,255,0.82)", boxShadow: activeId === theme.id ? `0 0 14px ${theme.glow}` : "none" }}>
