@@ -26,7 +26,6 @@ import DirectChatPanel from "@/components/vibeworld/panels/DirectChatPanel";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
 
 import useVibeCityAudioMachine from "@/hooks/useVibeCityAudioMachine";
-import CityAudioDebugPanel from "@/components/vibeworld/CityAudioDebugPanel";
 import {
   subscribe as ramSubscribe,
   getState as ramGetState,
@@ -686,7 +685,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const {
     djTrack,
-    debugSnapshot: cityAudioDebug,
   } = useVibeCityAudioMachine({
     isUserInsideDanceFloor: rawDfState,
     defaultTrack: cityTrack || defaultCityTrack,
@@ -1462,7 +1460,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         playerPos={playerPos}
       />
 
-      <CityAudioDebugPanel snapshot={cityAudioDebug} />
     </div>
   );
 }
