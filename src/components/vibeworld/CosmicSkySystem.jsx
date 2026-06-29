@@ -688,7 +688,80 @@ export function createCosmicSky(scene) {
   });
   scene.userData.horizonPlanets = planets;
 
-  // Beach flyby planet sprites removed to keep Neon Surf Beach horizon clean.
+  // ── Beach flyby planets — bright, low, horizon-safe sprites ────────────────
+  // Restored without dark terminator shading so they cannot render as a black blob.
+  function buildBeachFlybyPlanet(colors, glowColor, size) {
+    const S = isMobile ? 128 : 192;
+    const pc = document.createElement("canvas");
+    pc.width = S; pc.height = S;
+    const pctx = pc.getContext("2d");
+    const cx = S / 2, cy = S / 2, R = S * 0.24;
+
+    const halo = pctx.createRadialGradient(cx, cy, R * 0.75, cx, cy, R * 1.8);
+    halo.addColorStop(0, glowColor);
+    halo.addColorStop(1, "rgba(0,0,0,0)");
+    pctx.fillStyle = halo;
+    pctx.fillRect(0, 0, S, S);
+
+    const body = pctx.createRadialGradient(cx - R * 0.25, cy - R * 0.25, R * 0.05, cx, cy, R);
+    body.addColorStop(0, colors[3]);
+    body.addColorStop(0.42, colors[2]);
+    body.addColorStop(0.74, colors[1]);
+    body.addColorStop(1, colors[0]);
+    pctx.beginPath();
+    pctx.arc(cx, cy, R, 0, Math.PI * 2);
+    pctx.fillStyle = body;
+    pctx.fill();
+
+    pctx.save();
+    pctx.beginPath();
+    pctx.arc(cx, cy, R, 0, Math.PI * 2);
+    pctx.clip();
+    for (let b = 0; b < 5; b++) {
+      const by = cy - R + (b / 4) * R * 2;
+      const band = pctx.createLinearGradient(0, by - R * 0.06, 0, by + R * 0.06);
+      band.addColorStop(0, "rgba(255,255,255,0)");
+      band.addColorStop(0.5, "rgba(255,255,255,0.12)");
+      band.addColorStop(1, "rgba(255,255,255,0)");
+      pctx.fillStyle = band;
+      pctx.fillRect(cx - R, by - R * 0.06, R * 2, R * 0.12);
+    }
+    pctx.restore();
+
+    const tex = new THREE.CanvasTexture(pc);
+    tex.minFilter = THREE.LinearFilter;
+    tex.generateMipmaps = false;
+
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(size, size, 1);
+    sprite.frustumCulled = false;
+    sprite.renderOrder = 20;
+    sprite.position.set(9999, 9999, 9999);
+    scene.add(sprite);
+    return { sprite, mat };
+  }
+
+  const now0 = performance.now() * 0.001;
+  scene.userData.beachFlybyA = {
+    ...buildBeachFlybyPlanet(["#0E6A78", "#16A0A8", "#40E0D0", "#B8FFF4"], "rgba(70,230,210,0.42)", isMobile ? 13 : 18),
+    active: false, life: 0, duration: 28, nextFire: now0 + 5,
+    startCX: -54, endCX: 54, cy: 18, cz: 62,
+    _fadeInEnd: 0.16, _fadeOutStart: 0.84,
+  };
+  scene.userData.beachFlybyB = {
+    ...buildBeachFlybyPlanet(["#8A3C10", "#C87828", "#FFC26A", "#FFF0B8"], "rgba(255,190,80,0.38)", isMobile ? 12 : 17),
+    active: false, life: 0, duration: 28, nextFire: now0 + 43,
+    startCX: 54, endCX: -54, cy: 20, cz: 64,
+    _fadeInEnd: 0.16, _fadeOutStart: 0.84,
+  };
 }
 
 // ── Helper: natural arc spawn ─────────────────────────────────────────────────
@@ -880,6 +953,49 @@ export function animateCosmicSky(scene, camera, t, dt) {
     }
   }
 
+  // ── Beach flyby planets — alternating low passes over the ocean horizon ───────
+  function animateBeachFlyby(fb, partner, inBeachZone) {
+    if (!fb) return;
+    if (!inBeachZone) {
+      fb.active = false;
+      fb.life = 0;
+      fb.mat.opacity = 0;
+      fb.sprite.position.set(9999, 9999, 9999);
+      return;
+    }
+    if (!fb.active) {
+      if (t >= fb.nextFire && !partner?.active) {
+        fb.active = true;
+        fb.life = 0;
+      } else return;
+    }
+
+    fb.life += dt;
+    const prog = Math.min(fb.life / fb.duration, 1);
+    const fadeIn = Math.min(prog / fb._fadeInEnd, 1);
+    const fadeOut = prog > fb._fadeOutStart ? Math.max(0, 1 - (prog - fb._fadeOutStart) / (1 - fb._fadeOutStart)) : 1;
+    fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.72;
+    fb.sprite.position.set(
+      camera.position.x + fb.startCX + (fb.endCX - fb.startCX) * prog,
+      camera.position.y + fb.cy,
+      camera.position.z + fb.cz
+    );
+
+    if (prog >= 1) {
+      fb.active = false;
+      fb.life = 0;
+      fb.mat.opacity = 0;
+      fb.sprite.position.set(9999, 9999, 9999);
+      fb.nextFire = t + 76;
+      if (partner) partner.nextFire = t + 10;
+    }
+  }
+
+  const beachFlybyA = scene.userData.beachFlybyA;
+  const beachFlybyB = scene.userData.beachFlybyB;
+  const inBeachFlybyZone = !scene.userData._hidePlanets && !scene.userData._ferrisRiding && camera.position.z > 8;
+  animateBeachFlyby(beachFlybyA, beachFlybyB, inBeachFlybyZone);
+  animateBeachFlyby(beachFlybyB, beachFlybyA, inBeachFlybyZone);
 
   // ── Mega Asteroid — every 120s ────────────────────────────────────────────────
   if (!updateSlow && isMobile) return;
