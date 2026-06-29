@@ -20,7 +20,8 @@ const SKY_DEBUG = typeof window !== "undefined" &&
   new URLSearchParams(window.location.search).get("skydebug") === "1";
 
 export function createCosmicSky(scene) {
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isMobile = isIOS || /Android/i.test(navigator.userAgent);
   scene.userData._skyIsMobile = isMobile;
 
   if (SKY_DEBUG) {
@@ -141,20 +142,26 @@ export function createCosmicSky(scene) {
   skyTex.magFilter = THREE.LinearFilter;
   skyTex.generateMipmaps = false;
 
-  const skybox = new THREE.Mesh(
-    new THREE.SphereGeometry(120, isMobile ? 32 : 48, isMobile ? 24 : 36),
-    new THREE.MeshBasicMaterial({
-      map: skyTex,
-      side: THREE.BackSide,
-      depthWrite: false,
-      depthTest: false,
-    })
-  );
-  skybox.name = "skybox";
-  skybox.renderOrder = -10;
-  skybox.frustumCulled = false;
-  scene.add(skybox);
-  scene.userData._skyboxRef = skybox;
+  // iOS/PWA Safari can render the opaque sky sphere as a large black mound.
+  // Keep the independent starfield + planets, but skip only the skybox sphere on iOS.
+  if (!isIOS) {
+    const skybox = new THREE.Mesh(
+      new THREE.SphereGeometry(120, isMobile ? 32 : 48, isMobile ? 24 : 36),
+      new THREE.MeshBasicMaterial({
+        map: skyTex,
+        side: THREE.BackSide,
+        depthWrite: false,
+        depthTest: false,
+      })
+    );
+    skybox.name = "skybox";
+    skybox.renderOrder = -10;
+    skybox.frustumCulled = false;
+    scene.add(skybox);
+    scene.userData._skyboxRef = skybox;
+  } else {
+    scene.userData._skyboxRef = null;
+  }
 
   // ── 2. POINTS STARFIELD — primary visible star layer ─────────────────────────
   // This is what you actually SEE. The canvas stars above are supplemental.

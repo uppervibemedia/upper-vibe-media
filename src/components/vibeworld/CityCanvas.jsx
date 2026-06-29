@@ -444,8 +444,7 @@ export function buildPark(scene) {
   // Beach chairs removed — hoverboard course uses this space
 
   // 11. OCEAN — mobile: flat static low-poly mesh; desktop: animated high-poly
-  const isIOSScene = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const isMobScene = isIOSScene || /Android/i.test(navigator.userAgent);
+  const isMobScene = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const oceanWidth = 92;
   const oceanGeo = new PlaneGeometry(oceanWidth, OCEAN_DEPTH, isMobScene ? 4 : 56, isMobScene ? 4 : 54);
   const oceanMat = new MeshBasicMaterial({ color: new Color(isMobScene ? "#204468" : "#284A78"), side: THREE.DoubleSide });
@@ -491,43 +490,6 @@ export function buildPark(scene) {
   shoreGlow.name = "shoreGlow";
   scene.add(shoreGlow);
   scene.userData.shoreGlow = shoreGlow;
-
-  // iOS/PWA horizon cleanup: covers Safari's dark skybox/mist mound behind the ocean.
-  // Rendered behind gameplay and before planets, so low-flying planets remain unchanged and visible.
-  if (isIOSScene) {
-    const hazeCanvas = document.createElement("canvas");
-    hazeCanvas.width = 256; hazeCanvas.height = 128;
-    const hctx = hazeCanvas.getContext("2d");
-    const hg = hctx.createLinearGradient(0, 0, 0, 128);
-    hg.addColorStop(0.0, "rgba(13,24,60,0.00)");
-    hg.addColorStop(0.28, "rgba(13,24,60,0.56)");
-    hg.addColorStop(0.70, "rgba(32,68,104,0.72)");
-    hg.addColorStop(1.0, "rgba(32,68,104,0.00)");
-    hctx.fillStyle = hg;
-    hctx.fillRect(0, 0, 256, 128);
-    const hazeTex = new CanvasTexture(hazeCanvas);
-    hazeTex.minFilter = LinearFilter;
-    hazeTex.colorSpace = THREE.SRGBColorSpace;
-    const hazeMat = new MeshBasicMaterial({
-      map: hazeTex,
-      transparent: true,
-      opacity: 0.82,
-      depthWrite: false,
-      depthTest: true,
-      side: THREE.DoubleSide,
-    });
-    const haze = new Mesh(new PlaneGeometry(120, 20), hazeMat);
-    haze.position.set(0, 8, SHORELINE_Z + 30);
-    haze.renderOrder = 0;
-    haze.name = "iosBeachHorizonHaze";
-    scene.add(haze);
-
-    const northHaze = new Mesh(new PlaneGeometry(120, 28), hazeMat.clone());
-    northHaze.position.set(0, 10, SKYLINE_NORTH - 18);
-    northHaze.renderOrder = 0;
-    northHaze.name = "iosNorthSkylineHaze";
-    scene.add(northHaze);
-  }
 
   // ═════════════════════════════════════════════════════════════
   // 12. LIGHTING — night ambiance
