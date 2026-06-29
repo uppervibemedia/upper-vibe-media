@@ -307,13 +307,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [hydratedMyVibeTrack, setHydratedMyVibeTrack] = useState(null);
 
   const nextMyVibeTrack = upNext?.find((track) => track?.audio_url) || null;
-  const ramActive = ramState.activeMode !== null;
   const activeMyVibeTrack = ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : null;
-  const cityTrack = activeMyVibeTrack || currentRadioSong || nextMyVibeTrack || hydratedMyVibeTrack;
-  const cityIsPlaying = ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : false;
+  const cityTrack = currentRadioSong || activeMyVibeTrack || nextMyVibeTrack || hydratedMyVibeTrack;
+  const cityIsPlaying = ramState.activeMode === "myVibeRadio" && ramState.currentTrack?.id === cityTrack?.id ? ramState.isPlaying : false;
 
   const handleCityTogglePlay = useCallback(() => {
-    if (ramState.activeMode === "myVibeRadio") {
+    const sameLoadedTrack = ramState.activeMode === "myVibeRadio" && ramState.currentTrack?.id === cityTrack?.id;
+    if (sameLoadedTrack) {
       if (ramState.isPlaying) { setCityGlobalUserManuallyPaused(true); pauseMyVibe(); }
       else { setCityGlobalUserManuallyPaused(false); resumeMyVibe(); }
       return;
@@ -323,7 +323,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       setCityGlobalUserManuallyPaused(false);
       import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(cityTrack));
     }
-  }, [ramState.activeMode, ramState.isPlaying, cityTrack]);
+  }, [ramState.activeMode, ramState.currentTrack?.id, ramState.isPlaying, cityTrack]);
 
   const handleCitySkip = useCallback(() => {
     if (ramState.activeMode === "myVibeRadio" || cityTrack) {

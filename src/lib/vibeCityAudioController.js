@@ -198,7 +198,7 @@ export async function preloadCityDj() {
 
 function getPreferredGlobalTrack(track) {
   const ram = getRamState();
-  return ram.currentTrack || track || defaultGlobalTrack;
+  return track || (ram.activeMode === "myVibeRadio" ? ram.currentTrack : null) || defaultGlobalTrack;
 }
 
 export function startGlobalMusic(track) {

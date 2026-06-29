@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Compass, Music4, Radio, Rocket, AlertTriangle, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import { preloadCityDj, setCityDefaultTrack, unlockCityAudioForIOS } from "@/lib/vibeCityAudioController";
+import { useRadio } from "@/context/RadioContext";
 import UpperVibeCity from "@/components/vibeworld/UpperVibeCity";
 import WorldGate from "@/components/vibeworld/WorldGate";
 import PageErrorBoundary from "@/components/shared/PageErrorBoundary";
@@ -28,6 +28,8 @@ const DEV_BYPASS_ENTER_WORLD = false;
 
 // ── The hub / landing page — lightweight, no 3D loaded ──
 function VibeWorldHub({ chatAgeConfirmed }) {
+  const { currentRadioSong, startMyVibeQueue, tracksLoaded, likedIdsLoaded } = useRadio();
+
   // Auto-launch when dev bypass is active OR via URL param ?launch=1
   const [webglOk, setWebglOk] = useState(false);
   const [webglChecked, setWebglChecked] = useState(false);
@@ -46,22 +48,28 @@ function VibeWorldHub({ chatAgeConfirmed }) {
     }
   }, []);
 
-  // Preload the city-only audio assets before the Launch tap so iOS can unlock them during that gesture.
+  // Preload city DJ, but keep global city music locked to the current My Vibe Radio song.
   useEffect(() => {
-    let alive = true;
     preloadCityDj();
-    base44.entities.Track.filter({ status: "published" }, "-created_date", 1)
-      .then((tracks) => {
-        if (!alive || !tracks?.[0]) return;
-        setDefaultTrack(tracks[0]);
-        setCityDefaultTrack(tracks[0]);
-      })
-      .catch(() => {});
-    return () => { alive = false; };
   }, []);
 
+  useEffect(() => {
+    if (currentRadioSong?.audio_url) {
+      setDefaultTrack(currentRadioSong);
+      setCityDefaultTrack(currentRadioSong);
+      return;
+    }
+    if (!tracksLoaded || !likedIdsLoaded || !startMyVibeQueue) return;
+    startMyVibeQueue((firstTrack) => {
+      if (!firstTrack?.audio_url) return;
+      setDefaultTrack(firstTrack);
+      setCityDefaultTrack(firstTrack);
+    });
+  }, [currentRadioSong, tracksLoaded, likedIdsLoaded, startMyVibeQueue]);
+
   const handleLaunchWorld = () => {
-    unlockCityAudioForIOS(defaultTrack);
+    const launchTrack = currentRadioSong?.audio_url ? currentRadioSong : defaultTrack;
+    unlockCityAudioForIOS(launchTrack);
     setLaunched(true);
   };
 
