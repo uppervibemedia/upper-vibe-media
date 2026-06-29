@@ -179,7 +179,9 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   // Neon sign
   createNeonSign(scene, ZEN_X, 3.5, ZEN_Z, "ZEN  BEACH", "#00D4F0");
 
-  // ── WHOLE-BEACH SUNSET GLOW SPRITES — mobile: only 2 sprites; desktop: all 6 ──
+  // ── WHOLE-BEACH SUNSET GLOW SPRITES ─────────────────────────────
+  // iOS/PWA can render large transparent glow sprites as dark mounds at the water horizon,
+  // so keep the beach horizon clean on mobile and leave the desktop glow intact.
   const beachGlowDefs = [
     [  0, 26, 38, 14],   // centre beach — large wide wash
     [-18, 24, 22, 10],   // left side
@@ -188,8 +190,7 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
     [ 10, 30, 18,  9],   // deep right
     [  0, 32, 28,  9],   // shoreline
   ];
-  // On mobile: keep only centre + shoreline (index 0 and 5)
-  const activeGlowDefs = isMob ? [beachGlowDefs[0], beachGlowDefs[5]] : beachGlowDefs;
+  const activeGlowDefs = isMob ? [] : beachGlowDefs;
   for (const [gx, gz, sw, sh] of activeGlowDefs) {
     const gc = document.createElement("canvas");
     gc.width = 256; gc.height = 256;
