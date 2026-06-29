@@ -40,6 +40,7 @@ import {
   trackDropSkipped,
   trackDropFailed,
 } from "@/lib/hostDropEngine";
+import { setMyVibeCallbacks } from "@/lib/radioAudioManager";
 
 const RadioContext = createContext(null);
 const LS_KEY = "uvm_radio_state";
@@ -384,6 +385,14 @@ export function RadioProvider({ children }) {
     _playPrev(h, hi, cs);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [_playNext, _playPrev]);
+
+  useEffect(() => {
+    setMyVibeCallbacks({
+      onEnded: () => handleNext(false),
+      onError: () => handleNext(true),
+    });
+    return () => setMyVibeCallbacks({ onEnded: null, onError: null });
+  }, [handleNext]);
 
   // Keep user-facing skip refs current whenever stable callbacks update
   useEffect(() => {

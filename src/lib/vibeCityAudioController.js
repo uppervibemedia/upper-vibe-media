@@ -198,7 +198,7 @@ export async function preloadCityDj() {
 
 function getPreferredGlobalTrack(track) {
   const ram = getRamState();
-  return ram.currentTrack || ram.lastTrack || track || defaultGlobalTrack;
+  return ram.currentTrack || track || defaultGlobalTrack;
 }
 
 export function startGlobalMusic(track) {
@@ -224,7 +224,7 @@ export function pauseGlobalMusicImmediately() {
   const audio = getAudioElement();
   previousGlobal = {
     activeMode: ram.activeMode,
-    track: ram.currentTrack || ram.lastTrack || defaultGlobalTrack,
+    track: ram.currentTrack || defaultGlobalTrack,
     time: audio?.currentTime || ram.currentTime || 0,
     volume: audio?.volume || GLOBAL_TARGET_VOLUME,
     wasPlaying: ram.isPlaying || !!(audio && !audio.paused),
@@ -387,7 +387,7 @@ export function getCityAudioDebugSnapshot() {
     liveDjPaused: djEl ? djEl.paused : true,
     liveDjMuted: djEl ? djEl.muted : true,
     liveDjVolume: djEl ? Number(djEl.volume || 0).toFixed(2) : "0.00",
-    currentGlobalTrack: (ram.currentTrack || ram.lastTrack || defaultGlobalTrack)?.title || "none",
+    currentGlobalTrack: (ram.currentTrack || defaultGlobalTrack)?.title || "none",
     currentDjTrack: currentDjTrack?.title || "none",
     djTrackObject: currentDjTrack || null,
     userManuallyPausedGlobal,

@@ -309,7 +309,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const nextMyVibeTrack = upNext?.find((track) => track?.audio_url) || null;
   const ramActive = ramState.activeMode !== null;
   const activeMyVibeTrack = ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : null;
-  const cityTrack = activeMyVibeTrack || currentRadioSong || ramState.lastTrack || nextMyVibeTrack || hydratedMyVibeTrack;
+  const cityTrack = activeMyVibeTrack || currentRadioSong || nextMyVibeTrack || hydratedMyVibeTrack;
   const cityIsPlaying = ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : false;
 
   const handleCityTogglePlay = useCallback(() => {
@@ -334,7 +334,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
 
   useEffect(() => {
-    const myVibeStateTrack = (ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : null) || currentRadioSong || ramState.lastTrack || nextMyVibeTrack;
+    const myVibeStateTrack = (ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : null) || currentRadioSong || nextMyVibeTrack;
     if (myVibeStateTrack?.audio_url) {
       setHydratedMyVibeTrack((prev) => prev?.id === myVibeStateTrack.id ? prev : myVibeStateTrack);
       return;
@@ -345,7 +345,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         setHydratedMyVibeTrack((prev) => prev?.id === firstTrack.id ? prev : firstTrack);
       }
     });
-  }, [ramState.activeMode, ramState.currentTrack, ramState.lastTrack, currentRadioSong, nextMyVibeTrack, tracksLoaded, startMyVibeQueue]);
+  }, [ramState.activeMode, ramState.currentTrack, currentRadioSong, nextMyVibeTrack, tracksLoaded, startMyVibeQueue]);
 
   // ── Wallet + inventory: load from server on entry ─────────
   useEffect(() => {
