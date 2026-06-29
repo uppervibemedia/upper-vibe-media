@@ -1199,6 +1199,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onOpenTvMode={() => setTvOverlayOpen(true)}
         onExitCity={onExit}
         onDomeOpenChange={setDomeFullscreenOpen}
+        domeTrack={cityTrack}
+        domeIsPlaying={cityIsPlaying}
         nearJukebox={nearJukebox}
         djTrack={djTrack}
         onFerrisRideChange={setFerrisRiding}

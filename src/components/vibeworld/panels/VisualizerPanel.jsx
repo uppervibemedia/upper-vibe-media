@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Sparkles, Music4, Search, Eye, Star } from "lucide-react";
-import { base44 } from "@/api/base44Client";
-import { usePlayer } from "@/context/PlayerContext";
+import { ChevronLeft, ChevronRight, Sparkles, Eye, Star, Radio } from "lucide-react";
 import CoverImage from "@/components/shared/CoverImage";
 import useDomeAudioAnalysis from "@/components/vibeworld/panels/useDomeAudioAnalysis";
 
@@ -169,8 +167,33 @@ function DomeTextScene({ eyebrow, title, text, themeColor, themeGlow }) {
   );
 }
 
-export default function VisualizerPanel({ open, onClose }) {
-  const { isPlaying, playTrack } = usePlayer() || {};
+function ConnectedBadge({ track, isPlaying }) {
+  const coverSrc = track?.cover_url || track?.coverArt || track?.image || track?.artwork || null;
+  return (
+    <div className="relative z-20 flex justify-center px-3 flex-shrink-0 pointer-events-none">
+      <div className="flex items-center gap-2 rounded-2xl px-2.5 py-2" style={{ width: "min(380px, calc(100vw - 32px))", background: "rgba(5,4,18,0.74)", border: "1px solid rgba(0,229,255,0.16)", backdropFilter: "blur(16px)", boxShadow: "0 0 calc(16px + var(--dome-beat, 0) * 20px) rgba(0,229,255,0.12)" }}>
+        <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0" style={{ background: "rgba(255,255,255,0.05)" }}>
+          <CoverImage src={coverSrc} alt={track?.title || "Current My Vibe song"} className="w-full h-full" iconClassName="w-4 h-4" fallbackOpacityClass="text-white/20" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <Radio className="w-3 h-3 text-cyan-300/80 flex-shrink-0" />
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-200/70 truncate">Connected to My Vibe Radio</p>
+          </div>
+          <p className="text-xs font-black text-white/90 truncate">{track?.title || "My Vibe Frequency"}</p>
+          <p className="text-[10px] text-white/45 truncate">{track?.artist_display || track?.artist || "Upper Vibe Media"}</p>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: isPlaying ? "#34D399" : "rgba(255,255,255,0.32)", boxShadow: isPlaying ? "0 0 10px #34D399" : "none" }} />
+          <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: isPlaying ? "#34D399" : "rgba(255,255,255,0.36)" }}>{isPlaying ? "Playing" : "Paused"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function VisualizerPanel({ open, onClose, currentTrack, isTrackPlaying }) {
+  const isPlaying = !!isTrackPlaying;
   const rootRef = useRef(null);
   const canvasRef = useRef(null);
   const animRef = useRef(null);
@@ -180,23 +203,20 @@ export default function VisualizerPanel({ open, onClose }) {
   const [affirmationIdx, setAffirmationIdx] = useState(0);
   const [manifestationId, setManifestationId] = useState(null);
   const [manifestationLineIdx, setManifestationLineIdx] = useState(0);
-  const [showSongPicker, setShowSongPicker] = useState(false);
-  const [quickTracks, setQuickTracks] = useState([]);
-  const [songSearch, setSongSearch] = useState("");
 
   const activeStyle = STYLES[styleIdx] || STYLES[0];
   const activeManifestation = MANIFESTATION_THEMES.find((theme) => theme.id === manifestationId) || null;
   const manifestationText = activeManifestation ? activeManifestation.affirmations[manifestationLineIdx % activeManifestation.affirmations.length] : "Choose a manifestation focus.";
 
-  const setMode = useCallback((mode) => { setActiveMode(mode); setShowSongPicker(false); }, []);
+  const setMode = useCallback((mode) => { setActiveMode(mode); }, []);
   const handlePrev = useCallback((e) => {
-    e?.stopPropagation?.(); setShowSongPicker(false);
+    e?.stopPropagation?.();
     if (activeMode === "visualizer") setStyleIdx((i) => (i - 1 + STYLES.length) % STYLES.length);
     if (activeMode === "affirmation") setAffirmationIdx((i) => (i - 1 + GENERAL_AFFIRMATIONS.length) % GENERAL_AFFIRMATIONS.length);
     if (activeMode === "manifestation" && activeManifestation) setManifestationLineIdx((i) => (i - 1 + activeManifestation.affirmations.length) % activeManifestation.affirmations.length);
   }, [activeMode, activeManifestation]);
   const handleNext = useCallback((e) => {
-    e?.stopPropagation?.(); setShowSongPicker(false);
+    e?.stopPropagation?.();
     if (activeMode === "visualizer") setStyleIdx((i) => (i + 1) % STYLES.length);
     if (activeMode === "affirmation") setAffirmationIdx((i) => (i + 1) % GENERAL_AFFIRMATIONS.length);
     if (activeMode === "manifestation" && activeManifestation) setManifestationLineIdx((i) => (i + 1) % activeManifestation.affirmations.length);
@@ -239,10 +259,8 @@ export default function VisualizerPanel({ open, onClose }) {
     const timer = setInterval(() => setManifestationLineIdx((i) => (i + 1) % activeManifestation.affirmations.length), isPlaying ? 4600 : 9000);
     return () => clearInterval(timer);
   }, [open, activeMode, isPlaying, activeManifestation]);
-  useEffect(() => { if (open) base44.entities.Track.filter({ status: "published" }, "-plays", 20).then(setQuickTracks); }, [open]);
 
   if (!open) return null;
-  const filteredSongs = quickTracks.filter((track) => !songSearch || track.title?.toLowerCase().includes(songSearch.toLowerCase())).slice(0, 8);
   const modeTitle = activeMode === "visualizer" ? activeStyle.label : activeMode === "affirmation" ? `${affirmationIdx + 1}/${GENERAL_AFFIRMATIONS.length}` : activeManifestation?.label || "Manifestation";
 
   return (
@@ -253,8 +271,10 @@ export default function VisualizerPanel({ open, onClose }) {
       <div className="relative z-30 grid grid-cols-[auto_1fr_auto] items-center gap-2 px-3 py-2 flex-shrink-0" style={{ maxWidth: "calc(100vw - 8px)", pointerEvents: "auto" }}>
         <button onClick={(e) => { e.stopPropagation(); onClose(); }} onTouchStart={(e) => e.stopPropagation()} className="flex items-center gap-1.5 rounded-xl text-xs font-bold transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#7C3AED,#A078FF)", border: "1px solid rgba(160,120,255,0.5)", color: "#fff", minWidth: 54, minHeight: 44, padding: "0 12px", touchAction: "manipulation", pointerEvents: "auto" }} aria-label="Exit Visualizer Dome"><ChevronLeft className="w-4 h-4" /> <span>Exit</span></button>
         <div className="flex justify-center min-w-0"><div className="flex items-center gap-1 rounded-2xl p-1 overflow-x-auto hide-scrollbar" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", maxWidth: "min(560px, 100%)", pointerEvents: "auto" }}>{MODES.map(({ id, label, icon: Icon }) => (<button key={id} onClick={(e) => { e.stopPropagation(); setMode(id); }} onTouchStart={(e) => e.stopPropagation()} className="flex items-center gap-1 rounded-xl font-black transition-all whitespace-nowrap" style={{ background: activeMode === id ? "rgba(160,120,255,0.25)" : "transparent", border: `1px solid ${activeMode === id ? "rgba(160,120,255,0.4)" : "transparent"}`, color: activeMode === id ? "#A078FF" : "rgba(255,255,255,0.5)", padding: "7px 8px", fontSize: 10, minHeight: 38, touchAction: "manipulation", pointerEvents: "auto" }}><Icon style={{ width: 11, height: 11, flexShrink: 0 }} /><span>{label}</span></button>))}</div></div>
-        {activeMode === "visualizer" ? (<button onClick={(e) => { e.stopPropagation(); setShowSongPicker((v) => !v); }} onTouchStart={(e) => e.stopPropagation()} className="flex items-center justify-center rounded-xl transition-all hover:bg-white/15" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.65)", width: 44, height: 44, minWidth: 44, touchAction: "manipulation", pointerEvents: "auto" }} aria-label="Choose Dome music"><Music4 className="w-3.5 h-3.5" /></button>) : <div style={{ width: 44, height: 44 }} />}
+        <div style={{ width: 44, height: 44 }} />
       </div>
+
+      <ConnectedBadge track={currentTrack} isPlaying={isPlaying} />
 
       <div className="relative z-20 flex justify-center items-center gap-2 py-1 flex-shrink-0" style={{ pointerEvents: "auto" }}><button onClick={handlePrev} onTouchStart={(e) => e.stopPropagation()} className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/15 active:scale-95" style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", minWidth: 44, minHeight: 44, touchAction: "manipulation", pointerEvents: "auto" }} aria-label="Previous Dome item"><ChevronLeft className="w-5 h-5" /></button><span className="text-[10px] sm:text-xs font-black tracking-wider text-white/60 text-center truncate" style={{ width: "min(220px, 44vw)" }}>{modeTitle}</span><button onClick={handleNext} onTouchStart={(e) => e.stopPropagation()} className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/15 active:scale-95" style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", minWidth: 44, minHeight: 44, touchAction: "manipulation", pointerEvents: "auto" }} aria-label="Next Dome item"><ChevronRight className="w-5 h-5" /></button></div>
 
@@ -262,8 +282,6 @@ export default function VisualizerPanel({ open, onClose }) {
       {activeMode === "manifestation" && <DomeTextScene eyebrow="Frequency Room · Manifestation" title={activeManifestation?.label || "Select Focus"} text={manifestationText} themeColor={activeManifestation?.color || "#A078FF"} themeGlow={activeManifestation?.glow || "rgba(160,120,255,0.3)"} />}
 
       {activeMode === "manifestation" && (<div className="relative z-30 flex justify-center px-3 mt-auto mb-4 pointer-events-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 66px)" }}><div className="rounded-2xl p-3" style={{ width: "min(560px, calc(100vw - 24px))", background: "rgba(10,8,24,0.86)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(18px)", boxShadow: "0 18px calc(50px + var(--dome-beat, 0) * 30px) rgba(0,0,0,0.35), 0 0 calc(16px + var(--dome-beat, 0) * 28px) rgba(160,120,255,0.18)" }}><p className="text-[9px] font-black uppercase tracking-[0.18em] mb-2" style={{ color: "rgba(255,255,255,0.38)" }}>Manifestation Focus</p><div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(92px, 1fr))" }}>{MANIFESTATION_THEMES.map((theme) => (<button key={theme.id} onClick={(e) => { e.stopPropagation(); setManifestationId(theme.id); setManifestationLineIdx(0); }} onTouchStart={(e) => e.stopPropagation()} className="rounded-xl px-2 py-2 text-[10px] font-black transition-all active:scale-95" style={{ background: manifestationId === theme.id ? `${theme.color}28` : "rgba(255,255,255,0.055)", border: `1px solid ${manifestationId === theme.id ? theme.color + "88" : "rgba(255,255,255,0.08)"}`, color: manifestationId === theme.id ? theme.color : "rgba(255,255,255,0.68)", minHeight: 36, touchAction: "manipulation", pointerEvents: "auto" }}>{theme.label}</button>))}</div></div></div>)}
-
-      <AnimatePresence>{showSongPicker && (<motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute z-40 left-3 right-3 rounded-2xl overflow-hidden" style={{ top: "calc(env(safe-area-inset-top, 0px) + 58px)", background: "rgba(12,10,24,0.97)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(20px)", maxHeight: "min(55vh, 320px)", pointerEvents: "auto" }}><div className="p-3 border-b border-white/5"><div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/25" /><input type="text" placeholder="Search songs..." value={songSearch} onChange={(e) => setSongSearch(e.target.value)} className="w-full pl-8 pr-3 py-2 rounded-lg text-xs text-white placeholder-white/25 outline-none" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", touchAction: "manipulation", fontSize: 16 }} /></div></div><div className="overflow-y-auto" style={{ maxHeight: "40vh" }}>{filteredSongs.map((track) => (<button key={track.id} onClick={() => { playTrack?.(track, "song"); setShowSongPicker(false); }} onTouchStart={(e) => e.stopPropagation()} className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all hover:bg-white/5 active:bg-white/10" style={{ touchAction: "manipulation", minHeight: 44, pointerEvents: "auto" }}><div className="w-7 h-7 rounded overflow-hidden flex-shrink-0"><CoverImage src={track.cover_url} alt={track.title} className="w-full h-full" iconClassName="w-3 h-3" fallbackOpacityClass="text-white/20" /></div><div className="min-w-0"><p className="text-[11px] font-bold text-white truncate">{track.title}</p><p className="text-[9px] text-white/30 truncate">{track.artist_display || "Upper Vibe Media"}</p></div></button>))}</div></motion.div>)}</AnimatePresence>
     </motion.div>
   );
 }

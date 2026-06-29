@@ -118,6 +118,8 @@ export default function WorldHUD({
   onOpenTvMode,
   onExitCity,
   onDomeOpenChange,
+  domeTrack = null,
+  domeIsPlaying = false,
   nearJukebox = false,
   djTrack = null,
   onFerrisRideChange,
@@ -960,6 +962,8 @@ export default function WorldHUD({
       <VisualizerPanel
         open={visualizerOpen}
         onClose={() => setVisualizerOpen(false)}
+        currentTrack={domeTrack}
+        isTrackPlaying={domeIsPlaying}
       />
 
       {/* ── Vibe Lounge Hub (slide-up) ────────────────────────── */}
