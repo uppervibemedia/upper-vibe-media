@@ -362,6 +362,80 @@ function _attachMyVibeListeners(track) {
   };
 }
 
+function _sameAudioUrl(loadedUrl, trackUrl) {
+  if (!loadedUrl || !trackUrl) return false;
+  return loadedUrl === trackUrl || loadedUrl.split("?")[0] === trackUrl.split("?")[0] || loadedUrl.includes(trackUrl.split("?")[0]);
+}
+
+export function recoverMyVibeRadioPlayback(track = _state.currentTrack || _state.lastTrack) {
+  if (!track?.audio_url) {
+    console.warn("[RAM][MyVibe] recovery blocked — missing audio_url for:", track?.title);
+    _setState({ isPlaying: false, intendedToPlay: false, audioStatus: "error", lastError: "Track file unavailable." });
+    if (_onMyVibeError) _onMyVibeError(track);
+    return;
+  }
+
+  _clearReconnect();
+  const audio = getAudio();
+  const srcMatches = _sameAudioUrl(audio.src, track.audio_url);
+  const needsReload = !srcMatches || audio.error || !audio.src || audio.src === window.location.href;
+  const restoreTime = _state.currentTrack?.id === track.id && _state.currentTime > 1 ? _state.currentTime : 0;
+
+  console.log("[RAM][MyVibe] recoverMyVibeRadioPlayback | track:", track.title, "| reload:", needsReload, "| paused:", audio.paused, "| rs:", audio.readyState);
+
+  _removeCurrentListeners();
+  audio.muted = false;
+  audio.volume = audio.volume > 0 ? audio.volume : 0.85;
+  audio.preload = "auto";
+
+  _setState({
+    activeMode: "myVibeRadio",
+    audioType: "internalTrack",
+    intendedToPlay: true,
+    currentStreamUrl: track.audio_url,
+    currentTrack: track,
+    lastTrack: track,
+    audioStatus: "loading",
+    lastError: null,
+    isPlaying: false,
+    currentTime: restoreTime,
+  });
+
+  _attachMyVibeListeners(track);
+
+  if (!needsReload && !audio.paused && !audio.ended) {
+    _setState({ isPlaying: true, audioStatus: "playing", lastError: null, intendedToPlay: true });
+    return;
+  }
+
+  if (needsReload) {
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+    audio.src = track.audio_url;
+    audio.load();
+  }
+
+  if (restoreTime > 1) {
+    const seekTarget = restoreTime;
+    const doSeek = () => {
+      if (_state.activeMode !== "myVibeRadio" || _state.currentTrack?.id !== track.id) return;
+      try { audio.currentTime = seekTarget; _setState({ currentTime: seekTarget }); } catch {}
+    };
+    audio.addEventListener("loadedmetadata", doSeek, { once: true });
+    if (audio.readyState >= 1) doSeek();
+  }
+
+  const promise = audio.play();
+  if (promise) {
+    promise.catch((error) => {
+      if (_state.activeMode !== "myVibeRadio" || _state.currentTrack?.id !== track.id) return;
+      console.warn("My Vibe Radio play failed:", error);
+      _setState({ isPlaying: false, intendedToPlay: false, audioStatus: "error", lastError: "Tap play to start." });
+    });
+  }
+}
+
 /**
  * Play a My Vibe track.
  * MUST be called synchronously from a user gesture on first play.
@@ -388,14 +462,8 @@ export function playMyVibeTrack(track) {
     audio.src !== window.location.href;
 
   if (alreadySameTrack) {
-    console.log("[RAM] playMyVibeTrack — same track already loaded, resuming:", track.title, "| pos:", audio.currentTime.toFixed(2));
-    _setState({ intendedToPlay: true, currentTrack: track });
-    if (audio.paused) {
-      audio.play().catch((e) => {
-        console.warn("[RAM][MyVibe] resume blocked:", e.message);
-        _setState({ audioStatus: "error", lastError: "Tap play to start.", isPlaying: false, intendedToPlay: false });
-      });
-    }
+    console.log("[RAM] playMyVibeTrack — same track already loaded, recovering:", track.title, "| pos:", audio.currentTime.toFixed(2));
+    recoverMyVibeRadioPlayback(track);
     return;
   }
 
@@ -475,12 +543,7 @@ export function pauseMyVibe() {
 export function resumeMyVibe() {
   if (_state.activeMode !== "myVibeRadio") return;
   console.log("[RAM] resumeMyVibe | pos:", getAudio().currentTime.toFixed(2));
-  const audio = getAudio();
-  _setState({ intendedToPlay: true, audioStatus: "loading" });
-  audio.play().catch((e) => {
-    console.warn("[RAM][MyVibe] resume blocked:", e.message);
-    _setState({ lastError: "Tap play to start.", isPlaying: false, audioStatus: "error" });
-  });
+  recoverMyVibeRadioPlayback(_state.currentTrack || _state.lastTrack);
 }
 
 /**

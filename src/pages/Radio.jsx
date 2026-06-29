@@ -29,11 +29,12 @@ import {
   resumeUpperVibeRadio,
   playMyVibeTrack,
   pauseMyVibe,
-  resumeMyVibe,
+  recoverMyVibeRadioPlayback,
   getAudioElementRef,
   setMyVibeCallbacks,
 } from "@/lib/radioAudioManager";
 import { useRadio } from "../context/RadioContext";
+import { usePlayer } from "../context/PlayerContext";
 import { base44 } from "@/api/base44Client";
 
 const NOW_PLAYING_URL = "https://s5.citrus3.com:2020/json/stream/upperviberadio";
@@ -89,6 +90,7 @@ export default function RadioPage() {
     startMyVibeQueue,
     tracksLoaded,
   } = useRadio();
+  const playerCtx = usePlayer();
 
   // Wire RadioContext callbacks to RadioAudioManager
   useEffect(() => {
@@ -242,15 +244,16 @@ export default function RadioPage() {
       return;
     }
 
+    playerCtx?.stopPlaying?.();
+
     if (s.activeMode === "myVibeRadio" && !s.isPlaying && s.currentTrack) {
-      // Paused — resume same track
-      resumeMyVibe();
+      recoverMyVibeRadioPlayback(s.currentTrack);
       return;
     }
 
     // Switching from live or fresh start
     // Must start playback synchronously (gesture) — get the track first
-    const track = currentRadioSong;
+    const track = currentRadioSong || s.lastTrack;
     if (track) {
       console.log("[Radio] Starting My Vibe with existing song:", track.title);
       playMyVibeTrack(track);
@@ -263,7 +266,7 @@ export default function RadioPage() {
     } else {
       console.warn("[Radio] My Vibe — no tracks loaded yet");
     }
-  }, [currentRadioSong, tracksLoaded, allTracks, startMyVibeQueue]);
+  }, [currentRadioSong, tracksLoaded, allTracks, startMyVibeQueue, playerCtx]);
 
   // ── When nextRadioSong is called externally (skip/end), pick new song from RAM ──
   // RadioContext's nextRadioSong updates currentRadioSong → the useEffect above fires playMyVibeTrack
