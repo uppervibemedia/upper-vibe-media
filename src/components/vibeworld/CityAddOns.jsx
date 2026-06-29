@@ -58,20 +58,24 @@ export function runConnections(scene, audioBeatRef) {
  * Handles shop/pad visuals + LaunchRide step-on auto-launch + coin collection.
  */
 export function tickAddOns(scene, t) {
+  scene.userData._addonsFrame = (scene.userData._addonsFrame || 0) + 1;
+  const addOnFrame = scene.userData._addonsFrame;
   const beat = scene.userData._audioBeatRef?.current ?? 0;
 
   const shop = scene.userData._upperVibeShop;
   if (shop) animateShop(shop, t, beat);
 
-  for (const id of Object.keys(LAUNCH_PADS)) {
-    const pad = scene.userData[`_launchPad_${id}`];
-    if (pad) animateLaunchPad(pad, t, beat);
+  if (addOnFrame % 2 === 0) {
+    for (const id of Object.keys(LAUNCH_PADS)) {
+      const pad = scene.userData[`_launchPad_${id}`];
+      if (pad) animateLaunchPad(pad, t, beat);
+    }
   }
 
   // LaunchRide — auto-launch detection, flight, mid-air coin collect
   tickLaunchRide(scene, t);
   animateLaunchCoins(scene, t);
 
-  // Keep window total in sync with local storage
-  window.__lrTotalCoins = getVibeCoinBank();
+  // Keep window total in sync without hitting localStorage every frame.
+  if (addOnFrame % 30 === 0) window.__lrTotalCoins = getVibeCoinBank();
 }

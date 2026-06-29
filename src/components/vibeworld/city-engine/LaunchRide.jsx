@@ -244,6 +244,8 @@ export function tickLaunchRide(scene, t) {
 export function animateLaunchCoins(scene, t) {
   const st = perScene.get(scene);
   if (!st) return;
+  scene.userData._launchCoinFrame = (scene.userData._launchCoinFrame || 0) + 1;
+  const launchFrame = scene.userData._launchCoinFrame;
 
   const now = performance.now();
   st.coins.forEach((c) => {
@@ -259,6 +261,8 @@ export function animateLaunchCoins(scene, t) {
     const base = c.userData._placedBaseY || 0;
     c.position.y = base + Math.sin(t * 2.2 + (c.userData._phase || 0)) * 0.06;
   });
+
+  if (launchFrame % 3 !== 0) return;
 
   st.pads.forEach((p, i) => {
     const ring = st.cooldownRings[i];

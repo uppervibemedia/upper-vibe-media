@@ -41,11 +41,16 @@ export default function FPSMonitor({ sceneRef, remoteUserCount = 0 }) {
       const frameMs = Math.round(elapsed / 30);
 
       let meshCount = 0, lightCount = 0;
+      const materials = new Set();
       // Use globally exposed scene (set by CityCanvas as window.__hbScene)
       const scene = window.__hbScene;
       if (scene) {
         scene.traverse((obj) => {
-          if (obj.isMesh) meshCount++;
+          if (obj.isMesh) {
+            meshCount++;
+            if (Array.isArray(obj.material)) obj.material.forEach((m) => materials.add(m));
+            else if (obj.material) materials.add(obj.material);
+          }
           if (obj.isLight) lightCount++;
         });
       }
@@ -55,7 +60,20 @@ export default function FPSMonitor({ sceneRef, remoteUserCount = 0 }) {
         memMb = Math.round(window.performance.memory.usedJSHeapSize / 1048576);
       }
 
-      setStats({ fps: avgFps, frameMs, meshCount, lightCount, remoteUserCount, memMb });
+      const renderer = sceneRef?.current;
+      const renderInfo = renderer?.info || null;
+      setStats({
+        fps: avgFps,
+        frameMs,
+        meshCount,
+        lightCount,
+        materialCount: materials.size,
+        drawCalls: renderInfo?.render?.calls ?? null,
+        textures: renderInfo?.memory?.textures ?? null,
+        geometries: renderInfo?.memory?.geometries ?? null,
+        remoteUserCount,
+        memMb,
+      });
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
@@ -86,7 +104,11 @@ export default function FPSMonitor({ sceneRef, remoteUserCount = 0 }) {
       <div style={{ color: fpsColor, fontWeight: "bold" }}>FPS: {stats.fps}</div>
       <div>Frame: {stats.frameMs}ms</div>
       <div>Meshes: {stats.meshCount}</div>
+      <div>Materials: {stats.materialCount}</div>
       <div>Lights: {stats.lightCount}</div>
+      {stats.drawCalls !== null && <div>Draws: {stats.drawCalls}</div>}
+      {stats.textures !== null && <div>Textures: {stats.textures}</div>}
+      {stats.geometries !== null && <div>Geometry: {stats.geometries}</div>}
       <div>Remote: {stats.remoteUserCount}</div>
       {stats.memMb !== null && <div>Mem: {stats.memMb}MB</div>}
     </div>

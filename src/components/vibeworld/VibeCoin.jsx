@@ -16,6 +16,23 @@ const {
 const COIN_R = 0.28;
 const COIN_T = 0.06; // thickness
 
+let _coinAssets = null;
+function getCoinAssets() {
+  if (_coinAssets) return _coinAssets;
+  const bodyGeo = new CylinderGeometry(COIN_R, COIN_R, COIN_T, 24, 1, true);
+  const faceGeo = new CircleGeometry(COIN_R * 0.95, 24);
+  const cyanEdgeGeo = new TorusGeometry(COIN_R, 0.022, 8, 32);
+  const purpleEdgeGeo = new TorusGeometry(COIN_R + 0.032, 0.014, 6, 32);
+  const auraGeo = new RingGeometry(COIN_R * 0.9, COIN_R * 1.6, 28);
+  const rimMat = new MeshStandardMaterial({ color: new Color("#ffd700"), roughness: 0.2, metalness: 0.75 });
+  const faceMat = new MeshBasicMaterial({ map: getFaceTex(), depthWrite: true, side: THREE.DoubleSide });
+  const cyanEdgeMat = new MeshBasicMaterial({ color: new Color("#00E5FF"), depthWrite: false, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const purpleEdgeMat = new MeshBasicMaterial({ color: new Color("#9B4FFF"), depthWrite: false, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const auraMat = new MeshBasicMaterial({ color: new Color("#00D4F0"), depthWrite: false, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  _coinAssets = { bodyGeo, faceGeo, cyanEdgeGeo, purpleEdgeGeo, auraGeo, rimMat, faceMat, cyanEdgeMat, purpleEdgeMat, auraMat };
+  return _coinAssets;
+}
+
 // ── Face texture (cached) ────────────────────────────────────
 let _faceTex = null;
 function getFaceTex() {
@@ -56,24 +73,15 @@ function getFaceTex() {
 
 // ── Build the coin ───────────────────────────────────────────
 function buildCoin(group) {
-  const rimMat = new MeshStandardMaterial({
-    color: new Color("#ffd700"),
-    roughness: 0.2,
-    metalness: 0.75,
-  });
+  const assets = getCoinAssets();
 
   // Thin cylindrical body
-  const body = new Mesh(new CylinderGeometry(COIN_R, COIN_R, COIN_T, 24, 1, true), rimMat);
+  const body = new Mesh(assets.bodyGeo, assets.rimMat);
   body.rotation.x = Math.PI / 2;
   group.add(body);
 
   // Face disc (front)
-  const faceMat = new MeshBasicMaterial({
-    map: getFaceTex(),
-    depthWrite: true,
-    side: THREE.DoubleSide,
-  });
-  const face = new Mesh(new CircleGeometry(COIN_R * 0.95, 24), faceMat);
+  const face = new Mesh(assets.faceGeo, assets.faceMat);
   face.position.y = COIN_T * 0.5 + 0.001;
   group.add(face);
   const face2 = face.clone();
@@ -81,38 +89,14 @@ function buildCoin(group) {
   group.add(face2);
 
   // Neon edge — cyan inner, purple outer
-  const cyanEdgeMat = new MeshBasicMaterial({
-    color: new Color("#00E5FF"),
-    depthWrite: false,
-    transparent: true,
-    opacity: 0.75,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-  });
-  const cyanEdge = new Mesh(new TorusGeometry(COIN_R, 0.022, 8, 32), cyanEdgeMat);
+  const cyanEdge = new Mesh(assets.cyanEdgeGeo, assets.cyanEdgeMat);
   group.add(cyanEdge);
 
-  const purpleEdgeMat = new MeshBasicMaterial({
-    color: new Color("#9B4FFF"),
-    depthWrite: false,
-    transparent: true,
-    opacity: 0.45,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-  });
-  const purpleEdge = new Mesh(new TorusGeometry(COIN_R + 0.032, 0.014, 6, 32), purpleEdgeMat);
+  const purpleEdge = new Mesh(assets.purpleEdgeGeo, assets.purpleEdgeMat);
   group.add(purpleEdge);
 
   // Subtle aura ring (flat, below coin)
-  const auraMat = new MeshBasicMaterial({
-    color: new Color("#00D4F0"),
-    depthWrite: false,
-    transparent: true,
-    opacity: 0.18,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-  });
-  const aura = new Mesh(new RingGeometry(COIN_R * 0.9, COIN_R * 1.6, 28), auraMat);
+  const aura = new Mesh(assets.auraGeo, assets.auraMat);
   aura.rotation.x = -Math.PI / 2;
   aura.position.y = -0.02;
   group.add(aura);
@@ -125,9 +109,9 @@ function buildCoin(group) {
     ...group.userData,
     _isVibeCoin: true,
     _glowLight: glow,
-    _auraMat: auraMat,
-    _cyanEdgeMat: cyanEdgeMat,
-    _purpleEdgeMat: purpleEdgeMat,
+    _auraMat: assets.auraMat,
+    _cyanEdgeMat: assets.cyanEdgeMat,
+    _purpleEdgeMat: assets.purpleEdgeMat,
   };
 }
 

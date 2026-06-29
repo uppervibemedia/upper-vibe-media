@@ -31,8 +31,8 @@ export function createCosmicSky(scene) {
   // The canvas draws: deep space base → galaxy band → nebula blobs → star dots.
   // Stars here are supplemental — the Points starfield below is the primary star layer.
   const skyCanvas = document.createElement("canvas");
-  const SKY_W = isMobile ? 1024 : 2048;
-  const SKY_H = isMobile ? 512  : 1024;
+  const SKY_W = isMobile ? 768 : 2048;
+  const SKY_H = isMobile ? 384 : 1024;
   skyCanvas.width  = SKY_W;
   skyCanvas.height = SKY_H;
   const skyCtx = skyCanvas.getContext("2d");
@@ -99,7 +99,7 @@ export function createCosmicSky(scene) {
   }
 
   // Baked canvas stars — larger dots so they're actually visible on the sphere
-  const canvasStarCount = isMobile ? 600 : 1400;
+  const canvasStarCount = isMobile ? 360 : 1400;
   const seededStar = (() => { let s = 99; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; })();
   for (let i = 0; i < canvasStarCount; i++) {
     const sx = seededStar() * SKY_W;
@@ -160,7 +160,7 @@ export function createCosmicSky(scene) {
   // This is what you actually SEE. The canvas stars above are supplemental.
   // Using THREE.Points: one BufferGeometry, one PointsMaterial, no per-star updates.
   {
-    const starCount = isMobile ? 300 : 700;
+    const starCount = isMobile ? 180 : 700;
     const starGeo = new THREE.BufferGeometry();
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
@@ -441,7 +441,7 @@ export function createCosmicSky(scene) {
   }
 
   const planets = PLANET_DEFS.map((def, defIdx) => {
-    const S = 256;
+    const S = isMobile ? 128 : 256;
     const pc = document.createElement("canvas");
     pc.width = S; pc.height = S;
     const pctx = pc.getContext("2d");
@@ -692,7 +692,7 @@ export function createCosmicSky(scene) {
   //   • Every frame gate: if player leaves beach, planet vanishes immediately.
 
   function buildFlybyPlanet(colors, glowColor, size) {
-    const S = 256;
+    const S = isMobile ? 128 : 256;
     const pc = document.createElement("canvas");
     pc.width = S; pc.height = S;
     const pctx = pc.getContext("2d");

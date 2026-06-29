@@ -89,6 +89,33 @@ const COLLISION_BOXES = [
 ];
 
 // ─── UTILITIES ────────────────────────────────────────────────
+function getCityQuality() {
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isMobile = isIOS || /Android/i.test(ua);
+  return {
+    isIOS,
+    isMobile,
+    pixelRatio: isIOS ? 1.2 : isMobile ? 1.35 : 1.75,
+    farClip: isMobile ? 120 : 155,
+    antialias: !isMobile,
+    shadowMapSize: isMobile ? 512 : 1024,
+  };
+}
+
+function disposeMaterialDeep(material) {
+  if (!material) return;
+  const mats = Array.isArray(material) ? material : [material];
+  mats.forEach((m) => {
+    if (!m) return;
+    Object.keys(m).forEach((key) => {
+      const value = m[key];
+      if (value?.isTexture) value.dispose();
+    });
+    m.dispose?.();
+  });
+}
+
 function circleVsCircle(x1, z1, r1, x2, z2, r2) {
   const dx = x1 - x2, dz = z1 - z2;
   return dx * dx + dz * dz < (r1 + r2) * (r1 + r2);
@@ -403,8 +430,8 @@ export function buildPark(scene) {
   moon.intensity = 0.5;
   moon.position.set(15, 22, SHORELINE_Z + 10);
   moon.castShadow = true;
-  moon.shadow.mapSize.width = 1024;
-        moon.shadow.mapSize.height = 1024;
+  moon.shadow.mapSize.width = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 512 : 1024;
+    moon.shadow.mapSize.height = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 512 : 1024;
   moon.shadow.camera.near = 0.5;
   moon.shadow.camera.far = 100;
   moon.shadow.camera.left = -55;
@@ -613,16 +640,18 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         throw new Error("Three.js MeshStandardMaterial unavailable — check your bundle");
       }
 
-      const isMob = isMobileRef.current;
+      const quality = getCityQuality();
+      const isMob = quality.isMobile;
+      isMobileRef.current = isMob;
       const renderer = new WebGLRenderer({
         canvas,
-        antialias: !isMob, // antialias is expensive on mobile — skip it
+        antialias: quality.antialias,
         powerPreference: isMob ? "low-power" : "high-performance",
       });
       renderer.setClearColor(0x0A1020); // Deep navy void — bright neon night
       if (rendererRef) rendererRef.current = renderer;
-      // Cap pixel ratio — lower on mobile, even lower in TV Smooth mode
-      const basePR = isMob ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2);
+      // Cap pixel ratio — lower on iOS/mobile to reduce WebGL memory and heat.
+      const basePR = Math.min(window.devicePixelRatio || 1, quality.pixelRatio);
       renderer.setPixelRatio(basePR);
       // Use window dimensions on mobile for reliable viewport sizing
       const rw = isMob ? window.innerWidth : canvas.clientWidth;
@@ -643,7 +672,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       // Reduce far clip on mobile — less geometry enters view when turning, fewer draw calls
       // Far clip: planets are camera-relative at radius=55 — must be > 55+margin.
       // Stars (Points) also follow camera at r≈105 — must be > 105. Use 130 for both.
-      const camera = new PerspectiveCamera(52, asp, 0.1, isMob ? 130 : 160);
+      const camera = new PerspectiveCamera(52, asp, 0.1, quality.farClip);
       cameraRef.current = camera;
       // Spawn in the central plaza (outside dance floor), avatar faces -Z toward the city.
       // camYaw=0 → camera is at +Z behind avatar → avatar faces -Z. Correct.
@@ -661,6 +690,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       camera.lookAt(spX, spY + spLookY, spZ); // look at avatar; Vibe Check is ahead of avatar
 
       buildPark(scene);
+      scene.userData._cityQuality = quality;
+      const cachedNeonSigns = [];
+      const cachedZenParticles = [];
+      scene.traverse((obj) => {
+        if (obj.userData?.isNeonSign) cachedNeonSigns.push(obj);
+        if (obj.userData?.isZenParticle) cachedZenParticles.push(obj);
+      });
+      scene.userData._neonSigns = cachedNeonSigns;
+      scene.userData._zenParticles = cachedZenParticles;
 
       // Water splash particles — desktop only (too costly on mobile)
       if (!isMob) {
@@ -771,8 +809,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const isTv = tvModeRef.current;
           const isSmooth = tvQualityRef.current === "smooth";
           const targetPR = isTv && isSmooth
-            ? Math.min(window.devicePixelRatio, 1.25)
-            : isMob ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2);
+            ? Math.min(window.devicePixelRatio, 1.15)
+            : Math.min(window.devicePixelRatio || 1, quality.pixelRatio);
           if (Math.abs(renderer.getPixelRatio() - targetPR) > 0.05) {
             renderer.setPixelRatio(targetPR);
           }
@@ -1298,26 +1336,28 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const nearBeach = pz > 10;
         const nearDanceFloor = Math.sqrt(px * px + (pz + 13) * (pz + 13)) < 18;
 
-        // Signs: billboard toward camera — every 6 frames on mobile, skip if far
-        const updateSigns = !isMob || frameRef.current % 6 === 0;
-        const updateZenPart = !isMob || (nearBeach && frameRef.current % 3 === 0);
-        scene.children.forEach((child) => {
-          if (child.userData?.isNeonSign) {
-            if (updateSigns) {
-              if (isMob) {
-                const sdx = child.position.x - px, sdz = child.position.z - pz;
-                if (sdx * sdx + sdz * sdz > 2025) return; // skip signs >45u away on mobile
-              }
-              child.lookAt(camera.position);
+        // Signs/particles: cached arrays avoid scanning the whole scene every frame.
+        const updateSigns = !isMob || frameRef.current % 8 === 0;
+        if (updateSigns) {
+          const signs = scene.userData._neonSigns || [];
+          for (const child of signs) {
+            if (isMob) {
+              const sdx = child.position.x - px, sdz = child.position.z - pz;
+              if (sdx * sdx + sdz * sdz > 2025) continue; // skip signs >45u away on mobile
             }
+            child.lookAt(camera.position);
           }
-          if (updateZenPart && child.userData?.isZenParticle) {
+        }
+        const updateZenPart = !isMob || (nearBeach && frameRef.current % 4 === 0);
+        if (updateZenPart) {
+          const zenParticles = scene.userData._zenParticles || [];
+          for (const child of zenParticles) {
             const p = child.userData;
             child.position.y = p.baseY + Math.sin(t * 1.2 + p.phase) * 0.15;
             child.position.x = p.baseX + Math.cos(t * 0.8 + p.phase) * 0.2;
             child.position.z = p.baseZ + Math.sin(t * 0.6 + p.phase) * 0.2;
           }
-        });
+        }
         // Distance-gate zone animations on mobile — skip if player is far away
         if (!isMob || nearBeach || frameRef.current % 3 === 0) animateZenBeach(scene, t, audioBeat);
         // Dance floor — throttle to every 4 frames on mobile, only when near
@@ -1484,18 +1524,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
         // (attribute pixels are scaled by devicePixelRatio on retina/mobile)
-        if (stageScreenPosRef) {
-          const ss = new Vector3(0, 3.5, -34.4);
-          const proj = ss.clone().project(camera);
+        if (stageScreenPosRef && (!isMob || frameRef.current % 2 === 0)) {
+          if (!scene.userData._stageProjectionVecs) {
+            scene.userData._stageProjectionVecs = {
+              ss: new Vector3(0, 3.5, -34.4),
+              tl: new Vector3(),
+              br: new Vector3(),
+            };
+          }
+          const pv = scene.userData._stageProjectionVecs;
+          const proj = pv.ss.set(0, 3.5, -34.4).project(camera);
           const rw = renderer.domElement.clientWidth || renderer.domElement.width;
           const rh = renderer.domElement.clientHeight || renderer.domElement.height;
           const cx = (proj.x * 0.5 + 0.5) * rw;
           const cy = (-proj.y * 0.5 + 0.5) * rh;
-          // Project corners for size (16:9 screen centered at y=3.5)
           const sw2 = (scene.userData._screenW || 12.444) / 2;
           const sh2 = scene.userData._screenH || 7;
-          const tl = new Vector3(-sw2, 3.5 + sh2 / 2, -34.4).project(camera);
-          const br = new Vector3( sw2, 3.5 - sh2 / 2, -34.4).project(camera);
+          const tl = pv.tl.set(-sw2, 3.5 + sh2 / 2, -34.4).project(camera);
+          const br = pv.br.set( sw2, 3.5 - sh2 / 2, -34.4).project(camera);
           const sw = Math.abs((br.x - tl.x) * 0.5 * rw);
           const sh = Math.abs((-br.y + tl.y) * 0.5 * rh);
           stageScreenPosRef.current = { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh };
@@ -1643,10 +1689,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               scene.remove(entry.group);
               entry.group.traverse((obj) => {
                 if (obj.geometry) obj.geometry.dispose();
-                if (obj.material) {
-                  if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
-                  else obj.material.dispose();
-                }
+                if (obj.material) disposeMaterialDeep(obj.material);
               });
             }
             delete remoteMap[id];
@@ -1681,10 +1724,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         renderer.dispose();
         scene.traverse((obj) => {
           if (obj.geometry) obj.geometry.dispose();
-          if (obj.material) {
-            if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
-            else obj.material.dispose();
-          }
+          if (obj.material) disposeMaterialDeep(obj.material);
         });
         // Detach hoverboard + aura on unmount
         if (avatarEntryRef.current) {
