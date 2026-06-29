@@ -440,9 +440,12 @@ export function createCosmicSky(scene) {
     return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
   }
 
-  const activePlanetDefs = isMobile
-    ? PLANET_DEFS.filter((def) => ["mega", "west", "ice", "teal"].includes(def.id))
-    : PLANET_DEFS;
+  // Remove the 3 smallest separate 3D sky planets entirely — no sprites/textures/animations created.
+  const removedSmallPlanetIds = new Set(["green", "gold", "violet"]);
+  const mobilePlanetIds = new Set(["mega", "west", "ice", "teal"]);
+  const activePlanetDefs = PLANET_DEFS.filter((def) =>
+    !removedSmallPlanetIds.has(def.id) && (!isMobile || mobilePlanetIds.has(def.id))
+  );
 
   const planets = activePlanetDefs.map((def, defIdx) => {
     const S = isMobile ? 128 : 256;
