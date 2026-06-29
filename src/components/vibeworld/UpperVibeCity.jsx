@@ -188,6 +188,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [tvOverlayOpen, setTvOverlayOpen] = useState(false);
   // Track whether any blocking UI is open (panels, modals, zone UIs)
   const [anyBlockingUIOpen, setAnyBlockingUIOpen] = useState(false);
+  const [domeFullscreenOpen, setDomeFullscreenOpen] = useState(false);
 
 
 
@@ -1096,12 +1097,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       {/* ── Top HUD row: Exit (left) | TV Mode + UVC (right) — hidden during fullscreen ── */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: (loading || stageFullScreen) ? 0 : 1 }}
-        transition={{ delay: stageFullScreen ? 0 : 0.4 }}
+        animate={{ opacity: (loading || stageFullScreen || domeFullscreenOpen) ? 0 : 1 }}
+        transition={{ delay: (stageFullScreen || domeFullscreenOpen) ? 0 : 0.4 }}
         className="absolute top-0 left-0 right-0 flex items-center justify-between"
         style={{
           zIndex: 200,
-          pointerEvents: (loading || stageFullScreen) ? "none" : "auto",
+          pointerEvents: (loading || stageFullScreen || domeFullscreenOpen) ? "none" : "auto",
           paddingTop: isMobile && mobileLayout
             ? `${mobileLayout.sa.top + 4}px`
             : "calc(env(safe-area-inset-top, 0px) + 4px)",
@@ -1197,6 +1198,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onOpenInventory={() => setInventoryOpen(true)}
         onOpenTvMode={() => setTvOverlayOpen(true)}
         onExitCity={onExit}
+        onDomeOpenChange={setDomeFullscreenOpen}
         nearJukebox={nearJukebox}
         djTrack={djTrack}
         onFerrisRideChange={setFerrisRiding}
@@ -1395,7 +1397,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         mobileLayout={mobileLayout}
         onToggle={() => setPersonalHoverboardActive(p => !p)}
         personalHoverboardActive={personalHoverboardActive}
-        canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !anyBlockingUIOpen && !nearHoverboard && !detectZone(playerPos.x, playerPos.z)}
+        canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && !nearHoverboard && !detectZone(playerPos.x, playerPos.z)}
       />
 
       {/* FPS monitor — only visible with ?debug=1 in URL or localStorage.uvc_debug=1 */}

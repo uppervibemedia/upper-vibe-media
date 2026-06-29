@@ -117,6 +117,7 @@ export default function WorldHUD({
   onOpenInventory,
   onOpenTvMode,
   onExitCity,
+  onDomeOpenChange,
   nearJukebox = false,
   djTrack = null,
   onFerrisRideChange,
@@ -188,6 +189,7 @@ export default function WorldHUD({
     }
   }, [forceOpenPanel]);
   const [visualizerOpen, setVisualizerOpen] = useState(false);
+  useEffect(() => { onDomeOpenChange?.(visualizerOpen); }, [visualizerOpen, onDomeOpenChange]);
   const [vibeCheckOpen, setVibeCheckOpen] = useState(false);
   const [academyOpen, setAcademyOpen] = useState(false);
   const [ferrisWheelOpen, setFerrisWheelOpen] = useState(false);
