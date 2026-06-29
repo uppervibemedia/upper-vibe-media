@@ -64,9 +64,10 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
         }
       : {
           position: 'fixed',
-          right: 'calc(18px + env(safe-area-inset-right, 0px))',
-          top: 'calc(74px + env(safe-area-inset-top, 0px))',
+          right: 'calc(88px + env(safe-area-inset-right, 0px))',
+          top: 'calc(88px + env(safe-area-inset-top, 0px))',
           pointerEvents: 'auto',
+          zIndex: 40,
         };
 
   const rideStyle = {
@@ -125,14 +126,14 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
             onClick={onToggle}
             className="flex items-center justify-center gap-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
             style={{
-              width: isMobile ? (isSmallMobile ? 96 : 110) : 96,
-              height: isMobile ? (isSmallMobile ? 34 : 38) : 30,
+              width: isMobile ? (isSmallMobile ? 96 : 110) : 110,
+              height: isMobile ? (isSmallMobile ? 34 : 38) : 36,
               padding: '0 10px',
               opacity: 0.86,
               background: "rgba(255, 80, 80, 0.11)",
               border: "1px solid rgba(255, 80, 80, 0.28)",
               color: "#ff9a9a",
-              fontSize: isMobile ? (isSmallMobile ? 11 : 12) : 10,
+              fontSize: isMobile ? (isSmallMobile ? 11 : 12) : 12,
               touchAction: "manipulation",
               boxShadow: "0 0 8px rgba(255, 80, 80, 0.14)",
             }}
