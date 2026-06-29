@@ -26,7 +26,7 @@ export default function AudioPlayer() {
     sourceType,
   } = usePlayer();
 
-  const { currentRadioSong, startMyVibeQueue, nextRadioSong, prevRadioSong } = useRadio();
+  const { currentRadioSong, startMyVibeQueue, nextRadioSong, prevRadioSong, upNext, tracksLoaded } = useRadio();
   const { user } = useAuth();
   const { accentId } = useTheme();
   const theme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -167,15 +167,25 @@ export default function AudioPlayer() {
   const ramActive = ramState.activeMode !== null;
   const isRamRadio = ramActive && ramState.audioType === "liveStream";
   const myVibeTrack = !isRamRadio ? ramState.currentTrack : null;
-  const displayTrack = isRamRadio ? null : (myVibeTrack || currentRadioSong || currentTrack || ramState.lastTrack);
+  const nextMyVibeTrack = upNext?.find((track) => track?.audio_url) || null;
+  const displayTrack = isRamRadio ? null : (myVibeTrack || currentRadioSong || nextMyVibeTrack || ramState.lastTrack || currentTrack);
   const effectiveIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
 
   // Normalize cover art from various field names
-  const displayCover = displayTrack?.cover_url || displayTrack?.coverArt || displayTrack?.image || displayTrack?.artwork || null;
+  const displayCover = displayTrack?.coverArt || displayTrack?.cover_url || displayTrack?.image || displayTrack?.artwork || null;
+
+  useEffect(() => {
+    if (isRamRadio || displayTrack || !tracksLoaded || !startMyVibeQueue) return;
+    startMyVibeQueue();
+  }, [isRamRadio, displayTrack, tracksLoaded, startMyVibeQueue]);
 
   const handleIdlePlay = () => {
     if (ramActive) return; // RAM already active — nothing to play here
     import("@/lib/radioAudioManager").then((mod) => {
+      if (currentRadioSong?.audio_url) {
+        mod.playMyVibeTrack(currentRadioSong);
+        return;
+      }
       if (ramState.lastTrack?.audio_url) {
         mod.playMyVibeTrack(ramState.lastTrack);
         return;
@@ -199,9 +209,9 @@ export default function AudioPlayer() {
           else mod.resumeMyVibe();
         }
       });
-    } else if (ramState.lastTrack) {
-      // Not active but we have a last track — start My Vibe Radio with it
-      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(ramState.lastTrack));
+    } else if (currentRadioSong?.audio_url || ramState.lastTrack?.audio_url) {
+      // Not active but My Vibe has a loaded track — start that exact song.
+      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(currentRadioSong?.audio_url ? currentRadioSong : ramState.lastTrack));
     } else if (currentTrack) {
       togglePlay();
     } else {
@@ -211,16 +221,16 @@ export default function AudioPlayer() {
         }
       });
     }
-  }, [ramActive, ramState.activeMode, ramState.isPlaying, ramState.lastTrack, currentTrack, togglePlay, startMyVibeQueue]);
+  }, [ramActive, ramState.activeMode, ramState.isPlaying, ramState.lastTrack, currentRadioSong, currentTrack, togglePlay, startMyVibeQueue]);
 
   // Skip/back: delegate My Vibe controls to the My Vibe queue, not the generic player.
   const handleSkip = useCallback(() => {
-    if (ramActive && ramState.activeMode === "myVibeRadio") {
+    if ((ramActive && ramState.activeMode === "myVibeRadio") || (!ramActive && (currentRadioSong || nextMyVibeTrack))) {
       nextRadioSong?.();
     } else if (!ramActive) {
       skipTrack?.();
     }
-  }, [ramActive, ramState.activeMode, nextRadioSong, skipTrack]);
+  }, [ramActive, ramState.activeMode, currentRadioSong, nextMyVibeTrack, nextRadioSong, skipTrack]);
 
   const handlePrevAction = useCallback(() => {
     if (ramActive && ramState.activeMode === "myVibeRadio") {
@@ -342,7 +352,7 @@ export default function AudioPlayer() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate leading-tight">{displayTrack.title}</p>
                 <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">
-                  {displayTrack.artist_display || displayTrack.artist || "Upper Vibe Media"}
+                  {displayTrack.artist_display || displayTrack.artist || "Unknown Artist"}
                 </p>
               </div>
             </div>
@@ -462,7 +472,7 @@ export default function AudioPlayer() {
           </div>
         </div>
       ) : (
-        /* ── Fallback: show My Vibe last track or placeholder instead of "No Music Playing" ── */
+        /* ── Fallback while My Vibe metadata is loading ── */
         <div className="flex items-center gap-3 px-4 py-3 md:px-6">
           <div
             className="w-11 h-11 rounded-lg flex-shrink-0 flex items-center justify-center"

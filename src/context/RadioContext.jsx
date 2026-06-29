@@ -65,15 +65,16 @@ function rememberMyVibeInitial(trackId) {
   } catch {}
 }
 function pickFreshMyVibeSong(allTracks, excludeId, likedIds = [], dislikedIds = [], recentIds = []) {
+  const eligibleTracks = (allTracks || []).filter((t) => t?.id && t.audio_url && t.status !== "archived" && !dislikedIds.includes(t.id));
   const combinedRecent = [...new Set([excludeId, ...recentIds, ...loadMyVibeRecentIds()].filter(Boolean))];
   const likedPool = likedIds.length
-    ? allTracks.filter((t) => likedIds.includes(t.id) && t.id !== excludeId && !dislikedIds.includes(t.id))
+    ? eligibleTracks.filter((t) => likedIds.includes(t.id) && t.id !== excludeId)
     : [];
   const likedQueue = likedPool.length > 1
     ? buildWeightedQueue(likedPool, excludeId, likedIds, dislikedIds, combinedRecent)
     : likedPool;
   if (likedQueue.length) return likedQueue[0];
-  return buildWeightedQueue(allTracks, excludeId, likedIds, dislikedIds, combinedRecent)[0] || null;
+  return buildWeightedQueue(eligibleTracks, excludeId, likedIds, dislikedIds, combinedRecent)[0] || eligibleTracks[0] || null;
 }
 
 export function RadioProvider({ children }) {
@@ -118,7 +119,7 @@ export function RadioProvider({ children }) {
           setCuratorActive(isCuratorActive());
         });
       });
-    }, 4000); // Stagger: 4s after mount to avoid rate-limit collision
+    }, 250); // Load quickly so My Vibe always has a real default song ready
     loadHostDrops();
     return () => clearTimeout(timer);
   }, []);
@@ -129,21 +130,19 @@ export function RadioProvider({ children }) {
     if (!tracksLoaded || restoredRef.current || (user?.id && !likedIdsLoaded)) return;
     restoredRef.current = true;
     const saved = loadPersistedState();
-    if (!saved) return;
-    if (saved.currentRadioSongId && allTracks.length > 0) {
-    const hist = saved.radioHistoryIds?.length
+    const savedId = saved?.currentRadioSongId || null;
+    const hist = saved?.radioHistoryIds?.length
       ? saved.radioHistoryIds.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean)
       : [];
-    const recentIds = [saved.currentRadioSongId, ...hist.slice(-5).map((t) => t.id)].filter(Boolean);
-    const song = pickFreshMyVibeSong(allTracks, saved.currentRadioSongId, likedTrackIds, getDislikedIds(), recentIds);
+    const recentIds = [savedId, ...hist.slice(-5).map((t) => t.id), ...loadMyVibeRecentIds()].filter(Boolean);
+    const song = pickFreshMyVibeSong(allTracks, savedId, likedTrackIds, getDislikedIds(), recentIds);
     if (song) {
-    setCurrentRadioSong(song);
-    setRadioHistory([song]);
-    setHistoryIndex(0);
-    setRadioQueue(buildWeightedQueue(allTracks, song.id, likedTrackIds, getDislikedIds(), [song.id, ...recentIds]));
-    rememberMyVibeInitial(song.id);
-    radioSavedTimeRef.current = 0;
-    }
+      setCurrentRadioSong(song);
+      setRadioHistory([song]);
+      setHistoryIndex(0);
+      setRadioQueue(buildWeightedQueue(allTracks.filter((t) => t?.audio_url && t.status !== "archived"), song.id, likedTrackIds, getDislikedIds(), [song.id, ...recentIds]));
+      rememberMyVibeInitial(song.id);
+      radioSavedTimeRef.current = 0;
     }
   }, [tracksLoaded, allTracks, likedTrackIds, likedIdsLoaded, user?.id]);
 

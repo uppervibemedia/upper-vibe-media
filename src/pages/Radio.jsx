@@ -151,7 +151,7 @@ export default function RadioPage() {
     try { return JSON.parse(localStorage.getItem("uvm_radio_saved") || "[]"); } catch { return []; }
   });
 
-  const myVibeTrack = ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : currentRadioSong;
+  const myVibeTrack = ramState.activeMode === "myVibeRadio" ? (ramState.currentTrack || currentRadioSong) : currentRadioSong;
   const isLiked = myVibeTrack ? isFaved("track", myVibeTrack.id) : false;
   const isPlayLess = myVibeTrack ? playLessIds.includes(myVibeTrack.id) : false;
   const isSaved = myVibeTrack ? savedIds.includes(myVibeTrack.id) : false;
@@ -694,8 +694,8 @@ function MyVibePlayerCard({
           onClick={handleCoverClick}
           className="relative w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0 group"
           style={{ border: `1px solid rgba(${p},0.25)`, cursor: track ? "pointer" : "default" }}>
-          {track?.cover_url ? (
-            <img src={track.cover_url} alt={track.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+          {track?.coverArt || track?.cover_url || track?.image || track?.artwork ? (
+            <img src={track.coverArt || track.cover_url || track.image || track.artwork} alt={track.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{ background: `rgba(${p},0.08)` }}>
               <Music4 className="w-10 h-10" style={{ color: `rgb(${p})` }} />
@@ -734,7 +734,7 @@ function MyVibePlayerCard({
           {track ? (
             <>
               <h2 className="font-heading font-black text-white text-base mb-0.5 leading-tight">{track.title}</h2>
-              <p className="text-white/45 text-sm">{track.artist_display || "Upper Vibe Media"}</p>
+              <p className="text-white/45 text-sm">{track.artist_display || track.artist || "Unknown Artist"}</p>
             </>
           ) : (
             <>
