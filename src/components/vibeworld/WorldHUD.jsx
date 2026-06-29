@@ -118,6 +118,7 @@ export default function WorldHUD({
   onOpenTvMode,
   onExitCity,
   onDomeOpenChange,
+  onExitDome,
   domeTrack = null,
   domeIsPlaying = false,
   nearJukebox = false,
@@ -961,7 +962,7 @@ export default function WorldHUD({
       {/* ── Visualizer Panel (fullscreen) ─────────────────────── */}
       <VisualizerPanel
         open={visualizerOpen}
-        onClose={() => setVisualizerOpen(false)}
+        onClose={() => { setVisualizerOpen(false); onExitDome?.(); }}
         currentTrack={domeTrack}
         isTrackPlaying={domeIsPlaying}
       />

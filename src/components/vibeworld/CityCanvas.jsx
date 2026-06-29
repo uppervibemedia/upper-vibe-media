@@ -588,7 +588,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, ferrisRiding = false, spawnOverride = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -686,6 +686,37 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   equippedAuraRef.current = equippedAura;
   const danceFloorFrameRefRef = useRef(props.danceFloorFrameRef);
   danceFloorFrameRefRef.current = props.danceFloorFrameRef;
+
+  useEffect(() => {
+    if (!moveTarget) return;
+    const x = Number(moveTarget.x);
+    const z = Number(moveTarget.z);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+    const y = SPAWN[1];
+    const rot = Number.isFinite(Number(moveTarget.rot)) ? Number(moveTarget.rot) : 0;
+    avatarPosRef.current = [x, y, z, rot];
+    avatarRotRef.current = rot;
+    velocityRef.current = { x: 0, z: 0 };
+    mobileInputRef.current = { x: 0, y: 0, camDx: 0, camDy: 0 };
+    const avatar = avatarRef.current;
+    if (avatar) {
+      avatar.position.set(x, y, z);
+      avatar.rotation.y = rot;
+    }
+    const camera = cameraRef.current;
+    if (camera) {
+      const isLandscape = isMobileRef.current && window.innerWidth > window.innerHeight;
+      const camDist = isLandscape ? CAM_DIST_LS : CAM_DIST;
+      const camHeight = isLandscape ? CAM_HEIGHT_LS : CAM_HEIGHT;
+      const camLookY = isLandscape ? CAM_LOOK_Y_LS : CAM_LOOK_Y;
+      const yaw = rot + Math.PI;
+      camYawRef.current = yaw;
+      camYawSmoothRef.current = yaw;
+      camera.position.set(x + Math.sin(yaw) * camDist, y + camHeight, z + Math.cos(yaw) * camDist);
+      camera.lookAt(x, y + camLookY, z);
+    }
+    try { onPosCbRef.current?.(x, z, rot); } catch {}
+  }, [moveTarget?.id]);
 
   const activeEmoteRef = useRef(null);
   activeEmoteRef.current = activeEmote;

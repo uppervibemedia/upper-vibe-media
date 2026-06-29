@@ -189,6 +189,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   // Track whether any blocking UI is open (panels, modals, zone UIs)
   const [anyBlockingUIOpen, setAnyBlockingUIOpen] = useState(false);
   const [domeFullscreenOpen, setDomeFullscreenOpen] = useState(false);
+  const [domeExitTarget, setDomeExitTarget] = useState(null);
 
 
 
@@ -1014,6 +1015,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           auraActive={auraActive}
           equippedAura={equippedAura}
           spawnOverride={returnState.current ? { x: returnState.current.x, z: returnState.current.z, rot: returnState.current.rot } : null}
+          moveTarget={domeExitTarget}
           onLoaded={() => {
             setLoading(false);
             // After world loads, auto-open the panel user came from, then clear state
@@ -1199,6 +1201,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onOpenTvMode={() => setTvOverlayOpen(true)}
         onExitCity={onExit}
         onDomeOpenChange={setDomeFullscreenOpen}
+        onExitDome={() => setDomeExitTarget({ id: Date.now(), x: -13, z: 2.2, rot: 0 })}
         domeTrack={cityTrack}
         domeIsPlaying={cityIsPlaying}
         nearJukebox={nearJukebox}
