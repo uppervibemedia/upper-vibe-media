@@ -10,7 +10,6 @@ const {
   TorusGeometry, PlaneGeometry, ConeGeometry,
   Color, Mesh, Group, PointLight,
   MeshBasicMaterial, MeshStandardMaterial,
-  BufferGeometry, BufferAttribute, PointsMaterial, Points,
   SpriteMaterial, Sprite, CanvasTexture, LinearFilter,
 } = THREE;
 
@@ -373,28 +372,6 @@ export function createHoverboardZone(scene) {
     scene.add(lgt);
   }
 
-  // ── ATMOSPHERE — shimmer particles ──────────────────────────────────────
-  const particleCount = 60;
-  const pGeo = new BufferGeometry();
-  const pPos = new Float32Array(particleCount * 3);
-  for (let i = 0; i < particleCount; i++) {
-    pPos[i * 3]     = (Math.random() - 0.5) * 56;
-    pPos[i * 3 + 1] = 0.8 + Math.random() * 2.5;
-    pPos[i * 3 + 2] = 18 + Math.random() * 16;
-  }
-  pGeo.setAttribute("position", new BufferAttribute(pPos, 3));
-  const pMat = new PointsMaterial({
-    color: new Color("#00D4F0"),
-    size: 0.12,
-    transparent: true, opacity: 0.45,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-  const particles = new Points(pGeo, pMat);
-  particles.name = "hbParticles";
-  scene.add(particles);
-  scene.userData.hbParticles = particles;
-  scene.userData.hbParticlePositions = pPos;
 
   return { padRingMat, orbMeshes };
 }
@@ -459,17 +436,6 @@ export function animateHoverboardZone(scene, t, beat) {
     }
   }
 
-  // Particles
-  const particles = scene.userData.hbParticles;
-  const pPos = scene.userData.hbParticlePositions;
-  if (particles && pPos) {
-    const pos = particles.geometry.attributes.position;
-    for (let i = 0; i < pPos.length / 3; i++) {
-      pos.array[i * 3 + 1] = pPos[i * 3 + 1] + Math.sin(t * 1.1 + i * 0.8) * 0.15;
-    }
-    pos.needsUpdate = true;
-    particles.material.opacity = 0.25 + beat * 0.22 + Math.sin(t * 0.9) * 0.08;
-  }
 }
 
 // ─── COLLECT / RESET ─────────────────────────────────────────────────────────

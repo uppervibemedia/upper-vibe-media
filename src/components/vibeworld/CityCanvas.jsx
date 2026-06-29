@@ -51,10 +51,6 @@ const {
   HemisphereLight,
   PointLight,
   PCFSoftShadowMap,
-  BufferGeometry,
-  BufferAttribute,
-  PointsMaterial,
-  Points,
   SpriteMaterial,
   Sprite,
   CanvasTexture,
@@ -136,7 +132,7 @@ const STREAM_ZONES = [
   { key: "academy", names: ["upperVibeAcademy", "academyEntrance"], x: -28, z: 5, keepVisible: true },
   { key: "crystal", names: ["crystalZone"], x: CRYSTAL_ZONE_X, z: CRYSTAL_ZONE_Z, keepVisible: true },
   { key: "ferris", names: ["ferrisWheel"], x: WHEEL_X, z: WHEEL_Z, keepVisible: true },
-  { key: "beach", names: ["hbPadRing", "hbParticles"], x: 18, z: 22, keepVisible: true },
+  { key: "beach", names: ["hbPadRing"], x: 18, z: 22, keepVisible: true },
   { key: "skyline", names: ["cityBuildings"], x: 0, z: -36, keepVisible: true },
 ];
 
@@ -696,8 +692,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const initializedRef = useRef(false);
   // Launch is handled by LaunchRide (tickAddOns via MOVEMENT_BRIDGE)
   const speedBoostUntilRef = useRef(0); // timestamp (performance.now) when boost expires
-  const splashParticlesRef = useRef(null); // water spray particle system
-
   // Init scene — runs once only
   useEffect(() => {
     if (initializedRef.current) return;
@@ -764,29 +758,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       buildPark(scene);
       scene.userData._cityQuality = quality;
       const cachedNeonSigns = [];
-      const cachedZenParticles = [];
       scene.traverse((obj) => {
         if (obj.userData?.isNeonSign) cachedNeonSigns.push(obj);
-        if (obj.userData?.isZenParticle) cachedZenParticles.push(obj);
       });
       scene.userData._neonSigns = cachedNeonSigns;
-      scene.userData._zenParticles = cachedZenParticles;
       cacheStreamingObjects(scene);
       updateZoneStreaming(scene, effectiveSpawn[0], effectiveSpawn[2], quality, 0);
 
-      // Water splash particles — desktop only (too costly on mobile)
-      if (!isMob) {
-        const SPLASH_COUNT = 28;
-        const splashGeo = new BufferGeometry();
-        const pos = new Float32Array(SPLASH_COUNT * 3);
-        splashGeo.setAttribute("position", new BufferAttribute(pos, 3));
-        const splashMat = new PointsMaterial({ color: new Color("#80DFFF"), size: 0.18, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
-        const splashPoints = new Points(splashGeo, splashMat);
-        splashPoints.name = "hbSplash"; splashPoints.renderOrder = 5;
-        scene.add(splashPoints);
-        const particles = Array.from({ length: SPLASH_COUNT }, () => ({ vx: 0, vy: 0, vz: 0, life: 0, maxLife: 0 }));
-        splashParticlesRef.current = { points: splashPoints, particles, pos };
-      }
 
       // Crystal Zone is decorative-only — no activation event needed
 
@@ -1455,16 +1433,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             child.lookAt(camera.position);
           }
         }
-        const updateZenPart = !isMob || (nearBeach && frameRef.current % 4 === 0);
-        if (updateZenPart) {
-          const zenParticles = scene.userData._zenParticles || [];
-          for (const child of zenParticles) {
-            const p = child.userData;
-            child.position.y = p.baseY + Math.sin(t * 1.2 + p.phase) * 0.15;
-            child.position.x = p.baseX + Math.cos(t * 0.8 + p.phase) * 0.2;
-            child.position.z = p.baseZ + Math.sin(t * 0.6 + p.phase) * 0.2;
-          }
-        }
         // Distance-gate zone animations on mobile — skip if player is far away
         if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0) animateZenBeach(scene, t, audioBeat);
         // Dance floor — throttle on mobile/low, only when near. Audio zone logic remains separate and always active.
@@ -1520,61 +1488,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           : (!mobileQuality || ferrisRidingRef.current || nearFerris || frameRef.current % (lowQuality ? 10 : 6) === 0);
         if (ferrisGate) animateFerrisWheel(scene, t, audioBeat, px, pz, tvSmooth);
 
-        // ── WATER SPLASH — hoverboard spray when rider is in the ocean zone ──
-        const splash = splashParticlesRef.current;
-        if (splash) {
-          const { points, particles, pos } = splash;
-          const inWater = hbRidingRef.current && pz > 34;
-          const spd = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
-          const isMoving2 = spd > 0.3;
-
-          // Emit new spray droplets every ~3 frames when in water and moving
-          if (inWater && isMoving2 && frameRef.current % 3 === 0) {
-            // Spread: fan behind the board (opposite of velocity direction)
-            const emitCount = Math.min(3, Math.ceil(spd * 0.8));
-            const emitted = particles.filter(p => p.life <= 0);
-            let used = 0;
-            for (const p of emitted) {
-              if (used >= emitCount) break;
-              // Behind the avatar: offset opposite to movement direction
-              const bx = px - (vel.x / spd) * 0.4 + (Math.random() - 0.5) * 0.6;
-              const bz = pz - (vel.z / spd) * 0.4 + (Math.random() - 0.5) * 0.6;
-              const idx = particles.indexOf(p) * 3;
-              pos[idx]     = bx;
-              pos[idx + 1] = 0.05;
-              pos[idx + 2] = bz;
-              // Spray velocity: upward + sideways fan
-              p.vx = (Math.random() - 0.5) * 1.8 - (vel.x / spd) * 0.5;
-              p.vy = 0.8 + Math.random() * 1.2;
-              p.vz = (Math.random() - 0.5) * 1.8 - (vel.z / spd) * 0.5;
-              p.maxLife = 0.35 + Math.random() * 0.3;
-              p.life = p.maxLife;
-              used++;
-            }
-          }
-
-          // Simulate all particles
-          let anyAlive = false;
-          for (let i = 0; i < particles.length; i++) {
-            const p = particles[i];
-            const idx = i * 3;
-            if (p.life > 0) {
-              p.life -= dt;
-              pos[idx]     += p.vx * dt;
-              pos[idx + 1] += p.vy * dt;
-              pos[idx + 2] += p.vz * dt;
-              p.vy -= 3.5 * dt; // gravity
-              anyAlive = true;
-            } else {
-              // Park dead particles far away (invisible)
-              pos[idx] = 9999; pos[idx + 1] = 9999; pos[idx + 2] = 9999;
-            }
-          }
-          points.geometry.attributes.position.needsUpdate = true;
-          // Fade opacity based on whether any particles are active
-          const targetOpacity = anyAlive ? 0.75 : 0;
-          points.material.opacity += (targetOpacity - points.material.opacity) * Math.min(1, 12 * dt);
-        }
 
         // Reset orbs when new ride starts
         if (window.__hbResetRings) {
