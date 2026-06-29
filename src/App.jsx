@@ -137,9 +137,11 @@ const AuthenticatedApp = () => {
         <Route path="/music" element={<Music />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/downloads" element={<Downloads />} />
+        <Route path="/download" element={<Downloads />} />
         <Route path="/about" element={<About />} />
         <Route path="/visualizers" element={<Visualizers />} />
         <Route path="/song/:id" element={<SongPage />} />
+        <Route path="/song/:id/download" element={<SongPage />} />
         <Route path="/share/:id" element={<ShareRedirect />} />
         <Route path="/admin" element={<Admin />} />
         {/* Active routes */}

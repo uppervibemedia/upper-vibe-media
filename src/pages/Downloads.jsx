@@ -16,6 +16,7 @@ export default function Downloads() {
   const [downloads, setDownloads] = useState([]);
   const [trackMap, setTrackMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const { user, isAuthenticated, navigateToLogin } = useAuth();
   const { accentId } = useTheme();
@@ -25,14 +26,20 @@ export default function Downloads() {
 
   useEffect(() => {
     if (!user?.id) return;
+    setLoading(true);
+    setError("");
     Promise.all([
       base44.entities.UserDownload.filter({ user_id: user.id }, "-downloaded_at", 200),
       getPublishedTracks("-created_date", 500),
     ]).then(([dls, tracks]) => {
       const map = {};
       tracks.forEach(t => { map[t.id] = t; });
-      setDownloads(dls);
+      setDownloads(dls || []);
       setTrackMap(map);
+    }).catch((e) => {
+      console.error("[Downloads] load failed", e);
+      setError("We could not load this download. Please go back and try again.");
+    }).finally(() => {
       setLoading(false);
     });
   }, [user?.id]);
@@ -98,8 +105,17 @@ export default function Downloads() {
 
         {/* Content */}
         {loading ? (
-          <div className="flex items-center justify-center py-24">
+          <div className="flex flex-col items-center justify-center py-24 gap-3">
             <div className="w-6 h-6 border-2 border-yellow-400/20 border-t-yellow-400 rounded-full animate-spin" />
+            <p className="text-white/35 text-sm">Loading your download...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center px-6">
+            <Download className="w-10 h-10 text-yellow-400/25 mb-4" />
+            <p className="text-white/60 text-sm mb-6">{error}</p>
+            <Link to="/music" className="px-6 py-3 rounded-2xl font-black text-sm tracking-wider transition-all hover:brightness-110" style={{ background: "linear-gradient(135deg,#C8892A,#EDB84A)", color: "#000" }}>
+              Back to Music
+            </Link>
           </div>
         ) : downloads.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}

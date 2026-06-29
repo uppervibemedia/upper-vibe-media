@@ -383,6 +383,31 @@ function setMediaSessionState(playing) {
   navigator.mediaSession.playbackState = playing ? "playing" : "paused";
 }
 
+const AUDIO_URL_FIELDS = [
+  "audio_url", "audioUrl", "file_url", "fileUrl", "stream_url", "streamUrl",
+  "preview_url", "previewUrl", "mp3_url", "mp3Url", "download_url", "downloadUrl"
+];
+
+export function getPlayableAudioUrl(track) {
+  if (!track) return "";
+  for (const field of AUDIO_URL_FIELDS) {
+    const value = track[field];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function normalizeTrackForPlayback(track) {
+  const audioUrl = getPlayableAudioUrl(track);
+  if (!audioUrl) return null;
+  return {
+    ...track,
+    audio_url: audioUrl,
+    cover_url: track.cover_url || track.coverArt || track.image || track.artwork || track.thumbnail_url || "",
+    artist_display: track.artist_display || track.artist || track.artist_name || "Upper Vibe Media",
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PLAYER PROVIDER
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1031,9 +1056,17 @@ export function PlayerProvider({ children }) {
   // to resume a saved radio session position without resetting to 0).
   const playTrack = useCallback((track, source = "song", startAt = 0) => {
     const audio = audioRef.current;
-    if (!audio || !track?.audio_url) return;
+    const playableTrack = normalizeTrackForPlayback(track);
+    if (!audio || !playableTrack) {
+      console.warn("[Player] playTrack blocked — missing playable audio URL", {
+        id: track?.id,
+        title: track?.title,
+        fields: track ? AUDIO_URL_FIELDS.filter((field) => !!track[field]) : [],
+      });
+      return;
+    }
 
-    const url = track.audio_url;
+    const url = playableTrack.audio_url;
 
     // Wire Web Audio graph for visualiser — called inside user gesture (iOS-safe).
     // Reset failure count so a confirmed gesture always gets a retry attempt.
@@ -1043,13 +1076,13 @@ export function PlayerProvider({ children }) {
 
     // Update React state
     setSourceType(source);
-    setCurrentTrack(track);
+    setCurrentTrack(playableTrack);
 
     // Add to queue for auto-advance (not for radio/live sources which manage their own queue)
     if (source !== "radio" && source !== "live") {
       setQueue(prev => {
-        if (prev.find(t => t.id === track.id)) return prev;
-        return [...prev, track];
+        if (prev.find(t => t.id === playableTrack.id)) return prev;
+        return [...prev, playableTrack];
       });
     }
 
@@ -1076,7 +1109,7 @@ export function PlayerProvider({ children }) {
       _audioCtx.resume().catch(() => {});
     }
 
-    console.log("[Player] playTrack sync | title:", track.title, "| iOS:", isIOS, "| src set, load() called");
+    console.log("[Player] playTrack sync | title:", playableTrack.title, "| iOS:", isIOS, "| src set, load() called");
 
     // play() called synchronously — this is the iOS gesture unlock
     const playPromise = audio.play();
@@ -1096,16 +1129,16 @@ export function PlayerProvider({ children }) {
           }
         }
         startWatchdog(audio);
-        console.log("[Player] playTrack resolved | title:", track.title, "| rate:", audio.playbackRate, "| paused:", audio.paused);
+        console.log("[Player] playTrack resolved | title:", playableTrack.title, "| rate:", audio.playbackRate, "| paused:", audio.paused);
       }).catch((e) => {
         if (e.name === "AbortError") {
           // Another track was queued — this is normal, ignore
-          console.log("[Player] playTrack AbortError (superseded by newer track) |", track.title);
+          console.log("[Player] playTrack AbortError (superseded by newer track) |", playableTrack.title);
           return;
         }
         // NotAllowedError = iOS gesture unlock failed (shouldn't happen since we're sync)
         // NetworkError = bad URL
-        console.warn("[Player] playTrack play() error:", e.name, e.message, "| title:", track.title);
+        console.warn("[Player] playTrack play() error:", e.name, e.message, "| title:", playableTrack.title);
       });
     } else {
       // Older iOS: no promise returned, assume playing

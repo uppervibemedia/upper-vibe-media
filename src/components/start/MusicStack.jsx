@@ -1,11 +1,13 @@
 import React, { useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Play, Music2 } from "lucide-react";
+import { Play, Pause, Music2 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
+import { usePlayer } from "@/context/PlayerContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
 
 export default function MusicStack({ tracks = [] }) {
   const { accentId } = useTheme();
+  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
   const rtPrimary = radioTheme.vars["--rt-primary"];
   const primaryColor = `rgb(${rtPrimary})`;
@@ -23,6 +25,13 @@ export default function MusicStack({ tracks = [] }) {
     const idx = Math.round(el.scrollLeft / cardWidth);
     setActiveIdx(Math.max(0, Math.min(idx, limited.length - 1)));
   }, [limited.length]);
+
+  const handlePlay = (e, track) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (currentTrack?.id === track.id) togglePlay?.();
+    else playTrack?.(track, "song");
+  };
 
   if (!limited.length) return null;
 
@@ -98,6 +107,8 @@ export default function MusicStack({ tracks = [] }) {
               }}
                 onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
                 onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
+                onClick={(e) => handlePlay(e, track)}
+                onTouchStart={(e) => e.stopPropagation()}
               >
                 <div style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
@@ -105,7 +116,9 @@ export default function MusicStack({ tracks = [] }) {
                   background: primaryRgba(0.9),
                   boxShadow: `0 2px 12px ${primaryRgba(0.5)}`,
                 }}>
-                  <Play style={{ width: 13, height: 13, color: "#000", marginLeft: 2 }} />
+                  {currentTrack?.id === track.id && isPlaying
+                    ? <Pause style={{ width: 13, height: 13, color: "#000" }} />
+                    : <Play style={{ width: 13, height: 13, color: "#000", marginLeft: 2 }} />}
                 </div>
               </div>
             </div>

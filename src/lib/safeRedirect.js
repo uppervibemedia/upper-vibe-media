@@ -14,6 +14,7 @@ const VALID_ROUTE_PREFIXES = [
   "/my-vibe-library",
   "/my-vibes",
   "/downloads",
+  "/download",
   "/song",
   "/share",
   "/visualizers",

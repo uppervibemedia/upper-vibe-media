@@ -152,11 +152,12 @@ function SongPageInner() {
       window.history.replaceState({}, "", url.toString());
       setTimeout(() => setShowSupportedBanner(false), 6000);
     }
-    if (params.get("downloadIntent") === "true") {
+    if (params.get("downloadIntent") === "true" || window.location.pathname.endsWith("/download")) {
       setDownloadIntentActive(true);
       // Clean param from URL without reload
       const url = new URL(window.location.href);
       url.searchParams.delete("downloadIntent");
+      if (url.pathname.endsWith("/download")) url.pathname = url.pathname.replace(/\/download$/, "");
       window.history.replaceState({}, "", url.toString());
       // Scroll to Download button after page settles
       setTimeout(() => {
