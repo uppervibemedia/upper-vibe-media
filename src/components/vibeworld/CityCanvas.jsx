@@ -60,6 +60,11 @@ const {
 // ─── CONSTANTS ────────────────────────────────────────────────
 const MOVE_SPEED = 7.8;
 const PERSONAL_HOVERBOARD_SPEED_MULTIPLIER = 1.5;
+const HOVERBOARD_JUMP_FORCE = 7;
+const HOVERBOARD_JUMP_GRAVITY = -18;
+const HOVERBOARD_MAX_JUMP_HEIGHT = 3;
+const HOVERBOARD_JUMP_COOLDOWN = 1.2;
+const HOVERBOARD_AIR_CONTROL_MULTIPLIER = 0.65;
 const ACCELERATION = 36.0; // quick response without mobile/low-quality slowdown
 const DECELERATION = 24.0; // quick stop without feeling sticky
 const TURN_SPEED = 2.5;       // radians/sec for A/D turning
@@ -589,7 +594,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, personalHoverboardActive = false, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, personalHoverboardActive = false, hoverboardJumpRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -689,6 +694,16 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   equippedAuraRef.current = equippedAura;
   const danceFloorFrameRefRef = useRef(props.danceFloorFrameRef);
   danceFloorFrameRefRef.current = props.danceFloorFrameRef;
+  const pendingHoverboardJumpRef = useRef(false);
+  const hoverboardJumpOffsetRef = useRef(0);
+  const hoverboardVerticalVelocityRef = useRef(0);
+  const hoverboardJumpingRef = useRef(false);
+  const lastHoverboardJumpTimeRef = useRef(-999);
+  const hoverboardLandingBounceRef = useRef(0);
+
+  useEffect(() => {
+    if (hoverboardJumpRequest?.id) pendingHoverboardJumpRef.current = true;
+  }, [hoverboardJumpRequest?.id]);
 
   useEffect(() => {
     if (!moveTarget) return;
@@ -919,6 +934,42 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         let rot = avatarRotRef.current;
         const vel = velocityRef.current;
 
+        const jumpEnabled = personalHoverboardActiveRef.current && hbRidingRef.current && !isPlayingNeonSurfRef.current && !ferrisRidingRef.current && !lockedRef.current && !window.__lr_flying;
+        const jumpGrounded = hoverboardJumpOffsetRef.current <= 0.001 && !hoverboardJumpingRef.current;
+        if (pendingHoverboardJumpRef.current) {
+          if (jumpEnabled && jumpGrounded && t - lastHoverboardJumpTimeRef.current >= HOVERBOARD_JUMP_COOLDOWN) {
+            hoverboardVerticalVelocityRef.current = HOVERBOARD_JUMP_FORCE;
+            hoverboardJumpingRef.current = true;
+            hoverboardLandingBounceRef.current = 0.18;
+            lastHoverboardJumpTimeRef.current = t;
+          }
+          pendingHoverboardJumpRef.current = false;
+        }
+        if (jumpEnabled || hoverboardJumpOffsetRef.current > 0) {
+          if (hoverboardJumpingRef.current || hoverboardJumpOffsetRef.current > 0) {
+            hoverboardVerticalVelocityRef.current += HOVERBOARD_JUMP_GRAVITY * moveDt;
+            hoverboardJumpOffsetRef.current += hoverboardVerticalVelocityRef.current * moveDt;
+            if (hoverboardJumpOffsetRef.current > HOVERBOARD_MAX_JUMP_HEIGHT) {
+              hoverboardJumpOffsetRef.current = HOVERBOARD_MAX_JUMP_HEIGHT;
+              hoverboardVerticalVelocityRef.current = Math.min(0, hoverboardVerticalVelocityRef.current);
+            }
+            if (hoverboardJumpOffsetRef.current <= 0) {
+              hoverboardJumpOffsetRef.current = 0;
+              hoverboardVerticalVelocityRef.current = 0;
+              hoverboardJumpingRef.current = false;
+              hoverboardLandingBounceRef.current = Math.max(hoverboardLandingBounceRef.current, 0.12);
+            }
+          }
+        } else {
+          hoverboardJumpOffsetRef.current = 0;
+          hoverboardVerticalVelocityRef.current = 0;
+          hoverboardJumpingRef.current = false;
+        }
+        if (hoverboardLandingBounceRef.current > 0) {
+          hoverboardLandingBounceRef.current *= Math.max(0, 1 - moveDt * 8);
+        }
+        const hoverboardAirborne = hoverboardJumpOffsetRef.current > 0.03;
+
         // ─── RIGHT-CLICK / CAM DRAG (desktop) ───────────────
         if (mouse.down && mouse.button === 2 && !lockedRef.current) {
           camYawRef.current   += mouse.dx * 0.004; // world-space yaw
@@ -1055,7 +1106,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const boosting = hbRidingRef.current && performance.now() < speedBoostUntilRef.current;
           const usingPersonalBoard = personalHoverboardActiveRef.current && !isPlayingNeonSurfRef.current;
           const personalHoverboardSpeed = MOVE_SPEED * PERSONAL_HOVERBOARD_SPEED_MULTIPLIER;
-          const baseRideSpeed = usingPersonalBoard ? personalHoverboardSpeed : MOVE_SPEED;
+          const airControl = hoverboardAirborne ? HOVERBOARD_AIR_CONTROL_MULTIPLIER : 1;
+          const baseRideSpeed = (usingPersonalBoard ? personalHoverboardSpeed : MOVE_SPEED) * airControl;
           const targetSpeed = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08
             ? (boosting ? MOVE_SPEED * 3.0 : baseRideSpeed)
             : 0;
@@ -1077,7 +1129,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ── Launch arc handled by LaunchRide (tickAddOns via MOVEMENT_BRIDGE) ──
         // Step-on city pads auto-launch walking AND hoverboard riders.
         const hbLift = hbRidingRef.current ? (0.18 + Math.sin(t * 3.0) * 0.04) : 0;
-        py = window.__lr_flying ? MOVEMENT_BRIDGE.py : SPAWN[1] + hbLift;
+        py = window.__lr_flying ? MOVEMENT_BRIDGE.py : SPAWN[1] + hbLift + hoverboardJumpOffsetRef.current;
 
         avatarRotRef.current = rot;
         avatarPosRef.current = [px, py, pz, rot];
@@ -1508,18 +1560,19 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (hbRidingRef.current) {
           const hbBoard = avatarEntryRef.current?._hbBoard;
           if (hbBoard) {
+            const jumpGlow = Math.min(0.35, hoverboardJumpOffsetRef.current * 0.12 + hoverboardLandingBounceRef.current);
             const stripeMat = hbBoard.userData.stripeMat;
             if (stripeMat) {
-              stripeMat.opacity = 0.72 + audioBeat * 0.26 + Math.sin(t * 4.5) * 0.10;
+              stripeMat.opacity = Math.min(1, 0.72 + audioBeat * 0.26 + Math.sin(t * 4.5) * 0.10 + jumpGlow);
               if (!scene.userData._hbC1) { scene.userData._hbC1 = new Color("#00E5FF"); scene.userData._hbC2 = new Color("#C43BFF"); }
               stripeMat.color.copy(scene.userData._hbC1).lerp(scene.userData._hbC2, Math.sin(t * 1.6) * 0.5 + 0.5);
             }
             if (hbBoard.userData.hoverDisc) {
-              hbBoard.userData.hoverDisc.opacity = 0.14 + audioBeat * 0.22 + Math.sin(t * 3.0) * 0.07;
+              hbBoard.userData.hoverDisc.opacity = Math.min(0.65, 0.14 + audioBeat * 0.22 + Math.sin(t * 3.0) * 0.07 + jumpGlow);
             }
-            // Board tilts forward on speed, gently rolls when idle — rotation is LOCAL to board group only
+            // Board tilts forward on speed and slightly pitches up during controlled jumps.
             const spd = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.z ** 2);
-            hbBoard.rotation.x = spd > 0.3 ? -spd * 0.06 : Math.sin(t * 1.2) * 0.02;
+            hbBoard.rotation.x = hoverboardAirborne ? -0.18 - Math.min(0.12, hoverboardJumpOffsetRef.current * 0.04) : spd > 0.3 ? -spd * 0.06 : Math.sin(t * 1.2) * 0.02;
             hbBoard.rotation.z = Math.sin(t * 0.85) * 0.015;
           }
         } else {
@@ -1553,7 +1606,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               const od = BEACH_ORBS[orb.id];
               if (!od) continue;
               const dx = px - od.x, dz = pz - od.z;
-              if (Math.sqrt(dx * dx + dz * dz) < 1.4) {
+              const dy = (py + 0.4) - (orb.group?.position?.y ?? 1.0);
+              if (Math.sqrt(dx * dx + dz * dz) < 1.4 && Math.abs(dy) < 1.45) {
                 collectOrb(scene, orb.id);
                 if (window.__hbCollectOrb) window.__hbCollectOrb(orb.id);
               }
@@ -1899,7 +1953,13 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
   // Keyboard
   useEffect(() => {
-    const onDown = (e) => { keysRef.current[e.key.toLowerCase()] = true; };
+    const onDown = (e) => {
+      keysRef.current[e.key.toLowerCase()] = true;
+      if ((e.code === "Space" || e.key === " ") && personalHoverboardActiveRef.current) {
+        e.preventDefault();
+        pendingHoverboardJumpRef.current = true;
+      }
+    };
     const onUp = (e) => { keysRef.current[e.key.toLowerCase()] = false; };
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);

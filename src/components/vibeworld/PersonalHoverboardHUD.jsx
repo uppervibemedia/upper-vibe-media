@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Rocket, Ban } from 'lucide-react';
 
-export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle, personalHoverboardActive, canUsePersonalBoard }) {
+export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle, onJump, personalHoverboardActive, canUsePersonalBoard }) {
   // Hide until an equipped board can be used, but keep the put-away control visible while riding.
   if (!canUsePersonalBoard && !personalHoverboardActive) return null;
 
@@ -22,6 +22,25 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
         pointerEvents: "auto",
       }}
     >
+      {personalHoverboardActive && (
+        <button
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={onJump}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+          style={{
+            background: "linear-gradient(135deg,#00E5FF,#A078FF)",
+            border: "1px solid rgba(0,229,255,0.5)",
+            color: "#fff",
+            minHeight: isMobile ? 40 : 38,
+            touchAction: "manipulation",
+            boxShadow: "0 0 16px rgba(0,229,255,0.32)",
+          }}
+          title="Jump (Spacebar)"
+        >
+          <span className="text-sm leading-none">↥</span>
+          Jump{!isMobile ? " · Space" : ""}
+        </button>
+      )}
       <button
         onTouchStart={(e) => e.stopPropagation()}
         onClick={onToggle}

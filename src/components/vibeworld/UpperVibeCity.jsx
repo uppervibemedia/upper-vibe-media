@@ -190,6 +190,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [anyBlockingUIOpen, setAnyBlockingUIOpen] = useState(false);
   const [domeFullscreenOpen, setDomeFullscreenOpen] = useState(false);
   const [domeExitTarget, setDomeExitTarget] = useState(null);
+  const [hoverboardJumpRequest, setHoverboardJumpRequest] = useState(null);
 
 
 
@@ -1079,6 +1080,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           hbRiding={hbRiding}
           isPlayingNeonSurf={isPlayingNeonSurf}
           personalHoverboardActive={personalHoverboardActive}
+          hoverboardJumpRequest={hoverboardJumpRequest}
           ferrisRiding={ferrisRiding}
           rendererRef={rendererRef}
           tvMode={tvMode}
@@ -1403,6 +1405,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         isMobile={isMobile} 
         mobileLayout={mobileLayout}
         onToggle={() => setPersonalHoverboardActive(p => !p)}
+        onJump={() => setHoverboardJumpRequest({ id: Date.now() })}
         personalHoverboardActive={personalHoverboardActive}
         canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && !nearHoverboard && !detectZone(playerPos.x, playerPos.z)}
       />
