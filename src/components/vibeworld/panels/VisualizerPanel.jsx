@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Sparkles, Eye, Star, Radio } from "lucide-react";
 import CoverImage from "@/components/shared/CoverImage";
 import useDomeAudioAnalysis from "@/components/vibeworld/panels/useDomeAudioAnalysis";
+import ManifestationFocusSelector from "@/components/vibeworld/panels/ManifestationFocusSelector";
 
 const STYLES = [
   { key: "cosmic", label: "Cosmic Tunnel" },
@@ -407,7 +408,13 @@ export default function VisualizerPanel({ open, onClose, currentTrack, isTrackPl
       {activeMode === "affirmation" && <DomeTextScene eyebrow="Frequency Room · Affirmations" text={GENERAL_AFFIRMATIONS[affirmationIdx]} themeColor="#A078FF" themeGlow="rgba(160,120,255,0.3)" />}
       {activeMode === "manifestation" && <DomeTextScene eyebrow="Frequency Room · Manifestation" title={activeManifestation?.label || "Select Focus"} text={manifestationText} themeColor={activeManifestation?.color || "#A078FF"} themeGlow={activeManifestation?.glow || "rgba(160,120,255,0.3)"} />}
 
-      {activeMode === "manifestation" && (<div className="absolute left-0 right-0 z-30 flex justify-center px-4 pointer-events-auto" style={{ bottom: "calc(104px + env(safe-area-inset-bottom, 0px))" }}><div className="rounded-2xl p-2" style={{ width: "min(640px, calc(100vw - 32px))", maxHeight: "min(34dvh, 320px)", overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 16, background: "rgba(10,8,24,0.82)", border: "1px solid rgba(255,255,255,0.14)", backdropFilter: "blur(18px)", boxShadow: "0 18px calc(44px + var(--dome-beat, 0) * 26px) rgba(0,0,0,0.34), 0 0 calc(18px + var(--dome-beat, 0) * 32px) rgba(160,120,255,0.22)" }}><p className="text-[9px] font-black uppercase tracking-[0.18em] mb-1.5" style={{ color: "rgba(255,255,255,0.42)" }}>Manifestation Focus</p><div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(92px, 1fr))" }}>{MANIFESTATION_THEMES.map((theme) => (<button key={theme.id} onClick={(e) => { e.stopPropagation(); setManifestationId(theme.id); setManifestationLineIdx(0); }} onTouchStart={(e) => e.stopPropagation()} className="rounded-xl px-2 py-1.5 text-[10px] sm:text-[11px] font-black transition-all active:scale-95 hover:bg-white/10" style={{ background: manifestationId === theme.id ? `${theme.color}30` : "rgba(255,255,255,0.06)", border: `1px solid ${manifestationId === theme.id ? theme.color + "99" : "rgba(255,255,255,0.09)"}`, color: manifestationId === theme.id ? theme.color : "rgba(255,255,255,0.72)", minHeight: 34, touchAction: "manipulation", pointerEvents: "auto", boxShadow: manifestationId === theme.id ? `0 0 16px ${theme.glow}` : "none" }}>{theme.label}</button>))}</div></div></div>) }
+      {activeMode === "manifestation" && (
+        <ManifestationFocusSelector
+          themes={MANIFESTATION_THEMES}
+          activeId={manifestationId}
+          onSelect={(id) => { setManifestationId(id); setManifestationLineIdx(0); }}
+        />
+      )}
     </motion.div>
   );
 }
