@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Compass, Music4, Radio, Rocket, AlertTriangle, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { preloadCityDj, setCityDefaultTrack, unlockCityAudioForIOS } from "@/lib/vibeCityAudioController";
 import UpperVibeCity from "@/components/vibeworld/UpperVibeCity";
 import WorldGate from "@/components/vibeworld/WorldGate";
 import PageErrorBoundary from "@/components/shared/PageErrorBoundary";
@@ -32,6 +34,7 @@ function VibeWorldHub({ chatAgeConfirmed }) {
   const [launched, setLaunched] = useState(() => {
     try { return new URLSearchParams(window.location.search).get("launch") === "1"; } catch { return false; }
   });
+  const [defaultTrack, setDefaultTrack] = useState(null);
 
   // Run WebGL check once; if bypass is active, auto-launch only when WebGL is available
   useEffect(() => {
@@ -42,6 +45,25 @@ function VibeWorldHub({ chatAgeConfirmed }) {
       setLaunched(true);
     }
   }, []);
+
+  // Preload the city-only audio assets before the Launch tap so iOS can unlock them during that gesture.
+  useEffect(() => {
+    let alive = true;
+    preloadCityDj();
+    base44.entities.Track.filter({ status: "published" }, "-created_date", 1)
+      .then((tracks) => {
+        if (!alive || !tracks?.[0]) return;
+        setDefaultTrack(tracks[0]);
+        setCityDefaultTrack(tracks[0]);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const handleLaunchWorld = () => {
+    unlockCityAudioForIOS(defaultTrack);
+    setLaunched(true);
+  };
 
   if (launched) {
     return <UpperVibeCity onExit={() => setLaunched(false)} chatAgeConfirmed={chatAgeConfirmed} />;
@@ -115,7 +137,7 @@ function VibeWorldHub({ chatAgeConfirmed }) {
         {/* ── Launch button OR WebGL fallback ── */}
         {webglOk ? (
           <motion.button
-            onClick={() => setLaunched(true)}
+            onClick={handleLaunchWorld}
             whileTap={{ scale: 0.96 }}
             className="flex items-center gap-3 px-9 py-4 rounded-full font-black text-base tracking-wider transition-all hover:brightness-110"
             style={{ background: "linear-gradient(135deg,#0080B8,#00A0DC)", color: "#fff", boxShadow: "0 0 40px rgba(0,160,220,0.45)" }}

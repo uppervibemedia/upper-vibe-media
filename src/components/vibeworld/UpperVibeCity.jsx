@@ -25,7 +25,8 @@ import MessageRequestComposer from "@/components/vibeworld/panels/MessageRequest
 import DirectChatPanel from "@/components/vibeworld/panels/DirectChatPanel";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
 
-import useWorldDJStream from "@/hooks/useWorldDJStream";
+import useVibeCityAudioMachine from "@/hooks/useVibeCityAudioMachine";
+import CityAudioDebugPanel from "@/components/vibeworld/CityAudioDebugPanel";
 import {
   subscribe as ramSubscribe,
   getState as ramGetState,
@@ -33,8 +34,6 @@ import {
   resumeMyVibe,
   pauseUpperVibeRadio,
   resumeUpperVibeRadio,
-  restoreMyVibePosition,
-  getAudioElement,
 } from "@/lib/radioAudioManager";
 import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
 import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
@@ -94,7 +93,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [avatarVersion, setAvatarVersion] = useState(0); // bump to re-read user data
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
-  const onDanceFloorRef = useRef(false);
   // Launch handled by LaunchRide — no manual "LAUNCH" button
   // ── Hoverboard state — TWO SEPARATE SYSTEMS ──────────────────
   // A) Neon Surf: temporary beach game board (disappears on exit)
@@ -303,8 +301,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, []);
 
   // Determine what the city media player should show.
-  // Priority: PlayerContext currentTrack → RAM active track → RAM lastTrack (persisted).
-  // This ensures we NEVER show "No Music Playing" — always fall back to the My Vibe last track.
+  // Priority: RAM active track → RAM last track → PlayerContext track → default city track.
   // ── Default track for spawned player (no music was ever played) ─────────
   const [defaultCityTrack, setDefaultCityTrack] = useState(null);
   useEffect(() => {
@@ -318,7 +315,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, []);
 
   const ramActive = ramState.activeMode !== null;
-  const cityTrack = currentTrack || ramState.currentTrack || ramState.lastTrack || defaultCityTrack;
+  const cityTrack = ramState.currentTrack || ramState.lastTrack || defaultCityTrack || currentTrack;
   const cityIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
 
   const handleCityTogglePlay = useCallback(() => {
@@ -680,167 +677,22 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const rawPosRef = useRef({ x: -10, z: -4 }); // always tracks latest position
   // Every-frame dance floor ref — written directly by CityCanvas animation loop (bypasses throttle)
   const danceFloorFrameRef = useRef({ x: -10, z: -4, onDanceFloor: false });
-  // ── World DJ Stream — strictly gated: volume only raises inside dance floor ──
-  // Raw dance floor state for DJ — syncs from every-frame ref every 150ms, bypasses position throttle
+  // ── City audio zone signal — synced from every-frame avatar position for iOS/PWA reliability ──
   const [rawDfState, setRawDfState] = useState(false);
   useEffect(() => {
     const id = setInterval(() => setRawDfState(danceFloorFrameRef.current.onDanceFloor), 50);
     return () => clearInterval(id);
   }, []);
 
-  const { djAudioRef, djTrack } = useWorldDJStream({ enabled: true, active: rawDfState });
-
-  // ── Dance floor audio handoff — rebuilt as one deterministic iOS-safe owner ──
-  // The loop directly enforces exactly one audible source:
-  //   inside dance floor  = DJ unmuted + personal/RAM paused
-  //   outside dance floor = DJ muted + previous personal/RAM restored
-  const dfStateRef = useRef("outside");
-  const dfLeavingTimerRef = useRef(null);
-  const danceFloorAudioStartedRef = useRef(false);
-  const danceFloorRestoreRef = useRef({ kind: null, savedTime: 0, ctxWasPlaying: false });
-
-  useEffect(() => {
-    const clearRestoreTimer = () => {
-      if (dfLeavingTimerRef.current) {
-        clearTimeout(dfLeavingTimerRef.current);
-        dfLeavingTimerRef.current = null;
-      }
-    };
-
-    const silenceDj = (djEl) => {
-      if (!djEl) return;
-      djEl.volume = 0;
-      djEl.muted = true;
-    };
-
-    const pausePersonalAudio = () => {
-      const ramS = ramGetState();
-      const ramAudio = getAudioElement();
-      const ctxAudio = audioRefStable.current?.current;
-      const restore = { kind: null, savedTime: 0, ctxWasPlaying: false };
-
-      if (ramS.activeMode === "myVibeRadio") {
-        restore.kind = "myVibeRadio";
-        restore.savedTime = ramAudio?.currentTime || ramS.currentTime || 0;
-        pauseMyVibe();
-      } else if (ramS.activeMode === "upperVibeRadio") {
-        restore.kind = "upperVibeRadio";
-        pauseUpperVibeRadio();
-      } else if (ctxAudio && ctxAudio.src && ctxAudio.src !== window.location.href) {
-        restore.kind = "playerContext";
-        restore.savedTime = ctxAudio.currentTime || 0;
-        restore.ctxWasPlaying = !ctxAudio.paused || isPlayingRef.current;
-        if (!ctxAudio.paused) ctxAudio.pause();
-        ctxAudio.volume = 0;
-        ctxAudio.muted = true;
-      }
-
-      danceFloorRestoreRef.current = restore;
-      savedPersonalTimeRef.current = restore.savedTime || 0;
-      danceFloorPausedRef.current = true;
-      danceFloorAudioPausedRef.current = true;
-    };
-
-    const restorePersonalAudio = () => {
-      const restore = danceFloorRestoreRef.current;
-      const ctxAudio = audioRefStable.current?.current;
-
-      if (restore.kind === "myVibeRadio") {
-        restoreMyVibePosition(restore.savedTime || 0);
-      } else if (restore.kind === "upperVibeRadio") {
-        resumeUpperVibeRadio();
-      } else if (restore.kind === "playerContext" && ctxAudio) {
-        if (restore.savedTime > 0) {
-          try { ctxAudio.currentTime = restore.savedTime; } catch {}
-        }
-        ctxAudio.muted = false;
-        ctxAudio.volume = personalBaseVolRef.current;
-        if (restore.ctxWasPlaying && ctxAudio.paused) ctxAudio.play().catch(() => {});
-      }
-
-      danceFloorRestoreRef.current = { kind: null, savedTime: 0, ctxWasPlaying: false };
-      savedPersonalTimeRef.current = 0;
-      danceFloorPausedRef.current = false;
-      danceFloorAudioPausedRef.current = false;
-    };
-
-    const id = setInterval(() => {
-      const inside = !!danceFloorFrameRef.current.onDanceFloor;
-      const djEl = djAudioRef?.current;
-
-      if (inside) {
-        clearRestoreTimer();
-        if (dfStateRef.current !== "inside") {
-          dfStateRef.current = "inside";
-          pausePersonalAudio();
-          console.log("[DANCE FLOOR AUDIO] ENTER — personal audio paused, DJ owns audio");
-        }
-
-        // Keep personal/RAM audio silent every tick so Safari/PWA cannot revive it.
-        const ctxAudio = audioRefStable.current?.current;
-        if (ctxAudio) { ctxAudio.volume = 0; ctxAudio.muted = true; }
-        const ramS = ramGetState();
-        if (ramS.activeMode === "myVibeRadio" && (ramS.isPlaying || ramS.intendedToPlay)) pauseMyVibe();
-        else if (ramS.activeMode === "upperVibeRadio" && (ramS.isPlaying || ramS.intendedToPlay)) pauseUpperVibeRadio();
-
-        // DJ: unmute and play/ramp. If iOS blocks play(), gesture retry in useWorldDJStream will retry.
-        if (djEl) {
-          djEl.muted = false;
-          if (djEl.paused) {
-            djEl.volume = 0;
-            djEl.play().then(() => { danceFloorAudioStartedRef.current = true; }).catch(() => {});
-          }
-          djEl.volume = Math.min(0.82, (djEl.volume || 0) + 0.12);
-        }
-        return;
-      }
-
-      // Outside: DJ must be silent immediately.
-      silenceDj(djEl);
-
-      if (dfStateRef.current === "inside") {
-        dfStateRef.current = "leaving";
-        console.log("[DANCE FLOOR AUDIO] EXIT — DJ muted, restoring personal audio");
-        clearRestoreTimer();
-        dfLeavingTimerRef.current = setTimeout(() => {
-          dfLeavingTimerRef.current = null;
-          if (danceFloorFrameRef.current.onDanceFloor) return;
-          dfStateRef.current = "outside";
-          restorePersonalAudio();
-        }, 250);
-      }
-    }, 80);
-
-    return () => {
-      clearRestoreTimer();
-      clearInterval(id);
-      silenceDj(djAudioRef?.current);
-    };
-  }, [djAudioRef]);
-
-  useEffect(() => {
-    const target = rawOnDanceFloor;
-    if (target === dfStableRef.current) {
-      // Position is consistent with current state — cancel any pending flip
-      if (dfDebounceRef.current) { clearTimeout(dfDebounceRef.current); dfDebounceRef.current = null; }
-      return;
-    }
-    // Use different radii for hysteresis: entering needs inner radius, exiting needs outer
-    const isLeavingEarly = !target && dfDist < DANCE_FLOOR_EXIT_R;
-    if (isLeavingEarly) return; // still within exit radius — don't schedule exit yet
-    if (!dfDebounceRef.current) {
-      dfDebounceRef.current = setTimeout(() => {
-        dfDebounceRef.current = null;
-        dfStableRef.current = target;
-        setOnDanceFloor(target);
-      }, 200);
-    }
-  }, [rawOnDanceFloor, dfDist]);
-  const savedPersonalTimeRef = useRef(0);
-  const danceFloorPausedRef = useRef(false);
-  // Raw-position interval-based dance floor audio control
-  // Bypasses React state throttling so audio pauses instantly on iOS
-  const danceFloorAudioPausedRef = useRef(false);
+  const {
+    djTrack,
+    debugSnapshot: cityAudioDebug,
+  } = useVibeCityAudioMachine({
+    isUserInsideDanceFloor: rawDfState,
+    defaultTrack: cityTrack || defaultCityTrack,
+    playerAudioRef: audioRef,
+    suppressExternalPlayer: !stageWatching && !stageFullScreen,
+  });
 
   // ── Hoverboard zone proximity detection ──────────────────────
   useEffect(() => {
@@ -858,39 +710,25 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsPlayingNeonSurf(false);  // Neon Surf board: removed on exit, avatar returns to walking
   }, []);
 
-  // ── Audio ducking: reduce active audio source to ~25% when voice is active ──
+  // ── Voice ducking: only applies while outside the dance floor.
+  // Inside the dance floor, the city audio machine owns Live DJ volume exclusively.
   useEffect(() => {
     const audio = audioRef?.current;
-    const dj = djAudioRef?.current;
+    if (!audio || rawDfState) return;
     if (voiceActive) {
-      // Save pre-voice volumes
-      if (preVoiceVolumeRef.current === null) {
-        preVoiceVolumeRef.current = onDanceFloor ? 0 : (audio?.volume ?? 1.0);
-      }
-      // Only duck the active source
-      if (onDanceFloor) {
-        if (dj) dj.volume = 0.12;
-      } else {
-        if (audio) audio.volume = 0.25;
-      }
-    } else {
-      // Restore — but respect the dance floor ownership rule
-      if (onDanceFloor) {
-        if (dj) dj.volume = 0.82;
-      } else {
-        if (audio && preVoiceVolumeRef.current !== null) {
-          audio.volume = preVoiceVolumeRef.current > 0 ? preVoiceVolumeRef.current : personalBaseVolRef.current;
-        }
-      }
+      if (preVoiceVolumeRef.current === null) preVoiceVolumeRef.current = audio.volume ?? 1.0;
+      audio.volume = 0.25;
+    } else if (preVoiceVolumeRef.current !== null) {
+      audio.volume = preVoiceVolumeRef.current > 0 ? preVoiceVolumeRef.current : personalBaseVolRef.current;
       preVoiceVolumeRef.current = null;
     }
     return () => {
-      if (preVoiceVolumeRef.current !== null) {
-        if (!onDanceFloor && audio) audio.volume = personalBaseVolRef.current;
+      if (preVoiceVolumeRef.current !== null && !rawDfState) {
+        audio.volume = personalBaseVolRef.current;
         preVoiceVolumeRef.current = null;
       }
     };
-  }, [voiceActive, onDanceFloor, audioRef, djAudioRef]);
+  }, [voiceActive, rawDfState, audioRef]);
 
   const handleStageNextVideo = () => {
     if (stageVideos.length <= 1) return;
@@ -1118,55 +956,23 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     }
   }, [feedLoading, loading, currentTrack, isPlaying, sortedTracks, allTracks, playTrack]);
 
-  // ── No resume button needed ───────────────────────────────────────────────
-  // The DraggableMediaPlayer is always visible and its play button handles iOS
-  // gesture-triggered playback. A separate resume button would be redundant.
-
   const personalBaseVolRef = useRef(1.0);
 
-  // Keep stable refs for isPlaying/togglePlay so audio code never uses stale closures
-  const isPlayingRef = useRef(isPlaying);
-  isPlayingRef.current = isPlaying;
-  const togglePlayRef = useRef(togglePlay);
-  togglePlayRef.current = togglePlay;
-  const audioRefStable = useRef(audioRef);
-  audioRefStable.current = audioRef;
-
-  // ── Dance floor audio state management is handled by the 100ms interval
-  // above (lines 710–818). No separate React effect needed — the ref-based
-  // loop is the single authority for all audio save/restore transitions.
-
-  // Cleanup on unmount — cancel timers, silence DJ, restore personal player volume.
-  // IMPORTANT: Do NOT touch RAM state or the RAM audio element — My Vibe Radio
-  // and Upper Vibe Radio must survive city unmount intact.
+  // Cleanup on unmount — cancel timers and restore personal player volume.
   useEffect(() => {
     return () => {
       console.log("[UpperVibeCity] 🚪 City unmounting — cleaning up timers and DJ audio");
       clearInterval(jukeboxFadeRef.current);
       clearTimeout(dfDebounceRef.current);
-      if (dfLeavingTimerRef.current) { clearTimeout(dfLeavingTimerRef.current); dfLeavingTimerRef.current = null; }
 
-      // Restore personal player volume (may have been ducked)
+      // Restore personal player volume if another city system ducked it.
       const personal = audioRef?.current;
-      if (personal) personal.volume = personalBaseVolRef.current;
-
-      // Silence DJ audio on unmount — it will be destroyed by useWorldDJStream cleanup
-      const dj = djAudioRef?.current;
-      if (dj) { dj.volume = 0; try { dj.pause(); } catch {} }
-
-      // If RAM was paused for dance floor, resume it now (user left city, not dance floor)
-      if (danceFloorPausedRef.current) {
-        danceFloorPausedRef.current = false;
-        const ramS = ramGetState();
-        console.log("[UpperVibeCity] 🎵 City exit — restoring RAM audio | mode:", ramS.activeMode);
-        if (ramS.activeMode === "myVibeRadio" && !ramS.isPlaying && ramS.currentTrack) {
-          resumeMyVibe();
-        } else if (ramS.activeMode === "upperVibeRadio" && !ramS.isPlaying) {
-          resumeUpperVibeRadio();
-        }
+      if (personal) {
+        personal.muted = false;
+        personal.volume = personalBaseVolRef.current;
       }
     };
-  }, [audioRef, djAudioRef]);
+  }, [audioRef]);
 
   // ── Auto-rotate stage video every 60s when user isn't interacting ──
   useEffect(() => {
@@ -1225,7 +1031,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             {
               const dfDx = x - DANCE_FLOOR_CX;
               const dfDz = z - DANCE_FLOOR_CZ;
-              rawDfRef.current = Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_ENTER_R;
+              const isInsideDanceFloor = Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_ENTER_R;
+              rawDfRef.current = isInsideDanceFloor;
+              danceFloorFrameRef.current = { x, z, onDanceFloor: isInsideDanceFloor };
             }
             const prev = prevPosRef.current;
             const dx = x - prev.x;
@@ -1540,9 +1348,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         if (stageFullScreen) return null;
         const displayTrack = cityTrack;
 
-        // The city player is always visible — shows the My Vibe current track even when paused.
-        // No "Choose Music" / "Choose Song" idle state — the city mirrors whatever
-        // is already playing on Home, Start, My Vibe, or song pages.
+        // The city player shows the active/default My Vibe track with real metadata.
 
         // Determine current zone for stage-proximity check
         const currentZone = detectZone(playerPos.x, playerPos.z);
@@ -1571,8 +1377,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           </div>
         );
       })()}
-
-      {/* No Resume Music button — DraggableMediaPlayer handles iOS gesture playback */}
 
       {/* Floating emoji emotes — non-dance emotes show emoji above avatar */}
       <EmojiEmote activeEmote={activeEmote} isDancing={isDancing} isMobile={isMobile} />
@@ -1657,6 +1461,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         mediaMode={stageFullScreen ? "fullscreen" : stageWatching ? "watch" : "none"}
         playerPos={playerPos}
       />
+
+      <CityAudioDebugPanel snapshot={cityAudioDebug} />
     </div>
   );
 }
