@@ -18,39 +18,123 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
   // Hide until an equipped board can be used, but keep the put-away control visible while riding.
   if (!canUsePersonalBoard && !personalHoverboardActive) return null;
 
-  const ridingLayout = personalHoverboardActive;
-  const containerStyle = ridingLayout
-    ? isMobile && isLandscape
+  const jumpStyle = isMobile && isLandscape
+    ? {
+        position: 'fixed',
+        right: 'calc(24px + env(safe-area-inset-right, 0px))',
+        bottom: 'calc(36px + env(safe-area-inset-bottom, 0px))',
+        pointerEvents: 'auto',
+      }
+    : isMobile
       ? {
           position: 'fixed',
-          right: 'calc(24px + env(safe-area-inset-right, 0px))',
-          bottom: 'calc(36px + env(safe-area-inset-bottom, 0px))',
+          right: 'calc(18px + env(safe-area-inset-right, 0px))',
+          bottom: 'calc(86px + env(safe-area-inset-bottom, 0px))',
           pointerEvents: 'auto',
         }
-      : isMobile
-        ? {
-            position: 'fixed',
-            right: 'calc(18px + env(safe-area-inset-right, 0px))',
-            bottom: 'calc(150px + env(safe-area-inset-bottom, 0px))',
-            pointerEvents: 'auto',
-          }
-        : {
-            position: 'fixed',
-            right: 'calc(24px + env(safe-area-inset-right, 0px))',
-            bottom: 'calc(130px + env(safe-area-inset-bottom, 0px))',
-            pointerEvents: 'auto',
-          }
-    : {
-        position: 'absolute',
-        right: 0,
-        bottom: 0,
-        paddingBottom: isMobile && mobileLayout
-          ? `${mobileLayout.actionBottom + 60}px`
-          : isMobile
-            ? `calc(env(safe-area-inset-bottom, 0px) + 308px)`
-            : `calc(env(safe-area-inset-bottom, 0px) + 12rem)`,
+      : {
+          position: 'fixed',
+          right: 'calc(24px + env(safe-area-inset-right, 0px))',
+          bottom: 'calc(130px + env(safe-area-inset-bottom, 0px))',
+          pointerEvents: 'auto',
+        };
+
+  const putAwayStyle = isMobile && isLandscape
+    ? {
+        position: 'fixed',
+        right: 'calc(22px + env(safe-area-inset-right, 0px))',
+        top: 'calc(72px + env(safe-area-inset-top, 0px))',
         pointerEvents: 'auto',
-      };
+      }
+    : isMobile
+      ? {
+          position: 'fixed',
+          right: 'calc(18px + env(safe-area-inset-right, 0px))',
+          top: 'calc(88px + env(safe-area-inset-top, 0px))',
+          pointerEvents: 'auto',
+        }
+      : {
+          position: 'fixed',
+          right: 'calc(24px + env(safe-area-inset-right, 0px))',
+          top: 'calc(96px + env(safe-area-inset-top, 0px))',
+          pointerEvents: 'auto',
+        };
+
+  const rideStyle = {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    paddingBottom: isMobile && mobileLayout
+      ? `${mobileLayout.actionBottom + 60}px`
+      : isMobile
+        ? `calc(env(safe-area-inset-bottom, 0px) + 308px)`
+        : `calc(env(safe-area-inset-bottom, 0px) + 12rem)`,
+    pointerEvents: 'auto',
+  };
+
+  if (personalHoverboardActive) {
+    return (
+      <>
+        <motion.div
+          key="personal-hb-jump"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="z-[58] px-3"
+          style={jumpStyle}
+        >
+          <button
+            onTouchStart={(e) => { e.stopPropagation(); onJump?.(); }}
+            onClick={onJump}
+            className="flex items-center justify-center gap-1.5 rounded-full font-black text-[11px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+            style={{
+              width: isMobile ? 118 : 140,
+              height: isMobile ? 54 : 54,
+              background: "linear-gradient(135deg,#00E5FF,#A078FF)",
+              border: "1px solid rgba(0,229,255,0.5)",
+              color: "#fff",
+              touchAction: "manipulation",
+              boxShadow: "0 0 16px rgba(0,229,255,0.32)",
+            }}
+            title="Jump (Spacebar)"
+          >
+            <span className="text-sm leading-none">↥</span>
+            Jump{!isMobile ? " · Space" : ""}
+          </button>
+        </motion.div>
+
+        <motion.div
+          key="personal-hb-put-away"
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          className="z-[57] px-3"
+          style={putAwayStyle}
+        >
+          <button
+            onTouchStart={(e) => e.stopPropagation()}
+            onClick={onToggle}
+            className="flex items-center justify-center gap-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
+            style={{
+              width: isMobile ? 104 : 128,
+              height: isMobile ? 34 : 38,
+              padding: '0 10px',
+              opacity: 0.86,
+              background: "rgba(255, 80, 80, 0.11)",
+              border: "1px solid rgba(255, 80, 80, 0.28)",
+              color: "#ff9a9a",
+              fontSize: isMobile ? 11 : 12,
+              touchAction: "manipulation",
+              boxShadow: "0 0 8px rgba(255, 80, 80, 0.14)",
+            }}
+          >
+            <Ban className="w-3 h-3" />
+            Put Away
+          </button>
+        </motion.div>
+      </>
+    );
+  }
 
   return (
     <motion.div
@@ -60,50 +144,28 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
       exit={{ opacity: 0, y: 10 }}
       className="z-[58] flex flex-col items-end px-3"
       style={{
-        ...containerStyle,
-        gap: personalHoverboardActive ? 10 : 8,
+        ...rideStyle,
+        gap: 8,
       }}
     >
-      {personalHoverboardActive && (
-        <button
-          onTouchStart={(e) => { e.stopPropagation(); onJump?.(); }}
-          onClick={onJump}
-          className="flex items-center justify-center gap-1.5 rounded-full font-black text-[11px] tracking-wider transition-all hover:brightness-110 active:scale-95"
-          style={{
-            width: isMobile ? 118 : 140,
-            height: isMobile ? 54 : 54,
-            background: "linear-gradient(135deg,#00E5FF,#A078FF)",
-            border: "1px solid rgba(0,229,255,0.5)",
-            color: "#fff",
-            touchAction: "manipulation",
-            boxShadow: "0 0 16px rgba(0,229,255,0.32)",
-          }}
-          title="Jump (Spacebar)"
-        >
-          <span className="text-sm leading-none">↥</span>
-          Jump{!isMobile ? " · Space" : ""}
-        </button>
-      )}
       <button
         onTouchStart={(e) => e.stopPropagation()}
         onClick={onToggle}
         className="flex items-center justify-center gap-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
         style={{
-          width: personalHoverboardActive ? (isMobile ? 132 : 164) : 'auto',
-          height: personalHoverboardActive ? (isMobile ? 42 : 48) : undefined,
-          padding: personalHoverboardActive ? '0 12px' : '6px 12px',
-          opacity: personalHoverboardActive ? 0.9 : 1,
-          background: personalHoverboardActive ? "rgba(255, 80, 80, 0.13)" : "linear-gradient(135deg,#00B8D488,#00D4F088)",
-          border: personalHoverboardActive ? "1px solid rgba(255, 80, 80, 0.32)" : "1px solid rgba(0,212,240,0.4)",
-          color: personalHoverboardActive ? "#ff9a9a" : "#fff",
-          fontSize: personalHoverboardActive && isMobile ? 13 : undefined,
-          minHeight: personalHoverboardActive ? undefined : (isMobile ? 36 : 40),
+          width: 'auto',
+          padding: '6px 12px',
+          opacity: 1,
+          background: "linear-gradient(135deg,#00B8D488,#00D4F088)",
+          border: "1px solid rgba(0,212,240,0.4)",
+          color: "#fff",
+          minHeight: isMobile ? 36 : 40,
           touchAction: "manipulation",
-          boxShadow: personalHoverboardActive ? "0 0 10px rgba(255, 80, 80, 0.18)" : "0 0 14px rgba(0,212,240,0.25)",
+          boxShadow: "0 0 14px rgba(0,212,240,0.25)",
         }}
       >
-        {personalHoverboardActive ? <Ban className="w-3 h-3" /> : <Rocket className="w-3 h-3" />}
-        {personalHoverboardActive ? "Put Away Board" : "Ride Hoverboard"}
+        <Rocket className="w-3 h-3" />
+        Ride Hoverboard
       </button>
     </motion.div>
   );
