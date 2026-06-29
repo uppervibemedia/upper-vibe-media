@@ -85,7 +85,11 @@ const ZONES = {
 };
 
 export function detectZone(px, pz) {
+  const mode = typeof window !== "undefined" ? (window.__uvcWorldMode || "city") : "city";
+  const beachOnly = new Set(["zenbeach", "beach", "academy", "hoverboard"]);
   for (const zone of Object.values(ZONES)) {
+    if (mode === "beach" && !beachOnly.has(zone.id)) continue;
+    if (mode === "city" && beachOnly.has(zone.id)) continue;
     const dx = px - zone.cx;
     const dz = pz - zone.cz;
     const dist = Math.sqrt(dx * dx + dz * dz);

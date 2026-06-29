@@ -25,6 +25,7 @@ import { buildDailyVibeCheckZone } from "./city-engine/zones/DailyVibeCheckZone"
 import { buildVibeAcademyZone }    from "./city-engine/zones/VibeAcademyZone";
 import { runConnections, tickAddOns, KEYS_CREATED } from "./CityAddOns";
 import { MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
+import { createBeachWorld, createTransportPad, CITY_BEACH_PAD, BEACH_RETURN_PAD } from "./BeachWorldBuilder.jsx";
 
 
 // Destructure immediately after namespace import to ensure full module load
@@ -193,6 +194,16 @@ const SKYLINE_WEST  = -36;
 const SKYLINE_BEACH_START = 15; // south of this z, beach x-limits apply
 const BEACH_SHORELINE_Z = 32; // sand meets the ocean here
 
+function resolveBeachBounds(px, pz, r, isHoverboarding = false) {
+  let x = px, z = pz;
+  if (x > 56 - r) x = 56 - r;
+  if (x < -56 + r) x = -56 + r;
+  if (z < -22 + r) z = -22 + r;
+  const maxZ = isHoverboarding ? 80 : 34 - r;
+  if (z > maxZ) z = maxZ;
+  return [x, z];
+}
+
 function resolveCollisions(px, pz, r, boxes, isHoverboarding = false) {
   let x = px, z = pz;
   for (const [bx, bz, br] of boxes) {
@@ -335,7 +346,6 @@ export function buildPark(scene) {
   buildMusicLibraryZone(scene);
   buildVisualizerDomeZone(scene);
   buildDailyVibeCheckZone(scene);
-  buildVibeAcademyZone(scene);
 
   // ═════════════════════════════════════════════════════════════
   // 8.5.5 CRYSTAL ZONE — east-side destination between Library and Vibe Wheel
@@ -355,21 +365,12 @@ export function buildPark(scene) {
   createNeonSign(scene, CRYSTAL_ZONE_X, 3.2, CRYSTAL_ZONE_Z, "CRYSTAL  ZONE", "#AA66FF");
 
   // ═════════════════════════════════════════════════════════════
-  // 8.6. ZEN BEACH — meditation zone, left-side beach area
-  // ═════════════════════════════════════════════════════════════
-  createZenBeach(scene, PLAZA_X, PLAZA_Z);
-
-  // ═════════════════════════════════════════════════════════════
   // 8.65. UPPER VIBE SHOP — central plaza storefront
   // ═════════════════════════════════════════════════════════════
   const shopGroup = createUpperVibeShop(scene, [0, 0, 10]);
   if (shopGroup) shopGroup.rotation.y = Math.PI; // face toward player spawn
   scene.userData.shopGroup = shopGroup;
-
-  // ═════════════════════════════════════════════════════════════
-  // 8.8. HOVERBOARD RING RUN — right-side beach, action zone
-  // ═════════════════════════════════════════════════════════════
-  createHoverboardZone(scene);
+  createTransportPad(scene, { ...CITY_BEACH_PAD, label: "Upper Vibe Beach World", color: "#00E5FF", name: "enterBeachPad" });
 
   // ═════════════════════════════════════════════════════════════
   // 8.7. NEON VIBE WHEEL — far right (Vibe Shop temporarily disabled)
@@ -437,65 +438,7 @@ export function buildPark(scene) {
 
   scene.add(edgeBuildings);
 
-  // 10. BEACH — one connected tan sand strip for Zen Beach + Neon Surf Beach
-  // Runs from the city-side beach walk to the ocean edge without disconnected patches.
-  const beachGeo = new PlaneGeometry(92, 24);
-  const beach = new Mesh(beachGeo, mat("#D2B48C", { roughness: 0.88, metalness: 0.0 }));
-  beach.rotation.x = -Math.PI / 2;
-  beach.position.set(0, 0.001, 20);
-  beach.receiveShadow = true;
-  beach.name = "beach";
-  scene.add(beach);
-
-  // Beach chairs removed — hoverboard course uses this space
-
-  // 11. OCEAN — mobile: flat static low-poly mesh; desktop: animated high-poly
-  const isMobScene = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const oceanWidth = 92;
-  const oceanGeo = new PlaneGeometry(oceanWidth, OCEAN_DEPTH, isMobScene ? 4 : 56, isMobScene ? 4 : 54);
-  const oceanMat = new MeshBasicMaterial({ color: new Color(isMobScene ? "#204468" : "#284A78"), side: THREE.DoubleSide });
-  const ocean = new Mesh(oceanGeo, oceanMat);
-  ocean.rotation.x = -Math.PI / 2;
-  ocean.position.set(0, 0, SHORELINE_Z + OCEAN_DEPTH / 2);
-  ocean.renderOrder = 0; ocean.name = "ocean";
-  scene.add(ocean);
-  const origArr = isMobScene ? null : (() => { const a = new Float32Array(oceanGeo.attributes.position.array.length); a.set(oceanGeo.attributes.position.array); return a; })();
-  scene.userData.ocean = ocean;
-  scene.userData._oceanOrig = origArr;
-  scene.userData._oceanStatic = isMobScene;
-  scene.userData._oceanCenterZ = SHORELINE_Z + OCEAN_DEPTH / 2;
-
-  const foamGeo = new PlaneGeometry(92, 1.5);
-  const foamMeshMat = new MeshBasicMaterial();
-  foamMeshMat.color = new Color("#FFFFFF");
-  foamMeshMat.transparent = true;
-  foamMeshMat.opacity = 0.5;
-  foamMeshMat.depthWrite = false;
-  const foam = new Mesh(foamGeo, foamMeshMat);
-  foam.rotation.x = -Math.PI / 2;
-  foam.position.set(0, 0.005, SHORELINE_Z + 0.3);
-  foam.renderOrder = 2;
-  foam.name = "foam";
-  scene.add(foam);
-  scene.userData.foam = foam;
-  scene.userData._foamBaseZ = SHORELINE_Z + 0.3;
-  scene.userData.shorelineZ = SHORELINE_Z;
-
-  // ── Shoreline glow strip — pulses with music beat ──────────
-  const shoreGlowGeo = new PlaneGeometry(92, 0.5);
-  const shoreGlowMat = new MeshBasicMaterial();
-  shoreGlowMat.color = new Color("#00D4F0");
-  shoreGlowMat.transparent = true;
-  shoreGlowMat.opacity = 0.2;
-  shoreGlowMat.depthWrite = false;
-  shoreGlowMat.side = THREE.DoubleSide;
-  const shoreGlow = new Mesh(shoreGlowGeo, shoreGlowMat);
-  shoreGlow.rotation.x = -Math.PI / 2;
-  shoreGlow.position.set(0, 0.01, SHORELINE_Z);
-  shoreGlow.renderOrder = 1;
-  shoreGlow.name = "shoreGlow";
-  scene.add(shoreGlow);
-  scene.userData.shoreGlow = shoreGlow;
+  // Beach zones, tan sand, shoreline, ocean, and beach gameplay now live in Upper Vibe Beach World.
 
   // ═════════════════════════════════════════════════════════════
   // 12. LIGHTING — night ambiance
@@ -594,7 +537,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, personalHoverboardActive = false, hoverboardJumpRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, personalHoverboardActive = false, hoverboardJumpRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -605,6 +548,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   onPosCbRef.current = onPositionChange;
   const onJukeboxProxRef = useRef(onJukeboxProximity);
   onJukeboxProxRef.current = onJukeboxProximity;
+  const onTransportProxRef = useRef(onTransportProximity);
+  onTransportProxRef.current = onTransportProximity;
+  const worldModeRef = useRef(worldMode);
+  worldModeRef.current = worldMode;
   const djTrackRef = useRef(djTrack);
   djTrackRef.current = djTrack;
 
@@ -782,8 +729,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       sceneRef.current = scene;
       // Expose scene globally so HoverboardPanel can look up coin values
       window.__hbScene = scene;
-      // CityAddOns: create visual shop + launch pads (inert, no logic)
-      runConnections(scene, audioIntensityRef);
+      window.__uvcWorldMode = worldModeRef.current;
+      scene.userData.worldMode = worldModeRef.current;
+      // CityAddOns: city-only shop + launch pads; Beach World stays separate.
+      if (worldModeRef.current === "city") runConnections(scene, audioIntensityRef);
 
       const asp = rw / Math.max(rh, 1);
       // Reduce far clip on mobile — less geometry enters view when turning, fewer draw calls
@@ -806,7 +755,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       camera.position.set(spX + spCamDist * 0.7, spY + spCamH, spZ + spCamDist * 0.7);
       camera.lookAt(spX, spY + spLookY, spZ); // look at avatar; Vibe Check is ahead of avatar
 
-      buildPark(scene);
+      if (worldModeRef.current === "beach") createBeachWorld(scene);
+      else buildPark(scene);
       scene.userData._cityQuality = quality;
       const cachedNeonSigns = [];
       scene.traverse((obj) => {
@@ -1124,7 +1074,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         pz += vel.z * moveDt;
 
         // Collisions
-        [px, pz] = resolveCollisions(px, pz, 0.3, COLLISION_BOXES, hbRidingRef.current);
+        [px, pz] = worldModeRef.current === "beach"
+          ? resolveBeachBounds(px, pz, 0.3, hbRidingRef.current)
+          : resolveCollisions(px, pz, 0.3, COLLISION_BOXES, hbRidingRef.current);
 
         // ── Launch arc handled by LaunchRide (tickAddOns via MOVEMENT_BRIDGE) ──
         // Step-on city pads auto-launch walking AND hoverboard riders.
@@ -1140,7 +1092,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           dfRef.z = pz;
           const dfDx = px - 0;
           const dfDz = pz - (-13);
-          dfRef.onDanceFloor = Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= 10.0;
+          dfRef.onDanceFloor = worldModeRef.current === "city" && Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= 10.0;
         }
         const avatar = avatarRef.current;
         if (avatar) {
@@ -1165,8 +1117,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           scene.userData._nearHoverboard = hbDist < HOVERBOARD_INTERACT_RADIUS;
         }
 
-        // ── Jukebox proximity ──
-        if (onJukeboxProxRef.current && frameRef.current % 6 === 0) {
+        // ── Transport pad + Jukebox proximity ──
+        if (onTransportProxRef.current && frameRef.current % 6 === 0) {
+          const pad = worldModeRef.current === "beach" ? BEACH_RETURN_PAD : CITY_BEACH_PAD;
+          const dxp = px - pad.x;
+          const dzp = pz - pad.z;
+          const nearPad = Math.sqrt(dxp * dxp + dzp * dzp) < pad.radius;
+          try { onTransportProxRef.current(nearPad ? (worldModeRef.current === "beach" ? "city" : "beach") : null); } catch {}
+        }
+        if (onJukeboxProxRef.current && worldModeRef.current === "city" && frameRef.current % 6 === 0) {
           const jdx = px - JUKEBOX_POS.x;
           const jdz = pz - JUKEBOX_POS.z;
           const jDist = Math.sqrt(jdx * jdx + jdz * jdz);
@@ -1538,7 +1497,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0) animateZenBeach(scene, t, audioBeat);
         // Dance floor — throttle on mobile/low, only when near. Audio zone logic remains separate and always active.
         const danceFloorPerf = lowQuality ? "low" : mobileQuality ? "medium" : "full";
-        if (!mobileQuality ? true : (nearDanceFloor && frameRef.current % (lowQuality ? 6 : 4) === 0)) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0, danceFloorPerf);
+        if (worldModeRef.current === "city" && (!mobileQuality ? true : (nearDanceFloor && frameRef.current % (lowQuality ? 6 : 4) === 0))) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0, danceFloorPerf);
         // Crystal Zone — TV Smooth: skip when >25u away; always animate when active
         const crystalDx = px - CRYSTAL_ZONE_X, crystalDz = pz - CRYSTAL_ZONE_Z;
         const crystalDist = Math.sqrt(crystalDx * crystalDx + crystalDz * crystalDz);
@@ -1546,7 +1505,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           ? (crystalDist < 25 || scene.userData.crystalZone?.activated)
           : (!mobileQuality || crystalDist < 28 || frameRef.current % (lowQuality ? 10 : 4) === 0);
         if (crystalGate) animateCrystalZone(scene, t, dt, px, pz, tvSmooth || lowQuality);
-        if (!mobileQuality || nearDanceFloor || frameRef.current % (lowQuality ? 8 : 4) === 0) animateJukebox(scene, t, audioBeat, danceFloorPerf);
+        if (worldModeRef.current === "city" && (!mobileQuality || nearDanceFloor || frameRef.current % (lowQuality ? 8 : 4) === 0)) animateJukebox(scene, t, audioBeat, danceFloorPerf);
         if (scene.userData.shopGroup && (!mobileQuality || frameRef.current % (lowQuality ? 8 : 3) === 0)) animateShop(scene.userData.shopGroup, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──
@@ -1655,7 +1614,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         MOVEMENT_BRIDGE.px = px; MOVEMENT_BRIDGE.py = py; MOVEMENT_BRIDGE.pz = pz;
         MOVEMENT_BRIDGE.hbRiding = hbRidingRef.current;
         MOVEMENT_BRIDGE.dt_ = moveDt;
-        tickAddOns(scene, t);
+        if (worldModeRef.current === "city") tickAddOns(scene, t);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
         // Use clientWidth/clientHeight (CSS pixels) NOT domElement width/height
@@ -1892,6 +1851,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           if (equippedAuraRef.current) unbindAura(avatarEntryRef.current.root);
         }
         window.__hbScene = null;
+        window.__uvcWorldMode = null;
         initializedRef.current = false;
         lastTimeRef.current = 0;
         frameRef.current = 0;

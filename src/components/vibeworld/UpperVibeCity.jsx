@@ -78,6 +78,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const mobileLayout = useMobileLayout(isMobile);
+  const [worldMode, setWorldMode] = useState("city");
+  const [worldSpawn, setWorldSpawn] = useState(null);
+  const [transportTarget, setTransportTarget] = useState(null);
+  const [transportPrompt, setTransportPrompt] = useState(null);
+  const [dismissedTransportTarget, setDismissedTransportTarget] = useState(null);
   const [playerPos, setPlayerPos] = useState({ x: -10, z: -4, rot: -2.55, animState: "idle" });
   // Restore saved return state (position + panel) when returning from SongPage
   const returnState = useRef(readReturnState());
@@ -255,6 +260,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsMobile(isIOS || /Android/i.test(navigator.userAgent));
     isIOSRef.current = isIOS;
   }, []);
+
+  useEffect(() => {
+    window.__uvcWorldMode = worldMode;
+    return () => { window.__uvcWorldMode = null; };
+  }, [worldMode]);
 
   // iOS Safari: prevent pull-to-refresh and rubber-banding inside the 3D world
   useEffect(() => {
@@ -665,7 +675,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const dfDx = playerPos.x - DANCE_FLOOR_CX;
   const dfDz = playerPos.z - DANCE_FLOOR_CZ;
   const dfDist = Math.sqrt(dfDx * dfDx + dfDz * dfDz);
-  const rawOnDanceFloor = dfDist <= DANCE_FLOOR_ENTER_R;
+  const rawOnDanceFloor = worldMode === "city" && dfDist <= DANCE_FLOOR_ENTER_R;
 
   // Debounced dance floor state — only flips after 200ms stable (fast enough to feel responsive)
   const [onDanceFloor, setOnDanceFloor] = useState(false);
@@ -691,7 +701,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const {
     djTrack,
   } = useVibeCityAudioMachine({
-    isUserInsideDanceFloor: rawDfState,
+    isUserInsideDanceFloor: worldMode === "city" && rawDfState,
     defaultTrack: cityTrack || hydratedMyVibeTrack,
     playerAudioRef: audioRef,
     suppressExternalPlayer: !stageWatching && !stageFullScreen,
@@ -699,11 +709,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   // ── Hoverboard zone proximity detection ──────────────────────
   useEffect(() => {
+    if (worldMode !== "beach") { setNearHoverboard(false); return; }
     const hbdx = playerPos.x - HOVERBOARD_START.x;
     const hbdz = playerPos.z - HOVERBOARD_START.z;
     const dist = Math.sqrt(hbdx * hbdx + hbdz * hbdz);
     setNearHoverboard(dist < HOVERBOARD_INTERACT_RADIUS);
-  }, [playerPos.x, playerPos.z]);
+  }, [playerPos.x, playerPos.z, worldMode]);
 
   // Neon Surf game callbacks — only control the temporary beach game board
   const handleHbStart = useCallback(() => {
@@ -761,7 +772,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   };
 
   // ── Presence — Phase 2: track zone + position + heartbeat ─────────────
-  const currentZoneName = detectZone(playerPos.x, playerPos.z)?.name || "Plaza";
+  const currentZoneName = detectZone(playerPos.x, playerPos.z)?.name || (worldMode === "beach" ? "Upper Vibe Beach World" : "Plaza");
   const { activeUsers, userCount, isBroadcasting } = useVibeWorldPresence(user, currentZoneName, playerPos, {
     equippedAura,
     equippedAuraColor,
@@ -984,10 +995,32 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, [audioRef]);
 
   // ── Auto-rotate stage video every 60s when user isn't interacting ──
+  const handleTransport = useCallback((target) => {
+    setTransportPrompt(null);
+    setTransportTarget(null);
+    setLoading(true);
+    setStageWatching(false);
+    setStageFullScreen(false);
+    setIsPlayingNeonSurf(false);
+    setFerrisRiding(false);
+    setNearJukebox(false);
+    if (target === "beach") {
+      setWorldSpawn({ x: 0, z: -9, rot: 0 });
+      setPlayerPos({ x: 0, z: -9, rot: 0, animState: "idle" });
+      prevPosRef.current = { x: 0, z: -9, rot: 0 };
+      setWorldMode("beach");
+    } else {
+      setWorldSpawn({ x: 12, z: 4, rot: Math.PI });
+      setPlayerPos({ x: 12, z: 4, rot: Math.PI, animState: "idle" });
+      prevPosRef.current = { x: 12, z: 4, rot: Math.PI };
+      setWorldMode("city");
+    }
+  }, []);
+
   useEffect(() => {
     if (stageVideos.length <= 1) return;
     const timer = setInterval(() => {
-      if (stageWatching || stageFullScreen) return; // User is actively using stage
+      if (worldMode !== "city" || stageWatching || stageFullScreen) return; // User is actively using stage
       // Don't rotate if user is near the stage (looking at it)
       const STAGE_X = 0, STAGE_Z = -32;
       const dx = playerPos.x - STAGE_X;
@@ -997,12 +1030,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       setStageVideoIdx((prev) => (prev + 1) % stageVideos.length);
     }, 60000);
     return () => clearInterval(timer);
-  }, [stageVideos.length, stageWatching, stageFullScreen, playerPos.x, playerPos.z]);
+  }, [stageVideos.length, stageWatching, stageFullScreen, playerPos.x, playerPos.z, worldMode]);
 
   return (
     <div className="fixed inset-0 z-[60] overflow-hidden" style={{ background: "#050510" }}>
       {/* 3D Park — key on testAvatarTypeKey forces full remount when avatar type changes */}
-      <div className="absolute inset-0" key={`city-${testAvatarTypeKey}-${avatarVersion}`}>
+      <div className="absolute inset-0" key={`${worldMode}-${testAvatarTypeKey}-${avatarVersion}`}>
         <VibeCoinHUD
           sessionCoins={sessionCoins}
           totalCoins={totalCoins}
@@ -1013,9 +1046,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onOpenInventory={() => setInventoryOpen(true)}
         />
         <CityCanvas
-          auraActive={auraActive}
-          equippedAura={equippedAura}
-          spawnOverride={returnState.current ? { x: returnState.current.x, z: returnState.current.z, rot: returnState.current.rot } : null}
+        worldMode={worldMode}
+        auraActive={auraActive}
+        equippedAura={equippedAura}
+        spawnOverride={worldSpawn || (returnState.current ? { x: returnState.current.x, z: returnState.current.z, rot: returnState.current.rot } : null)}
           moveTarget={domeExitTarget}
           onLoaded={() => {
             setLoading(false);
@@ -1041,7 +1075,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             {
               const dfDx = x - DANCE_FLOOR_CX;
               const dfDz = z - DANCE_FLOOR_CZ;
-              const isInsideDanceFloor = Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_ENTER_R;
+              const isInsideDanceFloor = worldMode === "city" && Math.sqrt(dfDx * dfDx + dfDz * dfDz) <= DANCE_FLOOR_ENTER_R;
               rawDfRef.current = isInsideDanceFloor;
               danceFloorFrameRef.current = { x, z, onDanceFloor: isInsideDanceFloor };
             }
@@ -1062,12 +1096,21 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             setPlayerPos({ x, z, rot, animState });
           }}
           onJukeboxProximity={(near, vol) => {
-            setNearJukebox(near);
+            setNearJukebox(worldMode === "city" && near);
             jukeboxProxVolRef.current = vol;
+          }}
+          onTransportProximity={(target) => {
+            setTransportTarget(target);
+            if (!target) {
+              setTransportPrompt(null);
+              setDismissedTransportTarget(null);
+              return;
+            }
+            if (!transportPrompt && target !== dismissedTransportTarget) setTransportPrompt(target);
           }}
           isDancing={isDancing}
           activeEmote={activeEmote}
-          stageCanvas={stageWatching ? null : stageCanvas}
+          stageCanvas={worldMode === "city" && stageWatching ? null : worldMode === "city" ? stageCanvas : null}
           audioIntensityRef={audioIntensityRef}
           audioBassRef={audioBassRef}
           audioBeatRef={audioBeatRef}
@@ -1088,6 +1131,37 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           danceFloorFrameRef={danceFloorFrameRef}
         />
       </div>
+
+      {/* Transport prompt */}
+      {transportTarget && !transportPrompt && !loading && (
+        <button
+          onClick={() => setTransportPrompt(transportTarget)}
+          className="absolute left-1/2 -translate-x-1/2 rounded-2xl font-black tracking-wide transition-all active:scale-95"
+          style={{
+            zIndex: 230,
+            bottom: isMobile ? "calc(150px + env(safe-area-inset-bottom, 0px))" : 92,
+            padding: "12px 18px",
+            background: "linear-gradient(135deg,#00B8D4,#00E5FF)",
+            color: "#001018",
+            boxShadow: "0 0 28px rgba(0,229,255,0.35)",
+          }}
+        >
+          {transportTarget === "beach" ? "Enter Upper Vibe Beach World" : "Return to Upper Vibe City"}
+        </button>
+      )}
+
+      {transportPrompt && (
+        <div className="absolute inset-0 flex items-center justify-center px-5" style={{ zIndex: 260, background: "rgba(4,4,14,0.62)", backdropFilter: "blur(10px)" }}>
+          <div className="w-full max-w-sm rounded-3xl p-6 text-center" style={{ background: "linear-gradient(160deg,#0d0d22,#080818)", border: "1px solid rgba(0,229,255,0.24)", boxShadow: "0 24px 80px rgba(0,0,0,0.55)" }}>
+            <h2 className="font-heading font-black text-xl text-white mb-3">{transportPrompt === "beach" ? "Enter Upper Vibe Beach World?" : "Return to Upper Vibe City?"}</h2>
+            <p className="text-sm text-white/45 mb-6">Your avatar, music, inventory, and Vibe Coins stay connected.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => handleTransport(transportPrompt)} className="py-3 rounded-2xl font-black text-sm" style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}>Enter</button>
+              <button onClick={() => { setDismissedTransportTarget(transportPrompt); setTransportPrompt(null); }} className="py-3 rounded-2xl font-black text-sm" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Loading overlay */}
       {loading && (
@@ -1215,7 +1289,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       />
 
       {/* Stage cover visualizer (only when not watching — iframe replaces it) */}
-      {!stageWatching && (
+      {worldMode === "city" && !stageWatching && (
         <StageCoverVisualizer
           onReady={(c) => setStageCanvas(c)}
           video={stageVideos[stageVideoIdx] || null}
@@ -1407,7 +1481,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onToggle={() => setPersonalHoverboardActive(p => !p)}
         onJump={() => setHoverboardJumpRequest({ id: Date.now() })}
         personalHoverboardActive={personalHoverboardActive}
-        canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && !nearHoverboard && !detectZone(playerPos.x, playerPos.z)}
+        canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && !nearHoverboard && (worldMode === "beach" || !detectZone(playerPos.x, playerPos.z))}
       />
 
       {/* FPS monitor — only visible with ?debug=1 in URL or localStorage.uvc_debug=1 */}
