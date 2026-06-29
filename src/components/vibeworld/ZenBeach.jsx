@@ -88,10 +88,10 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const ZEN_X = -20, ZEN_Z = 22;
 
-  // Circular meditation platform
+  // Circular meditation platform — warm natural base so Zen Beach sits cleanly on the sand strip
   const zenPlat = new Mesh(
     new CircleGeometry(3.5, 48),
-    mat("#1A1030", { roughness: 0.3, metalness: 0.5, transparent: true, opacity: 0.75 })
+    mat("#C9A66B", { roughness: 0.82, metalness: 0.02, transparent: true, opacity: 0.92 })
   );
   zenPlat.rotation.x = -Math.PI / 2;
   zenPlat.position.set(ZEN_X, 0.008, ZEN_Z);

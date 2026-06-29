@@ -185,6 +185,7 @@ const SKYLINE_NORTH = -36;
 const SKYLINE_EAST  =  36;
 const SKYLINE_WEST  = -36;
 const SKYLINE_BEACH_START = 15; // south of this z, beach x-limits apply
+const BEACH_SHORELINE_Z = 32; // sand meets the ocean here
 
 function resolveCollisions(px, pz, r, boxes, isHoverboarding = false) {
   let x = px, z = pz;
@@ -216,8 +217,8 @@ function resolveCollisions(px, pz, r, boxes, isHoverboarding = false) {
     if (x < -beachXLimit) x = -beachXLimit;
   }
 
-  // Beach shoreline / ocean boundary
-  const maxZ = isHoverboarding ? 75 : 34;
+  // Beach shoreline / ocean boundary — walking stays on sand; hoverboard free-ride can still launch over water.
+  const maxZ = isHoverboarding ? 75 : BEACH_SHORELINE_Z - r;
   if (z > maxZ) z = maxZ;
 
   return [x, z];
@@ -430,11 +431,12 @@ export function buildPark(scene) {
 
   scene.add(edgeBuildings);
 
-  // 10. BEACH — wider sand strip for the hoverboard course
-  const beachGeo = new PlaneGeometry(92, 32);
-  const beach = new Mesh(beachGeo, mat("#302844", { roughness: 0.55, metalness: 0.05 }));
+  // 10. BEACH — one connected tan sand strip for Zen Beach + Neon Surf Beach
+  // Runs from the city-side beach walk to the ocean edge without disconnected patches.
+  const beachGeo = new PlaneGeometry(92, 24);
+  const beach = new Mesh(beachGeo, mat("#D2B48C", { roughness: 0.88, metalness: 0.0 }));
   beach.rotation.x = -Math.PI / 2;
-  beach.position.set(0, 0.001, 24);
+  beach.position.set(0, 0.001, 20);
   beach.receiveShadow = true;
   beach.name = "beach";
   scene.add(beach);
