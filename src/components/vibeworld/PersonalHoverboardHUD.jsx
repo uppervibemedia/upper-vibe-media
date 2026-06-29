@@ -19,8 +19,9 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
   if (!canUsePersonalBoard && !personalHoverboardActive) return null;
 
   const isPortraitMobile = isMobile && !isLandscape;
+  const portraitPlayerRight = mobileLayout ? mobileLayout.playerLeft + mobileLayout.playerMaxWidth + 18 : 0;
   const portraitJumpWidth = isPortraitMobile && mobileLayout
-    ? Math.max(52, Math.min(76, mobileLayout.vw - (mobileLayout.playerLeft + mobileLayout.playerMaxWidth) - (mobileLayout.sa?.right || 0) - 14))
+    ? Math.max(52, Math.min(76, mobileLayout.vw - portraitPlayerRight - (mobileLayout.sa?.right || 0) - 12))
     : 76;
   const portraitJumpHeight = 52;
 
@@ -34,7 +35,7 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
     : isMobile
       ? {
           position: 'fixed',
-          left: mobileLayout ? `${Math.min(mobileLayout.playerLeft + mobileLayout.playerMaxWidth + 8, mobileLayout.vw - (mobileLayout.sa?.right || 0) - 6 - portraitJumpWidth)}px` : 'auto',
+          left: mobileLayout ? `${Math.min(portraitPlayerRight + 6, mobileLayout.vw - (mobileLayout.sa?.right || 0) - 6 - portraitJumpWidth)}px` : 'auto',
           right: mobileLayout ? 'auto' : 'calc(18px + env(safe-area-inset-right, 0px))',
           bottom: mobileLayout ? `${Math.max((mobileLayout.sa?.bottom || 0) + 10, mobileLayout.playerBottom + ((mobileLayout.playerHeight || 52) - portraitJumpHeight) / 2)}px` : 'calc(28px + env(safe-area-inset-bottom, 0px))',
           pointerEvents: 'auto',
