@@ -1570,43 +1570,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             if (hbBoard.userData.hoverDisc) {
               hbBoard.userData.hoverDisc.opacity = Math.min(0.65, 0.14 + audioBeat * 0.22 + Math.sin(t * 3.0) * 0.07 + jumpGlow);
             }
-            if (!hbBoard.userData.trailGroup) {
-              const trailGroup = new Group();
-              trailGroup.name = "hoverboardBassTrail";
-              trailGroup.userData.mats = [];
-              for (let i = 0; i < 5; i++) {
-                const trailMat = new MeshBasicMaterial({
-                  color: new Color(i % 2 === 0 ? "#00E5FF" : "#C43BFF"),
-                  transparent: true,
-                  opacity: 0.12,
-                  depthWrite: false,
-                  side: THREE.DoubleSide,
-                  blending: THREE.AdditiveBlending,
-                });
-                const trail = new Mesh(new PlaneGeometry(0.32 + i * 0.12, 0.28), trailMat);
-                trail.rotation.x = -Math.PI / 2;
-                trail.position.set(0, -0.09 - i * 0.012, -0.48 - i * 0.23);
-                trail.renderOrder = 2;
-                trailGroup.add(trail);
-                trailGroup.userData.mats.push(trailMat);
-              }
-              hbBoard.add(trailGroup);
-              hbBoard.userData.trailGroup = trailGroup;
+            if (hbBoard.userData.trailGroup) {
+              hbBoard.remove(hbBoard.userData.trailGroup);
+              hbBoard.userData.trailGroup.traverse((obj) => {
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) disposeMaterialDeep(obj.material);
+              });
+              hbBoard.userData.trailGroup = null;
             }
             const spd = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.z ** 2);
-            const trailPower = Math.min(1, bassEnergy * 1.45 + beatPulse * 0.35 + Math.min(1, spd / 14) * 0.35 + jumpGlow);
-            const trailGroup = hbBoard.userData.trailGroup;
-            if (trailGroup) {
-              trailGroup.visible = spd > 0.15 || bassEnergy > 0.05;
-              trailGroup.scale.set(1 + trailPower * 0.75, 1, 1 + trailPower * 0.8);
-              trailGroup.position.y = Math.sin(t * 6) * 0.012 - jumpGlow * 0.04;
-              const mats = trailGroup.userData.mats || [];
-              for (let i = 0; i < mats.length; i++) {
-                const fade = 1 - i / Math.max(1, mats.length);
-                mats[i].opacity = (0.05 + trailPower * 0.34) * fade;
-                mats[i].color.copy(scene.userData._hbC1).lerp(scene.userData._hbC2, (Math.sin(t * 2.2 + i * 0.8) * 0.5 + 0.5));
-              }
-            }
             // Board tilts forward on speed and slightly pitches up during controlled jumps.
             hbBoard.rotation.x = hoverboardAirborne ? -0.10 - Math.min(0.06, hoverboardJumpOffsetRef.current * 0.02) : spd > 0.3 ? Math.max(-0.14, -spd * 0.018) : Math.sin(t * 1.2) * 0.012;
             hbBoard.rotation.z = Math.sin(t * 0.85) * 0.015;
