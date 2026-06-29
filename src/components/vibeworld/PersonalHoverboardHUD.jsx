@@ -18,6 +18,12 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
   // Hide until an equipped board can be used, but keep the put-away control visible while riding.
   if (!canUsePersonalBoard && !personalHoverboardActive) return null;
 
+  const isPortraitMobile = isMobile && !isLandscape;
+  const portraitJumpWidth = isPortraitMobile && mobileLayout
+    ? Math.max(52, Math.min(76, mobileLayout.vw - (mobileLayout.playerLeft + mobileLayout.playerMaxWidth) - (mobileLayout.sa?.right || 0) - 14))
+    : 76;
+  const portraitJumpHeight = 52;
+
   const jumpStyle = isMobile && isLandscape
     ? {
         position: 'fixed',
@@ -28,8 +34,9 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
     : isMobile
       ? {
           position: 'fixed',
-          right: mobileLayout ? `${Math.max(10, (mobileLayout.sa?.right || 0) + 10)}px` : 'calc(18px + env(safe-area-inset-right, 0px))',
-          bottom: mobileLayout ? `${Math.max((mobileLayout.sa?.bottom || 0) + 10, mobileLayout.playerBottom + ((mobileLayout.playerHeight || 52) - 54) / 2)}px` : 'calc(28px + env(safe-area-inset-bottom, 0px))',
+          left: mobileLayout ? `${Math.min(mobileLayout.playerLeft + mobileLayout.playerMaxWidth + 8, mobileLayout.vw - (mobileLayout.sa?.right || 0) - 6 - portraitJumpWidth)}px` : 'auto',
+          right: mobileLayout ? 'auto' : 'calc(18px + env(safe-area-inset-right, 0px))',
+          bottom: mobileLayout ? `${Math.max((mobileLayout.sa?.bottom || 0) + 10, mobileLayout.playerBottom + ((mobileLayout.playerHeight || 52) - portraitJumpHeight) / 2)}px` : 'calc(28px + env(safe-area-inset-bottom, 0px))',
           pointerEvents: 'auto',
         }
       : {
@@ -80,7 +87,7 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 10 }}
-          className="z-[58] px-3"
+          className={isPortraitMobile ? "z-[58]" : "z-[58] px-3"}
           style={jumpStyle}
         >
           <button
@@ -88,8 +95,8 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
             onClick={onJump}
             className="flex items-center justify-center gap-1.5 rounded-full font-black text-[11px] tracking-wider transition-all hover:brightness-110 active:scale-95"
             style={{
-              width: isMobile ? 118 : 140,
-              height: isMobile ? 54 : 54,
+              width: isPortraitMobile ? portraitJumpWidth : (isMobile ? 118 : 140),
+              height: isPortraitMobile ? portraitJumpHeight : (isMobile ? 54 : 54),
               background: "linear-gradient(135deg,#00E5FF,#A078FF)",
               border: "1px solid rgba(0,229,255,0.5)",
               color: "#fff",
