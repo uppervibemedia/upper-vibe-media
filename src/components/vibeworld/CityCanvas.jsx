@@ -58,7 +58,7 @@ const {
 } = THREE;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
-const MOVE_SPEED = 6.0;
+const MOVE_SPEED = 7.8;
 const ACCELERATION = 36.0; // quick response without mobile/low-quality slowdown
 const DECELERATION = 24.0; // quick stop without feeling sticky
 const TURN_SPEED = 2.5;       // radians/sec for A/D turning
