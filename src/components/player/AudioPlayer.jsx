@@ -11,7 +11,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
 import usePageVisible from "@/hooks/usePageVisible";
 import { useAuth } from "@/lib/AuthContext";
-import { subscribe as ramSubscribe, getState as ramGetState } from "@/lib/radioAudioManager";
+import { subscribe as ramSubscribe, getState as ramGetState, playMyVibeTrack } from "@/lib/radioAudioManager";
 import { getPublishedTracks } from "@/lib/trackCache";
 
 export default function AudioPlayer() {
@@ -31,7 +31,7 @@ export default function AudioPlayer() {
     playTrack,
   } = usePlayer();
 
-  const { currentRadioSong, startMyVibeQueue } = useRadio();
+  const { currentRadioSong, startMyVibeQueue, nextRadioSong, prevRadioSong } = useRadio();
   const { user } = useAuth();
   const { accentId } = useTheme();
   const theme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -160,6 +160,14 @@ export default function AudioPlayer() {
   useEffect(() => ramSubscribe((s) => setRamState(s)), []);
 
   useEffect(() => {
+    if (!currentRadioSong?.id) return;
+    const s = ramGetState();
+    if (s.activeMode === "myVibeRadio" && s.intendedToPlay && s.currentTrack?.id !== currentRadioSong.id) {
+      playMyVibeTrack(currentRadioSong);
+    }
+  }, [currentRadioSong?.id]);
+
+  useEffect(() => {
     getPublishedTracks("-created_date", 50)
       .then((tracks) => {
         const playable = tracks.find((t) => t.audio_url && t.cover_url && t.status === "published")
@@ -220,17 +228,20 @@ export default function AudioPlayer() {
     }
   }, [ramActive, ramState.activeMode, ramState.isPlaying, ramState.lastTrack, currentTrack, togglePlay, startMyVibeQueue]);
 
-  // Skip: delegate to RAM when RAM is active
+  // Skip/back: delegate My Vibe controls to the My Vibe queue, not the generic player.
   const handleSkip = useCallback(() => {
     if (ramActive && ramState.activeMode === "myVibeRadio") {
-      // My Vibe Radio skip is handled via RadioContext's nextRadioSong
-      skipTrack?.();
+      nextRadioSong?.();
     } else if (!ramActive) {
       skipTrack?.();
     }
-  }, [ramActive, ramState.activeMode, skipTrack]);
+  }, [ramActive, ramState.activeMode, nextRadioSong, skipTrack]);
 
   const handlePrevAction = useCallback(() => {
+    if (ramActive && ramState.activeMode === "myVibeRadio") {
+      prevRadioSong?.();
+      return;
+    }
     if (!ramActive) {
       if (sourceType !== "radio") {
         const a = audioRef.current;
@@ -238,7 +249,7 @@ export default function AudioPlayer() {
       }
       handlePrev?.();
     }
-  }, [ramActive, sourceType, handlePrev, audioRef]);
+  }, [ramActive, ramState.activeMode, sourceType, handlePrev, audioRef, prevRadioSong]);
 
   const handleSeek = (val) => {
     const audio = audioRef.current;

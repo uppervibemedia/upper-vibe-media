@@ -108,6 +108,7 @@ function pickHomepageTracks(allTracks, count = 4) {
 export default function Home() {
   const [latestTracks, setLatestTracks] = useState([]);
   const [heroMyVibeTrack, setHeroMyVibeTrack] = useState(null);
+  const [heroTrackReady, setHeroTrackReady] = useState(false);
   const [allTracks, setAllTracks] = useState([]);
   const [allViz, setAllViz] = useState([]);
   const [recentViz, setRecentViz] = useState([]);
@@ -161,6 +162,7 @@ export default function Home() {
   };
 
   const loadData = async () => {
+    setHeroTrackReady(false);
     // Sequenced with delays to avoid rate limiting — no Promise.all
     const allTracks = await getPublishedTracks("-created_date", 200);
     await new Promise(r => setTimeout(r, 200));
@@ -184,6 +186,7 @@ export default function Home() {
       heroPool = playable.filter((t) => favIds.has(t.id));
     }
     setHeroMyVibeTrack(pickFreshHeroTrack(heroPool.length > 0 ? heroPool : playable));
+    setHeroTrackReady(true);
 
     // Sort: new visualizers (≤7 days) first, then older, newest within each group
     const sortedViz = sortVisualizersNewestFirst(recentVizPool);
@@ -322,7 +325,7 @@ export default function Home() {
             {(() => {
               // Prefer My Vibe state/feed, then active global music, then latest fallback.
               const myVibeTrack = ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : null;
-              const displayTrack = myVibeTrack || currentRadioSong || currentTrack || heroMyVibeTrack || latestTracks[0];
+              const displayTrack = myVibeTrack || currentRadioSong || currentTrack || heroMyVibeTrack || (heroTrackReady ? latestTracks[0] : null);
               if (!displayTrack) return null;
 
               const myVibeIsPlaying = ramState.activeMode === "myVibeRadio" && ramState.isPlaying;
