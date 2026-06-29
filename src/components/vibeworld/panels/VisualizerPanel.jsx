@@ -339,16 +339,12 @@ export default function VisualizerPanel({ open, onClose, currentTrack, isTrackPl
   const setMode = useCallback((mode) => { setActiveMode(mode); }, []);
   const handlePrev = useCallback((e) => {
     e?.stopPropagation?.();
-    if (activeMode === "visualizer") setStyleIdx((i) => (i - 1 + STYLES.length) % STYLES.length);
-    if (activeMode === "affirmation") setAffirmationIdx((i) => (i - 1 + GENERAL_AFFIRMATIONS.length) % GENERAL_AFFIRMATIONS.length);
-    if (activeMode === "manifestation" && activeManifestation) setManifestationLineIdx((i) => (i - 1 + activeManifestation.affirmations.length) % activeManifestation.affirmations.length);
-  }, [activeMode, activeManifestation]);
+    setStyleIdx((i) => (i - 1 + STYLES.length) % STYLES.length);
+  }, []);
   const handleNext = useCallback((e) => {
     e?.stopPropagation?.();
-    if (activeMode === "visualizer") setStyleIdx((i) => (i + 1) % STYLES.length);
-    if (activeMode === "affirmation") setAffirmationIdx((i) => (i + 1) % GENERAL_AFFIRMATIONS.length);
-    if (activeMode === "manifestation" && activeManifestation) setManifestationLineIdx((i) => (i + 1) % activeManifestation.affirmations.length);
-  }, [activeMode, activeManifestation]);
+    setStyleIdx((i) => (i + 1) % STYLES.length);
+  }, []);
 
   useEffect(() => {
     if (!open) { if (animRef.current) cancelAnimationFrame(animRef.current); return; }
@@ -389,7 +385,7 @@ export default function VisualizerPanel({ open, onClose, currentTrack, isTrackPl
   }, [open, activeMode, isPlaying, activeManifestation]);
 
   if (!open) return null;
-  const modeTitle = activeMode === "visualizer" ? activeStyle.label : activeMode === "affirmation" ? `${affirmationIdx + 1}/${GENERAL_AFFIRMATIONS.length}` : activeManifestation?.label || "Manifestation";
+  const modeTitle = activeStyle.label;
 
   return (
     <motion.div ref={rootRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-[65] flex flex-col overflow-hidden" style={{ background: "rgba(4,4,14,0.97)", pointerEvents: "auto", height: "100dvh", minHeight: "100dvh", boxSizing: "border-box", paddingLeft: "env(safe-area-inset-left, 0px)", paddingRight: "env(safe-area-inset-right, 0px)", paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)", touchAction: "manipulation" }} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
@@ -407,15 +403,6 @@ export default function VisualizerPanel({ open, onClose, currentTrack, isTrackPl
 
       <div className="relative z-20 flex justify-center items-center gap-2 py-1 flex-shrink-0" style={{ pointerEvents: "auto" }}><button onClick={handlePrev} onTouchStart={(e) => e.stopPropagation()} className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/15 active:scale-95" style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", minWidth: 44, minHeight: 44, touchAction: "manipulation", pointerEvents: "auto" }} aria-label="Previous Dome item"><ChevronLeft className="w-5 h-5" /></button><span className="text-[10px] sm:text-xs font-black tracking-wider text-white/60 text-center truncate" style={{ width: "min(220px, 44vw)" }}>{modeTitle}</span><button onClick={handleNext} onTouchStart={(e) => e.stopPropagation()} className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/15 active:scale-95" style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", minWidth: 44, minHeight: 44, touchAction: "manipulation", pointerEvents: "auto" }} aria-label="Next Dome item"><ChevronRight className="w-5 h-5" /></button></div>
 
-      <div className="relative z-20 flex justify-start px-0 pb-1 flex-shrink-0 overflow-hidden" style={{ pointerEvents: "auto" }}>
-        <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar py-1" style={{ width: "100vw", maxWidth: "100vw", paddingLeft: 16, paddingRight: 16, WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity", background: "rgba(255,255,255,0.045)", borderTop: "1px solid rgba(255,255,255,0.07)", borderBottom: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(12px)" }}>
-          {STYLES.map((style) => (
-            <button key={style.key} onClick={(e) => { e.stopPropagation(); e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }); setStyleIdx(STYLES.findIndex((s) => s.key === style.key)); }} onTouchStart={(e) => e.stopPropagation()} className="rounded-full whitespace-nowrap text-[9px] sm:text-[10px] font-black transition-all active:scale-95 flex-shrink-0" style={{ minHeight: 29, padding: "0 10px", scrollSnapAlign: "center", background: activeStyle.key === style.key ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.04)", border: `1px solid ${activeStyle.key === style.key ? "rgba(0,229,255,0.36)" : "rgba(255,255,255,0.06)"}`, color: activeStyle.key === style.key ? "#9ff5ff" : "rgba(255,255,255,0.54)", boxShadow: activeStyle.key === style.key ? "0 0 14px rgba(0,229,255,0.14)" : "none", touchAction: "manipulation", pointerEvents: "auto" }}>
-              {style.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {activeMode === "affirmation" && <DomeTextScene eyebrow="Frequency Room · Affirmations" text={GENERAL_AFFIRMATIONS[affirmationIdx]} themeColor="#A078FF" themeGlow="rgba(160,120,255,0.3)" />}
       {activeMode === "manifestation" && <DomeTextScene eyebrow="Frequency Room · Manifestation" title={activeManifestation?.label || "Select Focus"} text={manifestationText} themeColor={activeManifestation?.color || "#A078FF"} themeGlow={activeManifestation?.glow || "rgba(160,120,255,0.3)"} />}
