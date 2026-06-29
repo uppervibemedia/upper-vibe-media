@@ -1572,7 +1572,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             }
             // Board tilts forward on speed and slightly pitches up during controlled jumps.
             const spd = Math.sqrt(velocityRef.current.x ** 2 + velocityRef.current.z ** 2);
-            hbBoard.rotation.x = hoverboardAirborne ? -0.18 - Math.min(0.12, hoverboardJumpOffsetRef.current * 0.04) : spd > 0.3 ? -spd * 0.06 : Math.sin(t * 1.2) * 0.02;
+            hbBoard.rotation.x = hoverboardAirborne ? -0.10 - Math.min(0.06, hoverboardJumpOffsetRef.current * 0.02) : spd > 0.3 ? Math.max(-0.14, -spd * 0.018) : Math.sin(t * 1.2) * 0.012;
             hbBoard.rotation.z = Math.sin(t * 0.85) * 0.015;
           }
         } else {
