@@ -79,7 +79,7 @@ const ZONES = {
   crystalzone: {
     name: "Crystal Zone",
     id: "crystalzone",
-    cx: -28, cz: -11, radius: 9,
+    cx: 28, cz: -7, radius: 8,
     icon: "Sparkles",
   },
 };

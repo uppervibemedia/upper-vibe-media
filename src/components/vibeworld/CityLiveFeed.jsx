@@ -140,7 +140,7 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         neonLabel("UPPER VIBE SHOP",   "#00E5FF", 0,   2.6, 10,    3.2),
         neonLabel("NEON SURF BEACH",   "#F5A800", 28,  2.2, 23,    3.2),
         neonLabel("VIBE WHEEL",        "#F5A800", WHEEL_X, 5.5, WHEEL_Z, 3.2),
-        neonLabel("CRYSTAL ZONE",      "#C43BFF", -26, 2.5, -14,   3.4),
+        neonLabel("CRYSTAL ZONE",      "#C43BFF", 28, 2.5, -7,    3.4),
       ];
       labels.forEach((l) => scene.add(l));
 

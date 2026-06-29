@@ -28,7 +28,7 @@ const ZONES = [
   { id: "music_library",   name: "Music Library",      x:  22, z: -20, r:  7 },
   { id: "visualizer_dome", name: "Visualizer Dome",    x: -13, z:   3, r:  7 },
   { id: "vibe_check",      name: "Daily Vibe Check",   x: -16, z: -13, r:  6 },
-  { id: "crystal_zone",    name: "Crystal Zone",       x: -26, z: -14, r:  7 },
+  { id: "crystal_zone",    name: "Crystal Zone",       x:  28, z:  -7, r:  7 },
   { id: "vibe_academy",    name: "Vibe Academy",       x: -28, z:   5, r:  7 },
   { id: "vibe_launch",     name: "Vibe Launch Zone",   x:   0, z:   4, r:  8 },
   { id: "neon_surf_beach", name: "Neon Surf Beach",    x:  18, z:  22, r: 12 },

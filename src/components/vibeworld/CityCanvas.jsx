@@ -9,7 +9,7 @@ import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 
 import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
-import { createCrystalZone, animateCrystalZone } from "./CrystalZone";
+import { createCrystalZone, animateCrystalZone, CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
 import { createAvatar, createRemoteAvatar, updateAvatarAnimation, retintAvatar, attachHoverboard, detachHoverboard } from "./AvatarModel.jsx";
@@ -134,7 +134,7 @@ const STREAM_ZONES = [
   { key: "visualizer", names: ["visualizerDome", "domePortalGlow"], x: -13, z: 3, keepVisible: true },
   { key: "vibe_check", names: ["dailyVibeCheck", "vibeMirrorGroup"], x: -16, z: -13, keepVisible: true },
   { key: "academy", names: ["upperVibeAcademy", "academyEntrance"], x: -28, z: 5, keepVisible: true },
-  { key: "crystal", names: ["crystalZone"], x: -26, z: -14, keepVisible: true },
+  { key: "crystal", names: ["crystalZone"], x: CRYSTAL_ZONE_X, z: CRYSTAL_ZONE_Z, keepVisible: true },
   { key: "ferris", names: ["ferrisWheel"], x: WHEEL_X, z: WHEEL_Z, keepVisible: true },
   { key: "beach", names: ["hbPadRing", "hbParticles"], x: 18, z: 22, keepVisible: true },
   { key: "skyline", names: ["cityBuildings"], x: 0, z: -36, keepVisible: true },
@@ -335,10 +335,21 @@ export function buildPark(scene) {
   buildVibeAcademyZone(scene);
 
   // ═════════════════════════════════════════════════════════════
-  // 8.5.5 CRYSTAL ZONE — between Vibe Lounge and Vibe Academy
+  // 8.5.5 CRYSTAL ZONE — east-side destination between Library and Vibe Wheel
   // ═════════════════════════════════════════════════════════════
+  const crystalPathMat = new MeshBasicMaterial({ color: new Color("#6C3CFF"), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
+  const crystalPathA = new Mesh(new PlaneGeometry(Math.max(2, Math.abs(CRYSTAL_ZONE_X - 4)), 2.2), crystalPathMat.clone());
+  crystalPathA.rotation.x = -Math.PI / 2;
+  crystalPathA.position.set((CRYSTAL_ZONE_X + 4) / 2, 0.012, CRYSTAL_ZONE_Z);
+  crystalPathA.renderOrder = 1;
+  scene.add(crystalPathA);
+  const crystalPathB = new Mesh(new PlaneGeometry(2.2, Math.max(2, Math.abs(CRYSTAL_ZONE_Z - PLAZA_Z))), crystalPathMat.clone());
+  crystalPathB.rotation.x = -Math.PI / 2;
+  crystalPathB.position.set(4, 0.013, (CRYSTAL_ZONE_Z + PLAZA_Z) / 2);
+  crystalPathB.renderOrder = 1;
+  scene.add(crystalPathB);
   createCrystalZone(scene);
-  createNeonSign(scene, -26, 3.2, -14, "CRYSTAL  ZONE", "#AA66FF");
+  createNeonSign(scene, CRYSTAL_ZONE_X, 3.2, CRYSTAL_ZONE_Z, "CRYSTAL  ZONE", "#AA66FF");
 
   // ═════════════════════════════════════════════════════════════
   // 8.6. ZEN BEACH — meditation zone, left-side beach area
@@ -1460,7 +1471,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const danceFloorPerf = lowQuality ? "low" : mobileQuality ? "medium" : "full";
         if (!mobileQuality ? true : (nearDanceFloor && frameRef.current % (lowQuality ? 6 : 4) === 0)) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0, danceFloorPerf);
         // Crystal Zone — TV Smooth: skip when >25u away; always animate when active
-        const crystalDx = px - (-26), crystalDz = pz - (-14);
+        const crystalDx = px - CRYSTAL_ZONE_X, crystalDz = pz - CRYSTAL_ZONE_Z;
         const crystalDist = Math.sqrt(crystalDx * crystalDx + crystalDz * crystalDz);
         const crystalGate = tvSmooth
           ? (crystalDist < 25 || scene.userData.crystalZone?.activated)

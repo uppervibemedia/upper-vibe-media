@@ -16,7 +16,7 @@ const PADS = [
   { id: 'pad-lounge',  x: -10, z: -24, color: "#00E5FF" },
   { id: 'pad-library', x:  14, z: -24, color: "#9B7EFF" },
   { id: 'pad-academy', x: -26, z: -4,  color: "#FFD700" },
-  { id: 'pad-crystal', x: -14, z: -8,  color: "#E040FB" },
+  { id: 'pad-crystal', x: 18,  z: -7,  color: "#E040FB" },
 ];
 
 const PAD_RADIUS = 1.6;

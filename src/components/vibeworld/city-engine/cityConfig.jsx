@@ -23,7 +23,7 @@ export const ZONES = {
   visualizerDome:  { label: "Visualizer Dome",    x: -13, z: 10,  tag: "dome" },
   dailyVibeCheck:  { label: "Daily Vibe Check",   x: -16, z: -13, tag: "vibeCheck" },
   vibeAcademy:     { label: "Vibe Academy",        x: -28, z: 10,  tag: "academy" },
-  crystalZone:     { label: "Crystal Zone",        x: -26, z: -14, tag: "crystal" },
+  crystalZone:     { label: "Crystal Zone",        x: 28,  z: -7,  tag: "crystal" },
   zenBeach:        { label: "Zen Beach",           x: -11, z: 22,  tag: "beach" },
   hoverboardRun:   { label: "Hoverboard Run",      x: 18,  z: 28,  tag: "hoverboard" },
   vibeLaunchZone:  { label: "Vibe Launch Zone",    x: 0,   z: 4,   tag: "launch" },
@@ -78,7 +78,7 @@ export const LAUNCH_PADS = {
   "pad-lounge":   { x: -10, z: -24, hint: "Plaza–Lounge corridor" },
   "pad-library":  { x: 14,  z: -24, hint: "Library corridor" },
   "pad-academy":  { x: -26, z: -4,  hint: "Academy approach" },
-  "pad-crystal":  { x: -14, z: -8,  hint: "Dome–Crystal corridor" },
+  "pad-crystal":  { x: 18,  z: -7,  hint: "Plaza–Crystal corridor" },
 };
 
 // ═══════════════════════════════════════════════════════════════════
