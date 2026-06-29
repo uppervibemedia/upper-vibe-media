@@ -12,7 +12,6 @@ import {
   GraduationCap,
   Tv2,
   Compass,
-  Users,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/AuthContext";
@@ -27,7 +26,6 @@ const mainNavItems = [
   { path: "/visualizers", icon: Tv2, label: "Visualizers" },
   { path: "/vibe-world", icon: Compass, label: "Upper Vibe City" },
   { path: "/my-vibes", icon: Heart, label: "My Vibe Library" },
-  { path: "/connections", icon: Users, label: "Connections" },
 ];
 
 const bottomNavMobile = [
@@ -44,7 +42,7 @@ const TAB_OWNERSHIP = {
   "/music": ["/music", "/song/", "/categories", "/downloads", "/visualizers", "/sessions", "/artists"],
   "/radio": ["/radio"],
   "/vibe-world": ["/vibe-world"],
-  "/account": ["/account", "/settings", "/my-vibes", "/my-vibe-library", "/upgrade", "/membership", "/payment-success", "/payment-cancelled", "/connections"],
+  "/account": ["/account", "/settings", "/my-vibes", "/my-vibe-library", "/upgrade", "/membership", "/payment-success", "/payment-cancelled"],
 };
 
 function isTabActive(tabRootPath, currentPath) {
