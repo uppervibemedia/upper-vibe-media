@@ -753,13 +753,13 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyA = {
     ...buildBeachFlybyPlanet(["#0E6A78", "#16A0A8", "#40E0D0", "#B8FFF4"], "rgba(70,230,210,0.42)", isMobile ? 13 : 18),
     active: false, life: 0, duration: 28, nextFire: now0 + 5,
-    startCX: -54, endCX: 54, cy: 18, cz: 62,
+    startCX: -54, endCX: 54, cy: 14, cz: 62,
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
   scene.userData.beachFlybyB = {
     ...buildBeachFlybyPlanet(["#8A3C10", "#C87828", "#FFC26A", "#FFF0B8"], "rgba(255,190,80,0.38)", isMobile ? 12 : 17),
     active: false, life: 0, duration: 28, nextFire: now0 + 43,
-    startCX: 54, endCX: -54, cy: 20, cz: 64,
+    startCX: 54, endCX: -54, cy: 16, cz: 64,
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
 }
@@ -975,9 +975,16 @@ export function animateCosmicSky(scene, camera, t, dt) {
     const fadeIn = Math.min(prog / fb._fadeInEnd, 1);
     const fadeOut = prog > fb._fadeOutStart ? Math.max(0, 1 - (prog - fb._fadeOutStart) / (1 - fb._fadeOutStart)) : 1;
     fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.72;
+
+    const ox = fb.startCX + (fb.endCX - fb.startCX) * prog;
+    const centerProximity = Math.max(0, 1 - Math.abs(ox) / 30);
+    const centerLift = centerProximity * centerProximity * 14;
+    const camPitch = scene.userData._camPitch ?? 0;
+    const pitchLift = Math.max(0, -camPitch) * 60;
+
     fb.sprite.position.set(
-      camera.position.x + fb.startCX + (fb.endCX - fb.startCX) * prog,
-      camera.position.y + fb.cy,
+      camera.position.x + ox,
+      camera.position.y + fb.cy + centerLift + pitchLift,
       camera.position.z + fb.cz
     );
 
