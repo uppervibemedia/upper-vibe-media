@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { requestAnalyser } from "@/context/PlayerContext";
+import { getAudioElement as getRadioAudioElement, getState as getRadioAudioState } from "@/lib/radioAudioManager";
 
 const EMPTY = {
   available: false,
@@ -41,7 +42,12 @@ export default function useDomeAudioAnalysis(open) {
     let frequencyData = null;
     let timeDomainData = null;
 
-    const getAudio = () => document.querySelector("audio");
+    const getAudio = () => {
+      const radioState = getRadioAudioState?.();
+      const radioAudio = getRadioAudioElement?.();
+      if (radioAudio && (radioState?.activeMode === "myVibeRadio" || radioState?.currentTrack)) return radioAudio;
+      return document.querySelector("audio") || radioAudio;
+    };
 
     const connect = () => {
       const audio = getAudio();
