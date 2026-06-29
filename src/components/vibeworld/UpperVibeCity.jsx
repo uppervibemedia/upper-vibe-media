@@ -1324,6 +1324,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
               onTogglePlay={cityTrack ? handleCityTogglePlay : handleGlobalPlayToggle}
               onSkip={cityTrack ? handleCitySkip : handleGlobalSkip}
               nearStage={nearStage}
+              domeMode={domeFullscreenOpen}
             />
           </div>
         );

@@ -32,6 +32,7 @@ export default function DraggableMediaPlayer({
   onTogglePlay,
   onSkip,
   nearStage = false,
+  domeMode = false,
 }) {
   const mobileLayout = useMobileLayout(IS_MOBILE);
 
@@ -114,7 +115,16 @@ export default function DraggableMediaPlayer({
 
   // ── Mobile: position from layout hook ──────────────────────────
   let containerStyle;
-  if (IS_MOBILE) {
+  if (domeMode) {
+    containerStyle = {
+      position: IS_MOBILE ? "absolute" : "fixed",
+      left: "max(18px, env(safe-area-inset-left, 0px))",
+      bottom: "calc(18px + env(safe-area-inset-bottom, 0px))",
+      top: "unset",
+      width: "min(360px, calc(100vw - 36px))",
+      maxWidth: "calc(100vw - 36px)",
+    };
+  } else if (IS_MOBILE) {
     const L = mobileLayout;
     // position: absolute (not fixed) to avoid iOS Safari nested-fixed rendering bug
     // The city parent is already fixed inset-0 (full viewport), so absolute is equivalent.
@@ -188,7 +198,7 @@ export default function DraggableMediaPlayer({
           {/* Title + Artist */}
           <div
             className="flex-1 min-w-0 pointer-events-none overflow-hidden"
-            style={{ maxWidth: IS_MOBILE ? (nearStage ? "52px" : "70px") : "90px" }}
+            style={{ maxWidth: domeMode ? (IS_MOBILE ? "120px" : "150px") : IS_MOBILE ? (nearStage ? "52px" : "70px") : "90px" }}
           >
             <p className="text-[10px] font-bold text-white/90 truncate leading-tight">
               {currentTrack.title}
