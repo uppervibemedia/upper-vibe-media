@@ -19,8 +19,8 @@ export default function ManifestationFocusSelector({ themes, activeId, onSelect 
   }, []);
 
   const wrapperStyle = landscape
-    ? { right: "max(10px, env(safe-area-inset-right, 0px))", top: "calc(82px + env(safe-area-inset-top, 0px))", width: 168 }
-    : { right: "max(10px, env(safe-area-inset-right, 0px))", top: "calc(128px + env(safe-area-inset-top, 0px))", width: "min(168px, calc(48vw - 10px))" };
+    ? { right: "max(24px, calc(env(safe-area-inset-right, 0px) + 18px))", top: "calc(84px + env(safe-area-inset-top, 0px))", width: 160 }
+    : { right: "max(20px, calc(env(safe-area-inset-right, 0px) + 14px))", top: "calc(128px + env(safe-area-inset-top, 0px))", width: "min(160px, calc(46vw - 14px))" };
 
   return (
     <div className="absolute z-30 pointer-events-auto" style={wrapperStyle}>
