@@ -390,11 +390,15 @@ export function createJukebox(scene) {
 /**
  * animateJukebox — called every frame from CityCanvas render loop.
  */
-export function animateJukebox(scene, t, beat) {
+export function animateJukebox(scene, t, beat, quality = "full") {
+  const lowQuality = quality === "low";
+  const mediumQuality = quality === "medium";
   // EQ bars bounce with music
   const eqBars = scene.userData.djEqBars;
   if (eqBars) {
-    for (const b of eqBars) {
+    for (let i = 0; i < eqBars.length; i++) {
+      if (lowQuality && i % 2 !== 0) continue;
+      const b = eqBars[i];
       const h = 0.1 + Math.abs(Math.sin(t * 3.8 + b.phase)) * 0.3 + beat * 0.38;
       b.mesh.scale.y = Math.max(0.5, h / 0.14);
       b.mesh.position.y = 0.72 + (h - 0.14) * 0.5;
@@ -403,7 +407,8 @@ export function animateJukebox(scene, t, beat) {
   const eqMats = scene.userData.djEqBarMats;
   if (eqMats) {
     for (let i = 0; i < eqMats.length; i++) {
-      eqMats[i].opacity = 0.5 + beat * 0.48 + Math.sin(t * 4.2 + i * 0.6) * 0.15;
+      if (lowQuality && i % 2 !== 0) continue;
+      eqMats[i].opacity = 0.5 + beat * (lowQuality ? 0.25 : 0.48) + Math.sin(t * 4.2 + i * 0.6) * (lowQuality ? 0.06 : 0.15);
     }
   }
 
@@ -433,13 +438,13 @@ export function animateJukebox(scene, t, beat) {
     const purple = new THREE.Color("#C43BFF");
     for (let i = 0; i < trimMats.length; i++) {
       trimMats[i].color.copy(i % 2 === 0 ? cyan : purple).lerp(i % 2 === 0 ? purple : cyan, shift);
-      trimMats[i].opacity = 0.5 + beat * 0.42;
+        trimMats[i].opacity = 0.5 + beat * (lowQuality ? 0.2 : 0.42);
     }
   }
 
   // Light beams
   const beamMats = scene.userData.djBeamMats;
-  if (beamMats) {
+  if (beamMats && !lowQuality) {
     for (let i = 0; i < beamMats.length; i++) {
       beamMats[i].opacity = 0.04 + beat * 0.16 + Math.sin(t * 1.6 + i) * 0.02;
     }
@@ -455,8 +460,9 @@ export function animateJukebox(scene, t, beat) {
 
   // Lights — pulse with beat
   const cl = scene.userData.djLightCyan;
-  if (cl) cl.intensity = 3.5 + beat * 4.5 + Math.sin(t * 2.2) * 0.6;
+  const lightScale = lowQuality ? 0.55 : mediumQuality ? 0.75 : 1;
+  if (cl) cl.intensity = (3.5 + beat * 4.5 + Math.sin(t * 2.2) * 0.6) * lightScale;
 
   const pl = scene.userData.djLightPurple;
-  if (pl) pl.intensity = 1.8 + beat * 3.0 + Math.sin(t * 1.7 + 1.2) * 0.5;
+  if (pl) pl.intensity = (1.8 + beat * 3.0 + Math.sin(t * 1.7 + 1.2) * 0.5) * lightScale;
 }

@@ -1457,7 +1457,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Distance-gate zone animations on mobile — skip if player is far away
         if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0) animateZenBeach(scene, t, audioBeat);
         // Dance floor — throttle on mobile/low, only when near. Audio zone logic remains separate and always active.
-        if (!mobileQuality ? true : (nearDanceFloor && frameRef.current % (lowQuality ? 6 : 4) === 0)) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
+        const danceFloorPerf = lowQuality ? "low" : mobileQuality ? "medium" : "full";
+        if (!mobileQuality ? true : (nearDanceFloor && frameRef.current % (lowQuality ? 6 : 4) === 0)) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0, danceFloorPerf);
         // Crystal Zone — TV Smooth: skip when >25u away; always animate when active
         const crystalDx = px - (-26), crystalDz = pz - (-14);
         const crystalDist = Math.sqrt(crystalDx * crystalDx + crystalDz * crystalDz);
@@ -1465,7 +1466,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           ? (crystalDist < 25 || scene.userData.crystalZone?.activated)
           : (!mobileQuality || crystalDist < 28 || frameRef.current % (lowQuality ? 10 : 4) === 0);
         if (crystalGate) animateCrystalZone(scene, t, dt, px, pz, tvSmooth || lowQuality);
-        if (!mobileQuality || nearDanceFloor || frameRef.current % (lowQuality ? 8 : 4) === 0) animateJukebox(scene, t, audioBeat);
+        if (!mobileQuality || nearDanceFloor || frameRef.current % (lowQuality ? 8 : 4) === 0) animateJukebox(scene, t, audioBeat, danceFloorPerf);
         if (scene.userData.shopGroup && (!mobileQuality || frameRef.current % (lowQuality ? 8 : 3) === 0)) animateShop(scene.userData.shopGroup, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──

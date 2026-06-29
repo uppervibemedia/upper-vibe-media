@@ -19,19 +19,22 @@ const {
  * Stores materials in scene.userData.danceFloorMats for animation.
  */
 export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const danceFloorTiles = [];
   const floorTileMats = [];
   const ringMats = [];
   const sweepMats = [];
 
   // ── Animated light tiles — grid of squares across the plaza ──
-  const TILE_SIZE = 0.7;
-  const TILE_GAP = 0.25;
+  // Mobile uses fewer, larger visual tiles so the dance floor stays lively without making controls feel heavy.
+  const TILE_SIZE = isMobile ? 0.95 : 0.7;
+  const TILE_GAP = isMobile ? 0.42 : 0.25;
   const TILE_RADIUS = PLAZA_R - 1.5;
   const tileColors = ["#00D4F0", "#C43BFF", "#E040FB", "#00E5FF", "#A078FF", "#EDB84A", "#FF6EC7", "#4DF0FF"];
 
-  for (let row = -7; row <= 7; row++) {
-    for (let col = -7; col <= 7; col++) {
+  const tileSpan = isMobile ? 5 : 7;
+  for (let row = -tileSpan; row <= tileSpan; row++) {
+    for (let col = -tileSpan; col <= tileSpan; col++) {
       const tx = row * (TILE_SIZE + TILE_GAP);
       const tz = PLAZA_Z + col * (TILE_SIZE + TILE_GAP);
       const dist = Math.sqrt(tx * tx + (tz - PLAZA_Z) * (tz - PLAZA_Z));
@@ -75,7 +78,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
 
   for (const rd of ringDefs) {
     const ring = new Mesh(
-      new RingGeometry(rd.inner, rd.outer, 64),
+      new RingGeometry(rd.inner, rd.outer, isMobile ? 36 : 64),
       new MeshBasicMaterial({
         color: new Color(rd.color),
         depthWrite: false,
@@ -93,8 +96,9 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
   }
 
   // ── Light sweep beams — thin glowing strips that arc across the floor ──
-  for (let i = 0; i < 6; i++) {
-    const sweepGeo = new RingGeometry(PLAZA_R * 0.3 + i * 0.9, PLAZA_R * 0.3 + i * 0.9 + 0.12, 64);
+  const sweepCount = isMobile ? 3 : 6;
+  for (let i = 0; i < sweepCount; i++) {
+    const sweepGeo = new RingGeometry(PLAZA_R * 0.3 + i * 0.9, PLAZA_R * 0.3 + i * 0.9 + 0.12, isMobile ? 32 : 64);
     const sweepMat = new MeshBasicMaterial({
       color: new Color(["#00E5FF", "#C43BFF", "#EDB84A", "#FF6EC7", "#A078FF", "#00D4F0"][i]),
       depthWrite: false,
@@ -113,7 +117,7 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
   }
 
   // ── Edge glow dots — perimeter of floor ───────────────────
-  const dotCount = 36;
+  const dotCount = isMobile ? 20 : 36;
   const dotMats = [];
   for (let i = 0; i < dotCount; i++) {
     const angle = (i / dotCount) * Math.PI * 2;
@@ -175,11 +179,13 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
  * animateDanceFloor — music-reactive floor with wave patterns,
  * light sweeps, rhythmic tile flashes, and ring pulses.
  */
-export function animateDanceFloor(scene, t, audioBeat, audioIntensity) {
+export function animateDanceFloor(scene, t, audioBeat, audioIntensity, quality = "full") {
   const rings = scene.userData._danceRings;
   const sweeps = scene.userData._danceSweeps;
   const dots = scene.userData._danceDots;
   const tileData = scene.userData._danceFloorTileData;
+  const lowQuality = quality === "low";
+  const mediumQuality = quality === "medium";
 
   const hasMusic = audioIntensity > 0.05;
   const beatPulse = hasMusic
@@ -190,7 +196,7 @@ export function animateDanceFloor(scene, t, audioBeat, audioIntensity) {
   if (rings) {
     for (let i = 0; i < rings.length; i++) {
       const r = rings[i];
-      if (!r.mat?.opacity !== undefined) continue;
+      if (r.mat?.opacity === undefined) continue;
       const wave = Math.sin(t * 1.2 + i * 0.7) * 0.5 + 0.5;
       r.mat.opacity = r.baseOpacity * (0.7 + beatPulse * 0.5 + wave * 0.15);
     }
@@ -205,12 +211,12 @@ export function animateDanceFloor(scene, t, audioBeat, audioIntensity) {
       sw.rotation.z += 0.003 * s.sweep.userData.sweepSpeed;
       // Pulse opacity with beat
       const sweepWave = Math.sin(t * s.sweep.userData.sweepSpeed + s.phase) * 0.5 + 0.5;
-      s.mat.opacity = sweepWave * s.sweep.userData.baseOpacity * beatPulse;
+      s.mat.opacity = sweepWave * s.sweep.userData.baseOpacity * beatPulse * (lowQuality ? 0.45 : 1);
     }
   }
 
   // ── Edge dots — sequential glowing ─────────────────────
-  if (dots) {
+  if (dots && !lowQuality) {
     for (const d of dots) {
       if (!d.mat?.opacity !== undefined) continue;
       const wave = Math.sin(t * 2.5 + d.dot.userData.phase) * 0.5 + 0.5;
@@ -221,7 +227,9 @@ export function animateDanceFloor(scene, t, audioBeat, audioIntensity) {
   // ── Tile grid — music-reactive wave patterns ────────────
   // Flash individual tiles in wave-like patterns based on beat
   if (tileData) {
-    for (const td of tileData) {
+    for (let i = 0; i < tileData.length; i++) {
+      if ((lowQuality && i % 3 !== 0) || (mediumQuality && i % 2 !== 0)) continue;
+      const td = tileData[i];
       if (!td.mat?.color) continue;
       const tile = td.tile;
       const p = tile.userData;
@@ -232,7 +240,7 @@ export function animateDanceFloor(scene, t, audioBeat, audioIntensity) {
 
       // Brighten the tile based on music — 50% brighter base
       const baseColor = new Color(p.baseColor);
-      const brightColor = new Color(p.baseColor).multiplyScalar(2.5 + audioBeat * 2.5);
+      const brightColor = new Color(p.baseColor).multiplyScalar((lowQuality ? 1.8 : 2.5) + audioBeat * (lowQuality ? 1.2 : 2.5));
       td.mat.color.copy(baseColor).lerp(brightColor, intensity);
       td.mat.opacity = 0.28 + intensity * 0.65;
     }
