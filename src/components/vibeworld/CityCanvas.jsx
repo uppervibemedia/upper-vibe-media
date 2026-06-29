@@ -521,6 +521,12 @@ export function buildPark(scene) {
     haze.renderOrder = 0;
     haze.name = "iosBeachHorizonHaze";
     scene.add(haze);
+
+    const northHaze = new Mesh(new PlaneGeometry(120, 28), hazeMat.clone());
+    northHaze.position.set(0, 10, SKYLINE_NORTH - 18);
+    northHaze.renderOrder = 0;
+    northHaze.name = "iosNorthSkylineHaze";
+    scene.add(northHaze);
   }
 
   // ═════════════════════════════════════════════════════════════
