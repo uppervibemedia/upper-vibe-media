@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, X, Mic2, Music4, Radio } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import ShareVibeButton from "../shared/ShareVibeButton";
 import ThumbsDownButton from "../shared/ThumbsDownButton";
 import { Slider } from "@/components/ui/slider";
@@ -12,10 +11,8 @@ import { RADIO_THEMES } from "../radio/RadioThemePicker";
 import usePageVisible from "@/hooks/usePageVisible";
 import { useAuth } from "@/lib/AuthContext";
 import { subscribe as ramSubscribe, getState as ramGetState, playMyVibeTrack } from "@/lib/radioAudioManager";
-import { getPublishedTracks } from "@/lib/trackCache";
 
 export default function AudioPlayer() {
-  const navigate = useNavigate();
   const {
     currentTrack,
     isPlaying,
@@ -27,8 +24,6 @@ export default function AudioPlayer() {
     skipTrack,
     lastTimeRef,
     sourceType,
-    queue,
-    playTrack,
   } = usePlayer();
 
   const { currentRadioSong, startMyVibeQueue, nextRadioSong, prevRadioSong } = useRadio();
@@ -156,7 +151,6 @@ export default function AudioPlayer() {
 
   // ── RAM state subscription ──────────────────────────────────────
   const [ramState, setRamState] = useState(() => ramGetState());
-  const [heroFallbackTrack, setHeroFallbackTrack] = useState(null);
   useEffect(() => ramSubscribe((s) => setRamState(s)), []);
 
   useEffect(() => {
@@ -167,22 +161,13 @@ export default function AudioPlayer() {
     }
   }, [currentRadioSong?.id]);
 
-  useEffect(() => {
-    getPublishedTracks("-created_date", 50)
-      .then((tracks) => {
-        const playable = tracks.find((t) => t.audio_url && t.cover_url && t.status === "published")
-          || tracks.find((t) => t.audio_url && t.status === "published");
-        if (playable) setHeroFallbackTrack(playable);
-      })
-      .catch(() => {});
-  }, []);
-
   // Derive effective display track and playing state from all sources.
-  // Priority: My Vibe current/queue → active global song → last My Vibe track → homepage fallback.
+  // Priority: My Vibe current/queue → active global song → last My Vibe track.
+  // Page discovery songs, including /start newest songs, are not global defaults.
   const ramActive = ramState.activeMode !== null;
   const isRamRadio = ramActive && ramState.audioType === "liveStream";
   const myVibeTrack = !isRamRadio ? ramState.currentTrack : null;
-  const displayTrack = isRamRadio ? null : (myVibeTrack || currentRadioSong || currentTrack || ramState.lastTrack || heroFallbackTrack);
+  const displayTrack = isRamRadio ? null : (myVibeTrack || currentRadioSong || currentTrack || ramState.lastTrack);
   const effectiveIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
 
   // Normalize cover art from various field names

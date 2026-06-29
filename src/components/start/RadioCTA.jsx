@@ -11,6 +11,7 @@ import NewBadge, { NewBadgeOverlay } from "@/components/shared/NewBadge";
 import {
   subscribe as ramSubscribe,
   getState as ramGetState,
+  playMyVibeTrack,
   pauseMyVibe,
   resumeMyVibe,
 } from "@/lib/radioAudioManager";
@@ -131,11 +132,8 @@ export default function RadioCTA() {
     // PlayerContext has a track — toggle
     if (currentTrack) { togglePlay(); return; }
 
-    // Nothing playing — start My Vibe Radio's own queue/recommendation.
-    startMyVibeQueue((firstTrack) => {
-      if (!firstTrack?.audio_url) return;
-      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(firstTrack));
-    });
+    // Nothing playing — user directly chose this Start page song.
+    if (displayTrack?.audio_url) playMyVibeTrack(displayTrack);
   };
 
   const showTrack = displayTrack;
