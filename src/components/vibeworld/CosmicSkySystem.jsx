@@ -752,13 +752,13 @@ export function createCosmicSky(scene) {
   const now0 = performance.now() * 0.001;
   scene.userData.beachFlybyA = {
     ...buildBeachFlybyPlanet(["#0E6A78", "#16A0A8", "#40E0D0", "#B8FFF4"], "rgba(70,230,210,0.42)", isMobile ? 13 : 18),
-    active: false, life: 0, duration: 28, nextFire: now0 + 5,
+    duration: 28, cycle: 76, baseStart: now0 + 5,
     startCX: -54, endCX: 54, cy: 9, cz: 62,
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
   scene.userData.beachFlybyB = {
     ...buildBeachFlybyPlanet(["#8A3C10", "#C87828", "#FFC26A", "#FFF0B8"], "rgba(255,190,80,0.38)", isMobile ? 12 : 17),
-    active: false, life: 0, duration: 28, nextFire: now0 + 43,
+    duration: 28, cycle: 76, baseStart: now0 + 43,
     startCX: 54, endCX: -54, cy: 11, cz: 64,
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
@@ -954,27 +954,31 @@ export function animateCosmicSky(scene, camera, t, dt) {
   }
 
   // ── Beach flyby planets — alternating low passes over the ocean horizon ───────
-  function animateBeachFlyby(fb, partner, inBeachZone) {
+  function animateBeachFlyby(fb, shouldShow) {
     if (!fb) return;
-    if (!inBeachZone) {
-      fb.active = false;
-      fb.life = 0;
+
+    // Continuous global timeline: never reset life/active based on camera, LOD, or zone visibility.
+    // If hidden, the sprite is only faded out; when visible again it resumes at the correct world-time position.
+    const cycle = fb.cycle || 76;
+    const elapsed = t - fb.baseStart;
+    if (elapsed < 0) {
       fb.mat.opacity = 0;
       fb.sprite.position.set(9999, 9999, 9999);
       return;
     }
-    if (!fb.active) {
-      if (t >= fb.nextFire && !partner?.active) {
-        fb.active = true;
-        fb.life = 0;
-      } else return;
+
+    const phase = ((elapsed % cycle) + cycle) % cycle;
+    const activePass = phase < fb.duration;
+    if (!activePass) {
+      fb.mat.opacity = 0;
+      fb.sprite.position.set(9999, 9999, 9999);
+      return;
     }
 
-    fb.life += dt;
-    const prog = Math.min(fb.life / fb.duration, 1);
+    const prog = Math.min(phase / fb.duration, 1);
     const fadeIn = Math.min(prog / fb._fadeInEnd, 1);
     const fadeOut = prog > fb._fadeOutStart ? Math.max(0, 1 - (prog - fb._fadeOutStart) / (1 - fb._fadeOutStart)) : 1;
-    fb.mat.opacity = Math.min(fadeIn, fadeOut) * 0.72;
+    fb.mat.opacity = shouldShow ? Math.min(fadeIn, fadeOut) * 0.72 : 0;
 
     const ox = fb.startCX + (fb.endCX - fb.startCX) * prog;
     const centerProximity = Math.max(0, 1 - Math.abs(ox) / 30);
@@ -987,22 +991,14 @@ export function animateCosmicSky(scene, camera, t, dt) {
       camera.position.y + fb.cy + centerLift + pitchLift,
       camera.position.z + fb.cz
     );
-
-    if (prog >= 1) {
-      fb.active = false;
-      fb.life = 0;
-      fb.mat.opacity = 0;
-      fb.sprite.position.set(9999, 9999, 9999);
-      fb.nextFire = t + 76;
-      if (partner) partner.nextFire = t + 10;
-    }
   }
 
   const beachFlybyA = scene.userData.beachFlybyA;
   const beachFlybyB = scene.userData.beachFlybyB;
-  const inBeachFlybyZone = !scene.userData._hidePlanets && !scene.userData._ferrisRiding && camera.position.z > 8;
-  animateBeachFlyby(beachFlybyA, beachFlybyB, inBeachFlybyZone);
-  animateBeachFlyby(beachFlybyB, beachFlybyA, inBeachFlybyZone);
+  const playerZForBeachFlyby = scene.userData._playerZ ?? camera.position.z;
+  const showBeachFlyby = !scene.userData._hidePlanets && !scene.userData._ferrisRiding && playerZForBeachFlyby > 8;
+  animateBeachFlyby(beachFlybyA, showBeachFlyby);
+  animateBeachFlyby(beachFlybyB, showBeachFlyby);
 
   // ── Mega Asteroid — every 120s ────────────────────────────────────────────────
   if (!updateSlow && isMobile) return;
