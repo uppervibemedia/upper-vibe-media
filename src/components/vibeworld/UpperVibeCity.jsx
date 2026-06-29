@@ -26,6 +26,7 @@ import DirectChatPanel from "@/components/vibeworld/panels/DirectChatPanel";
 import AvatarCustomizerPanel from "@/components/vibeworld/AvatarCustomizerPanel";
 
 import useVibeCityAudioMachine from "@/hooks/useVibeCityAudioMachine";
+import { pickFreshPersonalizedTrack } from "@/lib/feedEngine";
 import {
   subscribe as ramSubscribe,
   getState as ramGetState,
@@ -300,21 +301,12 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, []);
 
   // Determine what the city media player should show.
-  // Priority: RAM active track → RAM last track → PlayerContext track → default city track.
+  // Priority: RAM active track → RAM last track → PlayerContext track → shuffled My Vibe default.
   // ── Default track for spawned player (no music was ever played) ─────────
   const [defaultCityTrack, setDefaultCityTrack] = useState(null);
-  useEffect(() => {
-    if (currentTrack || ramState.currentTrack || ramState.lastTrack || defaultCityTrack) return;
-    // Fetch the most recent published track as a display-only default (never auto-play)
-    base44.entities.Track.filter({ status: "published" }, "-created_date", 1)
-      .then((tracks) => {
-        if (tracks?.length > 0) setDefaultCityTrack(tracks[0]);
-      })
-      .catch(() => {});
-  }, []);
 
   const ramActive = ramState.activeMode !== null;
-  const cityTrack = ramState.currentTrack || ramState.lastTrack || defaultCityTrack || currentTrack;
+  const cityTrack = ramState.currentTrack || ramState.lastTrack || currentTrack || defaultCityTrack;
   const cityIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
 
   const handleCityTogglePlay = useCallback(() => {
@@ -344,6 +336,15 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, [ramState.activeMode, nextRadioSong, skipTrack]);
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
+
+  useEffect(() => {
+    if (currentTrack || ramState.currentTrack || ramState.lastTrack || defaultCityTrack || feedLoading) return;
+    const pool = sortedTracks?.length > 0
+      ? sortedTracks
+      : (allTracks || []).filter((t) => t.status === "published" && t.audio_url);
+    const picked = pickFreshPersonalizedTrack(pool);
+    if (picked) setDefaultCityTrack(picked);
+  }, [currentTrack, ramState.currentTrack, ramState.lastTrack, defaultCityTrack, feedLoading, sortedTracks, allTracks]);
 
   // ── Wallet + inventory: load from server on entry ─────────
   useEffect(() => {

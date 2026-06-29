@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { getPublishedTracks } from "@/lib/trackCache";
-import { buildUserProfile, buildCommunityIndex, scoreTrackForUser } from "@/lib/feedEngine";
+import { buildUserProfile, buildCommunityIndex, scoreTrackForUser, shuffleTopPersonalizedTracks } from "@/lib/feedEngine";
 
 /**
  * usePersonalizedFeed — fetches user behavior data and builds a scored,
@@ -72,13 +72,14 @@ export default function usePersonalizedFeed(userId) {
     });
 
     if (profile.isNewUser) {
-      return scored.sort((a, b) => {
+      const ranked = scored.sort((a, b) => {
         const ca = communityIdx[a.id] || { plays: 0, favs: 0, dls: 0 };
         const cb = communityIdx[b.id] || { plays: 0, favs: 0, dls: 0 };
         return (cb.plays * 0.05 + cb.favs * 20 + cb.dls * 5) - (ca.plays * 0.05 + ca.favs * 20 + ca.dls * 5);
       });
+      return shuffleTopPersonalizedTracks(ranked);
     }
-    return scored.sort((a, b) => b._score - a._score);
+    return shuffleTopPersonalizedTracks(scored.sort((a, b) => b._score - a._score));
   }, [allTracks, profile, communityIdx]);
 
   return { sortedTracks, loading, profile };

@@ -27,6 +27,31 @@ export const MOOD_META = {
   scattered:   { emoji: "🌀", label: "Scattered",   color: "#FB923C" },
 };
 
+function rememberFreshFirstTrack(key, tracks) {
+  if (!tracks?.length) return tracks || [];
+  let lastId = null;
+  try { lastId = localStorage.getItem(key); } catch {}
+  const result = [...tracks];
+  if (result.length > 1 && result[0]?.id === lastId) {
+    const swapIndex = result.findIndex((t, idx) => idx > 0 && t.id !== lastId);
+    if (swapIndex > 0) [result[0], result[swapIndex]] = [result[swapIndex], result[0]];
+  }
+  try { localStorage.setItem(key, result[0]?.id || ""); } catch {}
+  return result;
+}
+
+export function shuffleTopPersonalizedTracks(tracks, key = "uv_last_my_vibe_first_track") {
+  if (!tracks?.length) return tracks || [];
+  const topCount = Math.min(12, Math.max(4, Math.ceil(tracks.length * 0.25)));
+  const top = [...tracks.slice(0, topCount)].sort(() => Math.random() - 0.5);
+  return rememberFreshFirstTrack(key, [...top, ...tracks.slice(topCount)]);
+}
+
+export function pickFreshPersonalizedTrack(tracks, key = "uv_last_city_default_track") {
+  const shuffled = shuffleTopPersonalizedTracks(tracks || [], key);
+  return shuffled[0] || null;
+}
+
 // ── Extract user behavior profile from raw data ─────────────────────────────
 export function buildUserProfile({
   userStreams,    // SongStream[] for this user
@@ -262,7 +287,7 @@ export function buildPersonalizedFeed({
   }).sort((a, b) => b._score - a._score);
 
   // For new users — sort by community score (trending)
-  const finalTracks = profile.isNewUser
+  const rankedTracks = profile.isNewUser
     ? [...scoredTracks].sort((a, b) => {
         const ca = communityIdx[a.id] || { plays: 0, favs: 0, dls: 0 };
         const cb = communityIdx[b.id] || { plays: 0, favs: 0, dls: 0 };
@@ -271,6 +296,7 @@ export function buildPersonalizedFeed({
         return sb - sa;
       })
     : scoredTracks;
+  const finalTracks = shuffleTopPersonalizedTracks(rankedTracks);
 
   // Score visualizers
   const scoredViz = (allViz || [])
