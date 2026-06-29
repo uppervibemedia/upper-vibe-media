@@ -731,7 +731,7 @@ export default function WorldHUD({
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); setVisualizerOpen(true); }}
+              onClick={() => { hapticTap(); onDomeOpenChange?.(true); setVisualizerOpen(true); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
                 background: "linear-gradient(135deg,#7C3AED,#A078FF)",
@@ -962,7 +962,7 @@ export default function WorldHUD({
       {/* ── Visualizer Panel (fullscreen) ─────────────────────── */}
       <VisualizerPanel
         open={visualizerOpen}
-        onClose={() => { setVisualizerOpen(false); onExitDome?.(); }}
+        onClose={() => { setVisualizerOpen(false); onDomeOpenChange?.(false); onExitDome?.(); }}
         currentTrack={domeTrack}
         isTrackPlaying={domeIsPlaying}
       />
