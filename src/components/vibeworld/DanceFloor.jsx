@@ -7,6 +7,10 @@ const {
   Color,
   MeshBasicMaterial,
   Mesh,
+  InstancedMesh,
+  Matrix4,
+  Quaternion,
+  Vector3,
   CanvasTexture,
   LinearFilter,
   SpriteMaterial,
@@ -24,11 +28,13 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
   const ringMats = [];
   const sweepMats = [];
 
-  // ── Animated light tiles — grid of squares across the plaza ──
+  // ── Animated light tiles — one instanced mesh instead of hundreds of objects ──
   const TILE_SIZE = 0.7;
   const TILE_GAP = 0.25;
   const TILE_RADIUS = PLAZA_R - 1.5;
   const tileColors = ["#00D4F0", "#C43BFF", "#E040FB", "#00E5FF", "#A078FF", "#EDB84A", "#FF6EC7", "#4DF0FF"];
+  const tileBaseColors = tileColors.map((c) => new Color(c));
+  const tileInstances = [];
 
   for (let row = -7; row <= 7; row++) {
     for (let col = -7; col <= 7; col++) {
@@ -36,33 +42,36 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
       const tz = PLAZA_Z + col * (TILE_SIZE + TILE_GAP);
       const dist = Math.sqrt(tx * tx + (tz - PLAZA_Z) * (tz - PLAZA_Z));
       if (dist > TILE_RADIUS) continue;
-
       const colorIdx = (row + col + 12) % tileColors.length;
-      const tileGeo = new PlaneGeometry(TILE_SIZE, TILE_SIZE);
-      const tileMat = new MeshBasicMaterial({
-        color: new Color(tileColors[colorIdx]),
-        depthWrite: false,
-        transparent: true,
-        opacity: 0.42,
-        side: THREE.DoubleSide,
-      });
-
-      const tile = new Mesh(tileGeo, tileMat);
-      tile.rotation.x = -Math.PI / 2;
-      tile.position.set(tx, 0.007, tz);
-      tile.userData = {
-        isDanceTile: true,
-        baseX: tx,
-        baseZ: tz,
-        phase: Math.random() * Math.PI * 2,
-        colorIdx,
-        baseColor: tileColors[colorIdx],
-      };
-      scene.add(tile);
-      danceFloorTiles.push(tile);
-      floorTileMats.push({ mat: tileMat, tile });
+      tileInstances.push({ x: tx, z: tz, phase: (row * 0.73 + col * 0.41) % (Math.PI * 2), colorIdx });
     }
   }
+
+  const tileGeo = new PlaneGeometry(TILE_SIZE, TILE_SIZE);
+  const tileMat = new MeshBasicMaterial({
+    vertexColors: true,
+    depthWrite: false,
+    transparent: true,
+    opacity: 0.48,
+    side: THREE.DoubleSide,
+  });
+  const tileMesh = new InstancedMesh(tileGeo, tileMat, tileInstances.length);
+  tileMesh.name = "danceFloorInstancedTiles";
+  tileMesh.renderOrder = 2;
+  const tileMatrix = new Matrix4();
+  const tileQuat = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
+  const tileScale = new Vector3(1, 1, 1);
+  for (let i = 0; i < tileInstances.length; i++) {
+    const tile = tileInstances[i];
+    tileMatrix.compose(new Vector3(tile.x, 0.007, tile.z), tileQuat, tileScale);
+    tileMesh.setMatrixAt(i, tileMatrix);
+    tileMesh.setColorAt(i, tileBaseColors[tile.colorIdx]);
+  }
+  tileMesh.instanceMatrix.needsUpdate = true;
+  if (tileMesh.instanceColor) tileMesh.instanceColor.needsUpdate = true;
+  scene.add(tileMesh);
+  danceFloorTiles.push(tileMesh);
+  floorTileMats.push({ mesh: tileMesh, instances: tileInstances, baseColors: tileBaseColors });
 
   // ── Concentric pulse rings — brighter, more visible ──────────
   const ringDefs = [
@@ -112,26 +121,37 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
     sweepMats.push({ mat: sweepMat, sweep, phase: i * 1.1 });
   }
 
-  // ── Edge glow dots — perimeter of floor ───────────────────
+  // ── Edge glow dots — one instanced mesh around perimeter ───────────────────
   const dotCount = 36;
   const dotMats = [];
+  const dotGeo = new BoxGeometry(0.08, 0.02, 0.12);
+  const dotMat = new MeshBasicMaterial({
+    vertexColors: true,
+    depthWrite: false,
+    transparent: true,
+    opacity: 0.50,
+  });
+  const dotMesh = new InstancedMesh(dotGeo, dotMat, dotCount);
+  dotMesh.name = "danceFloorInstancedDots";
+  dotMesh.renderOrder = 2;
+  const dotMatrix = new Matrix4();
+  const dotQuat = new Quaternion();
+  const dotScale = new Vector3(1, 1, 1);
+  const dotData = [];
   for (let i = 0; i < dotCount; i++) {
     const angle = (i / dotCount) * Math.PI * 2;
     const dx = Math.cos(angle) * TILE_RADIUS;
     const dz = Math.sin(angle) * TILE_RADIUS;
-    const dotGeo = new BoxGeometry(0.08, 0.02, 0.12);
-    const dotMat = new MeshBasicMaterial({
-      color: new Color(tileColors[i % tileColors.length]),
-      depthWrite: false,
-      transparent: true,
-      opacity: 0.50,
-    });
-    const dot = new Mesh(dotGeo, dotMat);
-    dot.position.set(PLAZA_X + dx, 0.006, PLAZA_Z + dz);
-    dot.userData = { phase: i * 0.3, baseOpacity: 0.50 };
-    scene.add(dot);
-    dotMats.push({ mat: dotMat, dot });
+    dotQuat.setFromAxisAngle(new Vector3(0, 1, 0), -angle);
+    dotMatrix.compose(new Vector3(PLAZA_X + dx, 0.006, PLAZA_Z + dz), dotQuat, dotScale);
+    dotMesh.setMatrixAt(i, dotMatrix);
+    dotMesh.setColorAt(i, tileBaseColors[i % tileBaseColors.length]);
+    dotData.push({ phase: i * 0.3, colorIdx: i % tileBaseColors.length });
   }
+  dotMesh.instanceMatrix.needsUpdate = true;
+  if (dotMesh.instanceColor) dotMesh.instanceColor.needsUpdate = true;
+  scene.add(dotMesh);
+  dotMats.push({ mesh: dotMesh, mat: dotMat, dots: dotData, baseColors: tileBaseColors });
 
   // ── "DANCE FLOOR" glowing label ────────────────────────────
   const dfCanvas = document.createElement("canvas");
@@ -160,9 +180,9 @@ export function addDanceFloor(scene, PLAZA_X, PLAZA_Z, PLAZA_R) {
   // ── Store for animation loop ──────────────────────────────
   scene.userData.danceFloorMats = [
     ...ringMats.map(r => r.mat),
-    ...floorTileMats.map(t => t.mat),
+    tileMat,
     ...sweepMats.map(s => s.mat),
-    ...dotMats.map(d => d.mat),
+    dotMat,
   ];
   scene.userData._danceFloorTiles = danceFloorTiles;
   scene.userData._danceRings = ringMats;
@@ -190,7 +210,7 @@ export function animateDanceFloor(scene, t, audioBeat, audioIntensity) {
   if (rings) {
     for (let i = 0; i < rings.length; i++) {
       const r = rings[i];
-      if (!r.mat?.opacity !== undefined) continue;
+      if (r.mat?.opacity === undefined) continue;
       const wave = Math.sin(t * 1.2 + i * 0.7) * 0.5 + 0.5;
       r.mat.opacity = r.baseOpacity * (0.7 + beatPulse * 0.5 + wave * 0.15);
     }
@@ -209,33 +229,35 @@ export function animateDanceFloor(scene, t, audioBeat, audioIntensity) {
     }
   }
 
-  // ── Edge dots — sequential glowing ─────────────────────
-  if (dots) {
-    for (const d of dots) {
-      if (!d.mat?.opacity !== undefined) continue;
-      const wave = Math.sin(t * 2.5 + d.dot.userData.phase) * 0.5 + 0.5;
-      d.mat.opacity = d.dot.userData.baseOpacity * (0.5 + beatPulse * 0.5 + wave * 0.25);
+  // ── Edge dots — sequential glow through instanced colors ─────────────────────
+  if (dots?.[0]?.mesh) {
+    const d = dots[0];
+    const scratch = scene.userData._danceScratchColor || (scene.userData._danceScratchColor = new Color());
+    for (let i = 0; i < d.dots.length; i++) {
+      const dot = d.dots[i];
+      const wave = Math.sin(t * 2.5 + dot.phase) * 0.5 + 0.5;
+      scratch.copy(d.baseColors[dot.colorIdx]).multiplyScalar(0.75 + beatPulse * 0.35 + wave * 0.18);
+      d.mesh.setColorAt(i, scratch);
     }
+    if (d.mesh.instanceColor) d.mesh.instanceColor.needsUpdate = true;
+    d.mat.opacity = 0.42 + beatPulse * 0.12;
   }
 
-  // ── Tile grid — music-reactive wave patterns ────────────
-  // Flash individual tiles in wave-like patterns based on beat
-  if (tileData) {
-    for (const td of tileData) {
-      if (!td.mat?.color) continue;
-      const tile = td.tile;
-      const p = tile.userData;
-
-      // Each tile pulses to its own phase + the global beat
+  // ── Tile grid — music-reactive wave patterns via one instanced mesh ───────────
+  if (tileData?.[0]?.mesh) {
+    const td = tileData[0];
+    const base = scene.userData._danceBaseScratch || (scene.userData._danceBaseScratch = new Color());
+    const bright = scene.userData._danceBrightScratch || (scene.userData._danceBrightScratch = new Color());
+    for (let i = 0; i < td.instances.length; i++) {
+      const p = td.instances[i];
       const tileWave = Math.sin(t * 1.5 + p.phase + audioBeat * 3) * 0.5 + 0.5;
       const intensity = Math.max(0, tileWave * beatPulse * 0.7);
-
-      // Brighten the tile based on music — 50% brighter base
-      const baseColor = new Color(p.baseColor);
-      const brightColor = new Color(p.baseColor).multiplyScalar(2.5 + audioBeat * 2.5);
-      td.mat.color.copy(baseColor).lerp(brightColor, intensity);
-      td.mat.opacity = 0.28 + intensity * 0.65;
+      base.copy(td.baseColors[p.colorIdx]);
+      bright.copy(base).multiplyScalar(1.8 + audioBeat * 2.1);
+      td.mesh.setColorAt(i, base.lerp(bright, intensity));
     }
+    if (td.mesh.instanceColor) td.mesh.instanceColor.needsUpdate = true;
+    td.mesh.material.opacity = 0.34 + Math.min(0.35, beatPulse * 0.18);
   }
 
   // ── Also pulse the central UVC ring materials ────────────
