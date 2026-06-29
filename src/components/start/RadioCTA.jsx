@@ -1,13 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Play, Pause, Music2 } from "lucide-react";
+import { Play, Pause, SkipForward, Music2 } from "lucide-react";
 import FreqBadge from "@/components/shared/FreqBadge";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
 import { useRadio } from "@/context/RadioContext";
-import { useAuth } from "@/lib/AuthContext";
-import usePersonalizedFeed from "@/hooks/usePersonalizedFeed";
 import NewBadge, { NewBadgeOverlay } from "@/components/shared/NewBadge";
 import {
   subscribe as ramSubscribe,
@@ -16,11 +14,6 @@ import {
   pauseMyVibe,
   resumeMyVibe,
 } from "@/lib/radioAudioManager";
-import {
-  buildStartCtaPool,
-  pickRotatingStartCtaTrack,
-  rememberStartCtaTrack,
-} from "@/lib/startCtaRotation";
 
 const BLUE = "0,160,220";
 
@@ -33,7 +26,7 @@ function MusicBars({ color = `rgb(${BLUE})`, active = false }) {
         @keyframes rcBar3 { 0%,100% { height: 5px } 50% { height: 13px } }
         @keyframes rcBar4 { 0%,100% { height: 12px } 50% { height: 4px } }
       `}</style>
-      <span style={{ display: "inline-flex", alignItems: "flex-end", gap: "3px", height: "18px" }}>
+      <span style={{ display: "inline-flex", alignItems: "flex-end", gap: 3, height: 18 }}>
         {["rcBar1", "rcBar2", "rcBar3", "rcBar4"].map((anim, i) => (
           <span key={anim} style={{ width: 3, borderRadius: 2, background: color, height: 6, animation: `${anim} ${active ? "0.55s" : "2.2s"} ease-in-out infinite`, animationDelay: `${i * 0.09}s`, opacity: active ? 1 : 0.5 }} />
         ))}
@@ -72,12 +65,9 @@ function NewestTrackCard({ track, onPlay, isPlaying }) {
 
 export default function RadioCTA() {
   const [newestTracks, setNewestTracks] = useState([]);
-  const [allStartTracks, setAllStartTracks] = useState([]);
-  const [ctaTrack, setCtaTrack] = useState(null);
+  const [myVibePreviewTrack, setMyVibePreviewTrack] = useState(null);
   const { currentTrack, isPlaying, togglePlay } = usePlayer();
-  const { jumpToSong } = useRadio();
-  const { user } = useAuth();
-  const { sortedTracks, loading: feedLoading } = usePersonalizedFeed(user?.id);
+  const { tracksLoaded, currentRadioSong, startMyVibeQueue, nextRadioSong, jumpToSong, upNext } = useRadio();
   const [ramState, setRamState] = useState(() => ramGetState());
 
   useEffect(() => ramSubscribe((state) => setRamState(state)), []);
@@ -85,47 +75,33 @@ export default function RadioCTA() {
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 120)
+      base44.entities.Track.filter({ status: "published" }, "-created_date", 24)
         .then((rows) => {
           if (cancelled) return;
-          const playable = (rows || []).filter((track) => track.audio_url);
-          setAllStartTracks(playable);
-          setNewestTracks(playable.filter((track) => track.cover_url).slice(0, 6));
+          setNewestTracks((rows || []).filter((track) => track.audio_url && track.cover_url).slice(0, 6));
         })
         .catch(() => {});
     }, 250);
     return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
-  const ctaPool = useMemo(() => buildStartCtaPool({
-    recommendations: feedLoading ? [] : sortedTracks,
-    allTracks: allStartTracks,
-    newestTracks,
-  }), [feedLoading, sortedTracks, allStartTracks, newestTracks]);
+  useEffect(() => {
+    if (!tracksLoaded || currentRadioSong || myVibePreviewTrack) return;
+    startMyVibeQueue((firstTrack) => setMyVibePreviewTrack(firstTrack || null));
+  }, [tracksLoaded, currentRadioSong, myVibePreviewTrack, startMyVibeQueue]);
 
   useEffect(() => {
-    if (!ctaPool.length) return;
-    const picked = pickRotatingStartCtaTrack(ctaPool);
-    if (!picked) return;
-    setCtaTrack(picked);
-    rememberStartCtaTrack(picked.id);
-  }, [ctaPool]);
+    if (currentRadioSong) setMyVibePreviewTrack(currentRadioSong);
+  }, [currentRadioSong]);
 
   const ramTrack = ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : null;
   const activeTrack = ramTrack || currentTrack || null;
-  const activeIsPlaying = ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : (isPlaying && !!currentTrack);
-  const showTrack = activeTrack || ctaTrack;
-  const showPlaying = !!activeTrack && activeIsPlaying;
-
-  const playTrackThroughGlobalSystem = useCallback((track) => {
-    if (!track?.audio_url) return;
-    rememberStartCtaTrack(track.id);
-    if (jumpToSong) jumpToSong(track, playMyVibeTrack);
-    else playMyVibeTrack(track);
-  }, [jumpToSong]);
+  const sourceTrack = currentRadioSong || myVibePreviewTrack;
+  const showTrack = activeTrack || sourceTrack;
+  const showPlaying = ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : (isPlaying && !!currentTrack);
 
   const handlePlayCta = useCallback(() => {
-    const target = ctaTrack || showTrack;
+    const target = sourceTrack || showTrack;
     if (!target?.audio_url) return;
 
     if (ramState.activeMode === "myVibeRadio" && ramState.currentTrack?.id === target.id) {
@@ -139,19 +115,29 @@ export default function RadioCTA() {
       return;
     }
 
-    playTrackThroughGlobalSystem(target);
-  }, [ctaTrack, showTrack, ramState.activeMode, ramState.currentTrack?.id, ramState.isPlaying, currentTrack?.id, togglePlay, playTrackThroughGlobalSystem]);
+    playMyVibeTrack(target);
+  }, [sourceTrack, showTrack, ramState.activeMode, ramState.currentTrack?.id, ramState.isPlaying, currentTrack?.id, togglePlay]);
+
+  const handleSkipCta = useCallback(() => {
+    const nextTrack = upNext?.find((track) => track?.audio_url);
+    if (nextTrack && jumpToSong) {
+      jumpToSong(nextTrack, playMyVibeTrack);
+      return;
+    }
+    nextRadioSong?.();
+  }, [upNext, jumpToSong, nextRadioSong]);
 
   const handlePlayNewest = useCallback((track) => {
-    setCtaTrack(track);
-    playTrackThroughGlobalSystem(track);
-  }, [playTrackThroughGlobalSystem]);
+    if (!track?.audio_url) return;
+    if (jumpToSong) jumpToSong(track, playMyVibeTrack);
+    else playMyVibeTrack(track);
+  }, [jumpToSong]);
 
   const r = BLUE;
   const primaryColor = `rgb(${r})`;
   const rgba = (a) => `rgba(${r},${a})`;
   const freqLabel = showTrack?.frequency_type === "432hz" ? "432 Hz" : showTrack?.frequency_type === "528hz" ? "528 Hz" : "High-Vibe";
-  const label = showPlaying ? "Now Playing" : "My Vibe Pick";
+  const label = showPlaying ? "My Vibe Playing" : "My Vibe Pick";
 
   return (
     <section className="flex flex-col gap-3 rounded-3xl relative overflow-hidden" style={{ background: rgba(0.06), border: `1px solid ${rgba(0.35)}`, boxShadow: `0 0 24px rgba(${r},0.1)` }}>
@@ -178,6 +164,9 @@ export default function RadioCTA() {
                   <motion.button onClick={handlePlayCta} whileTap={{ scale: 0.9 }} className="flex items-center gap-1 px-2 py-1 rounded-lg font-black transition-all" style={{ background: showPlaying ? rgba(0.2) : `linear-gradient(135deg,rgba(${r},0.85),${primaryColor})`, border: showPlaying ? `1px solid ${rgba(0.6)}` : "none", color: showPlaying ? primaryColor : "#000", boxShadow: `0 0 16px ${rgba(0.4)}`, fontFamily: "var(--font-heading)", letterSpacing: "0.04em", fontSize: 10, flexShrink: 0 }}>
                     {showPlaying ? <><Pause className="w-2.5 h-2.5" /> Playing</> : <><Play className="w-2.5 h-2.5 ml-0.5" /> Play</>}
                   </motion.button>
+                  <button onClick={handleSkipCta} className="flex items-center justify-center rounded-lg" style={{ width: 28, height: 24, background: rgba(0.08), border: `1px solid ${rgba(0.22)}`, color: primaryColor }} aria-label="Skip My Vibe song">
+                    <SkipForward className="w-3 h-3" />
+                  </button>
                   <MusicBars color={primaryColor} active={showPlaying} />
                 </div>
               </div>
