@@ -6,11 +6,13 @@ import ShareVibeButton from "../shared/ShareVibeButton";
 import ThumbsDownButton from "../shared/ThumbsDownButton";
 import { Slider } from "@/components/ui/slider";
 import { usePlayer, sharedHiddenRef } from "../../context/PlayerContext";
+import { useRadio } from "@/context/RadioContext";
 import { useTheme } from "../../context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
 import usePageVisible from "@/hooks/usePageVisible";
 import { useAuth } from "@/lib/AuthContext";
 import { subscribe as ramSubscribe, getState as ramGetState } from "@/lib/radioAudioManager";
+import { getPublishedTracks } from "@/lib/trackCache";
 
 export default function AudioPlayer() {
   const navigate = useNavigate();
@@ -29,6 +31,7 @@ export default function AudioPlayer() {
     playTrack,
   } = usePlayer();
 
+  const { currentRadioSong } = useRadio();
   const { user } = useAuth();
   const { accentId } = useTheme();
   const theme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -153,13 +156,24 @@ export default function AudioPlayer() {
 
   // ── RAM state subscription ──────────────────────────────────────
   const [ramState, setRamState] = useState(() => ramGetState());
+  const [heroFallbackTrack, setHeroFallbackTrack] = useState(null);
   useEffect(() => ramSubscribe((s) => setRamState(s)), []);
 
+  useEffect(() => {
+    getPublishedTracks("-created_date", 50)
+      .then((tracks) => {
+        const playable = tracks.find((t) => t.audio_url && t.cover_url && t.status === "published")
+          || tracks.find((t) => t.audio_url && t.status === "published");
+        if (playable) setHeroFallbackTrack(playable);
+      })
+      .catch(() => {});
+  }, []);
+
   // Derive effective display track and playing state from all sources.
-  // Priority: PlayerContext currentTrack → RAM active track → RAM lastTrack (persisted).
-  // This ensures we NEVER show "No Music Playing" — always fall back to the last My Vibe track.
+  // Priority: PlayerContext currentTrack → RAM active track → RAM lastTrack → Home hero radio song → homepage hero/latest track.
+  // This ensures the bottom player always shows real song metadata instead of an empty prompt.
   const ramActive = ramState.activeMode !== null;
-  const displayTrack = currentTrack || ramState.currentTrack || ramState.lastTrack;
+  const displayTrack = currentTrack || ramState.currentTrack || ramState.lastTrack || currentRadioSong || heroFallbackTrack;
   const effectiveIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
   const isRamRadio = ramActive && ramState.audioType === "liveStream";
 
@@ -195,10 +209,12 @@ export default function AudioPlayer() {
     } else if (ramState.lastTrack) {
       // Not active but we have a last track — start My Vibe Radio with it
       import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(ramState.lastTrack));
+    } else if (!currentTrack && displayTrack?.audio_url) {
+      playTrack(displayTrack, "song");
     } else {
       togglePlay();
     }
-  }, [ramActive, ramState.activeMode, ramState.isPlaying, ramState.lastTrack, togglePlay]);
+  }, [ramActive, ramState.activeMode, ramState.isPlaying, ramState.lastTrack, currentTrack, displayTrack, playTrack, togglePlay]);
 
   // Skip: delegate to RAM when RAM is active
   const handleSkip = useCallback(() => {
@@ -455,8 +471,8 @@ export default function AudioPlayer() {
             <Music4 className="w-4 h-4" style={{ color: "rgba(0,229,255,0.5)" }} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground/45 truncate leading-tight">Upper Vibe</p>
-            <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">Tap to start My Vibe</p>
+            <p className="text-sm font-semibold text-foreground/45 truncate leading-tight">Loading current song</p>
+            <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">Finding the hero track...</p>
           </div>
 
           <button
