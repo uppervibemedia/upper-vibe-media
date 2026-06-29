@@ -118,11 +118,11 @@ export default function DraggableMediaPlayer({
   if (domeMode) {
     containerStyle = {
       position: IS_MOBILE ? "absolute" : "fixed",
-      left: "max(18px, env(safe-area-inset-left, 0px))",
-      bottom: "calc(18px + env(safe-area-inset-bottom, 0px))",
+      left: "max(16px, env(safe-area-inset-left, 0px))",
+      bottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
       top: "unset",
-      width: "min(360px, calc(100vw - 36px))",
-      maxWidth: "calc(100vw - 36px)",
+      width: "min(360px, calc(100vw - 32px))",
+      maxWidth: "calc(100vw - 32px)",
     };
   } else if (IS_MOBILE) {
     const L = mobileLayout;
