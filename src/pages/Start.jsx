@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { Suspense, lazy, useState, useEffect, useRef, useCallback } from "react";
 import EmailCaptureModal from "@/components/shared/EmailCaptureModal";
 import StreamingPlatformLinks from "@/components/shared/StreamingPlatformLinks";
 import { createPortal } from "react-dom";
@@ -9,9 +9,11 @@ import { useAuth } from "@/lib/AuthContext";
 import { toast } from "sonner";
 import { trackEmailSignup } from "@/lib/analytics";
 
-import YouTubeCTA from "@/components/start/YouTubeCTA";
 import RadioCTA from "@/components/start/RadioCTA";
-import UpperVibeCityPreview from "@/components/vibeworld/UpperVibeCityPreview";
+import DeferredMount from "@/components/shared/DeferredMount";
+
+const YouTubeCTA = lazy(() => import("@/components/start/YouTubeCTA"));
+const UpperVibeCityPreview = lazy(() => import("@/components/vibeworld/UpperVibeCityPreview"));
 
 const PRIMARY = "0,160,220";
 const GOLD = "212,168,67";
@@ -505,10 +507,18 @@ export default function Start() {
         </section>
 
         {/* ── UPPER VIBE CITY PREVIEW ── */}
-        <UpperVibeCityPreview variant="start" />
+        <DeferredMount minHeight={220} rootMargin="450px">
+          <Suspense fallback={<div style={{ minHeight: 220 }} />}>
+            <UpperVibeCityPreview variant="start" />
+          </Suspense>
+        </DeferredMount>
 
         {/* ── YOUTUBE CTA ── */}
-        <YouTubeCTA />
+        <DeferredMount minHeight={160} rootMargin="450px">
+          <Suspense fallback={<div style={{ minHeight: 160 }} />}>
+            <YouTubeCTA />
+          </Suspense>
+        </DeferredMount>
 
         {/* ── BENEFIT CARDS ── */}
         <section className="flex flex-col gap-3">

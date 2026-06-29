@@ -159,6 +159,8 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                   <CoverImage
                     src={track.cover_url}
                     alt={track.title}
+                    eager={i === 0}
+                    fetchPriority={i === 0 ? "high" : "auto"}
                     className="w-full h-full"
                     iconClassName="w-10 h-10"
                     fallbackOpacityClass="text-cyan-400/15"
@@ -220,7 +222,7 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
             exit="exit"
             transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
             className="grid grid-cols-4 gap-3">
-            {visibleTracks.map((track) => {
+            {visibleTracks.map((track, i) => {
               const isCurrent = currentTrack?.id === track.id;
               return (
                 <div key={track.id} className="group">
@@ -236,6 +238,8 @@ export default function LatestMusicSection({ tracks, currentTrack, isPlaying, ha
                       <CoverImage
                         src={track.cover_url}
                         alt={track.title}
+                        eager={page === 0 && i === 0}
+                        fetchPriority={page === 0 && i === 0 ? "high" : "auto"}
                         className="w-full h-full group-hover:scale-105 transition-transform duration-500"
                         iconClassName="w-16 h-16"
                         fallbackOpacityClass="text-cyan-400/15"

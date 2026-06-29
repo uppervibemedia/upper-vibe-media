@@ -4,6 +4,8 @@ import { Play, Pause, Music2, Waves } from "lucide-react";
 import FreqBadge from "@/components/shared/FreqBadge";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
+import { getPublishedTracks } from "@/lib/trackCache";
+import { optimizedImageUrl } from "@/lib/imageUtils";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "../radio/RadioThemePicker";
 import {
@@ -59,7 +61,7 @@ function MusicBars({ color = "#00A0DC", active = false }) {
 export default function FeaturedTrackPlayer({ onTrackLoaded }) {
   const [track, setTrack] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [ramState, setRamState] = useState(ramGetState);
+  const [ramState, setRamState] = useState(() => ramGetState());
   const { startMyVibeQueue } = useRadio();
   const { currentTrack: playerTrack, isPlaying: playerIsPlaying, togglePlay } = usePlayer();
 
@@ -71,16 +73,21 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
   const primaryRgba = (a) => `rgba(${rtPrimary},${a})`;
 
   // Subscribe to RAM so play/pause state stays in sync with all other surfaces
-  useEffect(() => {
-    return ramSubscribe((s) => setRamState(s));
-  }, []);
+  useEffect(() => ramSubscribe((next) => {
+    setRamState((prev) => (
+      prev.activeMode === next.activeMode &&
+      prev.audioType === next.audioType &&
+      prev.isPlaying === next.isPlaying &&
+      prev.currentTrack?.id === next.currentTrack?.id
+    ) ? prev : next);
+  }), []);
 
   useEffect(() => {
     async function loadTrack() {
       try {
         const [settingRows, recent] = await Promise.all([
           base44.entities.AppSettings.filter({ key: "start_featured_track_id" }),
-          base44.entities.Track.filter({ status: "published" }, "-release_date", 10),
+          getPublishedTracks("-created_date", 200),
         ]);
 
         const featuredId = settingRows?.[0]?.value;
@@ -205,7 +212,7 @@ export default function FeaturedTrackPlayer({ onTrackLoaded }) {
             style={{ background: primaryRgba(0.1), border: `1px solid ${primaryRgba(0.2)}` }}
           >
             {displayCover ? (
-              <img src={displayCover} alt={displayTitle} loading="eager" fetchpriority="high" className="w-full h-full object-cover" />
+              <img src={optimizedImageUrl(displayCover, 240)} alt={displayTitle} loading="eager" fetchPriority="high" decoding="async" className="w-full h-full object-cover" />
             ) : (
               <Music2 className="w-6 h-6" style={{ color: primaryRgba(0.5) }} />
             )}

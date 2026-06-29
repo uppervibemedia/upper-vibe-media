@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Music4 } from "lucide-react";
+import { optimizedImageUrl } from "@/lib/imageUtils";
 
 /**
  * CoverImage — consistent cover art rendering with:
@@ -21,6 +22,7 @@ export default function CoverImage({
   iconClassName = "w-8 h-8",
   fallbackOpacityClass = "text-white/15",
   fallbackBgClass = "",
+  fetchPriority,
   onLoad,
   onError,
 }) {
@@ -48,6 +50,7 @@ export default function CoverImage({
   }, [eager, inView]);
 
   const hasValidSrc = src && typeof src === "string" && src.length > 0;
+  const imageSrc = hasValidSrc ? optimizedImageUrl(src, width || 480) : src;
 
   const handleLoad = () => {
     setState("loaded");
@@ -95,11 +98,13 @@ export default function CoverImage({
       {/* Actual image — only render once in view */}
       {inView && state !== "error" && (
         <img
-          src={src}
+          src={imageSrc}
           alt={alt}
           width={width}
           height={height}
           loading={eager ? "eager" : "lazy"}
+          decoding="async"
+          fetchPriority={fetchPriority || (eager ? "high" : "auto")}
           onLoad={handleLoad}
           onError={handleError}
           className={`w-full h-full object-cover ${state === "loaded" ? "opacity-100" : "opacity-0"} transition-opacity duration-300`}

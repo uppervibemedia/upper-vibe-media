@@ -7,6 +7,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import FavoriteButton from "@/components/shared/FavoriteButton";
+import { optimizedImageUrl } from "@/lib/imageUtils";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 
@@ -244,7 +245,7 @@ export default function ListenerFrequencyDashboard({
               {/* Art */}
               <div className="relative flex-shrink-0">
                 {track.cover_url ? (
-                  <img src={track.cover_url} alt={track.title} width={44} height={44} loading="lazy"
+                  <img src={optimizedImageUrl(track.cover_url, 88)} alt={track.title} width={44} height={44} loading="lazy" decoding="async"
                     className="w-11 h-11 rounded-xl object-cover" />
                 ) : (
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center"

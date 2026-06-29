@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import { Play, Pause, SkipForward, Music2 } from "lucide-react";
 import FreqBadge from "@/components/shared/FreqBadge";
 import { motion } from "framer-motion";
-import { base44 } from "@/api/base44Client";
 import { usePlayer } from "@/context/PlayerContext";
+import { getPublishedTracks } from "@/lib/trackCache";
+import { optimizedImageUrl } from "@/lib/imageUtils";
 import { useRadio } from "@/context/RadioContext";
 import NewBadge, { NewBadgeOverlay } from "@/components/shared/NewBadge";
 import {
@@ -16,6 +17,22 @@ import {
 } from "@/lib/radioAudioManager";
 
 const BLUE = "0,160,220";
+
+function selectRamState(state) {
+  return {
+    activeMode: state.activeMode,
+    audioType: state.audioType,
+    isPlaying: state.isPlaying,
+    currentTrack: state.currentTrack,
+  };
+}
+
+function sameRamState(a, b) {
+  return a.activeMode === b.activeMode &&
+    a.audioType === b.audioType &&
+    a.isPlaying === b.isPlaying &&
+    a.currentTrack?.id === b.currentTrack?.id;
+}
 
 function MusicBars({ color = `rgb(${BLUE})`, active = false }) {
   return (
@@ -44,7 +61,7 @@ function NewestTrackCard({ track, onPlay, isPlaying }) {
       aria-label={`Play ${track.title}`}
     >
       <div className="relative" style={{ width: "100%", height: 112, background: "#111" }}>
-        {track.cover_url ? <img src={track.cover_url} alt={track.title} loading="lazy" className="w-full h-full object-cover" /> : (
+        {track.cover_url ? <img src={optimizedImageUrl(track.cover_url, 180)} alt={track.title} loading="lazy" decoding="async" className="w-full h-full object-cover" /> : (
           <div className="w-full h-full flex items-center justify-center" style={{ background: `rgba(${BLUE},0.07)` }}>
             <Music2 style={{ width: 22, height: 22, color: `rgba(${BLUE},0.4)` }} />
           </div>
@@ -68,14 +85,17 @@ export default function RadioCTA() {
   const [myVibePreviewTrack, setMyVibePreviewTrack] = useState(null);
   const { currentTrack, isPlaying, togglePlay } = usePlayer();
   const { tracksLoaded, likedIdsLoaded, currentRadioSong, startMyVibeQueue, nextRadioSong, jumpToSong, upNext } = useRadio();
-  const [ramState, setRamState] = useState(() => ramGetState());
+  const [ramState, setRamState] = useState(() => selectRamState(ramGetState()));
 
-  useEffect(() => ramSubscribe((state) => setRamState(state)), []);
+  useEffect(() => ramSubscribe((state) => {
+    const next = selectRamState(state);
+    setRamState((prev) => sameRamState(prev, next) ? prev : next);
+  }), []);
 
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
-      base44.entities.Track.filter({ status: "published" }, "-created_date", 24)
+      getPublishedTracks("-created_date", 200)
         .then((rows) => {
           if (cancelled) return;
           setNewestTracks((rows || []).filter((track) => track.audio_url && track.cover_url).slice(0, 6));
@@ -150,7 +170,7 @@ export default function RadioCTA() {
             </div>
             <div className="flex items-center gap-3 p-3">
               <div className="flex-shrink-0 rounded-xl overflow-hidden relative" style={{ width: 106, height: 106, background: rgba(0.1), border: `1px solid ${rgba(0.2)}` }}>
-                {showTrack.cover_url ? <img src={showTrack.cover_url} alt={showTrack.title} loading="eager" className="w-full h-full" style={{ objectFit: "cover", objectPosition: "center top" }} /> : (
+                {showTrack.cover_url ? <img src={optimizedImageUrl(showTrack.cover_url, 240)} alt={showTrack.title} loading="eager" fetchPriority="high" decoding="async" className="w-full h-full" style={{ objectFit: "cover", objectPosition: "center top" }} /> : (
                   <div className="w-full h-full flex items-center justify-center"><Music2 className="w-6 h-6" style={{ color: rgba(0.5) }} /></div>
                 )}
               </div>

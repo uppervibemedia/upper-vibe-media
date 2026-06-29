@@ -4,6 +4,7 @@ import { Play, Pause, Music4, Download, Lock, Tv2, ArrowRight, Waves, Sparkles }
 import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import FavoriteButton from "@/components/shared/FavoriteButton";
+import { optimizedImageUrl } from "@/lib/imageUtils";
 import { useTheme } from "@/context/ThemeContext";
 import { RADIO_THEMES } from "@/components/radio/RadioThemePicker";
 import {
@@ -227,7 +228,7 @@ function TrackCard({ track, badge, currentTrack, isPlaying, handlePlayTrack, nav
     >
       <div className="relative flex-shrink-0">
         {track.cover_url
-          ? <img src={track.cover_url} alt={track.title} width={48} height={48} loading="lazy" className="w-12 h-12 rounded-xl object-cover" />
+          ? <img src={optimizedImageUrl(track.cover_url, 96)} alt={track.title} width={48} height={48} loading="lazy" decoding="async" className="w-12 h-12 rounded-xl object-cover" />
           : <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `rgba(${rtp},0.08)` }}><Music4 className="w-5 h-5" style={{ color: `rgba(${rtp},0.25)` }} /></div>}
         <div className="absolute inset-0 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.65)" }}>
           {isCurrent && isPlaying ? <Pause className="w-3.5 h-3.5" style={{ color: `rgb(${rtp})` }} /> : <Play className="w-3.5 h-3.5 text-white ml-0.5" />}
@@ -276,7 +277,7 @@ function VisualizerCard({ viz, badge, onOpen }) {
       <div className="relative overflow-hidden" style={{ paddingBottom: "56.25%" }}>
         <div className="absolute inset-0">
           {viz.thumbnail_url
-            ? <img src={viz.thumbnail_url} alt={viz.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            ? <img src={optimizedImageUrl(viz.thumbnail_url, 520)} alt={viz.title} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             : <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(0,229,255,0.06)" }}><Tv2 className="w-8 h-8 text-cyan-400/20" /></div>}
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.45)" }}>
             <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(0,160,220,0.9)", boxShadow: "0 0 20px rgba(0,160,220,0.5)" }}>

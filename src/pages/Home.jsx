@@ -1,12 +1,14 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { motion, useAnimationFrame } from "framer-motion";
+import React, { Suspense, lazy, useCallback, useEffect, useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import usePageVisible from "@/hooks/usePageVisible";
 import { getPublishedTracks, invalidateTrackCache } from "@/lib/trackCache";
-import { isNewTrack, isNewVisualizer, sortVisualizersNewestFirst } from "@/lib/isNewTrack";
+import { isNewVisualizer, sortVisualizersNewestFirst } from "@/lib/isNewTrack";
 import { Play, Pause, Waves, Tv2, Mail, CheckCircle2, Users, Radio, Zap, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import Footer from "../components/shared/Footer";
+import DeferredMount from "@/components/shared/DeferredMount";
+import { optimizedImageUrl } from "@/lib/imageUtils";
 import { usePlayer } from "../context/PlayerContext";
 import { useRadio } from "../context/RadioContext";
 import {
@@ -24,10 +26,10 @@ import FavLoginModal from "../components/shared/FavLoginModal";
 import PremiumDownloadModal from "../components/shared/PremiumDownloadModal";
 
 import RecentlyPlayedRow from "../components/home/RecentlyPlayedRow";
-import UpperVibeCityPreview from "../components/vibeworld/UpperVibeCityPreview";
 import LatestMusicSection from "../components/home/LatestMusicSection";
-import YourFrequencyFeed from "../components/home/YourFrequencyFeed";
-import ListenerFrequencyDashboard from "../components/home/ListenerFrequencyDashboard";
+const UpperVibeCityPreview = lazy(() => import("../components/vibeworld/UpperVibeCityPreview"));
+const YourFrequencyFeed = lazy(() => import("../components/home/YourFrequencyFeed"));
+const ListenerFrequencyDashboard = lazy(() => import("../components/home/ListenerFrequencyDashboard"));
 import SectionHeader from "../components/shared/SectionHeader";
 import PullToRefresh from "../components/shared/PullToRefresh";
 import { useTheme } from "@/context/ThemeContext";
@@ -81,28 +83,20 @@ function pickFreshHeroTrack(tracks) {
   return picked || null;
 }
 
-function pickHomepageTracks(allTracks, count = 4) {
-  const eligible = allTracks.filter(t => t.audio_url && t.cover_url && t.status === "published");
-  console.log("Homepage rotation songs available:", eligible.length);
-  if (eligible.length === 0) return [];
+function selectRamState(state) {
+  return {
+    activeMode: state.activeMode,
+    audioType: state.audioType,
+    isPlaying: state.isPlaying,
+    currentTrack: state.currentTrack,
+  };
+}
 
-  let lastId = null;
-  try { lastId = localStorage.getItem(LAST_HOME_TRACK_KEY); } catch {}
-  console.log("Last homepage song:", lastId);
-
-  // Shuffle truly randomly (not seeded) so every mount is fresh
-  const shuffled = [...eligible].sort(() => Math.random() - 0.5);
-
-  // Avoid leading with the same song as last time when possible
-  const reordered = lastId && shuffled[0]?.id === lastId && shuffled.length > 1
-    ? [shuffled[1], shuffled[0], ...shuffled.slice(2)]
-    : shuffled;
-
-  const picked = reordered.slice(0, count);
-  console.log("Selected homepage song:", picked[0]?.id, picked[0]?.title);
-
-  try { localStorage.setItem(LAST_HOME_TRACK_KEY, picked[0]?.id || ""); } catch {}
-  return picked;
+function sameRamState(a, b) {
+  return a.activeMode === b.activeMode &&
+    a.audioType === b.audioType &&
+    a.isPlaying === b.isPlaying &&
+    a.currentTrack?.id === b.currentTrack?.id;
 }
 
 export default function Home() {
@@ -122,8 +116,11 @@ export default function Home() {
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
   const [vizModal, setVizModal] = useState(null);
   const { currentRadioSong, startMyVibeQueue } = useRadio();
-  const [ramState, setRamState] = useState(ramGetState);
-  useEffect(() => { return ramSubscribe((s) => setRamState(s)); }, []);
+  const [ramState, setRamState] = useState(() => selectRamState(ramGetState()));
+  useEffect(() => ramSubscribe((state) => {
+    const next = selectRamState(state);
+    setRamState((prev) => sameRamState(prev, next) ? prev : next);
+  }), []);
   const { accentId } = useTheme();
 
   const radioTheme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -161,23 +158,26 @@ export default function Home() {
     });
   };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setHeroTrackReady(false);
-    // Sequenced with delays to avoid rate limiting — no Promise.all
-    const allTracks = await getPublishedTracks("-created_date", 200);
-    await new Promise(r => setTimeout(r, 200));
-    const recentVizPool = await base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30).catch(() => []);
+    const loadedTracks = await getPublishedTracks("-created_date", 200);
 
     // Latest Music section: the 8 most recently UPLOADED published & playable songs.
-    // Sort strictly by created_date descending — no manual pins, no is_new_release override.
-    const playable = allTracks.filter(t => t.audio_url && t.cover_url && t.status === "published");
+    // Set this immediately so the page becomes usable before lower sections load.
+    const playable = loadedTracks.filter(t => t.audio_url && t.cover_url && t.status === "published");
     const sortedNewest = [...playable].sort((a, b) => {
       const da = new Date(a.created_date || 0).getTime();
       const db = new Date(b.created_date || 0).getTime();
       return db - da;
     }).slice(0, 8);
     setLatestTracks(sortedNewest);
-    setAllTracks(allTracks);
+    setAllTracks(loadedTracks);
+
+    const counts = {};
+    loadedTracks.forEach((t) => {
+      if (t.primary_artist_id) counts[t.primary_artist_id] = (counts[t.primary_artist_id] || 0) + 1;
+    });
+    setTrackCounts(counts);
 
     let heroPool = [];
     if (user?.id) {
@@ -188,28 +188,23 @@ export default function Home() {
     setHeroMyVibeTrack(pickFreshHeroTrack(heroPool.length > 0 ? heroPool : playable));
     setHeroTrackReady(true);
 
-    // Sort: new visualizers (≤7 days) first, then older, newest within each group
+    // Lower-page data loads after the hero/player and newest song shell are ready.
+    await new Promise(r => setTimeout(r, 250));
+    const recentVizPool = await base44.entities.Visualizer.filter({ status: "published" }, "-created_date", 30).catch(() => []);
     const sortedViz = sortVisualizersNewestFirst(recentVizPool);
     setRecentViz(sortedViz.slice(0, 6));
     setAllViz(recentVizPool);
 
-    // Count tracks per artist from already-fetched data
-    const counts = {};
-    allTracks.forEach((t) => {
-      if (t.primary_artist_id) counts[t.primary_artist_id] = (counts[t.primary_artist_id] || 0) + 1;
-    });
-    setTrackCounts(counts);
-
-    // Secondary data — sequenced with delays to avoid rate limiting
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 250));
     const featuredArtists = await base44.entities.Artist.filter({ is_active: true, is_featured: true }, "-created_date", 8).catch(() => []);
-    await new Promise(r => setTimeout(r, 200));
-    const lessons = await base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3).catch(() => []);
     setArtists(featuredArtists);
-    setAcademyLessons(lessons);
-  };
 
-  useEffect(() => { loadData(); }, [sessionSeed, refreshKey, user?.id]);
+    await new Promise(r => setTimeout(r, 250));
+    const lessons = await base44.entities.AcademyLesson.filter({ status: "published" }, "-created_date", 3).catch(() => []);
+    setAcademyLessons(lessons);
+  }, [user?.id]);
+
+  useEffect(() => { loadData(); }, [loadData, sessionSeed, refreshKey]);
 
   const handleRefresh = async () => {
     sessionStorage.removeItem("uv_home_seed");
@@ -376,7 +371,8 @@ export default function Home() {
                   {/* Cover art + track info — links to song page */}
                   <Link to={`/song/${displayTrack.id}`} className="flex items-center gap-4 flex-1 min-w-0">
                   <div className="relative flex-shrink-0">
-                    <img src={displayTrack.cover_url} alt={displayTrack.title}
+                    <img src={optimizedImageUrl(displayTrack.cover_url, 180)} alt={displayTrack.title}
+                      loading="eager" fetchPriority="high" decoding="async"
                       className="w-16 h-16 rounded-2xl object-cover"
                       style={{ boxShadow: `0 0 20px rgba(${rtPrimary},0.25)` }} />
                     <motion.div
@@ -503,9 +499,13 @@ export default function Home() {
       </section>
 
       {/* ── UPPER VIBE CITY PREVIEW ── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-6">
-        <UpperVibeCityPreview variant="home" />
-      </section>
+      <DeferredMount minHeight={220} rootMargin="450px">
+        <Suspense fallback={<section className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-6" style={{ minHeight: 220 }} />}>
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-6">
+            <UpperVibeCityPreview variant="home" />
+          </section>
+        </Suspense>
+      </DeferredMount>
 
       {/* ── RECENTLY PLAYED — only for logged-in users with history ── */}
       <RecentlyPlayedRow
@@ -640,32 +640,40 @@ export default function Home() {
       </motion.div>
 
       {/* ── YOUR FREQUENCY FEED ── */}
-      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
-        <YourFrequencyFeed
-          allTracks={allTracks}
-          allViz={recentViz}
-          currentTrack={ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : currentTrack}
-          isPlaying={ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : isPlaying}
-          handlePlayTrack={handlePlayTrack}
-          user={user}
-          themeColor={rtPrimary}
-          onOpenViz={(viz) => { if (isPlaying) togglePlay(); setVizModal(viz); }}
-          onNeedLogin={() => setLoginModal(true)}
-        />
-      </motion.div>
+      <DeferredMount minHeight={160} rootMargin="500px">
+        <Suspense fallback={<div style={{ minHeight: 160 }} />}>
+          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
+            <YourFrequencyFeed
+              allTracks={allTracks}
+              allViz={recentViz}
+              currentTrack={ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : currentTrack}
+              isPlaying={ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : isPlaying}
+              handlePlayTrack={handlePlayTrack}
+              user={user}
+              themeColor={rtPrimary}
+              onOpenViz={(viz) => { if (isPlaying) togglePlay(); setVizModal(viz); }}
+              onNeedLogin={() => setLoginModal(true)}
+            />
+          </motion.div>
+        </Suspense>
+      </DeferredMount>
 
       {/* ── LISTENER FREQUENCY / TRENDING TRACKS ── */}
-      <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
-        <ListenerFrequencyDashboard
-          allTracks={allTracks}
-          currentTrack={ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : currentTrack}
-          isPlaying={ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : isPlaying}
-          handlePlayTrack={handlePlayTrack}
-          user={user}
-          themeColor={rtPrimary}
-          onNeedLogin={() => setLoginModal(true)}
-        />
-      </motion.div>
+      <DeferredMount minHeight={160} rootMargin="500px">
+        <Suspense fallback={<div style={{ minHeight: 160 }} />}>
+          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.55, ease: [0.22,1,0.36,1] }}>
+            <ListenerFrequencyDashboard
+              allTracks={allTracks}
+              currentTrack={ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : currentTrack}
+              isPlaying={ramState.activeMode === "myVibeRadio" ? ramState.isPlaying : isPlaying}
+              handlePlayTrack={handlePlayTrack}
+              user={user}
+              themeColor={rtPrimary}
+              onNeedLogin={() => setLoginModal(true)}
+            />
+          </motion.div>
+        </Suspense>
+      </DeferredMount>
 
       {/* ── MUSIC VISUALIZERS ── */}
       {recentViz.length > 0 && (
@@ -695,7 +703,7 @@ export default function Home() {
                   <button onClick={() => setVizModal(viz)} className="block w-full relative overflow-hidden cursor-pointer" style={{ paddingBottom: "56.25%" }}>
                     <div className="absolute inset-0">
                       {viz.thumbnail_url
-                        ? <img src={viz.thumbnail_url} alt={viz.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                        ? <img src={optimizedImageUrl(viz.thumbnail_url, 520)} alt={viz.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
                         : <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(0,160,220,0.08)" }}><Tv2 className="w-8 h-8 text-cyan-400/20" /></div>}
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.4)" }}>
                         <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "rgba(0,160,220,0.9)", boxShadow: "0 0 16px rgba(0,160,220,0.6)" }}>
@@ -765,7 +773,7 @@ export default function Home() {
                     <div className="relative overflow-hidden" style={{ paddingBottom: "56.25%" }}>
                       <div className="absolute inset-0">
                         {lesson.thumbnail_url
-                          ? <img src={lesson.thumbnail_url} alt={lesson.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                          ? <img src={optimizedImageUrl(lesson.thumbnail_url, 420)} alt={lesson.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
                           : <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(155,126,255,0.08)" }}><Zap className="w-8 h-8 text-purple-400/20" /></div>}
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.4)" }}>
                           <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(155,126,255,0.9)", boxShadow: "0 0 16px rgba(155,126,255,0.5)" }}>
@@ -816,7 +824,7 @@ export default function Home() {
                   className="flex flex-col items-center gap-3 p-5 rounded-2xl text-center group transition-all hover:border-white/15 active:scale-[0.98]"
                   style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   {artist.image_url ? (
-                    <img src={artist.image_url} alt={artist.name} loading="lazy" className="w-16 h-16 rounded-full object-cover ring-2 ring-white/10 group-hover:ring-cyan-400/30 transition-all" />
+                    <img src={optimizedImageUrl(artist.image_url, 128)} alt={artist.name} loading="lazy" decoding="async" className="w-16 h-16 rounded-full object-cover ring-2 ring-white/10 group-hover:ring-cyan-400/30 transition-all" />
                   ) : (
                     <div className="w-16 h-16 rounded-full flex items-center justify-center ring-2 ring-white/10"
                       style={{ background: "rgba(0,229,255,0.08)" }}>
