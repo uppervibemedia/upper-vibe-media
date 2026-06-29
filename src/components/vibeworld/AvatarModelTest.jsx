@@ -463,7 +463,8 @@ export function updateTestAvatarAnimation(entry, speed, isDancing, dt) {
   const isIdle = !isWalk && !isRun && !isDancing;
 
   // Speed multiplier for animation frequency
-  const freq = isRun ? 3.2 : isWalk ? 2.0 : 1.0;
+  const locomotionScale = speed > 0.07 ? Math.min(1.55, Math.max(0.85, speed / 4.5)) : 1.0;
+  const freq = (isRun ? 3.2 : isWalk ? 2.0 : 1.0) * locomotionScale;
   const amp  = isRun ? 0.55 : isWalk ? 0.32 : 0.0;
 
   // Leg swing

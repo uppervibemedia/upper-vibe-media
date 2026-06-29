@@ -58,11 +58,11 @@ const {
 } = THREE;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
-const MOVE_SPEED = 4.5;
-const ACCELERATION = 24.0; // faster response when changing direction
-const DECELERATION = 18.0; // quick stop without feeling sticky
+const MOVE_SPEED = 6.0;
+const ACCELERATION = 36.0; // quick response without mobile/low-quality slowdown
+const DECELERATION = 24.0; // quick stop without feeling sticky
 const TURN_SPEED = 2.5;       // radians/sec for A/D turning
-const ROTATION_SMOOTH = 16.0; // responsive body rotation toward travel direction
+const ROTATION_SMOOTH = 22.0; // responsive body rotation toward travel direction
 
 // Camera constants — standard third-person (portrait / desktop)
 const CAM_DIST = 5.5;         // distance behind avatar
@@ -977,7 +977,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
              let rotDiff = travelAngle - rot;
              while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
              while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
-             const turnSpeed = 12.0;
+             const turnSpeed = 16.0;
              rot += rotDiff * Math.min(1, turnSpeed * moveDt);
            }
         } else {
