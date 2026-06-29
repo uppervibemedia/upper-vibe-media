@@ -194,10 +194,13 @@ export function getWeight(trackId) {
  * @param {Array}  likedIds       — IDs the user has hearted
  * @returns {Array}               — shuffled array of track objects
  */
-export function buildWeightedQueue(allTracks, excludeId, likedIds = [], dislikedIds = []) {
+export function buildWeightedQueue(allTracks, excludeId, likedIds = [], dislikedIds = [], recentIds = []) {
   const pool = [];
+  const baseTracks = allTracks.filter((t) => t.id !== excludeId);
+  const nonRecentTracks = baseTracks.filter((t) => !recentIds.includes(t.id));
+  const sourceTracks = nonRecentTracks.length > 0 ? nonRecentTracks : baseTracks;
 
-  allTracks.filter((t) => t.id !== excludeId).forEach((t) => {
+  sourceTracks.forEach((t) => {
     // Base weight: 1.0 for everyone, +2 bonus if liked
     const likedBonus  = likedIds.includes(t.id) ? 2 : 0;
     const curatorW    = getWeight(t.id);

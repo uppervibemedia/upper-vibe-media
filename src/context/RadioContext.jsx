@@ -152,23 +152,41 @@ export function RadioProvider({ children }) {
 
   const setRadioLikedIds = useCallback((ids) => setLikedTrackIds(ids), []);
 
+  function getRecentMyVibeIds(history, hIndex, limit = 10) {
+    return history.slice(Math.max(0, hIndex - limit + 1), hIndex + 1).map((t) => t.id).filter(Boolean);
+  }
+
+  function takeNextFromQueue(queue, currentId, recentIds) {
+    const cleanQueue = queue.filter((t) => t?.id && t.id !== currentId);
+    const preferredIndex = cleanQueue.findIndex((t) => !recentIds.includes(t.id));
+    const index = preferredIndex >= 0 ? preferredIndex : 0;
+    const nextSong = cleanQueue[index] || null;
+    const newQueue = nextSong ? cleanQueue.filter((_, i) => i !== index) : cleanQueue;
+    return { nextSong, newQueue };
+  }
+
   // ── Internal: play a specific song into radio ─────────────────────────────
   const _loadNextSong = useCallback((allT, queue, history, hIndex, currentSong, likedIds = []) => {
     let nextSong;
     let newQueue = [...queue];
 
     const dislikedIds = getDislikedIds();
+    const recentIds = getRecentMyVibeIds(history, hIndex, 10);
     if (newQueue.length > 0) {
-      nextSong = newQueue.shift();
-    } else {
-      const rebuilt = buildWeightedQueue(allT, currentSong?.id, likedIds, dislikedIds);
+      const picked = takeNextFromQueue(newQueue, currentSong?.id, recentIds);
+      nextSong = picked.nextSong;
+      newQueue = picked.newQueue;
+    }
+    if (!nextSong) {
+      const rebuilt = buildWeightedQueue(allT, currentSong?.id, likedIds, dislikedIds, recentIds);
       nextSong = rebuilt[0];
       newQueue  = rebuilt.slice(1);
     }
     if (!nextSong) return null;
 
     if (newQueue.length < 10) {
-      const extra = buildWeightedQueue(allT, nextSong.id, likedIds, dislikedIds)
+      const nextRecentIds = [...recentIds, nextSong.id].slice(-10);
+      const extra = buildWeightedQueue(allT, nextSong.id, likedIds, dislikedIds, nextRecentIds)
         .filter((t) => t.id !== nextSong.id && !newQueue.find((q) => q.id === t.id));
       newQueue = [...newQueue, ...extra].slice(0, 50);
     }

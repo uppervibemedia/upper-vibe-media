@@ -23,6 +23,8 @@ let djUsesLiveStream = false;
 let djTracks = [];
 let currentDjTrack = null;
 let preloadPromise = null;
+let recentDjTrackIds = [];
+const DJ_RECENT_LIMIT = 8;
 const listeners = new Set();
 
 function isIOS() {
@@ -75,6 +77,43 @@ function getDurationSeconds(track) {
   return Math.max(30, parseFloat(track?.duration) || 210);
 }
 
+function rememberDjTrack(track) {
+  if (!track?.id || recentDjTrackIds[0] === track.id) return;
+  recentDjTrackIds = [track.id, ...recentDjTrackIds.filter((id) => id !== track.id)].slice(0, DJ_RECENT_LIMIT);
+}
+
+function seededRandom(seed) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return () => {
+    h += h << 13; h ^= h >>> 7;
+    h += h << 3;  h ^= h >>> 17;
+    h += h << 5;
+    return ((h >>> 0) / 4294967296);
+  };
+}
+
+function buildSharedDjShuffle(tracks, seed) {
+  const unique = [];
+  const seen = new Set();
+  tracks.forEach((track) => {
+    if (!track?.id || seen.has(track.id)) return;
+    seen.add(track.id);
+    unique.push(track);
+  });
+  if (unique.length <= 2) return unique;
+  const rand = seededRandom(seed || unique.map((t) => t.id).join("|"));
+  const shuffled = [...unique];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 function getSharedDjPosition() {
   if (!djTracks.length) return { track: null, offset: 0 };
   const durations = djTracks.map(getDurationSeconds);
@@ -109,6 +148,7 @@ function applyDjSource() {
     audio.load();
   }
   currentDjTrack = track;
+  rememberDjTrack(track);
   const seek = () => {
     try { if (offset > 0 && Math.abs(audio.currentTime - offset) > 1) audio.currentTime = offset; } catch {}
   };
@@ -126,8 +166,11 @@ export async function preloadCityDj() {
       if (active?.trackIds?.length) {
         const pool = await base44.entities.Track.filter({ status: "published" }, "-display_order", 500);
         const map = Object.fromEntries(pool.filter((t) => t.audio_url).map((t) => [t.id, t]));
-        djTracks = active.trackIds.map((id) => map[id]).filter(Boolean);
+        const orderedTracks = active.trackIds.map((id) => map[id]).filter(Boolean);
+        const seed = `${active.id || "dj"}|${active.updatedAt || ""}|${active.trackIds.join("|")}`;
+        djTracks = buildSharedDjShuffle(orderedTracks, seed);
       }
+      recentDjTrackIds = [];
       djUsesLiveStream = djTracks.length === 0;
       djReady = true;
       applyDjSource();
