@@ -291,7 +291,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const playerCtx = usePlayer();
   const radioCtx = useRadio();
   const { currentTrack, isPlaying, togglePlay, playTrack, skipTrack, registerNextHandler, clearPosition, audioRef } = playerCtx || {};
-  const { allTracks, tracksLoaded, nextRadioSong } = radioCtx || {};
+  const { allTracks, tracksLoaded, nextRadioSong, currentRadioSong, upNext, startMyVibeQueue } = radioCtx || {};
 
   // ── Subscribe to RadioAudioManager (My Vibe Radio + Upper Vibe Radio state) ──
   const [ramState, setRamState] = useState(() => ramGetState());
@@ -302,12 +302,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, []);
 
   // Determine what the city media player should show.
-  // Priority: RAM active track → RAM last track → PlayerContext track → shuffled My Vibe default.
-  // ── Default track for spawned player (no music was ever played) ─────────
+  // Priority: RAM active track → My Vibe Radio queue → PlayerContext track.
+  // ── Default track for spawned player (metadata only until user taps play) ─────────
   const [defaultCityTrack, setDefaultCityTrack] = useState(null);
 
+  const nextMyVibeTrack = upNext?.find((track) => track?.audio_url) || null;
   const ramActive = ramState.activeMode !== null;
-  const cityTrack = ramState.currentTrack || ramState.lastTrack || currentTrack || defaultCityTrack;
+  const cityTrack = ramState.currentTrack || ramState.lastTrack || currentRadioSong || nextMyVibeTrack || defaultCityTrack || currentTrack;
   const cityIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
 
   const handleCityTogglePlay = useCallback(() => {
@@ -317,37 +318,40 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     } else if (ramState.activeMode === "upperVibeRadio") {
       if (ramState.isPlaying) { setCityGlobalUserManuallyPaused(true); pauseUpperVibeRadio(); }
       else { setCityGlobalUserManuallyPaused(false); resumeUpperVibeRadio(); }
-    } else if (ramState.lastTrack) {
-      // Not active but we have a last track — start My Vibe Radio with it
+    } else if (ramState.lastTrack || currentRadioSong || defaultCityTrack) {
+      // Not active yet — start the visible My Vibe Radio track.
+      const targetTrack = ramState.lastTrack || currentRadioSong || defaultCityTrack;
       setCityGlobalUserManuallyPaused(false);
-      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(ramState.lastTrack));
-    } else if (defaultCityTrack) {
-      // No previous track — start My Vibe with the default track
-      setCityGlobalUserManuallyPaused(false);
-      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(defaultCityTrack));
+      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(targetTrack));
     } else {
       togglePlay?.();
     }
-  }, [ramState.activeMode, ramState.isPlaying, ramState.lastTrack, defaultCityTrack, togglePlay]);
+  }, [ramState.activeMode, ramState.isPlaying, ramState.lastTrack, currentRadioSong, defaultCityTrack, togglePlay]);
 
   const handleCitySkip = useCallback(() => {
-    if (ramState.activeMode === "myVibeRadio") {
+    if (ramState.activeMode === "myVibeRadio" || currentRadioSong || defaultCityTrack) {
       nextRadioSong?.();
     } else {
       skipTrack?.();
     }
-  }, [ramState.activeMode, nextRadioSong, skipTrack]);
+  }, [ramState.activeMode, currentRadioSong, defaultCityTrack, nextRadioSong, skipTrack]);
   const { user } = useAuth();
   const { sortedTracks, loading: feedLoading, profile: feedProfile } = usePersonalizedFeed(user?.id);
 
   useEffect(() => {
-    if (currentTrack || ramState.currentTrack || ramState.lastTrack || defaultCityTrack || feedLoading) return;
-    const pool = sortedTracks?.length > 0
-      ? sortedTracks
-      : (allTracks || []).filter((t) => t.status === "published" && t.audio_url);
-    const picked = pickFreshPersonalizedTrack(pool);
-    if (picked) setDefaultCityTrack(picked);
-  }, [currentTrack, ramState.currentTrack, ramState.lastTrack, defaultCityTrack, feedLoading, sortedTracks, allTracks]);
+    if (ramState.currentTrack || ramState.lastTrack) return;
+    const myVibeDefault = currentRadioSong?.audio_url ? currentRadioSong : nextMyVibeTrack;
+    if (myVibeDefault?.audio_url) {
+      setDefaultCityTrack((prev) => prev?.id === myVibeDefault.id ? prev : myVibeDefault);
+      return;
+    }
+    if (!tracksLoaded || !startMyVibeQueue) return;
+    startMyVibeQueue((firstTrack) => {
+      if (firstTrack?.audio_url) {
+        setDefaultCityTrack((prev) => prev?.id === firstTrack.id ? prev : firstTrack);
+      }
+    });
+  }, [ramState.currentTrack, ramState.lastTrack, currentRadioSong, nextMyVibeTrack, tracksLoaded, startMyVibeQueue]);
 
   // ── Wallet + inventory: load from server on entry ─────────
   useEffect(() => {
@@ -769,6 +773,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     equippedNameplate,
     equippedBadge,
     equippedClothing,
+    avatarTypeKey: testAvatarTypeKey,
+    avatarSkinTone: avatarConfig.skinTone,
+    avatarStyle: user?.avatar_style || "streetwear",
+    avatarOutfitColor: avatarConfig.outfitColorKey,
   }, {
     isDancing,
     personalHoverboardActive,
@@ -997,7 +1005,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   return (
     <div className="fixed inset-0 z-[60] overflow-hidden" style={{ background: "#050510" }}>
       {/* 3D Park — key on testAvatarTypeKey forces full remount when avatar type changes */}
-      <div className="absolute inset-0" key={`city-${testAvatarTypeKey}`}>
+      <div className="absolute inset-0" key={`city-${testAvatarTypeKey}-${avatarVersion}`}>
         <VibeCoinHUD
           sessionCoins={sessionCoins}
           totalCoins={totalCoins}
@@ -1315,8 +1323,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             <DraggableMediaPlayer
               currentTrack={displayTrack}
               isPlaying={cityIsPlaying}
-              onTogglePlay={(ramActive || defaultCityTrack) ? handleCityTogglePlay : handleGlobalPlayToggle}
-              onSkip={ramActive ? handleCitySkip : handleGlobalSkip}
+              onTogglePlay={(ramActive || currentRadioSong || defaultCityTrack) ? handleCityTogglePlay : handleGlobalPlayToggle}
+              onSkip={(ramActive || currentRadioSong || defaultCityTrack) ? handleCitySkip : handleGlobalSkip}
               nearStage={nearStage}
             />
           </div>

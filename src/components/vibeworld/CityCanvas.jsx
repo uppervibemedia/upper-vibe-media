@@ -919,10 +919,31 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
              rot += rotDiff * Math.min(1, turnSpeed * dt);
            }
         } else {
-          // Desktop: A/D strafes left/right, W/S moves forward/backward (avatar direction)
-          const kbStrafe = inputStrafe * 0.6;
-          moveX = Math.sin(rot) * inputFwd + Math.cos(rot) * kbStrafe;
-          moveZ = Math.cos(rot) * inputFwd - Math.sin(rot) * kbStrafe;
+          // Desktop: WASD movement is camera-relative, and the avatar faces the exact travel direction.
+          const cameraForward = camera.getWorldDirection(new Vector3());
+          cameraForward.y = 0;
+          if (cameraForward.lengthSq() > 0) cameraForward.normalize();
+
+          const cameraRight = new Vector3().crossVectors(cameraForward, new Vector3(0, 1, 0));
+          if (cameraRight.lengthSq() > 0) cameraRight.normalize();
+
+          const moveDir = new Vector3();
+          if (inputFwd > 0) moveDir.add(cameraForward);
+          if (inputFwd < 0) moveDir.sub(cameraForward);
+          if (inputStrafe > 0) moveDir.add(cameraRight);
+          if (inputStrafe < 0) moveDir.sub(cameraRight);
+
+          if (moveDir.lengthSq() > 0) {
+            moveDir.normalize();
+            moveX = moveDir.x;
+            moveZ = moveDir.z;
+
+            const targetYaw = Math.atan2(moveDir.x, moveDir.z);
+            let rotDiff = targetYaw - rot;
+            while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
+            while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
+            rot += rotDiff * Math.min(1, ROTATION_SMOOTH * dt);
+          }
         }
 
         if (isMoving) {
@@ -1555,11 +1576,35 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           if (!remote?.user_id) continue;
           activeIds.add(remote.user_id);
 
+          const remoteAvatarType = remote.avatar_type_key || remote.avatar_type || "current";
+          const remoteSignature = [
+            remoteAvatarType,
+            remote.skin_tone || "medium",
+            remote.avatar_style || "streetwear",
+            remote.avatar_outfit_color || "",
+            remote.username || "User",
+          ].join("|");
+
           let entry = remoteMap[remote.user_id];
+          if (entry && entry.signature !== remoteSignature) {
+            const remoteEntry = entry.group?.userData?._avatarEntry;
+            if (remoteEntry) detachHoverboard(remoteEntry);
+            unbindAura(entry.group);
+            if (entry.group) {
+              scene.remove(entry.group);
+              entry.group.traverse((obj) => {
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) disposeMaterialDeep(obj.material);
+              });
+            }
+            delete remoteHbStateRef.current[remote.user_id];
+            delete remoteMap[remote.user_id];
+            entry = null;
+          }
+
           if (!entry) {
             // Spawn new remote avatar using the same avatar type the remote user has selected.
             // Prefer avatar_type_key (the exact sessionStorage key broadcast in heartbeat).
-            const remoteAvatarType = remote.avatar_type_key || remote.avatar_type || "current";
             let group;
             if (remoteAvatarType === "test-mixamo" || remoteAvatarType === "test-mixamo-female") {
               // Use Mixamo procedural avatar matching their chosen type
@@ -1590,7 +1635,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
                 remote.avatar_outfit_color || null
               );
             }
-            entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 } };
+            entry = { group, prevPos: { x: remote.pos_x || 0, z: remote.pos_z || 0 }, signature: remoteSignature };
             remoteMap[remote.user_id] = entry;
           }
 

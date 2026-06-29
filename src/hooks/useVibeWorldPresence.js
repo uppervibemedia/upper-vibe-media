@@ -50,6 +50,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
   const {
     equippedAura = "", equippedAuraColor = "", equippedHoverboard = "",
     equippedNameplate = "", equippedBadge = "", equippedClothing = "",
+    avatarTypeKey = "", avatarSkinTone = "", avatarStyle = "", avatarOutfitColor = "",
   } = equippedState;
   const {
     isDancing = false,
@@ -68,7 +69,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
   const animRef = useRef("idle");
   const mountedRef = useRef(true);
   // Track last-sent state so the fast path (sendPosition, 2s) fires immediately on state changes
-  const lastSentRef = useRef({ x: Infinity, z: Infinity, rot: Infinity, zone: "", anim: "", dancing: false, riding: false, neonSurf: false, aura: "", hoverboard: "", nameplate: "", badge: "", clothing: "" });
+  const lastSentRef = useRef({ x: Infinity, z: Infinity, rot: Infinity, zone: "", anim: "", dancing: false, riding: false, neonSurf: false, aura: "", hoverboard: "", nameplate: "", badge: "", clothing: "", avatarKey: "", skin: "", style: "", outfit: "" });
   const usersMapRef = useRef({});
 
   // Keep refs current without triggering re-renders
@@ -86,6 +87,14 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     const zone = zoneRef.current;
     const baseAnim = animRef.current;
     const last = lastSentRef.current;
+    let liveAvatarTypeKey = avatarTypeKey || user.avatar_type || "neutral";
+    try {
+      const stored = sessionStorage.getItem("uvc_test_avatar");
+      if (stored) liveAvatarTypeKey = stored;
+    } catch {}
+    const liveSkinTone = avatarSkinTone || user.skin_tone || "medium";
+    const liveAvatarStyle = avatarStyle || user.avatar_style || "streetwear";
+    const liveOutfitColor = avatarOutfitColor || user.avatar_outfit_color || "electric-blue";
 
     // Derive effective animation state from live state
     // Phase-order: dance > riding > walking > idle
@@ -112,7 +121,11 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       equippedHoverboard === last.hoverboard &&
       equippedNameplate === last.nameplate &&
       equippedBadge === last.badge &&
-      equippedClothing === last.clothing
+      equippedClothing === last.clothing &&
+      liveAvatarTypeKey === last.avatarKey &&
+      liveSkinTone === last.skin &&
+      liveAvatarStyle === last.style &&
+      liveOutfitColor === last.outfit
     ) {
       return;
     }
@@ -127,6 +140,10 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
       nameplate: equippedNameplate || "",
       badge: equippedBadge || "",
       clothing: equippedClothing || "",
+      avatarKey: liveAvatarTypeKey,
+      skin: liveSkinTone,
+      style: liveAvatarStyle,
+      outfit: liveOutfitColor,
     };
 
     // Full position update — only when state actually changed
@@ -136,6 +153,11 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         pos_z: z,
         rotation: rot,
         current_zone: zone,
+        avatar_type: user.avatar_type || liveAvatarTypeKey,
+        avatar_type_key: liveAvatarTypeKey,
+        skin_tone: liveSkinTone,
+        avatar_style: liveAvatarStyle,
+        avatar_outfit_color: liveOutfitColor,
         animation_state: anim,
         is_dancing: dancing,
         personal_hoverboard_active: riding,
@@ -151,7 +173,12 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     } catch {
       // Silently skip rate limits / network issues
     }
-  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, isDancing, isRidingPersonal, isRidingNeonSurf]);
+  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
+
+  // Broadcast avatar/item changes immediately so other people see updates without refreshing.
+  useEffect(() => {
+    sendPosition();
+  }, [sendPosition, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
 
   // ── Full heartbeat (slower — online status + full identity) ──────────────
   const isBroadcastingRef = useRef(false);
@@ -160,20 +187,20 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     const now = new Date().toISOString();
 
     // Read the live avatar_type_key from sessionStorage (set by AvatarSetup/WorldGate)
-    let avatarTypeKey = user.avatar_type || "neutral";
+    let liveAvatarTypeKey = avatarTypeKey || user.avatar_type || "neutral";
     try {
       const stored = sessionStorage.getItem("uvc_test_avatar");
-      if (stored) avatarTypeKey = stored;
+      if (stored) liveAvatarTypeKey = stored;
     } catch {}
 
     const payload = {
       user_id: user.id,
       username: user.world_username || "New User",
-      avatar_type: user.avatar_type || "neutral",
-      avatar_type_key: avatarTypeKey,
-      skin_tone: user.skin_tone || "medium",
-      avatar_style: user.avatar_style || "streetwear",
-      avatar_outfit_color: user.avatar_outfit_color || "electric-blue",
+      avatar_type: user.avatar_type || liveAvatarTypeKey,
+      avatar_type_key: liveAvatarTypeKey,
+      skin_tone: avatarSkinTone || user.skin_tone || "medium",
+      avatar_style: avatarStyle || user.avatar_style || "streetwear",
+      avatar_outfit_color: avatarOutfitColor || user.avatar_outfit_color || "electric-blue",
       current_zone: zoneRef.current,
       pos_x: posRef.current.x,
       pos_z: posRef.current.z,
@@ -221,6 +248,10 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
         nameplate: equippedNameplate || "",
         badge: equippedBadge || "",
         clothing: equippedClothing || "",
+        avatarKey: liveAvatarTypeKey,
+        skin: avatarSkinTone || user.skin_tone || "medium",
+        style: avatarStyle || user.avatar_style || "streetwear",
+        outfit: avatarOutfitColor || user.avatar_outfit_color || "electric-blue",
       };
       if (!isBroadcastingRef.current && mountedRef.current) {
         isBroadcastingRef.current = true;
@@ -229,7 +260,7 @@ export default function useVibeWorldPresence(user, currentZone, position, equipp
     } catch (err) {
       console.warn("[VibeWorldPresence] heartbeat failed — record may not exist:", err?.message);
     }
-  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, isDancing, isRidingPersonal, isRidingNeonSurf]);
+  }, [user, equippedAura, equippedAuraColor, equippedHoverboard, equippedNameplate, equippedBadge, equippedClothing, avatarTypeKey, avatarSkinTone, avatarStyle, avatarOutfitColor, isDancing, isRidingPersonal, isRidingNeonSurf]);
 
   // ── Real-time entity subscription (replaces polling) ─────────────────────
   useEffect(() => {
