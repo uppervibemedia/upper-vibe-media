@@ -1128,68 +1128,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         <div />
       </motion.div>
 
-      {/* TV Mode button — only shown during free-roam, never inside any zone/panel */}
-      {(() => {
-        const currentZone = detectZone(playerPos.x, playerPos.z);
-        const insideAZone = currentZone && currentZone.id !== "plaza";
-        const showTVButton = !loading
-          && !stageWatching && !stageFullScreen
-          && !anyBlockingUIOpen && !mobileModalOpen && !tvOverlayOpen
-          && !activeChatPeer && !messageComposerTarget
-          && !insideAZone;
-        if (!showTVButton) return null;
-        const isPortrait = isMobile && window.innerHeight > window.innerWidth;
-        // Portrait: push below the exit button row AND the bell/users row (which sits at ~top+54px)
-        // Landscape: align with exit button row (top+4px) but on the right where there's space
-        const topStyle = isPortrait
-          ? (isMobile && mobileLayout
-              ? `${mobileLayout.sa.top + 100}px`
-              : "calc(env(safe-area-inset-top, 0px) + 100px)")
-          : (isMobile && mobileLayout
-              ? `${mobileLayout.sa.top + 4}px`
-              : "calc(env(safe-area-inset-top, 0px) + 4px)");
-        return (
-          <div
-            style={{
-              position: "absolute",
-              top: topStyle,
-              right: "calc(env(safe-area-inset-right, 0px) + 6px)",
-              zIndex: 201,
-              pointerEvents: "auto",
-            }}
-          >
-            <button
-              onClick={() => {
-                if (tvMode) {
-                  disableTvMode();
-                } else {
-                  setTvOverlayOpen(true);
-                }
-              }}
-              onTouchStart={(e) => { e.stopPropagation(); }}
-              className="flex items-center gap-1 rounded-full transition-all hover:brightness-110 active:scale-95"
-              style={{
-                background: tvMode ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.08)",
-                backdropFilter: "blur(10px)",
-                border: tvMode ? "1px solid rgba(0,229,255,0.35)" : "1px solid rgba(255,255,255,0.10)",
-                color: tvMode ? "#00E5FF" : "rgba(255,255,255,0.5)",
-                height: "32px",
-                minHeight: "44px", // keep tap target
-                padding: "0 10px",
-                touchAction: "manipulation",
-                cursor: "pointer",
-                fontSize: "10px",
-                fontWeight: 900,
-                letterSpacing: "0.06em",
-              }}
-              aria-label={tvMode ? "Exit TV Mode" : "TV Mode"}
-            >
-              📺 {tvMode ? "Exit TV" : "TV"}
-            </button>
-          </div>
-        );
-      })()}
-
       {/* World HUD */}
       <WorldHUD
         playerX={playerPos.x}

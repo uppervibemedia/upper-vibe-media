@@ -2,9 +2,9 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import DMInbox from "./DMInbox";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Music4, Tv2, MessageCircle, X, UserCircle, ShoppingBag,
+  Music4, Tv2, MessageCircle, X, ShoppingBag,
   Compass, Sparkles, Library, SkipForward,
-  GraduationCap, Bell, Volume2, VolumeX, Users, Waves, Menu,
+  GraduationCap, Bell, Volume2, VolumeX, Waves, Menu,
 } from "lucide-react";
 // Note: X is kept for potential future use in this file
 
@@ -47,7 +47,6 @@ import InWorldSongPage from "./panels/InWorldSongPage";
 import SocialPanel from "./panels/SocialPanel";
 import CityDashboardPanel from "./panels/CityDashboardPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
-import LiveUsersBadge from "@/components/vibeworld/LiveUsersBadge";
 import NotificationPanel from "./panels/NotificationPanel";
 import { base44 } from "@/api/base44Client";
 
@@ -374,61 +373,6 @@ export default function WorldHUD({
           <Menu style={{ width: isMobile ? 12 : 14, height: isMobile ? 12 : 14 }} color={dashboardOpen ? "#00D4F0" : "rgba(255,255,255,0.4)"} />
         </button>
 
-        {/* DM Inbox (Messages) button */}
-        {currentUserId && (
-          <button
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={() => { hapticTap(); setDmInboxOpen((v) => { if (!v) setNotifPanelOpen(false); return !v; }); }}
-            className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
-            style={{
-              background: dmInboxOpen ? "rgba(0,160,220,0.18)" : "rgba(255,255,255,0.06)",
-              border: `1px solid ${dmInboxOpen ? "rgba(0,160,220,0.4)" : "rgba(255,255,255,0.08)"}`,
-              backdropFilter: "blur(8px)",
-              width: isMobile ? 32 : 36,
-              height: isMobile ? 32 : 36,
-              minWidth: isMobile ? 32 : 36,
-              minHeight: isMobile ? 32 : 36,
-              touchAction: "manipulation",
-              pointerEvents: "auto",
-            }}
-          >
-            <MessageCircle style={{ width: isMobile ? 12 : 14, height: isMobile ? 12 : 14 }}
-              color={dmInboxOpen ? "#00D4F0" : "rgba(255,255,255,0.4)"} />
-          </button>
-        )}
-
-        <LiveUsersBadge
-          activeUsers={activeUsers}
-          userCount={userCount}
-          isBroadcasting={isBroadcasting}
-          isMobile={isMobile}
-          currentUserId={currentUserId}
-          onSelectUser={onSelectUser}
-        />
-
-        {/* Social (followers) button */}
-        {followSystem && currentUserId && (
-          <button
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={() => { hapticTap(); setSocialPanelOpen(true); }}
-            className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              backdropFilter: "blur(8px)",
-              width: isMobile ? 28 : 32,
-              height: isMobile ? 28 : 32,
-              minWidth: isMobile ? 28 : 32,
-              minHeight: isMobile ? 28 : 32,
-              touchAction: "manipulation",
-              pointerEvents: "auto",
-            }}
-            title="Social / Friends"
-          >
-            <Users style={{ width: isMobile ? 11 : 13, height: isMobile ? 11 : 13 }}
-              color="rgba(155,126,255,0.8)" />
-          </button>
-        )}
 
       </motion.div>
 
