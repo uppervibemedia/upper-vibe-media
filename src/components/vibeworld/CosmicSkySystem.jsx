@@ -753,13 +753,13 @@ export function createCosmicSky(scene) {
   scene.userData.beachFlybyA = {
     ...buildBeachFlybyPlanet(["#0E6A78", "#16A0A8", "#40E0D0", "#B8FFF4"], "rgba(70,230,210,0.42)", isMobile ? 13 : 18),
     active: false, life: 0, duration: 28, nextFire: now0 + 5,
-    startCX: -54, endCX: 54, cy: 14, cz: 62,
+    startCX: -54, endCX: 54, cy: 9, cz: 62,
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
   scene.userData.beachFlybyB = {
     ...buildBeachFlybyPlanet(["#8A3C10", "#C87828", "#FFC26A", "#FFF0B8"], "rgba(255,190,80,0.38)", isMobile ? 12 : 17),
     active: false, life: 0, duration: 28, nextFire: now0 + 43,
-    startCX: 54, endCX: -54, cy: 16, cz: 64,
+    startCX: 54, endCX: -54, cy: 11, cz: 64,
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
 }
