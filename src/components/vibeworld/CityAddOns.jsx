@@ -11,6 +11,8 @@ import { resetSessionCoins, getVibeCoinBank } from "@/lib/vibeCoinBank";
 // system (pad cooldown, step-on detection, mid-air collection).
 // ─────────────────────────────────────────────────────────────
 
+const INITIALIZED = { value: false };
+
 const KEYS_CREATED = [
   "_upperVibeShop",
   "_launchPad_lounge",
@@ -26,8 +28,8 @@ export { KEYS_CREATED };
  * visual add-on objects inside `scene`.
  */
 export function runConnections(scene, audioBeatRef) {
-  if (scene.userData._addonsInitialized) return;
-  scene.userData._addonsInitialized = true;
+  if (INITIALIZED.value) return;
+  INITIALIZED.value = true;
 
   // ── Upper Vibe Shop (replaces former Launch Zone area) ──
   const shopPos = SHOP.pos || { x: 0, z: 0 };

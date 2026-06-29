@@ -699,7 +699,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
       });
       scene.userData._neonSigns = cachedNeonSigns;
       scene.userData._zenParticles = cachedZenParticles;
-      scene.userData._stageScreenGlow = scene.getObjectByName("stageScreenGlow");
 
       // Water splash particles — desktop only (too costly on mobile)
       if (!isMob) {
@@ -1149,7 +1148,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             tex.colorSpace = THREE.SRGBColorSpace;
             tex.minFilter = THREE.LinearFilter;
             tex.magFilter = THREE.LinearFilter;
-            if (stageScreen.material) disposeMaterialDeep(stageScreen.material);
             stageScreen.material = new MeshBasicMaterial({ map: tex, depthWrite: true });
             scene.userData._stageCanvasApplied = true;
             scene.userData._stageTex = tex;
@@ -1173,7 +1171,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         } else if (stageScreen && scene.userData._stageCanvasApplied) {
           // No canvas — hide the stage screen (prevents duplicate cover art behind embed)
-          if (stageScreen.material) disposeMaterialDeep(stageScreen.material);
           stageScreen.material = new MeshBasicMaterial({ color: new Color("#0a0a1e"), depthWrite: true, transparent: true, opacity: 0.15 });
           scene.userData._stageCanvasApplied = false;
           scene.userData._stageTex = null;
@@ -1247,7 +1244,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // ─── STAGE SCREEN GLOW — only animate when near stage on mobile ──
         const nearStageForGlow = pz < -8;
         if (!isMob || (nearStageForGlow && frameRef.current % 4 === 0)) {
-          const screenGlowMesh = scene.userData._stageScreenGlow;
+          const screenGlowMesh = scene.getObjectByName("stageScreenGlow");
           if (screenGlowMesh?.material) {
             // TV Smooth: reduce screen glow overdraw when far from stage
             if (tvSmooth && pz > -12) {
@@ -1363,8 +1360,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
         // Distance-gate zone animations on mobile — skip if player is far away
         if (!isMob || nearBeach || frameRef.current % 3 === 0) animateZenBeach(scene, t, audioBeat);
-        // Dance floor — instanced and closer to 30fps when nearby, lower when off-screen
-        if (!isMob ? true : (nearDanceFloor ? frameRef.current % 2 === 0 : frameRef.current % 12 === 0)) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
+        // Dance floor — throttle to every 4 frames on mobile, only when near
+        if (!isMob ? true : (nearDanceFloor && frameRef.current % 4 === 0)) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0);
         // Crystal Zone — TV Smooth: skip when >25u away; always animate when active
         const crystalDx = px - (-26), crystalDz = pz - (-14);
         const crystalDist = Math.sqrt(crystalDx * crystalDx + crystalDz * crystalDz);
@@ -1724,7 +1721,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         cancelAnimationFrame(animId);
         window.removeEventListener("resize", onResize);
 
-        renderer.renderLists?.dispose?.();
         renderer.dispose();
         scene.traverse((obj) => {
           if (obj.geometry) obj.geometry.dispose();
