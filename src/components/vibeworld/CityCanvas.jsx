@@ -127,7 +127,7 @@ const STREAM_ZONES = [
   { key: "stage", names: ["musicStage", "stageScreenGlow"], x: 0, z: -32, keepVisible: true },
   { key: "lounge", names: ["vibeLounge"], x: -22, z: -26, keepVisible: true },
   { key: "music_library", names: ["musicLibrary"], x: 22, z: -20, keepVisible: true },
-  { key: "visualizer", names: ["visualizerDome", "domePortalGlow"], x: -13, z: 3, keepVisible: true },
+  { key: "visualizer", names: ["visualizerDome", "domePortalGlow"], x: -13, z: 10, keepVisible: true },
   { key: "vibe_check", names: ["dailyVibeCheck", "vibeMirrorGroup"], x: -16, z: -13, keepVisible: true },
   { key: "academy", names: ["upperVibeAcademy", "academyEntrance"], x: -28, z: 5, keepVisible: true },
   { key: "crystal", names: ["crystalZone"], x: CRYSTAL_ZONE_X, z: CRYSTAL_ZONE_Z, keepVisible: true },
@@ -355,7 +355,7 @@ export function buildPark(scene) {
   // ═════════════════════════════════════════════════════════════
   // 8.65. UPPER VIBE SHOP — central plaza storefront
   // ═════════════════════════════════════════════════════════════
-  const shopGroup = createUpperVibeShop(scene, [0, 0, 8]);
+  const shopGroup = createUpperVibeShop(scene, [0, 0, 10]);
   if (shopGroup) shopGroup.rotation.y = Math.PI; // face toward player spawn
   scene.userData.shopGroup = shopGroup;
 

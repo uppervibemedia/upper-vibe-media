@@ -90,7 +90,7 @@ export const VIBE_COINS = [
   { id: "token-music",  x: 0,   y: 10, z: -26, label: "Music" },
   { id: "token-beach",  x: 0,   y: 10, z: 26,  label: "Beach" },
   { id: "token-lounge", x: -22, y: 10, z: -26, label: "Lounge" },
-  { id: "token-dome",   x: -13, y: 10, z: 3,   label: "Visualizer" },
+  { id: "token-dome",   x: -13, y: 10, z: 10,  label: "Visualizer" },
   { id: "token-ferris",  x: 22, y: 12, z: 5,   label: "Ferris" },
 ];
 

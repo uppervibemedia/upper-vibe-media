@@ -134,7 +134,7 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         neonLabel("MUSIC STAGE",       "#00D4F0", 0,   3.6, -34.0, 3.4),
         neonLabel("VIBE LOUNGE",       "#C43BFF", -22, 2.4, -26,   3.4),
         neonLabel("MUSIC LIBRARY",     "#00D4F0", 22,  2.4, -20,   3.4),
-        neonLabel("VISUALIZER DOME",   "#C43BFF", -13, 2.4, 3,     3.2),
+        neonLabel("VISUALIZER DOME",   "#C43BFF", -13, 2.4, 10,    3.2),
         neonLabel("VIBE CHECK",        "#00E5FF", -16, 2.5, -13,   3.4),
         neonLabel("VIBE ACADEMY",      "#9B7EFF", -28, 2.6, 5,     3.4),
         neonLabel("UPPER VIBE SHOP",   "#00E5FF", 0,   2.6, 10,    3.2),
@@ -152,7 +152,7 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         { x: 22, y: 3, z: -20, color: "#00E5FF" },
         { x: 0, y: 4, z: 10, color: "#00E5FF" },
         { x: 28, y: 3, z: 23, color: "#F5A800" },
-        { x: -13, y: 2.5, z: 3, color: "#C43BFF" },
+        { x: -13, y: 2.5, z: 10, color: "#C43BFF" },
         { x: -28, y: 2.5, z: 5, color: "#9B7EFF" },
       ];
       const orbMeshes = glowOrbs.map(({ x, y, z, color }) => {
@@ -168,8 +168,8 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
         [-22, 0.18, -26, 4.7, "#C43BFF", 0.55],
         [-22, 0.19, -26, 3.2, "#A078FF", 0.35],
         [22, 0.15, -20, 4.3, "#00D4F0", 0.55],
-        [-13, 0.1, 3, 4.0, "#C43BFF", 0.55],
-        [-13, 0.12, 3, 2.5, "#E040FB", 0.35],
+        [-13, 0.1, 10, 4.0, "#C43BFF", 0.55],
+        [-13, 0.12, 10, 2.5, "#E040FB", 0.35],
         [-28, 0.1, 5, 5.0, "#9B7EFF", 0.55],
         [-28, 0.12, 5, 3.2, "#C43BFF", 0.35],
         [28, 0.1, 23, 3.5, "#F5A800", 0.45],

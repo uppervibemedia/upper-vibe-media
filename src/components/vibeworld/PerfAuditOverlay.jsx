@@ -26,7 +26,7 @@ const ZONES = [
   { id: "dance_floor",     name: "Dance Floor / DJ",  x:   0, z: -13, r: 11 },
   { id: "vibe_lounge",     name: "Vibe Lounge",        x: -22, z: -26, r:  7 },
   { id: "music_library",   name: "Music Library",      x:  22, z: -20, r:  7 },
-  { id: "visualizer_dome", name: "Visualizer Dome",    x: -13, z:   3, r:  7 },
+  { id: "visualizer_dome", name: "Visualizer Dome",    x: -13, z:  10, r:  7 },
   { id: "vibe_check",      name: "Daily Vibe Check",   x: -16, z: -13, r:  6 },
   { id: "crystal_zone",    name: "Crystal Zone",       x:  28, z:  -7, r:  7 },
   { id: "vibe_academy",    name: "Vibe Academy",       x: -28, z:   5, r:  7 },

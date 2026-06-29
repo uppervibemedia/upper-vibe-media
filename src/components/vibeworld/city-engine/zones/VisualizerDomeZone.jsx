@@ -3,7 +3,7 @@
  * Radius +30% (3.5 → 4.5), enlarged entrance, glowing base ring, rim accents,
  * neon edge lighting, soft entrance light spill — all lightweight, iPhone-safe.
  *
- * Position: (-13, 10) — between plaza and beach, well clear of Academy, Shop,
+ * Position: (-13, 10) — Academy-row south layout, clear of paths, Shop,
  * Crystal Zone, Zen Beach, and Launch Pads.
  */
 import * as THREE from "three";
