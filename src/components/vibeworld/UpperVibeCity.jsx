@@ -1248,6 +1248,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         isDancing={isDancing}
         activeEmote={activeEmote}
         onEditAvatar={() => setCustomizerOpen(true)}
+        onOpenInventory={() => setInventoryOpen(true)}
+        onOpenTvMode={() => setTvOverlayOpen(true)}
+        onExitCity={onExit}
         nearJukebox={nearJukebox}
         djTrack={djTrack}
         onFerrisRideChange={setFerrisRiding}

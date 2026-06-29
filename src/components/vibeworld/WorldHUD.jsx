@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Music4, Tv2, MessageCircle, X, UserCircle, ShoppingBag,
   Compass, Sparkles, Library, SkipForward,
-  GraduationCap, Bell, Volume2, VolumeX, Users, Waves,
+  GraduationCap, Bell, Volume2, VolumeX, Users, Waves, Menu,
 } from "lucide-react";
 // Note: X is kept for potential future use in this file
 
@@ -45,6 +45,7 @@ import EmotePanel from "./panels/EmotePanel";
 import JukeboxPanel from "./panels/JukeboxPanel";
 import InWorldSongPage from "./panels/InWorldSongPage";
 import SocialPanel from "./panels/SocialPanel";
+import CityDashboardPanel from "./panels/CityDashboardPanel";
 import UserInteractionMenu from "./UserInteractionMenu";
 import LiveUsersBadge from "@/components/vibeworld/LiveUsersBadge";
 import NotificationPanel from "./panels/NotificationPanel";
@@ -114,6 +115,9 @@ export default function WorldHUD({
   isDancing = false,
   activeEmote = null,
   onEditAvatar,
+  onOpenInventory,
+  onOpenTvMode,
+  onExitCity,
   nearJukebox = false,
   djTrack = null,
   onFerrisRideChange,
@@ -199,6 +203,7 @@ export default function WorldHUD({
   const [jukeboxOpen, setJukeboxOpen] = useState(false);
   const [djSongPageOpen, setDjSongPageOpen] = useState(false);
   const [socialPanelOpen, setSocialPanelOpen] = useState(false);
+  const [dashboardOpen, setDashboardOpen] = useState(false);
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const [dmInboxOpen, setDmInboxOpen] = useState(false);
   // approved conversation cache: { [userId]: true } — populated when profile card opens
@@ -219,6 +224,18 @@ export default function WorldHUD({
   }, [userInteractionTarget?.user_id, userInteractionTarget?.id, currentUserId]);
 
   const hapticTap = () => { try { navigator?.vibrate?.(10); } catch {} };
+
+  const handleDashboardAction = useCallback((id) => {
+    hapticTap();
+    setDashboardOpen(false);
+    if (id === "avatar") onEditAvatar?.();
+    if (id === "inventory") onOpenInventory?.();
+    if (id === "chat") { setNotifPanelOpen(false); setDmInboxOpen(true); }
+    if (id === "users") setSocialPanelOpen(true);
+    if (id === "tv") onOpenTvMode?.();
+    if (id === "settings") navigate("/settings");
+    if (id === "exit") onExitCity?.();
+  }, [navigate, onEditAvatar, onOpenInventory, onOpenTvMode, onExitCity]);
 
   const handleOpenMusicLibrary = useCallback(() => {
     hapticTap();
@@ -335,6 +352,28 @@ export default function WorldHUD({
           )}
         </button>
 
+        {/* City Dashboard — quick access while keeping Notifications visible */}
+        <button
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={() => { hapticTap(); setDashboardOpen((v) => !v); }}
+          className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
+          style={{
+            background: dashboardOpen ? "rgba(0,160,220,0.18)" : "rgba(255,255,255,0.06)",
+            border: `1px solid ${dashboardOpen ? "rgba(0,160,220,0.4)" : "rgba(255,255,255,0.08)"}`,
+            backdropFilter: "blur(8px)",
+            width: isMobile ? 32 : 36,
+            height: isMobile ? 32 : 36,
+            minWidth: isMobile ? 32 : 36,
+            minHeight: isMobile ? 32 : 36,
+            touchAction: "manipulation",
+            pointerEvents: "auto",
+          }}
+          title="City Dashboard"
+          aria-label="City Dashboard"
+        >
+          <Menu style={{ width: isMobile ? 12 : 14, height: isMobile ? 12 : 14 }} color={dashboardOpen ? "#00D4F0" : "rgba(255,255,255,0.4)"} />
+        </button>
+
         {/* DM Inbox (Messages) button */}
         {currentUserId && (
           <button
@@ -391,30 +430,14 @@ export default function WorldHUD({
           </button>
         )}
 
-        {/* Edit Avatar button (only in plaza) */}
-        {zone?.id === "plaza" && onEditAvatar && (
-          <button
-            onTouchStart={(e) => e.stopPropagation()}
-            onClick={() => onEditAvatar()}
-            className="flex items-center justify-center rounded-full transition-all hover:brightness-110 active:scale-95"
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              backdropFilter: "blur(8px)",
-              width: isMobile ? 28 : 32,
-              height: isMobile ? 28 : 32,
-              minWidth: isMobile ? 28 : 32,
-              minHeight: isMobile ? 28 : 32,
-              touchAction: "manipulation",
-              pointerEvents: "auto",
-            }}
-            title="Edit Avatar"
-          >
-            <UserCircle style={{ width: isMobile ? 11 : 13, height: isMobile ? 11 : 13 }}
-              color="rgba(255,255,255,0.4)" />
-          </button>
-        )}
       </motion.div>
+
+      <CityDashboardPanel
+        open={dashboardOpen}
+        onClose={() => setDashboardOpen(false)}
+        onAction={handleDashboardAction}
+        isMobile={isMobile}
+      />
 
       {/* ── Notification Panel ───────────────────────── */}
       <AnimatePresence>
