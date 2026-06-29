@@ -59,6 +59,7 @@ const {
 
 // ─── CONSTANTS ────────────────────────────────────────────────
 const MOVE_SPEED = 7.8;
+const PERSONAL_HOVERBOARD_SPEED_MULTIPLIER = 1.5;
 const ACCELERATION = 36.0; // quick response without mobile/low-quality slowdown
 const DECELERATION = 24.0; // quick stop without feeling sticky
 const TURN_SPEED = 2.5;       // radians/sec for A/D turning
@@ -588,7 +589,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, personalHoverboardActive = false, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -679,6 +680,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   hbRidingRef.current = hbRiding;
   const isPlayingNeonSurfRef = useRef(false);
   isPlayingNeonSurfRef.current = isPlayingNeonSurf;
+  const personalHoverboardActiveRef = useRef(false);
+  personalHoverboardActiveRef.current = personalHoverboardActive;
   const ferrisRidingRef = useRef(false);
   ferrisRidingRef.current = ferrisRiding;
   const equippedAuraRef = useRef(null);
@@ -1050,8 +1053,11 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         if (isMoving) {
           const boosting = hbRidingRef.current && performance.now() < speedBoostUntilRef.current;
+          const usingPersonalBoard = personalHoverboardActiveRef.current && !isPlayingNeonSurfRef.current;
+          const personalHoverboardSpeed = MOVE_SPEED * PERSONAL_HOVERBOARD_SPEED_MULTIPLIER;
+          const baseRideSpeed = usingPersonalBoard ? personalHoverboardSpeed : MOVE_SPEED;
           const targetSpeed = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08
-            ? (boosting ? MOVE_SPEED * 3.0 : MOVE_SPEED)
+            ? (boosting ? MOVE_SPEED * 3.0 : baseRideSpeed)
             : 0;
           vel.x += (moveX * targetSpeed - vel.x) * Math.min(1, ACCELERATION * moveDt);
           vel.z += (moveZ * targetSpeed - vel.z) * Math.min(1, ACCELERATION * moveDt);
