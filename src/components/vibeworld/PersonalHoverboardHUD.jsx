@@ -24,16 +24,14 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
       ? {
           position: 'fixed',
           right: 'calc(24px + env(safe-area-inset-right, 0px))',
-          top: '38%',
-          transform: 'translateY(-50%)',
-          bottom: 'auto',
+          bottom: 'calc(36px + env(safe-area-inset-bottom, 0px))',
           pointerEvents: 'auto',
         }
       : isMobile
         ? {
             position: 'fixed',
-            right: 'calc(20px + env(safe-area-inset-right, 0px))',
-            bottom: 'calc(170px + env(safe-area-inset-bottom, 0px))',
+            right: 'calc(18px + env(safe-area-inset-right, 0px))',
+            bottom: 'calc(150px + env(safe-area-inset-bottom, 0px))',
             pointerEvents: 'auto',
           }
         : {
@@ -63,17 +61,17 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
       className="z-[58] flex flex-col items-end px-3"
       style={{
         ...containerStyle,
-        gap: personalHoverboardActive ? 14 : 8,
+        gap: personalHoverboardActive ? 10 : 8,
       }}
     >
       {personalHoverboardActive && (
         <button
-          onTouchStart={(e) => e.stopPropagation()}
+          onTouchStart={(e) => { e.stopPropagation(); onJump?.(); }}
           onClick={onJump}
           className="flex items-center justify-center gap-1.5 rounded-full font-black text-[11px] tracking-wider transition-all hover:brightness-110 active:scale-95"
           style={{
-            width: isMobile ? 132 : 140,
-            height: isMobile ? 58 : 54,
+            width: isMobile ? 118 : 140,
+            height: isMobile ? 54 : 54,
             background: "linear-gradient(135deg,#00E5FF,#A078FF)",
             border: "1px solid rgba(0,229,255,0.5)",
             color: "#fff",
@@ -91,13 +89,14 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
         onClick={onToggle}
         className="flex items-center justify-center gap-1.5 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95"
         style={{
-          width: personalHoverboardActive ? (isMobile ? 160 : 164) : 'auto',
-          height: personalHoverboardActive ? (isMobile ? 52 : 48) : undefined,
-          padding: personalHoverboardActive ? '0 14px' : '6px 12px',
+          width: personalHoverboardActive ? (isMobile ? 132 : 164) : 'auto',
+          height: personalHoverboardActive ? (isMobile ? 42 : 48) : undefined,
+          padding: personalHoverboardActive ? '0 12px' : '6px 12px',
           opacity: personalHoverboardActive ? 0.9 : 1,
           background: personalHoverboardActive ? "rgba(255, 80, 80, 0.13)" : "linear-gradient(135deg,#00B8D488,#00D4F088)",
           border: personalHoverboardActive ? "1px solid rgba(255, 80, 80, 0.32)" : "1px solid rgba(0,212,240,0.4)",
           color: personalHoverboardActive ? "#ff9a9a" : "#fff",
+          fontSize: personalHoverboardActive && isMobile ? 13 : undefined,
           minHeight: personalHoverboardActive ? undefined : (isMobile ? 36 : 40),
           touchAction: "manipulation",
           boxShadow: personalHoverboardActive ? "0 0 10px rgba(255, 80, 80, 0.18)" : "0 0 14px rgba(0,212,240,0.25)",

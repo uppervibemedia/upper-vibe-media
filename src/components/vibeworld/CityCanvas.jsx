@@ -60,9 +60,9 @@ const {
 // ─── CONSTANTS ────────────────────────────────────────────────
 const MOVE_SPEED = 7.8;
 const PERSONAL_HOVERBOARD_SPEED_MULTIPLIER = 1.5;
-const HOVERBOARD_JUMP_FORCE = 7;
+const HOVERBOARD_JUMP_FORCE = 9.8;
 const HOVERBOARD_JUMP_GRAVITY = -18;
-const HOVERBOARD_MAX_JUMP_HEIGHT = 3;
+const HOVERBOARD_MAX_JUMP_HEIGHT = 4.2;
 const HOVERBOARD_JUMP_COOLDOWN = 1.2;
 const HOVERBOARD_AIR_CONTROL_MULTIPLIER = 0.65;
 const ACCELERATION = 36.0; // quick response without mobile/low-quality slowdown
