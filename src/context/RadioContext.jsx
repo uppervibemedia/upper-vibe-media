@@ -65,17 +65,16 @@ function rememberMyVibeInitial(trackId) {
     localStorage.setItem(MY_VIBE_RECENT_KEY, JSON.stringify([trackId, ...recent].slice(0, 5)));
   } catch {}
 }
-function pickFreshMyVibeSong(allTracks, excludeId, likedIds = [], dislikedIds = [], recentIds = []) {
+function getMyVibePool(allTracks, likedIds = [], dislikedIds = []) {
   const eligibleTracks = (allTracks || []).filter((t) => t?.id && t.audio_url && t.status !== "archived" && !dislikedIds.includes(t.id));
+  const likedPool = likedIds.length ? eligibleTracks.filter((t) => likedIds.includes(t.id)) : [];
+  return likedPool.length ? likedPool : eligibleTracks;
+}
+
+function pickFreshMyVibeSong(allTracks, excludeId, likedIds = [], dislikedIds = [], recentIds = []) {
+  const pool = getMyVibePool(allTracks, likedIds, dislikedIds);
   const combinedRecent = [...new Set([excludeId, ...recentIds, ...loadMyVibeRecentIds()].filter(Boolean))];
-  const likedPool = likedIds.length
-    ? eligibleTracks.filter((t) => likedIds.includes(t.id) && t.id !== excludeId)
-    : [];
-  const likedQueue = likedPool.length > 1
-    ? buildWeightedQueue(likedPool, excludeId, likedIds, dislikedIds, combinedRecent)
-    : likedPool;
-  if (likedQueue.length) return likedQueue[0];
-  return buildWeightedQueue(eligibleTracks, excludeId, likedIds, dislikedIds, combinedRecent)[0] || eligibleTracks[0] || null;
+  return buildWeightedQueue(pool, excludeId, likedIds, dislikedIds, combinedRecent)[0] || pool.find((t) => t.id !== excludeId) || pool[0] || null;
 }
 
 export function RadioProvider({ children }) {
@@ -83,7 +82,7 @@ export function RadioProvider({ children }) {
     registerNextHandler, registerPrevHandler,
     audioRef,
   } = usePlayer();
-  const { user } = useAuth();
+  const { user, isLoadingAuth } = useAuth();
 
   const [allTracks,          setAllTracks]          = useState([]);
   const [tracksLoaded,       setTracksLoaded]       = useState(false);
@@ -128,24 +127,26 @@ export function RadioProvider({ children }) {
   // ── Restore persisted state (no autoplay) ─────────────────────────────────
   const restoredRef = useRef(false);
   useEffect(() => {
-    if (!tracksLoaded || restoredRef.current || (user?.id && !likedIdsLoaded)) return;
+    if (!tracksLoaded || restoredRef.current || isLoadingAuth || !likedIdsLoaded) return;
     restoredRef.current = true;
     const saved = loadPersistedState();
     const savedId = saved?.currentRadioSongId || null;
     const hist = saved?.radioHistoryIds?.length
       ? saved.radioHistoryIds.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean)
       : [];
+    const dislikedIds = getDislikedIds();
+    const pool = getMyVibePool(allTracks, likedTrackIds, dislikedIds);
     const recentIds = [savedId, ...hist.slice(-5).map((t) => t.id), ...loadMyVibeRecentIds()].filter(Boolean);
-    const song = pickFreshMyVibeSong(allTracks, savedId, likedTrackIds, getDislikedIds(), recentIds);
+    const song = pickFreshMyVibeSong(pool, savedId, likedTrackIds, dislikedIds, recentIds);
     if (song) {
       setCurrentRadioSong(song);
       setRadioHistory([song]);
       setHistoryIndex(0);
-      setRadioQueue(buildWeightedQueue(allTracks.filter((t) => t?.audio_url && t.status !== "archived"), song.id, likedTrackIds, getDislikedIds(), [song.id, ...recentIds]));
+      setRadioQueue(buildWeightedQueue(pool, song.id, likedTrackIds, dislikedIds, [song.id, ...recentIds]));
       rememberMyVibeInitial(song.id);
       radioSavedTimeRef.current = 0;
     }
-  }, [tracksLoaded, allTracks, likedTrackIds, likedIdsLoaded, user?.id]);
+  }, [tracksLoaded, allTracks, likedTrackIds, likedIdsLoaded, isLoadingAuth, user?.id]);
 
   // ── Persist state ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -193,6 +194,20 @@ export function RadioProvider({ children }) {
 
   const setRadioLikedIds = useCallback((ids) => setLikedTrackIds(ids), []);
 
+  useEffect(() => {
+    if (!tracksLoaded || !likedIdsLoaded || !currentRadioSong || !likedTrackIds.length) return;
+    const dislikedIds = getDislikedIds();
+    const pool = getMyVibePool(allTracks, likedTrackIds, dislikedIds);
+    if (pool.some((track) => track.id === currentRadioSong.id)) return;
+    const replacement = pickFreshMyVibeSong(pool, currentRadioSong.id, likedTrackIds, dislikedIds, [currentRadioSong.id]);
+    if (!replacement) return;
+    setCurrentRadioSong(replacement);
+    setRadioHistory([replacement]);
+    setHistoryIndex(0);
+    setRadioQueue(buildWeightedQueue(pool, replacement.id, likedTrackIds, dislikedIds, [replacement.id]));
+    rememberMyVibeInitial(replacement.id);
+  }, [tracksLoaded, likedIdsLoaded, currentRadioSong?.id, likedTrackIds, allTracks]);
+
   function getRecentMyVibeIds(history, hIndex, limit = 10) {
     return history.slice(Math.max(0, hIndex - limit + 1), hIndex + 1).map((t) => t.id).filter(Boolean);
   }
@@ -212,6 +227,7 @@ export function RadioProvider({ children }) {
     let newQueue = [...queue];
 
     const dislikedIds = getDislikedIds();
+    const pool = getMyVibePool(allT, likedIds, dislikedIds);
     const recentIds = getRecentMyVibeIds(history, hIndex, 10);
     if (newQueue.length > 0) {
       const picked = takeNextFromQueue(newQueue, currentSong?.id, recentIds);
@@ -219,7 +235,7 @@ export function RadioProvider({ children }) {
       newQueue = picked.newQueue;
     }
     if (!nextSong) {
-      const rebuilt = buildWeightedQueue(allT, currentSong?.id, likedIds, dislikedIds, recentIds);
+      const rebuilt = buildWeightedQueue(pool, currentSong?.id, likedIds, dislikedIds, recentIds);
       nextSong = rebuilt[0];
       newQueue  = rebuilt.slice(1);
     }
@@ -227,7 +243,7 @@ export function RadioProvider({ children }) {
 
     if (newQueue.length < 10) {
       const nextRecentIds = [...recentIds, nextSong.id].slice(-10);
-      const extra = buildWeightedQueue(allT, nextSong.id, likedIds, dislikedIds, nextRecentIds)
+      const extra = buildWeightedQueue(pool, nextSong.id, likedIds, dislikedIds, nextRecentIds)
         .filter((t) => t.id !== nextSong.id && !newQueue.find((q) => q.id === t.id));
       newQueue = [...newQueue, ...extra].slice(0, 50);
     }
@@ -440,18 +456,20 @@ export function RadioProvider({ children }) {
 
   // ── Public API ────────────────────────────────────────────────────────────
   const initRadio = useCallback(() => {
-    if (!allTracks.length) return null;
+    if (!allTracks.length || !tracksLoaded || !likedIdsLoaded) return null;
     if (currentRadioSong) return currentRadioSong;
-    const song = pickFreshMyVibeSong(allTracks, currentRadioSong?.id || null, likedTrackIds, getDislikedIds(), []);
+    const dislikedIds = getDislikedIds();
+    const pool = getMyVibePool(allTracks, likedTrackIds, dislikedIds);
+    const song = pickFreshMyVibeSong(pool, currentRadioSong?.id || null, likedTrackIds, dislikedIds, []);
     if (!song) return null;
-    const built = buildWeightedQueue(allTracks, song.id, likedTrackIds, getDislikedIds(), [song.id]);
+    const built = buildWeightedQueue(pool, song.id, likedTrackIds, dislikedIds, [song.id]);
     setCurrentRadioSong(song);
     setRadioHistory([song]);
     setHistoryIndex(0);
     setRadioQueue(built);
     rememberMyVibeInitial(song.id);
     return song;
-  }, [allTracks, currentRadioSong, likedTrackIds]);
+  }, [allTracks, currentRadioSong, likedTrackIds, tracksLoaded, likedIdsLoaded]);
 
   /**
    * startMyVibeQueue — initializes the queue and calls back with the first track.
@@ -459,14 +477,17 @@ export function RadioProvider({ children }) {
    * This separation keeps audio control in RAM and queue management in RadioContext.
    */
   const startMyVibeQueue = useCallback((onFirstTrack) => {
+    if (!tracksLoaded || !likedIdsLoaded) return;
     let song = currentRadioSong;
     if (!song) {
-      song = pickFreshMyVibeSong(allTracks, null, likedTrackIds, getDislikedIds(), []);
+      const dislikedIds = getDislikedIds();
+      const pool = getMyVibePool(allTracks, likedTrackIds, dislikedIds);
+      song = pickFreshMyVibeSong(pool, null, likedTrackIds, dislikedIds, []);
       if (!song) {
         console.warn("[RadioContext] startMyVibeQueue — no tracks available");
         return;
       }
-      const built = buildWeightedQueue(allTracks, song.id, likedTrackIds, getDislikedIds(), [song.id]);
+      const built = buildWeightedQueue(pool, song.id, likedTrackIds, dislikedIds, [song.id]);
       setCurrentRadioSong(song);
       setRadioHistory([song]);
       setHistoryIndex(0);
@@ -475,7 +496,7 @@ export function RadioProvider({ children }) {
     }
     console.log("[RadioContext] 📻 Queue initialized, first track:", song.title);
     if (onFirstTrack) onFirstTrack(song);
-  }, [allTracks, currentRadioSong, likedTrackIds]);
+  }, [allTracks, currentRadioSong, likedTrackIds, tracksLoaded, likedIdsLoaded]);
 
   // Keep startRadio for backwards compatibility (used by other parts of app)
   const startRadio = useCallback((onPlay) => {
@@ -505,8 +526,10 @@ export function RadioProvider({ children }) {
   const jumpToSong = useCallback((song, onPlay) => {
     if (!song) return;
     const newQueue = radioQueue.filter((t) => t.id !== song.id);
+    const dislikedIds = getDislikedIds();
+    const pool = getMyVibePool(allTracks, likedTrackIds, dislikedIds);
     const finalQueue = newQueue.length < 10
-      ? [...newQueue, ...buildWeightedQueue(allTracks, song.id, likedTrackIds, getDislikedIds()).filter((t) => !newQueue.find((q) => q.id === t.id))].slice(0, 50)
+      ? [...newQueue, ...buildWeightedQueue(pool, song.id, likedTrackIds, dislikedIds).filter((t) => !newQueue.find((q) => q.id === t.id))].slice(0, 50)
       : newQueue;
     const newHistory = [...radioHistory.slice(0, historyIndex + 1), song];
     setRadioHistory(newHistory);
