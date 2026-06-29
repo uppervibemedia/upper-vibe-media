@@ -10,6 +10,11 @@ const STYLES = [
   { key: "energy", label: "Energy Rings" },
   { key: "waveform", label: "Waveform Glow" },
   { key: "particles", label: "Pulse Particles" },
+  { key: "mandala", label: "Sacred Mandala" },
+  { key: "aurora", label: "Aurora Flow" },
+  { key: "orbit", label: "Orbital Pulse" },
+  { key: "lotus", label: "Lotus Bloom" },
+  { key: "rain", label: "Neon Rain" },
 ];
 
 const MODES = [
@@ -144,7 +149,130 @@ function drawParticles(canvas, ctx, dataArray, bufferLength, t, a) {
   }
 }
 
-const DRAW_FNS = { cosmic: drawCosmic, spectrum: drawSpectrum, energy: drawEnergyRings, waveform: drawWaveform, particles: drawParticles };
+function drawMandala(canvas, ctx, dataArray, bufferLength, t, a) {
+  const { width, height } = canvas;
+  const beat = a?.beatStrength || 0;
+  const bass = a?.bassEnergy || 0;
+  const cx = width / 2, cy = height / 2;
+  ctx.fillStyle = "rgba(5,5,16,0.2)";
+  ctx.fillRect(0, 0, width, height);
+  const petals = 18;
+  for (let layer = 0; layer < 4; layer++) {
+    const base = Math.min(width, height) * (0.09 + layer * 0.075) + beat * 22;
+    ctx.beginPath();
+    for (let i = 0; i <= petals * 2; i++) {
+      const idx = Math.floor((i / (petals * 2)) * bufferLength);
+      const val = (dataArray[idx] || 0) / 255;
+      const angle = (i / (petals * 2)) * Math.PI * 2 + t * (0.15 + layer * 0.04);
+      const r = base + Math.sin(angle * petals * 0.5) * (18 + bass * 24) + val * 36;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `hsla(${285 + layer * 18 + beat * 28}, 90%, ${58 + beat * 12}%, ${0.34 + beat * 0.32})`;
+    ctx.lineWidth = 1.5 + beat * 2.4;
+    ctx.stroke();
+  }
+}
+
+function drawAurora(canvas, ctx, dataArray, bufferLength, t, a) {
+  const { width, height } = canvas;
+  const beat = a?.beatStrength || 0;
+  const volume = a?.smoothedVolume || 0;
+  ctx.fillStyle = "rgba(5,5,16,0.16)";
+  ctx.fillRect(0, 0, width, height);
+  for (let ribbon = 0; ribbon < 5; ribbon++) {
+    ctx.beginPath();
+    for (let x = -20; x <= width + 20; x += 18) {
+      const idx = Math.floor((x / width) * bufferLength);
+      const val = (dataArray[idx] || 0) / 255;
+      const y = height * (0.28 + ribbon * 0.11) + Math.sin(t * (1.2 + volume) + x * 0.012 + ribbon) * (28 + beat * 24) + val * 42;
+      if (x === -20) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = `hsla(${180 + ribbon * 28 + beat * 25}, 90%, ${54 + beat * 16}%, ${0.22 + beat * 0.22})`;
+    ctx.lineWidth = 12 + beat * 10;
+    ctx.stroke();
+  }
+}
+
+function drawOrbit(canvas, ctx, dataArray, bufferLength, t, a) {
+  const { width, height } = canvas;
+  const beat = a?.beatStrength || 0;
+  const cx = width / 2, cy = height / 2;
+  ctx.fillStyle = "rgba(5,5,16,0.18)";
+  ctx.fillRect(0, 0, width, height);
+  for (let ring = 0; ring < 6; ring++) {
+    const val = (dataArray[(ring * 53) % bufferLength] || 0) / 255;
+    const rx = Math.min(width, height) * (0.12 + ring * 0.055) + val * 22 + beat * 18;
+    const ry = rx * (0.42 + ring * 0.035);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(t * (0.12 + ring * 0.025));
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx, ry, ring * 0.45, 0, Math.PI * 2);
+    ctx.strokeStyle = `hsla(${205 + ring * 22}, 90%, ${58 + beat * 14}%, ${0.32 + beat * 0.28})`;
+    ctx.lineWidth = 1.5 + beat * 2;
+    ctx.stroke();
+    const dotA = t * (0.8 + ring * 0.16);
+    ctx.beginPath();
+    ctx.arc(Math.cos(dotA) * rx, Math.sin(dotA) * ry, 3 + val * 4 + beat * 3, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(0,229,255,${0.55 + beat * 0.35})`;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawLotus(canvas, ctx, dataArray, bufferLength, t, a) {
+  const { width, height } = canvas;
+  const beat = a?.beatStrength || 0;
+  const bass = a?.bassEnergy || 0;
+  const cx = width / 2, cy = height / 2;
+  ctx.fillStyle = "rgba(5,5,16,0.18)";
+  ctx.fillRect(0, 0, width, height);
+  for (let layer = 0; layer < 4; layer++) {
+    const petals = 8 + layer * 4;
+    const base = Math.min(width, height) * (0.1 + layer * 0.055) + beat * 14;
+    for (let p = 0; p < petals; p++) {
+      const val = (dataArray[(p * 17 + layer * 31) % bufferLength] || 0) / 255;
+      const angle = (p / petals) * Math.PI * 2 + t * 0.08 * (layer + 1);
+      ctx.save();
+      ctx.translate(cx + Math.cos(angle) * base * 0.2, cy + Math.sin(angle) * base * 0.2);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.ellipse(base * 0.42, 0, 18 + val * 20 + beat * 8, base * (0.3 + bass * 0.08), 0, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${300 + layer * 16}, 88%, ${60 + val * 18}%, ${0.12 + beat * 0.18 + val * 0.1})`;
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+function drawNeonRain(canvas, ctx, dataArray, bufferLength, t, a) {
+  const { width, height } = canvas;
+  const beat = a?.beatStrength || 0;
+  ctx.fillStyle = "rgba(5,5,16,0.2)";
+  ctx.fillRect(0, 0, width, height);
+  const cols = Math.max(24, Math.floor(width / 18));
+  for (let i = 0; i < cols; i++) {
+    const val = dataArray[Math.floor((i / cols) * bufferLength)] / 255;
+    const x = (i / cols) * width;
+    const y = ((t * (80 + val * 120 + beat * 80) + i * 41) % (height + 140)) - 70;
+    const len = 34 + val * 80 + beat * 35;
+    const g = ctx.createLinearGradient(x, y, x, y + len);
+    g.addColorStop(0, `rgba(0,229,255,0)`);
+    g.addColorStop(0.5, `rgba(0,229,255,${0.22 + beat * 0.35})`);
+    g.addColorStop(1, `rgba(160,120,255,0)`);
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 2 + val * 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + len);
+    ctx.stroke();
+  }
+}
+
+const DRAW_FNS = { cosmic: drawCosmic, spectrum: drawSpectrum, energy: drawEnergyRings, waveform: drawWaveform, particles: drawParticles, mandala: drawMandala, aurora: drawAurora, orbit: drawOrbit, lotus: drawLotus, rain: drawNeonRain };
 
 function DomeTextScene({ eyebrow, title, text, themeColor, themeGlow }) {
   return (
@@ -241,7 +369,7 @@ export default function VisualizerPanel({ open, onClose, currentTrack, isTrackPl
       rootRef.current?.style.setProperty("--dome-bass", String(Math.min(1, analysis.bassEnergy || 0)));
       const t = analysis.audioTime || frame * 0.016;
       const data = analysis.frequencyData || fallbackData(1024, t);
-      const visualKey = activeMode === "visualizer" ? activeStyle.key : activeMode === "affirmation" ? "energy" : "particles";
+      const visualKey = activeStyle.key;
       DRAW_FNS[visualKey](canvas, ctx, data, data.length, t, analysis);
       frame++;
     };
@@ -277,6 +405,16 @@ export default function VisualizerPanel({ open, onClose, currentTrack, isTrackPl
       <ConnectedBadge track={currentTrack} isPlaying={isPlaying} />
 
       <div className="relative z-20 flex justify-center items-center gap-2 py-1 flex-shrink-0" style={{ pointerEvents: "auto" }}><button onClick={handlePrev} onTouchStart={(e) => e.stopPropagation()} className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/15 active:scale-95" style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", minWidth: 44, minHeight: 44, touchAction: "manipulation", pointerEvents: "auto" }} aria-label="Previous Dome item"><ChevronLeft className="w-5 h-5" /></button><span className="text-[10px] sm:text-xs font-black tracking-wider text-white/60 text-center truncate" style={{ width: "min(220px, 44vw)" }}>{modeTitle}</span><button onClick={handleNext} onTouchStart={(e) => e.stopPropagation()} className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:bg-white/15 active:scale-95" style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", minWidth: 44, minHeight: 44, touchAction: "manipulation", pointerEvents: "auto" }} aria-label="Next Dome item"><ChevronRight className="w-5 h-5" /></button></div>
+
+      <div className="relative z-20 flex justify-center px-3 pb-1 flex-shrink-0" style={{ pointerEvents: "auto" }}>
+        <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar rounded-2xl px-2 py-1" style={{ maxWidth: "min(720px, calc(100vw - 28px))", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.07)", backdropFilter: "blur(12px)" }}>
+          {STYLES.map((style) => (
+            <button key={style.key} onClick={(e) => { e.stopPropagation(); setStyleIdx(STYLES.findIndex((s) => s.key === style.key)); }} onTouchStart={(e) => e.stopPropagation()} className="rounded-full whitespace-nowrap text-[9px] sm:text-[10px] font-black transition-all active:scale-95" style={{ minHeight: 30, padding: "0 10px", background: activeStyle.key === style.key ? "rgba(0,229,255,0.18)" : "rgba(255,255,255,0.04)", border: `1px solid ${activeStyle.key === style.key ? "rgba(0,229,255,0.36)" : "rgba(255,255,255,0.06)"}`, color: activeStyle.key === style.key ? "#9ff5ff" : "rgba(255,255,255,0.54)", boxShadow: activeStyle.key === style.key ? "0 0 14px rgba(0,229,255,0.14)" : "none", touchAction: "manipulation", pointerEvents: "auto" }}>
+              {style.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {activeMode === "affirmation" && <DomeTextScene eyebrow="Frequency Room · Affirmations" text={GENERAL_AFFIRMATIONS[affirmationIdx]} themeColor="#A078FF" themeGlow="rgba(160,120,255,0.3)" />}
       {activeMode === "manifestation" && <DomeTextScene eyebrow="Frequency Room · Manifestation" title={activeManifestation?.label || "Select Focus"} text={manifestationText} themeColor={activeManifestation?.color || "#A078FF"} themeGlow={activeManifestation?.glow || "rgba(160,120,255,0.3)"} />}
