@@ -25,45 +25,37 @@ export default function MobileJoystick({ onMove }) {
   layoutRef.current = layout;
   const onMoveRef = useRef(onMove);
   onMoveRef.current = onMove;
+  const visualFrameRef = useRef(null);
+
+  const scheduleVisual = useCallback((dx, dy, isActive) => {
+    if (visualFrameRef.current) cancelAnimationFrame(visualFrameRef.current);
+    visualFrameRef.current = requestAnimationFrame(() => {
+      setThumbDX(dx);
+      setThumbDY(dy);
+      setActive(isActive);
+      visualFrameRef.current = null;
+    });
+  }, []);
+
+  useEffect(() => () => {
+    if (visualFrameRef.current) cancelAnimationFrame(visualFrameRef.current);
+  }, []);
 
   // Reset state on orientation change
   useEffect(() => {
     activeIdRef.current = null;
-    setActive(false);
-    setThumbDX(0);
-    setThumbDY(0);
+    scheduleVisual(0, 0, false);
     onMoveRef.current?.(0, 0);
-  }, [layout?.isLandscape]);
+  }, [layout?.isLandscape, scheduleVisual]);
 
   // Attach native (non-passive) touch listeners directly to the DOM node
   useEffect(() => {
     const el = divRef.current;
     if (!el) return;
 
-    const onStart = (e) => {
-      if (activeIdRef.current !== null) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const t = e.changedTouches[0];
-      if (!t) return;
-      activeIdRef.current = t.identifier;
-      try { navigator?.vibrate?.(10); } catch {}
-    };
-
-    const onMove = (e) => {
-      if (activeIdRef.current === null) return;
-      e.preventDefault();
+    const updateFromTouch = (touch) => {
       const L = layoutRef.current;
-      if (!L) return;
-
-      let touch = null;
-      for (let i = 0; i < e.touches.length; i++) {
-        if (e.touches[i].identifier === activeIdRef.current) {
-          touch = e.touches[i];
-          break;
-        }
-      }
-      if (!touch) return;
+      if (!L || !touch) return;
 
       const cx = L.joystick.cx;
       const cy = L.joystick.cy;
@@ -74,11 +66,35 @@ export default function MobileJoystick({ onMove }) {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 1) { dx /= dist; dy /= dist; }
 
-      setThumbDX(dx * L.joystick.maxR);
-      setThumbDY(-dy * L.joystick.maxR);
-      setActive(dist > 0.12);
-
+      // Movement ref updates immediately; React visual state is rAF-throttled.
       onMoveRef.current?.(dx, dy);
+      scheduleVisual(dx * L.joystick.maxR, -dy * L.joystick.maxR, dist > 0.12);
+    };
+
+    const onStart = (e) => {
+      if (activeIdRef.current !== null) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const t = e.changedTouches[0];
+      if (!t) return;
+      activeIdRef.current = t.identifier;
+      updateFromTouch(t);
+      try { navigator?.vibrate?.(10); } catch {}
+    };
+
+    const onMove = (e) => {
+      if (activeIdRef.current === null) return;
+      e.preventDefault();
+
+      let touch = null;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === activeIdRef.current) {
+          touch = e.touches[i];
+          break;
+        }
+      }
+      if (!touch) return;
+      updateFromTouch(touch);
     };
 
     const onEnd = (e) => {
@@ -93,9 +109,7 @@ export default function MobileJoystick({ onMove }) {
       if (!found) return;
       e.preventDefault();
       activeIdRef.current = null;
-      setActive(false);
-      setThumbDX(0);
-      setThumbDY(0);
+      scheduleVisual(0, 0, false);
       onMoveRef.current?.(0, 0);
     };
 
@@ -110,7 +124,7 @@ export default function MobileJoystick({ onMove }) {
       el.removeEventListener("touchend", onEnd);
       el.removeEventListener("touchcancel", onEnd);
     };
-  }, []);  // attach once — handlers read from refs
+  }, [scheduleVisual]);  // attach once — handlers read from refs
 
   if (!layout) return null;
 

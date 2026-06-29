@@ -58,11 +58,11 @@ const {
 } = THREE;
 
 // ─── CONSTANTS ────────────────────────────────────────────────
-const MOVE_SPEED = 4.5;    // +50% from 3.0
-const ACCELERATION = 14.0; // +40% so movement feels snappy at new speed
-const DECELERATION = 11.0; // +37.5% so stopping stays proportional
+const MOVE_SPEED = 4.5;
+const ACCELERATION = 24.0; // faster response when changing direction
+const DECELERATION = 18.0; // quick stop without feeling sticky
 const TURN_SPEED = 2.5;       // radians/sec for A/D turning
-const ROTATION_SMOOTH = 8.0;  // how fast avatar body snaps to move direction
+const ROTATION_SMOOTH = 16.0; // responsive body rotation toward travel direction
 
 // Camera constants — standard third-person (portrait / desktop)
 const CAM_DIST = 5.5;         // distance behind avatar
@@ -852,8 +852,9 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (lastTimeRef.current === 0) lastTimeRef.current = now;
         let dt = now - lastTimeRef.current;
         lastTimeRef.current = now;
-        if (dt > 0.1) dt = 0.1; // Clamp large gaps
+        if (dt > 0.1) dt = 0.1; // Keep FPS tracking honest after tab resumes
         if (dt <= 0) dt = 0.016;
+        const moveDt = Math.min(dt, 0.033); // movement/turning never consumes lag spikes
 
         // ── Adaptive quality + TV Mode pixel ratio control ──
         if (!quality._fpsSamples) quality._fpsSamples = [];
@@ -974,19 +975,28 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
              let rotDiff = travelAngle - rot;
              while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
              while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
-             const turnSpeed = 4.0; // 0.25s to turn 90°
-             rot += rotDiff * Math.min(1, turnSpeed * dt);
+             const turnSpeed = 12.0;
+             rot += rotDiff * Math.min(1, turnSpeed * moveDt);
            }
         } else {
           // Desktop: WASD movement is camera-relative, and the avatar faces the exact travel direction.
-          const cameraForward = camera.getWorldDirection(new Vector3());
+          if (!scene.userData._moveVecs) {
+            scene.userData._moveVecs = {
+              cameraForward: new Vector3(),
+              cameraRight: new Vector3(),
+              moveDir: new Vector3(),
+              up: new Vector3(0, 1, 0),
+            };
+          }
+          const { cameraForward, cameraRight, moveDir, up } = scene.userData._moveVecs;
+          camera.getWorldDirection(cameraForward);
           cameraForward.y = 0;
           if (cameraForward.lengthSq() > 0) cameraForward.normalize();
 
-          const cameraRight = new Vector3().crossVectors(cameraForward, new Vector3(0, 1, 0));
+          cameraRight.crossVectors(cameraForward, up);
           if (cameraRight.lengthSq() > 0) cameraRight.normalize();
 
-          const moveDir = new Vector3();
+          moveDir.set(0, 0, 0);
           if (inputFwd > 0) moveDir.add(cameraForward);
           if (inputFwd < 0) moveDir.sub(cameraForward);
           if (inputStrafe > 0) moveDir.add(cameraRight);
@@ -1001,7 +1011,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             let rotDiff = targetYaw - rot;
             while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
             while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
-            rot += rotDiff * Math.min(1, ROTATION_SMOOTH * dt);
+            rot += rotDiff * Math.min(1, ROTATION_SMOOTH * moveDt);
           }
         }
 
@@ -1010,17 +1020,17 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           const targetSpeed = Math.abs(inputFwd) > 0.08 || Math.abs(inputStrafe) > 0.08
             ? (boosting ? MOVE_SPEED * 3.0 : MOVE_SPEED)
             : 0;
-          vel.x += (moveX * targetSpeed - vel.x) * Math.min(1, ACCELERATION * dt);
-          vel.z += (moveZ * targetSpeed - vel.z) * Math.min(1, ACCELERATION * dt);
+          vel.x += (moveX * targetSpeed - vel.x) * Math.min(1, ACCELERATION * moveDt);
+          vel.z += (moveZ * targetSpeed - vel.z) * Math.min(1, ACCELERATION * moveDt);
         } else {
-          vel.x += (0 - vel.x) * Math.min(1, DECELERATION * dt);
-          vel.z += (0 - vel.z) * Math.min(1, DECELERATION * dt);
+          vel.x += (0 - vel.x) * Math.min(1, DECELERATION * moveDt);
+          vel.z += (0 - vel.z) * Math.min(1, DECELERATION * moveDt);
         }
 
         // Apply velocity
         const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
-        px += vel.x * dt;
-        pz += vel.z * dt;
+        px += vel.x * moveDt;
+        pz += vel.z * moveDt;
 
         // Collisions
         [px, pz] = resolveCollisions(px, pz, 0.3, COLLISION_BOXES, hbRidingRef.current);
@@ -1085,24 +1095,24 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
           while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
           // Cap per-frame step to 0.06 rad — prevents frame spikes on 180° turns
-          const step = Math.min(Math.abs(yawDelta) * Math.min(1, dt * 0.8), 0.06) * Math.sign(yawDelta);
+          const step = Math.min(Math.abs(yawDelta) * Math.min(1, moveDt * 3.5), 0.16) * Math.sign(yawDelta);
           camYawRef.current += step;
         } else if (!isMobileRef.current && speed > 0.05 && !userTouchingCamRef.current) {
-          // Desktop: maintain camera behind avatar
+          // Desktop: maintain camera behind avatar without dragging behind turns
           const targetYaw = rot + Math.PI;
           let yawDelta = targetYaw - camYawRef.current;
           while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
           while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
-          camYawRef.current += yawDelta * Math.min(1, dt * 2.5);
+          camYawRef.current += yawDelta * Math.min(1, moveDt * 5.5);
         }
 
-        // Smooth camera yaw + pitch — slower on mobile avoids jerky geometry pop-in
+        // Smooth camera yaw + pitch — responsive enough to avoid camera/avatar fighting
         let yawDiff = camYawRef.current - camYawSmoothRef.current;
         while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
         while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
-        const yawSmoothSpeed = isMobileRef.current ? 6.0 : 10.0;
-        camYawSmoothRef.current += yawDiff * Math.min(1, dt * yawSmoothSpeed);
-        camPitchSmoothRef.current += (camPitchRef.current - camPitchSmoothRef.current) * Math.min(1, dt * 8.0);
+        const yawSmoothSpeed = isMobileRef.current ? 12.0 : 16.0;
+        camYawSmoothRef.current += yawDiff * Math.min(1, moveDt * yawSmoothSpeed);
+        camPitchSmoothRef.current += (camPitchRef.current - camPitchSmoothRef.current) * Math.min(1, moveDt * 10.0);
 
         const pitch = camPitchSmoothRef.current;
 
@@ -1192,10 +1202,10 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (avatarEntry?._isMixamo) {
           // Mixamo Xbot GLB avatar — same logic as soldier, including hoverboard freeze
           const emoteId = isDancingRef.current ? (activeEmoteRef.current?.id || "dance") : null;
-          updateMixamoAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt, hbRidingRef.current, emoteId);
+          updateMixamoAvatarAnimation(avatarEntry, speed, isDancingRef.current, moveDt, hbRidingRef.current, emoteId);
         } else if (avatarEntry?._isTestAvatar) {
           // Procedural test avatars (male/female) — no mixer/clips
-          updateTestAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt);
+          updateTestAvatarAnimation(avatarEntry, speed, isDancingRef.current, moveDt);
         } else {
           // Current avatar — original GLB animation system, completely unchanged
           if (avatarEntry && isDancingRef.current) {
@@ -1210,7 +1220,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             avatarEntry._emoteTimer = 0;
             avatarEntry._emoteBones = null;
           }
-          if (avatarEntry) updateAvatarAnimation(avatarEntry, speed, isDancingRef.current, dt, hbRidingRef.current);
+          if (avatarEntry) updateAvatarAnimation(avatarEntry, speed, isDancingRef.current, moveDt, hbRidingRef.current);
         }
 
         // ── Aura glow animation ─────────────────────────────
@@ -1539,7 +1549,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // LaunchRide bridge — passes avatar position + state into add-ons
         MOVEMENT_BRIDGE.px = px; MOVEMENT_BRIDGE.py = py; MOVEMENT_BRIDGE.pz = pz;
         MOVEMENT_BRIDGE.hbRiding = hbRidingRef.current;
-        MOVEMENT_BRIDGE.dt_ = dt;
+        MOVEMENT_BRIDGE.dt_ = moveDt;
         tickAddOns(scene, t);
 
         // ─── Stage screen projection (for YouTube iframe overlay) ──────────
