@@ -94,7 +94,7 @@ function SmallTrackCard({ track }) {
 export default function RadioCTA() {
   const [tracks, setTracks] = useState([]);
   const [featuredTrack, setFeaturedTrack] = useState(null);
-  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay } = usePlayer();
   const { currentRadioSong, startMyVibeQueue } = useRadio();
   const [ramState, setRamState] = useState(() => ramGetState());
   useEffect(() => { return ramSubscribe((s) => setRamState(s)); }, []);
@@ -112,10 +112,10 @@ export default function RadioCTA() {
     return () => clearTimeout(timer);
   }, []);
 
-  // ── Display logic — matches Home hero priority ───────────────────────
-  // RAM myVibeRadio → PlayerContext (even when paused) → currentRadioSong → featured fallback
+  // ── Display logic ───────────────────────
+  // My Vibe Radio state → active global song → last My Vibe track → featured fallback.
   const ramTrack = ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : null;
-  const displayTrack = ramTrack || currentTrack || currentRadioSong || featuredTrack;
+  const displayTrack = ramTrack || currentRadioSong || currentTrack || ramState.lastTrack || featuredTrack;
   const effectivePlaying = ramState.activeMode === "myVibeRadio"
     ? ramState.isPlaying
     : (isPlaying && !!currentTrack);
@@ -131,11 +131,10 @@ export default function RadioCTA() {
     // PlayerContext has a track — toggle
     if (currentTrack) { togglePlay(); return; }
 
-    // Nothing playing — start My Vibe Radio from displayTrack
-    if (!displayTrack) return;
+    // Nothing playing — start My Vibe Radio's own queue/recommendation.
     startMyVibeQueue((firstTrack) => {
-      const target = firstTrack || displayTrack;
-      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(target));
+      if (!firstTrack?.audio_url) return;
+      import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(firstTrack));
     });
   };
 

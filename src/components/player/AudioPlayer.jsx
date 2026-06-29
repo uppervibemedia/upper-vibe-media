@@ -31,7 +31,7 @@ export default function AudioPlayer() {
     playTrack,
   } = usePlayer();
 
-  const { currentRadioSong } = useRadio();
+  const { currentRadioSong, startMyVibeQueue } = useRadio();
   const { user } = useAuth();
   const { accentId } = useTheme();
   const theme = RADIO_THEMES[accentId] || RADIO_THEMES.cyan;
@@ -170,26 +170,26 @@ export default function AudioPlayer() {
   }, []);
 
   // Derive effective display track and playing state from all sources.
-  // Priority: PlayerContext currentTrack → RAM active track → RAM lastTrack → Home hero radio song → homepage hero/latest track.
-  // This ensures the bottom player always shows real song metadata instead of an empty prompt.
+  // Priority: My Vibe current/queue → active global song → last My Vibe track → homepage fallback.
   const ramActive = ramState.activeMode !== null;
-  const displayTrack = currentTrack || ramState.currentTrack || ramState.lastTrack || currentRadioSong || heroFallbackTrack;
-  const effectiveIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
   const isRamRadio = ramActive && ramState.audioType === "liveStream";
+  const myVibeTrack = !isRamRadio ? ramState.currentTrack : null;
+  const displayTrack = isRamRadio ? null : (myVibeTrack || currentRadioSong || currentTrack || ramState.lastTrack || heroFallbackTrack);
+  const effectiveIsPlaying = ramActive ? ramState.isPlaying : (currentTrack ? isPlaying : false);
 
   // Normalize cover art from various field names
   const displayCover = displayTrack?.cover_url || displayTrack?.coverArt || displayTrack?.image || displayTrack?.artwork || null;
 
   const handleIdlePlay = () => {
     if (ramActive) return; // RAM already active — nothing to play here
-    // Start My Vibe Radio with the last track or a new one
     import("@/lib/radioAudioManager").then((mod) => {
-      const track = ramState.lastTrack || (queue?.length > 0 ? queue[0] : null);
-      if (track?.audio_url) {
-        mod.playMyVibeTrack(track);
-      } else {
-        navigate("/start");
+      if (ramState.lastTrack?.audio_url) {
+        mod.playMyVibeTrack(ramState.lastTrack);
+        return;
       }
+      startMyVibeQueue((firstTrack) => {
+        if (firstTrack?.audio_url) mod.playMyVibeTrack(firstTrack);
+      });
     });
   };
 
@@ -209,12 +209,16 @@ export default function AudioPlayer() {
     } else if (ramState.lastTrack) {
       // Not active but we have a last track — start My Vibe Radio with it
       import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(ramState.lastTrack));
-    } else if (!currentTrack && displayTrack?.audio_url) {
-      playTrack(displayTrack, "song");
-    } else {
+    } else if (currentTrack) {
       togglePlay();
+    } else {
+      startMyVibeQueue((firstTrack) => {
+        if (firstTrack?.audio_url) {
+          import("@/lib/radioAudioManager").then((mod) => mod.playMyVibeTrack(firstTrack));
+        }
+      });
     }
-  }, [ramActive, ramState.activeMode, ramState.isPlaying, ramState.lastTrack, currentTrack, displayTrack, playTrack, togglePlay]);
+  }, [ramActive, ramState.activeMode, ramState.isPlaying, ramState.lastTrack, currentTrack, togglePlay, startMyVibeQueue]);
 
   // Skip: delegate to RAM when RAM is active
   const handleSkip = useCallback(() => {
