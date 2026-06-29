@@ -28,8 +28,8 @@ export default function PersonalHoverboardHUD({ isMobile, mobileLayout, onToggle
     : isMobile
       ? {
           position: 'fixed',
-          right: 'calc(18px + env(safe-area-inset-right, 0px))',
-          bottom: 'calc(86px + env(safe-area-inset-bottom, 0px))',
+          right: mobileLayout ? `${Math.max(10, (mobileLayout.sa?.right || 0) + 10)}px` : 'calc(18px + env(safe-area-inset-right, 0px))',
+          bottom: mobileLayout ? `${Math.max((mobileLayout.sa?.bottom || 0) + 10, mobileLayout.playerBottom + ((mobileLayout.playerHeight || 52) - 54) / 2)}px` : 'calc(28px + env(safe-area-inset-bottom, 0px))',
           pointerEvents: 'auto',
         }
       : {
