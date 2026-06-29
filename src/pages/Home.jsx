@@ -63,6 +63,23 @@ function seededShuffle(arr, seed) {
 // Picks 4 truly random published+playable tracks on every mount.
 // Avoids repeating the last shown song ID (stored in localStorage).
 const LAST_HOME_TRACK_KEY = "uv_last_home_track";
+const LAST_HERO_MY_VIBE_KEY = "uv_last_home_my_vibe_track";
+
+function pickFreshHeroTrack(tracks) {
+  const eligible = (tracks || []).filter(t => t.audio_url && t.cover_url && t.status === "published");
+  if (eligible.length === 0) return null;
+  const withoutNervous = eligible.length > 1
+    ? eligible.filter(t => !String(t.title || "").toLowerCase().includes("nervous system rich"))
+    : eligible;
+  const pool = withoutNervous.length > 0 ? withoutNervous : eligible;
+  let lastId = null;
+  try { lastId = localStorage.getItem(LAST_HERO_MY_VIBE_KEY); } catch {}
+  const candidates = pool.length > 1 ? pool.filter(t => t.id !== lastId) : pool;
+  const finalPool = candidates.length > 0 ? candidates : pool;
+  const picked = finalPool[Math.floor(Math.random() * finalPool.length)];
+  try { localStorage.setItem(LAST_HERO_MY_VIBE_KEY, picked?.id || ""); } catch {}
+  return picked || null;
+}
 
 function pickHomepageTracks(allTracks, count = 4) {
   const eligible = allTracks.filter(t => t.audio_url && t.cover_url && t.status === "published");
@@ -90,6 +107,7 @@ function pickHomepageTracks(allTracks, count = 4) {
 
 export default function Home() {
   const [latestTracks, setLatestTracks] = useState([]);
+  const [heroMyVibeTrack, setHeroMyVibeTrack] = useState(null);
   const [allTracks, setAllTracks] = useState([]);
   const [allViz, setAllViz] = useState([]);
   const [recentViz, setRecentViz] = useState([]);
@@ -159,6 +177,14 @@ export default function Home() {
     setLatestTracks(sortedNewest);
     setAllTracks(allTracks);
 
+    let heroPool = [];
+    if (user?.id) {
+      const favs = await base44.entities.Favorite.filter({ type: "track" }, "-created_date", 500).catch(() => []);
+      const favIds = new Set(favs.map((f) => f.track_id).filter(Boolean));
+      heroPool = playable.filter((t) => favIds.has(t.id));
+    }
+    setHeroMyVibeTrack(pickFreshHeroTrack(heroPool.length > 0 ? heroPool : playable));
+
     // Sort: new visualizers (≤7 days) first, then older, newest within each group
     const sortedViz = sortVisualizersNewestFirst(recentVizPool);
     setRecentViz(sortedViz.slice(0, 6));
@@ -180,7 +206,7 @@ export default function Home() {
     setAcademyLessons(lessons);
   };
 
-  useEffect(() => { loadData(); }, [sessionSeed, refreshKey]);
+  useEffect(() => { loadData(); }, [sessionSeed, refreshKey, user?.id]);
 
   const handleRefresh = async () => {
     sessionStorage.removeItem("uv_home_seed");
@@ -294,9 +320,9 @@ export default function Home() {
 
             {/* ── Hero media card — Play/Pause current track, no navigation ── */}
             {(() => {
-              // Prefer RAM (My Vibe Radio) as the active track, fallback to PlayerContext, then latest
+              // Prefer My Vibe state/feed, then active global music, then latest fallback.
               const myVibeTrack = ramState.activeMode === "myVibeRadio" ? ramState.currentTrack : null;
-              const displayTrack = myVibeTrack || currentTrack || currentRadioSong || latestTracks[0];
+              const displayTrack = myVibeTrack || currentRadioSong || currentTrack || heroMyVibeTrack || latestTracks[0];
               if (!displayTrack) return null;
 
               const myVibeIsPlaying = ramState.activeMode === "myVibeRadio" && ramState.isPlaying;
@@ -312,7 +338,9 @@ export default function Home() {
                       ? "Paused"
                       : currentRadioSong
                         ? "On Air"
-                        : "Latest Release";
+                        : heroMyVibeTrack?.id === displayTrack.id
+                          ? "My Vibe Pick"
+                          : "Latest Release";
 
               // Play button action — stays on Home page, never navigates
               const handleHeroPlay = (e) => {
@@ -323,7 +351,8 @@ export default function Home() {
                 } else if (currentTrack) {
                   togglePlay();
                 } else {
-                  handlePlayTrack(displayTrack);
+                  recordPlay(displayTrack);
+                  playMyVibeTrack(displayTrack);
                 }
               };
 
