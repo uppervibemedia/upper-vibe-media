@@ -401,10 +401,10 @@ export function createCosmicSky(scene) {
       id: "ice",
       bodyColors: ["#5C8FA8", "#B88B55", "#45BCE8", "#D0A56A", "#F4D9A2"],
       glowColor: "rgba(69,188,232,0.68)", ringColor: "rgba(208,165,106,0.72)",
-      size: isMobile ? 72 : 110,
+      size: isMobile ? 44 : 66,
       angleOffset: 0,
-      horizonY: 33,
-      radius: 88,
+      horizonY: 35,
+      radius: 90,
       orbitSpeed: 0,
       alignToCameraForward: true,
     },
@@ -767,9 +767,9 @@ export function createCosmicSky(scene) {
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
   scene.userData.beachFlybyB = {
-    ...buildBeachFlybyPlanet(["#6F91A8", "#B78B55", "#5FBFE0", "#F8E1A8"], "rgba(95,191,224,0.42)", isMobile ? 18 : 26),
+    ...buildBeachFlybyPlanet(["#8A3C10", "#C87828", "#FFC26A", "#FFF0B8"], "rgba(255,190,80,0.38)", isMobile ? 12 : 17),
     duration: 28, cycle: 76, baseStart: now0 + 43,
-    startCX: 0, endCX: 0, cy: 13, cz: 64,
+    startCX: 54, endCX: -54, cy: 11, cz: 64,
     _fadeInEnd: 0.16, _fadeOutStart: 0.84,
   };
 }
