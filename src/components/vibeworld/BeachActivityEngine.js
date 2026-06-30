@@ -462,6 +462,9 @@ export function tickBeachActivity(state, input, dt, t) {
     const pos = state.curve.getPointAt(Math.min(0.999, eased));
     const tangent = state.curve.getTangentAt(Math.min(0.999, eased));
     state.x = pos.x; state.y = pos.y + 0.18; state.z = pos.z; state.rot = Math.atan2(tangent.x, tangent.z);
+    state.avatarYOffset = 0.28;
+    state.avatarPitch = tangent.y * 0.12;
+    state.avatarRoll = -tangent.x * 0.12;
     if (state.cart) {
       state.cart.position.copy(pos).add(new THREE.Vector3(0, 0.2, 0));
       state.cart.rotation.y = state.rot;
@@ -482,12 +485,9 @@ export function applyBeachActivityCamera(state, camera, dt) {
     const tangent = state.curve.getTangentAt(u).normalize();
     const side = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
     const look = state.curve.getPointAt(Math.min(0.999, u + 0.032));
-    const fastDrop = (u > 0.18 && u < 0.34) || (u > 0.56 && u < 0.72);
-    const seatCam = pos.clone().add(tangent.clone().multiplyScalar(0.95)).add(new THREE.Vector3(0, 0.92, 0));
-    const chaseCam = pos.clone().add(tangent.clone().multiplyScalar(-4.3)).add(side.multiplyScalar(Math.sin(u * Math.PI * 6) * 0.55)).add(new THREE.Vector3(0, 1.85, 0));
-    const camPos = fastDrop ? seatCam : chaseCam;
-    camera.position.lerp(camPos, Math.min(1, dt * (fastDrop ? 8.5 : 5.8)));
-    camera.lookAt(look.x, look.y + (fastDrop ? 0.25 : 0.65), look.z);
+    const chaseCam = pos.clone().add(tangent.clone().multiplyScalar(-5.0)).add(side.multiplyScalar(Math.sin(u * Math.PI * 6) * 0.72)).add(new THREE.Vector3(0, 2.15, 0));
+    camera.position.lerp(chaseCam, Math.min(1, dt * 6.4));
+    camera.lookAt(look.x, look.y + 0.78, look.z);
     return;
   }
   if (state.type === "dive") {

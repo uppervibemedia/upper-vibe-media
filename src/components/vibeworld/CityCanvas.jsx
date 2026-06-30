@@ -8,7 +8,6 @@ import createZenBeach, { animateZenBeach } from "./ZenBeach";
 import { addDanceFloor, animateDanceFloor } from "./DanceFloor";
 import { createJukebox, animateJukebox, JUKEBOX_POS, JUKEBOX_INTERACT_RADIUS, DANCE_FLOOR_RADIUS } from "./Jukebox";
 
-import { createHoverboardZone, animateHoverboardZone, flashRing, resetRings, collectOrb, resetOrbs, HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS, HOVERBOARD_RINGS, BEACH_ORBS, BOOST_PADS, LAUNCH_PADS } from "./HoverboardRingRun";
 import { createCrystalZone, animateCrystalZone, CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z } from "./CrystalZone";
 // Sky system and avatar — must be at top of file, not mid-file
 import { createCosmicSky, animateCosmicSky } from "./CosmicSkySystem";
@@ -144,7 +143,6 @@ const STREAM_ZONES = [
   { key: "academy", names: ["upperVibeAcademy", "academyEntrance"], x: -28, z: 5, keepVisible: true },
   { key: "crystal", names: ["crystalZone"], x: CRYSTAL_ZONE_X, z: CRYSTAL_ZONE_Z, keepVisible: true },
   { key: "ferris", names: ["ferrisWheel"], x: WHEEL_X, z: WHEEL_Z, keepVisible: true },
-  { key: "beach", names: ["hbPadRing"], x: 18, z: 22, keepVisible: true },
   { key: "skyline", names: ["cityBuildings"], x: 0, z: -36, keepVisible: true },
 ];
 
@@ -543,7 +541,7 @@ export function buildPark(scene) {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, isPlayingNeonSurf = false, personalHoverboardActive = false, hoverboardJumpRequest = null, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
+export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarClick, stageCanvas, audioIntensityRef, audioBassRef, audioBeatRef, locked, stageScreenPosRef, remoteUsers, isDancing = false, activeEmote = null, avatarConfig, onJukeboxProximity, onTransportProximity, worldMode = "city", retintRef, djTrack, hbRiding = false, personalHoverboardActive = false, hoverboardJumpRequest = null, beachActivityRequest = null, beachActivityExitRequest = null, ferrisRiding = false, spawnOverride = null, moveTarget = null, rendererRef = null, tvMode = false, tvQuality = "smooth", auraActive = false, equippedAura = null, ...props }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -636,8 +634,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   isDancingRef.current = isDancing;
   const hbRidingRef = useRef(false);
   hbRidingRef.current = hbRiding;
-  const isPlayingNeonSurfRef = useRef(false);
-  isPlayingNeonSurfRef.current = isPlayingNeonSurf;
   const personalHoverboardActiveRef = useRef(false);
   personalHoverboardActiveRef.current = personalHoverboardActive;
   const ferrisRidingRef = useRef(false);
@@ -719,7 +715,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
   // Launch is handled by LaunchRide (tickAddOns via MOVEMENT_BRIDGE)
-  const speedBoostUntilRef = useRef(0); // timestamp (performance.now) when boost expires
   // Init scene — runs once only
   useEffect(() => {
     if (initializedRef.current) return;
@@ -757,7 +752,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
       const scene = new Scene();
       sceneRef.current = scene;
-      // Expose scene globally so HoverboardPanel can look up coin values
       window.__hbScene = scene;
       window.__uvcWorldMode = worldModeRef.current;
       scene.userData.worldMode = worldModeRef.current;
@@ -914,7 +908,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         let rot = avatarRotRef.current;
         const vel = velocityRef.current;
 
-        const jumpEnabled = personalHoverboardActiveRef.current && hbRidingRef.current && !isPlayingNeonSurfRef.current && !ferrisRidingRef.current && !lockedRef.current && !window.__lr_flying;
+        const jumpEnabled = personalHoverboardActiveRef.current && hbRidingRef.current && !ferrisRidingRef.current && !lockedRef.current && !window.__lr_flying;
         const jumpGrounded = hoverboardJumpOffsetRef.current <= 0.001 && !hoverboardJumpingRef.current;
         if (pendingHoverboardJumpRef.current) {
           if (jumpEnabled && jumpGrounded && t - lastHoverboardJumpTimeRef.current >= HOVERBOARD_JUMP_COOLDOWN) {
@@ -1083,8 +1077,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         if (isMoving) {
-          const boosting = hbRidingRef.current && performance.now() < speedBoostUntilRef.current;
-          const usingPersonalBoard = personalHoverboardActiveRef.current && !isPlayingNeonSurfRef.current;
+          const boosting = false;
+          const usingPersonalBoard = personalHoverboardActiveRef.current;
           const personalHoverboardSpeed = MOVE_SPEED * PERSONAL_HOVERBOARD_SPEED_MULTIPLIER;
           const airControl = hoverboardAirborne ? HOVERBOARD_AIR_CONTROL_MULTIPLIER : 1;
           const baseRideSpeed = (usingPersonalBoard ? personalHoverboardSpeed : MOVE_SPEED) * airControl;
@@ -1154,7 +1148,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           avatar.position.set(px, py, pz);
           avatar.rotation.y = rot;
           const act = beachActivityStateRef.current;
-          if (act?.type === "surf" || act?.type === "dive") {
+          if (["surf", "dive", "coaster"].includes(act?.type)) {
             avatar.position.y = py + (act.avatarYOffset || 0);
             avatar.rotation.x = act.avatarPitch || 0;
             avatar.rotation.z = act.avatarRoll || 0;
@@ -1171,14 +1165,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Notify parent of position (throttled — every 10 frames)
         if (onPosCbRef.current && frameRef.current % 10 === 0) {
           try { onPosCbRef.current(px, pz, rot); } catch {}
-        }
-
-        // ── Hoverboard zone proximity ──
-        if (frameRef.current % 10 === 0) {
-          const hbdx = px - HOVERBOARD_START.x;
-          const hbdz = pz - HOVERBOARD_START.z;
-          const hbDist = Math.sqrt(hbdx * hbdx + hbdz * hbdz);
-          scene.userData._nearHoverboard = hbDist < HOVERBOARD_INTERACT_RADIUS;
         }
 
         // ── Transport pad + Jukebox proximity ──
@@ -1242,7 +1228,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const cv = scene.userData._camVecs;
         if (beachActivityStateRef.current) {
           applyBeachActivityCamera(beachActivityStateRef.current, camera, dt);
-          if (avatarRef.current) avatarRef.current.visible = !["coaster", "dive"].includes(beachActivityStateRef.current.type);
+          if (avatarRef.current) avatarRef.current.visible = beachActivityStateRef.current.type !== "dive";
         } else if (ferrisRidingRef.current) {
           if (!cv._rl) cv._rl = { yaw: 0, pitch: 0, rt: 0 };
           const rl = cv._rl;
@@ -1645,7 +1631,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
         // Distance-gate heavy zone animations on mobile
         const nearFerris = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z)) < 28;
-        if (worldModeRef.current === "beach" && (!mobileQuality || nearFerris || frameRef.current % (lowQuality ? 8 : 4) === 0)) animateHoverboardZone(scene, t, audioBeat);
         // Ferris Wheel — TV Smooth: skip when >30u away (unless riding)
         const ferrisDist = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z));
         const ferrisGate = tvSmooth
@@ -1653,30 +1638,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           : (!mobileQuality || ferrisRidingRef.current || nearFerris || frameRef.current % (lowQuality ? 10 : 6) === 0);
         if (ferrisGate) animateFerrisWheel(scene, t, audioBeat, px, pz, tvSmooth);
 
-
-        // Reset orbs when new ride starts
-        if (window.__hbResetRings) {
-          window.__hbResetRings = false;
-          resetOrbs(scene);
-        }
-
-        // ─── HOVERBOARD ORB COLLECTION — only while playing Neon Surf game (not personal board) ──
-        if (isPlayingNeonSurfRef.current && frameRef.current % 4 === 0) {
-          const orbMeshes = scene.userData.hbOrbMeshes;
-          if (orbMeshes) {
-            for (const orb of orbMeshes) {
-              if (orb.collected) continue;
-              const od = BEACH_ORBS[orb.id];
-              if (!od) continue;
-              const dx = px - od.x, dz = pz - od.z;
-              const dy = (py + 0.4) - (orb.group?.position?.y ?? 1.0);
-              if (Math.sqrt(dx * dx + dz * dz) < 1.4 && Math.abs(dy) < 1.45) {
-                collectOrb(scene, orb.id);
-                if (window.__hbCollectOrb) window.__hbCollectOrb(orb.id);
-              }
-            }
-          }
-        }
 
         // ─── BEACH TREASURE HUNT — lightweight proximity collect ────────
         if (worldModeRef.current === "beach" && frameRef.current % 6 === 0) {
@@ -1693,20 +1654,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           }
         }
 
-        // ─── SPEED PAD DETECTION — temporary speed multiplier ────────
-        if (worldModeRef.current === "beach" && hbRidingRef.current && frameRef.current % 6 === 0) {
-          const nowMs = performance.now();
-          for (const pad of BOOST_PADS) {
-            const dx = px - pad.x, dz = pz - pad.z;
-            if (Math.sqrt(dx * dx + dz * dz) < 1.5) {
-              if (nowMs > speedBoostUntilRef.current) {
-                // Grant 2.5s speed boost (3× normal speed)
-                speedBoostUntilRef.current = nowMs + 2500;
-                if (window.__hbBoostTriggered) window.__hbBoostTriggered();
-              }
-            }
-          }
-        }
 
         // ─── COSMIC SKY — skybox + starfield follow camera, planets/shooting stars/asteroids ──
         scene.userData._playerZ = pz;

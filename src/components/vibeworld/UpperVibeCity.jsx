@@ -36,8 +36,6 @@ import {
   resumeUpperVibeRadio,
 } from "@/lib/radioAudioManager";
 import { setCityGlobalUserManuallyPaused } from "@/lib/vibeCityAudioController";
-import HoverboardPanel from "@/components/vibeworld/panels/HoverboardPanel";
-import { HOVERBOARD_START, HOVERBOARD_INTERACT_RADIUS } from "@/components/vibeworld/HoverboardRingRun";
 // CrystalZone is now decorative-only — no imports needed
 import { getSessionCoins, addSessionCoins, resetSessionCoins } from "@/lib/vibeCoinBank";
 import { loadWallet, earnCoins, getWalletBalance, isCoinAlreadyCollected } from "@/components/vibeworld/wallet/vibeCoinWallet";
@@ -106,13 +104,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [nearJukebox, setNearJukebox] = useState(false);
   const jukeboxProxVolRef = useRef(1.0);
   // Launch handled by LaunchRide — no manual "LAUNCH" button
-  // ── Hoverboard state — TWO SEPARATE SYSTEMS ──────────────────
-  // A) Neon Surf: temporary beach game board (disappears on exit)
-  const [nearHoverboard, setNearHoverboard] = useState(false);
-  const [isPlayingNeonSurf, setIsPlayingNeonSurf] = useState(false); // true only while Neon Surf game active
-  // B) Personal hoverboard: owned item, equipped from Inventory, city free-roam only
-  // (Future: read equipped board from inventory; for now stub = false until user equips)
-    const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
+  // ── Personal hoverboard: owned item, equipped from Inventory only ───────
+  const [personalHoverboardActive, setPersonalHoverboardActive] = useState(false);
   const [equippedBoard, setEquippedBoard] = useState(null);
   const [equippedAura, setEquippedAura] = useState(null); // item id of equipped aura glow
   const [equippedAuraColor, setEquippedAuraColor] = useState(null); // hex color for sync
@@ -128,8 +121,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const [auraActive, setAuraActive] = useState(false);
 
-  // Combined: CityCanvas hbRiding prop = Neon Surf board OR personal board
-  const hbRiding = isPlayingNeonSurf || personalHoverboardActive;
+  const hbRiding = personalHoverboardActive;
   // Crystal Zone — decorative landmark only, no interaction state needed
   const rendererRef = useRef(null);
   const [sessionCoins, setSessionCoins] = useState(() => getSessionCoins());
@@ -773,23 +765,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     suppressExternalPlayer: !stageWatching && !stageFullScreen,
   });
 
-  // ── Hoverboard zone proximity detection ──────────────────────
-  useEffect(() => {
-    if (worldMode !== "beach") { setNearHoverboard(false); return; }
-    const hbdx = playerPos.x - HOVERBOARD_START.x;
-    const hbdz = playerPos.z - HOVERBOARD_START.z;
-    const dist = Math.sqrt(hbdx * hbdx + hbdz * hbdz);
-    setNearHoverboard(dist < HOVERBOARD_INTERACT_RADIUS);
-  }, [playerPos.x, playerPos.z, worldMode]);
-
-  // Neon Surf game callbacks — only control the temporary beach game board
-  const handleHbStart = useCallback(() => {
-    setIsPlayingNeonSurf(true);   // Neon Surf board: active during game only
-  }, []);
-  const handleHbEnd = useCallback(() => {
-    setIsPlayingNeonSurf(false);  // Neon Surf board: removed on exit, avatar returns to walking
-  }, []);
-
   const handleBeachRelax = useCallback(() => {
     updateBeachQuest((q) => ({ ...q, relaxedBonfire: true }), 0, "bonfire_relax");
     try { navigator?.vibrate?.(15); } catch {}
@@ -896,7 +871,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   }, {
     isDancing,
     personalHoverboardActive,
-    isPlayingNeonSurf,
   });
 
   // ── Follow System ─────────────────────────────────────────────────────
@@ -1111,7 +1085,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setLoading(true);
     setStageWatching(false);
     setStageFullScreen(false);
-    setIsPlayingNeonSurf(false);
     setFerrisRiding(false);
     setNearJukebox(false);
     if (target === "beach") {
@@ -1258,7 +1231,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           avatarConfig={avatarConfig}
           djTrack={djTrack}
           hbRiding={hbRiding}
-          isPlayingNeonSurf={isPlayingNeonSurf}
           personalHoverboardActive={personalHoverboardActive}
           hoverboardJumpRequest={hoverboardJumpRequest}
           beachActivityRequest={beachActivityRequest}
@@ -1490,20 +1462,6 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       {/* Launch is handled by LaunchRide — no manual LAUNCH button */}
       {/* Crystal Zone is now a decorative landmark — no UI/interaction */}
 
-      {/* ── Hoverboard Ring Run HUD ── */}
-      <HoverboardPanel
-        visible={(nearHoverboard || hbRiding) && !personalHoverboardActive}
-        isMobile={isMobile}
-        mobileLayout={mobileLayout}
-        user={user}
-        onStartRide={handleHbStart}
-        onEndRide={handleHbEnd}
-        onCoinsEarned={null}
-      />
-
-
-
-
       {/* ── Avatar Customizer Panel (color + style) ────────────────────── */}
       <AvatarCustomizerPanel
         open={customizerOpen}
@@ -1630,7 +1588,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         onToggle={() => setPersonalHoverboardActive(p => !p)}
         onJump={() => setHoverboardJumpRequest({ id: Date.now() })}
         personalHoverboardActive={personalHoverboardActive}
-        canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !isPlayingNeonSurf && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && !nearHoverboard && (worldMode === "beach" || !detectZone(playerPos.x, playerPos.z))}
+        canUsePersonalBoard={!!equippedBoard && !personalHoverboardActive && !ferrisRiding && !stageWatching && !domeFullscreenOpen && !anyBlockingUIOpen && (worldMode === "beach" || !detectZone(playerPos.x, playerPos.z))}
       />
 
       {/* FPS monitor — only visible with ?debug=1 in URL or localStorage.uvc_debug=1 */}

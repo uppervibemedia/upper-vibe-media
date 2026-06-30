@@ -27,8 +27,9 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, _mob
   useEffect(() => {
     if (type !== "frequency") return;
     window.__uvcFrequencyCoveMode = mode;
-    return () => { window.__uvcFrequencyCoveMode = "affirmation"; };
-  }, [type, mode]);
+    window.__uvcFrequencyCoveActive = started;
+    return () => { window.__uvcFrequencyCoveMode = "affirmation"; window.__uvcFrequencyCoveActive = false; };
+  }, [type, mode, started]);
 
   useEffect(() => {
     if (!open || !started || type !== "coaster" || complete) return;
@@ -98,8 +99,8 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, _mob
               <button key={item} onClick={() => { setStarted(true); setMode(item); }} className="rounded-xl py-2 text-[9px] font-black capitalize active:scale-95" style={{ background: mode === item ? `${config.color}2a` : "rgba(255,255,255,0.06)", color: mode === item ? config.color : "rgba(255,255,255,0.58)", touchAction: "manipulation" }}>{item}</button>
             ))}
           </div>
-          <button onTouchStart={(e) => e.stopPropagation()} onClick={complete ? onClose : started ? nextProgress : () => setStarted(true)} className="w-full py-2.5 rounded-xl font-black text-[11px] tracking-wider active:scale-[0.98]" style={{ background: `linear-gradient(135deg, ${config.color}, #7DEBFF)`, color: "#061018", touchAction: "manipulation" }}>
-            {complete ? "Close Cove" : started ? "Continue" : "Enter Cove"}
+          <button onTouchStart={(e) => e.stopPropagation()} onClick={complete ? onClose : started ? nextProgress : () => { setStarted(true); setProgress(1); }} className="w-full py-2.5 rounded-xl font-black text-[11px] tracking-wider active:scale-[0.98]" style={{ background: `linear-gradient(135deg, ${config.color}, #7DEBFF)`, color: "#061018", touchAction: "manipulation" }}>
+            {complete ? "Close Cove" : started ? "Deepen Session" : "Enter Cove"}
           </button>
         </motion.div>
       </AnimatePresence>

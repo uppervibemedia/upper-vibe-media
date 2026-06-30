@@ -74,7 +74,7 @@ export function tickLaunchPhysics(ls, dt, py, px, pz, scene, orbCountRef, velRef
  * @param {number}   pz             - avatar Z
  * @param {object}   scene          - THREE.Scene (for cooldown storage)
  * @param {object}   launchStateRef - ref to { active, phase, timer, startY }
- * @param {Array}    launchPads     - array of { x, z } pad positions (from HoverboardRingRun)
+ * @param {Array}    launchPads     - array of { x, z } pad positions
  */
 export function checkHbLaunchPads(px, py, pz, scene, launchStateRef, launchPads) {
   const nowMs = performance.now();

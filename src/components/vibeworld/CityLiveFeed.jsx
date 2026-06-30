@@ -122,7 +122,7 @@ export default function CityLiveFeed({ width = "100%", height = "100%", classNam
       // Uses ALL the same zone builders as Vibe World: CitySkyline, CosmicSkySystem,
       // MusicStageZone, VibeLoungeZone, MusicLibraryZone, VisualizerDomeZone,
       // DailyVibeCheckZone, VibeAcademyZone, CrystalZone, FerrisWheel,
-      // HoverboardRingRun, ZenBeach, DanceFloor, Jukebox
+      // ZenBeach, DanceFloor, Jukebox
       buildPark(scene);
 
       // ── UPPER VIBE SHOP — storefront building in the plaza center ──

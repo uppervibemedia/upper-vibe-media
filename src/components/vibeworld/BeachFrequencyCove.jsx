@@ -168,10 +168,11 @@ export function animateBeachFrequencyCove(scene, t, beat = 0) {
   if (!group) return;
   const { rings = [], crystals = [], particles = [], markers = [], modeBeam, waterfall, pool, caveGlow, light, aqua, cx, cz } = group.userData || {};
   const mode = window.__uvcFrequencyCoveMode || "affirmation";
+  const active = !!window.__uvcFrequencyCoveActive;
   const modeColor = mode === "manifest" ? new THREE.Color("#B58CFF") : mode === "visualizer" ? new THREE.Color("#FFD36E") : new THREE.Color("#7DEBFF");
   rings.forEach((ring, i) => {
     ring.rotation.z += (i % 2 ? -0.006 : 0.008);
-    ring.material.opacity = (i === 0 ? 0.42 : 0.24) + Math.sin(t * 1.4 + i) * 0.05 + beat * 0.08;
+    ring.material.opacity = (i === 0 ? 0.42 : 0.24) + (active ? 0.14 : 0) + Math.sin(t * (active ? 2.4 : 1.4) + i) * 0.05 + beat * 0.08;
     ring.material.color.lerp(modeColor, 0.035);
   });
   crystals.forEach((crystal, i) => {
@@ -183,15 +184,16 @@ export function animateBeachFrequencyCove(scene, t, beat = 0) {
     const targetScale = active ? 1.18 : 0.92;
     marker.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.08);
     marker.position.y = (marker.userData.baseY || 0.08) + (active ? Math.sin(t * 2.4 + i) * 0.05 : 0);
-    marker.children?.forEach((child) => { if (child.material?.opacity !== undefined) child.material.opacity = active ? 0.6 + Math.sin(t * 2.2) * 0.12 : 0.24; });
+    marker.children?.forEach((child) => { if (child.material?.opacity !== undefined) child.material.opacity = active ? 0.72 + Math.sin(t * 2.2) * 0.14 : 0.22; });
   });
   if (modeBeam?.material) {
     modeBeam.material.color.lerp(modeColor, 0.06);
-    modeBeam.material.opacity = 0.1 + Math.sin(t * 1.6) * 0.035 + beat * 0.08;
+    modeBeam.material.opacity = (active ? 0.24 : 0.1) + Math.sin(t * (active ? 2.6 : 1.6)) * 0.045 + beat * 0.08;
     modeBeam.rotation.y += 0.004;
   }
   if (waterfall?.material) {
-    waterfall.material.opacity = 0.28 + Math.sin(t * 5.2) * 0.06;
+    waterfall.material.color.lerp(modeColor, 0.018);
+    waterfall.material.opacity = (active ? 0.44 : 0.28) + Math.sin(t * 5.2) * 0.06;
     waterfall.position.y = 1.72 - (Math.sin(t * 3.8) * 0.08 + 0.08);
     waterfall.scale.y = 1 + Math.sin(t * 4.5) * 0.035;
   }
@@ -202,7 +204,7 @@ export function animateBeachFrequencyCove(scene, t, beat = 0) {
   }
   if (caveGlow?.material) {
     caveGlow.material.color.lerp(modeColor, 0.045);
-    caveGlow.material.opacity = 0.32 + Math.sin(t * 1.35) * 0.08;
+    caveGlow.material.opacity = (active ? 0.56 : 0.32) + Math.sin(t * (active ? 2.2 : 1.35)) * 0.08;
   }
   particles.forEach((p) => {
     p.userData.a += p.userData.speed * 0.016;
