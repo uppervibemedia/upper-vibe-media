@@ -545,7 +545,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
   const [error, setError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileResetKey, setMobileResetKey] = useState(0);
-  const [portalConfirmVisible, setPortalConfirmVisible] = useState(false);
   const onLoadedRef = useRef(onLoaded);
   onLoadedRef.current = onLoaded;
   const onPosCbRef = useRef(onPositionChange);
@@ -2024,8 +2023,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         planet.userData._portalHover = true;
       }
       try { navigator?.vibrate?.(18); } catch {}
-      try { onTransportProxRef.current?.(null); } catch {}
-      setPortalConfirmVisible(true);
+      try { onPlanetTransportRef.current?.("beach"); } catch {}
     };
 
     const handleClick = (e, fromTouch = false) => {
@@ -2131,19 +2129,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
     };
   }, []);
 
-  const handleConfirmBeachPortal = () => {
-    const planet = sceneRef.current?.userData?.cityBeachPlanet;
-    if (planet) planet.userData._portalPulseUntil = performance.now() * 0.001 + 0.32;
-    setPortalConfirmVisible(false);
-    window.setTimeout(() => onPlanetTransportRef.current?.("beach"), 120);
-  };
-
-  const handleCancelBeachPortal = () => {
-    const planet = sceneRef.current?.userData?.cityBeachPlanet;
-    if (planet) planet.userData._portalHover = false;
-    setPortalConfirmVisible(false);
-  };
-
   if (error) {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-sky-200">
@@ -2174,38 +2159,6 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         className="w-full h-full block"
         style={{ touchAction: "none" }}
       />
-      {portalConfirmVisible && (
-        <div
-          data-beach-portal-prompt
-          className="absolute left-1/2 -translate-x-1/2 z-[80] rounded-2xl border px-4 py-3 text-center shadow-2xl"
-          style={{
-            bottom: "calc(104px + env(safe-area-inset-bottom, 0px))",
-            width: "min(340px, calc(100vw - 32px))",
-            background: "rgba(5, 12, 24, 0.88)",
-            borderColor: "rgba(78, 219, 255, 0.42)",
-            backdropFilter: "blur(18px)",
-          }}
-        >
-          <p className="text-sm font-black tracking-wide text-white mb-1">Enter Upper Vibe Beach?</p>
-          <p className="text-[11px] text-cyan-100/70 mb-3">Transport to the beach destination planet.</p>
-          <div className="flex gap-2">
-            <button
-              onClick={handleConfirmBeachPortal}
-              className="flex-1 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-black active:scale-95"
-              style={{ background: "linear-gradient(135deg,#00E5FF,#EDB84A)" }}
-            >
-              Enter
-            </button>
-            <button
-              onClick={handleCancelBeachPortal}
-              className="flex-1 rounded-xl border border-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white/80 active:scale-95"
-              style={{ background: "rgba(255,255,255,0.06)" }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
       {/* Mobile controls rendered by parent (UpperVibeCity) */}
     </div>
   );

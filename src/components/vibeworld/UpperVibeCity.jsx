@@ -55,6 +55,7 @@ import FPSMonitor from "@/components/vibeworld/FPSMonitor";
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
 import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
 import BeachPortalTransition from "@/components/vibeworld/BeachPortalTransition";
+import TransportConfirmModal from "@/components/vibeworld/TransportConfirmModal";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -1103,14 +1104,18 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onTransportProximity={(target) => {
             setTransportTarget(target);
             if (!target) {
-              setTransportPrompt(null);
+              setTransportTarget(null);
               setDismissedTransportTarget(null);
               return;
             }
             if (!transportPrompt && target !== dismissedTransportTarget) setTransportPrompt(target);
           }}
           onPlanetTransport={(target) => {
-            if (target === "beach" && worldMode === "city") handleTransport("beach");
+            if (target === "beach" && worldMode === "city") {
+              setTransportTarget("beach");
+              setDismissedTransportTarget(null);
+              setTransportPrompt("beach");
+            }
           }}
           isDancing={isDancing}
           activeEmote={activeEmote}
@@ -1156,18 +1161,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         </button>
       )}
 
-      {transportPrompt && (
-        <div className="absolute inset-0 flex items-center justify-center px-5" style={{ zIndex: 260, background: "rgba(4,4,14,0.62)", backdropFilter: "blur(10px)" }}>
-          <div className="w-full max-w-sm rounded-3xl p-6 text-center" style={{ background: "linear-gradient(160deg,#0d0d22,#080818)", border: "1px solid rgba(0,229,255,0.24)", boxShadow: "0 24px 80px rgba(0,0,0,0.55)" }}>
-            <h2 className="font-heading font-black text-xl text-white mb-3">{transportPrompt === "beach" ? "Enter Upper Vibe Beach?" : "Return to Upper Vibe City?"}</h2>
-            <p className="text-sm text-white/45 mb-6">Your avatar, music, inventory, and Vibe Coins stay connected.</p>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => handleTransport(transportPrompt)} className="py-3 rounded-2xl font-black text-sm" style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#000" }}>Enter</button>
-              <button onClick={() => { setDismissedTransportTarget(transportPrompt); setTransportPrompt(null); }} className="py-3 rounded-2xl font-black text-sm" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TransportConfirmModal
+        open={!!transportPrompt}
+        title={transportPrompt === "beach" ? "Enter Upper Vibe Beach?" : "Return to Upper Vibe City?"}
+        body={transportPrompt === "beach" ? "Transport to the beach destination planet." : "Your avatar, music, inventory, and Vibe Coins stay connected."}
+        onEnter={() => handleTransport(transportPrompt)}
+        onCancel={() => { setDismissedTransportTarget(transportPrompt); setTransportPrompt(null); }}
+      />
 
       {/* Loading overlay */}
       {loading && (
