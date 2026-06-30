@@ -1538,7 +1538,8 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
 
         // Distance flags — declared before any code that uses them
         const nearBeach = pz > 10;
-        const nearDanceFloor = Math.sqrt(px * px + (pz + 13) * (pz + 13)) < 18;
+        const danceDist = Math.sqrt(px * px + (pz + 13) * (pz + 13));
+        const nearDanceFloor = danceDist < 18;
         const lowQuality = quality.currentLevel === "low";
         const mobileQuality = quality.currentLevel === "mobile" || lowQuality;
         if (frameRef.current % (mobileQuality ? 20 : 30) === 0) {
@@ -1555,7 +1556,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             if (worldModeRef.current === "beach") {
               child.visible = distSq < 676; // nearby-only beach signage: 26u radius
               if (!child.visible) continue;
-            } else if (isMob && distSq > 2025) continue; // skip signs >45u away on mobile
+            } else if (isMob) {
+              child.visible = distSq < 1225; // iPhone: hide labels beyond 35u instead of rendering all of them
+              if (!child.visible) continue;
+            } else {
+              child.visible = true;
+            }
             child.lookAt(camera.position);
           }
         }
@@ -1584,15 +1590,33 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
         // Dance floor — throttle on mobile/low, only when near. Audio zone logic remains separate and always active.
         const danceFloorPerf = lowQuality ? "low" : mobileQuality ? "medium" : "full";
-        if (worldModeRef.current === "city" && (!mobileQuality ? true : (nearDanceFloor && frameRef.current % (lowQuality ? 6 : 4) === 0))) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0, danceFloorPerf);
+        const danceUpdateFrame = danceDist < 11 ? true : danceDist < 18 ? frameRef.current % (mobileQuality ? 3 : 2) === 0 : frameRef.current % (mobileQuality ? 18 : 12) === 0;
+        const dancePerfTier = danceDist < 11 && !mobileQuality ? "full" : danceDist < 18 ? "medium" : "low";
+        if (worldModeRef.current === "city" && danceUpdateFrame) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0, dancePerfTier);
         // Crystal Zone — TV Smooth: skip when >25u away; always animate when active
+        const domePerf = scene.userData.visualizerDomePerf;
+        if (domePerf && frameRef.current % (mobileQuality ? 18 : 10) === 0) {
+          const ddx = px - (-13);
+          const ddz = pz - 10;
+          const domeDist = Math.sqrt(ddx * ddx + ddz * ddz);
+          const full = domeDist < 10;
+          const medium = domeDist < 24;
+          domePerf.domeLight.intensity = full ? 4.5 : medium ? 1.6 : 0.35;
+          domePerf.doorLight.intensity = full ? 1.5 : medium ? 0.55 : 0.12;
+          domePerf.baseRing.material.opacity = full ? 0.35 : medium ? 0.16 : 0.06;
+          domePerf.innerGlowRing.material.opacity = full ? 0.10 : medium ? 0.045 : 0.015;
+          domePerf.rimGlow.material.opacity = full ? 0.15 : medium ? 0.06 : 0.02;
+          domePerf.portalGlow.material.opacity = full ? 0.20 : medium ? 0.08 : 0.025;
+        }
+
         const crystalDx = px - CRYSTAL_ZONE_X, crystalDz = pz - CRYSTAL_ZONE_Z;
         const crystalDist = Math.sqrt(crystalDx * crystalDx + crystalDz * crystalDz);
         const crystalGate = tvSmooth
           ? (crystalDist < 25 || scene.userData.crystalZone?.activated)
           : (!mobileQuality || crystalDist < 28 || frameRef.current % (lowQuality ? 10 : 4) === 0);
         if (crystalGate) animateCrystalZone(scene, t, dt, px, pz, tvSmooth || lowQuality);
-        if (worldModeRef.current === "city" && (!mobileQuality || nearDanceFloor || frameRef.current % (lowQuality ? 8 : 4) === 0)) animateJukebox(scene, t, audioBeat, danceFloorPerf);
+        const jukeboxUpdateFrame = danceDist < 15 ? true : danceDist < 24 ? frameRef.current % (mobileQuality ? 4 : 3) === 0 : frameRef.current % (mobileQuality ? 18 : 10) === 0;
+        if (worldModeRef.current === "city" && jukeboxUpdateFrame) animateJukebox(scene, t, audioBeat, dancePerfTier);
         if (scene.userData.shopGroup && (!mobileQuality || frameRef.current % (lowQuality ? 8 : 3) === 0)) animateShop(scene.userData.shopGroup, t, audioBeat);
 
         // ── Hoverboard attach once GLB is ready (async GLB load race condition) ──

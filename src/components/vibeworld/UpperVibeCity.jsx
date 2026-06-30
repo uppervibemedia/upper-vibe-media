@@ -1415,6 +1415,10 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           onReady={(c) => setStageCanvas(c)}
           video={stageVideos[stageVideoIdx] || null}
           audioIntensityRef={audioIntensityRef}
+          perfMode={(() => {
+            const d = Math.sqrt(playerPos.x * playerPos.x + (playerPos.z + 32) * (playerPos.z + 32));
+            return d < 16 ? "full" : d < 30 ? "medium" : "low";
+          })()}
         />
       )}
 

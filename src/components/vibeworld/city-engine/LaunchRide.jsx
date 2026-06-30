@@ -97,7 +97,7 @@ function mkPulse() {
 
 function mkCooldownRing(hex) {
   const fullRing = new THREE.Mesh(
-    new THREE.RingGeometry(1.6, 1.8, 48, 1, 0, 0), // Start at 0 sweep
+    new THREE.RingGeometry(1.6, 1.8, 48),
     new THREE.MeshBasicMaterial({
       color: new THREE.Color(hex).multiplyScalar(1.5),
       transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide
@@ -248,6 +248,15 @@ export function animateLaunchCoins(scene, t) {
   const launchFrame = scene.userData._launchCoinFrame;
 
   const now = performance.now();
+  const mb = MOVEMENT_BRIDGE;
+  const playerNearLaunch = st.flightActive > 0 || st.pads.some((p) => {
+    const dx = mb.px - p.x;
+    const dz = mb.pz - p.z;
+    return dx * dx + dz * dz < 900;
+  });
+
+  if (!playerNearLaunch && launchFrame % 30 !== 0) return;
+
   st.coins.forEach((c) => {
     // Respawn check
     if (c.userData.collected && c.userData._respawnAt > 0 && now >= c.userData._respawnAt) {
@@ -255,14 +264,14 @@ export function animateLaunchCoins(scene, t) {
       c.userData._respawnAt = 0;
       c.visible = true;
     }
-    if (c.userData.collected) return;
+    if (c.userData.collected || !playerNearLaunch) return;
     c.rotation.y += 0.018;
     // Float bob — animateVibeCoin handles per-coin phase via _baseY + _phase
     const base = c.userData._placedBaseY || 0;
     c.position.y = base + Math.sin(t * 2.2 + (c.userData._phase || 0)) * 0.06;
   });
 
-  if (launchFrame % 3 !== 0) return;
+  if (!playerNearLaunch || launchFrame % 3 !== 0) return;
 
   st.pads.forEach((p, i) => {
     const ring = st.cooldownRings[i];
@@ -271,10 +280,9 @@ export function animateLaunchCoins(scene, t) {
     const remaining = p.cooldownUntil - now;
     if (remaining > 0) {
         const ratio = Math.max(0, Math.min(1, 1 - remaining / COOLDOWN_MS));
-        const sweep = ratio * Math.PI * 2;
-        ring.geometry.dispose();
-        ring.geometry = new THREE.RingGeometry(1.6, 1.8, 48, 1, -Math.PI / 2, sweep);
-        ring.material.opacity = 0.65 + Math.sin(t * 8 + i) * 0.2;
+        ring.scale.setScalar(0.82 + ratio * 0.18);
+        ring.rotation.z = -Math.PI / 2 + ratio * Math.PI * 2;
+        ring.material.opacity = 0.35 + ratio * 0.35 + Math.sin(t * 8 + i) * 0.08;
     } else {
         const timeSinceReady = now - p.cooldownUntil;
         if (timeSinceReady < 500) {

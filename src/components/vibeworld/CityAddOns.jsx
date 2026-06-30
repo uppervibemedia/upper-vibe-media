@@ -60,13 +60,24 @@ export function tickAddOns(scene, t) {
   const addOnFrame = scene.userData._addonsFrame;
   const beat = scene.userData._audioBeatRef?.current ?? 0;
 
+  const px = MOVEMENT_BRIDGE.px || 0;
+  const pz = MOVEMENT_BRIDGE.pz || 0;
   const shop = scene.userData._upperVibeShop;
-  if (shop) animateShop(shop, t, beat);
+  if (shop) {
+    const sx = shop.position?.x || 0;
+    const sz = shop.position?.z || 0;
+    const nearShop = (px - sx) * (px - sx) + (pz - sz) * (pz - sz) < 900;
+    if (nearShop || addOnFrame % 16 === 0) animateShop(shop, t, beat);
+  }
 
   if (addOnFrame % 2 === 0) {
-    for (const id of Object.keys(LAUNCH_PADS)) {
+    for (const [id, cfg] of Object.entries(LAUNCH_PADS)) {
       const pad = scene.userData[`_launchPad_${id}`];
-      if (pad) animateLaunchPad(pad, t, beat);
+      if (!pad) continue;
+      const dx = px - (cfg.x || 0);
+      const dz = pz - (cfg.z || 0);
+      const nearPad = dx * dx + dz * dz < 900;
+      if (nearPad || addOnFrame % 20 === 0) animateLaunchPad(pad, t, beat);
     }
   }
 

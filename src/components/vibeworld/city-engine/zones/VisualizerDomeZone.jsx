@@ -153,4 +153,6 @@ export function buildVisualizerDomeZone(scene) {
   doorLight.distance = 8;
   doorLight.position.set(CX, 1.0, CZ - R - 1.5);
   scene.add(doorLight);
+
+  scene.userData.visualizerDomePerf = { domeLight, doorLight, baseRing, innerGlowRing, rimGlow, portalGlow };
 }

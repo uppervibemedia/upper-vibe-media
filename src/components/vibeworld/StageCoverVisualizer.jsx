@@ -244,11 +244,14 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-export default function StageCoverVisualizer({ onReady, video, audioIntensityRef }) {
+export default function StageCoverVisualizer({ onReady, video, audioIntensityRef, perfMode = "full" }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const imgCacheRef = useRef({});
   const startTimeRef = useRef(0);
+  const lastDrawRef = useRef(0);
+  const perfModeRef = useRef(perfMode);
+  perfModeRef.current = perfMode;
   const prevVideoIdRef = useRef(null);
   const onReadyCalledRef = useRef(false);
   const audioRef = useRef(audioIntensityRef);
@@ -296,7 +299,16 @@ export default function StageCoverVisualizer({ onReady, video, audioIntensityRef
     startTimeRef.current = performance.now() * 0.001;
 
     const animate = () => {
-      const t = performance.now() * 0.001 - startTimeRef.current;
+      const nowMs = performance.now();
+      const mode = perfModeRef.current;
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const interval = mode === "full" ? (isMobile ? 140 : 80) : mode === "medium" ? 350 : 1100;
+      if (nowMs - lastDrawRef.current < interval) {
+        animRef.current = requestAnimationFrame(animate);
+        return;
+      }
+      lastDrawRef.current = nowMs;
+      const t = nowMs * 0.001 - startTimeRef.current;
       const curVideo = videoRef.current || {};
       const curVideoId = curVideo.youtube_video_id || curVideo.title || "";
 
