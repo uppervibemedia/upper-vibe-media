@@ -123,7 +123,7 @@ export function createBeachResortDecor(scene) {
 
   addSmallVilla(group, -10, -6, -0.18);
   addSmallVilla(group, -24, 8, 0.35);
-  addOpenAirStructure(group, -34, -20, "VIBE COASTER", "#68D7E8", 0.2);
+  addOpenAirStructure(group, 0, -20, "VIBE COASTER", "#68D7E8", 0.05);
   addOpenAirStructure(group, 40, 12, "BEACH BAR", "#FFD08A", -0.28);
 
   addUmbrella(group, -5, 8, "#D9C27C"); addUmbrella(group, 7, 8, "#80DCEB"); addPalm(group, -9, 11, 0.85); addPalm(group, 11, 11, 0.78);

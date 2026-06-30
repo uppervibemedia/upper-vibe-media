@@ -36,7 +36,7 @@ export function createBeachRollerCoaster(scene) {
   const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const group = new THREE.Group();
   group.name = "beachResortRollerCoaster";
-  group.position.set(-36, 0, -18);
+  group.position.set(0, 0, -20);
 
   const basePoints = [
     new THREE.Vector3(-10, 1.8, -7), new THREE.Vector3(-6, 5.2, -10),
