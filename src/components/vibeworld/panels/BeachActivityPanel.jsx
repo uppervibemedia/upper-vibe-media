@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Waves, Timer, Gem, Sparkles, Flame, Music4, Wind } from "lucide-react";
 
@@ -17,10 +17,11 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, mobi
   const [started, setStarted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [mode, setMode] = useState("affirmation");
+  const awardedRef = useRef(false);
   const complete = progress >= config.steps;
 
   useEffect(() => {
-    if (!open) { setStarted(false); setProgress(0); setMode("affirmation"); }
+    if (!open) { setStarted(false); setProgress(0); setMode("affirmation"); awardedRef.current = false; }
   }, [open, type]);
 
   useEffect(() => {
@@ -41,8 +42,14 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, mobi
 
   const completeActivity = () => {
     setProgress(config.steps);
+    if (awardedRef.current) return;
+    awardedRef.current = true;
     window.dispatchEvent(new CustomEvent("beachActivityCompleted", { detail: { type } }));
   };
+
+  useEffect(() => {
+    if (open && started && complete) completeActivity();
+  }, [open, started, complete]);
 
   const nextProgress = () => {
     setProgress((p) => {
@@ -63,7 +70,8 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, mobi
         transition={{ type: "spring", damping: 28, stiffness: 280 }}
         className="fixed inset-x-0 bottom-0 z-[75] rounded-t-3xl overflow-hidden pointer-events-auto"
         style={{
-          height: isMobile ? "min(74dvh, 560px)" : "min(62vh, 520px)",
+          height: isMobile ? "min(78dvh, 560px)" : "min(62vh, 520px)",
+          maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - 8px)",
           background: "linear-gradient(180deg, rgba(8,18,28,0.98), rgba(5,8,18,0.98))",
           border: `1px solid ${config.color}33`,
           borderBottom: "none",

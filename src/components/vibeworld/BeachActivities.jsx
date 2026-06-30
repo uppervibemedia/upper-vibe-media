@@ -10,7 +10,7 @@ export const BEACH_SHELLS = [
 
 export const BEACH_ACTIVITY_POINTS = {
   questBoard: { x: -34, z: 23, radius: 7 },
-  bonfire: { x: -42, z: -10, radius: 7 },
+  bonfire: { x: 52, z: 20, radius: 7 },
   surf: { x: 0, z: 34, radius: 7 },
   dive: { x: 35, z: 34, radius: 7 },
 };
@@ -61,7 +61,7 @@ function addQuestBoard(group) {
 }
 
 function addBonfire(group) {
-  const bx = -42, bz = -10;
+  const bx = 52, bz = 20;
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.75, 36), basic("#FFB347", { transparent: true, opacity: 0.62 }));
   ring.rotation.x = -Math.PI / 2;
   ring.position.set(bx, 0.075, bz);
@@ -100,29 +100,30 @@ function addTreasureShells(group) {
 }
 
 function addSurfPreview(group) {
+  const sx = 18;
   const lane = new THREE.Mesh(new THREE.PlaneGeometry(22, 4.2), basic("#7FE8F4", { transparent: true, opacity: 0.18 }));
   lane.rotation.x = -Math.PI / 2;
   lane.rotation.z = -0.18;
-  lane.position.set(0, 0.035, 41);
+  lane.position.set(sx, 0.035, 41);
   group.add(lane);
 
   const rack = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.16, 0.55), standard("#85613E"));
-  rack.position.set(0, 0.32, 32.7);
+  rack.position.set(sx, 0.32, 32.7);
   group.add(rack);
   [-1.15, 0, 1.15].forEach((off, i) => {
     const board = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.11, 2.7), standard(i === 1 ? "#68D7E8" : "#D9C27C", { metalness: 0.12 }));
-    board.position.set(off, 0.58, 32.7);
+    board.position.set(sx + off, 0.58, 32.7);
     board.rotation.set(0.42, -0.2, 0);
     group.add(board);
   });
-  [[-4, 36], [0, 41], [4, 46]].forEach(([x, z], i) => {
+  [[sx - 4, 36], [sx, 41], [sx + 4, 46]].forEach(([x, z], i) => {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.045, 8, 44), basic("#7FE8F4", { transparent: true, opacity: 0.46 }));
     ring.position.set(x, 1.0, z);
     ring.rotation.set(Math.PI / 2, 0.15 * i, 0);
     group.add(ring);
   });
   const sign = label("SURF ZONE", "#68D7E8", [4.4, 0.72]);
-  sign.position.set(0, 1.85, 30.6);
+  sign.position.set(sx, 1.85, 30.6);
   group.add(sign);
 }
 

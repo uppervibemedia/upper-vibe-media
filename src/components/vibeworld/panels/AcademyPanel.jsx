@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { X, GraduationCap, Sparkles, Brain, Waves, Music4, Sun, Gem, Wallet } from "lucide-react";
 
 const LESSON_SECTIONS = [
@@ -11,7 +11,14 @@ const LESSON_SECTIONS = [
 ];
 
 export default function AcademyPanel({ open, onClose, isMobile }) {
+  const [selectedLesson, setSelectedLesson] = useState(null);
+  const [completed, setCompleted] = useState(false);
   if (!open) return null;
+
+  const handleCompleteLesson = () => {
+    setCompleted(true);
+    window.dispatchEvent(new CustomEvent("beachActivityCompleted", { detail: { type: "academy" } }));
+  };
 
   return (
     <div
@@ -53,7 +60,7 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
           {LESSON_SECTIONS.map((section) => {
             const Icon = section.icon;
             return (
-              <div key={section.title} className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.045)", border: `1px solid ${section.color}33`, boxShadow: `0 0 24px ${section.color}12` }}>
+              <button key={section.title} onClick={() => setSelectedLesson(section)} className="rounded-2xl p-4 text-left transition-all active:scale-[0.98]" style={{ background: selectedLesson?.title === section.title ? `${section.color}18` : "rgba(255,255,255,0.045)", border: `1px solid ${section.color}33`, boxShadow: `0 0 24px ${section.color}12`, touchAction: "manipulation" }}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${section.color}18`, border: `1px solid ${section.color}33` }}>
                     <Icon className="w-4 h-4" style={{ color: section.color }} />
@@ -63,13 +70,19 @@ export default function AcademyPanel({ open, onClose, isMobile }) {
                     <p className="text-[11px] text-white/45 leading-relaxed mt-1.5">{section.copy}</p>
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
       </div>
 
-      <div className="flex-shrink-0 px-4 py-3 border-t border-white/5 flex items-center justify-center">
+      <div className="flex-shrink-0 px-4 py-3 border-t border-white/5 flex flex-wrap items-center justify-center gap-2">
+        {selectedLesson && !completed && (
+          <button onTouchStart={(e) => e.stopPropagation()} onClick={handleCompleteLesson} className="flex items-center gap-2 px-5 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#7DEBFF,#B58CFF)", color: "#061018", minHeight: 44, touchAction: "manipulation" }}>
+            Complete Lesson
+          </button>
+        )}
+        {completed && <span className="text-[10px] font-black text-cyan-200/80 px-2">Lesson complete ✓</span>}
         <button onTouchStart={(e) => e.stopPropagation()} onClick={onClose} className="flex items-center gap-2 px-5 py-2 rounded-full font-black text-[10px] tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)", minHeight: 44, touchAction: "manipulation" }}>
           Close Retreat
         </button>

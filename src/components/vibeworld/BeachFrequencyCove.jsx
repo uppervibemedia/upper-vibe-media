@@ -35,7 +35,7 @@ export function createBeachFrequencyCove(scene) {
   const group = new THREE.Group();
   group.name = "beachFrequencyCove";
   const cx = -52;
-  const cz = 16;
+  const cz = 2;
 
   const platform = new THREE.Mesh(new THREE.CircleGeometry(5.6, 48), basic("#D8C6A5", { transparent: true, opacity: 0.35 }));
   platform.rotation.x = -Math.PI / 2;

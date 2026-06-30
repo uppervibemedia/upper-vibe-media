@@ -67,13 +67,13 @@ const ZONES = {
   frequencycove: {
     name: "Frequency Cove",
     id: "frequencycove",
-    cx: -52, cz: 16, radius: 8,
+    cx: -52, cz: 2, radius: 8,
     icon: "Sparkles",
   },
   bonfirebeach: {
     name: "Bonfire Beach",
     id: "bonfirebeach",
-    cx: -42, cz: -10, radius: 7,
+    cx: 52, cz: 20, radius: 7,
     icon: "Sparkles",
   },
   shop: {
@@ -85,7 +85,7 @@ const ZONES = {
   surfzone: {
     name: "Surf Zone",
     id: "surfzone",
-    cx: 0, cz: 34, radius: 7,
+    cx: 18, cz: 34, radius: 7,
     icon: "Waves",
   },
   divezone: {

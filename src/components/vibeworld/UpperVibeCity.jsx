@@ -141,7 +141,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
       const saved = JSON.parse(localStorage.getItem("uvc_beach_daily_quest") || "{}");
       if (saved.day === day) return saved;
     } catch {}
-    return { day, shells: [], visitedZen: false, relaxedBonfire: false, surfComplete: false, diveComplete: false, coasterComplete: false, frequencyComplete: false, zenResetComplete: false, completed: false, shellBonus: false };
+    return { day, shells: [], visitedZen: false, relaxedBonfire: false, surfComplete: false, diveComplete: false, coasterComplete: false, frequencyComplete: false, zenResetComplete: false, academyComplete: false, completed: false, shellBonus: false };
   });
 
   const jukeboxFadeRef = useRef(null);        // kept for cleanup compat
@@ -427,11 +427,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     let bonus = 0;
     setBeachQuest((prev) => {
       const day = new Date().toLocaleDateString();
-      const base = prev?.day === day ? prev : { day, shells: [], visitedZen: false, relaxedBonfire: false, surfComplete: false, diveComplete: false, coasterComplete: false, frequencyComplete: false, zenResetComplete: false, completed: false, shellBonus: false };
+      const base = prev?.day === day ? prev : { day, shells: [], visitedZen: false, relaxedBonfire: false, surfComplete: false, diveComplete: false, coasterComplete: false, frequencyComplete: false, zenResetComplete: false, academyComplete: false, completed: false, shellBonus: false };
       const next = updater({ ...base, shells: Array.isArray(base.shells) ? [...base.shells] : [] });
       if (next.shells.length >= 10 && !next.shellBonus) { next.shellBonus = true; bonus += 50; }
-      const done = [next.shells.length >= 10, next.visitedZen, next.relaxedBonfire, next.surfComplete, next.diveComplete, next.coasterComplete, next.frequencyComplete, next.zenResetComplete].filter(Boolean).length;
-      if (done === 8 && !next.completed) { next.completed = true; bonus += 150; }
+      const done = [next.shells.length >= 10, next.visitedZen, next.relaxedBonfire, next.surfComplete, next.diveComplete, next.coasterComplete, next.frequencyComplete, next.zenResetComplete, next.academyComplete].filter(Boolean).length;
+      if (done === 9 && !next.completed) { next.completed = true; bonus += 150; }
       try { localStorage.setItem("uvc_beach_daily_quest", JSON.stringify(next)); } catch {}
       return next;
     });
@@ -450,7 +450,7 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     };
     const onActivity = (e) => {
       const type = e.detail?.type;
-      const map = { surf: "surfComplete", dive: "diveComplete", coaster: "coasterComplete", frequency: "frequencyComplete", bonfire: "relaxedBonfire", zen: "zenResetComplete" };
+      const map = { surf: "surfComplete", dive: "diveComplete", coaster: "coasterComplete", frequency: "frequencyComplete", bonfire: "relaxedBonfire", zen: "zenResetComplete", academy: "academyComplete" };
       const field = map[type];
       if (!field) return;
       updateBeachQuest((q) => ({ ...q, [field]: true, visitedZen: type === "zen" ? true : q.visitedZen }), beachQuest?.[field] ? 0 : 25, `${type}_complete`);
@@ -800,8 +800,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
 
   const nearbyBeachActivity = (() => {
     if (worldMode !== "beach") return null;
-    const bonfireDx = playerPos.x - (-42);
-    const bonfireDz = playerPos.z - (-10);
+    const bonfireDx = playerPos.x - 52;
+    const bonfireDz = playerPos.z - 20;
     if (Math.sqrt(bonfireDx * bonfireDx + bonfireDz * bonfireDz) < 7) return "bonfire";
     return null;
   })();
