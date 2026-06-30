@@ -50,18 +50,18 @@ function addNorthBackdrop(group) {
   const trimMat = basic("#7DEBFF", { transparent: true, opacity: 0.42 });
   [-36, -12, 12, 36].forEach((x, i) => {
     const panel = new THREE.Mesh(new THREE.BoxGeometry(18, 3.8, 0.18), panelMat.clone());
-    panel.position.set(x, 2.05, 48 + (i % 2) * 1.4);
+    panel.position.set(x, 2.05, -22 - (i % 2) * 1.1);
     panel.rotation.y = (i - 1.5) * 0.08;
     group.add(panel);
 
     const trim = new THREE.Mesh(new THREE.BoxGeometry(17.2, 0.08, 0.12), trimMat.clone());
-    trim.position.set(x, 3.98, 47.88 + (i % 2) * 1.4);
+    trim.position.set(x, 3.98, -22.12 - (i % 2) * 1.1);
     trim.rotation.y = panel.rotation.y;
     group.add(trim);
   });
 
-  [-52, -28, 0, 28, 52].forEach((x, i) => addPalmCluster(group, x, 43 + (i % 2) * 4, 1.35));
-  [-58, -42, -18, 18, 42, 58].forEach((x, i) => addRock(group, x, 45 + (i % 3), 2.4, 1.05, 1.45, i % 2 ? "#6E7780" : "#7F715F"));
+  [-48, -24, 0, 24, 48].forEach((x, i) => addPalmCluster(group, x, -18 - (i % 2) * 2.6, 1.35));
+  [-54, -36, -14, 14, 36, 54].forEach((x, i) => addRock(group, x, -20 - (i % 3), 2.4, 1.05, 1.45, i % 2 ? "#6E7780" : "#7F715F"));
 }
 
 export function createBeachEdgeDesign(scene) {
@@ -90,8 +90,8 @@ export function createBeachEdgeDesign(scene) {
 
   [-55, -38, -20, 0, 22, 42, 58].forEach((x, i) => addDune(group, x, -29 + (i % 2), 5.2, 1.4));
   [-54, -58, -50, 50, 58, 54, -48, 48].forEach((x, i) => addRock(group, x, -22 + (i % 4) * 13, 1.6, 0.8, 1.15, i % 2 ? "#A28B72" : "#7D6E61"));
-  [-50, -36, 34, 50, -18, 18].forEach((x, i) => addRock(group, x, 38 + (i % 2) * 5, 2.0, 0.9, 1.3, "#887968"));
-  addPalmCluster(group, -52, 24, 1.05); addPalmCluster(group, 52, 24, 1.05); addPalmCluster(group, -42, -22, 1.15); addPalmCluster(group, 44, -21, 1.15);
+  [-50, -36, 34, 50, -18, 18].forEach((x, i) => addRock(group, x, 34 + (i % 2) * 4, 2.0, 0.9, 1.3, "#887968"));
+  addPalmCluster(group, -52, 20, 1.05); addPalmCluster(group, 52, 20, 1.05); addPalmCluster(group, -42, -22, 1.15); addPalmCluster(group, 44, -21, 1.15);
   addPalmCluster(group, -16, -32, 1.25); addPalmCluster(group, 12, -33, 1.2); addPalmCluster(group, 30, -29, 1.08);
   addRock(group, -5, -31, 4.2, 1.25, 1.8, "#7F715F");
   addRock(group, 20, -30, 3.4, 1.1, 1.6, "#99846A");
