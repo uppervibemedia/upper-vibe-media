@@ -168,26 +168,30 @@ function makeDiveItems(group) {
 function makeSurfboard(group) {
   const board = new THREE.Group();
   board.name = "premiumSurfboard";
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.12, 3.45), standard("#68D7E8", { roughness: 0.28, metalness: 0.14 }));
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.53, 18, 10), standard("#68D7E8", { roughness: 0.28, metalness: 0.14 }));
-  nose.scale.set(1, 0.16, 0.58);
-  nose.position.z = 1.72;
-  const tail = nose.clone();
-  tail.position.z = -1.72;
-  const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 2.7), basic("#FFD36E", 0.92, false));
+  const deck = new THREE.Mesh(new THREE.CapsuleGeometry(0.46, 2.65, 6, 20), standard("#68D7E8", { roughness: 0.24, metalness: 0.12 }));
+  deck.rotation.x = Math.PI / 2;
+  deck.scale.y = 0.11;
+  const noseMark = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 3), standard("#FFD36E", { roughness: 0.3, metalness: 0.12 }));
+  noseMark.rotation.x = Math.PI / 2;
+  noseMark.position.set(0, 0.075, 1.78);
+  const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 2.65), basic("#FFFFFF", 0.72, false));
   stripe.rotation.x = -Math.PI / 2;
   stripe.position.y = 0.075;
-  const fin = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.45, 3), standard("#0B4E64", { roughness: 0.35, metalness: 0.18 }));
+  const railL = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.055, 2.85), basic("#0E6E84", 0.82, false));
+  railL.position.set(-0.43, 0.055, 0);
+  const railR = railL.clone();
+  railR.position.x = 0.43;
+  const fin = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.42, 3), standard("#0B4E64", { roughness: 0.35, metalness: 0.18 }));
   fin.rotation.x = Math.PI;
-  fin.position.set(0, -0.23, -1.1);
-  board.add(deck, nose, tail, stripe, fin);
+  fin.position.set(0, -0.18, -1.2);
+  board.add(deck, noseMark, stripe, railL, railR, fin);
   group.add(board);
   return board;
 }
 function makeSurfRings(group) {
   return SURF_RINGS.map((p, i) => {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.06, 10, 48), basic(i % 2 ? "#FFD36E" : "#00E5FF", 0.82, false));
-    ring.position.set(p.x, 1.05, p.z);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.08, 0.055, 10, 48), basic(i % 2 ? "#FFD36E" : "#00E5FF", 0.82, false));
+    ring.position.set(p.x, 0.82, p.z);
     ring.rotation.y = (i % 2 ? -0.18 : 0.18);
     group.add(ring);
     const buoy = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.48, 10), standard(i % 2 ? "#FFD36E" : "#00E5FF", { roughness: 0.42, metalness: 0.2 }));
@@ -227,6 +231,16 @@ function makeWake(group) {
   }
   return wake;
 }
+function makeSplashes(group) {
+  const splashes = [];
+  for (let i = 0; i < 12; i++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.035 + (i % 3) * 0.012, 7, 5), basic("#FFFFFF", 0.42, false));
+    s.userData.phase = i * 0.7;
+    group.add(s);
+    splashes.push(s);
+  }
+  return splashes;
+}
 function buildCoasterTrack(group, curve) {
   [-0.38, 0.38].forEach((offset) => {
     const points = COASTER_POINTS.map(([x, y, z]) => new THREE.Vector3(x + offset, y, z));
@@ -250,7 +264,7 @@ function buildCoasterTrack(group, curve) {
   }
   const station = new THREE.Group();
   station.position.set(-12, 0, -22);
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.32, 3.2), standard("#A9B2B8", { roughness: 0.34, metalness: 0.32 }));
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.26, 3.2), standard("#C4A36A", { roughness: 0.58, metalness: 0.12 }));
   deck.position.y = 0.24;
   const canopy = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.18, 3.6), standard("#E7D4A3", { roughness: 0.45, metalness: 0.12 }));
   canopy.position.y = 2.2;
@@ -267,7 +281,7 @@ function buildCoasterTrack(group, curve) {
 function makeCoasterCart(group) {
   const cart = new THREE.Group();
   cart.name = "premiumCoasterCart";
-  const base = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.34, 2.15), standard("#14202A", { roughness: 0.32, metalness: 0.38 }));
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.34, 2.15), standard("#00A7C8", { roughness: 0.28, metalness: 0.34 }));
   base.position.y = 0.2;
   const nose = new THREE.Mesh(new THREE.ConeGeometry(0.86, 0.8, 4), standard("#00A7C8", { roughness: 0.28, metalness: 0.34 }));
   nose.rotation.x = Math.PI / 2;
@@ -305,6 +319,7 @@ export function startBeachActivity(scene, type, pose) {
     state.rings = makeSurfRings(group);
     state.course = makeSurfCourse(group);
     state.wake = makeWake(group);
+    state.splashes = makeSplashes(group);
   }
   if (type === "dive") {
     state.x = 35; state.y = -1.35; state.z = 37; state.rot = 0;
@@ -343,12 +358,19 @@ export function tickBeachActivity(state, input, dt, t) {
     state.z += 1.95 * dt;
     state.y = 0.58 + Math.sin(t * 4.2) * 0.075;
     state.rot = steer * -0.32 + Math.sin(t * 1.5) * 0.035;
+    state.avatarPitch = -0.12 + Math.sin(t * 3) * 0.025;
+    state.avatarRoll = steer * -0.24 + Math.sin(t * 2) * 0.04;
     state.board?.position.set(state.x, state.y - 0.12, state.z);
     if (state.board) state.board.rotation.set(Math.sin(t * 3.2) * 0.035, state.rot, steer * -0.12 + Math.sin(t * 2) * 0.045);
     state.wake?.forEach((w, i) => {
       w.position.set(state.x + Math.sin(t * 3 + i) * 0.12, 0.07, state.z - 1.05 - i * 0.62);
       w.rotation.z = state.rot + Math.sin(t * 2 + i) * 0.08;
       w.material.opacity = Math.max(0.05, 0.34 - i * 0.052 + Math.sin(t * 5 + i) * 0.035);
+    });
+    state.splashes?.forEach((s, i) => {
+      const side = i % 2 ? -1 : 1;
+      s.position.set(state.x + side * (0.45 + (i % 3) * 0.08) + Math.sin(t * 8 + i) * 0.05, 0.18 + Math.sin(t * 7 + i) * 0.12, state.z - 0.25 - (i % 6) * 0.18);
+      s.material.opacity = 0.18 + Math.sin(t * 9 + s.userData.phase) * 0.14;
     });
     state.course?.foam?.forEach((f, i) => { f.material.opacity = 0.18 + Math.sin(t * 2 + i) * 0.05; });
     state.course?.sparkles?.forEach((s, i) => { s.material.opacity = 0.25 + Math.sin(t * 3 + s.userData.phase) * 0.18; s.rotation.z += 0.02 + i * 0.0004; });
@@ -368,6 +390,8 @@ export function tickBeachActivity(state, input, dt, t) {
     state.z = Math.max(37, Math.min(59, state.z + forward * 4.0 * dt + 0.32 * dt));
     state.y = -1.42 + Math.sin(t * 2.15) * 0.13;
     state.rot = Math.atan2(steer * 0.9, Math.max(0.2, forward + 0.35));
+    state.avatarPitch = -0.78 + Math.sin(t * 2.1) * 0.05;
+    state.avatarRoll = steer * -0.18 + Math.sin(t * 1.7) * 0.035;
     state.underwater?.surface && (state.underwater.surface.material.opacity = 0.16 + Math.sin(t * 1.7) * 0.035);
     state.underwater?.lightRays?.forEach((r, i) => { r.material.opacity = 0.08 + Math.sin(t * 1.2 + i) * 0.04; r.rotation.z = Math.sin(t * 0.5 + i) * 0.08; });
     state.underwater?.bubbles?.forEach((b) => {

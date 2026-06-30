@@ -60,6 +60,7 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, _mob
   };
 
   if (!open || ["surf", "dive", "coaster"].includes(type)) return null;
+  const compactPanel = ["frequency", "bonfire", "zen"].includes(type);
 
   return (
     <AnimatePresence>
@@ -70,7 +71,7 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, _mob
         transition={{ type: "spring", damping: 28, stiffness: 280 }}
         className="fixed inset-x-0 bottom-0 z-[75] rounded-t-3xl overflow-hidden pointer-events-auto"
         style={{
-          height: isMobile ? "min(78dvh, 560px)" : "min(62vh, 520px)",
+          height: compactPanel ? (isMobile ? "min(42dvh, 330px)" : "min(36vh, 300px)") : (isMobile ? "min(64dvh, 470px)" : "min(52vh, 420px)"),
           maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - 8px)",
           background: "linear-gradient(180deg, rgba(8,18,28,0.98), rgba(5,8,18,0.98))",
           border: `1px solid ${config.color}33`,
@@ -95,7 +96,7 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, _mob
           </button>
         </div>
 
-        <div className="p-5 space-y-4 overflow-y-auto h-[calc(100%-76px)]">
+        <div className="p-4 space-y-3 overflow-y-auto h-[calc(100%-76px)]">
           <div className="rounded-2xl p-4" style={{ background: `${config.color}0f`, border: `1px solid ${config.color}24` }}>
             {type === "frequency" && started ? (
               <div className="grid grid-cols-3 gap-2 mb-3">

@@ -110,8 +110,6 @@ export function createBeachResortDecor(scene) {
 
   addSmallVilla(group, -10, -6, -0.18);
   addSmallVilla(group, -24, 8, 0.35);
-  addOpenAirStructure(group, 0, -20, "VIBE COASTER", "#68D7E8", 0.05);
-
   addPalm(group, 48, 17, 0.78); addPalm(group, 56, 22, 0.74);
 
   [[-34, 1.5, 25], [52, 1.4, 20], [10, 1.4, 16], [0, 1.1, 34], [35, 1.2, 34], [40, 1.2, 13]].forEach(([x, y, z]) => {

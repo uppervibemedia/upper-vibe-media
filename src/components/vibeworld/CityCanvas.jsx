@@ -28,6 +28,7 @@ import { MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
 import { createBeachWorld, createTransportPad, CITY_BEACH_PAD, BEACH_RETURN_PAD } from "./BeachWorldBuilder.jsx";
 import { createSimpleCityShoreline, animateSimpleCityShoreline } from "./SimpleCityShoreline.jsx";
 import { animateBeachActivities } from "./BeachActivities.jsx";
+import { animateBeachFrequencyCove } from "./BeachFrequencyCove.jsx";
 import { startBeachActivity, tickBeachActivity, applyBeachActivityCamera, exitBeachActivity } from "./BeachActivityEngine.js";
 
 
@@ -1154,6 +1155,14 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         if (avatar) {
           avatar.position.set(px, py, pz);
           avatar.rotation.y = rot;
+          const act = beachActivityStateRef.current;
+          if (act?.type === "surf" || act?.type === "dive") {
+            avatar.rotation.x = act.avatarPitch || 0;
+            avatar.rotation.z = act.avatarRoll || 0;
+          } else {
+            avatar.rotation.x = 0;
+            avatar.rotation.z = 0;
+          }
         }
 
         // Rim light follows avatar
@@ -1573,6 +1582,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             }
           }
           if (!mobileQuality || frameRef.current % (lowQuality ? 8 : 4) === 0) animateBeachActivities(scene, t, audioBeat);
+          if (!mobileQuality || frameRef.current % (lowQuality ? 8 : 4) === 0) animateBeachFrequencyCove(scene, t, audioBeat);
         } else if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 12 : 6) === 0) {
           animateSimpleCityShoreline(scene, t);
         }

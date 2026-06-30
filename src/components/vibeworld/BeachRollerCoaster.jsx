@@ -62,13 +62,20 @@ export function createBeachRollerCoaster(scene) {
     group.add(post);
   });
 
-  const station = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.45, 2.4), standard("#A9B2B8"));
-  station.position.set(-9, 0.35, -5.4);
+  const station = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.28, 2.4), standard("#C4A36A"));
+  station.position.set(-9, 0.24, -5.4);
   group.add(station);
+  const canopy = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.14, 2.7), standard("#E7D4A3"));
+  canopy.position.set(-9, 1.7, -5.4);
+  group.add(canopy);
 
-  const cart = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.52, 0.92), standard("#16232C"));
+  const cart = new THREE.Group();
   cart.position.set(2, 6.7, -7.6);
   cart.rotation.y = 0.42;
+  const cartBase = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.36, 1.15), standard("#00A7C8"));
+  const cartSeat = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.24, 0.55), standard("#24384A"));
+  cartSeat.position.y = 0.36;
+  cart.add(cartBase, cartSeat);
   group.add(cart);
 
   const sign = makeLabel("VIBE COASTER", "#00DDF5");
