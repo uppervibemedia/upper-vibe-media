@@ -87,7 +87,7 @@ function addSimplePalm(group, x, z, scale = 1) {
 function addCityBeachPlanet(group) {
   const planetGroup = new Group();
   planetGroup.name = "cityBeachBlueSandPlanet";
-  planetGroup.position.set(12, 3.05, 21.5);
+  planetGroup.position.set(12, 13.5, 23);
 
   const ocean = new Mesh(
     new THREE.SphereGeometry(2.45, 48, 32),
