@@ -397,10 +397,10 @@ export function createCosmicSky(scene) {
     },
     // ── 4 NEW PLANETS (same system, extended) ───────────────────────────────────
     {
-      // HIGH-1 — LARGE RINGED PURPLE — FAR RIGHT end of world, very high in sky
+      // BEACH — large Upper Vibe Beach planet with ocean-blue and sandy-brown tones
       id: "ice",
-      bodyColors: ["#2A1000", "#5A2800", "#A05018", "#D08030", "#FFB860"],
-      glowColor: "rgba(255,160,40,0.60)", ringColor: "rgba(255,200,80,0.70)",
+      bodyColors: ["#06405A", "#0B7FA0", "#D0A35A", "#F0C878", "#FFF1C2"],
+      glowColor: "rgba(40,190,230,0.55)", ringColor: "rgba(240,200,120,0.68)",
       size: isMobile ? 38 : 58,          // very large — prominent sky feature
       angleOffset: Math.PI * 0.45,       // right end of world
       horizonY: 45,                      // brought down — clearly visible in sky
@@ -546,14 +546,15 @@ export function createCosmicSky(scene) {
         pctx.fillRect(px2 - pr, py2 - pr, pr * 2, pr * 2);
       }
     } else if (def.id === "ice") {
-      // Ice (now large purple ringed): same band style as mega
+      // Upper Vibe Beach planet: alternating ocean-blue and sandy-brown bands
       for (let b = 0; b < 9; b++) {
         const by = cy - R + (b / 8) * R * 2;
         const bw = R * (0.06 + rng() * 0.10);
-        const alpha = 0.06 + rng() * 0.10;
+        const alpha = 0.08 + rng() * 0.12;
         const bandG = pctx.createLinearGradient(0, by - bw, 0, by + bw);
+        const sandBand = b % 2 === 0;
         bandG.addColorStop(0, "rgba(0,0,0,0)");
-        bandG.addColorStop(0.5, `rgba(${180 + Math.floor(rng()*60)},${80 + Math.floor(rng()*40)},255,${alpha})`);
+        bandG.addColorStop(0.5, sandBand ? `rgba(245,205,125,${alpha})` : `rgba(40,190,220,${alpha})`);
         bandG.addColorStop(1, "rgba(0,0,0,0)");
         pctx.fillStyle = bandG;
         pctx.fillRect(cx - R, by - bw, R * 2, bw * 2);
@@ -655,7 +656,7 @@ export function createCosmicSky(scene) {
       pctx.stroke();
       pctx.beginPath();
       pctx.arc(0, 0, R * 1.65, 0, Math.PI * 2);
-      pctx.strokeStyle = "rgba(200,140,255,0.18)";
+      pctx.strokeStyle = def.id === "ice" ? "rgba(40,190,230,0.22)" : "rgba(200,140,255,0.18)";
       pctx.lineWidth = S * 0.022;
       pctx.stroke();
       pctx.restore();
