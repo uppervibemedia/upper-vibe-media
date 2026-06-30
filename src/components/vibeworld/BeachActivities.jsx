@@ -12,7 +12,7 @@ export const BEACH_ACTIVITY_POINTS = {
   questBoard: { x: 29, z: -10, radius: 7 },
   bonfire: { x: 0, z: 14, radius: 7 },
   photoSpot: { x: 45, z: 27, radius: 6 },
-  surf: { x: -24, z: 33, radius: 7 },
+  surf: { x: -52, z: 34, radius: 7 },
   dive: { x: 32, z: 33, radius: 7 },
 };
 
@@ -120,26 +120,26 @@ function addSurfPreview(group) {
   const lane = new THREE.Mesh(new THREE.PlaneGeometry(22, 4.2), basic("#7FE8F4", { transparent: true, opacity: 0.18 }));
   lane.rotation.x = -Math.PI / 2;
   lane.rotation.z = -0.18;
-  lane.position.set(-30, 0.035, 39);
+  lane.position.set(-58, 0.035, 40);
   group.add(lane);
 
   const rack = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.16, 0.55), standard("#85613E"));
-  rack.position.set(-24, 0.32, 31.8);
+  rack.position.set(-52, 0.32, 32.8);
   group.add(rack);
   [-1.15, 0, 1.15].forEach((off, i) => {
     const board = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.11, 2.7), standard(i === 1 ? "#68D7E8" : "#D9C27C", { metalness: 0.12 }));
-    board.position.set(-24 + off, 0.58, 31.8);
+    board.position.set(-52 + off, 0.58, 32.8);
     board.rotation.set(0.42, -0.2, 0);
     group.add(board);
   });
-  [[-28, 36], [-34, 40], [-40, 44]].forEach(([x, z], i) => {
+  [[-55, 36], [-61, 40], [-66, 44]].forEach(([x, z], i) => {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.045, 8, 44), basic("#7FE8F4", { transparent: true, opacity: 0.46 }));
     ring.position.set(x, 1.0, z);
     ring.rotation.set(Math.PI / 2, 0.15 * i, 0);
     group.add(ring);
   });
   const sign = label("SURF ZONE", "#68D7E8", [4.4, 0.72]);
-  sign.position.set(-24, 1.85, 29.7);
+  sign.position.set(-52, 1.85, 30.7);
   group.add(sign);
 }
 

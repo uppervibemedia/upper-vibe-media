@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import createZenBeach from "./ZenBeach";
-import { createHoverboardZone } from "./HoverboardRingRun";
 import { buildVibeAcademyZone } from "./city-engine/zones/VibeAcademyZone";
 import { createBeachDaySky } from "./BeachDaySky";
 import { createBeachReturnPlanet } from "./BeachReturnPlanet";
@@ -147,7 +146,6 @@ export function createBeachWorld(scene) {
   buildVibeAcademyZone(scene);
   createZenBeach(scene, 0, 0);
   createBeachResortAddOns(scene);
-  createHoverboardZone(scene);
   createBeachReturnPlanet(scene);
   createTransportPad(scene, { ...BEACH_RETURN_PAD, label: "Return to Upper Vibe City", color: "#EDB84A", name: "returnCityPad" });
 
