@@ -85,6 +85,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [transportTarget, setTransportTarget] = useState(null);
   const [transportPrompt, setTransportPrompt] = useState(null);
   const [dismissedTransportTarget, setDismissedTransportTarget] = useState(null);
+  const transportPadDisabledUntilRef = useRef(0);
+  const transportPromptSourceRef = useRef(null);
   const [playerPos, setPlayerPos] = useState({ x: -10, z: -4, rot: -2.55, animState: "idle" });
   // Restore saved return state (position + panel) when returning from SongPage
   const returnState = useRef(readReturnState());
@@ -1000,6 +1002,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const handleTransport = useCallback((target) => {
     setTransportPrompt(null);
     setTransportTarget(null);
+    transportPromptSourceRef.current = null;
+    transportPadDisabledUntilRef.current = Date.now() + 3000;
     setLoading(true);
     setStageWatching(false);
     setStageFullScreen(false);
@@ -1007,9 +1011,9 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setFerrisRiding(false);
     setNearJukebox(false);
     if (target === "beach") {
-      setWorldSpawn({ x: 0, z: -9, rot: 0 });
-      setPlayerPos({ x: 0, z: -9, rot: 0, animState: "idle" });
-      prevPosRef.current = { x: 0, z: -9, rot: 0 };
+      setWorldSpawn({ x: 0, z: -5, rot: 0 });
+      setPlayerPos({ x: 0, z: -5, rot: 0, animState: "idle" });
+      prevPosRef.current = { x: 0, z: -5, rot: 0 };
       setWorldMode("beach");
     } else {
       setWorldSpawn({ x: 12, z: 4, rot: Math.PI });
@@ -1102,16 +1106,28 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
             jukeboxProxVolRef.current = vol;
           }}
           onTransportProximity={(target) => {
+            if (Date.now() < transportPadDisabledUntilRef.current) {
+              setTransportTarget(null);
+              return;
+            }
             setTransportTarget(target);
             if (!target) {
               setTransportTarget(null);
               setDismissedTransportTarget(null);
+              if (transportPromptSourceRef.current === "pad") {
+                transportPromptSourceRef.current = null;
+                setTransportPrompt(null);
+              }
               return;
             }
-            if (!transportPrompt && target !== dismissedTransportTarget) setTransportPrompt(target);
+            if (!transportPrompt && target !== dismissedTransportTarget) {
+              transportPromptSourceRef.current = "pad";
+              setTransportPrompt(target);
+            }
           }}
           onPlanetTransport={(target) => {
             if (target === "beach" && worldMode === "city") {
+              transportPromptSourceRef.current = "planet";
               setTransportTarget("beach");
               setDismissedTransportTarget(null);
               setTransportPrompt("beach");
@@ -1166,7 +1182,11 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         title={transportPrompt === "beach" ? "Enter Upper Vibe Beach?" : "Return to Upper Vibe City?"}
         body={transportPrompt === "beach" ? "Transport to the beach destination planet." : "Your avatar, music, inventory, and Vibe Coins stay connected."}
         onEnter={() => handleTransport(transportPrompt)}
-        onCancel={() => { setDismissedTransportTarget(transportPrompt); setTransportPrompt(null); }}
+        onCancel={() => {
+          setDismissedTransportTarget(transportPrompt);
+          transportPromptSourceRef.current = null;
+          setTransportPrompt(null);
+        }}
       />
 
       {/* Loading overlay */}
