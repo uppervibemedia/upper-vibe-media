@@ -29,6 +29,7 @@ import { createSimpleCityShoreline, animateSimpleCityShoreline } from "./SimpleC
 import { animateBeachActivities } from "./BeachActivities.jsx";
 import { animateBeachFrequencyCove } from "./BeachFrequencyCove.jsx";
 import { startBeachActivity, tickBeachActivity, applyBeachActivityCamera, exitBeachActivity } from "./BeachActivityEngine.js";
+import { animateBeachPremiumPolish } from "./BeachPremiumPolish.jsx";
 
 
 // Destructure immediately after namespace import to ensure full module load
@@ -1569,6 +1570,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             }
           }
           if (!mobileQuality || frameRef.current % (lowQuality ? 8 : 4) === 0) animateBeachActivities(scene, t, audioBeat);
+          if (!mobileQuality || frameRef.current % (lowQuality ? 8 : 4) === 0) animateBeachPremiumPolish(scene, t, mobileQuality);
           if (!mobileQuality || frameRef.current % (lowQuality ? 8 : 4) === 0) animateBeachFrequencyCove(scene, t, audioBeat);
         } else if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 12 : 6) === 0) {
           animateSimpleCityShoreline(scene, t);
