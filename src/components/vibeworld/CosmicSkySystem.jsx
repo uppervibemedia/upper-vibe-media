@@ -401,10 +401,10 @@ export function createCosmicSky(scene) {
       id: "ice",
       bodyColors: ["#06405A", "#0B7FA0", "#D0A35A", "#F0C878", "#FFF1C2"],
       glowColor: "rgba(40,190,230,0.55)", ringColor: "rgba(240,200,120,0.68)",
-      size: isMobile ? 38 : 58,          // very large — prominent sky feature
+      size: isMobile ? 30 : 44,          // prominent but not screen-filling
       angleOffset: Math.PI * 0.45,       // right end of world
-      horizonY: 45,                      // brought down — clearly visible in sky
-      radius: 95,
+      horizonY: 34,                      // lower than normal, but not blocking view
+      radius: 98,
       orbitSpeed: (Math.PI * 2) / 280,
     },
     {
@@ -626,8 +626,8 @@ export function createCosmicSky(scene) {
     pctx.clip();
     const shadowG = pctx.createRadialGradient(cx + R*0.45, cy + R*0.45, R*0.05, cx + R*0.65, cy + R*0.65, R*1.1);
     shadowG.addColorStop(0, "rgba(0,0,0,0)");
-    shadowG.addColorStop(0.55, "rgba(0,0,0,0.18)");
-    shadowG.addColorStop(1, "rgba(0,0,0,0.62)");
+    shadowG.addColorStop(0.55, def.id === "ice" ? "rgba(0,35,50,0.08)" : "rgba(0,0,0,0.18)");
+    shadowG.addColorStop(1, def.id === "ice" ? "rgba(0,35,50,0.32)" : "rgba(0,0,0,0.62)");
     pctx.fillStyle = shadowG;
     pctx.fillRect(cx - R, cy - R, R * 2, R * 2);
     pctx.restore();
