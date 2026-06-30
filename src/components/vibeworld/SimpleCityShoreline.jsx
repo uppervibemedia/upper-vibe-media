@@ -84,6 +84,32 @@ function addSimplePalm(group, x, z, scale = 1) {
   group.add(crown);
 }
 
+function addCityBeachPlanet(group) {
+  const planetGroup = new Group();
+  planetGroup.name = "cityBeachBlueSandPlanet";
+  planetGroup.position.set(12, 3.05, 21.5);
+
+  const ocean = new Mesh(
+    new THREE.SphereGeometry(2.45, 48, 32),
+    standardMat("#0B7FA0", { roughness: 0.58, metalness: 0.08 })
+  );
+  ocean.castShadow = true;
+  planetGroup.add(ocean);
+
+  [-0.9, -0.32, 0.22, 0.78].forEach((y, idx) => {
+    const radius = Math.sqrt(Math.max(0.45, 2.45 * 2.45 - y * y));
+    const band = new Mesh(
+      new THREE.TorusGeometry(radius, 0.09 + idx * 0.01, 12, 96),
+      standardMat(idx % 2 === 0 ? "#D2B48C" : "#F0C878", { roughness: 0.75, metalness: 0.02 })
+    );
+    band.rotation.x = Math.PI / 2;
+    band.position.y = y;
+    planetGroup.add(band);
+  });
+
+  group.add(planetGroup);
+}
+
 export function createSimpleCityShoreline(scene) {
   const group = new Group();
   group.name = "simpleCityShoreline";
@@ -143,6 +169,7 @@ export function createSimpleCityShoreline(scene) {
   group.add(path);
 
   [-26, -14, 24].forEach((x, i) => addSimplePalm(group, x, i === 1 ? 22 : 24.5, i === 1 ? 0.82 : 0.95));
+  addCityBeachPlanet(group);
 
   const label = makeShorelineLabel("Upper Vibe Shoreline");
   label.position.set(-12, 2.2, 20.5);
