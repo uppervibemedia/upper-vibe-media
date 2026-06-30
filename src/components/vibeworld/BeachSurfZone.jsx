@@ -49,33 +49,33 @@ export function createBeachSurfZone(scene) {
 
   const marker = new THREE.Mesh(new THREE.RingGeometry(8.2, 8.65, 64), basic("#FFFFFF", { transparent: true, opacity: 0.2 }));
   marker.rotation.x = -Math.PI / 2;
-  marker.position.set(-7, 0.025, 43);
+  marker.position.set(-28, 0.025, 43);
   marker.renderOrder = 3;
   group.add(marker);
 
   [-4, 0, 4].forEach((x, i) => {
     const wave = new THREE.Mesh(new THREE.PlaneGeometry(15 - i * 1.6, 0.42), basic("#F8FFFF", { transparent: true, opacity: 0.34 - i * 0.05 }));
     wave.rotation.x = -Math.PI / 2;
-    wave.position.set(-7 + x * 0.08, 0.04 + i * 0.002, 39.4 + i * 3.2);
+    wave.position.set(-28 + x * 0.08, 0.04 + i * 0.002, 39.4 + i * 3.2);
     wave.renderOrder = 4;
     group.add(wave);
   });
 
-  addSurfboard(group, -13, 31.6, "#FF5DA2", 0.2);
-  addSurfboard(group, -12.2, 31.9, "#F6C45D", 0.15);
-  addSurfboard(group, -11.4, 32.2, "#00CFE8", 0.1);
-  addSurfboard(group, -5, 41.8, "#B58CFF", -0.5);
+  addSurfboard(group, -36, 31.6, "#FF5DA2", 0.2);
+  addSurfboard(group, -35.2, 31.9, "#F6C45D", 0.15);
+  addSurfboard(group, -34.4, 32.2, "#00CFE8", 0.1);
+  addSurfboard(group, -27, 41.8, "#B58CFF", -0.5);
 
   const rack = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.12, 0.18), standard("#7A5130"));
-  rack.position.set(-12.3, 0.55, 31.6);
+  rack.position.set(-35.3, 0.55, 31.6);
   group.add(rack);
 
   const sign = makeLabel("SURF ZONE", "#00E5FF");
-  sign.position.set(-10.5, 2.45, 32.2);
+  sign.position.set(-33.5, 2.45, 32.2);
   group.add(sign);
 
   const light = new THREE.PointLight(new THREE.Color("#6FE7FF"), 1.2, 18);
-  light.position.set(-7, 2, 39);
+  light.position.set(-28, 2, 39);
   group.add(light);
 
   scene.add(group);

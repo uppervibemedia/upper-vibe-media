@@ -89,7 +89,7 @@ export function createBeachWorld(scene) {
   const OCEAN_DEPTH = 62;
   const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  const sand = new Mesh(new PlaneGeometry(116, 82), mat("#E6C98F", { roughness: 0.86, metalness: 0.0 }));
+  const sand = new Mesh(new PlaneGeometry(126, 90), mat("#E6C98F", { roughness: 0.86, metalness: 0.0 }));
   sand.rotation.x = -Math.PI / 2;
   sand.position.set(0, 0, 10);
   sand.receiveShadow = true;
@@ -106,7 +106,7 @@ export function createBeachWorld(scene) {
     scene.add(path);
   });
 
-  const oceanGeo = new PlaneGeometry(118, OCEAN_DEPTH, isMob ? 4 : 56, isMob ? 4 : 54);
+  const oceanGeo = new PlaneGeometry(132, OCEAN_DEPTH, isMob ? 4 : 56, isMob ? 4 : 54);
   const ocean = new Mesh(oceanGeo, new MeshBasicMaterial({ color: new Color(isMob ? "#3E8FC0" : "#4EA4D8"), side: THREE.DoubleSide }));
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, 0, SHORELINE_Z + OCEAN_DEPTH / 2);
@@ -119,7 +119,7 @@ export function createBeachWorld(scene) {
   scene.userData.shorelineZ = SHORELINE_Z;
 
   const foamMat = new MeshBasicMaterial({ color: new Color("#FFFFFF"), transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
-  const foam = new Mesh(new PlaneGeometry(118, 1.6), foamMat);
+  const foam = new Mesh(new PlaneGeometry(132, 1.6), foamMat);
   foam.rotation.x = -Math.PI / 2;
   foam.position.set(0, 0.006, SHORELINE_Z + 0.3);
   foam.renderOrder = 2;
@@ -128,7 +128,7 @@ export function createBeachWorld(scene) {
   scene.userData.foam = foam;
   scene.userData._foamBaseZ = SHORELINE_Z + 0.3;
 
-  const shoreGlow = new Mesh(new PlaneGeometry(118, 0.55), new MeshBasicMaterial({ color: new Color("#00D4F0"), transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }));
+  const shoreGlow = new Mesh(new PlaneGeometry(132, 0.55), new MeshBasicMaterial({ color: new Color("#00D4F0"), transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }));
   shoreGlow.rotation.x = -Math.PI / 2;
   shoreGlow.position.set(0, 0.012, SHORELINE_Z);
   shoreGlow.renderOrder = 2;
