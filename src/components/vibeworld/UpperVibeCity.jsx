@@ -56,6 +56,7 @@ import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
 import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
 import BeachPortalTransition from "@/components/vibeworld/BeachPortalTransition";
 import TransportConfirmModal from "@/components/vibeworld/TransportConfirmModal";
+import BeachQuestHUD from "@/components/vibeworld/BeachQuestHUD";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -134,6 +135,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
   const [totalCoins, setTotalCoins] = useState(() => getWalletBalance());
   const [lastCollectCount, setLastCollectCount] = useState(0);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [beachQuest, setBeachQuest] = useState(() => {
+    const day = new Date().toLocaleDateString();
+    try {
+      const saved = JSON.parse(localStorage.getItem("uvc_beach_daily_quest") || "{}");
+      if (saved.day === day) return saved;
+    } catch {}
+    return { day, shells: [], visitedZen: false, relaxedBonfire: false, completed: false, shellBonus: false };
+  });
 
   const jukeboxFadeRef = useRef(null);        // kept for cleanup compat
 
@@ -404,6 +413,44 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     window.addEventListener("vibeCoinsCollected", onCollect);
     return () => window.removeEventListener("vibeCoinsCollected", onCollect);
   }, [user?.id]);
+
+  const grantBeachCoins = useCallback((amount, sourceId) => {
+    window.dispatchEvent(new CustomEvent("vibeCoinsCollected", {
+      detail: {
+        source: "daily_reward",
+        coinIds: Array.from({ length: amount }, (_, i) => `beach_${sourceId}_${Date.now()}_${i}`),
+      },
+    }));
+  }, []);
+
+  const updateBeachQuest = useCallback((updater, rewardAmount = 0, rewardId = "task") => {
+    let bonus = 0;
+    setBeachQuest((prev) => {
+      const day = new Date().toLocaleDateString();
+      const base = prev?.day === day ? prev : { day, shells: [], visitedZen: false, relaxedBonfire: false, completed: false, shellBonus: false };
+      const next = updater({ ...base, shells: Array.isArray(base.shells) ? [...base.shells] : [] });
+      if (next.shells.length >= 10 && !next.shellBonus) { next.shellBonus = true; bonus += 50; }
+      const done = [next.shells.length >= 10, next.visitedZen, next.relaxedBonfire].filter(Boolean).length;
+      if (done === 3 && !next.completed) { next.completed = true; bonus += 150; }
+      try { localStorage.setItem("uvc_beach_daily_quest", JSON.stringify(next)); } catch {}
+      return next;
+    });
+    if (rewardAmount > 0) grantBeachCoins(rewardAmount, rewardId);
+    if (bonus > 0) setTimeout(() => grantBeachCoins(bonus, `bonus_${rewardId}`), 120);
+  }, [grantBeachCoins]);
+
+  useEffect(() => {
+    const onShell = (e) => {
+      const shellId = e.detail?.shellId;
+      if (!shellId) return;
+      updateBeachQuest((q) => {
+        if (!q.shells.includes(shellId)) q.shells.push(shellId);
+        return q;
+      }, beachQuest.shells?.includes?.(shellId) ? 0 : 5, shellId);
+    };
+    window.addEventListener("beachShellCollected", onShell);
+    return () => window.removeEventListener("beachShellCollected", onShell);
+  }, [updateBeachQuest, beachQuest.shells]);
 
   // ── Sync wallet after shop purchases ──────────────────────────
   useEffect(() => {
@@ -728,6 +775,26 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
     setIsPlayingNeonSurf(false);  // Neon Surf board: removed on exit, avatar returns to walking
   }, []);
 
+  const handleBeachRelax = useCallback(() => {
+    updateBeachQuest((q) => ({ ...q, relaxedBonfire: true }), 0, "bonfire_relax");
+    try { navigator?.vibrate?.(15); } catch {}
+  }, [updateBeachQuest]);
+
+  useEffect(() => {
+    if (worldMode !== "beach") return;
+    if (detectZone(playerPos.x, playerPos.z)?.id === "zenbeach" && !beachQuest.visitedZen) {
+      updateBeachQuest((q) => ({ ...q, visitedZen: true }), 0, "visit_zen");
+    }
+  }, [worldMode, playerPos.x, playerPos.z, beachQuest.visitedZen, updateBeachQuest]);
+
+  const nearbyBeachActivity = (() => {
+    if (worldMode !== "beach") return null;
+    const bonfireDx = playerPos.x - 0;
+    const bonfireDz = playerPos.z - 14;
+    if (Math.sqrt(bonfireDx * bonfireDx + bonfireDz * bonfireDz) < 7) return "bonfire";
+    return null;
+  })();
+
   // ── Voice ducking: only applies while outside the dance floor.
   // Inside the dance floor, the city audio machine owns Live DJ volume exclusively.
   useEffect(() => {
@@ -1050,6 +1117,14 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           mobileLayout={mobileLayout}
           stageFullScreen={stageFullScreen}
           onOpenInventory={() => setInventoryOpen(true)}
+        />
+        <BeachQuestHUD
+          worldMode={worldMode}
+          quest={beachQuest}
+          nearbyActivity={nearbyBeachActivity}
+          onRelax={handleBeachRelax}
+          isMobile={isMobile}
+          mobileLayout={mobileLayout}
         />
         <CityCanvas
         worldMode={worldMode}

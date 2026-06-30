@@ -27,6 +27,7 @@ import { runConnections, tickAddOns, KEYS_CREATED } from "./CityAddOns";
 import { MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
 import { createBeachWorld, createTransportPad, CITY_BEACH_PAD, BEACH_RETURN_PAD } from "./BeachWorldBuilder.jsx";
 import { createSimpleCityShoreline, animateSimpleCityShoreline } from "./SimpleCityShoreline.jsx";
+import { animateBeachActivities } from "./BeachActivities.jsx";
 
 
 // Destructure immediately after namespace import to ensure full module load
@@ -1516,6 +1517,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
               }
             }
           }
+          if (!mobileQuality || frameRef.current % (lowQuality ? 8 : 4) === 0) animateBeachActivities(scene, t, audioBeat);
         } else if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 12 : 6) === 0) {
           animateSimpleCityShoreline(scene, t);
         }
@@ -1606,6 +1608,21 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
                 collectOrb(scene, orb.id);
                 if (window.__hbCollectOrb) window.__hbCollectOrb(orb.id);
               }
+            }
+          }
+        }
+
+        // ─── BEACH TREASURE HUNT — lightweight proximity collect ────────
+        if (worldModeRef.current === "beach" && frameRef.current % 6 === 0) {
+          const shellMeshes = scene.userData.beachShellMeshes || [];
+          for (const shell of shellMeshes) {
+            if (!shell.visible || shell.userData.collected) continue;
+            const dx = px - shell.position.x;
+            const dz = pz - shell.position.z;
+            if (dx * dx + dz * dz < 1.5 * 1.5) {
+              shell.userData.collected = true;
+              shell.visible = false;
+              window.dispatchEvent(new CustomEvent("beachShellCollected", { detail: { shellId: shell.userData.shellId } }));
             }
           }
         }
