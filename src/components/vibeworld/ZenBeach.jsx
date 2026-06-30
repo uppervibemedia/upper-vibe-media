@@ -85,15 +85,16 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
 }
 
 function createPalm(scene, x, z, scale = 1) {
-  const trunk = new Mesh(new CylinderGeometry(0.12 * scale, 0.18 * scale, 1.8 * scale, 8), mat("#8B5A2B", { roughness: 0.8 }));
-  trunk.position.set(x, 0.9 * scale, z);
+  const tallScale = scale * 1.75;
+  const trunk = new Mesh(new CylinderGeometry(0.12 * tallScale, 0.18 * tallScale, 2.1 * tallScale, 8), mat("#7A4E2A", { roughness: 0.8 }));
+  trunk.position.set(x, 1.05 * tallScale, z);
   trunk.rotation.z = 0.16;
   scene.add(trunk);
-  const leafMat = mat("#2F9B64", { roughness: 0.75 });
-  for (let i = 0; i < 5; i++) {
-    const leaf = new Mesh(new BoxGeometry(1.35 * scale, 0.08 * scale, 0.28 * scale), leafMat.clone());
-    leaf.position.set(x, 1.75 * scale, z);
-    leaf.rotation.set(0.15, (i / 5) * Math.PI * 2, 0.22);
+  const leafMat = mat("#247D55", { roughness: 0.75 });
+  for (let i = 0; i < 6; i++) {
+    const leaf = new Mesh(new BoxGeometry(1.42 * tallScale, 0.08 * tallScale, 0.3 * tallScale), leafMat.clone());
+    leaf.position.set(x, 2.05 * tallScale, z);
+    leaf.rotation.set(0.14, (i / 6) * Math.PI * 2, 0.22);
     scene.add(leaf);
   }
 }

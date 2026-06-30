@@ -40,12 +40,13 @@ function addChair(group, x, z, color, rot = 0) {
 }
 
 function addPalm(group, x, z, scale = 1) {
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * scale, 0.22 * scale, 2.15 * scale, 8), standard("#8B5A2B"));
-  trunk.position.set(x, 1.05 * scale, z); trunk.rotation.z = 0.12; group.add(trunk);
-  const leafMat = basic("#31A86A", { transparent: true, opacity: 0.9 });
-  for (let i = 0; i < 6; i++) {
-    const leaf = new THREE.Mesh(new THREE.BoxGeometry(1.55 * scale, 0.08 * scale, 0.32 * scale), leafMat.clone());
-    leaf.position.set(x, 2.08 * scale, z); leaf.rotation.set(0.18, (i / 6) * Math.PI * 2, 0.25); group.add(leaf);
+  const tallScale = scale * 1.7;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * tallScale, 0.22 * tallScale, 2.28 * tallScale, 8), standard("#7A4E2A"));
+  trunk.position.set(x, 1.14 * tallScale, z); trunk.rotation.z = 0.12; group.add(trunk);
+  const leafMat = basic("#247D55", { transparent: true, opacity: 0.92 });
+  for (let i = 0; i < 7; i++) {
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(1.55 * tallScale, 0.08 * tallScale, 0.32 * tallScale), leafMat.clone());
+    leaf.position.set(x, 2.24 * tallScale, z); leaf.rotation.set(0.16, (i / 7) * Math.PI * 2, 0.25); group.add(leaf);
   }
 }
 
@@ -63,7 +64,7 @@ export function createBeachResortDecor(scene) {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), pathMat.clone());
     p.rotation.x = -Math.PI / 2; p.position.set(x, 0.03 + i * 0.001, z); p.renderOrder = 3; group.add(p);
   });
-  [[32,-8],[8,-8],[0,10],[-38,22],[-38,-8],[27,31]].forEach(([x,z]) => addGlowStone(group, x, z));
+  [[32,-8],[8,-8],[0,10],[-54,12],[-38,-8],[27,31]].forEach(([x,z]) => addGlowStone(group, x, z));
 
   addPalm(group, 6, -12, 0.9); addPalm(group, 14, -10, 0.85); addPalm(group, 20, -12, 0.85);
   addUmbrella(group, 8, -7, "#DCE6EA"); addUmbrella(group, 16, -6, "#68D7E8");

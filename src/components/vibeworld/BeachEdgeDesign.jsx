@@ -24,15 +24,16 @@ function addDune(group, x, z, sx, sz) {
 }
 
 function addPalmCluster(group, x, z, scale = 1) {
+  const tallScale = scale * 1.75;
   for (let i = 0; i < 3; i++) {
-    const px = x + (i - 1) * 1.8 * scale;
-    const pz = z + (i % 2) * 1.1 * scale;
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * scale, 0.18 * scale, 1.9 * scale, 8), standard("#8B5A2B"));
-    trunk.position.set(px, 0.95 * scale, pz); trunk.rotation.z = i === 1 ? -0.15 : 0.12; group.add(trunk);
-    const leafMat = basic("#2E9F63", { transparent: true, opacity: 0.88 });
-    for (let j = 0; j < 5; j++) {
-      const leaf = new THREE.Mesh(new THREE.BoxGeometry(1.25 * scale, 0.07 * scale, 0.26 * scale), leafMat.clone());
-      leaf.position.set(px, 1.88 * scale, pz); leaf.rotation.set(0.2, (j / 5) * Math.PI * 2, 0.24); group.add(leaf);
+    const px = x + (i - 1) * 1.85 * scale;
+    const pz = z + (i % 2) * 1.15 * scale;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * tallScale, 0.18 * tallScale, 2.15 * tallScale, 8), standard("#7A4E2A"));
+    trunk.position.set(px, 1.08 * tallScale, pz); trunk.rotation.z = i === 1 ? -0.15 : 0.12; group.add(trunk);
+    const leafMat = basic("#247D55", { transparent: true, opacity: 0.9 });
+    for (let j = 0; j < 6; j++) {
+      const leaf = new THREE.Mesh(new THREE.BoxGeometry(1.45 * tallScale, 0.07 * tallScale, 0.3 * tallScale), leafMat.clone());
+      leaf.position.set(px, 2.1 * tallScale, pz); leaf.rotation.set(0.18, (j / 6) * Math.PI * 2, 0.24); group.add(leaf);
     }
   }
 }
@@ -42,6 +43,25 @@ function addResortHut(group, x, z, rot = 0) {
   base.position.set(x, 0.64, z); base.rotation.y = rot; group.add(base);
   const roof = new THREE.Mesh(new THREE.ConeGeometry(2.45, 0.85, 4), standard("#5F7280"));
   roof.position.set(x, 1.62, z); roof.rotation.y = Math.PI / 4 + rot; group.add(roof);
+}
+
+function addNorthBackdrop(group) {
+  const panelMat = basic("#18384A", { transparent: true, opacity: 0.58 });
+  const trimMat = basic("#7DEBFF", { transparent: true, opacity: 0.42 });
+  [-36, -12, 12, 36].forEach((x, i) => {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(18, 3.8, 0.18), panelMat.clone());
+    panel.position.set(x, 2.05, 48 + (i % 2) * 1.4);
+    panel.rotation.y = (i - 1.5) * 0.08;
+    group.add(panel);
+
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(17.2, 0.08, 0.12), trimMat.clone());
+    trim.position.set(x, 3.98, 47.88 + (i % 2) * 1.4);
+    trim.rotation.y = panel.rotation.y;
+    group.add(trim);
+  });
+
+  [-52, -28, 0, 28, 52].forEach((x, i) => addPalmCluster(group, x, 43 + (i % 2) * 4, 1.35));
+  [-58, -42, -18, 18, 42, 58].forEach((x, i) => addRock(group, x, 45 + (i % 3), 2.4, 1.05, 1.45, i % 2 ? "#6E7780" : "#7F715F"));
 }
 
 export function createBeachEdgeDesign(scene) {
@@ -76,6 +96,7 @@ export function createBeachEdgeDesign(scene) {
   addRock(group, -5, -31, 4.2, 1.25, 1.8, "#7F715F");
   addRock(group, 20, -30, 3.4, 1.1, 1.6, "#99846A");
   addResortHut(group, 4, -27, 0.18);
+  addNorthBackdrop(group);
 
   const railMat = basic("#F8D38A", { transparent: true, opacity: 0.48 });
   [[46, 24, 18, 0.12], [-42, 26, 14, -0.12], [31, -3, 12, 0.35]].forEach(([x, z, w, rot]) => {

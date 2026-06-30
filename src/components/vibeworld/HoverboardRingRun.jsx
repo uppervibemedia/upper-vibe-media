@@ -13,7 +13,7 @@ const {
   SpriteMaterial, Sprite, CanvasTexture, LinearFilter,
 } = THREE;
 
-export const HOVERBOARD_START = { x: -38, z: 23 };
+export const HOVERBOARD_START = { x: -54, z: 12 };
 export const HOVERBOARD_INTERACT_RADIUS = 6.0;
 
 // Legacy (unused but kept for import compat)
@@ -23,33 +23,33 @@ export const HOVERBOARD_RINGS = [];
 // 70% easy (clear ride lines), 20% medium (light steering), 10% bonus (+5)
 // All placed at y=1.0 (easy reach height), close to ride path
 export const BEACH_ORBS = [
-  // Easy lane — open launch-pad route on the left side of the island
-  { id: 0,  x: -47, z: 24, color: "#00E5FF", value: 1 },
-  { id: 1,  x: -42, z: 27, color: "#00E5FF", value: 1 },
-  { id: 2,  x: -36, z: 29, color: "#00E5FF", value: 1 },
-  { id: 3,  x: -30, z: 30, color: "#FFD700", value: 1 },
-  { id: 4,  x: -24, z: 29, color: "#00E5FF", value: 1 },
-  { id: 5,  x: -18, z: 27, color: "#00E5FF", value: 1 },
-  { id: 6,  x: -12, z: 25, color: "#00E5FF", value: 1 },
+  // Easy lane — open launch-pad route on the far west side of the island
+  { id: 0,  x: -62, z: 12, color: "#00E5FF", value: 1 },
+  { id: 1,  x: -58, z: 15, color: "#00E5FF", value: 1 },
+  { id: 2,  x: -53, z: 17, color: "#00E5FF", value: 1 },
+  { id: 3,  x: -48, z: 18, color: "#FFD700", value: 1 },
+  { id: 4,  x: -43, z: 17, color: "#00E5FF", value: 1 },
+  { id: 5,  x: -38, z: 15, color: "#00E5FF", value: 1 },
+  { id: 6,  x: -33, z: 12, color: "#00E5FF", value: 1 },
   // Medium — slight curve off main path
-  { id: 7,  x: -45, z: 20, color: "#C43BFF", value: 1 },
-  { id: 8,  x: -32, z: 24, color: "#C43BFF", value: 1 },
-  { id: 9,  x: -20, z: 22, color: "#C43BFF", value: 1 },
+  { id: 7,  x: -60, z: 8, color: "#C43BFF", value: 1 },
+  { id: 8,  x: -50, z: 12, color: "#C43BFF", value: 1 },
+  { id: 9,  x: -40, z: 10, color: "#C43BFF", value: 1 },
   // Bonus coins +5 — near boost pads or turns
-  { id: 10, x: -40, z: 26, color: "#FFD700", value: 5 },
-  { id: 11, x: -24, z: 26, color: "#FFD700", value: 5 },
+  { id: 10, x: -56, z: 16, color: "#FFD700", value: 5 },
+  { id: 11, x: -44, z: 14, color: "#FFD700", value: 5 },
 ];
 
 // ── SPEED BOOST PADS — green, speed arrow icons, temporary speed burst ────
 export const BOOST_PADS = [
-  { x: -40, z: 26, rot: 0.0 },
-  { x: -24, z: 26, rot:-0.2 },
+  { x: -56, z: 16, rot: 0.0 },
+  { x: -44, z: 14, rot:-0.2 },
 ];
 
 // ── LAUNCH PADS — orange/red, rocket icons, launch rider into the air ─────
 export const LAUNCH_PADS = [
-  { x: -46, z: 28, rot: 0.3 },
-  { x: -28, z: 24, rot: 0.1 },
+  { x: -62, z: 17, rot: 0.3 },
+  { x: -48, z: 12, rot: 0.1 },
 ];
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
