@@ -26,6 +26,7 @@ import { buildVibeAcademyZone }    from "./city-engine/zones/VibeAcademyZone";
 import { runConnections, tickAddOns, KEYS_CREATED } from "./CityAddOns";
 import { MOVEMENT_BRIDGE } from "./city-engine/LaunchRide";
 import { createBeachWorld, createTransportPad, CITY_BEACH_PAD, BEACH_RETURN_PAD } from "./BeachWorldBuilder.jsx";
+import { createSimpleCityShoreline, animateSimpleCityShoreline } from "./SimpleCityShoreline.jsx";
 
 
 // Destructure immediately after namespace import to ensure full module load
@@ -370,7 +371,7 @@ export function buildPark(scene) {
   const shopGroup = createUpperVibeShop(scene, [0, 0, 10]);
   if (shopGroup) shopGroup.rotation.y = Math.PI; // face toward player spawn
   scene.userData.shopGroup = shopGroup;
-  createTransportPad(scene, { ...CITY_BEACH_PAD, label: "Upper Vibe Beach World", color: "#00E5FF", name: "enterBeachPad" });
+  createTransportPad(scene, { ...CITY_BEACH_PAD, label: "Enter Upper Vibe Beach World", color: "#00E5FF", name: "enterBeachPad" });
 
   // ═════════════════════════════════════════════════════════════
   // 8.7. NEON VIBE WHEEL — far right (Vibe Shop temporarily disabled)
@@ -438,7 +439,8 @@ export function buildPark(scene) {
 
   scene.add(edgeBuildings);
 
-  // Beach zones, tan sand, shoreline, ocean, and beach gameplay now live in Upper Vibe Beach World.
+  // Lightweight city shoreline only. Full Zen Beach / Neon Surf gameplay stays in Upper Vibe Beach World.
+  createSimpleCityShoreline(scene);
 
   // ═════════════════════════════════════════════════════════════
   // 12. LIGHTING — night ambiance
@@ -1493,8 +1495,12 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             child.lookAt(camera.position);
           }
         }
-        // Distance-gate zone animations on mobile — skip if player is far away
-        if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0) animateZenBeach(scene, t, audioBeat);
+        // Beach animations: lightweight shoreline in City; full Zen Beach only in Beach World.
+        if (worldModeRef.current === "beach") {
+          if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 8 : 4) === 0) animateZenBeach(scene, t, audioBeat);
+        } else if (!mobileQuality || nearBeach || frameRef.current % (lowQuality ? 12 : 6) === 0) {
+          animateSimpleCityShoreline(scene, t);
+        }
         // Dance floor — throttle on mobile/low, only when near. Audio zone logic remains separate and always active.
         const danceFloorPerf = lowQuality ? "low" : mobileQuality ? "medium" : "full";
         if (worldModeRef.current === "city" && (!mobileQuality ? true : (nearDanceFloor && frameRef.current % (lowQuality ? 6 : 4) === 0))) animateDanceFloor(scene, t, audioBeat, audioIntensityRef?.current ?? 0, danceFloorPerf);
@@ -1553,7 +1559,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
         // Distance-gate heavy zone animations on mobile
         const nearFerris = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z)) < 28;
-        if (!mobileQuality || nearFerris || frameRef.current % (lowQuality ? 8 : 4) === 0) animateHoverboardZone(scene, t, audioBeat);
+        if (worldModeRef.current === "beach" && (!mobileQuality || nearFerris || frameRef.current % (lowQuality ? 8 : 4) === 0)) animateHoverboardZone(scene, t, audioBeat);
         // Ferris Wheel — TV Smooth: skip when >30u away (unless riding)
         const ferrisDist = Math.sqrt((px - WHEEL_X) * (px - WHEEL_X) + (pz - WHEEL_Z) * (pz - WHEEL_Z));
         const ferrisGate = tvSmooth
@@ -1587,7 +1593,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         }
 
         // ─── SPEED PAD DETECTION — temporary speed multiplier ────────
-        if (hbRidingRef.current && frameRef.current % 6 === 0) {
+        if (worldModeRef.current === "beach" && hbRidingRef.current && frameRef.current % 6 === 0) {
           const nowMs = performance.now();
           for (const pad of BOOST_PADS) {
             const dx = px - pad.x, dz = pz - pad.z;
