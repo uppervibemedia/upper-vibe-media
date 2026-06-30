@@ -1,6 +1,6 @@
 /**
  * CrystalZone — Premium Energy Station
- * Center: (-28, 10)  (matches CityCanvas sign placement)
+ * Center: (-28, 9)  (matches CityCanvas sign placement)
  *
  * MOBILE PERF: All MeshPhysicalMaterial replaced with MeshStandardMaterial + emissive.
  * No transmission, ior, or thickness on mobile. Reduced to 2 PointLights total on mobile.
@@ -9,7 +9,7 @@
 import * as THREE from "three";
 
 export const CRYSTAL_ZONE_X  = -28;
-export const CRYSTAL_ZONE_Z  = 10;
+export const CRYSTAL_ZONE_Z  = 9;
 export const CRYSTAL_ZONE_RADIUS = 9;
 
 const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);

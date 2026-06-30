@@ -23,7 +23,7 @@ export const ZONES = {
   visualizerDome:  { label: "Visualizer Dome",    x: -13, z: 10,  tag: "dome" },
   dailyVibeCheck:  { label: "Daily Vibe Check",   x: -16, z: -13, tag: "vibeCheck" },
   vibeAcademy:     { label: "Vibe Academy",        x: -28, z: 10,  tag: "academy" },
-  crystalZone:     { label: "Crystal Zone",        x: -28, z: 10,  tag: "crystal" },
+  crystalZone:     { label: "Crystal Zone",        x: -28, z: 9,   tag: "crystal" },
   zenBeach:        { label: "Zen Beach",           x: -11, z: 22,  tag: "beach" },
   hoverboardRun:   { label: "Hoverboard Run",      x: 18,  z: 28,  tag: "hoverboard" },
   vibeLaunchZone:  { label: "Vibe Launch Zone",    x: 0,   z: 4,   tag: "launch" },

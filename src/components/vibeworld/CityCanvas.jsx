@@ -89,7 +89,7 @@ const FOV_LANDSCAPE = 60;     // wider FOV in landscape feels immersive
 const TREE_R = 0.5;
 const COLLISION_BOXES = [
   ...TREE_POSITIONS.map(([tx, tz]) => [tx, tz, TREE_R, TREE_R]),
-  [CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, 5.8, 5.8],
+  [CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, 5.3, 5.3],
   [22, 12.25, 3.9, 3.9],
 ];
 
