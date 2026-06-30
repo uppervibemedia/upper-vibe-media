@@ -73,7 +73,7 @@ const ZONES = {
   bonfirebeach: {
     name: "Bonfire Beach",
     id: "bonfirebeach",
-    cx: 52, cz: 20, radius: 7,
+    cx: -52, cz: 0, radius: 7,
     icon: "Sparkles",
   },
   shop: {

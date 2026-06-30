@@ -10,7 +10,7 @@ export const BEACH_SHELLS = [
 
 export const BEACH_ACTIVITY_POINTS = {
   questBoard: { x: -34, z: 23, radius: 7 },
-  bonfire: { x: 52, z: 20, radius: 7 },
+  bonfire: { x: -52, z: 0, radius: 7 },
   surf: { x: 0, z: 34, radius: 7 },
   dive: { x: 35, z: 34, radius: 7 },
 };
@@ -61,7 +61,7 @@ function addQuestBoard(group) {
 }
 
 function addBonfire(group) {
-  const bx = 52, bz = 20;
+  const bx = -52, bz = 0;
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.75, 36), basic("#FFB347", { transparent: true, opacity: 0.62 }));
   ring.rotation.x = -Math.PI / 2;
   ring.position.set(bx, 0.075, bz);
