@@ -59,10 +59,12 @@ function rollingAvg(arr) {
 
 // Count specific scene objects — called every 30 frames to avoid overhead
 function countSceneObjects(scene) {
-  if (!scene) return { meshes: 0, lights: 0, transparent: 0, points: 0, sprites: 0 };
-  let meshes = 0, lights = 0, transparent = 0, points = 0, sprites = 0;
+  if (!scene) return { meshes: 0, lights: 0, transparent: 0, points: 0, sprites: 0, labels: 0, visibleObjects: 0 };
+  let meshes = 0, lights = 0, transparent = 0, points = 0, sprites = 0, labels = 0, visibleObjects = 0;
   scene.traverse((obj) => {
     if (!obj.visible) return;
+    visibleObjects++;
+    if (obj.userData?.isNeonSign || obj.name?.toLowerCase?.().includes("label")) labels++;
     if (obj.isLight) { lights++; return; }
     if (obj.isPoints) { points++; return; }
     if (obj.isSprite) { sprites++; return; }
@@ -72,10 +74,29 @@ function countSceneObjects(scene) {
       if (m?.transparent && m?.opacity < 1) transparent++;
     }
   });
-  return { meshes, lights, transparent, points, sprites };
+  return { meshes, lights, transparent, points, sprites, labels, visibleObjects };
 }
 
-export default function PerfAuditOverlay({ playerPos, rendererRef, sceneRef, tvMode, tvQuality }) {
+function getScene(sceneRef) {
+  return sceneRef?.current || window.__hbScene || null;
+}
+
+function estimateActiveAnimations(scene, extras = {}) {
+  if (!scene) return 0;
+  const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  let count = 2; // avatar + camera follow loop
+  if (scene.userData._neonSigns?.length) count += 1;
+  if (scene.userData._danceRings) count += extras.nearDanceFloor ? 4 : 0;
+  if (scene.userData.crystalZone) count += extras.nearCrystal ? 3 : 1;
+  if (scene.userData.neonAmbients && !extras.tvSmooth) count += mobile ? 1 : 2;
+  if (scene.userData._upperVibeShop) count += 1;
+  if (scene.userData._launchPad_lounge) count += 2;
+  if (scene.userData.ferrisWheel) count += extras.nearFerris || extras.ferrisRiding ? 2 : 0;
+  if (scene.userData.stageScreen && !extras.stageWatching) count += mobile ? 1 : 2;
+  return count;
+}
+
+export default function PerfAuditOverlay({ playerPos, rendererRef, sceneRef, tvMode, tvQuality, worldMode = "city", activeActivity = "none", audioSource = "none", videoSource = "none", stageWatching = false, nearJukebox = false, ferrisRiding = false }) {
   const [visible] = useState(isAudit);
   const [tvCol] = useState(isTvAudit);
 
@@ -84,7 +105,9 @@ export default function PerfAuditOverlay({ playerPos, rendererRef, sceneRef, tvM
     drawCalls: 0, triangles: 0, geometries: 0, textures: 0,
     currentZone: "—", zoneHistory: {},
     pixelRatio: window.devicePixelRatio || 1,
-    meshes: 0, lights: 0, transparent: 0, points: 0, sprites: 0,
+    meshes: 0, lights: 0, transparent: 0, points: 0, sprites: 0, labels: 0, visibleObjects: 0,
+    activeAnimations: 0, collisionChecks: 0, proximityTriggers: 0,
+    activeActivity: "none", audioSource: "none", videoSource: "none", browserMem: "—",
     rendererMem: "—",
   });
 
@@ -118,6 +141,8 @@ export default function PerfAuditOverlay({ playerPos, rendererRef, sceneRef, tvM
 
       // Renderer info
       let drawCalls = 0, triangles = 0, geometries = 0, textures = 0, memStr = "—";
+      let browserMem = "—";
+      if (window.performance?.memory?.usedJSHeapSize) browserMem = Math.round(window.performance.memory.usedJSHeapSize / 1048576) + "MB";
       const renderer = rendererRef?.current;
       if (renderer?.info) {
         drawCalls  = renderer.info.render?.calls    ?? 0;
@@ -147,10 +172,24 @@ export default function PerfAuditOverlay({ playerPos, rendererRef, sceneRef, tvM
       if (zs.fpsSamples.length > 120) { zs.fpsSamples.shift(); zs.msSamples.shift(); }
       if (dt > zs.worst) zs.worst = dt;
 
+      const scene = getScene(sceneRef);
+      const dxDance = px;
+      const dzDance = pz + 13;
+      const nearDanceFloor = worldMode === "city" && Math.sqrt(dxDance * dxDance + dzDance * dzDance) < 18;
+      const dxCrystal = px + 28;
+      const dzCrystal = pz - 9;
+      const nearCrystal = worldMode === "city" && Math.sqrt(dxCrystal * dxCrystal + dzCrystal * dzCrystal) < 28;
+      const dxFerris = px - 22;
+      const dzFerris = pz - 5;
+      const nearFerris = worldMode === "city" && Math.sqrt(dxFerris * dxFerris + dzFerris * dzFerris) < 28;
+
       // Scene object counts — every 30 frames (expensive traverse)
-      if (frameCount.current % 30 === 0 && sceneRef?.current) {
-        sceneCountRef.current = countSceneObjects(sceneRef.current);
+      if (frameCount.current % 30 === 0 && scene) {
+        sceneCountRef.current = countSceneObjects(scene);
       }
+      const activeAnimations = estimateActiveAnimations(scene, { nearDanceFloor, nearCrystal, nearFerris, ferrisRiding, stageWatching, tvSmooth: tvMode && tvQuality === "smooth" });
+      const collisionChecks = worldMode === "city" ? 18 : 4;
+      const proximityTriggers = worldMode === "city" ? 5 : 2;
 
       // Pixel ratio (may change when TV Mode toggles)
       const pr = renderer ? renderer.getPixelRatio() : (window.devicePixelRatio || 1);
@@ -170,21 +209,30 @@ export default function PerfAuditOverlay({ playerPos, rendererRef, sceneRef, tvM
           };
         }
 
-        setStats(s => ({
-          ...s,
+        const nextStats = {
+          ...stats,
           fps: avgFps, frameMs: avgMs, worstMs: worstMsRef.current,
           drawCalls, triangles, geometries, textures,
           currentZone: zoneId, zoneHistory,
           pixelRatio: pr,
           rendererMem: memStr,
+          browserMem,
+          activeAnimations,
+          collisionChecks,
+          proximityTriggers,
+          activeActivity,
+          audioSource,
+          videoSource,
           ...sceneCountRef.current,
-        }));
+        };
+        window.__uvcPerfSnapshot = nextStats;
+        setStats(nextStats);
       }
     };
 
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [visible, playerPos, rendererRef, sceneRef]);
+  }, [visible, playerPos, rendererRef, sceneRef, worldMode, activeActivity, audioSource, videoSource, stageWatching, nearJukebox, ferrisRiding, tvMode, tvQuality]);
 
   if (!visible) return null;
 
@@ -232,18 +280,27 @@ export default function PerfAuditOverlay({ playerPos, rendererRef, sceneRef, tvM
       <Row k="draw calls" v={stats.drawCalls} />
       <Row k="triangles" v={(stats.triangles / 1000).toFixed(1) + "k"} />
       <Row k="geo/tex"   v={stats.rendererMem} />
+      <Row k="JS heap"   v={stats.browserMem} />
       <Row k="px ratio"  v={stats.pixelRatio.toFixed(2)} vc={stats.pixelRatio > 1.5 ? "#FFAA00" : "#44FF88"} />
+      <Row k="activity" v={stats.activeActivity} vc="#FFD36E" />
+      <Row k="audio" v={stats.audioSource} vc="#7DEBFF" />
+      <Row k="video" v={stats.videoSource} vc="#B58CFF" />
 
       {/* TV Mode block */}
       {tvCol && (
         <>
           <div style={{ height: 1, background: "rgba(0,200,255,0.12)", margin: "4px 0" }} />
           <Row k="TV Mode"   v={tvLabel} vc={tvColor} />
+          <Row k="objects"   v={stats.visibleObjects} />
           <Row k="meshes"    v={stats.meshes} />
           <Row k="lights"    v={stats.lights}     vc={stats.lights > 12 ? "#FFAA00" : "#88FF88"} />
           <Row k="transp."   v={stats.transparent} vc={stats.transparent > 30 ? "#FF8844" : "#88FF88"} />
           <Row k="particles" v={stats.points}     vc={stats.points > 5 ? "#FFAA00" : "#88FF88"} />
           <Row k="sprites"   v={stats.sprites}    vc={stats.sprites > 15 ? "#FFAA00" : "#88FF88"} />
+          <Row k="labels"    v={stats.labels}     vc={stats.labels > 14 ? "#FFAA00" : "#88FF88"} />
+          <Row k="animations" v={stats.activeAnimations} vc={stats.activeAnimations > 10 ? "#FFAA00" : "#88FF88"} />
+          <Row k="collisions" v={stats.collisionChecks} />
+          <Row k="proximity" v={stats.proximityTriggers} />
         </>
       )}
 

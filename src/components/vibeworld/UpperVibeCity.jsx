@@ -1526,6 +1526,13 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
         rendererRef={rendererRef}
         tvMode={tvMode}
         tvQuality={tvQuality}
+        worldMode={worldMode}
+        activeActivity={beachActivityHud?.active ? beachActivityHud.type : ferrisRiding ? "ferris" : "none"}
+        audioSource={stageWatching ? "stage-video" : nearJukebox ? "live-dj" : cityIsPlaying ? "global-player" : "none"}
+        videoSource={stageFullScreen ? "stage-fullscreen" : stageWatching ? "stage-screen" : domeFullscreenOpen ? "visualizer-dome" : "stage-cover"}
+        stageWatching={stageWatching}
+        nearJukebox={nearJukebox}
+        ferrisRiding={ferrisRiding}
       />
 
       {/* TV Mode AirPlay instructions overlay */}
