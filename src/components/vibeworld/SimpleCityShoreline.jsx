@@ -140,25 +140,25 @@ function addSimplePalm(group, x, z, scale = 1) {
 function addCityBeachPlanet(group) {
   const planetGroup = new Group();
   planetGroup.name = "cityBeachBlueSandPlanet";
-  planetGroup.position.set(12, 8.2, 31.5);
+  planetGroup.position.set(12, 6.4, 30.5);
 
   const halo = new Mesh(
-    new THREE.SphereGeometry(3.65, 28, 20),
-    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.2, depthWrite: false, side: THREE.BackSide })
+    new THREE.SphereGeometry(4.15, 32, 24),
+    new MeshBasicMaterial({ color: new Color("#4EDBFF"), transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide })
   );
   halo.name = "cityBeachPlanetHalo";
   halo.userData = { isBeachPortal: true };
   planetGroup.add(halo);
 
   const aura = new Mesh(
-    new THREE.SphereGeometry(3.1, 28, 20),
-    new MeshBasicMaterial({ color: new Color("#EAD19A"), transparent: true, opacity: 0.09, depthWrite: false })
+    new THREE.SphereGeometry(3.55, 32, 24),
+    new MeshBasicMaterial({ color: new Color("#EAD19A"), transparent: true, opacity: 0.13, depthWrite: false })
   );
   aura.name = "cityBeachPlanetAura";
   planetGroup.add(aura);
 
   const ocean = new Mesh(
-    new THREE.SphereGeometry(2.15, 48, 32),
+    new THREE.SphereGeometry(2.35, 56, 36),
     new MeshBasicMaterial({ map: createBeachPlanetTexture() })
   );
   ocean.name = "cityBeachPlanetOcean";
@@ -166,7 +166,7 @@ function addCityBeachPlanet(group) {
   planetGroup.add(ocean);
 
   [-0.86, -0.38, 0.08, 0.56].forEach((y, idx) => {
-    const radius = Math.sqrt(Math.max(0.42, 2.15 * 2.15 - y * y));
+    const radius = Math.sqrt(Math.max(0.42, 2.35 * 2.35 - y * y));
     const band = new Mesh(
       new THREE.TorusGeometry(radius, 0.055 + idx * 0.006, 10, 96),
       new MeshBasicMaterial({ color: new Color(idx % 2 === 0 ? "#D2B48C" : "#F0C878"), transparent: true, opacity: 0.82, depthWrite: false })
@@ -178,14 +178,18 @@ function addCityBeachPlanet(group) {
   });
 
   const destinationRing = new Mesh(
-    new THREE.TorusGeometry(2.65, 0.035, 8, 96),
-    new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: 0.52, depthWrite: false })
+    new THREE.TorusGeometry(2.9, 0.045, 8, 112),
+    new MeshBasicMaterial({ color: new Color("#00E5FF"), transparent: true, opacity: 0.68, depthWrite: false })
   );
   destinationRing.name = "cityBeachPlanetDestinationRing";
   destinationRing.userData = { isBeachPortal: true };
   destinationRing.rotation.x = Math.PI / 2.35;
   destinationRing.rotation.z = -0.18;
   planetGroup.add(destinationRing);
+
+  const portalLight = new THREE.PointLight(new Color("#00E5FF"), 1.8, 14);
+  portalLight.position.set(0, 0.25, 0);
+  planetGroup.add(portalLight);
 
   const portalLabel = makeShorelineLabel("Enter Upper Vibe Beach");
   portalLabel.name = "cityBeachPlanetPortalLabel";
