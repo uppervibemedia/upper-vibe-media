@@ -54,6 +54,7 @@ import FPSMonitor from "@/components/vibeworld/FPSMonitor";
 
 import PerfAuditOverlay from "@/components/vibeworld/PerfAuditOverlay";
 import TvModeOverlay from "@/components/vibeworld/TvModeOverlay";
+import BeachPortalTransition from "@/components/vibeworld/BeachPortalTransition";
 
 // Read saved return position from sessionStorage (set before navigating to SongPage)
 function readReturnState() {
@@ -1134,6 +1135,8 @@ export default function UpperVibeCity({ onExit, chatAgeConfirmed = false }) {
           danceFloorFrameRef={danceFloorFrameRef}
         />
       </div>
+
+      <BeachPortalTransition active={transportTarget === "beach" && !loading} />
 
       {/* Transport prompt */}
       {transportTarget && !transportPrompt && !loading && (
