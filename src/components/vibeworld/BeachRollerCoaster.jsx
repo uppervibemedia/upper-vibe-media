@@ -105,7 +105,14 @@ export function createBeachRollerCoaster(scene) {
   const entryGlow = new THREE.Mesh(new THREE.RingGeometry(1.05, 1.22, 36), basic("#7DEBFF", { transparent: true, opacity: 0.46 }));
   entryGlow.rotation.x = -Math.PI / 2;
   entryGlow.position.set(0, 0.42, 2.35);
-  stationGroup.add(entryGlow);
+  const ridePad = new THREE.Mesh(new THREE.CircleGeometry(1.45, 36), basic("#00E5FF", { transparent: true, opacity: 0.18 }));
+  ridePad.rotation.x = -Math.PI / 2;
+  ridePad.position.set(0, 0.39, 2.35);
+  const neonTrimA = new THREE.Mesh(new THREE.BoxGeometry(8.6, 0.08, 0.08), basic("#00E5FF", { transparent: true, opacity: 0.72 }));
+  neonTrimA.position.set(0, 0.58, 2.1);
+  const neonTrimB = neonTrimA.clone();
+  neonTrimB.position.z = -2.1;
+  stationGroup.add(entryGlow, ridePad, neonTrimA, neonTrimB);
   group.add(stationGroup);
 
   const cart = new THREE.Group();

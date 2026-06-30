@@ -385,8 +385,9 @@ export function tickBeachActivity(state, input, dt, t) {
     state.z += 1.95 * dt;
     state.y = 0.58 + Math.sin(t * 4.2) * 0.075;
     state.rot = steer * -0.32 + Math.sin(t * 1.5) * 0.035;
-    state.avatarPitch = -0.34 + Math.sin(t * 3) * 0.035;
-    state.avatarRoll = steer * -0.32 + Math.sin(t * 2) * 0.05;
+    state.avatarPitch = -0.24 + Math.sin(t * 3) * 0.018;
+    state.avatarRoll = steer * -0.38 + Math.sin(t * 2) * 0.035;
+    state.avatarYOffset = -0.08;
     state.board?.position.set(state.x, state.y - 0.12, state.z);
     if (state.board) state.board.rotation.set(Math.sin(t * 3.2) * 0.035, state.rot, steer * -0.12 + Math.sin(t * 2) * 0.045);
     state.wake?.forEach((w, i) => {
@@ -490,9 +491,17 @@ export function applyBeachActivityCamera(state, camera, dt) {
     return;
   }
   if (state.type === "dive") {
-    const camPos = new THREE.Vector3(state.x, state.y + 1.05, state.z - 5.2);
-    camera.position.lerp(camPos, Math.min(1, dt * 5.8));
-    camera.lookAt(state.x, state.y + 0.05, state.z + 3.8);
+    const dir = new THREE.Vector3(Math.sin(state.rot || 0), 0, Math.cos(state.rot || 0));
+    const camPos = new THREE.Vector3(state.x, state.y + 0.34, state.z).add(dir.clone().multiplyScalar(0.38));
+    const look = new THREE.Vector3(state.x, state.y + 0.14, state.z).add(dir.multiplyScalar(5.2));
+    camera.position.lerp(camPos, Math.min(1, dt * 8.5));
+    camera.lookAt(look.x, look.y, look.z);
+    return;
+  }
+  if (state.type === "surf") {
+    const camPos = new THREE.Vector3(state.x, state.y + 1.65, state.z - 5.4);
+    camera.position.lerp(camPos, Math.min(1, dt * 7.8));
+    camera.lookAt(state.x, state.y + 0.45, state.z + 4.8);
     return;
   }
   const camPos = new THREE.Vector3(state.x, state.y + 2.15, state.z - 6.2);

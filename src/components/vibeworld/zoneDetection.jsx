@@ -61,7 +61,7 @@ const ZONES = {
   coaster: {
     name: "Vibe Coaster",
     id: "coaster",
-    cx: 0, cz: -20, radius: 9,
+    cx: -12, cz: -20, radius: 10,
     icon: "Sparkles",
   },
   frequencycove: {

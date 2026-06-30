@@ -1155,6 +1155,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
           avatar.rotation.y = rot;
           const act = beachActivityStateRef.current;
           if (act?.type === "surf" || act?.type === "dive") {
+            avatar.position.y = py + (act.avatarYOffset || 0);
             avatar.rotation.x = act.avatarPitch || 0;
             avatar.rotation.z = act.avatarRoll || 0;
           } else {
@@ -1241,7 +1242,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         const cv = scene.userData._camVecs;
         if (beachActivityStateRef.current) {
           applyBeachActivityCamera(beachActivityStateRef.current, camera, dt);
-          if (avatarRef.current) avatarRef.current.visible = beachActivityStateRef.current.type !== "coaster";
+          if (avatarRef.current) avatarRef.current.visible = !["coaster", "dive"].includes(beachActivityStateRef.current.type);
         } else if (ferrisRidingRef.current) {
           if (!cv._rl) cv._rl = { yaw: 0, pitch: 0, rt: 0 };
           const rl = cv._rl;
@@ -1316,7 +1317,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         // Its mixer/clips get populated in-place when GLB loads — no reassignment needed.
         const avatarEntry = avatarEntryRef.current;
         const actAnim = beachActivityStateRef.current;
-        const activityAnimSpeed = actAnim?.type === "surf" ? 3.2 : actAnim?.type === "dive" ? 1.35 : speed;
+        const activityAnimSpeed = actAnim?.type === "surf" ? 0.02 : actAnim?.type === "dive" ? 0.02 : speed;
         if (avatarEntry?._isMixamo) {
           // Mixamo Xbot GLB avatar — same logic as soldier, including hoverboard freeze
           const emoteId = isDancingRef.current ? (activeEmoteRef.current?.id || "dance") : null;

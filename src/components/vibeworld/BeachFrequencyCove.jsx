@@ -79,6 +79,32 @@ export function createBeachFrequencyCove(scene) {
   ];
   rings.forEach((ring, i) => { ring.rotation.x = -Math.PI / 2; ring.position.set(cx, 0.08 + i * 0.006, cz); ring.renderOrder = 7 + i; group.add(ring); });
 
+  const cave = new THREE.Mesh(new THREE.CircleGeometry(1.65, 42), basic("#06101A", { transparent: true, opacity: 0.9 }));
+  cave.position.set(cx, 1.35, cz + 4.72);
+  cave.scale.set(1.2, 1.35, 1);
+  group.add(cave);
+  const caveGlow = new THREE.Mesh(new THREE.RingGeometry(1.7, 1.95, 48), basic("#B58CFF", { transparent: true, opacity: 0.42 }));
+  caveGlow.position.set(cx, 1.35, cz + 4.69);
+  caveGlow.scale.set(1.2, 1.35, 1);
+  group.add(caveGlow);
+  const waterfall = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 3.6, 1, 12), basic("#8DEFFF", { transparent: true, opacity: 0.34 }));
+  waterfall.position.set(cx, 1.72, cz + 4.58);
+  waterfall.renderOrder = 8;
+  group.add(waterfall);
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(2.55, 48), basic("#45DFF5", { transparent: true, opacity: 0.22 }));
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.set(cx, 0.075, cz + 2.95);
+  group.add(pool);
+  const rocks = [];
+  [[-2.9, 4.35, 1.6], [-2.0, 5.0, 2.1], [-0.9, 5.25, 2.45], [0.9, 5.25, 2.45], [2.0, 5.0, 2.1], [2.9, 4.35, 1.6], [-3.4, 2.9, 1.1], [3.4, 2.9, 1.1]].forEach(([ox, oz, s], i) => {
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), standard(i % 2 ? "#38465A" : "#2C3546", { roughness: 0.86, metalness: 0.08 }));
+    rock.position.set(cx + ox, s * 0.55, cz + oz);
+    rock.scale.set(1.25, 0.95, 0.82);
+    rock.rotation.set(0.12 * i, 0.45 * i, -0.08 * i);
+    group.add(rock);
+    rocks.push(rock);
+  });
+
   const markers = [
     modeMarker("AFFIRM", cx - 2.6, cz + 1.5, "#7DEBFF"),
     modeMarker("MANIFEST", cx + 2.6, cz + 1.5, "#B58CFF"),
@@ -118,8 +144,12 @@ export function createBeachFrequencyCove(scene) {
   }
 
   const sign = label("FREQUENCY COVE", "#B58CFF");
-  sign.position.set(cx, 1.95, cz - 4.5);
+  sign.position.set(cx, 3.45, cz + 4.25);
   group.add(sign);
+  const enterSign = label("ENTER", "#7DEBFF");
+  enterSign.scale.set(2.4, 0.42, 1);
+  enterSign.position.set(cx, 0.85, cz + 2.4);
+  group.add(enterSign);
 
   const light = new THREE.PointLight(new THREE.Color("#B58CFF"), 1.75, 16);
   light.position.set(cx, 2.4, cz);
@@ -128,7 +158,7 @@ export function createBeachFrequencyCove(scene) {
   aqua.position.set(cx - 2.8, 1.4, cz + 2.2);
   group.add(aqua);
 
-  group.userData = { rings, crystals, particles, markers, modeBeam, light, aqua, cx, cz };
+  group.userData = { rings, crystals, particles, markers, modeBeam, waterfall, pool, caveGlow, rocks, light, aqua, cx, cz };
   scene.add(group);
   scene.userData.beachFrequencyCove = group;
 }
@@ -136,7 +166,7 @@ export function createBeachFrequencyCove(scene) {
 export function animateBeachFrequencyCove(scene, t, beat = 0) {
   const group = scene.userData.beachFrequencyCove;
   if (!group) return;
-  const { rings = [], crystals = [], particles = [], markers = [], modeBeam, light, aqua, cx, cz } = group.userData || {};
+  const { rings = [], crystals = [], particles = [], markers = [], modeBeam, waterfall, pool, caveGlow, light, aqua, cx, cz } = group.userData || {};
   const mode = window.__uvcFrequencyCoveMode || "affirmation";
   const modeColor = mode === "manifest" ? new THREE.Color("#B58CFF") : mode === "visualizer" ? new THREE.Color("#FFD36E") : new THREE.Color("#7DEBFF");
   rings.forEach((ring, i) => {
@@ -159,6 +189,20 @@ export function animateBeachFrequencyCove(scene, t, beat = 0) {
     modeBeam.material.color.lerp(modeColor, 0.06);
     modeBeam.material.opacity = 0.1 + Math.sin(t * 1.6) * 0.035 + beat * 0.08;
     modeBeam.rotation.y += 0.004;
+  }
+  if (waterfall?.material) {
+    waterfall.material.opacity = 0.28 + Math.sin(t * 5.2) * 0.06;
+    waterfall.position.y = 1.72 - (Math.sin(t * 3.8) * 0.08 + 0.08);
+    waterfall.scale.y = 1 + Math.sin(t * 4.5) * 0.035;
+  }
+  if (pool?.material) {
+    pool.material.color.lerp(modeColor, 0.025);
+    pool.material.opacity = 0.18 + Math.sin(t * 1.8) * 0.04;
+    pool.rotation.z += 0.003;
+  }
+  if (caveGlow?.material) {
+    caveGlow.material.color.lerp(modeColor, 0.045);
+    caveGlow.material.opacity = 0.32 + Math.sin(t * 1.35) * 0.08;
   }
   particles.forEach((p) => {
     p.userData.a += p.userData.speed * 0.016;
