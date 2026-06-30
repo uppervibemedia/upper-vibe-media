@@ -4,7 +4,6 @@ import { createBeachDaySky } from "./BeachDaySky";
 import { createBeachReturnPlanet } from "./BeachReturnPlanet";
 import { createBeachResortAddOns } from "./BeachResortAddOns.jsx";
 import { createBeachArrivalReturnPlaza } from "./BeachArrivalReturnPlaza.jsx";
-import { createBeachPremiumPolish } from "./BeachPremiumPolish.jsx";
 
 const { Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, CylinderGeometry, RingGeometry, Color, PointLight, AmbientLight, HemisphereLight, DirectionalLight, CanvasTexture, SpriteMaterial, Sprite, LinearFilter } = THREE;
 
@@ -114,8 +113,8 @@ export function createBeachWorld(scene) {
     scene.add(path);
   });
 
-  const oceanGeo = new PlaneGeometry(160, OCEAN_DEPTH, isMob ? 6 : 56, isMob ? 6 : 54);
-  const ocean = new Mesh(oceanGeo, new MeshBasicMaterial({ color: new Color(isMob ? "#1D9AB4" : "#22B8D6"), side: THREE.DoubleSide }));
+  const oceanGeo = new PlaneGeometry(160, OCEAN_DEPTH, isMob ? 4 : 56, isMob ? 4 : 54);
+  const ocean = new Mesh(oceanGeo, new MeshBasicMaterial({ color: new Color(isMob ? "#287C9D" : "#2F91B6"), side: THREE.DoubleSide }));
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, 0, SHORELINE_Z + OCEAN_DEPTH / 2);
   ocean.name = "ocean";
@@ -126,8 +125,8 @@ export function createBeachWorld(scene) {
   scene.userData._oceanCenterZ = SHORELINE_Z + OCEAN_DEPTH / 2;
   scene.userData.shorelineZ = SHORELINE_Z;
 
-  const foamMat = new MeshBasicMaterial({ color: new Color("#F4FFFF"), transparent: true, opacity: 0.58, depthWrite: false, side: THREE.DoubleSide });
-  const foam = new Mesh(new PlaneGeometry(150, 2.05), foamMat);
+  const foamMat = new MeshBasicMaterial({ color: new Color("#FFFFFF"), transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
+  const foam = new Mesh(new PlaneGeometry(150, 1.6), foamMat);
   foam.rotation.x = -Math.PI / 2;
   foam.position.set(0, 0.006, SHORELINE_Z + 0.3);
   foam.renderOrder = 2;
@@ -136,7 +135,7 @@ export function createBeachWorld(scene) {
   scene.userData.foam = foam;
   scene.userData._foamBaseZ = SHORELINE_Z + 0.3;
 
-  const shoreGlow = new Mesh(new PlaneGeometry(150, 1.05), new MeshBasicMaterial({ color: new Color("#65F4E9"), transparent: true, opacity: 0.24, depthWrite: false, side: THREE.DoubleSide }));
+  const shoreGlow = new Mesh(new PlaneGeometry(150, 0.55), new MeshBasicMaterial({ color: new Color("#00D4F0"), transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }));
   shoreGlow.rotation.x = -Math.PI / 2;
   shoreGlow.position.set(0, 0.012, SHORELINE_Z);
   shoreGlow.renderOrder = 2;
@@ -144,18 +143,17 @@ export function createBeachWorld(scene) {
   scene.add(shoreGlow);
   scene.userData.shoreGlow = shoreGlow;
 
-  createBeachPremiumPolish(scene, { shorelineZ: SHORELINE_Z, isMobile: isMob });
   createZenBeach(scene, 0, 0);
   createBeachResortAddOns(scene);
   createBeachArrivalReturnPlaza(scene);
   createBeachReturnPlanet(scene);
   createTransportPad(scene, { ...BEACH_RETURN_PAD, label: "Return to Upper Vibe City", color: "#EDB84A", name: "returnCityPad" });
 
-  const sun = new DirectionalLight(new Color("#FFE2A8"), 2.45);
+  const sun = new DirectionalLight(new Color("#FFE7B8"), 2.25);
   sun.position.set(-18, 34, SHORELINE_Z + 18);
   scene.add(sun);
-  scene.add(new AmbientLight(new Color("#FFE8CA"), 1.68));
-  const hemi = new HemisphereLight(new Color("#B8F4FF"), new Color("#F0C47B"), 1.46);
+  scene.add(new AmbientLight(new Color("#FFE3C6"), 1.55));
+  const hemi = new HemisphereLight(new Color("#AEE7FF"), new Color("#E6BE7C"), 1.35);
   scene.add(hemi);
   [[0, 5, 35, "#FFE3A6", 2.8, 58], [-24, 4, 24, "#FFB35C", 2.0, 24], [28, 4, 24, "#58D8FF", 2.2, 28], [-28, 3, 10, "#B58CFF", 1.35, 22]].forEach(([x, y, z, c, i, d]) => {
     const light = new PointLight(new Color(c), i, d);

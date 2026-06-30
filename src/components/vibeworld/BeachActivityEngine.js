@@ -89,16 +89,6 @@ function makeUnderwaterScene(scene, group) {
   floor.position.set(35, -2.55, 48);
   floor.receiveShadow = true;
   group.add(floor);
-  const caustics = [];
-  for (let i = 0; i < 7; i++) {
-    const c = new THREE.Mesh(new THREE.RingGeometry(1.1 + (i % 3) * 0.35, 1.18 + (i % 3) * 0.35, 28), basic("#DFFFFF", 0.09, false));
-    c.rotation.x = -Math.PI / 2;
-    c.scale.y = 0.36;
-    c.position.set(28 + i * 2.45, -2.505, 40 + (i % 4) * 4.7);
-    c.userData.phase = i * 0.9;
-    group.add(c);
-    caustics.push(c);
-  }
 
   const surface = new THREE.Mesh(new THREE.PlaneGeometry(32, 34), basic("#45DFF5", 0.20, false));
   surface.rotation.x = -Math.PI / 2;
@@ -170,7 +160,7 @@ function makeUnderwaterScene(scene, group) {
   lights[0].position.set(35, -0.4, 48);
   lights[1].position.set(41, -1.2, 55);
   lights.forEach((l) => group.add(l));
-  return { floor, surface, lightRays, bubbles, fish, caustics };
+  return { floor, surface, lightRays, bubbles, fish };
 }
 function makeDiveItems(group) {
   return DIVE_ITEMS.map((p, i) => {
@@ -199,9 +189,6 @@ function makeSurfboard(group) {
   const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 2.65), basic("#FFFFFF", 0.72, false));
   stripe.rotation.x = -Math.PI / 2;
   stripe.position.y = 0.075;
-  const footPad = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.72), basic("#061018", 0.36, false));
-  footPad.rotation.x = -Math.PI / 2;
-  footPad.position.set(0, 0.082, -0.2);
   const railL = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.055, 2.85), basic("#0E6E84", 0.82, false));
   railL.position.set(-0.43, 0.055, 0);
   const railR = railL.clone();
@@ -209,7 +196,7 @@ function makeSurfboard(group) {
   const fin = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.42, 3), standard("#0B4E64", { roughness: 0.35, metalness: 0.18 }));
   fin.rotation.x = Math.PI;
   fin.position.set(0, -0.18, -1.2);
-  board.add(deck, noseMark, stripe, footPad, railL, railR, fin);
+  board.add(deck, noseMark, stripe, railL, railR, fin);
   group.add(board);
   return board;
 }
@@ -436,7 +423,6 @@ export function tickBeachActivity(state, input, dt, t) {
     state.avatarRoll = steer * -0.18 + Math.sin(t * 1.7) * 0.035;
     state.underwater?.surface && (state.underwater.surface.material.opacity = 0.16 + Math.sin(t * 1.7) * 0.035);
     state.underwater?.lightRays?.forEach((r, i) => { r.material.opacity = 0.08 + Math.sin(t * 1.2 + i) * 0.04; r.rotation.z = Math.sin(t * 0.5 + i) * 0.08; });
-    state.underwater?.caustics?.forEach((c, i) => { c.material.opacity = 0.055 + Math.sin(t * 1.35 + c.userData.phase) * 0.028; c.rotation.z += 0.004 + i * 0.0003; });
     state.underwater?.bubbles?.forEach((b) => {
       b.position.y += b.userData.speed * dt;
       b.position.x = b.userData.baseX + Math.sin(t * 1.6 + b.userData.phase) * 0.16;
