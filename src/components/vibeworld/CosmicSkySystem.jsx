@@ -801,15 +801,15 @@ export function createCosmicSky(scene) {
 
   const now0 = performance.now() * 0.001;
   scene.userData.beachFlybyA = {
-    ...buildBeachFlybyPlanet(["#08445E", "#0D8AA5", "#D7AA66", "#FFF0B8"], "rgba(78,219,255,0.52)", isMobile ? 15 : 20),
-    duration: 34, cycle: 82, baseStart: now0 + 5,
-    startCX: -58, endCX: 58, cy: 7.5, cz: 56, arcHeight: 22, zCurve: -9,
+    ...buildBeachFlybyPlanet(["#08445E", "#0D8AA5", "#D7AA66", "#FFF0B8"], "rgba(78,219,255,0.42)", isMobile ? 7 : 10),
+    duration: 38, cycle: 88, baseStart: now0 + 5,
+    startCX: -64, endCX: 64, cy: 12, cz: 86, arcHeight: 5, zCurve: 2,
     _fadeInEnd: 0.14, _fadeOutStart: 0.86,
   };
   scene.userData.beachFlybyB = {
-    ...buildBeachFlybyPlanet(["#6A3510", "#B87932", "#0B86A5", "#F6D28C"], "rgba(255,205,118,0.48)", isMobile ? 14 : 19),
-    duration: 34, cycle: 82, baseStart: now0 + 46,
-    startCX: 48, endCX: -68, cy: 8.5, cz: 58, arcHeight: 20, zCurve: -7,
+    ...buildBeachFlybyPlanet(["#6A3510", "#B87932", "#0B86A5", "#F6D28C"], "rgba(255,205,118,0.38)", isMobile ? 6 : 9),
+    duration: 38, cycle: 88, baseStart: now0 + 49,
+    startCX: 56, endCX: -72, cy: 13, cz: 88, arcHeight: 4, zCurve: 2,
     _fadeInEnd: 0.14, _fadeOutStart: 0.86,
   };
 }
@@ -1028,7 +1028,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
     const prog = Math.min(phase / fb.duration, 1);
     const fadeIn = Math.min(prog / fb._fadeInEnd, 1);
     const fadeOut = prog > fb._fadeOutStart ? Math.max(0, 1 - (prog - fb._fadeOutStart) / (1 - fb._fadeOutStart)) : 1;
-    fb.mat.opacity = shouldShow ? Math.min(fadeIn, fadeOut) * 0.72 : 0;
+    fb.mat.opacity = shouldShow ? Math.min(fadeIn, fadeOut) * 0.46 : 0;
 
     const smooth = prog * prog * (3 - 2 * prog);
     const ox = fb.startCX + (fb.endCX - fb.startCX) * smooth;
