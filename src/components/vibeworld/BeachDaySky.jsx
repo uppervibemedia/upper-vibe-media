@@ -6,10 +6,10 @@ export function createBeachDaySky(scene) {
   canvas.height = 512;
   const ctx = canvas.getContext("2d");
   const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  sky.addColorStop(0, "#7FCBFF");
-  sky.addColorStop(0.42, "#F7B978");
-  sky.addColorStop(0.72, "#F7A7C9");
-  sky.addColorStop(1, "#C7A7FF");
+  sky.addColorStop(0, "#9EDCFF");
+  sky.addColorStop(0.38, "#FFD18A");
+  sky.addColorStop(0.68, "#FFB2C8");
+  sky.addColorStop(1, "#D7C2FF");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -28,7 +28,7 @@ export function createBeachDaySky(scene) {
     new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, depthWrite: false, depthTest: false })
   );
   skyMesh.name = "beachDaySky";
-  skyMesh.renderOrder = -1000;
+  skyMesh.renderOrder = -9;
   scene.add(skyMesh);
   scene.userData.beachDaySky = skyMesh;
 }

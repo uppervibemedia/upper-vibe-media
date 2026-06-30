@@ -84,14 +84,48 @@ function createNeonSign(scene, x, y, z, text, colorHex) {
   scene.add(group);
 }
 
+function createPalm(scene, x, z, scale = 1) {
+  const trunk = new Mesh(new CylinderGeometry(0.12 * scale, 0.18 * scale, 1.8 * scale, 8), mat("#8B5A2B", { roughness: 0.8 }));
+  trunk.position.set(x, 0.9 * scale, z);
+  trunk.rotation.z = 0.16;
+  scene.add(trunk);
+  const leafMat = mat("#2F9B64", { roughness: 0.75 });
+  for (let i = 0; i < 5; i++) {
+    const leaf = new Mesh(new BoxGeometry(1.35 * scale, 0.08 * scale, 0.28 * scale), leafMat.clone());
+    leaf.position.set(x, 1.75 * scale, z);
+    leaf.rotation.set(0.15, (i / 5) * Math.PI * 2, 0.22);
+    scene.add(leaf);
+  }
+}
+
+function createLoungeCushion(scene, x, z, color) {
+  const cushion = new Mesh(new BoxGeometry(1.35, 0.16, 0.82), mat(color, { roughness: 0.92 }));
+  cushion.position.set(x, 0.11, z);
+  cushion.rotation.y = -0.35;
+  scene.add(cushion);
+  const pillow = new Mesh(new BoxGeometry(0.42, 0.18, 0.72), mat("#FFF1D0", { roughness: 0.9 }));
+  pillow.position.set(x - 0.42, 0.28, z - 0.18);
+  pillow.rotation.y = cushion.rotation.y;
+  scene.add(pillow);
+}
+
 export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const ZEN_X = -20, ZEN_Z = 22;
 
+  const calmSand = new Mesh(
+    new CircleGeometry(6.2, 56),
+    mat("#EAD09A", { roughness: 0.9, metalness: 0.0, transparent: true, opacity: 0.72 })
+  );
+  calmSand.rotation.x = -Math.PI / 2;
+  calmSand.position.set(ZEN_X, 0.004, ZEN_Z);
+  calmSand.name = "zenCalmSand";
+  scene.add(calmSand);
+
   // Circular meditation platform — warm natural base so Zen Beach sits cleanly on the sand strip
   const zenPlat = new Mesh(
-    new CircleGeometry(3.5, 48),
-    mat("#C9A66B", { roughness: 0.82, metalness: 0.02, transparent: true, opacity: 0.92 })
+    new CircleGeometry(4.1, 48),
+    mat("#D9B875", { roughness: 0.82, metalness: 0.02, transparent: true, opacity: 0.9 })
   );
   zenPlat.rotation.x = -Math.PI / 2;
   zenPlat.position.set(ZEN_X, 0.008, ZEN_Z);
@@ -153,6 +187,11 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
   scene.userData.zenOrb = zenOrb;
 
 
+  createLoungeCushion(scene, ZEN_X - 2.2, ZEN_Z - 1.1, "#7DD3FC");
+  createLoungeCushion(scene, ZEN_X + 2.15, ZEN_Z + 1.0, "#F9A8D4");
+  createPalm(scene, ZEN_X - 4.9, ZEN_Z + 2.8, 0.92);
+  createPalm(scene, ZEN_X + 4.7, ZEN_Z - 2.6, 0.82);
+
   // Ambient light
   const zenLight = new PointLight();
   zenLight.color = new Color("#A078FF");
@@ -177,7 +216,7 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
 
 
   // Neon sign
-  createNeonSign(scene, ZEN_X, 3.5, ZEN_Z, "ZEN  BEACH", "#00D4F0");
+  createNeonSign(scene, ZEN_X, 2.45, ZEN_Z - 2.2, "ZEN  BEACH", "#00D4F0");
 
   // ── WHOLE-BEACH SUNSET GLOW SPRITES ─────────────────────────────
   // iOS/PWA can render large transparent glow sprites as dark mounds at the water horizon,
@@ -190,7 +229,7 @@ export default function createZenBeach(scene, PLAZA_X, PLAZA_Z) {
     [ 10, 30, 18,  9],   // deep right
     [  0, 32, 28,  9],   // shoreline
   ];
-  const activeGlowDefs = isMob ? [] : beachGlowDefs;
+  const activeGlowDefs = [];
   for (const [gx, gz, sw, sh] of activeGlowDefs) {
     const gc = document.createElement("canvas");
     gc.width = 256; gc.height = 256;

@@ -87,7 +87,7 @@ export function createBeachWorld(scene) {
   const OCEAN_DEPTH = 62;
   const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  const sand = new Mesh(new PlaneGeometry(116, 82), mat("#D2B48C", { roughness: 0.9, metalness: 0.0 }));
+  const sand = new Mesh(new PlaneGeometry(116, 82), mat("#E6C98F", { roughness: 0.86, metalness: 0.0 }));
   sand.rotation.x = -Math.PI / 2;
   sand.position.set(0, 0, 10);
   sand.receiveShadow = true;
@@ -105,7 +105,7 @@ export function createBeachWorld(scene) {
   });
 
   const oceanGeo = new PlaneGeometry(118, OCEAN_DEPTH, isMob ? 4 : 56, isMob ? 4 : 54);
-  const ocean = new Mesh(oceanGeo, new MeshBasicMaterial({ color: new Color(isMob ? "#204468" : "#284A78"), side: THREE.DoubleSide }));
+  const ocean = new Mesh(oceanGeo, new MeshBasicMaterial({ color: new Color(isMob ? "#3E8FC0" : "#4EA4D8"), side: THREE.DoubleSide }));
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, 0, SHORELINE_Z + OCEAN_DEPTH / 2);
   ocean.name = "ocean";
@@ -140,11 +140,11 @@ export function createBeachWorld(scene) {
   createBeachReturnPlanet(scene);
   createTransportPad(scene, { ...BEACH_RETURN_PAD, label: "Return to Upper Vibe City", color: "#EDB84A", name: "returnCityPad" });
 
-  const sun = new DirectionalLight(new Color("#FFE0A3"), 1.65);
+  const sun = new DirectionalLight(new Color("#FFE7B8"), 2.25);
   sun.position.set(-18, 34, SHORELINE_Z + 18);
   scene.add(sun);
-  scene.add(new AmbientLight(new Color("#FFD7B0"), 1.18));
-  const hemi = new HemisphereLight(new Color("#8ED7FF"), new Color("#D9A86C"), 1.05);
+  scene.add(new AmbientLight(new Color("#FFE3C6"), 1.55));
+  const hemi = new HemisphereLight(new Color("#AEE7FF"), new Color("#E6BE7C"), 1.35);
   scene.add(hemi);
   [[0, 5, 35, "#FFE3A6", 2.8, 58], [-24, 4, 24, "#FFB35C", 2.0, 24], [28, 4, 24, "#58D8FF", 2.2, 28], [-28, 3, 10, "#B58CFF", 1.35, 22]].forEach(([x, y, z, c, i, d]) => {
     const light = new PointLight(new Color(c), i, d);
