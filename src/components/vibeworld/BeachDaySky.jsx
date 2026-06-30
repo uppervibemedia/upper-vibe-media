@@ -20,11 +20,13 @@ export function createBeachDaySky(scene) {
   ctx.fillStyle = sun;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  scene.background = new THREE.Color("#78C9FF");
+
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;
   const skyMesh = new THREE.Mesh(
-    new THREE.SphereGeometry(260, 32, 16),
+    new THREE.SphereGeometry(90, 32, 16),
     new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, depthWrite: false, depthTest: false })
   );
   skyMesh.name = "beachDaySky";

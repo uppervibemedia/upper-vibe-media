@@ -717,7 +717,7 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
         antialias: quality.antialias,
         powerPreference: isMob ? "low-power" : "high-performance",
       });
-      renderer.setClearColor(0x0A1020); // Deep navy void — bright neon night
+      renderer.setClearColor(worldModeRef.current === "beach" ? 0x78C9FF : 0x0A1020); // Blue beach sky, deep navy city sky
       if (rendererRef) rendererRef.current = renderer;
       // Cap pixel ratio — lower on iOS/mobile to reduce WebGL memory and heat.
       const basePR = Math.min(window.devicePixelRatio || 1, quality.pixelRatio);

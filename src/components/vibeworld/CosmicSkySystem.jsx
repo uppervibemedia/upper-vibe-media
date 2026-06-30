@@ -792,6 +792,9 @@ function spawnArcParams(fast) {
 export function animateCosmicSky(scene, camera, t, dt) {
   const isMobile = scene.userData._skyIsMobile;
 
+  const beachDaySky = scene.userData.beachDaySky;
+  if (beachDaySky) beachDaySky.position.copy(camera.position);
+
   // ── Skybox follows camera (so it always surrounds the player) ────────────────
   const skybox = scene.userData._skyboxRef;
   if (skybox) {
