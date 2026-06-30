@@ -23,12 +23,12 @@ export const ZONES = {
   visualizerDome:  { label: "Visualizer Dome",    x: -13, z: 10,  tag: "dome" },
   dailyVibeCheck:  { label: "Daily Vibe Check",   x: -16, z: -13, tag: "vibeCheck" },
   vibeAcademy:     { label: "Vibe Academy",        x: -28, z: 10,  tag: "academy" },
-  crystalZone:     { label: "Crystal Zone",        x: 28,  z: -7,  tag: "crystal" },
+  crystalZone:     { label: "Crystal Zone",        x: -28, z: 10,  tag: "crystal" },
   zenBeach:        { label: "Zen Beach",           x: -11, z: 22,  tag: "beach" },
   hoverboardRun:   { label: "Hoverboard Run",      x: 18,  z: 28,  tag: "hoverboard" },
   vibeLaunchZone:  { label: "Vibe Launch Zone",    x: 0,   z: 4,   tag: "launch" },
   ferrisWheel:     { label: "Ferris Wheel",        x: 0,   z: 24,  tag: "ferris" },
-  upperVibeShop:   { label: "Upper Vibe Shop",     x: 22,  z: 5,   tag: "shop" },
+  upperVibeShop:   { label: "Upper Vibe Shop",     x: 22,  z: 12.25, tag: "shop" },
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -56,7 +56,7 @@ export const ZONE_COLORS = {
 // This config defines the shop's layout. The actual shop visual
 // (UpperVibeShop.jsx) will be built as a separate component.
 export const SHOP = {
-  pos: { x: 22, z: 5 },
+  pos: { x: 22, z: 12.25 },
   isActive: true,
   items: [
     { id: "cosmic_jacket",     label: "Cosmic Jacket",     price: 800,   category: "wearable" },

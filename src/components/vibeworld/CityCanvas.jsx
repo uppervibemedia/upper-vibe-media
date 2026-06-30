@@ -89,7 +89,8 @@ const FOV_LANDSCAPE = 60;     // wider FOV in landscape feels immersive
 const TREE_R = 0.5;
 const COLLISION_BOXES = [
   ...TREE_POSITIONS.map(([tx, tz]) => [tx, tz, TREE_R, TREE_R]),
-  [22 - 1.5, 5, 0.5, 0.5], [22 + 1.5, 5, 0.5, 0.5], [22, 5, 1.2, 1.2],
+  [CRYSTAL_ZONE_X, CRYSTAL_ZONE_Z, 5.8, 5.8],
+  [22, 12.25, 3.9, 3.9],
 ];
 
 // ─── UTILITIES ────────────────────────────────────────────────
@@ -349,7 +350,7 @@ export function buildPark(scene) {
   buildDailyVibeCheckZone(scene);
 
   // ═════════════════════════════════════════════════════════════
-  // 8.5.5 CRYSTAL ZONE — east-side destination between Library and Vibe Wheel
+  // 8.5.5 CRYSTAL ZONE — old Vibe Academy location
   // ═════════════════════════════════════════════════════════════
   const crystalPathMat = new MeshBasicMaterial({ color: new Color("#6C3CFF"), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
   const crystalPathA = new Mesh(new PlaneGeometry(Math.max(2, Math.abs(CRYSTAL_ZONE_X - 4)), 2.2), crystalPathMat.clone());
@@ -366,9 +367,9 @@ export function buildPark(scene) {
   createNeonSign(scene, CRYSTAL_ZONE_X, 3.2, CRYSTAL_ZONE_Z, "CRYSTAL  ZONE", "#AA66FF");
 
   // ═════════════════════════════════════════════════════════════
-  // 8.65. UPPER VIBE SHOP — central plaza storefront
+  // 8.65. UPPER VIBE SHOP — pushed back to the sand edge
   // ═════════════════════════════════════════════════════════════
-  const shopGroup = createUpperVibeShop(scene, [22, 0, 5]);
+  const shopGroup = createUpperVibeShop(scene, [22, 0, 12.25]);
   if (shopGroup) shopGroup.rotation.y = Math.PI; // face toward player spawn
   scene.userData.shopGroup = shopGroup;
   createTransportPad(scene, { ...CITY_BEACH_PAD, label: "Enter Upper Vibe Beach World", color: "#00E5FF", name: "enterBeachPad" });
