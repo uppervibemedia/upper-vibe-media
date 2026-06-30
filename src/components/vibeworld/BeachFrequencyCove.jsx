@@ -130,6 +130,14 @@ export function createBeachFrequencyCove(scene) {
     crystals.push(crystal);
   }
 
+  [[cx - 2.4, cz + 2.95, 1.55, "#7DEBFF"], [cx + 2.4, cz + 2.95, 1.55, "#B58CFF"], [cx - 1.2, cz + 3.9, 1.1, "#FFD36E"], [cx + 1.2, cz + 3.9, 1.1, "#7DEBFF"]].forEach(([x, z, h, c], i) => {
+    const pillar = new THREE.Mesh(new THREE.ConeGeometry(0.22, h, 6), standard(c, { roughness: 0.22, metalness: 0.46 }));
+    pillar.position.set(x, h * 0.5, z);
+    pillar.rotation.z = (i % 2 ? -0.12 : 0.12);
+    group.add(pillar);
+    crystals.push(pillar);
+  });
+
   [[cx - 5.6, cz - 2.8, 1.0], [cx + 5.3, cz - 2.4, 1.25], [cx - 4.7, cz + 4.2, 0.95], [cx + 4.9, cz + 3.8, 1.12]].forEach(([x, z, h]) => addPlant(group, x, z, h));
 
   const particles = [];

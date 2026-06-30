@@ -102,8 +102,8 @@ function makeUnderwaterScene(scene, group) {
   group.add(haze);
 
   const props = [
-    [30, 39, "rock"], [41, 41, "rock"], [28, 51, "rock"], [43, 56, "rock"],
-    [32, 44, "coral"], [39, 47, "coral"], [34, 55, "coral"], [29, 57, "weed"], [42, 52, "weed"], [37, 39, "weed"],
+    [30, 39, "rock"], [41, 41, "rock"], [28, 51, "rock"], [43, 56, "rock"], [36, 44, "rock"],
+    [32, 44, "coral"], [39, 47, "coral"], [34, 55, "coral"], [31, 58, "coral"], [29, 57, "weed"], [42, 52, "weed"], [37, 39, "weed"], [40, 57, "weed"],
   ];
   props.forEach(([x, z, kind], i) => {
     if (kind === "rock") {
@@ -154,8 +154,8 @@ function makeUnderwaterScene(scene, group) {
   }
 
   const lights = [
-    new THREE.PointLight(new THREE.Color("#6EF6FF"), 1.8, 18),
-    new THREE.PointLight(new THREE.Color("#B58CFF"), 0.85, 12),
+    new THREE.PointLight(new THREE.Color("#6EF6FF"), 2.05, 20),
+    new THREE.PointLight(new THREE.Color("#B58CFF"), 0.95, 12),
   ];
   lights[0].position.set(35, -0.4, 48);
   lights[1].position.set(41, -1.2, 55);
@@ -180,15 +180,18 @@ function makeDiveItems(group) {
 function makeSurfboard(group) {
   const board = new THREE.Group();
   board.name = "premiumSurfboard";
-  const deck = new THREE.Mesh(new THREE.CapsuleGeometry(0.46, 2.65, 6, 20), standard("#68D7E8", { roughness: 0.24, metalness: 0.12 }));
+  const deck = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 2.82, 6, 18), standard("#66DFF0", { roughness: 0.2, metalness: 0.16 }));
   deck.rotation.x = Math.PI / 2;
-  deck.scale.z = 0.11;
+  deck.scale.z = 0.1;
   const noseMark = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 3), standard("#FFD36E", { roughness: 0.3, metalness: 0.12 }));
   noseMark.rotation.x = Math.PI / 2;
   noseMark.position.set(0, 0.075, 1.78);
-  const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 2.65), basic("#FFFFFF", 0.72, false));
+  const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 2.78), basic("#FFFFFF", 0.76, false));
   stripe.rotation.x = -Math.PI / 2;
-  stripe.position.y = 0.075;
+  stripe.position.y = 0.08;
+  const glowRail = new THREE.Mesh(new THREE.PlaneGeometry(0.74, 2.62), basic("#00E5FF", 0.16, false));
+  glowRail.rotation.x = -Math.PI / 2;
+  glowRail.position.y = 0.071;
   const railL = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.055, 2.85), basic("#0E6E84", 0.82, false));
   railL.position.set(-0.43, 0.055, 0);
   const railR = railL.clone();
@@ -196,7 +199,7 @@ function makeSurfboard(group) {
   const fin = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.42, 3), standard("#0B4E64", { roughness: 0.35, metalness: 0.18 }));
   fin.rotation.x = Math.PI;
   fin.position.set(0, -0.18, -1.2);
-  board.add(deck, noseMark, stripe, railL, railR, fin);
+  board.add(deck, noseMark, glowRail, stripe, railL, railR, fin);
   group.add(board);
   return board;
 }

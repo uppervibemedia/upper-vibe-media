@@ -1431,6 +1431,15 @@ export default function CityCanvas({ onLoaded, onPositionChange, onRemoteAvatarC
             if (!scene.userData._cyanColor) { scene.userData._cyanColor = new Color("#00D4F0"); }
             shoreGlow.material.color.copy(scene.userData._cyanColor);
           }
+          const waveBands = scene.userData.beachWaveBands || [];
+          if (waveBands.length && (!isMob || frameRef.current % 3 === 0)) {
+            for (let i = 0; i < waveBands.length; i++) {
+              const band = waveBands[i];
+              const wave = Math.sin(t * 0.85 + band.userData.phase);
+              band.position.z = band.userData.baseZ + wave * 0.42;
+              band.material.opacity = Math.max(0.05, band.userData.baseOpacity + wave * 0.035);
+            }
+          }
         }
 
         // ── TV Smooth mode: skip non-essential pulse animations ──

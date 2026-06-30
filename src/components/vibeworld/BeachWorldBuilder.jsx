@@ -103,6 +103,17 @@ export function createBeachWorld(scene) {
   sand.name = "beach";
   scene.add(sand);
 
+  const patchMatA = new MeshBasicMaterial({ color: new Color("#E7D3A8"), transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide });
+  const patchMatB = new MeshBasicMaterial({ color: new Color("#CDAE78"), transparent: true, opacity: 0.10, depthWrite: false, side: THREE.DoubleSide });
+  [[-38, -10, 15, 2.2, -0.18], [-12, -4, 18, 2.0, 0.12], [18, 6, 20, 2.4, -0.08], [42, 18, 13, 1.8, 0.22], [-42, 28, 16, 1.9, -0.12], [4, 27, 24, 2.2, 0.04], [30, -15, 14, 1.8, 0.18]].forEach(([x, z, w, d, r], i) => {
+    const patch = new Mesh(new PlaneGeometry(w, d), (i % 2 ? patchMatA : patchMatB).clone());
+    patch.rotation.x = -Math.PI / 2;
+    patch.rotation.z = r;
+    patch.position.set(x, 0.01, z);
+    patch.renderOrder = 1;
+    scene.add(patch);
+  });
+
   const pathMat = new MeshBasicMaterial({ color: new Color("#D8CFB7"), transparent: true, opacity: 0.26, depthWrite: false, side: THREE.DoubleSide });
   [[14, -5, 38, 3.0], [-18, -5, 42, 3.0], [0, 9, 46, 3.2], [-28, 18, 34, 2.8], [27, 18, 32, 2.8], [0, 25, 58, 2.6]].forEach(([x, z, w, d]) => {
     const path = new Mesh(new PlaneGeometry(w, d), pathMat.clone());
@@ -113,12 +124,34 @@ export function createBeachWorld(scene) {
     scene.add(path);
   });
 
-  const oceanGeo = new PlaneGeometry(160, OCEAN_DEPTH, isMob ? 4 : 56, isMob ? 4 : 54);
-  const ocean = new Mesh(oceanGeo, new MeshBasicMaterial({ color: new Color(isMob ? "#287C9D" : "#2F91B6"), side: THREE.DoubleSide }));
+  const oceanGeo = new PlaneGeometry(160, OCEAN_DEPTH, isMob ? 4 : 40, isMob ? 4 : 36);
+  const ocean = new Mesh(oceanGeo, new MeshBasicMaterial({ color: new Color(isMob ? "#1F86A8" : "#168BB5"), side: THREE.DoubleSide }));
   ocean.rotation.x = -Math.PI / 2;
   ocean.position.set(0, 0, SHORELINE_Z + OCEAN_DEPTH / 2);
   ocean.name = "ocean";
   scene.add(ocean);
+
+  const shallow = new Mesh(new PlaneGeometry(160, 10), new MeshBasicMaterial({ color: new Color("#55E6E8"), transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }));
+  shallow.rotation.x = -Math.PI / 2;
+  shallow.position.set(0, 0.004, SHORELINE_Z + 5);
+  shallow.renderOrder = 1;
+  scene.add(shallow);
+  const deep = new Mesh(new PlaneGeometry(160, 36), new MeshBasicMaterial({ color: new Color("#075B96"), transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
+  deep.rotation.x = -Math.PI / 2;
+  deep.position.set(0, 0.003, SHORELINE_Z + 35);
+  deep.renderOrder = 1;
+  scene.add(deep);
+  const waveBands = [];
+  for (let i = 0; i < (isMob ? 4 : 7); i++) {
+    const band = new Mesh(new PlaneGeometry(148 - i * 4, 0.32), new MeshBasicMaterial({ color: new Color(i % 2 ? "#EFFFFF" : "#8DF7FF"), transparent: true, opacity: 0.15, depthWrite: false, side: THREE.DoubleSide }));
+    band.rotation.x = -Math.PI / 2;
+    band.position.set(0, 0.012 + i * 0.001, SHORELINE_Z + 4.5 + i * 5.6);
+    band.renderOrder = 2;
+    band.userData = { baseZ: band.position.z, phase: i * 0.75, baseOpacity: 0.12 + i * 0.008 };
+    scene.add(band);
+    waveBands.push(band);
+  }
+  scene.userData.beachWaveBands = waveBands;
   scene.userData.ocean = ocean;
   scene.userData._oceanOrig = isMob ? null : (() => { const a = new Float32Array(oceanGeo.attributes.position.array.length); a.set(oceanGeo.attributes.position.array); return a; })();
   scene.userData._oceanStatic = isMob;
@@ -149,11 +182,11 @@ export function createBeachWorld(scene) {
   createBeachReturnPlanet(scene);
   createTransportPad(scene, { ...BEACH_RETURN_PAD, label: "Return to Upper Vibe City", color: "#EDB84A", name: "returnCityPad" });
 
-  const sun = new DirectionalLight(new Color("#FFE7B8"), 2.25);
+  const sun = new DirectionalLight(new Color("#FFE8B8"), 2.35);
   sun.position.set(-18, 34, SHORELINE_Z + 18);
   scene.add(sun);
-  scene.add(new AmbientLight(new Color("#FFE3C6"), 1.55));
-  const hemi = new HemisphereLight(new Color("#AEE7FF"), new Color("#E6BE7C"), 1.35);
+  scene.add(new AmbientLight(new Color("#FFE7CB"), 1.65));
+  const hemi = new HemisphereLight(new Color("#BDF0FF"), new Color("#E8C28A"), 1.45);
   scene.add(hemi);
   [[0, 5, 35, "#FFE3A6", 2.8, 58], [-24, 4, 24, "#FFB35C", 2.0, 24], [28, 4, 24, "#58D8FF", 2.2, 28], [-28, 3, 10, "#B58CFF", 1.35, 22]].forEach(([x, y, z, c, i, d]) => {
     const light = new PointLight(new Color(c), i, d);

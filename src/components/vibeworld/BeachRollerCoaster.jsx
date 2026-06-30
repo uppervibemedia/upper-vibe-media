@@ -138,9 +138,17 @@ export function createBeachRollerCoaster(scene) {
   }));
   group.add(cart);
 
+  const portalArch = new THREE.Mesh(new THREE.TorusGeometry(2.55, 0.07, 8, 36, Math.PI), basic("#00E5FF", { transparent: true, opacity: 0.74 }));
+  portalArch.position.set(-12, 1.45, -19.4);
+  portalArch.rotation.z = Math.PI;
+  group.add(portalArch);
   const sign = makeLabel("VIBE COASTER", "#00DDF5");
-  sign.position.set(-12, 3.85, -19.6);
+  sign.position.set(-12, 3.95, -19.6);
   group.add(sign);
+  const rideSign = makeLabel("RIDE", "#FFD36E");
+  rideSign.scale.set(2.4, 0.46, 1);
+  rideSign.position.set(-12, 1.25, -19.25);
+  group.add(rideSign);
 
   const light = new THREE.PointLight(new THREE.Color("#00DDF5"), 1.35, 18);
   light.position.set(0, 5, -2);
