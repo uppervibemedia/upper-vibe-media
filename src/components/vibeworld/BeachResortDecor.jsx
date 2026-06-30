@@ -55,6 +55,28 @@ function addGlowStone(group, x, z, color = "#B58CFF") {
   ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.045, z); ring.renderOrder = 6; group.add(ring);
 }
 
+function addSmallVilla(group, x, z, rot = 0) {
+  const base = new THREE.Mesh(new THREE.BoxGeometry(3.7, 1.25, 2.6), standard("#EFE5D4"));
+  base.position.set(x, 0.64, z); base.rotation.y = rot; group.add(base);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(2.7, 0.75, 4), standard("#B98B4A"));
+  roof.position.set(x, 1.62, z); roof.rotation.y = Math.PI / 4 + rot; group.add(roof);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.08, 1.0), standard("#B99362"));
+  deck.position.set(x + Math.sin(rot) * 1.15, 0.12, z + Math.cos(rot) * 1.15); deck.rotation.y = rot; group.add(deck);
+}
+
+function addOpenAirStructure(group, x, z, label, color, rot = 0) {
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.14, 2.7), standard("#C4A36A"));
+  floor.position.set(x, 0.1, z); floor.rotation.y = rot; group.add(floor);
+  for (const sx of [-1.8, 1.8]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.7, 8), standard("#85613E"));
+    post.position.set(x + Math.cos(rot) * sx, 0.9, z - Math.sin(rot) * sx); group.add(post);
+  }
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.18, 3.0), standard("#E7D4A3"));
+  roof.position.set(x, 1.8, z); roof.rotation.y = rot; group.add(roof);
+  const sign = makeLabel(label, color, [4.6, 0.85]);
+  sign.position.set(x, 2.35, z - 1.2); group.add(sign);
+}
+
 export function createBeachResortDecor(scene) {
   const group = new THREE.Group();
   group.name = "beachResortDecor";
@@ -77,6 +99,11 @@ export function createBeachResortDecor(scene) {
   cabana.position.set(20, 0.9, -14); group.add(cabana);
   const roof = new THREE.Mesh(new THREE.ConeGeometry(3.2, 1.0, 4), standard("#5F7280"));
   roof.position.set(20, 2.25, -14); roof.rotation.y = Math.PI / 4; group.add(roof);
+
+  addSmallVilla(group, -16, -13, -0.18);
+  addSmallVilla(group, -27, 4, 0.35);
+  addOpenAirStructure(group, -38, 14, "SURF SHOP", "#68D7E8", 0.22);
+  addOpenAirStructure(group, 30, 10, "BEACH BAR", "#FFD08A", -0.28);
 
   addUmbrella(group, -4, 12, "#D9C27C"); addUmbrella(group, 5, 13, "#80DCEB"); addPalm(group, -7, 16, 0.85);
   [-2, 2, 6, -6].forEach((x, i) => addChair(group, x, 10 + (i % 2) * 2, i % 2 ? "#7DD7E8" : "#C8CDD2", i * 0.4));
