@@ -11,7 +11,9 @@ export default function BeachActivityHUD({ activity, onExit, isMobile, mobileLay
   if (!activity?.active) return null;
   const cfg = LABELS[activity.type] || LABELS.surf;
   const progress = activity.total ? `${activity.progress || 0}/${activity.total}` : "0/0";
-  const bottom = isMobile && mobileLayout ? mobileLayout.sa.bottom + 86 : isMobile ? 108 : 92;
+  const positionStyle = isMobile
+    ? { top: mobileLayout ? mobileLayout.sa.top + 62 : 72 }
+    : { bottom: 92 };
 
   return (
     <AnimatePresence>
@@ -20,7 +22,7 @@ export default function BeachActivityHUD({ activity, onExit, isMobile, mobileLay
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 16 }}
         className="absolute left-0 right-0 z-[84] flex justify-center px-3 pointer-events-none"
-        style={{ bottom }}
+        style={positionStyle}
       >
         <div className="flex items-center gap-2 rounded-full px-2.5 py-1.5 pointer-events-auto" style={{ background: "rgba(4,12,24,0.68)", border: "1px solid rgba(0,229,255,0.22)", backdropFilter: "blur(12px)", maxWidth: "calc(100vw - 18px)" }}>
           <div className="min-w-0 pl-1">

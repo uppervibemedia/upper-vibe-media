@@ -66,7 +66,47 @@ export default function BeachActivityPanel({ type, open, onClose, isMobile, _mob
   };
 
   if (!open || ["surf", "dive", "coaster"].includes(type)) return null;
-  const compactPanel = ["frequency", "bonfire", "zen"].includes(type);
+
+  if (type === "frequency") {
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          className="fixed right-3 z-[75] rounded-2xl p-3 pointer-events-auto"
+          style={{
+            top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 64px)" : 76,
+            width: isMobile ? "min(92vw, 360px)" : 360,
+            background: "rgba(6,14,26,0.72)",
+            border: `1px solid ${config.color}33`,
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+          }}
+        >
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="min-w-0">
+              <h3 className="font-heading font-black text-white text-sm leading-tight">Frequency Cove</h3>
+              <p className="text-[10px] text-white/45 truncate">Sanctuary mode: {mode}</p>
+            </div>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ color: "rgba(255,255,255,0.68)", touchAction: "manipulation" }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {["affirmation", "manifest", "visualizer"].map((item) => (
+              <button key={item} onClick={() => { setStarted(true); setMode(item); }} className="rounded-xl py-2 text-[9px] font-black capitalize active:scale-95" style={{ background: mode === item ? `${config.color}2a` : "rgba(255,255,255,0.06)", color: mode === item ? config.color : "rgba(255,255,255,0.58)", touchAction: "manipulation" }}>{item}</button>
+            ))}
+          </div>
+          <button onTouchStart={(e) => e.stopPropagation()} onClick={complete ? onClose : started ? nextProgress : () => setStarted(true)} className="w-full py-2.5 rounded-xl font-black text-[11px] tracking-wider active:scale-[0.98]" style={{ background: `linear-gradient(135deg, ${config.color}, #7DEBFF)`, color: "#061018", touchAction: "manipulation" }}>
+            {complete ? "Close Cove" : started ? "Continue" : "Enter Cove"}
+          </button>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  const compactPanel = ["bonfire", "zen"].includes(type);
 
   return (
     <AnimatePresence>

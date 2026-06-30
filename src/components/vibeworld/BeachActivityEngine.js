@@ -75,7 +75,7 @@ function makeDiveCollectible(p) {
     chest.add(base, lid, band);
     return chest;
   }
-  const geo = p.kind === "star" ? new THREE.TetrahedronGeometry(0.42, 0) : p.kind === "shell" ? new THREE.SphereGeometry(0.38, 16, 8) : new THREE.SphereGeometry(0.34, 16, 12);
+  const geo = p.kind === "star" ? new THREE.TetrahedronGeometry(0.52, 0) : p.kind === "shell" ? new THREE.SphereGeometry(0.48, 16, 8) : new THREE.SphereGeometry(0.44, 16, 12);
   const mesh = new THREE.Mesh(geo, standard(p.color, { roughness: 0.26, metalness: 0.36 }));
   if (p.kind === "shell") mesh.scale.set(1.25, 0.55, 0.82);
   return mesh;
@@ -293,7 +293,14 @@ function buildCoasterTrack(group, curve) {
   const entryPad = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.08, 32), basic("#7DEBFF", 0.46));
   entryPad.rotation.x = -Math.PI / 2;
   entryPad.position.set(0, 0.07, 2.35);
-  station.add(deck, canopy, gate, ramp, entryPad);
+  const entryArch = new THREE.Mesh(new THREE.TorusGeometry(2.15, 0.06, 8, 28, Math.PI), basic("#7DEBFF", 0.72));
+  entryArch.position.set(0, 1.22, 1.95);
+  entryArch.rotation.z = Math.PI;
+  const queueRailL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 3.2), standard("#6D7A84", { roughness: 0.5, metalness: 0.35 }));
+  queueRailL.position.set(-2.55, 0.82, 0.25);
+  const queueRailR = queueRailL.clone();
+  queueRailR.position.x = 2.55;
+  station.add(deck, canopy, gate, ramp, entryPad, entryArch, queueRailL, queueRailR);
   group.add(station);
 }
 function makeCoasterCart(group) {
@@ -360,9 +367,9 @@ export function exitBeachActivity(scene, state, completed = false) {
   if (state.type === "dive") scene.fog = scene.userData._savedBeachFog || null;
   disposeGroup(scene, state.group);
   if (completed) {
-    if (state.type === "surf") return { x: 18, y: 0, z: 31, rot: Math.PI };
-    if (state.type === "dive") return { x: 35, y: 0, z: 31, rot: Math.PI };
-    if (state.type === "coaster") return { x: -12, y: 0, z: -22, rot: 0 };
+    if (state.type === "surf") return { x: 18, y: 0, z: 31, rot: 0 };
+    if (state.type === "dive") return { x: 35, y: 0, z: 31, rot: 0 };
+    if (state.type === "coaster") return { x: -12, y: 0, z: -18, rot: Math.PI };
   }
   return state.saved;
 }
@@ -378,13 +385,14 @@ export function tickBeachActivity(state, input, dt, t) {
     state.z += 1.95 * dt;
     state.y = 0.58 + Math.sin(t * 4.2) * 0.075;
     state.rot = steer * -0.32 + Math.sin(t * 1.5) * 0.035;
-    state.avatarPitch = -0.12 + Math.sin(t * 3) * 0.025;
-    state.avatarRoll = steer * -0.24 + Math.sin(t * 2) * 0.04;
+    state.avatarPitch = -0.34 + Math.sin(t * 3) * 0.035;
+    state.avatarRoll = steer * -0.32 + Math.sin(t * 2) * 0.05;
     state.board?.position.set(state.x, state.y - 0.12, state.z);
     if (state.board) state.board.rotation.set(Math.sin(t * 3.2) * 0.035, state.rot, steer * -0.12 + Math.sin(t * 2) * 0.045);
     state.wake?.forEach((w, i) => {
-      w.position.set(state.x + Math.sin(t * 3 + i) * 0.12, 0.07, state.z - 1.05 - i * 0.62);
+      w.position.set(state.x + Math.sin(t * 3 + i) * 0.12, 0.08, state.z - 1.0 - i * 0.58);
       w.rotation.z = state.rot + Math.sin(t * 2 + i) * 0.08;
+      w.scale.x = 1 + Math.min(0.55, i * 0.08 + Math.abs(steer) * 0.18);
       w.material.opacity = Math.max(0.05, 0.34 - i * 0.052 + Math.sin(t * 5 + i) * 0.035);
     });
     state.splashes?.forEach((s, i) => {

@@ -84,7 +84,12 @@ export function createBeachFrequencyCove(scene) {
     modeMarker("MANIFEST", cx + 2.6, cz + 1.5, "#B58CFF"),
     modeMarker("VISUAL", cx, cz - 2.9, "#FFD36E"),
   ];
+  ["affirmation", "manifest", "visualizer"].forEach((key, i) => { markers[i].userData.modeKey = key; markers[i].userData.baseY = markers[i].position.y; });
   markers.forEach((m) => group.add(m));
+
+  const modeBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 2.45, 3.8, 36, 1, true), basic("#7DEBFF", { transparent: true, opacity: 0.12 }));
+  modeBeam.position.set(cx, 1.9, cz);
+  group.add(modeBeam);
 
   const crystals = [];
   for (let i = 0; i < 10; i++) {
@@ -123,7 +128,7 @@ export function createBeachFrequencyCove(scene) {
   aqua.position.set(cx - 2.8, 1.4, cz + 2.2);
   group.add(aqua);
 
-  group.userData = { rings, crystals, particles, light, aqua, cx, cz };
+  group.userData = { rings, crystals, particles, markers, modeBeam, light, aqua, cx, cz };
   scene.add(group);
   scene.userData.beachFrequencyCove = group;
 }
@@ -131,7 +136,7 @@ export function createBeachFrequencyCove(scene) {
 export function animateBeachFrequencyCove(scene, t, beat = 0) {
   const group = scene.userData.beachFrequencyCove;
   if (!group) return;
-  const { rings = [], crystals = [], particles = [], light, aqua, cx, cz } = group.userData || {};
+  const { rings = [], crystals = [], particles = [], markers = [], modeBeam, light, aqua, cx, cz } = group.userData || {};
   const mode = window.__uvcFrequencyCoveMode || "affirmation";
   const modeColor = mode === "manifest" ? new THREE.Color("#B58CFF") : mode === "visualizer" ? new THREE.Color("#FFD36E") : new THREE.Color("#7DEBFF");
   rings.forEach((ring, i) => {
@@ -143,6 +148,18 @@ export function animateBeachFrequencyCove(scene, t, beat = 0) {
     crystal.position.y = 0.56 + Math.sin(t * 1.7 + i) * 0.06;
     crystal.rotation.y += 0.006;
   });
+  markers.forEach((marker, i) => {
+    const active = marker.userData.modeKey === mode;
+    const targetScale = active ? 1.18 : 0.92;
+    marker.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.08);
+    marker.position.y = (marker.userData.baseY || 0.08) + (active ? Math.sin(t * 2.4 + i) * 0.05 : 0);
+    marker.children?.forEach((child) => { if (child.material?.opacity !== undefined) child.material.opacity = active ? 0.6 + Math.sin(t * 2.2) * 0.12 : 0.24; });
+  });
+  if (modeBeam?.material) {
+    modeBeam.material.color.lerp(modeColor, 0.06);
+    modeBeam.material.opacity = 0.1 + Math.sin(t * 1.6) * 0.035 + beat * 0.08;
+    modeBeam.rotation.y += 0.004;
+  }
   particles.forEach((p) => {
     p.userData.a += p.userData.speed * 0.016;
     p.position.x = cx + Math.cos(p.userData.a + t * p.userData.speed) * p.userData.r;

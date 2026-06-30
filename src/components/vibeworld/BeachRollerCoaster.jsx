@@ -36,15 +36,15 @@ export function createBeachRollerCoaster(scene) {
   const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const group = new THREE.Group();
   group.name = "beachResortRollerCoaster";
-  group.position.set(0, 0, -20);
+  group.position.set(0, 0, 0);
 
   const basePoints = [
-    new THREE.Vector3(-46, 2.0, -4), new THREE.Vector3(-38, 5.0, -10),
-    new THREE.Vector3(-25, 7.2, -8), new THREE.Vector3(-10, 4.0, -1),
-    new THREE.Vector3(5, 6.4, 5), new THREE.Vector3(22, 7.8, 0),
-    new THREE.Vector3(38, 4.8, -7), new THREE.Vector3(49, 2.5, -1),
-    new THREE.Vector3(36, 5.7, 9), new THREE.Vector3(12, 3.5, 12),
-    new THREE.Vector3(-14, 5.2, 8), new THREE.Vector3(-34, 3.1, 5),
+    new THREE.Vector3(-12, 1.25, -22), new THREE.Vector3(-24, 6.8, -29),
+    new THREE.Vector3(-42, 12.4, -25), new THREE.Vector3(-55, 3.0, -16),
+    new THREE.Vector3(-38, 8.2, -9), new THREE.Vector3(-14, 13.2, -18),
+    new THREE.Vector3(12, 5.0, -29), new THREE.Vector3(38, 10.6, -25),
+    new THREE.Vector3(54, 2.7, -14), new THREE.Vector3(28, 8.8, -7),
+    new THREE.Vector3(3, 3.2, -12), new THREE.Vector3(-12, 1.25, -22),
   ];
   const centerCurve = new THREE.CatmullRomCurve3(basePoints, true, "catmullrom", 0.55);
 
@@ -80,24 +80,59 @@ export function createBeachRollerCoaster(scene) {
     }
   }
 
-  const station = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.28, 2.4), standard("#C4A36A"));
-  station.position.set(-9, 0.24, -5.4);
-  group.add(station);
-  const canopy = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.14, 2.7), standard("#E7D4A3"));
-  canopy.position.set(-9, 1.7, -5.4);
-  group.add(canopy);
+  const stationGroup = new THREE.Group();
+  stationGroup.position.set(-12, 0, -22);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(8.4, 0.3, 4.2), standard("#C9A96B"));
+  deck.position.set(0, 0.18, 0);
+  const planks = new THREE.Mesh(new THREE.BoxGeometry(8.0, 0.045, 3.75), basic("#E8D8AD", { transparent: true, opacity: 0.38 }));
+  planks.position.set(0, 0.36, 0);
+  const canopy = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.22, 4.5), standard("#F1DFA8"));
+  canopy.position.set(0, 2.25, 0);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(5.1, 1.0, 4), standard("#64CFE0"));
+  roof.position.set(0, 2.85, 0);
+  roof.rotation.y = Math.PI / 4;
+  stationGroup.add(deck, planks, canopy, roof);
+  [-3.7, 3.7].forEach((x) => [-1.7, 1.7].forEach((z) => {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.11, 2.25, 10), standard("#7A6B57"));
+    post.position.set(x, 1.18, z);
+    stationGroup.add(post);
+  }));
+  [-2.7, 2.7].forEach((x) => {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 3.7), standard("#7A6B57"));
+    rail.position.set(x, 0.86, 0);
+    stationGroup.add(rail);
+  });
+  const entryGlow = new THREE.Mesh(new THREE.RingGeometry(1.05, 1.22, 36), basic("#7DEBFF", { transparent: true, opacity: 0.46 }));
+  entryGlow.rotation.x = -Math.PI / 2;
+  entryGlow.position.set(0, 0.42, 2.35);
+  stationGroup.add(entryGlow);
+  group.add(stationGroup);
 
   const cart = new THREE.Group();
-  cart.position.set(22, 7.9, 0);
-  cart.rotation.y = 0.92;
-  const cartBase = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.36, 1.15), standard("#00A7C8"));
-  const cartSeat = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.24, 0.55), standard("#24384A"));
-  cartSeat.position.y = 0.36;
-  cart.add(cartBase, cartSeat);
+  cart.position.set(-12, 1.55, -22);
+  const tangent0 = centerCurve.getTangentAt(0.01);
+  cart.rotation.y = Math.atan2(tangent0.x, tangent0.z);
+  const cartBase = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.34, 2.1), standard("#00A7C8"));
+  cartBase.position.y = 0.2;
+  const cartNose = new THREE.Mesh(new THREE.ConeGeometry(0.78, 0.72, 4), standard("#00A7C8"));
+  cartNose.rotation.x = Math.PI / 2;
+  cartNose.position.set(0, 0.25, 1.28);
+  const cartSeat = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.3, 0.82), standard("#24384A"));
+  cartSeat.position.set(0, 0.58, -0.2);
+  const lapBar = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.035, 8, 24), basic("#FFD36E", { transparent: true, opacity: 0.92 }));
+  lapBar.rotation.x = Math.PI / 2;
+  lapBar.position.set(0, 0.9, -0.12);
+  cart.add(cartBase, cartNose, cartSeat, lapBar);
+  [-0.66, 0.66].forEach((x) => [-0.72, 0.72].forEach((z) => {
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 12), standard("#061018"));
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(x, 0.02, z);
+    cart.add(wheel);
+  }));
   group.add(cart);
 
   const sign = makeLabel("VIBE COASTER", "#00DDF5");
-  sign.position.set(-7.2, 2.15, -4.8);
+  sign.position.set(-12, 3.85, -19.6);
   group.add(sign);
 
   const light = new THREE.PointLight(new THREE.Color("#00DDF5"), 1.35, 18);
