@@ -73,13 +73,13 @@ const ZONES = {
   surfzone: {
     name: "Surf Zone",
     id: "surfzone",
-    cx: -52, cz: 34, radius: 7,
+    cx: 0, cz: 34, radius: 7,
     icon: "Waves",
   },
   divezone: {
     name: "Dive Zone",
     id: "divezone",
-    cx: 32, cz: 33, radius: 7,
+    cx: 35, cz: 34, radius: 7,
     icon: "Waves",
   },
   crystalzone: {

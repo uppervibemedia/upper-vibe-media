@@ -9,11 +9,11 @@ export const BEACH_SHELLS = [
 ];
 
 export const BEACH_ACTIVITY_POINTS = {
-  questBoard: { x: 29, z: -10, radius: 7 },
-  bonfire: { x: 0, z: 14, radius: 7 },
+  questBoard: { x: -34, z: 23, radius: 7 },
+  bonfire: { x: 0, z: 7, radius: 7 },
   photoSpot: { x: 45, z: 27, radius: 6 },
-  surf: { x: -52, z: 34, radius: 7 },
-  dive: { x: 32, z: 33, radius: 7 },
+  surf: { x: 0, z: 34, radius: 7 },
+  dive: { x: 35, z: 34, radius: 7 },
 };
 
 function basic(color, opts = {}) {
@@ -49,35 +49,35 @@ function label(text, color = "#00E5FF", scale = [5, 0.9]) {
 
 function addQuestBoard(group) {
   const board = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.1, 0.22), standard("#1A2640", { roughness: 0.36, metalness: 0.45 }));
-  board.position.set(29, 1.45, -11.5);
-  board.rotation.y = -0.12;
+  board.position.set(-34, 1.45, 23);
+  board.rotation.y = 0.16;
   group.add(board);
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 1.55), basic("#00E5FF", { transparent: true, opacity: 0.18 }));
-  glow.position.set(29, 1.48, -11.34);
-  glow.rotation.y = -0.12;
+  glow.position.set(-34, 1.48, 23.16);
+  glow.rotation.y = 0.16;
   group.add(glow);
   const title = label("DAILY BEACH QUEST", "#FFD36E", [5.5, 0.82]);
-  title.position.set(29, 2.9, -11.2);
+  title.position.set(-34, 2.9, 23.3);
   group.add(title);
 }
 
 function addBonfire(group) {
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.75, 36), basic("#FFB347", { transparent: true, opacity: 0.62 }));
   ring.rotation.x = -Math.PI / 2;
-  ring.position.set(0, 0.075, 14);
+  ring.position.set(0, 0.075, 7);
   group.add(ring);
   const flame = new THREE.Mesh(new THREE.ConeGeometry(0.52, 1.1, 12), basic("#FF7A2F", { transparent: true, opacity: 0.88 }));
-  flame.position.set(0, 0.7, 14);
+  flame.position.set(0, 0.7, 7);
   group.add(flame);
   group.userData.bonfireFlame = flame;
-  [[-3, 12.4, 0.45], [3, 12.4, -0.45], [-3.4, 15.8, -0.55], [3.4, 15.8, 0.55], [0, 17.1, 0]].forEach(([x, z, r], i) => {
+  [[-3, 5.4, 0.45], [3, 5.4, -0.45], [-3.4, 8.8, -0.55], [3.4, 8.8, 0.55], [0, 10.1, 0]].forEach(([x, z, r], i) => {
     const cushion = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.14, 0.9), standard(i % 2 ? "#7DD7E8" : "#D9C27C", { roughness: 0.85, metalness: 0.05 }));
     cushion.position.set(x, 0.13, z);
     cushion.rotation.y = r;
     group.add(cushion);
   });
   const sign = label("BONFIRE HANGOUT", "#FFB347", [5.2, 0.8]);
-  sign.position.set(0, 2.25, 11.1);
+  sign.position.set(0, 2.25, 4.1);
   group.add(sign);
 }
 
@@ -120,26 +120,26 @@ function addSurfPreview(group) {
   const lane = new THREE.Mesh(new THREE.PlaneGeometry(22, 4.2), basic("#7FE8F4", { transparent: true, opacity: 0.18 }));
   lane.rotation.x = -Math.PI / 2;
   lane.rotation.z = -0.18;
-  lane.position.set(-58, 0.035, 40);
+  lane.position.set(0, 0.035, 41);
   group.add(lane);
 
   const rack = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.16, 0.55), standard("#85613E"));
-  rack.position.set(-52, 0.32, 32.8);
+  rack.position.set(0, 0.32, 32.7);
   group.add(rack);
   [-1.15, 0, 1.15].forEach((off, i) => {
     const board = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.11, 2.7), standard(i === 1 ? "#68D7E8" : "#D9C27C", { metalness: 0.12 }));
-    board.position.set(-52 + off, 0.58, 32.8);
+    board.position.set(off, 0.58, 32.7);
     board.rotation.set(0.42, -0.2, 0);
     group.add(board);
   });
-  [[-55, 36], [-61, 40], [-66, 44]].forEach(([x, z], i) => {
+  [[-4, 36], [0, 41], [4, 46]].forEach(([x, z], i) => {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.045, 8, 44), basic("#7FE8F4", { transparent: true, opacity: 0.46 }));
     ring.position.set(x, 1.0, z);
     ring.rotation.set(Math.PI / 2, 0.15 * i, 0);
     group.add(ring);
   });
   const sign = label("SURF ZONE", "#68D7E8", [4.4, 0.72]);
-  sign.position.set(-52, 1.85, 30.7);
+  sign.position.set(0, 1.85, 30.6);
   group.add(sign);
 }
 

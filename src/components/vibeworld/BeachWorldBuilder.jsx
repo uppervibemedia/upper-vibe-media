@@ -8,7 +8,7 @@ import { createBeachResortAddOns } from "./BeachResortAddOns.jsx";
 const { Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, CylinderGeometry, RingGeometry, Color, PointLight, AmbientLight, HemisphereLight, DirectionalLight, CanvasTexture, SpriteMaterial, Sprite, LinearFilter } = THREE;
 
 export const CITY_BEACH_PAD = { x: 12, z: 8, radius: 3.2 };
-export const BEACH_RETURN_PAD = { x: 32, z: -8, radius: 3.2 };
+export const BEACH_RETURN_PAD = { x: -34, z: 28, radius: 3.2 };
 
 function mat(hexColor, opts = {}) {
   const m = new MeshStandardMaterial();
