@@ -10,7 +10,7 @@ export const BEACH_SHELLS = [
 
 export const BEACH_ACTIVITY_POINTS = {
   questBoard: { x: -34, z: 23, radius: 7 },
-  bonfire: { x: 0, z: 7, radius: 7 },
+  bonfire: { x: 52, z: 20, radius: 7 },
   surf: { x: 0, z: 34, radius: 7 },
   dive: { x: 35, z: 34, radius: 7 },
 };
@@ -61,22 +61,23 @@ function addQuestBoard(group) {
 }
 
 function addBonfire(group) {
+  const bx = 52, bz = 20;
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.25, 1.75, 36), basic("#FFB347", { transparent: true, opacity: 0.62 }));
   ring.rotation.x = -Math.PI / 2;
-  ring.position.set(0, 0.075, 7);
+  ring.position.set(bx, 0.075, bz);
   group.add(ring);
   const flame = new THREE.Mesh(new THREE.ConeGeometry(0.52, 1.1, 12), basic("#FF7A2F", { transparent: true, opacity: 0.88 }));
-  flame.position.set(0, 0.7, 7);
+  flame.position.set(bx, 0.7, bz);
   group.add(flame);
   group.userData.bonfireFlame = flame;
-  [[-3, 5.4, 0.45], [3, 5.4, -0.45], [-3.4, 8.8, -0.55], [3.4, 8.8, 0.55], [0, 10.1, 0]].forEach(([x, z, r], i) => {
+  [[-3, -1.6, 0.45], [3, -1.6, -0.45], [-3.2, 1.8, -0.55], [3.2, 1.8, 0.55], [0, 3.1, 0]].forEach(([ox, oz, r], i) => {
     const cushion = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.14, 0.9), standard(i % 2 ? "#7DD7E8" : "#D9C27C", { roughness: 0.85, metalness: 0.05 }));
-    cushion.position.set(x, 0.13, z);
+    cushion.position.set(bx + ox, 0.13, bz + oz);
     cushion.rotation.y = r;
     group.add(cushion);
   });
-  const sign = label("BONFIRE HANGOUT", "#FFB347", [5.2, 0.8]);
-  sign.position.set(0, 2.25, 4.1);
+  const sign = label("BONFIRE BEACH", "#FFB347", [4.8, 0.75]);
+  sign.position.set(bx, 2.25, bz - 3.0);
   group.add(sign);
 }
 

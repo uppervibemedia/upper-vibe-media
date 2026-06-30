@@ -58,11 +58,23 @@ const ZONES = {
     cx: -18, cz: 16, radius: 7,
     icon: "GraduationCap",
   },
-  ferriswheel: {
-    name: "Neon Vibe Wheel",
-    id: "ferriswheel",
-    cx: 0, cz: 24, radius: 9.5,
-    icon: "Ferris",
+  coaster: {
+    name: "Vibe Coaster",
+    id: "coaster",
+    cx: 0, cz: -20, radius: 9,
+    icon: "Sparkles",
+  },
+  frequencycove: {
+    name: "Frequency Cove",
+    id: "frequencycove",
+    cx: -52, cz: 16, radius: 8,
+    icon: "Sparkles",
+  },
+  bonfirebeach: {
+    name: "Bonfire Beach",
+    id: "bonfirebeach",
+    cx: 52, cz: 20, radius: 7,
+    icon: "Sparkles",
   },
   shop: {
     name: "Upper Vibe Shop",
@@ -92,7 +104,7 @@ const ZONES = {
 
 export function detectZone(px, pz) {
   const mode = typeof window !== "undefined" ? (window.__uvcWorldMode || "city") : "city";
-  const beachOnly = new Set(["zenbeach", "beach", "academy", "surfzone", "divezone"]);
+  const beachOnly = new Set(["zenbeach", "beach", "academy", "surfzone", "divezone", "coaster", "frequencycove", "bonfirebeach"]);
   for (const zone of Object.values(ZONES)) {
     if (mode === "beach" && !beachOnly.has(zone.id)) continue;
     if (mode === "city" && beachOnly.has(zone.id)) continue;

@@ -112,22 +112,9 @@ export function createBeachResortDecor(scene) {
   addSmallVilla(group, -24, 8, 0.35);
   addOpenAirStructure(group, 0, -20, "VIBE COASTER", "#68D7E8", 0.05);
 
-  addUmbrella(group, -5, 8, "#D9C27C"); addUmbrella(group, 7, 8, "#80DCEB"); addPalm(group, -9, 11, 0.85); addPalm(group, 11, 11, 0.78);
-  [[-7,6.5,"#7DD7E8",0.5],[-3,4.5,"#C8CDD2",-0.2],[3,4.5,"#D9C27C",0.25],[7,6.5,"#9CA8B8",-0.55]].forEach(([x,z,c,r]) => addChair(group, x, z, c, r));
-  addBeachTowel(group, -1, 9.2, "#F7B267", 0.28);
-  addBeachTowel(group, 4.4, 9.0, "#7DD7E8", -0.18);
-  const shade = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.14, 3.2), standard("#E7D4A3"));
-  shade.position.set(0, 1.85, 8.2); group.add(shade);
-  for (const [x,z] of [[-2.6,6.8],[2.6,6.8],[-2.6,9.6],[2.6,9.6]]) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.75, 8), standard("#85613E"));
-    post.position.set(x, 0.9, z); group.add(post);
-  }
-  const fire = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.52, 36), basic("#78E7FF", { transparent: true, opacity: 0.5 }));
-  fire.rotation.x = -Math.PI / 2; fire.position.set(0, 0.06, 7); fire.renderOrder = 5; group.add(fire);
-  const hangoutLabel = makeLabel("BEACH HANGOUT", "#FFB347", [5.0, 0.9]);
-  hangoutLabel.position.set(0, 2.05, 3.3); group.add(hangoutLabel);
+  addPalm(group, 48, 17, 0.78); addPalm(group, 56, 22, 0.74);
 
-  [[-34, 1.5, 25], [0, 1.1, 7], [10, 1.4, 16], [0, 1.1, 34], [35, 1.2, 34], [40, 1.2, 13]].forEach(([x, y, z]) => {
+  [[-34, 1.5, 25], [52, 1.4, 20], [10, 1.4, 16], [0, 1.1, 34], [35, 1.2, 34], [40, 1.2, 13]].forEach(([x, y, z]) => {
     const light = new THREE.PointLight(new THREE.Color("#FFD08A"), 0.82, 10);
     light.position.set(x, y, z); group.add(light);
   });

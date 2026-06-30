@@ -41,6 +41,7 @@ import AcademyPanel from "./panels/AcademyPanel";
 import ShopPanel from "./panels/ShopPanel";
 import FerrisWheelPanel from "./panels/FerrisWheelPanel";
 import ZenBeachPanel from "./panels/ZenBeachPanel";
+import BeachActivityPanel from "./panels/BeachActivityPanel";
 import EmotePanel from "./panels/EmotePanel";
 import JukeboxPanel from "./panels/JukeboxPanel";
 import InWorldSongPage from "./panels/InWorldSongPage";
@@ -61,6 +62,9 @@ const ZONE_ICONS = {
   zenbeach: Sparkles,
   surfzone: Waves,
   divezone: Waves,
+  coaster: Sparkles,
+  frequencycove: Sparkles,
+  bonfirebeach: Sparkles,
   hoverboard: Sparkles,
   academy: GraduationCap,
   ferriswheel: Sparkles,
@@ -201,6 +205,7 @@ export default function WorldHUD({
   const [ferrisWheelOpen, setFerrisWheelOpen] = useState(false);
   const [isRiding, setIsRiding] = useState(false);
   const [zenBeachOpen, setZenBeachOpen] = useState(false);
+  const [activeBeachActivity, setActiveBeachActivity] = useState(null);
   const [emotePanelOpen, setEmotePanelOpen] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   // Sync emote panel open state to UpperVibeCity so overlaying UI elements
@@ -874,7 +879,7 @@ export default function WorldHUD({
           >
             <button
               onTouchStart={(e) => e.stopPropagation()}
-              onClick={() => { hapticTap(); setZenBeachOpen(true); onMobileModalChange?.(true); }}
+              onClick={() => { hapticTap(); setActiveBeachActivity("zen"); onMobileModalChange?.(true); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95"
               style={{
                 background: "linear-gradient(135deg,#00D4F0,#7C3AED)",
@@ -886,8 +891,38 @@ export default function WorldHUD({
               }}
             >
               <Waves className="w-3.5 h-3.5" />
-              Enter Zen Beach
+              Start Zen Reset
             </button>
+          </motion.div>
+        )}
+
+        {zone?.id === "surfzone" && (
+          <motion.div key="surf-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("surf"); onMobileModalChange?.(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#68D7E8,#00E5FF)", color: "#021018", boxShadow: "0 0 20px rgba(104,215,232,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Waves className="w-3.5 h-3.5" />Start Surf Challenge</button>
+          </motion.div>
+        )}
+
+        {zone?.id === "divezone" && (
+          <motion.div key="dive-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("dive"); onMobileModalChange?.(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#42DDF2,#7C3AED)", color: "#fff", boxShadow: "0 0 20px rgba(66,221,242,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Waves className="w-3.5 h-3.5" />Start Dive Adventure</button>
+          </motion.div>
+        )}
+
+        {zone?.id === "coaster" && (
+          <motion.div key="coaster-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("coaster"); onMobileModalChange?.(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#00B8D4,#00E5FF)", color: "#021018", boxShadow: "0 0 20px rgba(0,229,255,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}>Ride Vibe Coaster</button>
+          </motion.div>
+        )}
+
+        {zone?.id === "frequencycove" && (
+          <motion.div key="frequency-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("frequency"); onMobileModalChange?.(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#7C3AED,#B58CFF)", color: "#fff", boxShadow: "0 0 20px rgba(181,140,255,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}><Sparkles className="w-3.5 h-3.5" />Enter Frequency Cove</button>
+          </motion.div>
+        )}
+
+        {zone?.id === "bonfirebeach" && (
+          <motion.div key="bonfire-actions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-0 left-0 right-0 z-[57] flex flex-col items-center gap-2 px-4" style={actionStyle()}>
+            <button onTouchStart={(e) => e.stopPropagation()} onClick={() => { hapticTap(); setActiveBeachActivity("bonfire"); onMobileModalChange?.(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs tracking-wider transition-all hover:brightness-110 active:scale-95" style={{ background: "linear-gradient(135deg,#FFB347,#FFD36E)", color: "#261000", boxShadow: "0 0 20px rgba(255,179,71,0.35)", minHeight: "44px", touchAction: "manipulation", pointerEvents: "auto" }}>Relax by Bonfire</button>
           </motion.div>
         )}
 
@@ -1030,6 +1065,14 @@ export default function WorldHUD({
         open={zenBeachOpen}
         onClose={() => { setZenBeachOpen(false); onMobileModalChange?.(false); }}
         isMobile={isMobile}
+      />
+
+      <BeachActivityPanel
+        open={!!activeBeachActivity}
+        type={activeBeachActivity}
+        onClose={() => { setActiveBeachActivity(null); onMobileModalChange?.(false); }}
+        isMobile={isMobile}
+        mobileLayout={mobileLayout}
       />
 
       {/* ── Upper Vibe Shop Panel ────────────────────────────────── */}
