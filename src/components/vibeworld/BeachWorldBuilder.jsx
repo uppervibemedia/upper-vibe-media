@@ -3,11 +3,12 @@ import createZenBeach from "./ZenBeach";
 import { createBeachDaySky } from "./BeachDaySky";
 import { createBeachReturnPlanet } from "./BeachReturnPlanet";
 import { createBeachResortAddOns } from "./BeachResortAddOns.jsx";
+import { createBeachArrivalReturnPlaza } from "./BeachArrivalReturnPlaza.jsx";
 
 const { Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, CylinderGeometry, RingGeometry, Color, PointLight, AmbientLight, HemisphereLight, DirectionalLight, CanvasTexture, SpriteMaterial, Sprite, LinearFilter } = THREE;
 
 export const CITY_BEACH_PAD = { x: 12, z: 8, radius: 3.2 };
-export const BEACH_RETURN_PAD = { x: -34, z: 28, radius: 3.2 };
+export const BEACH_RETURN_PAD = { x: 10, z: 16, radius: 2.6 };
 
 function mat(hexColor, opts = {}) {
   const m = new MeshStandardMaterial();
@@ -144,6 +145,7 @@ export function createBeachWorld(scene) {
 
   createZenBeach(scene, 0, 0);
   createBeachResortAddOns(scene);
+  createBeachArrivalReturnPlaza(scene);
   createBeachReturnPlanet(scene);
   createTransportPad(scene, { ...BEACH_RETURN_PAD, label: "Return to Upper Vibe City", color: "#EDB84A", name: "returnCityPad" });
 

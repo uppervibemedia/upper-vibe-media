@@ -66,7 +66,7 @@ function makePlanetTexture() {
 export function createBeachReturnPlanet(scene) {
   const group = new THREE.Group();
   group.name = "beachReturnPlanet";
-  group.position.set(42, 8.8, 43);
+  group.position.set(10, 8.4, 22.8);
   group.userData.isReturnCityPortal = true;
 
   const planet = new THREE.Mesh(

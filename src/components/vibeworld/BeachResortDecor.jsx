@@ -105,8 +105,7 @@ export function createBeachResortDecor(scene) {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), pathMat.clone());
     p.rotation.x = -Math.PI / 2; p.rotation.z = rot; p.position.set(x, 0.03 + i * 0.001, z); p.renderOrder = 3; group.add(p);
   });
-  [[-34,28],[-20,24],[0,20],[0,8],[0,32],[35,32],[48,20],[-34,-18]].forEach(([x,z]) => addGlowStone(group, x, z));
-  addBoardwalk(group, -34, 28, 8, -0.12);
+  [[10,16],[-20,24],[0,20],[0,8],[0,32],[35,32],[48,20],[-34,-18]].forEach(([x,z]) => addGlowStone(group, x, z));
   addBoardwalk(group, 35, 32, 8, 0.08);
 
   addSmallVilla(group, -10, -6, -0.18);
@@ -128,10 +127,7 @@ export function createBeachResortDecor(scene) {
   const hangoutLabel = makeLabel("BEACH HANGOUT", "#FFB347", [5.0, 0.9]);
   hangoutLabel.position.set(0, 2.05, 3.3); group.add(hangoutLabel);
 
-  const arrivalLabel = makeLabel("ARRIVAL / RETURN", "#EDB84A", [5.4, 0.9]);
-  arrivalLabel.position.set(-34, 2.05, 25.2); group.add(arrivalLabel);
-
-  [[-34, 1.5, 25], [0, 1.1, 7], [-34, 1.4, 28], [0, 1.1, 34], [35, 1.2, 34], [40, 1.2, 13]].forEach(([x, y, z]) => {
+  [[-34, 1.5, 25], [0, 1.1, 7], [10, 1.4, 16], [0, 1.1, 34], [35, 1.2, 34], [40, 1.2, 13]].forEach(([x, y, z]) => {
     const light = new THREE.PointLight(new THREE.Color("#FFD08A"), 0.82, 10);
     light.position.set(x, y, z); group.add(light);
   });

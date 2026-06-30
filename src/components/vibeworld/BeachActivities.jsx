@@ -11,7 +11,6 @@ export const BEACH_SHELLS = [
 export const BEACH_ACTIVITY_POINTS = {
   questBoard: { x: -34, z: 23, radius: 7 },
   bonfire: { x: 0, z: 7, radius: 7 },
-  photoSpot: { x: 45, z: 27, radius: 6 },
   surf: { x: 0, z: 34, radius: 7 },
   dive: { x: 35, z: 34, radius: 7 },
 };
@@ -79,23 +78,6 @@ function addBonfire(group) {
   const sign = label("BONFIRE HANGOUT", "#FFB347", [5.2, 0.8]);
   sign.position.set(0, 2.25, 4.1);
   group.add(sign);
-}
-
-function addPhotoSpot(group) {
-  const frame = new THREE.Mesh(new THREE.TorusGeometry(2.15, 0.045, 8, 72), basic("#00E5FF", { transparent: true, opacity: 0.78 }));
-  frame.position.set(45, 2.25, 27);
-  frame.rotation.set(Math.PI / 2, 0.2, 0);
-  group.add(frame);
-  const platform = new THREE.Mesh(new THREE.CircleGeometry(2.4, 36), basic("#E6D8BC", { transparent: true, opacity: 0.34 }));
-  platform.rotation.x = -Math.PI / 2;
-  platform.position.set(45, 0.06, 27);
-  group.add(platform);
-  const beachSign = label("UPPER VIBE BEACH", "#FFD36E", [6.2, 0.95]);
-  beachSign.position.set(45, 3.45, 25.7);
-  group.add(beachSign);
-  const photo = label("PHOTO SPOT", "#00E5FF", [4.1, 0.72]);
-  photo.position.set(45, 1.25, 24.7);
-  group.add(photo);
 }
 
 function addTreasureShells(group) {
@@ -173,7 +155,6 @@ export function createBeachActivities(scene) {
   group.name = "beachActivities";
   addQuestBoard(group);
   addBonfire(group);
-  addPhotoSpot(group);
   addTreasureShells(group);
   addSurfPreview(group);
   addDivePreview(group);
