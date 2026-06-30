@@ -81,6 +81,7 @@ export function createTransportPad(scene, { x, z, label, color = "#00E5FF", name
 
 export function createBeachWorld(scene) {
   createCosmicSky(scene);
+  scene.userData._beachDaylightSky = true;
   createBeachDaySky(scene);
 
   const SHORELINE_Z = 35;

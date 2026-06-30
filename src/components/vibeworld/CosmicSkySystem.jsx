@@ -909,7 +909,7 @@ export function animateCosmicSky(scene, camera, t, dt) {
         p._cityOpacity += (cityTarget - p._cityOpacity) * Math.min(1, dt * 4.0);
         opacity = globalPlanetOpacity * p._cityOpacity;
       }
-      p.mat.opacity = opacity;
+      p.mat.opacity = scene.userData._beachDaylightSky ? opacity * 0.36 : opacity;
     }
 
     if (SKY_DEBUG && skyFrame % 120 === 0) {
@@ -928,8 +928,10 @@ export function animateCosmicSky(scene, camera, t, dt) {
 
   // ── Star opacity pulse (subtle twinkle) ──────────────────────────────────────
   if (starField?.material && updateSlow) {
-    const base = SKY_DEBUG ? 1.0 : 0.72;
-    starField.material.opacity = base + Math.sin(t * 0.9) * 0.08 + Math.cos(t * 0.55) * 0.05;
+    const base = scene.userData._beachDaylightSky ? 0.14 : (SKY_DEBUG ? 1.0 : 0.72);
+    starField.material.opacity = scene.userData._beachDaylightSky
+      ? base
+      : base + Math.sin(t * 0.9) * 0.08 + Math.cos(t * 0.55) * 0.05;
   }
 
   // ── Shooting Star — one every 45s ────────────────────────────────────────────
